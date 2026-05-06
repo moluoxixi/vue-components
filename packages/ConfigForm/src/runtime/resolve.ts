@@ -61,7 +61,7 @@ export function createResolvers(
   function resolveSlot(slot: SlotContent, resolveSnap: FormRuntimeResolveSnap, path = 'slot'): SlotContent {
     if (typeof slot === 'function') {
       return (scope?: Record<string, unknown>) => resolveSlot(
-        slot(scope),
+        slot(scope, resolveSnap),
         { ...resolveSnap, slotScope: scope },
         path,
       )

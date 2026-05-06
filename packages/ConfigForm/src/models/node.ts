@@ -116,7 +116,7 @@ function collectSlotFields(slot: SlotContent | undefined, path = 'slot'): FieldC
     return []
 
   if (typeof slot === 'function') {
-    const resolved = slot(undefined)
+    const resolved = slot(undefined, undefined)
     return typeof resolved === 'function'
       ? []
       : collectSlotFields(resolved, path)

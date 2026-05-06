@@ -241,7 +241,7 @@ function isFieldNodeConfig(value: DevtoolsFormNodeConfig): value is DevtoolsForm
  * 函数 slot 仅以 undefined scope 执行一次，运行时 scope 相关内容不提前推断。
  */
 function resolveSlotContent(slot: unknown): unknown {
-  return typeof slot === 'function' ? (slot as (scope?: Record<string, unknown>) => unknown)(undefined) : slot
+  return typeof slot === 'function' ? (slot as (scope?: Record<string, unknown>, snap?: unknown) => unknown)(undefined, undefined) : slot
 }
 
 /**
@@ -531,9 +531,9 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
         if (typeof slot !== 'function')
           return instrumentSlotContent(slot, path)
 
-        return function instrumentedSlot(this: unknown, scope?: Record<string, unknown>) {
+        return function instrumentedSlot(this: unknown, scope?: Record<string, unknown>, snap?: unknown) {
           return instrumentSlotContent(
-            (slot as (this: unknown, scope?: Record<string, unknown>) => unknown).call(this, scope),
+            (slot as (this: unknown, scope?: Record<string, unknown>, snap?: unknown) => unknown).call(this, scope, snap),
             path,
           )
         }

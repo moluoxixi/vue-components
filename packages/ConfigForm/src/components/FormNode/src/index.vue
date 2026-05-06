@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CSSProperties } from 'vue'
+import type { CSSProperties, VNode } from 'vue'
 import type { FormRuntimeResolveSnap } from '@/runtime'
 import type { ResolvedField, ResolvedFormNode, SlotContent } from '@/types'
 import { computed, defineComponent } from 'vue'
@@ -17,10 +17,10 @@ const SlotRender = defineComponent({
   name: 'SlotRender',
   props: {
     fn: { type: Function, required: true },
-    scope: { type: Object, default: undefined },
+    resolveSnap: { type: Object, default: undefined },
   },
-  setup(props: { fn: (scope?: Record<string, unknown>) => unknown, scope?: Record<string, unknown> }) {
-    return () => props.fn(props.scope)
+  setup(props: { fn: (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => VNode | string | number, resolveSnap?: FormRuntimeResolveSnap }) {
+    return () => props.fn(props.resolveSnap?.slotScope, props.resolveSnap)
   },
 })
 
@@ -63,14 +63,15 @@ const attrs = computed(() => {
 
 type NormalizedSlotNode =
   | { key: string, kind: 'node', node: ResolvedFormNode, resolveSnap: FormRuntimeResolveSnap }
-  | { fn: () => unknown, key: string, kind: 'render' }
+  | { fn: (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => VNode | string | number, key: string, kind: 'render', resolveSnap: FormRuntimeResolveSnap }
 
 type SlotResolveSnap = FormRuntimeResolveSnap & { slotName: string }
 
 /**
  * 将 runtime 解析后的 slot 返回值统一成渲染节点。
  *
- * defineField 节点标记为 kind:'node'，交给 RecursiveField 递归；其余原样渲染。
+ * - defineField 节点 → kind:'node' → 交给 RecursiveField 递归渲染
+ * - VNode/文本/数字 → kind:'render' → 交给 SlotRender 渲染
  */
 function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolveSnap, path = '0'): NormalizedSlotNode[] {
   if (value == null || value === false)
@@ -94,9 +95,14 @@ function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolve
   }
 
   return [{
-    fn: () => value,
+    fn: (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => {
+      // value 已经被 resolveSlot 解析过，可能是 VNode、文本、数字等
+      // boolean false 已在开头过滤，true 不应该出现，RuntimeToken 应该已被解析
+      return value as VNode | string | number
+    },
     key: `render-${slotName}-${path}`,
     kind: 'render',
+    resolveSnap,
   }]
 }
 
@@ -114,7 +120,7 @@ function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknow
   const resolvedSlot = runtimeRef.value.resolveSlot(slotValue, resolveSnap, `slots.${slotName}`)
 
   if (typeof resolvedSlot === 'function')
-    return normalizeResolvedSlotValue(resolvedSlot(scope), resolveSnap)
+    return normalizeResolvedSlotValue(resolvedSlot(scope, resolveSnap), resolveSnap)
 
   return normalizeResolvedSlotValue(resolvedSlot, resolveSnap)
 }
@@ -137,7 +143,7 @@ function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknow
           :node="slotNode.node"
           :resolve-snap="slotNode.resolveSnap"
         />
-        <SlotRender v-else :fn="slotNode.fn" />
+        <SlotRender v-else :fn="slotNode.fn" :resolve-snap="slotNode.resolveSnap" />
       </template>
     </template>
   </component>

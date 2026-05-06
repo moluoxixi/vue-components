@@ -1,6 +1,6 @@
 import type { Component, SetupContext, VNode } from 'vue'
 import type { ZodType, ZodTypeAny, ZodTypeDef } from 'zod'
-import type { FormRuntimeOptions } from '@/runtime/types'
+import type { FormRuntimeOptions, FormRuntimeResolveSnap } from '@/runtime/types'
 
 /** defineField(...) 创建的配置会携带这个运行时 brand。 */
 export const CONFIG_FORM_DEFINED_NODE = Symbol.for('moluoxixi.config-form.defined-node')
@@ -60,8 +60,8 @@ export type SlotRenderable = VNode | VNode[] | SlotPrimitive | RuntimeToken
 /** 完整 slot 内容协议，覆盖静态节点、数组、渲染函数和原始值。 */
 export type SlotContent = SlotRenderFn | DefinedFormNodeConfig | DefinedFormNodeConfig[] | SlotRenderable
 
-/** 插槽渲染函数，接收作用域参数，返回 VNode(s)、容器节点或真实字段节点。 */
-export type SlotRenderFn = (scope?: Record<string, unknown>) => SlotContent
+/** 插槽渲染函数，接收作用域参数和运行时快照，返回 VNode(s)、容器节点或真实字段节点。 */
+export type SlotRenderFn = (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => SlotContent
 
 /** 字段节点配置：渲染组件并绑定一个表单值 key。 */
 export interface FieldConfig extends ComponentNodeConfig {
