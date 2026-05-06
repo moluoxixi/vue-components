@@ -1,4 +1,4 @@
-import type { FieldConfig, FormRuntimePlugin, NormalizedFieldConfig } from '@moluoxixi/config-form/plugins'
+import type { FieldConfig, FormRuntimePlugin, NormalizedFieldConfig, NormalizedNodeConfig } from '@moluoxixi/config-form/plugins'
 
 /** ConfigForm core 未适配组件库时使用的值 prop。 */
 const CORE_VALUE_PROP = 'modelValue'
@@ -134,7 +134,12 @@ export function createAntdVuePlugin(options: AntdVuePluginOptions = {}): FormRun
 
   const plugin: FormRuntimePlugin = {
     name: options.name ?? 'antd-vue',
-    transformField: (field) => {
+    transformNode: (node: NormalizedNodeConfig): NormalizedNodeConfig | void => {
+      // 只处理有 field 绑定的节点（跳过纯容器）
+      if (!('field' in node))
+        return undefined
+
+      const field = node as NormalizedFieldConfig
       const componentName = resolveComponentName(field.component)
       if (!componentName)
         return undefined
@@ -154,12 +159,13 @@ export function createAntdVuePlugin(options: AntdVuePluginOptions = {}): FormRun
         ? deepMergeProps(binding.props, field.props)
         : field.props
 
-      return {
+      const transformed: NormalizedFieldConfig = {
         ...field,
         trigger: binding.trigger,
         valueProp: binding.valueProp,
         props: mergedProps,
       }
+      return transformed
     },
   }
 

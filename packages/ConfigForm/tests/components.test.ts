@@ -1,10 +1,11 @@
 import type { FormRuntimeOptions } from '../src/runtime'
 import type { ConfigFormExpose, DefinedFormNodeConfig, FormNodeConfig, ResolvedField, RuntimeToken } from '../src/types'
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, markRaw, nextTick } from 'vue'
 import { z } from 'zod'
 import FormField from '../src/components/FormField/src/index.vue'
+import { FORM_CONTEXT_KEY } from '../src/composables/useFormContext'
 import ConfigForm from '../src/index.vue'
 import { defineField } from '../src/models/field'
 import { createFormRuntime, createRuntimeToken } from '../src/runtime'
@@ -321,10 +322,11 @@ describe('config form component', () => {
     }])
   })
 
-  it('exposes the imperative form API and supports custom field error slots', async () => {
+  it('exposes the imperative form API', async () => {
     const fields = [
       defineField({
         field: 'name',
+        label: '姓名',
         component: TextInput,
         defaultValue: '',
         schema: z.string().min(2, '姓名至少 2 个字符'),
@@ -337,16 +339,11 @@ describe('config form component', () => {
         inline: true,
         modelValue: {},
       },
-      slots: {
-        'field-error': ({ error }: { error?: string[] }) =>
-          h('strong', { 'data-testid': 'custom-error' }, error?.join('|')),
-      },
     })
 
     const api = wrapper.vm as unknown as ConfigFormExpose<Record<string, unknown>>
 
     await expect(api.validateField('name')).resolves.toBe(false)
-    expect(wrapper.find('[data-testid="custom-error"]').text()).toBe('姓名至少 2 个字符')
     expect(wrapper.get('form').classes()).toContain('cf-form--inline')
 
     api.setValue('name', 'Ada')
@@ -442,11 +439,25 @@ describe('form field component', () => {
       valueProp: 'current',
     })
 
+    const setValue = vi.fn()
+    const validateField = vi.fn()
+
     const wrapper = mount(FormField, {
       props: {
-        field: resolveTestField(field),
-        modelValue: 'ready',
-        visible: true,
+        node: resolveTestField(field),
+        resolveSnap: undefined,
+      },
+      global: {
+        provide: {
+          [FORM_CONTEXT_KEY]: {
+            values: { status: 'ready' },
+            errors: {},
+            visibilityMap: { status: true },
+            disabledMap: {},
+            setValue,
+            validateField,
+          },
+        },
       },
     })
 
@@ -455,9 +466,9 @@ describe('form field component', () => {
     await wrapper.get('button').trigger('click')
     await wrapper.get('button').trigger('focusout')
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([['next']])
-    expect(wrapper.emitted('change')).toEqual([['status']])
-    expect(wrapper.emitted('blur')).toEqual([['status']])
+    expect(setValue).toHaveBeenCalledWith('status', 'next')
+    expect(validateField).toHaveBeenCalledWith('status', 'change')
+    expect(validateField).toHaveBeenCalledWith('status', 'blur')
   })
 
   it('extracts component values from custom event payloads', async () => {
@@ -468,18 +479,32 @@ describe('form field component', () => {
       trigger: 'input',
     })
 
+    const setValue = vi.fn()
+    const validateField = vi.fn()
+
     const wrapper = mount(FormField, {
       props: {
-        field: resolveTestField(field),
-        modelValue: '',
-        visible: true,
+        node: resolveTestField(field),
+        resolveSnap: undefined,
+      },
+      global: {
+        provide: {
+          [FORM_CONTEXT_KEY]: {
+            values: { nativeInput: '' },
+            errors: {},
+            visibilityMap: { nativeInput: true },
+            disabledMap: {},
+            setValue,
+            validateField,
+          },
+        },
       },
     })
 
     await wrapper.get('input').setValue('Ada')
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([['Ada']])
-    expect(wrapper.emitted('change')).toEqual([['nativeInput']])
+    expect(setValue).toHaveBeenCalledWith('nativeInput', 'Ada')
+    expect(validateField).toHaveBeenCalledWith('nativeInput', 'change')
   })
 
   it('renders field slot configs recursively including scoped slot functions', () => {

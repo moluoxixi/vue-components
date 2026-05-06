@@ -2,13 +2,14 @@
 import type { FormRuntimeResolveSnap } from '@/runtime'
 import type { ResolvedFormNode, SlotContent } from '@/types'
 import { computed, defineComponent } from 'vue'
+import RecursiveField from '@/components/RecursiveField'
 import { useRuntime } from '@/composables/useRuntime'
 import { isFormNodeConfig } from '@/models/node'
 
 /**
- * ComponentNode 渲染已经解析过的容器/字段组件，并把 slot 中的节点继续交给递归层处理。
+ * FormNode 渲染已经解析过的节点组件，slot 中的 defineField 节点交给 RecursiveField 递归处理。
  */
-defineOptions({ name: 'ComponentNode' })
+defineOptions({ name: 'FormNode' })
 
 const SlotRender = defineComponent({
   name: 'SlotRender',
@@ -16,11 +17,6 @@ const SlotRender = defineComponent({
     fn: { type: Function, required: true },
     scope: { type: Object, default: undefined },
   },
-  /**
-   * 将传入的 slot 函数包装为可渲染组件。
-   *
-   * 该组件只负责转发当前 slot scope，不参与字段解析和表单状态写入。
-   */
   setup(props: { fn: (scope?: Record<string, unknown>) => unknown, scope?: Record<string, unknown> }) {
     return () => props.fn(props.scope)
   },
@@ -53,7 +49,7 @@ type SlotResolveSnap = FormRuntimeResolveSnap & { slotName: string }
 /**
  * 将 runtime 解析后的 slot 返回值统一成渲染节点。
  *
- * 对象节点会继续通过 FormRuntime.resolveNode(...) 解析，普通 VNode/原始值则原样渲染。
+ * defineField 节点标记为 kind:'node'，交给 RecursiveField 递归；其余原样渲染。
  */
 function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolveSnap, path = '0'): NormalizedSlotNode[] {
   if (value == null || value === false)
@@ -77,11 +73,6 @@ function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolve
   }
 
   return [{
-    /**
-     * 延迟渲染普通 slot 内容。
-     *
-     * 该函数只把已解析内容交给 Vue 渲染，不再参与节点拓扑收集。
-     */
     fn: () => value,
     key: `render-${slotName}-${path}`,
     kind: 'render',
@@ -89,9 +80,9 @@ function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolve
 }
 
 /**
- * 将单个 slot 配置转换为递归层可消费的渲染节点列表。
+ * 将单个 slot 配置转换为渲染节点列表。
  *
- * 函数 slot 会在当前 scope 下执行；返回的字段节点继续携带同一 slot resolveSnap。
+ * 函数 slot 会在当前 scope 下执行；返回的 defineField 节点交给 RecursiveField。
  */
 function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknown> | undefined, slotName: string): NormalizedSlotNode[] {
   const resolveSnap: SlotResolveSnap = {
@@ -119,9 +110,8 @@ function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknow
         v-for="slotNode in normalizeSlotValue(slotValue, scope, String(slotName))"
         :key="slotNode.key"
       >
-        <slot
+        <RecursiveField
           v-if="slotNode.kind === 'node'"
-          name="node"
           :node="slotNode.node"
           :resolve-snap="slotNode.resolveSnap"
         />

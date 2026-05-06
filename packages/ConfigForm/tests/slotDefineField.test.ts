@@ -28,6 +28,7 @@ describe('slot field configs', () => {
       defineField({
         component: SlotHost,
         field: 'choice',
+        label: '选择',
         slots: {
           default: [
             defineField({

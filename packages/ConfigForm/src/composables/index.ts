@@ -1,4 +1,6 @@
 export { useForm } from './useForm'
 export type { UseFormOptions } from './useForm'
+export { provideFormContext, useFormContext } from './useFormContext'
+export type { FormContext } from './useFormContext'
 export { provideNamespace, useBem, useNamespace } from './useNamespace'
 export { normalizeFormRuntime, provideRuntime, useRuntime } from './useRuntime'

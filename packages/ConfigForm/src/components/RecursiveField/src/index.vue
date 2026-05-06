@@ -1,124 +1,37 @@
 <script setup lang="ts">
 import type { FormRuntimeResolveSnap } from '@/runtime'
-import type { FormErrors, FormValues, ResolvedField, ResolvedFormNode } from '@/types'
+import type { ResolvedFormNode } from '@/types'
 import { computed } from 'vue'
-import ComponentNode from '@/components/ComponentNode'
+import FormComponent from '@/components/FormComponent'
 import FormField from '@/components/FormField'
-import { isResolvedFieldConfig } from '@/models/node'
+import FormNode from '@/components/FormNode'
+import { isResolvedComponent, isResolvedField } from '@/models/node'
 
 /**
- * RecursiveField 负责在字段节点和容器节点之间分派渲染，并沿 slot 树传递表单状态。
+ * RecursiveField 基于 runtime 守卫做三路分派，递归渲染子节点。
+ *
+ * - Field（有 field + 有 label）→ FormField（label + error + 值绑定）
+ * - Component（有 field + 无 label）→ FormComponent（值绑定）
+ * - Container（无 field）→ FormNode（纯容器）
+ *
+ * 三者 props 统一为 { node, resolveSnap }，用 <component :is> 分派。
+ * 插槽通用转发，不感知具体插槽名。
+ * 递归由 FormNode 内部 slot 解析自动完成。
  */
 defineOptions({ name: 'RecursiveField' })
 
 const props = defineProps<{
   node: ResolvedFormNode
-  values: FormValues
-  errors: FormErrors
-  visibilityMap: Record<string, boolean>
-  disabledMap: Record<string, boolean>
-  inline?: boolean
-  labelWidth?: string | number
   resolveSnap?: FormRuntimeResolveSnap
 }>()
 
-defineSlots<{
-  'field-error'?: (props: { error?: string[], field: ResolvedField }) => unknown
-}>()
-
-const emit = defineEmits<{
-  'update:fieldValue': [field: string, value: unknown]
-  'fieldBlur': [field: string]
-  'fieldChange': [field: string]
-}>()
-
-const fieldNode = computed(() => isResolvedFieldConfig(props.node) ? props.node : undefined)
-
-/**
- * 将当前字段节点的模型值变更转发给父级表单。
- *
- * 组件节点没有 field 绑定，若误触发该路径会直接抛错暴露递归边界问题。
- */
-function emitCurrentFieldValue(value: unknown) {
-  if (!fieldNode.value)
-    throw new Error('Cannot update a component node without field')
-
-  emit('update:fieldValue', fieldNode.value.field, value)
-}
+const resolvedComponent = computed(() => {
+  if (isResolvedField(props.node)) return FormField
+  if (isResolvedComponent(props.node)) return FormComponent
+  return FormNode
+})
 </script>
 
 <template>
-  <FormField
-    v-if="fieldNode"
-    :field="fieldNode"
-    :model-value="values[fieldNode.field]"
-    :error="errors[fieldNode.field]"
-    :inline="inline"
-    :label-width="labelWidth"
-    :resolve-snap="resolveSnap"
-    :visible="visibilityMap[fieldNode.field]"
-    :disabled="disabledMap[fieldNode.field]"
-    @update:model-value="emitCurrentFieldValue"
-    @blur="(name: string) => emit('fieldBlur', name)"
-    @change="(name: string) => emit('fieldChange', name)"
-  >
-    <template #default="{ componentAttrs, componentListeners, resolveSnap: fieldResolveSnap }">
-      <ComponentNode
-        :node="fieldNode"
-        :component-attrs="componentAttrs"
-        :component-listeners="componentListeners"
-        :resolve-snap="fieldResolveSnap"
-      >
-        <template #node="{ node: childNode, resolveSnap: childResolveSnap }">
-          <RecursiveField
-            :node="childNode"
-            :values="values"
-            :errors="errors"
-            :visibility-map="visibilityMap"
-            :disabled-map="disabledMap"
-            :inline="inline"
-            :label-width="labelWidth"
-            :resolve-snap="childResolveSnap"
-            @update:field-value="(field: string, value: unknown) => emit('update:fieldValue', field, value)"
-            @field-blur="(field: string) => emit('fieldBlur', field)"
-            @field-change="(field: string) => emit('fieldChange', field)"
-          >
-            <template #field-error="slotProps">
-              <slot name="field-error" v-bind="slotProps" />
-            </template>
-          </RecursiveField>
-        </template>
-      </ComponentNode>
-    </template>
-
-    <template #error="slotProps">
-      <slot name="field-error" v-bind="slotProps" />
-    </template>
-  </FormField>
-
-  <ComponentNode
-    v-else
-    :node="node"
-    :resolve-snap="resolveSnap"
-  >
-    <template #node="{ node: childNode, resolveSnap: childResolveSnap }">
-      <RecursiveField
-        :node="childNode"
-        :values="values"
-        :errors="errors"
-        :visibility-map="visibilityMap"
-        :disabled-map="disabledMap"
-        :inline="inline"
-        :label-width="labelWidth"
-        :resolve-snap="childResolveSnap"
-        @update:field-value="(field: string, value: unknown) => emit('update:fieldValue', field, value)"
-        @field-blur="(field: string) => emit('fieldBlur', field)"
-        @field-change="(field: string) => emit('fieldChange', field)"
-      >
-        <template #field-error="slotProps">
-          <slot name="field-error" v-bind="slotProps" />
-        </template>
-      </RecursiveField>
-    </template>
-  </ComponentNode>
+  <component :is="resolvedComponent" :node="node" :resolve-snap="resolveSnap" />
 </template>

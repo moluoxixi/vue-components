@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { FormRuntimeResolveSnap } from '@/runtime'
-import type { ResolvedField } from '@/types'
+import type { ResolvedField, ResolvedFormNode } from '@/types'
 import { computed } from 'vue'
+import FormNode from '@/components/FormNode'
+import { useFormContext } from '@/composables/useFormContext'
 import { useBem, useNamespace } from '@/composables/useNamespace'
 import { useRuntime } from '@/composables/useRuntime'
 import { resolveLabelWidth } from '@/utils/style'
@@ -17,56 +19,52 @@ type ResolvedFieldWithDevtoolsSource = ResolvedField & {
 const DEVTOOLS_SOURCE_ID_ATTRIBUTE = 'data-cf-devtools-source-id'
 
 /**
- * FormField 负责单个真实字段的布局、组件事件适配和校验错误展示。
+ * FormField 基于 FormNode 封装，增加 label + error + 值绑定。
+ *
+ * props 与 FormComponent/FormNode 统一为 { node, resolveSnap }，
+ * 表单状态通过 inject 获取，不再依赖外部传入。
  */
 defineOptions({ name: 'FormField' })
 
 const props = defineProps<{
-  field: ResolvedField
-  modelValue: unknown
-  error?: string[]
-  inline?: boolean
-  labelWidth?: string | number
-  /** 由父层 visibilityMap 计算传入 */
-  visible?: boolean
-  /** 由父层 disabledMap 计算传入 */
-  disabled?: boolean
-  /** 当前解析快照，递归字段会沿用它 */
+  node: ResolvedFormNode
   resolveSnap?: FormRuntimeResolveSnap
 }>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: unknown]
-  'blur': [field: string]
-  'change': [field: string]
+defineSlots<{
+  error?: (props: { error?: string[], field: ResolvedField }) => unknown
 }>()
 
+const ctx = useFormContext()
 const ns = useNamespace()
 const { b, e, m } = useBem(ns)
 const runtimeRef = useRuntime()
+
+/** 内部断言：FormField 只接收 ResolvedField 类型的节点 */
+const field = computed(() => props.node as ResolvedField)
 
 const currentResolveSnap = computed<FormRuntimeResolveSnap>(() => {
   const base = props.resolveSnap ?? runtimeRef.value.createResolveSnap()
   return {
     ...base,
-    field: props.field,
+    field: field.value,
   }
 })
 
+const modelValue = computed(() => ctx.values[field.value.field])
+const error = computed(() => ctx.errors[field.value.field])
+const visible = computed(() => ctx.visibilityMap[field.value.field] !== false)
+const disabled = computed(() => ctx.disabledMap[field.value.field])
+
 const fieldId = computed(() => {
-  const safeFieldName = props.field.field.replace(/[^\w-]/g, '-')
+  const safeFieldName = field.value.field.replace(/[^\w-]/g, '-')
   return `${ns.value}-${safeFieldName}-field`
 })
 
 const errorId = computed(() => `${fieldId.value}-error`)
 
-/**
- * 生成字段根节点的 devtools 源码定位属性。
- *
- * `__source` 是 Vite devtools 插件注入的内部元信息，不属于公开 FieldConfig 输入。
- */
 const fieldSourceAttrs = computed<Record<string, string>>(() => {
-  const sourceId = (props.field as ResolvedFieldWithDevtoolsSource).__source?.id
+  const sourceId = (field.value as ResolvedFieldWithDevtoolsSource).__source?.id
   const attrs: Record<string, string> = {}
   if (typeof sourceId === 'string' && sourceId.length > 0)
     attrs[DEVTOOLS_SOURCE_ID_ATTRIBUTE] = sourceId
@@ -74,17 +72,17 @@ const fieldSourceAttrs = computed<Record<string, string>>(() => {
 })
 
 const componentProps = computed(() => {
-  const next = { ...(props.field.props ?? {}) }
+  const next = { ...(field.value.props ?? {}) }
 
   if (next.id == null)
     next.id = fieldId.value
 
-  if (props.error?.length) {
+  if (error.value?.length) {
     next['aria-invalid'] = true
     next['aria-describedby'] = errorId.value
   }
 
-  if (props.disabled)
+  if (disabled.value)
     next.disabled = true
 
   return next
@@ -92,76 +90,44 @@ const componentProps = computed(() => {
 
 const componentAttrs = computed(() => ({
   ...componentProps.value,
-  [props.field.valueProp]: props.modelValue,
+  [field.value.valueProp]: modelValue.value,
 }))
 
 const componentListeners = computed<Record<string, (...args: unknown[]) => void>>(() => ({
-  /**
-   * 将组件 blur 类事件映射为字段级校验触发点。
-   *
-   * 事件参数不参与字段名推导，字段来源固定为当前 ResolvedField。
-   */
-  [props.field.blurTrigger]: () => onBlur(),
-  /**
-   * 将组件值变更事件映射为 ConfigForm 模型更新。
-   *
-   * 参数保持原样交给 getValueFromEvent 或默认取第一个事件参数。
-   */
-  [props.field.trigger]: (...args: unknown[]) => onChange(...args),
+  [field.value.blurTrigger]: () => ctx.validateField(field.value.field, 'blur'),
+  [field.value.trigger]: (...args: unknown[]) => {
+    const value = field.value.getValueFromEvent
+      ? field.value.getValueFromEvent(...args)
+      : args[0]
+    ctx.setValue(field.value.field, value)
+    ctx.validateField(field.value.field, 'change')
+  },
 }))
-
-/**
- * 响应字段组件的值变更事件。
- *
- * 只更新当前字段模型值并触发 change 校验事件，不直接执行校验或提交。
- */
-function onChange(...args: unknown[]) {
-  const value = props.field.getValueFromEvent
-    ? props.field.getValueFromEvent(...args)
-    : args[0]
-
-  emit('update:modelValue', value)
-  emit('change', props.field.field)
-}
-
-/**
- * 响应字段组件的失焦事件。
- *
- * 仅向上通知当前字段名，具体校验时机由父级表单控制器决定。
- */
-function onBlur() {
-  emit('blur', props.field.field)
-}
 </script>
 
 <template>
   <div
-    v-if="visible !== false"
+    v-if="visible"
     v-bind="fieldSourceAttrs"
-    :class="[b('field'), { [m('field', 'inline')]: inline }]"
-    :style="!inline && field.span ? { gridColumn: `span ${field.span}` } : undefined"
+    :class="[b('field'), { [m('field', 'inline')]: ctx.inline }]"
+    :style="!ctx.inline && field.span ? { gridColumn: `span ${field.span}` } : undefined"
   >
     <label
       v-if="field.label"
       :class="e('field', 'label')"
       :for="fieldId"
-      :style="{ width: resolveLabelWidth(labelWidth) }"
+      :style="{ width: resolveLabelWidth(ctx.labelWidth) }"
     >
       {{ field.label }}
     </label>
 
     <div :class="e('field', 'control')">
-      <slot
+      <FormNode
+        :node="node"
         :component-attrs="componentAttrs"
         :component-listeners="componentListeners"
         :resolve-snap="currentResolveSnap"
-      >
-        <component
-          :is="field.component"
-          v-bind="componentAttrs"
-          v-on="componentListeners"
-        />
-      </slot>
+      />
 
       <slot name="error" :error="error" :field="field">
         <div v-if="error?.length" :id="errorId" :class="e('field', 'error')">

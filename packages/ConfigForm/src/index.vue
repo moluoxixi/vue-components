@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import type { ConfigFormEmits, ConfigFormExpose, ConfigFormProps } from '@/types'
 import RecursiveField from '@/components/RecursiveField'
 import { useForm } from '@/composables/useForm'
+import { provideFormContext } from '@/composables/useFormContext'
 import { provideNamespace, useBem } from '@/composables/useNamespace'
 import { normalizeFormRuntime, provideRuntime } from '@/composables/useRuntime'
 import { resolveLabelWidth } from '@/utils/style'
@@ -56,6 +57,17 @@ const {
    * 错误对象保持字段维度结构，供调用方或 slot 自行展示。
    */
   onError: errs => emit('error', errs),
+})
+
+provideFormContext({
+  get values() { return values },
+  get errors() { return errors.value },
+  get visibilityMap() { return visibilityMap.value },
+  get disabledMap() { return disabledMap.value },
+  inline: props.inline,
+  labelWidth: resolveLabelWidth(props.labelWidth),
+  setValue,
+  validateField: (field, trigger) => validateSingleField(field, trigger as 'blur' | 'change' | 'submit'),
 })
 
 const resolveSnap = computed(() => runtimeRef.value.createResolveSnap({
@@ -117,21 +129,8 @@ defineExpose<ConfigFormExpose<T>>({
     <template v-for="item in keyedResolvedNodes" :key="item.key">
       <RecursiveField
         :node="item.node"
-        :values="values"
-        :errors="errors"
-        :visibility-map="visibilityMap"
-        :disabled-map="disabledMap"
-        :inline="inline"
-        :label-width="resolveLabelWidth(labelWidth)"
         :resolve-snap="resolveSnap"
-        @update:field-value="(field: string, val: unknown) => setValue(field, val)"
-        @field-blur="(name: string) => validateSingleField(name, 'blur')"
-        @field-change="(name: string) => validateSingleField(name, 'change')"
-      >
-        <template #field-error="slotProps">
-          <slot name="field-error" v-bind="slotProps" />
-        </template>
-      </RecursiveField>
+      />
     </template>
   </form>
 </template>
