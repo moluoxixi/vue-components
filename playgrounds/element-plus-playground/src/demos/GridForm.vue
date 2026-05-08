@@ -497,6 +497,7 @@ const fields = [
  * playground 通过 alert 直接反馈提交值，不向远端接口发送数据。
  */
 function onSubmit(values: Record<string, unknown>) {
+  Object.assign(formValues, values)
   alert(`提交成功！\n${JSON.stringify(values, null, 2)}`)
 }
 
@@ -509,27 +510,18 @@ function onError(errors: Record<string, string[]>) {
   console.error('校验失败：', errors)
 }
 
-/**
- * 同步 ConfigForm 的 v-model 更新。
- *
- * 使用 Object.assign 保留 reactive 引用，便于实时预览区域持续响应。
- */
-function onModelUpdate(vals: Record<string, unknown>) {
-  Object.assign(formValues, vals)
-}
 </script>
 
 <template>
   <div>
     <ConfigForm
       ref="formRef"
-      :model-value="formValues"
+      :default-values="formValues"
       namespace="moluoxixi"
       :fields="fields"
       label-width="80px"
       @submit="onSubmit"
       @error="onError"
-      @update:model-value="onModelUpdate"
     />
 
     <div class="demo-actions">
@@ -544,7 +536,7 @@ function onModelUpdate(vals: Record<string, unknown>) {
       </el-button>
     </div>
 
-    <el-divider>实时值（v-model）</el-divider>
+    <el-divider>提交值快照</el-divider>
     <pre class="value-preview">{{ JSON.stringify(formValues, null, 2) }}</pre>
   </div>
 </template>

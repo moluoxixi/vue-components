@@ -64,16 +64,8 @@ const fields = [
  * 示例只验证容器节点不会绑定值，提交内容只包含真实字段。
  */
 function onSubmit(values: Record<string, unknown>) {
+  Object.assign(formValues, values)
   alert(JSON.stringify(values, null, 2))
-}
-
-/**
- * 同步嵌套容器表单的 v-model 更新。
- *
- * 使用 Object.assign 保留 reactive 引用，便于实时值预览响应。
- */
-function onModelUpdate(vals: Record<string, unknown>) {
-  Object.assign(formValues, vals)
 }
 </script>
 
@@ -81,12 +73,11 @@ function onModelUpdate(vals: Record<string, unknown>) {
   <div>
     <ConfigForm
       ref="formRef"
-      :model-value="formValues"
+      :default-values="formValues"
       namespace="nested-card"
       :fields="fields"
       label-width="96px"
       @submit="onSubmit"
-      @update:model-value="onModelUpdate"
     />
 
     <div class="demo-actions">
@@ -101,7 +92,7 @@ function onModelUpdate(vals: Record<string, unknown>) {
       </el-button>
     </div>
 
-    <el-divider>实时值</el-divider>
+    <el-divider>提交值快照</el-divider>
     <pre class="value-preview">{{ JSON.stringify(formValues, null, 2) }}</pre>
   </div>
 </template>

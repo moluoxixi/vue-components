@@ -128,7 +128,13 @@ const fields = [
   }),
 ]
 
+/**
+ * 展示嵌套布局表单提交结果，并刷新提交值快照。
+ *
+ * 示例只在本地弹窗展示提交内容，不发起远端请求。
+ */
 function onSubmit(values: Record<string, unknown>) {
+  Object.assign(formValues, values)
   alert(`提交成功！\n${JSON.stringify(values, null, 2)}`)
 }
 </script>
@@ -137,13 +143,12 @@ function onSubmit(values: Record<string, unknown>) {
   <div>
     <ConfigForm
       ref="formRef"
-      :model-value="formValues"
+      :default-values="formValues"
       namespace="moluoxixi"
       :fields="fields"
       :runtime="runtimeOptions"
       label-width="80px"
       @submit="onSubmit"
-      @update:model-value="(vals: Record<string, unknown>) => Object.assign(formValues, vals)"
     />
 
     <div class="demo-actions">
@@ -151,7 +156,7 @@ function onSubmit(values: Record<string, unknown>) {
       <a-button @click="formRef?.reset()">重置</a-button>
     </div>
 
-    <a-divider>实时值（v-model）</a-divider>
+    <a-divider>提交值快照</a-divider>
     <pre class="value-preview">{{ JSON.stringify(formValues, null, 2) }}</pre>
   </div>
 </template>

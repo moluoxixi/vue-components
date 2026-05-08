@@ -271,6 +271,7 @@ const fields = [
  * playground 通过 alert 直接反馈提交值，不向远端接口发送数据。
  */
 function onSubmit(values: Record<string, unknown>) {
+  Object.assign(formValues, values)
   alert(`搜索提交！\n${JSON.stringify(values, null, 2)}`)
 }
 
@@ -288,13 +289,12 @@ function onError(errors: Record<string, string[]>) {
   <div>
     <ConfigForm
       ref="formRef"
-      :model-value="formValues"
+      :default-values="formValues"
       namespace="moluoxixi"
       :fields="fields"
       :inline="true"
       @submit="onSubmit"
       @error="onError"
-      @update:model-value="(vals: Record<string, unknown>) => Object.assign(formValues, vals)"
     />
     <div class="demo-actions">
       <el-button type="primary" @click="formRef?.submit()">
@@ -304,7 +304,7 @@ function onError(errors: Record<string, string[]>) {
         重置
       </el-button>
     </div>
-    <el-divider>实时值（v-model）</el-divider>
+    <el-divider>提交值快照</el-divider>
     <pre class="value-preview">{{ JSON.stringify(formValues, null, 2) }}</pre>
   </div>
 </template>

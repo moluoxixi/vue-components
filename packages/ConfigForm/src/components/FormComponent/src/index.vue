@@ -30,14 +30,14 @@ const componentAttrs = computed(() => ({
   [resolvedField.value.valueProp]: modelValue.value,
 }))
 
-const componentListeners = computed<Record<string, (...args: unknown[]) => void>>(() => ({
+const componentListeners = computed<Record<string, (...args: unknown[]) => Promise<boolean> | void>>(() => ({
   [resolvedField.value.blurTrigger]: () => ctx.validateField(resolvedField.value.field, 'blur'),
   [resolvedField.value.trigger]: (...args: unknown[]) => {
     const value = resolvedField.value.getValueFromEvent
       ? resolvedField.value.getValueFromEvent(...args)
       : args[0]
     ctx.setValue(resolvedField.value.field, value)
-    ctx.validateField(resolvedField.value.field, 'change')
+    return ctx.validateField(resolvedField.value.field, 'change')
   },
 }))
 </script>

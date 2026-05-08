@@ -1,6 +1,6 @@
 # @moluoxixi/config-form-plugin-antd-vue
 
-ConfigForm 的 Ant Design Vue 运行时适配插件。核心包保持 `modelValue/update:modelValue` 的 Vue 通用协议，本插件只负责把 Ant Design Vue 字段组件映射到对应的 `valueProp/trigger`。
+ConfigForm 的 Ant Design Vue 运行时适配插件。核心包的字段组件默认使用 `modelValue/update:modelValue` 作为绑定协议；本插件只负责把 Ant Design Vue 字段组件映射到对应的 `valueProp/trigger`。
 
 插件不直接引入 `ant-design-vue`，只读取组件对象上的 `name`、`displayName`、`__name` 或 `__vccOpts.name`。字段已显式声明非默认绑定协议时不会被覆盖；默认 strict 模式下，组件名形如 Ant Design Vue 组件但没有映射时会直接抛错。
 

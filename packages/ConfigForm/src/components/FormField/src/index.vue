@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { ResolvedField, ResolvedFormNode } from '@/types'
+import type { ResolvedField } from '@/types'
 import { computed } from 'vue'
-import FormNode from '@/components/FormNode'
+import RecursiveField from '@/components/RecursiveField'
 import { useFormContext } from '@/composables/useFormContext'
 import { useBem, useNamespace } from '@/composables/useNamespace'
+import { resolveSlotNodes } from '@/utils/slot'
 import { resolveLabelWidth } from '@/utils/style'
 
 interface InternalFieldSourceMeta {
@@ -17,15 +18,14 @@ type ResolvedFieldWithDevtoolsSource = ResolvedField & {
 const DEVTOOLS_SOURCE_ID_ATTRIBUTE = 'data-cf-devtools-source-id'
 
 /**
- * FormField 基于 FormNode 封装，增加 label + error + 值绑定。
+ * FormField 负责真实字段的 label、error、值绑定和字段组件渲染。
  *
- * props 与 FormComponent/FormNode 统一为 { field }，
- * 表单状态通过 inject 获取，不再依赖外部传入。
+ * props 使用 { field }，表单状态通过 inject 获取，不再复用 FormNode 的容器可见性逻辑。
  */
 defineOptions({ name: 'FormField' })
 
 const props = defineProps<{
-  field: ResolvedFormNode
+  field: ResolvedField
 }>()
 
 defineSlots<{
@@ -36,8 +36,8 @@ const ctx = useFormContext()
 const ns = useNamespace()
 const { b, e, m } = useBem(ns)
 
-/** 内部断言：FormField 只接收 ResolvedField 类型的节点 */
-const resolvedField = computed(() => props.field as ResolvedField)
+/** 当前真实字段配置；RecursiveField 只会把 ResolvedField 分派到本组件。 */
+const resolvedField = computed(() => props.field)
 
 const modelValue = computed(() => ctx.getValue(resolvedField.value.field))
 const error = computed(() => ctx.errors[resolvedField.value.field])
@@ -81,14 +81,14 @@ const componentAttrs = computed(() => ({
   [resolvedField.value.valueProp]: modelValue.value,
 }))
 
-const componentListeners = computed<Record<string, (...args: unknown[]) => void>>(() => ({
+const componentListeners = computed<Record<string, (...args: unknown[]) => Promise<boolean> | void>>(() => ({
   [resolvedField.value.blurTrigger]: () => ctx.validateField(resolvedField.value.field, 'blur'),
   [resolvedField.value.trigger]: (...args: unknown[]) => {
     const value = resolvedField.value.getValueFromEvent
       ? resolvedField.value.getValueFromEvent(...args)
       : args[0]
     ctx.setValue(resolvedField.value.field, value)
-    ctx.validateField(resolvedField.value.field, 'change')
+    return ctx.validateField(resolvedField.value.field, 'change')
   },
 }))
 </script>
@@ -110,11 +110,22 @@ const componentListeners = computed<Record<string, (...args: unknown[]) => void>
     </label>
 
     <div :class="e('field', 'control')">
-      <FormNode
-        :field="field"
-        :component-attrs="componentAttrs"
-        :component-listeners="componentListeners"
-      />
+      <component
+        :is="resolvedField.component"
+        v-bind="componentAttrs"
+        v-on="componentListeners"
+      >
+        <template v-for="(slotValue, slotName) in resolvedField.slots" :key="slotName" #[slotName]>
+          <template
+            v-for="slotField in resolveSlotNodes(slotValue, String(slotName))"
+            :key="slotField.key"
+          >
+            <RecursiveField
+              :field="slotField.field"
+            />
+          </template>
+        </template>
+      </component>
 
       <slot name="error" :error="error" :field="resolvedField">
         <div v-if="error?.length" :id="errorId" :class="e('field', 'error')">

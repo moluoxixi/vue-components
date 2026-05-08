@@ -1,12 +1,16 @@
 import type { FormNodeConfig, NormalizedFieldConfig } from '../src/types'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { z } from 'zod'
-import { useForm } from '../src/composables/useForm'
+import { useForm, VALIDATION_THROTTLE_MS } from '../src/composables/useForm'
 import { createFormRuntime } from '../src/runtime'
 import { defineField } from '../src/utils/field'
 
 describe('useForm', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('throws when multiple real fields use the same field key', () => {
     const fields = ref<FormNodeConfig[]>([
       defineField({ component: 'input', field: 'duplicate' }),
@@ -53,26 +57,28 @@ describe('useForm', () => {
     expect(onSubmit).toHaveBeenCalledWith({ username: 'Ada' })
   })
 
-  it('initializes from model values and reacts to external replacements', async () => {
+  it('initializes from defaultValues without watching external replacements', async () => {
     const fields = ref([
       defineField({ field: 'name', component: 'input', defaultValue: 'default name' }),
       defineField({ field: 'age', component: 'input', defaultValue: 18 }),
     ])
-    const model = ref<Record<string, unknown>>({ name: 'Ada' })
+    const defaultValues: Record<string, unknown> = { name: 'Ada' }
 
-    const form = useForm({ fields, initialValues: model })
+    const form = useForm({ fields, defaultValues })
 
     expect(form.getValues()).toEqual({ name: 'Ada', age: 18 })
 
-    model.value = { name: 'Grace', age: 37 }
+    defaultValues.name = 'Grace'
+    defaultValues.age = 37
     await nextTick()
 
-    expect(form.getValues()).toEqual({ name: 'Grace', age: 37 })
+    expect(form.getValues()).toEqual({ name: 'Ada', age: 18 })
 
-    model.value = {}
+    form.setValue('name', 'Edited')
     await nextTick()
+    form.reset()
 
-    expect(form.getValues()).toEqual({ name: 'default name', age: 18 })
+    expect(form.getValues()).toEqual({ name: 'Ada', age: 18 })
   })
 
   it('preserves edited values when field metadata changes or fields are appended', async () => {
@@ -218,6 +224,90 @@ describe('useForm', () => {
 
     await expect(form.validateSingleField('name', 'blur')).resolves.toBe(true)
     expect(form.errors.value.name).toBeUndefined()
+  })
+
+  it('throttles rapid single-field validation calls and only runs the latest validator chain', async () => {
+    vi.useFakeTimers()
+    const calls: unknown[] = []
+    let active = 0
+    let maxActive = 0
+    const fields = ref([
+      defineField({
+        field: 'name',
+        component: 'input',
+        defaultValue: '',
+        validateOn: 'change',
+        validator: async (value) => {
+          calls.push(value)
+          active += 1
+          maxActive = Math.max(maxActive, active)
+          await new Promise(resolve => setTimeout(resolve, 20))
+          active -= 1
+          return value === 'bad' ? '错误' : undefined
+        },
+      }),
+    ])
+    const form = useForm({ fields })
+
+    form.setValue('name', 'first')
+    const first = form.validateSingleField('name', 'change')
+    form.setValue('name', 'bad')
+    const second = form.validateSingleField('name', 'change')
+
+    expect(calls).toEqual([])
+
+    await vi.advanceTimersByTimeAsync(VALIDATION_THROTTLE_MS)
+    expect(calls).toEqual(['bad'])
+    await vi.advanceTimersByTimeAsync(20)
+
+    await expect(first).resolves.toBe(false)
+    await expect(second).resolves.toBe(false)
+    expect(maxActive).toBe(1)
+    expect(form.errors.value.name).toEqual(['错误'])
+  })
+
+  it('serializes validation chains for the same field while preserving the latest pending request', async () => {
+    vi.useFakeTimers()
+    const calls: unknown[] = []
+    let active = 0
+    let maxActive = 0
+    const fields = ref([
+      defineField({
+        field: 'name',
+        component: 'input',
+        defaultValue: '',
+        validateOn: 'change',
+        validator: async (value) => {
+          calls.push(value)
+          active += 1
+          maxActive = Math.max(maxActive, active)
+          await new Promise(resolve => setTimeout(resolve, 30))
+          active -= 1
+          return value === 'second' ? '第二次错误' : undefined
+        },
+      }),
+    ])
+    const form = useForm({ fields })
+
+    form.setValue('name', 'first')
+    const first = form.validateSingleField('name', 'change')
+    await vi.advanceTimersByTimeAsync(VALIDATION_THROTTLE_MS)
+    expect(calls).toEqual(['first'])
+
+    form.setValue('name', 'second')
+    const second = form.validateSingleField('name', 'change')
+    await vi.advanceTimersByTimeAsync(VALIDATION_THROTTLE_MS)
+    expect(calls).toEqual(['first'])
+
+    await vi.advanceTimersByTimeAsync(30)
+    await vi.advanceTimersByTimeAsync(VALIDATION_THROTTLE_MS)
+    expect(calls).toEqual(['first', 'second'])
+    await vi.advanceTimersByTimeAsync(30)
+
+    await expect(first).resolves.toBe(true)
+    await expect(second).resolves.toBe(false)
+    expect(maxActive).toBe(1)
+    expect(form.errors.value.name).toEqual(['第二次错误'])
   })
 
   it('supports merge and replace value updates with explicit error clearing', async () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends object = Record<string, unknown>">
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import type { CSSProperties } from 'vue'
 import type { ConfigFormEmits, ConfigFormExpose, ConfigFormProps } from '@/types'
 import RecursiveField from '@/components/RecursiveField'
@@ -25,7 +25,7 @@ provideNamespace(namespaceRef)
 const { b } = useBem(namespaceRef)
 
 const rawFields = computed(() => props.fields)
-const initialValues = computed(() => props.modelValue)
+const defaultValues = computed(() => props.defaultValues)
 const runtimeRef = computed(() => normalizeFormRuntime(props.runtime))
 const resolvedFields = computed(() => rawFields.value.map(field => runtimeRef.value.transformField(field)))
 
@@ -45,7 +45,7 @@ const {
   clearFieldError,
 } = useForm({
   fields: resolvedFields,
-  initialValues,
+  defaultValues,
   /**
    * 将无头控制器的提交结果转为组件 submit 事件。
    *
@@ -70,7 +70,7 @@ provideFormContext({
   getValue,
   getValues,
   setValue,
-  setValues,
+  setValues: (nextValues, replace) => setValues(nextValues as Partial<T>, replace),
   validateField: (field, trigger) => validateSingleField(field, trigger as 'blur' | 'change' | 'submit'),
 })
 
@@ -109,11 +109,6 @@ const formStyle = computed<CSSProperties>(() => {
     gap: props.gap,
   }
 })
-
-// values 是 reactive 对象，需监听内部字段变化以同步 v-model。
-watch(values, (newVals) => {
-  emit('update:modelValue', { ...newVals } as T)
-}, { deep: true })
 
 defineExpose<ConfigFormExpose<T>>({
   submit,

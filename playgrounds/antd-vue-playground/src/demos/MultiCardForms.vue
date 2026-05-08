@@ -267,14 +267,6 @@ function isSectionVisible(key: string): boolean {
   return key !== 'audit' || showAuditForm.value
 }
 
-/**
- * 同步指定分组的表单值。
- *
- * 每个 ConfigForm 独立写入自己的 key，避免多个表单共享同一值对象。
- */
-function onModelUpdate(key: string, values: Record<string, unknown>) {
-  formValues[key] = values
-}
 </script>
 
 <template>
@@ -297,12 +289,11 @@ function onModelUpdate(key: string, values: Record<string, unknown>) {
       :data-cf-devtools-form-label="section.title"
     >
       <ConfigForm
-        :model-value="formValues[section.key]"
+        :default-values="formValues[section.key]"
         :namespace="section.namespace"
         :fields="section.fields"
         :runtime="runtimeOptions"
         label-width="96px"
-        @update:model-value="(values: Record<string, unknown>) => onModelUpdate(section.key, values)"
       />
 
       <pre class="multi-card-form__value">{{ JSON.stringify(formValues[section.key], null, 2) }}</pre>

@@ -1,11 +1,13 @@
 import type { FormRuntimeOptions } from '../src/runtime'
 import type { ConfigFormExpose, DefinedFormNodeConfig, FormNodeConfig, ResolvedField } from '../src/types'
+import { readFileSync } from 'node:fs'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, markRaw, nextTick } from 'vue'
 import { z } from 'zod'
 import FormField from '../src/components/FormField/src/index.vue'
 import FormLayout from '../src/components/FormLayout/src/index.vue'
+import { VALIDATION_THROTTLE_MS } from '../src/composables/useForm'
 import { FORM_CONTEXT_KEY } from '../src/composables/useFormContext'
 import ConfigForm from '../src/index.vue'
 import { createFormRuntime } from '../src/runtime'
@@ -106,6 +108,12 @@ function resolveTestField(field: DefinedFormNodeConfig): ResolvedField {
   return runtime.transformField(field) as ResolvedField
 }
 
+/** 等待字段交互校验的节流窗口和后续异步校验 Promise 完成。 */
+async function flushValidation() {
+  await new Promise(resolve => setTimeout(resolve, VALIDATION_THROTTLE_MS))
+  await flushPromises()
+}
+
 describe('config form component', () => {
   it('keeps devtools source ids out of core component container rendering', () => {
     const source = {
@@ -136,7 +144,7 @@ describe('config form component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
@@ -166,7 +174,7 @@ describe('config form component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
         namespace: 'moluoxixi',
       },
     })
@@ -206,9 +214,10 @@ describe('config form component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
+    const api = wrapper.vm as unknown as ConfigFormExpose<Record<string, unknown>>
 
     expect(wrapper.find('[data-card="基础信息"]').exists()).toBe(true)
     expect(wrapper.find('[data-card="账号信息"]').exists()).toBe(true)
@@ -218,9 +227,9 @@ describe('config form component', () => {
 
     await wrapper.get('input').setValue('Ada')
     await wrapper.get('input').trigger('blur')
-    await flushPromises()
+    await flushValidation()
 
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ username: 'Ada' }])
+    expect(api.getValues()).toEqual({ username: 'Ada' })
     expect(wrapper.text()).toContain('用户名至少 4 个字符')
   })
 
@@ -235,11 +244,28 @@ describe('config form component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
     expect(wrapper.get('[data-testid="layout-probe"]').attributes('style')).toContain('grid-column: span 12')
+  })
+
+  it('uses built-in field defaults for container span instead of FormNode fallbacks', () => {
+    const formNodeSource = readFileSync('src/components/FormNode/src/index.vue', 'utf8')
+    const defaultsSource = readFileSync('src/plugins/builtInFieldDefaults.ts', 'utf8')
+    const resolved = createFormRuntime().transformField(defineField({ component: LayoutProbe }))
+    const wrapper = mount(ConfigForm, {
+      props: {
+        fields: [defineField({ component: LayoutProbe })],
+        defaultValues: {},
+      },
+    })
+
+    expect(formNodeSource).not.toContain('?? 24')
+    expect(defaultsSource).not.toContain('?? 24')
+    expect(resolved.span).toBe(24)
+    expect(wrapper.get('[data-testid="layout-probe"]').attributes('style')).toContain('grid-column: span 24')
   })
 
   it('updates model values and renders blur validation errors', async () => {
@@ -257,10 +283,11 @@ describe('config form component', () => {
       props: {
         fields,
         labelWidth: 88,
-        modelValue: {},
+        defaultValues: {},
         namespace: 'strict',
       },
     })
+    const api = wrapper.vm as unknown as ConfigFormExpose<Record<string, unknown>>
 
     const input = wrapper.get('input')
     expect(wrapper.get('label').attributes('for')).toBe(input.attributes('id'))
@@ -268,18 +295,18 @@ describe('config form component', () => {
 
     await input.setValue('a')
     await input.trigger('blur')
-    await flushPromises()
+    await flushValidation()
 
     expect(wrapper.text()).toContain('用户名至少 2 个字符')
     expect(wrapper.get('input').attributes('aria-invalid')).toBe('true')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ username: 'a' }])
+    expect(api.getValues()).toEqual({ username: 'a' })
 
     await wrapper.get('input').setValue('Ada')
     await wrapper.get('input').trigger('blur')
-    await flushPromises()
+    await flushValidation()
 
     expect(wrapper.text()).not.toContain('用户名至少 2 个字符')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ username: 'Ada' }])
+    expect(api.getValues()).toEqual({ username: 'Ada' })
   })
 
   it('submits transformed visible values and respects hidden or disabled submit options', async () => {
@@ -321,7 +348,7 @@ describe('config form component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
@@ -350,7 +377,7 @@ describe('config form component', () => {
       props: {
         fields,
         inline: true,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
@@ -431,7 +458,7 @@ describe('config form component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: { role: 'admin' },
+        defaultValues: { role: 'admin' },
         runtime,
       },
     })
@@ -449,6 +476,13 @@ describe('config form component', () => {
 })
 
 describe('form field component', () => {
+  it('renders fields without depending on FormNode container logic', () => {
+    const source = readFileSync('src/components/FormField/src/index.vue', 'utf8')
+
+    expect(source).not.toContain('@/components/FormNode')
+    expect(source).not.toContain('<FormNode')
+  })
+
   it('emits custom value and blur triggers through the public field contract', async () => {
     const field = defineField({
       blurTrigger: 'focusout',
@@ -562,7 +596,7 @@ describe('form field component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields: [field],
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
@@ -596,7 +630,7 @@ describe('form field component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
     const api = wrapper.vm as unknown as ConfigFormExpose<Record<string, unknown>>
@@ -610,7 +644,7 @@ describe('form field component', () => {
 
     await wrapper.get('input').setValue('A')
     await wrapper.get('input').trigger('blur')
-    await flushPromises()
+    await flushValidation()
 
     expect(wrapper.text()).toContain('作用域姓名至少 2 个字符')
 
@@ -646,23 +680,24 @@ describe('form field component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
+    const api = wrapper.vm as unknown as ConfigFormExpose<Record<string, unknown>>
 
     await wrapper.get('input').setValue('A')
     await wrapper.get('input').trigger('blur')
-    await flushPromises()
+    await flushValidation()
 
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{
+    expect(api.getValues()).toEqual({
       group: undefined,
       nestedName: 'A',
-    }])
+    })
     expect(wrapper.text()).toContain('嵌套姓名至少 2 个字符')
 
     await wrapper.get('input').setValue('Ada')
     await wrapper.get('input').trigger('blur')
-    await flushPromises()
+    await flushValidation()
 
     expect(wrapper.text()).not.toContain('嵌套姓名至少 2 个字符')
   })
@@ -685,7 +720,7 @@ describe('form field component', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
@@ -796,7 +831,7 @@ describe('form layout', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
@@ -850,7 +885,7 @@ describe('form layout', () => {
     ]
 
     const wrapper = mount(ConfigForm, {
-      props: { fields, modelValue: {} },
+      props: { fields, defaultValues: {} },
     })
 
     // 外层 FormLayout 是 inline → flex 样式

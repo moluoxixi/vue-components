@@ -17,6 +17,8 @@ describe('public api', () => {
     type HasRuntimeOptionsExtensions = 'extensions' extends keyof PublicApi.FormRuntimeOptions ? true : false
     type HasRuntimeOptionsPlugins = 'plugins' extends keyof PublicApi.FormRuntimeOptions ? true : false
     type HasRuntimeOptionsExpression = 'expression' extends keyof PublicApi.FormRuntimeOptions ? true : false
+    type HasConfigFormModelValue = 'modelValue' extends keyof PublicApi.ConfigFormProps ? true : false
+    type HasConfigFormDefaultValues = 'defaultValues' extends keyof PublicApi.ConfigFormProps ? true : false
     type HasFieldConfigPlugins = 'plugins' extends keyof PublicApi.FieldConfig ? true : false
     type HasExpr = 'expr' extends keyof typeof PublicApi ? true : false
     type HasIsExpressionToken = 'isExpressionToken' extends keyof typeof PublicApi ? true : false
@@ -42,7 +44,12 @@ describe('public api', () => {
     type HasUseRuntime = 'useRuntime' extends keyof typeof PublicApi ? true : false
     type RuntimeProp = NonNullable<PublicApi.ConfigFormProps['runtime']>
     type RuntimePropAcceptsOptions = PublicApi.FormRuntimeOptions extends RuntimeProp ? true : false
+    type EmitsUpdateModelValue = PublicApi.ConfigFormEmits extends {
+      (e: 'update:modelValue', values: Record<string, unknown>): void
+    } ? true : false
     type UseFormHasRuntime = 'runtime' extends keyof PublicApi.UseFormOptions ? true : false
+    type UseFormHasInitialValues = 'initialValues' extends keyof PublicApi.UseFormOptions ? true : false
+    type UseFormHasDefaultValues = 'defaultValues' extends keyof PublicApi.UseFormOptions ? true : false
     type TokenLikeConditionAllowed = { readonly __configFormToken: 'legacy' } extends PublicApi.FieldCondition ? true : false
 
     expectTypeOf<HasDefineField>().toEqualTypeOf<true>()
@@ -59,6 +66,8 @@ describe('public api', () => {
     expectTypeOf<HasRuntimeOptionsExtensions>().toEqualTypeOf<false>()
     expectTypeOf<HasRuntimeOptionsPlugins>().toEqualTypeOf<true>()
     expectTypeOf<HasRuntimeOptionsExpression>().toEqualTypeOf<false>()
+    expectTypeOf<HasConfigFormModelValue>().toEqualTypeOf<false>()
+    expectTypeOf<HasConfigFormDefaultValues>().toEqualTypeOf<true>()
     expectTypeOf<HasFieldConfigPlugins>().toEqualTypeOf<false>()
     expectTypeOf<HasExpr>().toEqualTypeOf<false>()
     expectTypeOf<HasIsExpressionToken>().toEqualTypeOf<false>()
@@ -83,7 +92,10 @@ describe('public api', () => {
     expectTypeOf<HasProvideRuntime>().toEqualTypeOf<false>()
     expectTypeOf<HasUseRuntime>().toEqualTypeOf<false>()
     expectTypeOf<RuntimePropAcceptsOptions>().toEqualTypeOf<true>()
+    expectTypeOf<EmitsUpdateModelValue>().toEqualTypeOf<false>()
     expectTypeOf<UseFormHasRuntime>().toEqualTypeOf<false>()
+    expectTypeOf<UseFormHasInitialValues>().toEqualTypeOf<false>()
+    expectTypeOf<UseFormHasDefaultValues>().toEqualTypeOf<true>()
     expectTypeOf<TokenLikeConditionAllowed>().toEqualTypeOf<false>()
   })
 })

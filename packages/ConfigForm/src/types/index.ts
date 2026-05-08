@@ -139,8 +139,8 @@ export interface ConfigFormProps<T extends object = FormValues> {
   fields: FormNodeConfig[]
   /** 传递给字段布局的 label 宽度。 */
   labelWidth?: string | number
-  /** v-model 双向绑定表单值 */
-  modelValue?: T
+  /** 表单初始值；仅在创建和 reset 时作为默认快照使用，不参与双向同步。 */
+  defaultValues?: Partial<T>
   /** 表单运行时配置，用于组件注册和字段插件生命周期。 */
   runtime?: FormRuntimeOptions
 }
@@ -149,7 +149,6 @@ export interface ConfigFormProps<T extends object = FormValues> {
 export interface ConfigFormEmits<T extends object = FormValues> {
   (e: 'submit', values: T): void
   (e: 'error', errors: FormErrors): void
-  (e: 'update:modelValue', values: T): void
 }
 
 /** ConfigForm 通过模板 ref 暴露的方法。 */

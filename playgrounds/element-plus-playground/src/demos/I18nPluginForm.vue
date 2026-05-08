@@ -40,7 +40,7 @@ const messages: I18nMessages = {
     'i18n.locale.zh': '中文',
     'i18n.phone.label': '手机号',
     'i18n.phone.placeholder': '请输入手机号',
-    'i18n.preview.title': '实时值（v-model）',
+    'i18n.preview.title': '提交值快照',
     'i18n.role.admin': '管理员',
     'i18n.role.guest': '访客',
     'i18n.role.label': '角色',
@@ -80,7 +80,7 @@ const messages: I18nMessages = {
     'i18n.locale.zh': '中文',
     'i18n.phone.label': 'Phone',
     'i18n.phone.placeholder': 'Enter phone number',
-    'i18n.preview.title': 'Live value (v-model)',
+    'i18n.preview.title': 'Submitted value snapshot',
     'i18n.role.admin': 'Admin',
     'i18n.role.guest': 'Guest',
     'i18n.role.label': 'Role',
@@ -374,6 +374,7 @@ function toggleLocale() {
  * 提交反馈文案使用当前 locale 的本地文案，不发起远端请求。
  */
 function onSubmit(values: Record<string, unknown>) {
+  Object.assign(formValues, values)
   alert(`${t('i18n.feedback.submitSuccess')}\n${JSON.stringify(values, null, 2)}`)
 }
 
@@ -386,28 +387,19 @@ function onError(errors: Record<string, string[]>) {
   console.error(t('i18n.feedback.validationFailed'), errors)
 }
 
-/**
- * 同步 ConfigForm 的 v-model 更新。
- *
- * 使用 Object.assign 保留 reactive 引用，便于实时预览持续响应。
- */
-function onModelUpdate(vals: Record<string, unknown>) {
-  Object.assign(formValues, vals)
-}
 </script>
 
 <template>
   <div>
     <ConfigForm
       ref="formRef"
-      :model-value="formValues"
+      :default-values="formValues"
       namespace="moluoxixi"
       :fields="fields"
       :runtime="runtimeOptions"
       label-width="120px"
       @submit="onSubmit"
       @error="onError"
-      @update:model-value="onModelUpdate"
     />
 
     <div class="demo-actions">

@@ -31,6 +31,9 @@ export interface BuiltInFieldDefaultsPlugin {
   transformField: (field: FormNodeConfig) => FieldDefaultConfig
 }
 
+/** 已应用内置默认片段后，渲染层消费的节点一定具备 span。 */
+type DefaultedNodeConfig = NormalizedNodeConfig & { span: number }
+
 /** 返回字段的内置默认配置片段，不合并用户声明，也不执行用户插件。 */
 export function resolveField(field: FormNodeConfig): FieldDefaultConfig {
   const defaults: FieldDefaultConfig = {
@@ -66,20 +69,21 @@ export function applyFieldDefaults(field: FormNodeConfig): NormalizedNodeConfig 
   const normalizedNode = {
     ...defaults,
     ...field,
+    span: field.span ?? defaults.span,
     props: {
       ...defaults.props,
       ...(field.props ?? {}),
     },
-  } as NormalizedNodeConfig
+  } as DefaultedNodeConfig
 
   if (!hasFieldBinding(normalizedNode))
     return normalizedNode
 
-  return applyBindingDefaults(normalizedNode as NormalizedNodeConfig & { field: string })
+  return applyBindingDefaults(normalizedNode as DefaultedNodeConfig & { field: string })
 }
 
 /** 对带 field 绑定的节点补齐绑定、校验和提交默认值，并校验事件配置冲突。 */
-function applyBindingDefaults(field: NormalizedNodeConfig & { field: string }): NormalizedFieldConfig {
+function applyBindingDefaults(field: DefaultedNodeConfig & { field: string }): NormalizedFieldConfig {
   const trigger = (field as Partial<NormalizedFieldConfig>).trigger ?? 'update:modelValue'
   const blurTrigger = (field as Partial<NormalizedFieldConfig>).blurTrigger ?? 'blur'
 
@@ -92,7 +96,6 @@ function applyBindingDefaults(field: NormalizedNodeConfig & { field: string }): 
   return {
     ...field,
     blurTrigger,
-    span: (field as Partial<NormalizedFieldConfig>).span ?? 24,
     submitWhenDisabled: (field as Partial<NormalizedFieldConfig>).submitWhenDisabled ?? true,
     submitWhenHidden: (field as Partial<NormalizedFieldConfig>).submitWhenHidden ?? false,
     trigger,

@@ -12,7 +12,7 @@ export interface FormContext {
   getValues: () => FormValues
   setValue: (field: string, value: unknown) => void
   setValues: (values: FormValues, replace?: boolean) => void
-  validateField: (field: string, trigger: string) => void
+  validateField: (field: string, trigger: string) => Promise<boolean>
 }
 
 export const FORM_CONTEXT_KEY = Symbol.for('moluoxixi.config-form.form-context')

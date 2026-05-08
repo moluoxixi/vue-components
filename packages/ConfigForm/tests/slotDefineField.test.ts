@@ -43,7 +43,7 @@ describe('slot field configs', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 
@@ -71,7 +71,7 @@ describe('slot field configs', () => {
     const wrapper = mount(ConfigForm, {
       props: {
         fields,
-        modelValue: {},
+        defaultValues: {},
       },
     })
 

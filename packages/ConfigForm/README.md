@@ -7,7 +7,7 @@
 - 配置驱动：通过 `fields` 数组声明表单字段。
 - UI 框架无关：支持 Vue 组件、函数式组件、原生标签和 runtime 组件注册。
 - Zod + 自定义校验：字段支持 `schema`，也支持读取全量 values 的 `validator`。
-- 双向绑定：支持 `modelValue` / `v-model` 初始化和外部更新。
+- 初始值快照：通过 `defaultValues` 提供初始值，内部值通过表单 ref API 读取和修改。
 - 灵活布局：内置 24 栅格和 inline 模式，并包含基础移动端适配。
 - 可发布样式：SCSS 使用命名空间变量，便于在业务侧覆盖。
 
@@ -23,7 +23,7 @@ pnpm add @moluoxixi/config-form zod
 <script setup lang="ts">
 import { ref } from 'vue'
 import { z } from 'zod'
-import { ConfigForm, defineField } from '@moluoxixi/config-form'
+import { ConfigForm, defineField, type ConfigFormExpose } from '@moluoxixi/config-form'
 import MyInput from './MyInput.vue'
 
 interface LoginForm {
@@ -32,8 +32,8 @@ interface LoginForm {
   confirm: string
 }
 
-const formRef = ref()
-const model = ref<LoginForm>({ username: 'Ada', password: '', confirm: '' })
+const formRef = ref<ConfigFormExpose<LoginForm>>()
+const defaultValues: Partial<LoginForm> = { username: 'Ada', password: '', confirm: '' }
 
 const fields = [
   defineField<LoginForm>({
@@ -71,7 +71,7 @@ function onSubmit(values: LoginForm) {
 <template>
   <ConfigForm
     ref="formRef"
-    v-model="model"
+    :default-values="defaultValues"
     :fields="fields"
     label-width="80px"
     @submit="onSubmit"
@@ -87,7 +87,7 @@ function onSubmit(values: LoginForm) {
 | `inline` | `boolean` | `false` | 行内布局模式 |
 | `fields` | `FormNodeConfig[]` | - | 字段/容器配置数组；`defineField` 返回纯配置 |
 | `labelWidth` | `string \| number` | - | 标签宽度，number 自动转 px |
-| `modelValue` | `Record<string, unknown>` | - | 表单值，支持 `v-model`；传泛型后为对应表单类型 |
+| `defaultValues` | `Partial<Record<string, unknown>>` | - | 表单初始值快照；传泛型后为对应表单类型 |
 | `runtime` | `FormRuntimeOptions` | - | DIY 运行时配置，用于组件注册和字段转换插件 |
 
 ## Events
@@ -96,7 +96,6 @@ function onSubmit(values: LoginForm) {
 |-------|---------|-------------|
 | `submit` | `Record<string, unknown>` | 校验通过后提交的字段值；传泛型后为对应表单类型 |
 | `error` | `FormErrors` | 校验失败时的错误信息 |
-| `update:modelValue` | `Record<string, unknown>` | 内部值变化时触发；传泛型后为对应表单类型 |
 
 ## Expose
 
@@ -105,7 +104,7 @@ function onSubmit(values: LoginForm) {
 | `submit()` | `Promise<boolean>` | 校验通过后触发 `submit` |
 | `validate()` | `Promise<boolean>` | 校验整个表单 |
 | `validateField(field, trigger?)` | `Promise<boolean>` | 校验指定字段 |
-| `reset()` | `void` | 重置为字段默认值并清空错误 |
+| `reset()` | `void` | 重置为 `defaultValues` 初始快照和字段默认值并清空错误 |
 | `setValue(field, value)` | `void` | 设置单个字段值 |
 | `setValues(values, replace?)` | `void` | 批量设置字段值 |
 | `getValue(field)` | `unknown` | 获取单个字段值；传泛型后可按字段 key 推导 |
