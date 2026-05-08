@@ -267,17 +267,17 @@ const fields = [
         defineField({
           component: ElRadio,
           props: { value: 'male' },
-          slots: { default: '男' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '男' } }) },
         }),
         defineField({
           component: ElRadio,
           props: { value: 'female' },
-          slots: { default: '女' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '女' } }) },
         }),
         defineField({
           component: ElRadio,
           props: { value: 'other' },
-          slots: { default: '其他' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '其他' } }) },
         }),
       ],
     },

@@ -163,17 +163,17 @@ const fields = [
         defineField({
           component: Radio,
           props: { value: 'male' },
-          slots: { default: '男' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '男' } }) },
         }),
         defineField({
           component: Radio,
           props: { value: 'female' },
-          slots: { default: '女' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '女' } }) },
         }),
         defineField({
           component: Radio,
           props: { value: 'other' },
-          slots: { default: '其他' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '其他' } }) },
         }),
       ],
     },
@@ -188,17 +188,17 @@ const fields = [
         defineField({
           component: Checkbox,
           props: { value: 'reading' },
-          slots: { default: '阅读' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '阅读' } }) },
         }),
         defineField({
           component: Checkbox,
           props: { value: 'sports' },
-          slots: { default: '运动' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '运动' } }) },
         }),
         defineField({
           component: Checkbox,
           props: { value: 'music' },
-          slots: { default: '音乐' },
+          slots: { default: defineField({ component: 'span', props: { textContent: '音乐' } }) },
         }),
       ],
     },

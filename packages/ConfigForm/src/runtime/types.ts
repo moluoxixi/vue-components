@@ -1,3 +1,4 @@
+import type { FieldDefaultConfig } from '@/plugins/builtInFieldDefaults'
 import type {
   DefinedFormNodeConfig,
   FieldConfig,
@@ -33,10 +34,8 @@ export interface FormRuntimeOptions {
 
 /** 表单运行时实例，负责把声明式表单配置转换为渲染层可直接消费的结构。 */
 export interface FormRuntime {
-  /** 补齐单个节点的内置默认值，不执行用户插件。 */
-  resolveField: (field: FormNodeConfig) => NormalizedNodeConfig
-  /** 执行 resolveField、用户插件、内置默认值和递归 slot 处理。 */
+  /** 返回单个节点的内置默认配置片段，不合并用户声明，也不执行用户插件。 */
+  resolveField: (field: FormNodeConfig) => FieldDefaultConfig
+  /** 应用内置默认片段、执行用户插件、恢复用户优先级、解析组件并递归处理 slot。 */
   transformField: (field: FormNodeConfig) => NormalizedNodeConfig
-  /** 批量转换顶层字段配置。 */
-  transformFields: (fields: readonly FormNodeConfig[]) => NormalizedNodeConfig[]
 }

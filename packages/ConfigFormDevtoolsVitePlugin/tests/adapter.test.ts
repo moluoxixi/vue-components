@@ -291,18 +291,18 @@ describe('configForm devtools adapter', () => {
     }))
   })
 
-  it('records render timing for nodes returned by slot functions', async () => {
+  it('records render timing for nodes declared in slot configs', async () => {
     const bridge = createBridge()
     window.__CONFIG_FORM_DEVTOOLS_BRIDGE__ = bridge
-    const CoreWithSlotFunctions = defineComponent({
-      name: 'CoreWithSlotFunctions',
+    const CoreWithConfigSlots = defineComponent({
+      name: 'CoreWithConfigSlots',
       props: {
         fields: { type: Array, required: true },
         namespace: { type: String, default: 'cf' },
       },
       setup(props) {
         /**
-         * 渲染 slot 函数返回的测试节点。
+         * 渲染 slot 配置声明的测试节点。
          *
          * 只识别带 component 的对象配置，其余内容按 VNodeChild 原样返回。
          */
@@ -320,9 +320,7 @@ describe('configForm devtools adapter', () => {
         return () => h('form', props.fields.map((field) => {
           const config = field as FieldStub
           const slot = config.slots?.default
-          const content = typeof slot === 'function'
-            ? (slot as (scope?: Record<string, unknown>) => unknown)({})
-            : slot
+          const content = slot
           const children = Array.isArray(content)
             ? content.map(renderConfigNode)
             : [renderConfigNode(content)]
@@ -332,7 +330,7 @@ describe('configForm devtools adapter', () => {
       },
     })
     const Adapter = createDevtoolsConfigFormAdapter({
-      ConfigForm: CoreWithSlotFunctions as Component,
+      ConfigForm: CoreWithConfigSlots as Component,
       collectFieldConfigs: nodes => nodes as never,
     })
     const root = document.createElement('div')
@@ -343,10 +341,10 @@ describe('configForm devtools adapter', () => {
           {
             component: 'section',
             slots: {
-              default: () => ({
+              default: {
                 component: 'input',
                 field: 'slotChild',
-              }),
+              },
             },
           },
         ],
@@ -375,9 +373,6 @@ describe('configForm devtools adapter', () => {
             {
               __source: source,
               component: { name: 'RadioOption' },
-              slots: {
-                default: 'Male',
-              },
             },
           ],
         },
@@ -670,7 +665,7 @@ describe('configForm devtools adapter', () => {
     app.unmount()
   })
 
-  it('does not register plain Vue VNodes returned from slot functions as devtools nodes', async () => {
+  it('does not execute function slot content while collecting devtools nodes', async () => {
     const bridge = createBridge()
     window.__CONFIG_FORM_DEVTOOLS_BRIDGE__ = bridge
 
@@ -679,7 +674,9 @@ describe('configForm devtools adapter', () => {
         component: 'input-group',
         field: 'account',
         slots: {
-          default: () => h('span', 'plain suffix'),
+          default: () => {
+            throw new Error('function slot should not execute')
+          },
         },
       },
     ])

@@ -80,26 +80,19 @@ export function isResolvedContainer(value: ResolvedFormNode): value is ResolvedC
 }
 
 /**
- * 从 slot 内容中收集真实字段节点。
+ * 从 slot 节点配置中收集真实字段节点。
  *
- * 函数 slot 只执行一层静态解析；若返回函数则视为运行时渲染内容，不提前推断字段拓扑。
+ * slot 与顶层 fields 采用同一种声明模式；非节点配置会直接抛错，避免字段拓扑被静默漏收。
  */
 function collectSlotFields(slot: SlotContent | undefined, path = 'slot'): FieldConfig[] {
-  if (slot == null || slot === false)
+  if (slot === undefined)
     return []
-
-  if (typeof slot === 'function') {
-    const resolved = slot(undefined)
-    return typeof resolved === 'function'
-      ? []
-      : collectSlotFields(resolved, path)
-  }
 
   if (Array.isArray(slot))
     return slot.flatMap((item, index) => collectSlotFields(item as SlotContent, `${path}.${index}`))
 
   if (!isFormNodeConfig(slot))
-    return []
+    throw new TypeError(`Slot "${path}" must be a field config or an array of field configs`)
 
   return collectFieldConfigsRaw([slot])
 }

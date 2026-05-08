@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { FieldCondition, FieldConfig, FieldKey, FormErrors, FormNodeConfig, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
 import { computed, reactive, ref, toRaw, watch } from 'vue'
-import { resolveField } from '@/runtime'
+import { applyFieldDefaults } from '@/plugins/builtInFieldDefaults'
 import { applyFieldTransform, shouldValidateOn } from '@/utils/field'
 import { collectFieldConfigs } from '@/utils/node'
 import { validateFieldRules, validateForm } from '@/utils/validate'
@@ -31,7 +31,7 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
   const valueStore = values as FormValues
   const errors = ref<FormErrors>({})
   const fieldConfigs = computed(() =>
-    collectFieldConfigs(fields.value).map(field => resolveField(field) as NormalizedFieldConfig),
+    collectFieldConfigs(fields.value).map(field => applyFieldDefaults(field) as NormalizedFieldConfig),
   )
   const fieldTopologyKey = computed(() => fieldConfigs.value.map(field => field.field).join('\0'))
 

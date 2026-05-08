@@ -32,14 +32,12 @@ export type I18nResolvableValue
     | null
     | undefined
 
-/** 按 field key 配置的字段文案与默认 props/slots。 */
+/** 按 field key 配置的字段文案与默认 props。 */
 export interface I18nFieldMessages {
   /** 插件要补充的字段 label；用户字段显式 label 始终优先。 */
   label?: I18nMessageRef
   /** 插件要补充的 props，可递归包含 i18n 文案描述。 */
   props?: I18nResolvableRecord
-  /** 插件要补充的 slots，可递归包含 i18n 文案描述。 */
-  slots?: I18nResolvableRecord
 }
 
 /** locale 输入形态；插件每次转换字段时按需读取当前语言。 */
@@ -90,28 +88,25 @@ export interface I18nPluginOptions {
 }
 
 /** 创建基于 field key 的 ConfigForm i18n 转换插件。 */
-export function createI18nPlugin(options: I18nPluginOptions = {}): FormRuntimePlugin {
+export function createI18nPlugin(config: I18nPluginOptions = {}): FormRuntimePlugin {
   return {
-    name: options.name ?? 'i18n',
+    name: config.name ?? 'i18n',
     transformField: (node: NormalizedNodeConfig): NormalizedNodeConfig | void => {
       if (!hasFieldBinding(node))
         return undefined
 
-      const fieldMessages = options.fields?.[node.field]
+      const fieldMessages = config.fields?.[node.field]
       if (!fieldMessages)
         return undefined
 
-      const locale = resolveLocale(options.locale)
+      const locale = resolveLocale(config.locale)
       const translated: Partial<NormalizedFieldConfig> = {}
 
       if (fieldMessages.label)
-        translated.label = translateMessageRef(fieldMessages.label, options, locale, `fields.${node.field}.label`)
+        translated.label = translateMessageRef(fieldMessages.label, config, locale, `fields.${node.field}.label`)
 
       if (fieldMessages.props)
-        translated.props = resolveI18nValue(fieldMessages.props, options, locale, `fields.${node.field}.props`) as Record<string, unknown>
-
-      if (fieldMessages.slots)
-        translated.slots = resolveI18nValue(fieldMessages.slots, options, locale, `fields.${node.field}.slots`) as NormalizedFieldConfig['slots']
+        translated.props = resolveI18nValue(fieldMessages.props, config, locale, `fields.${node.field}.props`) as Record<string, unknown>
 
       return {
         ...node,
@@ -134,21 +129,21 @@ function resolveLocale(locale?: I18nLocale): string | undefined {
 /** 递归解析插件配置值中的 i18n 文案描述。 */
 function resolveI18nValue(
   value: I18nResolvableValue,
-  options: I18nPluginOptions,
+  config: I18nPluginOptions,
   locale: string | undefined,
   path: string,
 ): unknown {
   if (isMessageRef(value))
-    return translateMessageRef(value, options, locale, path)
+    return translateMessageRef(value, config, locale, path)
 
   if (Array.isArray(value))
-    return value.map((item, index) => resolveI18nValue(item, options, locale, `${path}[${index}]`))
+    return value.map((item, index) => resolveI18nValue(item, config, locale, `${path}[${index}]`))
 
   if (isPlainRecord(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        resolveI18nValue(item as I18nResolvableValue, options, locale, `${path}.${key}`),
+        resolveI18nValue(item as I18nResolvableValue, config, locale, `${path}.${key}`),
       ]),
     )
   }
@@ -181,25 +176,25 @@ function assertMessageRef(ref: I18nMessageRef, path: string): void {
 /** 解析单个文案描述，查找失败时显式抛错而不是返回 key。 */
 function translateMessageRef(
   ref: I18nMessageRef,
-  options: I18nPluginOptions,
+  config: I18nPluginOptions,
   locale: string | undefined,
   path: string,
 ): string {
   assertMessageRef(ref, path)
 
   const { defaultMessage, key, params } = ref
-  const custom = options.translate?.(key, params, defaultMessage, locale)
+  const custom = config.translate?.(key, params, defaultMessage, locale)
   if (custom !== undefined)
     return assertString(custom, `translate(${key})`)
 
-  const message = findMessage(options.messages, locale, key)
+  const message = findMessage(config.messages, locale, key)
   if (message !== undefined)
     return renderMessage(message, params, locale, `messages.${locale}.${key}`)
 
   if (defaultMessage !== undefined)
     return renderMessage(defaultMessage, params, locale, `${path}.defaultMessage`)
 
-  options.missing?.(key, params, defaultMessage, locale)
+  config.missing?.(key, params, defaultMessage, locale)
 
   throw new Error(`Missing i18n message: ${key}`)
 }

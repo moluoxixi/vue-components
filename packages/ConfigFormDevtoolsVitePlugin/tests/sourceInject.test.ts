@@ -198,7 +198,7 @@ describe('defineField source injection', () => {
         '  defineField({',
         '    component: OuterContainer,',
         '    slots: {',
-        '      default: () => [',
+        '      default: [',
         '        defineField({',
         '          component: InnerContainer,',
         '          slots: {',

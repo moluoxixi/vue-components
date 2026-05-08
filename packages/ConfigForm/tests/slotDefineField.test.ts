@@ -15,9 +15,10 @@ const SlotLeaf = markRaw(defineComponent({
   name: 'SlotLeaf',
   props: {
     role: String,
+    text: String,
   },
   setup(props, { slots }) {
-    return () => h('span', { 'data-role': props.role }, slots.default?.())
+    return () => h('span', { 'data-role': props.role }, slots.default?.() ?? props.text)
   },
 }))
 
@@ -32,8 +33,7 @@ describe('slot field configs', () => {
           default: [
             defineField({
               component: SlotLeaf,
-              props: { role: 'defined-slot-node' },
-              slots: { default: '插槽节点' },
+              props: { role: 'defined-slot-node', text: '插槽节点' },
             }),
           ],
         },
@@ -61,8 +61,7 @@ describe('slot field configs', () => {
           default: [
             {
               component: SlotLeaf,
-              props: { role: 'raw-slot-node' },
-              slots: { default: '原始插槽节点' },
+              props: { role: 'raw-slot-node', text: '原始插槽节点' },
             },
           ],
         },

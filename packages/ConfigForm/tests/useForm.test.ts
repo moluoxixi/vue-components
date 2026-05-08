@@ -443,7 +443,7 @@ describe('useForm', () => {
         field: 'dynamicDisabled',
       }),
     ]
-    const fields = ref<FormNodeConfig[]>(runtime.transformFields(rawFields) as FormNodeConfig[])
+    const fields = ref<FormNodeConfig[]>(rawFields.map(field => runtime.transformField(field)) as FormNodeConfig[])
 
     const form = useForm({ fields, onSubmit })
 
@@ -453,14 +453,14 @@ describe('useForm', () => {
     await expect(form.submit()).resolves.toBe(false)
     expect(form.errors.value.dynamicDisabled).toEqual(['transformed validator'])
 
-    fields.value = runtime.transformFields([
+    fields.value = [
       rawFields[0],
       defineField({
         component: 'input',
         defaultValue: 'active value',
         field: 'active',
       }),
-    ]) as FormNodeConfig[]
+    ].map(field => runtime.transformField(field)) as FormNodeConfig[]
     await nextTick()
 
     await expect(form.submit()).resolves.toBe(true)

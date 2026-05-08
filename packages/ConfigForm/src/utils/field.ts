@@ -12,6 +12,9 @@ import type {
   SlotContent,
   ValidateTrigger,
 } from '@/types'
+import { applyFieldDefaults, normalizeValidateOn } from '@/plugins/builtInFieldDefaults'
+
+export { normalizeValidateOn }
 
 /** 从 Vue 组件中提取 props 类型，支持 class component 和 function component。 */
 export type ExtractComponentProps<C> = C extends abstract new (...args: unknown[]) => { $props: infer P }
@@ -52,40 +55,13 @@ type FieldValueFor<
   TFallback,
 > = [FormValues] extends [TValues] ? TFallback : TValues[TField]
 
-/** 规范化字段校验触发时机，并保证 submit 校验始终存在。 */
-export function normalizeValidateOn(on?: ValidateTrigger | ValidateTrigger[]): ValidateTrigger[] {
-  if (!on)
-    return ['submit']
-  const arr = Array.isArray(on) ? on : [on]
-  return arr.includes('submit') ? arr : [...arr, 'submit']
-}
-
 /**
- * 将公开字段声明转换成内部统一结构。
+ * 将公开字段声明委托给内置默认应用函数，保持默认值来源唯一。
  *
- * 渲染、校验、runtime 插件和提交序列化都消费这个规范化结果。
+ * 该 helper 仅保留给插件测试和低层工具使用；组件链路统一通过 transformField(field)。
  */
 export function normalizeField(input: FieldConfig): NormalizedFieldConfig {
-  const trigger = input.trigger || 'update:modelValue'
-  const blurTrigger = input.blurTrigger || 'blur'
-
-  if (trigger === blurTrigger) {
-    throw new Error(
-      `Field "${input.field}" cannot use the same event for trigger and blurTrigger: ${trigger}`,
-    )
-  }
-
-  return {
-    ...input,
-    blurTrigger,
-    props: input.props ?? {},
-    span: input.span ?? 24,
-    submitWhenDisabled: input.submitWhenDisabled ?? true,
-    submitWhenHidden: input.submitWhenHidden ?? false,
-    trigger,
-    validateOn: normalizeValidateOn(input.validateOn),
-    valueProp: input.valueProp || 'modelValue',
-  }
+  return applyFieldDefaults(input) as NormalizedFieldConfig
 }
 
 /** 判断字段是否需要响应当前校验触发时机。 */

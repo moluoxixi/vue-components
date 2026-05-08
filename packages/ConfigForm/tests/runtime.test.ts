@@ -1,6 +1,7 @@
 import type { NormalizedFieldConfig, NormalizedNodeConfig } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { markRaw } from 'vue'
+import { BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '../src/plugins/builtInFieldDefaults'
 import { createFormRuntime } from '../src/runtime'
 import { defineField } from '../src/utils/field'
 
@@ -8,23 +9,22 @@ const RuntimeInput = markRaw({ name: 'RuntimeInput' })
 const AlternateInput = markRaw({ name: 'AlternateInput' })
 
 describe('form runtime', () => {
-  it('resolves built-in defaults without mutating field configs or adding hidden brands', () => {
+  it('returns built-in default fragments without mutating field configs or merging user config', () => {
     const runtime = createFormRuntime()
     const field = defineField({
       component: 'input',
       field: 'name',
       props: { placeholder: 'Name' },
+      trigger: 'input',
     })
 
-    const resolved = runtime.resolveField(field) as NormalizedFieldConfig
+    const defaults = runtime.resolveField(field)
 
     expect(Object.getOwnPropertySymbols(field)).toEqual([])
-    expect(Object.getOwnPropertySymbols(resolved)).toEqual([])
-    expect(resolved).toMatchObject({
+    expect(Object.getOwnPropertySymbols(defaults)).toEqual([])
+    expect(defaults).toEqual({
       blurTrigger: 'blur',
-      component: 'input',
-      field: 'name',
-      props: { placeholder: 'Name' },
+      props: {},
       span: 24,
       submitWhenDisabled: true,
       submitWhenHidden: false,
@@ -32,6 +32,9 @@ describe('form runtime', () => {
       validateOn: ['submit'],
       valueProp: 'modelValue',
     })
+    expect(defaults).not.toHaveProperty('component')
+    expect(defaults).not.toHaveProperty('field')
+    expect(defaults).not.toHaveProperty('label')
     expect(field).not.toHaveProperty('valueProp')
   })
 
@@ -79,6 +82,34 @@ describe('form runtime', () => {
     })
   })
 
+  it('keeps built-in defaults in the runtime-local lowest-priority plugin', () => {
+    const runtime = createFormRuntime({
+      plugins: [
+        {
+          name: 'plugin-defaults',
+          transformField: field => ({
+            ...field,
+            trigger: 'change',
+            valueProp: 'value',
+          }),
+        },
+      ],
+    })
+    const rawField = defineField({
+      component: 'input',
+      field: 'name',
+    })
+
+    expect(BUILT_IN_FIELD_DEFAULTS_PLUGIN.name).toBe('config-form:built-in-field-defaults')
+    expect(runtime.resolveField(rawField)).toEqual(BUILT_IN_FIELD_DEFAULTS_PLUGIN.transformField(rawField))
+
+    const transformed = runtime.transformField(rawField) as NormalizedFieldConfig
+
+    expect(transformed.trigger).toBe('change')
+    expect(transformed.valueProp).toBe('value')
+    expect(transformed.blurTrigger).toBe('blur')
+  })
+
   it('resolves registered components and rejects missing uppercase component keys', () => {
     const runtime = createFormRuntime({
       components: {
@@ -102,7 +133,7 @@ describe('form runtime', () => {
     }))).toThrow(/Unknown component key: MissingInput/)
   })
 
-  it('recursively transforms raw slot configs and scoped slot return values', () => {
+  it('recursively transforms raw slot configs and rejects non-field slot values', () => {
     const runtime = createFormRuntime()
     const resolved = runtime.transformField(defineField({
       component: 'section',
@@ -113,24 +144,32 @@ describe('form runtime', () => {
             field: 'child',
           },
         ],
-        suffix: scope => ({
+        suffix: {
           component: 'input',
-          field: `suffix-${String(scope?.id ?? 'none')}`,
-        }),
+          field: 'suffix',
+        },
       },
     })) as NormalizedNodeConfig
 
     const defaultSlot = resolved.slots?.default as NormalizedFieldConfig[]
-    const suffixSlot = resolved.slots?.suffix as (scope?: Record<string, unknown>) => NormalizedFieldConfig
+    const suffixSlot = resolved.slots?.suffix as NormalizedFieldConfig
 
     expect(defaultSlot[0]).toMatchObject({
       field: 'child',
       valueProp: 'modelValue',
     })
-    expect(suffixSlot({ id: 'scoped' })).toMatchObject({
-      field: 'suffix-scoped',
+    expect(suffixSlot).toMatchObject({
+      field: 'suffix',
       trigger: 'update:modelValue',
     })
+    expect(() => runtime.transformField(defineField({
+      component: 'section',
+      slots: { default: 'plain text' as never },
+    }))).toThrow(/Slot "default" must be a field config or an array of field configs/)
+    expect(() => runtime.transformField(defineField({
+      component: 'section',
+      slots: { default: (() => ({ component: 'input', field: 'late' })) as never },
+    }))).toThrow(/Slot "default" must be a field config or an array of field configs/)
   })
 
   it('enforces plugin name and component registration conflicts', () => {

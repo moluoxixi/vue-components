@@ -2,11 +2,6 @@ export {
   createFormRuntime,
 } from './createFormRuntime'
 export {
-  normalizeFieldBinding,
-  normalizeNode,
-  resolveField,
-} from './normalize'
-export {
   transformField,
 } from './transform'
 export type {
@@ -22,4 +17,11 @@ export {
   isContainer,
   isField,
 } from './utils'
-export { normalizeValidateOn } from '@/utils/field'
+export {
+  applyFieldDefaults,
+  normalizeValidateOn,
+  resolveField,
+} from '@/plugins/builtInFieldDefaults'
+export type {
+  FieldDefaultConfig,
+} from '@/plugins/builtInFieldDefaults'

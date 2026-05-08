@@ -1,6 +1,6 @@
 import type { ComponentRegistry, FormRuntime, FormRuntimeOptions, FormRuntimePlugin } from './types'
 import FormLayout from '@/components/FormLayout'
-import { createTransform } from './transform'
+import { createFieldPipeline } from './transform'
 
 /** 内置组件注册表；用户 components 可以覆盖内置 key，插件不能覆盖用户 key。 */
 const BUILT_IN_COMPONENTS: ComponentRegistry = {
@@ -8,9 +8,9 @@ const BUILT_IN_COMPONENTS: ComponentRegistry = {
 }
 
 /** 创建表单运行时实例，合并组件注册和字段转换插件。 */
-export function createFormRuntime(options: FormRuntimeOptions = {}): FormRuntime {
-  const plugins: FormRuntimePlugin[] = [...(options.plugins ?? [])]
-  const components: ComponentRegistry = { ...BUILT_IN_COMPONENTS, ...(options.components ?? {}) }
+export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormRuntime {
+  const plugins: FormRuntimePlugin[] = [...(runtimeConfig.plugins ?? [])]
+  const components: ComponentRegistry = { ...BUILT_IN_COMPONENTS, ...(runtimeConfig.components ?? {}) }
 
   const seenPluginNames = new Set<string>()
   for (const plugin of plugins) {
@@ -26,11 +26,10 @@ export function createFormRuntime(options: FormRuntimeOptions = {}): FormRuntime
     }
   }
 
-  const transform = createTransform(components, plugins)
+  const fieldPipeline = createFieldPipeline(components, plugins)
 
   return {
-    resolveField: transform.resolveField,
-    transformField: transform.transformField,
-    transformFields: transform.transformFields,
+    resolveField: fieldPipeline.resolveField,
+    transformField: fieldPipeline.transformField,
   }
 }

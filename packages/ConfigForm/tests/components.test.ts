@@ -69,9 +69,10 @@ const SlotLeaf = markRaw(defineComponent({
   name: 'SlotLeaf',
   props: {
     role: String,
+    text: String,
   },
   setup(props, { slots }) {
-    return () => h('span', { 'data-role': props.role }, slots.default?.())
+    return () => h('span', { 'data-role': props.role }, slots.default?.() ?? props.text)
   },
 }))
 
@@ -228,7 +229,6 @@ describe('config form component', () => {
       defineField({
         component: LayoutProbe,
         span: 12,
-        slots: { default: '容器内容' },
       }),
     ]
 
@@ -397,9 +397,9 @@ describe('config form component', () => {
             if (field.component === 'SlotLeaf') {
               return {
                 ...field,
-                slots: {
-                  ...field.slots,
-                  default: '前缀',
+                props: {
+                  ...field.props,
+                  text: '前缀',
                 },
               }
             }
@@ -463,7 +463,7 @@ describe('form field component', () => {
 
     const wrapper = mount(FormField, {
       props: {
-        node: resolveTestField(field),
+        field: resolveTestField(field),
       },
       global: {
         provide: {
@@ -505,7 +505,7 @@ describe('form field component', () => {
 
     const wrapper = mount(FormField, {
       props: {
-        node: resolveTestField(field),
+        field: resolveTestField(field),
       },
       global: {
         provide: {
@@ -530,7 +530,7 @@ describe('form field component', () => {
     expect(validateField).toHaveBeenCalledWith('nativeInput', 'change')
   })
 
-  it('renders field slot configs recursively including scoped slot functions', () => {
+  it('renders field slot configs recursively with config-only slots', () => {
     const field = defineField({
       component: SlotHost,
       field: 'choice',
@@ -539,23 +539,23 @@ describe('form field component', () => {
           defineField({
             field: 'choice-first',
             component: SlotLeaf,
-            props: { role: 'first' },
-            slots: { default: '第一个选项' },
+            props: { role: 'first', text: '第一个选项' },
           }),
           defineField({
             field: 'choice-second',
             component: SlotLeaf,
-            props: { role: 'second' },
-            slots: { default: '第二个选项' },
+            props: { role: 'second', text: '第二个选项' },
           }),
         ],
-        suffix: scope => defineField({
+        suffix: defineField({
           field: 'choice-suffix',
           component: SlotLeaf,
-          props: { role: 'suffix' },
-          slots: { default: String(scope?.label) },
+          props: { role: 'suffix', text: '后缀插槽' },
         }),
-        footer: '纯文本插槽',
+        footer: defineField({
+          component: SlotLeaf,
+          props: { role: 'footer', text: '底部插槽' },
+        }),
       },
     })
 
@@ -568,23 +568,24 @@ describe('form field component', () => {
 
     expect(wrapper.text()).toContain('第一个选项')
     expect(wrapper.text()).toContain('第二个选项')
-    expect(wrapper.text()).toContain('后缀作用域')
-    expect(wrapper.text()).toContain('纯文本插槽')
+    expect(wrapper.text()).toContain('后缀插槽')
+    expect(wrapper.text()).toContain('底部插槽')
     expect(wrapper.find('[data-role="first"]').exists()).toBe(true)
     expect(wrapper.find('[data-role="suffix"]').exists()).toBe(true)
+    expect(wrapper.find('[data-role="footer"]').exists()).toBe(true)
   })
 
-  it('tracks real fields returned from scoped slot functions through values, validation, and submit', async () => {
+  it('tracks real fields from named slot configs through values, validation, and submit', async () => {
     const fields = [
       defineField({
         component: SlotHost,
         field: 'group',
         slots: {
-          suffix: scope => defineField({
+          suffix: defineField({
             component: TextInput,
             defaultValue: '',
             field: 'scopedName',
-            label: String(scope?.label),
+            label: '插槽姓名',
             schema: z.string().min(2, '作用域姓名至少 2 个字符'),
             validateOn: 'blur',
           }),
@@ -674,8 +675,7 @@ describe('form field component', () => {
           default: [
             defineField({
               component: SlotLeaf,
-              props: { role: 'slot-child' },
-              slots: { default: '嵌入选项' },
+              props: { role: 'slot-child', text: '嵌入选项' },
             }),
           ],
         },

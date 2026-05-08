@@ -238,10 +238,10 @@ function isFieldNodeConfig(value: DevtoolsFormNodeConfig): value is DevtoolsForm
 /**
  * 静态解析 slot 内容用于 devtools 树采集。
  *
- * 函数 slot 仅以 undefined scope 执行一次，运行时 scope 相关内容不提前推断。
+ * slot 与 ConfigForm 顶层 fields 采用同一声明协议；函数 slot 不再执行或推断。
  */
 function resolveSlotContent(slot: unknown): unknown {
-  return typeof slot === 'function' ? (slot as (scope?: Record<string, unknown>, snap?: unknown) => unknown)(undefined, undefined) : slot
+  return slot
 }
 
 /**
@@ -522,21 +522,9 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
         return instrumentNode(content, path, 0)
       }
 
-      /**
-       * 包裹 slot 配置以注入源码与计时信息。
-       *
-       * 函数 slot 会保留 this 和 scope 透传，只改写返回内容。
-       */
+      /** 给 slot 配置注入源码与计时信息；非节点内容保持原值。 */
       function instrumentSlot(slot: unknown, path: string): unknown {
-        if (typeof slot !== 'function')
-          return instrumentSlotContent(slot, path)
-
-        return function instrumentedSlot(this: unknown, scope?: Record<string, unknown>, snap?: unknown) {
-          return instrumentSlotContent(
-            (slot as (this: unknown, scope?: Record<string, unknown>, snap?: unknown) => unknown).call(this, scope, snap),
-            path,
-          )
-        }
+        return instrumentSlotContent(slot, path)
       }
 
       /** 基于当前 props.fields 和宿主 DOM 收集完整节点快照。 */

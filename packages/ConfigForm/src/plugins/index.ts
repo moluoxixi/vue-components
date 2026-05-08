@@ -5,15 +5,12 @@ export {
 } from '../runtime'
 export type {
   ComponentRegistry,
+  FieldDefaultConfig,
   FormFieldTransform,
   FormRuntime,
   FormRuntimeOptions,
   FormRuntimePlugin,
 } from '../runtime'
-export {
-  normalizeFieldBinding,
-  normalizeNode,
-} from '../runtime/normalize'
 export {
   hasFieldBinding,
   isComponent,

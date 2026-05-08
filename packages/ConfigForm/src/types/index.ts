@@ -32,9 +32,6 @@ export type RuntimeText = string
 /** 字段布尔条件，支持静态值或基于 values 的派生函数。 */
 export type FieldCondition<T extends object = FormValues> = boolean | ((values: T) => boolean)
 
-/** Vue 可直接渲染的 slot 原始返回值。 */
-export type SlotPrimitive = string | number | boolean | null | undefined
-
 /** 容器节点配置：只渲染组件和 slots，不绑定表单字段。 */
 export interface ComponentNodeConfig {
   /** Vue 组件、function component、原生标签或 runtime 注册的组件 key。 */
@@ -47,14 +44,8 @@ export interface ComponentNodeConfig {
   slots?: Record<string, SlotContent>
 }
 
-/** 处理后可作为 slot 直接输出的值。 */
-export type SlotRenderable = VNode | VNode[] | SlotPrimitive
-
-/** 完整 slot 内容协议，覆盖静态节点、数组、渲染函数和原始值。 */
-export type SlotContent = SlotRenderFn | DefinedFormNodeConfig | DefinedFormNodeConfig[] | SlotRenderable
-
-/** 插槽渲染函数，接收作用域参数，返回 VNode(s)、容器节点或真实字段节点。 */
-export type SlotRenderFn = (scope?: Record<string, unknown>) => SlotContent
+/** slot 内容协议：与顶层 fields 一致，只接收普通节点配置或 defineField(...) 节点。 */
+export type SlotContent = DefinedFormNodeConfig | DefinedFormNodeConfig[]
 
 /** 字段节点配置：渲染组件并绑定一个表单值 key。 */
 export interface FieldConfig extends ComponentNodeConfig {

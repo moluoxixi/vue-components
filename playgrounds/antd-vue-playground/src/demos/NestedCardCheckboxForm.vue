@@ -45,17 +45,17 @@ const fields = [
                     defineField({
                       component: Checkbox,
                       props: { value: 'read' },
-                      slots: { default: '读取数据' },
+                      slots: { default: defineField({ component: 'span', props: { textContent: '读取数据' } }) },
                     }),
                     defineField({
                       component: Checkbox,
                       props: { value: 'write' },
-                      slots: { default: '编辑数据' },
+                      slots: { default: defineField({ component: 'span', props: { textContent: '编辑数据' } }) },
                     }),
                     defineField({
                       component: Checkbox,
                       props: { value: 'publish' },
-                      slots: { default: '发布配置' },
+                      slots: { default: defineField({ component: 'span', props: { textContent: '发布配置' } }) },
                     }),
                   ],
                 },

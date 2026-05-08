@@ -319,13 +319,21 @@ const fields = computed(() => [
     component: RadioGroup,
     slots: {
       default: [
-        defineField({ component: Radio, props: { value: 'male' }, slots: { default: t('i18n.gender.male') } }),
-        defineField({ component: Radio, props: { value: 'female' }, slots: { default: t('i18n.gender.female') } }),
+        defineField({
+          component: Radio,
+          props: { value: 'male' },
+          slots: { default: defineField({ component: 'span', props: { textContent: t('i18n.gender.male') } }) },
+        }),
+        defineField({
+          component: Radio,
+          props: { value: 'female' },
+          slots: { default: defineField({ component: 'span', props: { textContent: t('i18n.gender.female') } }) },
+        }),
         defineField({
           component: Radio,
           props: { value: 'other' },
           slots: {
-            default: () => t('i18n.gender.other'),
+            default: defineField({ component: 'span', props: { textContent: t('i18n.gender.other') } }),
           },
         }),
       ],

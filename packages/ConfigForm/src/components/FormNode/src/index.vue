@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { CSSProperties, VNode } from 'vue'
+import type { CSSProperties } from 'vue'
 import type { ResolvedField, ResolvedFormNode, SlotContent } from '@/types'
-import { computed, defineComponent } from 'vue'
+import { computed } from 'vue'
 import RecursiveField from '@/components/RecursiveField'
 import { useFormContext } from '@/composables/useFormContext'
 import { isFormNodeConfig } from '@/utils/node'
@@ -11,18 +11,8 @@ import { isFormNodeConfig } from '@/utils/node'
  */
 defineOptions({ name: 'FormNode' })
 
-const SlotRender = defineComponent({
-  name: 'SlotRender',
-  props: {
-    fn: { type: Function, required: true },
-  },
-  setup(props: { fn: (scope?: Record<string, unknown>) => VNode | string | number }) {
-    return () => props.fn()
-  },
-})
-
 const props = defineProps<{
-  node: ResolvedFormNode
+  field: ResolvedFormNode
   componentAttrs?: Record<string, unknown>
   componentListeners?: Record<string, (...args: unknown[]) => void>
 }>()
@@ -32,73 +22,58 @@ const ctx = useFormContext()
 /** 容器节点在 grid 模式下默认 span: 24，占满整行 */
 const containerStyle = computed<CSSProperties | undefined>(() => {
   if (ctx.inline) return undefined
-  if ('field' in props.node) return undefined
-  return { gridColumn: `span ${props.node.span ?? 24}` }
+  if ('field' in props.field) return undefined
+  return { gridColumn: `span ${props.field.span ?? 24}` }
 })
 
 /** 有 field 的节点从 visibilityMap 读取可见性，容器节点始终可见 */
 const visible = computed(() => {
-  if (!('field' in props.node)) return true
-  return ctx.visibilityMap[(props.node as ResolvedField).field] !== false
+  if (!('field' in props.field)) return true
+  return ctx.visibilityMap[(props.field as ResolvedField).field] !== false
 })
 
 const attrs = computed(() => {
   const baseStyle = containerStyle.value
-  const existingStyle = props.node.props?.style as CSSProperties | undefined
+  const existingStyle = props.field.props?.style as CSSProperties | undefined
   return {
-    ...props.node.props,
+    ...props.field.props,
     ...(props.componentAttrs ?? {}),
     style: baseStyle ? { ...baseStyle, ...existingStyle } : existingStyle,
   }
 })
 
-type NormalizedSlotNode =
-  | { key: string, kind: 'node', node: ResolvedFormNode }
-  | { fn: () => VNode | string | number, key: string, kind: 'render' }
+interface NormalizedSlotField {
+  field: ResolvedFormNode
+  key: string
+}
 
 /**
- * 将 runtime 解析后的 slot 返回值统一成渲染节点。
+ * 将 runtime 解析后的 slot 配置统一成递归渲染节点。
  *
- * - defineField 节点 → kind:'node' → 交给 RecursiveField 递归渲染
- * - VNode/文本/数字 → kind:'render' → 交给 SlotRender 渲染
+ * slot 只接受与顶层 fields 一致的节点配置；非配置值直接抛错，避免旧 render slot 语义继续生效。
  */
-function normalizeResolvedSlotValue(value: SlotContent, slotName: string, path = '0'): NormalizedSlotNode[] {
-  if (value == null || value === false)
-    return []
-
+function normalizeResolvedSlotValue(value: SlotContent, slotName: string, path = '0'): NormalizedSlotField[] {
   if (Array.isArray(value)) {
     return value.flatMap((item, index) =>
       normalizeResolvedSlotValue(item as SlotContent, slotName, `${path}-${index}`),
     )
   }
 
-  if (isFormNodeConfig(value)) {
-    return [{
-      key: `node-${slotName}-${path}`,
-      kind: 'node',
-      node: value as ResolvedFormNode,
-    }]
-  }
+  if (!isFormNodeConfig(value))
+    throw new TypeError(`Slot "${slotName}" must be a field config or an array of field configs`)
 
   return [{
-    fn: () => {
-      // value 已经由 ConfigForm 根组件处理过，可能是 VNode、文本、数字等。
-      return value as VNode | string | number
-    },
-    key: `render-${slotName}-${path}`,
-    kind: 'render',
+    field: value as ResolvedFormNode,
+    key: `field-${slotName}-${path}`,
   }]
 }
 
 /**
  * 将单个 slot 配置转换为渲染节点列表。
  *
- * 函数 slot 会在当前 scope 下执行；返回的 defineField 节点交给 RecursiveField。
+ * 该函数只处理已经由 runtime 转换过的节点配置，不再执行函数 slot。
  */
-function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknown> | undefined, slotName: string): NormalizedSlotNode[] {
-  if (typeof slotValue === 'function')
-    return normalizeResolvedSlotValue(slotValue(scope), slotName)
-
+function normalizeSlotValue(slotValue: SlotContent, slotName: string): NormalizedSlotField[] {
   return normalizeResolvedSlotValue(slotValue, slotName)
 }
 </script>
@@ -106,20 +81,18 @@ function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknow
 <template>
   <component
     v-if="visible"
-    :is="node.component"
+    :is="field.component"
     v-bind="attrs"
     v-on="componentListeners ?? {}"
   >
-    <template v-for="(slotValue, slotName) in node.slots" :key="slotName" #[slotName]="scope">
+    <template v-for="(slotValue, slotName) in field.slots" :key="slotName" #[slotName]>
       <template
-        v-for="slotNode in normalizeSlotValue(slotValue, scope, String(slotName))"
-        :key="slotNode.key"
+        v-for="slotField in normalizeSlotValue(slotValue, String(slotName))"
+        :key="slotField.key"
       >
         <RecursiveField
-          v-if="slotNode.kind === 'node'"
-          :node="slotNode.node"
+          :field="slotField.field"
         />
-        <SlotRender v-else :fn="slotNode.fn" />
       </template>
     </template>
   </component>

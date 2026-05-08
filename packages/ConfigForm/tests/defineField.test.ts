@@ -1,4 +1,4 @@
-import type { FieldConfig, FieldKey } from '../src/types'
+import type { FieldConfig, FieldKey, FormNodeConfig, SlotContent } from '../src/types'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import { defineField } from '../src/utils/field'
@@ -199,6 +199,20 @@ describe('defineField typing', () => {
         ],
       },
     })
+  })
+
+  it('restricts slot content to field configs or field config arrays', () => {
+    type FieldConfigIsSlotContent = IsAssignable<FormNodeConfig, SlotContent>
+    type FieldConfigArrayIsSlotContent = IsAssignable<FormNodeConfig[], SlotContent>
+    type TextIsSlotContent = IsAssignable<string, SlotContent>
+    type FunctionIsSlotContent = IsAssignable<() => FormNodeConfig, SlotContent>
+    type NullIsSlotContent = IsAssignable<null, SlotContent>
+
+    expectTypeOf<FieldConfigIsSlotContent>().toEqualTypeOf<true>()
+    expectTypeOf<FieldConfigArrayIsSlotContent>().toEqualTypeOf<true>()
+    expectTypeOf<TextIsSlotContent>().toEqualTypeOf<false>()
+    expectTypeOf<FunctionIsSlotContent>().toEqualTypeOf<false>()
+    expectTypeOf<NullIsSlotContent>().toEqualTypeOf<false>()
   })
 
   it('binds field names and callbacks to a form model through defineField generics', () => {

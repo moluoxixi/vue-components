@@ -110,15 +110,15 @@ function isAntdVueLikeComponentName(name: string): boolean {
  * 若绑定项中声明了 `props`，则以深合并方式注入到字段 props 中，
  * 用户在字段配置中声明的同名 props 具有更高优先级。
  */
-export function createAntdVuePlugin(options: AntdVuePluginOptions = {}): FormRuntimePlugin {
+export function createAntdVuePlugin(config: AntdVuePluginOptions = {}): FormRuntimePlugin {
   const bindings: Record<string, AntdVueFieldBinding> = {
     ...ANTD_VUE_FIELD_BINDINGS,
-    ...(options.bindings ?? {}),
+    ...(config.bindings ?? {}),
   }
-  const strict = options.strict ?? true
+  const strict = config.strict ?? true
 
   const plugin: FormRuntimePlugin = {
-    name: options.name ?? 'antd-vue',
+    name: config.name ?? 'antd-vue',
     transformField: (node: NormalizedNodeConfig): NormalizedNodeConfig | void => {
       // 只处理有 field 绑定的节点（跳过纯容器）
       if (!('field' in node))

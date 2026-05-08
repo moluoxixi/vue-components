@@ -19,13 +19,13 @@ const DEVTOOLS_SOURCE_ID_ATTRIBUTE = 'data-cf-devtools-source-id'
 /**
  * FormField 基于 FormNode 封装，增加 label + error + 值绑定。
  *
- * props 与 FormComponent/FormNode 统一为 { node }，
+ * props 与 FormComponent/FormNode 统一为 { field }，
  * 表单状态通过 inject 获取，不再依赖外部传入。
  */
 defineOptions({ name: 'FormField' })
 
 const props = defineProps<{
-  node: ResolvedFormNode
+  field: ResolvedFormNode
 }>()
 
 defineSlots<{
@@ -37,22 +37,22 @@ const ns = useNamespace()
 const { b, e, m } = useBem(ns)
 
 /** 内部断言：FormField 只接收 ResolvedField 类型的节点 */
-const field = computed(() => props.node as ResolvedField)
+const resolvedField = computed(() => props.field as ResolvedField)
 
-const modelValue = computed(() => ctx.getValue(field.value.field))
-const error = computed(() => ctx.errors[field.value.field])
-const visible = computed(() => ctx.visibilityMap[field.value.field] !== false)
-const disabled = computed(() => ctx.disabledMap[field.value.field])
+const modelValue = computed(() => ctx.getValue(resolvedField.value.field))
+const error = computed(() => ctx.errors[resolvedField.value.field])
+const visible = computed(() => ctx.visibilityMap[resolvedField.value.field] !== false)
+const disabled = computed(() => ctx.disabledMap[resolvedField.value.field])
 
 const fieldId = computed(() => {
-  const safeFieldName = field.value.field.replace(/[^\w-]/g, '-')
+  const safeFieldName = resolvedField.value.field.replace(/[^\w-]/g, '-')
   return `${ns.value}-${safeFieldName}-field`
 })
 
 const errorId = computed(() => `${fieldId.value}-error`)
 
 const fieldSourceAttrs = computed<Record<string, string>>(() => {
-  const sourceId = (field.value as ResolvedFieldWithDevtoolsSource).__source?.id
+  const sourceId = (resolvedField.value as ResolvedFieldWithDevtoolsSource).__source?.id
   const attrs: Record<string, string> = {}
   if (typeof sourceId === 'string' && sourceId.length > 0)
     attrs[DEVTOOLS_SOURCE_ID_ATTRIBUTE] = sourceId
@@ -60,7 +60,7 @@ const fieldSourceAttrs = computed<Record<string, string>>(() => {
 })
 
 const componentProps = computed(() => {
-  const next = { ...(field.value.props ?? {}) }
+  const next = { ...(resolvedField.value.props ?? {}) }
 
   if (next.id == null)
     next.id = fieldId.value
@@ -78,17 +78,17 @@ const componentProps = computed(() => {
 
 const componentAttrs = computed(() => ({
   ...componentProps.value,
-  [field.value.valueProp]: modelValue.value,
+  [resolvedField.value.valueProp]: modelValue.value,
 }))
 
 const componentListeners = computed<Record<string, (...args: unknown[]) => void>>(() => ({
-  [field.value.blurTrigger]: () => ctx.validateField(field.value.field, 'blur'),
-  [field.value.trigger]: (...args: unknown[]) => {
-    const value = field.value.getValueFromEvent
-      ? field.value.getValueFromEvent(...args)
+  [resolvedField.value.blurTrigger]: () => ctx.validateField(resolvedField.value.field, 'blur'),
+  [resolvedField.value.trigger]: (...args: unknown[]) => {
+    const value = resolvedField.value.getValueFromEvent
+      ? resolvedField.value.getValueFromEvent(...args)
       : args[0]
-    ctx.setValue(field.value.field, value)
-    ctx.validateField(field.value.field, 'change')
+    ctx.setValue(resolvedField.value.field, value)
+    ctx.validateField(resolvedField.value.field, 'change')
   },
 }))
 </script>
@@ -98,25 +98,25 @@ const componentListeners = computed<Record<string, (...args: unknown[]) => void>
     v-if="visible"
     v-bind="fieldSourceAttrs"
     :class="[b('field'), { [m('field', 'inline')]: ctx.inline }]"
-    :style="!ctx.inline && field.span ? { gridColumn: `span ${field.span}` } : undefined"
+    :style="!ctx.inline && resolvedField.span ? { gridColumn: `span ${resolvedField.span}` } : undefined"
   >
     <label
-      v-if="field.label"
+      v-if="resolvedField.label"
       :class="e('field', 'label')"
       :for="fieldId"
       :style="{ width: resolveLabelWidth(ctx.labelWidth) }"
     >
-      {{ field.label }}
+      {{ resolvedField.label }}
     </label>
 
     <div :class="e('field', 'control')">
       <FormNode
-        :node="node"
+        :field="field"
         :component-attrs="componentAttrs"
         :component-listeners="componentListeners"
       />
 
-      <slot name="error" :error="error" :field="field">
+      <slot name="error" :error="error" :field="resolvedField">
         <div v-if="error?.length" :id="errorId" :class="e('field', 'error')">
           <span v-for="(msg, i) in error" :key="i">{{ msg }}</span>
         </div>

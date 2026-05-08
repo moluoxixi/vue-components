@@ -12,19 +12,19 @@ const fields = [
     component: ElCard,
     props: {
       class: 'nested-card nested-card--outer',
+      header: '外层 Card 容器',
       shadow: 'never',
     },
     slots: {
-      header: '外层 Card 容器',
       default: [
         defineField({
           component: ElCard,
           props: {
             class: 'nested-card nested-card--inner',
+            header: '内层 Card 容器',
             shadow: 'never',
           },
           slots: {
-            header: '内层 Card 容器',
             default: [
               defineField({
                 field: 'permissionScopes',

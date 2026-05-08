@@ -317,13 +317,21 @@ const fields = computed(() => [
     component: ElRadioGroup,
     slots: {
       default: [
-        defineField({ component: ElRadio, props: { value: 'male' }, slots: { default: t('i18n.gender.male') } }),
-        defineField({ component: ElRadio, props: { value: 'female' }, slots: { default: t('i18n.gender.female') } }),
+        defineField({
+          component: ElRadio,
+          props: { value: 'male' },
+          slots: { default: defineField({ component: 'span', props: { textContent: t('i18n.gender.male') } }) },
+        }),
+        defineField({
+          component: ElRadio,
+          props: { value: 'female' },
+          slots: { default: defineField({ component: 'span', props: { textContent: t('i18n.gender.female') } }) },
+        }),
         defineField({
           component: ElRadio,
           props: { value: 'other' },
           slots: {
-            default: () => t('i18n.gender.other'),
+            default: defineField({ component: 'span', props: { textContent: t('i18n.gender.other') } }),
           },
         }),
       ],

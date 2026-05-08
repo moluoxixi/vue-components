@@ -104,18 +104,24 @@ describe('runtime utilities', () => {
             {
               component: 'section',
               slots: {
-                default: () => ({ component: 'input', field: 'email' }),
-                suffix: () => () => 'late render only',
+                default: [
+                  { component: 'input', field: 'email' },
+                ],
               },
             },
           ],
-          footer: 'plain text',
         },
       },
     ])
 
     expect(fields.map(field => field.field)).toEqual(['name', 'email'])
     expect(assertUniqueFieldConfigs(fields)).toEqual(fields)
+    expect(() => collectFieldConfigs([
+      {
+        component: 'section',
+        slots: { default: 'plain text' as never },
+      },
+    ])).toThrow(/Slot "component node\.slots\.default" must be a field config or an array of field configs/)
     expect(() => collectFieldConfigs([
       { component: 'input', field: 'dup' },
       { component: 'input', field: 'dup' },
@@ -139,6 +145,7 @@ describe('runtime utilities', () => {
     const fallback = defaultRuntime.resolveField({ component: 'input', field: 'name' }) as NormalizedFieldConfig
     const transformed = customRuntime.transformField({ component: 'input', field: 'name' }) as NormalizedFieldConfig
     expect(fallback.valueProp).toBe('modelValue')
+    expect(fallback).not.toHaveProperty('field')
     expect(transformed.valueProp).toBe('value')
 
     let injectedRuntime: ComputedRef<FormRuntime> | undefined
@@ -161,6 +168,15 @@ describe('runtime utilities', () => {
 
     expect(injectedRuntime?.value).toBe(customRuntime)
     expect(createFormRuntime().resolveField({ component: 'input', field: 'plain' }))
-      .toMatchObject({ valueProp: 'modelValue' })
+      .toEqual({
+        blurTrigger: 'blur',
+        props: {},
+        span: 24,
+        submitWhenDisabled: true,
+        submitWhenHidden: false,
+        trigger: 'update:modelValue',
+        validateOn: ['submit'],
+        valueProp: 'modelValue',
+      })
   })
 })

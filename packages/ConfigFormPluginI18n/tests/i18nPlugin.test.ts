@@ -6,7 +6,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { createI18nPlugin } from '../src'
 
 describe('i18n plugin package', () => {
-  it('translates field labels, props, nested props, and slots during transformField', () => {
+  it('translates field labels, props, and nested props during transformField', () => {
     const runtime = createFormRuntime({
       plugins: [
         createI18nPlugin({
@@ -17,7 +17,6 @@ describe('i18n plugin package', () => {
               'field.name.placeholder': '请输入 {name}',
               'role.admin': '管理员',
               'role.user': '普通用户',
-              'slot.help': '帮助 {name}',
             },
           },
           fields: {
@@ -29,9 +28,6 @@ describe('i18n plugin package', () => {
                   { label: { key: 'role.user' }, value: 'user' },
                 ],
                 placeholder: { key: 'field.name.placeholder', params: { name: 'Ada' } },
-              },
-              slots: {
-                default: { key: 'slot.help', params: { name: 'Ada' } },
               },
             },
           },
@@ -50,7 +46,7 @@ describe('i18n plugin package', () => {
       { label: '管理员', value: 'admin' },
       { label: '普通用户', value: 'user' },
     ])
-    expect(resolved.slots?.default).toBe('帮助 Ada')
+    expect(resolved.slots).toBeUndefined()
   })
 
   it('keeps explicit field values above plugin translations', () => {
@@ -321,9 +317,11 @@ describe('i18n plugin package', () => {
     type HasI18nTokenFactory = 'i18n' extends keyof typeof PublicApi ? true : false
     type HasIsI18nToken = 'isI18nToken' extends keyof typeof PublicApi ? true : false
     type PluginHasTokens = 'tokens' extends keyof ReturnType<typeof createI18nPlugin> ? true : false
+    type FieldMessagesHasSlots = 'slots' extends keyof PublicApi.I18nFieldMessages ? true : false
 
     expectTypeOf<HasI18nTokenFactory>().toEqualTypeOf<false>()
     expectTypeOf<HasIsI18nToken>().toEqualTypeOf<false>()
     expectTypeOf<PluginHasTokens>().toEqualTypeOf<false>()
+    expectTypeOf<FieldMessagesHasSlots>().toEqualTypeOf<false>()
   })
 })

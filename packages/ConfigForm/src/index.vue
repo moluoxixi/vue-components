@@ -24,10 +24,10 @@ const namespaceRef = computed(() => props.namespace)
 provideNamespace(namespaceRef)
 const { b } = useBem(namespaceRef)
 
-const rawNodes = computed(() => props.fields)
+const rawFields = computed(() => props.fields)
 const initialValues = computed(() => props.modelValue)
 const runtimeRef = computed(() => normalizeFormRuntime(props.runtime))
-const resolvedNodes = computed(() => runtimeRef.value.transformFields(rawNodes.value))
+const resolvedFields = computed(() => rawFields.value.map(field => runtimeRef.value.transformField(field)))
 
 const {
   values,
@@ -44,7 +44,7 @@ const {
   getValues,
   clearFieldError,
 } = useForm({
-  fields: resolvedNodes,
+  fields: resolvedFields,
   initialValues,
   /**
    * 将无头控制器的提交结果转为组件 submit 事件。
@@ -79,17 +79,17 @@ provideFormContext({
  *
  * 字段节点优先使用 field；容器节点没有业务 key 时退回组件名和声明顺序。
  */
-function nodeKey(node: typeof resolvedNodes.value[number], index: number): string {
-  if ('field' in node)
-    return String(node.field)
+function fieldKey(field: typeof resolvedFields.value[number], index: number): string {
+  if ('field' in field)
+    return String(field.field)
 
-  return `${String(node.component)}-${index}`
+  return `${String(field.component)}-${index}`
 }
 
-const keyedResolvedNodes = computed(() =>
-  resolvedNodes.value.map((node, index) => ({
-    key: nodeKey(node, index),
-    node,
+const keyedResolvedFields = computed(() =>
+  resolvedFields.value.map((field, index) => ({
+    field,
+    key: fieldKey(field, index),
   })),
 )
 
@@ -139,9 +139,9 @@ defineExpose<ConfigFormExpose<T>>({
     :style="formStyle"
     @submit.prevent="submit()"
   >
-    <template v-for="item in keyedResolvedNodes" :key="item.key">
+    <template v-for="item in keyedResolvedFields" :key="item.key">
       <RecursiveField
-        :node="item.node"
+        :field="item.field"
       />
     </template>
   </form>

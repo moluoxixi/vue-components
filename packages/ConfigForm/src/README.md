@@ -11,9 +11,10 @@
 - `validator(value, values)` 可用于跨字段或异步校验。
 - 非标准组件事件通过 `getValueFromEvent(...args)` 显式提取字段值，默认只取第一个事件参数。
 - 隐藏和禁用字段默认不进入 submit 输出，可用 `submitWhenHidden` / `submitWhenDisabled` 开启。
-- `slots` 可传文本、渲染函数、普通对象配置、由 `defineField` 创建的容器组件节点或真实字段节点数组；无 `field` 的节点只渲染组件本体，有 `field` 的节点才绑定表单值和校验。
-- slot 渲染函数如果返回真实字段节点，字段生命周期选项必须不依赖 slot scope；表单初始化会用空 scope 收集字段拓扑。
+- `slots` 与顶层 `fields` 使用同一声明模式，只接收普通对象配置或 `defineField(...)` 创建的容器组件节点/真实字段节点数组；无 `field` 的节点只渲染组件本体，有 `field` 的节点才绑定表单值和校验。
+- `slots` 不接收文本、VNode 或渲染函数；需要文本内容时用普通子节点配置承载文本 props。
 - runtime 对组件和插件名注册冲突一律抛错，不提供覆盖或静默降级策略；插件只通过 `transformField(field)` 转换字段。
+- 内置默认值插件位于 `src/plugins/builtInFieldDefaults.ts`，`resolveField(field)` 只返回默认配置片段；runtime transform 指字段配置转换管线，不是提交值转换函数。
 
 ## 样式命名空间
 

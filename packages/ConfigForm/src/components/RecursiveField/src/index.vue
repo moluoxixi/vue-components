@@ -13,23 +13,23 @@ import { isResolvedComponent, isResolvedField } from '@/utils/node'
  * - Component（有 field + 无 label）→ FormComponent（值绑定）
  * - Container（无 field）→ FormNode（纯容器）
  *
- * 三者 props 统一为 { node }，用 <component :is> 分派。
+ * 三者 props 统一为 { field }，用 <component :is> 分派。
  * 插槽通用转发，不感知具体插槽名。
  * 递归节点已由 ConfigForm 根组件提前处理。
  */
 defineOptions({ name: 'RecursiveField' })
 
 const props = defineProps<{
-  node: ResolvedFormNode
+  field: ResolvedFormNode
 }>()
 
 const resolvedComponent = computed(() => {
-  if (isResolvedField(props.node)) return FormField
-  if (isResolvedComponent(props.node)) return FormComponent
+  if (isResolvedField(props.field)) return FormField
+  if (isResolvedComponent(props.field)) return FormComponent
   return FormNode
 })
 </script>
 
 <template>
-  <component :is="resolvedComponent" :node="node" />
+  <component :is="resolvedComponent" :field="field" />
 </template>

@@ -34,6 +34,9 @@ describe('public api', () => {
     type HasCreateFormRuntime = 'createFormRuntime' extends keyof typeof PublicApi ? true : false
     type HasCreateRuntimeToken = 'createRuntimeToken' extends keyof typeof PublicApi ? true : false
     type HasIsRuntimeToken = 'isRuntimeToken' extends keyof typeof PublicApi ? true : false
+    type HasSlotPrimitive = 'SlotPrimitive' extends keyof typeof PublicApi ? true : false
+    type HasSlotRenderable = 'SlotRenderable' extends keyof typeof PublicApi ? true : false
+    type HasSlotRenderFn = 'SlotRenderFn' extends keyof typeof PublicApi ? true : false
     type HasNormalizeFormRuntime = 'normalizeFormRuntime' extends keyof typeof PublicApi ? true : false
     type HasProvideRuntime = 'provideRuntime' extends keyof typeof PublicApi ? true : false
     type HasUseRuntime = 'useRuntime' extends keyof typeof PublicApi ? true : false
@@ -73,6 +76,9 @@ describe('public api', () => {
     expectTypeOf<HasCreateFormRuntime>().toEqualTypeOf<false>()
     expectTypeOf<HasCreateRuntimeToken>().toEqualTypeOf<false>()
     expectTypeOf<HasIsRuntimeToken>().toEqualTypeOf<false>()
+    expectTypeOf<HasSlotPrimitive>().toEqualTypeOf<false>()
+    expectTypeOf<HasSlotRenderable>().toEqualTypeOf<false>()
+    expectTypeOf<HasSlotRenderFn>().toEqualTypeOf<false>()
     expectTypeOf<HasNormalizeFormRuntime>().toEqualTypeOf<false>()
     expectTypeOf<HasProvideRuntime>().toEqualTypeOf<false>()
     expectTypeOf<HasUseRuntime>().toEqualTypeOf<false>()

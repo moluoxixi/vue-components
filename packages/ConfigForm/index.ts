@@ -25,9 +25,6 @@ export type {
   ResolvedFormNode,
   RuntimeText,
   SlotContent,
-  SlotPrimitive,
-  SlotRenderable,
-  SlotRenderFn,
   ValidateTrigger,
 } from './src/types'
 export { defineField } from './src/utils/field'

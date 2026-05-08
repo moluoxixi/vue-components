@@ -1,6 +1,6 @@
 import type { ZodTypeAny } from 'zod'
 import type { FieldCondition, FieldConfig, FieldValidator, FormErrors, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
-import { resolveField } from '@/runtime'
+import { applyFieldDefaults } from '@/plugins/builtInFieldDefaults'
 import { shouldValidateOn } from '@/utils/field'
 
 /** 校验单个字段值（纯 Zod 调用）。 */
@@ -53,7 +53,7 @@ export async function validateForm(
 ): Promise<FormErrors> {
   const errors: FormErrors = {}
   for (const config of fields) {
-    const field = resolveField(config) as NormalizedFieldConfig
+    const field = applyFieldDefaults(config) as NormalizedFieldConfig
     if (!field.schema && !field.validator)
       continue
     const shouldValidateHidden = trigger === 'submit' && field.submitWhenHidden

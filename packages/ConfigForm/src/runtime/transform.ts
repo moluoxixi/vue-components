@@ -1,24 +1,24 @@
 import type { VNode } from 'vue'
 import type { ComponentRegistry, FormFieldTransform, FormRuntimePlugin } from './types'
+import type { FieldDefaultConfig } from '@/plugins/builtInFieldDefaults'
 import type { FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, SlotContent } from '@/types'
 import { isVNode } from 'vue'
+import { applyFieldDefaults, resolveField } from '@/plugins/builtInFieldDefaults'
 import { isFormNodeConfig } from '@/utils/node'
-import { resolveField } from './normalize'
 import { hasFieldBinding } from './utils'
 
-export interface TransformContext {
-  resolveField: (field: FormNodeConfig) => NormalizedNodeConfig
+export interface FieldPipelineContext {
+  resolveField: (field: FormNodeConfig) => FieldDefaultConfig
   transformField: (field: FormNodeConfig) => NormalizedNodeConfig
-  transformFields: (fields: readonly FormNodeConfig[]) => NormalizedNodeConfig[]
 }
 
 type PlainRecord = Record<string, unknown>
 
-/** 创建字段转换上下文，负责插件执行、用户优先级合并、组件解析和 slot 递归。 */
-export function createTransform(
+/** 创建字段配置管线，负责默认值、插件、用户优先级、组件解析和 slot 递归编排。 */
+export function createFieldPipeline(
   components: ComponentRegistry = {},
   plugins: FormRuntimePlugin[] = [],
-): TransformContext {
+): FieldPipelineContext {
   const hooks = collectHooks(plugins)
 
   /** 将字符串组件 key 转换为注册组件，缺失的大写 key 直接抛错。 */
@@ -30,24 +30,26 @@ export function createTransform(
     return component
   }
 
-  /** 递归处理 slot 内容，确保子节点在进入渲染组件前已完成转换。 */
-  function transformSlot(slot: SlotContent): SlotContent {
-    if (typeof slot === 'function')
-      return scope => transformSlot(slot(scope))
-
+  /** 递归处理 slot 节点配置，确保子节点在进入渲染组件前已完成转换。 */
+  function transformSlot(slot: SlotContent, path: string): SlotContent {
     if (Array.isArray(slot))
-      return slot.map(item => transformSlot(item as SlotContent)) as SlotContent
+      return slot.map((item, index) => transformSlotNode(item, `${path}[${index}]`)) as SlotContent
 
-    if (isTransformableNode(slot))
-      return transformField(slot)
+    return transformSlotNode(slot, path)
+  }
 
-    return slot
+  /** 转换单个 slot 节点配置；遇到非配置值时直接抛错，避免旧 render slot 语义继续生效。 */
+  function transformSlotNode(value: unknown, path: string): NormalizedNodeConfig {
+    if (!isTransformableNode(value))
+      throw new TypeError(`Slot "${path}" must be a field config or an array of field configs`)
+
+    return transformField(value)
   }
 
   /** 对单个字段执行完整转换管线。 */
   function transformField(field: FormNodeConfig): NormalizedNodeConfig {
     const userField = field
-    let current = resolveField(field)
+    let current = applyFieldDefaults(field)
 
     for (const hook of hooks) {
       const next = hook.handler(cloneFieldForPlugin(current))
@@ -63,12 +65,12 @@ export function createTransform(
       current = mergePluginField(current, next as FormNodeConfig, userField)
     }
 
-    const resolved = resolveField({
+    const resolved = applyFieldDefaults({
       ...current,
       component: resolveComponent(current.component),
       slots: current.slots
         ? Object.fromEntries(
-            Object.entries(current.slots).map(([name, slot]) => [name, transformSlot(slot)]),
+            Object.entries(current.slots).map(([name, slot]) => [name, transformSlot(slot, name)]),
           )
         : current.slots,
     } as FormNodeConfig)
@@ -76,17 +78,12 @@ export function createTransform(
     return resolved
   }
 
-  /** 批量执行完整转换管线。 */
-  function transformFields(fields: readonly FormNodeConfig[]): NormalizedNodeConfig[] {
-    return fields.map(field => transformField(field))
-  }
-
-  return { resolveField, transformField, transformFields }
+  return { resolveField, transformField }
 }
 
 /** 无插件场景下的便捷转换函数。 */
 export function transformField(field: FormNodeConfig): NormalizedNodeConfig {
-  return createTransform().transformField(field)
+  return createFieldPipeline().transformField(field)
 }
 
 interface RuntimeHook {
@@ -119,7 +116,7 @@ function mergePluginField(
   pluginField: FormNodeConfig,
   userField: FormNodeConfig,
 ): NormalizedNodeConfig {
-  const pluginResolved = resolveField({
+  const pluginResolved = applyFieldDefaults({
     ...current,
     ...pluginField,
     props: mergeRecords(current.props, pluginField.props ?? {}),
@@ -147,7 +144,7 @@ function restoreUserPriority(
     restored[key] = value
   }
 
-  return resolveField(restored as FormNodeConfig)
+  return applyFieldDefaults(restored as FormNodeConfig)
 }
 
 /** 深合并普通对象；右侧对象优先，数组、VNode 和组件对象保持整体替换。 */

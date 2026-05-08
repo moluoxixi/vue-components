@@ -157,11 +157,11 @@ const fields = [
 | `transform` | `(value, values) => unknown` | - | submit 前转换值 |
 | `submitWhenHidden` | `boolean` | `false` | 隐藏字段是否仍提交 |
 | `submitWhenDisabled` | `boolean` | `false` | 禁用字段是否仍提交 |
-| `slots` | `Record<string, SlotContent>` | - | 传给组件的插槽；支持文本、渲染函数、普通对象配置、由 `defineField` 创建的容器组件节点或真实字段节点数组 |
+| `slots` | `Record<string, SlotContent>` | - | 传给组件的插槽；仅支持普通对象配置、由 `defineField` 创建的容器组件节点或真实字段节点数组 |
 
 `slots` 中的对象配置可以是普通 config，也可以通过 `defineField(...)` 创建。`ConfigForm` 会统一递归处理这些配置，并按是否存在 `field` 区分语义：没有 `field` 的节点是容器/子组件，只渲染组件本体和插槽；存在 `field` 的节点是真实表单字段，会绑定表单值、校验、label 和错误展示。Radio / Checkbox 这类子组件通常不需要 `field`：
 
-如果 slot 渲染函数返回真实字段节点，字段拓扑会在表单初始化时用空 scope 收集一次；因此 `field`、`defaultValue`、`schema`、`validator`、显隐/禁用和提交相关选项必须不依赖运行时 slot scope。实际渲染内容仍会在组件渲染时接收真实 scope。
+slot 内容与顶层 `fields` 采用同一声明模式，不支持文本、VNode 或渲染函数。需要展示简单文本时，用一个普通节点配置承载文本 props，例如原生 `span` 的 `textContent`。
 
 ```ts
 defineField({
@@ -170,8 +170,26 @@ defineField({
   component: RadioGroup,
   slots: {
     default: [
-      defineField({ component: Radio, props: { value: 'male' }, slots: { default: '男' } }),
-      defineField({ component: Radio, props: { value: 'female' }, slots: { default: '女' } }),
+      defineField({
+        component: Radio,
+        props: { value: 'male' },
+        slots: {
+          default: defineField({
+            component: 'span',
+            props: { textContent: '男' },
+          }),
+        },
+      }),
+      defineField({
+        component: Radio,
+        props: { value: 'female' },
+        slots: {
+          default: defineField({
+            component: 'span',
+            props: { textContent: '女' },
+          }),
+        },
+      }),
     ],
   },
 })
@@ -179,14 +197,16 @@ defineField({
 
 ## DIY Runtime
 
-`runtime` 是表单的开放扩展边界。字段始终是普通配置对象，`ConfigForm` 根组件会在渲染、校验和提交前统一递归处理顶层字段和 slots 内字段。处理后的字段再交给内部组件消费，表单状态通过 context provide 下发 `values`、`errors`、`getValue`、`setValue`、`visibilityMap`、`disabledMap` 等能力。
+`runtime` 是表单的开放扩展边界。这里的 transform 指字段配置转换管线，不是字段提交值的 `transform(value, values)`。字段始终是普通配置对象，`ConfigForm` 根组件会在渲染、校验和提交前统一递归处理顶层字段和 slots 内字段。处理后的字段再交给内部组件消费，表单状态通过 context provide 下发 `values`、`errors`、`getValue`、`setValue`、`visibilityMap`、`disabledMap` 等能力。
 
 字段处理管线固定为：
 
-1. `resolveField(field)` 只补内置默认值，不执行插件。
-2. `transformField(field)` 先执行 `resolveField(field)`，再按用户注册顺序执行插件 `transformField(field)`。
+1. `resolveField(field)` 只返回内置默认配置片段，不合并用户字段声明，也不执行插件。
+2. `transformField(field)` 将内置默认片段应用到字段后，再按用户注册顺序执行插件 `transformField(field)`。
 3. runtime 恢复用户在原字段上显式声明的顶层配置和 props，确保优先级为 `用户 > 插件 > 内置默认值`。
 4. runtime 解析已注册组件，并继续递归转换 slots 内的普通对象配置或 `defineField(...)` 配置。
+
+内置默认值插件写在 `src/plugins/builtInFieldDefaults.ts`，只产出默认配置片段，优先级最低；用户插件写在 `runtime.plugins`，只负责 `transformField(field)`。
 
 ```vue
 <script setup lang="ts">
@@ -253,14 +273,14 @@ const fields = [
 </template>
 ```
 
-`<ConfigForm>` 的 `runtime` prop 只接收 `FormRuntimeOptions`，组件内部会创建实际 runtime 实例。插件测试、底层解析和非组件场景应从 `@moluoxixi/config-form/plugins` 使用 `createFormRuntime(options)`，避免把插件专用能力混入根入口。
+`<ConfigForm>` 的 `runtime` prop 只接收 `FormRuntimeOptions`，组件内部会创建实际 runtime 实例。插件测试、底层解析和非组件场景应从 `@moluoxixi/config-form/plugins` 使用 `createFormRuntime(config)`，避免把插件专用能力混入根入口。
 
 扩展点：
 
 - `components`：注册字符串组件 key，字段中可直接写 `component: 'MyInput'`；大写 key 未注册会抛错，原生标签如 `'input'` 可直接使用。
 - `plugins`：按用户注册顺序收集组件和 `transformField(field)` hook；hook 只接收已补齐内置默认值的 field，不接收 values/errors/slot scope。
 - 字段转换：插件可返回新的字段配置或 `undefined`；返回非法值、修改字段 key、重复插件名或重复组件 key 都会直接抛错。
-- 官方插件包：例如 `@moluoxixi/config-form-plugin-i18n`，通过插件 `fields` 映射补 label、props 和 slots 文案；没有命中当前语言文案或默认文案时会抛错，`missing` 仅用于通知/诊断。
+- 官方插件包：例如 `@moluoxixi/config-form-plugin-i18n`，通过插件 `fields` 映射补 label 和 props 文案；没有命中当前语言文案或默认文案时会抛错，`missing` 仅用于通知/诊断。
 
 ## 样式
 
