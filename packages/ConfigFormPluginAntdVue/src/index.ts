@@ -1,11 +1,5 @@
 import type { FieldConfig, FormRuntimePlugin, NormalizedFieldConfig, NormalizedNodeConfig } from '@moluoxixi/config-form/plugins'
 
-/** ConfigForm core 未适配组件库时使用的值 prop。 */
-const CORE_VALUE_PROP = 'modelValue'
-
-/** ConfigForm core 未适配组件库时使用的值更新事件。 */
-const CORE_TRIGGER = 'update:modelValue'
-
 /**
  * Ant Design Vue 字段组件的双向绑定协议。
  *
@@ -100,15 +94,6 @@ function resolveComponentName(component: FieldConfig['component']): string | und
 }
 
 /**
- * 判断字段是否仍处于 ConfigForm core 的默认绑定协议。
- *
- * runtime hook 运行前字段已经标准化，因此插件只能把 core 默认协议视为待适配状态。
- */
-function usesCoreBinding(field: NormalizedFieldConfig): boolean {
-  return field.valueProp === CORE_VALUE_PROP && field.trigger === CORE_TRIGGER
-}
-
-/**
  * 判断组件名是否像 Ant Design Vue 组件名。
  *
  * 该判断仅用于 strict 诊断，不参与默认适配，避免误伤自定义组件。
@@ -120,7 +105,7 @@ function isAntdVueLikeComponentName(name: string): boolean {
 /**
  * 创建 Ant Design Vue 字段绑定适配插件。
  *
- * 插件只补齐仍处于 core 默认协议的字段；字段已声明自定义协议时保持原样。
+ * 插件提供 Ant Design Vue 绑定默认值；用户在字段上显式声明的同名配置由 core 保持最高优先级。
  *
  * 若绑定项中声明了 `props`，则以深合并方式注入到字段 props 中，
  * 用户在字段配置中声明的同名 props 具有更高优先级。
@@ -134,7 +119,7 @@ export function createAntdVuePlugin(options: AntdVuePluginOptions = {}): FormRun
 
   const plugin: FormRuntimePlugin = {
     name: options.name ?? 'antd-vue',
-    transformNode: (node: NormalizedNodeConfig): NormalizedNodeConfig | void => {
+    transformField: (node: NormalizedNodeConfig): NormalizedNodeConfig | void => {
       // 只处理有 field 绑定的节点（跳过纯容器）
       if (!('field' in node))
         return undefined
@@ -150,9 +135,6 @@ export function createAntdVuePlugin(options: AntdVuePluginOptions = {}): FormRun
           throw new Error(`Unknown Ant Design Vue component binding: ${componentName}`)
         return undefined
       }
-
-      if (!usesCoreBinding(field))
-        return undefined
 
       // 深合并 binding.props（绑定表默认）与字段声明的 props（用户优先）
       const mergedProps = binding.props

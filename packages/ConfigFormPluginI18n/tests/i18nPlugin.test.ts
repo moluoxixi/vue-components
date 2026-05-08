@@ -1,24 +1,12 @@
-import type { RuntimeToken } from '@moluoxixi/config-form/plugins'
+import type { NormalizedFieldConfig } from '@moluoxixi/config-form/plugins'
+import type * as PublicApi from '../src'
 import { defineField } from '@moluoxixi/config-form'
-import { createFormRuntime, createRuntimeToken } from '@moluoxixi/config-form/plugins'
-import { describe, expect, it } from 'vitest'
-import { createI18nPlugin, i18n } from '../src'
-
-interface FormValueToken<TValue = unknown> extends RuntimeToken<TValue, 'form-value'> {
-  field: string
-}
-
-/**
- * 创建从表单值读取参数的测试 token。
- *
- * 该 token 用于验证 i18n params 会先经过 runtime.resolveValue 解析。
- */
-function formValue<TValue = unknown>(field: string): FormValueToken<TValue> {
-  return createRuntimeToken<TValue, 'form-value', { field: string }>('form-value', { field })
-}
+import { createFormRuntime } from '@moluoxixi/config-form/plugins'
+import { describe, expect, expectTypeOf, it } from 'vitest'
+import { createI18nPlugin } from '../src'
 
 describe('i18n plugin package', () => {
-  it('resolves i18n tokens in field labels, props, nested props, and slots', () => {
+  it('translates field labels, props, nested props, and slots during transformField', () => {
     const runtime = createFormRuntime({
       plugins: [
         createI18nPlugin({
@@ -32,26 +20,29 @@ describe('i18n plugin package', () => {
               'slot.help': '帮助 {name}',
             },
           },
+          fields: {
+            name: {
+              label: { key: 'field.name', params: { name: 'Ada' } },
+              props: {
+                options: [
+                  { label: { key: 'role.admin' }, value: 'admin' },
+                  { label: { key: 'role.user' }, value: 'user' },
+                ],
+                placeholder: { key: 'field.name.placeholder', params: { name: 'Ada' } },
+              },
+              slots: {
+                default: { key: 'slot.help', params: { name: 'Ada' } },
+              },
+            },
+          },
         }),
       ],
     })
 
-    const field = defineField({
+    const resolved = runtime.transformField(defineField({
       component: 'input',
       field: 'name',
-      label: i18n('field.name', { params: { name: 'Ada' } }),
-      props: {
-        options: [
-          { label: i18n('role.admin'), value: 'admin' },
-          { label: i18n('role.user'), value: 'user' },
-        ],
-        placeholder: i18n('field.name.placeholder', { params: { name: 'Ada' } }),
-      },
-      slots: {
-        default: i18n('slot.help', { params: { name: 'Ada' } }),
-      },
-    })
-    const resolved = runtime.resolveField(field, runtime.createResolveSnap({ errors: {}, values: {} }))
+    })) as NormalizedFieldConfig
 
     expect(resolved.label).toBe('姓名 Ada')
     expect(resolved.props.placeholder).toBe('请输入 Ada')
@@ -62,173 +53,245 @@ describe('i18n plugin package', () => {
     expect(resolved.slots?.default).toBe('帮助 Ada')
   })
 
-  it('uses default messages and dynamic params when no locale message resolves', () => {
+  it('keeps explicit field values above plugin translations', () => {
     const runtime = createFormRuntime({
       plugins: [
-        {
-          name: 'form-values',
-          tokens: {
-            'form-value': (token, resolveSnap) => resolveSnap.values[(token as FormValueToken).field],
+        createI18nPlugin({
+          locale: 'zh-CN',
+          messages: {
+            'zh-CN': {
+              label: '插件标签',
+              placeholder: '插件占位',
+              tooltip: '插件提示',
+              width: '44px',
+            },
           },
-        },
-        createI18nPlugin(),
+          fields: {
+            name: {
+              label: { key: 'label' },
+              props: {
+                placeholder: { key: 'placeholder' },
+                style: {
+                  color: { key: 'tooltip' },
+                  width: { key: 'width' },
+                },
+              },
+            },
+          },
+        }),
       ],
     })
-    const resolveSnap = runtime.createResolveSnap({ errors: {}, values: { name: 'Ada' } })
 
-    expect(runtime.resolveValue(i18n('field.nickname', {
-      defaultMessage: 'Nickname {name}',
-      params: {
-        name: formValue('name'),
+    const resolved = runtime.transformField(defineField({
+      component: 'input',
+      field: 'name',
+      label: '用户标签',
+      props: {
+        placeholder: '用户占位',
+        style: {
+          width: '80px',
+        },
       },
-    }), resolveSnap)).toBe('Nickname Ada')
-  })
+    })) as NormalizedFieldConfig
 
-  it('throws on invalid i18n token payloads', () => {
-    const runtime = createFormRuntime({
-      plugins: [createI18nPlugin()],
+    expect(resolved.label).toBe('用户标签')
+    expect(resolved.props).toEqual({
+      placeholder: '用户占位',
+      style: {
+        color: '插件提示',
+        width: '80px',
+      },
     })
-    const resolveSnap = runtime.createResolveSnap({ errors: {}, values: {} })
-
-    expect(() => runtime.resolveValue({ __configFormToken: 'i18n' } as never, resolveSnap))
-      .toThrow(/Invalid i18n token/)
-    expect(() => runtime.resolveValue(i18n('', { defaultMessage: 'Empty key' }), resolveSnap))
-      .toThrow(/i18n key must be a non-empty string/)
-    expect(() => runtime.resolveValue(i18n('bad.default', { defaultMessage: 123 as never }), resolveSnap))
-      .toThrow(/i18n defaultMessage must be a string/)
-    expect(() => runtime.resolveValue(i18n('bad.params', { params: [] as never }), resolveSnap))
-      .toThrow(/i18n params must be an object/)
   })
 
-  it('resolves messages by the active locale only', () => {
+  it('uses default messages and active locale messages without token fallbacks', () => {
     const runtime = createFormRuntime({
       plugins: [
         createI18nPlugin({
           locale: 'zh-CN',
           messages: {
             'en-US': {
-              'field.email': 'Email',
+              email: 'Email',
             },
             'zh-CN': {
-              'field.name': '姓名 {name}',
-              'slot.help': '帮助 {name}',
+              name: '姓名 {name}',
+            },
+          },
+          fields: {
+            name: {
+              label: { key: 'name', defaultMessage: 'Name', params: { name: 'Ada' } },
+              props: {
+                placeholder: { key: 'email', defaultMessage: 'Email default' },
+              },
+            },
+            email: {
+              label: { key: 'email' },
             },
           },
         }),
       ],
     })
-    const resolveSnap = runtime.createResolveSnap({ errors: {}, values: {} })
 
-    expect(runtime.resolveValue(i18n('field.name', { defaultMessage: 'Name', params: { name: 'Ada' } }), resolveSnap))
-      .toBe('姓名 Ada')
-    expect(runtime.resolveValue(i18n('field.email', { defaultMessage: 'Email default' }), resolveSnap))
-      .toBe('Email default')
-    expect(() => runtime.resolveValue(i18n('field.email'), resolveSnap))
-      .toThrow(/Missing i18n message: field\.email/)
+    const name = runtime.transformField(defineField({
+      component: 'input',
+      field: 'name',
+    })) as NormalizedFieldConfig
+
+    expect(name.label).toBe('姓名 Ada')
+    expect(name.props.placeholder).toBe('Email default')
+    expect(() => runtime.transformField(defineField({
+      component: 'input',
+      field: 'email',
+    }))).toThrow(/Missing i18n message: email/)
   })
 
-  it('supports dynamic locale getters and custom translators', () => {
+  it('supports dynamic locale getters, custom translators, and function messages', () => {
     let locale = 'en-US'
     const runtime = createFormRuntime({
       plugins: [
         createI18nPlugin({
           locale: () => locale,
           messages: {
-            'en-US': { status: 'Status' },
-            'zh-CN': { status: '状态' },
+            'en-US': {
+              greeting: (params, currentLocale) => `${currentLocale}:${String(params?.name)}`,
+              status: 'Status',
+            },
+            'zh-CN': {
+              greeting: (params, currentLocale) => `${currentLocale}:${String(params?.name)}`,
+              status: '状态',
+            },
           },
-          translate: (key, params, defaultMessage, resolveSnap, currentLocale) => {
-            expect(resolveSnap).not.toHaveProperty('locale')
-            expect(resolveSnap).not.toHaveProperty('plugins')
+          translate: (key, params, defaultMessage, currentLocale) => {
             if (key === 'runtime.locale')
               return `${currentLocale}:${String(params?.value)}`
             return defaultMessage
           },
-        }),
-      ],
-    })
-    const resolveSnap = runtime.createResolveSnap({ errors: {}, values: {} })
-
-    expect(runtime.resolveValue(i18n('status'), resolveSnap)).toBe('Status')
-    locale = 'zh-CN'
-    expect(runtime.resolveValue(i18n('status'), resolveSnap)).toBe('状态')
-    expect(runtime.resolveValue(i18n('runtime.locale', {
-      defaultMessage: 'default',
-      params: { value: 'active' },
-    }), resolveSnap)).toBe('zh-CN:active')
-  })
-
-  it('supports function messages and empty interpolation values', () => {
-    const runtime = createFormRuntime({
-      plugins: [
-        createI18nPlugin({
-          locale: 'zh-CN',
-          messages: {
-            'zh-CN': {
-              empty: '空值 { value }',
-              greeting: (params, _resolveSnap, currentLocale) => `${currentLocale}:${String(params?.name)}`,
+          fields: {
+            status: {
+              label: { key: 'status' },
+              props: {
+                title: { key: 'runtime.locale', defaultMessage: 'default', params: { value: 'active' } },
+                placeholder: { key: 'greeting', params: { name: 'Ada' } },
+              },
             },
           },
         }),
       ],
     })
-    const resolveSnap = runtime.createResolveSnap({ errors: {}, values: {} })
 
-    expect(runtime.resolveValue(i18n('greeting', { params: { name: 'Ada' } }), resolveSnap)).toBe('zh-CN:Ada')
-    expect(runtime.resolveValue(i18n('empty', { params: { value: null } }), resolveSnap)).toBe('空值 ')
-    expect(runtime.resolveValue(i18n('missing.default', {
-      defaultMessage: '默认 { value }',
-      params: { value: undefined },
-    }), resolveSnap)).toBe('默认 ')
+    const en = runtime.transformField(defineField({
+      component: 'input',
+      field: 'status',
+    })) as NormalizedFieldConfig
+
+    expect(en.label).toBe('Status')
+    expect(en.props.title).toBe('en-US:active')
+    expect(en.props.placeholder).toBe('en-US:Ada')
+
+    locale = 'zh-CN'
+    const zh = runtime.transformField(defineField({
+      component: 'input',
+      field: 'status',
+    })) as NormalizedFieldConfig
+
+    expect(zh.label).toBe('状态')
   })
 
   it('notifies missing handlers but still throws missing message errors', () => {
     let missingKey: string | undefined
     const plugin = createI18nPlugin({
+      fields: {
+        name: {
+          label: { key: 'missing.key' },
+        },
+      },
       missing: (key) => {
         missingKey = key
       },
     })
     const runtime = createFormRuntime({ plugins: [plugin] })
-    const resolveSnap = runtime.createResolveSnap({ errors: {}, values: {} })
 
     expect(plugin.name).toBe('i18n')
+    expect(plugin).not.toHaveProperty('tokens')
     expect(plugin).not.toHaveProperty('priority')
-    expect(() => runtime.resolveValue(i18n('missing.key'), resolveSnap))
-      .toThrow(/Missing i18n message: missing\.key/)
+    expect(() => runtime.transformField(defineField({
+      component: 'input',
+      field: 'name',
+    }))).toThrow(/Missing i18n message: missing\.key/)
     expect(missingKey).toBe('missing.key')
+  })
 
-    const runtimeWithReturningMissing = createFormRuntime({
+  it('throws invalid translation declarations instead of silently skipping them', () => {
+    expect(() => createFormRuntime({
       plugins: [
         createI18nPlugin({
-          missing: () => 'should not resolve',
+          fields: {
+            name: {
+              label: { key: '' },
+            },
+          },
         }),
       ],
-    })
+    }).transformField(defineField({ component: 'input', field: 'name' })))
+      .toThrow(/i18n key must be a non-empty string/)
 
-    expect(() => runtimeWithReturningMissing.resolveValue(i18n('still.missing'), resolveSnap))
-      .toThrow(/Missing i18n message: still\.missing/)
+    expect(() => createFormRuntime({
+      plugins: [
+        createI18nPlugin({
+          fields: {
+            name: {
+              label: { key: 'bad.default', defaultMessage: 123 as never },
+            },
+          },
+        }),
+      ],
+    }).transformField(defineField({ component: 'input', field: 'name' })))
+      .toThrow(/i18n defaultMessage must be a string/)
+
+    expect(() => createFormRuntime({
+      plugins: [
+        createI18nPlugin({
+          fields: {
+            name: {
+              label: { key: 'bad.params', params: [] as never },
+            },
+          },
+        }),
+      ],
+    }).transformField(defineField({ component: 'input', field: 'name' })))
+      .toThrow(/fields\.name\.label\.params must be an object/)
   })
 
   it('does not swallow errors from locale, translate, message, or missing handlers', () => {
     expect(() => {
       const runtime = createFormRuntime({
-        plugins: [createI18nPlugin({ locale: () => { throw new Error('locale failed') } })],
+        plugins: [
+          createI18nPlugin({
+            fields: { status: { label: { key: 'status' } } },
+            locale: () => { throw new Error('locale failed') },
+          }),
+        ],
       })
-      runtime.resolveValue(i18n('status'), runtime.createResolveSnap())
+      runtime.transformField(defineField({ component: 'input', field: 'status' }))
     }).toThrow('locale failed')
 
     expect(() => {
       const runtime = createFormRuntime({
-        plugins: [createI18nPlugin({ translate: () => { throw new Error('translate failed') } })],
+        plugins: [
+          createI18nPlugin({
+            fields: { status: { label: { key: 'status' } } },
+            translate: () => { throw new Error('translate failed') },
+          }),
+        ],
       })
-      runtime.resolveValue(i18n('status'), runtime.createResolveSnap())
+      runtime.transformField(defineField({ component: 'input', field: 'status' }))
     }).toThrow('translate failed')
 
     expect(() => {
       const runtime = createFormRuntime({
         plugins: [
           createI18nPlugin({
+            fields: { status: { label: { key: 'status' } } },
             locale: 'zh-CN',
             messages: {
               'zh-CN': {
@@ -238,14 +301,29 @@ describe('i18n plugin package', () => {
           }),
         ],
       })
-      runtime.resolveValue(i18n('status'), runtime.createResolveSnap())
+      runtime.transformField(defineField({ component: 'input', field: 'status' }))
     }).toThrow('message failed')
 
     expect(() => {
       const runtime = createFormRuntime({
-        plugins: [createI18nPlugin({ missing: () => { throw new Error('missing failed') } })],
+        plugins: [
+          createI18nPlugin({
+            fields: { status: { label: { key: 'status' } } },
+            missing: () => { throw new Error('missing failed') },
+          }),
+        ],
       })
-      runtime.resolveValue(i18n('status'), runtime.createResolveSnap())
+      runtime.transformField(defineField({ component: 'input', field: 'status' }))
     }).toThrow('missing failed')
+  })
+
+  it('removes the old token-oriented public API', () => {
+    type HasI18nTokenFactory = 'i18n' extends keyof typeof PublicApi ? true : false
+    type HasIsI18nToken = 'isI18nToken' extends keyof typeof PublicApi ? true : false
+    type PluginHasTokens = 'tokens' extends keyof ReturnType<typeof createI18nPlugin> ? true : false
+
+    expectTypeOf<HasI18nTokenFactory>().toEqualTypeOf<false>()
+    expectTypeOf<HasIsI18nToken>().toEqualTypeOf<false>()
+    expectTypeOf<PluginHasTokens>().toEqualTypeOf<false>()
   })
 })

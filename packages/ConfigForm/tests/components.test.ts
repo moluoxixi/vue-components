@@ -1,5 +1,5 @@
 import type { FormRuntimeOptions } from '../src/runtime'
-import type { ConfigFormExpose, DefinedFormNodeConfig, FormNodeConfig, ResolvedField, RuntimeToken } from '../src/types'
+import type { ConfigFormExpose, DefinedFormNodeConfig, FormNodeConfig, ResolvedField } from '../src/types'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, markRaw, nextTick } from 'vue'
@@ -8,22 +8,8 @@ import FormField from '../src/components/FormField/src/index.vue'
 import FormLayout from '../src/components/FormLayout/src/index.vue'
 import { FORM_CONTEXT_KEY } from '../src/composables/useFormContext'
 import ConfigForm from '../src/index.vue'
+import { createFormRuntime } from '../src/runtime'
 import { defineField } from '../src/utils/field'
-import { createFormRuntime, createRuntimeToken } from '../src/runtime'
-
-interface MessageToken extends RuntimeToken<string, 'message'> {
-  key: string
-  fallback?: string
-}
-
-/**
- * 创建测试用 message runtime token。
- *
- * token resolver 在对应用例内注册，缺失 resolver 时应保持 runtime 抛错语义。
- */
-function message(key: string, fallback?: string): MessageToken {
-  return createRuntimeToken<string, 'message', Omit<MessageToken, '__configFormToken'>>('message', { fallback, key })
-}
 
 const TextInput = markRaw(defineComponent({
   name: 'TextInput',
@@ -102,6 +88,13 @@ const CardContainer = markRaw(defineComponent({
   },
 }))
 
+const LayoutProbe = markRaw(defineComponent({
+  name: 'LayoutProbe',
+  setup(_props, { attrs, slots }) {
+    return () => h('section', { ...attrs, 'data-testid': 'layout-probe' }, slots.default?.())
+  },
+}))
+
 /**
  * 使用默认 runtime 解析测试字段。
  *
@@ -109,7 +102,7 @@ const CardContainer = markRaw(defineComponent({
  */
 function resolveTestField(field: DefinedFormNodeConfig): ResolvedField {
   const runtime = createFormRuntime()
-  return runtime.resolveNode(field, runtime.createResolveSnap({ errors: {}, values: {} })) as ResolvedField
+  return runtime.transformField(field) as ResolvedField
 }
 
 describe('config form component', () => {
@@ -228,6 +221,25 @@ describe('config form component', () => {
 
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ username: 'Ada' }])
     expect(wrapper.text()).toContain('用户名至少 4 个字符')
+  })
+
+  it('applies explicit container span in grid layouts', () => {
+    const fields = [
+      defineField({
+        component: LayoutProbe,
+        span: 12,
+        slots: { default: '容器内容' },
+      }),
+    ]
+
+    const wrapper = mount(ConfigForm, {
+      props: {
+        fields,
+        modelValue: {},
+      },
+    })
+
+    expect(wrapper.get('[data-testid="layout-probe"]').attributes('style')).toContain('grid-column: span 12')
   })
 
   it('updates model values and renders blur validation errors', async () => {
@@ -362,7 +374,7 @@ describe('config form component', () => {
     expect(api.getValues()).toEqual({ name: '' })
   })
 
-  it('resolves runtime registry, tokens, predicates, and nested slot configs', async () => {
+  it('resolves runtime registry, plugin transforms, predicates, and nested slot configs', async () => {
     const runtime = {
       components: {
         SlotLeaf,
@@ -370,17 +382,28 @@ describe('config form component', () => {
       },
       plugins: [
         {
-          name: 'test-messages',
-          tokens: {
-            message: (token) => {
-              const { fallback, key } = token as MessageToken
-              const messages: Record<string, string> = {
-                'field.nickname': '昵称',
-                'field.nickname.placeholder': '请输入昵称',
-                'slot.prefix': '前缀',
+          name: 'test-field-copy',
+          transformField: (field) => {
+            if ('field' in field && field.field === 'nickname') {
+              return {
+                ...field,
+                label: '昵称',
+                props: {
+                  ...field.props,
+                  placeholder: '请输入昵称',
+                },
               }
-              return messages[key] ?? fallback ?? key
-            },
+            }
+            if (field.component === 'SlotLeaf') {
+              return {
+                ...field,
+                slots: {
+                  ...field.slots,
+                  default: '前缀',
+                },
+              }
+            }
+            return undefined
           },
         },
       ],
@@ -394,17 +417,12 @@ describe('config form component', () => {
       }),
       defineField({
         field: 'nickname',
-        label: message('field.nickname', 'Nickname'),
         component: 'TextInput',
-        props: {
-          placeholder: message('field.nickname.placeholder', 'Nickname placeholder'),
-        },
         visible: values => values.role === 'admin',
         slots: {
           prefix: defineField({
             component: 'SlotLeaf',
             props: { 'data-role': 'runtime-prefix' },
-            slots: { default: message('slot.prefix', 'Prefix') },
           }),
         },
       }),
@@ -446,7 +464,6 @@ describe('form field component', () => {
     const wrapper = mount(FormField, {
       props: {
         node: resolveTestField(field),
-        resolveSnap: undefined,
       },
       global: {
         provide: {
@@ -455,7 +472,10 @@ describe('form field component', () => {
             errors: {},
             visibilityMap: { status: true },
             disabledMap: {},
+            getValue: (field: string) => ({ status: 'ready' } as Record<string, unknown>)[field],
+            getValues: () => ({ status: 'ready' }),
             setValue,
+            setValues: vi.fn(),
             validateField,
           },
         },
@@ -486,7 +506,6 @@ describe('form field component', () => {
     const wrapper = mount(FormField, {
       props: {
         node: resolveTestField(field),
-        resolveSnap: undefined,
       },
       global: {
         provide: {
@@ -495,7 +514,10 @@ describe('form field component', () => {
             errors: {},
             visibilityMap: { nativeInput: true },
             disabledMap: {},
+            getValue: (field: string) => ({ nativeInput: '' } as Record<string, unknown>)[field],
+            getValues: () => ({ nativeInput: '' }),
             setValue,
+            setValues: vi.fn(),
             validateField,
           },
         },
@@ -673,7 +695,7 @@ describe('form field component', () => {
   })
 })
 
-describe('FormLayout', () => {
+describe('form layout', () => {
   it('renders grid layout by default and applies flex style when inline=true', () => {
     const gridWrapper = mount(FormLayout, {
       props: { inline: false },

@@ -1,9 +1,6 @@
 import type { Component, SetupContext, VNode } from 'vue'
 import type { ZodType, ZodTypeAny, ZodTypeDef } from 'zod'
-import type { FormRuntimeOptions, FormRuntimeResolveSnap } from '@/runtime/types'
-
-/** defineField(...) 创建的配置会携带这个运行时 brand。 */
-export const CONFIG_FORM_DEFINED_NODE = Symbol.for('moluoxixi.config-form.defined-node')
+import type { FormRuntimeOptions } from '@/runtime/types'
 
 /** ConfigForm 字段节点可接收的 Vue function component 形态。 */
 export type FunctionalFieldComponent = (
@@ -29,17 +26,11 @@ export type FieldValidator<T extends object = FormValues, TValue = unknown> = (
   allValues: T,
 ) => FieldValidatorResult | Promise<FieldValidatorResult>
 
-/** 插件 resolve 生命周期的分发标记；resolveValue 靠 __configFormToken 查表分发到对应 resolver。 */
-export interface RuntimeToken<TValue = unknown, TType extends string = string> {
-  /** resolver 匹配 key，对应插件 tokens 注册表中的同名键。 */
-  readonly __configFormToken: TType
-}
+/** 字段标签文本。 */
+export type RuntimeText = string
 
-/** 可直接提供，也可延迟到 runtime token 中解析的文本。 */
-export type RuntimeText = string | RuntimeToken<string>
-
-/** 字段布尔条件，支持静态值、runtime token 或基于 values 的派生函数。 */
-export type FieldCondition<T extends object = FormValues> = boolean | RuntimeToken<boolean> | ((values: T) => boolean)
+/** 字段布尔条件，支持静态值或基于 values 的派生函数。 */
+export type FieldCondition<T extends object = FormValues> = boolean | ((values: T) => boolean)
 
 /** Vue 可直接渲染的 slot 原始返回值。 */
 export type SlotPrimitive = string | number | boolean | null | undefined
@@ -48,26 +39,28 @@ export type SlotPrimitive = string | number | boolean | null | undefined
 export interface ComponentNodeConfig {
   /** Vue 组件、function component、原生标签或 runtime 注册的组件 key。 */
   component: Component | FunctionalFieldComponent | string
-  /** runtime token 解析后传给渲染组件的 props。 */
+  /** 栅格跨度；容器节点默认占满 24 列。 */
+  span?: number
+  /** 传给渲染组件的 props。 */
   props?: Record<string, unknown>
-  /** 子级 slots；其中的表单节点配置必须由 defineField(...) 创建。 */
+  /** 子级 slots；其中的表单节点配置可以来自 defineField(...) 或普通 config。 */
   slots?: Record<string, SlotContent>
 }
 
-/** runtime 解析后可作为 slot 直接输出的值。 */
-export type SlotRenderable = VNode | VNode[] | SlotPrimitive | RuntimeToken
+/** 处理后可作为 slot 直接输出的值。 */
+export type SlotRenderable = VNode | VNode[] | SlotPrimitive
 
 /** 完整 slot 内容协议，覆盖静态节点、数组、渲染函数和原始值。 */
 export type SlotContent = SlotRenderFn | DefinedFormNodeConfig | DefinedFormNodeConfig[] | SlotRenderable
 
-/** 插槽渲染函数，接收作用域参数和运行时快照，返回 VNode(s)、容器节点或真实字段节点。 */
-export type SlotRenderFn = (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => SlotContent
+/** 插槽渲染函数，接收作用域参数，返回 VNode(s)、容器节点或真实字段节点。 */
+export type SlotRenderFn = (scope?: Record<string, unknown>) => SlotContent
 
 /** 字段节点配置：渲染组件并绑定一个表单值 key。 */
 export interface FieldConfig extends ComponentNodeConfig {
   /** 当前字段控制的表单值 key。 */
   field: string
-  /** 字段标签；runtime token 会在渲染前解析。 */
+  /** 字段标签文本。 */
   label?: RuntimeText
   /** 字段校验使用的 Zod schema。 */
   schema?: ZodTypeAny
@@ -102,13 +95,8 @@ export interface FieldConfig extends ComponentNodeConfig {
 /** ConfigForm 顶层节点，可以是真实字段节点或容器节点。 */
 export type FormNodeConfig = FieldConfig | ComponentNodeConfig
 
-/** defineField(...) 和 runtime 解析写入的不可枚举 brand。 */
-export interface DefinedFormNodeBrand {
-  readonly [CONFIG_FORM_DEFINED_NODE]: true
-}
-
-/** 已经过 defineField(...) 的表单节点配置。 */
-export type DefinedFormNodeConfig<TConfig extends FormNodeConfig = FormNodeConfig> = TConfig & DefinedFormNodeBrand
+/** 已经过 defineField(...) 或普通 config 传入的表单节点配置。 */
+export type DefinedFormNodeConfig<TConfig extends FormNodeConfig = FormNodeConfig> = TConfig
 
 /** 所有节点标准化后的公共基类；props 保证非空。 */
 export interface NormalizedNodeConfig extends Omit<ComponentNodeConfig, 'props'> {
@@ -130,17 +118,17 @@ export interface NormalizedFieldConfig extends Omit<
   submitWhenDisabled: boolean
 }
 
-/** 组件、token、props、slots 和 label 全部解析后的可渲染字段节点。 */
+/** 组件、props、slots 和 label 全部处理后的可渲染字段节点。 */
 export interface ResolvedField extends Omit<NormalizedFieldConfig, 'label'> {
   label?: string
 }
 
-/** 组件、props 和 slots 全部解析后的可渲染容器节点。 */
+/** 组件、props 和 slots 全部处理后的可渲染容器节点。 */
 export interface ResolvedComponentNode extends Omit<ComponentNodeConfig, 'props'> {
   props: Record<string, unknown>
 }
 
-/** FormRuntime.resolveNode(...) 返回的节点类型。 */
+/** FormRuntime.transformField(...) 返回的节点类型。 */
 export type ResolvedFormNode = ResolvedField | ResolvedComponentNode
 
 /** 类型化表单模型中可用的字符串 key。 */
@@ -162,7 +150,7 @@ export interface ConfigFormProps<T extends object = FormValues> {
   labelWidth?: string | number
   /** v-model 双向绑定表单值 */
   modelValue?: T
-  /** 表单运行时配置，用于组件注册、runtime token 和插件生命周期。 */
+  /** 表单运行时配置，用于组件注册和字段插件生命周期。 */
   runtime?: FormRuntimeOptions
 }
 

@@ -1,96 +1,180 @@
-import type { FormRuntimeHookOrder, FormRuntimePlugin, FormNodeTransform } from './types'
-import type { DefinedFormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig } from '@/types'
+import type { VNode } from 'vue'
+import type { ComponentRegistry, FormFieldTransform, FormRuntimePlugin } from './types'
+import type { FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, SlotContent } from '@/types'
+import { isVNode } from 'vue'
+import { isFormNodeConfig } from '@/utils/node'
+import { resolveField } from './normalize'
 import { hasFieldBinding } from './utils'
-import { normalizeFieldBinding, normalizeNode } from './normalize'
-
-interface RuntimeHook<THandler extends (...args: never[]) => unknown> {
-  handler: THandler
-  order?: FormRuntimeHookOrder
-  pluginName: string
-}
 
 export interface TransformContext {
-  transformNode: (node: DefinedFormNodeConfig) => NormalizedNodeConfig
+  resolveField: (field: FormNodeConfig) => NormalizedNodeConfig
+  transformField: (field: FormNodeConfig) => NormalizedNodeConfig
+  transformFields: (fields: readonly FormNodeConfig[]) => NormalizedNodeConfig[]
 }
 
-const CONFIG_FORM_TRANSFORMED_NODE = Symbol('config-form.transformed-node')
+type PlainRecord = Record<string, unknown>
 
-function isTransformedNode(node: unknown): boolean {
-  return Boolean(
-    node
-    && typeof node === 'object'
-    && (node as Record<symbol, unknown>)[CONFIG_FORM_TRANSFORMED_NODE] === true,
-  )
-}
+/** 创建字段转换上下文，负责插件执行、用户优先级合并、组件解析和 slot 递归。 */
+export function createTransform(
+  components: ComponentRegistry = {},
+  plugins: FormRuntimePlugin[] = [],
+): TransformContext {
+  const hooks = collectHooks(plugins)
 
-function markTransformedNode(node: NormalizedNodeConfig): NormalizedNodeConfig {
-  if (!((node as unknown as Record<symbol, unknown>)[CONFIG_FORM_TRANSFORMED_NODE])) {
-    Object.defineProperty(node, CONFIG_FORM_TRANSFORMED_NODE, {
-      configurable: false,
-      enumerable: false,
-      value: true,
-      writable: false,
-    })
+  /** 将字符串组件 key 转换为注册组件，缺失的大写 key 直接抛错。 */
+  function resolveComponent(component: NormalizedNodeConfig['component']): NormalizedNodeConfig['component'] {
+    if (typeof component === 'string' && Object.hasOwn(components, component))
+      return components[component]
+    if (typeof component === 'string' && /^[A-Z]/.test(component))
+      throw new Error(`Unknown component key: ${component}`)
+    return component
   }
-  return node
-}
 
-export function createTransform(plugins: FormRuntimePlugin[]): TransformContext {
-  const orderedHooks = collectOrderedHooks(plugins)
+  /** 递归处理 slot 内容，确保子节点在进入渲染组件前已完成转换。 */
+  function transformSlot(slot: SlotContent): SlotContent {
+    if (typeof slot === 'function')
+      return scope => transformSlot(slot(scope))
 
-  function transformNode(node: DefinedFormNodeConfig): NormalizedNodeConfig {
-    if (isTransformedNode(node))
-      return node as NormalizedNodeConfig
+    if (Array.isArray(slot))
+      return slot.map(item => transformSlot(item as SlotContent)) as SlotContent
 
-    let config: NormalizedNodeConfig = normalizeNode(node)
-    if (hasFieldBinding(config))
-      config = normalizeFieldBinding(config as NormalizedNodeConfig & { field: string })
+    if (isTransformableNode(slot))
+      return transformField(slot)
 
-    for (const hook of orderedHooks) {
-      const next = hook.handler({
-        ...config,
-        props: { ...config.props },
-        slots: config.slots ? { ...config.slots } : config.slots,
-      })
+    return slot
+  }
+
+  /** 对单个字段执行完整转换管线。 */
+  function transformField(field: FormNodeConfig): NormalizedNodeConfig {
+    const userField = field
+    let current = resolveField(field)
+
+    for (const hook of hooks) {
+      const next = hook.handler(cloneFieldForPlugin(current))
       if (next === undefined)
         continue
       if (!next || typeof next !== 'object' || Array.isArray(next))
-        throw new TypeError(`Plugin ${hook.pluginName} transformNode must return a node object or undefined`)
-      if (hasFieldBinding(next) && hasFieldBinding(config) && next.field !== (config as NormalizedFieldConfig).field)
-        throw new Error(`Plugin ${hook.pluginName} cannot change field key from "${(config as NormalizedFieldConfig).field}" to "${(next as NormalizedFieldConfig).field}"`)
-      config = next as NormalizedNodeConfig
+        throw new TypeError(`Plugin ${hook.pluginName} transformField must return a field object or undefined`)
+      if (hasFieldBinding(current) && hasFieldBinding(next) && next.field !== (current as NormalizedFieldConfig).field) {
+        throw new Error(
+          `Plugin ${hook.pluginName} cannot change field key from "${(current as NormalizedFieldConfig).field}" to "${(next as NormalizedFieldConfig).field}"`,
+        )
+      }
+      current = mergePluginField(current, next as FormNodeConfig, userField)
     }
 
-    return markTransformedNode(config)
+    const resolved = resolveField({
+      ...current,
+      component: resolveComponent(current.component),
+      slots: current.slots
+        ? Object.fromEntries(
+            Object.entries(current.slots).map(([name, slot]) => [name, transformSlot(slot)]),
+          )
+        : current.slots,
+    } as FormNodeConfig)
+
+    return resolved
   }
 
-  return { transformNode }
+  /** 批量执行完整转换管线。 */
+  function transformFields(fields: readonly FormNodeConfig[]): NormalizedNodeConfig[] {
+    return fields.map(field => transformField(field))
+  }
+
+  return { resolveField, transformField, transformFields }
 }
 
-function collectOrderedHooks(plugins: FormRuntimePlugin[]): RuntimeHook<FormNodeTransform>[] {
-  const hooks: RuntimeHook<FormNodeTransform>[] = []
+/** 无插件场景下的便捷转换函数。 */
+export function transformField(field: FormNodeConfig): NormalizedNodeConfig {
+  return createTransform().transformField(field)
+}
 
-  for (const plugin of plugins) {
-    if (!plugin.transformNode)
+interface RuntimeHook {
+  handler: FormFieldTransform
+  pluginName: string
+}
+
+/** 收集插件 transformField hook，并按插件注册顺序执行。 */
+function collectHooks(plugins: FormRuntimePlugin[]): RuntimeHook[] {
+  return plugins
+    .filter((plugin): plugin is FormRuntimePlugin & { transformField: FormFieldTransform } => typeof plugin.transformField === 'function')
+    .map(plugin => ({
+      handler: plugin.transformField,
+      pluginName: plugin.name,
+    }))
+}
+
+/** 为插件提供浅复制字段，避免插件直接修改当前管线状态。 */
+function cloneFieldForPlugin(field: NormalizedNodeConfig): NormalizedNodeConfig {
+  return {
+    ...field,
+    props: { ...field.props },
+    slots: field.slots ? { ...field.slots } : field.slots,
+  }
+}
+
+/** 合并插件返回值，并恢复用户显式声明的字段值优先级。 */
+function mergePluginField(
+  current: NormalizedNodeConfig,
+  pluginField: FormNodeConfig,
+  userField: FormNodeConfig,
+): NormalizedNodeConfig {
+  const pluginResolved = resolveField({
+    ...current,
+    ...pluginField,
+    props: mergeRecords(current.props, pluginField.props ?? {}),
+  } as FormNodeConfig)
+
+  return restoreUserPriority(pluginResolved, userField)
+}
+
+/** 将用户显式声明的顶层字段和 props 恢复到最高优先级。 */
+function restoreUserPriority(
+  field: NormalizedNodeConfig,
+  userField: FormNodeConfig,
+): NormalizedNodeConfig {
+  const restored = { ...field } as NormalizedNodeConfig & PlainRecord
+
+  for (const [key, value] of Object.entries(userField)) {
+    if (key === 'props') {
+      restored.props = mergeRecords(restored.props, value as PlainRecord)
       continue
-
-    const hook = plugin.transformNode
-    if (typeof hook === 'function') {
-      hooks.push({ handler: hook, pluginName: plugin.name })
     }
-    else if (hook && typeof hook === 'object' && typeof hook.handler === 'function') {
-      if (hook.order !== undefined && hook.order !== 'pre' && hook.order !== 'post')
-        throw new TypeError(`Plugin ${plugin.name} hook transformNode.order must be "pre" or "post"`)
-      hooks.push({ handler: hook.handler, order: hook.order, pluginName: plugin.name })
+    if (key === 'slots') {
+      restored.slots = value as NormalizedNodeConfig['slots']
+      continue
     }
-    else {
-      throw new TypeError(`Plugin ${plugin.name} hook transformNode must be a function or an object hook`)
-    }
+    restored[key] = value
   }
 
-  return [
-    ...hooks.filter(hook => hook.order === 'pre'),
-    ...hooks.filter(hook => hook.order === undefined),
-    ...hooks.filter(hook => hook.order === 'post'),
-  ]
+  return resolveField(restored as FormNodeConfig)
+}
+
+/** 深合并普通对象；右侧对象优先，数组、VNode 和组件对象保持整体替换。 */
+function mergeRecords(...sources: PlainRecord[]): PlainRecord {
+  const result: PlainRecord = {}
+  for (const source of sources) {
+    for (const [key, value] of Object.entries(source)) {
+      const previous = result[key]
+      result[key] = isPlainRecord(previous) && isPlainRecord(value)
+        ? mergeRecords(previous, value)
+        : value
+    }
+  }
+  return result
+}
+
+/** 判断值是否可安全作为普通对象递归合并。 */
+function isPlainRecord(value: unknown): value is PlainRecord {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return false
+  if (isVNode(value as VNode))
+    return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+/** 判断 slot 值是否是需要继续递归转换的表单节点。 */
+function isTransformableNode(value: unknown): value is FormNodeConfig {
+  return isFormNodeConfig(value)
 }

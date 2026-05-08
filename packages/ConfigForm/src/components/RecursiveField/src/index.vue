@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { FormRuntimeResolveSnap } from '@/runtime'
 import type { ResolvedFormNode } from '@/types'
 import { computed } from 'vue'
 import FormComponent from '@/components/FormComponent'
@@ -14,15 +13,14 @@ import { isResolvedComponent, isResolvedField } from '@/utils/node'
  * - Component（有 field + 无 label）→ FormComponent（值绑定）
  * - Container（无 field）→ FormNode（纯容器）
  *
- * 三者 props 统一为 { node, resolveSnap }，用 <component :is> 分派。
+ * 三者 props 统一为 { node }，用 <component :is> 分派。
  * 插槽通用转发，不感知具体插槽名。
- * 递归由 FormNode 内部 slot 解析自动完成。
+ * 递归节点已由 ConfigForm 根组件提前处理。
  */
 defineOptions({ name: 'RecursiveField' })
 
 const props = defineProps<{
   node: ResolvedFormNode
-  resolveSnap?: FormRuntimeResolveSnap
 }>()
 
 const resolvedComponent = computed(() => {
@@ -33,5 +31,5 @@ const resolvedComponent = computed(() => {
 </script>
 
 <template>
-  <component :is="resolvedComponent" :node="node" :resolve-snap="resolveSnap" />
+  <component :is="resolvedComponent" :node="node" />
 </template>

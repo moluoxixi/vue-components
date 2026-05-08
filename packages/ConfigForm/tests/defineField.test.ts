@@ -2,16 +2,6 @@ import type { FieldConfig, FieldKey } from '../src/types'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import { defineField } from '../src/utils/field'
-import { createRuntimeToken } from '../src/runtime'
-
-/**
- * 创建类型推导测试用文本 token。
- *
- * 该 token 只验证 props 可接收 runtime token，不参与实际 runtime 解析。
- */
-function textToken(key: string) {
-  return createRuntimeToken<string, 'text'>('text', { key })
-}
 
 type IsAssignable<TFrom, TTo> = [TFrom] extends [TTo] ? true : false
 type HasKey<TValue, TKey extends PropertyKey> = TKey extends keyof TValue ? true : false
@@ -106,7 +96,7 @@ describe('defineField typing', () => {
     expect(fieldConfig.field).toBe('manual-field-config')
   })
 
-  it('allows runtime tokens inside inferred component props', () => {
+  it('keeps inferred component props plain after token support is removed', () => {
     /**
      * 模拟带 options/placeholder props 的选择组件。
      *
@@ -124,10 +114,10 @@ describe('defineField typing', () => {
       component: selectComponent,
       defaultValue: 'admin',
       props: {
-        placeholder: textToken('role.placeholder'),
+        placeholder: '请选择角色',
         options: [
-          { label: textToken('role.admin'), value: 'admin' },
-          { label: textToken('role.user'), value: 'user' },
+          { label: '管理员', value: 'admin' },
+          { label: '普通用户', value: 'user' },
         ],
       },
     })
@@ -167,7 +157,7 @@ describe('defineField typing', () => {
     expect(field.validateOn).toEqual(['submit', 'blur'])
   })
 
-  it('returns plain field configs and leaves runtime behavior outside the model', () => {
+  it('returns plain field configs without hidden brands or runtime behavior helpers', () => {
     /** 保留字段可见性函数引用，用于断言 defineField 不包装运行时行为。 */
     const visible = (values: Record<string, unknown>) => values.role === 'admin'
     const field = defineField({
@@ -188,6 +178,7 @@ describe('defineField typing', () => {
     expect('isVisible' in field).toBe(false)
     expect('isDisabled' in field).toBe(false)
     expect('applyTransform' in field).toBe(false)
+    expect(Object.getOwnPropertySymbols(field)).toEqual([])
   })
 
   it('infers slot field configs at the defineField call site', () => {

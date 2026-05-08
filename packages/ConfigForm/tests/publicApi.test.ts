@@ -39,9 +39,8 @@ describe('public api', () => {
     type HasUseRuntime = 'useRuntime' extends keyof typeof PublicApi ? true : false
     type RuntimeProp = NonNullable<PublicApi.ConfigFormProps['runtime']>
     type RuntimePropAcceptsOptions = PublicApi.FormRuntimeOptions extends RuntimeProp ? true : false
-    type UseFormRuntimeInput = NonNullable<PublicApi.UseFormOptions['runtime']>
-    type UseFormRuntimeAcceptsOptions = PublicApi.FormRuntimeOptions extends UseFormRuntimeInput ? true : false
-    type RuntimeTokenConditionAllowed = PublicApi.RuntimeToken<boolean> extends PublicApi.FieldCondition ? true : false
+    type UseFormHasRuntime = 'runtime' extends keyof PublicApi.UseFormOptions ? true : false
+    type TokenLikeConditionAllowed = { readonly __configFormToken: 'legacy' } extends PublicApi.FieldCondition ? true : false
 
     expectTypeOf<HasDefineField>().toEqualTypeOf<true>()
     expectTypeOf<HasDefineFieldFor>().toEqualTypeOf<false>()
@@ -78,7 +77,7 @@ describe('public api', () => {
     expectTypeOf<HasProvideRuntime>().toEqualTypeOf<false>()
     expectTypeOf<HasUseRuntime>().toEqualTypeOf<false>()
     expectTypeOf<RuntimePropAcceptsOptions>().toEqualTypeOf<true>()
-    expectTypeOf<UseFormRuntimeAcceptsOptions>().toEqualTypeOf<true>()
-    expectTypeOf<RuntimeTokenConditionAllowed>().toEqualTypeOf<true>()
+    expectTypeOf<UseFormHasRuntime>().toEqualTypeOf<false>()
+    expectTypeOf<TokenLikeConditionAllowed>().toEqualTypeOf<false>()
   })
 })

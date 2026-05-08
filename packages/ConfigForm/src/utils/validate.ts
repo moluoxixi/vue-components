@@ -1,8 +1,7 @@
 import type { ZodTypeAny } from 'zod'
-import type { FormRuntime } from '@/runtime'
-import type { DefinedFormNodeConfig, FieldConfig, FieldValidator, FormErrors, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
+import type { FieldCondition, FieldConfig, FieldValidator, FormErrors, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
+import { resolveField } from '@/runtime'
 import { shouldValidateOn } from '@/utils/field'
-import { createFormRuntime } from '@/runtime'
 
 /** 校验单个字段值（纯 Zod 调用）。 */
 export function validateField(
@@ -51,20 +50,18 @@ export async function validateForm(
   values: FormValues,
   fields: FieldConfig[],
   trigger: ValidateTrigger = 'submit',
-  runtime: FormRuntime = createFormRuntime(),
 ): Promise<FormErrors> {
   const errors: FormErrors = {}
-  const resolveSnap = runtime.createResolveSnap({ errors, values })
   for (const config of fields) {
-    const field = runtime.transformNode(config as DefinedFormNodeConfig) as NormalizedFieldConfig
+    const field = resolveField(config) as NormalizedFieldConfig
     if (!field.schema && !field.validator)
       continue
     const shouldValidateHidden = trigger === 'submit' && field.submitWhenHidden
     const shouldValidateDisabled = trigger === 'submit' && field.submitWhenDisabled
 
-    if (!runtime.resolveVisible(field as unknown as DefinedFormNodeConfig, resolveSnap) && !shouldValidateHidden)
+    if (!resolveCondition(field.visible, values, true) && !shouldValidateHidden)
       continue
-    if (runtime.resolveDisabled(field as unknown as DefinedFormNodeConfig, resolveSnap) && !shouldValidateDisabled)
+    if (resolveCondition(field.disabled, values, false) && !shouldValidateDisabled)
       continue
     if (!shouldValidateOn(field, trigger))
       continue
@@ -74,4 +71,17 @@ export async function validateForm(
       errors[field.field] = errs
   }
   return errors
+}
+
+/** 解析字段显隐/禁用条件；函数条件的异常按原语义向调用方抛出。 */
+function resolveCondition(
+  condition: FieldCondition | undefined,
+  values: FormValues,
+  defaultValue: boolean,
+): boolean {
+  if (condition == null)
+    return defaultValue
+  if (typeof condition === 'boolean')
+    return condition
+  return condition(values)
 }

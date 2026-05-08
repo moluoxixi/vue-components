@@ -1,8 +1,7 @@
+export { FormLayout } from './src/components/FormLayout'
 export { useForm } from './src/composables/useForm'
 export type { UseFormOptions } from './src/composables/useForm'
 export { default as ConfigForm } from './src/index.vue'
-export { FormLayout } from './src/components/FormLayout'
-export { defineField } from './src/utils/field'
 export type {
   FormRuntimeOptions,
 } from './src/runtime'
@@ -25,10 +24,10 @@ export type {
   ResolvedField,
   ResolvedFormNode,
   RuntimeText,
-  RuntimeToken,
   SlotContent,
   SlotPrimitive,
   SlotRenderable,
   SlotRenderFn,
   ValidateTrigger,
 } from './src/types'
+export { defineField } from './src/utils/field'

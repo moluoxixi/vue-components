@@ -1,8 +1,7 @@
-import type { MaybeRef, Ref } from 'vue'
-import type { FormRuntimeOptions } from '@/runtime'
-import type { DefinedFormNodeConfig, FieldConfig, FieldKey, FormErrors, FormNodeConfig, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
-import { computed, reactive, ref, toRaw, toValue, watch } from 'vue'
-import { normalizeFormRuntime } from '@/composables/useRuntime'
+import type { Ref } from 'vue'
+import type { FieldCondition, FieldConfig, FieldKey, FormErrors, FormNodeConfig, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
+import { computed, reactive, ref, toRaw, watch } from 'vue'
+import { resolveField } from '@/runtime'
 import { applyFieldTransform, shouldValidateOn } from '@/utils/field'
 import { collectFieldConfigs } from '@/utils/node'
 import { validateFieldRules, validateForm } from '@/utils/validate'
@@ -13,8 +12,6 @@ export interface UseFormOptions<T extends object = FormValues> {
   fields: Ref<FormNodeConfig[]>
   /** 外部初始值，通常来自 ConfigForm 的 v-model。 */
   initialValues?: Ref<Partial<T> | undefined>
-  /** 运行时配置，用于解析组件、runtime token 和插件生命周期。 */
-  runtime?: MaybeRef<FormRuntimeOptions | undefined>
   /** 校验通过后接收已执行 transform 的提交值。 */
   onSubmit?: (values: T) => void
   /** 提交校验失败时接收当前错误集合。 */
@@ -33,8 +30,9 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
   const values = reactive<T & FormValues>({} as T & FormValues)
   const valueStore = values as FormValues
   const errors = ref<FormErrors>({})
-  const runtimeRef = computed(() => normalizeFormRuntime(toValue(options.runtime)))
-  const fieldConfigs = computed(() => collectFieldConfigs(fields.value))
+  const fieldConfigs = computed(() =>
+    collectFieldConfigs(fields.value).map(field => resolveField(field) as NormalizedFieldConfig),
+  )
   const fieldTopologyKey = computed(() => fieldConfigs.value.map(field => field.field).join('\0'))
 
   // 先同步校验初始字段拓扑，避免 Vue watcher 注册后才暴露重复 field 等配置错误。
@@ -78,8 +76,7 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
    * pruneToFields 为 true 时移除不属于当前真实字段拓扑的值，用于字段树变化后的状态收敛。
    */
   function initValues(source: FormValues = (initialValues?.value ?? {}) as FormValues, pruneToFields = false) {
-    const runtime = runtimeRef.value
-    const transformedFields = fieldConfigs.value.map(config => runtime.transformNode(config as DefinedFormNodeConfig) as NormalizedFieldConfig)
+    const transformedFields = fieldConfigs.value
     const fieldNames = new Set(transformedFields.map(field => field.field))
     const next: FormValues = pruneToFields
       ? Object.fromEntries(Object.entries(source).filter(([key]) => fieldNames.has(key)))
@@ -117,15 +114,13 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
   )
 
   const visibilityMap = computed<Record<string, boolean>>(() => {
-    const snap = { ...values }
-    const resolveSnap = runtimeRef.value.createResolveSnap({ errors: errors.value, values: snap })
-    return Object.fromEntries(fieldConfigs.value.map(f => [f.field, runtimeRef.value.resolveVisible(f as DefinedFormNodeConfig, resolveSnap)]))
+    const valuesSnapshot = { ...values }
+    return Object.fromEntries(fieldConfigs.value.map(f => [f.field, resolveCondition(f.visible, valuesSnapshot, true)]))
   })
 
   const disabledMap = computed<Record<string, boolean>>(() => {
-    const snap = { ...values }
-    const resolveSnap = runtimeRef.value.createResolveSnap({ errors: errors.value, values: snap })
-    return Object.fromEntries(fieldConfigs.value.map(f => [f.field, runtimeRef.value.resolveDisabled(f as DefinedFormNodeConfig, resolveSnap)]))
+    const valuesSnapshot = { ...values }
+    return Object.fromEntries(fieldConfigs.value.map(f => [f.field, resolveCondition(f.disabled, valuesSnapshot, false)]))
   })
 
   /** 写入单个模型字段，并清除该字段已有校验错误。 */
@@ -166,7 +161,7 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
   /**
    * 从内部值存储读取单个字段。
    *
-   * 该函数不触发校验，也不解析 runtime token，只返回当前模型层值。
+   * 该函数不触发校验，也不重新执行字段转换，只返回当前模型层值。
    */
   function getValue(field: string): unknown {
     return valueStore[field]
@@ -184,21 +179,20 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
    */
   async function validateSingleField(fieldName: string, trigger: ValidateTrigger): Promise<boolean> {
     const config = fieldConfigs.value.find(f => f.field === fieldName)
-    const field = config ? runtimeRef.value.transformNode(config as DefinedFormNodeConfig) as NormalizedFieldConfig : undefined
+    const field = config as NormalizedFieldConfig | undefined
     if (!field?.schema && !field?.validator) {
       clearFieldError(fieldName)
       return true
     }
 
-    const snap = { ...values }
-    const resolveSnap = runtimeRef.value.createResolveSnap({ errors: errors.value, values: snap })
+    const valuesSnapshot = { ...values }
 
     const shouldValidateHidden = trigger === 'submit' && field.submitWhenHidden
     const shouldValidateDisabled = trigger === 'submit' && field.submitWhenDisabled
 
     if (
-      (!runtimeRef.value.resolveVisible(field as unknown as DefinedFormNodeConfig, resolveSnap) && !shouldValidateHidden)
-      || (runtimeRef.value.resolveDisabled(field as unknown as DefinedFormNodeConfig, resolveSnap) && !shouldValidateDisabled)
+      (!resolveCondition(field.visible, valuesSnapshot, true) && !shouldValidateHidden)
+      || (resolveCondition(field.disabled, valuesSnapshot, false) && !shouldValidateDisabled)
     ) {
       clearFieldError(fieldName)
       return true
@@ -207,7 +201,7 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
     if (!shouldValidateOn(field, trigger))
       return true
 
-    const fieldErrors = await validateFieldRules(snap[fieldName], field.schema, snap, field.validator)
+    const fieldErrors = await validateFieldRules(valuesSnapshot[fieldName], field.schema, valuesSnapshot, field.validator)
     if (fieldErrors.length > 0) {
       errors.value = { ...errors.value, [fieldName]: fieldErrors }
     }
@@ -224,7 +218,7 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
    * 校验失败会同步 errors 并触发 onError；底层校验异常不转换为成功结果。
    */
   async function validate(): Promise<boolean> {
-    const formErrors = await validateForm({ ...values }, fieldConfigs.value, 'submit', runtimeRef.value)
+    const formErrors = await validateForm({ ...values }, fieldConfigs.value, 'submit')
     errors.value = formErrors
     if (Object.keys(formErrors).length > 0) {
       onError?.(formErrors)
@@ -242,16 +236,14 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
     if (!await validate())
       return false
 
-    const snap = { ...values }
-    const resolveSnap = runtimeRef.value.createResolveSnap({ errors: errors.value, values: snap })
+    const valuesSnapshot = { ...values }
     const submitValues: FormValues = {}
-    for (const config of fieldConfigs.value) {
-      const field = runtimeRef.value.transformNode(config as DefinedFormNodeConfig) as NormalizedFieldConfig
-      if (!runtimeRef.value.resolveVisible(field as unknown as DefinedFormNodeConfig, resolveSnap) && !field.submitWhenHidden)
+    for (const field of fieldConfigs.value) {
+      if (!resolveCondition(field.visible, valuesSnapshot, true) && !field.submitWhenHidden)
         continue
-      if (runtimeRef.value.resolveDisabled(field as unknown as DefinedFormNodeConfig, resolveSnap) && !field.submitWhenDisabled)
+      if (resolveCondition(field.disabled, valuesSnapshot, false) && !field.submitWhenDisabled)
         continue
-      submitValues[field.field] = applyFieldTransform(field, snap[field.field], snap)
+      submitValues[field.field] = applyFieldTransform(field, valuesSnapshot[field.field], valuesSnapshot)
     }
     onSubmit?.(submitValues as T)
     return true
@@ -282,4 +274,17 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
     getValues,
     clearFieldError,
   }
+}
+
+/** 解析字段显隐/禁用条件；函数条件的异常按原语义向调用方抛出。 */
+function resolveCondition(
+  condition: FieldCondition | undefined,
+  values: FormValues,
+  defaultValue: boolean,
+): boolean {
+  if (condition == null)
+    return defaultValue
+  if (typeof condition === 'boolean')
+    return condition
+  return condition(values)
 }

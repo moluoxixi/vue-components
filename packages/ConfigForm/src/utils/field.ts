@@ -1,7 +1,6 @@
 import type { output, ZodTypeAny } from 'zod'
 import type {
   ComponentNodeConfig,
-  DefinedFormNodeBrand,
   DefinedFormNodeConfig,
   FieldCondition,
   FieldConfig,
@@ -10,11 +9,9 @@ import type {
   FormValues,
   NormalizedFieldConfig,
   RuntimeText,
-  RuntimeToken,
   SlotContent,
   ValidateTrigger,
 } from '@/types'
-import { markDefinedFormNodeConfig } from '@/utils/node'
 
 /** 从 Vue 组件中提取 props 类型，支持 class component 和 function component。 */
 export type ExtractComponentProps<C> = C extends abstract new (...args: unknown[]) => { $props: infer P }
@@ -28,12 +25,12 @@ type RuntimeResolvable<T> = T extends (...args: infer TArgs) => infer TReturn
   : T extends string
     ? RuntimeText
     : T extends number | boolean | bigint | symbol | null | undefined
-      ? T | RuntimeToken<T>
+      ? T
       : T extends readonly (infer TItem)[]
         ? RuntimeResolvable<TItem>[]
         : T extends object
           ? { [K in keyof T]: RuntimeResolvable<T[K]> }
-          : T | RuntimeToken<T>
+          : T
 
 interface ComponentFieldPart<C> {
   component: C
@@ -41,13 +38,14 @@ interface ComponentFieldPart<C> {
 }
 
 interface ComponentNodeConfigCore<C> extends ComponentFieldPart<C> {
+  span?: number
   slots?: Record<string, SlotContent>
 }
 
 type FormNodeInput = FieldConfig | ComponentNodeConfig
 
-type DefinedFieldConfig<TConfig> = TConfig & FieldConfig & DefinedFormNodeBrand
-type DefinedComponentNodeConfig<TConfig> = TConfig & ComponentNodeConfig & DefinedFormNodeBrand
+type DefinedFieldConfig<TConfig> = TConfig & FieldConfig
+type DefinedComponentNodeConfig<TConfig> = TConfig & ComponentNodeConfig
 type FieldValueFor<
   TValues extends object,
   TField extends FieldKey<TValues>,
@@ -174,8 +172,7 @@ type ModelUnknownValueFieldConfigInput<
 /**
  * 根据 schema/defaultValue 自动推导字段值类型，根据 component 自动推导 props 类型。
  *
- * 返回值会带上运行时 brand，便于 slot 中区分真实节点配置和普通对象。
- * 不传 `field` 时创建容器节点，仅渲染结构，不绑定表单值。
+ * 返回值保持为普通对象；不传 `field` 时创建容器节点，仅渲染结构，不绑定表单值。
  *
  * @example
  * ```ts
@@ -249,7 +246,7 @@ export function defineField<_TValues extends object, C = unknown>(
   config: ComponentNodeConfigCore<C>,
 ): DefinedComponentNodeConfig<ComponentNodeConfigCore<C>>
 
-/** 所有 defineField 重载共用的运行时实现，只负责复制配置并打上 brand。 */
+/** 所有 defineField 重载共用的运行时实现，只负责复制配置，不写入隐藏标记。 */
 export function defineField(config: FormNodeInput): DefinedFormNodeConfig {
-  return markDefinedFormNodeConfig({ ...config })
+  return { ...config }
 }

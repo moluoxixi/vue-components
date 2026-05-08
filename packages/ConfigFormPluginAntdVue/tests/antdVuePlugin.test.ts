@@ -1,3 +1,4 @@
+import type { NormalizedFieldConfig } from '@moluoxixi/config-form/plugins'
 import { defineField } from '@moluoxixi/config-form'
 import { createFormRuntime } from '@moluoxixi/config-form/plugins'
 import { describe, expect, it } from 'vitest'
@@ -12,17 +13,21 @@ const ASlider = { name: 'ASlider' }
 const AUnknown = { name: 'AUnknown' }
 const CustomInput = { name: 'CustomInput' }
 
+/** 将 runtime 返回节点收窄为字段节点；本测试只传入带 field 的配置。 */
+function asField(node: unknown): NormalizedFieldConfig {
+  return node as NormalizedFieldConfig
+}
+
 describe('antd vue plugin package', () => {
   it('maps Ant Design Vue value components to value/update:value', () => {
     const runtime = createFormRuntime({
       plugins: [createAntdVuePlugin()],
     })
-    const resolveSnap = runtime.createResolveSnap()
 
-    const input = runtime.resolveField(defineField({ component: AInput, field: 'name' }), resolveSnap)
-    const textarea = runtime.resolveField(defineField({ component: ATextarea, field: 'bio' }), resolveSnap)
-    const select = runtime.resolveField(defineField({ component: ASelect, field: 'role' }), resolveSnap)
-    const slider = runtime.resolveField(defineField({ component: ASlider, field: 'progress' }), resolveSnap)
+    const input = asField(runtime.transformField(defineField({ component: AInput, field: 'name' })))
+    const textarea = asField(runtime.transformField(defineField({ component: ATextarea, field: 'bio' })))
+    const select = asField(runtime.transformField(defineField({ component: ASelect, field: 'role' })))
+    const slider = asField(runtime.transformField(defineField({ component: ASlider, field: 'progress' })))
 
     expect(input.valueProp).toBe('value')
     expect(input.trigger).toBe('update:value')
@@ -36,11 +41,10 @@ describe('antd vue plugin package', () => {
       components: { AInput },
       plugins: [createAntdVuePlugin()],
     })
-    const resolveSnap = runtime.createResolveSnap()
 
-    const stringComponent = runtime.resolveField(defineField({ component: 'AInput', field: 'stringName' }), resolveSnap)
-    const unnamedObject = runtime.resolveField(defineField({ component: {}, field: 'unnamedObject' }), resolveSnap)
-    const emptyComponent = runtime.resolveField(defineField({ component: null as never, field: 'emptyComponent' }), resolveSnap)
+    const stringComponent = asField(runtime.transformField(defineField({ component: 'AInput', field: 'stringName' })))
+    const unnamedObject = asField(runtime.transformField(defineField({ component: {}, field: 'unnamedObject' })))
+    const emptyComponent = asField(runtime.transformField(defineField({ component: null as never, field: 'emptyComponent' })))
 
     expect(stringComponent.valueProp).toBe('value')
     expect(stringComponent.trigger).toBe('update:value')
@@ -52,10 +56,9 @@ describe('antd vue plugin package', () => {
     const runtime = createFormRuntime({
       plugins: [createAntdVuePlugin()],
     })
-    const resolveSnap = runtime.createResolveSnap()
 
-    const switchField = runtime.resolveField(defineField({ component: ASwitch, field: 'enabled' }), resolveSnap)
-    const checkboxField = runtime.resolveField(defineField({ component: ACheckbox, field: 'accepted' }), resolveSnap)
+    const switchField = asField(runtime.transformField(defineField({ component: ASwitch, field: 'enabled' })))
+    const checkboxField = asField(runtime.transformField(defineField({ component: ACheckbox, field: 'accepted' })))
 
     expect(switchField.valueProp).toBe('checked')
     expect(switchField.trigger).toBe('update:checked')
@@ -67,13 +70,12 @@ describe('antd vue plugin package', () => {
     const runtime = createFormRuntime({
       plugins: [createAntdVuePlugin()],
     })
-    const resolveSnap = runtime.createResolveSnap()
-    const field = runtime.resolveField(defineField({
+    const field = asField(runtime.transformField(defineField({
       component: AInput,
       field: 'custom',
       trigger: 'change',
       valueProp: 'customValue',
-    }), resolveSnap)
+    })))
 
     expect(field.valueProp).toBe('customValue')
     expect(field.trigger).toBe('change')
@@ -90,10 +92,9 @@ describe('antd vue plugin package', () => {
         }),
       ],
     })
-    const resolveSnap = runtime.createResolveSnap()
 
-    const input = runtime.resolveField(defineField({ component: AInput, field: 'name' }), resolveSnap)
-    const transfer = runtime.resolveField(defineField({ component: { name: 'ATransfer' }, field: 'targets' }), resolveSnap)
+    const input = asField(runtime.transformField(defineField({ component: AInput, field: 'name' })))
+    const transfer = asField(runtime.transformField(defineField({ component: { name: 'ATransfer' }, field: 'targets' })))
 
     expect(input.valueProp).toBe('text')
     expect(input.trigger).toBe('change')
@@ -108,14 +109,13 @@ describe('antd vue plugin package', () => {
     const looseRuntime = createFormRuntime({
       plugins: [createAntdVuePlugin({ strict: false })],
     })
-    const resolveSnap = looseRuntime.createResolveSnap()
 
-    const unknown = looseRuntime.resolveField(defineField({ component: AUnknown, field: 'unknown' }), resolveSnap)
-    const custom = looseRuntime.resolveField(defineField({ component: CustomInput, field: 'custom' }), resolveSnap)
+    const unknown = asField(looseRuntime.transformField(defineField({ component: AUnknown, field: 'unknown' })))
+    const custom = asField(looseRuntime.transformField(defineField({ component: CustomInput, field: 'custom' })))
 
     expect(unknown.valueProp).toBe('modelValue')
     expect(custom.trigger).toBe('update:modelValue')
-    expect(() => strictRuntime.resolveField(defineField({ component: AUnknown, field: 'unknown' }), resolveSnap))
+    expect(() => strictRuntime.transformField(defineField({ component: AUnknown, field: 'unknown' })))
       .toThrow(/Unknown Ant Design Vue component binding: AUnknown/)
   })
 
@@ -123,12 +123,10 @@ describe('antd vue plugin package', () => {
     const runtime = createFormRuntime({
       plugins: [createAntdVuePlugin()],
     })
-    const resolveSnap = runtime.createResolveSnap()
 
-    const switchField = runtime.resolveField(
+    const switchField = asField(runtime.transformField(
       defineField({ component: ASwitch, field: 'enabled' }),
-      resolveSnap,
-    )
+    ))
 
     expect((switchField.props.style as Record<string, unknown>)?.width).toBe('44px')
   })
@@ -137,18 +135,15 @@ describe('antd vue plugin package', () => {
     const runtime = createFormRuntime({
       plugins: [createAntdVuePlugin()],
     })
-    const resolveSnap = runtime.createResolveSnap()
 
-    const switchField = runtime.resolveField(
+    const switchField = asField(runtime.transformField(
       defineField({
         component: ASwitch,
         field: 'enabled',
         props: { style: { width: '60px', color: 'red' } },
       }),
-      resolveSnap,
-    )
+    ))
 
-    // 用户声明的 width 覆盖默认值，用户声明的 color 保留
     expect((switchField.props.style as Record<string, unknown>)?.width).toBe('60px')
     expect((switchField.props.style as Record<string, unknown>)?.color).toBe('red')
   })

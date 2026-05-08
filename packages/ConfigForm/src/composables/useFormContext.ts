@@ -8,7 +8,10 @@ export interface FormContext {
   disabledMap: Record<string, boolean>
   inline?: boolean
   labelWidth?: string | number
+  getValue: (field: string) => unknown
+  getValues: () => FormValues
   setValue: (field: string, value: unknown) => void
+  setValues: (values: FormValues, replace?: boolean) => void
   validateField: (field: string, trigger: string) => void
 }
 

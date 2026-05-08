@@ -6,7 +6,7 @@ import RecursiveField from '@/components/RecursiveField'
 import { useForm } from '@/composables/useForm'
 import { provideFormContext } from '@/composables/useFormContext'
 import { provideNamespace, useBem } from '@/composables/useNamespace'
-import { normalizeFormRuntime, provideRuntime } from '@/composables/useRuntime'
+import { normalizeFormRuntime } from '@/composables/useRuntime'
 import { resolveLabelWidth } from '@/utils/style'
 
 /**
@@ -26,9 +26,8 @@ const { b } = useBem(namespaceRef)
 
 const rawNodes = computed(() => props.fields)
 const initialValues = computed(() => props.modelValue)
-const runtimeOptions = computed(() => props.runtime)
 const runtimeRef = computed(() => normalizeFormRuntime(props.runtime))
-provideRuntime(runtimeRef)
+const resolvedNodes = computed(() => runtimeRef.value.transformFields(rawNodes.value))
 
 const {
   values,
@@ -45,9 +44,8 @@ const {
   getValues,
   clearFieldError,
 } = useForm({
-  fields: rawNodes,
+  fields: resolvedNodes,
   initialValues,
-  runtime: runtimeOptions,
   /**
    * 将无头控制器的提交结果转为组件 submit 事件。
    *
@@ -69,18 +67,12 @@ provideFormContext({
   get disabledMap() { return disabledMap.value },
   inline: props.inline,
   labelWidth: resolveLabelWidth(props.labelWidth),
+  getValue,
+  getValues,
   setValue,
+  setValues,
   validateField: (field, trigger) => validateSingleField(field, trigger as 'blur' | 'change' | 'submit'),
 })
-
-const resolveSnap = computed(() => runtimeRef.value.createResolveSnap({
-  errors: errors.value,
-  values: { ...values },
-}))
-
-const resolvedNodes = computed(() =>
-  rawNodes.value.map((node, index) => runtimeRef.value.resolveNode(node as any, resolveSnap.value, `fields.${index}`)),
-)
 
 /**
  * 生成递归节点列表的稳定 key。
@@ -89,7 +81,7 @@ const resolvedNodes = computed(() =>
  */
 function nodeKey(node: typeof resolvedNodes.value[number], index: number): string {
   if ('field' in node)
-    return node.field
+    return String(node.field)
 
   return `${String(node.component)}-${index}`
 }
@@ -150,7 +142,6 @@ defineExpose<ConfigFormExpose<T>>({
     <template v-for="item in keyedResolvedNodes" :key="item.key">
       <RecursiveField
         :node="item.node"
-        :resolve-snap="resolveSnap"
       />
     </template>
   </form>

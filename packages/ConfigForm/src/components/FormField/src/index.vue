@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import type { FormRuntimeResolveSnap } from '@/runtime'
 import type { ResolvedField, ResolvedFormNode } from '@/types'
 import { computed } from 'vue'
 import FormNode from '@/components/FormNode'
 import { useFormContext } from '@/composables/useFormContext'
 import { useBem, useNamespace } from '@/composables/useNamespace'
-import { useRuntime } from '@/composables/useRuntime'
 import { resolveLabelWidth } from '@/utils/style'
 
 interface InternalFieldSourceMeta {
@@ -21,14 +19,13 @@ const DEVTOOLS_SOURCE_ID_ATTRIBUTE = 'data-cf-devtools-source-id'
 /**
  * FormField 基于 FormNode 封装，增加 label + error + 值绑定。
  *
- * props 与 FormComponent/FormNode 统一为 { node, resolveSnap }，
+ * props 与 FormComponent/FormNode 统一为 { node }，
  * 表单状态通过 inject 获取，不再依赖外部传入。
  */
 defineOptions({ name: 'FormField' })
 
 const props = defineProps<{
   node: ResolvedFormNode
-  resolveSnap?: FormRuntimeResolveSnap
 }>()
 
 defineSlots<{
@@ -38,20 +35,11 @@ defineSlots<{
 const ctx = useFormContext()
 const ns = useNamespace()
 const { b, e, m } = useBem(ns)
-const runtimeRef = useRuntime()
 
 /** 内部断言：FormField 只接收 ResolvedField 类型的节点 */
 const field = computed(() => props.node as ResolvedField)
 
-const currentResolveSnap = computed<FormRuntimeResolveSnap>(() => {
-  const base = props.resolveSnap ?? runtimeRef.value.createResolveSnap()
-  return {
-    ...base,
-    field: field.value,
-  }
-})
-
-const modelValue = computed(() => ctx.values[field.value.field])
+const modelValue = computed(() => ctx.getValue(field.value.field))
 const error = computed(() => ctx.errors[field.value.field])
 const visible = computed(() => ctx.visibilityMap[field.value.field] !== false)
 const disabled = computed(() => ctx.disabledMap[field.value.field])
@@ -126,7 +114,6 @@ const componentListeners = computed<Record<string, (...args: unknown[]) => void>
         :node="node"
         :component-attrs="componentAttrs"
         :component-listeners="componentListeners"
-        :resolve-snap="currentResolveSnap"
       />
 
       <slot name="error" :error="error" :field="field">

@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import type { CSSProperties, VNode } from 'vue'
-import type { FormRuntimeResolveSnap } from '@/runtime'
 import type { ResolvedField, ResolvedFormNode, SlotContent } from '@/types'
 import { computed, defineComponent } from 'vue'
 import RecursiveField from '@/components/RecursiveField'
 import { useFormContext } from '@/composables/useFormContext'
-import { useRuntime } from '@/composables/useRuntime'
 import { isFormNodeConfig } from '@/utils/node'
 
 /**
@@ -17,10 +15,9 @@ const SlotRender = defineComponent({
   name: 'SlotRender',
   props: {
     fn: { type: Function, required: true },
-    resolveSnap: { type: Object, default: undefined },
   },
-  setup(props: { fn: (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => VNode | string | number, resolveSnap?: FormRuntimeResolveSnap }) {
-    return () => props.fn(props.resolveSnap?.slotScope, props.resolveSnap)
+  setup(props: { fn: (scope?: Record<string, unknown>) => VNode | string | number }) {
+    return () => props.fn()
   },
 })
 
@@ -28,21 +25,15 @@ const props = defineProps<{
   node: ResolvedFormNode
   componentAttrs?: Record<string, unknown>
   componentListeners?: Record<string, (...args: unknown[]) => void>
-  resolveSnap?: FormRuntimeResolveSnap
 }>()
 
-const runtimeRef = useRuntime()
 const ctx = useFormContext()
-
-const currentResolveSnap = computed<FormRuntimeResolveSnap>(() =>
-  props.resolveSnap ?? runtimeRef.value.createResolveSnap(),
-)
 
 /** 容器节点在 grid 模式下默认 span: 24，占满整行 */
 const containerStyle = computed<CSSProperties | undefined>(() => {
   if (ctx.inline) return undefined
   if ('field' in props.node) return undefined
-  return { gridColumn: 'span 24' }
+  return { gridColumn: `span ${props.node.span ?? 24}` }
 })
 
 /** 有 field 的节点从 visibilityMap 读取可见性，容器节点始终可见 */
@@ -62,10 +53,8 @@ const attrs = computed(() => {
 })
 
 type NormalizedSlotNode =
-  | { key: string, kind: 'node', node: ResolvedFormNode, resolveSnap: FormRuntimeResolveSnap }
-  | { fn: (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => VNode | string | number, key: string, kind: 'render', resolveSnap: FormRuntimeResolveSnap }
-
-type SlotResolveSnap = FormRuntimeResolveSnap & { slotName: string }
+  | { key: string, kind: 'node', node: ResolvedFormNode }
+  | { fn: () => VNode | string | number, key: string, kind: 'render' }
 
 /**
  * 将 runtime 解析后的 slot 返回值统一成渲染节点。
@@ -73,15 +62,13 @@ type SlotResolveSnap = FormRuntimeResolveSnap & { slotName: string }
  * - defineField 节点 → kind:'node' → 交给 RecursiveField 递归渲染
  * - VNode/文本/数字 → kind:'render' → 交给 SlotRender 渲染
  */
-function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolveSnap, path = '0'): NormalizedSlotNode[] {
+function normalizeResolvedSlotValue(value: SlotContent, slotName: string, path = '0'): NormalizedSlotNode[] {
   if (value == null || value === false)
     return []
 
-  const { slotName } = resolveSnap
-
   if (Array.isArray(value)) {
     return value.flatMap((item, index) =>
-      normalizeResolvedSlotValue(item as SlotContent, resolveSnap, `${path}-${index}`),
+      normalizeResolvedSlotValue(item as SlotContent, slotName, `${path}-${index}`),
     )
   }
 
@@ -89,20 +76,17 @@ function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolve
     return [{
       key: `node-${slotName}-${path}`,
       kind: 'node',
-      node: runtimeRef.value.resolveNode(value as any, resolveSnap, `${slotName}.${path}`),
-      resolveSnap,
+      node: value as ResolvedFormNode,
     }]
   }
 
   return [{
-    fn: (scope?: Record<string, unknown>, snap?: FormRuntimeResolveSnap) => {
-      // value 已经被 resolveSlot 解析过，可能是 VNode、文本、数字等
-      // boolean false 已在开头过滤，true 不应该出现，RuntimeToken 应该已被解析
+    fn: () => {
+      // value 已经由 ConfigForm 根组件处理过，可能是 VNode、文本、数字等。
       return value as VNode | string | number
     },
     key: `render-${slotName}-${path}`,
     kind: 'render',
-    resolveSnap,
   }]
 }
 
@@ -112,17 +96,10 @@ function normalizeResolvedSlotValue(value: SlotContent, resolveSnap: SlotResolve
  * 函数 slot 会在当前 scope 下执行；返回的 defineField 节点交给 RecursiveField。
  */
 function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknown> | undefined, slotName: string): NormalizedSlotNode[] {
-  const resolveSnap: SlotResolveSnap = {
-    ...currentResolveSnap.value,
-    slotName,
-    slotScope: scope,
-  }
-  const resolvedSlot = runtimeRef.value.resolveSlot(slotValue, resolveSnap, `slots.${slotName}`)
+  if (typeof slotValue === 'function')
+    return normalizeResolvedSlotValue(slotValue(scope), slotName)
 
-  if (typeof resolvedSlot === 'function')
-    return normalizeResolvedSlotValue(resolvedSlot(scope, resolveSnap), resolveSnap)
-
-  return normalizeResolvedSlotValue(resolvedSlot, resolveSnap)
+  return normalizeResolvedSlotValue(slotValue, slotName)
 }
 </script>
 
@@ -141,9 +118,8 @@ function normalizeSlotValue(slotValue: SlotContent, scope: Record<string, unknow
         <RecursiveField
           v-if="slotNode.kind === 'node'"
           :node="slotNode.node"
-          :resolve-snap="slotNode.resolveSnap"
         />
-        <SlotRender v-else :fn="slotNode.fn" :resolve-snap="slotNode.resolveSnap" />
+        <SlotRender v-else :fn="slotNode.fn" />
       </template>
     </template>
   </component>

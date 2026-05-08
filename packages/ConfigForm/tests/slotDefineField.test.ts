@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { defineComponent, h, markRaw } from 'vue'
 import ConfigForm from '../src/index.vue'
 import { defineField } from '../src/utils/field'
-import { createFormRuntime } from '../src/runtime'
 
 const SlotHost = markRaw(defineComponent({
   name: 'SlotHost',
@@ -52,23 +51,32 @@ describe('slot field configs', () => {
     expect(wrapper.findAll('.cf-field')).toHaveLength(1)
   })
 
-  it('throws when object slot nodes bypass defineField', () => {
-    const field = defineField({
-      component: SlotHost,
-      field: 'choice',
-      slots: {
-        default: [
-          {
-            component: SlotLeaf,
-            props: { role: 'raw-slot-node' },
-            slots: { default: '原始插槽节点' },
-          } as never,
-        ],
+  it('renders raw object slot nodes because ConfigForm processes all configs recursively', () => {
+    const fields = [
+      {
+        component: SlotHost,
+        field: 'choice',
+        label: '选择',
+        slots: {
+          default: [
+            {
+              component: SlotLeaf,
+              props: { role: 'raw-slot-node' },
+              slots: { default: '原始插槽节点' },
+            },
+          ],
+        },
+      },
+    ]
+
+    const wrapper = mount(ConfigForm, {
+      props: {
+        fields,
+        modelValue: {},
       },
     })
-    const runtime = createFormRuntime()
 
-    expect(() => runtime.resolveNode(field, runtime.createResolveSnap({ errors: {}, values: {} })))
-      .toThrow(/defineField/)
+    expect(wrapper.find('[data-role="raw-slot-node"]').text()).toBe('原始插槽节点')
+    expect(wrapper.findAll('.cf-field')).toHaveLength(1)
   })
 })

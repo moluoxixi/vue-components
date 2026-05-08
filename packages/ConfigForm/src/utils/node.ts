@@ -8,9 +8,6 @@ import type {
   SlotContent,
 } from '@/types'
 import { isVNode } from 'vue'
-import { CONFIG_FORM_DEFINED_NODE } from '@/types'
-
-const CONFIG_FORM_RESOLVED_NODE = Symbol.for('moluoxixi.config-form.resolved-node')
 
 /**
  * 判断未知值是否可按普通对象读取。
@@ -38,52 +35,28 @@ export function isFieldConfig(value: unknown): value is FieldConfig {
   )
 }
 
-/** 给节点配置写入不可枚举的 defineField(...) brand。 */
+/** 保持兼容的节点标记入口；当前实现不再写入隐藏属性。 */
 export function markDefinedFormNodeConfig<TConfig extends FormNodeConfig>(
   value: TConfig,
 ): DefinedFormNodeConfig<TConfig> {
-  Object.defineProperty(value, CONFIG_FORM_DEFINED_NODE, {
-    configurable: false,
-    enumerable: false,
-    value: true,
-    writable: false,
-  })
-
   return value as DefinedFormNodeConfig<TConfig>
 }
 
-/** 判断节点配置是否由 defineField(...) 创建。 */
+/** 判断未知值是否是可被 ConfigForm 处理的节点配置。 */
 export function isDefinedFormNodeConfig(value: unknown): value is DefinedFormNodeConfig {
-  return Boolean(
-    isFormNodeConfig(value)
-    && (value as { [CONFIG_FORM_DEFINED_NODE]?: unknown })[CONFIG_FORM_DEFINED_NODE] === true,
-  )
+  return isFormNodeConfig(value)
 }
 
-/** 给运行时已解析节点同时写入 defineField 和 resolved-node brand。 */
+/** 保持兼容的已处理节点标记入口；当前实现不再写入隐藏属性。 */
 export function markResolvedFormNodeConfig<TConfig extends ResolvedFormNode>(
   value: TConfig,
 ): TConfig {
-  const defined = markDefinedFormNodeConfig(value as TConfig & FormNodeConfig)
-
-  if ((defined as unknown as Record<symbol, unknown>)[CONFIG_FORM_RESOLVED_NODE] !== true) {
-    Object.defineProperty(defined, CONFIG_FORM_RESOLVED_NODE, {
-      configurable: false,
-      enumerable: false,
-      value: true,
-      writable: false,
-    })
-  }
-
-  return defined as TConfig
+  return value
 }
 
-/** 判断节点是否已经由 FormRuntime 解析过。 */
+/** 判断未知值是否是可渲染节点。 */
 export function isResolvedFormNodeConfig(value: unknown): value is ResolvedFormNode {
-  return Boolean(
-    isFormNodeConfig(value)
-    && (value as unknown as Record<symbol, unknown>)[CONFIG_FORM_RESOLVED_NODE] === true,
-  )
+  return isFormNodeConfig(value)
 }
 
 /** 判断已解析节点是否同时是真实字段节点。 */
@@ -116,7 +89,7 @@ function collectSlotFields(slot: SlotContent | undefined, path = 'slot'): FieldC
     return []
 
   if (typeof slot === 'function') {
-    const resolved = slot(undefined, undefined)
+    const resolved = slot(undefined)
     return typeof resolved === 'function'
       ? []
       : collectSlotFields(resolved, path)

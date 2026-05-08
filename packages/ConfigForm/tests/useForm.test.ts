@@ -1,9 +1,9 @@
-import type { FormRuntimeOptions } from '../src/runtime'
 import type { FormNodeConfig, NormalizedFieldConfig } from '../src/types'
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { z } from 'zod'
 import { useForm } from '../src/composables/useForm'
+import { createFormRuntime } from '../src/runtime'
 import { defineField } from '../src/utils/field'
 
 describe('useForm', () => {
@@ -403,11 +403,11 @@ describe('useForm', () => {
 
   it('uses transformed fields consistently for dynamic state, validation, and submit output', async () => {
     const onSubmit = vi.fn()
-    const runtime = {
+    const runtime = createFormRuntime({
       plugins: [
         {
           name: 'submit-policy',
-          transformNode: (field) => {
+          transformField: (field) => {
             if ((field as NormalizedFieldConfig).field === 'dynamicHidden') {
               return {
                 ...field,
@@ -430,8 +430,8 @@ describe('useForm', () => {
           },
         },
       ],
-    } satisfies FormRuntimeOptions
-    const fields = ref<FormNodeConfig[]>([
+    })
+    const rawFields: FormNodeConfig[] = [
       defineField({
         component: 'input',
         defaultValue: 'hidden value',
@@ -442,9 +442,10 @@ describe('useForm', () => {
         defaultValue: 'disabled value',
         field: 'dynamicDisabled',
       }),
-    ])
+    ]
+    const fields = ref<FormNodeConfig[]>(runtime.transformFields(rawFields) as FormNodeConfig[])
 
-    const form = useForm({ fields, onSubmit, runtime })
+    const form = useForm({ fields, onSubmit })
 
     expect(form.visibilityMap.value.dynamicHidden).toBe(false)
     expect(form.disabledMap.value.dynamicDisabled).toBe(true)
@@ -452,14 +453,14 @@ describe('useForm', () => {
     await expect(form.submit()).resolves.toBe(false)
     expect(form.errors.value.dynamicDisabled).toEqual(['transformed validator'])
 
-    fields.value = [
-      fields.value[0],
+    fields.value = runtime.transformFields([
+      rawFields[0],
       defineField({
         component: 'input',
         defaultValue: 'active value',
         field: 'active',
       }),
-    ]
+    ]) as FormNodeConfig[]
     await nextTick()
 
     await expect(form.submit()).resolves.toBe(true)
