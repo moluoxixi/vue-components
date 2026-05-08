@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { computed, defineComponent, h, ref } from 'vue'
 import { provideNamespace, useBem, useNamespace } from '../src/composables/useNamespace'
-import { resolveLabelWidth } from '../src/utils/style'
+import { mergeStyle, resolveLabelWidth } from '../src/utils/style'
 
 const NamespaceConsumer = defineComponent({
   name: 'NamespaceConsumer',
@@ -71,5 +71,24 @@ describe('style utilities', () => {
     expect(resolveLabelWidth(0)).toBeUndefined()
     expect(resolveLabelWidth(96)).toBe('96px')
     expect(resolveLabelWidth('8rem')).toBe('8rem')
+  })
+
+  it('merges object styles and preserves Vue string or array style values', () => {
+    const baseStyle = { gridColumn: 'span 12' }
+
+    expect(mergeStyle(baseStyle, undefined)).toEqual(baseStyle)
+    expect(mergeStyle(undefined, 'color: red;')).toBe('color: red;')
+    expect(mergeStyle(baseStyle, { color: 'blue' })).toEqual({
+      color: 'blue',
+      gridColumn: 'span 12',
+    })
+    expect(mergeStyle(baseStyle, 'color: red;')).toEqual([
+      baseStyle,
+      'color: red;',
+    ])
+    expect(mergeStyle(baseStyle, [{ color: 'blue' }])).toEqual([
+      baseStyle,
+      [{ color: 'blue' }],
+    ])
   })
 })
