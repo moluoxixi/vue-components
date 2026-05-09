@@ -1,4 +1,4 @@
-import { readPlainRecord } from '@/utils/record'
+import { readPlainRecord } from '@/utils/object'
 
 const FORM_ITEM_PROP_CONFLICT_MESSAGES: Record<string, string> = {
   field: 'formItemProps.field conflicts with field config; declare field on the field config instead',

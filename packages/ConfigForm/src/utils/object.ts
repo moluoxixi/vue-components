@@ -1,3 +1,5 @@
+import { isVNode } from 'vue'
+
 /** ConfigForm 内部可安全当作普通配置对象读取的记录类型。 */
 export type PlainRecord = Record<string, unknown>
 
@@ -16,4 +18,23 @@ export function readPlainRecord(value: unknown, optionName: string): PlainRecord
     return value
 
   throw new TypeError(`${optionName} must be a plain object`)
+}
+
+/** 深合并普通对象；右侧对象优先，数组、VNode 和组件对象保持整体替换。 */
+export function mergeRecords(...sources: PlainRecord[]): PlainRecord {
+  const result: PlainRecord = {}
+  for (const source of sources) {
+    for (const [key, value] of Object.entries(source)) {
+      const previous = result[key]
+      result[key] = isMergeableRecord(previous) && isMergeableRecord(value)
+        ? mergeRecords(previous, value)
+        : value
+    }
+  }
+  return result
+}
+
+/** 判断值是否可安全递归合并；VNode 作为完整值替换，不能按普通对象拆开。 */
+function isMergeableRecord(value: unknown): value is PlainRecord {
+  return isPlainRecord(value) && !isVNode(value)
 }

@@ -1,12 +1,11 @@
 import type { ComponentRegistry, FormFieldTransform, FormRuntimePlugin } from './types'
 import type { FieldDefaultConfig } from '@/plugins/builtInFieldDefaults'
 import type { DefinedFormNodeConfig, FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, ResolvedFormNode, ResolvedSlotContent, SlotContent } from '@/types'
-import type { PlainRecord } from '@/utils/record'
-import { isVNode } from 'vue'
+import type { PlainRecord } from '@/utils/object'
+import { readFormItemProps } from '@/components/FormItem/formItemProps'
 import { applyFieldDefaults, getFieldDefaults } from '@/plugins/builtInFieldDefaults'
-import { readFormItemProps } from '@/utils/formItem'
 import { isFormNodeConfig } from '@/utils/node'
-import { isPlainRecord, readPlainRecord } from '@/utils/record'
+import { mergeRecords, readPlainRecord } from '@/utils/object'
 import { hasFieldBinding } from './utils'
 
 export interface FieldPipelineContext {
@@ -183,20 +182,6 @@ function hasFormItemProps(source: object): boolean {
   return readRecordProperty(source, 'formItemProps') !== undefined
 }
 
-/** 深合并普通对象；右侧对象优先，数组、VNode 和组件对象保持整体替换。 */
-function mergeRecords(...sources: PlainRecord[]): PlainRecord {
-  const result: PlainRecord = {}
-  for (const source of sources) {
-    for (const [key, value] of Object.entries(source)) {
-      const previous = result[key]
-      result[key] = isMergeableRecord(previous) && isMergeableRecord(value)
-        ? mergeRecords(previous, value)
-        : value
-    }
-  }
-  return result
-}
-
 /** 读取可选普通对象选项；缺省值保持缺省，由调用方决定默认片段。 */
 function readOptionalPlainRecord(value: unknown, optionName: string): PlainRecord | undefined {
   if (value === undefined)
@@ -206,9 +191,4 @@ function readOptionalPlainRecord(value: unknown, optionName: string): PlainRecor
     return readFormItemProps(value, optionName)
 
   return readPlainRecord(value, optionName)
-}
-
-/** 判断值是否可安全递归合并；VNode 作为完整值替换，不能按普通对象拆开。 */
-function isMergeableRecord(value: unknown): value is PlainRecord {
-  return isPlainRecord(value) && !isVNode(value)
 }

@@ -1,6 +1,6 @@
 import type { ComponentNodeConfig, FieldConfig, FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, ResolvedSlotContent, SlotContent, ValidateTrigger } from '@/types'
+import { readFormItemProps } from '@/components/FormItem/formItemProps'
 import { hasFieldBinding } from '@/runtime/utils'
-import { readFormItemProps } from '@/utils/formItem'
 
 export const BUILT_IN_FIELD_DEFAULTS_PLUGIN_NAME = 'config-form:built-in-field-defaults'
 

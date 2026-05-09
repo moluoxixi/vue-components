@@ -4,11 +4,11 @@ import type { NormalizedFieldConfig, ResolvedFormNode } from '../src/types'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, defineComponent, h } from 'vue'
+import { readFormItemProps } from '../src/components/FormItem/formItemProps'
 import { normalizeFormRuntime, provideRuntime, useRuntime } from '../src/composables/useRuntime'
 import { createFormRuntime } from '../src/runtime'
 import { hasFieldBinding, isComponent, isContainer, isField } from '../src/runtime/utils'
 import { applyFieldTransform, normalizeField, shouldValidateOn } from '../src/utils/field'
-import { readFormItemProps } from '../src/utils/formItem'
 import {
   assertUniqueFieldConfigs,
   collectFieldConfigs,
@@ -23,6 +23,7 @@ import {
   markDefinedFormNodeConfig,
   markResolvedFormNodeConfig,
 } from '../src/utils/node'
+import { mergeRecords } from '../src/utils/object'
 
 describe('runtime utilities', () => {
   it('normalizes field defaults and applies submit transforms explicitly', () => {
@@ -66,6 +67,36 @@ describe('runtime utilities', () => {
     expect(() => readFormItemProps([])).toThrow(/formItemProps must be a plain object/)
     expect(() => readFormItemProps('invalid')).toThrow(/formItemProps must be a plain object/)
     expect(() => readFormItemProps({ field: 'name' })).toThrow(/formItemProps\.field conflicts/)
+  })
+
+  it('deep merges plain objects while replacing arrays and vnode-shaped values as whole units', () => {
+    const merged = mergeRecords(
+      {
+        nested: {
+          color: 'blue',
+          list: ['left'],
+        },
+        renderer: h('span', 'left'),
+      },
+      {
+        nested: {
+          width: '80px',
+          list: ['right'],
+        },
+        renderer: h('span', 'right'),
+      },
+    )
+
+    expect(merged).toEqual({
+      nested: {
+        color: 'blue',
+        width: '80px',
+        list: ['right'],
+      },
+      renderer: expect.objectContaining({
+        children: 'right',
+      }),
+    })
   })
 
   it('classifies runtime nodes by binding and label presence', () => {
