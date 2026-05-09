@@ -14,6 +14,7 @@ interface DevtoolsFormNodeConfig {
   field?: unknown
   label?: unknown
   props?: Record<string, unknown>
+  rootProps?: Record<string, unknown>
   slots?: Record<string, unknown>
   __source?: FieldSourceMeta
 }
@@ -379,7 +380,7 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
       }
 
       /**
-       * 给节点 props 注入源码定位属性。
+       * 给目标 props 注入源码定位属性。
        *
        * 已存在冲突属性时直接抛错，避免页面 DOM 指向错误源码位置。
        */
@@ -407,11 +408,16 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
       /**
        * 合并节点计时属性和源码定位属性。
        *
-       * 字段节点的源码属性由 FormField 根节点消费，避免落到内部输入组件上。
+       * 字段节点的源码属性由 rootProps 消费，避免落到内部输入组件上。
        */
       function withDevtoolsNodeProps(id: string, node: DevtoolsFormNodeConfig): Record<string, unknown> {
         const props = withRenderTimingProps(id, node.props)
         return isFieldNodeConfig(node) ? props : withDevtoolsSourceProps(node, props)
+      }
+
+      /** 合并字段根节点源码定位属性，供核心 FormField 的 rootProps 消费。 */
+      function withDevtoolsFieldRootProps(node: DevtoolsFormNodeConfig): Record<string, unknown> {
+        return withDevtoolsSourceProps(node, node.rootProps ?? {})
       }
 
       /**
@@ -492,6 +498,8 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
         const id = isFieldNodeConfig(node) ? `${formId}:${node.field}` : `${formId}:${nodePath}`
         const next = cloneFormNodeConfig(node)
         next.props = withDevtoolsNodeProps(id, node)
+        if (isFieldNodeConfig(node))
+          next.rootProps = withDevtoolsFieldRootProps(node)
 
         if (node.slots) {
           next.slots = Object.fromEntries(

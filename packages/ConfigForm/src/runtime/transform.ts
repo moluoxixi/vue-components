@@ -1,7 +1,7 @@
 import type { VNode } from 'vue'
 import type { ComponentRegistry, FormFieldTransform, FormRuntimePlugin } from './types'
 import type { FieldDefaultConfig } from '@/plugins/builtInFieldDefaults'
-import type { FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, ResolvedFormNode, ResolvedSlotContent, SlotContent } from '@/types'
+import type { DefinedFormNodeConfig, FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, ResolvedFormNode, ResolvedSlotContent, SlotContent } from '@/types'
 import { isVNode } from 'vue'
 import { applyFieldDefaults, resolveField } from '@/plugins/builtInFieldDefaults'
 import { isFormNodeConfig } from '@/utils/node'
@@ -13,6 +13,8 @@ export interface FieldPipelineContext {
 }
 
 type PlainRecord = Record<string, unknown>
+type PipelineNode = NormalizedFieldConfig | NormalizedNodeConfig
+type PluginField = DefinedFormNodeConfig | NormalizedNodeConfig
 
 /** 创建字段配置管线，负责默认值、插件、用户优先级、组件解析和 slot 递归编排。 */
 export function createFieldPipeline(
@@ -49,7 +51,7 @@ export function createFieldPipeline(
   /** 对单个字段执行完整转换管线。 */
   function transformField(field: FormNodeConfig): ResolvedFormNode {
     const userField = field
-    let current: NormalizedNodeConfig = applyFieldDefaults(field)
+    let current: PipelineNode = applyFieldDefaults(field)
 
     for (const hook of hooks) {
       const next = hook.handler(cloneFieldForPlugin(current))
@@ -57,12 +59,12 @@ export function createFieldPipeline(
         continue
       if (!next || typeof next !== 'object' || Array.isArray(next))
         throw new TypeError(`Plugin ${hook.pluginName} transformField must return a field object or undefined`)
-      if (hasFieldBinding(current) && hasFieldBinding(next) && next.field !== (current as NormalizedFieldConfig).field) {
+      if (hasFieldBinding(current) && hasFieldBinding(next) && next.field !== current.field) {
         throw new Error(
-          `Plugin ${hook.pluginName} cannot change field key from "${(current as NormalizedFieldConfig).field}" to "${(next as NormalizedFieldConfig).field}"`,
+          `Plugin ${hook.pluginName} cannot change field key from "${current.field}" to "${next.field}"`,
         )
       }
-      current = mergePluginField(current, next as FormNodeConfig, userField)
+      current = mergePluginField(current, next, userField)
     }
 
     const resolved = applyFieldDefaults<ResolvedSlotContent>({
@@ -102,39 +104,61 @@ function collectHooks(plugins: FormRuntimePlugin[]): RuntimeHook[] {
 }
 
 /** 为插件提供浅复制字段，避免插件直接修改当前管线状态。 */
-function cloneFieldForPlugin(field: NormalizedNodeConfig): NormalizedNodeConfig {
-  return {
+function cloneFieldForPlugin(field: PipelineNode): PipelineNode {
+  const clone: PipelineNode = {
     ...field,
     props: { ...field.props },
     slots: field.slots ? { ...field.slots } : field.slots,
+  }
+
+  if (!hasFieldBinding(field))
+    return clone
+
+  return {
+    ...clone,
+    rootProps: { ...field.rootProps },
   }
 }
 
 /** 合并插件返回值，并恢复用户显式声明的字段值优先级。 */
 function mergePluginField(
-  current: NormalizedNodeConfig,
-  pluginField: FormNodeConfig,
+  current: PipelineNode,
+  pluginField: PluginField,
   userField: FormNodeConfig,
-): NormalizedNodeConfig {
-  const pluginResolved = applyFieldDefaults({
+): PipelineNode {
+  const pluginCandidate = {
     ...current,
     ...pluginField,
     props: mergeRecords(current.props, pluginField.props ?? {}),
-  } as FormNodeConfig)
+  }
+  const pluginResolved = applyFieldDefaults(
+    hasFieldBinding(current) || hasFieldBinding(pluginField)
+      ? {
+          ...pluginCandidate,
+          rootProps: mergeRecords(readRootProps(current), readRootProps(pluginField)),
+        }
+      : pluginCandidate,
+  )
 
   return restoreUserPriority(pluginResolved, userField)
 }
 
 /** 将用户显式声明的顶层字段和 props 恢复到最高优先级。 */
 function restoreUserPriority(
-  field: NormalizedNodeConfig,
+  field: PipelineNode,
   userField: FormNodeConfig,
-): NormalizedNodeConfig {
-  const restored = { ...field } as NormalizedNodeConfig & PlainRecord
+): PipelineNode {
+  const restored = { ...field } as PipelineNode & PlainRecord
 
   for (const [key, value] of Object.entries(userField)) {
     if (key === 'props') {
-      restored.props = mergeRecords(restored.props, value as PlainRecord)
+      restored.props = mergeRecords(restored.props, readPlainRecord(value, 'props'))
+      continue
+    }
+    if (key === 'rootProps') {
+      if (!hasFieldBinding(restored))
+        throw new TypeError('rootProps can only be used on field nodes')
+      restored.rootProps = mergeRecords(readRootProps(restored), readPlainRecord(value, 'rootProps'))
       continue
     }
     if (key === 'slots') {
@@ -144,7 +168,7 @@ function restoreUserPriority(
     restored[key] = value
   }
 
-  return applyFieldDefaults(restored as FormNodeConfig)
+  return applyFieldDefaults(restored)
 }
 
 /** 深合并普通对象；右侧对象优先，数组、VNode 和组件对象保持整体替换。 */
@@ -159,6 +183,22 @@ function mergeRecords(...sources: PlainRecord[]): PlainRecord {
     }
   }
   return result
+}
+
+/** 读取可合并的普通对象选项；非法值直接抛错暴露配置来源。 */
+function readPlainRecord(value: unknown, optionName: string): PlainRecord {
+  if (isPlainRecord(value))
+    return value
+
+  throw new TypeError(`${optionName} must be a plain object`)
+}
+
+/** 读取字段根节点 props；容器节点没有独立的字段根节点。 */
+function readRootProps(field: FormNodeConfig | PipelineNode | PluginField): PlainRecord {
+  if (!hasFieldBinding(field))
+    return {}
+
+  return field.rootProps ?? {}
 }
 
 /** 判断值是否可安全作为普通对象递归合并。 */

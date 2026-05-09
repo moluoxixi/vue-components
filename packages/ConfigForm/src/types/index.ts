@@ -53,6 +53,8 @@ export type SlotContent = DefinedFormNodeConfig | DefinedFormNodeConfig[]
 export interface FieldConfig extends ComponentNodeConfig {
   /** 当前字段控制的表单值 key。 */
   field: string
+  /** 传给 FormField 外层根节点的 props；不会透传给实际字段组件。 */
+  rootProps?: Record<string, unknown>
   /** 字段标签文本。 */
   label?: RuntimeText
   /** 字段校验使用的 Zod schema。 */
@@ -97,9 +99,10 @@ export interface NormalizedNodeConfig extends Omit<ComponentNodeConfig, 'props'>
 /** 已补全默认值并规范化标量选项后的字段配置。 */
 export interface NormalizedFieldConfig extends Omit<
   FieldConfig,
-  'blurTrigger' | 'props' | 'span' | 'submitWhenDisabled' | 'submitWhenHidden' | 'trigger' | 'validateOn' | 'valueProp'
+  'blurTrigger' | 'props' | 'rootProps' | 'span' | 'submitWhenDisabled' | 'submitWhenHidden' | 'trigger' | 'validateOn' | 'valueProp'
 >, NormalizedNodeConfig {
   field: string
+  rootProps: Record<string, unknown>
   span: number
   valueProp: string
   trigger: string

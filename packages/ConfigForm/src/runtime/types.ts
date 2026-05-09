@@ -3,6 +3,7 @@ import type {
   DefinedFormNodeConfig,
   FieldConfig,
   FormNodeConfig,
+  NormalizedFieldConfig,
   NormalizedNodeConfig,
   ResolvedFormNode,
 } from '@/types'
@@ -12,7 +13,7 @@ export type ComponentRegistry = Record<string, FieldConfig['component']>
 
 /** 字段转换 hook：接收已补齐默认值的节点，返回转换后的节点或 undefined。 */
 export type FormFieldTransform = (
-  field: NormalizedNodeConfig,
+  field: NormalizedFieldConfig | NormalizedNodeConfig,
 ) => DefinedFormNodeConfig | NormalizedNodeConfig | void
 
 /** runtime 插件：用于注册组件或转换字段声明。 */

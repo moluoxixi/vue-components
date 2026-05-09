@@ -13,14 +13,14 @@ function isStyleObject(value: unknown): value is CSSProperties {
 }
 
 /** 校验并读取用户透传的 Vue style 值，非法 style 直接抛错暴露配置问题。 */
-export function readStyleValue(value: unknown): StyleValue | undefined {
+export function readStyleValue(value: unknown, propertyName = 'props.style'): StyleValue | undefined {
   if (value == null || value === false)
     return undefined
 
   if (typeof value === 'string' || isStyleObject(value) || Array.isArray(value))
     return value
 
-  throw new TypeError('props.style must be a Vue style value')
+  throw new TypeError(`${propertyName} must be a Vue style value`)
 }
 
 /** 合并基础 style 和用户 style；字符串/数组 style 交给 Vue 的数组 style 语义处理。 */

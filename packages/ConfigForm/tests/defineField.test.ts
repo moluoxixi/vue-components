@@ -147,6 +147,23 @@ describe('defineField typing', () => {
     })
   })
 
+  it('accepts field root props without mixing them into component props', () => {
+    const field = defineField({
+      field: 'keyword',
+      component: 'input',
+      rootProps: {
+        'data-root': 'keyword-root',
+        'class': 'keyword-field',
+      },
+    })
+
+    expect(field.rootProps).toEqual({
+      'data-root': 'keyword-root',
+      'class': 'keyword-field',
+    })
+    expect(field.props).toBeUndefined()
+  })
+
   it('preserves validateOn arrays that already include submit', () => {
     const field = defineField({
       field: 'name',

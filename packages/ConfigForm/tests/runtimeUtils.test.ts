@@ -171,6 +171,7 @@ describe('runtime utilities', () => {
       .toEqual({
         blurTrigger: 'blur',
         props: {},
+        rootProps: {},
         span: 24,
         submitWhenDisabled: true,
         submitWhenHidden: false,

@@ -7,6 +7,8 @@ export const BUILT_IN_FIELD_DEFAULTS_PLUGIN_NAME = 'config-form:built-in-field-d
 export interface FieldDefaultConfig {
   /** 所有节点默认保证 props 是普通对象，便于后续插件和组件消费。 */
   props: Record<string, unknown>
+  /** 字段节点默认保证 rootProps 是普通对象，专供 FormField 根节点消费。 */
+  rootProps?: Record<string, unknown>
   /** 节点默认占满 24 列；字段和容器均可被用户声明覆盖。 */
   span: number
   /** 字段组件值属性默认名，仅对有 field 绑定的节点返回。 */
@@ -58,7 +60,7 @@ type DefaultedFieldInput<TSlot extends SlotContent | ResolvedSlotContent = SlotC
     & { field: string }
     & Partial<Pick<
       FieldConfig,
-      'blurTrigger' | 'submitWhenDisabled' | 'submitWhenHidden' | 'trigger' | 'validateOn' | 'valueProp'
+      'blurTrigger' | 'rootProps' | 'submitWhenDisabled' | 'submitWhenHidden' | 'trigger' | 'validateOn' | 'valueProp'
     >>
 
 /** 返回字段的内置默认配置片段，不合并用户声明，也不执行用户插件。 */
@@ -74,6 +76,7 @@ export function resolveField(field: FormNodeConfig): FieldDefaultConfig {
   return {
     ...defaults,
     blurTrigger: 'blur',
+    rootProps: {},
     submitWhenDisabled: true,
     submitWhenHidden: false,
     trigger: 'update:modelValue',
@@ -127,6 +130,7 @@ function applyBindingDefaults<TSlot extends SlotContent | ResolvedSlotContent>(
   return {
     ...field,
     blurTrigger,
+    rootProps: { ...(field.rootProps ?? {}) },
     submitWhenDisabled: field.submitWhenDisabled ?? true,
     submitWhenHidden: field.submitWhenHidden ?? false,
     trigger,

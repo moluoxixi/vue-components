@@ -6,17 +6,7 @@ import { useFieldBinding } from '@/composables/useFieldBinding'
 import { useFormContext } from '@/composables/useFormContext'
 import { useBem, useNamespace } from '@/composables/useNamespace'
 import { resolveSlotNodes } from '@/utils/slot'
-import { resolveLabelWidth } from '@/utils/style'
-
-interface InternalFieldSourceMeta {
-  readonly id?: unknown
-}
-
-type ResolvedFieldWithDevtoolsSource = ResolvedField & {
-  readonly __source?: InternalFieldSourceMeta
-}
-
-const DEVTOOLS_SOURCE_ID_ATTRIBUTE = 'data-cf-devtools-source-id'
+import { mergeStyle, readStyleValue, resolveLabelWidth } from '@/utils/style'
 
 /**
  * FormField 负责真实字段的 label、error、值绑定和字段组件渲染。
@@ -50,11 +40,32 @@ const fieldId = computed(() => {
 
 const errorId = computed(() => `${fieldId.value}-error`)
 
-const fieldSourceAttrs = computed<Record<string, string>>(() => {
-  const sourceId = (resolvedField.value as ResolvedFieldWithDevtoolsSource).__source?.id
-  const attrs: Record<string, string> = {}
-  if (typeof sourceId === 'string' && sourceId.length > 0)
-    attrs[DEVTOOLS_SOURCE_ID_ATTRIBUTE] = sourceId
+const fieldRootStyle = computed(() => {
+  const baseStyle = ctx.inline
+    ? undefined
+    : { gridColumn: `span ${resolvedField.value.span}` }
+  const existingStyle = readStyleValue(resolvedField.value.rootProps.style, 'rootProps.style')
+  return mergeStyle(baseStyle, existingStyle)
+})
+
+const fieldRootClass = computed(() => [
+  b('field'),
+  { [m('field', 'inline')]: ctx.inline },
+  resolvedField.value.rootProps.class,
+])
+
+const fieldRootAttrs = computed<Record<string, unknown>>(() => {
+  const attrs: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(resolvedField.value.rootProps)) {
+    if (key === 'class' || key === 'style')
+      continue
+    attrs[key] = value
+  }
+
+  if (fieldRootStyle.value)
+    attrs.style = fieldRootStyle.value
+
   return attrs
 })
 
@@ -78,9 +89,8 @@ const { attrs: componentAttrs, listeners: componentListeners } = useFieldBinding
 <template>
   <div
     v-if="visible"
-    v-bind="fieldSourceAttrs"
-    :class="[b('field'), { [m('field', 'inline')]: ctx.inline }]"
-    :style="!ctx.inline && resolvedField.span ? { gridColumn: `span ${resolvedField.span}` } : undefined"
+    v-bind="fieldRootAttrs"
+    :class="fieldRootClass"
   >
     <label
       v-if="resolvedField.label"

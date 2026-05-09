@@ -172,21 +172,15 @@ describe('config form component', () => {
   })
 
   it('binds devtools source ids on the field root element', () => {
-    const source = {
-      column: 5,
-      file: 'D:/project-new/ConfigForm/playgrounds/demo.vue',
-      id: 'source-username',
-      line: 32,
-    }
     const fields: FormNodeConfig[] = [
       {
-        ...defineField({
-          component: TextInput,
-          field: 'username',
-          label: '用户名',
-        }),
-        __source: source,
-      } as FormNodeConfig,
+        component: TextInput,
+        field: 'username',
+        label: '用户名',
+        rootProps: {
+          'data-cf-devtools-source-id': 'source-username',
+        },
+      },
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -200,6 +194,42 @@ describe('config form component', () => {
     const field = wrapper.get('.moluoxixi-field')
     expect(field.attributes('data-cf-devtools-source-id')).toBe('source-username')
     expect(wrapper.get('#moluoxixi-username-field').attributes('data-cf-devtools-source-id')).toBeUndefined()
+  })
+
+  it('merges field root props style with the grid span style', () => {
+    const fields: FormNodeConfig[] = [
+      {
+        component: TextInput,
+        field: 'username',
+        label: '用户名',
+        props: {
+          'data-control': 'username-input',
+        },
+        rootProps: {
+          'class': 'custom-field-root',
+          'data-root': 'username-root',
+          'style': 'color: red;',
+        },
+        span: 8,
+      },
+    ]
+
+    const wrapper = mount(ConfigForm, {
+      props: {
+        fields,
+        defaultValues: {},
+      },
+    })
+
+    const field = wrapper.get('.cf-field')
+    const input = wrapper.get('input')
+
+    expect(field.classes()).toContain('custom-field-root')
+    expect(field.attributes('data-root')).toBe('username-root')
+    expect(field.attributes('style')).toContain('grid-column: span 8')
+    expect(field.attributes('style')).toContain('color: red')
+    expect(input.attributes('data-control')).toBe('username-input')
+    expect(input.attributes('data-root')).toBeUndefined()
   })
 
   it('renders component containers around real fields without binding container values', async () => {

@@ -16,6 +16,7 @@ interface FieldStub {
   field?: string
   label?: unknown
   props?: Record<string, unknown>
+  rootProps?: Record<string, unknown>
   slots?: Record<string, unknown>
   __source?: typeof source
 }
@@ -49,8 +50,8 @@ const CoreConfigForm = defineComponent({
     return () => h('form', props.fields.map((field) => {
       const config = field as FieldStub
       return h('div', {
-        'class': `${props.namespace}-field`,
-        'data-cf-devtools-source-id': config.__source?.id,
+        class: `${props.namespace}-field`,
+        ...(config.rootProps ?? {}),
       }, [
         h('input', {
           ...(config.props ?? {}),
@@ -130,6 +131,7 @@ describe('configForm devtools adapter', () => {
     expect(sourceElement).toBeInstanceOf(HTMLDivElement)
     expect(sourceElement?.classList.contains('demo-field')).toBe(true)
     expect(sourceElement?.querySelector('input')).toBe(document.getElementById('demo-name-field'))
+    expect(document.getElementById('demo-name-field')?.getAttribute('data-cf-devtools-source-id')).toBeNull()
     expect(bridge.recordSync).toHaveBeenCalledWith(expect.objectContaining({
       duration: expect.any(Number),
       timestamp: expect.any(Number),
@@ -166,6 +168,23 @@ describe('configForm devtools adapter', () => {
         __source: source,
         component: 'section',
         props: {
+          'data-cf-devtools-source-id': 'different-source',
+        },
+      },
+    ])).toThrow(/Conflicting data-cf-devtools-source-id/)
+  })
+
+  it('throws when field root props conflict with the injected devtools source id', () => {
+    const bridge = createBridge()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    window.__CONFIG_FORM_DEVTOOLS_BRIDGE__ = bridge
+
+    expect(() => mountAdapter([
+      {
+        __source: source,
+        component: 'input',
+        field: 'name',
+        rootProps: {
           'data-cf-devtools-source-id': 'different-source',
         },
       },

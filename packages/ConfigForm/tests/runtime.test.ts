@@ -25,6 +25,7 @@ describe('form runtime', () => {
     expect(defaults).toEqual({
       blurTrigger: 'blur',
       props: {},
+      rootProps: {},
       span: 24,
       submitWhenDisabled: true,
       submitWhenHidden: false,
@@ -53,6 +54,14 @@ describe('form runtime', () => {
                 width: '44px',
               },
             },
+            rootProps: {
+              ...('rootProps' in field ? field.rootProps : {}),
+              'data-plugin-root': 'yes',
+              'style': {
+                color: 'blue',
+                width: '44px',
+              },
+            },
             trigger: 'update:value',
             valueProp: 'value',
           }),
@@ -68,6 +77,12 @@ describe('form runtime', () => {
           width: '80px',
         },
       },
+      rootProps: {
+        'data-user-root': 'yes',
+        'style': {
+          width: '80px',
+        },
+      },
       valueProp: 'customValue',
     })) as NormalizedFieldConfig
 
@@ -76,6 +91,14 @@ describe('form runtime', () => {
     expect(resolved.props).toEqual({
       addon: 'plugin',
       style: {
+        color: 'blue',
+        width: '80px',
+      },
+    })
+    expect(resolved.rootProps).toEqual({
+      'data-plugin-root': 'yes',
+      'data-user-root': 'yes',
+      'style': {
         color: 'blue',
         width: '80px',
       },
