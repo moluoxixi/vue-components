@@ -14,7 +14,7 @@
 - `slots` 与顶层 `fields` 使用同一声明模式，只接收普通对象配置或 `defineField(...)` 创建的容器组件节点/真实字段节点数组；无 `field` 的节点只渲染组件本体，有 `field` 的节点才绑定表单值和校验。
 - `slots` 不接收文本、VNode 或渲染函数；需要文本内容时用普通子节点配置承载文本 props。
 - runtime 对组件和插件名注册冲突一律抛错，不提供覆盖或静默降级策略；插件只通过 `transformField(field)` 转换字段。
-- 内置默认值插件位于 `src/plugins/builtInFieldDefaults.ts`，`resolveField(field)` 只返回默认配置片段；runtime transform 指字段配置转换管线，不是提交值转换函数。
+- 内置默认值插件位于 `src/plugins/builtInFieldDefaults.ts`，`getFieldDefaults(field)` 只返回默认配置片段；runtime transform 指字段配置转换管线，不是提交值转换函数。
 
 ## 样式命名空间
 

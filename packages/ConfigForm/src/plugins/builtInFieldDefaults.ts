@@ -3,7 +3,7 @@ import { hasFieldBinding } from '@/runtime/utils'
 
 export const BUILT_IN_FIELD_DEFAULTS_PLUGIN_NAME = 'config-form:built-in-field-defaults'
 
-/** resolveField(field) 返回的内置默认配置片段；不包含用户字段声明内容。 */
+/** getFieldDefaults(field) 返回的内置默认配置片段；不包含用户字段声明内容。 */
 export interface FieldDefaultConfig {
   /** 所有节点默认保证 props 是普通对象，便于后续插件和组件消费。 */
   props: Record<string, unknown>
@@ -64,7 +64,7 @@ type DefaultedFieldInput<TSlot extends SlotContent | ResolvedSlotContent = SlotC
     >>
 
 /** 返回字段的内置默认配置片段，不合并用户声明，也不执行用户插件。 */
-export function resolveField(field: FormNodeConfig): FieldDefaultConfig {
+export function getFieldDefaults(field: FormNodeConfig): FieldDefaultConfig {
   const defaults: FieldDefaultConfig = {
     props: {},
     span: 24,
@@ -97,7 +97,7 @@ export function normalizeValidateOn(on?: ValidateTrigger | ValidateTrigger[]): V
 export function applyFieldDefaults<TSlot extends SlotContent | ResolvedSlotContent = SlotContent>(
   field: DefaultableFormNodeConfig<TSlot>,
 ): DefaultedFormNodeConfig<TSlot> {
-  const defaults = resolveField(field)
+  const defaults = getFieldDefaults(field)
   const normalizedNode: DefaultedNodeConfig<TSlot> = {
     ...defaults,
     ...field,
@@ -149,5 +149,5 @@ function hasDefaultedFieldBinding<TSlot extends SlotContent | ResolvedSlotConten
 /** 内置默认值插件优先级最低，由 runtime 在用户字段和用户插件之前读取。 */
 export const BUILT_IN_FIELD_DEFAULTS_PLUGIN: BuiltInFieldDefaultsPlugin = {
   name: BUILT_IN_FIELD_DEFAULTS_PLUGIN_NAME,
-  transformField: resolveField,
+  transformField: getFieldDefaults,
 }

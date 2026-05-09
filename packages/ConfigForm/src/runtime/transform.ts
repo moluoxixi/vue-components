@@ -3,12 +3,12 @@ import type { ComponentRegistry, FormFieldTransform, FormRuntimePlugin } from '.
 import type { FieldDefaultConfig } from '@/plugins/builtInFieldDefaults'
 import type { DefinedFormNodeConfig, FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, ResolvedFormNode, ResolvedSlotContent, SlotContent } from '@/types'
 import { isVNode } from 'vue'
-import { applyFieldDefaults, resolveField } from '@/plugins/builtInFieldDefaults'
+import { applyFieldDefaults, getFieldDefaults } from '@/plugins/builtInFieldDefaults'
 import { isFormNodeConfig } from '@/utils/node'
 import { hasFieldBinding } from './utils'
 
 export interface FieldPipelineContext {
-  resolveField: (field: FormNodeConfig) => FieldDefaultConfig
+  getFieldDefaults: (field: FormNodeConfig) => FieldDefaultConfig
   transformField: (field: FormNodeConfig) => ResolvedFormNode
 }
 
@@ -80,7 +80,7 @@ export function createFieldPipeline(
     return resolved
   }
 
-  return { resolveField, transformField }
+  return { getFieldDefaults, transformField }
 }
 
 /** 无插件场景下的便捷转换函数。 */

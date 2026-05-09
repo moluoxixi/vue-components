@@ -18,7 +18,7 @@ describe('form runtime', () => {
       trigger: 'input',
     })
 
-    const defaults = runtime.resolveField(field)
+    const defaults = runtime.getFieldDefaults(field)
 
     expect(Object.getOwnPropertySymbols(field)).toEqual([])
     expect(Object.getOwnPropertySymbols(defaults)).toEqual([])
@@ -124,7 +124,7 @@ describe('form runtime', () => {
     })
 
     expect(BUILT_IN_FIELD_DEFAULTS_PLUGIN.name).toBe('config-form:built-in-field-defaults')
-    expect(runtime.resolveField(rawField)).toEqual(BUILT_IN_FIELD_DEFAULTS_PLUGIN.transformField(rawField))
+    expect(runtime.getFieldDefaults(rawField)).toEqual(BUILT_IN_FIELD_DEFAULTS_PLUGIN.transformField(rawField))
 
     const transformed = runtime.transformField(rawField) as NormalizedFieldConfig
 

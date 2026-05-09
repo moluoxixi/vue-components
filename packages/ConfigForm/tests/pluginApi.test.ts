@@ -12,6 +12,7 @@ describe('plugin api', () => {
     type HasCreateRuntimeToken = 'createRuntimeToken' extends keyof typeof PluginApi ? true : false
     type HasIsRuntimeToken = 'isRuntimeToken' extends keyof typeof PluginApi ? true : false
     type HasResolveFieldValueExport = 'resolveField' extends keyof typeof PluginApi ? true : false
+    type HasGetFieldDefaultsValueExport = 'getFieldDefaults' extends keyof typeof PluginApi ? true : false
     type HasTransformFieldValueExport = 'transformField' extends keyof typeof PluginApi ? true : false
     type HasNormalizeFieldBindingExport = 'normalizeFieldBinding' extends keyof typeof PluginApi ? true : false
     type HasNormalizeNodeExport = 'normalizeNode' extends keyof typeof PluginApi ? true : false
@@ -24,6 +25,7 @@ describe('plugin api', () => {
     type HasRuntimeResolveVisible = 'resolveVisible' extends keyof PluginApi.FormRuntime ? true : false
     type HasRuntimeResolveDisabled = 'resolveDisabled' extends keyof PluginApi.FormRuntime ? true : false
     type HasRuntimeResolveField = 'resolveField' extends keyof PluginApi.FormRuntime ? true : false
+    type HasRuntimeGetFieldDefaults = 'getFieldDefaults' extends keyof PluginApi.FormRuntime ? true : false
     type HasRuntimeTransformField = 'transformField' extends keyof PluginApi.FormRuntime ? true : false
     type HasRuntimeTransformFields = 'transformFields' extends keyof PluginApi.FormRuntime ? true : false
     type HasPluginTokens = 'tokens' extends keyof PluginApi.FormRuntimePlugin ? true : false
@@ -45,7 +47,8 @@ describe('plugin api', () => {
     expectTypeOf<HasCreateFormRuntime>().toEqualTypeOf<true>()
     expectTypeOf<HasCreateRuntimeToken>().toEqualTypeOf<false>()
     expectTypeOf<HasIsRuntimeToken>().toEqualTypeOf<false>()
-    expectTypeOf<HasResolveFieldValueExport>().toEqualTypeOf<true>()
+    expectTypeOf<HasResolveFieldValueExport>().toEqualTypeOf<false>()
+    expectTypeOf<HasGetFieldDefaultsValueExport>().toEqualTypeOf<true>()
     expectTypeOf<HasTransformFieldValueExport>().toEqualTypeOf<true>()
     expectTypeOf<HasNormalizeFieldBindingExport>().toEqualTypeOf<false>()
     expectTypeOf<HasNormalizeNodeExport>().toEqualTypeOf<false>()
@@ -56,7 +59,8 @@ describe('plugin api', () => {
     expectTypeOf<HasRuntimeResolveSlot>().toEqualTypeOf<false>()
     expectTypeOf<HasRuntimeResolveVisible>().toEqualTypeOf<false>()
     expectTypeOf<HasRuntimeResolveDisabled>().toEqualTypeOf<false>()
-    expectTypeOf<HasRuntimeResolveField>().toEqualTypeOf<true>()
+    expectTypeOf<HasRuntimeResolveField>().toEqualTypeOf<false>()
+    expectTypeOf<HasRuntimeGetFieldDefaults>().toEqualTypeOf<true>()
     expectTypeOf<HasRuntimeTransformField>().toEqualTypeOf<true>()
     expectTypeOf<HasRuntimeTransformFields>().toEqualTypeOf<false>()
     expectTypeOf<HasPluginTokens>().toEqualTypeOf<false>()

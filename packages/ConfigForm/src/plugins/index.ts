@@ -1,6 +1,6 @@
 export {
   createFormRuntime,
-  resolveField,
+  getFieldDefaults,
   transformField,
 } from '../runtime'
 export type {

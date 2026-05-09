@@ -142,7 +142,7 @@ describe('runtime utilities', () => {
       ],
     })
 
-    const fallback = defaultRuntime.resolveField({ component: 'input', field: 'name' }) as NormalizedFieldConfig
+    const fallback = defaultRuntime.getFieldDefaults({ component: 'input', field: 'name' }) as NormalizedFieldConfig
     const transformed = customRuntime.transformField({ component: 'input', field: 'name' }) as NormalizedFieldConfig
     expect(fallback.valueProp).toBe('modelValue')
     expect(fallback).not.toHaveProperty('field')
@@ -167,7 +167,7 @@ describe('runtime utilities', () => {
     mount(Parent)
 
     expect(injectedRuntime?.value).toBe(customRuntime)
-    expect(createFormRuntime().resolveField({ component: 'input', field: 'plain' }))
+    expect(createFormRuntime().getFieldDefaults({ component: 'input', field: 'plain' }))
       .toEqual({
         blurTrigger: 'blur',
         props: {},

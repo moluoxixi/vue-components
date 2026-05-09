@@ -29,7 +29,7 @@ export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormR
   const fieldPipeline = createFieldPipeline(components, plugins)
 
   return {
-    resolveField: fieldPipeline.resolveField,
+    getFieldDefaults: fieldPipeline.getFieldDefaults,
     transformField: fieldPipeline.transformField,
   }
 }

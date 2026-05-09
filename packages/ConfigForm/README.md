@@ -200,7 +200,7 @@ defineField({
 
 字段处理管线固定为：
 
-1. `resolveField(field)` 只返回内置默认配置片段，不合并用户字段声明，也不执行插件。
+1. `getFieldDefaults(field)` 只返回内置默认配置片段，不合并用户字段声明，也不执行插件。
 2. `transformField(field)` 将内置默认片段应用到字段后，再按用户注册顺序执行插件 `transformField(field)`。
 3. runtime 恢复用户在原字段上显式声明的顶层配置和 props，确保优先级为 `用户 > 插件 > 内置默认值`。
 4. runtime 解析已注册组件，并继续递归转换 slots 内的普通对象配置或 `defineField(...)` 配置。

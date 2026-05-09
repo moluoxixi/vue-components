@@ -19,8 +19,8 @@ export {
 } from './utils'
 export {
   applyFieldDefaults,
+  getFieldDefaults,
   normalizeValidateOn,
-  resolveField,
 } from '@/plugins/builtInFieldDefaults'
 export type {
   FieldDefaultConfig,
