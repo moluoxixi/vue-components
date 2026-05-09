@@ -23,7 +23,7 @@ import {
   markDefinedFormNodeConfig,
   markResolvedFormNodeConfig,
 } from '../src/utils/node'
-import { mergeRecords } from '../src/utils/object'
+import { cloneRecordWithChildren, mergeRecords } from '../src/utils/object'
 
 describe('runtime utilities', () => {
   it('normalizes field defaults and applies submit transforms explicitly', () => {
@@ -115,6 +115,27 @@ describe('runtime utilities', () => {
     })
     expect(merged.component).toBe(UserComponent)
     expect((merged.props as Record<string, unknown>).icon).toBe(UserIcon)
+  })
+
+  it('clones config records with selected child records while preserving component references', () => {
+    const component = { name: 'RuntimeInput', setup: () => () => h('input') }
+    const field = {
+      component,
+      field: 'name',
+      formItemProps: { labelCol: { span: 6 } },
+      props: { placeholder: 'Name' },
+      slots: { suffix: { component: 'span', props: { text: '!' } } },
+    }
+
+    const cloned = cloneRecordWithChildren(field, ['props', 'formItemProps', 'slots'])
+
+    expect(cloned).toEqual(field)
+    expect(cloned).not.toBe(field)
+    expect(cloned.component).toBe(component)
+    expect(cloned.props).not.toBe(field.props)
+    expect(cloned.formItemProps).not.toBe(field.formItemProps)
+    expect(cloned.slots).not.toBe(field.slots)
+    expect(cloned.formItemProps.labelCol).toBe(field.formItemProps.labelCol)
   })
 
   it('classifies runtime nodes by binding and label presence', () => {

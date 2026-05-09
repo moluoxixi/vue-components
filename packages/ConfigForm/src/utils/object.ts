@@ -20,6 +20,23 @@ export function readPlainRecord(value: unknown, optionName: string): PlainRecord
   throw new TypeError(`${optionName} must be a plain object`)
 }
 
+/** 浅复制配置记录，并对指定子记录追加一层浅复制；组件、VNode 和非普通对象保持原引用。 */
+export function cloneRecordWithChildren<TRecord extends object>(
+  source: TRecord,
+  childKeys: readonly string[] = [],
+): TRecord {
+  const clone = { ...source } as PlainRecord
+  const record = source as PlainRecord
+
+  for (const key of childKeys) {
+    const value = record[key]
+    if (isPlainRecord(value))
+      clone[key] = { ...value }
+  }
+
+  return clone as TRecord
+}
+
 /** 深合并普通对象；右侧对象优先，数组、VNode 和组件对象保持整体替换。 */
 export function mergeRecords(...sources: Array<object | undefined>): PlainRecord {
   const result: PlainRecord = {}

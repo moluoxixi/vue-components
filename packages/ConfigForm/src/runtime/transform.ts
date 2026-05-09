@@ -17,7 +17,7 @@ import type {
 import type { PlainRecord } from '@/utils/object'
 import { applyFieldDefaults, BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '@/plugins/builtInFieldDefaults'
 import { isFormNodeConfig } from '@/utils/node'
-import { mergeRecords, readPlainRecord } from '@/utils/object'
+import { cloneRecordWithChildren, mergeRecords, readPlainRecord } from '@/utils/object'
 import { hasFieldBinding } from './utils'
 
 export interface FieldPipelineContext {
@@ -28,6 +28,7 @@ export interface FieldPipelineContext {
 type PipelineNode = NormalizedFieldConfig | NormalizedNodeConfig
 type PluginField = DefinedFormNodeConfig | NormalizedNodeConfig
 const FORBIDDEN_DEFAULT_FIELD_KEYS = new Set(['component', 'field', 'slots'])
+const PLUGIN_CLONE_CHILD_KEYS = ['formItemProps', 'props', 'slots']
 
 /** 创建字段配置管线，负责默认值、插件、用户优先级、组件解析和 slot 递归编排。 */
 export function createFieldPipeline(
@@ -156,7 +157,7 @@ function collectTransformHooks(plugins: FormRuntimePlugin[]): RuntimeHook[] {
 
 /** 执行默认值 hook 并校验其返回普通对象片段，避免非法默认值被静默跳过。 */
 function resolveDefaultField(hook: DefaultHook, field: FormNodeConfig): FormFieldDefaultConfig | undefined {
-  const defaults = hook.handler(cloneRawFieldForPlugin(field))
+  const defaults = hook.handler(cloneRecordWithChildren(field, PLUGIN_CLONE_CHILD_KEYS))
   if (defaults === undefined)
     return undefined
 
@@ -180,26 +181,9 @@ function assertDefaultFieldKeys(pluginName: string, defaults: PlainRecord): void
   }
 }
 
-/** 为默认值插件提供浅复制原始字段，避免插件直接修改用户声明对象。 */
-function cloneRawFieldForPlugin(field: FormNodeConfig): FormNodeConfig {
-  return {
-    ...field,
-    ...(field.props ? { props: { ...field.props } } : {}),
-    ...(hasFieldBinding(field) && field.formItemProps ? { formItemProps: { ...field.formItemProps } } : {}),
-    ...(field.slots ? { slots: { ...field.slots } } : {}),
-  }
-}
-
 /** 为转换插件提供浅复制字段，避免插件直接修改当前管线状态。 */
 function cloneFieldForPlugin(field: PipelineNode): PipelineNode {
-  const clone: PipelineNode = {
-    ...field,
-    props: { ...field.props },
-    ...(hasFieldBinding(field) ? { formItemProps: { ...field.formItemProps } } : {}),
-    slots: field.slots ? { ...field.slots } : field.slots,
-  }
-
-  return clone
+  return cloneRecordWithChildren(field, PLUGIN_CLONE_CHILD_KEYS)
 }
 
 /** 校验转换插件不能移除或改写已有字段 key，避免表单值拓扑被插件隐式重写。 */
