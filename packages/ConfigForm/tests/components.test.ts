@@ -9,6 +9,7 @@ import { z } from 'zod'
 import FormComponent from '../src/components/FormComponent/src/index.vue'
 import FormField from '../src/components/FormField/src/index.vue'
 import FormLayout from '../src/components/FormLayout/src/index.vue'
+import RecursiveField from '../src/components/RecursiveField/src/index.vue'
 import { VALIDATION_THROTTLE_MS } from '../src/composables/useForm'
 import { FORM_CONTEXT_KEY } from '../src/composables/useFormContext'
 import ConfigForm from '../src/index.vue'
@@ -960,6 +961,48 @@ describe('form field component', () => {
     expect(wrapper.text()).toContain('嵌入选项')
     expect(wrapper.find('[data-role="slot-child"]').exists()).toBe(true)
     expect(wrapper.find('.cf-field').exists()).toBe(false)
+  })
+})
+
+describe('recursive field component', () => {
+  it('keeps visibility pruning centralized in RecursiveField', () => {
+    const recursiveFieldSource = readFileSync('src/components/RecursiveField/src/index.vue', 'utf8')
+    const formFieldSource = readFileSync('src/components/FormField/src/index.vue', 'utf8')
+    const formNodeSource = readFileSync('src/components/FormNode/src/index.vue', 'utf8')
+
+    expect(recursiveFieldSource).toContain('ctx.isVisible')
+    expect(formFieldSource).not.toContain('ctx.isVisible')
+    expect(formNodeSource).not.toContain('ctx.isVisible')
+  })
+
+  it('prunes invisible nodes before dispatching to node components', () => {
+    const field = resolveTestField(defineField({
+      component: TextInput,
+      field: 'hiddenName',
+      label: '隐藏姓名',
+    }))
+
+    const wrapper = mount(RecursiveField, {
+      props: { field },
+      global: {
+        provide: {
+          [FORM_CONTEXT_KEY]: {
+            values: { hiddenName: '' },
+            errors: {},
+            getValue: (field: string) => ({ hiddenName: '' } as Record<string, unknown>)[field],
+            getValues: () => ({ hiddenName: '' }),
+            isVisible: () => false,
+            isDisabled: () => false,
+            setValue: vi.fn(),
+            setValues: vi.fn(),
+            validateField: vi.fn(),
+          },
+        },
+      },
+    })
+
+    expect(wrapper.findComponent(FormField).exists()).toBe(false)
+    expect(wrapper.find('input').exists()).toBe(false)
   })
 })
 

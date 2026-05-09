@@ -27,9 +27,6 @@ const containerStyle = computed<CSSProperties | undefined>(() => {
   return { gridColumn: `span ${props.field.span}` }
 })
 
-/** 所有节点从无头控制器读取有效可见性，容器隐藏会同时隐藏整棵子树。 */
-const visible = computed(() => ctx.isVisible(props.field))
-
 const attrs = computed(() => {
   const baseStyle = containerStyle.value
   const existingStyle = readStyleValue(props.field.props?.style)
@@ -44,7 +41,6 @@ const attrs = computed(() => {
 
 <template>
   <component
-    v-if="visible"
     :is="field.component"
     v-bind="attrs"
     v-on="componentListeners ?? {}"

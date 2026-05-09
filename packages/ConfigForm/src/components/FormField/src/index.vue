@@ -32,7 +32,6 @@ const { b, e, m } = useBem(ns)
 const resolvedField = computed(() => props.field)
 
 const error = computed(() => ctx.errors[resolvedField.value.field])
-const visible = computed(() => ctx.isVisible(resolvedField.value))
 
 const fieldId = computed(() => {
   const safeFieldName = resolvedField.value.field.replace(/[^\w-]/g, '-')
@@ -93,7 +92,6 @@ const { attrs: componentAttrs, listeners: componentListeners } = useFieldBinding
 
 <template>
   <div
-    v-if="visible"
     v-bind="fieldRootAttrs"
     :class="fieldRootClass"
   >

@@ -4,10 +4,11 @@ import { computed } from 'vue'
 import FormComponent from '@/components/FormComponent'
 import FormField from '@/components/FormField'
 import FormNode from '@/components/FormNode'
+import { useFormContext } from '@/composables/useFormContext'
 import { isResolvedComponent, isResolvedField } from '@/utils/node'
 
 /**
- * RecursiveField 基于 runtime 守卫做三路分派，递归渲染子节点。
+ * RecursiveField 基于 runtime 守卫做三路分派，并在递归入口剪枝不可见节点。
  *
  * - Field（有 field + 有 label）→ FormField（label + error + 值绑定）
  * - Component（有 field + 无 label）→ FormComponent（值绑定）
@@ -23,6 +24,11 @@ const props = defineProps<{
   field: ResolvedFormNode
 }>()
 
+const ctx = useFormContext()
+
+/** 当前节点的有效可见性由 useForm 统一解析，隐藏时不再创建下游节点组件。 */
+const visible = computed(() => ctx.isVisible(props.field))
+
 const resolvedComponent = computed(() => {
   if (isResolvedField(props.field)) return FormField
   if (isResolvedComponent(props.field)) return FormComponent
@@ -31,5 +37,5 @@ const resolvedComponent = computed(() => {
 </script>
 
 <template>
-  <component :is="resolvedComponent" :field="field" />
+  <component v-if="visible" :is="resolvedComponent" :field="field" />
 </template>
