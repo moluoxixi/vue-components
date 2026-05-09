@@ -16,7 +16,7 @@ export function assertFormItemPropsNoConflict(formItemProps: Record<string, unkn
 /**
  * 读取字段外壳根节点透传属性。
  *
- * 缺省时返回空对象；非普通对象直接抛错，避免把错误配置静默传入渲染层。
+ * 缺省时返回空对象；非普通对象直接抛错，避免把错误配置静默传入运行时归一化流程。
  */
 export function readFormItemProps(value: unknown, optionName = 'formItemProps'): Record<string, unknown> {
   if (value === undefined)

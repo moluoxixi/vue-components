@@ -2,10 +2,10 @@ import type { ComponentRegistry, FormFieldTransform, FormRuntimePlugin } from '.
 import type { FieldDefaultConfig } from '@/plugins/builtInFieldDefaults'
 import type { DefinedFormNodeConfig, FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, ResolvedFormNode, ResolvedSlotContent, SlotContent } from '@/types'
 import type { PlainRecord } from '@/utils/object'
-import { readFormItemProps } from '@/components/FormItem/formItemProps'
 import { applyFieldDefaults, getFieldDefaults } from '@/plugins/builtInFieldDefaults'
 import { isFormNodeConfig } from '@/utils/node'
 import { mergeRecords, readPlainRecord } from '@/utils/object'
+import { readFormItemProps } from './formItem'
 import { hasFieldBinding } from './utils'
 
 export interface FieldPipelineContext {

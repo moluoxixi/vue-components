@@ -4,7 +4,6 @@ import { computed } from 'vue'
 import { useFormContext } from '@/composables/useFormContext'
 import { useBem, useNamespace } from '@/composables/useNamespace'
 import { mergeStyle, readStyleValue, resolveLabelWidth } from '@/utils/style'
-import { readFormItemProps } from '../formItemProps'
 
 /**
  * FormItem 统一管理真实字段的外壳、label、error 和根节点透传属性。
@@ -33,9 +32,6 @@ const { b, e, m } = useBem(ns)
 /** 当前字段的校验错误；错误集合由表单控制器统一维护。 */
 const error = computed(() => ctx.errors[props.field])
 
-/** 标准化 FormItem 根节点透传属性，并在组件边界内完成冲突校验。 */
-const normalizedFormItemProps = computed(() => readFormItemProps(props.formItemProps))
-
 /** grid 模式下的字段外壳跨度；inline 模式不写入布局样式。 */
 const formItemBaseStyle = computed<CSSProperties | undefined>(() => {
   if (ctx.inline)
@@ -46,7 +42,7 @@ const formItemBaseStyle = computed<CSSProperties | undefined>(() => {
 
 /** 根节点透传属性去掉 class/style，避免覆盖内置外壳合并策略。 */
 const formItemRootAttrs = computed(() => {
-  const { class: _class, style: _style, ...attrs } = normalizedFormItemProps.value
+  const { class: _class, style: _style, ...attrs } = props.formItemProps
   return attrs
 })
 
@@ -54,12 +50,12 @@ const formItemRootAttrs = computed(() => {
 const fieldRootClass = computed(() => [
   b('field'),
   { [m('field', 'inline')]: ctx.inline },
-  normalizedFormItemProps.value.class,
+  props.formItemProps.class,
 ])
 
 /** 合并字段布局样式和用户传给 FormItem 根节点的 Vue style 值。 */
 const fieldRootStyle = computed<StyleValue | undefined>(() =>
-  mergeStyle(formItemBaseStyle.value, readStyleValue(normalizedFormItemProps.value.style, 'formItemProps.style')),
+  mergeStyle(formItemBaseStyle.value, readStyleValue(props.formItemProps.style, 'formItemProps.style')),
 )
 </script>
 
