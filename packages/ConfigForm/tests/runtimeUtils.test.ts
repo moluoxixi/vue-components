@@ -7,6 +7,7 @@ import { computed, defineComponent, h } from 'vue'
 import { normalizeFormRuntime, provideRuntime, useRuntime } from '../src/composables/useRuntime'
 import { createFormRuntime } from '../src/runtime'
 import { hasFieldBinding, isComponent, isContainer, isField } from '../src/runtime/utils'
+import { canBindGeneratedIdToComponent, declaresComponentProp } from '../src/utils/component'
 import { applyFieldTransform, normalizeField, shouldValidateOn } from '../src/utils/field'
 import {
   assertUniqueFieldConfigs,
@@ -65,6 +66,20 @@ describe('runtime utilities', () => {
     expect(isComponent(unlabelled)).toBe(true)
     expect(isContainer(container)).toBe(true)
     expect(hasFieldBinding(container)).toBe(false)
+  })
+
+  it('detects whether generated ids can be safely passed to components', () => {
+    const FunctionalControl = () => h('input')
+    FunctionalControl.props = ['id']
+
+    expect(canBindGeneratedIdToComponent('input')).toBe(true)
+    expect(canBindGeneratedIdToComponent({ props: { modelValue: String } })).toBe(true)
+    expect(canBindGeneratedIdToComponent({ props: { id: Array } })).toBe(false)
+    expect(canBindGeneratedIdToComponent({ props: ['modelValue'] })).toBe(true)
+    expect(canBindGeneratedIdToComponent({ props: ['id'] })).toBe(false)
+    expect(canBindGeneratedIdToComponent(FunctionalControl)).toBe(false)
+    expect(declaresComponentProp({ props: null }, 'id')).toBe(false)
+    expect(declaresComponentProp(null, 'id')).toBe(false)
   })
 
   it('recognizes plain configs and resolved node shapes without hidden markers', () => {

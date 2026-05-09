@@ -5,6 +5,7 @@ import RecursiveField from '@/components/RecursiveField'
 import { useFieldBinding } from '@/composables/useFieldBinding'
 import { useFormContext } from '@/composables/useFormContext'
 import { useBem, useNamespace } from '@/composables/useNamespace'
+import { canBindGeneratedIdToComponent } from '@/utils/component'
 import { resolveSlotNodes } from '@/utils/slot'
 import { mergeStyle, readStyleValue, resolveLabelWidth } from '@/utils/style'
 
@@ -39,6 +40,7 @@ const fieldId = computed(() => {
 })
 
 const errorId = computed(() => `${fieldId.value}-error`)
+const canBindGeneratedComponentId = computed(() => canBindGeneratedIdToComponent(resolvedField.value.component))
 
 const fieldRootStyle = computed(() => {
   const baseStyle = ctx.inline
@@ -63,6 +65,9 @@ const fieldRootAttrs = computed<Record<string, unknown>>(() => {
     attrs[key] = value
   }
 
+  if (!canBindGeneratedComponentId.value && attrs.id == null)
+    attrs.id = fieldId.value
+
   if (fieldRootStyle.value)
     attrs.style = fieldRootStyle.value
 
@@ -72,7 +77,7 @@ const fieldRootAttrs = computed<Record<string, unknown>>(() => {
 const fieldAttrs = computed<Record<string, unknown>>(() => {
   const next: Record<string, unknown> = {}
 
-  if (resolvedField.value.props.id == null)
+  if (resolvedField.value.props.id == null && canBindGeneratedComponentId.value)
     next.id = fieldId.value
 
   if (error.value?.length) {

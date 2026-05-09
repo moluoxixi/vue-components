@@ -58,6 +58,26 @@ const CustomControl = markRaw(defineComponent({
   },
 }))
 
+const IdPropControl = markRaw(defineComponent({
+  name: 'IdPropControl',
+  props: {
+    id: Array,
+    modelValue: { type: String, default: '' },
+  },
+  emits: ['update:modelValue', 'blur'],
+  setup(props, { attrs, emit }) {
+    return () => h('input', {
+      ...attrs,
+      'data-prop-id': Array.isArray(props.id) ? props.id.join(',') : '',
+      'value': props.modelValue,
+      'onBlur': () => emit('blur'),
+      'onInput': (event: Event) => {
+        emit('update:modelValue', (event.target as HTMLInputElement).value)
+      },
+    })
+  },
+}))
+
 const SlotHost = markRaw(defineComponent({
   name: 'SlotHost',
   setup(_props, { slots }) {
@@ -436,6 +456,32 @@ describe('config form component', () => {
 
     expect(wrapper.text()).not.toContain('用户名至少 2 个字符')
     expect(api.getValues()).toEqual({ username: 'Ada' })
+  })
+
+  it('keeps generated ids out of components that declare their own id prop', () => {
+    const fields = [
+      defineField({
+        field: 'dateRange',
+        label: '日期范围',
+        component: IdPropControl,
+      }),
+    ]
+
+    const wrapper = mount(ConfigForm, {
+      props: {
+        fields,
+        defaultValues: {},
+        namespace: 'moluoxixi',
+      },
+    })
+
+    const fieldRoot = wrapper.get('.moluoxixi-field')
+    const input = wrapper.get('input')
+
+    expect(fieldRoot.attributes('id')).toBe('moluoxixi-dateRange-field')
+    expect(input.attributes('id')).toBeUndefined()
+    expect(input.attributes('data-prop-id')).toBe('')
+    expect(wrapper.get('label').attributes('for')).toBe('moluoxixi-dateRange-field')
   })
 
   it('keeps root form context inline and labelWidth reactive after prop updates', async () => {

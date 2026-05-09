@@ -20,12 +20,28 @@ describe('validate utils', () => {
     expect(validateField('Ada', schema)).toEqual(['Validation failed: profile.name'])
   })
 
-  it('merges zod errors with async validator errors', async () => {
+  it('runs async validator after schema success', async () => {
     await expect(
-      validateFieldRules('', z.string().min(1, '必填'), { name: '' }, async (value, values) => {
+      validateFieldRules('Ada', z.string().min(1, '必填'), { name: 'Ada' }, async (value, values) => {
         return value === values.name ? ['自定义错误', ''] : undefined
       }),
-    ).resolves.toEqual(['必填', '自定义错误'])
+    ).resolves.toEqual(['自定义错误'])
+  })
+
+  it('does not run custom validators when schema parsing fails', async () => {
+    await expect(
+      validateFieldRules(undefined, z.string().min(1, '必填'), { name: undefined }, () => {
+        throw new Error('validator should not run')
+      }),
+    ).resolves.toEqual(['Required'])
+  })
+
+  it('passes parsed schema output to custom validators', async () => {
+    await expect(
+      validateFieldRules('42', z.coerce.number().min(1), { age: '42' }, (value) => {
+        return value === 42 ? '已收到解析后的数字' : '未收到解析后的数字'
+      }),
+    ).resolves.toEqual(['已收到解析后的数字'])
   })
 
   it('validates forms by trigger and respects hidden or disabled submit opt-in', async () => {

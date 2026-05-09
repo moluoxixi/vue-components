@@ -1,4 +1,4 @@
-import type { ZodTypeAny } from 'zod'
+import type { ZodIssue, ZodTypeAny } from 'zod'
 import type { FieldCondition, FieldConfig, FieldValidator, FormErrors, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
 import { applyFieldDefaults } from '@/plugins/builtInFieldDefaults'
 import { shouldValidateOn } from '@/utils/field'
@@ -12,7 +12,12 @@ export function validateField(
   const result = schema.safeParse(value)
   if (result.success)
     return []
-  return result.error.issues.map(i => i.message || `Validation failed: ${i.path.join('.')}`)
+  return formatZodIssues(result.error.issues)
+}
+
+/** 将 Zod issue 转换为 ConfigForm 对外暴露的字符串错误列表。 */
+function formatZodIssues(issues: ZodIssue[]): string[] {
+  return issues.map(issue => issue.message || `Validation failed: ${issue.path.join('.')}`)
 }
 
 /**
@@ -35,11 +40,18 @@ export async function validateFieldRules(
   allValues: FormValues,
   validator?: FieldValidator,
 ): Promise<string[]> {
-  const zodErrors = schema ? validateField(value, schema, allValues) : []
+  let validatorValue = value
+  if (schema) {
+    const result = schema.safeParse(value)
+    if (!result.success)
+      return formatZodIssues(result.error.issues)
+    validatorValue = result.data
+  }
+
   const customErrors = validator
-    ? normalizeValidatorResult(await validator(value, allValues))
+    ? normalizeValidatorResult(await validator(validatorValue, allValues))
     : []
-  return [...zodErrors, ...customErrors]
+  return customErrors
 }
 
 /**
