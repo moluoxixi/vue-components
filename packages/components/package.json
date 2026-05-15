@@ -1,0 +1,56 @@
+{
+  "name": "@moluoxixi/components",
+  "type": "module",
+  "version": "0.1.0",
+  "sideEffects": [
+    "**/*.scss",
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./config-form": {
+      "source": "./config-form.ts",
+      "types": "./dist/config-form.d.ts",
+      "import": "./dist/config-form.js"
+    },
+    "./config-form/styles": {
+      "sass": "./src/config-form/styles.scss",
+      "style": "./src/config-form/styles.scss",
+      "default": "./src/config-form/styles.scss"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/config-form/styles.scss"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0",
+    "zod": "^3.23.0"
+  },
+  "dependencies": {
+    "@moluoxixi/config-form": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-tsc": "catalog:dev",
+    "zod": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

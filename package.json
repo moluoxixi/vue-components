@@ -1,5 +1,5 @@
 {
-  "name": "config-form",
+  "name": "components",
   "type": "module",
   "private": true,
   "packageManager": "pnpm@10.29.3",

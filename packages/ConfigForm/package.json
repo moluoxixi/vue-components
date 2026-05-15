@@ -17,8 +17,16 @@
       "types": "./dist/src/plugins/index.d.ts",
       "import": "./dist/plugins.js"
     },
-    "./styles": "./src/styles/index.scss",
-    "./styles/*": "./src/styles/*"
+    "./styles": {
+      "sass": "./src/styles/index.scss",
+      "style": "./src/styles/index.scss",
+      "default": "./src/styles/index.scss"
+    },
+    "./styles/*": {
+      "sass": "./src/styles/*",
+      "style": "./src/styles/*",
+      "default": "./src/styles/*"
+    }
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
