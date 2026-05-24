@@ -1,5 +1,6 @@
 import type { SourceMap } from 'magic-string'
 import type { ChildProcess } from 'node:child_process'
+import { ConfigFormError } from '@moluoxixi/config-form'
 
 /** Vite transform 阶段注入到 defineField(...) 调用里的源码位置。 */
 export interface FieldSourceMeta {
@@ -153,20 +154,24 @@ export interface ConfigFormDevtoolsPluginOptions {
 }
 
 /** transform 阶段失败时抛出的错误，供 Vite 直接展示。 */
-export class ConfigFormDevtoolsPluginError extends Error {
-  constructor(message: string) {
-    super(message)
+export class ConfigFormDevtoolsPluginError extends ConfigFormError<Record<string, unknown>> {
+  constructor(message: string, context: Record<string, unknown> = {}) {
+    super('CONFIG_FORM_DEVTOOLS_PLUGIN_ERROR', message, context)
     this.name = 'ConfigFormDevtoolsPluginError'
   }
 }
 
 /** open-in-editor middleware 使用的带 HTTP 状态码错误。 */
-export class ConfigFormDevtoolsHttpError extends Error {
+export class ConfigFormDevtoolsHttpError extends ConfigFormError<Record<string, unknown>> {
+  readonly statusCode: number
+
   constructor(
-    readonly statusCode: number,
+    statusCode: number,
     message: string,
+    context: Record<string, unknown> = {},
   ) {
-    super(message)
+    super('CONFIG_FORM_DEVTOOLS_HTTP_ERROR', message, { ...context, statusCode })
     this.name = 'ConfigFormDevtoolsHttpError'
+    this.statusCode = statusCode
   }
 }

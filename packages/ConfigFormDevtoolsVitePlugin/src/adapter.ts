@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 import type { FieldSourceMeta, FormDevtoolsBridge, FormDevtoolsNode, FormNodeRenderPhase } from './types'
 import { computed, defineComponent, h, isVNode, nextTick, onMounted, onUnmounted, onUpdated, ref, useAttrs } from 'vue'
+import { ConfigFormDevtoolsPluginError } from './types'
 
 interface DevtoolsFieldConfig {
   component: unknown
@@ -432,8 +433,12 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
 
         const existing = props[SOURCE_ID_ATTRIBUTE]
         if (existing !== undefined && existing !== sourceId) {
-          throw new Error(
+          throw new ConfigFormDevtoolsPluginError(
             `Conflicting ${SOURCE_ID_ATTRIBUTE}: expected ${sourceId}, received ${String(existing)}`,
+            {
+              existing,
+              sourceId,
+            },
           )
         }
 
@@ -468,8 +473,12 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
           return node.id
 
         if (node.id !== undefined && node.id !== sourceId) {
-          throw new Error(
+          throw new ConfigFormDevtoolsPluginError(
             `Conflicting field id: expected ${sourceId}, received ${node.id}`,
+            {
+              expectedId: sourceId,
+              receivedId: node.id,
+            },
           )
         }
 
@@ -483,8 +492,12 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
        */
       function callExposed(methodName: string, args: unknown[]) {
         const method = coreRef.value?.[methodName]
-        if (typeof method !== 'function')
-          throw new Error(`ConfigForm method "${methodName}" is not available before the wrapped form is mounted`)
+        if (typeof method !== 'function') {
+          throw new ConfigFormDevtoolsPluginError(
+            `ConfigForm method "${methodName}" is not available before the wrapped form is mounted`,
+            { methodName },
+          )
+        }
         return method(...args)
       }
 

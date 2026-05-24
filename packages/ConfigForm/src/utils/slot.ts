@@ -1,4 +1,5 @@
 import type { ResolvedFormNode, ResolvedSlotContent } from '@/types'
+import { ConfigFormError } from '@/errors'
 import { isFormNodeConfig } from '@/utils/node'
 
 /** 可递归渲染的 slot 节点，包含稳定 key 和已解析字段配置。 */
@@ -35,8 +36,13 @@ export function resolveSlotNodes(value: ResolvedSlotContent, slotName: string, p
   if (typeof value === 'function')
     return []
 
-  if (!isFormNodeConfig(value))
-    throw new TypeError(`Slot "${slotName}" must be a field config, render function, or an array of them`)
+  if (!isFormNodeConfig(value)) {
+    throw new ConfigFormError(
+      'CONFIG_FORM_INVALID_SLOT_NODE',
+      `Slot "${slotName}" must be a field config, render function, or an array of them`,
+      { slotName },
+    )
+  }
 
   return [{
     field: value,

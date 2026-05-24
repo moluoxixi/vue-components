@@ -1,5 +1,6 @@
 import type { FormDevtoolsNode, FormNodeRenderMetric, FormNodeSyncMetric } from '../types'
 import type { DevtoolsStore, StoredNode } from './types'
+import { ConfigFormDevtoolsPluginError } from '../types'
 
 /**
  * 校验同一 devtools node id 的稳定身份字段。
@@ -13,15 +14,26 @@ function assertCompatibleNode(existing: FormDevtoolsNode | undefined, next: Form
   const keys: Array<keyof FormDevtoolsNode> = ['formId', 'kind', 'field', 'component', 'parentId']
   for (const key of keys) {
     if (existing[key] !== undefined && next[key] !== undefined && existing[key] !== next[key]) {
-      throw new Error(
+      throw new ConfigFormDevtoolsPluginError(
         `Conflicting devtools node id: ${next.id} changed ${key} from ${String(existing[key])} to ${String(next[key])}`,
+        {
+          key,
+          next: next[key],
+          existing: existing[key],
+          nodeId: next.id,
+        },
       )
     }
   }
 
   if (existing.source && next.source && existing.source.id !== next.source.id) {
-    throw new Error(
+    throw new ConfigFormDevtoolsPluginError(
       `Conflicting devtools node id: ${next.id} changed source from ${existing.source.id} to ${next.source.id}`,
+      {
+        existingSourceId: existing.source.id,
+        nextSourceId: next.source.id,
+        nodeId: next.id,
+      },
     )
   }
 }

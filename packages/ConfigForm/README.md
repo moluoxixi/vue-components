@@ -270,6 +270,10 @@ const fields = computed(() => [
 - 字段转换：插件可返回新的字段配置或 `undefined`；返回非法值、修改字段 key、重复插件名或重复组件 key 都会直接抛错。
 - 多语言：在上层 Vue 应用中使用 `vue-i18n` 等成熟库生成 `label`、`props.placeholder`、选项文案和校验消息；`ConfigForm` 只消费最终字段配置，不内置 i18n 插件，也不会递归解析 message key。
 
+## 错误
+
+运行时和插件契约错误会抛出 `ConfigFormError`。它携带稳定 `code` 和结构化 `context`，方便调用方按错误码处理，而不是依赖字符串消息。
+
 ## 样式
 
 默认命名空间是 `cf`。如果只使用默认样式：

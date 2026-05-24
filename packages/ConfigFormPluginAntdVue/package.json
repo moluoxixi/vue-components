@@ -2,6 +2,7 @@
   "name": "@moluoxixi/config-form-plugin-antd-vue",
   "type": "module",
   "version": "0.1.0",
+  "sideEffects": false,
   "exports": {
     ".": {
       "source": "./index.ts",

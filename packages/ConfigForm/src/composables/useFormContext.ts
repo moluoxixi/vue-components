@@ -6,6 +6,7 @@ import type {
   ValidateTrigger,
 } from '@/types'
 import { inject, provide } from 'vue'
+import { ConfigFormError } from '@/errors'
 
 export interface FormContext {
   values: FormValues
@@ -31,7 +32,11 @@ export function provideFormContext(context: FormContext): void {
 /** 递归组件注入表单状态；若不在表单上下文中则抛错。 */
 export function useFormContext(): FormContext {
   const ctx = inject<FormContext>(FORM_CONTEXT_KEY)
-  if (!ctx)
-    throw new Error('FormContext not provided. Are you inside a <ConfigForm>?')
+  if (!ctx) {
+    throw new ConfigFormError(
+      'CONFIG_FORM_MISSING_CONTEXT',
+      'FormContext not provided. Are you inside a <ConfigForm>?',
+    )
+  }
   return ctx
 }

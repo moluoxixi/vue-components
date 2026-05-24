@@ -1,4 +1,5 @@
 import type { ComponentNodeConfig, FieldConfig, FormNodeConfig, NormalizedFieldConfig, NormalizedNodeConfig, ResolvedSlotContent, SlotContent, ValidateTrigger } from '@/types'
+import { ConfigFormError } from '@/errors'
 import { hasFieldBinding } from '@/runtime/utils'
 
 export const BUILT_IN_FIELD_DEFAULTS_PLUGIN_NAME = 'config-form:built-in-field-defaults'
@@ -125,8 +126,14 @@ function applyBindingDefaults<TSlot extends SlotContent | ResolvedSlotContent>(
   const blurTrigger = field.blurTrigger ?? 'blur'
 
   if (trigger === blurTrigger) {
-    throw new Error(
+    throw new ConfigFormError(
+      'CONFIG_FORM_TRIGGER_CONFLICT',
       `Field "${field.field}" cannot use the same event for trigger and blurTrigger: ${trigger}`,
+      {
+        blurTrigger,
+        field: field.field,
+        trigger,
+      },
     )
   }
 

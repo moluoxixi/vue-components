@@ -1,5 +1,6 @@
 import type * as PublicApi from '../index'
-import { describe, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
+import { ConfigFormError } from '../index'
 
 describe('public api', () => {
   it('keeps defineField as the only public field factory', () => {
@@ -42,6 +43,7 @@ describe('public api', () => {
     type HasNormalizeFormRuntime = 'normalizeFormRuntime' extends keyof typeof PublicApi ? true : false
     type HasProvideRuntime = 'provideRuntime' extends keyof typeof PublicApi ? true : false
     type HasUseRuntime = 'useRuntime' extends keyof typeof PublicApi ? true : false
+    type HasConfigFormError = 'ConfigFormError' extends keyof typeof PublicApi ? true : false
     type RuntimeProp = NonNullable<PublicApi.ConfigFormProps['runtime']>
     type RuntimePropAcceptsOptions = PublicApi.FormRuntimeOptions extends RuntimeProp ? true : false
     type EmitsUpdateModelValue = PublicApi.ConfigFormEmits extends {
@@ -91,11 +93,21 @@ describe('public api', () => {
     expectTypeOf<HasNormalizeFormRuntime>().toEqualTypeOf<false>()
     expectTypeOf<HasProvideRuntime>().toEqualTypeOf<false>()
     expectTypeOf<HasUseRuntime>().toEqualTypeOf<false>()
+    expectTypeOf<HasConfigFormError>().toEqualTypeOf<true>()
     expectTypeOf<RuntimePropAcceptsOptions>().toEqualTypeOf<true>()
     expectTypeOf<EmitsUpdateModelValue>().toEqualTypeOf<false>()
     expectTypeOf<UseFormHasRuntime>().toEqualTypeOf<false>()
     expectTypeOf<UseFormHasInitialValues>().toEqualTypeOf<false>()
     expectTypeOf<UseFormHasDefaultValues>().toEqualTypeOf<true>()
     expectTypeOf<TokenLikeConditionAllowed>().toEqualTypeOf<false>()
+  })
+
+  it('exports a runtime error class with code and context', () => {
+    const error = new ConfigFormError('CONFIG_FORM_TEST', 'test message', { field: 'name' })
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error).toBeInstanceOf(ConfigFormError)
+    expect(error.code).toBe('CONFIG_FORM_TEST')
+    expect(error.context).toEqual({ field: 'name' })
   })
 })

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { configFormDevtools, configFormDevtoolsVitePlugin } from '../src/index'
+import {
+  configFormDevtools,
+  ConfigFormDevtoolsHttpError,
+  ConfigFormDevtoolsPluginError,
+  configFormDevtoolsVitePlugin,
+} from '../index'
 
 describe('configFormDevtools vite plugin', () => {
   it('is a development-only pre transform plugin', () => {
@@ -12,6 +17,11 @@ describe('configFormDevtools vite plugin', () => {
 
   it('exports the explicit vite plugin alias', () => {
     expect(configFormDevtoolsVitePlugin).toBe(configFormDevtools)
+  })
+
+  it('exports the public error classes', () => {
+    expect(ConfigFormDevtoolsPluginError).toBeTypeOf('function')
+    expect(ConfigFormDevtoolsHttpError).toBeTypeOf('function')
   })
 
   it('transforms supported source files through the plugin hook', () => {

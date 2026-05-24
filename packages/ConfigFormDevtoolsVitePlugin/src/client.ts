@@ -13,6 +13,7 @@ import { renderTree } from './client/render'
 import { createDevtoolsShell, createHighlighter, createMessageSetter } from './client/shell'
 import { createStore } from './client/store'
 import { ensureStyle } from './client/styles'
+import { ConfigFormDevtoolsPluginError } from './types'
 
 declare global {
   interface Window {
@@ -24,7 +25,7 @@ declare global {
 /** 安装浏览器 overlay，并返回全局 ConfigForm devtools bridge。 */
 export function installConfigFormDevtools(): FormDevtoolsBridge {
   if (typeof document === 'undefined')
-    throw new Error('ConfigForm devtools client requires a browser document')
+    throw new ConfigFormDevtoolsPluginError('ConfigForm devtools client requires a browser document')
 
   const existing = window.__CONFIG_FORM_DEVTOOLS_BRIDGE__
   if (existing)

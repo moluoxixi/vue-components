@@ -10,6 +10,7 @@ import type {
   SlotContent,
 } from '@/types'
 import { isVNode } from 'vue'
+import { ConfigFormError } from '@/errors'
 
 type TraversableFormNode = FormNodeConfig | ResolvedFormNode
 type TraversableSlotContent = SlotContent | ResolvedSlotContent
@@ -99,8 +100,13 @@ function collectSlotFields(slot: TraversableSlotContent | undefined, path = 'slo
   if (typeof slot === 'function')
     return []
 
-  if (!isFormNodeConfig(slot))
-    throw new TypeError(`Slot "${path}" must be a field config, render function, or an array of them`)
+  if (!isFormNodeConfig(slot)) {
+    throw new ConfigFormError(
+      'CONFIG_FORM_INVALID_SLOT_NODE',
+      `Slot "${path}" must be a field config, render function, or an array of them`,
+      { path },
+    )
+  }
 
   return collectFieldConfigsRaw([slot])
 }
@@ -124,8 +130,13 @@ export function assertUniqueFieldConfigs<TField extends Pick<FieldConfig, 'field
   const seen = new Set<string>()
 
   for (const field of fields) {
-    if (seen.has(field.field))
-      throw new Error(`Duplicate field key: ${field.field}`)
+    if (seen.has(field.field)) {
+      throw new ConfigFormError(
+        'CONFIG_FORM_DUPLICATE_FIELD_KEY',
+        `Duplicate field key: ${field.field}`,
+        { field: field.field },
+      )
+    }
 
     seen.add(field.field)
   }

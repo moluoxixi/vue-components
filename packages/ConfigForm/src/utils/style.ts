@@ -1,4 +1,5 @@
 import type { CSSProperties, StyleValue } from 'vue'
+import { ConfigFormError } from '@/errors'
 
 /** 将 labelWidth 统一为 CSS 可消费的宽度字符串。 */
 export function resolveLabelWidth(width?: string | number): string | undefined {
@@ -20,7 +21,11 @@ export function readStyleValue(value: unknown, propertyName = 'props.style'): St
   if (typeof value === 'string' || isStyleObject(value) || Array.isArray(value))
     return value
 
-  throw new TypeError(`${propertyName} must be a Vue style value`)
+  throw new ConfigFormError(
+    'CONFIG_FORM_INVALID_STYLE_VALUE',
+    `${propertyName} must be a Vue style value`,
+    { propertyName },
+  )
 }
 
 /** 合并基础 style 和用户 style；字符串/数组 style 交给 Vue 的数组 style 语义处理。 */

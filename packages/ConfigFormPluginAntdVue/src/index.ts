@@ -1,4 +1,5 @@
 import type { FieldConfig, FormFieldDefaultConfig, FormNodeConfig, FormRuntimePlugin } from '@moluoxixi/config-form/plugins'
+import { ConfigFormError } from '@moluoxixi/config-form'
 import { hasFieldBinding } from '@moluoxixi/config-form/plugins'
 
 /**
@@ -99,8 +100,13 @@ export function createAntdVuePlugin(config: AntdVuePluginOptions = {}): FormRunt
 
     const binding = bindings[componentName]
     if (!binding) {
-      if (strict && isAntdVueLikeComponentName(componentName))
-        throw new Error(`Unknown Ant Design Vue component binding: ${componentName}`)
+      if (strict && isAntdVueLikeComponentName(componentName)) {
+        throw new ConfigFormError(
+          'CONFIG_FORM_ANTD_VUE_UNKNOWN_BINDING',
+          `Unknown Ant Design Vue component binding: ${componentName}`,
+          { componentName },
+        )
+      }
       return undefined
     }
 

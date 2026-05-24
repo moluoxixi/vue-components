@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { FieldConfig, FieldKey, FormErrors, FormValues, NormalizedFieldConfig, ResolvedFormNode, ResolvedSlotContent, ValidateTrigger } from '@/types'
 import { computed, reactive, ref, toRaw, unref, watch } from 'vue'
+import { ConfigFormError } from '@/errors'
 import { applyFieldTransform, shouldValidateOn } from '@/utils/field'
 import { collectFieldConfigs, isFieldConfig, isFormNodeConfig } from '@/utils/node'
 import { resolveValue } from '@/utils/resolvable'
@@ -521,18 +522,33 @@ function collectNodeTopology(
   topology: NodeTopology,
   stack: Set<ResolvedFormNode>,
 ): void {
-  if (stack.has(node))
-    throw new Error(`Circular field node reference at ${path}`)
-  if (topology.nodes.has(node))
-    throw new Error(`Duplicate field node reference at ${path}`)
+  if (stack.has(node)) {
+    throw new ConfigFormError(
+      'CONFIG_FORM_CIRCULAR_FIELD_NODE',
+      `Circular field node reference at ${path}`,
+      { path },
+    )
+  }
+  if (topology.nodes.has(node)) {
+    throw new ConfigFormError(
+      'CONFIG_FORM_DUPLICATE_FIELD_NODE',
+      `Duplicate field node reference at ${path}`,
+      { path },
+    )
+  }
 
   stack.add(node)
   topology.nodes.add(node)
   topology.parentMap.set(node, parent)
 
   if (isFieldConfig(node)) {
-    if (topology.fieldNodeMap.has(node.field))
-      throw new Error(`Duplicate field key: ${node.field}`)
+    if (topology.fieldNodeMap.has(node.field)) {
+      throw new ConfigFormError(
+        'CONFIG_FORM_DUPLICATE_FIELD_KEY',
+        `Duplicate field key: ${node.field}`,
+        { field: node.field },
+      )
+    }
     topology.fieldNodeMap.set(node.field, node)
   }
 
@@ -559,8 +575,13 @@ function collectSlotTopology(
   if (typeof slot === 'function')
     return
 
-  if (!isFormNodeConfig(slot))
-    throw new TypeError(`Slot "${path}" must be a field config, render function, or an array of them`)
+  if (!isFormNodeConfig(slot)) {
+    throw new ConfigFormError(
+      'CONFIG_FORM_INVALID_SLOT_NODE',
+      `Slot "${path}" must be a field config, render function, or an array of them`,
+      { path },
+    )
+  }
 
   collectNodeTopology(slot, parent, path, topology, stack)
 }

@@ -17,6 +17,7 @@ import type {
   SlotContent,
 } from '@/types'
 import type { PlainRecord } from '@/utils/object'
+import { ConfigFormError } from '@/errors'
 import { applyFieldDefaults, BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '@/plugins/builtInFieldDefaults'
 import { isFormNodeConfig } from '@/utils/node'
 import { cloneRecordWithChildren, mergeRecords, readPlainRecord } from '@/utils/object'
@@ -57,7 +58,11 @@ export function createFieldPipeline(
     if (HTML_TAG_NAME_RE.test(component))
       return component
 
-    throw new Error(`Unknown component key: ${component}`)
+    throw new ConfigFormError(
+      'CONFIG_FORM_UNKNOWN_COMPONENT_KEY',
+      `Unknown component key: ${component}`,
+      { component },
+    )
   }
 
   /** 收集内置和用户插件的默认字段片段；右侧片段在对象合并时具备更高优先级。 */
@@ -79,8 +84,13 @@ export function createFieldPipeline(
     if (typeof value === 'function')
       return value as RenderFunction
 
-    if (!isFormNodeConfig(value))
-      throw new TypeError(`Slot "${path}" must be a field config, render function, or an array of them`)
+    if (!isFormNodeConfig(value)) {
+      throw new ConfigFormError(
+        'CONFIG_FORM_INVALID_SLOT_NODE',
+        `Slot "${path}" must be a field config, render function, or an array of them`,
+        { path },
+      )
+    }
 
     return transformField(value)
   }
@@ -102,8 +112,13 @@ export function createFieldPipeline(
     const next = hook.handler(cloneFieldForPlugin(current))
     if (next === undefined)
       return current
-    if (!isFormNodeConfig(next))
-      throw new TypeError(`Plugin ${hook.pluginName} transformField must return a field object or undefined`)
+    if (!isFormNodeConfig(next)) {
+      throw new ConfigFormError(
+        'CONFIG_FORM_INVALID_TRANSFORM_FIELD',
+        `Plugin ${hook.pluginName} transformField must return a field object or undefined`,
+        { pluginName: hook.pluginName },
+      )
+    }
 
     assertFieldKeyStable(hook.pluginName, current, next)
 
@@ -185,8 +200,10 @@ function resolveDefaultField(hook: DefaultHook, field: FormNodeConfig): FormFiel
     return undefined
 
   if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) {
-    throw new TypeError(
+    throw new ConfigFormError(
+      'CONFIG_FORM_INVALID_DEFAULT_FIELD',
       `Plugin ${hook.pluginName} getDefaultField must return a field object or undefined`,
+      { pluginName: hook.pluginName },
     )
   }
 
@@ -199,8 +216,13 @@ function resolveDefaultField(hook: DefaultHook, field: FormNodeConfig): FormFiel
 /** 校验默认值 hook 不能返回会改变节点身份或子树拓扑的字段。 */
 function assertDefaultFieldKeys(pluginName: string, defaults: PlainRecord): void {
   for (const key of Object.keys(defaults)) {
-    if (FORBIDDEN_DEFAULT_FIELD_KEYS.has(key))
-      throw new Error(`Plugin ${pluginName} getDefaultField cannot return "${key}"`)
+    if (FORBIDDEN_DEFAULT_FIELD_KEYS.has(key)) {
+      throw new ConfigFormError(
+        'CONFIG_FORM_FORBIDDEN_DEFAULT_FIELD_KEY',
+        `Plugin ${pluginName} getDefaultField cannot return "${key}"`,
+        { key, pluginName },
+      )
+    }
   }
 }
 
@@ -218,12 +240,23 @@ function assertFieldKeyStable(
   if (!hasFieldBinding(current))
     return
 
-  if (!hasFieldBinding(next))
-    throw new Error(`Plugin ${pluginName} cannot remove field key "${current.field}"`)
+  if (!hasFieldBinding(next)) {
+    throw new ConfigFormError(
+      'CONFIG_FORM_REMOVED_FIELD_KEY',
+      `Plugin ${pluginName} cannot remove field key "${current.field}"`,
+      { field: current.field, pluginName },
+    )
+  }
 
   if (next.field !== current.field) {
-    throw new Error(
+    throw new ConfigFormError(
+      'CONFIG_FORM_CHANGED_FIELD_KEY',
       `Plugin ${pluginName} cannot change field key from "${current.field}" to "${next.field}"`,
+      {
+        field: current.field,
+        nextField: next.field,
+        pluginName,
+      },
     )
   }
 }
