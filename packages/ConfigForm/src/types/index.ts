@@ -56,6 +56,8 @@ export interface RenderContext<TValues extends object = FormValues> {
   isVisible: (field: ResolvedFormNode) => boolean
   /** 当前节点禁用态查询。 */
   isDisabled: (field: ResolvedBoundNode) => boolean
+  /** 当前节点只读态查询。 */
+  isReadonly: (field: ResolvedFormNode) => boolean
   /** 当前 render 节点对应的已解析节点。 */
   node: ResolvedFormNode
 }
@@ -125,6 +127,8 @@ export interface FieldConfig extends ComponentNodeConfig {
   validator?: FieldValidator<FormValues, unknown>
   /** 字段禁用条件；禁用字段默认跳过校验和提交。 */
   disabled?: FieldCondition<FormValues>
+  /** 字段只读条件；只读字段默认跳过校验但仍参与提交。 */
+  readonly?: FieldCondition<FormValues>
   /** 提交前是否仍保留隐藏字段，默认 false。 */
   submitWhenHidden?: boolean
   /** 提交前是否仍保留禁用字段，默认 false。 */

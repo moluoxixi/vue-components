@@ -1,21 +1,33 @@
 import type { NormalizedFieldConfig } from '@moluoxixi/config-form/plugins'
 import { defineField } from '@moluoxixi/config-form'
 import { createFormRuntime } from '@moluoxixi/config-form/plugins'
+import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { createAntdVuePlugin } from '../src'
 
 const AInput = { name: 'AInput' }
 const ASwitch = { name: 'ASwitch' }
 const ACheckbox = { name: 'ACheckbox' }
+const ACheckboxGroup = { name: 'ACheckboxGroup' }
 const ATextarea = { name: 'ATextarea' }
 const ASelect = { name: 'ASelect' }
 const ASlider = { name: 'ASlider' }
+const ARadioGroup = { name: 'ARadioGroup' }
 const AUnknown = { name: 'AUnknown' }
 const CustomInput = { name: 'CustomInput' }
 
 /** 将 runtime 返回节点收窄为字段节点；本测试只传入带 field 的配置。 */
 function asField(node: unknown): NormalizedFieldConfig {
   return node as NormalizedFieldConfig
+}
+
+/** 将 readonly adapter 渲染成可断言的 DOM，保持测试只关心展示结果。 */
+function renderReadonly(adapter: (context: Record<string, unknown>) => unknown, context: Record<string, unknown>) {
+  return mount(defineComponent({
+    name: 'ReadonlyAdapterHarness',
+    setup: () => () => h('div', adapter(context)),
+  }))
 }
 
 describe('antd vue plugin package', () => {
@@ -136,6 +148,92 @@ describe('antd vue plugin package', () => {
     ))
 
     expect((switchField.props.style as Record<string, unknown>)?.width).toBe('44px')
+  })
+
+  it('exposes readonly adapters for select, checkbox group, radio group, and switch labels', () => {
+    const runtime = createFormRuntime({
+      plugins: [createAntdVuePlugin()],
+    })
+
+    const selectField = asField(runtime.transformField(defineField({
+      component: ASelect,
+      field: 'role',
+      props: {
+        options: [
+          { label: '管理员', value: 'admin' },
+          { label: '用户', value: 'user' },
+        ],
+      },
+    })))
+    const checkboxGroupField = asField(runtime.transformField(defineField({
+      component: ACheckboxGroup,
+      field: 'permissions',
+      props: {
+        options: [
+          { label: '读', value: 'read' },
+          { label: '写', value: 'write' },
+          { label: '审', value: 'audit' },
+        ],
+      },
+    })))
+    const radioGroupField = asField(runtime.transformField(defineField({
+      component: ARadioGroup,
+      field: 'status',
+      props: {
+        options: [
+          { label: '启用', value: 'enabled' },
+          { label: '停用', value: 'disabled' },
+        ],
+      },
+    })))
+    const switchField = asField(runtime.transformField(defineField({
+      component: ASwitch,
+      field: 'enabled',
+      props: {
+        checkedChildren: '开启',
+        unCheckedChildren: '关闭',
+      },
+    })))
+
+    expect(renderReadonly(runtime.readonlyAdapters.ASelect, {
+      field: 'role',
+      node: selectField,
+      value: 'admin',
+      values: { role: 'admin' },
+    }).text()).toBe('管理员')
+    expect(renderReadonly(runtime.readonlyAdapters.ACheckboxGroup, {
+      field: 'permissions',
+      node: checkboxGroupField,
+      value: ['read', 'audit'],
+      values: { permissions: ['read', 'audit'] },
+    }).text()).toBe('读、审')
+    expect(renderReadonly(runtime.readonlyAdapters.ARadioGroup, {
+      field: 'status',
+      node: radioGroupField,
+      value: 'disabled',
+      values: { status: 'disabled' },
+    }).text()).toBe('停用')
+    expect(renderReadonly(runtime.readonlyAdapters.ASwitch, {
+      field: 'enabled',
+      node: switchField,
+      value: true,
+      values: { enabled: true },
+    }).text()).toBe('开启')
+  })
+
+  it('allows user readonly adapters to override plugin defaults', () => {
+    const override = ({ value }: Record<string, unknown>) => h('span', `override:${String(value)}`)
+    const runtime = createFormRuntime({
+      plugins: [
+        createAntdVuePlugin({
+          readonlyAdapters: {
+            ASelect: override,
+          },
+        }),
+      ],
+    })
+
+    expect(runtime.readonlyAdapters.ASelect).toBe(override)
   })
 
   it('deep merges ASwitch props with user props, user values take priority', () => {

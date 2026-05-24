@@ -28,6 +28,10 @@ describe('plugin api', () => {
     type HasRuntimeGetFieldDefaults = 'getFieldDefaults' extends keyof PluginApi.FormRuntime ? true : false
     type HasRuntimeTransformField = 'transformField' extends keyof PluginApi.FormRuntime ? true : false
     type HasRuntimeTransformFields = 'transformFields' extends keyof PluginApi.FormRuntime ? true : false
+    type HasReadonlyAdaptersOption = 'readonlyAdapters' extends keyof PluginApi.FormRuntimeOptions ? true : false
+    type HasPluginReadonlyAdapters = 'readonlyAdapters' extends keyof PluginApi.FormRuntimePlugin ? true : false
+    type HasReadonlyAdapterType = PluginApi.ReadonlyAdapter extends (...args: any[]) => any ? true : false
+    type HasReadonlyRenderContextValue = 'value' extends keyof PluginApi.ReadonlyRenderContext ? true : false
     type HasPluginTokens = 'tokens' extends keyof PluginApi.FormRuntimePlugin ? true : false
     type HasPluginGetDefaultField = 'getDefaultField' extends keyof PluginApi.FormRuntimePlugin ? true : false
     type HasPluginTransformNode = 'transformNode' extends keyof PluginApi.FormRuntimePlugin ? true : false
@@ -64,6 +68,10 @@ describe('plugin api', () => {
     expectTypeOf<HasRuntimeGetFieldDefaults>().toEqualTypeOf<true>()
     expectTypeOf<HasRuntimeTransformField>().toEqualTypeOf<true>()
     expectTypeOf<HasRuntimeTransformFields>().toEqualTypeOf<false>()
+    expectTypeOf<HasReadonlyAdaptersOption>().toEqualTypeOf<true>()
+    expectTypeOf<HasPluginReadonlyAdapters>().toEqualTypeOf<true>()
+    expectTypeOf<HasReadonlyAdapterType>().toEqualTypeOf<true>()
+    expectTypeOf<HasReadonlyRenderContextValue>().toEqualTypeOf<true>()
     expectTypeOf<HasPluginTokens>().toEqualTypeOf<false>()
     expectTypeOf<HasPluginGetDefaultField>().toEqualTypeOf<true>()
     expectTypeOf<HasPluginTransformNode>().toEqualTypeOf<false>()

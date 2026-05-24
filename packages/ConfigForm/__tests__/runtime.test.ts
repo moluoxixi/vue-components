@@ -1,3 +1,4 @@
+import type { ReadonlyAdapter } from '../src/runtime'
 import type { NormalizedFieldConfig, NormalizedNodeConfig } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { markRaw } from 'vue'
@@ -314,6 +315,32 @@ describe('form runtime', () => {
     expect(() => createFormRuntime({
       plugins: [{ components: { FormLayout: AlternateInput }, name: 'built-in-conflict' }],
     })).toThrow(/Component key conflict: FormLayout/)
+  })
+
+  it('merges readonly adapters from runtime config and keeps key conflicts explicit', () => {
+    const readonlyAdapter: ReadonlyAdapter = ({ value }) => value
+
+    const runtime = createFormRuntime({
+      readonlyAdapters: {
+        MyInput: readonlyAdapter,
+      },
+    })
+
+    expect(runtime.readonlyAdapters.MyInput).toBe(readonlyAdapter)
+
+    expect(() => createFormRuntime({
+      readonlyAdapters: {
+        MyInput: readonlyAdapter,
+      },
+      plugins: [
+        {
+          name: 'readonly-conflict',
+          readonlyAdapters: {
+            MyInput: ({ value }) => value,
+          },
+        },
+      ],
+    })).toThrow(/Readonly adapter key conflict: MyInput/)
   })
 
   it('rejects transforms that return invalid values or change field keys', () => {

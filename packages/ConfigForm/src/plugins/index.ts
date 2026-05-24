@@ -12,6 +12,9 @@ export type {
   FormRuntime,
   FormRuntimeOptions,
   FormRuntimePlugin,
+  ReadonlyAdapter,
+  ReadonlyAdapterRegistry,
+  ReadonlyRenderContext,
 } from '../runtime'
 export {
   hasFieldBinding,

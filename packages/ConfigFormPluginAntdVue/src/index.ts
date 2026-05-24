@@ -1,6 +1,13 @@
-import type { FieldConfig, FormFieldDefaultConfig, FormNodeConfig, FormRuntimePlugin } from '@moluoxixi/config-form/plugins'
+import type {
+  FieldConfig,
+  FormFieldDefaultConfig,
+  FormNodeConfig,
+  FormRuntimePlugin,
+  ReadonlyAdapterRegistry,
+} from '@moluoxixi/config-form/plugins'
 import { ConfigFormError } from '@moluoxixi/config-form'
 import { hasFieldBinding } from '@moluoxixi/config-form/plugins'
+import { ANTD_VUE_READONLY_ADAPTERS } from './readonly'
 
 /**
  * Ant Design Vue 字段组件的双向绑定协议。
@@ -16,6 +23,8 @@ export interface AntdVuePluginOptions {
   name?: string
   /** 额外组件绑定或内置绑定覆盖项，key 必须是 Ant Design Vue 组件 name。 */
   bindings?: Record<string, AntdVueFieldBinding>
+  /** 额外只读适配器或内置适配器覆盖项，key 必须是 Ant Design Vue 组件 name。 */
+  readonlyAdapters?: ReadonlyAdapterRegistry
   /** 字段组件名形如 Ant Design Vue 组件但没有映射时是否直接抛错，默认 true。 */
   strict?: boolean
 }
@@ -87,6 +96,10 @@ export function createAntdVuePlugin(config: AntdVuePluginOptions = {}): FormRunt
     ...ANTD_VUE_FIELD_BINDINGS,
     ...(config.bindings ?? {}),
   }
+  const readonlyAdapters: ReadonlyAdapterRegistry = {
+    ...ANTD_VUE_READONLY_ADAPTERS,
+    ...(config.readonlyAdapters ?? {}),
+  }
   const strict = config.strict ?? true
 
   /** 根据字段组件名返回 Ant Design Vue 绑定默认值；用户字段声明由 core 合并覆盖。 */
@@ -120,7 +133,10 @@ export function createAntdVuePlugin(config: AntdVuePluginOptions = {}): FormRunt
   const plugin: FormRuntimePlugin = {
     name: config.name ?? 'antd-vue',
     getDefaultField,
+    readonlyAdapters,
   }
 
   return plugin
 }
+
+export { ANTD_VUE_READONLY_ADAPTERS } from './readonly'

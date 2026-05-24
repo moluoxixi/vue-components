@@ -5,6 +5,7 @@ const GridForm = defineAsyncComponent(() => import('./demos/GridForm.vue'))
 const I18nForm = defineAsyncComponent(() => import('./demos/I18nForm.vue'))
 const InlineForm = defineAsyncComponent(() => import('./demos/InlineForm.vue'))
 const MultiCardForms = defineAsyncComponent(() => import('./demos/MultiCardForms.vue'))
+const ReadonlyForm = defineAsyncComponent(() => import('./demos/ReadonlyForm.vue'))
 const NestedCardCheckboxForm = defineAsyncComponent(() => import('./demos/NestedCardCheckboxForm.vue'))
 const NestedLayoutForm = defineAsyncComponent(() => import('./demos/NestedLayoutForm.vue'))
 
@@ -19,6 +20,9 @@ const activeTab = ref('grid')
       </el-tab-pane>
       <el-tab-pane label="element Inline 模式" name="inline">
         <InlineForm />
+      </el-tab-pane>
+      <el-tab-pane label="element 只读模式" name="readonly">
+        <ReadonlyForm />
       </el-tab-pane>
       <el-tab-pane label="element Card 嵌套 Checkbox" name="nested-card-checkbox">
         <NestedCardCheckboxForm />

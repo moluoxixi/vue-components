@@ -192,6 +192,31 @@ describe('useForm', () => {
     })
   })
 
+  it('skips validation for readonly fields and still submits their values even when disabled', async () => {
+    const onSubmit = vi.fn()
+    const fields = createResolvedFieldRef([
+      defineField({
+        field: 'name',
+        component: 'input',
+        defaultValue: 'Ada',
+        disabled: () => true,
+        readonly: true,
+        validator: () => '不应执行',
+      }),
+    ])
+
+    const form = useForm({ fields, onSubmit })
+
+    expect(form.isReadonly(fields.value[0])).toBe(true)
+    expect(form.isDisabled(fields.value[0])).toBe(true)
+
+    await expect(form.validateSingleField('name', 'submit')).resolves.toBe(true)
+    expect(form.errors.value.name).toBeUndefined()
+
+    await expect(form.submit()).resolves.toBe(true)
+    expect(onSubmit).toHaveBeenCalledWith({ name: 'Ada' })
+  })
+
   it('validates submit fields concurrently while preserving per-field serialization', async () => {
     const calls: string[] = []
     let active = 0

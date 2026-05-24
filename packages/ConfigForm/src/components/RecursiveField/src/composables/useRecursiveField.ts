@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import FormComponent from '@/components/FormComponent'
 import FormField from '@/components/FormField'
 import FormNode from '@/components/FormNode'
+import ReadonlyField from '@/components/ReadonlyField'
 import { useFormContext } from '@/composables/useFormContext'
 import { isResolvedComponent, isResolvedField } from '@/utils/node'
 
@@ -20,6 +21,8 @@ export function useRecursiveField(props: RecursiveFieldProps): UseRecursiveField
   const visible = computed(() => ctx.isVisible(props.field))
 
   const resolvedComponent = computed(() => {
+    if (ctx.isReadonly?.(props.field))
+      return ReadonlyField
     if (isResolvedField(props.field))
       return FormField
     if (isResolvedComponent(props.field))

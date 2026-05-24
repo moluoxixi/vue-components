@@ -8,6 +8,7 @@
 - UI 框架无关：支持 Vue 组件、函数式组件、原生标签和 runtime 组件注册。
 - Zod + 自定义校验：字段支持 `schema`，也支持读取全量 values 的 `validator`。
 - 初始值快照：通过 `defaultValues` 提供初始值，内部值通过表单 ref API 读取和修改。
+- 只读展示：字段级 `readonly` 与 `readonlyAdapters` 分离，核心只负责状态和渲染分派，具体展示值由插件提供。
 - 灵活布局：内置 24 栅格和 inline 模式，并包含基础移动端适配。
 - 可发布样式：SCSS 使用命名空间变量，便于在业务侧覆盖。
 
@@ -157,6 +158,7 @@ const fields = [
 | `validateOn` | `'submit' \| 'blur' \| 'change' \| array` | `'submit'` | 校验触发时机，始终包含 submit |
 | `visible` | `boolean \| (values) => boolean` | - | 动态显隐 |
 | `disabled` | `boolean \| (values) => boolean` | - | 动态禁用 |
+| `readonly` | `boolean \| (values) => boolean` | - | 动态只读；只读字段跳过校验但仍参与提交 |
 | `transform` | `(value, values) => unknown` | - | submit 前转换值 |
 | `submitWhenHidden` | `boolean` | `false` | 隐藏字段是否仍提交 |
 | `submitWhenDisabled` | `boolean` | `false` | 禁用字段是否仍提交 |
@@ -213,6 +215,8 @@ defineField({
 
 内置默认值插件写在 `src/plugins/builtInFieldDefaults.ts`，只产出默认配置片段，优先级最低；用户插件写在 `runtime.plugins`，只负责 `transformField(field)`。
 
+只读展示由 `runtime.readonlyAdapters` 管理。核心在渲染阶段只负责把当前字段节点、当前值和表单快照交给适配器；如果组件名没有注册适配器，就直接回退到原始值文本，不会把 readonly 语义重新塞回组件 props。
+
 ```vue
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -267,6 +271,7 @@ const fields = computed(() => [
 
 - `components`：注册字符串组件 key，字段中可直接写 `component: 'MyInput'`；大写 key 未注册会抛错，原生标签如 `'input'` 可直接使用。
 - `plugins`：按用户注册顺序收集组件和 `transformField(field)` hook；hook 只接收已补齐内置默认值的 field，不接收 values/errors/slot scope。
+- `readonlyAdapters`：注册字符串组件 key 对应的只读展示适配器；插件可以扩展或覆盖具体组件的展示值，未注册时回退为 raw value 文本。
 - 字段转换：插件可返回新的字段配置或 `undefined`；返回非法值、修改字段 key、重复插件名或重复组件 key 都会直接抛错。
 - 多语言：在上层 Vue 应用中使用 `vue-i18n` 等成熟库生成 `label`、`props.placeholder`、选项文案和校验消息；`ConfigForm` 只消费最终字段配置，不内置 i18n 插件，也不会递归解析 message key。
 

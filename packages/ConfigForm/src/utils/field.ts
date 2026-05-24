@@ -99,6 +99,7 @@ interface FieldConfigBase<
   validator?: FieldValidator<TValues, TValue>
   visible?: FieldCondition<TValues>
   disabled?: FieldCondition<TValues>
+  readonly?: FieldCondition<TValues>
   transform?: (value: TValue, allValues: TValues) => unknown
   getValueFromEvent?: (...args: unknown[]) => TValue
   id?: string

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@moluoxixi/config-form": "workspace:*",
+    "@moluoxixi/config-form-plugin-element-plus": "workspace:*",
     "element-plus": "catalog:ui",
     "vue": "catalog:build",
     "vue-i18n": "catalog:build",

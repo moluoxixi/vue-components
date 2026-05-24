@@ -44,6 +44,7 @@ const {
   getValues,
   isVisible,
   isDisabled,
+  isReadonly,
   clearFieldError,
 } = useForm({
   fields: resolvedFields,
@@ -71,6 +72,7 @@ provideFormContext({
   getValues,
   isVisible,
   isDisabled,
+  isReadonly,
   setValue,
   setValues: (nextValues, replace) => setValues(nextValues as Partial<T>, replace),
   validateField: validateSingleField,

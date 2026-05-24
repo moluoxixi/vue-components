@@ -17,9 +17,11 @@ const props = withDefaults(defineProps<{
   id?: string
   label?: string
   required?: boolean
+  showError?: boolean
   span: number
 }>(), {
   required: false,
+  showError: true,
 })
 
 defineSlots<{
@@ -49,6 +51,14 @@ const fieldRootClass = computed(() => [
 
 /** 字段外壳样式仅由布局语义生成，避免外部属性通道改写根节点。 */
 const fieldRootStyle = computed<CSSProperties | undefined>(() => formItemBaseStyle.value)
+
+/** 只读态不展示错误区时，关闭预留高度以保持展示区更紧凑。 */
+const controlStyle = computed<CSSProperties | undefined>(() => {
+  if (props.showError)
+    return undefined
+
+  return { paddingBottom: 0 }
+})
 </script>
 
 <template>
@@ -66,10 +76,17 @@ const fieldRootStyle = computed<CSSProperties | undefined>(() => formItemBaseSty
       <span>{{ label }}</span>
     </label>
 
-    <div :class="e('field', 'control')">
+    <div
+      :class="e('field', 'control')"
+      :style="controlStyle"
+    >
       <slot />
 
-      <div :class="e('field', 'error')" aria-live="polite">
+      <div
+        v-if="showError"
+        :class="e('field', 'error')"
+        aria-live="polite"
+      >
         <span v-for="(msg, i) in error" :key="i">{{ msg }}</span>
       </div>
     </div>

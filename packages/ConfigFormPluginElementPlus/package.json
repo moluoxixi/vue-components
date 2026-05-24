@@ -1,5 +1,5 @@
 {
-  "name": "@moluoxixi/config-form-plugin-antd-vue",
+  "name": "@moluoxixi/config-form-plugin-element-plus",
   "type": "module",
   "version": "0.1.0",
   "sideEffects": false,
@@ -25,13 +25,13 @@
   },
   "peerDependencies": {
     "@moluoxixi/config-form": "^0.1.0",
-    "ant-design-vue": "^4.2.0"
+    "element-plus": "^2.9.0"
   },
   "devDependencies": {
     "@moluoxixi/config-form": "workspace:*",
     "@vitest/coverage-v8": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
-    "ant-design-vue": "catalog:ui",
+    "element-plus": "catalog:ui",
     "unplugin-dts": "catalog:dev",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",

@@ -5,6 +5,7 @@ const GridForm = defineAsyncComponent(() => import('./demos/GridForm.vue'))
 const I18nForm = defineAsyncComponent(() => import('./demos/I18nForm.vue'))
 const InlineForm = defineAsyncComponent(() => import('./demos/InlineForm.vue'))
 const MultiCardForms = defineAsyncComponent(() => import('./demos/MultiCardForms.vue'))
+const ReadonlyForm = defineAsyncComponent(() => import('./demos/ReadonlyForm.vue'))
 const NestedCardCheckboxForm = defineAsyncComponent(() => import('./demos/NestedCardCheckboxForm.vue'))
 const NestedLayoutForm = defineAsyncComponent(() => import('./demos/NestedLayoutForm.vue'))
 
@@ -19,6 +20,9 @@ const activeTab = ref('grid')
       </a-tab-pane>
       <a-tab-pane key="inline" tab="antd Inline 模式">
         <InlineForm />
+      </a-tab-pane>
+      <a-tab-pane key="readonly" tab="antd 只读模式">
+        <ReadonlyForm />
       </a-tab-pane>
       <a-tab-pane key="nested-card-checkbox" tab="antd Card 嵌套 Checkbox">
         <NestedCardCheckboxForm />

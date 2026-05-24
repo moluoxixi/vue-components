@@ -18,6 +18,7 @@ export function createLayoutFormContext(
     getValues: parentCtx.getValues,
     isVisible: parentCtx.isVisible,
     isDisabled: parentCtx.isDisabled,
+    isReadonly: parentCtx.isReadonly,
     setValue: parentCtx.setValue,
     setValues: parentCtx.setValues,
     validateField: parentCtx.validateField,

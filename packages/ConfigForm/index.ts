@@ -5,6 +5,9 @@ export { ConfigFormError } from './src/errors'
 export { default as ConfigForm } from './src/index.vue'
 export type {
   FormRuntimeOptions,
+  ReadonlyAdapter,
+  ReadonlyAdapterRegistry,
+  ReadonlyRenderContext,
 } from './src/runtime'
 export type {
   ConfigFormEmits,

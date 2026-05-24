@@ -1,4 +1,10 @@
-import type { ComponentRegistry, FormRuntime, FormRuntimeOptions, FormRuntimePlugin } from './types'
+import type {
+  ComponentRegistry,
+  FormRuntime,
+  FormRuntimeOptions,
+  FormRuntimePlugin,
+  ReadonlyAdapterRegistry,
+} from './types'
 import FormLayout from '@/components/FormLayout'
 import { ConfigFormError } from '@/errors'
 import { createFieldPipeline } from './transform'
@@ -12,6 +18,7 @@ const BUILT_IN_COMPONENTS: ComponentRegistry = {
 export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormRuntime {
   const plugins: FormRuntimePlugin[] = [...(runtimeConfig.plugins ?? [])]
   const components: ComponentRegistry = { ...BUILT_IN_COMPONENTS, ...(runtimeConfig.components ?? {}) }
+  const readonlyAdapters: ReadonlyAdapterRegistry = { ...(runtimeConfig.readonlyAdapters ?? {}) }
 
   const seenPluginNames = new Set<string>()
   for (const plugin of plugins) {
@@ -36,12 +43,24 @@ export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormR
       }
       components[key] = component
     }
+
+    for (const [key, adapter] of Object.entries(plugin.readonlyAdapters ?? {})) {
+      if (Object.hasOwn(readonlyAdapters, key)) {
+        throw new ConfigFormError(
+          'CONFIG_FORM_READONLY_ADAPTER_KEY_CONFLICT',
+          `Readonly adapter key conflict: ${key}`,
+          { componentKey: key, pluginName: plugin.name },
+        )
+      }
+      readonlyAdapters[key] = adapter
+    }
   }
 
   const fieldPipeline = createFieldPipeline(components, plugins)
 
   return {
     getFieldDefaults: fieldPipeline.getFieldDefaults,
+    readonlyAdapters,
     transformField: fieldPipeline.transformField,
   }
 }

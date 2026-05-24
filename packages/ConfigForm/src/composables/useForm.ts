@@ -200,6 +200,14 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
     return resolveValue(field.disabled, valueStore, false)
   }
 
+  /** 即时解析字段只读态；容器节点不拥有只读语义，始终返回 false。 */
+  function isReadonly(field: ResolvedFormNode): boolean {
+    if (!isFieldConfig(field))
+      return false
+
+    return resolveValue(field.readonly, valueStore, false)
+  }
+
   /** 按字段名读取有效可见性，供校验和提交流程复用同一套父链规则。 */
   function isFieldVisible(fieldName: string, valuesSnapshot: FormValues, visibility = createVisibilitySnapshot(valuesSnapshot, nodeTopology.value)): boolean {
     const visible = visibility.byField.get(fieldName)
@@ -353,8 +361,17 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
 
     if (
       (!fieldVisible && !shouldValidateHidden)
-      || (resolveValue(field.disabled, valuesSnapshot, false) && !shouldValidateDisabled)
     ) {
+      clearFieldError(fieldName)
+      return true
+    }
+
+    if (resolveValue(field.readonly, valuesSnapshot, false)) {
+      clearFieldError(fieldName)
+      return true
+    }
+
+    if (resolveValue(field.disabled, valuesSnapshot, false) && !shouldValidateDisabled) {
       clearFieldError(fieldName)
       return true
     }
@@ -422,6 +439,10 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
     for (const field of fieldConfigs.value) {
       if (!isFieldVisible(field.field, valuesSnapshot, visibility) && !field.submitWhenHidden)
         continue
+      if (resolveValue(field.readonly, valuesSnapshot, false)) {
+        submitValues[field.field] = applyFieldTransform(field, valuesSnapshot[field.field], valuesSnapshot)
+        continue
+      }
       if (resolveValue(field.disabled, valuesSnapshot, false) && !field.submitWhenDisabled)
         continue
       submitValues[field.field] = applyFieldTransform(field, valuesSnapshot[field.field], valuesSnapshot)
@@ -445,6 +466,7 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
     errors,
     isVisible,
     isDisabled,
+    isReadonly,
     validate,
     validateSingleField,
     submit,

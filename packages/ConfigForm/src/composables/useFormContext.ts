@@ -17,6 +17,7 @@ export interface FormContext {
   getValues: () => FormValues
   isVisible: (field: ResolvedFormNode) => boolean
   isDisabled: (field: ResolvedBoundNode) => boolean
+  isReadonly?: (field: ResolvedFormNode) => boolean
   setValue: (field: string, value: unknown) => void
   setValues: (values: FormValues, replace?: boolean) => void
   validateField: (field: string, trigger: ValidateTrigger) => Promise<boolean>

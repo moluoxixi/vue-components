@@ -72,6 +72,7 @@ export function useFormNode(props: FormNodeProps): UseFormNodeResult {
       getValue: ctx.getValue,
       getValues: ctx.getValues,
       isDisabled: ctx.isDisabled,
+      isReadonly: ctx.isReadonly ?? (() => false),
       isVisible: ctx.isVisible,
       node: props.field,
       setValue: ctx.setValue,
