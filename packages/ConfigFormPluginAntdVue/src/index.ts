@@ -1,21 +1,15 @@
 import type {
-  FieldConfig,
   FormFieldDefaultConfig,
   FormNodeConfig,
   FormRuntimePlugin,
   ReadonlyAdapterRegistry,
 } from '@moluoxixi/config-form/plugins'
+import type { AntdVueFieldBinding } from './bindings'
 import { ConfigFormError } from '@moluoxixi/config-form'
 import { hasFieldBinding } from '@moluoxixi/config-form/plugins'
+import { ANTD_VUE_FIELD_BINDINGS } from './bindings'
+import { isAntdVueLikeComponentName, resolveComponentName } from './component-name'
 import { ANTD_VUE_READONLY_ADAPTERS } from './readonly'
-
-/**
- * Ant Design Vue 字段组件的双向绑定协议。
- *
- * 直接复用 `FieldConfig` 中的同名字段：`valueProp`、`trigger` 必填，`props` 可选，
- * 语义与 `defineField` 参数保持一致。
- */
-export type AntdVueFieldBinding = Required<Pick<FieldConfig, 'valueProp' | 'trigger'>> & Pick<FieldConfig, 'props'>
 
 /** Ant Design Vue 插件配置。 */
 export interface AntdVuePluginOptions {
@@ -27,60 +21,6 @@ export interface AntdVuePluginOptions {
   readonlyAdapters?: ReadonlyAdapterRegistry
   /** 字段组件名形如 Ant Design Vue 组件但没有映射时是否直接抛错，默认 true。 */
   strict?: boolean
-}
-
-/** 当前插件内置支持的 Ant Design Vue 字段组件绑定表。 */
-export const ANTD_VUE_FIELD_BINDINGS: Readonly<Record<string, AntdVueFieldBinding>> = Object.freeze({
-  AAutoComplete: { valueProp: 'value', trigger: 'update:value' },
-  ACascader: { valueProp: 'value', trigger: 'update:value' },
-  ACheckbox: { valueProp: 'checked', trigger: 'update:checked' },
-  ACheckboxGroup: { valueProp: 'value', trigger: 'update:value' },
-  ADatePicker: { valueProp: 'value', trigger: 'update:value' },
-  AInput: { valueProp: 'value', trigger: 'update:value' },
-  AInputNumber: { valueProp: 'value', trigger: 'update:value' },
-  AInputPassword: { valueProp: 'value', trigger: 'update:value' },
-  AInputSearch: { valueProp: 'value', trigger: 'update:value' },
-  ARangePicker: { valueProp: 'value', trigger: 'update:value' },
-  ARate: { valueProp: 'value', trigger: 'update:value' },
-  ARadioGroup: { valueProp: 'value', trigger: 'update:value' },
-  ASelect: { valueProp: 'value', trigger: 'update:value' },
-  ASlider: { valueProp: 'value', trigger: 'update:value' },
-  ASwitch: {
-    valueProp: 'checked',
-    trigger: 'update:checked',
-    props: { style: { width: '44px' } },
-  },
-  ATextarea: { valueProp: 'value', trigger: 'update:value' },
-  ATimePicker: { valueProp: 'value', trigger: 'update:value' },
-  ATimeRangePicker: { valueProp: 'value', trigger: 'update:value' },
-  ATreeSelect: { valueProp: 'value', trigger: 'update:value' },
-})
-
-/**
- * 读取组件的名称。
- *
- * - 字符串组件直接返回
- * - 对象/函数组件统一读 `.name`：对象组件应显式声明 `name`，
- *   函数组件的 `.name` 由 JS 引擎根据函数声明或变量赋值自动注入，无需调用
- */
-function resolveComponentName(component: FieldConfig['component']): string | undefined {
-  if (typeof component === 'string')
-    return component
-
-  if (!component)
-    return undefined
-
-  const name = (component as { name?: unknown }).name
-  return typeof name === 'string' && name.length > 0 ? name : undefined
-}
-
-/**
- * 判断组件名是否像 Ant Design Vue 组件名。
- *
- * 该判断仅用于 strict 诊断，不参与默认适配，避免误伤自定义组件。
- */
-function isAntdVueLikeComponentName(name: string): boolean {
-  return /^A[A-Z]/.test(name)
 }
 
 /**
@@ -139,4 +79,6 @@ export function createAntdVuePlugin(config: AntdVuePluginOptions = {}): FormRunt
   return plugin
 }
 
+export { ANTD_VUE_FIELD_BINDINGS } from './bindings'
+export type { AntdVueFieldBinding } from './bindings'
 export { ANTD_VUE_READONLY_ADAPTERS } from './readonly'
