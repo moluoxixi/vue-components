@@ -38,6 +38,7 @@ export function ensureStyle() {
     .cf-devtools-node-kind { color: #4b5563; font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; }
     .cf-devtools-node-kind.is-component { color: #7c3aed; }
     .cf-devtools-node-kind.is-field { color: #047857; }
+    .cf-devtools-node-kind.is-render { color: #b45309; }
     .cf-devtools-node-text { min-width: 0; }
     .cf-devtools-node-key { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .cf-devtools-node-meta { color: #6b7280; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

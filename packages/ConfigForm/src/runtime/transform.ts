@@ -10,8 +10,10 @@ import type {
   FormNodeConfig,
   NormalizedFieldConfig,
   NormalizedNodeConfig,
+  RenderFunction,
   ResolvedFormNode,
   ResolvedSlotContent,
+  ResolvedSlotContentItem,
   SlotContent,
 } from '@/types'
 import type { PlainRecord } from '@/utils/object'
@@ -72,10 +74,13 @@ export function createFieldPipeline(
     return transformSlotNode(slot, path)
   }
 
-  /** 转换单个 slot 节点配置；遇到非配置值时直接抛错，避免旧 render slot 语义继续生效。 */
-  function transformSlotNode(value: unknown, path: string): ResolvedFormNode {
+  /** 转换单个 slot 节点配置；render 函数作为叶子保留，不参与字段拓扑转换。 */
+  function transformSlotNode(value: unknown, path: string): ResolvedSlotContentItem {
+    if (typeof value === 'function')
+      return value as RenderFunction
+
     if (!isFormNodeConfig(value))
-      throw new TypeError(`Slot "${path}" must be a field config or an array of field configs`)
+      throw new TypeError(`Slot "${path}" must be a field config, render function, or an array of them`)
 
     return transformField(value)
   }

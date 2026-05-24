@@ -1,10 +1,16 @@
-import type { FieldConfig, FieldKey, FormNodeConfig, SlotContent } from '../src/types'
+import type { RenderContext as ConfigFormRenderContext, FieldConfig, FieldKey, FormNodeConfig, SlotContent } from '../src/types'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import { defineField } from '../src/utils/field'
 
 type IsAssignable<TFrom, TTo> = [TFrom] extends [TTo] ? true : false
 type HasKey<TValue, TKey extends PropertyKey> = TKey extends keyof TValue ? true : false
+
+interface RenderContext {
+  getValue: (field: string) => unknown
+  setValue: (field: string, value: unknown) => void
+  values: Record<string, unknown>
+}
 
 describe('defineField typing', () => {
   it('infers field value from schema', () => {
@@ -98,54 +104,15 @@ describe('defineField typing', () => {
     expect(fieldConfig.field).toBe('manual-field-config')
   })
 
-  it('keeps inferred component props plain after token support is removed', () => {
-    /**
-     * 模拟带 options/placeholder props 的选择组件。
-     *
-     * 只用于 defineField 的 props 类型推导，不执行真实渲染。
-     */
-    const selectComponent = (
-      _props: {
-        options?: Array<{ label: string, value: string }>
-        placeholder?: string
-      },
-    ) => null
-
-    const roleField = defineField({
-      field: 'role',
-      component: selectComponent,
-      defaultValue: 'admin',
-      props: {
-        placeholder: '请选择角色',
-        options: [
-          { label: '管理员', value: 'admin' },
-          { label: '普通用户', value: 'user' },
-        ],
-      },
-    })
-
-    expectTypeOf(roleField.defaultValue).toEqualTypeOf<string>()
-  })
-
-  it('accepts known props when component props are inferable', () => {
-    /**
-     * 模拟带 placeholder prop 的输入组件。
-     *
-     * 只用于验证组件 props 可被 defineField 正确推导。
-     */
-    const inputComponent = (
-      _props: {
-        placeholder?: string
-      },
-    ) => null
-
+  it('accepts render functions as component renderers', () => {
     defineField({
-      field: 'keyword',
-      component: inputComponent,
-      defaultValue: '',
-      props: {
-        placeholder: '请输入关键词',
+      field: 'role',
+      component: (context: RenderContext) => {
+        expectTypeOf(context.values.role).toEqualTypeOf<unknown>()
+        expectTypeOf(context.getValue('role')).toEqualTypeOf<unknown>()
+        return null
       },
+      defaultValue: 'admin',
     })
   })
 
@@ -197,37 +164,31 @@ describe('defineField typing', () => {
     expect(Object.getOwnPropertySymbols(field)).toEqual([])
   })
 
-  it('infers slot field configs at the defineField call site', () => {
+  it('accepts render functions in slot content with context first', () => {
     defineField({
       field: 'host',
       component: 'div',
       slots: {
-        default: [
-          defineField({
-            field: 'host-option',
-            component: 'input',
-            defaultValue: 'option',
-            validator: (value) => {
-              expectTypeOf(value).toEqualTypeOf<string>()
-              return undefined
-            },
-          }),
-        ],
+        default: (context: RenderContext, slotProps: { label: string }) => {
+          expectTypeOf(context.getValue('host')).toEqualTypeOf<unknown>()
+          expectTypeOf(slotProps.label).toEqualTypeOf<string>()
+          return null
+        },
       },
     })
   })
 
-  it('restricts slot content to field configs or field config arrays', () => {
+  it('restricts slot content to field configs, arrays, or render functions', () => {
     type FieldConfigIsSlotContent = IsAssignable<FormNodeConfig, SlotContent>
     type FieldConfigArrayIsSlotContent = IsAssignable<FormNodeConfig[], SlotContent>
     type TextIsSlotContent = IsAssignable<string, SlotContent>
-    type FunctionIsSlotContent = IsAssignable<() => FormNodeConfig, SlotContent>
+    type FunctionIsSlotContent = IsAssignable<(context: { values: Record<string, unknown> }) => unknown, SlotContent>
     type NullIsSlotContent = IsAssignable<null, SlotContent>
 
     expectTypeOf<FieldConfigIsSlotContent>().toEqualTypeOf<true>()
     expectTypeOf<FieldConfigArrayIsSlotContent>().toEqualTypeOf<true>()
     expectTypeOf<TextIsSlotContent>().toEqualTypeOf<false>()
-    expectTypeOf<FunctionIsSlotContent>().toEqualTypeOf<false>()
+    expectTypeOf<FunctionIsSlotContent>().toEqualTypeOf<true>()
     expectTypeOf<NullIsSlotContent>().toEqualTypeOf<false>()
   })
 
@@ -286,24 +247,14 @@ describe('defineField typing', () => {
       },
     })
 
-    /**
-     * 模拟登录表单输入组件。
-     *
-     * 只用于验证 defineField<TValues> 能把组件 props 和字段模型一起推导。
-     */
-    const inputComponent = (
-      _props: {
-        placeholder?: string
-      },
-    ) => null
-
     defineField<LoginForm>({
       field: 'username',
-      component: inputComponent,
-      defaultValue: '',
-      props: {
-        placeholder: '请输入用户名',
+      component: (context: ConfigFormRenderContext<LoginForm>) => {
+        expectTypeOf(context.values.username).toEqualTypeOf<string>()
+        expectTypeOf(context.getValue('remember')).toEqualTypeOf<boolean>()
+        return null
       },
+      defaultValue: '',
     })
 
     type MissingIsLoginField = IsAssignable<'missing', FieldKey<LoginForm>>

@@ -14,7 +14,7 @@ export interface FieldSourceMeta {
 }
 
 /** devtools 树节点类型。 */
-export type FormDevtoolsNodeKind = 'component' | 'field'
+export type FormDevtoolsNodeKind = 'component' | 'field' | 'render'
 
 /** ConfigForm adapter 注册到浏览器 devtools bridge 的节点数据。 */
 export interface FormDevtoolsNode {

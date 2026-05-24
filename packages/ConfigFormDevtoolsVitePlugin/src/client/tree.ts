@@ -14,9 +14,13 @@ import {
   selectEarlierElement,
 } from './geometry'
 
-/** 解析树节点类型图标，C 表示容器组件，F 表示真实字段。 */
-export function resolveNodeKindIcon(node: FormDevtoolsNode): 'C' | 'F' {
-  return node.kind === 'component' ? 'C' : 'F'
+/** 解析树节点类型图标，C 表示容器组件，F 表示真实字段，R 表示 render 函数。 */
+export function resolveNodeKindIcon(node: FormDevtoolsNode): 'C' | 'F' | 'R' {
+  if (node.kind === 'component')
+    return 'C'
+  if (node.kind === 'render')
+    return 'R'
+  return 'F'
 }
 
 /**
@@ -26,6 +30,8 @@ export function resolveNodeKindIcon(node: FormDevtoolsNode): 'C' | 'F' {
  */
 export function resolveNodeDisplayName(node: FormDevtoolsNode): string {
   if (node.kind === 'component')
+    return node.component ?? node.kind
+  if (node.kind === 'render')
     return node.component ?? node.kind
 
   return node.field ?? node.component ?? node.kind

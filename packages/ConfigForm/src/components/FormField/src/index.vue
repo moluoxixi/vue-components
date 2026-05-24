@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import type { ResolvedField } from '@/types'
-import { computed } from 'vue'
+import type { FormFieldProps } from './types/props'
 import FormComponent from '@/components/FormComponent'
 import FormItem from '@/components/FormItem'
-import { useFormContext } from '@/composables/useFormContext'
-import { resolveValue } from '@/utils/resolvable'
+import { useFormField } from './composables/useFormField'
 
 /**
  * FormField 组合 FormItem 与 FormComponent，保留带 label 字段的公共入口。
@@ -13,20 +11,9 @@ import { resolveValue } from '@/utils/resolvable'
  */
 defineOptions({ name: 'FormField' })
 
-const props = defineProps<{
-  field: ResolvedField
-}>()
+const props = defineProps<FormFieldProps>()
 
-const ctx = useFormContext()
-
-/** 生成内置 FormItem 的轻量 props，避免把完整字段配置传给外壳组件。 */
-const formItemComponentProps = computed(() => ({
-  field: props.field.field,
-  id: props.field.id,
-  label: props.field.label,
-  required: resolveValue(props.field.required, ctx.values, false),
-  span: props.field.span,
-}))
+const { formItemComponentProps } = useFormField(props)
 </script>
 
 <template>

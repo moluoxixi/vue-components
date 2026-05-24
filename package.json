@@ -36,6 +36,6 @@
     "vitest": "catalog:dev"
   },
   "lint-staged": {
-    "*.{js,cjs,mjs,ts,tsx,vue}": "eslint --max-warnings=0"
+    "*.{js,cjs,mjs,ts,tsx,vue}": "pnpm lint"
   }
 }

@@ -53,6 +53,19 @@ interface ObjectExpressionNode extends AstNode {
   properties?: AstNode[]
 }
 
+interface ObjectPropertyNode extends AstNode {
+  key?: AstNode
+  value?: AstNode
+}
+
+interface ArrayExpressionNode extends AstNode {
+  elements?: Array<AstNode | null>
+}
+
+interface InlineFunctionExpressionNode extends AstNode {
+  type: 'ArrowFunctionExpression' | 'FunctionExpression'
+}
+
 /** 清理 Vite 模块 id 的 query，并统一路径分隔符。 */
 function cleanId(id: string): string {
   return id.split('?')[0].replace(/\\/g, '/')
@@ -193,6 +206,16 @@ function hasSourceProperty(node: ObjectExpressionNode): boolean {
   })
 }
 
+/** render 函数只接受标准函数表达式或箭头函数，避免改写运行期动态引用。 */
+function isInlineFunctionExpression(node: AstNode | undefined): node is InlineFunctionExpressionNode {
+  return node?.type === 'ArrowFunctionExpression' || node?.type === 'FunctionExpression'
+}
+
+/** 判断对象属性节点并保留 key/value 类型信息。 */
+function isObjectProperty(node: AstNode): node is ObjectPropertyNode {
+  return node.type === 'ObjectProperty'
+}
+
 /**
  * 深度遍历 Babel AST。
  *
@@ -246,6 +269,24 @@ function createSourceText(file: string, line: number, column: number): string {
   return `__source: { id: ${JSON.stringify(id)}, file: ${JSON.stringify(file)}, line: ${line}, column: ${column} }`
 }
 
+/** 将 inline render 函数包装为带源码元数据的函数对象。 */
+function createRenderFunctionSourceEdit(segment: ScriptSegment, id: string, node: AstNode): InjectionEdit {
+  if (node.start == null || node.end == null || node.loc == null) {
+    throw new ConfigFormDevtoolsPluginError(
+      `[config-form-devtools] Missing source location for render function in ${id}`,
+    )
+  }
+
+  const file = normalizeFilePath(id)
+  const { column, line } = toAbsolutePosition(segment, node.loc.start)
+  const sourceText = createSourceText(file, line, column)
+  return {
+    end: segment.offset + node.end,
+    index: segment.offset + node.start,
+    text: `Object.assign(${segment.content.slice(node.start, node.end)}, { ${sourceText} })`,
+  }
+}
+
 /**
  * 计算 __source 插入前缀。
  *
@@ -256,6 +297,72 @@ function getInjectionPrefix(content: string, insertionIndex: number): string {
   if (previous === '{' || previous === ',')
     return ' '
   return ', '
+}
+
+/** 收集 defineField 对象内部 component/slots inline render 函数的源码注入编辑。 */
+function collectRenderFunctionEdits(segment: ScriptSegment, id: string, config: ObjectExpressionNode): InjectionEdit[] {
+  const edits: InjectionEdit[] = []
+
+  function addRenderEdit(node: AstNode) {
+    edits.push(createRenderFunctionSourceEdit(segment, id, node))
+  }
+
+  function visitSlotValue(value: AstNode | undefined) {
+    if (!value)
+      return
+
+    if (isInlineFunctionExpression(value)) {
+      addRenderEdit(value)
+      return
+    }
+
+    if (value.type === 'ArrayExpression') {
+      for (const item of (value as ArrayExpressionNode).elements ?? [])
+        visitSlotValue(item ?? undefined)
+      return
+    }
+
+    if (value.type === 'ObjectExpression')
+      visitConfigObject(value as ObjectExpressionNode)
+  }
+
+  function visitSlotsObject(slots: ObjectExpressionNode) {
+    for (const property of slots.properties ?? []) {
+      if (!isObjectProperty(property))
+        continue
+      visitSlotValue(property.value)
+    }
+  }
+
+  function visitConfigObject(object: ObjectExpressionNode) {
+    for (const property of object.properties ?? []) {
+      if (!isObjectProperty(property))
+        continue
+
+      const keyName = property.key ? getObjectKeyName(property.key) : undefined
+      if (keyName === 'component' && isInlineFunctionExpression(property.value)) {
+        addRenderEdit(property.value)
+        continue
+      }
+
+      if (keyName === 'slots' && property.value?.type === 'ObjectExpression') {
+        visitSlotsObject(property.value as ObjectExpressionNode)
+        continue
+      }
+
+      if (property.value?.type === 'ObjectExpression')
+        visitConfigObject(property.value as ObjectExpressionNode)
+      if (property.value?.type === 'ArrayExpression') {
+        for (const item of (property.value as ArrayExpressionNode).elements ?? []) {
+          if (item?.type === 'ObjectExpression')
+            visitConfigObject(item as ObjectExpressionNode)
+        }
+      }
+    }
+  }
+
+  visitConfigObject(config)
+  return edits
 }
 
 /**
@@ -298,6 +405,7 @@ function collectInjectionEdits(segment: ScriptSegment, id: string, packageNames:
       index: segment.offset + insertionIndex,
       text: `${prefix}${createSourceText(file, line, column)}`,
     })
+    edits.push(...collectRenderFunctionEdits(segment, id, objectConfig))
   })
 
   return edits

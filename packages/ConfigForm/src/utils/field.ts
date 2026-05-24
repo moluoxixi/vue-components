@@ -8,6 +8,7 @@ import type {
   FieldValidator,
   FormValues,
   NormalizedFieldConfig,
+  RenderFunction,
   RuntimeText,
   SlotContent,
   ValidateTrigger,
@@ -16,12 +17,14 @@ import { applyFieldDefaults, normalizeValidateOn } from '@/plugins/builtInFieldD
 
 export { normalizeValidateOn }
 
-/** 从 Vue 组件中提取 props 类型，支持 class component 和 function component。 */
+/** 从 Vue 组件中提取 props 类型；普通函数不再视作 Vue function component。 */
 export type ExtractComponentProps<C> = C extends abstract new (...args: unknown[]) => { $props: infer P }
   ? P
-  : C extends (props: infer P, ...args: unknown[]) => unknown
-    ? P
-    : Record<string, unknown>
+  : C extends (...args: unknown[]) => unknown
+    ? Record<string, unknown>
+    : C extends { $props: infer P }
+      ? P
+      : Record<string, unknown>
 
 type RuntimeResolvable<T> = T extends (...args: infer TArgs) => infer TReturn
   ? (...args: TArgs) => TReturn
@@ -35,12 +38,12 @@ type RuntimeResolvable<T> = T extends (...args: infer TArgs) => infer TReturn
           ? { [K in keyof T]: RuntimeResolvable<T[K]> }
           : T
 
-interface ComponentFieldPart<C> {
-  component: C
+interface ComponentFieldPart<C, TValues extends object = FormValues> {
+  component: C | RenderFunction<[], TValues>
   props?: RuntimeResolvable<ExtractComponentProps<NoInfer<C>>> & {}
 }
 
-interface ComponentNodeConfigCore<C, TValues extends object = FormValues> extends ComponentFieldPart<C> {
+interface ComponentNodeConfigCore<C, TValues extends object = FormValues> extends ComponentFieldPart<C, TValues> {
   span?: number
   visible?: FieldCondition<TValues>
   slots?: Record<string, SlotContent>
@@ -171,8 +174,8 @@ export function defineField<
   TSchema extends ZodTypeAny = ZodTypeAny,
   TField extends FieldKey<FormValues> = FieldKey<FormValues>,
 >(
-  config: SchemaFieldConfigCore<FormValues, TSchema, TField> & ComponentFieldPart<C>,
-): DefinedFieldConfig<SchemaFieldConfigCore<FormValues, TSchema, TField> & ComponentFieldPart<C>>
+  config: SchemaFieldConfigCore<FormValues, TSchema, TField> & ComponentFieldPart<C, FormValues>,
+): DefinedFieldConfig<SchemaFieldConfigCore<FormValues, TSchema, TField> & ComponentFieldPart<C, FormValues>>
 
 /** 未传表单模型泛型且无 schema 时，根据 defaultValue 推导字段值类型。 */
 export function defineField<
@@ -180,16 +183,16 @@ export function defineField<
   TValue = unknown,
   TField extends FieldKey<FormValues> = FieldKey<FormValues>,
 >(
-  config: DefaultValueFieldConfigCore<FormValues, TValue, TField> & ComponentFieldPart<C>,
-): DefinedFieldConfig<DefaultValueFieldConfigCore<FormValues, TValue, TField> & ComponentFieldPart<C>>
+  config: DefaultValueFieldConfigCore<FormValues, TValue, TField> & ComponentFieldPart<C, FormValues>,
+): DefinedFieldConfig<DefaultValueFieldConfigCore<FormValues, TValue, TField> & ComponentFieldPart<C, FormValues>>
 
 /** 未传表单模型泛型、schema 和 defaultValue 时，字段值类型保持 unknown。 */
 export function defineField<
   C = unknown,
   TField extends FieldKey<FormValues> = FieldKey<FormValues>,
 >(
-  config: UnknownValueFieldConfigCore<FormValues, TField> & ComponentFieldPart<C>,
-): DefinedFieldConfig<UnknownValueFieldConfigCore<FormValues, TField> & ComponentFieldPart<C>>
+  config: UnknownValueFieldConfigCore<FormValues, TField> & ComponentFieldPart<C, FormValues>,
+): DefinedFieldConfig<UnknownValueFieldConfigCore<FormValues, TField> & ComponentFieldPart<C, FormValues>>
 
 /** 定义用于 slot 或顶层布局的容器节点。 */
 export function defineField<C = unknown>(
@@ -202,24 +205,24 @@ export function defineField<
   C = unknown,
   TSchema extends ZodTypeAny = ZodTypeAny,
 >(
-  config: ModelSchemaFieldConfigInput<TValues, TSchema> & ComponentFieldPart<C>,
-): DefinedFieldConfig<ModelSchemaFieldConfigInput<TValues, TSchema> & ComponentFieldPart<C>>
+  config: ModelSchemaFieldConfigInput<TValues, TSchema> & ComponentFieldPart<C, TValues>,
+): DefinedFieldConfig<ModelSchemaFieldConfigInput<TValues, TSchema> & ComponentFieldPart<C, TValues>>
 
 /** 传入表单模型泛型且无 schema 时，按模型字段和 defaultValue 推导字段配置。 */
 export function defineField<
   TValues extends object,
   C = unknown,
 >(
-  config: ModelDefaultValueFieldConfigInput<TValues> & ComponentFieldPart<C>,
-): DefinedFieldConfig<ModelDefaultValueFieldConfigInput<TValues> & ComponentFieldPart<C>>
+  config: ModelDefaultValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>,
+): DefinedFieldConfig<ModelDefaultValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>>
 
 /** 传入表单模型泛型但无 schema/defaultValue 时，按模型字段约束字段名和值类型。 */
 export function defineField<
   TValues extends object,
   C = unknown,
 >(
-  config: ModelUnknownValueFieldConfigInput<TValues> & ComponentFieldPart<C>,
-): DefinedFieldConfig<ModelUnknownValueFieldConfigInput<TValues> & ComponentFieldPart<C>>
+  config: ModelUnknownValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>,
+): DefinedFieldConfig<ModelUnknownValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>>
 
 /** 传入表单模型泛型时定义容器节点；模型类型只用于保持调用形态一致。 */
 export function defineField<_TValues extends object, C = unknown>(

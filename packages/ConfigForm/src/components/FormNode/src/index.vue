@@ -1,60 +1,23 @@
 <script setup lang="ts">
-import type { CSSProperties } from 'vue'
-import type { ResolvedFormNode } from '@/types'
-import { computed } from 'vue'
-import RecursiveField from '@/components/RecursiveField'
-import { useFormContext } from '@/composables/useFormContext'
-import { resolveSlotNodes } from '@/utils/slot'
-import { mergeStyleValues, readStyleValue } from '@/utils/style'
+import type { FormNodeProps } from './types/props'
+import { useFormNode } from './composables/useFormNode'
 
 /**
- * FormNode 渲染已经解析过的节点组件，slot 中的 defineField 节点交给 RecursiveField 递归处理。
+ * FormNode 作为 ConfigForm 的内部复杂节点渲染器。
+ *
+ * 本组件只保留 props 声明和最终 render 入口，所有节点上下文、slot 递归、
+ * render-function 分流和监听映射都收敛在私有 composable 里。
  */
-defineOptions({ name: 'FormNode' })
-
-const props = defineProps<{
-  field: ResolvedFormNode
-  componentAttrs?: Record<string, unknown>
-  componentListeners?: Record<string, (...args: unknown[]) => Promise<boolean> | void>
-}>()
-
-const ctx = useFormContext()
-
-/** 容器节点在 grid 模式下使用 runtime 已补齐的 span。 */
-const containerStyle = computed<CSSProperties | undefined>(() => {
-  if (ctx.inline) return undefined
-  if ('field' in props.field) return undefined
-  return { gridColumn: `span ${props.field.span}` }
+defineOptions({
+  name: 'FormNode',
+  inheritAttrs: false,
 })
 
-const attrs = computed(() => {
-  const baseStyle = containerStyle.value
-  const existingStyle = readStyleValue(props.field.props?.style)
-  const componentStyle = readStyleValue(props.componentAttrs?.style, 'componentAttrs.style')
-  return {
-    ...props.field.props,
-    ...(props.componentAttrs ?? {}),
-    style: mergeStyleValues(baseStyle, existingStyle, componentStyle),
-  }
-})
+const props = defineProps<FormNodeProps>()
 
+const { renderNode } = useFormNode(props)
 </script>
 
 <template>
-  <component
-    :is="field.component"
-    v-bind="attrs"
-    v-on="componentListeners ?? {}"
-  >
-    <template v-for="(slotValue, slotName) in field.slots" :key="slotName" #[slotName]>
-      <template
-        v-for="slotField in resolveSlotNodes(slotValue, String(slotName))"
-        :key="slotField.key"
-      >
-        <RecursiveField
-          :field="slotField.field"
-        />
-      </template>
-    </template>
-  </component>
+  <component :is="renderNode" v-bind="$attrs" />
 </template>

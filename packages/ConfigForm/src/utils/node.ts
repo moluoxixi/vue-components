@@ -96,8 +96,11 @@ function collectSlotFields(slot: TraversableSlotContent | undefined, path = 'slo
   if (Array.isArray(slot))
     return slot.flatMap((item, index) => collectSlotFields(item, `${path}.${index}`))
 
+  if (typeof slot === 'function')
+    return []
+
   if (!isFormNodeConfig(slot))
-    throw new TypeError(`Slot "${path}" must be a field config or an array of field configs`)
+    throw new TypeError(`Slot "${path}" must be a field config, render function, or an array of them`)
 
   return collectFieldConfigsRaw([slot])
 }

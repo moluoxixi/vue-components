@@ -73,6 +73,15 @@ const SlotHost = markRaw(defineComponent({
   },
 }))
 
+const MultiArgSlotHost = markRaw(defineComponent({
+  name: 'MultiArgSlotHost',
+  setup(_props, { slots }) {
+    return () => h('div', { 'data-testid': 'multi-arg-slot-host' }, [
+      slots.default?.({ label: '默认作用域' }, '第二参数'),
+    ])
+  },
+}))
+
 const SlotLeaf = markRaw(defineComponent({
   name: 'SlotLeaf',
   props: {
@@ -473,6 +482,44 @@ describe('config form component', () => {
     const style = wrapper.get('[data-testid="layout-probe"]').attributes('style')
     expect(style).toContain('grid-column: span 6')
     expect(style).toContain('color: green')
+  })
+
+  it('forwards fallthrough attrs to the rendered node', () => {
+    const field = createFormRuntime().transformField(defineField({
+      component: LayoutProbe,
+      props: {
+        style: {
+          color: 'blue',
+        },
+      },
+    }))
+
+    const wrapper = mount(FormNode, {
+      attrs: {
+        'data-origin': 'outer',
+      },
+      props: {
+        field,
+      },
+      global: {
+        provide: {
+          [FORM_CONTEXT_KEY]: {
+            errors: {},
+            getValue: () => undefined,
+            getValues: () => ({}),
+            inline: false,
+            isDisabled: () => false,
+            isVisible: () => true,
+            setValue: () => {},
+            setValues: () => {},
+            validateField: async () => true,
+            values: {},
+          } satisfies FormContext,
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="layout-probe"]').attributes('data-origin')).toBe('outer')
   })
 
   it('uses built-in field defaults for container span', () => {
@@ -1068,6 +1115,65 @@ describe('form field component', () => {
     expect(wrapper.text()).toContain('嵌入选项')
     expect(wrapper.find('[data-role="slot-child"]').exists()).toBe(true)
     expect(wrapper.find('.cf-field').exists()).toBe(false)
+  })
+
+  it('renders render-function components with form context helpers', async () => {
+    const fields = [
+      defineField({
+        component: (context: {
+          getValue: (field: string) => unknown
+          setValue: (field: string, value: unknown) => void
+        }) => h('button', {
+          'data-testid': 'render-component',
+          'onClick': () => context.setValue('nickname', `${String(context.getValue('nickname'))}!`),
+          'type': 'button',
+        }, String(context.getValue('nickname'))),
+        defaultValue: 'Ada',
+        field: 'nickname',
+      }),
+    ]
+
+    const wrapper = mount(ConfigForm, {
+      props: {
+        fields,
+        defaultValues: {},
+      },
+    })
+    const api = wrapper.vm as unknown as ConfigFormExpose<Record<string, unknown>>
+
+    expect(wrapper.get('[data-testid="render-component"]').text()).toBe('Ada')
+
+    await wrapper.get('[data-testid="render-component"]').trigger('click')
+
+    expect(api.getValues()).toEqual({
+      nickname: 'Ada!',
+    })
+  })
+
+  it('forwards slot render args after the shared context', () => {
+    const fields = [
+      defineField({
+        component: MultiArgSlotHost,
+        field: 'choice',
+        defaultValue: '初始值',
+        slots: {
+          default: (context: {
+            getValue: (field: string) => unknown
+          }, slotProps: { label: string }, suffix: string) => h('span', {
+            'data-testid': 'slot-render',
+          }, `${String(context.getValue('choice'))}|${slotProps.label}|${suffix}`),
+        },
+      }),
+    ]
+
+    const wrapper = mount(ConfigForm, {
+      props: {
+        fields,
+        defaultValues: {},
+      },
+    })
+
+    expect(wrapper.get('[data-testid="slot-render"]').text()).toBe('初始值|默认作用域|第二参数')
   })
 
   it('keeps unlabelled field ids out of FormItem classification', () => {

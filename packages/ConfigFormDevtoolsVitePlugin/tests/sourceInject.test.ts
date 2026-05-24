@@ -222,6 +222,27 @@ describe('defineField source injection', () => {
     expect(result?.code).toContain('line: 12')
   })
 
+  it('injects source metadata for inline render functions inside defineField configs', () => {
+    const result = transformDefineFieldSource({
+      code: [
+        'import { defineField } from \'@moluoxixi/config-form\'',
+        'const fields = [',
+        '  defineField({',
+        '    field: \'name\',',
+        '    component: (context) => context.getValue(\'name\'),',
+        '    slots: {',
+        '      default: (context, slotProps) => slotProps.label,',
+        '    },',
+        '  }),',
+        ']',
+      ].join('\n'),
+      id: TS_FILE,
+    })
+
+    expect(result?.code).toContain('line: 5')
+    expect(result?.code).toContain('line: 7')
+  })
+
   it('returns null for Vue files without script blocks', () => {
     const result = transformDefineFieldSource({
       code: '<template><div /></template>',

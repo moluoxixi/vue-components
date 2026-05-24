@@ -225,6 +225,40 @@ describe('configForm devtools adapter', () => {
     }), null)
   })
 
+  it('registers render slot callbacks as render nodes with source metadata', async () => {
+    const bridge = createBridge()
+    window.__CONFIG_FORM_DEVTOOLS_BRIDGE__ = bridge
+    const renderSource = {
+      column: 21,
+      file: 'D:/project-new/ConfigForm/playgrounds/demo.vue',
+      id: 'render-source-1',
+      line: 48,
+    }
+    const renderSlot = Object.assign((context: { getValue: (field: string) => unknown }, slotProps: { label: string }, suffix: string) => h('span', {
+      'data-testid': 'render-slot',
+    }, `${String(context.getValue('choice'))}|${slotProps.label}|${suffix}`), { __source: renderSource })
+
+    mountAdapter([
+      {
+        component: 'section',
+        slots: {
+          default: [
+            renderSlot,
+          ],
+        },
+      },
+    ])
+    await nextTick()
+    await nextTick()
+
+    expect(bridge.registerField).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'render',
+      parentId: expect.stringMatching(/^cf-form-\d+:fields\.0$/),
+      slotName: 'default',
+      source: renderSource,
+    }), null)
+  })
+
   it('does not resolve field id elements without a source marker', async () => {
     const bridge = createBridge()
     window.__CONFIG_FORM_DEVTOOLS_BRIDGE__ = bridge
@@ -808,10 +842,15 @@ describe('configForm devtools adapter', () => {
     await nextTick()
     await nextTick()
 
-    expect(bridge.registerField).toHaveBeenCalledTimes(1)
+    expect(bridge.registerField).toHaveBeenCalledTimes(2)
     expect(bridge.registerField).toHaveBeenCalledWith(expect.objectContaining({
       field: 'account',
       kind: 'field',
+    }), null)
+    expect(bridge.registerField).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'render',
+      parentId: expect.stringMatching(/^cf-form-\d+:account$/),
+      slotName: 'default',
     }), null)
   })
 

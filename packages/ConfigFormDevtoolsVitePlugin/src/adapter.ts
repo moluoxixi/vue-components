@@ -19,6 +19,11 @@ interface DevtoolsFormNodeConfig {
   __source?: FieldSourceMeta
 }
 
+interface DevtoolsRenderFunction {
+  __source?: FieldSourceMeta
+  name?: string
+}
+
 interface DevtoolsCollectedFields {
   byReference: WeakSet<object>
 }
@@ -238,6 +243,16 @@ function isFormNodeConfig(value: unknown): value is DevtoolsFormNodeConfig {
 /** 判断节点配置是否是绑定表单值的真实字段节点。 */
 function isFieldNodeConfig(value: DevtoolsFormNodeConfig): value is DevtoolsFormNodeConfig & { field: string } {
   return typeof value.field === 'string'
+}
+
+/** 判断 slot 内容是否是 ConfigForm render 函数；函数不会被执行，只读取静态元数据。 */
+function isRenderFunction(value: unknown): value is DevtoolsRenderFunction {
+  return typeof value === 'function'
+}
+
+/** render 函数的源码位置挂在函数对象本身，优先于外层 defineField 对象位置。 */
+function resolveRenderFunctionSource(value: unknown): FieldSourceMeta | undefined {
+  return isRenderFunction(value) ? value.__source : undefined
 }
 
 /** 将核心字段拓扑收集结果转成快速索引，devtools 字段语义以核心收集器为准。 */
@@ -493,11 +508,26 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
       ): FormDevtoolsNode[] {
         // devtools 树必须按用户声明顺序展示，不能依赖 slot 子节点可能变化的 Vue 挂载时序。
         return nodes.flatMap((node, index) => {
+          const nodePath = `${path}.${index}`
+          if (isRenderFunction(node)) {
+            return [{
+              component: resolveComponentName(node),
+              formId,
+              formLabel,
+              id: `${formId}:${nodePath}`,
+              kind: 'render',
+              order: index + 1,
+              parentId,
+              slotName,
+              source: resolveRenderFunctionSource(node),
+            }]
+          }
+
           if (!isFormNodeConfig(node))
             return []
 
-          const nodePath = `${path}.${index}`
           const isField = isCollectedFieldNode(node, collectedFields)
+          const renderSource = resolveRenderFunctionSource(node.component)
           const id = isField ? `${formId}:${node.field}` : `${formId}:${nodePath}`
           const current: FormDevtoolsNode = {
             component: resolveComponentName(node.component),
@@ -505,12 +535,12 @@ export function createDevtoolsConfigFormAdapter(options: DevtoolsConfigFormAdapt
             formId,
             formLabel,
             id,
-            kind: isField ? 'field' : 'component',
+            kind: !isField && isRenderFunction(node.component) ? 'render' : isField ? 'field' : 'component',
             label: resolveLabel(node.label),
             order: index + 1,
             parentId,
             slotName,
-            source: node.__source,
+            source: renderSource ?? node.__source,
           }
 
           const children = Object.entries(node.slots ?? {}).flatMap(([childSlotName, slot]) => {

@@ -32,8 +32,11 @@ export function resolveSlotNodes(value: ResolvedSlotContent, slotName: string, p
     )
   }
 
+  if (typeof value === 'function')
+    return []
+
   if (!isFormNodeConfig(value))
-    throw new TypeError(`Slot "${slotName}" must be a field config or an array of field configs`)
+    throw new TypeError(`Slot "${slotName}" must be a field config, render function, or an array of them`)
 
   return [{
     field: value,

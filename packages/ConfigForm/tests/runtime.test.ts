@@ -263,8 +263,9 @@ describe('form runtime', () => {
     }))).toThrow(/Unknown component key: runtimeInput/)
   })
 
-  it('recursively transforms raw slot configs and rejects non-field slot values', () => {
+  it('recursively transforms raw slot configs and preserves render slot functions', () => {
     const runtime = createFormRuntime()
+    const renderSlot = () => ({ component: 'input', field: 'late' })
     const resolved = runtime.transformField(defineField({
       component: 'section',
       slots: {
@@ -278,6 +279,7 @@ describe('form runtime', () => {
           component: 'input',
           field: 'suffix',
         },
+        footer: renderSlot,
       },
     })) as NormalizedNodeConfig
 
@@ -292,14 +294,11 @@ describe('form runtime', () => {
       field: 'suffix',
       trigger: 'update:modelValue',
     })
+    expect(resolved.slots?.footer).toBe(renderSlot)
     expect(() => runtime.transformField(defineField({
       component: 'section',
       slots: { default: 'plain text' as never },
-    }))).toThrow(/Slot "default" must be a field config or an array of field configs/)
-    expect(() => runtime.transformField(defineField({
-      component: 'section',
-      slots: { default: (() => ({ component: 'input', field: 'late' })) as never },
-    }))).toThrow(/Slot "default" must be a field config or an array of field configs/)
+    }))).toThrow(/Slot "default" must be a field config, render function, or an array of them/)
   })
 
   it('enforces plugin name and component registration conflicts', () => {

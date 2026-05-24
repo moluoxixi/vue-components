@@ -223,7 +223,7 @@ describe('runtime utilities', () => {
         id: 'profile-card',
         slots: { default: 'plain text' as never },
       },
-    ])).toThrow(/Slot "component#profile-card\.slots\.default" must be a field config or an array of field configs/)
+    ])).toThrow(/Slot "component#profile-card\.slots\.default" must be a field config, render function, or an array of them/)
     expect(() => collectFieldConfigs([
       { component: 'input', field: 'dup' },
       { component: 'input', field: 'dup' },

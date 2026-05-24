@@ -1,12 +1,6 @@
-import type { Component, SetupContext, VNode } from 'vue'
+import type { Component, VNodeChild } from 'vue'
 import type { ZodType, ZodTypeAny, ZodTypeDef } from 'zod'
 import type { FormRuntimeOptions } from '@/runtime/types'
-
-/** ConfigForm 字段节点可接收的 Vue function component 形态。 */
-export type FunctionalFieldComponent = (
-  props: { modelValue?: unknown, [key: string]: unknown },
-  context: SetupContext,
-) => VNode
 
 /** 表单值的标准存储结构。 */
 export type FormValues = Record<string, unknown>
@@ -32,10 +26,57 @@ export type RuntimeText = string
 /** 字段布尔条件，支持静态值或基于 values 的派生函数。 */
 export type FieldCondition<T extends object = FormValues> = boolean | ((values: T) => boolean)
 
+/** ConfigForm 运行时 render 函数共享的上下文。 */
+export interface RenderContext<TValues extends object = FormValues> {
+  /** 当前表单值快照。 */
+  values: TValues
+  /** 当前表单错误快照。 */
+  errors: FormErrors
+  /** 当前节点经过绑定和布局合并后的属性。 */
+  attrs: Record<string, unknown>
+  /** 当前节点可渲染的 slot invoker。 */
+  slots?: Record<string, RenderSlotInvoker>
+  /** 读取单个字段值。 */
+  getValue: {
+    <K extends FieldKey<TValues>>(field: K): TValues[K]
+    (field: string): unknown
+  }
+  /** 读取当前表单值快照。 */
+  getValues: () => TValues
+  /** 写入单个字段值。 */
+  setValue: {
+    <K extends FieldKey<TValues>>(field: K, value: TValues[K]): void
+    (field: string, value: unknown): void
+  }
+  /** 批量写入表单值。 */
+  setValues: (values: Partial<TValues>, replace?: boolean) => void
+  /** 校验指定字段。 */
+  validateField: (field: string, trigger: ValidateTrigger) => Promise<boolean>
+  /** 当前节点可见性查询。 */
+  isVisible: (field: ResolvedFormNode) => boolean
+  /** 当前节点禁用态查询。 */
+  isDisabled: (field: ResolvedBoundNode) => boolean
+  /** 当前 render 节点对应的已解析节点。 */
+  node: ResolvedFormNode
+}
+
+/** 当前节点 slot 的无上下文 invoker。 */
+export type RenderSlotInvoker = (...args: unknown[]) => VNodeChild
+
+/** ConfigForm 允许的 render 函数形态；第一个参数永远是表单上下文。 */
+export type RenderFunction<
+  TArgs extends unknown[] = [],
+  TValues extends object = FormValues,
+  TResult = VNodeChild,
+> = (context: RenderContext<TValues>, ...args: TArgs) => TResult
+
+/** slot render 函数允许用户声明自己的作用域参数类型。 */
+type SlotRenderFunction = (context: RenderContext, ...args: any[]) => unknown
+
 /** 容器节点配置：只渲染组件和 slots，不绑定表单字段。 */
 export interface ComponentNodeConfig {
-  /** Vue 组件、function component、原生标签或 runtime 注册的组件 key。 */
-  component: Component | FunctionalFieldComponent | string
+  /** Vue 组件、render 函数、原生标签或 runtime 注册的组件 key。 */
+  component: Component | RenderFunction<[], FormValues> | string
   /** 节点 DOM id / 稳定 key 透传通道；可供容器和字段节点复用。 */
   id?: string
   /** 栅格跨度；容器节点默认占满 24 列。 */
@@ -44,12 +85,15 @@ export interface ComponentNodeConfig {
   visible?: FieldCondition<FormValues>
   /** 传给渲染组件的 props。 */
   props?: Record<string, unknown>
-  /** 子级 slots；其中的表单节点配置可以来自 defineField(...) 或普通 config。 */
+  /** 子级 slots；其中的表单节点配置或 render 函数可以来自 defineField(...) 或普通 config。 */
   slots?: Record<string, SlotContent>
 }
 
-/** slot 内容协议：与顶层 fields 一致，只接收普通节点配置或 defineField(...) 节点。 */
-export type SlotContent = DefinedFormNodeConfig | DefinedFormNodeConfig[]
+/** slot 内容项协议：支持普通节点配置或 render 函数。 */
+export type SlotContentItem = DefinedFormNodeConfig | SlotRenderFunction
+
+/** slot 内容协议：与顶层 fields 一致，只接收普通节点配置、render 函数或它们的数组。 */
+export type SlotContent = SlotContentItem | SlotContentItem[]
 
 /** 字段节点配置：渲染组件并绑定一个表单值 key。 */
 export interface FieldConfig extends ComponentNodeConfig {
@@ -117,20 +161,17 @@ export interface NormalizedFieldConfig extends Omit<
   submitWhenDisabled: boolean
 }
 
-/** runtime 处理完成后的 slot 内容，只包含可直接递归渲染的节点。 */
-export type ResolvedSlotContent = ResolvedFormNode | ResolvedFormNode[]
-
 /** 组件、props 和 slots 全部处理后的可渲染容器节点。 */
 export interface ResolvedComponentNode extends Omit<NormalizedNodeConfig, 'slots'> {
   props: Record<string, unknown>
-  /** runtime 已递归处理完毕的 slot 节点。 */
+  /** runtime 已递归处理完毕的 slot 节点或 render 函数。 */
   slots?: Record<string, ResolvedSlotContent>
 }
 
 /** 组件、props、slots 和字段绑定全部处理后的可渲染绑定节点基类。 */
 export interface ResolvedBoundNode extends Omit<NormalizedFieldConfig, 'label' | 'slots'> {
   label?: string
-  /** runtime 已递归处理完毕的 slot 节点。 */
+  /** runtime 已递归处理完毕的 slot 节点或 render 函数。 */
   slots?: Record<string, ResolvedSlotContent>
 }
 
@@ -143,6 +184,12 @@ export interface ResolvedField extends ResolvedBoundNode {
 export interface ResolvedComponentField extends ResolvedBoundNode {
   label?: undefined
 }
+
+/** 已解析 slot 内容项：支持已解析节点或 render 函数。 */
+export type ResolvedSlotContentItem = ResolvedFormNode | SlotRenderFunction
+
+/** runtime 处理完成后的 slot 内容，只包含可直接递归渲染的节点或 render 函数。 */
+export type ResolvedSlotContent = ResolvedSlotContentItem | ResolvedSlotContentItem[]
 
 /** FormRuntime.transformField(...) 返回的节点类型。 */
 export type ResolvedFormNode = ResolvedField | ResolvedComponentField | ResolvedComponentNode
