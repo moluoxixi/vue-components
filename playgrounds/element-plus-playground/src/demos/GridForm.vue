@@ -1,12 +1,47 @@
 <script setup lang="ts">
-import { ConfigForm, defineField } from '@moluoxixi/config-form'
+import { ConfigForm, defineFields } from '@moluoxixi/config-form'
 import { ElAutocomplete, ElCascader, ElCheckbox, ElCheckboxGroup, ElColorPicker, ElDatePicker, ElInput, ElInputNumber, ElRadio, ElRadioGroup, ElRate, ElSelectV2, ElSlider, ElSwitch, ElTimePicker, ElTimeSelect, ElTreeSelect } from 'element-plus'
 
 import { reactive, ref } from 'vue'
 import { z } from 'zod'
 
 const formRef = ref()
-const formValues = reactive<Record<string, unknown>>({})
+const formValues = reactive<GridFormValues>({})
+
+interface GridFormValues extends Record<string, unknown> {
+  username?: string
+  password?: string
+  email?: string
+  phone?: string
+  age?: number
+  salary?: number
+  quantity?: number
+  role?: 'admin' | 'user' | 'guest'
+  tags?: string[]
+  city?: string
+  department?: string[]
+  manager?: string
+  gender?: 'male' | 'female' | 'other'
+  hobbies?: string[]
+  birthday?: string
+  entryDate?: string
+  dateRange?: string[]
+  workTime?: string
+  meetingTime?: string
+  month?: string
+  active?: boolean
+  rating?: number
+  themeColor?: string
+  progress?: number
+  cityName?: string
+  genderOther?: string
+  effectiveDate?: string
+  remark?: string
+  suggestion?: string
+  bio?: string
+}
+
+const { defineField } = defineFields<GridFormValues>()
 
 const fields = [
   // 文本输入
@@ -502,7 +537,7 @@ const fields = [
  *
  * playground 通过 alert 直接反馈提交值，不向远端接口发送数据。
  */
-function onSubmit(values: Record<string, unknown>) {
+function onSubmit(values: GridFormValues) {
   Object.assign(formValues, values)
   alert(`提交成功！\n${JSON.stringify(values, null, 2)}`)
 }

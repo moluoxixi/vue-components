@@ -53,6 +53,26 @@ type FormNodeInput = FieldConfig | ComponentNodeConfig
 
 type DefinedFieldConfig<TConfig> = TConfig & FieldConfig
 type DefinedComponentNodeConfig<TConfig> = TConfig & ComponentNodeConfig
+
+interface DefineFieldFactory<TValues extends object> {
+  <C = unknown, TSchema extends ZodTypeAny = ZodTypeAny>(
+    config: ModelSchemaFieldConfigInput<TValues, TSchema> & ComponentFieldPart<C, TValues>,
+  ): DefinedFieldConfig<ModelSchemaFieldConfigInput<TValues, TSchema> & ComponentFieldPart<C, TValues>>
+  <C = unknown>(
+    config: ModelDefaultValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>,
+  ): DefinedFieldConfig<ModelDefaultValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>>
+  <C = unknown>(
+    config: ModelUnknownValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>,
+  ): DefinedFieldConfig<ModelUnknownValueFieldConfigInput<TValues> & ComponentFieldPart<C, TValues>>
+  <C = unknown>(
+    config: ComponentNodeConfigCore<C, TValues>,
+  ): DefinedComponentNodeConfig<ComponentNodeConfigCore<C, TValues>>
+}
+
+export interface DefineFieldsFactory<TValues extends FormValues> {
+  defineField: DefineFieldFactory<TValues>
+}
+
 type FieldValueFor<
   TValues extends object,
   TField extends FieldKey<TValues>,
@@ -233,4 +253,15 @@ export function defineField<_TValues extends object, C = unknown>(
 /** 所有 defineField 重载共用的运行时实现，只负责复制配置，不写入隐藏标记。 */
 export function defineField(config: FormNodeInput): DefinedFormNodeConfig {
   return { ...config }
+}
+
+/**
+ * 先绑定表单模型，再返回可解构的字段工厂。
+ *
+ * 工厂只提供类型上下文，不保存运行时状态；返回的 defineField 仍然只复制字段配置。
+ */
+export function defineFields<TValues extends FormValues = FormValues>(): DefineFieldsFactory<TValues> {
+  return {
+    defineField: defineField as DefineFieldFactory<TValues>,
+  }
 }

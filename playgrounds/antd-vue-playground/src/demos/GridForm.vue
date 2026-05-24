@@ -2,7 +2,7 @@
 import type { FormRuntimeOptions } from '@moluoxixi/config-form'
 import { reactive, ref } from 'vue'
 import { z } from 'zod'
-import { ConfigForm, defineField } from '@moluoxixi/config-form'
+import { ConfigForm, defineFields } from '@moluoxixi/config-form'
 import { createAntdVuePlugin } from '@moluoxixi/config-form-plugin-antd-vue'
 import AutoComplete from 'ant-design-vue/es/auto-complete'
 import Cascader from 'ant-design-vue/es/cascader'
@@ -19,11 +19,42 @@ import TimePicker from 'ant-design-vue/es/time-picker'
 import TreeSelect from 'ant-design-vue/es/tree-select'
 
 const formRef = ref()
-const formValues = reactive<Record<string, unknown>>({})
+const formValues = reactive<GridFormValues>({})
 
 const runtimeOptions = {
   plugins: [createAntdVuePlugin()],
 } satisfies FormRuntimeOptions
+
+interface GridFormValues extends Record<string, unknown> {
+  username?: string
+  password?: string
+  search?: string
+  email?: string
+  phone?: string
+  age?: number
+  salary?: number
+  quantity?: number
+  role?: 'admin' | 'user' | 'guest'
+  tags?: string[]
+  department?: string[]
+  manager?: string
+  gender?: 'male' | 'female' | 'other'
+  hobbies?: string[]
+  birthday?: string
+  entryTime?: string
+  dateRange?: string[]
+  active?: boolean
+  rating?: number
+  progress?: number
+  city?: string
+  genderOther?: string
+  effectiveDate?: string
+  remark?: string
+  suggestion?: string
+  bio?: string
+}
+
+const { defineField } = defineFields<GridFormValues>()
 
 interface DayjsLike {
   format: (template: string) => string
@@ -514,7 +545,7 @@ const fields = [
  *
  * playground 通过 alert 直接反馈提交值，不向远端接口发送数据。
  */
-function onSubmit(values: Record<string, unknown>) {
+function onSubmit(values: GridFormValues) {
   Object.assign(formValues, values)
   alert(`提交成功！\n${JSON.stringify(values, null, 2)}`)
 }

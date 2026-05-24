@@ -37,3 +37,4 @@ export type {
   ValidateTrigger,
 } from './src/types'
 export { defineField } from './src/utils/field'
+export { defineFields } from './src/utils/field'

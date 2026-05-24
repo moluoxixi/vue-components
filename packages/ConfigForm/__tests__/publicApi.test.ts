@@ -3,8 +3,9 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { ConfigFormError } from '../index'
 
 describe('public api', () => {
-  it('keeps defineField as the only public field factory', () => {
+  it('exposes defineField and defineFields helpers', () => {
     type HasDefineField = 'defineField' extends keyof typeof PublicApi ? true : false
+    type HasDefineFields = 'defineFields' extends keyof typeof PublicApi ? true : false
     type HasDefineFieldFor = 'defineFieldFor' extends keyof typeof PublicApi ? true : false
     type HasFormRuntimeLocale = 'FormRuntimeLocale' extends keyof typeof PublicApi ? true : false
     type HasFormRuntimeDebugEvent = 'FormRuntimeDebugEvent' extends keyof typeof PublicApi ? true : false
@@ -55,6 +56,7 @@ describe('public api', () => {
     type TokenLikeConditionAllowed = { readonly __configFormToken: 'legacy' } extends PublicApi.FieldCondition ? true : false
 
     expectTypeOf<HasDefineField>().toEqualTypeOf<true>()
+    expectTypeOf<HasDefineFields>().toEqualTypeOf<true>()
     expectTypeOf<HasDefineFieldFor>().toEqualTypeOf<false>()
     expectTypeOf<HasFormRuntimeLocale>().toEqualTypeOf<false>()
     expectTypeOf<HasFormRuntimeDebugEvent>().toEqualTypeOf<false>()

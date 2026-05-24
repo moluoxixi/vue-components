@@ -24,7 +24,7 @@ pnpm add @moluoxixi/config-form zod
 <script setup lang="ts">
 import { ref } from 'vue'
 import { z } from 'zod'
-import { ConfigForm, defineField, type ConfigFormExpose } from '@moluoxixi/config-form'
+import { ConfigForm, defineFields, type ConfigFormExpose } from '@moluoxixi/config-form'
 import MyInput from './MyInput.vue'
 
 interface LoginForm {
@@ -35,9 +35,10 @@ interface LoginForm {
 
 const formRef = ref<ConfigFormExpose<LoginForm>>()
 const defaultValues: Partial<LoginForm> = { username: 'Ada', password: '', confirm: '' }
+const { defineField } = defineFields<LoginForm>()
 
 const fields = [
-  defineField<LoginForm>({
+  defineField({
     field: 'username',
     label: '用户名',
     required: true,
@@ -48,7 +49,7 @@ const fields = [
     props: { placeholder: '请输入' },
     validateOn: ['blur', 'change'],
   }),
-  defineField<LoginForm>({
+  defineField({
     field: 'password',
     label: '密码',
     schema: z.string().min(6, '至少 6 个字符'),
@@ -56,7 +57,7 @@ const fields = [
     component: MyInput,
     props: { type: 'password' },
   }),
-  defineField<LoginForm>({
+  defineField({
     field: 'confirm',
     label: '确认密码',
     component: MyInput,
@@ -135,6 +136,27 @@ const fields = [
       values.remember && value.length === 0 ? '请输入用户名' : undefined,
   }),
 ]
+```
+
+如果想先把模型类型绑定到一个局部工厂，再从里面解构 `defineField` 复用同一份模型约束，可以先调用 `defineFields<TValues>()`：
+
+```ts
+const { defineField: defineLoginField } = defineFields<LoginForm>()
+
+const fields = [
+  defineLoginField({
+    field: 'username',
+    component: MyInput,
+    defaultValue: '',
+    validator: (value, values) =>
+      values.remember && value.length === 0 ? '请输入用户名' : undefined,
+  }),
+  defineLoginField({
+    field: 'remember',
+    component: MySwitch,
+    defaultValue: false,
+  }),
+] as const
 ```
 
 同一个表单内所有真实字段的 `field` 必须唯一；重复字段名会直接抛错，避免值、校验错误、显隐和禁用状态被覆盖。

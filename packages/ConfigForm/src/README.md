@@ -4,7 +4,7 @@
 
 ## 核心约定
 
-- 字段通过 `defineField({ field, component, schema, ... })` 或普通 config 创建；需要绑定业务模型时使用 `defineField<TValues>({ field, component, schema, ... })`。
+- 字段通过 `defineField({ field, component, schema, ... })` 或普通 config 创建；需要绑定业务模型时可先 `const { defineField } = defineFields<TValues>()`，也可直接使用 `defineField<TValues>({ field, component, schema, ... })`。
 - `defineField` 返回普通配置对象，不写入 symbol、隐藏属性或 defineProperty 标记；字段默认值、组件解析和插件转换统一由 `ConfigForm` 根组件的 runtime 管线完成。
 - 表单初始值通过 `defaultValues` 传入；组件不再提供 `v-model` 双向同步。
 - 默认值来自 `defaultValues` 初始快照和字段 `defaultValue`；外部对象后续替换不会覆盖内部编辑态。
