@@ -11,6 +11,7 @@
     "changeset": "changeset",
     "dev:ep": "pnpm build && pnpm -C playgrounds/element-plus-playground dev",
     "dev:antd": "pnpm build && pnpm -C playgrounds/antd-vue-playground dev",
+    "dev:components": "pnpm build && pnpm -C playgrounds/components-playground dev",
     "build": "pnpm -r --filter \"./packages/*\" --filter \"./playgrounds/*\" build",
     "lint": "node scripts/check-element-plus-imports.mjs && eslint .",
     "lint:fix": "eslint . --fix",

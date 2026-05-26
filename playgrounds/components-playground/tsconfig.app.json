@@ -2,10 +2,11 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
-    "tsBuildInfoFile": "./.tsbuildinfo/tsconfig.app.tsbuildinfo",
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
     "lib": ["DOM", "dom.iterable", "ESNext"],
     "types": ["vite/client"]
   },
-  "include": ["src", "index.ts"],
+  "include": ["src"],
   "exclude": ["vite.config.ts"]
 }

@@ -12,12 +12,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./config-form": {
-      "source": "./config-form.ts",
-      "types": "./dist/config-form.d.ts",
-      "import": "./dist/config-form.js"
-    },
-    "./config-form/styles": {
+    "./styles": {
       "sass": "./src/config-form/styles.scss",
       "style": "./src/config-form/styles.scss",
       "default": "./src/config-form/styles.scss"
@@ -36,14 +31,17 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
+    "element-plus": "^2.9.0",
     "vue": "^3.5.0",
     "zod": "^3.23.0"
   },
   "dependencies": {
-    "@moluoxixi/config-form": "workspace:*"
+    "@moluoxixi/config-form": "workspace:*",
+    "dayjs": "catalog:build"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "catalog:dev",
+    "element-plus": "catalog:ui",
     "unplugin-dts": "catalog:dev",
     "vite": "catalog:dev",
     "vue": "catalog:build",

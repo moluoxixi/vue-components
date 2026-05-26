@@ -8,6 +8,7 @@ packages:
 
 catalogs:
   build:
+    dayjs: ^1.11.20
     vue: ^3.5.13
     vue-i18n: ^11.4.2
   dev:

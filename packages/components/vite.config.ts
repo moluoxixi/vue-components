@@ -24,18 +24,17 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        'config-form': resolve(__dirname, 'config-form.ts'),
-        'index': resolve(__dirname, 'index.ts'),
+        index: resolve(__dirname, 'index.ts'),
       },
       name: 'MoluoxixiComponents',
       /**
-       * 固定多入口库产物名称，保证 exports 指向稳定文件。
+       * 固定库产物名称，保证 exports 指向稳定文件。
        */
       fileName: (_, entryName) => `${entryName}.js`,
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['@moluoxixi/config-form'],
+      external: ['@moluoxixi/config-form', 'vue', 'element-plus', /^element-plus\//, 'dayjs', /^dayjs\//],
     },
   },
 })
