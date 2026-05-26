@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { computed, defineComponent, h, ref } from 'vue'
 import { provideNamespace, useBem, useNamespace } from '../src/composables/useNamespace'
-import { mergeStyle, resolveLabelWidth } from '../src/utils/style'
+import { mergeStyle, mergeStyleValues, readStyleValue, resolveLabelWidth } from '../src/utils/style'
 
 const NamespaceConsumer = defineComponent({
   name: 'NamespaceConsumer',
@@ -89,6 +89,26 @@ describe('style utilities', () => {
     expect(mergeStyle(baseStyle, [{ color: 'blue' }])).toEqual([
       baseStyle,
       [{ color: 'blue' }],
+    ])
+  })
+
+  it('reads and merges Vue style values without hiding invalid inputs', () => {
+    expect(readStyleValue(null)).toBeUndefined()
+    expect(readStyleValue(false)).toBeUndefined()
+    expect(readStyleValue('color: red;')).toBe('color: red;')
+    expect(readStyleValue({ color: 'blue' })).toEqual({ color: 'blue' })
+    expect(readStyleValue([{ color: 'green' }])).toEqual([{ color: 'green' }])
+    expect(() => readStyleValue(42, 'field.props.style'))
+      .toThrow(/field\.props\.style must be a Vue style value/)
+
+    expect(mergeStyleValues(undefined, undefined)).toBeUndefined()
+    expect(mergeStyleValues({ color: 'blue' }, { width: '80px' })).toEqual({
+      color: 'blue',
+      width: '80px',
+    })
+    expect(mergeStyleValues({ color: 'blue' }, 'width: 80px;')).toEqual([
+      { color: 'blue' },
+      'width: 80px;',
     ])
   })
 })

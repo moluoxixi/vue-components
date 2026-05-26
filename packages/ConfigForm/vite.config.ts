@@ -37,9 +37,12 @@ export default defineConfig({
       exclude: [
         'src/styles/**',
         'src/types/**',
+        'src/**/types/**',
+        'src/**/types.ts',
         'src/runtime/types.ts',
         'src/**/index.ts',
       ],
+      // 只包含类型声明的模块没有可执行路径，V8 覆盖率不应统计它们。
       thresholds: {
         branches: 90,
         functions: 95,

@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test'
 const viewerPauseMs = 350
 const dialogPauseMs = 800
 const searchButtonName = /^搜\s*索$/
+const submitButtonName = /^提\s*交$/
 
 function activePanel(page: Page): Locator {
   return page.locator('[role="tabpanel"]:not([aria-hidden="true"])').last()
@@ -109,38 +110,72 @@ async function submitWithAlert(trigger: Locator, expectedMessage: string) {
   return dialogPromise
 }
 
+async function expectFieldError(panel: Locator, message: string) {
+  await expect(panel.getByText(message, { exact: true }).first()).toBeVisible()
+}
+
+async function expectFieldErrorGone(panel: Locator, message: string) {
+  await expect(panel.getByText(message, { exact: true })).toHaveCount(0)
+}
+
+function fieldControl(panel: Locator, label: string): Locator {
+  return panel
+    .locator('.moluoxixi-field')
+    .filter({ hasText: label })
+    .first()
+    .locator('.moluoxixi-field__control')
+}
+
 test.describe('playground 交互演示', () => {
   test('可以逐个打开主要示例页签', async ({ page }) => {
     await openPlayground(page)
 
-    for (const name of [
-      /Grid 模式/,
-      /Inline 模式/,
-      /只读模式/,
-      /Card 嵌套 Checkbox/,
-      /嵌套布局 FormLayout/,
-      /多 Form Card/,
-      /Vue I18n 表单/,
+    for (const { name, expectedText } of [
+      { name: /Grid 模式/, expectedText: /用户名/ },
+      { name: /Inline 模式/, expectedText: /关键词/ },
+      { name: /只读模式/, expectedText: /提交值快照/ },
+      { name: /Card 嵌套 Checkbox/, expectedText: /权限范围/ },
+      { name: /嵌套布局 FormLayout/, expectedText: /提交值快照/ },
+      { name: /多 Form Card/, expectedText: /账户信息 Form/ },
+      { name: /Vue I18n 表单/, expectedText: /提交值快照/ },
     ]) {
       await openTab(page, name)
+      await expect(activePanel(page)).toContainText(expectedText)
     }
   })
 
-  test('Grid 表单可以输入文本并触发条件字段', async ({ page }) => {
+  test('Grid 表单可以输入边界文本并触发条件字段', async ({ page }) => {
     await openPlayground(page)
 
     const panel = activePanel(page)
+    const maxUsername = 'abcdefghijklmnopqrst'
+    const maxBio = 'A'.repeat(200)
 
-    await panel.getByPlaceholder('请输入用户名').fill('demo-user')
+    // 20 字符命中 username schema 的上边界，验证最大合法长度仍可交互写入。
+    await panel.getByPlaceholder('请输入用户名').fill(maxUsername)
+    await expect(panel.getByPlaceholder('请输入用户名')).toHaveValue(maxUsername)
     await pauseForViewer(page)
     await panel.getByPlaceholder('请输入密码').fill('demo-secret')
+    await expect(panel.getByPlaceholder('请输入密码')).toHaveValue('demo-secret')
     await pauseForViewer(page)
+    await expect(panel.getByPlaceholder('请说明您的性别')).toBeHidden()
     await panel.locator('label').filter({ hasText: '其他' }).click()
     await expect(panel.getByPlaceholder('请说明您的性别')).toBeVisible()
-    await panel.getByPlaceholder('请说明您的性别').fill('playground-visible')
+    await panel.getByPlaceholder('请说明您的性别').fill('边界值/其他')
     await pauseForViewer(page)
-    await panel.getByPlaceholder('请输入个人简介').fill('Playwright headed interaction demo')
-    await expect(panel.getByPlaceholder('请说明您的性别')).toHaveValue('playground-visible')
+    await panel.getByPlaceholder('请输入个人简介').fill(maxBio)
+    await expect(panel.getByPlaceholder('请说明您的性别')).toHaveValue('边界值/其他')
+    await expect(panel.getByPlaceholder('请输入个人简介')).toHaveValue(maxBio)
+    await panel.locator('label').filter({ hasText: /^男$/ }).click()
+    await expect(panel.getByPlaceholder('请说明您的性别')).toBeHidden()
+    const activeSwitch = fieldControl(panel, '启用状态')
+
+    await expect(activeSwitch.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+    await activeSwitch.locator('.el-switch, .ant-switch').click()
+    await expect(activeSwitch.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+    await expect(panel.getByPlaceholder('请输入用户名')).toBeHidden()
+    await expect(panel.getByPlaceholder('请输入密码')).toBeHidden()
+    await expect(panel.getByPlaceholder('选择生效日期')).toBeHidden()
   })
 
   test('Inline 表单外层换行且字段内部沿用 grid 的副轴布局', async ({ page }) => {
@@ -178,22 +213,30 @@ test.describe('playground 交互演示', () => {
     expect(metrics.every(metric => Math.abs(metric.labelTop - metric.controlTop) <= 1)).toBe(true)
   })
 
-  test('Inline 表单可以搜索提交并更新快照', async ({ page }) => {
+  test('Inline 表单会拦截空关键词并提交特殊字符关键词', async ({ page }) => {
     await openPlayground(page)
     await openTab(page, /Inline 模式/)
 
     const panel = activePanel(page)
+    const keyword = '边界-Key_123!@#[]'
+    const keywordInput = panel.getByPlaceholder('搜索...')
 
-    await panel.getByPlaceholder('搜索...').fill('config-form')
+    await panel.getByRole('button', { name: searchButtonName }).click()
+    await expectFieldError(panel, 'Required')
+    await expect(panel.locator('.value-preview')).not.toContainText('"keyword"')
+
+    await keywordInput.fill(keyword)
+    await expect(keywordInput).toHaveValue(keyword)
     await pauseForViewer(page)
 
     const message = await submitWithAlert(panel.getByRole('button', { name: searchButtonName }), '搜索提交！')
 
-    expect(message).toContain('"keyword": "config-form"')
-    await expect(panel.locator('.value-preview')).toContainText('"keyword": "config-form"')
+    expect(message).toContain(`"keyword": "${keyword}"`)
+    await expect(panel.locator('.value-preview')).toContainText(`"keyword": "${keyword}"`)
+    await expectFieldErrorGone(panel, 'Required')
   })
 
-  test('I18n 表单可以切换英文并提交英文反馈', async ({ page }) => {
+  test('I18n 表单可以切换英文、断言最小长度边界并提交英文反馈', async ({ page }) => {
     await openPlayground(page)
     await openTab(page, /Vue I18n 表单/)
 
@@ -202,12 +245,44 @@ test.describe('playground 交互演示', () => {
     await panel.getByRole('button', { name: /切换到 English/ }).click()
     await expect(panel.getByPlaceholder('Enter username')).toBeVisible()
     await pauseForViewer(page)
-    await panel.getByPlaceholder('Enter username').fill('alice')
+    await panel.getByPlaceholder('Enter username').fill('a')
+    await panel.getByPlaceholder('Enter username').blur()
+    await expectFieldError(panel, 'Username must be at least 2 characters')
+    await panel.getByPlaceholder('Enter username').fill('al')
+    await expect(panel.getByPlaceholder('Enter username')).toHaveValue('al')
     await pauseForViewer(page)
 
     const message = await submitWithAlert(panel.getByRole('button', { name: /^Submit$/ }), 'Submitted!')
 
-    expect(message).toContain('"username": "alice"')
-    await expect(panel.locator('.value-preview')).toContainText('"username": "alice"')
+    expect(message).toContain('"username": "al"')
+    await expect(panel.locator('.value-preview')).toContainText('"username": "al"')
+    await expectFieldErrorGone(panel, 'Username must be at least 2 characters')
+    await panel.getByRole('button', { name: /Switch to 中文/ }).click()
+    await expect(panel.getByPlaceholder('请输入用户名')).toBeVisible()
+    await expect(panel.locator('.value-preview')).toContainText('"username": "al"')
+  })
+
+  test('嵌套 Checkbox 会断言空选择边界和提交值范围', async ({ page }) => {
+    await openPlayground(page)
+    await openTab(page, /Card 嵌套 Checkbox/)
+
+    const panel = activePanel(page)
+
+    await panel.getByRole('button', { name: submitButtonName }).click()
+    await expectFieldError(panel, '请至少选择一个权限范围')
+    await expect(panel.locator('.value-preview')).not.toContainText('"permissionScopes"')
+
+    await panel.locator('label').filter({ hasText: '读取数据' }).click()
+    await panel.locator('label').filter({ hasText: '发布配置' }).click()
+
+    const message = await submitWithAlert(panel.getByRole('button', { name: submitButtonName }), '"permissionScopes"')
+
+    expect(message).toContain('"read"')
+    expect(message).toContain('"publish"')
+    expect(message).not.toContain('外层 Card 容器')
+    expect(message).not.toContain('内层 Card 容器')
+    await expect(panel.locator('.value-preview')).toContainText('"permissionScopes"')
+    await expect(panel.locator('.value-preview')).toContainText('"read"')
+    await expect(panel.locator('.value-preview')).toContainText('"publish"')
   })
 })

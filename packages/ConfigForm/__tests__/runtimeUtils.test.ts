@@ -1,11 +1,19 @@
 import type { ComputedRef } from 'vue'
+import type { FormContext } from '../src/composables/useFormContext'
 import type { FormRuntime } from '../src/runtime'
-import type { NormalizedFieldConfig, ResolvedFormNode } from '../src/types'
+import type { NormalizedFieldConfig, ResolvedBoundNode, ResolvedFormNode } from '../src/types'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, defineComponent, h } from 'vue'
+import { FORM_CONTEXT_KEY, useFormContext } from '../src/composables/useFormContext'
 import { normalizeFormRuntime, provideRuntime, useRuntime } from '../src/composables/useRuntime'
 import { createFormRuntime } from '../src/runtime'
+import {
+  createReadonlyRenderContext,
+  renderReadonlyFallback,
+  resolveReadonlyAdapter,
+  resolveReadonlyAdapterKey,
+} from '../src/runtime/readonly'
 import { hasFieldBinding, isComponent, isContainer, isField } from '../src/runtime/utils'
 import { applyFieldTransform, normalizeField, shouldValidateOn } from '../src/utils/field'
 import {
@@ -22,7 +30,8 @@ import {
   markDefinedFormNodeConfig,
   markResolvedFormNodeConfig,
 } from '../src/utils/node'
-import { cloneRecordWithChildren, mergeRecords } from '../src/utils/object'
+import { cloneRecordWithChildren, mergeRecords, readPlainRecord } from '../src/utils/object'
+import { getResolvedNodeRenderKey, resolveSlotNodes } from '../src/utils/slot'
 
 describe('runtime utilities', () => {
   it('normalizes field defaults and applies submit transforms explicitly', () => {
@@ -145,6 +154,16 @@ describe('runtime utilities', () => {
     expect((merged.props as { list?: string[] }).list).toEqual(['right'])
   })
 
+  it('keeps invalid object inputs and circular arrays explicit', () => {
+    const cyclicItems: unknown[] = []
+    cyclicItems.push(cyclicItems)
+
+    expect(() => readPlainRecord([], 'plugin options'))
+      .toThrow(/plugin options must be a plain object/)
+    expect(() => cloneRecordWithChildren({ props: cyclicItems }, ['props']))
+      .toThrow(/cloneRecordWithChildren\(props\)\[0\] contains a circular array reference/)
+  })
+
   it('classifies runtime nodes by binding and label presence', () => {
     const labelled = { component: 'input', field: 'name', label: '姓名' }
     const unlabelled = { component: 'input', field: 'status' }
@@ -228,6 +247,87 @@ describe('runtime utilities', () => {
       { component: 'input', field: 'dup' },
       { component: 'input', field: 'dup' },
     ])).toThrow(/Duplicate field key: dup/)
+  })
+
+  it('resolves runtime slot nodes into recursive render entries', () => {
+    const runtime = createFormRuntime()
+    const field = runtime.transformField({ component: 'input', field: 'name' })
+    const identifiedNode = runtime.transformField({ component: 'section', id: 'profile-card' })
+    const plainNode = runtime.transformField({ component: 'section' })
+    const renderSlot = () => h('span', 'rendered')
+
+    expect(getResolvedNodeRenderKey(field, 'root.0')).toBe('field:name:path:root.0')
+    expect(getResolvedNodeRenderKey(identifiedNode, 'root.1')).toBe('node:profile-card:path:root.1')
+    expect(getResolvedNodeRenderKey(plainNode, 'root.2')).toBe('node:path:root.2')
+
+    const resolved = resolveSlotNodes([
+      field,
+      [renderSlot, identifiedNode],
+    ], 'default')
+
+    expect(resolved).toEqual([
+      {
+        field,
+        key: 'field:name:path:default.default.0',
+      },
+      {
+        field: identifiedNode,
+        key: 'node:profile-card:path:default.default.1.1',
+      },
+    ])
+    expect(resolveSlotNodes(renderSlot, 'suffix')).toEqual([])
+    expect(() => resolveSlotNodes('plain text' as never, 'footer'))
+      .toThrow(/Slot "footer" must be a field config/)
+  })
+
+  it('builds readonly render helpers from resolved field nodes', () => {
+    const adapter = vi.fn(({ value }) => h('strong', String(value)))
+    const namedComponent = { name: 'NamedInput' }
+    const anonymousComponent = {}
+    const node = createFormRuntime({
+      readonlyAdapters: {
+        input: adapter,
+      },
+    }).transformField({ component: 'input', field: 'name' }) as ResolvedBoundNode
+    const values = { name: 'Ada' }
+
+    expect(resolveReadonlyAdapterKey(node.component)).toBe('input')
+    expect(resolveReadonlyAdapterKey(namedComponent)).toBe('NamedInput')
+    expect(resolveReadonlyAdapterKey(anonymousComponent)).toBeUndefined()
+    expect(resolveReadonlyAdapter({ input: adapter }, node)).toBe(adapter)
+    expect(resolveReadonlyAdapter({}, { ...node, component: anonymousComponent })).toBeUndefined()
+
+    expect(createReadonlyRenderContext(node, values)).toEqual({
+      field: 'name',
+      node,
+      value: 'Ada',
+      values,
+    })
+
+    const fallback = renderReadonlyFallback('Ada')
+    expect(fallback).toEqual(expect.objectContaining({
+      children: 'Ada',
+      type: 'span',
+    }))
+  })
+
+  it('throws a config-form error when form context is missing', () => {
+    const MissingContextConsumer = defineComponent({
+      name: 'MissingContextConsumer',
+      render: () => h('span'),
+      setup() {
+        useFormContext()
+      },
+    })
+
+    expect(() => mount(MissingContextConsumer, {
+      global: {
+        provide: {
+          [FORM_CONTEXT_KEY]: undefined as unknown as FormContext,
+        },
+      },
+    }))
+      .toThrow(/FormContext not provided/)
   })
 
   it('normalizes and provides runtime instances through Vue context', () => {
