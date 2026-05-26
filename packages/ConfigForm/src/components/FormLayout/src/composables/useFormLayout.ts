@@ -24,7 +24,7 @@ export function useFormLayout(props: FormLayoutProps): UseFormLayoutResult {
   const layoutStyle = computed<CSSProperties>(() => {
     if (effectiveInline.value) {
       return {
-        alignItems: 'center',
+        alignItems: 'flex-start',
         display: 'flex',
         flexWrap: 'wrap',
         gap: props.gap ?? '8px 8px',

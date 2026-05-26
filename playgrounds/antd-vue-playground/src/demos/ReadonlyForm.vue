@@ -94,6 +94,7 @@ function onSubmit(values: Record<string, unknown>) {
     <ConfigForm
       ref="formRef"
       :fields="fields"
+      namespace="moluoxixi"
       :runtime="runtimeOptions"
       label-width="96px"
       @submit="onSubmit"

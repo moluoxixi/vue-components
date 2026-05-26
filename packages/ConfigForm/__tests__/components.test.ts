@@ -574,7 +574,7 @@ describe('config form component', () => {
     expect(api.getValues()).toEqual({ username: 'Ada' })
   })
 
-  it('renders readonly labeled fields as display text without editable controls or stale errors', () => {
+  it('renders readonly labeled fields as display text inside the normal FormItem layout', () => {
     const fields = [
       defineField({
         component: TextInput,
@@ -594,7 +594,9 @@ describe('config form component', () => {
 
     expect(wrapper.find('input').exists()).toBe(false)
     expect(wrapper.get('.cf-field').text()).toContain('Ada')
-    expect(wrapper.findAll('.cf-field__error')).toHaveLength(0)
+    expect(wrapper.get('.cf-field__readonly').text()).toBe('Ada')
+    expect(wrapper.findAll('.cf-field__error')).toHaveLength(1)
+    expect(wrapper.get('.cf-field__error').text()).toBe('')
   })
 
   it('renders readonly component-only fields without adding a form field wrapper', () => {
@@ -616,6 +618,7 @@ describe('config form component', () => {
 
     expect(wrapper.find('input').exists()).toBe(false)
     expect(wrapper.find('.cf-field').exists()).toBe(false)
+    expect(wrapper.get('.cf-field__readonly').text()).toBe('Ada')
     expect(wrapper.get('[data-cf-bound-field="nickname"]').text()).toContain('Ada')
   })
 
@@ -680,6 +683,7 @@ describe('config form component', () => {
 
     expect(wrapper.get('label').attributes('style')).toContain('width: 144px')
     expect(wrapper.get('.cf-field').classes()).toContain('cf-field--inline')
+    expect(wrapper.get('form').attributes('style')).toContain('align-items: flex-start')
   })
 
   it('submits transformed visible values and respects hidden or disabled submit options', async () => {
@@ -1417,6 +1421,7 @@ describe('form layout', () => {
     })
 
     expect(inlineWrapper.attributes('style')).toContain('flex')
+    expect(inlineWrapper.attributes('style')).toContain('align-items: flex-start')
   })
 
   it('inherits inline from parent context when inline prop is not set', () => {

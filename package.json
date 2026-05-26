@@ -20,12 +20,15 @@
     "release": "pnpm build && changeset publish",
     "test": "pnpm -C packages/ConfigForm build && pnpm -r --filter \"./packages/*\" test",
     "test:coverage": "pnpm -C packages/ConfigForm build && pnpm -r --filter \"./packages/*\" test:coverage",
+    "test:e2e:playground": "pnpm build && playwright test --config playwright.playground.config.ts",
+    "test:e2e:playground:headed": "pnpm build && playwright test --config playwright.playground.config.ts --headed --workers=1",
     "typecheck": "pnpm -r --filter \"./packages/*\" build && pnpm -r --filter \"./packages/*\" --filter \"./playgrounds/*\" typecheck",
     "version-packages": "changeset version"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
     "@changesets/cli": "catalog:dev",
+    "@playwright/test": "catalog:dev",
     "@types/node": "catalog:type",
     "eslint": "catalog:dev",
     "eslint-plugin-format": "catalog:dev",

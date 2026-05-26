@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ReadonlyFieldProps } from './types/props'
 import FormItem from '@/components/FormItem'
+import { useBem, useNamespace } from '@/composables/useNamespace'
 import { useReadonlyField } from './composables/useReadonlyField'
 
 /**
@@ -11,6 +12,8 @@ import { useReadonlyField } from './composables/useReadonlyField'
 defineOptions({ name: 'ReadonlyField' })
 
 const props = defineProps<ReadonlyFieldProps>()
+const ns = useNamespace()
+const { e } = useBem(ns)
 
 const {
   componentAttrs,
@@ -25,13 +28,17 @@ const {
     v-if="hasLabel"
     v-bind="formItemComponentProps"
   >
-    <component :is="readonlyRenderer" />
+    <span :class="e('field', 'readonly')">
+      <component :is="readonlyRenderer" />
+    </span>
   </FormItem>
 
   <div
     v-else
     v-bind="componentAttrs"
   >
-    <component :is="readonlyRenderer" />
+    <span :class="e('field', 'readonly')">
+      <component :is="readonlyRenderer" />
+    </span>
   </div>
 </template>

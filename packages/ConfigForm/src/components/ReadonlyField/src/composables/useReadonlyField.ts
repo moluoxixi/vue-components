@@ -13,7 +13,6 @@ export interface UseReadonlyFieldResult {
     id?: string
     label: string
     required: boolean
-    showError: false
     span: number
   }>
   hasLabel: ComputedRef<boolean>
@@ -55,7 +54,6 @@ export function useReadonlyField(props: ReadonlyFieldProps): UseReadonlyFieldRes
     id: props.field.id,
     label: props.field.label ?? '',
     required: resolveValue(props.field.required, ctx.values, false),
-    showError: false as const,
     span: props.field.span,
   }))
 

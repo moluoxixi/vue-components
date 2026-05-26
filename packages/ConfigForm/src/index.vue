@@ -92,7 +92,7 @@ const formStyle = computed<CSSProperties>(() => {
       display: 'flex',
       flexWrap: 'wrap',
       gap: props.gap,
-      alignItems: 'center',
+      alignItems: 'flex-start',
     }
   }
   return {
