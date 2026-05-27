@@ -27,36 +27,50 @@ function handleChange(value: string | string[]): void {
 </script>
 
 <template>
-  <div class="date-range-example">
+  <div class="date-range-example" data-testid="date-range-example">
     <ElForm label-width="120px">
       <ElFormItem label="日期范围">
-        <DateRangePicker
-          v-model="dateValues.dayRange"
-          type="daterange"
-          :shortcuts="true"
-          :date-range="[-6, 0]"
-          @change="handleChange"
-        />
+        <div data-testid="date-range-daterange">
+          <DateRangePicker
+            v-model="dateValues.dayRange"
+            type="daterange"
+            :default-today="false"
+            :shortcuts="true"
+            placeholder="选择日期范围"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            @change="handleChange"
+          />
+        </div>
       </ElFormItem>
 
       <ElFormItem label="日期时间范围">
-        <DateRangePicker
-          v-model="dateValues.timeRange"
-          type="datetimerange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          :disabled-date-range="['2026-01-01 08:00:00', '2026-12-31 20:00:00']"
-          @change="handleChange"
-        />
+        <div data-testid="date-range-datetimerange">
+          <DateRangePicker
+            v-model="dateValues.timeRange"
+            type="datetimerange"
+            :default-today="false"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            :disabled-date-range="['2026-01-01 08:00:00', '2026-12-31 20:00:00']"
+            placeholder="选择时间范围"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            @change="handleChange"
+          />
+        </div>
       </ElFormItem>
 
       <ElFormItem label="单日期">
-        <DateRangePicker
-          v-model="dateValues.singleDate"
-          type="date"
-          output-format="YYYY/MM/DD"
-          placeholder="选择业务日期"
-          @change="handleChange"
-        />
+        <div data-testid="date-range-single">
+          <DateRangePicker
+            v-model="dateValues.singleDate"
+            type="date"
+            :default-today="false"
+            output-format="YYYY/MM/DD"
+            placeholder="选择业务日期"
+            @change="handleChange"
+          />
+        </div>
       </ElFormItem>
     </ElForm>
 
@@ -73,7 +87,7 @@ function handleChange(value: string | string[]): void {
         {{ dateValues.singleDate }}
       </ElDescriptionsItem>
       <ElDescriptionsItem label="最后变更">
-        {{ lastChanged }}
+        <span data-testid="date-range-last">{{ lastChanged }}</span>
       </ElDescriptionsItem>
     </ElDescriptions>
   </div>

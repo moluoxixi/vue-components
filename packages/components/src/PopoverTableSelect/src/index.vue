@@ -44,6 +44,7 @@ const inputValue = defineModel<string>('inputValue', { default: '' })
 const inputRef = useTemplateRef<InputInstance>('inputRef')
 const currentInputValue = shallowRef('')
 const cachedInputValue = shallowRef('')
+const isBaseMounted = shallowRef(false)
 
 const slotNames = computed<string[]>(() => Object.keys(slots))
 
@@ -61,11 +62,13 @@ const computedOptions = computed<ThrottleOrDebounceOptions>(() => {
 })
 
 function handleFocus(): void {
+  const shouldSyncEmptyInput = !popoverModel.value
   cachedInputValue.value = currentInputValue.value
   currentInputValue.value = ''
+  popoverModel.value = true
   emit('focus')
 
-  if (!popoverModel.value)
+  if (shouldSyncEmptyInput)
     handleInput(currentInputValue.value)
 }
 
@@ -135,11 +138,25 @@ watch(
   },
   { immediate: true },
 )
+
+watch(
+  computedVirtualRef,
+  (virtualRef) => {
+    /**
+     * input 模式依赖内部 ElInput 作为虚拟触发源；等 ref 就绪后再挂载基座，
+     * 避免弹层基座在空 virtualRef 上注册 DOM 事件。
+     */
+    if (virtualRef)
+      isBaseMounted.value = true
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <div class="mx-popover-table-select">
     <PopoverTableSelectBase
+      v-if="isBaseMounted"
       v-model="popoverModel"
       :virtual-ref="computedVirtualRef"
       :loading="props.loading"

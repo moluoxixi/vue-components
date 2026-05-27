@@ -15,6 +15,8 @@
 | [`@moluoxixi/config-form-plugin-element-plus`](./packages/ConfigFormPluginElementPlus/) | Element Plus runtime 适配插件 |
 | [`element-plus-playground`](./playgrounds/element-plus-playground/) | Element Plus 示例 |
 | [`antd-vue-playground`](./playgrounds/antd-vue-playground/) | Ant Design Vue 示例 |
+| [`components-playground`](./playgrounds/components-playground/) | `@moluoxixi/components` 包组件示例 |
+| [`shadcn-vue-playground`](./playgrounds/shadcn-vue-playground/) | shadcn-vue 接入示例 |
 
 ## 开发
 
@@ -27,6 +29,9 @@ pnpm dev:ep
 
 # 启动 Ant Design Vue playground
 pnpm dev:antd
+
+# 启动 shadcn-vue playground
+pnpm dev:shadcn
 
 # 构建核心包
 pnpm build

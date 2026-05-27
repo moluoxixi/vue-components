@@ -2,7 +2,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Vue from '@vitejs/plugin-vue'
 import dts from 'unplugin-dts/vite'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import { failOnDtsDiagnostics } from '../../scripts/fail-on-dts-diagnostics.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -21,6 +21,9 @@ export default defineConfig({
       tsconfigPath: resolve(__dirname, 'tsconfig.app.json'),
     }),
   ],
+  test: {
+    environment: 'happy-dom',
+  },
   build: {
     lib: {
       entry: {

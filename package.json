@@ -21,8 +21,8 @@
     "release": "pnpm build && changeset publish",
     "test": "pnpm -C packages/ConfigForm build && pnpm -r --filter \"./packages/*\" test",
     "test:coverage": "pnpm -C packages/ConfigForm build && pnpm -r --filter \"./packages/*\" test:coverage",
-    "test:e2e:playground": "pnpm build && playwright test --config playwright.playground.config.ts",
-    "test:e2e:playground:headed": "pnpm build && playwright test --config playwright.playground.config.ts --headed --workers=1",
+    "test:e2e:playground": "pnpm build && playwright test --config playgrounds/playwright.config.ts",
+    "test:e2e:playground:headed": "pnpm build && playwright test --config playgrounds/playwright.config.ts --headed --workers=1",
     "typecheck": "pnpm -r --filter \"./packages/*\" build && pnpm -r --filter \"./packages/*\" --filter \"./playgrounds/*\" typecheck",
     "version-packages": "changeset version"
   },

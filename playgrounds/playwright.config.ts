@@ -25,13 +25,13 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'pnpm -C playgrounds/element-plus-playground dev --host 127.0.0.1 --port 4210',
+      command: 'pnpm -C element-plus-playground dev --host 127.0.0.1 --port 4210',
       url: 'http://127.0.0.1:4210',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
-      command: 'pnpm -C playgrounds/antd-vue-playground dev --host 127.0.0.1 --port 4211',
+      command: 'pnpm -C antd-vue-playground dev --host 127.0.0.1 --port 4211',
       url: 'http://127.0.0.1:4211',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

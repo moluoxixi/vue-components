@@ -37,17 +37,17 @@ function handleNoSelectValue(element: HTMLElement): void {
     @no-next-input="handleNoNextInput"
     @no-select-value="handleNoSelectValue"
   >
-    <ElForm class="enter-next-example" :model="formModel" label-width="96px">
+    <ElForm class="enter-next-example" :model="formModel" label-width="96px" data-testid="enter-next-example">
       <ElFormItem label="客户名称">
-        <ElInput v-model="formModel.customerName" />
+        <ElInput v-model="formModel.customerName" data-testid="enter-next-name" />
       </ElFormItem>
 
       <ElFormItem label="联系人">
-        <ElInput v-model="formModel.contact" />
+        <ElInput v-model="formModel.contact" data-testid="enter-next-contact" />
       </ElFormItem>
 
       <ElFormItem label="客户等级">
-        <ElSelect v-model="formModel.level" clearable>
+        <ElSelect v-model="formModel.level" clearable data-testid="enter-next-level">
           <ElOption label="核心客户" value="core" />
           <ElOption label="普通客户" value="standard" />
           <ElOption label="观察客户" value="watch" />
@@ -55,11 +55,11 @@ function handleNoSelectValue(element: HTMLElement): void {
       </ElFormItem>
 
       <ElFormItem label="备注">
-        <ElInput v-model="formModel.remark" type="textarea" :rows="3" />
+        <ElInput v-model="formModel.remark" data-testid="enter-next-remark" type="textarea" :rows="3" />
       </ElFormItem>
 
       <ElFormItem label="事件">
-        <ElTag type="info">
+        <ElTag type="info" data-testid="enter-next-event">
           {{ lastEvent }}
         </ElTag>
       </ElFormItem>

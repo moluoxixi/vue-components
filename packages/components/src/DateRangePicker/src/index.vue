@@ -94,22 +94,31 @@ const disabledBoundary = computed(() => {
 function createInitialValue(): DateRangePickerModelValue | undefined {
   const baseDate = dayjs(props.dateRangeBaseDate)
 
+  /**
+   * 初始值进入 DatePicker 前先转成 valueFormat 字符串。
+   *
+   * Element Plus 在声明 value-format 后以字符串作为绑定值；保持同一形态可避免 Date 被按字符串格式二次解析。
+   */
+  function formatInitialDate(date: dayjs.ConfigType): string {
+    return dayjs(date).format(props.valueFormat)
+  }
+
   if (props.dateRange !== undefined) {
     if (Array.isArray(props.dateRange)) {
       return [
-        baseDate.add(props.dateRange[0], props.dateRangeType).toDate(),
-        baseDate.add(props.dateRange[1], props.dateRangeType).toDate(),
+        formatInitialDate(baseDate.add(props.dateRange[0], props.dateRangeType)),
+        formatInitialDate(baseDate.add(props.dateRange[1], props.dateRangeType)),
       ]
     }
 
     if (props.dateRange >= 0)
-      return [baseDate.toDate(), baseDate.add(props.dateRange, props.dateRangeType).toDate()]
+      return [formatInitialDate(baseDate), formatInitialDate(baseDate.add(props.dateRange, props.dateRangeType))]
 
-    return [baseDate.add(props.dateRange, props.dateRangeType).toDate(), baseDate.toDate()]
+    return [formatInitialDate(baseDate.add(props.dateRange, props.dateRangeType)), formatInitialDate(baseDate)]
   }
 
   if (props.defaultToday)
-    return [dayjs().toDate(), dayjs().toDate()]
+    return [formatInitialDate(dayjs()), formatInitialDate(dayjs())]
 
   return undefined
 }

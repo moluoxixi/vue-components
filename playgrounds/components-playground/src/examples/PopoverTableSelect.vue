@@ -55,10 +55,11 @@ function handleSelect(row: PopoverTableRow): void {
 </script>
 
 <template>
-  <div class="popover-table-example">
+  <div class="popover-table-example" data-testid="popover-table-example">
     <PopoverTableSelect
       v-model:input-value="inputValue"
       pop-type="input"
+      data-testid="popover-table-select"
       width="560"
       :data="filteredRows"
       :columns="columns"
@@ -78,16 +79,16 @@ function handleSelect(row: PopoverTableRow): void {
 
     <ElDescriptions :column="2" border>
       <ElDescriptionsItem label="编码">
-        {{ selectedRow.code }}
+        <span data-testid="popover-selected-code">{{ selectedRow.code }}</span>
       </ElDescriptionsItem>
       <ElDescriptionsItem label="名称">
-        {{ selectedRow.name }}
+        <span data-testid="popover-selected-name">{{ selectedRow.name }}</span>
       </ElDescriptionsItem>
       <ElDescriptionsItem label="负责人">
-        {{ selectedRow.owner }}
+        <span data-testid="popover-selected-owner">{{ selectedRow.owner }}</span>
       </ElDescriptionsItem>
       <ElDescriptionsItem label="状态">
-        {{ selectedRow.status }}
+        <span data-testid="popover-selected-status">{{ selectedRow.status }}</span>
       </ElDescriptionsItem>
     </ElDescriptions>
   </div>

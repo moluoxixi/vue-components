@@ -8,6 +8,7 @@ import type {
   PopoverTableSelectBaseProps,
   PopoverTableVirtualRef,
 } from '../types'
+import { ElPopover } from 'element-plus'
 import { computed, nextTick, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
 
 defineOptions({
