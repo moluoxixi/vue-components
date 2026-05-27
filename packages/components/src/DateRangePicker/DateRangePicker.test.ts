@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import dayjs from 'dayjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import { DateRangePicker } from '../index'
+import { DateRangePicker } from './index'
 
 const pickerChangeValue = [
   '2026-01-03 08:30:00',

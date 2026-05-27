@@ -1,8 +1,8 @@
-import type { PopoverTableRow } from '../index'
+import type { PopoverTableRow } from './index'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { PopoverTableSelect } from '../index'
+import { PopoverTableSelect } from './index'
 
 const selectedRow: PopoverTableRow = {
   code: 'C-009',

@@ -16,6 +16,7 @@ export default defineConfig({
   ],
   use: {
     actionTimeout: 10_000,
+    baseURL: 'http://127.0.0.1:4210',
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
@@ -23,34 +24,18 @@ export default defineConfig({
       slowMo: Number(process.env.PLAYGROUND_E2E_SLOW_MO ?? headedSlowMo),
     },
   },
-  webServer: [
-    {
-      command: 'pnpm -C element-plus-playground dev --host 127.0.0.1 --port 4210',
-      url: 'http://127.0.0.1:4210',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
-    {
-      command: 'pnpm -C antd-vue-playground dev --host 127.0.0.1 --port 4211',
-      url: 'http://127.0.0.1:4211',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
-  ],
+  // Playwright 默认以配置文件所在目录启动 webServer，这里只负责当前 playground 包。
+  webServer: {
+    command: 'pnpm dev --host 127.0.0.1 --port 4210',
+    url: 'http://127.0.0.1:4210',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   projects: [
     {
       name: 'element-plus',
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: 'http://127.0.0.1:4210',
-        viewport: { width: 1440, height: 1000 },
-      },
-    },
-    {
-      name: 'antd-vue',
-      use: {
-        ...devices['Desktop Chrome'],
-        baseURL: 'http://127.0.0.1:4211',
         viewport: { width: 1440, height: 1000 },
       },
     },

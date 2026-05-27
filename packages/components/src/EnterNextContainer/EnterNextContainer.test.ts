@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
-import { EnterNextContainer } from '../index'
+import { EnterNextContainer } from './index'
 
 async function waitForContainerMounted(): Promise<void> {
   await nextTick()

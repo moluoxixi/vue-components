@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "lib": ["DOM", "dom.iterable", "ESNext"],
+    "types": ["vite/client"]
+  },
+  "include": ["src"],
+  "exclude": ["vite.config.ts"]
+}

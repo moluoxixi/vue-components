@@ -1,0 +1,15 @@
+<script setup lang="ts">
+import type { HTMLAttributes } from 'vue'
+import { cn } from '@/lib/utils'
+
+const props = defineProps<{
+  class?: HTMLAttributes['class']
+  value?: string | number
+}>()
+</script>
+
+<template>
+  <option data-slot="native-select-option" :value="value" :class="cn('bg-[Canvas] text-[CanvasText]', props.class)">
+    <slot />
+  </option>
+</template>
