@@ -13,6 +13,7 @@
 | [`@moluoxixi/config-form-devtools-vite-plugin`](./packages/ConfigFormDevtoolsVitePlugin/) | 开发态源码定位 Vite 插件 |
 | [`@moluoxixi/config-form-plugin-antd-vue`](./packages/ConfigFormPluginAntdVue/) | Ant Design Vue runtime 适配插件 |
 | [`@moluoxixi/config-form-plugin-element-plus`](./packages/ConfigFormPluginElementPlus/) | Element Plus runtime 适配插件 |
+| [`@moluoxixi/config-form-plugin-shadcn-vue`](./packages/ConfigFormPluginShadcnVue/) | shadcn-vue runtime 适配插件 |
 | [`element-plus-playground`](./playgrounds/element-plus-playground/) | Element Plus 示例 |
 | [`antd-vue-playground`](./playgrounds/antd-vue-playground/) | Ant Design Vue 示例 |
 | [`components-playground`](./playgrounds/components-playground/) | `@moluoxixi/components` 包组件示例 |

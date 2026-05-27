@@ -320,6 +320,33 @@ importers:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
 
+  packages/ConfigFormPluginShadcnVue:
+    devDependencies:
+      '@moluoxixi/config-form':
+        specifier: workspace:*
+        version: link:../ConfigForm
+      '@vitest/coverage-v8':
+        specifier: catalog:dev
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))
+      '@vue/test-utils':
+        specifier: catalog:dev
+        version: 2.4.10(@vue/compiler-dom@3.5.33)(@vue/server-renderer@3.5.33(vue@3.5.33(typescript@5.9.3)))(vue@3.5.33(typescript@5.9.3))
+      unplugin-dts:
+        specifier: catalog:dev
+        version: 1.0.0(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.25.12)(rollup@4.60.2)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))
+      vite:
+        specifier: catalog:dev
+        version: 6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0)
+      vitest:
+        specifier: catalog:dev
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0)
+      vue:
+        specifier: catalog:build
+        version: 3.5.33(typescript@5.9.3)
+      vue-tsc:
+        specifier: catalog:dev
+        version: 2.2.12(typescript@5.9.3)
+
   packages/components:
     dependencies:
       '@moluoxixi/config-form':
@@ -488,6 +515,9 @@ importers:
       '@moluoxixi/config-form':
         specifier: workspace:*
         version: link:../../packages/ConfigForm
+      '@moluoxixi/config-form-plugin-shadcn-vue':
+        specifier: workspace:*
+        version: link:../../packages/ConfigFormPluginShadcnVue
       '@vueuse/core':
         specifier: catalog:shadcn
         version: 12.0.0(typescript@5.9.3)

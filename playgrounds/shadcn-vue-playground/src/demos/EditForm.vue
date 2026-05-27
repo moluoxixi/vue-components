@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormExpose, FormRuntimeOptions } from '@moluoxixi/config-form'
 import { ConfigForm, defineFields } from '@moluoxixi/config-form'
+import { createShadcnVuePlugin } from '@moluoxixi/config-form-plugin-shadcn-vue'
 import { computed, reactive, shallowRef } from 'vue'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -12,9 +13,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { NativeSelectOption } from '@/components/ui/native-select'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Separator } from '@/components/ui/separator'
-import { createShadcnVuePlugin } from '@/shadcn-form'
+import { Textarea } from '@/components/ui/textarea'
 
 interface AccountFormValues extends Record<string, unknown> {
   accountName: string
@@ -33,8 +35,17 @@ const planOptions = [
   { label: 'Enterprise / 企业治理', value: 'enterprise' },
 ] as const
 
+/** 插件包只维护 runtime 协议，playground 在这里注入本地生成的 shadcn-vue 组件。 */
 const runtimeOptions = {
-  plugins: [createShadcnVuePlugin()],
+  plugins: [
+    createShadcnVuePlugin({
+      components: {
+        Input,
+        NativeSelect,
+        Textarea,
+      },
+    }),
+  ],
 } satisfies FormRuntimeOptions
 
 const fields = [

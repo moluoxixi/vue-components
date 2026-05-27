@@ -5,7 +5,7 @@ export interface ShadcnOptionNode {
   value: unknown
 }
 
-/** shadcn-vue playground 选择字段统一通过 props.options 暴露候选项。 */
+/** shadcn-vue 选择字段统一通过 props.options 暴露候选项。 */
 export function readShadcnOptions(props: Record<string, unknown>): ShadcnOptionNode[] {
   return props.options as ShadcnOptionNode[]
 }

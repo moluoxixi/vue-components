@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@moluoxixi/config-form": "workspace:*",
+    "@moluoxixi/config-form-plugin-shadcn-vue": "workspace:*",
     "@vueuse/core": "catalog:shadcn",
     "class-variance-authority": "catalog:shadcn",
     "clsx": "catalog:shadcn",

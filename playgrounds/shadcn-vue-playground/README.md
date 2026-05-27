@@ -6,7 +6,7 @@
 
 - 只覆盖 shadcn-vue 接入示例，不承载 `@moluoxixi/components` 包的组件演示。
 - shadcn-vue 组件代码由 `shadcn-vue` registry 生成到 `src/components/ui`，作为当前 playground 的本地 UI 源码。
-- ConfigForm 适配代码位于 `src/shadcn-form`，示例页面位于 `src/demos`。
+- ConfigForm 适配代码由 `@moluoxixi/config-form-plugin-shadcn-vue` 独立包维护，playground 只负责注入本地生成的 UI 组件。
 
 ## 开发
 

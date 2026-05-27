@@ -12,7 +12,7 @@
     "dev:ep": "pnpm build && pnpm -C playgrounds/element-plus-playground dev",
     "dev:antd": "pnpm build && pnpm -C playgrounds/antd-vue-playground dev",
     "dev:components": "pnpm build && pnpm -C playgrounds/components-playground dev",
-    "dev:shadcn": "pnpm -C packages/ConfigForm build && pnpm -C playgrounds/shadcn-vue-playground dev",
+    "dev:shadcn": "pnpm -C packages/ConfigForm build && pnpm -C packages/ConfigFormPluginShadcnVue build && pnpm -C playgrounds/shadcn-vue-playground dev",
     "build": "pnpm -r --filter \"./packages/*\" --filter \"./playgrounds/*\" build",
     "lint": "node scripts/check-element-plus-imports.mjs && eslint .",
     "lint:fix": "eslint . --fix",
