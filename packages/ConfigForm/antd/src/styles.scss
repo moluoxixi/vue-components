@@ -6,6 +6,10 @@
   width: 100%;
 }
 
+.mx-antd-config-form__row--inline .ant-form-item-control {
+  min-width: 120px;
+}
+
 .mx-antd-config-form__control {
   width: 100%;
 }

@@ -6,6 +6,7 @@ import type { AntdConfigFormField } from '../../../types'
 import type { FormComponentEmits, FormComponentProps } from './types'
 import { markRaw, useSlots } from 'vue'
 import { resolveConfigFormCondition } from '@moluoxixi/config-form-core'
+import { resolveAntdConfigFormFieldBinding } from '../../../bindings'
 
 defineOptions({
   name: 'AntdConfigFormComponent',
@@ -24,11 +25,11 @@ function resolveFieldEventValue(field: AntdConfigFormField<TValues>, args: unkno
 }
 
 function getFieldValueProp(field: AntdConfigFormField<TValues>): string {
-  return field.valueProp ?? 'value'
+  return field.valueProp ?? resolveAntdConfigFormFieldBinding(field)?.valueProp ?? 'value'
 }
 
 function getFieldTrigger(field: AntdConfigFormField<TValues>): string {
-  return field.trigger ?? 'update:value'
+  return field.trigger ?? resolveAntdConfigFormFieldBinding(field)?.trigger ?? 'update:value'
 }
 
 function emitFieldChange(field: AntdConfigFormField<TValues>, value: unknown): void {

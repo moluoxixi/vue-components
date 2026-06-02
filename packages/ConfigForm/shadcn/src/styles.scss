@@ -2,11 +2,24 @@
   width: 100%;
 }
 
-.mx-shadcn-config-form__grid {
+.mx-shadcn-config-form__row {
+  width: 100%;
+}
+
+.mx-shadcn-config-form__row--grid {
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));
   gap: 16px;
-  width: 100%;
+}
+
+.mx-shadcn-config-form__row--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 16px;
+}
+
+.mx-shadcn-config-form__row--inline > * {
+  flex: 0 1 240px;
 }
 
 .mx-shadcn-config-form__cell {

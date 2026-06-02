@@ -10,6 +10,6 @@ export interface ConfigFormNodeProps<TValues extends ConfigFormValues = ConfigFo
   colProps?: ElementConfigFormColProps
   /** 顶层节点使用的默认字段跨度。 */
   fieldSpan?: ConfigFormColumnSpan
-  /** 是否为当前节点包裹 Element Plus Col；slot 子节点默认不包列。 */
+  /** 是否为当前顶层节点包裹 Element Plus Col；grid 模式包列，inline/slot 子节点不包列。 */
   wrapCol?: boolean
 }

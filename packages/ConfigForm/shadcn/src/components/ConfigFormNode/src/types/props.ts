@@ -12,6 +12,6 @@ export interface ConfigFormNodeProps<TValues extends ConfigFormValues = ConfigFo
   colProps?: ShadcnConfigFormColProps
   /** 顶层节点使用的默认字段跨度。 */
   fieldSpan?: ConfigFormColumnSpan
-  /** 是否为当前节点包裹 ShadcnConfigForm grid cell；slot 子节点默认不包 cell。 */
+  /** 是否为当前顶层节点包裹 ShadcnConfigForm grid cell；grid 模式包 cell，inline/slot 子节点不包 cell。 */
   wrapCell?: boolean
 }

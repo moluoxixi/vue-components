@@ -126,7 +126,7 @@ const layoutGridSubmitted = shallowRef<Partial<AntdKnownValues>>({})
 const containerSubmitted = shallowRef<Partial<AntdKnownValues>>({})
 const linkedSubmitted = shallowRef<Partial<AntdLinkedValues>>({})
 
-// Antd 版本的字段矩阵显式覆盖 value 与 checked 两类写回协议。
+// Antd 版本字段矩阵覆盖常见组件，checked 协议由 antdConfigForm 的 adapter 统一处理。
 const layoutInlineFields = createKnownFields('antd-inline', true, defineCommonField)
 const layoutGridFields = createKnownFields('antd-grid', true, defineCommonField)
 const containerFields = [
@@ -162,7 +162,7 @@ const containerFields = [
           key: 'profile',
         },
         slots: {
-          default: createKnownFields('antd-container-collapse', false, defineCommonField).slice(0, 4),
+          default: createKnownFields('antd-container-collapse', false, defineCommonField),
         },
       }),
     },
@@ -186,7 +186,7 @@ const containerFields = [
             tab: '基础',
           },
           slots: {
-            default: createKnownFields('antd-container-tabs-base', false, defineCommonField).slice(0, 3),
+            default: createKnownFields('antd-container-tabs-base', false, defineCommonField),
           },
         }),
         defineCommonField({
@@ -197,7 +197,7 @@ const containerFields = [
             tab: '偏好',
           },
           slots: {
-            default: createKnownFields('antd-container-tabs-preference', false, defineCommonField).slice(4, 7),
+            default: createKnownFields('antd-container-tabs-preference', false, defineCommonField),
           },
         }),
       ],
@@ -215,8 +215,6 @@ const linkedFields = [
       'data-testid': 'antd-linked-advanced-switch',
     },
     span: 12,
-    trigger: 'update:checked',
-    valueProp: 'checked',
   }),
   ...createKnownFields('antd-linked', true, defineLinkedField, values => values.advanced),
   ...createLinkedControlFields(),
@@ -378,8 +376,6 @@ function createKnownFields<TValues extends AntdKnownValues>(
         default: () => `${suffix} 开启`,
       },
       span: 12,
-      trigger: 'update:checked',
-      valueProp: 'checked',
       visible,
     }),
     defineField({
@@ -403,8 +399,6 @@ function createKnownFields<TValues extends AntdKnownValues>(
         'data-testid': `${prefix}-switch`,
       },
       span: 12,
-      trigger: 'update:checked',
-      valueProp: 'checked',
       visible,
     }),
     defineField({
@@ -457,6 +451,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
       field: 'range' as AntdFieldKey<TValues>,
       label: withFormItem ? '日期范围' : undefined,
       props: {
+        placeholder: [`${prefix} 开始日期`, `${prefix} 结束日期`],
         valueFormat: 'YYYY-MM-DD',
         'data-testid': `${prefix}-range`,
       },
@@ -468,6 +463,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
       field: 'time' as AntdFieldKey<TValues>,
       label: withFormItem ? '时间' : undefined,
       props: {
+        placeholder: `${prefix} 时间`,
         valueFormat: 'HH:mm:ss',
         'data-testid': `${prefix}-time`,
       },
@@ -479,6 +475,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
       field: 'timeRange' as AntdFieldKey<TValues>,
       label: withFormItem ? '时间范围' : undefined,
       props: {
+        placeholder: [`${prefix} 开始时间`, `${prefix} 结束时间`],
         valueFormat: 'HH:mm:ss',
         'data-testid': `${prefix}-time-range`,
       },
@@ -522,8 +519,6 @@ function createLinkedControlFields() {
         default: () => '启用营销备注',
       },
       span: 12,
-      trigger: 'update:checked',
-      valueProp: 'checked',
     }),
     defineLinkedField({
       component: ATextarea,
@@ -676,8 +671,9 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="antd-layout-inline"
             :field-span="12"
             :fields="layoutInlineFields"
-            :form-props="{ layout: 'inline', labelCol: { style: { width: '96px' } }, wrapperCol: { flex: 1 } }"
-            :row-props="{ gutter: 16, 'data-testid': 'antd-layout-inline-row' }"
+            inline
+            :form-props="{ labelCol: { style: { width: '96px' } }, wrapperCol: { flex: 1 } }"
+            :row-props="{ 'data-testid': 'antd-layout-inline-row' }"
             @submit="submitLayoutInline"
           >
             <template #default="{ submit }">

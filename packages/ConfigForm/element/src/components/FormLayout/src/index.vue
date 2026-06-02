@@ -19,6 +19,7 @@ defineOptions({
 const props = withDefaults(defineProps<FormLayoutProps<TValues>>(), {
   colProps: () => ({}),
   fieldSpan: 24,
+  inlineLayout: false,
   rowProps: () => ({ gutter: 16 }),
 })
 
@@ -26,6 +27,15 @@ const emit = defineEmits<FormLayoutEmits<TValues>>()
 
 const visibleNodes = computed<ElementConfigFormNode<TValues>[]>(() => {
   return props.nodes.filter(node => isConfigFormNodeVisible(node, props.model))
+})
+
+const layoutRowProps = computed(() => {
+  if (!props.inlineLayout)
+    return props.rowProps
+
+  const inlineRowProps = { ...props.rowProps }
+  delete inlineRowProps.gutter
+  return inlineRowProps
 })
 
 function handleFieldChange(payload: ConfigFormFieldChangeRequest<TValues>): void {
@@ -40,7 +50,8 @@ function getNodeKey(node: ElementConfigFormNode<TValues>, index: number): string
 <template>
   <ElRow
     class="mx-element-config-form__row"
-    v-bind="props.rowProps"
+    :class="{ 'mx-element-config-form__row--inline': props.inlineLayout }"
+    v-bind="layoutRowProps"
   >
     <ConfigFormNodeItem
       v-for="(node, index) in visibleNodes"
@@ -49,7 +60,7 @@ function getNodeKey(node: ElementConfigFormNode<TValues>, index: number): string
       :field-span="props.fieldSpan"
       :model="model"
       :node="node"
-      wrap-col
+      :wrap-col="!props.inlineLayout"
       @field-change="handleFieldChange"
     />
   </ElRow>

@@ -37,6 +37,8 @@ const attrs = useAttrs()
 const errors = reactive<ShadcnConfigFormErrors>({})
 const initialValues = { ...model.value } as TValues
 
+const inlineLayout = computed(() => props.inline === true)
+
 const formAttrs = computed<Record<string, unknown>>(() => ({
   ...attrs,
   ...props.formProps,
@@ -205,6 +207,7 @@ defineExpose<ShadcnConfigFormExpose<TValues>>({
       :col-props="props.colProps"
       :errors="errors"
       :field-span="props.fieldSpan"
+      :inline-layout="inlineLayout"
       :model="model"
       :nodes="props.fields"
       :row-props="props.rowProps"

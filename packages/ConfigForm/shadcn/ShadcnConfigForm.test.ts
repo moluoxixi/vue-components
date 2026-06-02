@@ -114,6 +114,8 @@ describe('shadcn config form', () => {
     expect(wrapper.get('[data-field="accountName"]').text()).toContain('账户名称')
     expect(wrapper.get('[data-field="owner"]').attributes('data-required')).toBe('true')
     expect(wrapper.findAll('[data-testid="shadcn-input-stub"]')[1].attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.mx-shadcn-config-form__row').classes()).toContain('mx-shadcn-config-form__row--grid')
+    expect(wrapper.get('.mx-shadcn-config-form__cell').attributes('style')).toContain('grid-column: span 12')
 
     await wrapper.get('form').trigger('submit')
     expect(wrapper.get('.mx-shadcn-config-form__error').text()).toBe('请输入账户名称')
@@ -136,6 +138,39 @@ describe('shadcn config form', () => {
       value: 'Moluoxixi Cloud',
       values: nextValues,
     }])
+  })
+
+  it('inline 布局使用 flex 行容器，不生成 grid cell', () => {
+    const fields = [
+      defineField<AccountForm>({
+        component: InputStub,
+        field: 'accountName',
+        label: '账户名称',
+        span: 12,
+      }),
+      defineField<AccountForm>({
+        component: InputStub,
+        field: 'owner',
+        label: '负责人',
+        span: 12,
+      }),
+    ]
+
+    const wrapper = mount(ShadcnConfigForm, {
+      props: {
+        fields,
+        inline: true,
+        modelValue: {
+          accountName: 'Moluoxixi Cloud',
+          owner: 'Ada',
+          plan: 'starter',
+        },
+      },
+    })
+
+    expect(wrapper.get('.mx-shadcn-config-form__row').classes()).toContain('mx-shadcn-config-form__row--inline')
+    expect(wrapper.find('.mx-shadcn-config-form__cell').exists()).toBe(false)
+    expect(wrapper.findAll('.mx-shadcn-config-form__field')).toHaveLength(2)
   })
 
   it('支持 defineFields、容器节点、配置化 slot 和提交成功', async () => {

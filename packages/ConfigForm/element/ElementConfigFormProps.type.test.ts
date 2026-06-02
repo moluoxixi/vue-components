@@ -16,6 +16,12 @@ const elementFields = [
   },
 ] satisfies ElementConfigFormProps<UserForm>['fields']
 
+const elementProps = {
+  fields: elementFields,
+  inline: true,
+  rowProps: { justify: 'start' },
+} satisfies ElementConfigFormProps<UserForm>
+
 const elementInvalidFields = [
   {
     colProps: {
@@ -37,5 +43,6 @@ void elementInvalidFields
 describe('config form ui prop types', () => {
   it('保留 Element Plus 版本的 formItemProps 和 colProps 类型示例', () => {
     expect(elementFields).toHaveLength(1)
+    expect(elementProps.inline).toBe(true)
   })
 })

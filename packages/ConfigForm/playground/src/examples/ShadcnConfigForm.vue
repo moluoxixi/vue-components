@@ -23,17 +23,23 @@ import {
   ShadcnAccordionItem,
   ShadcnCard,
   ShadcnCheckbox,
+  ShadcnColorPicker,
+  ShadcnCombobox,
+  ShadcnDatePicker,
   ShadcnInput,
   ShadcnNativeSelect,
   ShadcnNumberInput,
   ShadcnOption,
+  ShadcnPasswordInput,
   ShadcnRadio,
   ShadcnRadioGroup,
+  ShadcnSearchInput,
   ShadcnSlider,
   ShadcnSwitch,
   ShadcnTabPane,
   ShadcnTabs,
   ShadcnTextarea,
+  ShadcnTimePicker,
 } from './components/ShadcnDemoControls'
 import { computed, shallowRef } from 'vue'
 
@@ -41,13 +47,19 @@ type ScenarioTab = 'layout' | 'container' | 'linked'
 
 interface ShadcnKnownValues {
   checkbox: boolean
+  color: string
+  combobox: string
+  date: string
   input: string
   inputNumber: number
   nativeSelect: string
+  password: string
   radio: string
+  search: string
   slider: number
   switchValue: boolean
   textarea: string
+  time: string
 }
 
 interface ShadcnLinkedValues extends ShadcnKnownValues {
@@ -125,7 +137,7 @@ const containerFields = [
           title: 'Shadcn Accordion 容器',
         },
         slots: {
-          default: createKnownFields('shadcn-container-accordion', false, defineCommonField).slice(0, 4),
+          default: createKnownFields('shadcn-container-accordion', false, defineCommonField),
         },
       }),
     },
@@ -152,7 +164,7 @@ const containerFields = [
             name: 'base',
           },
           slots: {
-            default: createKnownFields('shadcn-container-tabs-base', false, defineCommonField).slice(0, 3),
+            default: createKnownFields('shadcn-container-tabs-base', false, defineCommonField),
           },
         }),
         defineCommonField({
@@ -162,7 +174,7 @@ const containerFields = [
             name: 'preference',
           },
           slots: {
-            default: createKnownFields('shadcn-container-tabs-preference', false, defineCommonField).slice(3, 6),
+            default: createKnownFields('shadcn-container-tabs-preference', false, defineCommonField),
           },
         }),
       ],
@@ -194,13 +206,19 @@ const linkedSubmittedText = computed(() => JSON.stringify(linkedSubmitted.value,
 function createKnownValues(seed: string): ShadcnKnownValues {
   return {
     checkbox: false,
+    color: '#2563eb',
+    combobox: `${seed}-draft`,
+    date: '2026-06-01',
     input: '',
     inputNumber: 1,
     nativeSelect: `${seed}-draft`,
+    password: '',
     radio: 'standard',
+    search: '',
     slider: 10,
     switchValue: false,
     textarea: '',
+    time: '09:00',
   }
 }
 
@@ -222,6 +240,46 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
         id: `${prefix}-input`,
         placeholder: `${prefix} 文本输入`,
         'data-testid': `${prefix}-input`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnPasswordInput,
+      field: 'password' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '密码输入' : undefined,
+      props: {
+        id: `${prefix}-password`,
+        placeholder: `${prefix} 密码输入`,
+        'data-testid': `${prefix}-password`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnSearchInput,
+      field: 'search' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '搜索输入' : undefined,
+      props: {
+        id: `${prefix}-search`,
+        placeholder: `${prefix} 搜索输入`,
+        'data-testid': `${prefix}-search`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnCombobox,
+      field: 'combobox' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '组合输入' : undefined,
+      props: {
+        id: `${prefix}-combobox`,
+        options: createSelectOptions(suffix),
+        placeholder: `${prefix} 组合输入`,
+        'data-testid': `${prefix}-combobox`,
       },
       span: 12,
       visible,
@@ -270,6 +328,42 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
         max: 100,
         min: 0,
         'data-testid': `${prefix}-slider`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnDatePicker,
+      field: 'date' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '日期' : undefined,
+      props: {
+        id: `${prefix}-date`,
+        'data-testid': `${prefix}-date`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnTimePicker,
+      field: 'time' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '时间' : undefined,
+      props: {
+        id: `${prefix}-time`,
+        'data-testid': `${prefix}-time`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnColorPicker,
+      field: 'color' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '颜色' : undefined,
+      props: {
+        id: `${prefix}-color`,
+        'data-testid': `${prefix}-color`,
       },
       span: 12,
       visible,
@@ -551,10 +645,8 @@ function submitLinked(values: ConfigFormValues): void {
         data-testid="shadcn-layout-inline"
         :field-span="12"
         :fields="layoutInlineFields"
-        :row-props="{
-          style: { display: 'flex', flexWrap: 'wrap', gap: '14px 16px' },
-          'data-testid': 'shadcn-layout-inline-row',
-        }"
+        inline
+        :row-props="{ 'data-testid': 'shadcn-layout-inline-row' }"
         @submit="submitLayoutInline"
       >
         <template #default="{ submit }">
@@ -707,6 +799,20 @@ function submitLinked(values: ConfigFormValues): void {
   width: 100%;
   min-width: 0;
   accent-color: hsl(221deg 83% 53%);
+}
+
+:deep(.shadcn-combobox) {
+  width: 100%;
+}
+
+:deep(.shadcn-color) {
+  width: 56px;
+  height: 34px;
+  padding: 3px;
+  border: 1px solid hsl(214deg 32% 91%);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
 }
 
 :deep(.shadcn-choice) {

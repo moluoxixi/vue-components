@@ -13,6 +13,8 @@ export interface FormLayoutProps<TValues extends ConfigFormValues = ConfigFormVa
   nodes: ElementConfigFormNode<TValues>[]
   /** 当前表单模型，由根 ElementConfigForm 统一持有。 */
   model: TValues
+  /** 是否使用行内布局；行内布局只渲染 Row，不为顶层节点包裹 Col。 */
+  inlineLayout?: boolean
   /** 透传给 Element Plus Row 的 props。 */
   rowProps?: ElementConfigFormRowProps
   /** 透传给顶层 Element Plus Col 的默认 props。 */

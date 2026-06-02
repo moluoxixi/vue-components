@@ -104,7 +104,7 @@ test.describe('components playground 交互', () => {
     await expect(example.getByTestId('element-config-preview')).toContainText('"advancedNote": "Element 高级配置"')
   })
 
-  test('antdConfigForm 可以使用 checked 绑定展开条件字段并提交预览', async ({ page }) => {
+  test('antdConfigForm 可以自动适配 checked 协议并提交预览', async ({ page }) => {
     await openPlayground(page)
     await openComponent(page, 'antdConfigForm')
 

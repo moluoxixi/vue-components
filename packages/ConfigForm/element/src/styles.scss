@@ -6,6 +6,10 @@
   width: 100%;
 }
 
+.mx-element-config-form__row--inline .el-form-item__content {
+  min-width: 120px;
+}
+
 .mx-element-config-form__control {
   width: 100%;
 }

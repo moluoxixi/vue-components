@@ -156,7 +156,7 @@ const containerFields = [
           title: 'Element Collapse 容器',
         },
         slots: {
-          default: createKnownFields('element-container-collapse', false, defineCommonField).slice(0, 4),
+          default: createKnownFields('element-container-collapse', false, defineCommonField),
         },
       }),
     },
@@ -180,7 +180,7 @@ const containerFields = [
             name: 'base',
           },
           slots: {
-            default: createKnownFields('element-container-tabs-base', false, defineCommonField).slice(0, 3),
+            default: createKnownFields('element-container-tabs-base', false, defineCommonField),
           },
         }),
         defineCommonField({
@@ -191,7 +191,7 @@ const containerFields = [
             name: 'preference',
           },
           slots: {
-            default: createKnownFields('element-container-tabs-preference', false, defineCommonField).slice(4, 7),
+            default: createKnownFields('element-container-tabs-preference', false, defineCommonField),
           },
         }),
       ],
@@ -720,8 +720,9 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="element-layout-inline"
             :field-span="12"
             :fields="layoutInlineFields"
-            :form-props="{ inline: true, labelWidth: '96px' }"
-            :row-props="{ gutter: 16, 'data-testid': 'element-layout-inline-row' }"
+            inline
+            :form-props="{ labelWidth: '96px' }"
+            :row-props="{ 'data-testid': 'element-layout-inline-row' }"
             @submit="submitLayoutInline"
           >
             <template #default="{ submit }">
@@ -830,7 +831,16 @@ function submitLinked(values: ConfigFormValues): void {
 }
 
 :deep([data-testid="element-layout-inline-row"]) {
-  row-gap: 14px;
+  row-gap: 8px;
+}
+
+:deep(.mx-element-config-form .el-form-item) {
+  margin-bottom: 12px;
+}
+
+:deep([data-testid="element-layout-inline-row"] .el-form-item) {
+  margin-right: 14px;
+  margin-bottom: 10px;
 }
 
 /* ConfigForm render 函数创建的容器节点没有当前 SFC 的 scoped attribute，需要整体穿透动态节点选择器。 */

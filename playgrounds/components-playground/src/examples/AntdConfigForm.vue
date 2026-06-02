@@ -4,7 +4,7 @@ export const exampleMeta = {
   name: 'antdConfigForm',
   title: 'antdConfigForm',
   category: '配置表单',
-  description: 'components 包内置 Ant Design Vue 配置表单的字段写回、checked 绑定和提交场景。',
+  description: 'components 包内置 Ant Design Vue 配置表单的字段写回、checked 协议自动适配和提交场景。',
   order: 50,
 }
 </script>
@@ -47,8 +47,6 @@ const fields = [
     slots: {
       default: () => h('span', '允许发布'),
     },
-    trigger: 'update:checked',
-    valueProp: 'checked',
   }),
   defineField<AntdFormValues>({
     component: AInput,

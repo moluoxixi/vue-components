@@ -48,10 +48,19 @@ const formRules = computed<FormRules<TValues>>(() => {
   } as FormRules<TValues>
 })
 
-const formAttrs = computed<Record<string, unknown>>(() => ({
-  ...attrs,
-  ...props.formProps,
-}))
+const inlineLayout = computed(() => props.inline === true || props.formProps.inline === true)
+
+const formAttrs = computed<Record<string, unknown>>(() => {
+  const nextAttrs: Record<string, unknown> = {
+    ...attrs,
+    ...props.formProps,
+  }
+
+  if (props.inline === true)
+    nextAttrs.inline = true
+
+  return nextAttrs
+})
 
 function getValues(): TValues {
   return { ...model.value }
@@ -150,6 +159,7 @@ defineExpose<ElementConfigFormExpose<TValues>>({
     <FormLayout
       :col-props="props.colProps"
       :field-span="props.fieldSpan"
+      :inline-layout="inlineLayout"
       :model="model"
       :nodes="props.fields"
       :row-props="props.rowProps"

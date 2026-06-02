@@ -48,10 +48,19 @@ const formRules = computed<FormProps['rules']>(() => {
   } as FormProps['rules']
 })
 
-const formAttrs = computed<Record<string, unknown>>(() => ({
-  ...attrs,
-  ...props.formProps,
-}))
+const inlineLayout = computed(() => props.inline === true || props.formProps.layout === 'inline')
+
+const formAttrs = computed<Record<string, unknown>>(() => {
+  const nextAttrs: Record<string, unknown> = {
+    ...attrs,
+    ...props.formProps,
+  }
+
+  if (props.inline === true)
+    nextAttrs.layout = 'inline'
+
+  return nextAttrs
+})
 
 function getValues(): TValues {
   return { ...model.value }
@@ -148,6 +157,7 @@ defineExpose<AntdConfigFormExpose<TValues>>({
     <FormLayout
       :col-props="props.colProps"
       :field-span="props.fieldSpan"
+      :inline-layout="inlineLayout"
       :model="model"
       :nodes="props.fields"
       :row-props="props.rowProps"

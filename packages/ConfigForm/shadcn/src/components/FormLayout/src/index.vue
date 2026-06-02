@@ -16,6 +16,7 @@ defineOptions({
 const props = withDefaults(defineProps<FormLayoutProps<TValues>>(), {
   colProps: () => ({}),
   fieldSpan: 12,
+  inlineLayout: false,
   rowProps: () => ({}),
 })
 
@@ -36,7 +37,11 @@ function getNodeKey(node: ShadcnConfigFormNode<TValues>, index: number): string 
 
 <template>
   <div
-    class="mx-shadcn-config-form__grid"
+    class="mx-shadcn-config-form__row"
+    :class="{
+      'mx-shadcn-config-form__row--grid': !props.inlineLayout,
+      'mx-shadcn-config-form__row--inline': props.inlineLayout,
+    }"
     v-bind="props.rowProps"
   >
     <ConfigFormNodeItem
@@ -47,7 +52,7 @@ function getNodeKey(node: ShadcnConfigFormNode<TValues>, index: number): string 
       :field-span="props.fieldSpan"
       :model="model"
       :node="node"
-      wrap-cell
+      :wrap-cell="!props.inlineLayout"
       @field-change="handleFieldChange"
     />
   </div>

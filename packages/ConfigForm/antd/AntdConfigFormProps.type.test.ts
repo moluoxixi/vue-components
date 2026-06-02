@@ -15,6 +15,12 @@ const antdFields = [
   },
 ] satisfies AntdConfigFormProps<UserForm>['fields']
 
+const antdProps = {
+  fields: antdFields,
+  inline: true,
+  rowProps: { justify: 'start' },
+} satisfies AntdConfigFormProps<UserForm>
+
 const antdInvalidFields = [
   {
     colProps: {
@@ -36,5 +42,6 @@ void antdInvalidFields
 describe('config form ui prop types', () => {
   it('保留 Ant Design Vue 版本的 formItemProps 和 colProps 类型示例', () => {
     expect(antdFields).toHaveLength(1)
+    expect(antdProps.inline).toBe(true)
   })
 })

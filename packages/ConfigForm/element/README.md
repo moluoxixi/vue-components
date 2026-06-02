@@ -4,7 +4,7 @@
 
 它只做四件事：
 
-- 用 `ElForm` / `ElFormItem` / `ElRow` / `ElCol` 渲染字段；
+- 用 `ElForm` / `ElFormItem` / `ElRow` 渲染字段，grid 布局下再用 `ElCol` 消费 `span`；
 - 通过字段配置把组件的 `modelValue` 和 `update:modelValue` 连接到外部 `v-model`；
 - 递归渲染 slots 内的字段节点和容器节点；
 - 把校验交给 Element Plus `rules`，不接入 schema、runtime plugin 或自定义 FormItem。
@@ -51,6 +51,7 @@ const fields = [
   <ElementConfigForm
     v-model="model"
     :fields="fields"
+    inline
     :form-props="{ labelWidth: '96px' }"
   />
 </template>
@@ -100,3 +101,7 @@ const fields = [
 ```
 
 `getValueFromEvent` 用于从自定义组件事件参数中提取字段值；默认取事件第一个参数。常规 Element Plus `v-model` 组件不需要配置它。
+
+## 布局
+
+`inline` 布局只使用 Element Plus `ElRow`，顶层字段不包 `ElCol`，因此不会消费 `span` 或 `colProps`；grid 布局使用 `ElRow + ElCol`，字段 `span` 和 `colProps` 按 Element Plus `ColProps` 生效。

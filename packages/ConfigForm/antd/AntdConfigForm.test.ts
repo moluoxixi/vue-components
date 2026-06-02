@@ -12,6 +12,10 @@ interface UserForm {
   status: string
 }
 
+interface SwitchForm {
+  enabled: boolean
+}
+
 const InputStub = defineComponent({
   name: 'AntdInputStub',
   props: {
@@ -56,6 +60,25 @@ const SelectStub = defineComponent({
   },
 })
 
+const SwitchStub = defineComponent({
+  name: 'ASwitch',
+  props: {
+    checked: Boolean,
+  },
+  emits: ['update:checked'],
+  setup(props, { emit }) {
+    /**
+     * 模拟 Ant Design Vue Switch 的 checked/update:checked 契约。
+     */
+    return () => h('button', {
+      'aria-checked': String(props.checked),
+      'data-testid': 'antd-switch-stub',
+      'onClick': () => emit('update:checked', !props.checked),
+      'type': 'button',
+    }, String(props.checked))
+  },
+})
+
 const OptionStub = defineComponent({
   name: 'AntdOptionStub',
   props: {
@@ -95,7 +118,7 @@ function createAntdStubs(validateReject = false) {
 
   const AForm = defineComponent({
     name: 'AForm',
-    props: ['model', 'rules'],
+    props: ['layout', 'model', 'rules'],
     emits: ['submit'],
     setup(props, { emit, expose, slots }) {
       expose({
@@ -107,6 +130,7 @@ function createAntdStubs(validateReject = false) {
       })
 
       return () => h('form', {
+        'data-layout': props.layout,
         'data-rules': Object.keys(props.rules ?? {}).join(','),
         'data-testid': 'antd-form',
         'onSubmit': (event: Event) => emit('submit', event),
@@ -219,6 +243,42 @@ describe('antd config form', () => {
     expect(wrapper.emitted('change')![0]).toEqual([nextValues])
   })
 
+  it('inline 布局只使用 Ant Design Vue Row，不为顶层节点包裹 Col', () => {
+    const { stubs } = createAntdStubs()
+    const fields = [
+      defineField<UserForm>({
+        component: InputStub,
+        field: 'name',
+        label: '姓名',
+        span: 12,
+      }),
+      defineField<UserForm>({
+        component: InputStub,
+        field: 'status',
+        label: '状态',
+        span: 12,
+      }),
+    ]
+
+    const wrapper = mount(AntdConfigForm, {
+      props: {
+        fields,
+        formProps: { layout: 'inline' },
+        modelValue: {
+          name: '表单',
+          status: 'draft',
+        },
+        rowProps: { gutter: 24 },
+      },
+      global: { stubs },
+    })
+
+    expect(wrapper.get('[data-testid="antd-form"]').attributes('data-layout')).toBe('inline')
+    expect(wrapper.get('[data-testid="antd-row"]').attributes('data-gutter')).toBeUndefined()
+    expect(wrapper.find('[data-testid="antd-col"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid^="antd-form-item-"]')).toHaveLength(2)
+  })
+
   it('支持容器节点、配置化 slot 和 Ant Design Vue 提交校验', async () => {
     const { methods, stubs } = createAntdStubs()
     const { defineField: defineUserField } = defineFields<UserForm>()
@@ -274,6 +334,35 @@ describe('antd config form', () => {
       name: '表单',
       status: 'enabled',
     }])
+  })
+
+  it('通过 Ant Design Vue 组件名自动适配 Switch 的 checked 写回协议', async () => {
+    const { stubs } = createAntdStubs()
+    const fields = [
+      defineField<SwitchForm>({
+        component: SwitchStub,
+        field: 'enabled',
+        label: '启用',
+      }),
+    ]
+
+    const wrapper = mount(AntdConfigForm, {
+      props: {
+        fields,
+        modelValue: {
+          enabled: false,
+        },
+      },
+      global: { stubs },
+    })
+
+    await wrapper.get('[data-testid="antd-switch-stub"]').trigger('click')
+
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true }])
+    expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({
+      field: 'enabled',
+      value: true,
+    })
   })
 
   it('提交校验失败时暴露 Ant Design Vue 错误对象', async () => {

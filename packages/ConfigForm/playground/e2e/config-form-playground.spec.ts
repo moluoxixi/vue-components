@@ -10,6 +10,7 @@ interface FieldExpectation {
 
 interface ContainerExpectation {
   classPattern: RegExp
+  fieldPrefix: string
   layoutSelector: string
   testId: string
 }
@@ -17,6 +18,7 @@ interface ContainerExpectation {
 interface ConfigFormSuite {
   containerNodes: ContainerExpectation[]
   id: SuiteId
+  knownControlSuffixes: string[]
   libraryTabName: string
   rootTestId: string
   formItemSelector: string
@@ -26,16 +28,42 @@ interface ConfigFormSuite {
   setLinkedSeatCount: (scenario: Locator) => Promise<void>
 }
 
+interface KnownControlFallback {
+  placeholder?: (prefix: string) => string
+  selector?: string
+  text?: string
+}
+
 const suites: ConfigFormSuite[] = [
   {
     containerNodes: [
-      { classPattern: /el-card/, layoutSelector: '.config-form-demo__container', testId: 'element-container-node' },
-      { classPattern: /el-collapse/, layoutSelector: '.el-collapse-item__content', testId: 'element-container-collapse-node' },
-      { classPattern: /el-tabs/, layoutSelector: '.el-tab-pane', testId: 'element-container-tabs-node' },
+      { classPattern: /el-card/, fieldPrefix: 'element-container', layoutSelector: '.config-form-demo__container', testId: 'element-container-node' },
+      { classPattern: /el-collapse/, fieldPrefix: 'element-container-collapse', layoutSelector: '.el-collapse-item__content', testId: 'element-container-collapse-node' },
+      { classPattern: /el-tabs/, fieldPrefix: 'element-container-tabs-base', layoutSelector: '.el-tab-pane', testId: 'element-container-tabs-node' },
     ],
     fillKnownControls: fillElementKnownControls,
     formItemSelector: '.el-form-item',
     id: 'element',
+    knownControlSuffixes: [
+      'input',
+      'textarea',
+      'input-number',
+      'autocomplete',
+      'select',
+      'select-v2',
+      'cascader',
+      'tree-select',
+      'checkbox',
+      'checkbox-group',
+      'switch',
+      'radio',
+      'rate',
+      'slider',
+      'color',
+      'date',
+      'time',
+      'time-select',
+    ],
     libraryTabName: 'Element',
     linkedAdvancedProbeTestId: 'element-linked-select',
     rootTestId: 'element-config-form-example',
@@ -44,13 +72,34 @@ const suites: ConfigFormSuite[] = [
   },
   {
     containerNodes: [
-      { classPattern: /ant-card/, layoutSelector: '.ant-card-body', testId: 'antd-container-node' },
-      { classPattern: /ant-collapse/, layoutSelector: '.ant-collapse-content-box', testId: 'antd-container-collapse-node' },
-      { classPattern: /ant-tabs/, layoutSelector: '.ant-tabs-tabpane-active', testId: 'antd-container-tabs-node' },
+      { classPattern: /ant-card/, fieldPrefix: 'antd-container', layoutSelector: '.ant-card-body', testId: 'antd-container-node' },
+      { classPattern: /ant-collapse/, fieldPrefix: 'antd-container-collapse', layoutSelector: '.ant-collapse-content-box', testId: 'antd-container-collapse-node' },
+      { classPattern: /ant-tabs/, fieldPrefix: 'antd-container-tabs-base', layoutSelector: '.ant-tabs-tabpane-active', testId: 'antd-container-tabs-node' },
     ],
     fillKnownControls: fillAntdKnownControls,
     formItemSelector: '.ant-form-item',
     id: 'antd',
+    knownControlSuffixes: [
+      'input',
+      'textarea',
+      'password',
+      'search',
+      'input-number',
+      'auto-complete',
+      'select',
+      'cascader',
+      'tree-select',
+      'checkbox',
+      'checkbox-group',
+      'switch',
+      'radio',
+      'rate',
+      'slider',
+      'date',
+      'range',
+      'time',
+      'time-range',
+    ],
     libraryTabName: 'Antd',
     linkedAdvancedProbeTestId: 'antd-linked-select',
     rootTestId: 'antd-config-form-example',
@@ -59,13 +108,29 @@ const suites: ConfigFormSuite[] = [
   },
   {
     containerNodes: [
-      { classPattern: /shadcn-card/, layoutSelector: '.shadcn-card__body', testId: 'shadcn-container-node' },
-      { classPattern: /shadcn-accordion/, layoutSelector: '.shadcn-accordion__body', testId: 'shadcn-container-accordion-node' },
-      { classPattern: /shadcn-tabs-container/, layoutSelector: '.shadcn-tab-pane', testId: 'shadcn-container-tabs-node' },
+      { classPattern: /shadcn-card/, fieldPrefix: 'shadcn-container', layoutSelector: '.shadcn-card__body', testId: 'shadcn-container-node' },
+      { classPattern: /shadcn-accordion/, fieldPrefix: 'shadcn-container-accordion', layoutSelector: '.shadcn-accordion__body', testId: 'shadcn-container-accordion-node' },
+      { classPattern: /shadcn-tabs-container/, fieldPrefix: 'shadcn-container-tabs-base', layoutSelector: '.shadcn-tab-pane', testId: 'shadcn-container-tabs-node' },
     ],
     fillKnownControls: fillShadcnKnownControls,
     formItemSelector: '.mx-shadcn-config-form__field',
     id: 'shadcn',
+    knownControlSuffixes: [
+      'input',
+      'password',
+      'search',
+      'combobox',
+      'native-select',
+      'input-number',
+      'slider',
+      'date',
+      'time',
+      'color',
+      'textarea',
+      'checkbox',
+      'switch',
+      'radio',
+    ],
     libraryTabName: 'Shadcn',
     linkedAdvancedProbeTestId: 'shadcn-linked-native-select',
     rootTestId: 'shadcn-config-form-example',
@@ -73,6 +138,22 @@ const suites: ConfigFormSuite[] = [
     setLinkedSeatCount: setShadcnLinkedSeatCount,
   },
 ]
+
+const knownControlFallbackSelectors: Partial<Record<SuiteId, Record<string, KnownControlFallback>>> = {
+  antd: {
+    'date': { placeholder: prefix => `${prefix} 日期` },
+    'range': { placeholder: prefix => `${prefix} 开始日期` },
+    'slider': { selector: '.ant-slider' },
+    'time': { placeholder: prefix => `${prefix} 时间` },
+    'time-range': { placeholder: prefix => `${prefix} 开始时间` },
+  },
+  element: {
+    'cascader': { selector: '.el-cascader' },
+    'date': { placeholder: prefix => `${prefix} 日期` },
+    'time': { placeholder: prefix => `${prefix} 时间` },
+    'time-select': { text: '09:00' },
+  },
+}
 
 async function openConfigFormExample(page: Page, suite: ConfigFormSuite): Promise<Locator> {
   const libraryTabs = page.getByTestId('config-form-library-tabs')
@@ -103,14 +184,31 @@ async function expectInlineVisualSpacing(example: Locator, suite: ConfigFormSuit
   const metrics = await row.evaluate((element) => {
     const rect = element.getBoundingClientRect()
     const styles = getComputedStyle(element)
+    const firstItem = element.querySelector('.el-form-item')
+    const firstItemStyles = firstItem ? getComputedStyle(firstItem) : undefined
 
     return {
+      display: styles.display,
+      flexWrap: styles.flexWrap,
+      firstItemMarginBottom: firstItemStyles ? Number.parseFloat(firstItemStyles.marginBottom) : 0,
+      firstItemMarginRight: firstItemStyles ? Number.parseFloat(firstItemStyles.marginRight) : 0,
+      marginLeft: Number.parseFloat(styles.marginLeft),
       rowGap: Number.parseFloat(styles.rowGap),
       x: rect.x,
     }
   })
 
+  expect(metrics.display).toBe('flex')
+  expect(metrics.flexWrap).toBe('wrap')
+  expect(metrics.marginLeft).toBeGreaterThanOrEqual(0)
   expect(metrics.x).toBeGreaterThanOrEqual(0)
+  if (suite.id === 'element') {
+    expect(metrics.rowGap).toBeLessThanOrEqual(10)
+    expect(metrics.firstItemMarginRight).toBeLessThanOrEqual(16)
+    expect(metrics.firstItemMarginBottom).toBeLessThanOrEqual(12)
+    return
+  }
+
   expect(metrics.rowGap).toBeGreaterThanOrEqual(14)
 }
 
@@ -145,6 +243,23 @@ async function expectContainerVisualSpacing(containerNode: Locator, layoutSelect
   expect(metrics.firstVisibleChildOffset).toBeLessThan(metrics.width / 2)
 }
 
+async function expectKnownControlsVisible(scope: Locator, suite: ConfigFormSuite, prefix: string): Promise<void> {
+  for (const suffix of suite.knownControlSuffixes) {
+    const fallbackSelector = knownControlFallbackSelectors[suite.id]?.[suffix]
+    const locator = fallbackSelector?.placeholder
+      ? scope.getByPlaceholder(fallbackSelector.placeholder(prefix))
+      : fallbackSelector?.selector
+        ? scope.locator(fallbackSelector.selector)
+        : fallbackSelector?.text
+          ? scope.getByText(fallbackSelector.text, { exact: true })
+          : scope.getByTestId(`${prefix}-${suffix}`)
+    const locatorCount = await locator.count()
+
+    expect(locatorCount, `${suite.libraryTabName} ${prefix}-${suffix}`).toBeGreaterThan(0)
+    await expect(locator.first(), `${suite.libraryTabName} ${prefix}-${suffix}`).toBeVisible()
+  }
+}
+
 function getOptionLabel(prefix: string): string {
   return prefix.replace(/^(element|antd|shadcn)-/, '')
 }
@@ -154,13 +269,6 @@ async function clickVisibleText(page: Page, text: string): Promise<void> {
 
   await expect(target).toBeVisible()
   await target.click()
-}
-
-async function chooseElementOption(page: Page, optionName: string): Promise<void> {
-  const option = page.getByRole('option', { name: optionName, exact: true }).filter({ visible: true }).last()
-
-  await expect(option).toBeVisible()
-  await option.click({ force: true })
 }
 
 async function chooseElementSelectOption(page: Page, scope: Locator, prefix: string, optionName: string): Promise<void> {
@@ -179,6 +287,15 @@ async function chooseElementSelectV2Option(page: Page, scope: Locator, prefix: s
 
   await select.click()
   await expect(option).toHaveCount(1)
+  await option.click()
+  await expect(select).toContainText(optionName)
+}
+
+async function chooseElementLinkedSelectOption(page: Page, select: Locator, optionName: string): Promise<void> {
+  const option = page.locator('.el-select-dropdown__item', { hasText: optionName }).filter({ visible: true }).last()
+
+  await select.click()
+  await expect(option).toBeVisible()
   await option.click()
   await expect(select).toContainText(optionName)
 }
@@ -289,19 +406,37 @@ async function fillShadcnKnownControls(_page: Page, scope: Locator, prefix: stri
   const optionLabel = getOptionLabel(prefix)
   const values = {
     checkbox: true,
+    color: '#16a34a',
+    combobox: `${optionLabel}-enabled`,
+    date: '2026-06-02',
     input: `${prefix} 文本`,
     inputNumber: 42,
     nativeSelect: `${optionLabel}-enabled`,
+    password: `${prefix} 密码`,
     radio: 'enterprise',
+    search: `${prefix} 搜索`,
     slider: 10,
     switchValue: true,
     textarea: `${prefix} 多行内容`,
+    time: '10:30',
   }
 
   await scope.getByTestId(`${prefix}-input`).fill(values.input)
+  await scope.getByTestId(`${prefix}-password`).fill(values.password)
+  await scope.getByTestId(`${prefix}-search`).fill(values.search)
+  await scope.getByTestId(`${prefix}-combobox`).locator('input').fill(values.combobox)
   await scope.getByTestId(`${prefix}-native-select`).selectOption(values.nativeSelect)
   await scope.getByTestId(`${prefix}-input-number`).fill(String(values.inputNumber))
   await expect(scope.getByTestId(`${prefix}-slider`)).toBeVisible()
+  await scope.getByTestId(`${prefix}-date`).fill(values.date)
+  await scope.getByTestId(`${prefix}-time`).fill(values.time)
+  await scope.getByTestId(`${prefix}-color`).evaluate((element, color) => {
+    const input = element as HTMLInputElement
+
+    input.value = color
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  }, values.color)
   await scope.getByTestId(`${prefix}-textarea`).fill(values.textarea)
   await scope.getByTestId(`${prefix}-checkbox`).click()
   await scope.getByTestId(`${prefix}-switch`).click()
@@ -311,8 +446,7 @@ async function fillShadcnKnownControls(_page: Page, scope: Locator, prefix: stri
 }
 
 async function setElementLinkedNotifyChannel(page: Page, scenario: Locator): Promise<void> {
-  await scenario.getByTestId('element-linked-notify-channel').click()
-  await chooseElementOption(page, '预约通知')
+  await chooseElementLinkedSelectOption(page, scenario.getByTestId('element-linked-notify-channel'), '预约通知')
 }
 
 async function setElementLinkedSeatCount(scenario: Locator): Promise<void> {
@@ -383,6 +517,7 @@ test.describe('ConfigForm playground 容器场景', () => {
         await expect(containerNode).toHaveClass(containerNodeExpectation.classPattern)
         await expect(containerNode.locator(suite.formItemSelector)).toHaveCount(0)
         await expectContainerVisualSpacing(containerNode, containerNodeExpectation.layoutSelector)
+        await expectKnownControlsVisible(containerNode, suite, containerNodeExpectation.fieldPrefix)
       }
 
       const expected = await suite.fillKnownControls(page, scenario.getByTestId(primaryContainerNode.testId), `${suite.id}-container`)

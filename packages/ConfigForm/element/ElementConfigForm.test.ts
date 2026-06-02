@@ -120,7 +120,7 @@ function createElementStubs(validateResult = true) {
 
   const ElForm = defineComponent({
     name: 'ElForm',
-    props: ['model', 'rules'],
+    props: ['inline', 'model', 'rules'],
     emits: ['submit'],
     setup(props, { emit, expose, slots }) {
       /**
@@ -135,6 +135,7 @@ function createElementStubs(validateResult = true) {
       })
 
       return () => h('form', {
+        'data-inline': String(Boolean(props.inline)),
         'data-rules': Object.keys(props.rules ?? {}).join(','),
         'data-testid': 'element-form',
         'onSubmit': (event: Event) => emit('submit', event),
@@ -246,6 +247,42 @@ describe('element config form', () => {
       values: nextValues,
     }])
     expect(wrapper.emitted('change')![0]).toEqual([nextValues])
+  })
+
+  it('inline 布局只使用 Element Plus Row，不为顶层节点包裹 Col', () => {
+    const { stubs } = createElementStubs()
+    const fields = [
+      defineField<UserForm>({
+        component: InputStub,
+        field: 'name',
+        label: '姓名',
+        span: 12,
+      }),
+      defineField<UserForm>({
+        component: InputStub,
+        field: 'status',
+        label: '状态',
+        span: 12,
+      }),
+    ]
+
+    const wrapper = mount(ElementConfigForm, {
+      props: {
+        fields,
+        formProps: { inline: true },
+        modelValue: {
+          name: '表单',
+          status: 'draft',
+        },
+        rowProps: { gutter: 24 },
+      },
+      global: { stubs },
+    })
+
+    expect(wrapper.get('[data-testid="element-form"]').attributes('data-inline')).toBe('true')
+    expect(wrapper.get('[data-testid="element-row"]').attributes('data-gutter')).toBeUndefined()
+    expect(wrapper.find('[data-testid="element-col"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid^="form-item-"]')).toHaveLength(2)
   })
 
   it('支持自定义值事件、字段 slot 和 Element Plus 提交校验', async () => {

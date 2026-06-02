@@ -15,6 +15,11 @@ interface ShadcnTabItem {
   value: string
 }
 
+interface ShadcnDemoOption {
+  label: string
+  value: string
+}
+
 const radioGroupKey: InjectionKey<RadioGroupContext> = Symbol('shadcn-demo-radio-group')
 const tabsKey: InjectionKey<TabsContext> = Symbol('shadcn-demo-tabs')
 
@@ -119,6 +124,7 @@ export const ShadcnInput = defineComponent({
     id: { type: String, default: '' },
     modelValue: { type: String, default: '' },
     placeholder: { type: String, default: '' },
+    type: { type: String, default: 'text' },
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
@@ -131,6 +137,58 @@ export const ShadcnInput = defineComponent({
       id: props.id,
       onInput: handleInput,
       placeholder: props.placeholder,
+      type: props.type,
+      value: props.modelValue,
+    })
+  },
+})
+
+export const ShadcnPasswordInput = defineComponent({
+  name: 'ShadcnPasswordInput',
+  props: {
+    id: { type: String, default: '' },
+    modelValue: { type: String, default: '' },
+    placeholder: { type: String, default: '' },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    /**
+     * shadcn-vue 的 Password 字段通常仍是 Input 语义，这里保留独立组件名用于 playground 覆盖。
+     */
+    function handleInput(event: Event): void {
+      emit('update:modelValue', (event.target as HTMLInputElement).value)
+    }
+
+    return () => h('input', {
+      class: 'shadcn-control',
+      id: props.id,
+      onInput: handleInput,
+      placeholder: props.placeholder,
+      type: 'password',
+      value: props.modelValue,
+    })
+  },
+})
+
+export const ShadcnSearchInput = defineComponent({
+  name: 'ShadcnSearchInput',
+  props: {
+    id: { type: String, default: '' },
+    modelValue: { type: String, default: '' },
+    placeholder: { type: String, default: '' },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    function handleInput(event: Event): void {
+      emit('update:modelValue', (event.target as HTMLInputElement).value)
+    }
+
+    return () => h('input', {
+      class: 'shadcn-control',
+      id: props.id,
+      onInput: handleInput,
+      placeholder: props.placeholder,
+      type: 'search',
       value: props.modelValue,
     })
   },
@@ -186,6 +244,72 @@ export const ShadcnSlider = defineComponent({
   },
 })
 
+export const ShadcnDatePicker = defineComponent({
+  name: 'ShadcnDatePicker',
+  props: {
+    id: { type: String, default: '' },
+    modelValue: { type: String, default: '' },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    function handleInput(event: Event): void {
+      emit('update:modelValue', (event.target as HTMLInputElement).value)
+    }
+
+    return () => h('input', {
+      class: 'shadcn-control',
+      id: props.id,
+      onInput: handleInput,
+      type: 'date',
+      value: props.modelValue,
+    })
+  },
+})
+
+export const ShadcnTimePicker = defineComponent({
+  name: 'ShadcnTimePicker',
+  props: {
+    id: { type: String, default: '' },
+    modelValue: { type: String, default: '' },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    function handleInput(event: Event): void {
+      emit('update:modelValue', (event.target as HTMLInputElement).value)
+    }
+
+    return () => h('input', {
+      class: 'shadcn-control',
+      id: props.id,
+      onInput: handleInput,
+      type: 'time',
+      value: props.modelValue,
+    })
+  },
+})
+
+export const ShadcnColorPicker = defineComponent({
+  name: 'ShadcnColorPicker',
+  props: {
+    id: { type: String, default: '' },
+    modelValue: { type: String, default: '#2563eb' },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    function handleInput(event: Event): void {
+      emit('update:modelValue', (event.target as HTMLInputElement).value)
+    }
+
+    return () => h('input', {
+      class: 'shadcn-color',
+      id: props.id,
+      onInput: handleInput,
+      type: 'color',
+      value: props.modelValue,
+    })
+  },
+})
+
 export const ShadcnTextarea = defineComponent({
   name: 'ShadcnTextarea',
   props: {
@@ -231,6 +355,36 @@ export const ShadcnNativeSelect = defineComponent({
 })
 
 export const ShadcnSelect = ShadcnNativeSelect
+
+export const ShadcnCombobox = defineComponent({
+  name: 'ShadcnCombobox',
+  props: {
+    id: { type: String, default: '' },
+    modelValue: { type: String, default: '' },
+    options: { type: Array as PropType<ShadcnDemoOption[]>, default: () => [] },
+    placeholder: { type: String, default: '' },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    function handleInput(event: Event): void {
+      emit('update:modelValue', (event.target as HTMLInputElement).value)
+    }
+
+    return () => h('div', { class: 'shadcn-combobox' }, [
+      h('input', {
+        class: 'shadcn-control',
+        id: props.id,
+        list: `${props.id}-options`,
+        onInput: handleInput,
+        placeholder: props.placeholder,
+        value: props.modelValue,
+      }),
+      h('datalist', { id: `${props.id}-options` }, props.options.map(option =>
+        h('option', { value: option.value }, option.label),
+      )),
+    ])
+  },
+})
 
 export const ShadcnOption = defineComponent({
   name: 'ShadcnOption',

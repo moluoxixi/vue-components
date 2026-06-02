@@ -116,9 +116,9 @@ export interface ConfigFormNodeBase<
   component: TComponent
   /** 透传给真实字段组件的 props。 */
   props?: ConfigFormAttrs
-  /** 透传给当前 UI 版本列容器的 props。 */
+  /** 透传给当前 UI 版本列容器的 props；仅 grid 布局消费。 */
   colProps?: TColProps
-  /** 栅格跨度，默认使用 ConfigForm.fieldSpan。 */
+  /** grid 布局下的栅格跨度，默认使用 ConfigForm.fieldSpan。 */
   span?: ConfigFormColumnSpan
   /** 控制当前节点是否渲染；函数形式可基于当前表单值动态计算。 */
   visible?: ConfigFormCondition<TValues>
@@ -187,10 +187,12 @@ export interface ConfigFormProps<
   rules?: ConfigFormRules<TValues>
   /** 透传给当前 UI 版本 Form 的 props，model/rules 由 ConfigForm 托管。 */
   formProps?: TFormProps
+  /** 是否使用行内布局；行内布局只使用 Row/flex 容器，不消费 span 或 colProps。 */
+  inline?: boolean
   /** 透传给当前 UI 版本 Row/布局容器的 props。 */
   rowProps?: TRowProps
-  /** 透传给当前 UI 版本 Col/单元格的默认 props。 */
+  /** 透传给当前 UI 版本 Col/单元格的默认 props；仅 grid 布局消费。 */
   colProps?: TColProps
-  /** 字段默认栅格跨度。 */
+  /** grid 布局下的字段默认栅格跨度。 */
   fieldSpan?: ConfigFormColumnSpan
 }
