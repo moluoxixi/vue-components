@@ -1,0 +1,55 @@
+{
+  "name": "@moluoxixi/config-form-antd-vue",
+  "type": "module",
+  "version": "0.1.0",
+  "sideEffects": [
+    "**/*.scss",
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles": {
+      "sass": "./src/styles.scss",
+      "style": "./src/styles.scss",
+      "default": "./src/styles.scss"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/styles.scss"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "@moluoxixi/config-form-core": "^0.1.0",
+    "ant-design-vue": "^4.2.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@moluoxixi/config-form-core": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
+    "ant-design-vue": "catalog:ui",
+    "happy-dom": "catalog:dev",
+    "sass": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-tsc": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

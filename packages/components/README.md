@@ -2,7 +2,7 @@
 
 `@moluoxixi/components` 是 Moluoxixi 组件集合入口。
 
-当前包提供基于 Element Plus、Ant Design Vue 和 shadcn-vue 的轻量配置表单，并提供从旧组件库迁入的常用 Element Plus 辅助组件。
+当前包聚合转发 `packages/ConfigForm/*` 下的轻量配置表单包，并提供从旧组件库迁入的常用 Element Plus 辅助组件。ConfigForm 的公共协议和三个 UI 实现不在本包内维护。
 
 ```ts
 import { defineField, ElementConfigForm } from '@moluoxixi/components'

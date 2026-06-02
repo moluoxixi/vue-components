@@ -1,0 +1,31 @@
+{
+  "name": "@config-form/playground",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e:headed": "playwright test --config playwright.config.ts --headed --workers=1",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "dependencies": {
+    "@moluoxixi/config-form-antd-vue": "workspace:*",
+    "@moluoxixi/config-form-core": "workspace:*",
+    "@moluoxixi/config-form-element": "workspace:*",
+    "@moluoxixi/config-form-shadcn-vue": "workspace:*",
+    "ant-design-vue": "catalog:ui",
+    "element-plus": "catalog:ui",
+    "vue": "catalog:build",
+    "zod": "catalog:dev"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:dev",
+    "@vitejs/plugin-vue-jsx": "catalog:dev",
+    "sass": "catalog:dev",
+    "unplugin-auto-import": "catalog:dev",
+    "unplugin-vue-components": "catalog:dev",
+    "vite": "catalog:dev",
+    "vue-tsc": "catalog:dev"
+  }
+}

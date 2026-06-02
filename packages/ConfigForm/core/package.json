@@ -1,0 +1,36 @@
+{
+  "name": "@moluoxixi/config-form-core",
+  "type": "module",
+  "version": "0.1.0",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-tsc": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
