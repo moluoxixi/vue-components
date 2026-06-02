@@ -25,6 +25,8 @@ import {
   ElCascader,
   ElCheckbox,
   ElCheckboxGroup,
+  ElCollapse,
+  ElCollapseItem,
   ElColorPicker,
   ElDatePicker,
   ElInput,
@@ -77,6 +79,14 @@ interface ElementKnownValues {
 
 interface ElementLinkedValues extends ElementKnownValues {
   advanced: boolean
+  enterpriseName: string
+  marketing: boolean
+  marketingNote: string
+  notifyChannel: string
+  planType: string
+  scheduledTime: string
+  seatCount: number
+  seatNote: string
 }
 
 type ElementFieldKey<TValues extends ElementKnownValues> = Extract<keyof TValues, string>
@@ -94,6 +104,14 @@ const containerModel = shallowRef<ElementKnownValues>(createKnownValues('contain
 const linkedModel = shallowRef<ElementLinkedValues>({
   ...createKnownValues('linked'),
   advanced: false,
+  enterpriseName: '',
+  marketing: false,
+  marketingNote: '',
+  notifyChannel: 'immediate',
+  planType: 'standard',
+  scheduledTime: '10:00',
+  seatCount: 1,
+  seatNote: '',
 })
 
 const layoutInlineSubmitted = shallowRef<Partial<ElementKnownValues>>({})
@@ -108,6 +126,7 @@ const containerFields = [
   defineCommonField({
     colProps: {},
     component: ElCard,
+    span: 24,
     props: {
       bodyClass: 'config-form-demo__container',
       class: 'config-form-demo__container-card',
@@ -117,6 +136,65 @@ const containerFields = [
     },
     slots: {
       default: createKnownFields('element-container', false, defineCommonField),
+    },
+  }),
+  defineCommonField({
+    colProps: {},
+    component: ElCollapse,
+    span: 24,
+    props: {
+      class: 'config-form-demo__container-collapse',
+      'data-testid': 'element-container-collapse-node',
+      modelValue: ['profile'],
+    },
+    slots: {
+      default: defineCommonField({
+        colProps: {},
+        component: ElCollapseItem,
+        props: {
+          name: 'profile',
+          title: 'Element Collapse 容器',
+        },
+        slots: {
+          default: createKnownFields('element-container-collapse', false, defineCommonField).slice(0, 4),
+        },
+      }),
+    },
+  }),
+  defineCommonField({
+    colProps: {},
+    component: ElTabs,
+    span: 24,
+    props: {
+      class: 'config-form-demo__container-tabs',
+      'data-testid': 'element-container-tabs-node',
+      modelValue: 'base',
+    },
+    slots: {
+      default: [
+        defineCommonField({
+          colProps: {},
+          component: ElTabPane,
+          props: {
+            label: '基础',
+            name: 'base',
+          },
+          slots: {
+            default: createKnownFields('element-container-tabs-base', false, defineCommonField).slice(0, 3),
+          },
+        }),
+        defineCommonField({
+          colProps: {},
+          component: ElTabPane,
+          props: {
+            label: '偏好',
+            name: 'preference',
+          },
+          slots: {
+            default: createKnownFields('element-container-tabs-preference', false, defineCommonField).slice(4, 7),
+          },
+        }),
+      ],
     },
   }),
 ]
@@ -133,6 +211,7 @@ const linkedFields = [
     span: 12,
   }),
   ...createKnownFields('element-linked', true, defineLinkedField, values => values.advanced),
+  ...createLinkedControlFields(),
 ]
 
 const layoutSubmittedText = computed(() => JSON.stringify({
@@ -425,6 +504,122 @@ function createKnownFields<TValues extends ElementKnownValues>(
   ]
 }
 
+function createLinkedControlFields() {
+  return [
+    defineLinkedField({
+      component: ElRadioGroup,
+      field: 'planType',
+      label: '方案类型',
+      props: {
+        'data-testid': 'element-linked-plan-radio',
+      },
+      slots: {
+        default: createRadioOptions().map(option =>
+          defineLinkedField({
+            colProps: {},
+            component: ElRadio,
+            props: option,
+          }),
+        ),
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      component: ElInput,
+      field: 'enterpriseName',
+      label: '企业名称',
+      props: {
+        placeholder: '企业模式显示',
+        'data-testid': 'element-linked-enterprise-name',
+      },
+      span: 12,
+      visible: values => values.planType === 'enterprise',
+    }),
+    defineLinkedField({
+      component: ElCheckbox,
+      field: 'marketing',
+      label: '营销设置',
+      props: {
+        label: '启用营销备注',
+        'data-testid': 'element-linked-marketing-checkbox',
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      component: ElInput,
+      field: 'marketingNote',
+      label: '营销备注',
+      props: {
+        placeholder: '勾选后显示',
+        rows: 2,
+        type: 'textarea',
+        'data-testid': 'element-linked-marketing-note',
+      },
+      span: 12,
+      visible: values => values.marketing,
+    }),
+    defineLinkedField({
+      component: ElSelect,
+      field: 'notifyChannel',
+      label: '通知方式',
+      props: {
+        placeholder: '选择通知方式',
+        teleported: false,
+        'data-testid': 'element-linked-notify-channel',
+      },
+      slots: {
+        default: createNotifyOptions().map(option =>
+          defineLinkedField({
+            colProps: {},
+            component: ElOption,
+            props: option,
+          }),
+        ),
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      component: ElTimeSelect,
+      field: 'scheduledTime',
+      label: '预约时间',
+      props: {
+        end: '12:00',
+        placeholder: '预约通知显示',
+        start: '09:00',
+        step: '00:30',
+        teleported: false,
+        'data-testid': 'element-linked-scheduled-time',
+      },
+      span: 12,
+      visible: values => values.notifyChannel === 'scheduled',
+    }),
+    defineLinkedField({
+      component: ElInputNumber,
+      field: 'seatCount',
+      label: '席位数',
+      props: {
+        max: 99,
+        min: 1,
+        'data-testid': 'element-linked-seat-count',
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      component: ElInput,
+      field: 'seatNote',
+      label: '席位说明',
+      props: {
+        placeholder: '席位数达到 5 后显示',
+        rows: 2,
+        type: 'textarea',
+        'data-testid': 'element-linked-seat-note',
+      },
+      span: 12,
+      visible: values => values.seatCount >= 5,
+    }),
+  ]
+}
+
 function createFlatOptions(suffix: string): ElementOption[] {
   return [
     { label: `${suffix} 草稿`, value: `${suffix}-draft` },
@@ -475,6 +670,13 @@ function createRadioOptions(): ElementOption[] {
   return [
     { label: '标准', value: 'standard' },
     { label: '企业', value: 'enterprise' },
+  ]
+}
+
+function createNotifyOptions(): ElementOption[] {
+  return [
+    { label: '立即通知', value: 'immediate' },
+    { label: '预约通知', value: 'scheduled' },
   ]
 }
 
@@ -627,29 +829,65 @@ function submitLinked(values: ConfigFormValues): void {
   line-height: 1.4;
 }
 
-.config-form-demo__container-card {
+:deep([data-testid="element-layout-inline-row"]) {
+  row-gap: 14px;
+}
+
+/* ConfigForm render 函数创建的容器节点没有当前 SFC 的 scoped attribute，需要整体穿透动态节点选择器。 */
+:deep(.config-form-demo__container-card),
+:deep(.config-form-demo__container-collapse),
+:deep(.config-form-demo__container-tabs) {
   width: 100%;
 }
 
-.config-form-demo__container-card :deep(.config-form-demo__container) {
+:deep(.config-form-demo__container-collapse),
+:deep(.config-form-demo__container-tabs) {
+  margin-top: 16px;
+}
+
+:deep(.config-form-demo__container-card .config-form-demo__container),
+:deep(.config-form-demo__container-collapse .el-collapse-item__content),
+:deep(.config-form-demo__container-tabs .el-tab-pane) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 16px;
   width: 100%;
 }
 
-.config-form-demo__container-card :deep(.el-input),
-.config-form-demo__container-card :deep(.el-input-number),
-.config-form-demo__container-card :deep(.el-select),
-.config-form-demo__container-card :deep(.el-select-v2),
-.config-form-demo__container-card :deep(.el-cascader),
-.config-form-demo__container-card :deep(.el-date-editor),
-.config-form-demo__container-card :deep(.el-time-select),
-.config-form-demo__container-card :deep(.el-tree-select) {
+:deep(.config-form-demo__container-collapse .el-collapse-item__content) {
+  padding: 14px 0;
+}
+
+:deep(.config-form-demo__container-card .el-input),
+:deep(.config-form-demo__container-card .el-input-number),
+:deep(.config-form-demo__container-card .el-select),
+:deep(.config-form-demo__container-card .el-select-v2),
+:deep(.config-form-demo__container-card .el-cascader),
+:deep(.config-form-demo__container-card .el-date-editor),
+:deep(.config-form-demo__container-card .el-time-select),
+:deep(.config-form-demo__container-card .el-tree-select),
+:deep(.config-form-demo__container-collapse .el-input),
+:deep(.config-form-demo__container-collapse .el-input-number),
+:deep(.config-form-demo__container-collapse .el-select),
+:deep(.config-form-demo__container-collapse .el-select-v2),
+:deep(.config-form-demo__container-collapse .el-cascader),
+:deep(.config-form-demo__container-collapse .el-date-editor),
+:deep(.config-form-demo__container-collapse .el-time-select),
+:deep(.config-form-demo__container-collapse .el-tree-select),
+:deep(.config-form-demo__container-tabs .el-input),
+:deep(.config-form-demo__container-tabs .el-input-number),
+:deep(.config-form-demo__container-tabs .el-select),
+:deep(.config-form-demo__container-tabs .el-select-v2),
+:deep(.config-form-demo__container-tabs .el-cascader),
+:deep(.config-form-demo__container-tabs .el-date-editor),
+:deep(.config-form-demo__container-tabs .el-time-select),
+:deep(.config-form-demo__container-tabs .el-tree-select) {
   width: 100%;
 }
 
-.config-form-demo__container-card :deep(.el-textarea) {
+:deep(.config-form-demo__container-card .el-textarea),
+:deep(.config-form-demo__container-collapse .el-textarea),
+:deep(.config-form-demo__container-tabs .el-textarea) {
   grid-column: 1 / -1;
 }
 

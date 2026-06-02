@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue'
+import type { InjectionKey, PropType } from 'vue'
 import { computed, defineComponent, h, inject, provide } from 'vue'
 
 interface RadioGroupContext {
@@ -6,7 +6,17 @@ interface RadioGroupContext {
   setValue: (value: string) => void
 }
 
+interface TabsContext {
+  active: () => string
+}
+
+interface ShadcnTabItem {
+  label: string
+  value: string
+}
+
 const radioGroupKey: InjectionKey<RadioGroupContext> = Symbol('shadcn-demo-radio-group')
+const tabsKey: InjectionKey<TabsContext> = Symbol('shadcn-demo-tabs')
 
 /** Playground 本地 shadcn 风格控件，用于模拟业务项目生成到本地目录的组件。 */
 export const ShadcnCard = defineComponent({
@@ -23,6 +33,83 @@ export const ShadcnCard = defineComponent({
       h('div', { class: 'shadcn-card__header' }, props.title),
       h('div', { class: 'shadcn-card__body' }, slots.default?.()),
     ])
+  },
+})
+
+export const ShadcnAccordion = defineComponent({
+  name: 'ShadcnAccordion',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => h('section', {
+      ...attrs,
+      class: ['shadcn-accordion', attrs.class],
+    }, slots.default?.())
+  },
+})
+
+export const ShadcnAccordionItem = defineComponent({
+  name: 'ShadcnAccordionItem',
+  inheritAttrs: false,
+  props: {
+    title: { type: String, default: '' },
+  },
+  setup(props, { attrs, slots }) {
+    return () => h('article', {
+      ...attrs,
+      class: ['shadcn-accordion__item', attrs.class],
+    }, [
+      h('div', { class: 'shadcn-accordion__header' }, props.title),
+      h('div', { class: 'shadcn-accordion__body' }, slots.default?.()),
+    ])
+  },
+})
+
+export const ShadcnTabs = defineComponent({
+  name: 'ShadcnTabs',
+  inheritAttrs: false,
+  props: {
+    active: { type: String, default: '' },
+    items: { type: Array as PropType<ShadcnTabItem[]>, default: () => [] },
+  },
+  setup(props, { attrs, slots }) {
+    provide(tabsKey, {
+      active: () => props.active,
+    })
+
+    return () => h('section', {
+      ...attrs,
+      class: ['shadcn-tabs-container', attrs.class],
+    }, [
+      h('div', { class: 'shadcn-tabs-container__list', role: 'tablist' }, props.items.map(item =>
+        h('button', {
+          'aria-selected': String(props.active === item.value),
+          'class': ['shadcn-tabs-container__trigger', { 'shadcn-tabs-container__trigger--active': props.active === item.value }],
+          'role': 'tab',
+          'type': 'button',
+        }, item.label),
+      )),
+      h('div', { class: 'shadcn-tabs-container__content' }, slots.default?.()),
+    ])
+  },
+})
+
+export const ShadcnTabPane = defineComponent({
+  name: 'ShadcnTabPane',
+  inheritAttrs: false,
+  props: {
+    name: { type: String, default: '' },
+  },
+  setup(props, { attrs, slots }) {
+    const tabs = inject(tabsKey)!
+    const active = computed(() => tabs.active() === props.name)
+
+    return () => active.value
+      ? h('div', {
+          ...attrs,
+          class: ['shadcn-tab-pane', attrs.class],
+          role: 'tabpanel',
+        }, slots.default?.())
+      : null
   },
 })
 
@@ -44,6 +131,56 @@ export const ShadcnInput = defineComponent({
       id: props.id,
       onInput: handleInput,
       placeholder: props.placeholder,
+      value: props.modelValue,
+    })
+  },
+})
+
+export const ShadcnNumberInput = defineComponent({
+  name: 'ShadcnNumberInput',
+  props: {
+    id: { type: String, default: '' },
+    max: { type: Number, default: 100 },
+    min: { type: Number, default: 0 },
+    modelValue: { type: Number, default: 0 },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    function handleInput(event: Event): void {
+      emit('update:modelValue', Number((event.target as HTMLInputElement).value))
+    }
+
+    return () => h('input', {
+      class: 'shadcn-control',
+      id: props.id,
+      max: props.max,
+      min: props.min,
+      onInput: handleInput,
+      type: 'number',
+      value: props.modelValue,
+    })
+  },
+})
+
+export const ShadcnSlider = defineComponent({
+  name: 'ShadcnSlider',
+  props: {
+    max: { type: Number, default: 100 },
+    min: { type: Number, default: 0 },
+    modelValue: { type: Number, default: 0 },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    function handleInput(event: Event): void {
+      emit('update:modelValue', Number((event.target as HTMLInputElement).value))
+    }
+
+    return () => h('input', {
+      class: 'shadcn-slider',
+      max: props.max,
+      min: props.min,
+      onInput: handleInput,
+      type: 'range',
       value: props.modelValue,
     })
   },

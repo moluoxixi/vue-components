@@ -18,11 +18,10 @@
 | [`@moluoxixi/config-form-plugin-antd-vue`](./packages/ConfigForm/plugin-antd-vue/) | Ant Design Vue runtime 适配插件 |
 | [`@moluoxixi/config-form-plugin-element-plus`](./packages/ConfigForm/plugin-element-plus/) | Element Plus runtime 适配插件 |
 | [`@moluoxixi/config-form-plugin-shadcn-vue`](./packages/ConfigForm/plugin-shadcn-vue/) | shadcn-vue runtime 适配插件 |
-| [`element-plus-playground`](./playgrounds/element-plus-playground/) | Element Plus 示例 |
-| [`antd-vue-playground`](./playgrounds/antd-vue-playground/) | Ant Design Vue 示例 |
 | [`components-playground`](./playgrounds/components-playground/) | `@moluoxixi/components` 包组件示例 |
 | [`config-form-playground`](./packages/ConfigForm/playground/) | 三套轻量 ConfigForm UI 包示例和交互测试 |
-| [`shadcn-vue-playground`](./playgrounds/shadcn-vue-playground/) | shadcn-vue 接入示例 |
+
+ConfigForm 插件包不单独提供 playground；需要接入插件时，由对应 UI 示例或业务入口自行注册插件。
 
 ## 开发
 
@@ -30,14 +29,8 @@
 # 安装依赖
 pnpm install
 
-# 启动 Element Plus playground
-pnpm dev:ep
-
-# 启动 Ant Design Vue playground
-pnpm dev:antd
-
-# 启动 shadcn-vue playground
-pnpm dev:shadcn
+# 启动组件聚合 playground
+pnpm dev:components
 
 # 启动轻量 ConfigForm playground
 pnpm dev:config-form

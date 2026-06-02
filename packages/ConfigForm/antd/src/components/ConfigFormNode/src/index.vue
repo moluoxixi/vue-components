@@ -92,17 +92,18 @@ function renderFormComponentNode(field: AntdConfigFormField<TValues>, path: stri
 
 function renderComponentNode(node: AntdConfigFormComponentNode<TValues>, path: string): VNodeChild {
   const slots = createNodeSlots(node, path)
+  const vnodeKey = getComponentNodeVNodeKey(node, path)
 
   if (typeof node.component === 'string') {
     return h(node.component, {
       ...node.props,
-      key: `${path}.component`,
+      key: vnodeKey,
     }, slots?.default?.() ?? [])
   }
 
   return h(getNodeComponent(node), {
     ...node.props,
-    key: `${path}.component`,
+    key: vnodeKey,
   }, slots)
 }
 
@@ -113,6 +114,14 @@ function getNodeComponent(node: AntdConfigFormComponentNode<TValues>): AntdConfi
     return markRaw(component as object) as AntdConfigFormComponentNode<TValues>['component']
 
   return component
+}
+
+function getComponentNodeVNodeKey(node: AntdConfigFormComponentNode<TValues>, path: string): string | number | symbol {
+  /**
+   * Ant Design Vue 的 CollapsePanel/TabPane 依赖 VNode key 作为容器语义 key，
+   * 因此配置里显式传入的 key 必须优先于内部递归 path。
+   */
+  return node.props?.key as string | number | symbol | undefined ?? `${path}.component`
 }
 
 function createNodeSlots(

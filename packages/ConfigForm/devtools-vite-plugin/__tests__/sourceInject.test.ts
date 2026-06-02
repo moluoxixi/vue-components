@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { transformDefineFieldSource } from '../src/sourceInject'
 
-const TS_FILE = 'D:/project-new/ConfigForm/playgrounds/element-plus-playground/src/demos/GridForm.ts'
-const VUE_FILE = 'D:/project-new/ConfigForm/playgrounds/element-plus-playground/src/demos/GridForm.vue'
+const TS_FILE = 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/components/ShadcnDemoControls.ts'
+const VUE_FILE = 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue'
 
 describe('defineField source injection', () => {
   it('injects source metadata into imported defineField object calls', () => {
@@ -20,7 +20,7 @@ describe('defineField source injection', () => {
     })
 
     expect(result?.code).toContain('__source')
-    expect(result?.code).toContain('file: "D:/project-new/ConfigForm/playgrounds/element-plus-playground/src/demos/GridForm.ts"')
+    expect(result?.code).toContain('file: "D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/components/ShadcnDemoControls.ts"')
     expect(result?.code).toContain('line: 3')
     expect(result?.code).toContain('column: 15')
     expect(result?.code).not.toContain('\n    , __source')
@@ -185,7 +185,7 @@ describe('defineField source injection', () => {
 
     expect(result?.code).toContain('<template><div /></template>')
     expect(result?.code).toContain('__source')
-    expect(result?.code).toContain('file: "D:/project-new/ConfigForm/playgrounds/element-plus-playground/src/demos/GridForm.vue"')
+    expect(result?.code).toContain('file: "D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue"')
     expect(result?.code).toContain('line: 4')
   })
 

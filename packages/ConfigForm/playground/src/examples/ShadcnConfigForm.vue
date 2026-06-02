@@ -19,14 +19,20 @@ import type {
 import { defineFields } from '@moluoxixi/config-form-core'
 import { ShadcnConfigForm } from '@moluoxixi/config-form-shadcn-vue'
 import {
+  ShadcnAccordion,
+  ShadcnAccordionItem,
   ShadcnCard,
   ShadcnCheckbox,
   ShadcnInput,
   ShadcnNativeSelect,
+  ShadcnNumberInput,
   ShadcnOption,
   ShadcnRadio,
   ShadcnRadioGroup,
+  ShadcnSlider,
   ShadcnSwitch,
+  ShadcnTabPane,
+  ShadcnTabs,
   ShadcnTextarea,
 } from './components/ShadcnDemoControls'
 import { computed, shallowRef } from 'vue'
@@ -36,14 +42,24 @@ type ScenarioTab = 'layout' | 'container' | 'linked'
 interface ShadcnKnownValues {
   checkbox: boolean
   input: string
+  inputNumber: number
   nativeSelect: string
   radio: string
+  slider: number
   switchValue: boolean
   textarea: string
 }
 
 interface ShadcnLinkedValues extends ShadcnKnownValues {
   advanced: boolean
+  enterpriseName: string
+  marketing: boolean
+  marketingNote: string
+  notifyChannel: string
+  planType: string
+  scheduledNote: string
+  seatCount: number
+  seatNote: string
 }
 
 type ShadcnFieldKey<TValues extends ShadcnKnownValues> = Extract<keyof TValues, string>
@@ -61,6 +77,14 @@ const containerModel = shallowRef<ShadcnKnownValues>(createKnownValues('containe
 const linkedModel = shallowRef<ShadcnLinkedValues>({
   ...createKnownValues('linked'),
   advanced: false,
+  enterpriseName: '',
+  marketing: false,
+  marketingNote: '',
+  notifyChannel: 'immediate',
+  planType: 'standard',
+  scheduledNote: '',
+  seatCount: 1,
+  seatNote: '',
 })
 
 const layoutInlineSubmitted = shallowRef<Partial<ShadcnKnownValues>>({})
@@ -75,6 +99,7 @@ const containerFields = [
   defineCommonField({
     colProps: {},
     component: ShadcnCard,
+    span: 24,
     props: {
       class: 'shadcn-demo__container-card',
       'data-testid': 'shadcn-container-node',
@@ -82,6 +107,65 @@ const containerFields = [
     },
     slots: {
       default: createKnownFields('shadcn-container', false, defineCommonField),
+    },
+  }),
+  defineCommonField({
+    colProps: {},
+    component: ShadcnAccordion,
+    span: 24,
+    props: {
+      class: 'shadcn-demo__container-accordion',
+      'data-testid': 'shadcn-container-accordion-node',
+    },
+    slots: {
+      default: defineCommonField({
+        colProps: {},
+        component: ShadcnAccordionItem,
+        props: {
+          title: 'Shadcn Accordion 容器',
+        },
+        slots: {
+          default: createKnownFields('shadcn-container-accordion', false, defineCommonField).slice(0, 4),
+        },
+      }),
+    },
+  }),
+  defineCommonField({
+    colProps: {},
+    component: ShadcnTabs,
+    span: 24,
+    props: {
+      active: 'base',
+      class: 'shadcn-demo__container-tabs',
+      'data-testid': 'shadcn-container-tabs-node',
+      items: [
+        { label: '基础', value: 'base' },
+        { label: '偏好', value: 'preference' },
+      ],
+    },
+    slots: {
+      default: [
+        defineCommonField({
+          colProps: {},
+          component: ShadcnTabPane,
+          props: {
+            name: 'base',
+          },
+          slots: {
+            default: createKnownFields('shadcn-container-tabs-base', false, defineCommonField).slice(0, 3),
+          },
+        }),
+        defineCommonField({
+          colProps: {},
+          component: ShadcnTabPane,
+          props: {
+            name: 'preference',
+          },
+          slots: {
+            default: createKnownFields('shadcn-container-tabs-preference', false, defineCommonField).slice(3, 6),
+          },
+        }),
+      ],
     },
   }),
 ]
@@ -97,6 +181,7 @@ const linkedFields = [
     span: 12,
   }),
   ...createKnownFields('shadcn-linked', true, defineLinkedField, values => values.advanced),
+  ...createLinkedControlFields(),
 ]
 
 const layoutSubmittedText = computed(() => JSON.stringify({
@@ -110,8 +195,10 @@ function createKnownValues(seed: string): ShadcnKnownValues {
   return {
     checkbox: false,
     input: '',
+    inputNumber: 1,
     nativeSelect: `${seed}-draft`,
     radio: 'standard',
+    slider: 10,
     switchValue: false,
     textarea: '',
   }
@@ -156,6 +243,33 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
             props: option,
           }),
         ),
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnNumberInput,
+      field: 'inputNumber' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '数字输入' : undefined,
+      props: {
+        id: `${prefix}-input-number`,
+        max: 99,
+        min: 0,
+        'data-testid': `${prefix}-input-number`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      colProps: {},
+      component: ShadcnSlider,
+      field: 'slider' as ShadcnFieldKey<TValues>,
+      label: withFormItem ? '滑块' : undefined,
+      props: {
+        max: 100,
+        min: 0,
+        'data-testid': `${prefix}-slider`,
       },
       span: 12,
       visible,
@@ -222,6 +336,128 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
   ]
 }
 
+function createLinkedControlFields() {
+  return [
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnRadioGroup,
+      field: 'planType',
+      label: '方案类型',
+      props: {
+        id: 'shadcn-linked-plan-radio',
+        'data-testid': 'shadcn-linked-plan-radio',
+      },
+      slots: {
+        default: createRadioOptions().map(option =>
+          defineLinkedField({
+            colProps: {},
+            component: ShadcnRadio,
+            props: option,
+          }),
+        ),
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnInput,
+      field: 'enterpriseName',
+      label: '企业名称',
+      props: {
+        id: 'shadcn-linked-enterprise-name',
+        placeholder: '企业模式显示',
+        'data-testid': 'shadcn-linked-enterprise-name',
+      },
+      span: 12,
+      visible: values => values.planType === 'enterprise',
+    }),
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnCheckbox,
+      field: 'marketing',
+      label: '营销设置',
+      props: {
+        id: 'shadcn-linked-marketing-checkbox',
+        label: '启用营销备注',
+        'data-testid': 'shadcn-linked-marketing-checkbox',
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnTextarea,
+      field: 'marketingNote',
+      label: '营销备注',
+      props: {
+        id: 'shadcn-linked-marketing-note',
+        placeholder: '勾选后显示',
+        'data-testid': 'shadcn-linked-marketing-note',
+      },
+      span: 12,
+      visible: values => values.marketing,
+    }),
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnNativeSelect,
+      field: 'notifyChannel',
+      label: '通知方式',
+      props: {
+        id: 'shadcn-linked-notify-channel',
+        'data-testid': 'shadcn-linked-notify-channel',
+      },
+      slots: {
+        default: createNotifyOptions().map(option =>
+          defineLinkedField({
+            colProps: {},
+            component: ShadcnOption,
+            props: option,
+          }),
+        ),
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnInput,
+      field: 'scheduledNote',
+      label: '预约说明',
+      props: {
+        id: 'shadcn-linked-scheduled-note',
+        placeholder: '预约通知显示',
+        'data-testid': 'shadcn-linked-scheduled-note',
+      },
+      span: 12,
+      visible: values => values.notifyChannel === 'scheduled',
+    }),
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnNumberInput,
+      field: 'seatCount',
+      label: '席位数',
+      props: {
+        id: 'shadcn-linked-seat-count',
+        max: 99,
+        min: 1,
+        'data-testid': 'shadcn-linked-seat-count',
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      colProps: {},
+      component: ShadcnTextarea,
+      field: 'seatNote',
+      label: '席位说明',
+      props: {
+        id: 'shadcn-linked-seat-note',
+        placeholder: '席位数达到 5 后显示',
+        'data-testid': 'shadcn-linked-seat-note',
+      },
+      span: 12,
+      visible: values => values.seatCount >= 5,
+    }),
+  ]
+}
+
 function createSelectOptions(suffix: string): Array<{ label: string, value: string }> {
   return [
     { label: `${suffix} 草稿`, value: `${suffix}-draft` },
@@ -233,6 +469,13 @@ function createRadioOptions(): Array<{ label: string, value: string }> {
   return [
     { label: '标准', value: 'standard' },
     { label: '企业', value: 'enterprise' },
+  ]
+}
+
+function createNotifyOptions(): Array<{ label: string, value: string }> {
+  return [
+    { label: '立即通知', value: 'immediate' },
+    { label: '预约通知', value: 'scheduled' },
   ]
 }
 
@@ -460,6 +703,12 @@ function submitLinked(values: ConfigFormValues): void {
   resize: vertical;
 }
 
+:deep(.shadcn-slider) {
+  width: 100%;
+  min-width: 0;
+  accent-color: hsl(221deg 83% 53%);
+}
+
 :deep(.shadcn-choice) {
   display: inline-flex;
   align-items: center;
@@ -543,6 +792,70 @@ function submitLinked(values: ConfigFormValues): void {
 }
 
 :deep(.shadcn-card__body .shadcn-control--textarea) {
+  grid-column: 1 / -1;
+}
+
+/* ConfigForm render 函数创建的容器节点没有当前 SFC 的 scoped attribute，需要整体穿透动态节点选择器。 */
+:deep(.shadcn-demo__container-accordion),
+:deep(.shadcn-demo__container-tabs) {
+  margin-top: 16px;
+}
+
+:deep(.shadcn-accordion) {
+  width: 100%;
+  border: 1px solid hsl(214deg 32% 91%);
+  border-radius: 6px;
+  background: #fff;
+}
+
+:deep(.shadcn-accordion__header) {
+  padding: 12px 14px;
+  border-bottom: 1px solid hsl(214deg 32% 91%);
+  color: hsl(222deg 47% 11%);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+:deep(.shadcn-accordion__body),
+:deep(.shadcn-tab-pane) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  width: 100%;
+  padding: 14px;
+}
+
+:deep(.shadcn-tabs-container) {
+  width: 100%;
+  border: 1px solid hsl(214deg 32% 91%);
+  border-radius: 6px;
+  background: #fff;
+}
+
+:deep(.shadcn-tabs-container__list) {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid hsl(214deg 32% 91%);
+}
+
+:deep(.shadcn-tabs-container__trigger) {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(215deg 16% 47%);
+}
+
+:deep(.shadcn-tabs-container__trigger--active) {
+  background: hsl(210deg 40% 98%);
+  color: hsl(222deg 47% 11%);
+}
+
+:deep(.shadcn-demo__container-card .shadcn-control--textarea),
+:deep(.shadcn-demo__container-accordion .shadcn-control--textarea),
+:deep(.shadcn-demo__container-tabs .shadcn-control--textarea) {
   grid-column: 1 / -1;
 }
 

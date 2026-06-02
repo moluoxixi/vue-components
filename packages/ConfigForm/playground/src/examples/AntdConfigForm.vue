@@ -24,6 +24,8 @@ import {
   Card as ACard,
   Cascader as ACascader,
   Checkbox as ACheckbox,
+  Collapse as ACollapse,
+  CollapsePanel as ACollapsePanel,
   DatePicker as ADatePicker,
   Input as AInput,
   InputNumber as AInputNumber,
@@ -78,6 +80,14 @@ interface AntdKnownValues {
 
 interface AntdLinkedValues extends AntdKnownValues {
   advanced: boolean
+  enterpriseName: string
+  marketing: boolean
+  marketingNote: string
+  notifyChannel: string
+  planType: string
+  scheduledTime: string
+  seatCount: number
+  seatNote: string
 }
 
 type AntdFieldKey<TValues extends AntdKnownValues> = Extract<keyof TValues, string>
@@ -101,6 +111,14 @@ const containerModel = shallowRef<AntdKnownValues>(createKnownValues('container'
 const linkedModel = shallowRef<AntdLinkedValues>({
   ...createKnownValues('linked'),
   advanced: false,
+  enterpriseName: '',
+  marketing: false,
+  marketingNote: '',
+  notifyChannel: 'immediate',
+  planType: 'standard',
+  scheduledTime: '10:00:00',
+  seatCount: 1,
+  seatNote: '',
 })
 
 const layoutInlineSubmitted = shallowRef<Partial<AntdKnownValues>>({})
@@ -113,7 +131,9 @@ const layoutInlineFields = createKnownFields('antd-inline', true, defineCommonFi
 const layoutGridFields = createKnownFields('antd-grid', true, defineCommonField)
 const containerFields = [
   defineCommonField({
+    colProps: {},
     component: ACard,
+    span: 24,
     props: {
       class: 'config-form-demo__container-card',
       'data-testid': 'antd-container-node',
@@ -122,6 +142,65 @@ const containerFields = [
     },
     slots: {
       default: createKnownFields('antd-container', false, defineCommonField),
+    },
+  }),
+  defineCommonField({
+    colProps: {},
+    component: ACollapse,
+    span: 24,
+    props: {
+      class: 'config-form-demo__container-collapse',
+      defaultActiveKey: ['profile'],
+      'data-testid': 'antd-container-collapse-node',
+    },
+    slots: {
+      default: defineCommonField({
+        colProps: {},
+        component: ACollapsePanel,
+        props: {
+          header: 'Antd Collapse 容器',
+          key: 'profile',
+        },
+        slots: {
+          default: createKnownFields('antd-container-collapse', false, defineCommonField).slice(0, 4),
+        },
+      }),
+    },
+  }),
+  defineCommonField({
+    colProps: {},
+    component: ATabs,
+    span: 24,
+    props: {
+      activeKey: 'base',
+      class: 'config-form-demo__container-tabs',
+      'data-testid': 'antd-container-tabs-node',
+    },
+    slots: {
+      default: [
+        defineCommonField({
+          colProps: {},
+          component: ATabPane,
+          props: {
+            key: 'base',
+            tab: '基础',
+          },
+          slots: {
+            default: createKnownFields('antd-container-tabs-base', false, defineCommonField).slice(0, 3),
+          },
+        }),
+        defineCommonField({
+          colProps: {},
+          component: ATabPane,
+          props: {
+            key: 'preference',
+            tab: '偏好',
+          },
+          slots: {
+            default: createKnownFields('antd-container-tabs-preference', false, defineCommonField).slice(4, 7),
+          },
+        }),
+      ],
     },
   }),
 ]
@@ -140,6 +219,7 @@ const linkedFields = [
     valueProp: 'checked',
   }),
   ...createKnownFields('antd-linked', true, defineLinkedField, values => values.advanced),
+  ...createLinkedControlFields(),
 ]
 
 const layoutSubmittedText = computed(() => JSON.stringify({
@@ -408,6 +488,103 @@ function createKnownFields<TValues extends AntdKnownValues>(
   ]
 }
 
+function createLinkedControlFields() {
+  return [
+    defineLinkedField({
+      component: ARadioGroup,
+      field: 'planType',
+      label: '方案类型',
+      props: {
+        options: createRadioOptions(),
+        'data-testid': 'antd-linked-plan-radio',
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      component: AInput,
+      field: 'enterpriseName',
+      label: '企业名称',
+      props: {
+        placeholder: '企业模式显示',
+        'data-testid': 'antd-linked-enterprise-name',
+      },
+      span: 12,
+      visible: values => values.planType === 'enterprise',
+    }),
+    defineLinkedField({
+      component: ACheckbox,
+      field: 'marketing',
+      label: '营销设置',
+      props: {
+        'data-testid': 'antd-linked-marketing-checkbox',
+      },
+      slots: {
+        default: () => '启用营销备注',
+      },
+      span: 12,
+      trigger: 'update:checked',
+      valueProp: 'checked',
+    }),
+    defineLinkedField({
+      component: ATextarea,
+      field: 'marketingNote',
+      label: '营销备注',
+      props: {
+        placeholder: '勾选后显示',
+        rows: 2,
+        'data-testid': 'antd-linked-marketing-note',
+      },
+      span: 12,
+      visible: values => values.marketing,
+    }),
+    defineLinkedField({
+      component: ASelect,
+      field: 'notifyChannel',
+      label: '通知方式',
+      props: {
+        options: createNotifyOptions(),
+        placeholder: '选择通知方式',
+        'data-testid': 'antd-linked-notify-channel',
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      component: ATimePicker,
+      field: 'scheduledTime',
+      label: '预约时间',
+      props: {
+        valueFormat: 'HH:mm:ss',
+        'data-testid': 'antd-linked-scheduled-time',
+      },
+      span: 12,
+      visible: values => values.notifyChannel === 'scheduled',
+    }),
+    defineLinkedField({
+      component: AInputNumber,
+      field: 'seatCount',
+      label: '席位数',
+      props: {
+        max: 99,
+        min: 1,
+        'data-testid': 'antd-linked-seat-count',
+      },
+      span: 12,
+    }),
+    defineLinkedField({
+      component: ATextarea,
+      field: 'seatNote',
+      label: '席位说明',
+      props: {
+        placeholder: '席位数达到 5 后显示',
+        rows: 2,
+        'data-testid': 'antd-linked-seat-note',
+      },
+      span: 12,
+      visible: values => values.seatCount >= 5,
+    }),
+  ]
+}
+
 function createFlatOptions(suffix: string): AntdOption[] {
   return [
     { label: `${suffix} 草稿`, value: `${suffix}-draft` },
@@ -451,6 +628,13 @@ function createRadioOptions(): AntdOption[] {
   return [
     { label: '标准', value: 'standard' },
     { label: '企业', value: 'enterprise' },
+  ]
+}
+
+function createNotifyOptions(): AntdOption[] {
+  return [
+    { label: '立即通知', value: 'immediate' },
+    { label: '预约通知', value: 'scheduled' },
   ]
 }
 
@@ -601,27 +785,65 @@ function submitLinked(values: ConfigFormValues): void {
   line-height: 1.4;
 }
 
-.config-form-demo__container-card {
+:deep([data-testid="antd-layout-inline-row"]) {
+  row-gap: 16px;
+}
+
+/* ConfigForm render 函数创建的容器节点没有当前 SFC 的 scoped attribute，需要整体穿透动态节点选择器。 */
+:deep(.config-form-demo__container-card),
+:deep(.config-form-demo__container-collapse),
+:deep(.config-form-demo__container-tabs) {
   width: 100%;
 }
 
-.config-form-demo__container-card :deep(.ant-card-body) {
+:deep(.config-form-demo__container-collapse),
+:deep(.config-form-demo__container-tabs) {
+  margin-top: 16px;
+}
+
+:deep(.config-form-demo__container-card .ant-card-body),
+:deep(.config-form-demo__container-collapse .ant-collapse-content-box),
+:deep(.config-form-demo__container-tabs .ant-tabs-tabpane-active) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 16px;
   width: 100%;
 }
 
-.config-form-demo__container-card :deep(.ant-input),
-.config-form-demo__container-card :deep(.ant-input-number),
-.config-form-demo__container-card :deep(.ant-select),
-.config-form-demo__container-card :deep(.ant-picker),
-.config-form-demo__container-card :deep(.ant-slider),
-.config-form-demo__container-card :deep(.ant-rate) {
+:deep(.config-form-demo__container-card .ant-card-body::before),
+:deep(.config-form-demo__container-card .ant-card-body::after),
+:deep(.config-form-demo__container-collapse .ant-collapse-content-box::before),
+:deep(.config-form-demo__container-collapse .ant-collapse-content-box::after),
+:deep(.config-form-demo__container-tabs .ant-tabs-tabpane-active::before),
+:deep(.config-form-demo__container-tabs .ant-tabs-tabpane-active::after) {
+  display: none;
+  content: none;
+}
+
+:deep(.config-form-demo__container-card .ant-input),
+:deep(.config-form-demo__container-card .ant-input-number),
+:deep(.config-form-demo__container-card .ant-select),
+:deep(.config-form-demo__container-card .ant-picker),
+:deep(.config-form-demo__container-card .ant-slider),
+:deep(.config-form-demo__container-card .ant-rate),
+:deep(.config-form-demo__container-collapse .ant-input),
+:deep(.config-form-demo__container-collapse .ant-input-number),
+:deep(.config-form-demo__container-collapse .ant-select),
+:deep(.config-form-demo__container-collapse .ant-picker),
+:deep(.config-form-demo__container-collapse .ant-slider),
+:deep(.config-form-demo__container-collapse .ant-rate),
+:deep(.config-form-demo__container-tabs .ant-input),
+:deep(.config-form-demo__container-tabs .ant-input-number),
+:deep(.config-form-demo__container-tabs .ant-select),
+:deep(.config-form-demo__container-tabs .ant-picker),
+:deep(.config-form-demo__container-tabs .ant-slider),
+:deep(.config-form-demo__container-tabs .ant-rate) {
   width: 100%;
 }
 
-.config-form-demo__container-card :deep(textarea.ant-input) {
+:deep(.config-form-demo__container-card textarea.ant-input),
+:deep(.config-form-demo__container-collapse textarea.ant-input),
+:deep(.config-form-demo__container-tabs textarea.ant-input) {
   grid-column: 1 / -1;
 }
 
