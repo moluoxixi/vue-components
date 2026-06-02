@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@moluoxixi/components": "workspace:*",
+    "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "vue": "catalog:build",
     "zod": "catalog:dev"

@@ -349,9 +349,6 @@ importers:
 
   packages/components:
     dependencies:
-      '@moluoxixi/config-form':
-        specifier: workspace:*
-        version: link:../ConfigForm
       dayjs:
         specifier: catalog:build
         version: 1.11.20
@@ -362,6 +359,9 @@ importers:
       '@vue/test-utils':
         specifier: catalog:dev
         version: 2.4.10(@vue/compiler-dom@3.5.33)(@vue/server-renderer@3.5.33(vue@3.5.33(typescript@5.9.3)))(vue@3.5.33(typescript@5.9.3))
+      ant-design-vue:
+        specifier: catalog:ui
+        version: 4.2.6(vue@3.5.33(typescript@5.9.3))
       element-plus:
         specifier: catalog:ui
         version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
@@ -383,9 +383,6 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
-      zod:
-        specifier: catalog:dev
-        version: 3.25.76
 
   playgrounds/antd-vue-playground:
     dependencies:
@@ -432,6 +429,9 @@ importers:
       '@moluoxixi/components':
         specifier: workspace:*
         version: link:../../packages/components
+      ant-design-vue:
+        specifier: catalog:ui
+        version: 4.2.6(vue@3.5.33(typescript@5.9.3))
       element-plus:
         specifier: catalog:ui
         version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))

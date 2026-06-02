@@ -1,0 +1,44 @@
+.mx-shadcn-config-form {
+  width: 100%;
+}
+
+.mx-shadcn-config-form__grid {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.mx-shadcn-config-form__cell {
+  min-width: 0;
+}
+
+.mx-shadcn-config-form__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mx-shadcn-config-form__label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: hsl(222deg 47% 11%);
+}
+
+.mx-shadcn-config-form__field[data-required="true"] .mx-shadcn-config-form__label::after {
+  margin-left: 3px;
+  color: hsl(0deg 84% 60%);
+  content: "*";
+}
+
+.mx-shadcn-config-form__control {
+  min-width: 0;
+}
+
+.mx-shadcn-config-form__error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: hsl(0deg 84% 60%);
+}

@@ -5,8 +5,15 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { createElementPlusPlugin } from '../src'
+import {
+  findElementPlusOptionLabel,
+  readElementPlusOptionKeys,
+  readElementPlusOptionSource,
+  resolveElementPlusPathLabel,
+} from '../src/readonly/options'
 
 const ElSelectV2 = { name: 'ElSelectV2' }
+const ElCascader = { name: 'ElCascader' }
 const ElCheckboxGroup = { name: 'ElCheckboxGroup' }
 const ElRadioGroup = { name: 'ElRadioGroup' }
 const ElSwitch = { name: 'ElSwitch' }
@@ -23,6 +30,32 @@ function renderReadonly(adapter: ReadonlyAdapter, context: ReadonlyRenderContext
 /** 将 runtime 返回节点收窄为字段节点，便于读取 props。 */
 function asField(node: unknown): ReadonlyRenderContext['node'] {
   return node as ReadonlyRenderContext['node']
+}
+
+/** 构造只读适配器所需的最小字段节点，避免测试耦合完整 runtime 拓扑。 */
+function createReadonlyNode(
+  props: Record<string, unknown>,
+  slots?: Record<string, unknown>,
+): ReadonlyRenderContext['node'] {
+  return {
+    blurTrigger: 'blur',
+    component: 'ElSelect',
+    disabled: false,
+    field: 'field',
+    props,
+    readonly: false,
+    required: false,
+    requiredMessage: '必填',
+    span: 24,
+    submitWhenDisabled: false,
+    submitWhenHidden: false,
+    trigger: 'update:modelValue',
+    validateOn: ['submit'],
+    valueProp: 'modelValue',
+    values: {},
+    visible: true,
+    ...(slots ? { slots } : {}),
+  } as unknown as ReadonlyRenderContext['node']
 }
 
 describe('element plus plugin package', () => {
@@ -124,5 +157,202 @@ describe('element plus plugin package', () => {
     })
 
     expect(runtime.readonlyAdapters.ElSelectV2).toBe(override)
+  })
+
+  it('resolves Element Plus cascader path labels with custom option keys', () => {
+    const runtime = createFormRuntime({
+      plugins: [createElementPlusPlugin()],
+    })
+
+    const cascaderField = asField(runtime.transformField(defineField({
+      component: ElCascader,
+      field: 'region',
+      props: {
+        props: {
+          children: 'nodes',
+          label: 'name',
+          value: 'id',
+        },
+        options: [
+          {
+            id: 'east',
+            name: '华东',
+            nodes: [
+              { id: 'shanghai', name: '上海' },
+            ],
+          },
+        ],
+      },
+    })))
+
+    expect(renderReadonly(runtime.readonlyAdapters.ElCascader, {
+      field: 'region',
+      node: cascaderField,
+      value: ['east', 'shanghai'],
+      values: { region: ['east', 'shanghai'] },
+    }).text()).toBe('华东 / 上海')
+    expect(renderReadonly(runtime.readonlyAdapters.ElCascader, {
+      field: 'region',
+      node: cascaderField,
+      value: ['east', 'missing'],
+      values: { region: ['east', 'missing'] },
+    }).text()).toBe('[\n  "east",\n  "missing"\n]')
+  })
+
+  it('falls back to raw values for missing option labels and inactive switch labels', () => {
+    const runtime = createFormRuntime({
+      plugins: [createElementPlusPlugin()],
+    })
+
+    const selectField = asField(runtime.transformField(defineField({
+      component: ElSelectV2,
+      field: 'role',
+      props: {
+        options: [
+          { label: '管理员', value: 'admin' },
+        ],
+      },
+    })))
+    const switchField = asField(runtime.transformField(defineField({
+      component: ElSwitch,
+      field: 'enabled',
+      props: {
+        activeValue: 'yes',
+        inactiveText: '关闭',
+        inactiveValue: 'no',
+      },
+    })))
+
+    expect(renderReadonly(runtime.readonlyAdapters.ElSelectV2, {
+      field: 'role',
+      node: selectField,
+      value: 'guest',
+      values: { role: 'guest' },
+    }).text()).toBe('guest')
+    expect(renderReadonly(runtime.readonlyAdapters.ElSwitch, {
+      field: 'enabled',
+      node: switchField,
+      value: 'no',
+      values: { enabled: 'no' },
+    }).text()).toBe('关闭')
+    expect(renderReadonly(runtime.readonlyAdapters.ElSwitch, {
+      field: 'enabled',
+      node: switchField,
+      value: 'pending',
+      values: { enabled: 'pending' },
+    }).text()).toBe('pending')
+    expect(renderReadonly(runtime.readonlyAdapters.ElSwitch, {
+      field: 'enabled',
+      node: asField(runtime.transformField(defineField({ component: ElSwitch, field: 'rawEnabled' }))),
+      value: true,
+      values: { rawEnabled: true },
+    }).text()).toBe('true')
+  })
+
+  it('reads Element Plus option utilities from props, nested nodes, and static slots', () => {
+    const customKeysNode = createReadonlyNode({
+      props: {
+        children: 'nodes',
+        label: 'name',
+        value: 'id',
+      },
+    })
+    const optionKeys = readElementPlusOptionKeys(customKeysNode)
+    const options = [
+      {
+        id: 'east',
+        name: '华东',
+        nodes: [
+          { id: 'hangzhou', name: '杭州' },
+        ],
+      },
+    ]
+    const fallbackOptions = [
+      {
+        options: [
+          { label: '默认子项', value: 'default-child' },
+        ],
+        value: 'default-parent',
+      },
+    ]
+    const rawPathOptions = [
+      {
+        id: 'raw-parent',
+        nodes: [
+          { id: 'raw-child' },
+        ],
+      },
+    ]
+
+    const slotNode = createReadonlyNode({}, {
+      default: [
+        {},
+        {
+          props: { label: '静态一', value: 'static-one' },
+        },
+        {
+          props: { value: 'value-only' },
+        },
+        {
+          props: { label: 'label-only' },
+        },
+        {
+          props: { label: '静态组', value: 'static-group' },
+          slots: {
+            default: {
+              props: { label: '静态二', value: 'static-two' },
+            },
+          },
+        },
+      ],
+    })
+
+    expect(readElementPlusOptionSource(createReadonlyNode({ options: 'raw-options' }), ['options']))
+      .toBe('raw-options')
+    expect(readElementPlusOptionSource(createReadonlyNode({}, { default: () => [] }), ['options']))
+      .toEqual([])
+    expect(readElementPlusOptionSource(slotNode, ['options'])).toEqual([
+      {
+        children: undefined,
+        label: undefined,
+        value: undefined,
+      },
+      {
+        children: undefined,
+        label: '静态一',
+        value: 'static-one',
+      },
+      {
+        children: undefined,
+        label: 'value-only',
+        value: 'value-only',
+      },
+      {
+        children: undefined,
+        label: 'label-only',
+        value: 'label-only',
+      },
+      {
+        children: [
+          {
+            children: undefined,
+            label: '静态二',
+            value: 'static-two',
+          },
+        ],
+        label: '静态组',
+        value: 'static-group',
+      },
+    ])
+    expect(findElementPlusOptionLabel(options, 'hangzhou', optionKeys)).toBe('杭州')
+    expect(findElementPlusOptionLabel([{ id: 'raw-value' }], 'raw-value', optionKeys)).toBe('raw-value')
+    expect(findElementPlusOptionLabel(fallbackOptions, 'default-child', optionKeys)).toBe('默认子项')
+    expect(findElementPlusOptionLabel(options, 'missing', optionKeys)).toBeUndefined()
+    expect(resolveElementPlusPathLabel(options, ['east', 'hangzhou'], optionKeys)).toBe('华东 / 杭州')
+    expect(resolveElementPlusPathLabel(rawPathOptions, ['raw-parent', 'raw-child'], optionKeys))
+      .toBe('raw-parent / raw-child')
+    expect(resolveElementPlusPathLabel('not-options', ['east'], optionKeys)).toBeUndefined()
+    expect(resolveElementPlusPathLabel(options, ['east', 'missing'], optionKeys)).toBeUndefined()
+    expect(resolveElementPlusPathLabel(options, ['east', 'hangzhou', 'xihu'], optionKeys)).toBeUndefined()
   })
 })

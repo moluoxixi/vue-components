@@ -13,17 +13,14 @@
       "import": "./dist/index.js"
     },
     "./styles": {
-      "sass": "./src/config-form/styles.scss",
-      "style": "./src/config-form/styles.scss",
-      "default": "./src/config-form/styles.scss"
+      "import": "./dist/components.css"
     }
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist",
-    "src/config-form/styles.scss"
+    "dist"
   ],
   "scripts": {
     "build": "vite build",
@@ -32,25 +29,24 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
+    "ant-design-vue": "^4.2.0",
     "element-plus": "^2.9.0",
-    "vue": "^3.5.0",
-    "zod": "^3.23.0"
+    "vue": "^3.5.0"
   },
   "dependencies": {
-    "@moluoxixi/config-form": "workspace:*",
     "dayjs": "catalog:build"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
+    "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "happy-dom": "catalog:dev",
     "unplugin-dts": "catalog:dev",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:build",
-    "vue-tsc": "catalog:dev",
-    "zod": "catalog:dev"
+    "vue-tsc": "catalog:dev"
   },
   "publishConfig": {
     "access": "public"

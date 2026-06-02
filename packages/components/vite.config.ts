@@ -37,7 +37,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['@moluoxixi/config-form', 'vue', 'element-plus', /^element-plus\//, 'dayjs', /^dayjs\//],
+      external: ['vue', 'element-plus', /^element-plus\//, 'ant-design-vue', /^ant-design-vue\//, 'dayjs', /^dayjs\//],
     },
   },
 })

@@ -5,15 +5,22 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { createAntdVuePlugin } from '../src'
+import {
+  findAntdVueOptionLabel,
+  readAntdVueOptionSource,
+  resolveAntdVuePathLabel,
+} from '../src/readonly/options'
 
 const AInput = { name: 'AInput' }
 const ASwitch = { name: 'ASwitch' }
+const ACascader = { name: 'ACascader' }
 const ACheckbox = { name: 'ACheckbox' }
 const ACheckboxGroup = { name: 'ACheckboxGroup' }
 const ATextarea = { name: 'ATextarea' }
 const ASelect = { name: 'ASelect' }
 const ASlider = { name: 'ASlider' }
 const ARadioGroup = { name: 'ARadioGroup' }
+const ATreeSelect = { name: 'ATreeSelect' }
 const AUnknown = { name: 'AUnknown' }
 const CustomInput = { name: 'CustomInput' }
 
@@ -69,6 +76,20 @@ describe('antd vue plugin package', () => {
     expect(stringComponent.trigger).toBe('update:value')
     expect(unnamedObject.valueProp).toBe('modelValue')
     expect(emptyComponent.trigger).toBe('update:modelValue')
+  })
+
+  it('leaves non-field container nodes on the core component contract', () => {
+    const runtime = createFormRuntime({
+      plugins: [createAntdVuePlugin()],
+    })
+
+    const container = runtime.transformField(defineField({
+      component: 'section',
+      props: { class: 'settings-section' },
+    }))
+
+    expect(container.component).toBe('section')
+    expect(container.props.class).toBe('settings-section')
   })
 
   it('maps Ant Design Vue checked components to checked/update:checked', () => {
@@ -219,6 +240,120 @@ describe('antd vue plugin package', () => {
       value: true,
       values: { enabled: true },
     }).text()).toBe('开启')
+    expect(renderReadonly(runtime.readonlyAdapters.ASwitch, {
+      field: 'enabled',
+      node: switchField,
+      value: false,
+      values: { enabled: false },
+    }).text()).toBe('关闭')
+    expect(renderReadonly(runtime.readonlyAdapters.ASwitch, {
+      field: 'enabled',
+      node: asField(runtime.transformField(defineField({
+        component: ASwitch,
+        field: 'legacyEnabled',
+        props: {
+          activeText: '开',
+          inactiveText: '关',
+        },
+      }))),
+      value: true,
+      values: { legacyEnabled: true },
+    }).text()).toBe('开')
+    expect(renderReadonly(runtime.readonlyAdapters.ASwitch, {
+      field: 'enabled',
+      node: asField(runtime.transformField(defineField({ component: ASwitch, field: 'rawEnabled' }))),
+      value: true,
+      values: { rawEnabled: true },
+    }).text()).toBe('true')
+  })
+
+  it('resolves Ant Design Vue path and nested option labels', () => {
+    const runtime = createFormRuntime({
+      plugins: [createAntdVuePlugin()],
+    })
+
+    const cascaderField = asField(runtime.transformField(defineField({
+      component: ACascader,
+      field: 'region',
+      props: {
+        options: [
+          {
+            label: '华东',
+            value: 'east',
+            children: [
+              { label: '上海', value: 'shanghai' },
+            ],
+          },
+        ],
+      },
+    })))
+    const treeSelectField = asField(runtime.transformField(defineField({
+      component: ATreeSelect,
+      field: 'org',
+      props: {
+        treeData: [
+          {
+            label: '总部',
+            value: 'hq',
+            children: [
+              { label: '财务部', value: 'finance' },
+            ],
+          },
+        ],
+      },
+    })))
+
+    expect(renderReadonly(runtime.readonlyAdapters.ACascader, {
+      field: 'region',
+      node: cascaderField,
+      value: ['east', 'shanghai'],
+      values: { region: ['east', 'shanghai'] },
+    }).text()).toBe('华东 / 上海')
+    expect(renderReadonly(runtime.readonlyAdapters.ACascader, {
+      field: 'region',
+      node: cascaderField,
+      value: ['east', 'missing'],
+      values: { region: ['east', 'missing'] },
+    }).text()).toBe('[\n  "east",\n  "missing"\n]')
+    expect(renderReadonly(runtime.readonlyAdapters.ATreeSelect, {
+      field: 'org',
+      node: treeSelectField,
+      value: ['hq', 'finance'],
+      values: { org: ['hq', 'finance'] },
+    }).text()).toBe('总部 / 财务部')
+  })
+
+  it('reads Ant Design Vue option utilities from props and nested nodes', () => {
+    const options = [
+      {
+        label: '父项',
+        value: 'parent',
+        options: [
+          { label: '子项', value: 'child' },
+        ],
+      },
+    ]
+    const rawPathOptions = [
+      {
+        value: 'raw-parent',
+        children: [
+          { value: 'raw-child' },
+        ],
+      },
+    ]
+
+    expect(readAntdVueOptionSource({ treeData: 'tree-source', options: 'option-source' }, ['treeData', 'options']))
+      .toBe('tree-source')
+    expect(readAntdVueOptionSource({}, ['options'])).toBeUndefined()
+    expect(findAntdVueOptionLabel(options, 'child')).toBe('子项')
+    expect(findAntdVueOptionLabel([{ value: 'raw-value' }], 'raw-value')).toBe('raw-value')
+    expect(findAntdVueOptionLabel('not-options', 'child')).toBeUndefined()
+    expect(findAntdVueOptionLabel(options, 'missing')).toBeUndefined()
+    expect(resolveAntdVuePathLabel(options, ['parent', 'child'])).toBe('父项 / 子项')
+    expect(resolveAntdVuePathLabel(rawPathOptions, ['raw-parent', 'raw-child'])).toBe('raw-parent / raw-child')
+    expect(resolveAntdVuePathLabel('not-options', ['parent'])).toBeUndefined()
+    expect(resolveAntdVuePathLabel(options, ['parent', 'missing'])).toBeUndefined()
+    expect(resolveAntdVuePathLabel(options, ['parent', 'child', 'leaf'])).toBeUndefined()
   })
 
   it('allows user readonly adapters to override plugin defaults', () => {
