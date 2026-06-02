@@ -7,6 +7,7 @@ interface ExampleMeta {
   title: string
   category: string
   description: string
+  hidden?: boolean
   order: number
 }
 
@@ -31,6 +32,7 @@ const exampleModules = import.meta.glob<ExampleModule>([
 
 const examples = Object
   .values(exampleModules)
+  .filter(module => !module.exampleMeta.hidden)
   .map((module): ExampleItem => ({
     ...module.exampleMeta,
     component: module.default,

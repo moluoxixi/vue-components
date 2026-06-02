@@ -4,119 +4,667 @@ export const exampleMeta = {
   name: 'ElementConfigForm',
   title: 'ElementConfigForm',
   category: '配置表单',
-  description: 'Element Plus 轻量配置表单包的字段写回、条件字段和提交场景。',
+  description: 'Element Plus 轻量配置表单包的布局、容器和联动场景。',
+  hidden: true,
   order: 40,
 }
 </script>
 
 <script setup lang="ts">
-import type { ConfigFormValues } from '@moluoxixi/config-form-core'
-import { defineField } from '@moluoxixi/config-form-core'
+import type {
+  ConfigFormCondition,
+  ConfigFormValues,
+  DefineConfigFormFieldFactory,
+} from '@moluoxixi/config-form-core'
+import { defineFields } from '@moluoxixi/config-form-core'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
-import { ElCheckbox, ElInput, ElTag } from 'element-plus'
-import { computed, h, shallowRef } from 'vue'
+import {
+  ElAutocomplete,
+  ElButton,
+  ElCard,
+  ElCascader,
+  ElCheckbox,
+  ElCheckboxGroup,
+  ElColorPicker,
+  ElDatePicker,
+  ElInput,
+  ElInputNumber,
+  ElOption,
+  ElRadio,
+  ElRadioGroup,
+  ElRate,
+  ElSelect,
+  ElSelectV2,
+  ElSlider,
+  ElSwitch,
+  ElTabPane,
+  ElTabs,
+  ElTimePicker,
+  ElTimeSelect,
+  ElTreeSelect,
+} from 'element-plus'
+import { computed, shallowRef } from 'vue'
 
-interface ElementFormValues {
-  accountName: string
-  advanced: boolean
-  advancedNote: string
+type ScenarioTab = 'layout' | 'container' | 'linked'
+type LayoutMode = 'inline' | 'grid'
+
+interface ElementOption extends Record<string, unknown> {
+  label: string
+  value: string
+  children?: ElementOption[]
 }
 
-const formModel = shallowRef<ElementFormValues>({
-  accountName: '',
-  advanced: false,
-  advancedNote: '',
-})
-const submittedValues = shallowRef<Partial<ElementFormValues>>({})
+interface ElementKnownValues {
+  autocomplete: string
+  cascader: string
+  checkbox: boolean
+  checkboxGroup: string[]
+  color: string
+  date: string
+  input: string
+  inputNumber: number
+  radio: string
+  rate: number
+  select: string
+  selectV2: string
+  slider: number
+  switchValue: boolean
+  textarea: string
+  time: string
+  timeSelect: string
+  treeSelect: string
+}
 
-const fields = [
-  defineField<ElementFormValues>({
-    component: ElInput,
-    field: 'accountName',
-    label: '账户名称',
+interface ElementLinkedValues extends ElementKnownValues {
+  advanced: boolean
+}
+
+type ElementFieldKey<TValues extends ElementKnownValues> = Extract<keyof TValues, string>
+
+const { defineField: defineCommonField } = defineFields<ElementKnownValues>()
+const { defineField: defineLinkedField } = defineFields<ElementLinkedValues>()
+
+const activeTab = shallowRef<ScenarioTab>('layout')
+const layoutMode = shallowRef<LayoutMode>('inline')
+const layoutModeLabel = computed(() => layoutMode.value)
+
+const layoutInlineModel = shallowRef<ElementKnownValues>(createKnownValues('inline'))
+const layoutGridModel = shallowRef<ElementKnownValues>(createKnownValues('grid'))
+const containerModel = shallowRef<ElementKnownValues>(createKnownValues('container'))
+const linkedModel = shallowRef<ElementLinkedValues>({
+  ...createKnownValues('linked'),
+  advanced: false,
+})
+
+const layoutInlineSubmitted = shallowRef<Partial<ElementKnownValues>>({})
+const layoutGridSubmitted = shallowRef<Partial<ElementKnownValues>>({})
+const containerSubmitted = shallowRef<Partial<ElementKnownValues>>({})
+const linkedSubmitted = shallowRef<Partial<ElementLinkedValues>>({})
+
+// 每个场景都复用同一批字段，确保 playground 和 e2e 覆盖同一份 Element Plus 已知组件矩阵。
+const layoutInlineFields = createKnownFields('element-inline', true, defineCommonField)
+const layoutGridFields = createKnownFields('element-grid', true, defineCommonField)
+const containerFields = [
+  defineCommonField({
+    colProps: {},
+    component: ElCard,
     props: {
-      placeholder: '请输入 Element 账户名称',
+      bodyClass: 'config-form-demo__container',
+      class: 'config-form-demo__container-card',
+      'data-testid': 'element-container-node',
+      header: 'Element Card 容器',
+      shadow: 'never',
     },
-    rules: [{ message: '请输入账户名称', required: true, trigger: 'blur' }],
-    span: 12,
+    slots: {
+      default: createKnownFields('element-container', false, defineCommonField),
+    },
   }),
-  defineField<ElementFormValues>({
-    component: ElCheckbox,
+]
+const linkedFields = [
+  defineLinkedField({
+    component: ElSwitch,
     field: 'advanced',
     label: '高级模式',
     props: {
-      label: '启用高级字段',
+      activeText: '启用',
+      inactiveText: '关闭',
+      'data-testid': 'element-linked-advanced-switch',
     },
     span: 12,
   }),
-  defineField<ElementFormValues>({
-    component: ElInput,
-    field: 'advancedNote',
-    label: '高级备注',
-    props: {
-      placeholder: '请输入 Element 高级备注',
-    },
-    span: 24,
-    visible: values => values.advanced,
-  }),
-  defineField<ElementFormValues>({
-    component: ElTag,
-    props: {
-      type: 'info',
-    },
-    slots: {
-      default: () => h('span', '容器节点不会生成 FormItem'),
-    },
-    span: 24,
-  }),
+  ...createKnownFields('element-linked', true, defineLinkedField, values => values.advanced),
 ]
 
-const submittedText = computed(() => JSON.stringify(submittedValues.value, null, 2))
+const layoutSubmittedText = computed(() => JSON.stringify({
+  grid: layoutGridSubmitted.value,
+  inline: layoutInlineSubmitted.value,
+}, null, 2))
+const containerSubmittedText = computed(() => JSON.stringify(containerSubmitted.value, null, 2))
+const linkedSubmittedText = computed(() => JSON.stringify(linkedSubmitted.value, null, 2))
 
-function handleSubmit(values: ConfigFormValues): void {
-  submittedValues.value = values as ElementFormValues
+function createKnownValues(seed: string): ElementKnownValues {
+  return {
+    autocomplete: `${seed} 推荐项`,
+    cascader: `${seed}-hangzhou`,
+    checkbox: false,
+    checkboxGroup: [],
+    color: '#409EFF',
+    date: '2026-06-01',
+    input: '',
+    inputNumber: 1,
+    radio: 'standard',
+    rate: 1,
+    select: `${seed}-draft`,
+    selectV2: `${seed}-small`,
+    slider: 10,
+    switchValue: false,
+    textarea: '',
+    time: '09:00:00',
+    timeSelect: '09:00',
+    treeSelect: `${seed}-root-a`,
+  }
+}
+
+function createKnownFields<TValues extends ElementKnownValues>(
+  prefix: string,
+  withFormItem: boolean,
+  defineField: DefineConfigFormFieldFactory<TValues>,
+  visible?: ConfigFormCondition<TValues>,
+) {
+  const suffix = prefix.replace('element-', '')
+
+  return [
+    defineField({
+      component: ElInput,
+      field: 'input' as ElementFieldKey<TValues>,
+      label: withFormItem ? '文本输入' : undefined,
+      props: {
+        placeholder: `${prefix} 文本输入`,
+        'data-testid': `${prefix}-input`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElInput,
+      field: 'textarea' as ElementFieldKey<TValues>,
+      label: withFormItem ? '多行文本' : undefined,
+      props: {
+        placeholder: `${prefix} 多行文本`,
+        rows: 2,
+        type: 'textarea',
+        'data-testid': `${prefix}-textarea`,
+      },
+      span: 24,
+      visible,
+    }),
+    defineField({
+      component: ElInputNumber,
+      field: 'inputNumber' as ElementFieldKey<TValues>,
+      label: withFormItem ? '数字输入' : undefined,
+      props: {
+        max: 99,
+        min: 0,
+        'data-testid': `${prefix}-input-number`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElAutocomplete,
+      field: 'autocomplete' as ElementFieldKey<TValues>,
+      label: withFormItem ? '自动完成' : undefined,
+      props: {
+        fetchSuggestions: (_query: string, callback: (items: ElementOption[]) => void) => callback(createFlatOptions(suffix)),
+        placeholder: `${prefix} 自动完成`,
+        teleported: false,
+        'data-testid': `${prefix}-autocomplete`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElSelect,
+      field: 'select' as ElementFieldKey<TValues>,
+      label: withFormItem ? '下拉选择' : undefined,
+      props: {
+        placeholder: `${prefix} 下拉选择`,
+        teleported: false,
+        'data-testid': `${prefix}-select`,
+      },
+      slots: {
+        default: createFlatOptions(suffix).map(option =>
+          defineField({
+            colProps: {},
+            component: ElOption,
+            props: option,
+          }),
+        ),
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElSelectV2,
+      field: 'selectV2' as ElementFieldKey<TValues>,
+      label: withFormItem ? '虚拟选择' : undefined,
+      props: {
+        options: createSelectV2Options(suffix),
+        placeholder: `${prefix} 虚拟选择`,
+        teleported: false,
+        'data-testid': `${prefix}-select-v2`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElCascader,
+      field: 'cascader' as ElementFieldKey<TValues>,
+      label: withFormItem ? '级联选择' : undefined,
+      props: {
+        options: createNestedOptions(suffix),
+        placeholder: `${prefix} 级联选择`,
+        props: { emitPath: false },
+        teleported: false,
+        'data-testid': `${prefix}-cascader`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElTreeSelect,
+      field: 'treeSelect' as ElementFieldKey<TValues>,
+      label: withFormItem ? '树形选择' : undefined,
+      props: {
+        data: createTreeOptions(suffix),
+        placeholder: `${prefix} 树形选择`,
+        renderAfterExpand: false,
+        teleported: false,
+        'data-testid': `${prefix}-tree-select`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElCheckbox,
+      field: 'checkbox' as ElementFieldKey<TValues>,
+      label: withFormItem ? '单选勾选' : undefined,
+      props: {
+        label: `${suffix} 开启`,
+        'data-testid': `${prefix}-checkbox`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElCheckboxGroup,
+      field: 'checkboxGroup' as ElementFieldKey<TValues>,
+      label: withFormItem ? '多选勾选' : undefined,
+      props: {
+        'data-testid': `${prefix}-checkbox-group`,
+      },
+      slots: {
+        default: createCheckOptions(suffix).map(option =>
+          defineField({
+            colProps: {},
+            component: ElCheckbox,
+            props: option,
+          }),
+        ),
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElSwitch,
+      field: 'switchValue' as ElementFieldKey<TValues>,
+      label: withFormItem ? '开关' : undefined,
+      props: {
+        activeText: '开启',
+        inactiveText: '关闭',
+        'data-testid': `${prefix}-switch`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElRadioGroup,
+      field: 'radio' as ElementFieldKey<TValues>,
+      label: withFormItem ? '单选组' : undefined,
+      props: {
+        'data-testid': `${prefix}-radio`,
+      },
+      slots: {
+        default: createRadioOptions().map(option =>
+          defineField({
+            colProps: {},
+            component: ElRadio,
+            props: option,
+          }),
+        ),
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElRate,
+      field: 'rate' as ElementFieldKey<TValues>,
+      label: withFormItem ? '评分' : undefined,
+      props: {
+        'data-testid': `${prefix}-rate`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElSlider,
+      field: 'slider' as ElementFieldKey<TValues>,
+      label: withFormItem ? '滑块' : undefined,
+      props: {
+        max: 100,
+        min: 0,
+        'data-testid': `${prefix}-slider`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElColorPicker,
+      field: 'color' as ElementFieldKey<TValues>,
+      label: withFormItem ? '颜色' : undefined,
+      props: {
+        predefine: ['#409EFF', '#67C23A', '#E6A23C'],
+        teleported: false,
+        'data-testid': `${prefix}-color`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElDatePicker,
+      field: 'date' as ElementFieldKey<TValues>,
+      label: withFormItem ? '日期' : undefined,
+      props: {
+        placeholder: `${prefix} 日期`,
+        teleported: false,
+        type: 'date',
+        valueFormat: 'YYYY-MM-DD',
+        'data-testid': `${prefix}-date`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElTimePicker,
+      field: 'time' as ElementFieldKey<TValues>,
+      label: withFormItem ? '时间' : undefined,
+      props: {
+        placeholder: `${prefix} 时间`,
+        teleported: false,
+        valueFormat: 'HH:mm:ss',
+        'data-testid': `${prefix}-time`,
+      },
+      span: 12,
+      visible,
+    }),
+    defineField({
+      component: ElTimeSelect,
+      field: 'timeSelect' as ElementFieldKey<TValues>,
+      label: withFormItem ? '时间选择' : undefined,
+      props: {
+        end: '12:00',
+        placeholder: `${prefix} 时间选择`,
+        start: '09:00',
+        step: '00:30',
+        teleported: false,
+        'data-testid': `${prefix}-time-select`,
+      },
+      span: 12,
+      visible,
+    }),
+  ]
+}
+
+function createFlatOptions(suffix: string): ElementOption[] {
+  return [
+    { label: `${suffix} 草稿`, value: `${suffix}-draft` },
+    { label: `${suffix} 启用`, value: `${suffix}-enabled` },
+  ]
+}
+
+function createSelectV2Options(suffix: string): ElementOption[] {
+  return [
+    { label: `${suffix} 小型`, value: `${suffix}-small` },
+    { label: `${suffix} 大型`, value: `${suffix}-large` },
+  ]
+}
+
+function createNestedOptions(suffix: string): ElementOption[] {
+  return [
+    {
+      label: `${suffix} 华东`,
+      value: `${suffix}-east`,
+      children: [
+        { label: `${suffix} 杭州`, value: `${suffix}-hangzhou` },
+        { label: `${suffix} 上海`, value: `${suffix}-shanghai` },
+      ],
+    },
+  ]
+}
+
+function createTreeOptions(suffix: string): ElementOption[] {
+  return [
+    {
+      label: `${suffix} 根节点`,
+      value: `${suffix}-root-a`,
+      children: [
+        { label: `${suffix} 叶子节点`, value: `${suffix}-leaf-a` },
+      ],
+    },
+  ]
+}
+
+function createCheckOptions(suffix: string): ElementOption[] {
+  return [
+    { label: `${suffix} 邮件`, value: 'mail' },
+    { label: `${suffix} 短信`, value: 'sms' },
+  ]
+}
+
+function createRadioOptions(): ElementOption[] {
+  return [
+    { label: '标准', value: 'standard' },
+    { label: '企业', value: 'enterprise' },
+  ]
+}
+
+function submitLayoutInline(values: ConfigFormValues): void {
+  layoutInlineSubmitted.value = values as ElementKnownValues
+}
+
+function submitLayoutGrid(values: ConfigFormValues): void {
+  layoutGridSubmitted.value = values as ElementKnownValues
+}
+
+function submitContainer(values: ConfigFormValues): void {
+  containerSubmitted.value = values as ElementKnownValues
+}
+
+function submitLinked(values: ConfigFormValues): void {
+  linkedSubmitted.value = values as ElementLinkedValues
 }
 </script>
 
 <template>
   <div class="config-form-demo" data-testid="element-config-form-example">
-    <ElementConfigForm
-      v-model="formModel"
-      :fields="fields"
-      :form-props="{ labelWidth: '96px' }"
-      @submit="handleSubmit"
-    >
-      <template #default="{ submit, resetFields }">
-        <div class="config-form-demo__actions">
-          <ElButton type="primary" data-testid="element-config-submit" @click="submit">
-            提交
-          </ElButton>
-          <ElButton data-testid="element-config-reset" @click="resetFields">
-            重置
-          </ElButton>
-        </div>
-      </template>
-    </ElementConfigForm>
+    <ElTabs v-model="activeTab" data-testid="element-scenario-tabs">
+      <ElTabPane label="布局" name="layout">
+        <section class="config-form-demo__section" data-testid="element-layout-scenario">
+          <div class="config-form-demo__toolbar">
+            <span class="config-form-demo__mode" data-testid="element-layout-mode-label">{{ layoutModeLabel }}</span>
+            <ElSwitch
+              v-model="layoutMode"
+              active-text="grid"
+              active-value="grid"
+              data-testid="element-layout-mode-switch"
+              inactive-text="inline"
+              inactive-value="inline"
+            />
+          </div>
 
-    <ElDivider />
+          <ElementConfigForm
+            v-if="layoutMode === 'inline'"
+            v-model="layoutInlineModel"
+            data-testid="element-layout-inline"
+            :field-span="12"
+            :fields="layoutInlineFields"
+            :form-props="{ inline: true, labelWidth: '96px' }"
+            :row-props="{ gutter: 16, 'data-testid': 'element-layout-inline-row' }"
+            @submit="submitLayoutInline"
+          >
+            <template #default="{ submit }">
+              <div class="config-form-demo__actions">
+                <ElButton type="primary" data-testid="element-layout-inline-submit" @click="submit">
+                  提交 inline
+                </ElButton>
+              </div>
+            </template>
+          </ElementConfigForm>
 
-    <pre class="config-form-demo__preview" data-testid="element-config-preview">{{ submittedText }}</pre>
+          <ElementConfigForm
+            v-else
+            v-model="layoutGridModel"
+            data-testid="element-layout-grid-form"
+            :field-span="12"
+            :fields="layoutGridFields"
+            :form-props="{ labelWidth: '96px' }"
+            :row-props="{ gutter: 16, 'data-testid': 'element-layout-grid' }"
+            @submit="submitLayoutGrid"
+          >
+            <template #default="{ submit }">
+              <div class="config-form-demo__actions">
+                <ElButton type="primary" data-testid="element-layout-grid-submit" @click="submit">
+                  提交 grid
+                </ElButton>
+              </div>
+            </template>
+          </ElementConfigForm>
+
+          <pre class="config-form-demo__preview" data-testid="element-layout-preview">{{ layoutSubmittedText }}</pre>
+        </section>
+      </ElTabPane>
+
+      <ElTabPane label="容器" name="container">
+        <section class="config-form-demo__section" data-testid="element-container-scenario">
+          <ElementConfigForm
+            v-model="containerModel"
+            data-testid="element-container-form"
+            :fields="containerFields"
+            :form-props="{ labelWidth: '96px' }"
+            :row-props="{ gutter: 16, 'data-testid': 'element-container-row' }"
+            @submit="submitContainer"
+          >
+            <template #default="{ submit }">
+              <div class="config-form-demo__actions config-form-demo__actions--plain">
+                <ElButton type="primary" data-testid="element-container-submit" @click="submit">
+                  提交容器
+                </ElButton>
+              </div>
+            </template>
+          </ElementConfigForm>
+
+          <pre class="config-form-demo__preview" data-testid="element-container-preview">{{ containerSubmittedText }}</pre>
+        </section>
+      </ElTabPane>
+
+      <ElTabPane label="联动" name="linked">
+        <section class="config-form-demo__section" data-testid="element-linked-scenario">
+          <ElementConfigForm
+            v-model="linkedModel"
+            data-testid="element-linked-form"
+            :field-span="12"
+            :fields="linkedFields"
+            :form-props="{ labelWidth: '96px' }"
+            :row-props="{ gutter: 16, 'data-testid': 'element-linked-row' }"
+            @submit="submitLinked"
+          >
+            <template #default="{ submit }">
+              <div class="config-form-demo__actions">
+                <ElButton type="primary" data-testid="element-linked-submit" @click="submit">
+                  提交联动
+                </ElButton>
+              </div>
+            </template>
+          </ElementConfigForm>
+
+          <pre class="config-form-demo__preview" data-testid="element-linked-preview">{{ linkedSubmittedText }}</pre>
+        </section>
+      </ElTabPane>
+    </ElTabs>
   </div>
 </template>
 
 <style scoped lang="scss">
 .config-form-demo {
-  max-width: 760px;
+  max-width: 1080px;
+}
+
+.config-form-demo__section {
+  padding-top: 8px;
+}
+
+.config-form-demo__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.config-form-demo__mode {
+  min-width: 48px;
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.config-form-demo__container-card {
+  width: 100%;
+}
+
+.config-form-demo__container-card :deep(.config-form-demo__container) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  width: 100%;
+}
+
+.config-form-demo__container-card :deep(.el-input),
+.config-form-demo__container-card :deep(.el-input-number),
+.config-form-demo__container-card :deep(.el-select),
+.config-form-demo__container-card :deep(.el-select-v2),
+.config-form-demo__container-card :deep(.el-cascader),
+.config-form-demo__container-card :deep(.el-date-editor),
+.config-form-demo__container-card :deep(.el-time-select),
+.config-form-demo__container-card :deep(.el-tree-select) {
+  width: 100%;
+}
+
+.config-form-demo__container-card :deep(.el-textarea) {
+  grid-column: 1 / -1;
 }
 
 .config-form-demo__actions {
   display: flex;
   gap: 10px;
-  margin-left: 96px;
+  margin: 4px 0 18px 96px;
+}
+
+.config-form-demo__actions--plain {
+  margin-left: 0;
 }
 
 .config-form-demo__preview {
-  min-height: 120px;
+  min-height: 96px;
   margin: 0;
   padding: 14px;
   border: 1px solid var(--el-border-color-light);
