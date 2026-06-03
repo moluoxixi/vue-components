@@ -6,8 +6,8 @@
   "commit": false,
   "fixed": [],
   "ignore": [
-    "@config-form/element-plus-playground",
-    "@config-form/antd-vue-playground"
+    "@config-form/playground",
+    "@config-form/components-playground"
   ],
   "linked": [],
   "updateInternalDependencies": "patch"
