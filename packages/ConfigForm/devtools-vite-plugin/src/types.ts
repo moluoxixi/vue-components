@@ -137,7 +137,7 @@ export interface OpenInEditorOptions {
   root: string
   /** monorepo 或 linked package 源码允许访问的额外根目录。 */
   allowRoots?: string[]
-  /** 编辑器预设、可执行文件名或完整命令覆盖；字符串会交给 launch-editor 解析。 */
+  /** 编辑器预设、可执行文件名或命令覆盖；命令覆盖必须是已知编辑器且不能启用 shell。 */
   editor?: string | EditorCommand
   /** 测试可注入的 spawn 实现。 */
   spawn?: SpawnEditorProcess
@@ -149,7 +149,7 @@ export interface ConfigFormDevtoolsPluginOptions {
   packageNames?: string[]
   /** open-in-editor endpoint 允许访问的额外文件系统根目录。 */
   allowRoots?: string[]
-  /** source-open 使用的编辑器预设、可执行文件名或命令覆盖；字符串会交给 launch-editor 解析。 */
+  /** source-open 使用的编辑器预设、可执行文件名或命令覆盖；命令覆盖必须是已知编辑器且不能启用 shell。 */
   editor?: string | EditorCommand
 }
 

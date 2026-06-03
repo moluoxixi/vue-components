@@ -256,7 +256,7 @@ describe('open in editor helpers', () => {
     }
   })
 
-  it('creates webstorm and custom editor commands', () => {
+  it('creates allowed editor commands and rejects unsupported custom commands', () => {
     withPlatform('linux', () => {
       expect(createEditorCommand({
         column: 7,
@@ -280,10 +280,24 @@ describe('open in editor helpers', () => {
 
       expect(createEditorCommand({
         column: 7,
+        editor: { args: ['--reuse-window'], command: 'code' },
+        file: 'D:/project-new/ConfigForm/playgrounds/demo.vue',
+        line: 12,
+      })).toEqual({ args: ['--reuse-window'], command: 'code' })
+
+      expect(() => createEditorCommand({
+        column: 7,
         editor: { args: ['open'], command: 'custom-editor' },
         file: 'D:/project-new/ConfigForm/playgrounds/demo.vue',
         line: 12,
-      })).toEqual({ args: ['open'], command: 'custom-editor' })
+      })).toThrow(/Editor command is not allowed/)
+
+      expect(() => createEditorCommand({
+        column: 7,
+        editor: { args: [], command: 'code', shell: true },
+        file: 'D:/project-new/ConfigForm/playgrounds/demo.vue',
+        line: 12,
+      })).toThrow(/cannot enable shell/)
     })
   })
 

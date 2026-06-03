@@ -183,6 +183,26 @@ describe('configForm devtools adapter', () => {
     }))
   })
 
+  it('uses crypto random UUIDs for form ids', async () => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('11111111-1111-4111-8111-111111111111')
+    const bridge = createBridge()
+    window.__CONFIG_FORM_DEVTOOLS_BRIDGE__ = bridge
+
+    mountAdapter([
+      {
+        component: 'input',
+        field: 'uuidField',
+      },
+    ])
+    await nextTick()
+    await nextTick()
+
+    expect(bridge.registerField).toHaveBeenCalledWith(expect.objectContaining({
+      formId: 'cf-form-11111111-1111-4111-8111-111111111111',
+      id: 'cf-form-11111111-1111-4111-8111-111111111111:uuidField',
+    }), null)
+  })
+
   it('collects devtools field nodes through the core topology collector', async () => {
     const bridge = createBridge()
     window.__CONFIG_FORM_DEVTOOLS_BRIDGE__ = bridge
@@ -253,7 +273,7 @@ describe('configForm devtools adapter', () => {
 
     expect(bridge.registerField).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'render',
-      parentId: expect.stringMatching(/^cf-form-\d+:fields\.0$/),
+      parentId: expect.stringMatching(/^cf-form-[0-9a-f-]+:fields\.0$/),
       slotName: 'default',
       source: renderSource,
     }), null)
@@ -849,7 +869,7 @@ describe('configForm devtools adapter', () => {
     }), null)
     expect(bridge.registerField).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'render',
-      parentId: expect.stringMatching(/^cf-form-\d+:account$/),
+      parentId: expect.stringMatching(/^cf-form-[0-9a-f-]+:account$/),
       slotName: 'default',
     }), null)
   })

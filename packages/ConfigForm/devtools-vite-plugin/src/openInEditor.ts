@@ -33,6 +33,24 @@ interface ResolveAllowedFileInput {
   allowRoots?: string[]
 }
 
+const ALLOWED_EDITOR_COMMANDS = new Set([
+  'atom',
+  'code',
+  'code-insiders',
+  'codium',
+  'cursor',
+  'idea',
+  'idea64',
+  'nvim',
+  'phpstorm',
+  'phpstorm64',
+  'subl',
+  'sublime',
+  'vim',
+  'webstorm',
+  'webstorm64',
+])
+
 const require = createRequire(import.meta.url)
 const getArgumentsForPosition = require('launch-editor/get-args') as LaunchEditorArgumentResolver
 const guessEditorCommand = require('launch-editor/guess') as LaunchEditorCommandResolver
@@ -127,6 +145,22 @@ function getEditorArgumentResolverName(command: string): string {
   return win32.basename(command).replace(/\.(?:exe|cmd|bat)$/i, '')
 }
 
+/** 归一化编辑器命令名，统一处理 PATH 命令和完整 launcher 路径。 */
+function getEditorCommandName(command: string): string {
+  return getEditorArgumentResolverName(command).toLowerCase()
+}
+
+/** 限制 devtools 只能启动已知编辑器命令，避免配置被污染后执行任意二进制。 */
+function assertAllowedEditorCommand(command: string): void {
+  const editorName = getEditorCommandName(command)
+  if (!ALLOWED_EDITOR_COMMANDS.has(editorName)) {
+    throw new ConfigFormDevtoolsHttpError(
+      403,
+      `Editor command is not allowed: ${editorName}`,
+    )
+  }
+}
+
 /** 校验并规范化浏览器 devtools client 发送的 JSON payload。 */
 export function parseOpenInEditorPayload(input: unknown): OpenInEditorPayload {
   if (!input || typeof input !== 'object')
@@ -169,10 +203,19 @@ export function resolveAllowedFile(input: ResolveAllowedFileInput): string {
 
 /** 根据源码位置和编辑器预设构造启动命令。 */
 export function createEditorCommand(input: EditorCommandInput): EditorCommand {
-  if (input.editor && typeof input.editor === 'object')
+  if (input.editor && typeof input.editor === 'object') {
+    assertAllowedEditorCommand(input.editor.command)
+    if (input.editor.shell) {
+      throw new ConfigFormDevtoolsHttpError(
+        403,
+        'Custom editor commands cannot enable shell execution',
+      )
+    }
     return input.editor
+  }
 
   const executable = resolveEditorExecutable(input.editor)
+  assertAllowedEditorCommand(executable.command)
   const locationArgs = getArgumentsForPosition(
     getEditorArgumentResolverName(executable.command),
     input.file,

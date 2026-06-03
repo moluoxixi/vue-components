@@ -46,7 +46,10 @@ const EXPOSED_METHODS = [
   'clearValidate',
 ] as const
 
-let formSeed = 0
+/** 创建不依赖模块级递增计数器的表单实例 id，适配长时间热更新场景。 */
+function createFormId(): string {
+  return `cf-form-${crypto.randomUUID()}`
+}
 
 /**
  * 包裹 ConfigForm 并注册 devtools，同时保留核心组件暴露的 ref API。
@@ -67,7 +70,7 @@ export function createDevtoolsConfigFormAdapter(options: {
     },
     setup(props, { expose, slots }) {
       const attrs = useAttrs()
-      const formId = `cf-form-${++formSeed}`
+      const formId = createFormId()
       const coreRef = ref<ExposedConfigForm | null>(null)
       const hostRef = ref<HTMLElement | null>(null)
       const registeredIds = new Set<string>()
