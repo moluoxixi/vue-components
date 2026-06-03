@@ -103,4 +103,14 @@ describe('date range picker', () => {
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([expected])
     expect(wrapper.emitted('change')![0]).toEqual([expected])
   })
+
+  it('默认快捷项为每个组件实例提供独立数组引用', () => {
+    const first = mountDateRangePicker({ modelValue: [], shortcuts: true })
+    const second = mountDateRangePicker({ modelValue: [], shortcuts: true })
+
+    const firstShortcuts = first.getComponent(DatePickerStub).props('shortcuts')
+    const secondShortcuts = second.getComponent(DatePickerStub).props('shortcuts')
+
+    expect(firstShortcuts).not.toBe(secondShortcuts)
+  })
 })

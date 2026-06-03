@@ -1,15 +1,19 @@
 import type { RenderDevtools } from '../types'
 import { CONTEXT_SYNC_ATTRIBUTES } from '../constants'
 
+interface AsyncRenderScheduler extends RenderDevtools {
+  isPending: () => boolean
+}
+
 /**
  * 创建异步渲染调度器。
  *
  * 同一帧内多次触发只执行一次 render；缺少 requestAnimationFrame 时使用宏任务调度。
  */
-function createAsyncRenderScheduler(render: RenderDevtools): RenderDevtools {
+function createAsyncRenderScheduler(render: RenderDevtools): AsyncRenderScheduler {
   let pending = false
 
-  return () => {
+  const schedule = (() => {
     if (pending)
       return
 
@@ -26,7 +30,11 @@ function createAsyncRenderScheduler(render: RenderDevtools): RenderDevtools {
     }
 
     setTimeout(flush, 0)
-  }
+  }) as AsyncRenderScheduler
+
+  schedule.isPending = () => pending
+
+  return schedule
 }
 
 /**
@@ -91,6 +99,10 @@ export function installExternalContextSync(root: HTMLElement, render: RenderDevt
     return
 
   const observer = new MutationObserver((mutations) => {
+    // 已有待处理渲染时，本帧后续属性变更会被同一次 render 覆盖，无需重复扫描 mutation 列表。
+    if (scheduleRender.isPending())
+      return
+
     const hasExternalContextChange = mutations.some((mutation) => {
       const target = mutation.target
       return target instanceof Node && !root.contains(target)

@@ -9,7 +9,7 @@ import type {
   PopoverTableVirtualRef,
 } from '../types'
 import { ElPopover } from 'element-plus'
-import { computed, nextTick, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
 
 defineOptions({
   name: 'PopoverTableSelectBase',
@@ -37,6 +37,9 @@ const popoverVisible = defineModel<boolean>({ default: false })
 const popoverRef = useTemplateRef<HTMLElement>('popoverRef')
 const elPopoverRef = useTemplateRef<any>('elPopoverRef')
 let virtualElement: HTMLElement
+let virtualListenersInstalled = false
+let outsideClickListenerInstalled = false
+let bottomBoundaryReached = false
 
 const currentRowIndex = defineModel<number>('currentRowIndex', { default: 0 })
 
@@ -82,6 +85,9 @@ function resolveVirtualElement(target: PopoverTableVirtualRef): HTMLElement {
 }
 
 function updatePopoverPosition(): void {
+  if (!popoverVisible.value)
+    return
+
   nextTick(() => {
     elPopoverRef.value.popperRef.popperInstanceRef.update()
   })
@@ -197,24 +203,61 @@ function handleOutsideClick(event: MouseEvent): void {
 }
 
 function setupEventListeners(): void {
+  if (virtualListenersInstalled)
+    cleanupEventListeners()
+
   virtualElement = resolveVirtualElement(props.virtualRef)
   virtualElement.addEventListener('keydown', handleKeydown)
   virtualElement.addEventListener('focus', handleFocus)
   virtualElement.addEventListener('click', handleClick)
+  virtualListenersInstalled = true
 }
 
 function cleanupEventListeners(): void {
+  if (!virtualListenersInstalled)
+    return
+
   virtualElement.removeEventListener('keydown', handleKeydown)
   virtualElement.removeEventListener('focus', handleFocus)
   virtualElement.removeEventListener('click', handleClick)
+  cleanupOutsideClickListener()
+  virtualListenersInstalled = false
+}
+
+function setupOutsideClickListener(): void {
+  if (outsideClickListenerInstalled)
+    return
+
+  document.addEventListener('mousedown', handleOutsideClick)
+  outsideClickListenerInstalled = true
+}
+
+function cleanupOutsideClickListener(): void {
+  if (!outsideClickListenerInstalled)
+    return
+
   document.removeEventListener('mousedown', handleOutsideClick)
+  outsideClickListenerInstalled = false
 }
 
 function handleTableScroll(event: Event): void {
+  if (!props.scrollY.enabled) {
+    bottomBoundaryReached = false
+    return
+  }
+
   const target = event.target as HTMLElement
   const bottomReached = target.scrollTop + target.clientHeight >= target.scrollHeight - props.scrollY.threshold
-  if (props.scrollY.enabled && bottomReached)
-    emit('scrollBoundary', { direction: 'bottom' })
+  if (!bottomReached) {
+    bottomBoundaryReached = false
+    return
+  }
+
+  if (bottomBoundaryReached)
+    return
+
+  bottomBoundaryReached = true
+  emit('scrollBoundary', { direction: 'bottom' })
 }
 
 function getColumnTitle(column: PopoverTableColumn): string {
@@ -263,22 +306,32 @@ watch(
     if (visible) {
       updatePopoverPosition()
       nextTick(() => {
-        document.addEventListener('mousedown', handleOutsideClick)
+        setupOutsideClickListener()
       })
     }
     else {
-      document.removeEventListener('mousedown', handleOutsideClick)
+      cleanupOutsideClickListener()
     }
   },
   { immediate: true },
 )
 
-onUnmounted(() => {
+onMounted(() => {
+  setupEventListeners()
+})
+
+onActivated(() => {
+  setupEventListeners()
+  if (popoverVisible.value)
+    setupOutsideClickListener()
+})
+
+onDeactivated(() => {
   cleanupEventListeners()
 })
 
-onMounted(() => {
-  setupEventListeners()
+onUnmounted(() => {
+  cleanupEventListeners()
 })
 </script>
 

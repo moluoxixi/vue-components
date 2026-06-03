@@ -12,6 +12,10 @@ import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, isAbsolute, relative, resolve, win32 } from 'node:path'
 import process from 'node:process'
+import {
+  OPEN_IN_EDITOR_REQUEST_HEADER,
+  OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
+} from './protocol'
 import { ConfigFormDevtoolsHttpError } from './types'
 
 type LaunchEditorArgumentResolver = (
@@ -287,6 +291,45 @@ function sendJson(res: ServerResponse, statusCode: number, payload: Record<strin
   res.end(JSON.stringify(payload))
 }
 
+/** 读取单值请求头；多值头按 Node HTTP 规范保留首个值用于协议校验。 */
+function getRequestHeader(req: IncomingMessage, name: string): string | undefined {
+  const value = req.headers[name.toLowerCase()]
+  return Array.isArray(value) ? value[0] : value
+}
+
+/** 判断浏览器来源是否与当前 Vite dev server Host 一致。 */
+function isSameServerOrigin(req: IncomingMessage, value: string): boolean {
+  const host = getRequestHeader(req, 'host')
+  try {
+    const origin = new URL(value)
+    return origin.host === host
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * 校验 devtools client 私有打开源码协议。
+ *
+ * 专用头让跨站表单 POST 无法触发本地编辑器副作用；Origin/Referer 存在时必须同源。
+ */
+function assertOpenInEditorRequest(req: IncomingMessage): void {
+  if (getRequestHeader(req, OPEN_IN_EDITOR_REQUEST_HEADER) !== OPEN_IN_EDITOR_REQUEST_HEADER_VALUE) {
+    throw new ConfigFormDevtoolsHttpError(403, 'Missing ConfigForm devtools request header')
+  }
+
+  const origin = getRequestHeader(req, 'origin')
+  if (origin && !isSameServerOrigin(req, origin)) {
+    throw new ConfigFormDevtoolsHttpError(403, 'Open-in-editor request origin is not allowed')
+  }
+
+  const referer = getRequestHeader(req, 'referer')
+  if (referer && !isSameServerOrigin(req, referer)) {
+    throw new ConfigFormDevtoolsHttpError(403, 'Open-in-editor request referer is not allowed')
+  }
+}
+
 /** 创建支撑 /__config-form-devtools/open 的 Vite middleware。 */
 export function createOpenInEditorMiddleware(options: OpenInEditorOptions) {
   return async (req: IncomingMessage, res: ServerResponse) => {
@@ -296,6 +339,7 @@ export function createOpenInEditorMiddleware(options: OpenInEditorOptions) {
     }
 
     try {
+      assertOpenInEditorRequest(req)
       const rawBody = await readRequestBody(req)
       const payload = rawBody ? JSON.parse(rawBody) : {}
       await openInEditor(payload, options)

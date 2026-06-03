@@ -1,4 +1,9 @@
 import type { SetDevtoolsMessage, StoredNode } from './types'
+import {
+  OPEN_IN_EDITOR_PATH,
+  OPEN_IN_EDITOR_REQUEST_HEADER,
+  OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
+} from '../protocol'
 
 /**
  * 请求开发服务器打开节点源码位置。
@@ -12,13 +17,16 @@ export async function openNodeSource(node: StoredNode, setMessage: SetDevtoolsMe
     return
   }
 
-  const response = await fetch('/__config-form-devtools/open', {
+  const response = await fetch(OPEN_IN_EDITOR_PATH, {
     body: JSON.stringify({
       column: source.column,
       file: source.file,
       line: source.line,
     }),
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      [OPEN_IN_EDITOR_REQUEST_HEADER]: OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
+    },
     method: 'POST',
   })
 

@@ -101,8 +101,14 @@ function handleInputKeyUp(event: KeyboardEvent): void {
   emit('noNextInput', activeElement)
 }
 
-function resetObserver(): void {
+/** 断开并释放当前 MutationObserver，避免旧回调继续持有组件闭包。 */
+function disconnectObserver(): void {
   mutationObserver?.disconnect()
+  mutationObserver = undefined
+}
+
+function resetObserver(): void {
+  disconnectObserver()
   collectInputElements()
 
   mutationObserver = new MutationObserver(() => {
@@ -125,16 +131,21 @@ watch(
 onMounted(() => {
   mounted = true
   nextTick(() => {
+    if (!mounted)
+      return
+
     resetObserver()
     collectInputElements(true)
   })
 })
 
 onUnmounted(() => {
+  mounted = false
   inputElements.value.forEach((element) => {
     element.removeEventListener('keyup', handleInputKeyUp)
   })
-  mutationObserver?.disconnect()
+  inputElements.value = []
+  disconnectObserver()
 })
 </script>
 

@@ -589,6 +589,44 @@ describe('useForm', () => {
     expect(childVisibleCalls).toBe(0)
   })
 
+  it('reuses one visibility snapshot across submit validation and output filtering', async () => {
+    let parentVisibleCalls = 0
+    const fields = createResolvedFieldRef([
+      defineField({
+        component: 'section',
+        visible: () => {
+          parentVisibleCalls += 1
+          return false
+        },
+        slots: {
+          default: [
+            defineField({
+              component: 'input',
+              defaultValue: 'first',
+              field: 'first',
+              validator: () => '隐藏字段不应校验',
+            }),
+            defineField({
+              component: 'input',
+              defaultValue: 'second',
+              field: 'second',
+              validator: () => '隐藏字段不应校验',
+            }),
+          ],
+        },
+      }),
+    ])
+    const onSubmit = vi.fn()
+
+    const form = useForm({ fields, onSubmit })
+
+    await expect(form.submit()).resolves.toBe(true)
+
+    expect(parentVisibleCalls).toBe(1)
+    expect(form.errors.value).toEqual({})
+    expect(onSubmit).toHaveBeenCalledWith({})
+  })
+
   it('uses field predicates for visibility, disabled, validation skips, and submit output', async () => {
     const fields = createResolvedFieldRef([
       defineField({

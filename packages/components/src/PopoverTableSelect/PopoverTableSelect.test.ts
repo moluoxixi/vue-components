@@ -1,8 +1,9 @@
 import type { PopoverTableRow } from './index'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, nextTick } from 'vue'
 import { PopoverTableSelect } from './index'
+import PopoverTableSelectBase from './src/base/index.vue'
 
 const selectedRow: PopoverTableRow = {
   code: 'C-009',
@@ -81,7 +82,44 @@ const BaseStub = defineComponent({
   },
 })
 
+function defineScrollMetrics(element: HTMLElement, metrics: { clientHeight: number, scrollHeight: number, scrollTop: number }): void {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: metrics.clientHeight },
+    scrollHeight: { configurable: true, value: metrics.scrollHeight },
+    scrollTop: { configurable: true, value: metrics.scrollTop },
+  })
+}
+
+function createVirtualInput(): HTMLInputElement {
+  const input = document.createElement('input')
+  document.body.append(input)
+  return input
+}
+
+function createElPopoverStub(update: () => void) {
+  return defineComponent({
+    name: 'ElPopover',
+    setup(_, { expose, slots }) {
+      /**
+       * 暴露 Element Plus popover 的定位更新链路，验证基座组件何时触发 popper update。
+       */
+      expose({
+        popperRef: {
+          popperInstanceRef: { update },
+        },
+      })
+
+      return () => h('div', { 'data-testid': 'el-popover-stub' }, slots.default?.())
+    },
+  })
+}
+
 describe('popover table select', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+    vi.useRealTimers()
+  })
+
   it('同步输入值并透传弹层表格选择、确认和加载事件', async () => {
     const updateInputValue = vi.fn()
     const onInput = vi.fn()
@@ -122,5 +160,120 @@ describe('popover table select', () => {
     expect(wrapper.emitted('enter')![0]).toEqual([selectedRow])
     expect(wrapper.emitted('loadMore')![0]).toEqual([])
     expect(wrapper.emitted('clear')![0]).toEqual([])
+  })
+
+  it('调度配置变化和组件卸载时取消尚未触发的选择事件', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(PopoverTableSelect, {
+      props: {
+        debounce: 20,
+        popType: 'input',
+        throttle: 0,
+      },
+      global: {
+        stubs: {
+          ElInput: InputStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await nextTick()
+    await nextTick()
+
+    await wrapper.get('[data-testid="select-row"]').trigger('click')
+    expect(wrapper.emitted('select')).toBeUndefined()
+
+    await wrapper.setProps({ debounce: 40 })
+    vi.advanceTimersByTime(20)
+    expect(wrapper.emitted('select')).toBeUndefined()
+
+    await wrapper.get('[data-testid="select-row"]').trigger('click')
+    wrapper.unmount()
+    vi.advanceTimersByTime(40)
+
+    expect(wrapper.emitted('select')).toBeUndefined()
+  })
+
+  it('隐藏状态下数据和列变化不会触发弹层定位更新', async () => {
+    const update = vi.fn()
+    const wrapper = mount(PopoverTableSelectBase, {
+      props: {
+        columns: [{ field: 'name' }],
+        data: [{ name: '初始仓库' }],
+        modelValue: false,
+        virtualRef: createVirtualInput(),
+      },
+      global: {
+        stubs: {
+          ElPopover: createElPopoverStub(update),
+        },
+      },
+    })
+
+    await nextTick()
+    await nextTick()
+    expect(update).not.toHaveBeenCalled()
+
+    await wrapper.setProps({
+      columns: [{ field: 'name' }, { field: 'code' }],
+      data: [{ code: 'C-001', name: '更新仓库' }],
+    })
+    await nextTick()
+    await nextTick()
+    expect(update).not.toHaveBeenCalled()
+
+    await wrapper.setProps({ modelValue: true })
+    await nextTick()
+    await nextTick()
+
+    expect(update).toHaveBeenCalledTimes(1)
+  })
+
+  it('滚动保持在底部边界时只触发一次加载边界事件', async () => {
+    const wrapper = mount(PopoverTableSelectBase, {
+      props: {
+        columns: [{ field: 'name' }],
+        data: [{ name: '初始仓库' }],
+        modelValue: true,
+        scrollY: { enabled: true, threshold: 0 },
+        virtualRef: createVirtualInput(),
+      },
+      global: {
+        stubs: {
+          ElPopover: createElPopoverStub(vi.fn()),
+        },
+      },
+    })
+    const scrollWrap = wrapper.get('.mx-popover-table-select-base__table-wrap')
+
+    defineScrollMetrics(scrollWrap.element as HTMLElement, {
+      clientHeight: 100,
+      scrollHeight: 200,
+      scrollTop: 100,
+    })
+    await scrollWrap.trigger('scroll')
+    await scrollWrap.trigger('scroll')
+
+    expect(wrapper.emitted('scrollBoundary')).toEqual([[{ direction: 'bottom' }]])
+
+    defineScrollMetrics(scrollWrap.element as HTMLElement, {
+      clientHeight: 100,
+      scrollHeight: 200,
+      scrollTop: 20,
+    })
+    await scrollWrap.trigger('scroll')
+
+    defineScrollMetrics(scrollWrap.element as HTMLElement, {
+      clientHeight: 100,
+      scrollHeight: 200,
+      scrollTop: 100,
+    })
+    await scrollWrap.trigger('scroll')
+
+    expect(wrapper.emitted('scrollBoundary')).toEqual([
+      [{ direction: 'bottom' }],
+      [{ direction: 'bottom' }],
+    ])
   })
 })

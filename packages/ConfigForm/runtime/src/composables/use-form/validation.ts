@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { NodeTopology } from './topology'
+import type { NodeTopology, VisibilitySnapshot } from './topology'
 import type { FormErrors, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
 import { toRaw } from 'vue'
 import { shouldValidateOn } from '@/utils/field'
@@ -17,6 +17,8 @@ interface FieldValidationRequest {
   trigger: ValidateTrigger
   /** 请求创建时的值快照，避免节流期间被无关写入隐式改写。 */
   valuesSnapshot: FormValues
+  /** 提交级校验复用的可见性快照；交互校验按请求即时创建。 */
+  visibilitySnapshot?: VisibilitySnapshot
   /** 同一节流窗口内被合并的调用方 Promise 端点。 */
   listeners: Array<{
     resolve: (value: boolean) => void
@@ -53,8 +55,14 @@ export interface UseFormValidationOptions {
 
 /** 校验控制器输出。 */
 export interface UseFormValidationResult {
-  validate: () => Promise<boolean>
+  validate: (context?: SubmitValidationContext) => Promise<boolean>
   validateSingleField: (fieldName: string, trigger: ValidateTrigger) => Promise<boolean>
+}
+
+/** 提交入口创建的稳定校验快照，供 validate 和 submit 输出阶段共用。 */
+export interface SubmitValidationContext {
+  valuesSnapshot: FormValues
+  visibilitySnapshot: VisibilitySnapshot
 }
 
 /**
@@ -67,7 +75,7 @@ export function useFormValidation(options: UseFormValidationOptions): UseFormVal
   const validationStates = new Map<string, FieldValidationState>()
 
   /** 按字段名读取有效可见性，供校验和提交流程复用同一套父链规则。 */
-  function isFieldVisible(fieldName: string, valuesSnapshot: FormValues, visibility = createVisibilitySnapshot(valuesSnapshot, nodeTopology.value)): boolean {
+  function isFieldVisible(fieldName: string, visibility: VisibilitySnapshot): boolean {
     const visible = visibility.byField.get(fieldName)
     return visible ?? true
   }
@@ -89,11 +97,13 @@ export function useFormValidation(options: UseFormValidationOptions): UseFormVal
     trigger: ValidateTrigger,
     resolve: (value: boolean) => void,
     reject: (reason?: unknown) => void,
+    context?: SubmitValidationContext,
   ): FieldValidationRequest {
     return {
       fieldName,
       trigger,
-      valuesSnapshot: { ...toRaw(values) },
+      valuesSnapshot: context?.valuesSnapshot ?? { ...toRaw(values) },
+      visibilitySnapshot: context?.visibilitySnapshot,
       listeners: [{ resolve, reject }],
     }
   }
@@ -118,7 +128,12 @@ export function useFormValidation(options: UseFormValidationOptions): UseFormVal
     state.running = true
 
     try {
-      const result = await executeFieldValidation(request.fieldName, request.trigger, request.valuesSnapshot)
+      const result = await executeFieldValidation(
+        request.fieldName,
+        request.trigger,
+        request.valuesSnapshot,
+        request.visibilitySnapshot,
+      )
       for (const listener of request.listeners)
         listener.resolve(result)
     }
@@ -181,10 +196,11 @@ export function useFormValidation(options: UseFormValidationOptions): UseFormVal
     fieldName: string,
     trigger: ValidateTrigger,
     delayMs: number,
+    context?: SubmitValidationContext,
   ): Promise<boolean> {
     return new Promise((resolve, reject) => {
       const state = getFieldValidationState(fieldName)
-      const request = createFieldValidationRequest(fieldName, trigger, resolve, reject)
+      const request = createFieldValidationRequest(fieldName, trigger, resolve, reject, context)
       state.pending = state.pending
         ? mergeFieldValidationRequest(state.pending, request)
         : request
@@ -203,6 +219,7 @@ export function useFormValidation(options: UseFormValidationOptions): UseFormVal
     fieldName: string,
     trigger: ValidateTrigger,
     valuesSnapshot: FormValues,
+    visibilitySnapshot?: VisibilitySnapshot,
   ): Promise<boolean> {
     const config = fieldConfigMap.value.get(fieldName)
     const field = config as NormalizedFieldConfig | undefined
@@ -214,8 +231,8 @@ export function useFormValidation(options: UseFormValidationOptions): UseFormVal
     const shouldValidateHidden = trigger === 'submit' && field.submitWhenHidden
     const shouldValidateDisabled = trigger === 'submit' && field.submitWhenDisabled
 
-    const visibility = createVisibilitySnapshot(valuesSnapshot, nodeTopology.value)
-    const fieldVisible = isFieldVisible(fieldName, valuesSnapshot, visibility)
+    const visibility = visibilitySnapshot ?? createVisibilitySnapshot(valuesSnapshot, nodeTopology.value)
+    const fieldVisible = isFieldVisible(fieldName, visibility)
 
     if (!fieldVisible && !shouldValidateHidden) {
       clearFieldError(fieldName)
@@ -267,9 +284,18 @@ export function useFormValidation(options: UseFormValidationOptions): UseFormVal
    *
    * 校验失败会同步 errors 并触发 onError；底层校验异常不转换为成功结果。
    */
-  async function validate(): Promise<boolean> {
+  async function validate(context?: SubmitValidationContext): Promise<boolean> {
     const currentFields = fields.value
-    await Promise.all(currentFields.map(field => queueFieldValidation(field.field, 'submit', 0)))
+    let submitContext = context
+    if (!submitContext) {
+      const valuesSnapshot = { ...toRaw(values) }
+      submitContext = {
+        valuesSnapshot,
+        visibilitySnapshot: createVisibilitySnapshot(valuesSnapshot, nodeTopology.value),
+      }
+    }
+
+    await Promise.all(currentFields.map(field => queueFieldValidation(field.field, 'submit', 0, submitContext)))
 
     const formErrors = filterErrorsByFieldNames(errors.value, currentFields.map(field => field.field))
     errors.value = formErrors

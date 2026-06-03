@@ -1,6 +1,22 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { installConfigFormDevtools } from '../src/client'
+import {
+  OPEN_IN_EDITOR_PATH,
+  OPEN_IN_EDITOR_REQUEST_HEADER,
+  OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
+} from '../src/protocol'
+
+/** 断言 source-open 请求使用 devtools 私有协议头，避免跨站表单 POST 触发本地副作用。 */
+function expectOpenInEditorFetch(fetchMock: ReturnType<typeof vi.fn>): void {
+  expect(fetchMock).toHaveBeenCalledWith(OPEN_IN_EDITOR_PATH, expect.objectContaining({
+    headers: expect.objectContaining({
+      'content-type': 'application/json',
+      [OPEN_IN_EDITOR_REQUEST_HEADER]: OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
+    }),
+    method: 'POST',
+  }))
+}
 
 describe('client overlay', () => {
   beforeEach(() => {
@@ -93,9 +109,7 @@ describe('client overlay', () => {
 
     document.querySelector<HTMLButtonElement>('[data-cf-devtools-open="node-1"]')?.click()
     await vi.waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/__config-form-devtools/open', expect.objectContaining({
-        method: 'POST',
-      }))
+      expectOpenInEditorFetch(fetchMock)
     })
     expect(String(fetchMock.mock.calls[0]?.[1]?.body)).toContain('"line":32')
   })
@@ -229,9 +243,7 @@ describe('client overlay', () => {
     expect(document.querySelector<HTMLElement>('[data-cf-devtools="panel"]')?.classList.contains('is-open')).toBe(true)
     expect(document.querySelector<HTMLElement>('[data-cf-devtools-node-id="node-email"]')?.classList.contains('is-selected')).toBe(true)
     await vi.waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/__config-form-devtools/open', expect.objectContaining({
-        method: 'POST',
-      }))
+      expectOpenInEditorFetch(fetchMock)
     })
     expect(String(fetchMock.mock.calls[0]?.[1]?.body)).toContain('"line":32')
     expect(document.body.textContent).not.toContain('Opened source:')
@@ -1558,9 +1570,7 @@ describe('client overlay', () => {
     document.querySelector<HTMLElement>('[data-cf-devtools-node-id="node-1"]')?.click()
 
     await vi.waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/__config-form-devtools/open', expect.objectContaining({
-        method: 'POST',
-      }))
+      expectOpenInEditorFetch(fetchMock)
     })
     expect(document.querySelector<HTMLElement>('[data-cf-devtools-node-id="node-1"]')?.classList.contains('is-selected')).toBe(true)
     expect(document.body.textContent).not.toContain('Opened source:')
@@ -1628,9 +1638,7 @@ describe('client overlay', () => {
     results[0]?.click()
 
     await vi.waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/__config-form-devtools/open', expect.objectContaining({
-        method: 'POST',
-      }))
+      expectOpenInEditorFetch(fetchMock)
     })
 
     expect(String(fetchMock.mock.calls[0]?.[1]?.body)).toContain('"line":24')

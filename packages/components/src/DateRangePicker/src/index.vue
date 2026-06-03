@@ -77,7 +77,7 @@ const defaultShortcuts: DateRangePickerShortcut[] = [
 ]
 
 const shortcuts = computed<DateRangePickerShortcut[]>(() => {
-  return props.shortcuts === true ? defaultShortcuts : props.shortcuts || []
+  return props.shortcuts === true ? [...defaultShortcuts] : props.shortcuts || []
 })
 
 const disabledBoundary = computed(() => {

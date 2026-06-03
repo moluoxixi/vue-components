@@ -102,11 +102,16 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
 
   /** 校验并提交可参与提交的字段值。 */
   async function submit(): Promise<boolean> {
-    if (!await validate())
-      return false
-
     const valuesSnapshot = { ...values } as FormValues
     const visibility = createVisibilitySnapshot(valuesSnapshot, nodeTopology.value)
+    const validationContext = {
+      valuesSnapshot,
+      visibilitySnapshot: visibility,
+    }
+
+    if (!await validate(validationContext))
+      return false
+
     const submitValues: FormValues = {}
 
     for (const field of fieldConfigs.value) {

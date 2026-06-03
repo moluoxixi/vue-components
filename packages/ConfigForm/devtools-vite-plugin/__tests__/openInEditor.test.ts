@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process'
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:http'
 import { EventEmitter } from 'node:events'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -15,6 +15,10 @@ import {
   parseOpenInEditorPayload,
   resolveAllowedFile,
 } from '../src/openInEditor'
+import {
+  OPEN_IN_EDITOR_REQUEST_HEADER,
+  OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
+} from '../src/protocol'
 
 /**
  * 创建可控的编辑器进程启动 mock。
@@ -49,7 +53,7 @@ function createSpawnMock(event: 'error' | 'exit' | 'spawn', result: unknown = ne
  *
  * body 会被一次性推入 Readable，便于覆盖空请求体和非法 JSON。
  */
-function createRequest(method: string, body = ''): IncomingMessage {
+function createRequest(method: string, body = '', headers: IncomingHttpHeaders = {}): IncomingMessage {
   const req = new Readable({
     read() {
       this.push(body)
@@ -57,6 +61,11 @@ function createRequest(method: string, body = ''): IncomingMessage {
     },
   }) as IncomingMessage
   req.method = method
+  req.headers = {
+    host: 'localhost:5173',
+    [OPEN_IN_EDITOR_REQUEST_HEADER]: OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
+    ...headers,
+  }
   return req
 }
 
@@ -388,6 +397,26 @@ describe('open in editor helpers', () => {
     await createOpenInEditorMiddleware({ editor: 'code', root })(createRequest('GET'), methodResponse)
     expect(methodResponse.statusCode).toBe(405)
 
+    const missingHeaderResponse = createResponse()
+    await createOpenInEditorMiddleware({ editor: 'code', root })(
+      createRequest('POST', JSON.stringify({ column: 1, file, line: 1 }), {
+        [OPEN_IN_EDITOR_REQUEST_HEADER]: undefined,
+      }),
+      missingHeaderResponse,
+    )
+    expect(missingHeaderResponse.statusCode).toBe(403)
+    expect(missingHeaderResponse.body).toContain('Missing ConfigForm devtools request header')
+
+    const crossOriginResponse = createResponse()
+    await createOpenInEditorMiddleware({ editor: 'code', root })(
+      createRequest('POST', JSON.stringify({ column: 1, file, line: 1 }), {
+        origin: 'https://example.invalid',
+      }),
+      crossOriginResponse,
+    )
+    expect(crossOriginResponse.statusCode).toBe(403)
+    expect(crossOriginResponse.body).toContain('origin is not allowed')
+
     const invalidResponse = createResponse()
     await createOpenInEditorMiddleware({ editor: 'code', root })(createRequest('POST', '{"file":""}'), invalidResponse)
     expect(invalidResponse.statusCode).toBe(400)
@@ -398,7 +427,10 @@ describe('open in editor helpers', () => {
 
     const successResponse = createResponse()
     await createOpenInEditorMiddleware({ editor: 'code', root, spawn: createSpawnMock('spawn') })(
-      createRequest('POST', JSON.stringify({ column: 1, file, line: 1 })),
+      createRequest('POST', JSON.stringify({ column: 1, file, line: 1 }), {
+        origin: 'http://localhost:5173',
+        referer: 'http://localhost:5173/example',
+      }),
       successResponse,
     )
     expect(successResponse.statusCode).toBe(200)

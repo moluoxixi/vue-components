@@ -13,7 +13,7 @@ const IGNORED_DIRS = new Set([
   'dist',
   'node_modules',
 ])
-const FORBIDDEN_PREFIX = 'element-plus/' + 'es'
+const FORBIDDEN_PREFIX = 'element-plus/es'
 
 /**
  * 判断文件是否属于 Element Plus 深层导入检查范围。

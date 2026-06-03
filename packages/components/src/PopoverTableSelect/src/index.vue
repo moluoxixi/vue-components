@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { InputInstance } from 'element-plus'
+import type { ScheduledHandler } from '../../utils'
 import type {
   PopoverTableRow,
   PopoverTableSelectEmits,
@@ -8,7 +9,7 @@ import type {
   ThrottleOrDebounceOptions,
 } from './types'
 import { ElInput } from 'element-plus'
-import { computed, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { debounce, throttle } from '../../utils'
 import PopoverTableSelectBase from './base/index.vue'
 
@@ -45,6 +46,8 @@ const inputRef = useTemplateRef<InputInstance>('inputRef')
 const currentInputValue = shallowRef('')
 const cachedInputValue = shallowRef('')
 const isBaseMounted = shallowRef(false)
+const scheduledSelect = shallowRef<ScheduledHandler<typeof handleSelect>>(createImmediateHandler(handleSelect))
+const scheduledInput = shallowRef<ScheduledHandler<typeof handleInput>>(createImmediateHandler(handleInput))
 
 const slotNames = computed<string[]>(() => Object.keys(slots))
 
@@ -110,25 +113,56 @@ function handleScrollBoundary(payload: { direction: 'bottom' }): void {
     emit('loadMore')
 }
 
-const scheduledSelect = computed(() => {
+function noopScheduledAction(): void {
+  return undefined
+}
+
+/**
+ * 无调度配置时仍返回完整 ScheduledHandler，便于组件统一清理旧实例。
+ */
+function createImmediateHandler<T extends (...args: any[]) => void>(handler: T): ScheduledHandler<T> {
+  const scheduled = ((...args: Parameters<T>): void => {
+    handler(...args)
+  }) as ScheduledHandler<T>
+
+  scheduled.cancel = noopScheduledAction
+  scheduled.flush = noopScheduledAction
+
+  return scheduled
+}
+
+function createScheduledSelectHandler(): ScheduledHandler<typeof handleSelect> {
   if (props.debounce)
     return debounce(handleSelect, props.debounce, computedOptions.value)
 
   if (props.throttle)
     return throttle(handleSelect, props.throttle, computedOptions.value)
 
-  return handleSelect
-})
+  return createImmediateHandler(handleSelect)
+}
 
-const scheduledInput = computed(() => {
+function createScheduledInputHandler(): ScheduledHandler<typeof handleInput> {
   if (props.debounce)
     return debounce(handleInput, props.debounce, computedOptions.value)
 
   if (props.throttle)
     return throttle(handleInput, props.throttle, computedOptions.value)
 
-  return handleInput
-})
+  return createImmediateHandler(handleInput)
+}
+
+function resetScheduledHandlers(): void {
+  scheduledSelect.value.cancel()
+  scheduledInput.value.cancel()
+  scheduledSelect.value = createScheduledSelectHandler()
+  scheduledInput.value = createScheduledInputHandler()
+}
+
+watch(
+  [() => props.debounce, () => props.throttle, computedOptions],
+  resetScheduledHandlers,
+  { immediate: true },
+)
 
 watch(
   () => inputValue.value,
@@ -151,6 +185,11 @@ watch(
   },
   { immediate: true },
 )
+
+onUnmounted(() => {
+  scheduledSelect.value.cancel()
+  scheduledInput.value.cancel()
+})
 </script>
 
 <template>

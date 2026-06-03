@@ -3,7 +3,13 @@ export interface ScheduleOptions {
   trailing?: boolean
 }
 
-export type ScheduledHandler<T extends (...args: any[]) => void> = (...args: Parameters<T>) => void
+export interface ScheduledHandler<T extends (...args: any[]) => void> {
+  (...args: Parameters<T>): void
+  /** 取消尚未触发的 trailing 调用，用于组件卸载或调度配置切换。 */
+  cancel: () => void
+  /** 立即触发当前 pending 的 trailing 调用，保持最后一次参数语义。 */
+  flush: () => void
+}
 
 /**
  * 创建防抖处理器，用于输入搜索这类高频事件。
@@ -16,22 +22,49 @@ export function debounce<T extends (...args: any[]) => void>(
   options: ScheduleOptions = {},
 ): ScheduledHandler<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
+  let lastArgs: Parameters<T> | undefined
+  let pendingTrailing = false
   const leading = options.leading === true
   const trailing = options.trailing !== false
 
-  return (...args: Parameters<T>): void => {
+  const scheduled = ((...args: Parameters<T>): void => {
     const shouldCallLeading = leading && timer === undefined
+    lastArgs = args
     clearTimeout(timer)
 
     if (shouldCallLeading)
       handler(...args)
 
+    pendingTrailing = trailing && !shouldCallLeading
     timer = setTimeout(() => {
       timer = undefined
-      if (trailing && !shouldCallLeading)
-        handler(...args)
+      if (pendingTrailing) {
+        pendingTrailing = false
+        handler(...(lastArgs as Parameters<T>))
+      }
     }, wait)
+  }) as ScheduledHandler<T>
+
+  scheduled.cancel = () => {
+    clearTimeout(timer)
+    timer = undefined
+    lastArgs = undefined
+    pendingTrailing = false
   }
+
+  scheduled.flush = () => {
+    if (timer === undefined)
+      return
+
+    clearTimeout(timer)
+    timer = undefined
+    if (pendingTrailing) {
+      pendingTrailing = false
+      handler(...(lastArgs as Parameters<T>))
+    }
+  }
+
+  return scheduled
 }
 
 /**
@@ -50,18 +83,23 @@ export function throttle<T extends (...args: any[]) => void>(
   const leading = options.leading !== false
   const trailing = options.trailing !== false
 
-  return (...args: Parameters<T>): void => {
+  function run(args: Parameters<T>): void {
+    lastRun = Date.now()
+    trailingArgs = undefined
+    handler(...args)
+  }
+
+  const scheduled = ((...args: Parameters<T>): void => {
     const now = Date.now()
-    const elapsed = now - lastRun
 
     if (lastRun === 0 && !leading)
       lastRun = now
 
+    const elapsed = now - lastRun
     if (elapsed >= wait) {
       clearTimeout(timer)
       timer = undefined
-      lastRun = now
-      handler(...args)
+      run(args)
       return
     }
 
@@ -71,9 +109,25 @@ export function throttle<T extends (...args: any[]) => void>(
     trailingArgs = args
     clearTimeout(timer)
     timer = setTimeout(() => {
-      lastRun = Date.now()
       timer = undefined
-      handler(...(trailingArgs as Parameters<T>))
+      run(trailingArgs as Parameters<T>)
     }, wait - elapsed)
+  }) as ScheduledHandler<T>
+
+  scheduled.cancel = () => {
+    clearTimeout(timer)
+    timer = undefined
+    trailingArgs = undefined
   }
+
+  scheduled.flush = () => {
+    if (timer === undefined)
+      return
+
+    clearTimeout(timer)
+    timer = undefined
+    run(trailingArgs as Parameters<T>)
+  }
+
+  return scheduled
 }

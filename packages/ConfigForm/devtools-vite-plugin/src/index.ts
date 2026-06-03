@@ -3,6 +3,7 @@ import type { ConfigFormDevtoolsPluginOptions } from './types'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createOpenInEditorMiddleware } from './openInEditor'
+import { OPEN_IN_EDITOR_PATH } from './protocol'
 import { transformDefineFieldSource } from './sourceInject'
 
 const VIRTUAL_CLIENT_ID = 'virtual:config-form-devtools/client'
@@ -65,7 +66,7 @@ export function configFormDevtools(options: ConfigFormDevtoolsPluginOptions = {}
      */
     configureServer(server) {
       server.middlewares.use(
-        '/__config-form-devtools/open',
+        OPEN_IN_EDITOR_PATH,
         createOpenInEditorMiddleware({
           allowRoots: options.allowRoots,
           editor: options.editor,
