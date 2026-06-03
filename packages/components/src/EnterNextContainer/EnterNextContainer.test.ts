@@ -67,4 +67,21 @@ describe('enter next container', () => {
     expect(wrapper.emitted('noSelectValue')![0]).toEqual([selectLike.element])
     expect(document.activeElement).toBe(selectLike.element)
   })
+
+  it('virtualRef 组件实例缺少 DOM 节点时抛出明确错误', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const wrapper = mount(EnterNextContainer, {
+      attachTo: document.body,
+      props: {
+        virtualRef: host,
+      },
+    })
+
+    await waitForContainerMounted()
+
+    await expect(wrapper.setProps({
+      virtualRef: { $el: null } as any,
+    })).rejects.toThrow('[EnterNextContainer] A DOM element is required before collecting inputs.')
+  })
 })

@@ -114,6 +114,24 @@ function createElPopoverStub(update: () => void) {
   })
 }
 
+function createEmptyElPopoverStub(update: () => void) {
+  return defineComponent({
+    name: 'ElPopover',
+    setup(_, { expose }) {
+      /**
+       * 模拟弹层主体尚未渲染完成但 popper 实例已经可更新的中间状态。
+       */
+      expose({
+        popperRef: {
+          popperInstanceRef: { update },
+        },
+      })
+
+      return () => h('div', { 'data-testid': 'empty-el-popover-stub' })
+    },
+  })
+}
+
 describe('popover table select', () => {
   afterEach(() => {
     document.body.innerHTML = ''
@@ -275,5 +293,30 @@ describe('popover table select', () => {
       [{ direction: 'bottom' }],
       [{ direction: 'bottom' }],
     ])
+  })
+
+  it('弹层 DOM ref 暂不可用时外部点击不会抛出异常', async () => {
+    const input = createVirtualInput()
+    const wrapper = mount(PopoverTableSelectBase, {
+      props: {
+        columns: [{ field: 'name' }],
+        data: [{ name: '初始仓库' }],
+        modelValue: true,
+        virtualRef: input,
+      },
+      global: {
+        stubs: {
+          ElPopover: createEmptyElPopoverStub(vi.fn()),
+        },
+      },
+    })
+
+    await nextTick()
+    await nextTick()
+
+    expect(() => {
+      document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    }).not.toThrow()
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false])
   })
 })

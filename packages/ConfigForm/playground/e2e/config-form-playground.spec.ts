@@ -498,6 +498,29 @@ test.describe('ConfigForm playground 布局场景', () => {
       })
     })
   }
+
+  test('Element 布局场景渲染 200 个字段并可提交', async ({ page }) => {
+    await openPlayground(page)
+    const example = await openConfigFormExample(page, suites[0]!)
+    const stressScenario = example.getByTestId('element-layout-stress')
+    const stressForm = stressScenario.getByTestId('element-layout-stress-form')
+
+    await expect(stressScenario.getByTestId('element-layout-stress-count')).toContainText('200 fields')
+    await expect(stressForm.locator('.el-form-item')).toHaveCount(200)
+
+    await stressForm.getByTestId('element-layout-stress-input-1').fill('性能字段 1')
+    await stressForm.getByTestId('element-layout-stress-input-200').fill('性能字段 200')
+    await stressScenario.getByTestId('element-layout-stress-submit').click()
+
+    await expectPreviewObject(stressScenario.getByTestId('element-layout-stress-preview'), {
+      count: 200,
+      sample: {
+        stressField1: '性能字段 1',
+        stressField200: '性能字段 200',
+      },
+      submitted: 200,
+    })
+  })
 })
 
 test.describe('ConfigForm playground 容器场景', () => {

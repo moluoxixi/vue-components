@@ -25,7 +25,12 @@ let mounted = false
  * 兼容 Vue 组件实例与原生 HTMLElement，统一解析成可监听的 DOM 节点。
  */
 function resolveElement(target: EnterNextContainerProps['virtualRef'] | HTMLElement | undefined): HTMLElement {
-  return ((target as ComponentPublicInstance)?.$el || target) as HTMLElement
+  const instanceElement = (target as ComponentPublicInstance | undefined)?.$el
+  const element = instanceElement === undefined ? target : instanceElement
+  if (!element)
+    throw new Error('[EnterNextContainer] A DOM element is required before collecting inputs.')
+
+  return element as HTMLElement
 }
 
 function getObserveElement(): HTMLElement {

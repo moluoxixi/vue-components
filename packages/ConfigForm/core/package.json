@@ -19,6 +19,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
+    "test": "vitest run",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
@@ -27,6 +28,7 @@
   "devDependencies": {
     "unplugin-dts": "catalog:dev",
     "vite": "catalog:dev",
+    "vitest": "catalog:dev",
     "vue": "catalog:build",
     "vue-tsc": "catalog:dev"
   },

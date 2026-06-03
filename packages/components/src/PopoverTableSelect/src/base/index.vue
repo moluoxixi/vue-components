@@ -193,7 +193,7 @@ function handleClick(): void {
 function handleOutsideClick(event: MouseEvent): void {
   const target = event.target as Node
   const virtualTarget = resolveVirtualElement(props.virtualRef)
-  const clickedInsidePopover = popoverRef.value!.contains(target)
+  const clickedInsidePopover = popoverRef.value?.contains(target) ?? false
   const clickedInsideVirtual = virtualTarget.contains(target)
 
   if (!clickedInsidePopover && !clickedInsideVirtual) {

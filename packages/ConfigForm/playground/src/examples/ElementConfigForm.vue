@@ -49,6 +49,7 @@ import { computed, shallowRef } from 'vue'
 
 type ScenarioTab = 'layout' | 'container' | 'linked'
 type LayoutMode = 'inline' | 'grid'
+const STRESS_FIELD_COUNT = 200
 
 interface ElementOption extends Record<string, unknown> {
   label: string
@@ -89,10 +90,12 @@ interface ElementLinkedValues extends ElementKnownValues {
   seatNote: string
 }
 
+type ElementStressValues = Record<string, string>
 type ElementFieldKey<TValues extends ElementKnownValues> = Extract<keyof TValues, string>
 
 const { defineField: defineCommonField } = defineFields<ElementKnownValues>()
 const { defineField: defineLinkedField } = defineFields<ElementLinkedValues>()
+const { defineField: defineStressField } = defineFields<ElementStressValues>()
 
 const activeTab = shallowRef<ScenarioTab>('layout')
 const layoutMode = shallowRef<LayoutMode>('inline')
@@ -100,6 +103,7 @@ const layoutModeLabel = computed(() => layoutMode.value)
 
 const layoutInlineModel = shallowRef<ElementKnownValues>(createKnownValues('inline'))
 const layoutGridModel = shallowRef<ElementKnownValues>(createKnownValues('grid'))
+const layoutStressModel = shallowRef<ElementStressValues>(createStressValues())
 const containerModel = shallowRef<ElementKnownValues>(createKnownValues('container'))
 const linkedModel = shallowRef<ElementLinkedValues>({
   ...createKnownValues('linked'),
@@ -116,12 +120,14 @@ const linkedModel = shallowRef<ElementLinkedValues>({
 
 const layoutInlineSubmitted = shallowRef<Partial<ElementKnownValues>>({})
 const layoutGridSubmitted = shallowRef<Partial<ElementKnownValues>>({})
+const layoutStressSubmitted = shallowRef<Partial<ElementStressValues>>({})
 const containerSubmitted = shallowRef<Partial<ElementKnownValues>>({})
 const linkedSubmitted = shallowRef<Partial<ElementLinkedValues>>({})
 
 // 每个场景都复用同一批字段，确保 playground 和 e2e 覆盖同一份 Element Plus 已知组件矩阵。
 const layoutInlineFields = createKnownFields('element-inline', true, defineCommonField)
 const layoutGridFields = createKnownFields('element-grid', true, defineCommonField)
+const layoutStressFields = createStressFields()
 const containerFields = [
   defineCommonField({
     colProps: {},
@@ -218,6 +224,14 @@ const layoutSubmittedText = computed(() => JSON.stringify({
   grid: layoutGridSubmitted.value,
   inline: layoutInlineSubmitted.value,
 }, null, 2))
+const layoutStressSubmittedText = computed(() => JSON.stringify({
+  count: layoutStressFields.length,
+  sample: {
+    stressField1: layoutStressSubmitted.value.stressField1,
+    stressField200: layoutStressSubmitted.value.stressField200,
+  },
+  submitted: Object.keys(layoutStressSubmitted.value).length,
+}, null, 2))
 const containerSubmittedText = computed(() => JSON.stringify(containerSubmitted.value, null, 2))
 const linkedSubmittedText = computed(() => JSON.stringify(linkedSubmitted.value, null, 2))
 
@@ -242,6 +256,33 @@ function createKnownValues(seed: string): ElementKnownValues {
     timeSelect: '09:00',
     treeSelect: `${seed}-root-a`,
   }
+}
+
+function createStressValues(): ElementStressValues {
+  return Object.fromEntries(
+    Array.from({ length: STRESS_FIELD_COUNT }, (_, index) => {
+      const number = index + 1
+      return [`stressField${number}`, `布局压测 ${number}`]
+    }),
+  )
+}
+
+function createStressFields() {
+  return Array.from({ length: STRESS_FIELD_COUNT }, (_, index) => {
+    const number = index + 1
+    const field = `stressField${number}`
+
+    return defineStressField({
+      component: ElInput,
+      field,
+      label: `压测 ${number}`,
+      props: {
+        placeholder: `布局压测字段 ${number}`,
+        'data-testid': `element-layout-stress-input-${number}`,
+      },
+      span: 6,
+    })
+  })
 }
 
 function createKnownFields<TValues extends ElementKnownValues>(
@@ -688,6 +729,10 @@ function submitLayoutGrid(values: ConfigFormValues): void {
   layoutGridSubmitted.value = values as ElementKnownValues
 }
 
+function submitLayoutStress(values: ConfigFormValues): void {
+  layoutStressSubmitted.value = values as ElementStressValues
+}
+
 function submitContainer(values: ConfigFormValues): void {
   containerSubmitted.value = values as ElementKnownValues
 }
@@ -754,6 +799,31 @@ function submitLinked(values: ConfigFormValues): void {
           </ElementConfigForm>
 
           <pre class="config-form-demo__preview" data-testid="element-layout-preview">{{ layoutSubmittedText }}</pre>
+
+          <section class="config-form-demo__stress" data-testid="element-layout-stress">
+            <div class="config-form-demo__stress-header">
+              <strong>布局压测</strong>
+              <span data-testid="element-layout-stress-count">{{ layoutStressFields.length }} fields</span>
+            </div>
+            <ElementConfigForm
+              v-model="layoutStressModel"
+              data-testid="element-layout-stress-form"
+              :field-span="6"
+              :fields="layoutStressFields"
+              :form-props="{ labelWidth: '96px' }"
+              :row-props="{ gutter: 12, 'data-testid': 'element-layout-stress-grid' }"
+              @submit="submitLayoutStress"
+            >
+              <template #default="{ submit }">
+                <div class="config-form-demo__actions">
+                  <ElButton type="primary" data-testid="element-layout-stress-submit" @click="submit">
+                    提交压测
+                  </ElButton>
+                </div>
+              </template>
+            </ElementConfigForm>
+            <pre class="config-form-demo__preview" data-testid="element-layout-stress-preview">{{ layoutStressSubmittedText }}</pre>
+          </section>
         </section>
       </ElTabPane>
 
@@ -828,6 +898,21 @@ function submitLinked(values: ConfigFormValues): void {
   color: var(--el-text-color-regular);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.config-form-demo__stress {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--el-border-color-light);
+}
+
+.config-form-demo__stress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  color: var(--el-text-color-regular);
+  font-size: 13px;
 }
 
 :deep([data-testid="element-layout-inline-row"]) {
