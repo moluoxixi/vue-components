@@ -12,6 +12,7 @@ export default defineConfig({
     Vue(),
     dts({
       afterDiagnostic: failOnDtsDiagnostics,
+      exclude: ['**/*.test.ts', '**/*.spec.ts'],
       compilerOptions: {
         composite: false,
         incremental: false,
