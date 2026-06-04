@@ -2,6 +2,11 @@
   "name": "@moluoxixi/config-form-plugin-element-plus",
   "type": "module",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ConfigForm/plugin-element-plus"
+  },
   "sideEffects": false,
   "exports": {
     ".": {
