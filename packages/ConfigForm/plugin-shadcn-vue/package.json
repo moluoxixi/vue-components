@@ -24,7 +24,7 @@
     "typecheck": "vue-tsc -p tsconfig.test.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form": "^0.1.0"
+    "@moluoxixi/config-form": "^0.1.1"
   },
   "devDependencies": {
     "@moluoxixi/config-form": "workspace:*",
