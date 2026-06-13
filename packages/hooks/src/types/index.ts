@@ -1,0 +1,5 @@
+export type * from './batch-operate'
+export type * from './common'
+export type * from './detail-page'
+export type * from './form-submit'
+export type * from './list-page'

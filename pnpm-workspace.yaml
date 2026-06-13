@@ -11,6 +11,8 @@ catalogs:
   build:
     dayjs: ^1.11.20
     vue: ^3.5.13
+  data:
+    '@tanstack/vue-query': ^5.101.0
   dev:
     '@antfu/eslint-config': ^8.2.0
     '@babel/parser': ^7.28.5
