@@ -13,6 +13,9 @@ catalogs:
     vue: ^3.5.13
   data:
     '@tanstack/vue-query': ^5.101.0
+    '@orama/orama': ^3.1.18
+    '@orama/plugin-data-persistence': ^3.1.18
+    vue-docgen-api: ^4.79.2
   dev:
     '@antfu/eslint-config': ^8.2.0
     '@babel/parser': ^7.28.5
@@ -46,3 +49,14 @@ catalogs:
   ui:
     ant-design-vue: ^4.2.6
     element-plus: ^2.9.1
+  conflicts_vue3-sfc-loader_0_9_5:
+    vue3-sfc-loader: 0.9.5
+  conflicts_build_h3_5_33:
+    vue: ^3.5.33
+  conflicts_dev_h3_5_33:
+    '@vue/compiler-sfc': ^3.5.33
+catalog:
+  '@huggingface/transformers': ^4.0.0
+  esbuild: ^0.24.0
+  sucrase: ^3.35.1
+  vue3-sfc-loader: ^0.9.5

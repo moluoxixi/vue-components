@@ -1,0 +1,19 @@
+{
+  "name": "spike-002-iframe-sandbox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:sandbox": "esbuild src/sandbox-entry.ts --bundle --format=iife --outfile=sandbox-build/sandbox.iife.js",
+    "dev": "npm run build:sandbox && vite --port 5200 --strictPort",
+    "test": "npm run build:sandbox && playwright test"
+  },
+  "dependencies": {
+    "vue": "^3.5.33",
+    "vue3-sfc-loader": "^0.9.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "esbuild": "^0.24.0",
+    "vite": "^6.2.0"
+  }
+}
