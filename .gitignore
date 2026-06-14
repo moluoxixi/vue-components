@@ -15,6 +15,7 @@ typings
 .agent
 .playwright-mcp
 .playwright-cli
+.spike
 
 # Sentry配置
 .env.sentry-build-plugin

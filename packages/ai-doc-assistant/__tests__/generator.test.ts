@@ -1,6 +1,6 @@
 import type { ComponentContract } from '../src/core/types'
 import { describe, expect, it } from 'vitest'
-import { renderExampleSkeleton, renderSearchableDoc } from '../src/core/generator'
+import { renderExample, renderExampleSkeleton, renderSearchableDoc } from '../src/core/generator'
 
 /** 构造测试用契约。 */
 function makeContract(over: Partial<ComponentContract> = {}): ComponentContract {
@@ -83,5 +83,65 @@ describe('renderExampleSkeleton', () => {
   it('包含 import 语句引用包名', () => {
     const code = renderExampleSkeleton(makeContract())
     expect(code).toContain('@moluoxixi/components')
+  })
+
+  it('结构化数组 prop（带字段类型）生成真实样例对象而非空数组', () => {
+    const c = makeContract({
+      name: 'PopoverTableSelect',
+      props: [
+        { name: 'columns', type: 'PopoverTableColumn[]', required: false, defaultValue: '() => []', description: '列定义', typeRefs: ['PopoverTableColumn'] },
+        { name: 'data', type: 'PopoverTableRow[]', required: false, defaultValue: '() => []', description: '数据行', typeRefs: ['PopoverTableRow'] },
+        { name: 'debounce', type: 'number', required: false, defaultValue: '0', description: '防抖', typeRefs: [] },
+      ],
+      emits: [],
+      slots: [],
+      models: [],
+      typeDefs: [
+        {
+          name: 'PopoverTableColumn',
+          kind: 'interface',
+          fields: [
+            { name: 'field', type: 'string', optional: false, description: '列字段' },
+            { name: 'title', type: 'string', optional: true, description: '列标题' },
+            { name: 'width', type: 'number | string', optional: true, description: '列宽' },
+          ],
+          raw: 'interface PopoverTableColumn { field: string; title?: string; width?: number | string }',
+        },
+        { name: 'PopoverTableRow', kind: 'type', fields: [], raw: 'type PopoverTableRow = Record<string, any>' },
+      ],
+    })
+    const { ts, js } = renderExample(c)
+    // columns 展开为含 field/title 的真实列对象，不是空 []
+    expect(ts).toContain('const columns = ref<PopoverTableColumn[]>([')
+    expect(ts).toContain('field: \'name\'')
+    expect(ts).toContain('field: \'age\'')
+    expect(ts).toContain('title: \'姓名\'')
+    // data 与 columns 的 field 联动，key 为 name/age，值是可读样例数据
+    expect(ts).toContain('name: \'张三\'')
+    expect(ts).toContain('age: 18')
+    // 模板绑定结构化 prop
+    expect(ts).toContain(':columns="columns"')
+    expect(ts).toContain(':data="data"')
+    // 次要 prop（debounce）不应挤占结构化数据 prop 的展示位
+    expect(ts).not.toContain(':debounce=')
+    // JS 版无类型注解但数据一致
+    expect(js).toContain('const columns = ref([')
+    expect(js).not.toContain('PopoverTableColumn[]')
+    expect(js).toContain('field: \'name\'')
+  })
+
+  it('无结构化 prop 的组件保持原有「前 3 个 prop」骨架行为', () => {
+    const c = makeContract({
+      props: [
+        { name: 'size', type: 'string', required: false, defaultValue: 'medium', description: '尺寸', typeRefs: [] },
+      ],
+      emits: [],
+      slots: [],
+      models: [],
+      typeDefs: [],
+    })
+    const { ts } = renderExample(c)
+    expect(ts).toContain('<MyButton')
+    expect(ts).toContain('size=')
   })
 })
