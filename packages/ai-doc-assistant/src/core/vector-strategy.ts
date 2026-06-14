@@ -19,7 +19,7 @@ import type { VectorDoc, VectorStore, VectorStoreConfig, VectorStoreKind } from 
  * 失败语义：embedding 数量/维度不符、查询编码为空时显式抛错，不静默放行错位向量。
  */
 import { EMBEDDING_DIM, embedTexts } from './embedder'
-import { renderExampleSkeleton, renderSearchableDoc } from './generator'
+import { renderExample, renderSearchableDoc } from './generator'
 import { createVectorStore } from './vector-store'
 
 /** 默认纳入上下文的组件数上限（vector 模式按相似度取 topK）。 */
@@ -42,14 +42,19 @@ export class VectorStrategy implements RetrievalStrategy {
   ) {}
 
   async build(contracts: ComponentContract[]): Promise<StrategyMeta> {
-    // 全量抽取的契约 → 渲染正文/示例 → 本地 embedding → 交向量存储建索引
-    const docs = contracts.map(c => ({
-      component: c.name,
-      packageName: c.packageName,
-      docPath: c.sourceFile,
-      body: renderSearchableDoc(c),
-      example: renderExampleSkeleton(c),
-    }))
+    // 全量抽取的契约 → 渲染正文/双码示例 → 本地 embedding → 交向量存储建索引。
+    // 双码（TS/JS）随文档一并持久化，检索时原样复原，绝不在召回侧用 js=ts 劣化。
+    const docs = contracts.map((c) => {
+      const exampleCode = renderExample(c)
+      return {
+        component: c.name,
+        packageName: c.packageName,
+        docPath: c.sourceFile,
+        body: renderSearchableDoc(c),
+        example: exampleCode.ts,
+        exampleJs: exampleCode.js,
+      }
+    })
 
     const embeddings = await embedTexts(docs.map(d => d.body))
     // 数量一致性是向量与文档对位的前提：不符即显式抛错，不静默补齐/截断
@@ -97,13 +102,15 @@ export class VectorStrategy implements RetrievalStrategy {
       topK || DEFAULT_TOP_K,
     )
 
-    // RetrievedChunk → StrategyChunk（字段对齐统一接口）
+    // RetrievedChunk → StrategyChunk（字段对齐统一接口）。
+    // 双码从持久化的 example(ts)+exampleJs 复原，绝不用 js=ts 静默劣化。
     const mapped: StrategyChunk[] = chunks.map(c => ({
       component: c.component,
       packageName: c.packageName,
       docPath: c.docPath,
       body: c.body,
       example: c.example,
+      exampleCode: { ts: c.example, js: c.exampleJs },
       score: c.score,
     }))
     return { chunks: mapped, empty }

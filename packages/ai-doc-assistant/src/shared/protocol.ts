@@ -153,11 +153,24 @@ export interface HealthResponse {
 /**
  * SSE 事件协议。query 接口按 sources → token* → example? → done 顺序推送；
  * 任意阶段出错推 error 后结束。
+ *
+ * example 事件携带 demo 预览块所需信息：
+ * - code：向后兼容字段，等于 ts（老前端只读 code 仍可用）
+ * - ts/js：双语言示例源码，供预览块切换查看/复制
+ * - component/packageName：运行时编译挂载真实组件时需要（注入 moduleCache 解析本地组件库）
  */
 export type SseEvent
   = | { type: 'sources', sources: SourceRef[] }
     | { type: 'token', text: string }
-    | { type: 'example', code: string, lang: string }
+    | {
+      type: 'example'
+      code: string
+      lang: string
+      ts: string
+      js: string
+      component: string
+      packageName: string
+    }
     | { type: 'done' }
     | { type: 'error', error: ApiErrorCode, message: string }
 

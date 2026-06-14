@@ -3,7 +3,7 @@ import type { EmbedFn } from './embedder'
 import type { ComponentContract } from './types'
 import { create, insertMultiple, save } from '@orama/orama'
 import { EMBEDDING_DIM } from './embedder'
-import { renderExampleSkeleton, renderSearchableDoc } from './generator'
+import { renderExample, renderSearchableDoc } from './generator'
 
 export { EMBEDDING_DIM }
 
@@ -16,13 +16,16 @@ export const INDEX_SCHEMA = {
   embedding: `vector[${EMBEDDING_DIM}]`,
 } as const
 
-/** 索引内单条文档。example 为预生成示例骨架（stored-only，不参与检索）。 */
+/** 索引内单条文档。example/exampleJs 为预生成双语言示例（stored-only，不参与检索）。 */
 export interface IndexDoc {
   component: string
   packageName: string
   docPath: string
   body: string
+  /** TS 版示例骨架（向后兼容字段，等于双码的 ts）。 */
   example: string
+  /** JS 版示例骨架（剥离类型，供前端切换查看/复制）。 */
+  exampleJs: string
   embedding: number[]
 }
 
@@ -55,13 +58,17 @@ export async function buildIndex(
   embed: EmbedFn,
   sourceHash: string,
 ): Promise<BuildResult> {
-  const docs = contracts.map(c => ({
-    component: c.name,
-    packageName: c.packageName,
-    docPath: c.sourceFile,
-    body: renderSearchableDoc(c),
-    example: renderExampleSkeleton(c),
-  }))
+  const docs = contracts.map((c) => {
+    const exampleCode = renderExample(c)
+    return {
+      component: c.name,
+      packageName: c.packageName,
+      docPath: c.sourceFile,
+      body: renderSearchableDoc(c),
+      example: exampleCode.ts,
+      exampleJs: exampleCode.js,
+    }
+  })
 
   const embeddings = await embed(docs.map(d => d.body))
   if (embeddings.length !== docs.length) {

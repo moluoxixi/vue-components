@@ -19,6 +19,8 @@ function chunk(name: string): StrategyChunk {
     docPath: `packages/${name}/src/index.vue`,
     body: `${name} body`,
     example: `<${name} />`,
+    // exampleCode 为 StrategyChunk 必填契约字段（双码），mock 必须满足
+    exampleCode: { ts: `<${name} />`, js: `<${name} js />` },
     score: 0.9,
   }
 }
@@ -58,7 +60,15 @@ describe('runQuery SSE 编排', () => {
     })
     expect(events.filter(e => e.type === 'token').map(e => (e as { text: string }).text)).toEqual(['这是', '回答'])
     const example = events.find(e => e.type === 'example')
-    expect(example).toEqual({ type: 'example', code: '<MyButton />', lang: 'vue' })
+    expect(example).toEqual({
+      type: 'example',
+      code: '<MyButton />',
+      lang: 'vue',
+      ts: '<MyButton />',
+      js: '<MyButton js />',
+      component: 'MyButton',
+      packageName: '@moluoxixi/components',
+    })
     expect(events[events.length - 1]).toEqual({ type: 'done' })
   })
 

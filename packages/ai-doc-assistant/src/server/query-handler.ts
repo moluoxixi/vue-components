@@ -71,8 +71,19 @@ export async function* runQuery(
   for await (const token of deps.chat(deps.config, messages))
     yield { type: 'token', text: token }
 
-  // 5. emit 首个命中组件的示例骨架（props 名称/类型与契约一致）
-  yield { type: 'example', code: chunks[0].example, lang: 'vue' }
+  // 5. emit 首个命中组件的双码示例 + 组件标识。
+  //    code 为向后兼容字段（=ts）；ts/js 供预览块切换查看/复制；
+  //    component/packageName 供前端运行时编译挂载真实组件（解析本地组件库）。
+  const top = chunks[0]
+  yield {
+    type: 'example',
+    code: top.exampleCode.ts,
+    lang: 'vue',
+    ts: top.exampleCode.ts,
+    js: top.exampleCode.js,
+    component: top.component,
+    packageName: top.packageName,
+  }
 
   yield { type: 'done' }
 }

@@ -20,6 +20,8 @@ export interface VectorDoc {
   body: string
   /** 带类型提示的示例骨架（stored-only，不参与检索打分）。 */
   example: string
+  /** JS 版示例骨架（剥离类型，stored-only，供前端切换查看/复制）。 */
+  exampleJs: string
   /** body 的 embedding 向量（维度由 embedder 决定，调用方保证一致）。 */
   embedding: number[]
 }

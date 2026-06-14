@@ -73,11 +73,24 @@ function exampleValueFor(p: PropDef): string {
   return `'${p.name}'`
 }
 
+/** 示例代码的双语言形态：TS（带类型）与 JS（剥离类型），供 demo 预览块切换查看/复制。 */
+export interface ExampleCode {
+  /** `<script setup lang="ts">` 版本，含 ref<Type>() 类型标注。 */
+  ts: string
+  /** `<script setup>` 版本，剥离类型标注（ref(value)）。 */
+  js: string
+}
+
 /**
- * 生成带类型提示的 SFC 使用示例骨架（确定性，不依赖大模型）。
- * 模型生成的示例可在此骨架基础上增强；骨架保证 props 名称/类型与契约一致。
+ * 生成带类型提示的 SFC 使用示例骨架（确定性，不依赖大模型），同时产出 TS 与 JS 两种形态。
+ *
+ * 两种形态共享同一套 props 选择、属性绑定、v-model 逻辑，仅 setup 内变量声明的类型标注不同：
+ * TS 用 `ref<Type>(value)`，JS 用 `ref(value)`。这样 demo 预览块可让用户切换查看/复制 TS 或 JS。
+ *
+ * 注意：JS 形态由确定性规则直接生成，不做 TS 源码字符串的正则降级（骨架形态受控、字段简单，
+ * 直接按语言分别拼接比事后剥离更可靠，避免复杂泛型/多行类型的正则脆弱性）。
  */
-export function renderExampleSkeleton(c: ComponentContract): string {
+export function renderExample(c: ComponentContract): ExampleCode {
   const requiredProps = c.props.filter(p => p.required)
   const propsToShow = requiredProps.length ? requiredProps : c.props.slice(0, 3)
 
@@ -96,23 +109,43 @@ export function renderExampleSkeleton(c: ComponentContract): string {
     })
     .join('\n')
 
-  const refLines = propsToShow
-    .filter(p => !(isStatic(p) && exampleValueFor(p).startsWith('\'')))
-    .map(p => `const ${p.name} = ref<${p.type}>(${exampleValueFor(p)})`)
-    .join('\n')
+  // 需要声明 ref 变量的 prop（排除直接写成静态字符串字面量属性的）
+  const refProps = propsToShow.filter(p => !(isStatic(p) && exampleValueFor(p).startsWith('\'')))
+  const refLinesTs = refProps.map(p => `const ${p.name} = ref<${p.type}>(${exampleValueFor(p)})`).join('\n')
+  const refLinesJs = refProps.map(p => `const ${p.name} = ref(${exampleValueFor(p)})`).join('\n')
 
-  const modelBind = c.models[0] ? `\n    v-model:${c.models[0].name}="${c.models[0].name}Value"` : ''
-  const modelRef = c.models[0] ? `\nconst ${c.models[0].name}Value = ref<${c.models[0].type}>()` : ''
+  const model = c.models[0]
+  const modelBind = model ? `\n    v-model:${model.name}="${model.name}Value"` : ''
+  const modelRefTs = model ? `\nconst ${model.name}Value = ref<${model.type}>()` : ''
+  const modelRefJs = model ? `\nconst ${model.name}Value = ref()` : ''
 
-  return `<script setup lang="ts">
-import { ref } from 'vue'
-import { ${c.name} } from '${c.packageName}'
-${refLines}${modelRef}
-</script>
+  const template = `
 
 <template>
   <${c.name}
 ${attrs}${modelBind}
   />
 </template>`
+
+  const ts = `<script setup lang="ts">
+import { ref } from 'vue'
+import { ${c.name} } from '${c.packageName}'
+${refLinesTs}${modelRefTs}
+</script>${template}`
+
+  const js = `<script setup>
+import { ref } from 'vue'
+import { ${c.name} } from '${c.packageName}'
+${refLinesJs}${modelRefJs}
+</script>${template}`
+
+  return { ts, js }
+}
+
+/**
+ * 生成带类型提示的 TS SFC 使用示例骨架（确定性）。
+ * 保留此函数做向后兼容（既有 indexer/检索链路按单一 TS 串存储）；新链路应优先用 renderExample 取双码。
+ */
+export function renderExampleSkeleton(c: ComponentContract): string {
+  return renderExample(c).ts
 }

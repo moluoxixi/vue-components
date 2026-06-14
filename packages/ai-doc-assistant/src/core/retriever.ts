@@ -16,6 +16,8 @@ export interface RetrievedChunk {
   body: string
   /** 预生成的带类型提示示例骨架（建索引时随文档存入，查询期直接回带）。 */
   example: string
+  /** JS 版示例骨架（剥离类型，stored-only，供前端切换查看/复制）。 */
+  exampleJs: string
   score: number
 }
 
@@ -79,6 +81,7 @@ export class Retriever {
       docPath: hit.document.docPath as string,
       body: hit.document.body as string,
       example: hit.document.example as string,
+      exampleJs: hit.document.exampleJs as string,
       score: hit.score,
     }))
 

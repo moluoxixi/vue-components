@@ -1,3 +1,4 @@
+import type { ExampleCode } from './generator'
 import type { ComponentContract } from './types'
 import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
 /**
@@ -12,7 +13,7 @@ import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
  *
  * 切换入口：环境变量 AI_DOC_RETRIEVAL_MODE 或 plugin/Context options.mode，默认 content。
  */
-import { renderExampleSkeleton, renderSearchableDoc } from './generator'
+import { renderExample, renderSearchableDoc } from './generator'
 
 /** 检索模式。content=全量上下文（默认）；vector=向量语义检索（升级）。 */
 export type RetrievalMode = 'content' | 'vector'
@@ -27,8 +28,10 @@ export interface StrategyChunk {
   docPath: string
   /** 契约正文（自然语言化），作为喂给 chat 的上下文。 */
   body: string
-  /** 带类型提示的使用示例骨架。 */
+  /** 带类型提示的使用示例骨架（TS，向后兼容字段，等于 exampleCode.ts）。 */
   example: string
+  /** 双语言示例源码（TS/JS），供 demo 预览块切换查看/复制与运行时编译挂载。 */
+  exampleCode: ExampleCode
   /** 相关度分（content 模式恒为 1；vector 模式为检索相似度）。 */
   score: number
 }
@@ -78,14 +81,18 @@ export class ContentStrategy implements RetrievalStrategy {
 
   async build(contracts: ComponentContract[]): Promise<StrategyMeta> {
     // content 模式无异步重活，但保持 async 契约一致，便于与 vector 策略统一调用
-    this.chunks = contracts.map(c => ({
-      component: c.name,
-      packageName: c.packageName,
-      docPath: c.sourceFile,
-      body: renderSearchableDoc(c),
-      example: renderExampleSkeleton(c),
-      score: 1,
-    }))
+    this.chunks = contracts.map((c) => {
+      const exampleCode = renderExample(c)
+      return {
+        component: c.name,
+        packageName: c.packageName,
+        docPath: c.sourceFile,
+        body: renderSearchableDoc(c),
+        example: exampleCode.ts,
+        exampleCode,
+        score: 1,
+      }
+    })
     this.builtAt = new Date().toISOString()
     return { builtAt: this.builtAt, componentCount: this.chunks.length }
   }

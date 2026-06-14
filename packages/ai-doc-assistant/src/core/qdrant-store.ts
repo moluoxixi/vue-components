@@ -22,6 +22,7 @@ interface QdrantPayload {
   docPath: string
   body: string
   example: string
+  exampleJs: string
 }
 
 /** Qdrant /points/search 单条命中结构（仅取用到的字段）。 */
@@ -104,6 +105,7 @@ export class QdrantVectorStore implements VectorStore {
         docPath: d.docPath,
         body: d.body,
         example: d.example,
+        exampleJs: d.exampleJs,
       } satisfies QdrantPayload,
     }))
     // wait=true 确保 upsert 落盘后再返回，避免随后 search 读到未就绪索引
@@ -133,6 +135,7 @@ export class QdrantVectorStore implements VectorStore {
       docPath: hit.payload.docPath,
       body: hit.payload.body,
       example: hit.payload.example,
+      exampleJs: hit.payload.exampleJs,
       score: hit.score,
     }))
 

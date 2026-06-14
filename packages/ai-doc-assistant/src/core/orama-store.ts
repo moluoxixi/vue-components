@@ -13,13 +13,14 @@ import { create, insertMultiple, search } from '@orama/orama'
 import { EMBEDDING_DIM, INDEX_SCHEMA } from './indexer'
 import { NO_MATCH_SCORE_THRESHOLD } from './retriever'
 
-/** 入库文档（example 为 stored-only，不参与检索打分）。 */
+/** 入库文档（example/exampleJs 为 stored-only，不参与检索打分）。 */
 interface OramaIndexDoc {
   component: string
   packageName: string
   docPath: string
   body: string
   example: string
+  exampleJs: string
   embedding: number[]
 }
 
@@ -44,6 +45,7 @@ export class OramaVectorStore implements VectorStore {
         docPath: d.docPath,
         body: d.body,
         example: d.example,
+        exampleJs: d.exampleJs,
         embedding: d.embedding,
       }
     })
@@ -78,6 +80,7 @@ export class OramaVectorStore implements VectorStore {
       docPath: hit.document.docPath as string,
       body: hit.document.body as string,
       example: hit.document.example as string,
+      exampleJs: hit.document.exampleJs as string,
       score: hit.score,
     }))
 

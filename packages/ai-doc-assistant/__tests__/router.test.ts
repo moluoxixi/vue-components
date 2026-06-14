@@ -186,7 +186,7 @@ describe('dispatch 路由分发', () => {
         build: async () => ({ builtAt: 'x', componentCount: 1 }),
         retrieve: async () => ({
           empty: false,
-          chunks: [{ component: 'Btn', packageName: '@x/c', text: 'Btn docs', example: '<Btn />', score: 0.9 }],
+          chunks: [{ component: 'Btn', packageName: '@x/c', docPath: 'packages/Btn/src/index.vue', body: 'Btn docs', example: '<Btn />', exampleCode: { ts: '<Btn />', js: '<Btn />' }, score: 0.9 }],
         }),
       }) as unknown as RetrievalStrategy,
     })
