@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { extractVueBlocks, PREVIEW_ALLOWED_MODULES, splitAnswerSegments } from '../src/core/vue-block-extractor'
 
 const VUE_OK = '```vue\n<script setup lang="ts">\nimport { PopoverTableSelect } from \'@moluoxixi/components\'\nconst columns = [{ field: \'name\' }]\n</script>\n<template>\n  <PopoverTableSelect :columns="columns" />\n</template>\n```'
-const VUE_BAD = '```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton /></template>\n```'
+const VUE_ELEMENT_PLUS = '```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton /></template>\n```'
+const VUE_BAD = '```vue\n<script setup lang="ts">\nimport axios from \'axios\'\n</script>\n<template><div /></template>\n```'
 const VUE_NO_DEMO = '```vue no-demo\n<script setup lang="ts">\nimport { Foo } from \'@moluoxixi/components\'\n</script>\n<template><Foo /></template>\n```'
 
 describe('splitAnswerSegments', () => {
@@ -18,13 +19,21 @@ describe('splitAnswerSegments', () => {
     expect(segs[2]).toMatchObject({ kind: 'text', text: '以上即配置方式。' })
   })
 
+  it('element Plus 依赖在预览白名单内，可作为 demo 编译', () => {
+    const segs = splitAnswerSegments(`Element Plus 示例：\n${VUE_ELEMENT_PLUS}`)
+    const vue = segs.find(s => s.kind === 'vue')
+    expect(vue?.kind).toBe('vue')
+    if (vue?.kind === 'vue')
+      expect(vue.renderable).toBe(true)
+  })
+
   it('白名单外依赖的 vue 块标 renderable=false 且带原因', () => {
     const segs = splitAnswerSegments(`需要按钮：\n${VUE_BAD}`)
     const vue = segs.find(s => s.kind === 'vue')
     expect(vue?.kind).toBe('vue')
     if (vue?.kind === 'vue') {
       expect(vue.renderable).toBe(false)
-      expect(vue.reason).toContain('element-plus')
+      expect(vue.reason).toContain('axios')
     }
   })
 
@@ -81,6 +90,26 @@ describe('splitAnswerSegments', () => {
       expect(vue.reason).toContain('./Foo.vue')
     }
   })
+
+  it('白名单只允许预览运行时精确注入的模块，不放行子路径 import', () => {
+    const md = [
+      '```vue',
+      '<script setup lang="ts">',
+      'import { useMouse } from \'@vueuse/core\'',
+      'import Foo from \'@moluoxixi/components/foo\'',
+      '</script>',
+      '<template><Foo /></template>',
+      '```',
+    ].join('\n')
+    const segs = splitAnswerSegments(md)
+    const vue = segs.find(s => s.kind === 'vue')
+    expect(vue?.kind).toBe('vue')
+    if (vue?.kind === 'vue') {
+      expect(vue.renderable).toBe(false)
+      expect(vue.reason).toContain('@vueuse/core')
+      expect(vue.reason).toContain('@moluoxixi/components/foo')
+    }
+  })
 })
 
 describe('extractVueBlocks', () => {
@@ -91,7 +120,7 @@ describe('extractVueBlocks', () => {
     expect(blocks[0].renderable).toBe(true)
     expect(blocks[0].source).toContain('PopoverTableSelect')
     expect(blocks[1].renderable).toBe(false)
-    expect(blocks[1].reason).toContain('element-plus')
+    expect(blocks[1].reason).toContain('axios')
     // 不应带 kind 字段（已剥离）
     expect('kind' in blocks[0]).toBe(false)
   })
@@ -109,5 +138,6 @@ describe('extractVueBlocks', () => {
   it('白名单常量包含 vue 与组件库', () => {
     expect(PREVIEW_ALLOWED_MODULES).toContain('vue')
     expect(PREVIEW_ALLOWED_MODULES).toContain('@moluoxixi/components')
+    expect(PREVIEW_ALLOWED_MODULES).toContain('element-plus')
   })
 })

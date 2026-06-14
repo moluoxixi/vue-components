@@ -6,7 +6,7 @@
  * extractVueBlocks 产出 example 事件的 blocks（兼容旧前端）。
  *
  * 可渲染判定：可渲染 demo 由 src/ui/preview/compile.ts 在浏览器内用 vue3-sfc-loader 编译挂载，
- * 其 moduleCache 只注入了 `vue` 与 `@moluoxixi/components`（含 /styles 副作用）。示例若 import
+ * 其 moduleCache 注入了 `vue`、`element-plus` 与 `@moluoxixi/components`（含样式副作用）。示例若 import
  * 白名单外的依赖，loader 的 getFile 会抛「未预期的模块请求」导致编译失败、预览空白。
  * 因此做两道判定：
  * 1. 显式标识：fenced info 串带 `no-demo`（如 ```vue no-demo）→ AI 已声明依赖外部库，不转 demo。
@@ -17,6 +17,8 @@
 /** 运行时预览可解析的依赖白名单（与 src/ui/preview/compile.ts 的 moduleCache 对齐）。 */
 export const PREVIEW_ALLOWED_MODULES: readonly string[] = [
   'vue',
+  'element-plus',
+  'element-plus/dist/index.css',
   '@moluoxixi/components',
   '@moluoxixi/components/styles',
 ]
@@ -62,14 +64,12 @@ function parseImportSpecifiers(source: string): string[] {
 
 /**
  * 判断一个模块说明符是否在预览白名单内。
- * 允许白名单包的子路径（如 `@moluoxixi/components/xxx`）；相对路径一律不可解析。
+ * 白名单必须与 preview/compile.ts 的 moduleCache 精确对齐；子路径 import 运行时无法解析。
  */
 function isAllowedSpecifier(spec: string): boolean {
   if (spec.startsWith('.') || spec.startsWith('/'))
     return false
-  return PREVIEW_ALLOWED_MODULES.some(
-    allowed => spec === allowed || spec.startsWith(`${allowed}/`),
-  )
+  return PREVIEW_ALLOWED_MODULES.includes(spec)
 }
 
 /** info 串是否声明了 no-demo 标识（大小写不敏感，作为独立 token）。 */

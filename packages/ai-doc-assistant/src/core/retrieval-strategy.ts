@@ -32,7 +32,7 @@ export interface StrategyChunk {
   example: string
   /** 双语言示例源码（TS/JS），供 demo 预览块切换查看/复制与运行时编译挂载。 */
   exampleCode: ExampleCode
-  /** 相关度分（content 模式恒为 1；vector 模式为检索相似度）。 */
+  /** 相关度分（content 模式为轻量关键词相关度；vector 模式为检索相似度）。 */
   score: number
 }
 
@@ -101,14 +101,98 @@ export class ContentStrategy implements RetrievalStrategy {
     return this.chunks !== null
   }
 
-  async retrieve(_question: string, _topK: number): Promise<StrategyResult> {
+  async retrieve(question: string, _topK: number): Promise<StrategyResult> {
     // 未构建即检索属调用方时序错误，显式抛错（不静默返回空伪装无命中）
     if (this.chunks === null)
       throw new Error('content strategy not built: call build() before retrieve()')
 
-    // 全量纳入：组件库规模小，整体契约即上下文；无组件时判定 empty 触发兜底
-    return { chunks: this.chunks, empty: this.chunks.length === 0 }
+    // 全量纳入但按问题排序：小组件库仍把全部契约喂给模型，同时保证 sources 与兜底示例
+    // 优先指向最相关组件，避免“DateRangePicker 问题却拿第一个 PopoverTableSelect 兜底”。
+    const ranked = rankContentChunks(question, this.chunks)
+    return { chunks: ranked, empty: ranked.length === 0 }
   }
+}
+
+/** 归一化检索文本：英文大小写无关，空白不参与中文连续短语匹配。 */
+function normalizeSearchText(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, '')
+}
+
+/** 抽取英文/数字词项，覆盖组件名、prop 名和用户直接输入的 API 名。 */
+function latinTerms(text: string): string[] {
+  return Array.from(new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(term => term.length >= 2),
+  ))
+}
+
+const QUERY_SYNONYMS: Array<{ pattern: RegExp, terms: string[] }> = [
+  { pattern: /日期|时间|日历|选择器/, terms: ['date', 'time', 'picker'] },
+  { pattern: /范围|最近|近[一二三四五六七八九十\d]+天|区间/, terms: ['range'] },
+  { pattern: /禁用|不可选|禁止选择/, terms: ['disabled', 'disable'] },
+  { pattern: /下拉|弹层|浮层/, terms: ['popover', 'select'] },
+  { pattern: /表格|列表|行|列|单元格/, terms: ['table', 'row', 'column', 'columns', 'data'] },
+  { pattern: /回车|焦点|下一个|容器/, terms: ['enter', 'next', 'focus', 'container'] },
+]
+
+/** 中文业务词到组件 API 英文词的轻量映射，补足 content 模式没有 embedding 的语义差。 */
+function queryLatinTerms(text: string): string[] {
+  const terms = new Set(latinTerms(text))
+  for (const { pattern, terms: mappedTerms } of QUERY_SYNONYMS) {
+    if (pattern.test(text)) {
+      for (const term of mappedTerms)
+        terms.add(term)
+    }
+  }
+  return Array.from(terms)
+}
+
+/** 抽取中文 2~6 字短语；不用分词依赖也能覆盖“时间选择器”“禁用日期”等直接命中。 */
+function hanTerms(text: string): string[] {
+  const terms = new Set<string>()
+  const ranges = text.match(/[\u4E00-\u9FFF]+/g) ?? []
+  for (const range of ranges) {
+    const maxSize = Math.min(6, range.length)
+    for (let size = 2; size <= maxSize; size += 1) {
+      for (let start = 0; start <= range.length - size; start += 1)
+        terms.add(range.slice(start, start + size))
+    }
+  }
+  return Array.from(terms)
+}
+
+/** content 模式的轻量相关度：只用于排序与兜底选择，不裁剪上下文。 */
+function scoreContentChunk(question: string, chunk: StrategyChunk): number {
+  const normalizedQuestion = normalizeSearchText(question)
+  const normalizedComponent = normalizeSearchText(chunk.component)
+  const normalizedBody = normalizeSearchText(`${chunk.component}\n${chunk.body}\n${chunk.docPath}`)
+  let score = 0
+
+  if (normalizedQuestion.includes(normalizedComponent) || normalizedBody.includes(normalizedQuestion))
+    score += 100
+
+  for (const term of queryLatinTerms(question)) {
+    if (normalizedComponent.includes(term))
+      score += 30
+    if (normalizedBody.includes(term))
+      score += 6
+  }
+
+  for (const term of hanTerms(question)) {
+    if (normalizedBody.includes(term))
+      score += term.length
+  }
+
+  return score
+}
+
+function rankContentChunks(question: string, chunks: StrategyChunk[]): StrategyChunk[] {
+  return chunks
+    .map((chunk, index) => ({ chunk, index, score: scoreContentChunk(question, chunk) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ chunk, score }) => ({ ...chunk, score }))
 }
 
 /**

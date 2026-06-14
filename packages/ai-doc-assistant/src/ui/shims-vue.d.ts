@@ -19,6 +19,9 @@ declare module '@moluoxixi/components' {
 /** 组件库样式副作用模块（仅用于触发样式注入，无运行时导出）。 */
 declare module '@moluoxixi/components/styles' {}
 
+/** Element Plus 样式副作用模块（UI 入口全局引入）。 */
+declare module 'element-plus/dist/index.css' {}
+
 /** vue3-sfc-loader 浏览器 ESM 构建的最小类型声明（仅声明本项目使用的 loadModule）。 */
 declare module 'vue3-sfc-loader/dist/vue3-sfc-loader.esm.js' {
   import type { Component } from 'vue'

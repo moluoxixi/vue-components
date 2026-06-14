@@ -71,12 +71,12 @@ function sampleScalar(typeText: string, fieldName: string, rowIndex = 0): string
     return '() => {}'
   // 标识符类字段（列定义的 field/prop/key/dataIndex）：给典型列名，让示例贴近真实表格场景
   if (/^(?:field|prop|key|dataindex|dataindexkey|name|value)$/.test(fn)) {
-    const cols = ['name', 'age']
+    const cols = ['name', 'price']
     return `'${cols[rowIndex] ?? `col${rowIndex + 1}`}'`
   }
   // 标题/标签类字段：给可读的中文列标题
   if (/title|label|header|text/.test(fn)) {
-    const titles = ['姓名', '年龄']
+    const titles = ['姓名', '价格']
     return `'${titles[rowIndex] ?? `列${rowIndex + 1}`}'`
   }
   // 字符串及兜底：用字段名 + 行号生成可辨识的占位
@@ -91,9 +91,10 @@ function sampleScalar(typeText: string, fieldName: string, rowIndex = 0): string
  * 再补 1~2 个有信息量的可选字段（title/label 等），避免无意义的全字段堆砌。
  *
  * @param typeDef 该数组元素引用的自定义类型（含字段明细）
- * @returns 样例对象数组的源码片段（多行缩进），如 `[\n  { field: 'name', title: 'name' },\n  ...\n]`
+ * @param dynamicSlotField 若组件支持按 field 命名的动态插槽，给对应列补 `slots.default`。
+ * @returns 样例对象数组的源码片段（多行缩进），如 `[\n  { field: 'name', title: '姓名' },\n  ...\n]`
  */
-function sampleStructuredArray(typeDef: TypeDefInfo): string {
+function sampleStructuredArray(typeDef: TypeDefInfo, dynamicSlotField?: string): string {
   const required = typeDef.fields.filter(f => !f.optional)
   // 选取展示字段：必填字段 + 最多 1 个有代表性的可选字符串字段（title/label/name）
   const niceOptional = typeDef.fields.find(
@@ -102,9 +103,15 @@ function sampleStructuredArray(typeDef: TypeDefInfo): string {
   const showFields = niceOptional ? [...required, niceOptional] : required
   // 字段为空（无必填）时退回首个字段，仍保证对象非空
   const fields = showFields.length ? showFields : typeDef.fields.slice(0, 1)
+  const keyField = required[0] ?? typeDef.fields[0]
 
   const makeRow = (i: number): string => {
     const parts = fields.map(f => `${f.name}: ${sampleScalar(f.type, f.name, i)}`)
+    if (dynamicSlotField && keyField) {
+      const keyValue = sampleScalar(keyField.type, keyField.name, i).replace(/^'|'$/g, '')
+      if (keyValue === dynamicSlotField)
+        parts.push(`slots: { default: '${dynamicSlotField}' }`)
+    }
     return `  { ${parts.join(', ')} }`
   }
   return `[\n${makeRow(0)},\n${makeRow(1)},\n]`
@@ -198,6 +205,14 @@ export function renderExample(c: ComponentContract): ExampleCode {
     ? [sampleScalar(keyField.type, keyField.name, 0), sampleScalar(keyField.type, keyField.name, 1)]
         .map(v => v.replace(/^'|'$/g, ''))
     : []
+  const hasDynamicSlot = c.slots.some(s =>
+    s.name.includes('dynamic')
+    || s.name.includes('[')
+    || /动态|field|列|单元格/.test(`${s.name} ${s.description}`),
+  )
+  const dynamicSlotName = hasDynamicSlot
+    ? (keyFieldValues.find(v => /price|amount|money|total/i.test(v)) ?? keyFieldValues[0])
+    : undefined
   // 数据行类 prop：数组但引用的是无字段开放类型（typically data: Row[]），按列主键生成联动行
   const dataProp = c.props.find(
     p => isArrayProp(p) && p !== columnsProp && !structTypeOf(p)
@@ -219,7 +234,7 @@ export function renderExample(c: ComponentContract): ExampleCode {
   // 结构化样例值：columns → 样例列对象数组；data → 按列主键联动的样例行；其余 → 占位值
   const structuredValueFor = (p: PropDef): string | null => {
     if (p === columnsProp && columnsType)
-      return sampleStructuredArray(columnsType)
+      return sampleStructuredArray(columnsType, dynamicSlotName)
     if (p === dataProp && keyFieldValues.length) {
       return sampleRowArray(keyFieldValues)
     }
@@ -230,16 +245,17 @@ export function renderExample(c: ComponentContract): ExampleCode {
     const v = exampleValueFor(p)
     return v.startsWith('\'') || v === 'true' || v === 'false' || /^\d+$/.test(v)
   }
+  const attrNameOf = (propName: string): string => propName.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
 
   const attrs = propsToShow
     .map((p) => {
       const v = exampleValueFor(p)
       // 结构化数据 prop 与非静态值用 v-bind 引用 ref 变量；纯字符串字面量用静态属性
       if (structuredValueFor(p) !== null)
-        return `    :${p.name}="${p.name}"`
+        return `    :${attrNameOf(p.name)}="${p.name}"`
       return isStatic(p) && v.startsWith('\'')
-        ? `    ${p.name}=${v.replace(/'/g, '"')}`
-        : `    :${p.name}="${p.name}"`
+        ? `    ${attrNameOf(p.name)}=${v.replace(/'/g, '"')}`
+        : `    :${attrNameOf(p.name)}="${p.name}"`
     })
     .join('\n')
 
@@ -254,24 +270,70 @@ export function renderExample(c: ComponentContract): ExampleCode {
   const modelRefTs = model ? `\nconst ${model.name}Value = ref<${model.type}>()` : ''
   const modelRefJs = model ? `\nconst ${model.name}Value = ref()` : ''
 
-  const template = `
+  const event = c.emits.find(e => !e.name.startsWith('update:'))
+  const eventPascalName = event
+    ? event.name
+        .split(/[^a-z0-9]+/i)
+        .filter(Boolean)
+        .map(part => part[0].toUpperCase() + part.slice(1))
+        .join('')
+    : ''
+  const eventHandlerName = event ? `handle${eventPascalName}` : ''
+  const eventPayloadName = event?.name === 'select' ? 'row' : 'payload'
+  const eventPayloadType = event?.payloadType || 'unknown'
+  const eventRefName = event?.name === 'select' ? 'selectedRow' : 'lastEventPayload'
+  const eventBind = event ? `\n    @${event.name}="${eventHandlerName}"` : ''
+  const eventRefTs = event ? `\nconst ${eventRefName} = ref<${eventPayloadType} | null>(null)` : ''
+  const eventRefJs = event ? `\nconst ${eventRefName} = ref(null)` : ''
+  const eventHandlerTs = event
+    ? `\nfunction ${eventHandlerName}(${eventPayloadName}: ${eventPayloadType}): void {\n  ${eventRefName}.value = ${eventPayloadName}\n}`
+    : ''
+  const eventHandlerJs = event
+    ? `\nfunction ${eventHandlerName}(${eventPayloadName}) {\n  ${eventRefName}.value = ${eventPayloadName}\n}`
+    : ''
+
+  const typeImports = Array.from(new Set([
+    ...refProps.flatMap(p => p.typeRefs),
+    ...(event && typeDefByName.has(eventPayloadType) ? [eventPayloadType] : []),
+  ]))
+  const typeImportLine = typeImports.length
+    ? `\nimport type { ${typeImports.join(', ')} } from '${c.packageName}'`
+    : ''
+
+  const dynamicSlot = dynamicSlotName
+    ? `
+    <template #${dynamicSlotName}="{ row }">
+      <span style="color: red;">${dynamicSlotName === 'price' ? '¥' : ''}{{ row.${dynamicSlotName} }}</span>
+    </template>`
+    : ''
+
+  const template = dynamicSlot
+    ? `
 
 <template>
   <${c.name}
-${attrs}${modelBind}
+${attrs}${eventBind}${modelBind}
+  >${dynamicSlot}
+  </${c.name}>
+</template>`
+    : `
+
+<template>
+  <${c.name}
+${attrs}${eventBind}${modelBind}
   />
 </template>`
 
   const ts = `<script setup lang="ts">
 import { ref } from 'vue'
-import { ${c.name} } from '${c.packageName}'
-${refLinesTs}${modelRefTs}
+import { ${c.name} } from '${c.packageName}'${typeImportLine}
+${refLinesTs}${eventRefTs}${modelRefTs}${eventHandlerTs}
 </script>${template}`
 
   const js = `<script setup>
 import { ref } from 'vue'
 import { ${c.name} } from '${c.packageName}'
-${refLinesJs}${modelRefJs}
+${refLinesJs}${eventRefJs}${modelRefJs}${eventHandlerJs}
 </script>${template}`
 
   return { ts, js }

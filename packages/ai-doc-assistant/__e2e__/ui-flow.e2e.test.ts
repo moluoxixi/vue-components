@@ -70,7 +70,16 @@ function startUpstream(): Promise<{ server: Server, url: string }> {
   const server = createServer((req, res) => {
     if (req.method === 'POST' && req.url?.includes('/chat/completions')) {
       res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8' })
-      const tokens = ['Button', ' 组件', '支持', ' label', ' 与', ' disabled', ' 两个 Props。']
+      const tokens = [
+        'Button',
+        ' 组件',
+        '支持',
+        ' label',
+        ' 与',
+        ' disabled',
+        ' 两个 Props。',
+        '\n```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton type="primary">确认</ElButton></template>\n```',
+      ]
       for (const t of tokens)
         res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`)
       res.write('data: [DONE]\n\n')
@@ -149,6 +158,7 @@ test('打开面板 → 构建索引 → 提问 → 渲染来源/回答 + demo �
   const errors: string[] = []
   page.on('pageerror', e => errors.push(String(e)))
 
+  await page.context().grantPermissions(['clipboard-write'], { origin: baseUrl })
   await page.goto(`${baseUrl}${UI_PREFIX}/`, { waitUntil: 'networkidle' })
 
   // 健康态渲染：mode=content，chat=configured
@@ -159,12 +169,17 @@ test('打开面板 → 构建索引 → 提问 → 渲染来源/回答 + demo �
   await page.getByTestId('build-btn').click()
   await expect(page.getByTestId('index-chip')).toContainText('ready', { timeout: 15000 })
 
-  // 构建后总览卡片加载到组件
-  await expect(page.getByTestId('component-card').first()).toContainText('EnterNextContainer', { timeout: 15000 })
-
-  // 重构后问答在独立 Chat 视图：点 AI 图标切到 Chat 视图再提问
-  await page.getByTestId('ai-icon').click()
+  // 主界面默认就是 AI 对话；知识库总览只在调试弹框内打开。
   await expect(page.getByTestId('chat-view')).toBeVisible()
+  await expect(page.getByTestId('component-card')).toHaveCount(0)
+
+  await page.getByTestId('kb-debug-btn').click()
+  await expect(page.getByTestId('kb-debug-dialog')).toBeVisible()
+
+  // 构建后调试弹框内的总览卡片加载到组件
+  await expect(page.getByTestId('component-card').first()).toContainText('EnterNextContainer', { timeout: 15000 })
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('kb-debug-dialog')).toBeHidden()
 
   // 提问并提交
   await page.getByTestId('question-input').fill('EnterNextContainer 怎么用？')
@@ -178,11 +193,8 @@ test('打开面板 → 构建索引 → 提问 → 渲染来源/回答 + demo �
   // demo 预览块出现（example 事件携带双码 + 组件标识）
   await expect(page.getByTestId('demo-preview')).toBeVisible({ timeout: 15000 })
 
-  // 真实组件挂载：DemoPreview 在浏览器运行时 compile example SFC，注入 dist 实体后挂载
-  // 真实 EnterNextContainer。断言三件事证明「真实编译挂载成功」（非静默吞、非空白）：
-  //  1) 挂载容器存在于 DOM；2) 未进入编译错误态；3) 容器内已渲染出真实组件产生的 DOM 节点。
-  // 不用 toBeVisible：EnterNextContainer 是无可见自身内容的「按 Enter 聚焦下一项」容器型组件，
-  // 真实挂载后其根节点高度可能为 0，但 DOM 子树非空即证明组件已被真实编译并挂载。
+  // 真实组件挂载：DemoPreview 在浏览器运行时 compile 回答里的 Element Plus SFC，
+  // moduleCache 解析 element-plus，宿主入口全局注册样式与插件，最终挂载出真实按钮。
   await expect(page.getByTestId('demo-mounted')).toBeAttached({ timeout: 15000 })
   // 编译未进入错误态（compile 成功）
   await expect(page.getByTestId('demo-error')).toHaveCount(0)
@@ -191,20 +203,31 @@ test('打开面板 → 构建索引 → 提问 → 渲染来源/回答 + demo �
   // 挂载容器内真实渲染出组件 DOM（vue3-sfc-loader 产物，非空白静默）
   const mountedHtml = await page.getByTestId('demo-mounted').innerHTML()
   expect(mountedHtml.trim().length, '真实组件挂载后容器 DOM 不应为空').toBeGreaterThan(0)
+  await expect(page.getByTestId('demo-mounted')).toContainText('确认')
 
-  // 默认 TS 码块含 lang="ts" 与本地组件库 import
+  // 操作栏直接提供四个按钮：查看 TS / 查看 JS / 复制 TS / 复制 JS。
+  await expect(page.getByTestId('view-ts')).toBeVisible()
+  await expect(page.getByTestId('copy-ts')).toBeVisible()
+  await expect(page.getByTestId('view-js')).toBeVisible()
+  await expect(page.getByTestId('copy-js')).toBeVisible()
+
+  // 点击查看 TS 后，码块含 lang="ts" 与 Element Plus import
+  await page.getByTestId('view-ts').click()
   const tsCode = await page.getByTestId('code-block').textContent()
   expect(tsCode ?? '').toContain('lang="ts"')
-  expect(tsCode ?? '').toContain('@moluoxixi/components')
+  expect(tsCode ?? '').toContain('element-plus')
 
   // 切到 JS：码块变为 <script setup>（无 lang="ts"）
-  await page.getByTestId('tab-js').click()
+  await page.getByTestId('view-js').click()
   const jsCode = await page.getByTestId('code-block').textContent()
   expect(jsCode ?? '').not.toContain('lang="ts"')
-  expect(jsCode ?? '').toContain('@moluoxixi/components')
+  expect(jsCode ?? '').toContain('element-plus')
 
-  // 复制当前码：点击不抛错（clipboard 写入）
-  await page.getByTestId('copy-current').click()
+  // 复制 TS / JS：四按钮模式下不需要展开到对应源码也能直接复制。
+  await page.getByTestId('copy-ts').click()
+  await expect(page.getByTestId('copy-ts')).toContainText('已复制')
+  await page.getByTestId('copy-js').click()
+  await expect(page.getByTestId('copy-js')).toContainText('已复制')
 
   expect(errors, `页面 JS 错误：${errors.join('; ')}`).toEqual([])
 })

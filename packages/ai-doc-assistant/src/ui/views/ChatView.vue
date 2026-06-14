@@ -12,7 +12,7 @@
  * 仅在索引就绪时可提问；网络/HTTP 错误显式展示，不静默吞掉。
  */
 import { computed, ref } from 'vue'
-import type { SourceRef } from '../../shared/protocol'
+import type { ExampleBlock, SourceRef } from '../../shared/protocol'
 import { splitAnswerSegments } from '../../core/vue-block-extractor'
 import { streamQuery } from '../api'
 import { DemoPreview } from '../components'
@@ -26,6 +26,26 @@ const answer = ref('')
 /** 命中组件标识：example 事件携带，供 demo 块编译挂载真实组件时解析本地组件库。 */
 const exampleComponent = ref('')
 const examplePackage = ref('')
+/**
+ * 后端 example 事件携带的全部代码块（含 ts + 确定性转译的 js）。
+ * 正文分段（segments）只切出 ts 源，js 来自后端——按 ts 源文本精确匹配回填，
+ * 避免前端再引入 typescript 做转译。
+ */
+const exampleBlocks = ref<ExampleBlock[]>([])
+
+/** 按 ts 源文本查后端转译的 js 版（找不到返回 undefined，前端据此隐藏 JS 切换）。 */
+function blockForSource(source: string): ExampleBlock | undefined {
+  return exampleBlocks.value.find(b => b.ts === source)
+}
+function jsForSource(source: string): string | undefined {
+  return blockForSource(source)?.js
+}
+function renderableForSource(source: string, fallback: boolean): boolean {
+  return blockForSource(source)?.renderable ?? fallback
+}
+function reasonForSource(source: string, fallback?: string): string | undefined {
+  return blockForSource(source)?.reason ?? fallback
+}
 /** 检索命中来源。 */
 const sources = ref<SourceRef[]>([])
 /** 错误信息。 */
@@ -40,6 +60,19 @@ const canAsk = computed(() =>
 
 /** 把回答正文实时切分为有序分段（文字段 + vue 代码块），供模板原位渲染。 */
 const segments = computed(() => splitAnswerSegments(answer.value))
+/** 正文里已经原位渲染过的 vue 代码块源码，用于避免 example 事件 blocks 重复展示。 */
+const inlineVueSources = computed(() => new Set(
+  segments.value
+    .filter(seg => seg.kind === 'vue')
+    .map(seg => seg.source),
+))
+/**
+ * 后端保障链路：若上游回答没有输出 ```vue 块，query-handler 会用契约生成兜底示例。
+ * 这些 blocks 不在正文 segments 中，必须追加渲染为 demo 块，否则“保证总有可用示例”会在 UI 丢失。
+ */
+const fallbackExampleBlocks = computed(() =>
+  exampleBlocks.value.filter(block => !inlineVueSources.value.has(block.ts)),
+)
 
 /** 发起流式提问，分区渲染 SSE 事件。 */
 async function onAsk(): Promise<void> {
@@ -50,6 +83,7 @@ async function onAsk(): Promise<void> {
   sources.value = []
   exampleComponent.value = ''
   examplePackage.value = ''
+  exampleBlocks.value = []
   errorMsg.value = ''
   try {
     await streamQuery(question.value.trim(), 5, (event) => {
@@ -64,6 +98,8 @@ async function onAsk(): Promise<void> {
           // 组件标识用于 demo 块编译挂载真实组件；代码块本身从正文 segments 解析，不再单独挂载。
           exampleComponent.value = event.component
           examplePackage.value = event.packageName
+          // 捕获后端转译好的双码块，供正文分段按 ts 源回填 js。
+          exampleBlocks.value = event.blocks
           break
         case 'error':
           errorMsg.value = `${event.error}: ${event.message}`
@@ -119,7 +155,7 @@ async function onAsk(): Promise<void> {
 
     <section class="answer" data-testid="answer">
       <h3>回答</h3>
-      <template v-if="segments.length">
+      <template v-if="segments.length || fallbackExampleBlocks.length">
         <!-- 正文分段：文字段原样展示，vue 代码块原位替换为 demo 预览块 -->
         <template v-for="(seg, i) in segments" :key="i">
           <p v-if="seg.kind === 'text'" class="answer-text" data-testid="answer-text">
@@ -127,14 +163,24 @@ async function onAsk(): Promise<void> {
           </p>
           <DemoPreview
             v-else
-            data-testid="answer-demo"
             :ts="seg.source"
+            :js="jsForSource(seg.source)"
             :component="exampleComponent"
             :package-name="examplePackage"
-            :renderable="seg.renderable"
-            :reason="seg.reason"
+            :renderable="renderableForSource(seg.source, seg.renderable)"
+            :reason="reasonForSource(seg.source, seg.reason)"
           />
         </template>
+        <DemoPreview
+          v-for="(block, i) in fallbackExampleBlocks"
+          :key="`fallback-${i}`"
+          :ts="block.ts"
+          :js="block.js"
+          :component="exampleComponent"
+          :package-name="examplePackage"
+          :renderable="block.renderable"
+          :reason="block.reason"
+        />
       </template>
       <p v-else class="answer-text placeholder">
         （等待提问）

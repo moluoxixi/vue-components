@@ -61,35 +61,40 @@ describe('demoPreview', () => {
     expect(compileSfc.mock.calls[0][0]).toBe('TS_SOURCE')
     // 真实组件已挂载
     expect(wrapper.find('[data-testid="real-comp"]').exists()).toBe(true)
-    // 代码块显示 TS 源码
-    expect(wrapper.find('[data-testid="code-block"]').text()).toContain('TS_SOURCE')
-    expect(wrapper.find('[data-testid="tab-ts"]').attributes('aria-selected')).toBe('true')
+    // 操作栏四个按钮均在（有 js 时）
+    expect(wrapper.find('[data-testid="view-ts"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="copy-ts"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="view-js"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="copy-js"]').exists()).toBe(true)
   })
 
-  it('切到 JS 标签后用 JS 源码重新编译并切换代码块', async () => {
+  it('点击「查看 JS」展开源码并用 JS 源码重新编译预览', async () => {
     const wrapper = await mountDemo()
     await flushPromises()
-    await wrapper.find('[data-testid="tab-js"]').trigger('click')
+    await wrapper.find('[data-testid="view-js"]').trigger('click')
     await flushPromises()
     // 第二次编译入参为 js 源码
     expect(compileSfc).toHaveBeenCalledTimes(2)
     expect(compileSfc.mock.calls[1][0]).toBe('JS_SOURCE')
+    // 源码区展开并显示 JS 源码 + 语言标识
     expect(wrapper.find('[data-testid="code-block"]').text()).toContain('JS_SOURCE')
-    expect(wrapper.find('[data-testid="tab-js"]').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('[data-testid="code-lang"]').text()).toBe('JavaScript')
   })
 
-  it('复制按钮把当前语言源码写入剪贴板并回显已复制', async () => {
+  it('「复制 TS」「复制 JS」无需展开即可直接复制对应语言源码', async () => {
     const wrapper = await mountDemo()
     await flushPromises()
-    await wrapper.find('[data-testid="copy-current"]').trigger('click')
+    // 源码区默认折叠，直接点复制 TS
+    expect((wrapper.find('[data-testid="demo-code"]').element as HTMLElement).style.display).toBe('none')
+    await wrapper.find('[data-testid="copy-ts"]').trigger('click')
     await flushPromises()
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('TS_SOURCE')
-    expect(wrapper.find('[data-testid="copy-current"]').text()).toContain('已复制')
-    // 切到 JS 后复制 JS 源码
-    await wrapper.find('[data-testid="tab-js"]').trigger('click')
+    expect(wrapper.find('[data-testid="copy-ts"]').text()).toContain('已复制')
+    // 直接点复制 JS（仍未展开）
+    await wrapper.find('[data-testid="copy-js"]').trigger('click')
     await flushPromises()
-    await wrapper.find('[data-testid="copy-current"]').trigger('click')
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('JS_SOURCE')
+    expect(wrapper.find('[data-testid="copy-js"]').text()).toContain('已复制')
   })
 
   it('编译失败时显式呈现错误且不挂载组件（错误不被静默吞）', async () => {
@@ -117,6 +122,10 @@ describe('demoPreview', () => {
       value: { writeText: vi.fn().mockRejectedValue(new Error('权限被拒')) },
       configurable: true,
     })
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn().mockReturnValue(false),
+      configurable: true,
+    })
     const wrapper = await mountDemo()
     await flushPromises()
     await wrapper.find('[data-testid="copy-current"]').trigger('click')
@@ -125,10 +134,53 @@ describe('demoPreview', () => {
     const err = wrapper.find('[data-testid="copy-error"]')
     expect(err.exists()).toBe(true)
     expect(err.text()).toContain('权限被拒')
-    expect(wrapper.find('[data-testid="copy-current"]').text()).toContain('复制失败')
+    expect(err.text()).toContain('Ctrl+C')
+    expect(wrapper.find('[data-testid="copy-current"]').text()).toContain('已选中')
   })
 
-  it('源码区默认折叠，点击操作栏后展开、再点收起（对齐 Element Plus 官网交互）', async () => {
+  it('顶部复制失败时展开并选中源码，源码折叠状态也显式反馈', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('Document is not focused')) },
+      configurable: true,
+    })
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn().mockReturnValue(false),
+      configurable: true,
+    })
+    const wrapper = await mountDemo()
+    await flushPromises()
+    const codeEl = wrapper.find('[data-testid="demo-code"]')
+    expect((codeEl.element as HTMLElement).style.display).toBe('none')
+
+    await wrapper.find('[data-testid="copy-ts"]').trigger('click')
+    await flushPromises()
+
+    expect((codeEl.element as HTMLElement).style.display).not.toBe('none')
+    expect(wrapper.find('[data-testid="copy-ts"]').text()).toContain('已选中')
+    expect(wrapper.find('[data-testid="copy-error"]').text()).toContain('Document is not focused')
+    expect(wrapper.find('[data-testid="copy-error"]').text()).toContain('Ctrl+C')
+  })
+
+  it('clipboard API 不可用时使用 textarea fallback 复制', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: undefined,
+      configurable: true,
+    })
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn().mockReturnValue(true),
+      configurable: true,
+    })
+    const wrapper = await mountDemo()
+    await flushPromises()
+    await wrapper.find('[data-testid="copy-ts"]').trigger('click')
+    await flushPromises()
+
+    expect(document.execCommand).toHaveBeenCalledWith('copy')
+    expect(wrapper.find('[data-testid="copy-ts"]').text()).toContain('已复制')
+    expect(wrapper.find('[data-testid="copy-error"]').exists()).toBe(false)
+  })
+
+  it('源码区默认折叠，点击「查看 TS」展开、再点收起', async () => {
     const wrapper = await mountDemo()
     await flushPromises()
     // 预览区始终可见；源码区由 v-show 控制，默认折叠
@@ -136,18 +188,18 @@ describe('demoPreview', () => {
     const codeEl = wrapper.find('[data-testid="demo-code"]')
     expect(codeEl.exists()).toBe(true)
     expect((codeEl.element as HTMLElement).style.display).toBe('none')
-    const toggle = wrapper.find('[data-testid="toggle-code"]')
-    expect(toggle.attributes('aria-expanded')).toBe('false')
-    expect(toggle.text()).toContain('查看源码')
+    const viewTs = wrapper.find('[data-testid="view-ts"]')
+    expect(viewTs.attributes('aria-expanded')).toBe('false')
+    expect(viewTs.text()).toContain('查看 TS')
     // 点击展开
-    await toggle.trigger('click')
+    await viewTs.trigger('click')
     expect((codeEl.element as HTMLElement).style.display).not.toBe('none')
-    expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(toggle.text()).toContain('收起源码')
-    // 再点收起
-    await toggle.trigger('click')
+    expect(viewTs.attributes('aria-expanded')).toBe('true')
+    expect(viewTs.text()).toContain('收起 TS')
+    // 再点同语言收起
+    await viewTs.trigger('click')
     expect((codeEl.element as HTMLElement).style.display).toBe('none')
-    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(viewTs.attributes('aria-expanded')).toBe('false')
   })
 
   it('快速切换语言时仅最新一次编译结果生效（并发守卫）', async () => {
@@ -157,8 +209,8 @@ describe('demoPreview', () => {
       .mockImplementationOnce(() => new Promise((r) => { resolveFirst = r }))
       .mockResolvedValueOnce(okResult(() => h('div', { 'data-testid': 'js-comp' }, 'JS')))
     const wrapper = await mountDemo()
-    // 立即切到 JS，触发第二次编译
-    await wrapper.find('[data-testid="tab-js"]').trigger('click')
+    // 立即点「查看 JS」，触发第二次（JS）编译
+    await wrapper.find('[data-testid="view-js"]').trigger('click')
     await flushPromises()
     // 现在让第一次（陈旧）编译 resolve，其 dispose 应被调用、结果不覆盖最新组件
     const firstDispose = vi.fn()
@@ -172,9 +224,11 @@ describe('demoPreview', () => {
   it('未提供 js 源码时隐藏 JS 切换，仅展示 TS', async () => {
     const wrapper = await mountDemo({ js: undefined })
     await flushPromises()
-    // 无独立 JS 版本 → 不渲染 JS tab（不伪造降级）
-    expect(wrapper.find('[data-testid="tab-js"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="tab-ts"]').exists()).toBe(true)
+    // 无独立 JS 版本 → 不渲染 JS 按钮（不伪造降级），TS 按钮仍在
+    expect(wrapper.find('[data-testid="view-js"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="copy-js"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="view-ts"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="copy-ts"]').exists()).toBe(true)
     // 仍正常编译挂载 TS
     expect(wrapper.find('[data-testid="real-comp"]').exists()).toBe(true)
     expect(compileSfc.mock.calls[0][0]).toBe('TS_SOURCE')
@@ -191,7 +245,7 @@ describe('demoPreview', () => {
     expect(hint.exists()).toBe(true)
     expect(hint.text()).toContain('element-plus')
     // 源码仍可查看（展开后）
-    await wrapper.find('[data-testid="toggle-code"]').trigger('click')
+    await wrapper.find('[data-testid="view-ts"]').trigger('click')
     expect(wrapper.find('[data-testid="code-block"]').text()).toContain('TS_SOURCE')
   })
 })

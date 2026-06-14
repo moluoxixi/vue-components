@@ -519,6 +519,9 @@ importers:
       '@orama/plugin-data-persistence':
         specifier: catalog:data
         version: 3.1.18
+      element-plus:
+        specifier: catalog:ui
+        version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
       vue-docgen-api:
         specifier: catalog:data
         version: 4.79.2(vue@3.5.33(typescript@5.9.3))

@@ -3,9 +3,8 @@
  * AI 文档助手可视化面板（外壳）。
  *
  * 固定头部：标题 + /health 状态徽章（模式 / chat 配置态，不含密钥）+ 索引状态 +
- * 构建索引按钮 + AI 图标（任意视图一键进入 Chat）。
- * 视图用内部 ref 切换（零新依赖，不引 vue-router）：
- *   overview（搜索 + 卡片网格）→ detail（props/emits/slots/models + 类型展开）→ chat（流式问答）。
+ * 构建索引按钮 + 知识库调试入口。主区域默认且始终展示 Chat；组件总览/详情放进
+ * 调试弹框，避免把“知识库维护界面”压在用户问答主流程前面。
  */
 import { onMounted, ref } from 'vue'
 import type { ComponentListItem, HealthResponse } from '../shared/protocol'
@@ -14,9 +13,11 @@ import ChatView from './views/ChatView.vue'
 import DetailView from './views/DetailView.vue'
 import OverviewView from './views/OverviewView.vue'
 
-/** 当前视图。 */
-type View = 'overview' | 'detail' | 'chat'
-const view = ref<View>('overview')
+/** 调试弹框内的知识库视图。 */
+type DebugView = 'overview' | 'detail'
+const debugView = ref<DebugView>('overview')
+/** 是否打开知识库调试弹框。 */
+const showKnowledgeDialog = ref(false)
 /** 详情视图当前组件名。 */
 const activeComponent = ref('')
 /** Chat 视图预填问题（详情页「问 AI」带入）。 */
@@ -63,13 +64,20 @@ async function onBuild(): Promise<void> {
 /** 从总览打开某组件详情。 */
 function openDetail(name: string): void {
   activeComponent.value = name
-  view.value = 'detail'
+  debugView.value = 'detail'
+  showKnowledgeDialog.value = true
 }
 
 /** 从详情跳到 Chat 并预填该组件的问题。 */
 function askAbout(name: string): void {
   question.value = `${name} 怎么用？给个示例`
-  view.value = 'chat'
+  showKnowledgeDialog.value = false
+}
+
+/** 打开知识库调试弹框，用于检查当前索引里有哪些组件契约。 */
+function openKnowledgeDebug(): void {
+  debugView.value = 'overview'
+  showKnowledgeDialog.value = true
 }
 
 onMounted(async () => {
@@ -86,7 +94,7 @@ onMounted(async () => {
 <template>
   <div class="ai-doc-app">
     <header class="topbar">
-      <h1 data-testid="app-title" @click="view = 'overview'">
+      <h1 data-testid="app-title">
         AI 文档助手
       </h1>
       <div class="status-chips">
@@ -102,12 +110,13 @@ onMounted(async () => {
         <button class="btn" data-testid="build-btn" :disabled="building" @click="onBuild">
           {{ building ? '构建中...' : '构建索引' }}
         </button>
+        <button class="btn" data-testid="kb-debug-btn" @click="openKnowledgeDebug">
+          知识库调试
+        </button>
         <button
-          class="ai-icon"
+          class="ai-icon active"
           title="问 AI"
           data-testid="ai-icon"
-          :class="{ active: view === 'chat' }"
-          @click="view = 'chat'"
         >
           🤖
         </button>
@@ -119,23 +128,31 @@ onMounted(async () => {
     </div>
 
     <main class="content">
-      <OverviewView
-        v-if="view === 'overview'"
-        :components="components"
-        @open="openDetail"
-      />
-      <DetailView
-        v-else-if="view === 'detail'"
-        :name="activeComponent"
-        @back="view = 'overview'"
-        @ask="askAbout"
-      />
       <ChatView
-        v-else
         v-model:question="question"
         :index-ready="indexState === 'ready'"
       />
     </main>
+
+    <ElDialog
+      v-model="showKnowledgeDialog"
+      title="知识库调试"
+      width="86vw"
+      class="kb-debug-dialog"
+      data-testid="kb-debug-dialog"
+    >
+      <OverviewView
+        v-if="debugView === 'overview'"
+        :components="components"
+        @open="openDetail"
+      />
+      <DetailView
+        v-else
+        :name="activeComponent"
+        @back="debugView = 'overview'"
+        @ask="askAbout"
+      />
+    </ElDialog>
   </div>
 </template>
 
@@ -149,7 +166,7 @@ onMounted(async () => {
   padding: 12px 20px; background: #0d1117; color: #fff;
   position: sticky; top: 0; z-index: 10;
 }
-.topbar h1 { font-size: 18px; margin: 0; cursor: pointer; }
+.topbar h1 { font-size: 18px; margin: 0; }
 .status-chips { display: flex; gap: 8px; align-items: center; }
 .chip {
   font-size: 12px; padding: 4px 10px; border-radius: 999px;
@@ -173,4 +190,9 @@ onMounted(async () => {
   font-size: 13px; border-bottom: 1px solid #ffccc7;
 }
 .content { flex: 1; overflow-y: auto; min-height: 0; }
+.kb-debug-dialog :deep(.el-dialog__body) {
+  max-height: min(72vh, 760px);
+  overflow: auto;
+  padding: 0;
+}
 </style>

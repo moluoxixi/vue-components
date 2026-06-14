@@ -2,6 +2,7 @@ import type { ComponentContract, EmitDef, ModelDef, PropDef, SlotDef, TypeDefInf
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { parse } from 'vue-docgen-api'
+import { resolveExternalTypeDefs } from './external-type-resolver'
 import {
   extractDefinePropsTypeName,
   extractSfcScriptTypeDefs,
@@ -107,6 +108,44 @@ function findSrcRoot(sfcPath: string): string | null {
       return dir
   }
   return null
+}
+
+/**
+ * 收集组件类型源文件（`.ts`）的绝对路径列表，用于读取其 import 映射（外部 / 跨目录类型展开）。
+ * 扫描根与 collectTypeDefs 一致（向上找 `src`），跳过 node_modules / .d.ts / 测试文件。
+ */
+function collectTypeSourceFiles(sfcPath: string): string[] {
+  const scanRoot = findSrcRoot(sfcPath) ?? dirname(sfcPath)
+  const files: string[] = []
+  const walk = (dir: string): void => {
+    let entries: string[]
+    try {
+      entries = readdirSync(dir)
+    }
+    catch {
+      return
+    }
+    for (const entry of entries) {
+      const full = join(dir, entry)
+      let isDir = false
+      try {
+        isDir = statSync(full).isDirectory()
+      }
+      catch {
+        continue
+      }
+      if (isDir) {
+        if (entry !== 'node_modules')
+          walk(full)
+        continue
+      }
+      if (!entry.endsWith('.ts') || entry.endsWith('.d.ts') || entry.includes('.test.') || entry.includes('.spec.'))
+        continue
+      files.push(full)
+    }
+  }
+  walk(scanRoot)
+  return files
 }
 
 function collectTypeDefs(sfcPath: string): TypeDefInfo[] {
@@ -321,6 +360,31 @@ export async function extractContract(filePath: string, packageName: string): Pr
 
   // 仅保留被 props 引用到（含传递闭包）的本地类型定义，去噪、控制上下文体积
   const typeDefs = filterReachableDefs(allDefs, referenced)
+
+  // #2 类型展开补强：props 引用了、但本地定义缺失或字段为空（如 element-plus 的 PopoverProps、
+  // 同包跨目录的 ScheduleOptions）的类型，从组件类型源文件的 import 出发跟随到来源展开字段。
+  // 深度 1 层：只补 props 直接引用的这一层，第三方再嵌套保留类型字符串。
+  const defByName = new Map(typeDefs.map(d => [d.name, d]))
+  const needExternal = Array.from(referenced).filter((n) => {
+    const d = defByName.get(n)
+    return !d || d.fields.length === 0
+  })
+  if (needExternal.length) {
+    const typeSourceFiles = collectTypeSourceFiles(filePath)
+    for (const ext of resolveExternalTypeDefs(typeSourceFiles, needExternal)) {
+      const existing = defByName.get(ext.name)
+      // 仅在本地版本缺失或无字段、且外部解析确有字段时覆盖；解析失败的占位仅在本地完全缺失时加入，
+      // 以便 UI 显示「展不开 + 原因」而非凭空消失。
+      if (!existing) {
+        typeDefs.push(ext)
+        defByName.set(ext.name, ext)
+      }
+      else if (existing.fields.length === 0 && ext.fields.length > 0) {
+        existing.fields = ext.fields
+        existing.raw = ext.raw
+      }
+    }
+  }
 
   const name = resolveComponentName(filePath, doc.displayName)
   // 插槽优先从 `<Comp>Slots` 契约接口派生（vue-docgen 对动态插槽 `#[name]` 会误报伪插槽）；

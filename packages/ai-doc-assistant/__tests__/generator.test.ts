@@ -91,10 +91,11 @@ describe('renderExampleSkeleton', () => {
       props: [
         { name: 'columns', type: 'PopoverTableColumn[]', required: false, defaultValue: '() => []', description: '列定义', typeRefs: ['PopoverTableColumn'] },
         { name: 'data', type: 'PopoverTableRow[]', required: false, defaultValue: '() => []', description: '数据行', typeRefs: ['PopoverTableRow'] },
+        { name: 'popType', type: 'PopoverTablePopType', required: false, defaultValue: '\'input\'', description: '触发方式', typeRefs: [] },
         { name: 'debounce', type: 'number', required: false, defaultValue: '0', description: '防抖', typeRefs: [] },
       ],
-      emits: [],
-      slots: [],
+      emits: [{ name: 'select', payloadType: 'PopoverTableRow', description: '选择行' }],
+      slots: [{ name: '[dynamic]', scopeType: 'Record<string, any>', description: '按列 field 声明的单元格插槽' }],
       models: [],
       typeDefs: [
         {
@@ -111,22 +112,35 @@ describe('renderExampleSkeleton', () => {
       ],
     })
     const { ts, js } = renderExample(c)
+    // TS 版必须导入示例里用到的契约类型，复制后才可直接 typecheck
+    expect(ts).toContain('import type { PopoverTableColumn, PopoverTableRow } from \'@moluoxixi/components\'')
     // columns 展开为含 field/title 的真实列对象，不是空 []
     expect(ts).toContain('const columns = ref<PopoverTableColumn[]>([')
     expect(ts).toContain('field: \'name\'')
-    expect(ts).toContain('field: \'age\'')
+    expect(ts).toContain('field: \'price\'')
     expect(ts).toContain('title: \'姓名\'')
-    // data 与 columns 的 field 联动，key 为 name/age，值是可读样例数据
+    expect(ts).toContain('title: \'价格\'')
+    expect(ts).toContain('slots: { default: \'price\' }')
+    // data 与 columns 的 field 联动，key 为 name/price，值是可读样例数据
     expect(ts).toContain('name: \'张三\'')
-    expect(ts).toContain('age: 18')
+    expect(ts).toContain('price: 18')
     // 模板绑定结构化 prop
     expect(ts).toContain(':columns="columns"')
     expect(ts).toContain(':data="data"')
+    expect(ts).toContain('@select="handleSelect"')
+    expect(ts).toContain('function handleSelect(row: PopoverTableRow): void')
+    expect(ts).toContain('<template #price="{ row }">')
+    expect(ts).toContain('¥{{ row.price }}')
     // 次要 prop（debounce）不应挤占结构化数据 prop 的展示位
     expect(ts).not.toContain(':debounce=')
+    // 不为了预览可见性额外改变组件行为；可选默认 prop 不应被主动塞入示例。
+    expect(ts).not.toContain('pop-type=')
     // JS 版无类型注解但数据一致
     expect(js).toContain('const columns = ref([')
+    expect(js).not.toContain('import type')
     expect(js).not.toContain('PopoverTableColumn[]')
+    expect(js).toContain('function handleSelect(row) {')
+    expect(js).toContain('<template #price="{ row }">')
     expect(js).toContain('field: \'name\'')
   })
 

@@ -10,7 +10,7 @@
  * Props 由父级 ChatView 在收到 SSE example 事件后传入；ts/js 为持久化的双码源，
  * 不做 js=ts 静默降级（降级在服务端已被禁止，前端只忠实呈现）。
  */
-import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import type { Component } from 'vue'
 import { compileSfc } from '../preview'
 
@@ -43,8 +43,14 @@ const previewComp = shallowRef<Component | null>(null)
 const compileError = ref('')
 /** 编译进行中标志。 */
 const compiling = ref(false)
+type CopyLang = 'ts' | 'js'
+
 /** 复制结果提示（'ts'/'js'=对应按钮刚复制成功；'error'=复制失败）。 */
-const copied = ref('')
+const copied = ref<CopyLang | 'selected' | 'error' | ''>('')
+/** 失败发生在哪个语言按钮上；用于源码区折叠时也给出明确反馈。 */
+const failedCopy = ref<CopyLang | ''>('')
+/** 源码节点引用：浏览器拒绝写入剪贴板时，展开并选中源码供用户 Ctrl+C。 */
+const codeRef = useTemplateRef<HTMLElement>('codeRef')
 /** 复制失败信息（剪贴板权限被拒/非安全上下文等），显式呈现不静默吞。 */
 const copyError = ref('')
 
@@ -109,22 +115,100 @@ onUnmounted(() => {
     window.clearTimeout(copyTimer)
 })
 
+/** 查看指定语言源码：切到该语言并展开源码区（同语言再次点击则收起）。 */
+function viewCode(which: 'ts' | 'js'): void {
+  if (showCode.value && lang.value === which) {
+    showCode.value = false
+    return
+  }
+  lang.value = which
+  showCode.value = true
+}
+
+/** clipboard API 不可用或被权限拒绝时，退回到用户手势内的 textarea copy。 */
+function copyWithTextarea(text: string): void {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  textarea.style.top = '0'
+  document.body.append(textarea)
+  window.focus()
+  textarea.focus()
+  textarea.select()
+  textarea.setSelectionRange(0, textarea.value.length)
+  try {
+    if (!document.execCommand('copy'))
+      throw new Error('document.execCommand("copy") returned false')
+  }
+  finally {
+    textarea.remove()
+  }
+}
+
+async function writeClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard?.writeText(text)
+    if (!navigator.clipboard)
+      copyWithTextarea(text)
+  }
+  catch (err) {
+    try {
+      copyWithTextarea(text)
+    }
+    catch (fallbackErr) {
+      const primary = err instanceof Error ? err.message : String(err)
+      const fallback = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+      throw new Error(`${primary}; fallback failed: ${fallback}`)
+    }
+  }
+}
+
+/** 程序化复制被浏览器拒绝时，展开对应源码并选中，让用户仍能用 Ctrl+C 拿到代码。 */
+async function selectCodeForManualCopy(which: CopyLang): Promise<void> {
+  lang.value = which
+  showCode.value = true
+  await nextTick()
+  const codeEl = codeRef.value
+  if (!codeEl)
+    throw new Error('源码节点未挂载，无法选中代码')
+  const range = document.createRange()
+  range.selectNodeContents(codeEl)
+  const selection = window.getSelection()
+  selection?.removeAllRanges()
+  selection?.addRange(range)
+}
+
 /** 复制当前语言源码到剪贴板；失败显式提示，不静默吞 rejection。 */
-async function copy(which: 'ts' | 'js'): Promise<void> {
+async function copy(which: CopyLang): Promise<void> {
   const text = which === 'js' && hasJs.value ? (props.js as string) : props.ts
   if (copyTimer)
     window.clearTimeout(copyTimer)
   try {
-    await navigator.clipboard.writeText(text)
+    await writeClipboard(text)
     copied.value = which
+    failedCopy.value = ''
     copyError.value = ''
   }
   catch (err) {
-    copied.value = 'error'
-    copyError.value = err instanceof Error ? err.message : String(err)
+    try {
+      await selectCodeForManualCopy(which)
+      copied.value = 'selected'
+      const message = err instanceof Error ? err.message : String(err)
+      copyError.value = `${message}；浏览器拒绝写入剪贴板，已展开并选中源码，请按 Ctrl+C。`
+    }
+    catch (selectErr) {
+      copied.value = 'error'
+      const copyMessage = err instanceof Error ? err.message : String(err)
+      const selectMessage = selectErr instanceof Error ? selectErr.message : String(selectErr)
+      copyError.value = `${copyMessage}；手动选中也失败：${selectMessage}`
+    }
+    failedCopy.value = which
   }
   copyTimer = window.setTimeout(() => {
     copied.value = ''
+    failedCopy.value = ''
     copyError.value = ''
   }, 1500)
 }
@@ -148,46 +232,57 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
       </div>
     </div>
 
-    <!-- 操作栏：对齐 Element Plus 官网，居中悬浮按钮控制源码折叠/复制 -->
+    <!-- 操作栏：右下角直接放 查看/复制 TS/JS（JS 仅在有独立 JS 源时显示），无需先展开再复制 -->
     <div class="dp-actions" data-testid="demo-actions">
       <button
         class="dp-action"
-        data-testid="toggle-code"
-        :aria-expanded="showCode"
-        :title="showCode ? '收起源码' : '查看源码'"
-        @click="showCode = !showCode"
+        data-testid="view-ts"
+        :class="{ active: showCode && lang === 'ts' }"
+        :aria-expanded="showCode && lang === 'ts'"
+        title="查看 TS 源码"
+        @click="viewCode('ts')"
       >
-        <span class="dp-action-icon" :class="{ open: showCode }">&lt;/&gt;</span>
-        {{ showCode ? '收起源码' : '查看源码' }}
+        {{ showCode && lang === 'ts' ? '收起 TS' : '查看 TS' }}
+      </button>
+      <button
+        class="dp-action"
+        data-testid="copy-ts"
+        :class="{ error: copied === 'error' }"
+        title="复制 TS 源码"
+        @click="copy('ts')"
+      >
+        {{ copied === 'ts' ? '已复制' : copied === 'selected' && failedCopy === 'ts' ? '已选中' : copied === 'error' && failedCopy === 'ts' ? '复制失败' : '复制 TS' }}
+      </button>
+      <button
+        v-if="hasJs"
+        class="dp-action"
+        data-testid="view-js"
+        :class="{ active: showCode && lang === 'js' }"
+        :aria-expanded="showCode && lang === 'js'"
+        title="查看 JS 源码"
+        @click="viewCode('js')"
+      >
+        {{ showCode && lang === 'js' ? '收起 JS' : '查看 JS' }}
+      </button>
+      <button
+        v-if="hasJs"
+        class="dp-action"
+        data-testid="copy-js"
+        :class="{ error: copied === 'error' }"
+        title="复制 JS 源码"
+        @click="copy('js')"
+      >
+        {{ copied === 'js' ? '已复制' : copied === 'selected' && failedCopy === 'js' ? '已选中' : copied === 'error' && failedCopy === 'js' ? '复制失败' : '复制 JS' }}
       </button>
     </div>
+    <p v-if="copyError" class="dp-copy-error" data-testid="copy-error">
+      复制失败：{{ copyError }}
+    </p>
 
-    <!-- 源码区：默认折叠，展开后顶部可切 TS/JS 并复制 -->
+    <!-- 源码区：默认折叠，由操作栏「查看 TS/JS」展开并指定语言 -->
     <div v-show="showCode" class="dp-code" data-testid="demo-code">
       <div class="dp-code-head">
-        <div class="dp-tabs" role="tablist">
-          <button
-            class="dp-tab"
-            :class="{ active: lang === 'ts' }"
-            data-testid="tab-ts"
-            role="tab"
-            :aria-selected="lang === 'ts'"
-            @click="lang = 'ts'"
-          >
-            TS
-          </button>
-          <button
-            v-if="hasJs"
-            class="dp-tab"
-            :class="{ active: lang === 'js' }"
-            data-testid="tab-js"
-            role="tab"
-            :aria-selected="lang === 'js'"
-            @click="lang = 'js'"
-          >
-            JS
-          </button>
-        </div>
+        <span class="dp-code-lang" data-testid="code-lang">{{ lang === 'js' ? 'JavaScript' : 'TypeScript' }}</span>
         <button
           class="dp-copy"
           :class="{ error: copied === 'error' }"
@@ -195,47 +290,40 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
           @click="copy(lang)"
         >
           <template v-if="copied === lang">已复制</template>
+          <template v-else-if="copied === 'selected' && failedCopy === lang">已选中</template>
           <template v-else-if="copied === 'error'">复制失败</template>
           <template v-else>复制源码</template>
         </button>
       </div>
-      <p v-if="copyError" class="dp-copy-error" data-testid="copy-error">
-        复制失败：{{ copyError }}
-      </p>
-      <pre data-testid="code-block"><code>{{ currentCode }}</code></pre>
+      <pre data-testid="code-block"><code ref="codeRef">{{ currentCode }}</code></pre>
     </div>
   </section>
 </template>
 
 <style scoped>
 .demo-preview { margin-bottom: 16px; border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; }
-.dp-tabs { display: flex; gap: 4px; }
-.dp-tab {
-  padding: 4px 12px; border: 1px solid #30363d; border-radius: 6px;
-  background: #21262d; cursor: pointer; font-size: 12px; color: #8b949e;
-}
-.dp-tab.active { background: #238636; color: #fff; border-color: #238636; }
 .dp-live { padding: 22px 16px; background: #fff; min-height: 48px; }
 .dp-hint { color: #57606a; font-size: 13px; }
 .dp-hint.error { color: #cf222e; white-space: pre-wrap; }
 .dp-hint.warn { color: #9a6700; white-space: pre-wrap; }
-/* 操作栏：居中分隔条，对齐 Element Plus 官网 demo-block */
+/* 操作栏：右下角直接放 查看/复制 TS/JS 按钮（对齐用户诉求：无需展开后再复制） */
 .dp-actions {
-  display: flex; align-items: center; justify-content: center;
-  padding: 6px; background: #f6f8fa; border-top: 1px dashed #d0d7de;
+  display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  padding: 6px 10px; background: #f6f8fa; border-top: 1px dashed #d0d7de;
 }
 .dp-action {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 14px; border: none; border-radius: 6px;
+  display: inline-flex; align-items: center;
+  padding: 4px 12px; border: 1px solid transparent; border-radius: 6px;
   background: transparent; color: #57606a; cursor: pointer; font-size: 13px;
 }
 .dp-action:hover { color: #238636; background: #eaeef2; }
-.dp-action-icon { font-family: monospace; font-size: 12px; transition: transform .2s; }
-.dp-action-icon.open { transform: rotate(0); color: #238636; }
+.dp-action.active { color: #238636; background: #eaeef2; border-color: #d0d7de; }
+.dp-action.error { color: #cf222e; }
 .dp-code-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 14px; background: #161b22;
 }
+.dp-code-lang { color: #8b949e; font-size: 12px; font-family: monospace; }
 .dp-copy {
   padding: 2px 10px; border: 1px solid #30363d; border-radius: 5px;
   background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 12px;

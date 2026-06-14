@@ -5,7 +5,7 @@
  * v-model 表格与展开的关联自定义类型（typeDefs）。props 的 typeRefs 高亮，
  * 指引用户到下方类型定义区查字段结构（方案 A 成果的可视化呈现）。
  */
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { ComponentDetailResponse } from '../../shared/protocol'
 import { fetchComponentDetail } from '../api'
 
@@ -18,6 +18,30 @@ const detail = ref<ComponentDetailResponse | null>(null)
 const errorMsg = ref('')
 /** 加载中标志。 */
 const loading = ref(false)
+/** Tooltip 内容样式：保留字段换行，避免复杂类型挤成一行。 */
+const typeTooltipStyle = { whiteSpace: 'pre-line', maxWidth: '520px' } as const
+
+/** 按类型名索引展开后的类型定义，供 prop type tooltip 快速查找。 */
+const typeDefByName = computed(() => new Map((detail.value?.typeDefs ?? []).map(t => [t.name, t] as const)))
+
+/** 把 prop 引用的类型定义格式化为 tooltip 文案。 */
+function typeTooltipContent(typeRefs: string[]): string {
+  return typeRefs
+    .map((name) => {
+      const typeDef = typeDefByName.value.get(name)
+      if (!typeDef)
+        return name
+      if (!typeDef.fields.length)
+        return `${typeDef.name}\n${typeDef.raw}`
+      const fields = typeDef.fields.map((field) => {
+        const requiredText = field.optional ? '可选' : '必填'
+        const description = field.description ? ` ${field.description}` : ''
+        return `${field.name}: ${field.type}（${requiredText}）${description}`
+      })
+      return [typeDef.name, ...fields].join('\n')
+    })
+    .join('\n\n')
+}
 
 /** 拉取指定组件的契约详情。 */
 async function load(name: string): Promise<void> {
@@ -80,7 +104,15 @@ watch(() => props.name, load, { immediate: true })
             <tr v-for="p in detail.props" :key="p.name" data-testid="prop-row">
               <td><code>{{ p.name }}</code></td>
               <td>
-                <code :class="{ ref: p.typeRefs.length }">{{ p.type }}</code>
+                <ElTooltip
+                  v-if="p.typeRefs.length"
+                  :content="typeTooltipContent(p.typeRefs)"
+                  :popper-style="typeTooltipStyle"
+                  placement="top"
+                >
+                  <code class="ref">{{ p.type }}</code>
+                </ElTooltip>
+                <code v-else>{{ p.type }}</code>
               </td>
               <td>{{ p.required ? '是' : '否' }}</td>
               <td><code v-if="p.defaultValue">{{ p.defaultValue }}</code><span v-else>—</span></td>

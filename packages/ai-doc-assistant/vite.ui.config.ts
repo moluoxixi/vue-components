@@ -36,7 +36,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     // 预构建组件库与 loader，避免运行时 bare-specifier 解析抖动
-    include: ['@moluoxixi/components', 'vue', 'vue3-sfc-loader'],
+    include: ['@moluoxixi/components', 'element-plus', 'vue', 'vue3-sfc-loader'],
   },
   build: {
     outDir: resolve(__dirname, 'dist/ui'),

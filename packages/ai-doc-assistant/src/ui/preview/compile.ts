@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 // 本地 workspace 组件库运行时（vite.ui.config alias 解析到 dist 实体）。
 import * as Components from '@moluoxixi/components'
+import * as ElementPlusRuntime from 'element-plus'
 /**
  * demo 预览块运行时：把示例 SFC 源码字符串在浏览器内编译为 Vue 组件并挂载真实组件。
  *
@@ -10,7 +11,6 @@ import * as Components from '@moluoxixi/components'
  */
 import * as VueRuntime from 'vue'
 import { loadModule } from 'vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
-import '@moluoxixi/components/styles'
 
 /**
  * 把 SFC 源码编译为可挂载组件。
@@ -34,6 +34,10 @@ export async function compileSfc(
     moduleCache: {
       // 注入 vue 运行时，保证与宿主同实例（避免双 Vue 实例导致挂载失败）。
       'vue': VueRuntime,
+      // 示例可直接 `import { ElButton } from 'element-plus'`；宿主入口也已全局注册 Element Plus。
+      'element-plus': ElementPlusRuntime,
+      // 样式副作用模块占位（宿主已全局注入，吞掉避免 loader 再解析）。
+      'element-plus/dist/index.css': {},
       // 示例里 `import { X } from '@moluoxixi/components'` 命中此处运行时。
       '@moluoxixi/components': Components,
       // 样式副作用模块占位（宿主已全局注入，吞掉避免 loader 再解析）。

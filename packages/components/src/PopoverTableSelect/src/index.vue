@@ -24,7 +24,7 @@ const props = withDefaults(defineProps<RuntimeProps>(), {
   debounce: 0,
   throttle: 300,
   options: () => ({}),
-  popType: 'default',
+  popType: 'input',
   placeholder: '点击或按下方向键试试',
   popoverProps: () => ({}),
   inputProps: () => ({}),

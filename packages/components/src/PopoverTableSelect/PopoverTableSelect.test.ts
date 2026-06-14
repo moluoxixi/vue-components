@@ -138,6 +138,22 @@ describe('popover table select', () => {
     vi.useRealTimers()
   })
 
+  it('默认渲染内部输入框作为弹层触发源', async () => {
+    const wrapper = mount(PopoverTableSelect, {
+      global: {
+        stubs: {
+          ElInput: InputStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="popover-input"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="table-base-stub"]').exists()).toBe(true)
+  })
+
   it('同步输入值并透传弹层表格选择、确认和加载事件', async () => {
     const updateInputValue = vi.fn()
     const onInput = vi.fn()

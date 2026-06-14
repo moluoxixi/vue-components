@@ -76,22 +76,92 @@ describe('runQuery SSE 编排', () => {
 
   it('回答含 vue 块：提取为 blocks，白名单内可渲染、白名单外标记不可渲染', async () => {
     const okBlock = '```vue\n<script setup lang="ts">\nimport { PopoverTableSelect } from \'@moluoxixi/components\'\n</script>\n<template><PopoverTableSelect /></template>\n```'
-    const badBlock = '```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton /></template>\n```'
+    const elementPlusBlock = '```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton>确认</ElButton></template>\n```'
+    const badBlock = '```vue\n<script setup lang="ts">\nimport axios from \'axios\'\n</script>\n<template><div /></template>\n```'
     const deps: QueryDeps = {
       strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
       config: CONFIG,
       async* chat() {
-        yield `示例如下：\n${okBlock}\n另一个需要外部库：\n${badBlock}`
+        yield `示例如下：\n${okBlock}\nElement Plus 示例：\n${elementPlusBlock}\n另一个需要外部库：\n${badBlock}`
+      },
+    }
+    const events = await collect(runQuery('下拉表格配置', 5, deps))
+    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
+    expect(example.blocks).toHaveLength(3)
+    expect(example.blocks[0].renderable).toBe(true)
+    expect(example.blocks[0].ts).toContain('PopoverTableSelect')
+    expect(example.blocks[1].renderable).toBe(true)
+    expect(example.blocks[1].ts).toContain('ElButton')
+    expect(example.blocks[1].js).toContain('<script setup>')
+    expect(example.blocks[2].renderable).toBe(false)
+    expect(example.blocks[2].reason).toContain('axios')
+    expect(example.blocks[2].js).toContain('<script setup>')
+    expect(example.ts).toContain('PopoverTableSelect')
+  })
+
+  it('回答只有不可渲染 vue 块时，保留该块的 JS/TS 并追加可运行兜底示例', async () => {
+    const noDemoBlock = '```vue no-demo\n<script setup lang="ts">\nconst count: number = 1\n</script>\n<template><div>{{ count }}</div></template>\n```'
+    const deps: QueryDeps = {
+      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
+      config: CONFIG,
+      async* chat() {
+        yield `只能作为源码参考：\n${noDemoBlock}`
       },
     }
     const events = await collect(runQuery('下拉表格配置', 5, deps))
     const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
     expect(example.blocks).toHaveLength(2)
-    expect(example.blocks[0].renderable).toBe(true)
-    expect(example.blocks[0].ts).toContain('PopoverTableSelect')
-    expect(example.blocks[1].renderable).toBe(false)
-    expect(example.blocks[1].reason).toContain('element-plus')
-    expect(example.ts).toContain('PopoverTableSelect')
+    expect(example.blocks[0]).toMatchObject({ renderable: false })
+    expect(example.blocks[0].js).toContain('const count = 1')
+    expect(example.blocks[1]).toEqual({ ts: '<PopoverTableSelect />', js: '<PopoverTableSelect js />', renderable: true })
+    expect(example.ts).toBe('<PopoverTableSelect />')
+    expect(example.js).toBe('<PopoverTableSelect js />')
+  })
+
+  it('回答里的 vue 块语法不可转译时，标记不可渲染并追加可运行兜底示例', async () => {
+    const brokenBlock = [
+      '```vue',
+      '<script setup lang="ts">',
+      'const columns = [',
+      '  { field: \'name\', title商品名称\', width: 150 },',
+      ']',
+      '</script>',
+      '<template><PopoverTableSelect :columns="columns" /></template>',
+      '```',
+    ].join('\n')
+    const deps: QueryDeps = {
+      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
+      config: CONFIG,
+      async* chat() {
+        yield `示例如下：\n${brokenBlock}`
+      },
+    }
+    const events = await collect(runQuery('下拉表格配置', 5, deps))
+    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
+    expect(example.blocks).toHaveLength(2)
+    expect(example.blocks[0]).toMatchObject({ renderable: false })
+    expect(example.blocks[0].reason).toContain('语法')
+    expect(example.blocks[0].js).toBeUndefined()
+    expect(example.blocks[1]).toEqual({ ts: '<PopoverTableSelect />', js: '<PopoverTableSelect js />', renderable: true })
+    expect(example.ts).toBe('<PopoverTableSelect />')
+  })
+
+  it('回答里的不可渲染 JS SFC 块也保留 JS 源，供前端展示四按钮', async () => {
+    const jsSource = '<script setup>\nconst count = 1\n</script>\n<template><div>{{ count }}</div></template>'
+    const noDemoBlock = `\`\`\`vue no-demo\n${jsSource}\n\`\`\``
+    const deps: QueryDeps = {
+      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
+      config: CONFIG,
+      async* chat() {
+        yield `只能作为源码参考：\n${noDemoBlock}`
+      },
+    }
+    const events = await collect(runQuery('下拉表格配置', 5, deps))
+    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
+    expect(example.blocks[0]).toMatchObject({ renderable: false })
+    expect(example.blocks[0].ts).toBe(jsSource)
+    expect(example.blocks[0].js).toBe(jsSource)
+    expect(example.blocks[1]).toMatchObject({ renderable: true })
   })
 
   it('无命中：兜底告知不编造，不调用 chat', async () => {

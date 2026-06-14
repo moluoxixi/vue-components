@@ -18,7 +18,7 @@ import type { PopoverTableColumn, PopoverTableRow } from '@moluoxixi/components'
 | debounce | `number` | `0` | 否 | 选择和输入事件的防抖毫秒数。 |
 | throttle | `number` | `300` | 否 | 选择和输入事件的节流毫秒数。 |
 | options | `ScheduleOptions & { promise?: boolean }` | `{}` | 否 | 防抖或节流配置。 |
-| popType | `'default' \| 'input'` | `default` | 否 | `input` 时组件内部渲染 Element Plus Input。 |
+| popType | `'default' \| 'input'` | `input` | 否 | 默认渲染 Element Plus Input 作为触发源；`default` 时需由调用方提供 `virtualRef`。 |
 | placeholder | `string` | `点击或按下方向键试试` | 否 | 输入框占位内容。 |
 | popoverProps | `Partial<PopoverProps>` | `{}` | 否 | 透传给 Element Plus Popover。 |
 | inputProps | `Partial<InputProps>` | `{}` | 否 | 透传给 Element Plus Input。 |
@@ -60,6 +60,7 @@ import type { PopoverTableColumn, PopoverTableRow } from '@moluoxixi/components'
 
 - `v-model` 控制弹层可见状态。
 - `v-model:inputValue` 控制输入值。
+- 默认 `popType=input`，组件会渲染内部输入框并用它作为弹层触发源；切到 `default` 时必须提供外部 `virtualRef`，否则没有可见触发器。
 - 内部基座维护当前行索引并响应 ArrowUp、ArrowDown、Enter、Escape。
 - `loading` 展示表格加载提示。
 - `scrollY.enabled` 时滚动到底会按边界去重触发。
@@ -73,7 +74,6 @@ import type { PopoverTableColumn, PopoverTableRow } from '@moluoxixi/components'
 ```vue
 <PopoverTableSelect
   v-model:input-value="inputValue"
-  pop-type="input"
   :data="filteredRows"
   :columns="columns"
   :height="240"
