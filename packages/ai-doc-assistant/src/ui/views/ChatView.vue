@@ -5,24 +5,21 @@
  * 支持父级通过 v-model:question 预填问题（如从详情页「问 AI」带入组件名）。
  * 仅在索引就绪时可提问；网络/HTTP 错误显式展示，不静默吞掉。
  */
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import type { SourceRef } from '../../shared/protocol'
 import { streamQuery } from '../api'
+import { DemoPreview } from '../components'
 
-const props = defineProps<{ question: string, indexReady: boolean }>()
-const emit = defineEmits<{ (e: 'update:question', v: string): void }>()
-
-/** 本地提问输入（与父级 v-model 同步）。 */
-const local = ref(props.question)
-watch(() => props.question, v => (local.value = v))
-watch(local, v => emit('update:question', v))
+/** 提问输入：父级通过 v-model:question 双向绑定（预填组件名等）。 */
+const question = defineModel<string>('question', { required: true })
+const props = defineProps<{ indexReady: boolean }>()
 
 /** 流式回答文本累积。 */
 const answer = ref('')
 /** 检索命中来源。 */
 const sources = ref<SourceRef[]>([])
-/** 示例代码（example 事件）。 */
-const example = ref<{ code: string, lang: string } | null>(null)
+/** 示例代码（example 事件）：携带双码源与组件标识，供 demo 预览块编译与切换。 */
+const example = ref<{ ts: string, js: string, component: string, packageName: string } | null>(null)
 /** 错误信息。 */
 const errorMsg = ref('')
 /** 流式进行中标志。 */
@@ -30,7 +27,7 @@ const streaming = ref(false)
 
 /** 是否可提问：有内容、非流式、索引就绪。 */
 const canAsk = computed(() =>
-  local.value.trim().length > 0 && !streaming.value && props.indexReady,
+  question.value.trim().length > 0 && !streaming.value && props.indexReady,
 )
 
 /** 发起流式提问，分区渲染 SSE 事件。 */
@@ -43,7 +40,7 @@ async function onAsk(): Promise<void> {
   example.value = null
   errorMsg.value = ''
   try {
-    await streamQuery(local.value.trim(), 5, (event) => {
+    await streamQuery(question.value.trim(), 5, (event) => {
       switch (event.type) {
         case 'sources':
           sources.value = event.sources
@@ -52,7 +49,12 @@ async function onAsk(): Promise<void> {
           answer.value += event.text
           break
         case 'example':
-          example.value = { code: event.code, lang: event.lang }
+          example.value = {
+            ts: event.ts,
+            js: event.js,
+            component: event.component,
+            packageName: event.packageName,
+          }
           break
         case 'error':
           errorMsg.value = `${event.error}: ${event.message}`
@@ -75,7 +77,7 @@ async function onAsk(): Promise<void> {
   <div class="chat" data-testid="chat-view">
     <div class="ask-row">
       <input
-        v-model="local"
+        v-model="question"
         data-testid="question-input"
         placeholder="问点什么，比如：ElButton 怎么用？"
         @keyup.enter="onAsk"
@@ -113,10 +115,13 @@ async function onAsk(): Promise<void> {
       </p>
     </section>
 
-    <section v-if="example" class="example" data-testid="example">
-      <h3>示例 ({{ example.lang }})</h3>
-      <pre><code>{{ example.code }}</code></pre>
-    </section>
+    <DemoPreview
+      v-if="example"
+      :ts="example.ts"
+      :js="example.js"
+      :component="example.component"
+      :package-name="example.packageName"
+    />
   </div>
 </template>
 
@@ -138,10 +143,6 @@ async function onAsk(): Promise<void> {
 section { margin-bottom: 16px; }
 section h3 { font-size: 13px; color: #57606a; margin: 0 0 8px; }
 .answer-text { white-space: pre-wrap; line-height: 1.6; margin: 0; }
-.example pre {
-  background: #0d1117; color: #c9d1d9; padding: 14px;
-  border-radius: 8px; overflow-x: auto; margin: 0;
-}
 .sources ul { list-style: none; padding: 0; margin: 0; }
 .sources li { padding: 4px 0; font-size: 13px; }
 .sources small { color: #57606a; }

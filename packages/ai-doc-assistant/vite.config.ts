@@ -1,5 +1,6 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import vue from '@vitejs/plugin-vue'
 import dts from 'unplugin-dts/vite'
 import { defineConfig } from 'vitest/config'
 
@@ -12,6 +13,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
  */
 export default defineConfig({
   plugins: [
+    // vue 插件供 vitest 编译 .vue 单测（lib 入口均为 .ts，不受影响）
+    vue(),
     dts({
       exclude: ['**/*.test.ts', '**/*.spec.ts', 'tests/**'],
       compilerOptions: {

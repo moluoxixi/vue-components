@@ -60,6 +60,7 @@
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vitest/coverage-v8": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
     "happy-dom": "catalog:dev",
     "unplugin-dts": "catalog:dev",
     "vite": "catalog:dev",
