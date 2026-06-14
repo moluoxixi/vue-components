@@ -1,12 +1,19 @@
 <script setup lang="ts">
 /**
  * AI Chat 视图：流式问答。
- * 消费 BFF 的 /query SSE 流：sources → token* → example? → done，分区实时渲染。
- * 支持父级通过 v-model:question 预填问题（如从详情页「问 AI」带入组件名）。
+ * 消费 BFF 的 /query SSE 流：sources → token* → example? → done。
+ *
+ * 渲染策略（对齐用户诉求）：回答正文按「文字段 + vue 代码块」原位分段渲染——
+ * 可渲染的 vue 块原地替换成 DemoPreview 实时预览 + 双码查看/复制；
+ * 不可渲染的 vue 块（依赖预览环境外的库）原位展示源码 + 原因，不挂载；
+ * 文字段照常以 Markdown 风格纯文本展示。分段由 splitAnswerSegments 实时计算，
+ * 流式 token 累积过程中未闭合的代码块按文字处理，闭合后自动转为 demo 块。
+ *
  * 仅在索引就绪时可提问；网络/HTTP 错误显式展示，不静默吞掉。
  */
 import { computed, ref } from 'vue'
 import type { SourceRef } from '../../shared/protocol'
+import { splitAnswerSegments } from '../../core/vue-block-extractor'
 import { streamQuery } from '../api'
 import { DemoPreview } from '../components'
 
@@ -16,10 +23,11 @@ const props = defineProps<{ indexReady: boolean }>()
 
 /** 流式回答文本累积。 */
 const answer = ref('')
+/** 命中组件标识：example 事件携带，供 demo 块编译挂载真实组件时解析本地组件库。 */
+const exampleComponent = ref('')
+const examplePackage = ref('')
 /** 检索命中来源。 */
 const sources = ref<SourceRef[]>([])
-/** 示例代码（example 事件）：携带双码源与组件标识，供 demo 预览块编译与切换。 */
-const example = ref<{ ts: string, js: string, component: string, packageName: string } | null>(null)
 /** 错误信息。 */
 const errorMsg = ref('')
 /** 流式进行中标志。 */
@@ -30,6 +38,9 @@ const canAsk = computed(() =>
   question.value.trim().length > 0 && !streaming.value && props.indexReady,
 )
 
+/** 把回答正文实时切分为有序分段（文字段 + vue 代码块），供模板原位渲染。 */
+const segments = computed(() => splitAnswerSegments(answer.value))
+
 /** 发起流式提问，分区渲染 SSE 事件。 */
 async function onAsk(): Promise<void> {
   if (!canAsk.value)
@@ -37,7 +48,8 @@ async function onAsk(): Promise<void> {
   streaming.value = true
   answer.value = ''
   sources.value = []
-  example.value = null
+  exampleComponent.value = ''
+  examplePackage.value = ''
   errorMsg.value = ''
   try {
     await streamQuery(question.value.trim(), 5, (event) => {
@@ -49,12 +61,9 @@ async function onAsk(): Promise<void> {
           answer.value += event.text
           break
         case 'example':
-          example.value = {
-            ts: event.ts,
-            js: event.js,
-            component: event.component,
-            packageName: event.packageName,
-          }
+          // 组件标识用于 demo 块编译挂载真实组件；代码块本身从正文 segments 解析，不再单独挂载。
+          exampleComponent.value = event.component
+          examplePackage.value = event.packageName
           break
         case 'error':
           errorMsg.value = `${event.error}: ${event.message}`
@@ -110,18 +119,27 @@ async function onAsk(): Promise<void> {
 
     <section class="answer" data-testid="answer">
       <h3>回答</h3>
-      <p class="answer-text">
-        {{ answer || '（等待提问）' }}
+      <template v-if="segments.length">
+        <!-- 正文分段：文字段原样展示，vue 代码块原位替换为 demo 预览块 -->
+        <template v-for="(seg, i) in segments" :key="i">
+          <p v-if="seg.kind === 'text'" class="answer-text" data-testid="answer-text">
+            {{ seg.text }}
+          </p>
+          <DemoPreview
+            v-else
+            data-testid="answer-demo"
+            :ts="seg.source"
+            :component="exampleComponent"
+            :package-name="examplePackage"
+            :renderable="seg.renderable"
+            :reason="seg.reason"
+          />
+        </template>
+      </template>
+      <p v-else class="answer-text placeholder">
+        （等待提问）
       </p>
     </section>
-
-    <DemoPreview
-      v-if="example"
-      :ts="example.ts"
-      :js="example.js"
-      :component="example.component"
-      :package-name="example.packageName"
-    />
   </div>
 </template>
 
@@ -142,7 +160,8 @@ async function onAsk(): Promise<void> {
 .hint.error { color: #cf222e; }
 section { margin-bottom: 16px; }
 section h3 { font-size: 13px; color: #57606a; margin: 0 0 8px; }
-.answer-text { white-space: pre-wrap; line-height: 1.6; margin: 0; }
+.answer-text { white-space: pre-wrap; line-height: 1.6; margin: 0 0 12px; }
+.answer-text.placeholder { color: #8b949e; }
 .sources ul { list-style: none; padding: 0; margin: 0; }
 .sources li { padding: 4px 0; font-size: 13px; }
 .sources small { color: #57606a; }

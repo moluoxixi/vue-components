@@ -14,17 +14,26 @@ import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
 import { compileSfc } from '../preview'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   ts: string
-  js: string
+  /** JS 版本源码：缺省表示无独立 JS（隐藏 JS 切换，不伪造降级）。 */
+  js?: string
   component: string
   packageName: string
-}>()
+  /** 能否编译预览：false 时仅展示源码 + 原因，不挂载真实组件（依赖白名单外）。 */
+  renderable?: boolean
+  /** 不可渲染原因（renderable=false 时展示给用户）。 */
+  reason?: string
+}>(), {
+  renderable: true,
+})
 
+/** 是否提供了独立 JS 源码（无则隐藏 JS 切换）。 */
+const hasJs = computed(() => typeof props.js === 'string' && props.js.length > 0)
 /** 当前查看/预览的语言。 */
 const lang = ref<'ts' | 'js'>('ts')
-/** 当前语言对应的源码。 */
-const currentCode = computed(() => (lang.value === 'ts' ? props.ts : props.js))
+/** 当前语言对应的源码（无 JS 时恒为 ts）。 */
+const currentCode = computed(() => (lang.value === 'js' && hasJs.value ? (props.js as string) : props.ts))
 /** 源码区是否展开（对齐 Element Plus 官网：默认折叠，点击底部操作栏展开）。 */
 const showCode = ref(false)
 
@@ -46,15 +55,21 @@ let runId = 0
 /** 复制提示的定时器，卸载时清理。 */
 let copyTimer = 0
 
-/** 编译当前语言源码为可挂载组件；错误显式呈现，不吞掉。 */
+/** 编译当前语言源码为可挂载组件；不可渲染或错误时不挂载，错误显式呈现，不吞掉。 */
 async function recompile(): Promise<void> {
   const seq = ++runId
   // 切换语言/源码会重新编译，先清理上一次注入的样式，避免 <head> 累积。
   lastDispose?.()
   lastDispose = null
+  previewComp.value = null
+  // 不可渲染块（依赖白名单外）：不编译，仅展示源码 + 原因。
+  if (!props.renderable) {
+    compiling.value = false
+    compileError.value = ''
+    return
+  }
   compiling.value = true
   compileError.value = ''
-  previewComp.value = null
   try {
     const { component, dispose } = await compileSfc(currentCode.value, (e) => {
       // 仅最新请求的运行期错误回调允许写入，避免被并发的旧编译污染。
@@ -94,9 +109,9 @@ onUnmounted(() => {
     window.clearTimeout(copyTimer)
 })
 
-/** 复制指定语言源码到剪贴板；失败显式提示，不静默吞 rejection。 */
+/** 复制当前语言源码到剪贴板；失败显式提示，不静默吞 rejection。 */
 async function copy(which: 'ts' | 'js'): Promise<void> {
-  const text = which === 'ts' ? props.ts : props.js
+  const text = which === 'js' && hasJs.value ? (props.js as string) : props.ts
   if (copyTimer)
     window.clearTimeout(copyTimer)
   try {
@@ -117,9 +132,12 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
 
 <template>
   <section class="demo-preview" data-testid="demo-preview">
-    <!-- 预览区：真实组件实时渲染 -->
+    <!-- 预览区：可渲染时实时挂载真实组件；不可渲染时展示原因（依赖白名单外） -->
     <div class="dp-live" data-testid="demo-live">
-      <div v-if="compiling" class="dp-hint" data-testid="demo-compiling">
+      <div v-if="!renderable" class="dp-hint warn" data-testid="demo-unrenderable">
+        ⚠ 该示例无法实时预览：{{ reason }}
+      </div>
+      <div v-else-if="compiling" class="dp-hint" data-testid="demo-compiling">
         编译中…
       </div>
       <div v-else-if="compileError" class="dp-hint error" data-testid="demo-error">
@@ -159,6 +177,7 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
             TS
           </button>
           <button
+            v-if="hasJs"
             class="dp-tab"
             :class="{ active: lang === 'js' }"
             data-testid="tab-js"
@@ -199,6 +218,7 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
 .dp-live { padding: 22px 16px; background: #fff; min-height: 48px; }
 .dp-hint { color: #57606a; font-size: 13px; }
 .dp-hint.error { color: #cf222e; white-space: pre-wrap; }
+.dp-hint.warn { color: #9a6700; white-space: pre-wrap; }
 /* 操作栏：居中分隔条，对齐 Element Plus 官网 demo-block */
 .dp-actions {
   display: flex; align-items: center; justify-content: center;

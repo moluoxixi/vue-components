@@ -25,7 +25,7 @@ function okResult(render?: () => unknown) {
 }
 
 // 动态导入被测组件（确保 mock 在其依赖解析前生效）。
-async function mountDemo(props?: Partial<{ ts: string, js: string, component: string, packageName: string }>) {
+async function mountDemo(props?: Partial<{ ts: string, js: string, component: string, packageName: string, renderable: boolean, reason: string }>) {
   const { default: DemoPreview } = await import('../src/ui/components/DemoPreview.vue')
   return mount(DemoPreview, {
     props: {
@@ -167,5 +167,31 @@ describe('demoPreview', () => {
     expect(wrapper.find('[data-testid="js-comp"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="ts-comp"]').exists()).toBe(false)
     expect(firstDispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('未提供 js 源码时隐藏 JS 切换，仅展示 TS', async () => {
+    const wrapper = await mountDemo({ js: undefined })
+    await flushPromises()
+    // 无独立 JS 版本 → 不渲染 JS tab（不伪造降级）
+    expect(wrapper.find('[data-testid="tab-js"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="tab-ts"]').exists()).toBe(true)
+    // 仍正常编译挂载 TS
+    expect(wrapper.find('[data-testid="real-comp"]').exists()).toBe(true)
+    expect(compileSfc.mock.calls[0][0]).toBe('TS_SOURCE')
+  })
+
+  it('renderable=false 时不编译，仅展示源码与不可渲染原因', async () => {
+    const wrapper = await mountDemo({ renderable: false, reason: '该示例依赖 element-plus，预览环境未提供' })
+    await flushPromises()
+    // 不可渲染 → 不调用编译，不挂载真实组件
+    expect(compileSfc).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="real-comp"]').exists()).toBe(false)
+    // 显式展示原因
+    const hint = wrapper.find('[data-testid="demo-unrenderable"]')
+    expect(hint.exists()).toBe(true)
+    expect(hint.text()).toContain('element-plus')
+    // 源码仍可查看（展开后）
+    await wrapper.find('[data-testid="toggle-code"]').trigger('click')
+    expect(wrapper.find('[data-testid="code-block"]').text()).toContain('TS_SOURCE')
   })
 })

@@ -155,10 +155,25 @@ export interface HealthResponse {
  * 任意阶段出错推 error 后结束。
  *
  * example 事件携带 demo 预览块所需信息：
- * - code：向后兼容字段，等于 ts（老前端只读 code 仍可用）
- * - ts/js：双语言示例源码，供预览块切换查看/复制
+ * - code：向后兼容字段，等于首个可渲染块的 ts（老前端只读 code 仍可用）
+ * - ts/js：首个可渲染块的双语言源码，供预览块切换查看/复制
  * - component/packageName：运行时编译挂载真实组件时需要（注入 moduleCache 解析本地组件库）
+ * - blocks：从 LLM 回答提取的全部 vue 代码块（按出现顺序）。每块带 renderable 标志——
+ *   true 表示 import 仅用预览环境可解析的依赖（vue + @moluoxixi/components），前端编译挂载；
+ *   false 表示 AI 标了 no-demo 或引入了白名单外依赖，前端仅展示源码 + 复制 + reason，不挂载。
+ *   blocks 为新链路主字段；code/ts/js 仅为兼容旧前端而保留（指向首个可渲染块，无则指向兜底骨架）。
  */
+export interface ExampleBlock {
+  /** 代码块源码（来自 LLM 回答的 vue fenced 块原文，通常含 lang="ts"）。 */
+  ts: string
+  /** JS 版本源码：仅当 LLM 另给了独立 JS 版本时存在；缺省表示无独立 JS（前端隐藏 JS 切换，不伪造降级）。 */
+  js?: string
+  /** 能否转 demo 预览块。 */
+  renderable: boolean
+  /** 不可渲染原因（renderable=false 时必有）。 */
+  reason?: string
+}
+
 export type SseEvent
   = | { type: 'sources', sources: SourceRef[] }
     | { type: 'token', text: string }
@@ -170,6 +185,8 @@ export type SseEvent
       js: string
       component: string
       packageName: string
+      /** 全部提取块（新前端按此渲染多个示例；旧前端忽略，读 code/ts/js）。 */
+      blocks: ExampleBlock[]
     }
     | { type: 'done' }
     | { type: 'error', error: ApiErrorCode, message: string }

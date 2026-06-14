@@ -60,6 +60,7 @@ describe('runQuery SSE 编排', () => {
     })
     expect(events.filter(e => e.type === 'token').map(e => (e as { text: string }).text)).toEqual(['这是', '回答'])
     const example = events.find(e => e.type === 'example')
+    // 回答无 vue 代码块 → blocks 回退首个命中组件的确定性骨架；兼容字段指向该骨架
     expect(example).toEqual({
       type: 'example',
       code: '<MyButton />',
@@ -68,8 +69,29 @@ describe('runQuery SSE 编排', () => {
       js: '<MyButton js />',
       component: 'MyButton',
       packageName: '@moluoxixi/components',
+      blocks: [{ ts: '<MyButton />', js: '<MyButton js />', renderable: true }],
     })
     expect(events[events.length - 1]).toEqual({ type: 'done' })
+  })
+
+  it('回答含 vue 块：提取为 blocks，白名单内可渲染、白名单外标记不可渲染', async () => {
+    const okBlock = '```vue\n<script setup lang="ts">\nimport { PopoverTableSelect } from \'@moluoxixi/components\'\n</script>\n<template><PopoverTableSelect /></template>\n```'
+    const badBlock = '```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton /></template>\n```'
+    const deps: QueryDeps = {
+      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
+      config: CONFIG,
+      async* chat() {
+        yield `示例如下：\n${okBlock}\n另一个需要外部库：\n${badBlock}`
+      },
+    }
+    const events = await collect(runQuery('下拉表格配置', 5, deps))
+    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
+    expect(example.blocks).toHaveLength(2)
+    expect(example.blocks[0].renderable).toBe(true)
+    expect(example.blocks[0].ts).toContain('PopoverTableSelect')
+    expect(example.blocks[1].renderable).toBe(false)
+    expect(example.blocks[1].reason).toContain('element-plus')
+    expect(example.ts).toContain('PopoverTableSelect')
   })
 
   it('无命中：兜底告知不编造，不调用 chat', async () => {
