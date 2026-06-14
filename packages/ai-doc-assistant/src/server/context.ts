@@ -149,7 +149,14 @@ export class ServerContext {
     const files: { filePath: string, packageName: string }[] = []
     for (const pattern of patterns) {
       for await (const entry of glob(pattern, { cwd: this.opts.root })) {
-        const pkg = entry.split(/[/\\]/)[1] ?? 'unknown'
+        // 只把「直接父目录为 src」的 index.vue 当作独立组件入口。
+        // 组件库门面约定：对外组件入口固定为 `<Comp>/src/index.vue`，其直接父目录是 src；
+        // 而内部子组件（如 `<Comp>/src/base/index.vue`）的直接父目录是 base 等非 src 名，
+        // 属于实现细节，其契约由父组件通过 $attrs 转发并在抽取时合并，不应作为幽灵组件单列。
+        const segs = entry.split(/[/\\]/)
+        if (segs[segs.length - 2] !== 'src')
+          continue
+        const pkg = segs[1] ?? 'unknown'
         files.push({ filePath: `${this.opts.root}/${entry}`, packageName: `@moluoxixi/${pkg}` })
       }
     }

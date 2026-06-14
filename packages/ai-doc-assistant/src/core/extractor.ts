@@ -1,8 +1,14 @@
 import type { ComponentContract, EmitDef, ModelDef, PropDef, SlotDef, TypeDefInfo } from './types'
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { parse } from 'vue-docgen-api'
-import { extractDefinePropsTypeName, extractTypeRefs, parseTypeDefs } from './type-resolver'
+import {
+  extractDefinePropsTypeName,
+  extractSfcScriptTypeDefs,
+  extractTypeRefs,
+  parseTypeDefs,
+  resolveNamedTypeFields,
+} from './type-resolver'
 
 /**
  * vue-docgen-api 的 prop 描述子（仅声明本模块实际读取的字段）。
@@ -152,7 +158,135 @@ function collectTypeDefs(sfcPath: string): TypeDefInfo[] {
 
   for (const root of roots)
     walk(root)
+
+  // 合并 SFC `<script>` 内联定义的 interface / type alias（如
+  // `type RuntimeProps = Omit<XxxProps, 'k'>`）。这些别名不在任何 .ts 文件中，
+  // 是 defineProps 泛型实参的常见来源，必须纳入才能正确回填 prop 类型。
+  for (const def of extractSfcScriptTypeDefs(sfcPath)) {
+    if (seen.has(def.name))
+      continue
+    seen.add(def.name)
+    defs.push(def)
+  }
+
   return defs
+}
+
+/**
+ * 从插槽契约接口（约定名 `<Comp>Slots`）派生插槽定义。
+ *
+ * vue-docgen 对 `<template v-for="name in slotNames" #[name]>` 这类「按列动态插槽转发」写法，
+ * 会把字面量 `name` 误当成一个名为 "name" 的具名插槽，产出伪插槽。组件真实的插槽契约写在
+ * `src/types/slots.ts` 的 `<Comp>Slots` interface 里（含具名插槽与 `[k: string]` 索引签名表达的动态插槽）。
+ * 这里优先用契约接口派生插槽：具名键 → 具名插槽；索引签名 → 一个 `[dynamic]` 动态插槽说明。
+ * 找不到契约接口时返回 null，由调用方回退到 vue-docgen 结果（不静默丢插槽）。
+ * @param componentName 组件名，用于拼出契约接口名 `<Comp>Slots`。
+ * @param allDefs 已收集的全部本地类型定义（含 SFC 内联）。
+ */
+function deriveSlotsFromContract(componentName: string, allDefs: TypeDefInfo[]): SlotDef[] | null {
+  const ifaceName = `${componentName}Slots`
+  const def = allDefs.find(d => d.name === ifaceName)
+  if (!def)
+    return null
+  const slots: SlotDef[] = []
+  let hasIndexSignature = false
+  for (const f of def.fields) {
+    // 索引签名字段在解析时其 name 形如 `[name: string]` / `[key: string]`，用方括号识别
+    if (f.name.startsWith('[')) {
+      hasIndexSignature = true
+      continue
+    }
+    slots.push({ name: f.name, scopeType: f.type, description: f.description })
+  }
+  if (hasIndexSignature) {
+    slots.push({
+      name: '[dynamic]',
+      scopeType: 'Record<string, any>',
+      description: '按列名动态声明的单元格插槽（插槽名取自各列 field），作用域参数为该列的行/列/值上下文。',
+    })
+  }
+  return slots
+}
+
+/**
+ * 把「被父组件通过 v-bind="$attrs" 透传的内部子组件」契约合并进父组件。
+ *
+ * 组件库常见结构：外层 `<Comp>/src/index.vue` 仅做交互编排，把表格/弹层等核心 props
+ * （如 `columns: PopoverTableColumn[]`）声明在内部 `<Comp>/src/<sub>/index.vue` 上，
+ * 再用 `v-bind="$attrs"` 整体转发。对使用者而言，这些子组件 props 就是外层组件对外 API 的一部分，
+ * 必须并入父契约，否则会丢失 columns 等关键可配置项。
+ *
+ * 仅在父 SFC 模板中确实出现 `v-bind="$attrs"` 时才合并（确认存在透传语义），
+ * 并对子组件 props 做去重（父已显式声明的同名 prop 优先保留）。
+ * @param parentSfcPath 父组件 SFC 绝对路径。
+ * @param parentProps 父组件已抽取的 props（原地补充）。
+ * @param parentEmits 父组件已抽取的 emits（原地补充）。
+ * @param allDefs 父组件目录收集到的全部类型定义（含子组件类型，src 根扫描已覆盖）。
+ */
+async function mergeForwardedSubComponent(
+  parentSfcPath: string,
+  parentProps: PropDef[],
+  parentEmits: EmitDef[],
+  allDefs: TypeDefInfo[],
+): Promise<void> {
+  let parentSrc: string
+  try {
+    parentSrc = readFileSync(parentSfcPath, 'utf8')
+  }
+  catch {
+    return
+  }
+  // 只合并「真正接收 v-bind="$attrs" 的那个子组件」的契约，避免父模板 import 了
+  // 多个子组件时把全部子组件 props 误并入父对外 API。
+  // 1. 找到模板里带 v-bind="$attrs" 的元素，取其标签名（局部组件名）。
+  const subDir = dirname(parentSfcPath)
+  const tagNames = new Set<string>()
+  for (const m of Array.from(parentSrc.matchAll(/<([A-Za-z][\w.-]*)\b[^>]*\bv-bind\s*=\s*["']\$attrs["']/g)))
+    tagNames.add(m[1])
+  if (!tagNames.size)
+    return
+  // 2. 把局部组件名映射到其 import 的 .vue 路径（仅同目录相对导入）。
+  const importRe = /import\s+(\w+)\s+from\s+["'](\.\/[^"']+\.vue)["']/g
+  const nameToPath = new Map<string, string>()
+  for (const m of Array.from(parentSrc.matchAll(importRe)))
+    nameToPath.set(m[1], join(subDir, m[2]))
+  // 3. 仅保留「接收 $attrs 的标签」对应的子组件路径。
+  const subPaths = new Set<string>()
+  for (const tag of Array.from(tagNames)) {
+    const p = nameToPath.get(tag)
+    if (p)
+      subPaths.add(p)
+  }
+  if (!subPaths.size)
+    return
+
+  const existingProp = new Set(parentProps.map(p => p.name))
+  const existingEmit = new Set(parentEmits.map(e => e.name))
+  for (const subPath of Array.from(subPaths)) {
+    let subDoc: RawDoc
+    try {
+      subDoc = await parse(subPath) as RawDoc
+    }
+    catch (err) {
+      // 转发型子组件承载核心 props（如 columns），解析失败不能静默丢弃，
+      // 否则会重现「columns 契约丢失」的 bug。显式抛出带上下文的错误。
+      throw new Error(`解析 $attrs 转发子组件失败：${subPath}（父组件 ${parentSfcPath}）`, { cause: err })
+    }
+    const subProps = mapProps(subDoc.props ?? [])
+    backfillPropTypesFromInterface(subProps, subPath, allDefs)
+    for (const p of subProps) {
+      if (existingProp.has(p.name))
+        continue
+      existingProp.add(p.name)
+      parentProps.push(p)
+    }
+    for (const e of mapEmits(subDoc.events ?? [])) {
+      if (existingEmit.has(e.name))
+        continue
+      existingEmit.add(e.name)
+      parentEmits.push(e)
+    }
+  }
 }
 
 /**
@@ -166,13 +300,17 @@ export async function extractContract(filePath: string, packageName: string): Pr
   const props = mapProps(doc.props ?? [])
   const sourceFile = doc.sourceFiles?.[0] ?? filePath
 
-  // 扫描组件目录的全部本地类型定义（interface / type alias）
+  // 扫描组件目录的全部本地类型定义（interface / type alias），含 SFC 内联别名
   const allDefs = collectTypeDefs(filePath)
 
   // vue-docgen 对 `defineProps<导入接口>()` 写法会把 prop 类型报成 unknown，
   // 丢失「columns 是 PopoverTableColumn[]」这层关键信息。这里从 SFC 抽出 defineProps 的
   // 泛型接口名，回查其字段类型，按 prop 名回填真实类型与类型引用，驱动后续展开。
   backfillPropTypesFromInterface(props, filePath, allDefs)
+
+  // 合并被父组件通过 v-bind="$attrs" 透传的内部子组件（如 PopoverTableSelectBase）的 props/emits，
+  // 它们对使用者而言就是外层组件对外 API 的一部分（columns 等核心配置项即源于此）。
+  await mergeForwardedSubComponent(filePath, props, emits, allDefs)
 
   // 收集 props 实际引用到的自定义类型名集合（剥离修饰后的裸名）
   const referenced = new Set<string>()
@@ -184,13 +322,18 @@ export async function extractContract(filePath: string, packageName: string): Pr
   // 仅保留被 props 引用到（含传递闭包）的本地类型定义，去噪、控制上下文体积
   const typeDefs = filterReachableDefs(allDefs, referenced)
 
+  const name = resolveComponentName(filePath, doc.displayName)
+  // 插槽优先从 `<Comp>Slots` 契约接口派生（vue-docgen 对动态插槽 `#[name]` 会误报伪插槽）；
+  // 契约缺失时回退 vue-docgen 解析结果，不静默丢插槽。
+  const slots = deriveSlotsFromContract(name, allDefs) ?? mapSlots(doc.slots ?? [])
+
   return {
-    name: resolveComponentName(filePath, doc.displayName),
+    name,
     packageName,
     description: doc.description ?? '',
     props,
     emits,
-    slots: mapSlots(doc.slots ?? []),
+    slots,
     models: deriveModels(emits),
     sourceFile,
     typeDefs,
@@ -198,27 +341,32 @@ export async function extractContract(filePath: string, packageName: string): Pr
 }
 
 /**
- * 用 `defineProps<XXX>()` 泛型接口的字段类型，回填 vue-docgen 报成 unknown 的 prop 类型。
- * 按 prop 名匹配接口字段；命中且原类型为 unknown/空时覆盖，并重算 typeRefs 驱动展开。
- * 找不到接口或字段时按缺省保留原值，不抛错（边界容错，不静默吞业务数据）。
+ * 用 `defineProps<XXX>()` 泛型类型的字段类型，回填 vue-docgen 报成 unknown 的 prop 类型。
+ *
+ * XXX 可能是 interface，也可能是 SFC 内联别名（如 `Omit<XxxProps, 'k'>`、`Pick<...>`、交叉类型）。
+ * 通过 resolveNamedTypeFields 跟随别名与工具类型解析到最终字段集合，再按 prop 名匹配回填，
+ * 并重算 typeRefs 驱动后续类型展开。找不到类型或字段时按缺省保留原值，不抛错（边界容错）。
  */
 function backfillPropTypesFromInterface(props: PropDef[], sfcPath: string, allDefs: TypeDefInfo[]): void {
   const propsTypeName = extractDefinePropsTypeName(sfcPath)
   if (!propsTypeName)
     return
-  const iface = allDefs.find(d => d.name === propsTypeName)
-  if (!iface)
+  const byName = new Map(allDefs.map(d => [d.name, d]))
+  const fields = resolveNamedTypeFields(propsTypeName, byName)
+  if (!fields.length)
     return
-  const fieldByName = new Map(iface.fields.map(f => [f.name, f]))
+  const fieldByName = new Map(fields.map(f => [f.name, f]))
   for (const p of props) {
     const field = fieldByName.get(p.name)
     if (!field)
       continue
-    // 本地接口字段的原始类型文本（如 `PopoverTableColumn[]`）信息最完整：
-    // vue-docgen 会把类型归一成 `Array`/`union`/`TSIndexedAccessType` 等降级名，丢失元素类型。
-    // 只要本地接口能解析到该字段，就用其原始类型覆盖，并重算 typeRefs 驱动展开。
+    // 本地类型字段的原始类型文本（如 `PopoverTableColumn[]`）信息最完整：
+    // vue-docgen 会把类型归一成 `Array`/`union`/`unknown` 等降级名，丢失元素类型。
+    // 只要本地类型能解析到该字段，就用其原始类型覆盖，并重算 typeRefs 驱动展开。
     p.type = field.type
     p.typeRefs = extractTypeRefs(field.type)
+    if (!p.description && field.description)
+      p.description = field.description
   }
 }
 
