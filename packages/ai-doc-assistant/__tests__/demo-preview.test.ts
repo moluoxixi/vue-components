@@ -128,6 +128,28 @@ describe('demoPreview', () => {
     expect(wrapper.find('[data-testid="copy-current"]').text()).toContain('复制失败')
   })
 
+  it('源码区默认折叠，点击操作栏后展开、再点收起（对齐 Element Plus 官网交互）', async () => {
+    const wrapper = await mountDemo()
+    await flushPromises()
+    // 预览区始终可见；源码区由 v-show 控制，默认折叠
+    expect(wrapper.find('[data-testid="demo-live"]').exists()).toBe(true)
+    const codeEl = wrapper.find('[data-testid="demo-code"]')
+    expect(codeEl.exists()).toBe(true)
+    expect((codeEl.element as HTMLElement).style.display).toBe('none')
+    const toggle = wrapper.find('[data-testid="toggle-code"]')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(toggle.text()).toContain('查看源码')
+    // 点击展开
+    await toggle.trigger('click')
+    expect((codeEl.element as HTMLElement).style.display).not.toBe('none')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(toggle.text()).toContain('收起源码')
+    // 再点收起
+    await toggle.trigger('click')
+    expect((codeEl.element as HTMLElement).style.display).toBe('none')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+  })
+
   it('快速切换语言时仅最新一次编译结果生效（并发守卫）', async () => {
     // 第一次（TS）编译挂起，第二次（JS）先 resolve；最终应呈现 JS 的组件，且第一次结果被丢弃。
     let resolveFirst!: (v: unknown) => void

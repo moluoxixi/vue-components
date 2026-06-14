@@ -25,6 +25,8 @@ const props = defineProps<{
 const lang = ref<'ts' | 'js'>('ts')
 /** 当前语言对应的源码。 */
 const currentCode = computed(() => (lang.value === 'ts' ? props.ts : props.js))
+/** 源码区是否展开（对齐 Element Plus 官网：默认折叠，点击底部操作栏展开）。 */
+const showCode = ref(false)
 
 /** 编译挂载得到的真实组件（shallowRef 避免 Vue 递归代理组件内部）。 */
 const previewComp = shallowRef<Component | null>(null)
@@ -115,32 +117,7 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
 
 <template>
   <section class="demo-preview" data-testid="demo-preview">
-    <header class="dp-head">
-      <h3>示例预览 · {{ component }}</h3>
-      <div class="dp-tabs" role="tablist">
-        <button
-          class="dp-tab"
-          :class="{ active: lang === 'ts' }"
-          data-testid="tab-ts"
-          role="tab"
-          :aria-selected="lang === 'ts'"
-          @click="lang = 'ts'"
-        >
-          TS
-        </button>
-        <button
-          class="dp-tab"
-          :class="{ active: lang === 'js' }"
-          data-testid="tab-js"
-          role="tab"
-          :aria-selected="lang === 'js'"
-          @click="lang = 'js'"
-        >
-          JS
-        </button>
-      </div>
-    </header>
-
+    <!-- 预览区：真实组件实时渲染 -->
     <div class="dp-live" data-testid="demo-live">
       <div v-if="compiling" class="dp-hint" data-testid="demo-compiling">
         编译中…
@@ -153,9 +130,45 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
       </div>
     </div>
 
-    <div class="dp-code">
+    <!-- 操作栏：对齐 Element Plus 官网，居中悬浮按钮控制源码折叠/复制 -->
+    <div class="dp-actions" data-testid="demo-actions">
+      <button
+        class="dp-action"
+        data-testid="toggle-code"
+        :aria-expanded="showCode"
+        :title="showCode ? '收起源码' : '查看源码'"
+        @click="showCode = !showCode"
+      >
+        <span class="dp-action-icon" :class="{ open: showCode }">&lt;/&gt;</span>
+        {{ showCode ? '收起源码' : '查看源码' }}
+      </button>
+    </div>
+
+    <!-- 源码区：默认折叠，展开后顶部可切 TS/JS 并复制 -->
+    <div v-show="showCode" class="dp-code" data-testid="demo-code">
       <div class="dp-code-head">
-        <span class="dp-lang">{{ lang.toUpperCase() }}</span>
+        <div class="dp-tabs" role="tablist">
+          <button
+            class="dp-tab"
+            :class="{ active: lang === 'ts' }"
+            data-testid="tab-ts"
+            role="tab"
+            :aria-selected="lang === 'ts'"
+            @click="lang = 'ts'"
+          >
+            TS
+          </button>
+          <button
+            class="dp-tab"
+            :class="{ active: lang === 'js' }"
+            data-testid="tab-js"
+            role="tab"
+            :aria-selected="lang === 'js'"
+            @click="lang = 'js'"
+          >
+            JS
+          </button>
+        </div>
         <button
           class="dp-copy"
           :class="{ error: copied === 'error' }"
@@ -164,7 +177,7 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
         >
           <template v-if="copied === lang">已复制</template>
           <template v-else-if="copied === 'error'">复制失败</template>
-          <template v-else>复制</template>
+          <template v-else>复制源码</template>
         </button>
       </div>
       <p v-if="copyError" class="dp-copy-error" data-testid="copy-error">
@@ -177,25 +190,32 @@ async function copy(which: 'ts' | 'js'): Promise<void> {
 
 <style scoped>
 .demo-preview { margin-bottom: 16px; border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; }
-.dp-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; background: #f6f8fa; border-bottom: 1px solid #d0d7de;
-}
-.dp-head h3 { font-size: 13px; color: #57606a; margin: 0; }
 .dp-tabs { display: flex; gap: 4px; }
 .dp-tab {
-  padding: 4px 12px; border: 1px solid #d0d7de; border-radius: 6px;
-  background: #fff; cursor: pointer; font-size: 12px; color: #57606a;
+  padding: 4px 12px; border: 1px solid #30363d; border-radius: 6px;
+  background: #21262d; cursor: pointer; font-size: 12px; color: #8b949e;
 }
 .dp-tab.active { background: #238636; color: #fff; border-color: #238636; }
-.dp-live { padding: 18px 14px; background: #fff; min-height: 48px; }
+.dp-live { padding: 22px 16px; background: #fff; min-height: 48px; }
 .dp-hint { color: #57606a; font-size: 13px; }
 .dp-hint.error { color: #cf222e; white-space: pre-wrap; }
+/* 操作栏：居中分隔条，对齐 Element Plus 官网 demo-block */
+.dp-actions {
+  display: flex; align-items: center; justify-content: center;
+  padding: 6px; background: #f6f8fa; border-top: 1px dashed #d0d7de;
+}
+.dp-action {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 14px; border: none; border-radius: 6px;
+  background: transparent; color: #57606a; cursor: pointer; font-size: 13px;
+}
+.dp-action:hover { color: #238636; background: #eaeef2; }
+.dp-action-icon { font-family: monospace; font-size: 12px; transition: transform .2s; }
+.dp-action-icon.open { transform: rotate(0); color: #238636; }
 .dp-code-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 14px; background: #161b22;
 }
-.dp-lang { color: #8b949e; font-size: 12px; letter-spacing: .04em; }
 .dp-copy {
   padding: 2px 10px; border: 1px solid #30363d; border-radius: 5px;
   background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 12px;
