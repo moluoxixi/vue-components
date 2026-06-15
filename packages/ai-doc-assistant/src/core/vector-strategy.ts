@@ -7,7 +7,7 @@ import type {
 import type { ComponentContract } from './types'
 import type { VectorDoc, VectorStore, VectorStoreConfig, VectorStoreKind } from './vector-store'
 /**
- * vector 检索策略（可选升级，ADR-0007）：本地 embedding + 可插拔向量存储。
+ * vector 检索策略（可选增强，ADR-0007）：本地 embedding + 可插拔向量存储。
  *
  * 本模块及其依赖（@huggingface/transformers、@orama/orama）只在 retrieval mode=vector
  * 时经动态 import 加载；默认 content 模式不引用本文件，故其重依赖不进默认 bundle。

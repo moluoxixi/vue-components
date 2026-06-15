@@ -10,8 +10,8 @@ mindmap
     组件AI文档与调试助手
       extractor契约提取
       generator示例生成
-      indexer索引+持久化
-      retriever混合检索
+      retrieval-strategy关键词topK
+      vector可选增强
       server-BFF流式
       ai-provider持密钥
       cli构建工具
@@ -21,7 +21,7 @@ mindmap
 
 | 需求模块 | 任务书 | 核心范围 | 状态 |
 |---|---|---|---|
-| 组件AI文档与调试助手 | [组件AI文档与调试助手](组件AI文档与调试助手.md) | extractor/generator/indexer/retriever/BFF/ai-provider/cli | 实现方案(PLAN) |
+| 组件AI文档与调试助手 | [组件AI文档与调试助手](组件AI文档与调试助手.md) | extractor/generator/retrieval-strategy/vector-store/BFF/ai-provider/cli | 实现方案(PLAN) |
 
 ## 说明
 

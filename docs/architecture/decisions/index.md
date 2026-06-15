@@ -7,5 +7,7 @@
 | [ADR-0001](0001-runtime-sfc-compiler.md) | 运行时 SFC 编译器选型（vue3-sfc-loader + 抽象层） | accepted | 2026-06-13 |
 | [ADR-0002](0002-bff-secret-isolation.md) | 引入 BFF 层，密钥绝不进浏览器 | accepted | 2026-06-13 |
 | [ADR-0003](0003-sandbox-untrusted-code.md) | AI 生成代码沙箱隔离执行（隔离强度已验证） | accepted | 2026-06-13 |
-| [ADR-0004](0004-orama-hybrid-index.md) | 知识库索引引擎选型（Orama 混合检索） | accepted | 2026-06-13 |
+| [ADR-0004](0004-orama-hybrid-index.md) | 历史向量优先方案（已由 ADR-0006/0007 调整） | superseded | 2026-06-13 |
 | [ADR-0005](0005-bff-vite-plugin-stack.md) | BFF 技术栈（Vite 插件 + dev server middleware） | accepted | 2026-06-13 |
+| [ADR-0006](0006-content-keyword-topk.md) | 默认检索策略（结构化关键词 topK） | accepted | 2026-06-15 |
+| [ADR-0007](0007-optional-vector-enhancement.md) | vector 可选增强（本地 embedding + 可插拔向量存储） | accepted | 2026-06-15 |

@@ -9,8 +9,8 @@
 | sourceCommit | `edacb6ea67919bb5f3654f989283fac32a011cae` |
 | sourceState | dirty；未提交内容为初始化规则、docs（PRD/架构/out-api）输出，`git status --porcelain` 未显示 `packages/` 源码文件修改。 |
 | generatedBy | `api-docs` provider mode |
-| sourceRoots | （接口尚未实现）契约来源 = `docs/prds/组件AI文档与调试助手.md`、`docs/architecture/overview.md`、ADR-0002/0004/0005 |
-| sourceFiles | `docs/prds/组件AI文档与调试助手.md`、`docs/architecture/overview.md`、`docs/architecture/decisions/0002-bff-secret-isolation.md`、`docs/architecture/decisions/0005-bff-vite-plugin-stack.md` |
+| sourceRoots | （接口尚未实现）契约来源 = `docs/prds/组件AI文档与调试助手.md`、`docs/architecture/overview.md`、ADR-0002/0005/0006/0007 |
+| sourceFiles | `docs/prds/组件AI文档与调试助手.md`、`docs/architecture/overview.md`、`docs/architecture/decisions/0002-bff-secret-isolation.md`、`docs/architecture/decisions/0005-bff-vite-plugin-stack.md`、`docs/architecture/decisions/0006-content-keyword-topk.md`、`docs/architecture/decisions/0007-optional-vector-enhancement.md` |
 
 ## 全局协议
 
@@ -26,4 +26,4 @@
 
 - 本目录记录当前项目（BFF）**提供给浏览器调试台 UI** 的 HTTP 接口契约。
 - 接口尚未编码，全部标 `planned`；实现期校验真实路由后转 `confirmed`，并将 sourceFiles 更新为后端路由/handler 源码路径。
-- 当前项目消费的**外部大模型 / embedding** 接口属消费方契约，应记于 `docs/api/`（后续按需补充），不写入本目录。
+- 当前项目消费的**外部大模型**接口属消费方契约，应记于 `docs/api/`（后续按需补充），不写入本目录。默认 content 检索不消费外部 embedding 接口。

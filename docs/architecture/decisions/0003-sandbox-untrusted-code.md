@@ -10,7 +10,7 @@ Web 调试台会把 AI 现场生成的 Vue SFC 运行时编译并挂载（ADR-00
 
 ## 决策
 
-**AI 生成的 SFC 编译产物必须在 iframe sandbox 中执行挂载，禁止在主应用上下文直接运行。** 隔离方案已由 Spike 002 历史结论验证确定（真实 Chromium 5/5 通过；结论已沉淀到本 ADR，原 spike 实验目录不作为长期测试目录保留）：
+**AI 生成的 SFC 编译产物必须在 iframe sandbox 中执行挂载，禁止在主应用上下文直接运行。** 隔离方案已由 Spike 002 历史结论验证确定（真实 Chromium 5/5 通过；结论已沉淀到本 ADR；`spikes/` 可作为本地 gitignored 参考，但不作为长期测试目录、知识库语料或发布输入）：
 
 - iframe `sandbox="allow-scripts"`，**故意省略 `allow-same-origin`** → iframe 处于 opaque origin，沙箱内访问 `parent.document` / cookie / location 一律抛 `SecurityError`（实测三项越权全部 BLOCKED，宿主未被篡改）。
 - 沙箱脚本（Vue + 编译器 + loader）用 esbuild 打包成自包含 IIFE，经 `?raw` 内联进 iframe `srcdoc`，零跨源网络依赖。

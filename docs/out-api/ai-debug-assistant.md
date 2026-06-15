@@ -3,7 +3,7 @@
 ## 来源
 
 - PRD：`docs/prds/组件AI文档与调试助手.md`（已定稿）
-- 架构：`docs/architecture/overview.md`（ACCEPTED）、ADR-0002（BFF 密钥隔离）、ADR-0004（Orama 索引）、ADR-0005（Vite 插件栈）
+- 架构：`docs/architecture/overview.md`（ACCEPTED）、ADR-0002（BFF 密钥隔离）、ADR-0005（Vite 插件栈）、ADR-0006（content 关键词 topK）、ADR-0007（vector 可选增强）
 - 全局协议：`docs/out-api/_protocol.md`
 - 状态：契约设计（接口实现尚未编码，标 `status: planned`；实现期校验路由后转 `confirmed`）
 
@@ -63,11 +63,11 @@ data: {"finishReason":"stop"}
 | 400 | INVALID_REQUEST | question 为空 |
 | 409 | INDEX_NOT_READY | 索引未就绪，需先 build |
 | 429 | UPSTREAM_RATE_LIMITED | 上游大模型限流 |
-| 502 | UPSTREAM_ERROR | 大模型 / embedding 调用失败 |
+| 502 | UPSTREAM_ERROR | 大模型调用失败，或 vector 增强的本地 embedding / 向量存储失败 |
 
 ### 联调说明
 
-- 检索：先对 question 算 embedding（`text-embedding-3-small`），Orama 混合检索（向量 + BM25）取 topK。
+- 检索：默认 content 模式用结构化关键词 topK 召回公共组件契约，不调用 embedding；vector 模式显式启用后使用本地 embedding + 可插拔向量存储召回 topK。
 - 类型提示来自 AST 契约（确定性注入），非大模型臆测。
 - 首字延迟目标 < 3s（主要源于上游模型）；检索目标 < 500ms。
 
@@ -123,11 +123,11 @@ data: {"finishReason":"stop"}
 | 状态码 | code | 说明 |
 |---|---|---|
 | 409 | INDEX_NOT_READY | 已有构建在进行中 |
-| 502 | UPSTREAM_ERROR | embedding 调用失败 |
+| 502 | UPSTREAM_ERROR | vector 增强的本地 embedding / 向量存储失败 |
 
 ### 联调说明
 
-- 构建流程（架构数据流构建期）：扫描 `packages/**` → extractor 抽契约 → generator 出示例 → indexer 算 embedding + 建 Orama 索引 → persist 落包内本地文件。
+- 构建流程（架构数据流构建期）：扫描 `packages/**` → extractor 抽公共组件契约 → generator 出示例 → content 策略建立关键词检索态；vector 模式显式启用后再做本地 embedding + 向量存储构建。
 
 ## 列出已索引组件
 
@@ -156,10 +156,10 @@ data: {"finishReason":"stop"}
 ### 响应
 
 ```json
-{ "ok": true, "version": "0.1.0", "providers": { "chat": "configured", "embedding": "configured" } }
+{ "ok": true, "providers": { "chat": "configured" }, "mode": "content", "index": "ready" }
 ```
 
-- `providers.*` 仅返回配置状态字面量（`configured` / `missing`），**绝不返回密钥**。
+- `providers.chat` 仅返回配置状态字面量（`configured` / `missing`），**绝不返回密钥**；`mode` 暴露当前检索模式。
 
 ## Mock 与测试数据
 

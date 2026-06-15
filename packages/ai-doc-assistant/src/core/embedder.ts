@@ -3,9 +3,9 @@ import type { FeatureExtractionPipeline } from '@huggingface/transformers'
  * 本地 embedding 模块：用 @huggingface/transformers 在本地运行 bge-small-zh-v1.5，
  * 把文本批量转成归一化向量。零外部 API、离线可用——发布后用户无需配置任何 embedding key。
  *
- * 架构（ADR-0007 取代 ADR-0006）：组件库面向未来可能增长到较多组件，启用「向量库 +
- * 本地 embedding」的语义检索。chat 仍走用户配置的第三方 key（A社/GPT），embedding
- * 完全本地化，二者解耦。模型首次使用时从 HuggingFace 下载并缓存到本地，后续离线复用。
+ * 架构（ADR-0007 可选增强）：组件库面向未来可能增长到需要语义召回的规模时，
+ * 才启用「向量库 + 本地 embedding」。chat 仍走用户配置的第三方 key（A社/GPT），
+ * embedding 完全本地化，二者解耦。模型首次使用时从 HuggingFace 下载并缓存到本地。
  *
  * 实测（win32 x64, node 22）：模型加载约 10s（首次含下载），单句编码约 40ms，
  * 输出维度 512，已 L2 归一化（可直接做余弦/点积相似度）。

@@ -16,6 +16,7 @@ typings
 .playwright-mcp
 .playwright-cli
 .spike
+/spikes/
 
 # Sentry配置
 .env.sentry-build-plugin

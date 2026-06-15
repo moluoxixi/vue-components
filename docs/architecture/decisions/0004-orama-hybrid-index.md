@@ -2,15 +2,22 @@
 
 ## 状态
 
-accepted（2026-06-13，开发者确认「用标准向量库」）
+superseded（2026-06-15，由 ADR-0006 默认 content 检索与 ADR-0007 vector 可选增强取代）
 
 ## 背景
 
-PRD 要求知识库「向量检索为主 + FTS 全文检索多路混合」，索引存于包内本地文件（构建产物 + `.cache/`，无外部 DB），embedding 走 `text-embedding-3-small`。需选定向量存储与检索实现。开发者明确要求**使用标准（成熟）向量库**，不自研。
+2026-06-13 的 PRD 曾要求知识库「向量检索为主 + FTS 全文检索多路混合」，索引存于包内本地文件（构建产物 + `.cache/`，无外部 DB），embedding 走 `text-embedding-3-small`。需选定向量存储与检索实现。开发者当时明确要求**使用标准（成熟）向量库**，不自研。
+
+2026-06-15 重新评估后，开发者确认默认场景不必先引入向量工具库：组件契约是高度结构化语料，几千到上万个组件也可以先用结构化关键词 topK、字段注释和来源约束解决大多数问题。向量检索降级为显式可选增强。
 
 ## 决策
 
-**采用 [`@orama/orama`](https://www.npmjs.com/package/@orama/orama)（v3.x）作为知识库引擎，配 `@orama/plugin-data-persistence` 做包内本地文件持久化。**
+历史决策：采用 [`@orama/orama`](https://www.npmjs.com/package/@orama/orama)（v3.x）作为向量优先知识库引擎，配 `@orama/plugin-data-persistence` 做包内本地文件持久化。
+
+当前有效决策：
+
+- 默认检索策略见 ADR-0006：结构化关键词 topK，无 embedding、无向量库、无持久化向量索引。
+- vector 可选增强见 ADR-0007：保留 Orama 作为本地内存向量后端之一，另可切 Qdrant 等外部向量库。
 
 理由：
 
@@ -27,12 +34,11 @@ PRD 要求知识库「向量检索为主 + FTS 全文检索多路混合」，索
 
 ## 影响
 
-- 新增依赖 `@orama/orama` + `@orama/plugin-data-persistence`。
-- `indexer` 负责建库 + 调 embedding 写入向量 + persist 到本地文件；`retriever` 负责 load + hybrid search。
-- embedding 维度需与 `text-embedding-3-small`（1536 维）在建库 schema 中对齐。
-- 检索目标 < 500ms：Orama 内存检索满足，瓶颈在 embedding 网络调用（查询期对用户问题算 embedding），需做查询向量缓存。
+- `@orama/orama` 与持久化插件不再是默认 content 链路的核心依赖，只在 vector 增强/兼容索引模块中使用。
+- 默认 `build-index` 只需抽取公共契约并建立关键词检索态，不调用远端 embedding。
+- vector 模式改用本地 embedding，维度跟随本地模型；不再绑定 `text-embedding-3-small` 1536 维。
 
 ## 后续约束
 
-- 索引 schema 固定 embedding 维度；更换 embedding 模型需重建索引并升版本。
-- persist 产物纳入 `files` 白名单随包分发（见 ADR-0005 / overview 部署节）。
+- 历史向量优先内容只作为背景，不再约束默认实现。
+- 若启用 vector，按 ADR-0007 的本地 embedding / 可插拔存储约束执行。

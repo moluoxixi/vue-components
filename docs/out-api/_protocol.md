@@ -6,7 +6,7 @@
 
 - 本协议覆盖 BFF 经 Vite dev server middleware 暴露的全部 HTTP 接口，统一前缀 `/__ai-doc/api`。
 - 消费方 = 同源浏览器内的调试台 UI。BFF 与 UI 同源（同一 Vite server），无跨域。
-- 浏览器侧零密钥：所有外部大模型 / embedding 调用由 BFF 服务端代理，密钥仅存于服务端进程环境变量。
+- 浏览器侧零密钥：外部大模型调用由 BFF 服务端代理，密钥仅存于服务端进程环境变量。默认 content 检索不调用 embedding；vector 增强使用本地 embedding，不需要远端 embedding key。
 
 ## 成功响应
 
@@ -45,7 +45,7 @@
 | 404 | NOT_FOUND | 资源不存在 |
 | 409 | INDEX_NOT_READY | 知识库索引未就绪（未构建/构建中/已过期） |
 | 429 | UPSTREAM_RATE_LIMITED | 上游大模型限流 |
-| 502 | UPSTREAM_ERROR | 上游大模型 / embedding 服务调用失败 |
+| 502 | UPSTREAM_ERROR | 上游大模型调用失败，或 vector 增强的本地 embedding / 向量存储失败 |
 | 500 | INTERNAL_ERROR | BFF 内部错误 |
 
 ## 鉴权与 Headers

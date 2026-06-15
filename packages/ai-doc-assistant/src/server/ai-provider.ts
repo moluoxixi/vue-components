@@ -1,9 +1,9 @@
 /**
  * 服务端 AI Provider：封装 chat（流式）上游调用配置。
  *
- * 架构（ADR-0006 取代 ADR-0004）：组件库为小知识库，全量契约喂 chat 模型即可，
- * 不再依赖 embedding/向量检索。故配置只强制要求 chat 密钥；embedding 字段保留为
- * 可选（向后兼容，未来大规模库可重新启用），缺失不影响服务可用。
+ * 架构（ADR-0006 默认 + ADR-0007 可选增强）：默认 content 只做本地结构化关键词
+ * topK 检索，chat 调用仍由第三方 provider 完成；embedding 字段保留为可选兼容配置，
+ * 仅 vector 增强路径会使用本地 embedding，缺失远端 embedding key 不影响服务可用。
  *
  * 安全红线（ADR-0002）：
  * - 密钥仅从环境变量读取，只存在于 server 进程内存，绝不进入任何响应体或日志。

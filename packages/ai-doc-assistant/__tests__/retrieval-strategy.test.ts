@@ -51,4 +51,32 @@ describe('content strategy', () => {
     expect(result.chunks[0].component).toBe('DateRangePicker')
     expect(result.chunks[0].score).toBeGreaterThan(0)
   })
+
+  it('按 topK 裁剪上下文，避免默认模式把全部组件喂给模型', async () => {
+    const strategy = new ContentStrategy()
+    await strategy.build([
+      contract('PopoverTableSelect', '下拉表格选择。', ['columns', 'data']),
+      contract('DateRangePicker', '时间选择器，支持禁用日期范围。', ['disabledDateRange', 'dateRange']),
+      contract('EnterNextContainer', 'Enter 键焦点跳转容器。', ['virtualRef']),
+    ])
+
+    const result = await strategy.retrieve('时间选择器怎么禁用最近四天', 1)
+
+    expect(result.empty).toBe(false)
+    expect(result.chunks).toHaveLength(1)
+    expect(result.chunks[0].component).toBe('DateRangePicker')
+  })
+
+  it('没有关键词命中时返回空结果，避免把无关组件塞进回答上下文', async () => {
+    const strategy = new ContentStrategy()
+    await strategy.build([
+      contract('PopoverTableSelect', '下拉表格选择。', ['columns', 'data']),
+      contract('DateRangePicker', '时间选择器，支持禁用日期范围。', ['disabledDateRange', 'dateRange']),
+    ])
+
+    const result = await strategy.retrieve('登录鉴权 token 过期怎么办', 5)
+
+    expect(result.empty).toBe(true)
+    expect(result.chunks).toEqual([])
+  })
 })

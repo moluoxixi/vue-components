@@ -1,8 +1,8 @@
 import type { ComponentContract, PropDef, TypeDefInfo } from './types'
 
 /**
- * 把组件契约渲染为「可检索正文」：自然语言化的契约描述，作为 indexer 的 embedding 语料与 BM25 全文源。
- * 文本结构稳定、信息密度高，便于向量召回与关键词命中。
+ * 把组件契约渲染为「可检索正文」：自然语言化的公共契约描述。
+ * 默认 content 用它做关键词 topK；vector 增强路径再把它作为 embedding/BM25 语料。
  */
 export function renderSearchableDoc(c: ComponentContract): string {
   const lines: string[] = []

@@ -6,9 +6,9 @@ import type { ProviderConfig } from './ai-provider'
  * Server 运行时上下文：聚合 provider 配置、索引状态机、组件契约与检索策略。
  * 由 plugin/standalone 入口构造一次，注入各路由处理器，避免散落的全局态。
  *
- * 架构（ADR-0006 默认 + ADR-0007 可选升级）：检索经 RetrievalStrategy 抽象。
- * - content（默认）：全量抽取契约持有内存，直接拼上下文喂 chat，零 embedding/向量库。
- * - vector（升级）：本地 embedding 建 Orama 内存索引做语义检索（重依赖动态加载）。
+ * 架构（ADR-0006 默认 + ADR-0007 可选增强）：检索经 RetrievalStrategy 抽象。
+ * - content（默认）：抽取公共契约后做结构化关键词 topK 检索，零 embedding/向量库。
+ * - vector（可选增强）：本地 embedding 建可插拔向量索引做语义检索（重依赖动态加载）。
  * 模式由 options.mode 或环境变量 AI_DOC_RETRIEVAL_MODE 决定，默认 content。
  * chat 走用户配置的第三方 provider；vector 模式的 embedding 完全本地（零 key）。
  */
@@ -164,7 +164,7 @@ export class ServerContext {
   }
 
   /**
-   * 构建知识库：抽取契约 → 按 mode 建检索态（经状态机单飞）。
+   * 构建知识库：抽取公共契约 → 按 mode 建检索态（经状态机单飞）。
    * content 模式无需任何 provider key；vector 模式 embedding 走本地模型，亦无需 key。
    */
   async buildIndex(): Promise<void> {

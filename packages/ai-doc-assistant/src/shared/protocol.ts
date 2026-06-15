@@ -132,12 +132,12 @@ export interface ComponentDetailResponse {
   typeDefs: TypeDefWire[]
 }
 
-/** 检索模式：content=全量上下文（默认）；vector=向量语义检索（升级）。 */
+/** 检索模式：content=结构化关键词 topK（默认）；vector=向量语义检索（可选增强）。 */
 export type RetrievalModeWire = 'content' | 'vector'
 
 /**
  * GET /health 响应体——provider 仅暴露配置态，绝不返回密钥。
- * mode 暴露当前检索模式；vector 模式 embedding 走本地模型、无需密钥，
+ * mode 暴露当前检索模式；vector 模式 embedding 走本地模型、无需远端密钥，
  * 故不再暴露 embedding 密钥配置态（避免误导，本地路径恒可用）。
  */
 export interface HealthResponse {

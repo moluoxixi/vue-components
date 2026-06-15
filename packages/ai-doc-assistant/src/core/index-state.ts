@@ -1,6 +1,6 @@
 /**
  * 索引元信息：契约抽取完成后的快照。
- * 注：本助手对小规模组件库采用「全量契约喂 LLM」策略，无向量索引，故无 embeddingDim。
+ * 注：默认 content 策略采用结构化关键词 topK，无向量索引，故无 embeddingDim。
  */
 export interface IndexMeta {
   /** 抽取完成时间（ISO 字符串）。 */
@@ -29,7 +29,7 @@ export interface IndexStatusSnapshot {
  * 索引状态管理器：维护状态机 + 单飞锁。
  *
  * 单飞（single-flight）：并发的构建请求复用同一个 in-flight Promise，
- * 避免重复 embedding 计算与写文件竞争（backend plan 一致性要求）。
+ * 避免重复抽取/索引构建与写状态竞争。
  */
 export class IndexStateManager {
   private status: IndexStatus = 'idle'

@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { EnterNextContainer } from './index'
 
@@ -80,8 +80,14 @@ describe('enter next container', () => {
 
     await waitForContainerMounted()
 
-    await expect(wrapper.setProps({
-      virtualRef: { $el: null } as any,
-    })).rejects.toThrow('[EnterNextContainer] A DOM element is required before collecting inputs.')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await expect(wrapper.setProps({
+        virtualRef: { $el: null } as any,
+      })).rejects.toThrow('[EnterNextContainer] A DOM element is required before collecting inputs.')
+    }
+    finally {
+      warn.mockRestore()
+    }
   })
 })

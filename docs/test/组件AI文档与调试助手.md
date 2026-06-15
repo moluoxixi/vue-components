@@ -24,8 +24,8 @@ mindmap
         Props/Emits/Slots/Model
         类型与默认值
       索引构建
-        embedding算向量
-        orama混合检索
+        content关键词topK
+        vector可选增强
         状态机流转
       流式问答
         SSE事件序列
@@ -52,7 +52,7 @@ mindmap
 
 ### 包含
 
-- `extractor`（AST 契约提取）、`generator`（示例生成）、`indexer`（embedding + Orama 索引）、`retriever`（混合检索）单元/集成测试。
+- `extractor`（AST 契约提取）、`generator`（示例生成）、`ContentStrategy`（结构化关键词 topK）、`VectorStrategy`（可选向量增强）单元/集成测试。
 - BFF 5 接口的契约测试（SSE 事件序列、错误码、零密钥）。
 - 调试台 UI 组件测试 + 沙箱 E2E（真实浏览器）。
 
@@ -66,8 +66,8 @@ mindmap
 
 | 层级 | 对象 | 工具 | 说明 |
 |---|---|---|---|
-| 单元 | extractor/generator/retriever 纯函数 | Vitest | 契约提取、示例拼装、检索融合排序 |
-| 集成 | indexer + Orama persist + 检索 | Vitest | 用真实组件源码建索引、查回，provider embedding 走 stub |
+| 单元 | extractor/generator/retrieval-strategy 纯函数 | Vitest | 契约提取、示例拼装、关键词打分、topK 裁剪与无命中 |
+| 集成 | ServerContext + ContentStrategy；VectorStrategy 可选路径 | Vitest | 用真实组件源码构建知识库并查回；vector 路径使用本地 embedding stub/fixture |
 | 接口 | BFF `/__ai-doc/api/*` | Vitest + supertest 或 Vite middleware 测试 | SSE 事件序列、错误码、health 不漏密钥；上游 provider stub |
 | 组件 | 调试台 UI（问答框/来源面板/Props 控件） | Vitest + @vue/test-utils | 交互、加载/空/错/成功态流转 |
 | E2E | 沙箱编译挂载 + 双向同步 + 隔离 | Playwright 真实 Chromium | 复用 spike 001/002 验证模式，真实浏览器断言 |
@@ -87,10 +87,10 @@ mindmap
 
 | 编号 | 场景 | 前置条件 | 操作 | 预期 | 层级 | 状态 |
 |---|---|---|---|---|---|---|
-| TC-IDX-01 | 全量建索引 | 8 组件契约 + embedding stub | build-index | Orama 索引含全部组件，persist 落本地文件 | 集成 | planned |
+| TC-IDX-01 | 构建公共契约知识库 | 8 组件契约 | build-index | content 检索态包含全部公共契约；不触发 embedding | 集成 | planned |
 | TC-IDX-02 | 状态机流转 | 索引未构建 | build → 查 status | not_built→building→ready | 集成 | planned |
 | TC-IDX-03 | 源码变更标过期 | 已就绪索引 | 改组件源码 | status.stale=true | 集成 | planned |
-| TC-RET-01 | 混合检索召回 | 就绪索引 | 查"日期范围选择" | DateRangePicker 排第一(向量+BM25融合) | 集成 | planned |
+| TC-RET-01 | 关键词 topK 召回 | 就绪索引 | 查"日期范围选择" | DateRangePicker 排第一且结果数不超过 topK | 集成 | planned |
 | TC-RET-02 | 检索性能 | 就绪索引 | 单次检索计时 | < 500ms | 集成 | TBD |
 | TC-RET-03 | 无命中 | 查库外问题 | 检索 | 返回空命中，触发无依据兜底 | 集成 | planned |
 
@@ -138,12 +138,12 @@ mindmap
 ## 测试数据
 
 - 组件契约语料：复用 `docs/out-components/` 现有 8 个真实组件契约 + `packages/**` 真实源码，不造假组件。
-- SFC fixture：复用已迁入正式测试的 `SAMPLE_SFC` / `BROKEN_SFC` / 越权探测 SFC 口径；历史 spike 001/002 只保留结论到 ADR，不再作为测试目录。
-- embedding 向量 fixture：录制一次真实 `text-embedding-3-small` 输出存为固定向量集，集成测试离线复放，避免每次打外部模型。
+- SFC fixture：复用已迁入正式测试的 `SAMPLE_SFC` / `BROKEN_SFC` / 越权探测 SFC 口径；`spikes/` 可作为本地 gitignored 参考，但不作为正式测试目录、知识库语料或发布输入。
+- vector 向量 fixture：仅在覆盖 vector 可选增强路径时使用本地 embedding fixture/stub；默认 content 测试不得触发 embedding。
 
 ## Mock 与依赖
 
-- **provider stub**：chat / embedding 两个外部 provider 在单元/集成/接口层全部 stub（固定输入→固定输出），不真实联网。原因：外部模型不可控、计费、慢；测试只验证「契约 + 来源约束 + 兜底机制」，不评测模型回答质量。
+- **provider stub**：chat 外部 provider 在单元/集成/接口层全部 stub（固定输入→固定输出），不真实联网。vector 增强路径的 embedding 使用本地 fixture/stub；默认 content 路径不依赖 embedding。原因：外部模型不可控、计费、慢；测试只验证「契约 + 来源约束 + 兜底机制」，不评测模型回答质量。
 - **SSE Mock**：UI 组件测试用固定事件序列（sources→token*→example→done / error）驱动，验证渲染逻辑与传输解耦。
 - **真实 provider**：仅 E2E 的 TC-E2E-06（首字延迟）可选用真实/录制 provider 实测性能，标 TBD。
 - 沙箱 E2E 走真实 Chromium（Playwright），不 mock 浏览器安全模型——隔离断言必须真实。
@@ -163,7 +163,7 @@ mindmap
 - ✅ **覆盖率阈值（已定）**：沿用 AGENTS 默认——statements/branches/functions/lines ≥ 80%，新增/修改逻辑 ≥ 90% 有意义覆盖。本仓已有 `test:coverage` 脚本（per-package vitest + catalog），新包 `@moluoxixi/ai-doc-assistant` 在自身 `vitest.config` 配 `coverage.thresholds`，纳入根 `pnpm -r ... test:coverage`。
 - ✅ **BFF 接口测试方式（已定）**：用 **Vite middleware in-process 测试**（`createServer` 起 Vite + 插件，直接打 middleware），不引 supertest——与 ADR-0005「BFF = Vite 插件」形态一致，且 handler 与传输层解耦本就支持脱离真实端口测试。
 - ✅ **无依据兜底阈值（已定）**：检索 top1 归一化 score < `0.3` 视为无命中，触发「无依据」兜底（不输出 example）。阈值设为可配置常量 `NO_MATCH_SCORE_THRESHOLD`，实现期可据真实召回分布微调；TC-RET-03/TC-API-03 断言以此常量为准。
-- ✅ **向量 fixture 录制（已定）**：提供 `scripts/record-embeddings.mjs`，对固定问题集 + 8 组件契约调一次真实 `text-embedding-3-small`，落 `tests/fixtures/embeddings.json`；组件契约或问题集变更后手动重跑。集成测试默认读 fixture 离线复放。
+- ✅ **向量 fixture 范围（已调）**：向量 fixture 仅服务 vector 可选增强回归；默认 content 回归以关键词 topK、无命中兜底和上下文裁剪为主，不录制远端 `text-embedding-3-small`。
 - ✅ **性能用例执行（已定）**：TC-RET-02（检索 < 500ms）、TC-E2E-06（首字 < 3s）标 `TBD` 不进 CI 门禁（首字依赖外部模型不稳定），作实现期手动基准 + 本地 E2E 可选运行；检索性能可进 CI（不依赖外部网络）。
 - 残留 `TBD`：性能数值须实现期真实环境实测确认达标。
 

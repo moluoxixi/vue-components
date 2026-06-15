@@ -33,7 +33,7 @@ const MIME: Record<string, string> = {
 }
 
 /**
- * 最小可解析 SFC fixture：驱动契约抽取 → content 全量上下文。
+ * 最小可解析 SFC fixture：驱动契约抽取 → content 关键词检索。
  *
  * 关键：组件目录与包名刻意对齐为 packages/components/src/EnterNextContainer/index.vue，
  * 使 resolveFiles 解析出 packageName=@moluoxixi/components、组件名=EnterNextContainer。

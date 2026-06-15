@@ -2,7 +2,7 @@
  * Vite 插件入口：把 AI 文档助手的 BFF 挂到 Vite dev server 的 middleware。
  *
  * 安全（ADR-0005）：默认只在 dev server 生效，密钥经 server 进程，绝不进客户端 bundle。
- * 架构（ADR-0006）：组件库为小知识库，build 时全量抽取契约持有内存，无向量索引/持久化。
+ * 架构（ADR-0006）：默认 build 只抽取公共契约并建立关键词检索态，无向量索引/持久化。
  * UI：在 /__ai-doc/ 提供可视化面板静态资源（dist/ui），消费 /__ai-doc/api/* 接口。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'

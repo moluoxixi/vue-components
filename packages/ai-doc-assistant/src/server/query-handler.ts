@@ -2,7 +2,7 @@
  * Query 编排器：把「检索策略命中的组件契约」+ ai-client 串成 SSE 事件流。
  *
  * 架构（ADR-0006 默认 + ADR-0007 可选）：检索经 RetrievalStrategy 抽象，
- * 默认 content（全量契约喂模型），可切 vector（本地 embedding 语义检索）。
+ * 默认 content（结构化关键词 topK），可切 vector（本地 embedding 语义检索）。
  * 编排器只依赖策略接口，不感知具体检索方式。
  *
  * 事件序列：sources → token* → example? → done；任意阶段异常 → error。
@@ -37,7 +37,7 @@ const SYSTEM_PROMPT = `你是组件库文档助手。只依据提供的「组件
 9. 不要把"默认值"、"首次无值初始化"、"快捷项"、"展示格式"这类配置推断成校验、禁用或权限逻辑；只有上下文明确说明会禁用/校验/拦截的 Prop，才可用于对应示例。若用户要求的能力上下文没有支持，先说明不支持，再给最接近的已支持方案。
 10. 若某个示例确实必须依赖上述白名单之外的库，请在该代码块的语言标记后加 \`no-demo\`（写成 \`\`\`vue no-demo），并在正文说明依赖了哪个库、为什么——该块将仅展示源码、不做预览渲染。`
 
-/** 默认上下文纳入的组件数上限（content 模式忽略，全量纳入）。 */
+/** 默认上下文纳入的组件数上限。 */
 const DEFAULT_TOP_K = 5
 const SCRIPT_OPEN_TAG_RE = /<script(?=[\s>])[^>]*>/gi
 const SCRIPT_LANG_TS_RE = /(?:^|\s)lang\s*=\s*(['"])ts\1/i
@@ -55,7 +55,7 @@ function jsForSfcBlock(source: string): string | undefined {
 /**
  * 执行一次 query，产出 SSE 事件序列。
  * @param question 用户问题。
- * @param topK 检索命中纳入上下文的组件数（默认 DEFAULT_TOP_K；content 模式全量纳入）。
+ * @param topK 检索命中纳入上下文的组件数（默认 DEFAULT_TOP_K）。
  * @param deps 注入依赖。
  */
 export async function* runQuery(
@@ -63,7 +63,7 @@ export async function* runQuery(
   topK: number,
   deps: QueryDeps,
 ): AsyncGenerator<SseEvent> {
-  // 1. 经策略检索相关契约（content=全量；vector=语义召回）
+  // 1. 经策略检索相关契约（content=关键词 topK；vector=语义召回）
   const { chunks, empty } = await deps.strategy.retrieve(question, topK || DEFAULT_TOP_K)
 
   // 2. 推送来源（可追溯）

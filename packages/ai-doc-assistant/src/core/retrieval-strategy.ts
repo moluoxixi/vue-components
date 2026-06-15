@@ -4,10 +4,10 @@ import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
 /**
  * 检索策略抽象层：把「问题 → 命中的组件契约」这一步抽象为可替换策略。
  *
- * 架构（ADR-0006 默认 + ADR-0007 可选升级）：
- * - content（默认）：小知识库全量契约直接拼进上下文，零 embedding / 零向量库，
- *   依赖最轻、结果最稳，组件库几十~几百项规模下最准最省。
- * - vector（升级）：组件数增长后，启用「本地 embedding + Orama 混合检索」做语义召回。
+ * 架构（ADR-0006 默认 + ADR-0007 可选增强）：
+ * - content（默认）：结构化关键词检索 topK 契约，零 embedding / 零向量库，
+ *   依赖最轻、结果可解释，适合组件契约这类结构化小文档。
+ * - vector（可选增强）：组件数增长后，启用「本地 embedding + Orama 混合检索」做语义召回。
  *   其重依赖（@huggingface/transformers、@orama/orama）经动态 import 按需加载，
  *   默认 content 模式的产物 bundle 完全不含这些重依赖。
  *
@@ -15,7 +15,7 @@ import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
  */
 import { renderExample, renderSearchableDoc } from './generator'
 
-/** 检索模式。content=全量上下文（默认）；vector=向量语义检索（升级）。 */
+/** 检索模式。content=结构化关键词 topK（默认）；vector=向量语义检索（可选增强）。 */
 export type RetrievalMode = 'content' | 'vector'
 
 /** 合法模式集合，用于边界校验。 */
@@ -56,7 +56,7 @@ export interface RetrievalStrategy {
   readonly mode: RetrievalMode
   /**
    * 用组件契约构建检索态。
-   * content：直接持有契约；vector：本地 embedding 建 Orama 索引。
+   * content：直接持有可检索契约文本；vector：本地 embedding 建可插拔向量索引。
    * @returns 构建元信息（组件数、构建时间）。
    */
   build: (contracts: ComponentContract[]) => Promise<StrategyMeta>
@@ -65,14 +65,14 @@ export interface RetrievalStrategy {
   /**
    * 检索与问题相关的组件契约。
    * @param question 用户问题。
-   * @param topK 纳入上下文的组件数上限（content 模式全量纳入，忽略该值）。
+   * @param topK 纳入上下文的组件数上限。
    */
   retrieve: (question: string, topK: number) => Promise<StrategyResult>
 }
 
 /**
- * content 策略（默认）：把全部组件契约渲染为上下文，整体喂给 chat 模型。
- * 无检索、无 embedding、无外部重依赖——小知识库下最稳最省。
+ * content 策略（默认）：结构化关键词检索 topK 契约，再喂给 chat 模型。
+ * 无 embedding、无外部重依赖；依靠组件名、props、slots、emits、类型描述等文本做可解释召回。
  */
 export class ContentStrategy implements RetrievalStrategy {
   readonly mode = 'content' as const
@@ -101,14 +101,16 @@ export class ContentStrategy implements RetrievalStrategy {
     return this.chunks !== null
   }
 
-  async retrieve(question: string, _topK: number): Promise<StrategyResult> {
+  async retrieve(question: string, topK: number): Promise<StrategyResult> {
     // 未构建即检索属调用方时序错误，显式抛错（不静默返回空伪装无命中）
     if (this.chunks === null)
       throw new Error('content strategy not built: call build() before retrieve()')
 
-    // 全量纳入但按问题排序：小组件库仍把全部契约喂给模型，同时保证 sources 与兜底示例
-    // 优先指向最相关组件，避免“DateRangePicker 问题却拿第一个 PopoverTableSelect 兜底”。
+    // 结构化关键词检索：按组件名/契约正文打分，只把命中的 topK 契约纳入上下文。
+    // 无命中时返回 empty，让上层走「无依据」兜底，避免大组件库里随机塞无关组件。
     const ranked = rankContentChunks(question, this.chunks)
+      .filter(chunk => chunk.score > 0)
+      .slice(0, normalizeTopK(topK))
     return { chunks: ranked, empty: ranked.length === 0 }
   }
 }
@@ -163,7 +165,7 @@ function hanTerms(text: string): string[] {
   return Array.from(terms)
 }
 
-/** content 模式的轻量相关度：只用于排序与兜底选择，不裁剪上下文。 */
+/** content 模式的轻量相关度：用于排序、topK 裁剪与无命中判断。 */
 function scoreContentChunk(question: string, chunk: StrategyChunk): number {
   const normalizedQuestion = normalizeSearchText(question)
   const normalizedComponent = normalizeSearchText(chunk.component)
@@ -193,6 +195,10 @@ function rankContentChunks(question: string, chunks: StrategyChunk[]): StrategyC
     .map((chunk, index) => ({ chunk, index, score: scoreContentChunk(question, chunk) }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map(({ chunk, score }) => ({ ...chunk, score }))
+}
+
+function normalizeTopK(topK: number): number {
+  return Number.isFinite(topK) && topK > 0 ? Math.floor(topK) : 5
 }
 
 /**

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { ServerContext } from '../src/server/context'
 
-// 一个最小可解析的 SFC：驱动契约抽取 → content 策略全量上下文构建。
+// 一个最小可解析的 SFC：驱动契约抽取 → content 策略关键词检索态构建。
 const SFC = `<script setup lang="ts">
 defineProps<{ label: string, disabled?: boolean }>()
 defineEmits<{ click: [id: number] }>()
@@ -28,7 +28,7 @@ afterEach(async () => {
 // chat 走 provider key；content 模式构建无需任何 key。
 const ENV = { AI_DOC_CHAT_API_KEY: 'k' }
 
-describe('serverContext（默认 content 策略，全量上下文）', () => {
+describe('serverContext（默认 content 策略，关键词 topK）', () => {
   it('构造时加载 provider 配置（chat key 存在）', () => {
     const ctx = new ServerContext({ root, env: ENV })
     expect(ctx.config).toBeTruthy()
@@ -78,8 +78,8 @@ describe('serverContext（默认 content 策略，全量上下文）', () => {
     const strategy = ctx.getStrategy()
     expect(strategy).not.toBeNull()
     expect(strategy!.isReady()).toBe(true)
-    // content 策略全量纳入：检索返回全部契约
-    const result = await strategy!.retrieve('任意问题', 5)
+    // content 策略按结构化关键词命中并返回 topK 契约
+    const result = await strategy!.retrieve('label disabled 按钮', 5)
     expect(result.empty).toBe(false)
     expect(result.chunks.length).toBe(1)
   })

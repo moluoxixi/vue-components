@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
  * 用法：
  *   ai-doc-assistant build-index [--root <dir>] [--globs <glob1,glob2>]
  *
- * 架构（ADR-0006）：组件库为小知识库，全量契约喂 chat 模型，无向量索引/持久化。
+ * 架构（ADR-0006）：默认只抽取公共契约并建立关键词检索态，无向量索引/持久化。
  * 本命令做一次性契约抽取，打印组件数量，用于 CI 校验抽取链路与组件可解析性。
  *
  * 设计：CLI 参数是系统边界，对必需输入做显式校验，缺失即报错退出（非 0）。

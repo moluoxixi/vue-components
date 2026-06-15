@@ -38,7 +38,7 @@
 
 | 需求模块 | PRD | 架构 | API | 组件 | 测试 |
 |---|---|---|---|---|---|
-| 组件AI文档与调试助手 | [PRD](prds/组件AI文档与调试助手.md)（已定稿） | [架构概览](architecture/overview.md)（已定稿） | [BFF接口](out-api/ai-debug-assistant.md)（契约设计/planned） | [out-components契约](out-components/index.md)（复用为语料） | [测试设计](test/组件AI文档与调试助手.md)（已定稿） |
+| 组件AI文档与调试助手 | [PRD](prds/组件AI文档与调试助手.md)（已定稿） | [架构概览](architecture/overview.md)（已定稿） | [BFF接口](out-api/ai-debug-assistant.md)（契约设计/planned） | 源码公共契约（Props/Emits/Slots/Model/类型与注释） | [测试设计](test/组件AI文档与调试助手.md)（已定稿） |
 
 ## 维护约定
 
