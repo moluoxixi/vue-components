@@ -38,17 +38,17 @@ export interface DateRangePickerProps {
   outputFormat?: string | string[]
   /** 首次无值时是否自动使用今天作为默认值。 */
   defaultToday?: boolean
-  /** 日期范围偏移配置，数字表示从今天向前/向后，数组表示起止偏移。 */
+  /** 首次无值时生成默认值的日期偏移配置；不参与禁用日期判断。 */
   dateRange?: number[] | number
-  /** 日期范围偏移单位。 */
+  /** dateRange 生成默认值时使用的偏移单位。 */
   dateRangeType?: ManipulateType
-  /** 日期范围偏移的基准日期。 */
+  /** dateRange 生成默认值时使用的基准日期。 */
   dateRangeBaseDate?: ConfigType
   /** 最小可选日期。 */
   minDate?: ConfigType
   /** 最大可选日期。 */
   maxDate?: ConfigType
-  /** 禁用日期范围，优先级高于 minDate/maxDate。 */
+  /** 可选日期边界，范围外日期会被禁用，优先级高于 minDate/maxDate。 */
   disabledDateRange?: [ConfigType, ConfigType]
   /** datetime/datetimerange 下需要按边界禁用的时分秒单位。 */
   datetimeDisableTypes?: DateRangePickerDatetimeUnit[]

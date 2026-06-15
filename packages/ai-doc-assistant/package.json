@@ -1,0 +1,75 @@
+{
+  "name": "@moluoxixi/ai-doc-assistant",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "组件库 AI 文档与调试助手：AST 契约提取 + 本地知识库 + 自然语言问答 + 沙箱实时预览",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ai-doc-assistant"
+  },
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./plugin": {
+      "source": "./src/server/plugin.ts",
+      "types": "./dist/src/server/plugin.d.ts",
+      "import": "./dist/plugin.js"
+    },
+    "./protocol": {
+      "source": "./src/shared/protocol.ts",
+      "types": "./dist/src/shared/protocol.d.ts",
+      "import": "./dist/protocol.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ai-doc-assistant": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && node scripts/build-ui.mjs",
+    "build:lib": "vite build",
+    "build:ui": "node scripts/build-ui.mjs",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0",
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "catalog:",
+    "@orama/orama": "catalog:data",
+    "@orama/plugin-data-persistence": "catalog:data",
+    "element-plus": "catalog:ui",
+    "vue-docgen-api": "catalog:data",
+    "vue3-sfc-loader": "catalog:",
+    "zod": "catalog:dev"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:type",
+    "@vitejs/plugin-vue": "catalog:dev",
+    "@vitest/coverage-v8": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
+    "happy-dom": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-tsc": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

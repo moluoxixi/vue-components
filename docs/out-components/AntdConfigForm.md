@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
+import type { AntdConfigFormExpose, AntdConfigFormProps } from '@moluoxixi/components'
 import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@moluoxixi/components'
-import type { AntdConfigFormProps, AntdConfigFormExpose } from '@moluoxixi/components'
 ```
 
 ## Props

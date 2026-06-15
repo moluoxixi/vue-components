@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
-import { ShadcnConfigForm, defineField, defineFields } from '@moluoxixi/components'
-import type { ShadcnConfigFormProps, ShadcnConfigFormExpose } from '@moluoxixi/components'
+import type { ShadcnConfigFormExpose, ShadcnConfigFormProps } from '@moluoxixi/components'
+import { defineField, defineFields, ShadcnConfigForm } from '@moluoxixi/components'
 ```
 
 ## Props

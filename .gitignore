@@ -15,9 +15,15 @@ typings
 .agent
 .playwright-mcp
 .playwright-cli
+.spike
 
 # Sentry配置
 .env.sentry-build-plugin
+
+# 环境变量与密钥（含 AI 模型 key，禁止入库）
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
