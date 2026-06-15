@@ -59,7 +59,12 @@ function parseImportBindings(source: string): ImportBinding[] {
 /** 把模块说明符解析为磁盘上的 .ts 文件路径（相对导入）。尝试 .ts / index.ts。 */
 function resolveRelativeTsFile(fromFile: string, specifier: string): string | null {
   const base = resolvePath(dirname(fromFile), specifier)
-  const candidates = [`${base}.ts`, resolvePath(base, 'index.ts')]
+  const candidates = [
+    `${base}.ts`,
+    `${base}.d.ts`,
+    resolvePath(base, 'index.ts'),
+    resolvePath(base, 'index.d.ts'),
+  ]
   for (const c of candidates) {
     if (existsSync(c))
       return c

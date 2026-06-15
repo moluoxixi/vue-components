@@ -5,7 +5,9 @@
  *  2. 外部库 element-plus（PopoverProps / InputProps，real interface，深度 1）
  *  3. 无法定位的名字 → 占位（fields 空 + 原因），不抛错、不伪造字段
  */
-import { resolve } from 'node:path'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { resolveExternalTypeDefs } from '../src/core/external-type-resolver'
 
@@ -52,6 +54,21 @@ describe('resolveExternalTypeDefs', () => {
     expect(ph).toBeTruthy()
     expect(ph!.fields).toHaveLength(0)
     expect(ph!.raw).toContain('未能展开')
+  })
+
+  it('相对导入省略扩展名时可解析 .d.ts 文件', () => {
+    const root = join(tmpdir(), `ai-doc-ext-${Date.now()}`)
+    mkdirSync(root, { recursive: true })
+    const source = join(root, 'props.ts')
+    const target = join(root, 'shared.d.ts')
+    writeFileSync(source, 'import type { SharedProps } from \'./shared\'\nexport interface Local { shared: SharedProps }\n')
+    writeFileSync(target, 'export interface SharedProps { title: string }\n')
+
+    const defs = resolveExternalTypeDefs([source], ['SharedProps'])
+    const shared = defs.find(d => d.name === 'SharedProps')
+
+    expect(shared).toBeTruthy()
+    expect(shared!.fields.map(f => f.name)).toContain('title')
   })
 
   it('幂等去重：同名只产出一次', () => {

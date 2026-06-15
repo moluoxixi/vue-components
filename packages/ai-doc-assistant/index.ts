@@ -7,11 +7,12 @@
  * - protocol：前后端共享的协议契约（请求/响应/SSE 事件/错误码/编解码）。
  */
 
+// ── core：文档/示例生成 ─────────────────────────────────────────
+export { renderExample, renderExampleSkeleton, renderSearchableDoc } from './src/core'
+
+export { splitAnswerSegments } from './src/core'
 // ── core：契约抽取 ──────────────────────────────────────────────
 export { extractContract, extractContracts } from './src/core/extractor'
-
-// ── core：文档/示例生成 ─────────────────────────────────────────
-export { renderExampleSkeleton, renderSearchableDoc } from './src/core/generator'
 
 // ── core：抽取状态机 ────────────────────────────────────────────
 export { IndexStateManager } from './src/core/index-state'

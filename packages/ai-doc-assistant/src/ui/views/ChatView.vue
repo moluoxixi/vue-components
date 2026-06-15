@@ -11,21 +11,26 @@
  *
  * 仅在索引就绪时可提问；网络/HTTP 错误显式展示，不静默吞掉。
  */
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import type { ExampleBlock, SourceRef } from '../../shared/protocol'
-import { splitAnswerSegments } from '../../core/vue-block-extractor'
+import { splitAnswerSegments } from '../../core'
 import { streamQuery } from '../api'
 import { DemoPreview } from '../components'
 
 /** 提问输入：父级通过 v-model:question 双向绑定（预填组件名等）。 */
 const question = defineModel<string>('question', { required: true })
 const props = defineProps<{ indexReady: boolean }>()
+const questionInput = useTemplateRef<HTMLInputElement>('questionInput')
+
+function focusQuestion(): void {
+  questionInput.value?.focus()
+}
+
+defineExpose({ focusQuestion })
 
 /** 流式回答文本累积。 */
 const answer = ref('')
-/** 命中组件标识：example 事件携带，供 demo 块编译挂载真实组件时解析本地组件库。 */
-const exampleComponent = ref('')
-const examplePackage = ref('')
+
 /**
  * 后端 example 事件携带的全部代码块（含 ts + 确定性转译的 js）。
  * 正文分段（segments）只切出 ts 源，js 来自后端——按 ts 源文本精确匹配回填，
@@ -33,9 +38,13 @@ const examplePackage = ref('')
  */
 const exampleBlocks = ref<ExampleBlock[]>([])
 
-/** 按 ts 源文本查后端转译的 js 版（找不到返回 undefined，前端据此隐藏 JS 切换）。 */
+/** 按归一化后的 ts 源文本查后端转译的 js 版（找不到返回 undefined，前端据此隐藏 JS 切换）。 */
+function normalizeSource(source: string): string {
+  return source.trim()
+}
 function blockForSource(source: string): ExampleBlock | undefined {
-  return exampleBlocks.value.find(b => b.ts === source)
+  const normalized = normalizeSource(source)
+  return exampleBlocks.value.find(b => normalizeSource(b.ts) === normalized)
 }
 function jsForSource(source: string): string | undefined {
   return blockForSource(source)?.js
@@ -70,9 +79,10 @@ const inlineVueSources = computed(() => new Set(
  * 后端保障链路：若上游回答没有输出 ```vue 块，query-handler 会用契约生成兜底示例。
  * 这些 blocks 不在正文 segments 中，必须追加渲染为 demo 块，否则“保证总有可用示例”会在 UI 丢失。
  */
-const fallbackExampleBlocks = computed(() =>
-  exampleBlocks.value.filter(block => !inlineVueSources.value.has(block.ts)),
-)
+const fallbackExampleBlocks = computed(() => {
+  const inline = Array.from(inlineVueSources.value).map(normalizeSource)
+  return exampleBlocks.value.filter(block => !inline.includes(normalizeSource(block.ts)))
+})
 
 /** 发起流式提问，分区渲染 SSE 事件。 */
 async function onAsk(): Promise<void> {
@@ -81,8 +91,7 @@ async function onAsk(): Promise<void> {
   streaming.value = true
   answer.value = ''
   sources.value = []
-  exampleComponent.value = ''
-  examplePackage.value = ''
+
   exampleBlocks.value = []
   errorMsg.value = ''
   try {
@@ -95,9 +104,6 @@ async function onAsk(): Promise<void> {
           answer.value += event.text
           break
         case 'example':
-          // 组件标识用于 demo 块编译挂载真实组件；代码块本身从正文 segments 解析，不再单独挂载。
-          exampleComponent.value = event.component
-          examplePackage.value = event.packageName
           // 捕获后端转译好的双码块，供正文分段按 ts 源回填 js。
           exampleBlocks.value = event.blocks
           break
@@ -122,6 +128,7 @@ async function onAsk(): Promise<void> {
   <div class="chat" data-testid="chat-view">
     <div class="ask-row">
       <input
+        ref="questionInput"
         v-model="question"
         data-testid="question-input"
         placeholder="问点什么，比如：ElButton 怎么用？"
@@ -132,6 +139,7 @@ async function onAsk(): Promise<void> {
         data-testid="ask-btn"
         :disabled="!canAsk"
         @click="onAsk"
+        @keydown.ctrl.enter.prevent="onAsk"
       >
         {{ streaming ? '回答中…' : '提问' }}
       </button>
@@ -165,8 +173,6 @@ async function onAsk(): Promise<void> {
             v-else
             :ts="seg.source"
             :js="jsForSource(seg.source)"
-            :component="exampleComponent"
-            :package-name="examplePackage"
             :renderable="renderableForSource(seg.source, seg.renderable)"
             :reason="reasonForSource(seg.source, seg.reason)"
           />
@@ -176,8 +182,6 @@ async function onAsk(): Promise<void> {
           :key="`fallback-${i}`"
           :ts="block.ts"
           :js="block.js"
-          :component="exampleComponent"
-          :package-name="examplePackage"
           :renderable="block.renderable"
           :reason="block.reason"
         />

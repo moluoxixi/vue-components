@@ -6,7 +6,7 @@
  * 构建索引按钮 + 知识库调试入口。主区域默认且始终展示 Chat；组件总览/详情放进
  * 调试弹框，避免把“知识库维护界面”压在用户问答主流程前面。
  */
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, useTemplateRef } from 'vue'
 import type { ComponentListItem, HealthResponse } from '../shared/protocol'
 import { buildIndex, fetchComponents, fetchHealth, fetchStatus } from './api'
 import ChatView from './views/ChatView.vue'
@@ -34,6 +34,7 @@ const componentCount = ref(0)
 const errorMsg = ref('')
 /** 索引构建中标志。 */
 const building = ref(false)
+const chatViewRef = useTemplateRef<InstanceType<typeof ChatView>>('chatViewRef')
 
 /** 拉取健康态与索引状态。 */
 async function refreshHealth(): Promise<void> {
@@ -80,6 +81,10 @@ function openKnowledgeDebug(): void {
   showKnowledgeDialog.value = true
 }
 
+function focusChat(): void {
+  chatViewRef.value?.focusQuestion()
+}
+
 onMounted(async () => {
   try {
     await refreshHealth()
@@ -98,7 +103,7 @@ onMounted(async () => {
         AI 文档助手
       </h1>
       <div class="status-chips">
-        <span class="chip" :class="`mode-${health?.mode}`" data-testid="mode-chip">
+        <span class="chip" :class="health?.mode ? `mode-${health.mode}` : ''" data-testid="mode-chip">
           模式: {{ health?.mode ?? '...' }}
         </span>
         <span class="chip" data-testid="chat-chip">
@@ -117,6 +122,7 @@ onMounted(async () => {
           class="ai-icon active"
           title="问 AI"
           data-testid="ai-icon"
+          @click="focusChat"
         >
           🤖
         </button>
@@ -129,6 +135,7 @@ onMounted(async () => {
 
     <main class="content">
       <ChatView
+        ref="chatViewRef"
         v-model:question="question"
         :index-ready="indexState === 'ready'"
       />

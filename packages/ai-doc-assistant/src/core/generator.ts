@@ -208,7 +208,7 @@ export function renderExample(c: ComponentContract): ExampleCode {
   const hasDynamicSlot = c.slots.some(s =>
     s.name.includes('dynamic')
     || s.name.includes('[')
-    || /动态|field|列|单元格/.test(`${s.name} ${s.description}`),
+    || /动态/.test(`${s.name} ${s.description}`),
   )
   const dynamicSlotName = hasDynamicSlot
     ? (keyFieldValues.find(v => /price|amount|money|total/i.test(v)) ?? keyFieldValues[0])
@@ -281,6 +281,11 @@ export function renderExample(c: ComponentContract): ExampleCode {
   const eventHandlerName = event ? `handle${eventPascalName}` : ''
   const eventPayloadName = event?.name === 'select' ? 'row' : 'payload'
   const eventPayloadType = event?.payloadType || 'unknown'
+  const eventPayloadTypeRefs = event
+    ? Array.from(eventPayloadType.matchAll(/\b[A-Z]\w*\b/g))
+        .map(m => m[0])
+        .filter(name => typeDefByName.has(name))
+    : []
   const eventRefName = event?.name === 'select' ? 'selectedRow' : 'lastEventPayload'
   const eventBind = event ? `\n    @${event.name}="${eventHandlerName}"` : ''
   const eventRefTs = event ? `\nconst ${eventRefName} = ref<${eventPayloadType} | null>(null)` : ''
@@ -294,7 +299,7 @@ export function renderExample(c: ComponentContract): ExampleCode {
 
   const typeImports = Array.from(new Set([
     ...refProps.flatMap(p => p.typeRefs),
-    ...(event && typeDefByName.has(eventPayloadType) ? [eventPayloadType] : []),
+    ...eventPayloadTypeRefs,
   ]))
   const typeImportLine = typeImports.length
     ? `\nimport type { ${typeImports.join(', ')} } from '${c.packageName}'`

@@ -15,8 +15,8 @@ vi.mock('../src/ui/components', () => ({
     props: {
       ts: { type: String, required: true },
       js: { type: String, required: false },
-      component: { type: String, required: true },
-      packageName: { type: String, required: true },
+      component: { type: String, required: false },
+      packageName: { type: String, required: false },
       renderable: { type: Boolean, required: false },
       reason: { type: String, required: false },
     },
@@ -76,8 +76,41 @@ describe('chat view', () => {
     const demo = wrapper.get('[data-testid="answer-demo"]')
     expect(demo.attributes('data-ts')).toBe(ts)
     expect(demo.attributes('data-js')).toBe(js)
-    expect(demo.attributes('data-component')).toBe('EnterNextContainer')
-    expect(demo.attributes('data-package')).toBe('@moluoxixi/components')
+    expect(demo.attributes('data-component')).toBeUndefined()
+    expect(demo.attributes('data-package')).toBeUndefined()
+  })
+
+  it('按归一化后的源码匹配后端双码块，避免尾随空白导致 JS 切换丢失', async () => {
+    const inlineTs = '<script setup lang="ts">\nconst count = 1\n</script>\n<template><div>{{ count }}</div></template>'
+    const backendTs = `${inlineTs}\n`
+    const js = '<script setup>\nconst count = 1\n</script>\n<template><div>{{ count }}</div></template>'
+    streamQuery.mockImplementationOnce(async (
+      _question: string,
+      _topK: number,
+      onEvent: (event: SseEvent) => void,
+    ) => {
+      onEvent({ type: 'sources', sources: [] })
+      onEvent({ type: 'token', text: `示例：\n\`\`\`vue\n${inlineTs}\n\`\`\`` })
+      onEvent({
+        type: 'example',
+        code: backendTs,
+        lang: 'vue',
+        ts: backendTs,
+        js,
+        component: 'CounterDemo',
+        packageName: '@moluoxixi/components',
+        blocks: [{ ts: backendTs, js, renderable: true }],
+      })
+      onEvent({ type: 'done' })
+    })
+
+    const wrapper = await mountChat('CounterDemo 怎么用？')
+    await wrapper.get('[data-testid="ask-btn"]').trigger('click')
+    await flushPromises()
+
+    const demo = wrapper.get('[data-testid="answer-demo"]')
+    expect(demo.attributes('data-ts')).toBe(inlineTs)
+    expect(demo.attributes('data-js')).toBe(js)
   })
 
   it('正文内 vue 块使用后端 renderable 判定，坏块不误挂并追加兜底 demo', async () => {

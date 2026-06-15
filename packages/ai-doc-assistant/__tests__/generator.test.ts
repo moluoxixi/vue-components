@@ -158,4 +158,50 @@ describe('renderExampleSkeleton', () => {
     expect(ts).toContain('<MyButton')
     expect(ts).toContain('size=')
   })
+
+  it('事件 payload 为联合类型时逐个导入用到的契约类型', () => {
+    const c = makeContract({
+      props: [],
+      emits: [{ name: 'change', payloadType: 'FooPayload | BarPayload', description: '变更事件' }],
+      slots: [],
+      models: [],
+      typeDefs: [
+        { name: 'FooPayload', kind: 'interface', fields: [{ name: 'foo', type: 'string', optional: false, description: '' }], raw: 'interface FooPayload { foo: string }' },
+        { name: 'BarPayload', kind: 'interface', fields: [{ name: 'bar', type: 'string', optional: false, description: '' }], raw: 'interface BarPayload { bar: string }' },
+      ],
+    })
+
+    const { ts } = renderExample(c)
+
+    expect(ts).toContain('import type { FooPayload, BarPayload } from \'@moluoxixi/components\'')
+    expect(ts).toContain('function handleChange(payload: FooPayload | BarPayload): void')
+  })
+
+  it('只有明确动态插槽信号时才生成动态插槽模板', () => {
+    const c = makeContract({
+      name: 'TableLike',
+      props: [
+        { name: 'columns', type: 'TableColumn[]', required: false, defaultValue: null, description: '列定义', typeRefs: ['TableColumn'] },
+      ],
+      emits: [],
+      slots: [{ name: 'default', scopeType: '', description: '渲染每一列内容' }],
+      models: [],
+      typeDefs: [
+        {
+          name: 'TableColumn',
+          kind: 'interface',
+          fields: [
+            { name: 'field', type: 'string', optional: false, description: '列字段' },
+            { name: 'title', type: 'string', optional: true, description: '列标题' },
+          ],
+          raw: 'interface TableColumn { field: string; title?: string }',
+        },
+      ],
+    })
+
+    const { ts } = renderExample(c)
+
+    expect(ts).not.toContain('<template #')
+    expect(ts).not.toContain('slots: { default:')
+  })
 })

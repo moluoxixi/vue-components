@@ -18,8 +18,6 @@ const props = withDefaults(defineProps<{
   ts: string
   /** JS 版本源码：缺省表示无独立 JS（隐藏 JS 切换，不伪造降级）。 */
   js?: string
-  component: string
-  packageName: string
   /** 能否编译预览：false 时仅展示源码 + 原因，不挂载真实组件（依赖白名单外）。 */
   renderable?: boolean
   /** 不可渲染原因（renderable=false 时展示给用户）。 */
