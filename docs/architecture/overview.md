@@ -1,6 +1,6 @@
 # 组件 AI 文档与调试助手 架构概览
 
-> 状态：**已定稿（ACCEPTED 2026-06-13）**。依据已定稿 PRD（`docs/prds/组件AI文档与调试助手.md`）+ Spike 001 结论（`spikes/001-runtime-sfc-compile/`）+ 本仓真实包结构。开发者已确认「用标准向量库 + 技术栈自定」并此前授予剩余决策自主权，原 6 项 `MISSING` 已全部拍板（见决策与约束节）。仅 ADR-0003 沙箱方案的隔离强度待 Spike 002 实测，不阻断架构定稿。
+> 状态：**已定稿（ACCEPTED 2026-06-13）**。依据已定稿 PRD（`docs/prds/组件AI文档与调试助手.md`）+ Spike 001 历史结论（已沉淀到 ADR-0001）+ 本仓真实包结构。开发者已确认「用标准向量库 + 技术栈自定」并此前授予剩余决策自主权，原 6 项 `MISSING` 已全部拍板（见决策与约束节）。ADR-0003 沙箱方案的隔离强度已由 Spike 002 历史结论确认。
 
 ## 背景
 
@@ -54,7 +54,7 @@ cli → extractor/indexer（构建期）
 ## 权限与安全边界
 
 - **密钥绝不进浏览器（核心安全决策，见 ADR-0002）**：AI 与 embedding 的 API Key 仅存于运行 BFF 的环境（gitignored `.env.local` / 环境变量），由 BFF 持有并代理所有外部模型调用。`ui` 只与同源 BFF 通信，前端产物里**不得**出现任何密钥。若把密钥打进前端，发布后可被任意提取盗用。
-- **不可信代码沙箱（见 ADR-0003）**：AI 生成的 SFC 是不可信代码。`runtime/sfc-compiler` 的编译产物必须在隔离容器（iframe sandbox 或 Web Worker）中执行挂载，避免 XSS / 全局污染 / 越权访问父页面。Spike 001 的主页面 `new Function` 仅为可行性验证，生产不可直接用。沙箱方案需独立 spike（Spike 002）。
+- **不可信代码沙箱（见 ADR-0003）**：AI 生成的 SFC 是不可信代码。`runtime/sfc-compiler` 的编译产物必须在隔离容器（iframe sandbox）中执行挂载，避免 XSS / 全局污染 / 越权访问父页面。Spike 001 的主页面 `new Function` 仅为可行性验证，生产不可直接用；沙箱方案已由 Spike 002 历史结论确认。
 - **数据出仓**（PRD 已确认接受）：组件源码/契约经 `coderelay.cn` 代理发往外部模型，按内部组件库处理。
 - **发布产物排除密钥**：`package.json` `files` 仅列 `dist`/索引产物，`.npmignore` 显式排除 `.env*`；消费方自行通过环境变量注入密钥。
 
@@ -69,7 +69,7 @@ cli → extractor/indexer（构建期）
 
 - ADR-0001：编译器选型——MVP 用 `vue3-sfc-loader`，留 `compileSfc()` 抽象层可切 `@vue/compiler-sfc`（依据 Spike 001）。
 - ADR-0002：引入 BFF 层持有密钥并代理外部模型调用，浏览器零密钥。
-- ADR-0003：AI 生成代码必须沙箱隔离执行（iframe/Worker），隔离强度待 Spike 002 验证。
+- ADR-0003：AI 生成代码必须沙箱隔离执行（iframe sandbox），隔离强度已由 Spike 002 历史结论验证。
 - ADR-0004：知识库引擎 = `@orama/orama`（原生全文+向量+混合检索）+ `@orama/plugin-data-persistence`（包内本地文件持久化）。embedding 维度对齐 `text-embedding-3-small`（1536）。
 - ADR-0005：BFF = Vite 插件 + dev server middleware（`/__ai-doc/api/*`），handler 与传输层解耦，另提供 standalone server 入口。
 - **包名/目录（确认）**：`@moluoxixi/ai-doc-assistant`，位于 `packages/ai-doc-assistant/`。
@@ -80,7 +80,7 @@ cli → extractor/indexer（构建期）
 
 ## 风险与待确认
 
-- ✅ 已解决（Spike 002）：沙箱隔离强度与宿主↔沙箱 Props 双向同步协议已用真实浏览器验证（iframe sandbox `allow-scripts` 无 `allow-same-origin` + 自包含 IIFE + postMessage）。详见 ADR-0003 与 `spikes/002-iframe-sandbox/`。
+- ✅ 已解决（Spike 002）：沙箱隔离强度与宿主↔沙箱 Props 双向同步协议已用真实浏览器验证（iframe sandbox `allow-scripts` 无 `allow-same-origin` + 自包含 IIFE + postMessage）。结论已沉淀到 ADR-0003；原 spike 实验目录不作为长期测试目录保留。
 - 查询期对用户问题算 embedding 是网络调用，是 < 500ms 检索目标的主要风险源——需做查询向量缓存（实现计划环节细化）。
 - `text-embedding-3-small` 1536 维写入 Orama 的检索性能与 persist 体积需在实现期实测；超标则评估降维或裁剪语料。
 - `MISSING verify script`：知识源注册表未经 `verify-knowledge-sources.mjs` 校验（环境项，不阻断）。

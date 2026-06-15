@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
-import { DateRangePicker } from '@moluoxixi/components'
 import type { DateRangePickerProps } from '@moluoxixi/components'
+import { DateRangePicker } from '@moluoxixi/components'
 ```
 
 ## Props

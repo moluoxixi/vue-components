@@ -40,12 +40,31 @@ async function mountChat(question = 'EnterNextContainer 怎么用？') {
     props: {
       'question': question,
       'indexReady': true,
+      'indexState': 'ready',
       'onUpdate:question': vi.fn(),
     },
   })
 }
 
 describe('chat view', () => {
+  it('把提问表单固定在回答区域之后，并在知识库构建中提示等待', async () => {
+    const { default: ChatView } = await import('../src/ui/views/ChatView.vue')
+    const wrapper = mount(ChatView, {
+      props: {
+        'question': 'Button 怎么用？',
+        'indexReady': false,
+        'indexState': 'building',
+        'onUpdate:question': vi.fn(),
+      },
+    })
+
+    expect(wrapper.get('[data-testid="answer"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="ask-panel"]').exists()).toBe(true)
+    expect(wrapper.element.lastElementChild).toBe(wrapper.get('[data-testid="ask-panel"]').element)
+    expect(wrapper.get('[data-testid="chat-need-index"]').text()).toContain('正在准备')
+    expect(wrapper.get('[data-testid="ask-btn"]').attributes('disabled')).toBeDefined()
+  })
+
   it('回答正文没有 vue 代码块时，渲染后端 example 事件提供的回退 demo 块', async () => {
     const ts = '<script setup lang="ts"></script><template><EnterNextContainer /></template>'
     const js = '<script setup></script><template><EnterNextContainer /></template>'
@@ -70,7 +89,7 @@ describe('chat view', () => {
     })
 
     const wrapper = await mountChat()
-    await wrapper.get('[data-testid="ask-btn"]').trigger('click')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
     await flushPromises()
 
     const demo = wrapper.get('[data-testid="answer-demo"]')
@@ -105,7 +124,7 @@ describe('chat view', () => {
     })
 
     const wrapper = await mountChat('CounterDemo 怎么用？')
-    await wrapper.get('[data-testid="ask-btn"]').trigger('click')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
     await flushPromises()
 
     const demo = wrapper.get('[data-testid="answer-demo"]')
@@ -140,7 +159,7 @@ describe('chat view', () => {
     })
 
     const wrapper = await mountChat('PopoverTableSelect 怎么用？')
-    await wrapper.get('[data-testid="ask-btn"]').trigger('click')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
     await flushPromises()
 
     const demos = wrapper.findAll('[data-testid="answer-demo"]')

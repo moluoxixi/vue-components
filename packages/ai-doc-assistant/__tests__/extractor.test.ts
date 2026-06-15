@@ -48,8 +48,38 @@ defineEmits<{
     const typeProp = contract.props.find(p => p.name === 'type')
     expect(typeProp).toBeTruthy()
     expect(typeProp!.required).toBe(false)
+    expect(typeProp!.description).toContain('按钮类型')
+    const disabledProp = contract.props.find(p => p.name === 'disabled')
+    expect(disabledProp).toBeTruthy()
+    expect(disabledProp!.description).toContain('是否禁用')
     const clickEmit = contract.emits.find(e => e.name === 'click')
     expect(clickEmit).toBeTruthy()
+    expect(clickEmit!.description).toContain('点击')
+  })
+
+  it('从 Slots 契约接口派生插槽并保留注释描述', async () => {
+    const file = join(dir, 'SlotPanel.vue')
+    await writeFile(file, `<script setup lang="ts">
+export interface SlotPanelSlots {
+  /** 标题区域 */
+  header?: { title: string }
+  /** 默认内容 */
+  default?: { active: boolean }
+}
+</script>
+<template>
+  <slot name="header" />
+  <slot />
+</template>`, 'utf8')
+
+    const contract = await extractContract(file, '@test/pkg')
+
+    expect(contract.slots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'header', description: expect.stringContaining('标题区域') }),
+        expect.objectContaining({ name: 'default', description: expect.stringContaining('默认内容') }),
+      ]),
+    )
   })
 
   it('文件名为 index.vue 时从目录名兜底组件名', async () => {

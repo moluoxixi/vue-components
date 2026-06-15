@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
-import { PopoverTableSelect } from '@moluoxixi/components'
 import type { PopoverTableColumn, PopoverTableRow } from '@moluoxixi/components'
+import { PopoverTableSelect } from '@moluoxixi/components'
 ```
 
 ## Props

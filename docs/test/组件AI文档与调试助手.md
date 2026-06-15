@@ -138,7 +138,7 @@ mindmap
 ## 测试数据
 
 - 组件契约语料：复用 `docs/out-components/` 现有 8 个真实组件契约 + `packages/**` 真实源码，不造假组件。
-- SFC fixture：复用 spike 001/002 的 `SAMPLE_SFC` / `BROKEN_SFC` / 越权探测 SFC（已验证可用）。
+- SFC fixture：复用已迁入正式测试的 `SAMPLE_SFC` / `BROKEN_SFC` / 越权探测 SFC 口径；历史 spike 001/002 只保留结论到 ADR，不再作为测试目录。
 - embedding 向量 fixture：录制一次真实 `text-embedding-3-small` 输出存为固定向量集，集成测试离线复放，避免每次打外部模型。
 
 ## Mock 与依赖
@@ -150,11 +150,11 @@ mindmap
 
 ## 回归范围
 
-- 改动 extractor → 跑 TC-EXT-* + TC-IDX-01（契约变更影响索引）。
-- 改动检索/索引 → 跑 TC-IDX-* + TC-RET-* + TC-API-01/02/03。
-- 改动 BFF/SSE → 跑 TC-API-* + TC-UI-02/03/04。
-- 改动沙箱/编译 → 跑全部 TC-E2E-*（安全相关，不可跳）。
-- 发版前 → 全量 + TC-PKG-*。
+- 改动 extractor → 跑 `TC-EXT-*` + TC-IDX-01（契约变更影响索引）。
+- 改动检索/索引 → 跑 `TC-IDX-*` + `TC-RET-*` + TC-API-01/02/03。
+- 改动 BFF/SSE → 跑 `TC-API-*` + TC-UI-02/03/04。
+- 改动沙箱/编译 → 跑全部 `TC-E2E-*`（安全相关，不可跳）。
+- 发版前 → 全量 + `TC-PKG-*`。
 
 ## 风险与待确认
 

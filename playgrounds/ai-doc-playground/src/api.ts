@@ -6,12 +6,12 @@
 const API_PREFIX = '/__ai-doc/api'
 
 /** SSE 事件（与 server 端 protocol.SseEvent 对齐；前端独立声明避免打包 server 代码）。 */
-export type SseEvent =
-  | { type: 'sources', sources: SourceRef[] }
-  | { type: 'token', text: string }
-  | { type: 'example', code: string, lang: string }
-  | { type: 'done' }
-  | { type: 'error', error: string, message: string }
+export type SseEvent
+  = | { type: 'sources', sources: SourceRef[] }
+    | { type: 'token', text: string }
+    | { type: 'example', code: string, lang: string }
+    | { type: 'done' }
+    | { type: 'error', error: string, message: string }
 
 export interface SourceRef {
   component: string

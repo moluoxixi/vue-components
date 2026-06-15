@@ -11,7 +11,7 @@
     "@moluoxixi/ai-doc-assistant": "workspace:*",
     "@moluoxixi/components": "workspace:*",
     "vue": "catalog:build",
-    "vue3-sfc-loader": "0.9.5"
+    "vue3-sfc-loader": "catalog:"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "catalog:dev",

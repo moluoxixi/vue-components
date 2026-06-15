@@ -2,21 +2,21 @@
 /**
  * AI 文档助手可视化面板（外壳）。
  *
- * 固定头部：标题 + /health 状态徽章（模式 / chat 配置态，不含密钥）+ 索引状态 +
- * 构建索引按钮 + 知识库调试入口。主区域默认且始终展示 Chat；组件总览/详情放进
- * 调试弹框，避免把“知识库维护界面”压在用户问答主流程前面。
+ * 固定头部：标题 + /health 状态徽章（模式 / chat 配置态，不含密钥）+ 知识库状态 +
+ * 知识库入口。默认 content 模式在面板打开后自动准备知识库；vector 模式或未就绪时
+ * 保留手动构建/更新入口。主区域默认且始终展示 Chat；组件总览/详情放进知识库弹框。
  */
-import { onMounted, ref, useTemplateRef } from 'vue'
-import type { ComponentListItem, HealthResponse } from '../shared/protocol'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import type { ComponentListItem, HealthResponse, IndexState } from '../shared/protocol'
 import { buildIndex, fetchComponents, fetchHealth, fetchStatus } from './api'
 import ChatView from './views/ChatView.vue'
 import DetailView from './views/DetailView.vue'
 import OverviewView from './views/OverviewView.vue'
 
-/** 调试弹框内的知识库视图。 */
-type DebugView = 'overview' | 'detail'
-const debugView = ref<DebugView>('overview')
-/** 是否打开知识库调试弹框。 */
+/** 知识库弹框内的视图。 */
+type KnowledgeView = 'overview' | 'detail'
+const knowledgeView = ref<KnowledgeView>('overview')
+/** 是否打开知识库弹框。 */
 const showKnowledgeDialog = ref(false)
 /** 详情视图当前组件名。 */
 const activeComponent = ref('')
@@ -27,14 +27,25 @@ const question = ref('')
 const health = ref<HealthResponse | null>(null)
 /** 组件清单。 */
 const components = ref<ComponentListItem[]>([])
-/** 索引状态文案。 */
-const indexState = ref<string>('unknown')
+/** 知识库状态。 */
+const indexState = ref<IndexState>('not_built')
 const componentCount = ref(0)
 /** 错误信息（非空即展示红条）。 */
 const errorMsg = ref('')
-/** 索引构建中标志。 */
+/** 知识库构建中标志。 */
 const building = ref(false)
 const chatViewRef = useTemplateRef<InstanceType<typeof ChatView>>('chatViewRef')
+
+/** 默认 content 模式不把构建动作暴露为常驻主按钮；vector 或未就绪时保留手动入口。 */
+const showKnowledgeAction = computed(() =>
+  health.value !== null && (health.value.mode !== 'content' || indexState.value !== 'ready'),
+)
+
+const knowledgeActionLabel = computed(() => {
+  if (building.value)
+    return '更新中...'
+  return indexState.value === 'ready' ? '更新知识库' : '构建知识库'
+})
 
 /** 拉取健康态与索引状态。 */
 async function refreshHealth(): Promise<void> {
@@ -44,9 +55,12 @@ async function refreshHealth(): Promise<void> {
   componentCount.value = status.componentCount
 }
 
-/** 触发索引构建，完成后刷新状态与组件清单。 */
+/** 触发知识库构建，完成后刷新状态与组件清单。 */
 async function onBuild(): Promise<void> {
+  const previousIndexState = indexState.value
+  const previousComponentCount = componentCount.value
   building.value = true
+  indexState.value = 'building'
   errorMsg.value = ''
   try {
     const status = await buildIndex()
@@ -55,6 +69,8 @@ async function onBuild(): Promise<void> {
     components.value = await fetchComponents()
   }
   catch (err) {
+    indexState.value = previousIndexState
+    componentCount.value = previousComponentCount
     errorMsg.value = err instanceof Error ? err.message : String(err)
   }
   finally {
@@ -65,7 +81,7 @@ async function onBuild(): Promise<void> {
 /** 从总览打开某组件详情。 */
 function openDetail(name: string): void {
   activeComponent.value = name
-  debugView.value = 'detail'
+  knowledgeView.value = 'detail'
   showKnowledgeDialog.value = true
 }
 
@@ -75,9 +91,9 @@ function askAbout(name: string): void {
   showKnowledgeDialog.value = false
 }
 
-/** 打开知识库调试弹框，用于检查当前索引里有哪些组件契约。 */
-function openKnowledgeDebug(): void {
-  debugView.value = 'overview'
+/** 打开知识库弹框，用于检查当前知识库里有哪些组件契约。 */
+function openKnowledge(): void {
+  knowledgeView.value = 'overview'
   showKnowledgeDialog.value = true
 }
 
@@ -88,7 +104,10 @@ function focusChat(): void {
 onMounted(async () => {
   try {
     await refreshHealth()
-    components.value = await fetchComponents()
+    if (health.value?.mode === 'content' && indexState.value !== 'ready')
+      await onBuild()
+    else
+      components.value = await fetchComponents()
   }
   catch (err) {
     errorMsg.value = err instanceof Error ? err.message : String(err)
@@ -110,13 +129,13 @@ onMounted(async () => {
           Chat: {{ health?.providers.chat ?? '...' }}
         </span>
         <span class="chip" :class="`index-${indexState}`" data-testid="index-chip">
-          索引: {{ indexState }} ({{ componentCount }})
+          知识库: {{ indexState }} ({{ componentCount }})
         </span>
-        <button class="btn" data-testid="build-btn" :disabled="building" @click="onBuild">
-          {{ building ? '构建中...' : '构建索引' }}
+        <button v-if="showKnowledgeAction" class="btn" data-testid="build-btn" :disabled="building" @click="onBuild">
+          {{ knowledgeActionLabel }}
         </button>
-        <button class="btn" data-testid="kb-debug-btn" @click="openKnowledgeDebug">
-          知识库调试
+        <button class="btn" data-testid="kb-debug-btn" @click="openKnowledge">
+          知识库
         </button>
         <button
           class="ai-icon active"
@@ -138,25 +157,26 @@ onMounted(async () => {
         ref="chatViewRef"
         v-model:question="question"
         :index-ready="indexState === 'ready'"
+        :index-state="indexState"
       />
     </main>
 
     <ElDialog
       v-model="showKnowledgeDialog"
-      title="知识库调试"
+      title="知识库"
       width="86vw"
       class="kb-debug-dialog"
       data-testid="kb-debug-dialog"
     >
       <OverviewView
-        v-if="debugView === 'overview'"
+        v-if="knowledgeView === 'overview'"
         :components="components"
         @open="openDetail"
       />
       <DetailView
         v-else
         :name="activeComponent"
-        @back="debugView = 'overview'"
+        @back="knowledgeView = 'overview'"
         @ask="askAbout"
       />
     </ElDialog>
@@ -164,6 +184,13 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+:global(html),
+:global(body),
+:global(#app) {
+  height: 100%;
+  margin: 0;
+}
+
 .ai-doc-app {
   font-family: system-ui, sans-serif; color: #1f2328;
   height: 100vh; display: flex; flex-direction: column;

@@ -10,7 +10,7 @@ Web 调试台会把 AI 现场生成的 Vue SFC 运行时编译并挂载（ADR-00
 
 ## 决策
 
-**AI 生成的 SFC 编译产物必须在 iframe sandbox 中执行挂载，禁止在主应用上下文直接运行。** 隔离方案已由 Spike 002（`spikes/002-iframe-sandbox/`，真实 Chromium 5/5 通过）验证确定：
+**AI 生成的 SFC 编译产物必须在 iframe sandbox 中执行挂载，禁止在主应用上下文直接运行。** 隔离方案已由 Spike 002 历史结论验证确定（真实 Chromium 5/5 通过；结论已沉淀到本 ADR，原 spike 实验目录不作为长期测试目录保留）：
 
 - iframe `sandbox="allow-scripts"`，**故意省略 `allow-same-origin`** → iframe 处于 opaque origin，沙箱内访问 `parent.document` / cookie / location 一律抛 `SecurityError`（实测三项越权全部 BLOCKED，宿主未被篡改）。
 - 沙箱脚本（Vue + 编译器 + loader）用 esbuild 打包成自包含 IIFE，经 `?raw` 内联进 iframe `srcdoc`，零跨源网络依赖。
@@ -25,10 +25,10 @@ Web 调试台会把 AI 现场生成的 Vue SFC 运行时编译并挂载（ADR-00
 ## 影响
 
 - `runtime/sfc-compiler` 只负责编译，执行容器由 `ui` 层注入；编译与执行解耦。
-- 需设计宿主↔沙箱的 Props 同步协议（可参考复用 `config-form-devtools-vite-plugin` 的 client-plugin postMessage 协议）。
-- 增加一次 Spike（002）作为实现前置。
+- 宿主↔沙箱的 Props 同步协议采用 postMessage 结构化消息，具体实现可参考复用 `config-form-devtools-vite-plugin` 的 client-plugin postMessage 协议。
+- Spike 002 历史结论已作为实现前置验证依据，后续实现必须保持同等隔离强度。
 
 ## 后续约束
 
-- Spike 002 未给出可行隔离方案前，调试台的「实时挂载执行」功能不得进入生产实现。
+- 调试台的「实时挂载执行」功能进入生产实现时，必须沿用 Spike 002 已验证的 iframe sandbox 隔离方案或提供同等强度验证证据。
 - 沙箱内不得获得宿主密钥、cookie、同源凭证。

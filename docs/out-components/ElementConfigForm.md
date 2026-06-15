@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
-import { ElementConfigForm, defineField, defineFields } from '@moluoxixi/components'
-import type { ElementConfigFormProps, ElementConfigFormExpose } from '@moluoxixi/components'
+import type { ElementConfigFormExpose, ElementConfigFormProps } from '@moluoxixi/components'
+import { defineField, defineFields, ElementConfigForm } from '@moluoxixi/components'
 ```
 
 ## Props

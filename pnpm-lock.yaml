@@ -30,7 +30,7 @@ catalogs:
       specifier: ^4.0.0
       version: 4.2.0
     vue3-sfc-loader:
-      specifier: ^0.9.5
+      specifier: 0.9.5
       version: 0.9.5
   dev:
     '@antfu/eslint-config':
@@ -657,7 +657,7 @@ importers:
         specifier: catalog:build
         version: 3.5.33(typescript@5.9.3)
       vue3-sfc-loader:
-        specifier: 0.9.5
+        specifier: 'catalog:'
         version: 0.9.5(lodash@4.18.1)(pug@3.0.4)(vue@3.5.33(typescript@5.9.3))
     devDependencies:
       '@vitejs/plugin-vue':

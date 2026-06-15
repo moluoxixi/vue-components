@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { aiDocAssistant } from '@moluoxixi/ai-doc-assistant/plugin'
 import Vue from '@vitejs/plugin-vue'

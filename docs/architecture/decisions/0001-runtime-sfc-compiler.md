@@ -12,7 +12,7 @@ Web 调试台需在浏览器内把 AI 生成的 `<script setup lang="ts">` Vue S
 
 **MVP 采用 `vue3-sfc-loader`，并在代码中保留 `compileSfc(source) → Component` 抽象层，使 `@vue/compiler-sfc + sucrase` 自研管线可热插拔切换。**
 
-依据 Spike 001（`spikes/001-runtime-sfc-compile/`，真实 Chromium / Playwright 5/5 通过）：
+依据 Spike 001 历史结论（真实 Chromium / Playwright 5/5 通过；结论已沉淀到本 ADR，原 spike 实验目录不作为长期测试目录保留）：
 
 - 两条路线都验证可行（TS 剥离 / `defineProps`+`withDefaults` / setup 响应式 / 外部改 Props 实时更新 / scoped 样式 / 坏 SFC 显式抛错全过）。
 - `vue3-sfc-loader` 开箱即用、内置模块解析（import 本地组件 + 第三方依赖），是本仓组件预览的刚需，维护成本低。

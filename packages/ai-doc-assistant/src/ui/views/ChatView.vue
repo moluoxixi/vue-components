@@ -12,14 +12,14 @@
  * 仅在索引就绪时可提问；网络/HTTP 错误显式展示，不静默吞掉。
  */
 import { computed, ref, useTemplateRef } from 'vue'
-import type { ExampleBlock, SourceRef } from '../../shared/protocol'
+import type { ExampleBlock, IndexState, SourceRef } from '../../shared/protocol'
 import { splitAnswerSegments } from '../../core'
 import { streamQuery } from '../api'
 import { DemoPreview } from '../components'
 
 /** 提问输入：父级通过 v-model:question 双向绑定（预填组件名等）。 */
 const question = defineModel<string>('question', { required: true })
-const props = defineProps<{ indexReady: boolean }>()
+const props = defineProps<{ indexReady: boolean, indexState: IndexState }>()
 const questionInput = useTemplateRef<HTMLInputElement>('questionInput')
 
 function focusQuestion(): void {
@@ -66,6 +66,12 @@ const streaming = ref(false)
 const canAsk = computed(() =>
   question.value.trim().length > 0 && !streaming.value && props.indexReady,
 )
+
+const indexHint = computed(() => {
+  if (props.indexState === 'building')
+    return '知识库正在准备，完成后即可提问。'
+  return '知识库尚未就绪，请先构建知识库。'
+})
 
 /** 把回答正文实时切分为有序分段（文字段 + vue 代码块），供模板原位渲染。 */
 const segments = computed(() => splitAnswerSegments(answer.value))
@@ -126,76 +132,95 @@ async function onAsk(): Promise<void> {
 
 <template>
   <div class="chat" data-testid="chat-view">
-    <div class="ask-row">
-      <input
-        ref="questionInput"
-        v-model="question"
-        data-testid="question-input"
-        placeholder="问点什么，比如：ElButton 怎么用？"
-        @keyup.enter="onAsk"
-      >
-      <button
-        class="btn primary"
-        data-testid="ask-btn"
-        :disabled="!canAsk"
-        @click="onAsk"
-        @keydown.ctrl.enter.prevent="onAsk"
-      >
-        {{ streaming ? '回答中…' : '提问' }}
-      </button>
-    </div>
+    <div class="chat-body">
+      <div v-if="errorMsg" class="hint error" data-testid="chat-error">
+        {{ errorMsg }}
+      </div>
 
-    <div v-if="!indexReady" class="hint" data-testid="chat-need-index">
-      索引尚未构建，请先在顶部点击「构建索引」。
-    </div>
-    <div v-if="errorMsg" class="hint error" data-testid="chat-error">
-      {{ errorMsg }}
-    </div>
+      <section v-if="sources.length" class="sources" data-testid="sources">
+        <h3>检索来源</h3>
+        <ul>
+          <li v-for="s in sources" :key="s.component">
+            {{ s.component }} <small>{{ s.packageName }} · {{ s.score.toFixed(3) }}</small>
+          </li>
+        </ul>
+      </section>
 
-    <section v-if="sources.length" class="sources" data-testid="sources">
-      <h3>检索来源</h3>
-      <ul>
-        <li v-for="s in sources" :key="s.component">
-          {{ s.component }} <small>{{ s.packageName }} · {{ s.score.toFixed(3) }}</small>
-        </li>
-      </ul>
-    </section>
-
-    <section class="answer" data-testid="answer">
-      <h3>回答</h3>
-      <template v-if="segments.length || fallbackExampleBlocks.length">
-        <!-- 正文分段：文字段原样展示，vue 代码块原位替换为 demo 预览块 -->
-        <template v-for="(seg, i) in segments" :key="i">
-          <p v-if="seg.kind === 'text'" class="answer-text" data-testid="answer-text">
-            {{ seg.text }}
-          </p>
+      <section class="answer" data-testid="answer">
+        <h3>回答</h3>
+        <template v-if="segments.length || fallbackExampleBlocks.length">
+          <!-- 正文分段：文字段原样展示，vue 代码块原位替换为 demo 预览块 -->
+          <template v-for="(seg, i) in segments" :key="i">
+            <p v-if="seg.kind === 'text'" class="answer-text" data-testid="answer-text">
+              {{ seg.text }}
+            </p>
+            <DemoPreview
+              v-else
+              :ts="seg.source"
+              :js="jsForSource(seg.source)"
+              :renderable="renderableForSource(seg.source, seg.renderable)"
+              :reason="reasonForSource(seg.source, seg.reason)"
+            />
+          </template>
           <DemoPreview
-            v-else
-            :ts="seg.source"
-            :js="jsForSource(seg.source)"
-            :renderable="renderableForSource(seg.source, seg.renderable)"
-            :reason="reasonForSource(seg.source, seg.reason)"
+            v-for="(block, i) in fallbackExampleBlocks"
+            :key="`fallback-${i}`"
+            :ts="block.ts"
+            :js="block.js"
+            :renderable="block.renderable"
+            :reason="block.reason"
           />
         </template>
-        <DemoPreview
-          v-for="(block, i) in fallbackExampleBlocks"
-          :key="`fallback-${i}`"
-          :ts="block.ts"
-          :js="block.js"
-          :renderable="block.renderable"
-          :reason="block.reason"
-        />
-      </template>
-      <p v-else class="answer-text placeholder">
-        （等待提问）
-      </p>
-    </section>
+        <p v-else class="answer-text placeholder">
+          （等待提问）
+        </p>
+      </section>
+    </div>
+
+    <form class="ask-panel" data-testid="ask-panel" @submit.prevent="onAsk">
+      <div v-if="!indexReady" class="hint" data-testid="chat-need-index">
+        {{ indexHint }}
+      </div>
+      <div class="ask-row">
+        <input
+          ref="questionInput"
+          v-model="question"
+          data-testid="question-input"
+          placeholder="问点什么，比如：ElButton 怎么用？"
+        >
+        <button
+          class="btn primary"
+          data-testid="ask-btn"
+          :disabled="!canAsk"
+          @keydown.ctrl.enter.prevent="onAsk"
+        >
+          {{ streaming ? '回答中…' : '提问' }}
+        </button>
+      </div>
+    </form>
   </div>
 </template>
 
 <style scoped>
-.chat { padding: 20px; }
-.ask-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.chat {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.chat-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 20px 8px;
+}
+.ask-panel {
+  flex: 0 0 auto;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #d0d7de;
+  background: #fff;
+}
+.ask-row { display: flex; gap: 8px; }
 .ask-row input {
   flex: 1; padding: 10px 12px; border: 1px solid #d0d7de;
   border-radius: 6px; font-size: 14px;

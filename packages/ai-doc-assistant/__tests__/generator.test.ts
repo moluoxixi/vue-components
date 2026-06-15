@@ -1,6 +1,6 @@
-import type { ComponentContract } from '../src/core/types'
+import type { ComponentContract } from '../src/core'
 import { describe, expect, it } from 'vitest'
-import { renderExample, renderExampleSkeleton, renderSearchableDoc } from '../src/core/generator'
+import { renderExample, renderExampleSkeleton, renderSearchableDoc } from '../src/core'
 
 /** 构造测试用契约。 */
 function makeContract(over: Partial<ComponentContract> = {}): ComponentContract {
@@ -36,18 +36,43 @@ describe('renderSearchableDoc', () => {
     expect(doc).toContain('一个按钮')
   })
 
-  it('列出所有 Props 名称与类型', () => {
+  it('列出所有 Props 名称、类型与注释描述', () => {
     const doc = renderSearchableDoc(makeContract())
     expect(doc).toContain('type')
+    expect(doc).toContain('按钮类型')
     expect(doc).toContain('disabled')
+    expect(doc).toContain('是否禁用')
     expect(doc).toContain('count')
     expect(doc).toContain('boolean')
   })
 
-  it('包含事件与插槽信息', () => {
+  it('包含事件与插槽信息及注释描述', () => {
     const doc = renderSearchableDoc(makeContract())
     expect(doc).toContain('click')
+    expect(doc).toContain('点击事件')
     expect(doc).toContain('default')
+    expect(doc).toContain('默认插槽')
+  })
+
+  it('包含关联类型字段的注释描述', () => {
+    const doc = renderSearchableDoc(makeContract({
+      props: [
+        { name: 'columns', type: 'TableColumn[]', required: true, defaultValue: null, description: '列配置', typeRefs: ['TableColumn'] },
+      ],
+      typeDefs: [
+        {
+          name: 'TableColumn',
+          kind: 'interface',
+          fields: [
+            { name: 'field', type: 'string', optional: false, description: '列字段名' },
+          ],
+          raw: 'interface TableColumn { field: string }',
+        },
+      ],
+    }))
+
+    expect(doc).toContain('列配置')
+    expect(doc).toContain('列字段名')
   })
 
   it('无 props 时不抛错', () => {

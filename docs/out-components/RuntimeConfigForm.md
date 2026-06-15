@@ -7,8 +7,8 @@
 ## 引入
 
 ```ts
+import type { ConfigFormExpose, ConfigFormProps } from '@moluoxixi/config-form-runtime'
 import { ConfigForm, defineField, defineFields } from '@moluoxixi/config-form-runtime'
-import type { ConfigFormProps, ConfigFormExpose } from '@moluoxixi/config-form-runtime'
 ```
 
 ## Props
