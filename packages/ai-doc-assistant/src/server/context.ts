@@ -12,8 +12,8 @@ import type { ProviderConfig } from './ai-provider'
  * 模式由 options.mode 或环境变量 AI_DOC_RETRIEVAL_MODE 决定，默认 content。
  * chat 走用户配置的第三方 provider；vector 模式的 embedding 完全本地（零 key）。
  */
-import { glob } from 'node:fs/promises'
 import process from 'node:process'
+import { discoverComponentSources } from '../core/component-discovery'
 import { extractContracts } from '../core/extractor'
 import { IndexStateManager } from '../core/index-state'
 import { createStrategy, RETRIEVAL_MODES } from '../core/retrieval-strategy'
@@ -22,7 +22,9 @@ import { loadProviderConfig } from './ai-provider'
 
 /** 上下文构造选项。 */
 export interface ServerContextOptions {
-  /** 组件源码 glob（相对 root），默认匹配各包 src 下的 index.vue。 */
+  /** 组件库公共入口文件（相对 root 或绝对路径）。配置后只按入口扫描。 */
+  componentEntries?: string[]
+  /** legacy 显式 SFC glob（相对 root）。与 componentEntries 互斥。 */
   componentGlobs?: string[]
   /** 项目根目录。 */
   root: string
@@ -143,33 +145,13 @@ export class ServerContext {
     this.vectorStoreConfig = resolveVectorStoreConfig(opts, env, this.vectorStore)
   }
 
-  /** 解析组件源码文件列表。 */
-  private async resolveFiles(): Promise<{ filePath: string, packageName: string }[]> {
-    const patterns = this.opts.componentGlobs ?? ['packages/*/src/**/index.vue']
-    const files: { filePath: string, packageName: string }[] = []
-    for (const pattern of patterns) {
-      for await (const entry of glob(pattern, { cwd: this.opts.root })) {
-        // 只把「直接父目录为 src」的 index.vue 当作独立组件入口。
-        // 组件库门面约定：对外组件入口固定为 `<Comp>/src/index.vue`，其直接父目录是 src；
-        // 而内部子组件（如 `<Comp>/src/base/index.vue`）的直接父目录是 base 等非 src 名，
-        // 属于实现细节，其契约由父组件通过 $attrs 转发并在抽取时合并，不应作为幽灵组件单列。
-        const segs = entry.split(/[/\\]/)
-        if (segs[segs.length - 2] !== 'src')
-          continue
-        const pkg = segs[1] ?? 'unknown'
-        files.push({ filePath: `${this.opts.root}/${entry}`, packageName: `@moluoxixi/${pkg}` })
-      }
-    }
-    return files
-  }
-
   /**
    * 构建知识库：抽取公共契约 → 按 mode 建检索态（经状态机单飞）。
    * content 模式无需任何 provider key；vector 模式 embedding 走本地模型，亦无需 key。
    */
   async buildIndex(): Promise<void> {
     await this.state.runBuild(async () => {
-      const files = await this.resolveFiles()
+      const files = await discoverComponentSources(this.opts)
       this.contracts = await extractContracts(files)
       // 按模式创建策略（vector 经动态 import，重依赖不进默认 bundle）
       const strategy = await createStrategy(this.mode, this.vectorStore, this.vectorStoreConfig)

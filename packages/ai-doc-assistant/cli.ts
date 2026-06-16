@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
  * CLI：抽取并校验组件契约（构建知识库）。
  *
  * 用法：
- *   ai-doc-assistant build-index [--root <dir>] [--globs <glob1,glob2>]
+ *   ai-doc-assistant build-index [--root <dir>] [--entries <entry1,entry2>]
  *
  * 架构（ADR-0006）：默认只抽取公共契约并建立关键词检索态，无向量索引/持久化。
  * 本命令做一次性契约抽取，打印组件数量，用于 CI 校验抽取链路与组件可解析性。
@@ -31,9 +31,10 @@ function parseArgs(argv: string[]): Record<string, string> {
 /** build-index 子命令：抽取契约并打印组件数量。 */
 async function cmdBuildIndex(args: Record<string, string>): Promise<void> {
   const root = resolve(args.root ?? process.cwd())
+  const componentEntries = args.entries ? args.entries.split(',') : undefined
   const componentGlobs = args.globs ? args.globs.split(',') : undefined
 
-  const ctx = new ServerContext({ root, componentGlobs })
+  const ctx = new ServerContext({ root, componentEntries, componentGlobs })
   await ctx.buildIndex()
   const snap = ctx.state.snapshot()
   process.stdout.write(`[ai-doc] contracts extracted: ${snap.meta?.componentCount ?? 0} components\n`)
@@ -48,7 +49,7 @@ async function main(): Promise<void> {
       await cmdBuildIndex(args)
       break
     default:
-      process.stderr.write('usage: ai-doc-assistant build-index [--root <dir>] [--globs <glob1,glob2>]\n')
+      process.stderr.write('usage: ai-doc-assistant build-index [--root <dir>] [--entries <entry1,entry2>] [--globs <glob1,glob2>]\n')
       process.exit(1)
   }
 }

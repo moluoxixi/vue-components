@@ -41,10 +41,19 @@ interface RawDoc {
   sourceFiles?: string[]
 }
 
-/** 从 SFC 文件路径推断组件名：displayName 不可靠（src/index.vue 会得到 "src"）时用目录名兜底。 */
-function resolveComponentName(filePath: string, displayName?: string): string {
+/** PascalCase 公共导出名通常比插件运行时 name 更适合作为文档检索名。 */
+function isPascalCase(name: string): boolean {
+  return /^[A-Z][A-Za-z0-9]*$/.test(name)
+}
+
+/** 从 SFC 文件路径推断组件名：displayName 不可靠时优先使用公共入口导出名兜底。 */
+function resolveComponentName(filePath: string, displayName?: string, exportName?: string): string {
+  if (exportName && (!displayName || displayName === 'src' || displayName === 'index' || !isPascalCase(displayName)))
+    return exportName
   if (displayName && displayName !== 'src' && displayName !== 'index')
     return displayName
+  if (exportName)
+    return exportName
   const dir = basename(dirname(filePath))
   if (dir === 'src')
     return basename(dirname(dirname(filePath)))
@@ -332,8 +341,9 @@ async function mergeForwardedSubComponent(
  * 解析单个 SFC 文件为组件契约。
  * @param filePath SFC 绝对或相对路径。
  * @param packageName 所属包名，写入契约用于来源可追溯。
+ * @param exportName 公共入口导出名，displayName 不可靠时用于稳定组件名。
  */
-export async function extractContract(filePath: string, packageName: string): Promise<ComponentContract> {
+export async function extractContract(filePath: string, packageName: string, exportName?: string): Promise<ComponentContract> {
   const doc = await parse(filePath) as RawDoc
   const emits = mapEmits(doc.events ?? [])
   const props = mapProps(doc.props ?? [])
@@ -386,7 +396,7 @@ export async function extractContract(filePath: string, packageName: string): Pr
     }
   }
 
-  const name = resolveComponentName(filePath, doc.displayName)
+  const name = resolveComponentName(filePath, doc.displayName, exportName)
   // 插槽优先从 `<Comp>Slots` 契约接口派生（vue-docgen 对动态插槽 `#[name]` 会误报伪插槽）；
   // 契约缺失时回退 vue-docgen 解析结果，不静默丢插槽。
   const slots = deriveSlotsFromContract(name, allDefs) ?? mapSlots(doc.slots ?? [])
@@ -469,12 +479,12 @@ function filterReachableDefs(allDefs: TypeDefInfo[], rootRefs: Set<string>): Typ
  * 批量解析多个 SFC。单个文件解析失败时抛出带文件上下文的错误，不静默跳过缺失契约。
  */
 export async function extractContracts(
-  files: { filePath: string, packageName: string }[],
+  files: { exportName?: string, filePath: string, packageName: string }[],
 ): Promise<ComponentContract[]> {
   const results: ComponentContract[] = []
-  for (const { filePath, packageName } of files) {
+  for (const { exportName, filePath, packageName } of files) {
     try {
-      results.push(await extractContract(filePath, packageName))
+      results.push(await extractContract(filePath, packageName, exportName))
     }
     catch (err) {
       throw new Error(`extractContract failed for ${filePath}: ${(err as Error).message}`, { cause: err })

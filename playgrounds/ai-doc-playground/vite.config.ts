@@ -59,7 +59,7 @@ loadLocalEnv()
 
 /**
  * AI 文档调试台 playground。
- * 挂 aiDocAssistant BFF 插件：组件源指向 monorepo 的 @moluoxixi/components。
+ * 挂 aiDocAssistant BFF 插件：组件入口指向 @moluoxixi/components 公共出口。
  * 全量契约持有内存，无索引持久化目录。
  */
 export default defineConfig({
@@ -67,7 +67,7 @@ export default defineConfig({
     Vue(),
     aiDocAssistant({
       root: repoRoot,
-      componentGlobs: ['packages/components/src/**/index.vue'],
+      componentEntries: ['packages/components/index.ts'],
     }),
   ],
 })

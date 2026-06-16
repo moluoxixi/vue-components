@@ -18,6 +18,19 @@ let root: string
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'ai-doc-ctx-'))
   await mkdir(join(root, 'packages', 'demo', 'src'), { recursive: true })
+  await writeFile(join(root, 'packages', 'demo', 'package.json'), JSON.stringify({
+    exports: {
+      '.': {
+        source: './index.ts',
+      },
+    },
+    name: '@demo/components',
+  }), 'utf8')
+  await writeFile(
+    join(root, 'packages', 'demo', 'index.ts'),
+    `import DemoButtonSource from './src/index.vue'\nexport const DemoButton = DemoButtonSource\n`,
+    'utf8',
+  )
   await writeFile(join(root, 'packages', 'demo', 'src', 'index.vue'), SFC, 'utf8')
 })
 
@@ -84,16 +97,37 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
     expect(result.chunks.length).toBe(1)
   })
 
-  it('空目录 buildIndex → ready 但契约为空（不静默失败）', async () => {
+  it('空目录 buildIndex → FAIL，不伪装为空索引 ready', async () => {
     const emptyRoot = await mkdtemp(join(tmpdir(), 'ai-doc-empty-'))
     try {
       const ctx = new ServerContext({ root: emptyRoot, env: ENV })
-      await ctx.buildIndex()
-      expect(ctx.state.isReady()).toBe(true)
+      await expect(ctx.buildIndex()).rejects.toThrow(/component entry auto-discovery failed/)
+      expect(ctx.state.isReady()).toBe(false)
       expect(ctx.getContracts().length).toBe(0)
     }
     finally {
       await rm(emptyRoot, { recursive: true, force: true })
     }
+  })
+
+  it('componentEntries 与 componentGlobs 同时配置 → FAIL 配置冲突', async () => {
+    const ctx = new ServerContext({
+      root,
+      componentEntries: ['packages/demo/index.ts'],
+      componentGlobs: ['packages/demo/src/index.vue'],
+      env: ENV,
+    })
+
+    await expect(ctx.buildIndex()).rejects.toThrow(/componentEntries and componentGlobs cannot be used together/)
+  })
+
+  it('legacy componentGlobs 是显式配置：匹配不到文件即 FAIL', async () => {
+    const ctx = new ServerContext({
+      root,
+      componentGlobs: ['packages/demo/missing/**/*.vue'],
+      env: ENV,
+    })
+
+    await expect(ctx.buildIndex()).rejects.toThrow(/componentGlobs matched no Vue component files/)
   })
 })

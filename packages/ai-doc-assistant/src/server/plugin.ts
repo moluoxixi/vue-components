@@ -30,7 +30,9 @@ const MIME: Record<string, string> = {
 export interface AiDocPluginOptions {
   /** 项目根目录，默认 Vite config root。 */
   root?: string
-  /** 组件源码 glob（相对 root）。 */
+  /** 组件库公共入口文件（相对 root 或绝对路径）。 */
+  componentEntries?: string[]
+  /** legacy 显式 SFC glob（相对 root），与 componentEntries 互斥。 */
   componentGlobs?: string[]
   /** UI 静态资源目录，默认包内 dist/ui。 */
   uiDir?: string
@@ -112,7 +114,11 @@ export function aiDocAssistant(options: AiDocPluginOptions = {}): Plugin {
     apply: 'serve',
     configureServer(server: ViteDevServer) {
       const root = options.root ?? server.config.root
-      ctx = new ServerContext({ root, componentGlobs: options.componentGlobs })
+      ctx = new ServerContext({
+        root,
+        componentEntries: options.componentEntries,
+        componentGlobs: options.componentGlobs,
+      })
 
       server.middlewares.use((req, res, next) => {
         // 先尝试 BFF API；非 API 再尝试 UI 静态资源；都不命中交还下游
