@@ -94,14 +94,16 @@ const fallbackExampleBlocks = computed(() => {
 async function onAsk(): Promise<void> {
   if (!canAsk.value)
     return
+  const askedQuestion = question.value.trim()
   streaming.value = true
+  question.value = ''
   answer.value = ''
   sources.value = []
 
   exampleBlocks.value = []
   errorMsg.value = ''
   try {
-    await streamQuery(question.value.trim(), 5, (event) => {
+    await streamQuery(askedQuestion, 5, (event) => {
       switch (event.type) {
         case 'sources':
           sources.value = event.sources

@@ -1,7 +1,7 @@
 import type { SseEvent } from '../src/shared/protocol'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 
 const streamQuery = vi.fn()
 
@@ -97,6 +97,38 @@ describe('chat view', () => {
     expect(demo.attributes('data-js')).toBe(js)
     expect(demo.attributes('data-component')).toBeUndefined()
     expect(demo.attributes('data-package')).toBeUndefined()
+  })
+
+  it('发送提问后清空输入框，并使用 trim 后的问题发起请求', async () => {
+    streamQuery.mockImplementationOnce(async (
+      _question: string,
+      _topK: number,
+      onEvent: (event: SseEvent) => void,
+    ) => {
+      onEvent({ type: 'done' })
+    })
+
+    const { default: ChatView } = await import('../src/ui/views/ChatView.vue')
+    const Host = defineComponent({
+      setup() {
+        const question = ref('  ElButton 怎么用？  ')
+        return () => h(ChatView, {
+          'question': question.value,
+          'indexReady': true,
+          'indexState': 'ready',
+          'onUpdate:question': (value: string) => {
+            question.value = value
+          },
+        })
+      },
+    })
+    const wrapper = mount(Host)
+
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await flushPromises()
+
+    expect(streamQuery).toHaveBeenCalledWith('ElButton 怎么用？', 5, expect.any(Function))
+    expect((wrapper.get('[data-testid="question-input"]').element as HTMLInputElement).value).toBe('')
   })
 
   it('按归一化后的源码匹配后端双码块，避免尾随空白导致 JS 切换丢失', async () => {

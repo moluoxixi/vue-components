@@ -181,6 +181,7 @@ flowchart TD
 | workspace 类型导入追踪 | `core/type-resolver` / `core/external-type-resolver` | 支持从 `import type { ConfigFormProps } from '@moluoxixi/config-form-core'` 追踪到 workspace 包源码，读取被导入类型定义；缺失或解析失败必须显式 FAIL 或记录可追溯原因，不静默退回 `unknown`。 | TODO |
 | 类型导出链追踪 | `core/type-resolver` / `component-discovery` 可复用解析能力 | 支持 `export type * from './types'`、`export type { X } from './props'`、包入口 `exports.source` 等导出链解析，避免只能读取当前目录直接类型文件。 | TODO |
 | 泛型参数替换 | `core/type-resolver` | 展开继承类型时替换泛型参数，例如 `TFormProps -> ElementConfigFormFormProps`、`TColProps -> ElementConfigFormColProps`，让知识库显示消费方看到的具体 props 类型。 | TODO |
+| 预览依赖默认支持 | `core/vue-block-extractor` / `ui/preview/compile` / `server/query-handler` | 默认支持 `dayjs` 进入示例代码 import 白名单与 `moduleCache`，提升 DateRangePicker、日期格式化、快捷范围、表单日期字段等示例生成能力；同时评估 `ant-design-vue` 是否应随 `AntdConfigForm` 作为默认可预览依赖，或改成插件配置 `previewModules` 注入，避免把大体积 UI 库强行塞进默认包。暂不默认加入 `lodash-es`、`date-fns`、`@vueuse/core`、`zod` 等通用库，除非后续有真实组件契约或示例生成失败证据。 | TODO |
 
 ## 风险与待确认
 
