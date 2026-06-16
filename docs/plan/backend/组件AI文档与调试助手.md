@@ -1,6 +1,6 @@
 # 组件 AI 文档与调试助手 后端实现任务书
 
-> 状态：实现方案（PLAN 2026-06-13，UPDATED 2026-06-15）。上游门禁已核：PRD 定稿、测试设计定稿、`docs/out-api/` 契约就绪、架构 ACCEPTED（含 ADR-0001~0007）。本任务书为方案级（供评审「后端打算怎么做」），非施工脚本。后端域 = extractor / generator / retrieval-strategy / vector-store / BFF（server）/ ai provider / cli。前端调试台 UI 归 `docs/plan/frontend/`。
+> 状态：实现方案（PLAN 2026-06-13，UPDATED 2026-06-16）。上游门禁已核：PRD 定稿、测试设计定稿、`docs/out-api/` 契约就绪、架构 ACCEPTED（含 ADR-0001~0007）。本任务书为方案级（供评审「后端打算怎么做」），非施工脚本。后端域 = extractor / generator / retrieval-strategy / vector-store / BFF（server）/ ai provider / cli。前端调试台 UI 归 `docs/plan/frontend/`。
 
 ## 实现大纲（图在前）
 
@@ -172,6 +172,15 @@ flowchart TD
 | 密钥不进浏览器 | 架构 ADR-0002 / TC-API-06 |
 | 知识库刷新+密钥不入包 | PRD 发 npm / TC-PKG-01~03 |
 | content 检索<500ms | PRD 检索性能 / TC-RET-02 |
+
+## 后续 TODO
+
+| 项 | 范围 | 说明 | 状态 |
+|---|---|---|---|
+| 继承泛型 props 展开 | `core/extractor` / `core/type-resolver` | 支持 `interface XxxProps extends BaseProps<A,B,C> {}` 的字段展开，并把继承来源的字段类型与 JSDoc 回填到 `PropDef`；目标覆盖 `ElementConfigFormProps` / `AntdConfigFormProps` / `ShadcnConfigFormProps` 这类空接口继承核心契约的场景。 | TODO |
+| workspace 类型导入追踪 | `core/type-resolver` / `core/external-type-resolver` | 支持从 `import type { ConfigFormProps } from '@moluoxixi/config-form-core'` 追踪到 workspace 包源码，读取被导入类型定义；缺失或解析失败必须显式 FAIL 或记录可追溯原因，不静默退回 `unknown`。 | TODO |
+| 类型导出链追踪 | `core/type-resolver` / `component-discovery` 可复用解析能力 | 支持 `export type * from './types'`、`export type { X } from './props'`、包入口 `exports.source` 等导出链解析，避免只能读取当前目录直接类型文件。 | TODO |
+| 泛型参数替换 | `core/type-resolver` | 展开继承类型时替换泛型参数，例如 `TFormProps -> ElementConfigFormFormProps`、`TColProps -> ElementConfigFormColProps`，让知识库显示消费方看到的具体 props 类型。 | TODO |
 
 ## 风险与待确认
 
