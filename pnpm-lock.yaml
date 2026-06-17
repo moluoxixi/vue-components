@@ -648,31 +648,6 @@ importers:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
 
-  playgrounds/ai-doc-playground:
-    dependencies:
-      '@moluoxixi/ai-doc-assistant':
-        specifier: workspace:*
-        version: link:../../packages/ai-doc-assistant
-      '@moluoxixi/components':
-        specifier: workspace:*
-        version: link:../../packages/components
-      vue:
-        specifier: catalog:build
-        version: 3.5.33(typescript@5.9.3)
-      vue3-sfc-loader:
-        specifier: 'catalog:'
-        version: 0.9.5(lodash@4.18.1)(pug@3.0.4)(vue@3.5.33(typescript@5.9.3))
-    devDependencies:
-      '@vitejs/plugin-vue':
-        specifier: catalog:dev
-        version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
-      vite:
-        specifier: catalog:dev
-        version: 6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0)
-      vue-tsc:
-        specifier: catalog:dev
-        version: 2.2.12(typescript@5.9.3)
-
   playgrounds/components-playground:
     dependencies:
       '@moluoxixi/components':

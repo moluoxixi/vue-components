@@ -85,6 +85,21 @@ export function createMetaChecker(tsconfigPath: string, options?: MetaCheckerOpt
 }
 
 /**
+ * 还原 TS printer 输出中的 `\uXXXX` / `\u{XXXXX}` 转义为真实字符。
+ *
+ * vue-component-meta 用 TS printer 序列化 default 值与类型字面量时，会把非 ASCII 字符
+ * （如中文 placeholder 默认值）转义成 `\u70B9` 这类字面量；JSDoc 描述不经 printer 故不受影响。
+ * 知识库面向人读，这里在映射边界解回真字符，避免界面/检索语料里出现转义码。
+ */
+export function decodeUnicodeEscapes(s: string): string {
+  if (!s.includes('\\u'))
+    return s
+  return s
+    .replace(/\\u\{([0-9a-f]+)\}/gi, (_, h) => String.fromCodePoint(Number.parseInt(h, 16)))
+    .replace(/\\u([0-9a-f]{4})/gi, (_, h) => String.fromCharCode(Number.parseInt(h, 16)))
+}
+
+/**
  * 从类型字符串中提取引用的项目内自定义类型名（剥离 []、Partial<>、| null、联合等修饰）。
  * 与旧 type-resolver.extractTypeRefs 口径一致，供 prop.typeRefs 收集与下游展开驱动。
  */
@@ -137,7 +152,7 @@ function collectTypeDefsFromSchema(
         const member = members[key]
         fields.push({
           name: member.name,
-          type: member.type,
+          type: decodeUnicodeEscapes(member.type),
           optional: !member.required,
           description: member.description ?? '',
         })
@@ -183,9 +198,9 @@ export function mapMetaProps(
     collectTypeDefsFromSchema(p.schema, collected)
     result.push({
       name: p.name,
-      type: p.type,
+      type: decodeUnicodeEscapes(p.type),
       required: p.required,
-      defaultValue: p.default ?? null,
+      defaultValue: p.default != null ? decodeUnicodeEscapes(p.default) : null,
       description: p.description ?? '',
       typeRefs: extractTypeRefs(p.type),
     })
@@ -193,29 +208,52 @@ export function mapMetaProps(
   return result
 }
 
-/** 把 meta.events 映射为 EmitDef。meta 的 event.type 形如 `[value: string]`。 */
-export function mapMetaEvents(meta: ComponentMeta): EmitDef[] {
-  return meta.events.map(e => ({
-    name: e.name,
-    payloadType: e.type,
-    description: e.description ?? '',
-  }))
+/**
+ * 把 meta.events 映射为 EmitDef，并收集 payload 中引用的自有类型。
+ * event.type 形如 `[value: SomeType]`；event.schema 是位置参数的 schema 数组，
+ * 与 prop 同样深度展开进 collected，使 emit payload 里的自定义类型不再退化为孤立字符串。
+ */
+export function mapMetaEvents(meta: ComponentMeta, collected: Map<string, TypeDefInfo>): EmitDef[] {
+  return meta.events.map((e) => {
+    for (const child of e.schema)
+      collectTypeDefsFromSchema(child, collected)
+    return {
+      name: e.name,
+      payloadType: decodeUnicodeEscapes(e.type),
+      description: e.description ?? '',
+      typeRefs: extractTypeRefs(e.type),
+    }
+  })
 }
 
-/** 把 meta.slots 映射为 SlotDef（具名插槽；动态插槽由后处理从契约接口补）。 */
-export function mapMetaSlots(meta: ComponentMeta): SlotDef[] {
-  return meta.slots.map(s => ({
-    name: s.name,
-    scopeType: s.type,
-    description: s.description ?? '',
-  }))
+/**
+ * 把 meta.slots 映射为 SlotDef（具名插槽；动态插槽由后处理从契约接口补），
+ * 并收集插槽作用域（scope）对象里引用的自有类型，与 prop 同口径深度展开。
+ */
+export function mapMetaSlots(meta: ComponentMeta, collected: Map<string, TypeDefInfo>): SlotDef[] {
+  return meta.slots.map((s) => {
+    collectTypeDefsFromSchema(s.schema, collected)
+    return {
+      name: s.name,
+      scopeType: decodeUnicodeEscapes(s.type),
+      description: s.description ?? '',
+      typeRefs: extractTypeRefs(s.type),
+    }
+  })
 }
 
-/** 把 meta.exposed 映射为 ExposeDef。 */
-export function mapMetaExposed(meta: ComponentMeta): ExposeDef[] {
-  return meta.exposed.map(e => ({
-    name: e.name,
-    type: e.type,
-    description: e.description ?? '',
-  }))
+/**
+ * 把 meta.exposed 映射为 ExposeDef，并收集成员类型里引用的自有类型。
+ * defineExpose 暴露的方法/属性类型常含自有类型（如 `() => TableRow[]`），与 prop 同口径展开。
+ */
+export function mapMetaExposed(meta: ComponentMeta, collected: Map<string, TypeDefInfo>): ExposeDef[] {
+  return meta.exposed.map((e) => {
+    collectTypeDefsFromSchema(e.schema, collected)
+    return {
+      name: e.name,
+      type: decodeUnicodeEscapes(e.type),
+      description: e.description ?? '',
+      typeRefs: extractTypeRefs(e.type),
+    }
+  })
 }

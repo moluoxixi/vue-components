@@ -104,13 +104,14 @@ function deriveDynamicSlots(
     // meta 已给出的具名插槽不重复补
     if (existing.has(f.name))
       continue
-    extra.push({ name: f.name, scopeType: f.type, description: f.description })
+    extra.push({ name: f.name, scopeType: f.type, description: f.description, typeRefs: extractTypeRefs(f.type) })
   }
   if (hasIndexSignature && !existing.has('[dynamic]')) {
     extra.push({
       name: '[dynamic]',
       scopeType: 'Record<string, any>',
       description: '按列名动态声明的单元格插槽（插槽名取自各列 field），作用域参数为该列的行/列/值上下文。',
+      typeRefs: [],
     })
   }
   return extra
@@ -184,9 +185,9 @@ function collectContractRootTypeRefs(
 ): string[] {
   return [
     ...props.flatMap(p => p.typeRefs),
-    ...emits.flatMap(e => extractTypeRefs(e.payloadType)),
-    ...slots.flatMap(s => extractTypeRefs(s.scopeType)),
-    ...exposed.flatMap(e => extractTypeRefs(e.type)),
+    ...emits.flatMap(e => e.typeRefs),
+    ...slots.flatMap(s => s.typeRefs),
+    ...exposed.flatMap(e => e.typeRefs),
   ]
 }
 
@@ -269,7 +270,7 @@ function mergeForwardedSubComponent(
       existingProp.add(p.name)
       parentProps.push({ ...p, forwardedFrom: subName })
     }
-    for (const e of mapMetaEvents(subMeta)) {
+    for (const e of mapMetaEvents(subMeta, collected)) {
       if (existingEmit.has(e.name))
         continue
       existingEmit.add(e.name)
@@ -295,9 +296,9 @@ export function extractContractWithChecker(
 
   const collected = new Map<string, TypeDefInfo>()
   const props = mapMetaProps(meta.props, collected)
-  const emits = mapMetaEvents(meta)
-  const metaSlots = mapMetaSlots(meta)
-  const exposed = mapMetaExposed(meta)
+  const emits = mapMetaEvents(meta, collected)
+  const metaSlots = mapMetaSlots(meta, collected)
+  const exposed = mapMetaExposed(meta, collected)
 
   // 后处理需要本地类型源（动态插槽契约 / defineAttrs T）
   const localDefs = collectLocalTypeDefs(filePath)

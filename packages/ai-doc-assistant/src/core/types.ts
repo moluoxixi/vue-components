@@ -52,6 +52,12 @@ export interface EmitDef {
   name: string
   payloadType: string
   description: string
+  /**
+   * 该事件 payload 类型引用的项目内自定义类型名（剥离修饰后）。
+   * 与 prop.typeRefs 同口径，关联展开 typeDefs，使 emit payload 中的结构化类型字段可追溯。
+   * 空数组表示 payload 为基础类型或外部类型。
+   */
+  typeRefs: string[]
 }
 
 /** 单个插槽定义。 */
@@ -59,6 +65,12 @@ export interface SlotDef {
   name: string
   scopeType: string
   description: string
+  /**
+   * 该插槽作用域（scope）类型引用的项目内自定义类型名（剥离修饰后）。
+   * 与 prop.typeRefs 同口径，关联展开 typeDefs，使作用域插槽传出的结构化数据字段可追溯。
+   * 空数组表示作用域为基础类型、无作用域或外部类型。
+   */
+  typeRefs: string[]
 }
 
 /** v-model 绑定定义。 */
@@ -73,6 +85,12 @@ export interface ExposeDef {
   name: string
   type: string
   description: string
+  /**
+   * 该暴露成员类型引用的项目内自定义类型名（剥离修饰后）。
+   * 与 prop.typeRefs 同口径，关联展开 typeDefs，使暴露方法/属性涉及的结构化类型字段可追溯。
+   * 空数组表示成员类型为基础类型或外部类型。
+   */
+  typeRefs: string[]
 }
 
 /** 组件契约：一个组件的完整对外契约。 */

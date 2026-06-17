@@ -77,8 +77,13 @@ describe('extractContract — vue-component-meta 引擎', () => {
       'MacroProbe',
       FIXTURES_TSCONFIG,
     )
-    expect(macro.emits.find(e => e.name === 'pick')!.payloadType).toContain('PickPayload')
-    expect(macro.exposed!.find(e => e.name === 'getStatus')!.type).toContain('ExposedStatus')
+    const pickEmit = macro.emits.find(e => e.name === 'pick')!
+    expect(pickEmit.payloadType).toContain('PickPayload')
+    // emit.typeRefs 与 prop 同口径填充，作为 typeDefs 闭包根
+    expect(pickEmit.typeRefs).toContain('PickPayload')
+    const getStatus = macro.exposed!.find(e => e.name === 'getStatus')!
+    expect(getStatus.type).toContain('ExposedStatus')
+    expect(getStatus.typeRefs).toContain('ExposedStatus')
 
     const slot = await extractContract(
       fx('SlotComp/src/index.vue'),
@@ -86,13 +91,27 @@ describe('extractContract — vue-component-meta 引擎', () => {
       'SlotComp',
       FIXTURES_TSCONFIG,
     )
-    expect(slot.slots.find(s => s.name === 'footer')!.scopeType).toContain('FooterSlotScope')
+    const footerSlot = slot.slots.find(s => s.name === 'footer')!
+    expect(footerSlot.scopeType).toContain('FooterSlotScope')
+    expect(footerSlot.typeRefs).toContain('FooterSlotScope')
 
     const defs = [...macro.typeDefs, ...slot.typeDefs]
     expect(defs.find(t => t.name === 'PickPayload')!.raw).toContain('type PickPayload = ProbeItem | null')
     expect(defs.find(t => t.name === 'ProbeItem')!.raw).toContain('interface ProbeItem')
     expect(defs.find(t => t.name === 'ExposedStatus')!.raw).toContain('type ExposedStatus = \'idle\' | \'busy\'')
     expect(defs.find(t => t.name === 'FooterSlotScope')!.raw).toContain('interface FooterSlotScope')
+  })
+
+  it('printer 输出的中文默认值被解回真字符（不残留 \\uXXXX 转义）', async () => {
+    const c = await extractContract(
+      fx('MacroProbe/src/index.vue'),
+      '@test/pkg',
+      'MacroProbe',
+      FIXTURES_TSCONFIG,
+    )
+    const placeholder = c.props.find(p => p.name === 'placeholder')!
+    expect(placeholder.defaultValue).toContain('请选择')
+    expect(placeholder.defaultValue).not.toContain('\\u')
   })
 
   it('从 <Comp>Slots 契约派生动态插槽 [dynamic]，并保留 meta 具名插槽', async () => {

@@ -20,12 +20,16 @@ type VirtualRef = ComponentPublicInstance | ComponentInternalInstance | HTMLElem
 type PickPayload = ProbeItem | null
 type ExposedStatus = 'idle' | 'busy'
 
-defineProps<{
+withDefaults(defineProps<{
   /** 列表项 */
   items: ProbeItem[]
   /** 外部虚拟引用 */
   virtualRef?: VirtualRef
-}>()
+  /** 占位文案（中文默认值，验证 printer unicode 转义被解回真字符） */
+  placeholder?: string
+}>(), {
+  placeholder: '请选择',
+})
 defineEmits<{
   /** 选中项 */
   (e: 'pick', item: PickPayload): void

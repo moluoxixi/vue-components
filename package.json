@@ -10,6 +10,7 @@
   "scripts": {
     "changeset": "changeset",
     "dev:components": "pnpm build && pnpm -C playgrounds/components-playground dev",
+    "dev:ai-doc": "pnpm --filter @moluoxixi/ai-doc-assistant build && node packages/ai-doc-assistant/dist/cli.js serve --root D:/project-new/vue-component --entries packages/components/index.ts --host 127.0.0.1 --port 5173",
     "dev:config-form": "pnpm build && pnpm -C packages/ConfigForm/playground dev",
     "build": "pnpm -r --filter \"./packages/**\" --filter \"!./packages/ConfigForm/playground\" build",
     "build:playgrounds": "pnpm -r --filter \"./packages/ConfigForm/playground\" --filter \"./playgrounds/*\" build",
