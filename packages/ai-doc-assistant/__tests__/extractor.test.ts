@@ -70,6 +70,31 @@ describe('extractContract — vue-component-meta 引擎', () => {
     expect(def!.raw).toContain('ComponentPublicInstance | ComponentInternalInstance | HTMLElement | null')
   })
 
+  it('emits、slots、exposed 引用本地 type alias 时也纳入 typeDefs.raw', async () => {
+    const macro = await extractContract(
+      fx('MacroProbe/src/index.vue'),
+      '@test/pkg',
+      'MacroProbe',
+      FIXTURES_TSCONFIG,
+    )
+    expect(macro.emits.find(e => e.name === 'pick')!.payloadType).toContain('PickPayload')
+    expect(macro.exposed!.find(e => e.name === 'getStatus')!.type).toContain('ExposedStatus')
+
+    const slot = await extractContract(
+      fx('SlotComp/src/index.vue'),
+      '@test/pkg',
+      'SlotComp',
+      FIXTURES_TSCONFIG,
+    )
+    expect(slot.slots.find(s => s.name === 'footer')!.scopeType).toContain('FooterSlotScope')
+
+    const defs = [...macro.typeDefs, ...slot.typeDefs]
+    expect(defs.find(t => t.name === 'PickPayload')!.raw).toContain('type PickPayload = ProbeItem | null')
+    expect(defs.find(t => t.name === 'ProbeItem')!.raw).toContain('interface ProbeItem')
+    expect(defs.find(t => t.name === 'ExposedStatus')!.raw).toContain('type ExposedStatus = \'idle\' | \'busy\'')
+    expect(defs.find(t => t.name === 'FooterSlotScope')!.raw).toContain('interface FooterSlotScope')
+  })
+
   it('从 <Comp>Slots 契约派生动态插槽 [dynamic]，并保留 meta 具名插槽', async () => {
     const c = await extractContract(
       fx('SlotComp/src/index.vue'),
@@ -148,7 +173,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
     )
     const pick = c.emits.find(e => e.name === 'pick')
     expect(pick).toBeTruthy()
-    expect(pick!.payloadType).toContain('ProbeItem')
+    expect(pick!.payloadType).toContain('PickPayload')
   })
 
   it('defineAttrs<T> 提取为独立 attrs 段（meta 不体现，靠后处理）', async () => {

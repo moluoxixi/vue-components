@@ -153,6 +153,12 @@ function backfillTransitiveClosure(
   while (changed) {
     changed = false
     for (const def of Array.from(collected.values())) {
+      for (const ref of extractTypeRefs(def.raw)) {
+        if (collected.has(ref) || !localByName.has(ref))
+          continue
+        collected.set(ref, localByName.get(ref) as TypeDefInfo)
+        changed = true
+      }
       for (const f of def.fields) {
         for (const ref of extractTypeRefs(f.type)) {
           if (collected.has(ref) || !localByName.has(ref))
@@ -163,6 +169,25 @@ function backfillTransitiveClosure(
       }
     }
   }
+}
+
+/**
+ * 收集所有对外契约面中的本地类型引用，作为 typeDefs 闭包根。
+ * props 已有显式 typeRefs；emits / slots / exposed 只有类型字符串，也要参与回填，
+ * 否则非对象 type alias 只会出现在文本里，知识库看不到其 raw 定义。
+ */
+function collectContractRootTypeRefs(
+  props: PropDef[],
+  emits: EmitDef[],
+  slots: SlotDef[],
+  exposed: ReturnType<typeof mapMetaExposed>,
+): string[] {
+  return [
+    ...props.flatMap(p => p.typeRefs),
+    ...emits.flatMap(e => extractTypeRefs(e.payloadType)),
+    ...slots.flatMap(s => extractTypeRefs(s.scopeType)),
+    ...exposed.flatMap(e => extractTypeRefs(e.type)),
+  ]
 }
 
 /**
@@ -292,8 +317,9 @@ export function extractContractWithChecker(
   // 传递闭包补强：meta 把函数签名（如 `formatter: (row: TableRow) => string`）渲染为字符串，
   // 不会为其中引用的类型产出 schema object 节点，导致 TableRow 这类「仅出现在函数签名里」的
   // 自有类型漏收；非对象 type alias（如 HTMLElement | null 联合别名）也不会产出 schema object。
-  // 这里从 prop.typeRefs 作为根集合补回本地类型定义，再遍历已展开类型的字段类型递归纳入闭包。
-  backfillTransitiveClosure(collected, localDefs, props.flatMap(p => p.typeRefs))
+  // 这里从 props / emits / slots / exposed 的对外类型文本作为根集合补回本地类型定义，
+  // 再遍历已展开类型的字段类型递归纳入闭包。
+  backfillTransitiveClosure(collected, localDefs, collectContractRootTypeRefs(props, emits, slots, exposed))
 
   // defineAttrs 开放透传属性段
   const attrs = extractAttrs(filePath, localDefs)
