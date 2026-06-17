@@ -1,10 +1,14 @@
 // @vitest-environment node
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { ServerContext } from '../src/server/context'
+
+// 实际抽取契约的用例必须用包内 fixture 工作区：vue-component-meta 需被分析 SFC 落在 tsconfig
+// program 内（临时目录无法解析 vue 类型）。fixture 工作区含 demo 包 + tsconfig，可被 checker 解析。
+const FIXTURE_ROOT = resolve(__dirname, 'fixtures', 'ctx-workspace')
 
 // 一个最小可解析的 SFC：驱动契约抽取 → content 策略关键词检索态构建。
 const SFC = `<script setup lang="ts">
@@ -75,7 +79,8 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
   })
 
   it('buildIndex（content）无需 provider key 即可完成', async () => {
-    const ctx = new ServerContext({ root, env: {} })
+    // 实际抽取走 fixture 工作区（vue-component-meta 需 tsconfig program）
+    const ctx = new ServerContext({ root: FIXTURE_ROOT, env: {} })
     await ctx.buildIndex()
     expect(ctx.state.isReady()).toBe(true)
     expect(ctx.getStrategy()).not.toBeNull()
@@ -83,7 +88,7 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
   })
 
   it('buildIndex 全链路：提取契约 → content 策略就绪 → 可检索', async () => {
-    const ctx = new ServerContext({ root, env: ENV })
+    const ctx = new ServerContext({ root: FIXTURE_ROOT, env: ENV })
     await ctx.buildIndex()
     expect(ctx.state.isReady()).toBe(true)
     expect(ctx.getContracts().length).toBe(1)

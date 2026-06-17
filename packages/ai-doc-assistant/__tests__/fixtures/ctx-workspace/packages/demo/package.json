@@ -1,0 +1,8 @@
+{
+  "name": "@demo/components",
+  "exports": {
+    ".": {
+      "source": "./index.ts"
+    }
+  }
+}

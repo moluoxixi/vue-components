@@ -18,7 +18,7 @@ catalogs:
     '@orama/orama': ^3.1.18
     '@orama/plugin-data-persistence': ^3.1.18
     '@tanstack/vue-query': ^5.101.0
-    vue-docgen-api: ^4.79.2
+    vue-component-meta: 3.1.8
   dev:
     '@antfu/eslint-config': ^8.2.0
     '@babel/parser': ^7.28.5

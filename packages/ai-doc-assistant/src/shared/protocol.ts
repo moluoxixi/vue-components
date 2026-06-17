@@ -79,6 +79,8 @@ export interface PropWire {
   description: string
   /** 该 prop 类型引用的项目内自定义类型名（关联 typeDefs）。 */
   typeRefs: string[]
+  /** 经父组件 `v-bind="$attrs"` 定向转发自哪个内部子组件（UI 角标）。缺省为父组件自身声明。 */
+  forwardedFrom?: string
 }
 
 /** 单个 emit 的 wire 形态。 */
@@ -116,6 +118,21 @@ export interface TypeDefWire {
   raw: string
 }
 
+/** defineAttrs 开放透传属性字段的 wire 形态。 */
+export interface AttrWire {
+  name: string
+  type: string
+  optional: boolean
+  description: string
+}
+
+/** defineExpose / 组件实例对外暴露成员的 wire 形态。 */
+export interface ExposeWire {
+  name: string
+  type: string
+  description: string
+}
+
 /**
  * GET /components/:name 响应体——单组件完整契约。
  * 供详情页渲染 props / emits / slots / v-model 表格与展开的关联类型结构。
@@ -130,6 +147,10 @@ export interface ComponentDetailResponse {
   slots: SlotWire[]
   models: ModelWire[]
   typeDefs: TypeDefWire[]
+  /** `defineAttrs<T>()` 声明的开放透传属性字段；缺省表示组件未声明。 */
+  attrs?: AttrWire[]
+  /** `defineExpose` / 组件实例对外暴露成员；缺省表示无对外暴露。 */
+  exposed?: ExposeWire[]
 }
 
 /** 检索模式：content=结构化关键词 topK（默认）；vector=向量语义检索（可选增强）。 */

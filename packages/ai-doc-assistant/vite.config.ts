@@ -66,7 +66,7 @@ export default defineConfig({
       external: [
         '@orama/orama',
         '@orama/plugin-data-persistence',
-        'vue-docgen-api',
+        'vue-component-meta',
         'vue3-sfc-loader',
         'typescript',
         'zod',

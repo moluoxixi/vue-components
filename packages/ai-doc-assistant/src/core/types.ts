@@ -16,6 +16,12 @@ export interface PropDef {
    * 的字段结构对模型可见。空数组表示该 prop 为基础类型或外部类型，无需展开。
    */
   typeRefs: string[]
+  /**
+   * 该 prop 经父组件 `v-bind="$attrs"` 定向转发自哪个内部子组件（如 'PopoverTableSelectBase'）。
+   * 对使用者而言它是父组件对外 API 的一等公民 prop，UI 以来源角标提示其出处。
+   * undefined 表示父组件自身显式声明的 prop。
+   */
+  forwardedFrom?: string
 }
 
 /** 自定义类型（interface / type alias）的单个字段定义。 */
@@ -62,6 +68,13 @@ export interface ModelDef {
   description: string
 }
 
+/** defineExpose / 组件实例对外暴露的成员定义。 */
+export interface ExposeDef {
+  name: string
+  type: string
+  description: string
+}
+
 /** 组件契约：一个组件的完整对外契约。 */
 export interface ComponentContract {
   name: string
@@ -77,4 +90,13 @@ export interface ComponentContract {
    * 让结构化 prop 的字段口径在知识库中可追溯（方案 A）。
    */
   typeDefs: TypeDefInfo[]
+  /**
+   * `defineAttrs<T>()` 声明的开放透传属性字段。组件把任意原生/额外属性透传到内部元素时，
+   * 这里给出其类型契约，UI 单独成段展示（不混入 props 表）。undefined 表示组件未显式声明。
+   */
+  attrs?: TypeFieldDef[]
+  /**
+   * `defineExpose` / 组件实例对外暴露的成员（来自 meta.exposed）。空或 undefined 表示无对外暴露。
+   */
+  exposed?: ExposeDef[]
 }

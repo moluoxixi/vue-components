@@ -53,7 +53,7 @@
     "@orama/orama": "catalog:data",
     "@orama/plugin-data-persistence": "catalog:data",
     "element-plus": "catalog:ui",
-    "vue-docgen-api": "catalog:data",
+    "vue-component-meta": "catalog:data",
     "vue3-sfc-loader": "catalog:",
     "zod": "catalog:dev"
   },

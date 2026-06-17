@@ -168,6 +168,7 @@ function handleComponentDetail(ctx: ServerContext, name: string, res: ServerResp
       defaultValue: p.defaultValue,
       description: p.description,
       typeRefs: p.typeRefs,
+      ...(p.forwardedFrom ? { forwardedFrom: p.forwardedFrom } : {}),
     })),
     emits: c.emits.map(e => ({ name: e.name, payloadType: e.payloadType, description: e.description })),
     slots: c.slots.map(s => ({ name: s.name, description: s.description })),
@@ -178,6 +179,12 @@ function handleComponentDetail(ctx: ServerContext, name: string, res: ServerResp
       fields: t.fields.map(f => ({ name: f.name, type: f.type, optional: f.optional, description: f.description })),
       raw: t.raw,
     })),
+    ...(c.attrs?.length
+      ? { attrs: c.attrs.map(a => ({ name: a.name, type: a.type, optional: a.optional, description: a.description })) }
+      : {}),
+    ...(c.exposed?.length
+      ? { exposed: c.exposed.map(e => ({ name: e.name, type: e.type, description: e.description })) }
+      : {}),
   }
   sendJson(res, 200, body)
 }

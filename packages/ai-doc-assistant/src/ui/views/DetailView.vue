@@ -102,7 +102,15 @@ watch(() => props.name, load, { immediate: true })
           </thead>
           <tbody>
             <tr v-for="p in detail.props" :key="p.name" data-testid="prop-row">
-              <td><code>{{ p.name }}</code></td>
+              <td>
+                <code>{{ p.name }}</code>
+                <span
+                  v-if="p.forwardedFrom"
+                  class="forwarded-badge"
+                  :title="`透传自内部组件 ${p.forwardedFrom}`"
+                  data-testid="prop-forwarded"
+                >透传自 {{ p.forwardedFrom }}</span>
+              </td>
               <td>
                 <ElTooltip
                   v-if="p.typeRefs.length"
@@ -162,6 +170,35 @@ watch(() => props.name, load, { immediate: true })
         </table>
       </section>
 
+      <section v-if="detail.attrs && detail.attrs.length" data-testid="detail-attrs">
+        <h3>透传属性（$attrs）</h3>
+        <table class="contract-table">
+          <thead><tr><th>名称</th><th>类型</th><th>可选</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr v-for="a in detail.attrs" :key="a.name" data-testid="attr-row">
+              <td><code>{{ a.name }}</code></td>
+              <td><code>{{ a.type }}</code></td>
+              <td>{{ a.optional ? '是' : '否' }}</td>
+              <td>{{ a.description || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section v-if="detail.exposed && detail.exposed.length" data-testid="detail-exposed">
+        <h3>对外暴露（defineExpose）</h3>
+        <table class="contract-table">
+          <thead><tr><th>名称</th><th>类型</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr v-for="e in detail.exposed" :key="e.name" data-testid="expose-row">
+              <td><code>{{ e.name }}</code></td>
+              <td><code>{{ e.type }}</code></td>
+              <td>{{ e.description || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <section v-if="detail.typeDefs.length" data-testid="detail-typedefs">
         <h3>关联类型定义</h3>
         <div v-for="t in detail.typeDefs" :key="t.name" class="typedef" data-testid="typedef-block">
@@ -214,6 +251,11 @@ code {
   background: #f6f8fa; padding: 1px 6px; border-radius: 4px;
 }
 code.ref { background: #ddf4ff; color: #0969da; }
+.forwarded-badge {
+  display: inline-block; margin-left: 6px; font-size: 11px;
+  color: #6e40c9; background: #f3eefb; border: 1px solid #e0d3f5;
+  padding: 0 6px; border-radius: 10px; vertical-align: middle;
+}
 .typedef { margin-bottom: 16px; }
 .typedef-name { margin-bottom: 6px; }
 .typedef-name small { color: #8b949e; margin-left: 8px; font-size: 11px; }

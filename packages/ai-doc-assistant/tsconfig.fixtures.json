@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "lib": ["DOM", "dom.iterable", "ESNext"],
+    "types": ["vite/client", "node"]
+  },
+  "include": ["__tests__/fixtures"]
+}
