@@ -142,8 +142,13 @@ function extractAttrs(sfcPath: string, localDefs: TypeDefInfo[]): TypeFieldDef[]
 function backfillTransitiveClosure(
   collected: Map<string, TypeDefInfo>,
   localDefs: TypeDefInfo[],
+  rootRefs: string[] = [],
 ): void {
   const localByName = new Map(localDefs.map(d => [d.name, d]))
+  for (const ref of rootRefs) {
+    if (!collected.has(ref) && localByName.has(ref))
+      collected.set(ref, localByName.get(ref) as TypeDefInfo)
+  }
   let changed = true
   while (changed) {
     changed = false
@@ -286,9 +291,9 @@ export function extractContractWithChecker(
 
   // 传递闭包补强：meta 把函数签名（如 `formatter: (row: TableRow) => string`）渲染为字符串，
   // 不会为其中引用的类型产出 schema object 节点，导致 TableRow 这类「仅出现在函数签名里」的
-  // 自有类型漏收。这里用已收集的本地类型源补回：遍历已展开类型的字段类型，凡引用到本地有定义、
-  // 但 collected 里缺失的类型名，纳入（递归直至闭包稳定）。
-  backfillTransitiveClosure(collected, localDefs)
+  // 自有类型漏收；非对象 type alias（如 HTMLElement | null 联合别名）也不会产出 schema object。
+  // 这里从 prop.typeRefs 作为根集合补回本地类型定义，再遍历已展开类型的字段类型递归纳入闭包。
+  backfillTransitiveClosure(collected, localDefs, props.flatMap(p => p.typeRefs))
 
   // defineAttrs 开放透传属性段
   const attrs = extractAttrs(filePath, localDefs)

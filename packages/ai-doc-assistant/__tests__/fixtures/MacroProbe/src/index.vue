@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ComponentInternalInstance, ComponentPublicInstance } from 'vue'
+
 /** 透传到内部输入框的原生属性 */
 interface MacroProbeAttrs {
   /** 原生 placeholder */
@@ -14,9 +16,13 @@ interface ProbeItem {
   label: string
 }
 
+type VirtualRef = ComponentPublicInstance | ComponentInternalInstance | HTMLElement | null
+
 defineProps<{
   /** 列表项 */
   items: ProbeItem[]
+  /** 外部虚拟引用 */
+  virtualRef?: VirtualRef
 }>()
 defineEmits<{
   /** 选中项 */

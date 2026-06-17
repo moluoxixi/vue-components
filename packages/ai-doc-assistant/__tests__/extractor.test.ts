@@ -52,6 +52,24 @@ describe('extractContract — vue-component-meta 引擎', () => {
     expect(placeholder!.required).toBe(false)
   })
 
+  it('props 引用非对象 type alias 时仍纳入 typeDefs.raw，避免知识库只剩类型名', async () => {
+    const c = await extractContract(
+      fx('MacroProbe/src/index.vue'),
+      '@test/pkg',
+      'MacroProbe',
+      FIXTURES_TSCONFIG,
+    )
+    const virtualRef = c.props.find(p => p.name === 'virtualRef')
+    expect(virtualRef).toBeTruthy()
+    expect(virtualRef!.typeRefs).toContain('VirtualRef')
+
+    const def = c.typeDefs.find(t => t.name === 'VirtualRef')
+    expect(def).toBeTruthy()
+    expect(def!.kind).toBe('type')
+    expect(def!.fields).toEqual([])
+    expect(def!.raw).toContain('ComponentPublicInstance | ComponentInternalInstance | HTMLElement | null')
+  })
+
   it('从 <Comp>Slots 契约派生动态插槽 [dynamic]，并保留 meta 具名插槽', async () => {
     const c = await extractContract(
       fx('SlotComp/src/index.vue'),
