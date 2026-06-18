@@ -116,10 +116,15 @@ describe('dispatch 路由分发', () => {
         sourceFile: 'a.vue',
         description: '弹窗表格选择',
         props: [{ name: 'columns', type: 'PopoverTableColumn[]', required: false, description: '列配置', typeRefs: ['PopoverTableColumn'] }],
-        emits: [{ name: 'change', description: '变更' }],
-        slots: [{ name: 'default', description: '默认插槽' }],
+        emits: [{ name: 'select', payloadType: '[row: PopoverTableRow]', description: '选择', typeRefs: ['PopoverTableRow'] }],
+        slots: [{ name: 'cell', scopeType: '{ row: PopoverTableRow }', description: '单元格', typeRefs: ['PopoverTableRow'] }],
         models: [{ name: 'modelValue', type: 'string' }],
-        typeDefs: [{ name: 'PopoverTableColumn', kind: 'interface', raw: 'interface ...', fields: [{ name: 'field', type: 'string', optional: false, description: '字段' }] }],
+        exposed: [{ name: 'options', type: 'ThrottleOrDebounceOptions', description: '节流配置', typeRefs: ['ThrottleOrDebounceOptions'] }],
+        typeDefs: [
+          { name: 'PopoverTableColumn', kind: 'interface', raw: 'interface ...', fields: [{ name: 'field', type: 'string', optional: false, description: '字段' }] },
+          { name: 'PopoverTableRow', kind: 'interface', raw: 'interface ...', fields: [{ name: 'id', type: 'string', optional: false, description: '行ID' }] },
+          { name: 'ThrottleOrDebounceOptions', kind: 'interface', raw: 'interface ...', fields: [{ name: 'wait', type: 'number', optional: false, description: '等待时间' }] },
+        ],
       }],
     })
     const res = makeRes()
@@ -128,6 +133,10 @@ describe('dispatch 路由分发', () => {
     const json = res.json()
     expect(json.name).toBe('PopoverTableSelect')
     expect(json.props[0].typeRefs).toEqual(['PopoverTableColumn'])
+    expect(json.emits[0].typeRefs).toEqual(['PopoverTableRow'])
+    expect(json.slots[0].scopeType).toBe('{ row: PopoverTableRow }')
+    expect(json.slots[0].typeRefs).toEqual(['PopoverTableRow'])
+    expect(json.exposed[0].typeRefs).toEqual(['ThrottleOrDebounceOptions'])
     expect(json.typeDefs[0].fields[0].name).toBe('field')
   })
 

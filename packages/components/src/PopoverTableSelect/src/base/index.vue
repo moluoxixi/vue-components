@@ -6,6 +6,7 @@ import type {
   PopoverTableRow,
   PopoverTableSelectBaseEmits,
   PopoverTableSelectBaseProps,
+  PopoverTableSelectSlots,
   PopoverTableVirtualRef,
 } from '../types'
 import { ElPopover } from 'element-plus'
@@ -31,7 +32,7 @@ const props = withDefaults(defineProps<PopoverTableSelectBaseProps>(), {
 })
 
 const emit = defineEmits<PopoverTableSelectBaseEmits>()
-const slots = defineSlots<Record<string, (params: any) => any>>()
+const slots = defineSlots<PopoverTableSelectSlots>()
 
 const popoverVisible = defineModel<boolean>({ default: false })
 const popoverRef = useTemplateRef<HTMLElement>('popoverRef')

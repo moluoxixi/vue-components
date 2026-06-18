@@ -24,6 +24,12 @@ const typeTooltipStyle = { whiteSpace: 'pre-line', maxWidth: '520px' } as const
 /** 按类型名索引展开后的类型定义，供 prop type tooltip 快速查找。 */
 const typeDefByName = computed(() => new Map((detail.value?.typeDefs ?? []).map(t => [t.name, t] as const)))
 
+/** 预编译当前详情的本地类型名匹配器，避免表格每个单元格重复构造 RegExp。 */
+const typeDefMatchers = computed(() => (detail.value?.typeDefs ?? []).map((typeDef) => {
+  const escaped = typeDef.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return { name: typeDef.name, pattern: new RegExp(`\\b${escaped}\\b`) }
+}))
+
 /** 把 prop 引用的类型定义格式化为 tooltip 文案。 */
 function typeTooltipContent(typeRefs: string[]): string {
   return typeRefs
@@ -41,6 +47,27 @@ function typeTooltipContent(typeRefs: string[]): string {
       return [typeDef.name, ...fields].join('\n')
     })
     .join('\n\n')
+}
+
+/**
+ * 从任意契约类型文本中解析当前详情已展开的本地类型引用。
+ *
+ * props / emits / slots / exposed 由后端显式给出 typeRefs；v-model、attrs 以及关联类型定义字段
+ * 只有类型字符串。这里按当前 detail.typeDefs 兜底匹配，避免这些表格里的 `PopoverTableRow`、
+ * `PopoverTableColumn` 等本地类型只显示名称却没有 tooltip 明细。
+ */
+function typeRefsForDisplay(typeText: string, explicitRefs: string[] = []): string[] {
+  const refs = new Set(explicitRefs)
+  for (const { name, pattern } of typeDefMatchers.value) {
+    if (pattern.test(typeText))
+      refs.add(name)
+  }
+  return Array.from(refs)
+}
+
+/** 当前类型文本是否能展示本地类型 tooltip。 */
+function hasTypeTooltip(typeText: string, explicitRefs: string[] = []): boolean {
+  return typeRefsForDisplay(typeText, explicitRefs).length > 0
 }
 
 /** 拉取指定组件的契约详情。 */
@@ -113,8 +140,8 @@ watch(() => props.name, load, { immediate: true })
               </td>
               <td>
                 <ElTooltip
-                  v-if="p.typeRefs.length"
-                  :content="typeTooltipContent(p.typeRefs)"
+                  v-if="hasTypeTooltip(p.type, p.typeRefs)"
+                  :content="typeTooltipContent(typeRefsForDisplay(p.type, p.typeRefs))"
                   :popper-style="typeTooltipStyle"
                   placement="top"
                 >
@@ -137,7 +164,17 @@ watch(() => props.name, load, { immediate: true })
           <tbody>
             <tr v-for="e in detail.emits" :key="e.name">
               <td><code>{{ e.name }}</code></td>
-              <td><code>{{ e.payloadType }}</code></td>
+              <td>
+                <ElTooltip
+                  v-if="hasTypeTooltip(e.payloadType, e.typeRefs)"
+                  :content="typeTooltipContent(typeRefsForDisplay(e.payloadType, e.typeRefs))"
+                  :popper-style="typeTooltipStyle"
+                  placement="top"
+                >
+                  <code class="type-ref">{{ e.payloadType }}</code>
+                </ElTooltip>
+                <code v-else>{{ e.payloadType }}</code>
+              </td>
               <td>{{ e.description || '—' }}</td>
             </tr>
           </tbody>
@@ -151,7 +188,17 @@ watch(() => props.name, load, { immediate: true })
           <tbody>
             <tr v-for="m in detail.models" :key="m.name">
               <td><code>{{ m.name }}</code></td>
-              <td><code>{{ m.type }}</code></td>
+              <td>
+                <ElTooltip
+                  v-if="hasTypeTooltip(m.type)"
+                  :content="typeTooltipContent(typeRefsForDisplay(m.type))"
+                  :popper-style="typeTooltipStyle"
+                  placement="top"
+                >
+                  <code class="type-ref">{{ m.type }}</code>
+                </ElTooltip>
+                <code v-else>{{ m.type }}</code>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -160,10 +207,21 @@ watch(() => props.name, load, { immediate: true })
       <section v-if="detail.slots.length" data-testid="detail-slots">
         <h3>Slots</h3>
         <table class="contract-table">
-          <thead><tr><th>名称</th><th>说明</th></tr></thead>
+          <thead><tr><th>名称</th><th>作用域类型</th><th>说明</th></tr></thead>
           <tbody>
             <tr v-for="s in detail.slots" :key="s.name">
               <td><code>{{ s.name }}</code></td>
+              <td>
+                <ElTooltip
+                  v-if="hasTypeTooltip(s.scopeType, s.typeRefs)"
+                  :content="typeTooltipContent(typeRefsForDisplay(s.scopeType, s.typeRefs))"
+                  :popper-style="typeTooltipStyle"
+                  placement="top"
+                >
+                  <code class="type-ref">{{ s.scopeType }}</code>
+                </ElTooltip>
+                <code v-else>{{ s.scopeType }}</code>
+              </td>
               <td>{{ s.description || '—' }}</td>
             </tr>
           </tbody>
@@ -177,7 +235,17 @@ watch(() => props.name, load, { immediate: true })
           <tbody>
             <tr v-for="a in detail.attrs" :key="a.name" data-testid="attr-row">
               <td><code>{{ a.name }}</code></td>
-              <td><code>{{ a.type }}</code></td>
+              <td>
+                <ElTooltip
+                  v-if="hasTypeTooltip(a.type)"
+                  :content="typeTooltipContent(typeRefsForDisplay(a.type))"
+                  :popper-style="typeTooltipStyle"
+                  placement="top"
+                >
+                  <code class="type-ref">{{ a.type }}</code>
+                </ElTooltip>
+                <code v-else>{{ a.type }}</code>
+              </td>
               <td>{{ a.optional ? '是' : '否' }}</td>
               <td>{{ a.description || '—' }}</td>
             </tr>
@@ -192,7 +260,17 @@ watch(() => props.name, load, { immediate: true })
           <tbody>
             <tr v-for="e in detail.exposed" :key="e.name" data-testid="expose-row">
               <td><code>{{ e.name }}</code></td>
-              <td><code>{{ e.type }}</code></td>
+              <td>
+                <ElTooltip
+                  v-if="hasTypeTooltip(e.type, e.typeRefs)"
+                  :content="typeTooltipContent(typeRefsForDisplay(e.type, e.typeRefs))"
+                  :popper-style="typeTooltipStyle"
+                  placement="top"
+                >
+                  <code class="type-ref">{{ e.type }}</code>
+                </ElTooltip>
+                <code v-else>{{ e.type }}</code>
+              </td>
               <td>{{ e.description || '—' }}</td>
             </tr>
           </tbody>
@@ -210,7 +288,17 @@ watch(() => props.name, load, { immediate: true })
             <tbody>
               <tr v-for="f in t.fields" :key="f.name">
                 <td><code>{{ f.name }}</code></td>
-                <td><code>{{ f.type }}</code></td>
+                <td>
+                  <ElTooltip
+                    v-if="hasTypeTooltip(f.type)"
+                    :content="typeTooltipContent(typeRefsForDisplay(f.type))"
+                    :popper-style="typeTooltipStyle"
+                    placement="top"
+                  >
+                    <code class="type-ref">{{ f.type }}</code>
+                  </ElTooltip>
+                  <code v-else>{{ f.type }}</code>
+                </td>
                 <td>{{ f.optional ? '是' : '否' }}</td>
                 <td>{{ f.description || '—' }}</td>
               </tr>
@@ -250,7 +338,8 @@ code {
   font-family: ui-monospace, monospace; font-size: 12px;
   background: #f6f8fa; padding: 1px 6px; border-radius: 4px;
 }
-code.ref { background: #ddf4ff; color: #0969da; }
+code.ref,
+code.type-ref { background: #ddf4ff; color: #0969da; }
 .forwarded-badge {
   display: inline-block; margin-left: 6px; font-size: 11px;
   color: #6e40c9; background: #f3eefb; border: 1px solid #e0d3f5;

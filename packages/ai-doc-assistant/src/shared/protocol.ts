@@ -88,12 +88,18 @@ export interface EmitWire {
   name: string
   payloadType: string
   description: string
+  /** 该事件载荷类型引用的项目内自定义类型名（关联 typeDefs）。 */
+  typeRefs: string[]
 }
 
 /** 单个 slot 的 wire 形态。 */
 export interface SlotWire {
   name: string
+  /** 插槽作用域类型。 */
+  scopeType: string
   description: string
+  /** 该插槽作用域类型引用的项目内自定义类型名（关联 typeDefs）。 */
+  typeRefs: string[]
 }
 
 /** 单个 v-model 的 wire 形态。 */
@@ -131,6 +137,8 @@ export interface ExposeWire {
   name: string
   type: string
   description: string
+  /** 该暴露成员类型引用的项目内自定义类型名（关联 typeDefs）。 */
+  typeRefs: string[]
 }
 
 /**

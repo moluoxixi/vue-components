@@ -124,6 +124,9 @@ describe('extractContract — vue-component-meta 引擎', () => {
     const slotNames = c.slots.map(s => s.name)
     expect(slotNames).toContain('default')
     expect(slotNames).toContain('[dynamic]')
+    const dynamicSlot = c.slots.find(s => s.name === '[dynamic]')!
+    expect(dynamicSlot.scopeType).toBe('{ row: { id: string }, columnIndex: number }')
+    expect(dynamicSlot.typeRefs).toEqual([])
     // 不出现 vue-docgen 旧引擎误判的伪插槽 name
     expect(slotNames).not.toContain('name')
   })

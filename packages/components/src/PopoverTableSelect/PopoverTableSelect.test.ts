@@ -264,6 +264,64 @@ describe('popover table select', () => {
     expect(update).toHaveBeenCalledTimes(1)
   })
 
+  it('动态表头和单元格插槽收到明确的行列作用域参数', async () => {
+    const wrapper = mount(PopoverTableSelectBase, {
+      props: {
+        columns: [
+          { field: 'name', slots: { default: 'nameCell', header: 'nameHeader' } },
+        ],
+        data: [{ code: 'C-001', name: '初始仓库' }],
+        modelValue: true,
+        virtualRef: createVirtualInput(),
+      },
+      slots: {
+        nameHeader: ({ column, columnIndex }: any) => h('span', { 'data-testid': 'header-slot' }, `${column.field}:${columnIndex}`),
+        nameCell: ({ row, column, rowIndex, columnIndex, value }: any) => h(
+          'span',
+          { 'data-testid': 'cell-slot' },
+          `${row.code}:${column.field}:${rowIndex}:${columnIndex}:${value}`,
+        ),
+      },
+      global: {
+        stubs: {
+          ElPopover: createElPopoverStub(vi.fn()),
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="header-slot"]').text()).toBe('name:0')
+    expect(wrapper.get('[data-testid="cell-slot"]').text()).toBe('C-001:name:0:0:初始仓库')
+  })
+
+  it('默认插槽和动态插槽可以同时渲染且互不影响', async () => {
+    const wrapper = mount(PopoverTableSelectBase, {
+      props: {
+        columns: [
+          { field: 'name', slots: { default: 'nameCell' } },
+        ],
+        data: [{ code: 'C-001', name: '初始仓库' }],
+        modelValue: true,
+        virtualRef: createVirtualInput(),
+      },
+      slots: {
+        default: () => h('span', { 'data-testid': 'default-slot' }, '默认内容'),
+        nameCell: ({ value }: any) => h('span', { 'data-testid': 'cell-slot' }, value),
+      },
+      global: {
+        stubs: {
+          ElPopover: createElPopoverStub(vi.fn()),
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="default-slot"]').text()).toBe('默认内容')
+    expect(wrapper.get('[data-testid="cell-slot"]').text()).toBe('初始仓库')
+  })
+
   it('滚动保持在底部边界时只触发一次加载边界事件', async () => {
     const wrapper = mount(PopoverTableSelectBase, {
       props: {

@@ -5,6 +5,7 @@ import type {
   PopoverTableRow,
   PopoverTableSelectEmits,
   PopoverTableSelectProps,
+  PopoverTableSelectSlots,
   PopoverTableVirtualRef,
   ThrottleOrDebounceOptions,
 } from './types'
@@ -37,7 +38,7 @@ const props = withDefaults(defineProps<RuntimeProps>(), {
 })
 
 const emit = defineEmits<PopoverTableSelectEmits>()
-const slots = defineSlots<Record<string, (params: any) => any>>()
+const slots = defineSlots<PopoverTableSelectSlots>()
 
 const popoverModel = defineModel<boolean>({ default: false })
 const inputValue = defineModel<string>('inputValue', { default: '' })

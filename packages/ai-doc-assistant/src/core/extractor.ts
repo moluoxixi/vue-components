@@ -84,6 +84,66 @@ function deriveModels(emits: EmitDef[]): ModelDef[] {
  * @param localDefs 组件目录收集到的全部本地类型定义（含 SFC 内联）。
  * @param metaSlots meta 已解析出的具名插槽（用于去重，避免重复声明）。
  */
+/** 从插槽函数类型中提取首个作用域参数类型，如 `(params: Foo) => any` → `Foo`。 */
+function extractSlotScopeType(slotFnType: string): string | null {
+  const arrowIndex = slotFnType.indexOf('=>')
+  if (arrowIndex === -1)
+    return null
+
+  let closeIndex = arrowIndex - 1
+  while (closeIndex >= 0 && /\s/.test(slotFnType[closeIndex])) closeIndex--
+  if (slotFnType[closeIndex] !== ')')
+    return null
+
+  let parenDepth = 0
+  let openIndex = -1
+  for (let i = closeIndex; i >= 0; i--) {
+    const char = slotFnType[i]
+    if (char === ')') {
+      parenDepth++
+      continue
+    }
+    if (char === '(') {
+      parenDepth--
+      if (parenDepth === 0) {
+        openIndex = i
+        break
+      }
+    }
+  }
+  if (openIndex === -1)
+    return null
+
+  const paramsText = slotFnType.slice(openIndex + 1, closeIndex)
+  let angleDepth = 0
+  let braceDepth = 0
+  let bracketDepth = 0
+  let nestedParenDepth = 0
+  for (let i = 0; i < paramsText.length; i++) {
+    const char = paramsText[i]
+    if (char === '<')
+      angleDepth++
+    else if (char === '>' && angleDepth > 0)
+      angleDepth--
+    else if (char === '{')
+      braceDepth++
+    else if (char === '}' && braceDepth > 0)
+      braceDepth--
+    else if (char === '[')
+      bracketDepth++
+    else if (char === ']' && bracketDepth > 0)
+      bracketDepth--
+    else if (char === '(')
+      nestedParenDepth++
+    else if (char === ')' && nestedParenDepth > 0)
+      nestedParenDepth--
+    else if (char === ':' && angleDepth === 0 && braceDepth === 0 && bracketDepth === 0 && nestedParenDepth === 0)
+      return paramsText.slice(i + 1).trim() || null
+  }
+
+  return null
+}
+
 function deriveDynamicSlots(
   componentName: string,
   localDefs: TypeDefInfo[],
@@ -93,12 +153,15 @@ function deriveDynamicSlots(
   if (!def)
     return []
   const existing = new Set(metaSlots.map(s => s.name))
+  const localTypeNames = new Set(localDefs.map(d => d.name))
   const extra: SlotDef[] = []
   let hasIndexSignature = false
+  let dynamicScopeType = 'Record<string, any>'
   for (const f of def.fields) {
     // 索引签名字段在解析时其 name 形如 `[name: string]`，用方括号识别
     if (f.name.startsWith('[')) {
       hasIndexSignature = true
+      dynamicScopeType = extractSlotScopeType(f.type) ?? dynamicScopeType
       continue
     }
     // meta 已给出的具名插槽不重复补
@@ -109,9 +172,9 @@ function deriveDynamicSlots(
   if (hasIndexSignature && !existing.has('[dynamic]')) {
     extra.push({
       name: '[dynamic]',
-      scopeType: 'Record<string, any>',
-      description: '按列名动态声明的单元格插槽（插槽名取自各列 field），作用域参数为该列的行/列/值上下文。',
-      typeRefs: [],
+      scopeType: dynamicScopeType,
+      description: '按列配置 slots.default / slots.header 动态声明的单元格或表头插槽，作用域参数为该列的行/列/值上下文。',
+      typeRefs: extractTypeRefs(dynamicScopeType).filter(name => localTypeNames.has(name)),
     })
   }
   return extra
