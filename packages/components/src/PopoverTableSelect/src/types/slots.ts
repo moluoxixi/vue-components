@@ -3,7 +3,7 @@ import type { PopoverTableColumn, PopoverTableRow } from './props'
 /**
  * PopoverTableSelect 动态插槽作用域。
  *
- * 单元格插槽会提供完整行列上下文；表头插槽只提供 column / columnIndex。
+ * 单元格插槽会提供完整行列上下文；表头插槽不提供 row / rowIndex / value。
  */
 export interface PopoverTableSelectSlotScope {
   /** 当前行数据；表头插槽不提供。 */
@@ -14,6 +14,12 @@ export interface PopoverTableSelectSlotScope {
   rowIndex?: number
   /** 当前列索引。 */
   columnIndex: number
+  /** 通用索引：表头插槽为 columnIndex，单元格插槽为 rowIndex。 */
+  index?: number
+  /** 当前表格列配置列表。 */
+  columns?: PopoverTableColumn[]
+  /** 当前表格数据列表。 */
+  data?: PopoverTableRow[]
   /** 当前单元格值；表头插槽不提供。 */
   value?: any
 }

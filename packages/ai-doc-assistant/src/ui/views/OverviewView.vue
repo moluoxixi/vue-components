@@ -29,10 +29,11 @@ const filtered = computed(() => {
 
 async function exportComponent(name: string, format: KnowledgeExportFormat): Promise<void> {
   const key = `${name}:${format}`
-  const preparedPdf = format === 'pdf' ? preparePdfExport() : null
+  let preparedPdf: ReturnType<typeof preparePdfExport> | null = null
   exportingKey.value = key
   errorMsg.value = ''
   try {
+    preparedPdf = format === 'pdf' ? preparePdfExport() : null
     const detail = await fetchComponentDetail(name)
     if (preparedPdf)
       preparedPdf.fill(detail)
@@ -79,8 +80,8 @@ async function exportComponent(name: string, format: KnowledgeExportFormat): Pro
         tabindex="0"
         data-testid="component-card"
         @click="emit('open', c.name)"
-        @keydown.enter.prevent="emit('open', c.name)"
-        @keydown.space.prevent="emit('open', c.name)"
+        @keydown.enter.self.prevent="emit('open', c.name)"
+        @keydown.space.self.prevent="emit('open', c.name)"
       >
         <span class="card-export-actions" aria-label="导出组件契约">
           <button

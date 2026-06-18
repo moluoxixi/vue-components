@@ -1,4 +1,5 @@
 import type { TableColumnCtx, TableProps } from 'element-plus'
+import type { VNodeChild } from 'vue'
 
 export type ConfigTableRow = Record<string, any>
 
@@ -12,10 +13,10 @@ export interface ConfigTableColumn {
   width?: number | string
   minWidth?: number | string
   align?: 'left' | 'center' | 'right'
-  /** 按列指定表头/单元格插槽名。 */
+  /** 按列指定表头/单元格插槽名，或直接提供渲染函数。 */
   slots?: {
-    default?: string
-    header?: string
+    default?: string | ConfigTableCellRender
+    header?: string | ConfigTableHeaderRender
   }
   /** 透传给 el-table-column 的额外配置。 */
   columnProps?: Partial<TableColumnCtx<ConfigTableRow>>
@@ -36,6 +37,8 @@ export interface ConfigTableProps {
   columns?: ConfigTableColumn[]
   data?: ConfigTableRow[]
   tableProps?: Partial<TableProps<ConfigTableRow>>
+  /** 表格级插槽渲染函数配置。 */
+  slots?: ConfigTableRenderSlots
   emptyText?: string
   currentRowIndex?: number
 }
@@ -45,12 +48,38 @@ export interface ConfigTableEmits {
   (event: 'cellDblClick', params: ConfigTableCellParams): void
 }
 
-export interface ConfigTableSlotScope {
-  row?: ConfigTableRow
+export interface ConfigTableBaseScope {
+  columns: ConfigTableColumn[]
+  data: ConfigTableRow[]
+  index?: number
+}
+
+export interface ConfigTableHeaderScope extends ConfigTableBaseScope {
   column: ConfigTableColumn
-  rowIndex?: number
   columnIndex: number
-  value?: any
+}
+
+export interface ConfigTableCellScope extends ConfigTableBaseScope {
+  row: ConfigTableRow
+  column: ConfigTableColumn
+  rowIndex: number
+  columnIndex: number
+  value: any
+}
+
+export interface ConfigTableEmptyScope {
+  columns: ConfigTableColumn[]
+  data: ConfigTableRow[]
+}
+
+export type ConfigTableHeaderRender = (params: ConfigTableHeaderScope) => VNodeChild
+export type ConfigTableCellRender = (params: ConfigTableCellScope) => VNodeChild
+export type ConfigTableEmptyRender = (params: ConfigTableEmptyScope) => VNodeChild
+export type ConfigTableRender = ConfigTableHeaderRender | ConfigTableCellRender
+export type ConfigTableSlotScope = ConfigTableHeaderScope | ConfigTableCellScope
+
+export interface ConfigTableRenderSlots {
+  empty?: ConfigTableEmptyRender
 }
 
 export interface ConfigTableSlots {

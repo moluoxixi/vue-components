@@ -340,6 +340,37 @@ describe('popover table select', () => {
     expect(wrapper.get('[data-testid="cell-slot"]').text()).toBe('C-001:name:0:0:初始仓库')
   })
 
+  it('列配置 render 函数可直接渲染弹层表头和单元格', async () => {
+    const wrapper = mount(PopoverTableSelectBase, {
+      props: {
+        columns: [
+          {
+            field: 'name',
+            slots: {
+              header: ({ column, index, columns, data }: any) => h('span', { 'data-testid': 'header-render' }, `${column.field}:${index}:${columns.length}:${data.length}`),
+              default: ({ row, value, index, columns, data }: any) => h('span', { 'data-testid': 'cell-render' }, `${row.code}:${value}:${index}:${columns.length}:${data.length}`),
+            },
+          },
+        ],
+        data: [{ code: 'C-001', name: '初始仓库' }],
+        modelValue: true,
+        virtualRef: createVirtualInput(),
+      },
+      global: {
+        stubs: {
+          ElPopover: createElPopoverStub(vi.fn()),
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="header-render"]').text()).toBe('name:0:1:1')
+    expect(wrapper.get('[data-testid="cell-render"]').text()).toBe('C-001:初始仓库:0:1:1')
+  })
+
   it('默认插槽和动态插槽可以同时渲染且互不影响', async () => {
     const wrapper = mount(PopoverTableSelectBase, {
       props: {

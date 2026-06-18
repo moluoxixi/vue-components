@@ -120,7 +120,7 @@ describe('config table', () => {
     expect(wrapper.get('[data-testid="header-qty"]').text()).toBe('库存')
   })
 
-  it('空数据时渲染默认空态文案并支持 empty 插槽', () => {
+  it('空数据时渲染默认空态文案并支持 empty 插槽和 render 配置', () => {
     const wrapper = mount(ConfigTable, {
       props: {
         columns: [{ field: 'name', label: '仓库' }],
@@ -154,6 +154,55 @@ describe('config table', () => {
     })
 
     expect(slotWrapper.get('[data-testid="empty-slot"]').text()).toBe('自定义空态')
+
+    const renderWrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', label: '仓库' }],
+        data: [],
+        slots: {
+          empty: ({ columns }: any) => h('em', { 'data-testid': 'empty-render' }, `无${columns[0].label}`),
+        },
+      },
+      slots: {
+        empty: () => h('strong', { 'data-testid': 'empty-vue-slot' }, 'Vue 空态'),
+      },
+      global: {
+        stubs: {
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
+        },
+      },
+    })
+
+    expect(renderWrapper.get('[data-testid="empty-render"]').text()).toBe('无仓库')
+    expect(renderWrapper.find('[data-testid="empty-vue-slot"]').exists()).toBe(false)
+  })
+
+  it('支持在列 slots 配置中直接传入 render 函数', () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [
+          {
+            field: 'name',
+            label: '仓库',
+            slots: {
+              header: ({ column, columnIndex, columns, data, index }: any) => h('span', { 'data-testid': 'header-render' }, `${column.field}:${columnIndex}:${index}:${columns.length}:${data.length}`),
+              default: ({ row, value, rowIndex, columnIndex, columns, data, index }: any) => h('strong', { 'data-testid': 'cell-render' }, `${row.code}:${value}:${rowIndex}:${columnIndex}:${index}:${columns.length}:${data.length}`),
+            },
+          },
+        ],
+        data: [{ code: 'C-001', name: '华南仓' }],
+      },
+      global: {
+        stubs: {
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="header-render"]').text()).toBe('name:0:0:1:1')
+    expect(wrapper.get('[data-testid="cell-render"]').text()).toBe('C-001:华南仓:0:0:0:1:1')
   })
 
   it('单元格点击和双击事件返回行列配置与索引', async () => {
