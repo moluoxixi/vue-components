@@ -1,4 +1,5 @@
 import type { Orama } from '@orama/orama'
+import type { KnowledgeSourceWire } from '../shared/protocol'
 import type { IndexMeta } from './indexer'
 import { create, load, search } from '@orama/orama'
 import { INDEX_SCHEMA } from './indexer'
@@ -13,6 +14,8 @@ export interface RetrievedChunk {
   component: string
   packageName: string
   docPath: string
+  source: KnowledgeSourceWire
+  knowledgeKey: string
   body: string
   /** 预生成的带类型提示示例骨架（建索引时随文档存入，查询期直接回带）。 */
   example: string
@@ -79,6 +82,8 @@ export class Retriever {
       component: hit.document.component as string,
       packageName: hit.document.packageName as string,
       docPath: hit.document.docPath as string,
+      source: hit.document.source as 'internal' | 'external',
+      knowledgeKey: hit.document.knowledgeKey as string,
       body: hit.document.body as string,
       example: hit.document.example as string,
       exampleJs: hit.document.exampleJs as string,

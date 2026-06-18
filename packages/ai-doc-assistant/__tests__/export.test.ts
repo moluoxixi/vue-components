@@ -37,36 +37,30 @@ const detail: ComponentDetailResponse = {
 }
 
 describe('knowledge base export', () => {
-  it('提供 Markdown / JSON / PDF 三种导出格式', () => {
-    expect(KNOWLEDGE_EXPORT_FORMATS.map(format => format.id)).toEqual(['markdown', 'json', 'pdf'])
+  it('知识库导出只提供普通 JSON', () => {
+    expect(KNOWLEDGE_EXPORT_FORMATS.map(format => format.id)).toEqual(['json'])
     expect(KNOWLEDGE_EXPORT_FORMATS.every(format => format.icon)).toBe(true)
   })
 
-  it('把组件详情导出为包含契约分区的 markdown', () => {
-    const markdown = buildExportContent(detail, 'markdown')
-
-    expect(markdown).toContain('# DemoButton')
-    expect(markdown).toContain('演示按钮')
-    expect(markdown).toContain('## Props')
-    expect(markdown).toContain('| type |')
-    expect(markdown).toContain('## Emits')
-    expect(markdown).toContain('## Slots')
-    expect(markdown).toContain('## v-model')
-    expect(markdown).toContain('## 透传属性（$attrs）')
-    expect(markdown).toContain('## 对外暴露（defineExpose）')
-    expect(markdown).toContain('## 关联类型定义')
-    expect(markdown).toContain('DemoButtonOptions')
-  })
-
-  it('导出 JSON 时保留完整结构化契约', () => {
+  it('导出 JSON 时使用 ai-doc 知识库协议并保留完整结构化契约', () => {
     const json = JSON.parse(buildExportContent(detail, 'json'))
 
-    expect(json.name).toBe('DemoButton')
-    expect(json.props[0].name).toBe('type')
-    expect(json.typeDefs[0].fields[0].description).toBe('显示文案')
+    expect(json).toMatchObject({
+      protocol: 'ai-doc-knowledge',
+      protocolVersion: 1,
+      kind: 'component-detail',
+      detail: {
+        name: 'DemoButton',
+        packageName: '@demo/components',
+        description: '演示按钮',
+        docPath: 'packages/components/src/DemoButton/index.vue',
+      },
+    })
+    expect(json.detail.props[0].name).toBe('type')
+    expect(json.detail.typeDefs[0].fields[0].description).toBe('显示文案')
   })
 
-  it('markdown/json 通过浏览器下载，pdf 走打印窗口', () => {
+  it('json 通过浏览器下载', () => {
     const anchor = document.createElement('a')
     const click = vi.spyOn(anchor, 'click').mockImplementation(() => {})
     const createElement = vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
@@ -76,30 +70,14 @@ describe('knowledge base export', () => {
     }) as typeof document.createElement)
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:download')
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
-    const print = vi.fn()
-    const close = vi.fn()
-    const write = vi.fn()
-    const closeDocument = vi.fn()
-    const open = vi.spyOn(window, 'open').mockReturnValue({
-      document: { write, close: closeDocument },
-      focus: vi.fn(),
-      print,
-      close,
-    } as unknown as Window)
 
-    exportComponentDetail(detail, 'markdown')
-    expect(anchor.download).toBe('DemoButton.md')
+    exportComponentDetail(detail, 'json')
+    expect(anchor.download).toBe('DemoButton.json')
     expect(createObjectURL).toHaveBeenCalled()
     expect(click).toHaveBeenCalledTimes(1)
-
-    exportComponentDetail(detail, 'pdf')
-    expect(open).toHaveBeenCalled()
-    expect(write.mock.calls[0][0]).toContain('DemoButton')
-    expect(print).toHaveBeenCalled()
 
     createElement.mockRestore()
     createObjectURL.mockRestore()
     revokeObjectURL.mockRestore()
-    open.mockRestore()
   })
 })

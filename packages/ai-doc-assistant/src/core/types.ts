@@ -117,4 +117,8 @@ export interface ComponentContract {
    * `defineExpose` / 组件实例对外暴露的成员（来自 meta.exposed）。空或 undefined 表示无对外暴露。
    */
   exposed?: ExposeDef[]
+  /** 知识库来源；缺省为 internal，外部导入固定为 external。 */
+  knowledgeSource?: 'internal' | 'external'
+  /** 来源维度唯一键，格式为 source:package:name。缺省时由调用方按来源计算。 */
+  knowledgeKey?: string
 }

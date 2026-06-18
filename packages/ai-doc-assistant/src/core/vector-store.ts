@@ -1,3 +1,4 @@
+import type { KnowledgeSourceWire } from '../shared/protocol'
 /**
  * 向量存储抽象层（ADR-0007 扩展缝）：把「向量索引与检索」从具体后端解耦。
  *
@@ -16,6 +17,8 @@ export interface VectorDoc {
   component: string
   packageName: string
   docPath: string
+  source: KnowledgeSourceWire
+  knowledgeKey: string
   /** 契约正文（自然语言化），既参与全文也是上下文来源。 */
   body: string
   /** 带类型提示的示例骨架（stored-only，不参与检索打分）。 */

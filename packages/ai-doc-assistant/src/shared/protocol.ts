@@ -17,6 +17,7 @@ export type ApiErrorCode
   = | 'INVALID_REQUEST'
     | 'NOT_FOUND'
     | 'INDEX_NOT_READY'
+    | 'CONFLICT'
     | 'UPSTREAM_ERROR'
     | 'INTERNAL_ERROR'
 
@@ -25,9 +26,13 @@ export const ERROR_STATUS: Record<ApiErrorCode, number> = {
   INVALID_REQUEST: 400,
   NOT_FOUND: 404,
   INDEX_NOT_READY: 409,
+  CONFLICT: 409,
   UPSTREAM_ERROR: 502,
   INTERNAL_ERROR: 500,
 }
+
+/** 知识库来源：internal 为当前项目抽取，external 为用户导入。 */
+export type KnowledgeSourceWire = 'internal' | 'external'
 
 /** 统一错误响应体。 */
 export interface ApiErrorBody {
@@ -47,6 +52,7 @@ export interface SourceRef {
   packageName: string
   docPath: string
   score: number
+  source?: KnowledgeSourceWire
 }
 
 /** GET /index/status 响应体。 */
@@ -55,6 +61,8 @@ export interface IndexStatusResponse {
   builtAt: string | null
   stale: boolean
   componentCount: number
+  internalCount?: number
+  externalCount?: number
 }
 
 /** POST /index/build 请求体。 */
@@ -68,6 +76,8 @@ export interface ComponentListItem {
   packageName: string
   propsCount: number
   docPath: string
+  source?: KnowledgeSourceWire
+  knowledgeKey?: string
 }
 
 /** 单个 prop 的 wire 形态（用于组件详情）。 */
@@ -150,6 +160,8 @@ export interface ComponentDetailResponse {
   packageName: string
   description: string
   docPath: string
+  source?: KnowledgeSourceWire
+  knowledgeKey?: string
   props: PropWire[]
   emits: EmitWire[]
   slots: SlotWire[]
@@ -159,6 +171,39 @@ export interface ComponentDetailResponse {
   attrs?: AttrWire[]
   /** `defineExpose` / 组件实例对外暴露成员；缺省表示无对外暴露。 */
   exposed?: ExposeWire[]
+}
+
+/** AI Doc 知识库导入导出的协议标识。 */
+export const KNOWLEDGE_IMPORT_PROTOCOL = 'ai-doc-knowledge'
+
+/** AI Doc 知识库导入导出的协议版本。 */
+export const KNOWLEDGE_IMPORT_PROTOCOL_VERSION = 1
+
+/** 协议化导入 JSON：显式携带协议版本，detail 仍沿用普通组件详情契约。 */
+export interface KnowledgeImportEnvelope {
+  protocol: typeof KNOWLEDGE_IMPORT_PROTOCOL
+  protocolVersion: typeof KNOWLEDGE_IMPORT_PROTOCOL_VERSION
+  kind: 'component-detail'
+  detail: ComponentDetailResponse
+}
+
+/** 导入 JSON：兼容协议化 envelope 与普通组件详情 JSON；服务端导入时统一标记为 external。 */
+export type KnowledgeImportPayload = KnowledgeImportEnvelope | ComponentDetailResponse
+
+/** POST /knowledge/import 响应。 */
+export interface KnowledgeImportResult {
+  status: 'imported' | 'overwritten' | 'conflict'
+  key: string
+  source: KnowledgeSourceWire
+  name: string
+  packageName: string
+  conflictsWithInternal: boolean
+}
+
+/** POST /knowledge/import 请求体。 */
+export interface KnowledgeImportRequest {
+  payload: KnowledgeImportPayload
+  overwrite?: boolean
 }
 
 /** 检索模式：content=结构化关键词 topK（默认）；vector=向量语义检索（可选增强）。 */

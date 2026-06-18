@@ -3,6 +3,8 @@ import type {
   ComponentListItem,
   HealthResponse,
   IndexStatusResponse,
+  KnowledgeImportPayload,
+  KnowledgeImportResult,
   SseEvent,
 } from '../shared/protocol'
 /**
@@ -51,6 +53,21 @@ export async function fetchComponentDetail(name: string): Promise<ComponentDetai
   if (!res.ok)
     throw new Error(`component detail failed: ${res.status}`)
   return res.json() as Promise<ComponentDetailResponse>
+}
+
+/** POST /knowledge/import —— 导入外部知识库，重复外部项由调用方二次确认 overwrite。 */
+export async function importKnowledge(payload: KnowledgeImportPayload, overwrite = false): Promise<KnowledgeImportResult> {
+  const res = await fetch(`${API_PREFIX}/knowledge/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ payload, overwrite }),
+  })
+  const body = await res.json().catch(() => null) as KnowledgeImportResult | { message?: string } | null
+  if (!res.ok && body && 'status' in body && body.status === 'conflict')
+    return body
+  if (!res.ok)
+    throw new Error((body && 'message' in body && body.message) ? body.message : `knowledge import failed: ${res.status}`)
+  return body as KnowledgeImportResult
 }
 
 /**

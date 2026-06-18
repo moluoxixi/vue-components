@@ -135,4 +135,29 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
 
     await expect(ctx.buildIndex()).rejects.toThrow(/componentGlobs matched no Vue component files/)
   })
+
+  it('buildIndex 重建内部知识库时保留外部导入知识库', async () => {
+    const ctx = new ServerContext({ root: FIXTURE_ROOT, env: ENV })
+    await ctx.buildIndex()
+    const internalCount = ctx.getContracts().length
+    await ctx.importKnowledge({
+      name: 'ExternalOnly',
+      packageName: '@external/ui',
+      description: '外部知识库组件',
+      docPath: 'external/ExternalOnly.md',
+      props: [],
+      emits: [],
+      slots: [],
+      models: [],
+      typeDefs: [],
+    })
+    expect(ctx.getExternalContracts()).toHaveLength(1)
+
+    await ctx.buildIndex()
+
+    expect(ctx.getContracts()).toHaveLength(internalCount)
+    expect(ctx.getExternalContracts()).toHaveLength(1)
+    expect(ctx.getAllContracts()).toHaveLength(internalCount + 1)
+    expect(ctx.getAllContracts().map(item => item.key)).toContain('external:%40external%2Fui:ExternalOnly')
+  })
 })

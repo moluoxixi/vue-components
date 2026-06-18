@@ -18,6 +18,8 @@ interface OramaIndexDoc {
   component: string
   packageName: string
   docPath: string
+  source: 'internal' | 'external'
+  knowledgeKey: string
   body: string
   example: string
   exampleJs: string
@@ -43,6 +45,8 @@ export class OramaVectorStore implements VectorStore {
         component: d.component,
         packageName: d.packageName,
         docPath: d.docPath,
+        source: d.source,
+        knowledgeKey: d.knowledgeKey,
         body: d.body,
         example: d.example,
         exampleJs: d.exampleJs,
@@ -78,6 +82,8 @@ export class OramaVectorStore implements VectorStore {
       component: hit.document.component as string,
       packageName: hit.document.packageName as string,
       docPath: hit.document.docPath as string,
+      source: hit.document.source as 'internal' | 'external',
+      knowledgeKey: hit.document.knowledgeKey as string,
       body: hit.document.body as string,
       example: hit.document.example as string,
       exampleJs: hit.document.exampleJs as string,

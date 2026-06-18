@@ -57,6 +57,14 @@ function makeReq(method: string, url: string, body?: unknown): any {
   return stream
 }
 
+/** 构造原始 body 的 mock IncomingMessage，用于覆盖非法 JSON 等边界输入。 */
+function makeRawReq(method: string, url: string, raw: string): any {
+  const stream: any = Readable.from(raw ? [Buffer.from(raw)] : [])
+  stream.method = method
+  stream.url = url
+  return stream
+}
+
 /** 构造 stub ServerContext。 */
 function makeCtx(overrides: Partial<Record<string, unknown>> = {}): ServerContext {
   const base: any = {
@@ -105,7 +113,14 @@ describe('dispatch 路由分发', () => {
     })
     const res = makeRes()
     await dispatch(ctx, makeReq('GET', '/__ai-doc/api/components'), res)
-    expect(res.json()).toEqual([{ name: 'Btn', packageName: '@x/c', propsCount: 2, docPath: 'a.vue' }])
+    expect(res.json()).toEqual([{
+      name: 'Btn',
+      packageName: '@x/c',
+      propsCount: 2,
+      docPath: 'a.vue',
+      source: 'internal',
+      knowledgeKey: 'internal:%40x%2Fc:Btn',
+    }])
   })
 
   it('gET /components/:name → 返回单组件完整契约', async () => {
@@ -162,6 +177,18 @@ describe('dispatch 路由分发', () => {
     await dispatch(makeCtx(), makeReq('POST', '/__ai-doc/api/query', {}), res)
     expect(res.statusCode).toBe(400)
     expect(res.json().error).toBe('INVALID_REQUEST')
+  })
+
+  it('pOST /knowledge/import 非法 JSON → INVALID_REQUEST 且不进入导入逻辑', async () => {
+    const importKnowledge = vi.fn()
+    const ctx = makeCtx({ importKnowledge })
+    const res = makeRes()
+
+    await dispatch(ctx, makeRawReq('POST', '/__ai-doc/api/knowledge/import', '{ bad json'), res)
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json()).toMatchObject({ error: 'INVALID_REQUEST', message: 'invalid json body' })
+    expect(importKnowledge).not.toHaveBeenCalled()
   })
 
   it('pOST /query provider 未配置 → UPSTREAM_ERROR', async () => {

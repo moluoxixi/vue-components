@@ -20,6 +20,7 @@ const errorMsg = ref('')
 /** 加载中标志。 */
 const loading = ref(false)
 const exportingFormat = ref<KnowledgeExportFormat | ''>('')
+const exportMenuOpen = ref(false)
 /** Tooltip 内容样式：保留字段换行，避免复杂类型挤成一行。 */
 const typeTooltipStyle = { whiteSpace: 'pre-line', maxWidth: '520px' } as const
 
@@ -91,6 +92,7 @@ async function load(name: string): Promise<void> {
 function exportCurrentDetail(format: KnowledgeExportFormat): void {
   if (!detail.value)
     return
+  exportMenuOpen.value = false
   exportingFormat.value = format
   try {
     exportComponentDetail(detail.value, format)
@@ -112,17 +114,27 @@ watch(() => props.name, load, { immediate: true })
       <div v-if="detail" class="detail-actions">
         <div class="export-buttons" aria-label="导出组件契约">
           <button
-            v-for="format in KNOWLEDGE_EXPORT_FORMATS"
-            :key="format.id"
             class="export-button"
             type="button"
-            :disabled="exportingFormat === format.id"
-            data-testid="detail-export-btn"
-            @click="exportCurrentDetail(format.id)"
+            data-testid="detail-export-trigger"
+            @click="exportMenuOpen = !exportMenuOpen"
           >
-            <span class="export-button-icon" aria-hidden="true">{{ format.icon }}</span>
-            导出 {{ format.label }}
+            <span class="export-button-icon" aria-hidden="true">⬇️</span>
+            导出
           </button>
+          <div v-if="exportMenuOpen" class="detail-export-menu" data-testid="detail-export-menu">
+            <button
+              v-for="format in KNOWLEDGE_EXPORT_FORMATS"
+              :key="format.id"
+              class="detail-export-option"
+              type="button"
+              :disabled="exportingFormat === format.id"
+              data-testid="detail-export-option"
+              @click="exportCurrentDetail(format.id)"
+            >
+              {{ format.icon }} {{ format.label }}
+            </button>
+          </div>
         </div>
         <button
           class="link-btn ask"
@@ -145,6 +157,7 @@ watch(() => props.name, load, { immediate: true })
       <h2 class="comp-title" data-testid="detail-title">
         {{ detail.name }}
         <small>{{ detail.packageName }}</small>
+        <span v-if="detail.source === 'external'" class="source-badge">外部知识库</span>
       </h2>
       <p v-if="detail.description" class="desc">
         {{ detail.description }}
@@ -343,7 +356,7 @@ watch(() => props.name, load, { immediate: true })
 .detail { padding: 20px; }
 .detail-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .detail-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
-.export-buttons { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.export-buttons { position: relative; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .export-button {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 10px; border: 1px solid #d0d7de; border-radius: 6px;
@@ -352,6 +365,16 @@ watch(() => props.name, load, { immediate: true })
 .export-button:hover { border-color: #1f6feb; background: #ddf4ff; }
 .export-button:disabled { opacity: .5; cursor: wait; }
 .export-button-icon { line-height: 1; }
+.detail-export-menu {
+  position: absolute; top: 32px; right: 0; z-index: 2;
+  min-width: 128px; padding: 6px; border: 1px solid #d0d7de; border-radius: 8px;
+  background: #fff; box-shadow: 0 8px 24px rgba(140,149,159,.2);
+}
+.detail-export-option {
+  display: block; width: 100%; padding: 7px 8px; border: 0; border-radius: 6px;
+  background: transparent; cursor: pointer; text-align: left; white-space: nowrap;
+}
+.detail-export-option:hover { background: #f6f8fa; }
 .link-btn {
   background: none; border: none; color: #1f6feb; cursor: pointer;
   font-size: 13px; padding: 4px 0;
@@ -361,6 +384,10 @@ watch(() => props.name, load, { immediate: true })
 .hint.error { color: #cf222e; }
 .comp-title { font-size: 22px; margin: 0 0 4px; }
 .comp-title small { font-size: 13px; color: #8b949e; font-weight: 400; margin-left: 8px; }
+.source-badge {
+  margin-left: 8px; font-size: 12px; color: #8250df; background: #fbefff;
+  padding: 2px 8px; border-radius: 999px; vertical-align: middle;
+}
 .desc { color: #57606a; margin: 0 0 18px; }
 section { margin-bottom: 24px; }
 section h3 { font-size: 14px; color: #1f2328; margin: 0 0 10px; }

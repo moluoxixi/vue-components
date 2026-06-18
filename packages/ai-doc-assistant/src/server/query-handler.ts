@@ -72,6 +72,7 @@ export async function* runQuery(
     packageName: c.packageName,
     docPath: c.docPath,
     score: c.score,
+    source: c.source,
   }))
   yield { type: 'sources', sources }
 

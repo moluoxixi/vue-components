@@ -21,11 +21,6 @@ const components: ComponentListItem[] = [
 
 const fetchComponentDetail = vi.fn(async () => detail)
 const exportComponentDetail = vi.fn()
-const preparedPdf = {
-  fail: vi.fn(),
-  fill: vi.fn(),
-}
-const preparePdfExport = vi.fn(() => preparedPdf)
 
 vi.mock('../src/ui/api', () => ({
   fetchComponentDetail,
@@ -36,7 +31,6 @@ vi.mock('../src/ui/export', async (importOriginal) => {
   return {
     ...actual,
     exportComponentDetail,
-    preparePdfExport,
   }
 })
 
@@ -45,12 +39,9 @@ describe('knowledge export entry points', () => {
     fetchComponentDetail.mockClear()
     fetchComponentDetail.mockResolvedValue(detail)
     exportComponentDetail.mockClear()
-    preparePdfExport.mockClear()
-    preparedPdf.fill.mockClear()
-    preparedPdf.fail.mockClear()
   })
 
-  it('总览卡片只显示一个导出按钮，点击后下拉选择导出类型且不打开详情', async () => {
+  it('总览卡片只显示一个导出按钮，点击后下拉选择普通 JSON 且不打开详情', async () => {
     const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
     const wrapper = mount(OverviewView, { props: { components } })
 
@@ -59,50 +50,29 @@ describe('knowledge export entry points', () => {
 
     await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
     const exportOptions = wrapper.findAll('[data-testid="card-export-option"]')
-    expect(exportOptions).toHaveLength(3)
-    expect(exportOptions.map(button => button.text())).toEqual(['📝 Markdown', '🧩 JSON', '📄 PDF'])
+    expect(exportOptions).toHaveLength(1)
+    expect(exportOptions.map(button => button.text())).toEqual(['🧩 JSON'])
     expect(fetchComponentDetail).not.toHaveBeenCalled()
 
     await exportOptions[0].trigger('click')
     await flushPromises()
 
     expect(fetchComponentDetail).toHaveBeenCalledWith('DemoButton')
-    expect(exportComponentDetail).toHaveBeenCalledWith(detail, 'markdown')
+    expect(exportComponentDetail).toHaveBeenCalledWith(detail, 'json')
     expect(wrapper.emitted('open')).toBeUndefined()
   })
 
-  it('总览卡片 PDF 导出会同步预打开打印窗口并在详情加载后填充', async () => {
-    const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
-    const wrapper = mount(OverviewView, { props: { components } })
-
-    await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
-    const pdfButton = wrapper.findAll('[data-testid="card-export-option"]')[2]
-    await pdfButton.trigger('click')
-
-    expect(preparePdfExport).toHaveBeenCalledTimes(1)
-    expect(exportComponentDetail).not.toHaveBeenCalled()
-
-    await flushPromises()
-
-    expect(fetchComponentDetail).toHaveBeenCalledWith('DemoButton')
-    expect(preparedPdf.fill).toHaveBeenCalledWith(detail)
-    expect(preparedPdf.fail).not.toHaveBeenCalled()
-    expect(wrapper.emitted('open')).toBeUndefined()
-  })
-
-  it('总览卡片 PDF 导出详情加载失败时写入预打开窗口的失败信息', async () => {
+  it('总览卡片 JSON 导出详情加载失败时展示错误条', async () => {
     fetchComponentDetail.mockRejectedValueOnce(new Error('详情加载失败'))
     const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
     const wrapper = mount(OverviewView, { props: { components } })
 
     await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
-    const pdfButton = wrapper.findAll('[data-testid="card-export-option"]')[2]
-    await pdfButton.trigger('click')
+    const jsonButton = wrapper.find('[data-testid="card-export-option"]')
+    await jsonButton.trigger('click')
     await flushPromises()
 
-    expect(preparePdfExport).toHaveBeenCalledTimes(1)
-    expect(preparedPdf.fill).not.toHaveBeenCalled()
-    expect(preparedPdf.fail).toHaveBeenCalledWith('详情加载失败')
+    expect(exportComponentDetail).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="overview-export-error"]').text()).toBe('详情加载失败')
   })
 
@@ -117,23 +87,7 @@ describe('knowledge export entry points', () => {
     expect(wrapper.emitted('open')).toBeUndefined()
   })
 
-  it('总览 PDF 预打开窗口失败时展示错误条', async () => {
-    preparePdfExport.mockImplementationOnce(() => {
-      throw new Error('无法打开 PDF 打印窗口')
-    })
-    const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
-    const wrapper = mount(OverviewView, { props: { components } })
-
-    await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
-    const pdfButton = wrapper.findAll('[data-testid="card-export-option"]')[2]
-    await pdfButton.trigger('click')
-    await flushPromises()
-
-    expect(fetchComponentDetail).not.toHaveBeenCalled()
-    expect(wrapper.find('[data-testid="overview-export-error"]').text()).toBe('无法打开 PDF 打印窗口')
-  })
-
-  it('详情页只显示一个带 icon 的导出按钮，点击后下拉选择导出类型', async () => {
+  it('详情页只显示一个导出按钮，点击后下拉选择普通 JSON', async () => {
     const { default: DetailView } = await import('../src/ui/views/DetailView.vue')
     const wrapper = mount(DetailView, {
       props: { name: 'DemoButton' },
@@ -155,14 +109,10 @@ describe('knowledge export entry points', () => {
 
     await wrapper.find('[data-testid="detail-export-trigger"]').trigger('click')
     const exportOptions = wrapper.findAll('[data-testid="detail-export-option"]')
-    expect(exportOptions).toHaveLength(3)
-    expect(exportOptions.map(button => button.text())).toEqual([
-      '📝 Markdown',
-      '🧩 JSON',
-      '📄 PDF',
-    ])
+    expect(exportOptions).toHaveLength(1)
+    expect(exportOptions.map(button => button.text())).toEqual(['🧩 JSON'])
 
-    await exportOptions[2].trigger('click')
-    expect(exportComponentDetail).toHaveBeenCalledWith(detail, 'pdf')
+    await exportOptions[0].trigger('click')
+    expect(exportComponentDetail).toHaveBeenCalledWith(detail, 'json')
   })
 })

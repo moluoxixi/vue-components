@@ -1,3 +1,4 @@
+import type { KnowledgeSourceWire } from '../shared/protocol'
 import type { ExampleCode } from './generator'
 import type { ComponentContract } from './types'
 import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
@@ -26,6 +27,8 @@ export interface StrategyChunk {
   component: string
   packageName: string
   docPath: string
+  source: KnowledgeSourceWire
+  knowledgeKey: string
   /** 契约正文（自然语言化），作为喂给 chat 的上下文。 */
   body: string
   /** 带类型提示的使用示例骨架（TS，向后兼容字段，等于 exampleCode.ts）。 */
@@ -87,6 +90,8 @@ export class ContentStrategy implements RetrievalStrategy {
         component: c.name,
         packageName: c.packageName,
         docPath: c.sourceFile,
+        source: c.knowledgeSource ?? 'internal',
+        knowledgeKey: c.knowledgeKey ?? `${c.knowledgeSource ?? 'internal'}:${encodeURIComponent(c.packageName)}:${encodeURIComponent(c.name)}`,
         body: renderSearchableDoc(c),
         example: exampleCode.ts,
         exampleCode,

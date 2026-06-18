@@ -8,7 +8,8 @@
  */
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import type { ComponentListItem, HealthResponse, IndexState } from '../shared/protocol'
-import { buildIndex, fetchComponents, fetchHealth, fetchStatus } from './api'
+import { buildIndex, fetchComponents, fetchHealth, fetchStatus, importKnowledge } from './api'
+import { readKnowledgeImportFile } from './export'
 import ChatView from './views/ChatView.vue'
 import DetailView from './views/DetailView.vue'
 import OverviewView from './views/OverviewView.vue'
@@ -34,6 +35,9 @@ const componentCount = ref(0)
 const errorMsg = ref('')
 /** 知识库构建中标志。 */
 const building = ref(false)
+const importing = ref(false)
+const importMenuOpen = ref(false)
+const importInputRef = useTemplateRef<HTMLInputElement>('importInputRef')
 const chatViewRef = useTemplateRef<InstanceType<typeof ChatView>>('chatViewRef')
 
 /** 默认 content 模式不把构建动作暴露为常驻主按钮；vector 或未就绪时保留手动入口。 */
@@ -101,6 +105,40 @@ function focusChat(): void {
   chatViewRef.value?.focusQuestion()
 }
 
+function chooseImportFile(): void {
+  importMenuOpen.value = false
+  importInputRef.value?.click()
+}
+
+async function onImportFile(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file)
+    return
+  importing.value = true
+  errorMsg.value = ''
+  try {
+    const payload = await readKnowledgeImportFile(file)
+    const first = await importKnowledge(payload)
+    const result = first.status === 'conflict'
+      ? (window.confirm(`外部知识库已存在 ${first.packageName}/${first.name}，是否覆盖外部版本？`)
+          ? await importKnowledge(payload, true)
+          : first)
+      : first
+    if (result.status !== 'conflict') {
+      await refreshHealth()
+      components.value = await fetchComponents()
+    }
+  }
+  catch (err) {
+    errorMsg.value = err instanceof Error ? err.message : String(err)
+  }
+  finally {
+    importing.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     await refreshHealth()
@@ -137,6 +175,24 @@ onMounted(async () => {
         <button class="btn" data-testid="kb-debug-btn" @click="openKnowledge">
           知识库
         </button>
+        <span class="import-dropdown">
+          <button class="btn" data-testid="import-trigger" :disabled="importing" @click="importMenuOpen = !importMenuOpen">
+            {{ importing ? '导入中...' : '导入' }} ▾
+          </button>
+          <span v-if="importMenuOpen" class="import-menu" data-testid="import-menu">
+            <button class="import-option" type="button" data-testid="import-external-json" @click="chooseImportFile">
+              外部知识库 JSON
+            </button>
+          </span>
+          <input
+            ref="importInputRef"
+            class="visually-hidden"
+            type="file"
+            accept="application/json,.json"
+            data-testid="import-file-input"
+            @change="onImportFile"
+          >
+        </span>
         <button
           class="ai-icon active"
           title="问 AI"
@@ -214,6 +270,18 @@ onMounted(async () => {
   background: #f6f8fa; cursor: pointer; font-size: 13px;
 }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+.import-dropdown { position: relative; display: inline-flex; }
+.import-menu {
+  position: absolute; top: 36px; right: 0; z-index: 20;
+  min-width: 150px; padding: 6px; border: 1px solid #d0d7de; border-radius: 8px;
+  background: #fff; box-shadow: 0 8px 24px rgba(140,149,159,.28);
+}
+.import-option {
+  display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px;
+  background: transparent; color: #1f2328; cursor: pointer; text-align: left; white-space: nowrap;
+}
+.import-option:hover { background: #f6f8fa; }
+.visually-hidden { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .ai-icon {
   border: none; background: #21262d; border-radius: 8px; cursor: pointer;
   font-size: 16px; padding: 6px 10px; line-height: 1;

@@ -1,6 +1,7 @@
+import type { ComponentContract } from '../core'
 import type { RetrievalMode, RetrievalStrategy } from '../core/retrieval-strategy'
-import type { ComponentContract } from '../core/types'
 import type { QdrantConfig, VectorStoreConfig, VectorStoreKind } from '../core/vector-store'
+import type { KnowledgeImportPayload, KnowledgeImportResult } from '../shared/protocol'
 import type { ProviderConfig } from './ai-provider'
 /**
  * Server 运行时上下文：聚合 provider 配置、索引状态机、组件契约与检索策略。
@@ -16,6 +17,7 @@ import process from 'node:process'
 import { discoverComponentSources } from '../core/component-discovery'
 import { extractContracts } from '../core/extractor'
 import { IndexStateManager } from '../core/index-state'
+import { contractKnowledgeKey, importExternalContract } from '../core/knowledge-source'
 import { createStrategy, RETRIEVAL_MODES } from '../core/retrieval-strategy'
 import { VECTOR_STORE_KINDS } from '../core/vector-store'
 import { loadProviderConfig } from './ai-provider'
@@ -135,6 +137,7 @@ export class ServerContext {
   /** 外部向量存储连接配置（仅 qdrant 后端使用，其余为 undefined）。 */
   private readonly vectorStoreConfig: VectorStoreConfig | undefined
   private contracts: ComponentContract[] = []
+  private externalContracts: ComponentContract[] = []
   private strategy: RetrievalStrategy | null = null
 
   constructor(private readonly opts: ServerContextOptions) {
@@ -152,17 +155,44 @@ export class ServerContext {
   async buildIndex(): Promise<void> {
     await this.state.runBuild(async () => {
       const files = await discoverComponentSources(this.opts)
-      this.contracts = await extractContracts(files)
-      // 按模式创建策略（vector 经动态 import，重依赖不进默认 bundle）
-      const strategy = await createStrategy(this.mode, this.vectorStore, this.vectorStoreConfig)
-      const meta = await strategy.build(this.contracts)
-      this.strategy = strategy
+      this.contracts = (await extractContracts(files)).map(contract => ({
+        ...contract,
+        knowledgeSource: 'internal' as const,
+        knowledgeKey: contractKnowledgeKey('internal', contract),
+      }))
+      // 初始化/重建只刷新内部知识库；用户导入的外部知识库保留并与内部合并检索。
+      await this.rebuildStrategy([...this.contracts, ...this.externalContracts])
       return {
-        builtAt: meta.builtAt,
-        componentCount: meta.componentCount,
+        builtAt: new Date().toISOString(),
+        componentCount: this.contracts.length + this.externalContracts.length,
         sourceHash: '',
       }
     })
+  }
+
+  private async rebuildStrategy(contracts: ComponentContract[]): Promise<void> {
+    // 按模式创建策略（vector 经动态 import，重依赖不进默认 bundle）
+    const strategy = await createStrategy(this.mode, this.vectorStore, this.vectorStoreConfig)
+    await strategy.build(contracts)
+    this.strategy = strategy
+  }
+
+  /** 导入外部知识库。重复外部项需 overwrite；外部永不覆盖内部同名组件。 */
+  async importKnowledge(payload: KnowledgeImportPayload, overwrite = false): Promise<KnowledgeImportResult> {
+    const imported = importExternalContract(payload, this.contracts, this.externalContracts, overwrite)
+    if (imported.result.status === 'conflict')
+      return imported.result
+    const nextExternalContracts = imported.contracts
+    await this.state.runBuild(async () => {
+      await this.rebuildStrategy([...this.contracts, ...nextExternalContracts])
+      this.externalContracts = nextExternalContracts
+      return {
+        builtAt: new Date().toISOString(),
+        componentCount: this.contracts.length + this.externalContracts.length,
+        sourceHash: '',
+      }
+    })
+    return imported.result
   }
 
   /** 当前检索策略（未构建时为 null，由上层映射 INDEX_NOT_READY）。 */
@@ -173,5 +203,18 @@ export class ServerContext {
   /** 当前组件契约列表（供 GET /components）。 */
   getContracts(): ComponentContract[] {
     return this.contracts
+  }
+
+  /** 当前外部导入契约列表。 */
+  getExternalContracts(): ComponentContract[] {
+    return this.externalContracts
+  }
+
+  /** 内外合并契约列表；key 带 source，允许同名组件以内/外并存。 */
+  getAllContracts(): Array<{ contract: ComponentContract, source: 'internal' | 'external', key: string }> {
+    return [
+      ...this.contracts.map(contract => ({ contract, source: 'internal' as const, key: contract.knowledgeKey ?? contractKnowledgeKey('internal', contract) })),
+      ...this.externalContracts.map(contract => ({ contract, source: 'external' as const, key: contract.knowledgeKey ?? contractKnowledgeKey('external', contract) })),
+    ]
   }
 }

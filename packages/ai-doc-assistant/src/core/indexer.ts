@@ -12,6 +12,8 @@ export const INDEX_SCHEMA = {
   component: 'string',
   packageName: 'string',
   docPath: 'string',
+  source: 'string',
+  knowledgeKey: 'string',
   body: 'string',
   embedding: `vector[${EMBEDDING_DIM}]`,
 } as const
@@ -21,6 +23,8 @@ export interface IndexDoc {
   component: string
   packageName: string
   docPath: string
+  source: 'internal' | 'external'
+  knowledgeKey: string
   body: string
   /** TS 版示例骨架（向后兼容字段，等于双码的 ts）。 */
   example: string
@@ -64,6 +68,8 @@ export async function buildIndex(
       component: c.name,
       packageName: c.packageName,
       docPath: c.sourceFile,
+      source: c.knowledgeSource ?? 'internal',
+      knowledgeKey: c.knowledgeKey ?? `${c.knowledgeSource ?? 'internal'}:${encodeURIComponent(c.packageName)}:${encodeURIComponent(c.name)}`,
       body: renderSearchableDoc(c),
       example: exampleCode.ts,
       exampleJs: exampleCode.js,

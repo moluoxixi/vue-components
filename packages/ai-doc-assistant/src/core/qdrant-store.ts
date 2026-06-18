@@ -20,6 +20,8 @@ interface QdrantPayload {
   component: string
   packageName: string
   docPath: string
+  source: 'internal' | 'external'
+  knowledgeKey: string
   body: string
   example: string
   exampleJs: string
@@ -103,6 +105,8 @@ export class QdrantVectorStore implements VectorStore {
         component: d.component,
         packageName: d.packageName,
         docPath: d.docPath,
+        source: d.source,
+        knowledgeKey: d.knowledgeKey,
         body: d.body,
         example: d.example,
         exampleJs: d.exampleJs,
@@ -133,6 +137,8 @@ export class QdrantVectorStore implements VectorStore {
       component: hit.payload.component,
       packageName: hit.payload.packageName,
       docPath: hit.payload.docPath,
+      source: hit.payload.source,
+      knowledgeKey: hit.payload.knowledgeKey,
       body: hit.payload.body,
       example: hit.payload.example,
       exampleJs: hit.payload.exampleJs,

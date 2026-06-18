@@ -10,10 +10,12 @@ import type {
   HealthResponse,
   IndexState,
   IndexStatusResponse,
+  KnowledgeImportRequest,
   QueryRequest,
 } from '../shared/protocol'
 import type { ServerContext } from './context'
 import { Buffer } from 'node:buffer'
+import { contractToDetail } from '../core/knowledge-source'
 import {
   API_PREFIX,
   encodeSseEvent,
@@ -31,7 +33,12 @@ async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
   const raw = Buffer.concat(chunks).toString('utf8')
   if (!raw)
     return {} as T
-  return JSON.parse(raw) as T
+  try {
+    return JSON.parse(raw) as T
+  }
+  catch {
+    throw new Error('invalid json body')
+  }
 }
 
 /** 写 JSON 响应。 */
@@ -51,6 +58,8 @@ function classifyError(err: unknown): ApiErrorCode {
   const msg = err instanceof Error ? err.message : String(err)
   if (msg.includes('index not ready') || msg.includes('index not found'))
     return 'INDEX_NOT_READY'
+  if (msg.includes('invalid json body'))
+    return 'INVALID_REQUEST'
   if (msg.includes('upstream') || msg.includes('provider not configured'))
     return 'UPSTREAM_ERROR'
   return 'INTERNAL_ERROR'
@@ -116,11 +125,15 @@ async function handleQuery(ctx: ServerContext, req: IncomingMessage, res: Server
 /** GET /index/status。 */
 function handleStatus(ctx: ServerContext, res: ServerResponse): void {
   const snap = ctx.state.snapshot()
+  const internalContracts = ctx.getContracts()
+  const externalContracts = typeof ctx.getExternalContracts === 'function' ? ctx.getExternalContracts() : []
   const body: IndexStatusResponse = {
     state: deriveIndexState(ctx),
     builtAt: snap.meta?.builtAt ?? null,
     stale: false,
     componentCount: snap.meta?.componentCount ?? 0,
+    internalCount: internalContracts.length,
+    externalCount: externalContracts.length,
   }
   sendJson(res, 200, body)
 }
@@ -138,11 +151,16 @@ async function handleBuild(ctx: ServerContext, res: ServerResponse): Promise<voi
 
 /** GET /components。 */
 function handleComponents(ctx: ServerContext, res: ServerResponse): void {
-  const items: ComponentListItem[] = ctx.getContracts().map(c => ({
+  const contracts = typeof ctx.getAllContracts === 'function'
+    ? ctx.getAllContracts()
+    : ctx.getContracts().map(contract => ({ contract, source: 'internal' as const, key: `internal:${encodeURIComponent(contract.packageName)}:${encodeURIComponent(contract.name)}` }))
+  const items: ComponentListItem[] = contracts.map(({ contract: c, source, key }) => ({
     name: c.name,
     packageName: c.packageName,
     propsCount: c.props.length,
     docPath: c.sourceFile,
+    source,
+    knowledgeKey: key,
   }))
   sendJson(res, 200, items)
 }
@@ -150,43 +168,34 @@ function handleComponents(ctx: ServerContext, res: ServerResponse): void {
 /** GET /components/:name —— 单组件完整契约（含展开的关联类型定义）。 */
 function handleComponentDetail(ctx: ServerContext, name: string, res: ServerResponse): void {
   const decoded = decodeURIComponent(name)
-  const c = ctx.getContracts().find(x => x.name === decoded)
-  if (!c) {
+  const contracts = typeof ctx.getAllContracts === 'function'
+    ? ctx.getAllContracts()
+    : ctx.getContracts().map(contract => ({ contract, source: 'internal' as const, key: `internal:${encodeURIComponent(contract.packageName)}:${encodeURIComponent(contract.name)}` }))
+  const found = contracts.find(x => x.key === decoded || x.contract.name === decoded)
+  if (!found) {
     sendError(res, 'NOT_FOUND', `component not found: ${decoded}`)
     return
   }
+  const c = found.contract
   // core 契约字段与 wire 形态同构，直接结构化投影（避免泄漏 core 内部引用）
-  const body: ComponentDetailResponse = {
-    name: c.name,
-    packageName: c.packageName,
-    description: c.description,
-    docPath: c.sourceFile,
-    props: c.props.map(p => ({
-      name: p.name,
-      type: p.type,
-      required: p.required,
-      defaultValue: p.defaultValue,
-      description: p.description,
-      typeRefs: p.typeRefs,
-      ...(p.forwardedFrom ? { forwardedFrom: p.forwardedFrom } : {}),
-    })),
-    emits: c.emits.map(e => ({ name: e.name, payloadType: e.payloadType, description: e.description, typeRefs: e.typeRefs })),
-    slots: c.slots.map(s => ({ name: s.name, scopeType: s.scopeType, description: s.description, typeRefs: s.typeRefs })),
-    models: c.models.map(m => ({ name: m.name, type: m.type })),
-    typeDefs: c.typeDefs.map(t => ({
-      name: t.name,
-      kind: t.kind,
-      fields: t.fields.map(f => ({ name: f.name, type: f.type, optional: f.optional, description: f.description })),
-      raw: t.raw,
-    })),
-    ...(c.attrs?.length
-      ? { attrs: c.attrs.map(a => ({ name: a.name, type: a.type, optional: a.optional, description: a.description })) }
-      : {}),
-    ...(c.exposed?.length
-      ? { exposed: c.exposed.map(e => ({ name: e.name, type: e.type, description: e.description, typeRefs: e.typeRefs })) }
-      : {}),
-  }
+  const body: ComponentDetailResponse = contractToDetail(c, found.source)
   sendJson(res, 200, body)
+}
+
+/** POST /knowledge/import —— 导入外部知识库。 */
+async function handleKnowledgeImport(ctx: ServerContext, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJsonBody<KnowledgeImportRequest>(req)
+  if (!body.payload) {
+    sendError(res, 'INVALID_REQUEST', 'payload is required')
+    return
+  }
+  try {
+    const result = await ctx.importKnowledge(body.payload, body.overwrite === true)
+    sendJson(res, result.status === 'conflict' ? 409 : 200, result)
+  }
+  catch (err) {
+    sendError(res, 'INVALID_REQUEST', err instanceof Error ? err.message : String(err))
+  }
 }
 
 /** GET /health —— 仅暴露配置态，绝不含密钥。 */
@@ -235,6 +244,10 @@ export async function dispatch(
     }
     if (method === 'GET' && path.startsWith('/components/')) {
       handleComponentDetail(ctx, path.slice('/components/'.length), res)
+      return true
+    }
+    if (method === 'POST' && path === '/knowledge/import') {
+      await handleKnowledgeImport(ctx, req, res)
       return true
     }
     if (method === 'GET' && path === '/health') {
