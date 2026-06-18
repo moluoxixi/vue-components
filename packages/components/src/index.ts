@@ -2,6 +2,8 @@ import '@moluoxixi/config-form-antd-vue/styles'
 import '@moluoxixi/config-form-element/styles'
 import '@moluoxixi/config-form-shadcn-vue/styles'
 
+export { ConfigTable } from './ConfigTable'
+export type * from './ConfigTable'
 export { DateRangePicker } from './DateRangePicker'
 export type * from './DateRangePicker'
 export { EnterNextContainer } from './EnterNextContainer'

@@ -82,6 +82,47 @@ const BaseStub = defineComponent({
   },
 })
 
+const ElTableStub = defineComponent({
+  name: 'ElTable',
+  props: {
+    data: { type: Array, default: () => [] },
+    emptyText: { type: String, default: '暂无数据' },
+    rowClassName: { type: Function, default: undefined },
+  },
+  setup(props, { slots }) {
+    const rowClassName = props.rowClassName?.({ rowIndex: 0 })
+    return () => h('div', { 'data-testid': 'el-table-stub' }, [
+      (props.data as any[]).length > 0
+        ? [
+            h('div', {
+              'class': rowClassName,
+              'data-testid': 'table-row-0',
+            }),
+            slots.default?.(),
+          ]
+        : (slots.empty?.() ?? h('div', { 'data-testid': 'empty-text' }, props.emptyText)),
+    ])
+  },
+})
+
+const ElTableColumnStub = defineComponent({
+  name: 'ElTableColumn',
+  props: {
+    align: String,
+    label: String,
+    minWidth: [Number, String],
+    prop: String,
+    width: [Number, String],
+  },
+  setup(props, { slots }) {
+    const row = { code: 'C-001', name: '初始仓库' }
+    return () => h('section', { 'data-testid': `column-${props.prop}` }, [
+      h('header', { 'data-testid': `header-${props.prop}` }, slots.header?.({ column: props, $index: 0 }) ?? props.label),
+      h('div', { 'data-testid': `cell-${props.prop}` }, slots.default?.({ row, column: props, $index: 0 })),
+    ])
+  },
+})
+
 function defineScrollMetrics(element: HTMLElement, metrics: { clientHeight: number, scrollHeight: number, scrollTop: number }): void {
   Object.defineProperties(element, {
     clientHeight: { configurable: true, value: metrics.clientHeight },
@@ -241,6 +282,8 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(update),
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
         },
       },
     })
@@ -285,6 +328,8 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
         },
       },
     })
@@ -312,6 +357,8 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
         },
       },
     })
@@ -320,6 +367,34 @@ describe('popover table select', () => {
 
     expect(wrapper.get('[data-testid="default-slot"]').text()).toBe('默认内容')
     expect(wrapper.get('[data-testid="cell-slot"]').text()).toBe('初始仓库')
+  })
+
+  it('空态、非空加载态和当前行样式保持弹层表格反馈', async () => {
+    const mountBase = (props: Record<string, any>) => mount(PopoverTableSelectBase, {
+      props: {
+        columns: [{ field: 'name' }],
+        modelValue: true,
+        virtualRef: createVirtualInput(),
+        ...props,
+      },
+      global: {
+        stubs: {
+          ElPopover: createElPopoverStub(vi.fn()),
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
+        },
+      },
+    })
+
+    const emptyWrapper = mountBase({ data: [], loading: false })
+    expect(emptyWrapper.text()).toContain('暂无数据')
+
+    const emptyLoadingWrapper = mountBase({ data: [], loading: true })
+    expect(emptyLoadingWrapper.text()).toContain('加载中...')
+
+    const loadingWrapper = mountBase({ data: [{ name: '初始仓库' }], loading: true })
+    expect(loadingWrapper.get('.mx-popover-table-select-base__loading').text()).toBe('加载中...')
+    expect(loadingWrapper.get('[data-testid="table-row-0"]').classes()).toContain('mx-popover-table-select-base__row--current')
   })
 
   it('滚动保持在底部边界时只触发一次加载边界事件', async () => {
@@ -334,6 +409,8 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElTable: ElTableStub,
+          ElTableColumn: ElTableColumnStub,
         },
       },
     })

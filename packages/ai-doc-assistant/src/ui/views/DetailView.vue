@@ -8,6 +8,7 @@
 import { computed, ref, watch } from 'vue'
 import type { ComponentDetailResponse } from '../../shared/protocol'
 import { fetchComponentDetail } from '../api'
+import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat } from '../export'
 
 const props = defineProps<{ name: string }>()
 const emit = defineEmits<{ (e: 'back'): void, (e: 'ask', name: string): void }>()
@@ -18,6 +19,7 @@ const detail = ref<ComponentDetailResponse | null>(null)
 const errorMsg = ref('')
 /** 加载中标志。 */
 const loading = ref(false)
+const exportingFormat = ref<KnowledgeExportFormat | ''>('')
 /** Tooltip 内容样式：保留字段换行，避免复杂类型挤成一行。 */
 const typeTooltipStyle = { whiteSpace: 'pre-line', maxWidth: '520px' } as const
 
@@ -86,6 +88,18 @@ async function load(name: string): Promise<void> {
   }
 }
 
+function exportCurrentDetail(format: KnowledgeExportFormat): void {
+  if (!detail.value)
+    return
+  exportingFormat.value = format
+  try {
+    exportComponentDetail(detail.value, format)
+  }
+  finally {
+    exportingFormat.value = ''
+  }
+}
+
 watch(() => props.name, load, { immediate: true })
 </script>
 
@@ -95,14 +109,29 @@ watch(() => props.name, load, { immediate: true })
       <button class="link-btn" data-testid="detail-back" @click="emit('back')">
         ← 返回总览
       </button>
-      <button
-        v-if="detail"
-        class="link-btn ask"
-        data-testid="detail-ask"
-        @click="emit('ask', detail.name)"
-      >
-        问 AI 这个组件
-      </button>
+      <div v-if="detail" class="detail-actions">
+        <div class="export-buttons" aria-label="导出组件契约">
+          <button
+            v-for="format in KNOWLEDGE_EXPORT_FORMATS"
+            :key="format.id"
+            class="export-button"
+            type="button"
+            :disabled="exportingFormat === format.id"
+            data-testid="detail-export-btn"
+            @click="exportCurrentDetail(format.id)"
+          >
+            <span class="export-button-icon" aria-hidden="true">{{ format.icon }}</span>
+            导出 {{ format.label }}
+          </button>
+        </div>
+        <button
+          class="link-btn ask"
+          data-testid="detail-ask"
+          @click="emit('ask', detail.name)"
+        >
+          问 AI 这个组件
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="hint" data-testid="detail-loading">
@@ -312,7 +341,17 @@ watch(() => props.name, load, { immediate: true })
 
 <style scoped>
 .detail { padding: 20px; }
-.detail-head { display: flex; justify-content: space-between; margin-bottom: 16px; }
+.detail-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.detail-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.export-buttons { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.export-button {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border: 1px solid #d0d7de; border-radius: 6px;
+  background: #f6f8fa; color: #1f2328; cursor: pointer; font-size: 12px;
+}
+.export-button:hover { border-color: #1f6feb; background: #ddf4ff; }
+.export-button:disabled { opacity: .5; cursor: wait; }
+.export-button-icon { line-height: 1; }
 .link-btn {
   background: none; border: none; color: #1f6feb; cursor: pointer;
   font-size: 13px; padding: 4px 0;

@@ -11,6 +11,7 @@ import type {
 } from '../types'
 import { ElPopover } from 'element-plus'
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
+import { ConfigTable } from '../../../ConfigTable'
 
 defineOptions({
   name: 'PopoverTableSelectBase',
@@ -57,6 +58,14 @@ const popoverRefStyle = computed<CSSProperties>(() => {
 
 const tableWrapperStyle = computed<CSSProperties>(() => {
   return { height: props.height }
+})
+
+const popoverTableProps = computed<Record<string, any>>(() => {
+  return {
+    border: false,
+    showHeader: props.columns.length > 0,
+    rowClassName: ({ rowIndex }: { rowIndex: number }) => rowIndex === currentRowIndex.value ? 'mx-popover-table-select-base__row--current' : '',
+  }
 })
 
 const computedPopoverProps = computed<Record<string, any>>(() => {
@@ -261,21 +270,6 @@ function handleTableScroll(event: Event): void {
   emit('scrollBoundary', { direction: 'bottom' })
 }
 
-function getColumnTitle(column: PopoverTableColumn): string {
-  return column.title ?? column.label ?? column.field
-}
-
-function getColumnWidth(column: PopoverTableColumn): string | number | undefined {
-  return column.width ?? column.minWidth
-}
-
-function getCellValue(row: PopoverTableRow, column: PopoverTableColumn, rowIndex: number, columnIndex: number): any {
-  const value = row[column.field]
-  return column.formatter
-    ? column.formatter({ row, column, rowIndex, columnIndex, value })
-    : value
-}
-
 watch(
   () => props.virtualRef,
   () => {
@@ -352,71 +346,27 @@ onUnmounted(() => {
         @mousedown.stop
         @scroll="handleTableScroll"
       >
-        <table class="mx-popover-table-select-base__table">
-          <colgroup>
-            <col
-              v-for="column in props.columns"
-              :key="column.field"
-              :style="{ width: getColumnWidth(column) }"
-            >
-          </colgroup>
-          <thead>
-            <tr>
-              <th
-                v-for="(column, columnIndex) in props.columns"
-                :key="column.field"
-                class="mx-popover-table-select-base__header"
-                :style="{ textAlign: column.align }"
-              >
-                <slot
-                  v-if="column.slots?.header"
-                  :name="column.slots.header"
-                  :column="column"
-                  :column-index="columnIndex"
-                />
-                <template v-else>
-                  {{ getColumnTitle(column) }}
-                </template>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(row, rowIndex) in props.data"
-              :key="rowIndex"
-              class="mx-popover-table-select-base__row"
-              :class="{ 'mx-popover-table-select-base__row--current': rowIndex === currentRowIndex }"
-            >
-              <td
-                v-for="(column, columnIndex) in props.columns"
-                :key="column.field"
-                class="mx-popover-table-select-base__cell"
-                :style="{ textAlign: column.align }"
-                @click="handleCellClick(row, column, rowIndex, columnIndex, $event)"
-                @dblclick="handleCellDblClick(row, column, rowIndex, columnIndex, $event)"
-              >
-                <slot
-                  v-if="column.slots?.default && slots[column.slots.default]"
-                  :name="column.slots.default"
-                  :row="row"
-                  :column="column"
-                  :row-index="rowIndex"
-                  :column-index="columnIndex"
-                  :value="getCellValue(row, column, rowIndex, columnIndex)"
-                />
-                <template v-else>
-                  {{ getCellValue(row, column, rowIndex, columnIndex) }}
-                </template>
-              </td>
-            </tr>
-            <tr v-if="props.data.length === 0">
-              <td class="mx-popover-table-select-base__empty" :colspan="props.columns.length">
-                暂无数据
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-if="props.loading" class="mx-popover-table-select-base__loading">
+        <ConfigTable
+          :columns="props.columns"
+          :data="props.data"
+          :current-row-index="currentRowIndex"
+          :empty-text="props.loading ? '加载中...' : '暂无数据'"
+          :table-props="popoverTableProps"
+          @cell-click="({ row, column, rowIndex, columnIndex, event }) => handleCellClick(row, column, rowIndex, columnIndex, event as MouseEvent)"
+          @cell-dbl-click="({ row, column, rowIndex, columnIndex, event }) => handleCellDblClick(row, column, rowIndex, columnIndex, event as MouseEvent)"
+        >
+          <template
+            v-for="(_, name) in slots"
+            #[name]="slotParams"
+          >
+            <slot :name="name" v-bind="slotParams" />
+          </template>
+          <template #empty>
+            <span v-if="props.loading">加载中...</span>
+            <span v-else>暂无数据</span>
+          </template>
+        </ConfigTable>
+        <div v-if="props.loading && props.data.length > 0" class="mx-popover-table-select-base__loading">
           加载中...
         </div>
       </div>
@@ -434,47 +384,16 @@ onUnmounted(() => {
   overflow: auto;
 }
 
-.mx-popover-table-select-base__table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.mx-popover-table-select-base__header,
-.mx-popover-table-select-base__cell {
-  height: 32px;
-  padding: 6px 10px;
-  overflow: hidden;
-  color: var(--el-text-color-primary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.mx-popover-table-select-base__header {
-  font-weight: 600;
-  background: var(--el-fill-color-light);
-}
-
-.mx-popover-table-select-base__row {
-  cursor: pointer;
-}
-
-.mx-popover-table-select-base__row:hover,
-.mx-popover-table-select-base__row--current {
+:deep(.mx-popover-table-select-base__row--current) {
   background: var(--el-fill-color);
-}
-
-.mx-popover-table-select-base__empty,
-.mx-popover-table-select-base__loading {
-  padding: 18px;
-  color: var(--el-text-color-secondary);
-  text-align: center;
 }
 
 .mx-popover-table-select-base__loading {
   position: sticky;
   bottom: 0;
+  padding: 18px;
+  color: var(--el-text-color-secondary);
+  text-align: center;
   background: var(--el-bg-color);
 }
 </style>
