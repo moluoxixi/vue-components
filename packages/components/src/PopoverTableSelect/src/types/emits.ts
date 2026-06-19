@@ -1,3 +1,4 @@
+import type { RequestTableResult } from '@moluoxixi/hooks'
 import type { PopoverTableColumn, PopoverTableRow } from './props'
 
 export interface PopoverTableCellParams {
@@ -19,6 +20,9 @@ export interface PopoverTableSelectEmits {
   (event: 'loadMore'): void
   (event: 'select', row: PopoverTableRow): void
   (event: 'input', value: string): void
+  (event: 'loaded', result: RequestTableResult<PopoverTableRow>): void
+  (event: 'error', error: Error): void
+  (event: 'pageChange', params: { currentPage: number, pageSize: number }): void
 }
 
 /**

@@ -43,6 +43,7 @@ export default defineConfig({
         '@moluoxixi/config-form-core',
         '@moluoxixi/config-form-element',
         '@moluoxixi/config-form-shadcn-vue',
+        '@moluoxixi/hooks',
         'vue',
         'element-plus',
         /^element-plus\//,

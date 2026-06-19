@@ -4,12 +4,15 @@ import type {
   ConfigTableColumn,
   ConfigTableEmits,
   ConfigTableEmptyRender,
+  ConfigTablePageChangeParams,
+  ConfigTablePaginationProps,
   ConfigTableProps,
   ConfigTableRender,
   ConfigTableSlots,
   ConfigTableRow,
 } from './types'
-import { computed, defineComponent } from 'vue'
+import { useRequestTable } from '@moluoxixi/hooks'
+import { computed, defineComponent, watch } from 'vue'
 
 const props = withDefaults(defineProps<ConfigTableProps>(), {
   columns: () => [],
@@ -17,10 +20,16 @@ const props = withDefaults(defineProps<ConfigTableProps>(), {
   tableProps: () => ({}),
   emptyText: '暂无数据',
   currentRowIndex: -1,
+  params: () => ({}),
+  enabled: true,
+  pagination: undefined,
+  resetPageOnParamsChange: true,
 })
 
 const emit = defineEmits<ConfigTableEmits>()
 const slots = defineSlots<ConfigTableSlots>()
+const currentPage = defineModel<number>('currentPage', { default: 1 })
+const pageSize = defineModel<number>('pageSize', { default: 10 })
 
 const ConfigTableRenderNode = defineComponent({
   name: 'ConfigTableRenderNode',
@@ -40,6 +49,68 @@ const tableProps = computed<Record<string, any>>(() => {
     ...props.tableProps,
   }
 })
+
+const requestTable = props.query
+  ? useRequestTable<ConfigTableRow>({
+      queryKey: props.cacheKey ?? 'ConfigTable',
+      query: props.query,
+      params: computed(() => props.params),
+      currentPage,
+      pageSize,
+      enabled: computed(() => props.enabled),
+      staleTime: props.staleTime,
+      resetPageOnParamsChange: props.resetPageOnParamsChange,
+    })
+  : null
+
+const tableData = computed<ConfigTableRow[]>(() => {
+  return requestTable?.data.value ?? props.data
+})
+
+const requestTotal = computed<number>(() => requestTable?.total.value ?? tableData.value.length)
+
+const isRequestLoading = computed<boolean>(() => {
+  return Boolean(requestTable && (requestTable.isLoading.value || requestTable.isFetching.value))
+})
+
+const computedEmptyText = computed<string>(() => {
+  if (isRequestLoading.value)
+    return '加载中...'
+  if (requestTable?.isError.value)
+    return '加载失败'
+  return props.emptyText
+})
+
+const shouldShowPagination = computed<boolean>(() => {
+  return props.pagination !== false && (Boolean(props.pagination) || Boolean(requestTable))
+})
+
+const paginationProps = computed<ConfigTablePaginationProps>(() => {
+  const defaults: ConfigTablePaginationProps = {
+    layout: 'total, sizes, prev, pager, next, jumper',
+  }
+  return typeof props.pagination === 'object'
+    ? { ...defaults, ...props.pagination }
+    : defaults
+})
+
+if (requestTable) {
+  watch(
+    () => requestTable.query.data.value,
+    (result) => {
+      if (result)
+        emit('loaded', result)
+    },
+  )
+
+  watch(
+    () => requestTable.error.value,
+    (error) => {
+      if (error)
+        emit('error', error)
+    },
+  )
+}
 
 function getColumnLabel(column: ConfigTableColumn): string {
   return column.label ?? column.title ?? column.field
@@ -73,7 +144,7 @@ function createHeaderParams(column: ConfigTableColumn, columnIndex: number) {
     column,
     columnIndex,
     columns: props.columns,
-    data: props.data,
+    data: tableData.value,
     index: columnIndex,
   }
 }
@@ -85,7 +156,7 @@ function createSlotParams(row: ConfigTableRow, column: ConfigTableColumn, rowInd
     rowIndex,
     columnIndex,
     columns: props.columns,
-    data: props.data,
+    data: tableData.value,
     index: rowIndex,
     value: getCellValue(row, column, rowIndex, columnIndex),
   }
@@ -115,13 +186,32 @@ function handleCellClick(row: ConfigTableRow, column: ConfigTableColumn, rowInde
 function handleCellDblClick(row: ConfigTableRow, column: ConfigTableColumn, rowIndex: number, columnIndex: number, event: MouseEvent): void {
   emit('cellDblClick', createCellParams(row, column, rowIndex, columnIndex, event))
 }
+
+function emitPageChange(): void {
+  const params: ConfigTablePageChangeParams = {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+  }
+  emit('pageChange', params)
+}
+
+function handleCurrentPageUpdate(page: number): void {
+  currentPage.value = page
+  emitPageChange()
+}
+
+function handlePageSizeUpdate(size: number): void {
+  pageSize.value = size
+  currentPage.value = 1
+  emitPageChange()
+}
 </script>
 
 <template>
   <ElTable
     class="mx-config-table"
-    :data="props.data"
-    :empty-text="props.emptyText"
+    :data="tableData"
+    :empty-text="computedEmptyText"
     highlight-current-row
     v-bind="tableProps"
   >
@@ -147,7 +237,7 @@ function handleCellDblClick(row: ConfigTableRow, column: ConfigTableColumn, rowI
           :column="column"
           :column-index="columnIndex"
           :columns="props.columns"
-          :data="props.data"
+          :data="tableData"
           :index="columnIndex"
         />
         <template v-else>
@@ -176,7 +266,7 @@ function handleCellDblClick(row: ConfigTableRow, column: ConfigTableColumn, rowI
             :row-index="scope.$index"
             :column-index="columnIndex"
             :columns="props.columns"
-            :data="props.data"
+            :data="tableData"
             :index="scope.$index"
             :value="getCellValue(scope.row, column, scope.$index, columnIndex)"
           />
@@ -190,13 +280,23 @@ function handleCellDblClick(row: ConfigTableRow, column: ConfigTableColumn, rowI
       <ConfigTableRenderNode
         v-if="props.slots?.empty"
         :render="props.slots.empty"
-        :params="{ columns: props.columns, data: props.data }"
+        :params="{ columns: props.columns, data: tableData }"
       />
       <slot v-else name="empty">
-        {{ props.emptyText }}
+        {{ computedEmptyText }}
       </slot>
     </template>
   </ElTable>
+  <ElPagination
+    v-if="shouldShowPagination"
+    class="mx-config-table__pagination"
+    :current-page="currentPage"
+    :page-size="pageSize"
+    :total="requestTotal"
+    v-bind="paginationProps"
+    @update:current-page="handleCurrentPageUpdate"
+    @update:page-size="handlePageSizeUpdate"
+  />
 </template>
 
 <style scoped>
@@ -215,5 +315,11 @@ function handleCellDblClick(row: ConfigTableRow, column: ConfigTableColumn, rowI
 
 .mx-config-table__cell--current {
   font-weight: 600;
+}
+
+.mx-config-table__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 </style>

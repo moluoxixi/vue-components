@@ -1,4 +1,5 @@
 import type { PopoverTableRow } from './index'
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
@@ -8,6 +9,35 @@ import PopoverTableSelectBase from './src/base/index.vue'
 const selectedRow: PopoverTableRow = {
   code: 'C-009',
   name: '测试仓',
+}
+
+function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  })
+}
+
+async function waitFor(assertion: () => boolean, timeout = 1000): Promise<void> {
+  const start = Date.now()
+  let lastError: unknown
+  while (true) {
+    try {
+      if (assertion())
+        return
+    }
+    catch (error) {
+      lastError = error
+    }
+    if (Date.now() - start > timeout) {
+      if (lastError)
+        throw lastError
+      throw new Error('waitFor: timed out before condition was met')
+    }
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
 }
 
 const InputStub = defineComponent({
@@ -49,6 +79,7 @@ const InputStub = defineComponent({
 const BaseStub = defineComponent({
   name: 'PopoverTableSelectBase',
   props: {
+    data: { type: Array, default: () => [] },
     loading: Boolean,
     modelValue: Boolean,
     popoverProps: { type: Object, default: () => ({}) },
@@ -62,7 +93,10 @@ const BaseStub = defineComponent({
      */
     return () => h('section', { 'data-testid': 'table-base-stub' }, [
       h('span', { 'data-testid': 'base-visible' }, props.modelValue ? 'open' : 'closed'),
+      h('span', { 'data-testid': 'base-loading' }, props.loading ? 'loading' : 'idle'),
+      h('span', { 'data-testid': 'base-data' }, JSON.stringify(props.data)),
       slots.default?.({ row: selectedRow, value: selectedRow.name }),
+      h('div', { 'data-testid': 'base-footer' }, slots.footer?.()),
       h('button', {
         'data-testid': 'select-row',
         'onClick': () => emit('select', selectedRow),
@@ -78,6 +112,26 @@ const BaseStub = defineComponent({
         'onClick': () => emit('scrollBoundary', { direction: 'bottom' }),
         'type': 'button',
       }, 'load more'),
+    ])
+  },
+})
+
+const ElPaginationStub = defineComponent({
+  name: 'ElPagination',
+  props: {
+    currentPage: { type: Number, default: 1 },
+    pageSize: { type: Number, default: 10 },
+    total: { type: Number, default: 0 },
+  },
+  emits: ['update:currentPage', 'update:pageSize'],
+  setup(props, { emit }) {
+    return () => h('div', { 'data-testid': 'pagination-stub' }, [
+      h('span', { 'data-testid': 'pagination-state' }, `${props.currentPage}/${props.pageSize}/${props.total}`),
+      h('button', {
+        'data-testid': 'popover-next-page',
+        'onClick': () => emit('update:currentPage', props.currentPage + 1),
+        'type': 'button',
+      }, 'next'),
     ])
   },
 })
@@ -184,6 +238,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElInput: InputStub,
+          ElPagination: ElPaginationStub,
           PopoverTableSelectBase: BaseStub,
         },
       },
@@ -212,6 +267,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElInput: InputStub,
+          ElPagination: ElPaginationStub,
           PopoverTableSelectBase: BaseStub,
         },
       },
@@ -237,6 +293,187 @@ describe('popover table select', () => {
     expect(wrapper.emitted('clear')![0]).toEqual([])
   })
 
+  it('query 模式把请求数据传给弹层表格并默认渲染分页', async () => {
+    const query = vi.fn(async (params: Record<string, unknown> & { currentPage: number, pageSize: number }) => ({
+      data: [{ code: 'Q-001', name: `${String(params.keyword ?? '')}-${params.currentPage}` }],
+      total: 18,
+    }))
+    const loaded = vi.fn()
+
+    const wrapper = mount(PopoverTableSelect, {
+      props: {
+        columns: [{ field: 'name' }],
+        inputValue: '仓库',
+        params: { keyword: '仓库' },
+        query,
+        onLoaded: loaded,
+      },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: {
+          ElInput: InputStub,
+          ElPagination: ElPaginationStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await nextTick()
+    await waitFor(() => wrapper.get('[data-testid="base-data"]').text().includes('仓库-1'))
+
+    expect(query).toHaveBeenCalledWith({ keyword: '仓库', currentPage: 1, pageSize: 10 })
+    expect(wrapper.get('[data-testid="pagination-state"]').text()).toBe('1/10/18')
+    expect(wrapper.get('[data-testid="base-footer"]').find('[data-testid="pagination-stub"]').exists()).toBe(true)
+    expect(loaded).toHaveBeenCalledWith({ data: [{ code: 'Q-001', name: '仓库-1' }], total: 18 })
+  })
+
+  it('静态 data 更新会继续同步给弹层表格', async () => {
+    const wrapper = mount(PopoverTableSelect, {
+      props: {
+        data: [{ code: 'S-001', name: '初始仓库' }],
+      },
+      global: {
+        stubs: {
+          ElInput: InputStub,
+          ElPagination: ElPaginationStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await nextTick()
+    expect(wrapper.get('[data-testid="base-data"]').text()).toContain('初始仓库')
+
+    await wrapper.setProps({ data: [{ code: 'S-002', name: '更新仓库' }] })
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="base-data"]').text()).toContain('更新仓库')
+  })
+
+  it('pagination=false 隐藏分页且滚动到底仍只触发旧 loadMore', async () => {
+    const query = vi.fn(async (params: { currentPage: number, pageSize: number }) => ({
+      data: [{ code: 'Q-002', name: `第${params.currentPage}页` }],
+      total: 18,
+    }))
+
+    const wrapper = mount(PopoverTableSelect, {
+      props: {
+        enableLoadMore: true,
+        hasMore: true,
+        pagination: false,
+        query,
+      },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: {
+          ElInput: InputStub,
+          ElPagination: ElPaginationStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await nextTick()
+    await waitFor(() => wrapper.get('[data-testid="base-data"]').text().includes('第1页'))
+    await wrapper.get('[data-testid="load-more"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="pagination-stub"]').exists()).toBe(false)
+    expect(wrapper.emitted('loadMore')![0]).toEqual([])
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('分页变化写回 v-model 并触发 pageChange', async () => {
+    const query = vi.fn(async (params: { currentPage: number, pageSize: number }) => ({
+      data: [{ code: 'Q-003', name: `第${params.currentPage}页` }],
+      total: 18,
+    }))
+    const pageChange = vi.fn()
+
+    const wrapper = mount(PopoverTableSelect, {
+      props: {
+        currentPage: 2,
+        pageSize: 10,
+        query,
+        onPageChange: pageChange,
+      },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: {
+          ElInput: InputStub,
+          ElPagination: ElPaginationStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await nextTick()
+    await waitFor(() => wrapper.get('[data-testid="pagination-state"]').text() === '2/10/18')
+    await wrapper.get('[data-testid="popover-next-page"]').trigger('click')
+    await waitFor(() => query.mock.calls.at(-1)?.[0].currentPage === 3)
+
+    expect(wrapper.emitted('update:currentPage')?.at(-1)).toEqual([3])
+    expect(pageChange).toHaveBeenLastCalledWith({ currentPage: 3, pageSize: 10 })
+  })
+
+  it('params 变化时默认重置到第一页', async () => {
+    const query = vi.fn(async (params: Record<string, unknown> & { currentPage: number, pageSize: number }) => ({
+      data: [{ code: 'Q-004', name: `${String(params.keyword ?? '')}-${params.currentPage}` }],
+      total: 18,
+    }))
+    const wrapper = mount(PopoverTableSelect, {
+      props: {
+        currentPage: 4,
+        pageSize: 10,
+        params: { keyword: '初始' },
+        query,
+      },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: {
+          ElInput: InputStub,
+          ElPagination: ElPaginationStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await nextTick()
+    await waitFor(() => wrapper.get('[data-testid="pagination-state"]').text() === '4/10/18')
+
+    await wrapper.setProps({ params: { keyword: '更新' } })
+    await waitFor(() => query.mock.calls.at(-1)?.[0].keyword === '更新' && query.mock.calls.at(-1)?.[0].currentPage === 1)
+
+    expect(wrapper.emitted('update:currentPage')?.at(-1)).toEqual([1])
+    expect(wrapper.get('[data-testid="pagination-state"]').text()).toBe('1/10/18')
+  })
+
+  it('query 失败时透出 error 事件', async () => {
+    const failure = new Error('popover failed')
+    const error = vi.fn()
+    const query = vi.fn(async () => {
+      throw failure
+    })
+
+    mount(PopoverTableSelect, {
+      props: {
+        query,
+        onError: error,
+      },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: {
+          ElInput: InputStub,
+          ElPagination: ElPaginationStub,
+          PopoverTableSelectBase: BaseStub,
+        },
+      },
+    })
+
+    await waitFor(() => error.mock.calls.length === 1)
+
+    expect(error).toHaveBeenCalledWith(failure)
+  })
+
   it('调度配置变化和组件卸载时取消尚未触发的选择事件', async () => {
     vi.useFakeTimers()
     const wrapper = mount(PopoverTableSelect, {
@@ -248,6 +485,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElInput: InputStub,
+          ElPagination: ElPaginationStub,
           PopoverTableSelectBase: BaseStub,
         },
       },
@@ -282,6 +520,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(update),
+          ElPagination: ElPaginationStub,
           ElTable: ElTableStub,
           ElTableColumn: ElTableColumnStub,
         },
@@ -328,6 +567,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElPagination: ElPaginationStub,
           ElTable: ElTableStub,
           ElTableColumn: ElTableColumnStub,
         },
@@ -359,6 +599,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElPagination: ElPaginationStub,
           ElTable: ElTableStub,
           ElTableColumn: ElTableColumnStub,
         },
@@ -388,6 +629,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElPagination: ElPaginationStub,
           ElTable: ElTableStub,
           ElTableColumn: ElTableColumnStub,
         },
@@ -411,6 +653,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElPagination: ElPaginationStub,
           ElTable: ElTableStub,
           ElTableColumn: ElTableColumnStub,
         },
@@ -440,6 +683,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
+          ElPagination: ElPaginationStub,
           ElTable: ElTableStub,
           ElTableColumn: ElTableColumnStub,
         },
@@ -489,6 +733,7 @@ describe('popover table select', () => {
       global: {
         stubs: {
           ElPopover: createEmptyElPopoverStub(vi.fn()),
+          ElPagination: ElPaginationStub,
         },
       },
     })

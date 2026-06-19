@@ -1,3 +1,4 @@
+import type { QueryKeyBase, RequestTableQuery } from '@moluoxixi/hooks'
 import type { InputInstance, InputProps, PopoverProps } from 'element-plus'
 import type { ComponentInternalInstance, ComponentPublicInstance } from 'vue'
 import type { ConfigTableColumn, ConfigTableRow } from '../../../ConfigTable'
@@ -31,6 +32,25 @@ export interface PopoverTableSelectProps {
   enableLoadMore?: boolean
   hasMore?: boolean
   loading?: boolean
+  data?: PopoverTableRow[]
+  query?: RequestTableQuery<PopoverTableRow>
+  params?: Record<string, unknown>
+  cacheKey?: QueryKeyBase
+  enabled?: boolean
+  staleTime?: number
+  pagination?: boolean | PopoverTablePaginationProps
+  resetPageOnParamsChange?: boolean
+  currentPage?: number
+  pageSize?: number
+}
+
+export interface PopoverTablePaginationProps {
+  layout?: string
+  pageSizes?: number[]
+  background?: boolean
+  small?: boolean
+  hideOnSinglePage?: boolean
+  [key: string]: any
 }
 
 /**

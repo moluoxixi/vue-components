@@ -1,3 +1,4 @@
+import type { QueryKeyBase, RequestTableQuery, RequestTableResult } from '@moluoxixi/hooks'
 import type { TableColumnCtx, TableProps } from 'element-plus'
 import type { VNodeChild } from 'vue'
 
@@ -41,11 +42,37 @@ export interface ConfigTableProps {
   slots?: ConfigTableRenderSlots
   emptyText?: string
   currentRowIndex?: number
+  query?: RequestTableQuery<ConfigTableRow>
+  params?: Record<string, unknown>
+  cacheKey?: QueryKeyBase
+  enabled?: boolean
+  staleTime?: number
+  pagination?: boolean | ConfigTablePaginationProps
+  resetPageOnParamsChange?: boolean
+  currentPage?: number
+  pageSize?: number
 }
 
 export interface ConfigTableEmits {
   (event: 'cellClick', params: ConfigTableCellParams): void
   (event: 'cellDblClick', params: ConfigTableCellParams): void
+  (event: 'loaded', result: RequestTableResult<ConfigTableRow>): void
+  (event: 'error', error: Error): void
+  (event: 'pageChange', params: ConfigTablePageChangeParams): void
+}
+
+export interface ConfigTablePaginationProps {
+  layout?: string
+  pageSizes?: number[]
+  background?: boolean
+  small?: boolean
+  hideOnSinglePage?: boolean
+  [key: string]: any
+}
+
+export interface ConfigTablePageChangeParams {
+  currentPage: number
+  pageSize: number
 }
 
 export interface ConfigTableBaseScope {

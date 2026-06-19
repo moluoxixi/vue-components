@@ -2,6 +2,7 @@
 import type { InputInstance } from 'element-plus'
 import type { ScheduledHandler } from '../../utils'
 import type {
+  PopoverTablePaginationProps,
   PopoverTableRow,
   PopoverTableSelectEmits,
   PopoverTableSelectProps,
@@ -10,6 +11,7 @@ import type {
   ThrottleOrDebounceOptions,
 } from './types'
 import { ElInput } from 'element-plus'
+import { useRequestTable } from '@moluoxixi/hooks'
 import { computed, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { debounce, throttle } from '../../utils'
 import PopoverTableSelectBase from './base/index.vue'
@@ -35,6 +37,11 @@ const props = withDefaults(defineProps<RuntimeProps>(), {
   enableLoadMore: false,
   hasMore: false,
   loading: false,
+  data: () => [],
+  params: () => ({}),
+  enabled: true,
+  pagination: undefined,
+  resetPageOnParamsChange: true,
 })
 
 const emit = defineEmits<PopoverTableSelectEmits>()
@@ -42,6 +49,8 @@ const slots = defineSlots<PopoverTableSelectSlots>()
 
 const popoverModel = defineModel<boolean>({ default: false })
 const inputValue = defineModel<string>('inputValue', { default: '' })
+const currentPage = defineModel<number>('currentPage', { default: 1 })
+const pageSize = defineModel<number>('pageSize', { default: 10 })
 
 const inputRef = useTemplateRef<InputInstance>('inputRef')
 const currentInputValue = shallowRef('')
@@ -50,7 +59,20 @@ const isBaseMounted = shallowRef(false)
 const scheduledSelect = shallowRef<ScheduledHandler<typeof handleSelect>>(createImmediateHandler(handleSelect))
 const scheduledInput = shallowRef<ScheduledHandler<typeof handleInput>>(createImmediateHandler(handleInput))
 
-const slotNames = computed<string[]>(() => Object.keys(slots))
+const slotNames = computed<string[]>(() => Object.keys(slots).filter(name => name !== 'footer'))
+
+const requestTable = props.query
+  ? useRequestTable<PopoverTableRow>({
+      queryKey: props.cacheKey ?? 'PopoverTableSelect',
+      query: props.query,
+      params: computed(() => props.params),
+      currentPage,
+      pageSize,
+      enabled: computed(() => props.enabled),
+      staleTime: props.staleTime,
+      resetPageOnParamsChange: props.resetPageOnParamsChange,
+    })
+  : null
 
 const computedVirtualRef = computed<PopoverTableVirtualRef>(() => {
   return props.virtualRef || inputRef.value
@@ -63,6 +85,29 @@ const computedPlaceholder = computed<string>(() => {
 const computedOptions = computed<ThrottleOrDebounceOptions>(() => {
   const options = props.options
   return options.promise ? { trailing: true, ...options, leading: true } : { trailing: true, leading: false, ...options }
+})
+
+const tableData = computed<PopoverTableRow[] | undefined>(() => {
+  return requestTable?.data.value ?? props.data
+})
+
+const computedLoading = computed<boolean>(() => {
+  return props.loading || Boolean(requestTable && (requestTable.isLoading.value || requestTable.isFetching.value))
+})
+
+const requestTotal = computed<number>(() => requestTable?.total.value ?? tableData.value?.length ?? 0)
+
+const shouldShowPagination = computed<boolean>(() => {
+  return props.pagination !== false && Boolean(requestTable)
+})
+
+const paginationProps = computed<PopoverTablePaginationProps>(() => {
+  const defaults: PopoverTablePaginationProps = {
+    layout: 'total, sizes, prev, pager, next, jumper',
+  }
+  return typeof props.pagination === 'object'
+    ? { ...defaults, ...props.pagination }
+    : defaults
 })
 
 function handleFocus(): void {
@@ -112,6 +157,24 @@ function handleEnter(row: PopoverTableRow): void {
 function handleScrollBoundary(payload: { direction: 'bottom' }): void {
   if (props.enableLoadMore && props.hasMore && payload.direction === 'bottom')
     emit('loadMore')
+}
+
+function emitPageChange(): void {
+  emit('pageChange', {
+    currentPage: currentPage.value,
+    pageSize: pageSize.value,
+  })
+}
+
+function handleCurrentPageUpdate(page: number): void {
+  currentPage.value = page
+  emitPageChange()
+}
+
+function handlePageSizeUpdate(size: number): void {
+  pageSize.value = size
+  currentPage.value = 1
+  emitPageChange()
 }
 
 function noopScheduledAction(): void {
@@ -187,6 +250,24 @@ watch(
   { immediate: true },
 )
 
+if (requestTable) {
+  watch(
+    () => requestTable.query.data.value,
+    (result) => {
+      if (result)
+        emit('loaded', result)
+    },
+  )
+
+  watch(
+    () => requestTable.error.value,
+    (error) => {
+      if (error)
+        emit('error', error)
+    },
+  )
+}
+
 onUnmounted(() => {
   scheduledSelect.value.cancel()
   scheduledInput.value.cancel()
@@ -199,15 +280,29 @@ onUnmounted(() => {
       v-if="isBaseMounted"
       v-model="popoverModel"
       :virtual-ref="computedVirtualRef"
-      :loading="props.loading"
       :popover-props="props.popoverProps"
       v-bind="$attrs"
+      :data="tableData"
+      :loading="computedLoading"
       @scroll-boundary="handleScrollBoundary"
       @select="scheduledSelect"
       @enter="handleEnter"
     >
       <template v-for="name in slotNames" #[name]="slotParams" :key="name">
         <slot :name="name" v-bind="slotParams" />
+      </template>
+      <template #footer>
+        <ElPagination
+          v-if="shouldShowPagination"
+          class="mx-popover-table-select__pagination"
+          :current-page="currentPage"
+          :page-size="pageSize"
+          :total="requestTotal"
+          v-bind="paginationProps"
+          @update:current-page="handleCurrentPageUpdate"
+          @update:page-size="handlePageSizeUpdate"
+        />
+        <slot name="footer" />
       </template>
     </PopoverTableSelectBase>
     <ElInput
@@ -228,5 +323,11 @@ onUnmounted(() => {
 <style scoped>
 .mx-popover-table-select {
   width: 100%;
+}
+
+.mx-popover-table-select__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 </style>

@@ -18,7 +18,11 @@
 |---|---|---|
 | DateRangePicker | [DateRangePicker](out-components/DateRangePicker.md) | `packages/components/src/DateRangePicker` |
 | EnterNextContainer | [EnterNextContainer](out-components/EnterNextContainer.md) | `packages/components/src/EnterNextContainer` |
+| ConfigTable | [ConfigTable](out-components/ConfigTable.md) | `packages/components/src/ConfigTable` |
 | PopoverTableSelect | [PopoverTableSelect](out-components/PopoverTableSelect.md) | `packages/components/src/PopoverTableSelect` |
+| RequestSelectV2 | [RequestSelectV2](out-components/RequestSelectV2.md) | `packages/components/src/RequestSelectV2` |
+| RequestCascader | [RequestCascader](out-components/RequestCascader.md) | `packages/components/src/RequestCascader` |
+| RequestTreeSelect | [RequestTreeSelect](out-components/RequestTreeSelect.md) | `packages/components/src/RequestTreeSelect` |
 | ElementConfigForm | [ElementConfigForm](out-components/ElementConfigForm.md) | `packages/ConfigForm/element` |
 | AntdConfigForm | [AntdConfigForm](out-components/AntdConfigForm.md) | `packages/ConfigForm/antd` |
 | ShadcnConfigForm | [ShadcnConfigForm](out-components/ShadcnConfigForm.md) | `packages/ConfigForm/shadcn` |

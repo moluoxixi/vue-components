@@ -29,5 +29,6 @@ export interface PopoverTableSelectSlotScope {
  */
 export interface PopoverTableSelectSlots {
   default?: () => any
+  footer?: () => any
   [name: string]: ((params: PopoverTableSelectSlotScope) => any) | undefined
 }

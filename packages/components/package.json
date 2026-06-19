@@ -43,9 +43,11 @@
     "@moluoxixi/config-form-core": "workspace:*",
     "@moluoxixi/config-form-element": "workspace:*",
     "@moluoxixi/config-form-shadcn-vue": "workspace:*",
+    "@moluoxixi/hooks": "workspace:*",
     "dayjs": "catalog:build"
   },
   "devDependencies": {
+    "@tanstack/vue-query": "catalog:data",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "ant-design-vue": "catalog:ui",

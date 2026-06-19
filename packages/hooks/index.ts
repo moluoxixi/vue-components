@@ -13,6 +13,8 @@ export {
   useDetailPage,
   useFormSubmit,
   useListPage,
+  useRequestOptions,
+  useRequestTable,
 } from './src/composables'
 
 export type * from './src/types'

@@ -4,11 +4,11 @@
 
 | 字段 | 值 |
 |---|---|
-| sourceCommit | `a58da6d91a06aa122c0b70b7499306877f73fbc7` |
-| sourceState | dirty；当前未提交内容为初始化规则、docs 骨架和文档输出，`git status --porcelain` 未显示组件源码文件修改。 |
+| sourceCommit | `ae3470ea53e606fa9a5117f8f2c7879233712024` |
+| sourceState | dirty；当前未提交内容包含 request/cache hooks、request 组件、ConfigTable/PopoverTableSelect request/pagination 扩展、测试与文档。 |
 | generatedBy | `components-docs` provider mode |
 | sourceRoots | `packages/components`、`packages/ConfigForm/antd`、`packages/ConfigForm/element`、`packages/ConfigForm/shadcn`、`packages/ConfigForm/runtime` |
-| sourceFiles | `packages/components/src/index.ts`、`packages/components/src/DateRangePicker`、`packages/components/src/EnterNextContainer`、`packages/components/src/PopoverTableSelect`、`packages/ConfigForm/*/src`、`playgrounds/components-playground/src/examples/*ConfigForm.vue` |
+| sourceFiles | `packages/components/src/index.ts`、`packages/components/src/ConfigTable`、`packages/components/src/DateRangePicker`、`packages/components/src/EnterNextContainer`、`packages/components/src/PopoverTableSelect`、`packages/components/src/RequestSelectV2`、`packages/components/src/RequestCascader`、`packages/components/src/RequestTreeSelect`、`packages/components/src/request`、`packages/ConfigForm/*/src`、`playgrounds/components-playground/src/examples/*ConfigForm.vue` |
 
 ## 组件清单
 
@@ -16,7 +16,11 @@
 |---|---|---|
 | DateRangePicker | [DateRangePicker](DateRangePicker.md) | `packages/components/src/DateRangePicker` |
 | EnterNextContainer | [EnterNextContainer](EnterNextContainer.md) | `packages/components/src/EnterNextContainer` |
+| ConfigTable | [ConfigTable](ConfigTable.md) | `packages/components/src/ConfigTable` |
 | PopoverTableSelect | [PopoverTableSelect](PopoverTableSelect.md) | `packages/components/src/PopoverTableSelect` |
+| RequestSelectV2 | [RequestSelectV2](RequestSelectV2.md) | `packages/components/src/RequestSelectV2` |
+| RequestCascader | [RequestCascader](RequestCascader.md) | `packages/components/src/RequestCascader` |
+| RequestTreeSelect | [RequestTreeSelect](RequestTreeSelect.md) | `packages/components/src/RequestTreeSelect` |
 | ElementConfigForm | [ElementConfigForm](ElementConfigForm.md) | `packages/ConfigForm/element` |
 | AntdConfigForm | [AntdConfigForm](AntdConfigForm.md) | `packages/ConfigForm/antd` |
 | ShadcnConfigForm | [ShadcnConfigForm](ShadcnConfigForm.md) | `packages/ConfigForm/shadcn` |

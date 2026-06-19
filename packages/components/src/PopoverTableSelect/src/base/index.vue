@@ -34,6 +34,7 @@ const props = withDefaults(defineProps<PopoverTableSelectBaseProps>(), {
 
 const emit = defineEmits<PopoverTableSelectBaseEmits>()
 const slots = defineSlots<PopoverTableSelectSlots>()
+const tableSlotNames = computed<string[]>(() => Object.keys(slots).filter(name => name !== 'footer'))
 
 const popoverVisible = defineModel<boolean>({ default: false })
 const popoverRef = useTemplateRef<HTMLElement>('popoverRef')
@@ -356,7 +357,7 @@ onUnmounted(() => {
           @cell-dbl-click="({ row, column, rowIndex, columnIndex, event }) => handleCellDblClick(row, column, rowIndex, columnIndex, event as MouseEvent)"
         >
           <template
-            v-for="(_, name) in slots"
+            v-for="name in tableSlotNames"
             #[name]="slotParams"
           >
             <slot :name="name" v-bind="slotParams" />
@@ -369,6 +370,9 @@ onUnmounted(() => {
         <div v-if="props.loading && props.data.length > 0" class="mx-popover-table-select-base__loading">
           加载中...
         </div>
+      </div>
+      <div v-if="slots.footer" class="mx-popover-table-select-base__footer" @mousedown.stop>
+        <slot name="footer" />
       </div>
     </div>
   </ElPopover>
@@ -395,5 +399,9 @@ onUnmounted(() => {
   color: var(--el-text-color-secondary);
   text-align: center;
   background: var(--el-bg-color);
+}
+
+.mx-popover-table-select-base__footer {
+  margin-top: 8px;
 }
 </style>

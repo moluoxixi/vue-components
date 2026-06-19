@@ -12,11 +12,15 @@ import { defineField, ElementConfigForm } from '@moluoxixi/components'
 import {
   AntdConfigForm,
   antdConfigForm,
+  ConfigTable,
   DateRangePicker,
   defineField,
   ElementConfigForm,
   EnterNextContainer,
   PopoverTableSelect,
+  RequestCascader,
+  RequestSelectV2,
+  RequestTreeSelect,
   ShadcnConfigForm,
 } from '@moluoxixi/components'
 ```
@@ -28,3 +32,19 @@ import {
 ```ts
 import '@moluoxixi/components/styles'
 ```
+
+## 请求缓存组件
+
+`RequestSelectV2`、`RequestCascader`、`RequestTreeSelect`、`ConfigTable` 和 `PopoverTableSelect` 的 `query` 模式基于 `@moluoxixi/hooks` 与 TanStack Vue Query。宿主应用需要提供唯一 `QueryClient`：
+
+```ts
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
+
+app.use(VueQueryPlugin, {
+  queryClient: new QueryClient(),
+})
+```
+
+选项组件固定接收 `query(params)`，并把 `params` 放进缓存 key。表格组件固定接收 `query({ ...params, currentPage, pageSize })`，并把 `params`、`currentPage`、`pageSize` 放进缓存 key。
+
+`params` 必须是稳定、可序列化的普通对象；不要传入函数、DOM、组件实例、循环引用或会在渲染期间频繁重建且语义不变的对象。

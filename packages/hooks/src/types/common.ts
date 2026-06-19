@@ -40,6 +40,36 @@ export interface ListResult<TItem> {
 }
 
 /**
+ * 请求表格分页参数。
+ *
+ * currentPage 从 1 开始计数；pageSize 表示单页条数。
+ */
+export interface RequestTablePageParams {
+  currentPage: number
+  pageSize: number
+}
+
+/**
+ * 请求表格标准返回结构。
+ *
+ * data 是当前页数据，total 是符合当前 params 的总记录数。
+ */
+export interface RequestTableResult<TItem> {
+  data: TItem[]
+  total: number
+}
+
+/**
+ * 请求表格数据函数。
+ *
+ * 业务 params 与分页参数平铺合并，便于直接传给常见后端接口。
+ */
+export type RequestTableQuery<
+  TItem,
+  TParams extends Record<string, unknown> = Record<string, unknown>,
+> = (params: TParams & RequestTablePageParams) => Promise<RequestTableResult<TItem>>
+
+/**
  * 表单提交模式。
  *
  * create 表示新增，update 表示编辑；由是否存在主键自动推断，也可显式指定。
