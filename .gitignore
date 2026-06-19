@@ -1,7 +1,10 @@
 # 其他用户配置
 typings
 .qoder
+.trae
 .codebuddy
+.mcp.json
+component-ideas
 
 # rules(可选)
 .cursor
