@@ -1,5 +1,5 @@
 import type { QueryKeyBase, RequestTableQuery, RequestTableResult } from '@moluoxixi/hooks'
-import type { TableColumnCtx, TableProps } from 'element-plus'
+import type { Column as TableV2Column, TableV2Props } from 'element-plus'
 import type { VNodeChild } from 'vue'
 
 export type ConfigTableRow = Record<string, any>
@@ -19,8 +19,10 @@ export interface ConfigTableColumn {
     default?: string | ConfigTableCellRender
     header?: string | ConfigTableHeaderRender
   }
-  /** 透传给 el-table-column 的额外配置。 */
-  columnProps?: Partial<TableColumnCtx<ConfigTableRow>>
+  /** 透传给 TableV2 column 的额外配置。 */
+  columnProps?: Partial<TableV2Column<ConfigTableRow>> & {
+    className?: string
+  }
   /** 单元格格式化函数。 */
   formatter?: (params: ConfigTableCellParams) => any
 }
@@ -37,7 +39,9 @@ export interface ConfigTableCellParams {
 export interface ConfigTableProps {
   columns?: ConfigTableColumn[]
   data?: ConfigTableRow[]
-  tableProps?: Partial<TableProps<ConfigTableRow>>
+  tableProps?: Partial<TableV2Props> & {
+    rowClassName?: ConfigTableRowClass
+  }
   /** 表格级插槽渲染函数配置。 */
   slots?: ConfigTableRenderSlots
   emptyText?: string
@@ -51,6 +55,12 @@ export interface ConfigTableProps {
   resetPageOnParamsChange?: boolean
   currentPage?: number
   pageSize?: number
+  width?: number
+  height?: number
+  rowHeight?: number
+  headerHeight?: number
+  defaultColumnWidth?: number
+  rowKey?: string
 }
 
 export interface ConfigTableEmits {
@@ -74,6 +84,14 @@ export interface ConfigTablePageChangeParams {
   currentPage: number
   pageSize: number
 }
+
+export interface ConfigTableRowClassParams {
+  columns: ConfigTableColumn[]
+  rowData: ConfigTableRow
+  rowIndex: number
+}
+
+export type ConfigTableRowClass = string | ((params: ConfigTableRowClassParams) => string)
 
 export interface ConfigTableBaseScope {
   columns: ConfigTableColumn[]

@@ -136,44 +136,72 @@ const ElPaginationStub = defineComponent({
   },
 })
 
-const ElTableStub = defineComponent({
-  name: 'ElTable',
-  props: {
-    data: { type: Array, default: () => [] },
-    emptyText: { type: String, default: '暂无数据' },
-    rowClassName: { type: Function, default: undefined },
-  },
-  setup(props, { slots }) {
-    const rowClassName = props.rowClassName?.({ rowIndex: 0 })
-    return () => h('div', { 'data-testid': 'el-table-stub' }, [
-      (props.data as any[]).length > 0
-        ? [
-            h('div', {
-              'class': rowClassName,
-              'data-testid': 'table-row-0',
-            }),
-            slots.default?.(),
-          ]
-        : (slots.empty?.() ?? h('div', { 'data-testid': 'empty-text' }, props.emptyText)),
-    ])
-  },
-})
+function getColumnId(column: Record<string, any>): string {
+  return String(column.dataKey ?? column.key ?? column.title)
+}
 
-const ElTableColumnStub = defineComponent({
-  name: 'ElTableColumn',
+const ElTableV2Stub = defineComponent({
+  name: 'ElTableV2',
   props: {
-    align: String,
-    label: String,
-    minWidth: [Number, String],
-    prop: String,
-    width: [Number, String],
+    columns: { type: Array, default: () => [] },
+    data: { type: Array, default: () => [] },
+    height: { type: Number, default: 300 },
+    rowClass: { type: [String, Function], default: undefined },
+    width: { type: Number, default: 400 },
   },
   setup(props, { slots }) {
-    const row = { code: 'C-001', name: '初始仓库' }
-    return () => h('section', { 'data-testid': `column-${props.prop}` }, [
-      h('header', { 'data-testid': `header-${props.prop}` }, slots.header?.({ column: props, $index: 0 }) ?? props.label),
-      h('div', { 'data-testid': `cell-${props.prop}` }, slots.default?.({ row, column: props, $index: 0 })),
-    ])
+    function resolveRowClass(rowData: Record<string, any>, rowIndex: number): string {
+      if (typeof props.rowClass === 'function') {
+        return props.rowClass({
+          columns: props.columns,
+          rowData,
+          rowIndex,
+        })
+      }
+
+      return props.rowClass ?? ''
+    }
+
+    return () => {
+      const columns = props.columns as Array<Record<string, any>>
+      const rows = props.data as Array<Record<string, any>>
+
+      return h('div', {
+        'data-height': String(props.height),
+        'data-testid': 'el-table-v2-stub',
+        'data-width': String(props.width),
+      }, [
+        rows.length > 0
+          ? [
+              h('div', {
+                'class': resolveRowClass(rows[0], 0),
+                'data-testid': 'table-row-0',
+              }),
+              h('div', { 'data-testid': 'virtual-header' }, columns.map((column, columnIndex) => h('section', {
+                'data-testid': `header-${getColumnId(column)}`,
+              }, slots['header-cell']?.({
+                column,
+                columnIndex,
+                columns,
+                headerIndex: 0,
+                style: {},
+              }) ?? column.title))),
+              ...rows.map((rowData, rowIndex) => h('div', { 'data-testid': `virtual-row-${rowIndex}` }, columns.map((column, columnIndex) => h('div', {
+                'data-testid': `cell-${getColumnId(column)}`,
+              }, slots.cell?.({
+                column,
+                columnIndex,
+                columns,
+                depth: 0,
+                isScrolling: false,
+                rowData,
+                rowIndex,
+                style: {},
+              }) ?? rowData[getColumnId(column)])))),
+            ]
+          : (slots.empty?.() ?? h('div', { 'data-testid': 'empty-text' }, '暂无数据')),
+      ])
+    }
   },
 })
 
@@ -521,8 +549,7 @@ describe('popover table select', () => {
         stubs: {
           ElPopover: createElPopoverStub(update),
           ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
+          ElTableV2: ElTableV2Stub,
         },
       },
     })
@@ -568,8 +595,7 @@ describe('popover table select', () => {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
           ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
+          ElTableV2: ElTableV2Stub,
         },
       },
     })
@@ -600,8 +626,7 @@ describe('popover table select', () => {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
           ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
+          ElTableV2: ElTableV2Stub,
         },
       },
     })
@@ -630,8 +655,7 @@ describe('popover table select', () => {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
           ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
+          ElTableV2: ElTableV2Stub,
         },
       },
     })
@@ -654,8 +678,7 @@ describe('popover table select', () => {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
           ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
+          ElTableV2: ElTableV2Stub,
         },
       },
     })
@@ -684,8 +707,7 @@ describe('popover table select', () => {
         stubs: {
           ElPopover: createElPopoverStub(vi.fn()),
           ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
+          ElTableV2: ElTableV2Stub,
         },
       },
     })

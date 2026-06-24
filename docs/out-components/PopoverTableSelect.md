@@ -40,9 +40,9 @@ import { PopoverTableSelect } from '@moluoxixi/components'
 | resetPageOnParamsChange | `boolean` | `true` | 否 | `params` 变化时是否把当前页重置为 1。 |
 | currentPage | `number` | `1` | 否 | 命名 `v-model:currentPage`。 |
 | pageSize | `number` | `10` | 否 | 命名 `v-model:pageSize`。 |
-| width | `number \| string` | `400` | 否 | 透传给内部 `PopoverTableSelectBase` 的弹层宽度。 |
+| width | `number \| string` | `400` | 否 | 透传给内部 `PopoverTableSelectBase` 的弹层宽度；数字或数字型字符串会同步作为内部虚拟表格宽度。 |
 | placement | `PopoverProps['placement']` | `bottom` | 否 | 弹层位置。 |
-| height | `string \| number` | `300` | 否 | 表格滚动容器高度。 |
+| height | `string \| number` | `300` | 否 | 表格滚动容器高度；数字或数字型字符串会同步作为内部虚拟表格高度。 |
 | columns | `PopoverTableColumn[]` | `[]` | 否 | 表格列配置。 |
 | data | `PopoverTableRow[]` | `[]` | 否 | 表格数据。 |
 | selectTrigger | `'click' \| 'dblclick' \| 'none'` | `click` | 否 | 行选择触发方式。 |
@@ -82,6 +82,7 @@ import { PopoverTableSelect } from '@moluoxixi/components'
 - `pageSize` 变化会把 `currentPage` 重置为 1；默认 `params` 变化也会重置为 1。
 - `loading` 展示表格加载提示，`query` 模式下请求中会展示加载态。
 - `scrollY.enabled` 时滚动到底会按边界去重触发。
+- 内部表格由 `ConfigTable` 渲染为 Element Plus `ElTableV2`；`width=auto` 时内部表格宽度回退为 `400`。
 
 ## 可访问性
 
@@ -125,5 +126,6 @@ import { PopoverTableSelect } from '@moluoxixi/components'
 
 ## 变更记录
 
+- 2026-06-24：内部表格跟随 `ConfigTable` 切换为 `ElTableV2`，并把弹层宽高同步给虚拟表格。
 - 2026-06-07：根据源码、类型、示例和测试生成组件契约文档。
 - 2026-06-19：补充 request/pagination 模式、事件和示例。

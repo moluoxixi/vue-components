@@ -22,7 +22,7 @@
 - 发布包必须把 `element-plus` 作为外部 peer，不把 Element Plus 打进组件库产物。
 - `packages/components` 中模板使用的 `El*` 组件要求宿主应用安装 Element Plus 插件、全局注册组件，或使用等价的自动导入方案。
 - request 组件只负责把接口结果绑定到 Element Plus 组件的标准数据属性：`ElSelectV2.options`、`ElCascader.options`、`ElTreeSelect.data`。
-- 表格类组件使用 Element Plus 表格与分页组件：`ElTable`、`ElTableColumn`、`ElPagination`。
+- 表格类组件使用 Element Plus 虚拟表格与分页组件：`ElTableV2`、`ElPagination`；`ConfigTable` 已迁移到 TableV2 语义。
 - playground 可以使用 `unplugin-vue-components` 的 `ElementPlusResolver` 自动导入 Element Plus 组件；库源码不依赖 playground 的自动导入配置。
 
 ## 相关文档

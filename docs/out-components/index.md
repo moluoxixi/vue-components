@@ -4,8 +4,8 @@
 
 | 字段 | 值 |
 |---|---|
-| sourceCommit | `ae3470ea53e606fa9a5117f8f2c7879233712024` |
-| sourceState | dirty；当前未提交内容包含 request/cache hooks、request 组件、ConfigTable/PopoverTableSelect request/pagination 扩展、测试与文档。 |
+| sourceCommit | `f70ab2d44f04` |
+| sourceState | dirty；当前未提交内容包含 ConfigTable 虚拟表格迁移、PopoverTableSelect 适配、RequestOptions 测试恢复、测试与文档更新。 |
 | generatedBy | `components-docs` provider mode |
 | sourceRoots | `packages/components`、`packages/ConfigForm/antd`、`packages/ConfigForm/element`、`packages/ConfigForm/shadcn`、`packages/ConfigForm/runtime` |
 | sourceFiles | `packages/components/src/index.ts`、`packages/components/src/ConfigTable`、`packages/components/src/DateRangePicker`、`packages/components/src/EnterNextContainer`、`packages/components/src/PopoverTableSelect`、`packages/components/src/RequestSelectV2`、`packages/components/src/RequestCascader`、`packages/components/src/RequestTreeSelect`、`packages/components/src/request`、`packages/ConfigForm/*/src`、`playgrounds/components-playground/src/examples/*ConfigForm.vue` |

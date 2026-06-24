@@ -1,10 +1,8 @@
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { computed, defineComponent, h, inject, provide } from 'vue'
+import { defineComponent, h } from 'vue'
 import { ConfigTable } from './index'
-
-const tableDataKey = Symbol('table-data')
 
 function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -35,56 +33,83 @@ async function waitFor(assertion: () => boolean, timeout = 1000): Promise<void> 
   }
 }
 
-const ElTableStub = defineComponent({
-  name: 'ElTable',
+function getColumnId(column: Record<string, any>): string {
+  return String(column.dataKey ?? column.key ?? column.title)
+}
+
+const ElTableV2Stub = defineComponent({
+  name: 'ElTableV2',
   props: {
-    border: Boolean,
+    columns: { type: Array, default: () => [] },
     data: { type: Array, default: () => [] },
-    emptyText: { type: String, default: '暂无数据' },
-    stripe: Boolean,
+    headerHeight: { type: Number, default: 40 },
+    height: { type: Number, default: 320 },
+    rowClass: { type: [String, Function], default: undefined },
+    rowHeight: { type: Number, default: 44 },
+    rowKey: { type: [String, Number, Symbol], default: 'id' },
+    scrollbarAlwaysOn: Boolean,
+    width: { type: Number, default: 800 },
   },
   setup(props, { slots }) {
-    provide(tableDataKey, computed(() => props.data as any[]))
+    function resolveRowClass(rowData: Record<string, any>, rowIndex: number): string {
+      if (typeof props.rowClass === 'function') {
+        return props.rowClass({
+          columns: props.columns,
+          rowData,
+          rowIndex,
+        })
+      }
 
-    return () => h('div', {
-      'data-border': String(props.border),
-      'data-testid': 'el-table-stub',
-      'data-stripe': String(props.stripe),
-    }, [
-      (props.data as any[]).length > 0
-        ? slots.default?.()
-        : (slots.empty?.() ?? h('div', { 'data-testid': 'empty-text' }, props.emptyText)),
-    ])
-  },
-})
+      return props.rowClass ?? ''
+    }
 
-const ElTableColumnStub = defineComponent({
-  name: 'ElTableColumn',
-  props: {
-    align: String,
-    className: String,
-    label: String,
-    minWidth: [Number, String],
-    prop: String,
-    width: [Number, String],
-  },
-  setup(props, { slots }) {
-    const injectedRows = inject<any>(tableDataKey)
-    const fallbackRows = [
-      { code: 'C-001', name: '华南仓', qty: 12 },
-    ]
     return () => {
-      const rows = (injectedRows?.value ?? fallbackRows) as Array<Record<string, unknown>>
-      return h('section', {
-        'data-align': props.align,
-        'data-class-name': props.className,
-        'data-label': props.label,
-        'data-min-width': props.minWidth,
-        'data-testid': `column-${props.prop}`,
-        'data-width': props.width,
+      const columns = props.columns as Array<Record<string, any>>
+      const rows = props.data as Array<Record<string, any>>
+
+      return h('div', {
+        'data-header-height': String(props.headerHeight),
+        'data-height': String(props.height),
+        'data-row-height': String(props.rowHeight),
+        'data-row-key': String(props.rowKey),
+        'data-scrollbar-always-on': String(props.scrollbarAlwaysOn),
+        'data-testid': 'el-table-v2-stub',
+        'data-width': String(props.width),
       }, [
-        h('header', { 'data-testid': `header-${props.prop}` }, slots.header?.({ column: props, $index: 0 }) ?? props.label),
-        ...rows.map((row, rowIndex) => h('div', { 'data-testid': `cell-${props.prop}` }, slots.default?.({ row, column: props, $index: rowIndex }))),
+        rows.length > 0
+          ? [
+              h('div', { 'data-testid': 'virtual-header' }, columns.map((column, columnIndex) => h('section', {
+                'data-align': column.align,
+                'data-class': column.class,
+                'data-fixed': String(column.fixed),
+                'data-min-width': column.minWidth,
+                'data-testid': `virtual-column-${getColumnId(column)}`,
+                'data-title': column.title,
+                'data-width': column.width,
+              }, slots['header-cell']?.({
+                column,
+                columnIndex,
+                columns,
+                headerIndex: 0,
+                style: {},
+              }) ?? column.title))),
+              ...rows.map((rowData, rowIndex) => h('div', {
+                'class': resolveRowClass(rowData, rowIndex),
+                'data-testid': `table-row-${rowIndex}`,
+              }, columns.map((column, columnIndex) => h('div', {
+                'data-testid': `virtual-cell-${getColumnId(column)}-${rowIndex}`,
+              }, slots.cell?.({
+                column,
+                columnIndex,
+                columns,
+                depth: 0,
+                isScrolling: false,
+                rowData,
+                rowIndex,
+                style: {},
+              }) ?? rowData[getColumnId(column)])))),
+            ]
+          : (slots.empty?.() ?? h('div', { 'data-testid': 'empty-text' }, '暂无数据')),
       ])
     }
   },
@@ -115,8 +140,13 @@ const ElPaginationStub = defineComponent({
   },
 })
 
+const elementStubs = {
+  ElPagination: ElPaginationStub,
+  ElTableV2: ElTableV2Stub,
+}
+
 describe('config table', () => {
-  it('按列配置渲染 el-table-column 并支持 header/default 动态插槽作用域', () => {
+  it('按列配置渲染虚拟表格并支持 header/default 动态插槽作用域', () => {
     const wrapper = mount(ConfigTable, {
       props: {
         columns: [
@@ -133,27 +163,21 @@ describe('config table', () => {
           `${row.code}:${column.field}:${rowIndex}:${columnIndex}:${value}`,
         ),
       },
-      global: {
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
-      },
+      global: { stubs: elementStubs },
     })
 
     expect(wrapper.get('[data-testid="header-slot"]').text()).toBe('name:0')
     expect(wrapper.get('[data-testid="cell-slot"]').text()).toBe('C-001:name:0:0:华南仓')
-    expect(wrapper.get('[data-testid="cell-qty"]').text()).toBe('12件')
+    expect(wrapper.get('[data-testid="config-table-cell-qty-0"]').text()).toBe('12件')
   })
 
-  it('透传表格和列配置并按 label 优先级渲染列头', () => {
+  it('透传虚拟表格尺寸和列配置并按 label 优先级渲染列头', () => {
     const wrapper = mount(ConfigTable, {
       props: {
         columns: [
           {
             align: 'right',
-            columnProps: { className: 'qty-column' } as any,
+            columnProps: { class: 'qty-column', fixed: true } as any,
             field: 'qty',
             label: '库存',
             minWidth: 80,
@@ -161,28 +185,36 @@ describe('config table', () => {
             width: 120,
           },
         ],
-        data: [{ qty: 12 }],
-        tableProps: { border: false, stripe: true },
+        currentRowIndex: 0,
+        data: [{ code: 'C-001', qty: 12 }],
+        headerHeight: 44,
+        height: 360,
+        rowHeight: 48,
+        rowKey: 'code',
+        tableProps: { scrollbarAlwaysOn: true },
+        width: 640,
       },
-      global: {
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
-      },
+      global: { stubs: elementStubs },
     })
 
-    expect(wrapper.get('[data-testid="el-table-stub"]').attributes('data-border')).toBe('false')
-    expect(wrapper.get('[data-testid="el-table-stub"]').attributes('data-stripe')).toBe('true')
-    expect(wrapper.get('[data-testid="column-qty"]').attributes()).toMatchObject({
+    expect(wrapper.get('[data-testid="el-table-v2-stub"]').attributes()).toMatchObject({
+      'data-header-height': '44',
+      'data-height': '360',
+      'data-row-height': '48',
+      'data-row-key': 'code',
+      'data-scrollbar-always-on': 'true',
+      'data-width': '640',
+    })
+    expect(wrapper.get('[data-testid="virtual-column-qty"]').attributes()).toMatchObject({
       'data-align': 'right',
-      'data-class-name': 'qty-column',
-      'data-label': '库存',
+      'data-class': 'qty-column',
+      'data-fixed': 'true',
       'data-min-width': '80',
+      'data-title': '库存',
       'data-width': '120',
     })
-    expect(wrapper.get('[data-testid="header-qty"]').text()).toBe('库存')
+    expect(wrapper.get('[data-testid="virtual-column-qty"]').text()).toBe('库存')
+    expect(wrapper.get('[data-testid="table-row-0"]').classes()).toContain('mx-config-table__row--current')
   })
 
   it('空数据时渲染默认空态文案并支持 empty 插槽和 render 配置', () => {
@@ -192,16 +224,10 @@ describe('config table', () => {
         data: [],
         emptyText: '没有数据',
       },
-      global: {
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
-      },
+      global: { stubs: elementStubs },
     })
 
-    expect(wrapper.get('[data-testid="el-table-stub"]').text()).toBe('没有数据')
+    expect(wrapper.get('[data-testid="el-table-v2-stub"]').text()).toBe('没有数据')
 
     const slotWrapper = mount(ConfigTable, {
       props: {
@@ -211,13 +237,7 @@ describe('config table', () => {
       slots: {
         empty: () => h('strong', { 'data-testid': 'empty-slot' }, '自定义空态'),
       },
-      global: {
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
-      },
+      global: { stubs: elementStubs },
     })
 
     expect(slotWrapper.get('[data-testid="empty-slot"]').text()).toBe('自定义空态')
@@ -233,13 +253,7 @@ describe('config table', () => {
       slots: {
         empty: () => h('strong', { 'data-testid': 'empty-vue-slot' }, 'Vue 空态'),
       },
-      global: {
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
-      },
+      global: { stubs: elementStubs },
     })
 
     expect(renderWrapper.get('[data-testid="empty-render"]').text()).toBe('无仓库')
@@ -261,13 +275,7 @@ describe('config table', () => {
         ],
         data: [{ code: 'C-001', name: '华南仓' }],
       },
-      global: {
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
-      },
+      global: { stubs: elementStubs },
     })
 
     expect(wrapper.get('[data-testid="header-render"]').text()).toBe('name:0:0:1:1')
@@ -280,13 +288,7 @@ describe('config table', () => {
         columns: [{ field: 'name', label: '仓库' }],
         data: [{ code: 'C-001', name: '华南仓' }],
       },
-      global: {
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
-      },
+      global: { stubs: elementStubs },
     })
 
     await wrapper.get('[data-testid="config-table-cell-name-0"]').trigger('click')
@@ -323,15 +325,11 @@ describe('config table', () => {
       },
       global: {
         plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
+        stubs: elementStubs,
       },
     })
 
-    await waitFor(() => wrapper.get('[data-testid="cell-name"]').text().includes('请求仓库'))
+    await waitFor(() => wrapper.get('[data-testid="config-table-cell-name-0"]').text().includes('请求仓库'))
 
     expect(query).toHaveBeenCalledWith({ keyword: '仓库', currentPage: 1, pageSize: 10 })
     expect(wrapper.get('[data-testid="pagination-state"]').text()).toBe('1/10/33')
@@ -353,11 +351,7 @@ describe('config table', () => {
       },
       global: {
         plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
+        stubs: elementStubs,
       },
     })
 
@@ -382,15 +376,11 @@ describe('config table', () => {
       },
       global: {
         plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
+        stubs: elementStubs,
       },
     })
 
-    await waitFor(() => wrapper.get('[data-testid="cell-name"]').text().includes('第3页'))
+    await waitFor(() => wrapper.get('[data-testid="config-table-cell-name-0"]').text().includes('第3页'))
 
     expect(query).toHaveBeenCalledWith({ currentPage: 3, pageSize: 20 })
     expect(wrapper.find('[data-testid="pagination-stub"]').exists()).toBe(false)
@@ -412,11 +402,7 @@ describe('config table', () => {
       },
       global: {
         plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
+        stubs: elementStubs,
       },
     })
 
@@ -450,11 +436,7 @@ describe('config table', () => {
       },
       global: {
         plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
-        stubs: {
-          ElPagination: ElPaginationStub,
-          ElTable: ElTableStub,
-          ElTableColumn: ElTableColumnStub,
-        },
+        stubs: elementStubs,
       },
     })
 

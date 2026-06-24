@@ -61,11 +61,17 @@ const tableWrapperStyle = computed<CSSProperties>(() => {
   return { height: props.height }
 })
 
+const tableWidth = computed<number>(() => {
+  return toNumberSize(props.width, 400)
+})
+
+const tableHeight = computed<number>(() => {
+  return toNumberSize(props.height, 300)
+})
+
 const popoverTableProps = computed<Record<string, any>>(() => {
   return {
-    border: false,
-    showHeader: props.columns.length > 0,
-    rowClassName: ({ rowIndex }: { rowIndex: number }) => rowIndex === currentRowIndex.value ? 'mx-popover-table-select-base__row--current' : '',
+    rowClass: ({ rowIndex }: { rowIndex: number }) => rowIndex === currentRowIndex.value ? 'mx-popover-table-select-base__row--current' : '',
   }
 })
 
@@ -93,6 +99,19 @@ const computedPopoverProps = computed<Record<string, any>>(() => {
 
 function resolveVirtualElement(target: PopoverTableVirtualRef): HTMLElement {
   return ((target as ComponentPublicInstance)?.$el || (target as any)?.input || target) as HTMLElement
+}
+
+function toNumberSize(value: number | string | undefined, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value))
+    return value
+
+  if (typeof value === 'string') {
+    const match = value.trim().match(/^(\d+(?:\.\d+)?)(?:px)?$/i)
+    if (match)
+      return Number(match[1])
+  }
+
+  return fallback
 }
 
 function updatePopoverPosition(): void {
@@ -352,7 +371,9 @@ onUnmounted(() => {
           :data="props.data"
           :current-row-index="currentRowIndex"
           :empty-text="props.loading ? '加载中...' : '暂无数据'"
+          :height="tableHeight"
           :table-props="popoverTableProps"
+          :width="tableWidth"
           @cell-click="({ row, column, rowIndex, columnIndex, event }) => handleCellClick(row, column, rowIndex, columnIndex, event as MouseEvent)"
           @cell-dbl-click="({ row, column, rowIndex, columnIndex, event }) => handleCellDblClick(row, column, rowIndex, columnIndex, event as MouseEvent)"
         >
