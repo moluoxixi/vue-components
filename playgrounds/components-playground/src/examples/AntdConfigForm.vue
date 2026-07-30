@@ -10,8 +10,9 @@ export const exampleMeta = {
 </script>
 
 <script setup lang="ts">
-import type { ConfigFormValues } from '@moluoxixi/components'
-import { antdConfigForm, defineField } from '@moluoxixi/components'
+import type { ConfigFormValues } from '@moluoxixi/config-form-core'
+import { defineFields } from '@moluoxixi/config-form-core'
+import { antdConfigForm } from '@moluoxixi/components'
 import { Button as AButton, Checkbox as ACheckbox, Input as AInput, Tag as ATag } from 'ant-design-vue'
 import { computed, h, shallowRef } from 'vue'
 
@@ -27,9 +28,10 @@ const formModel = shallowRef<AntdFormValues>({
   publishNote: '',
 })
 const submittedValues = shallowRef<Partial<AntdFormValues>>({})
+const { defineField } = defineFields<AntdFormValues>()
 
 const fields = [
-  defineField<AntdFormValues>({
+  defineField({
     component: AInput,
     field: 'projectName',
     label: '项目名称',
@@ -39,7 +41,7 @@ const fields = [
     rules: [{ message: '请输入项目名称', required: true }],
     span: 12,
   }),
-  defineField<AntdFormValues>({
+  defineField({
     component: ACheckbox,
     field: 'publish',
     label: '发布设置',
@@ -48,7 +50,7 @@ const fields = [
       default: () => h('span', '允许发布'),
     },
   }),
-  defineField<AntdFormValues>({
+  defineField({
     component: AInput,
     field: 'publishNote',
     label: '发布备注',
@@ -58,7 +60,7 @@ const fields = [
     span: 24,
     visible: values => values.publish,
   }),
-  defineField<AntdFormValues>({
+  defineField({
     component: ATag,
     props: {
       color: 'blue',

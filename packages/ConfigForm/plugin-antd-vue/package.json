@@ -30,13 +30,15 @@
   },
   "peerDependencies": {
     "@moluoxixi/config-form": "^0.1.1",
-    "ant-design-vue": "^4.2.0"
+    "ant-design-vue": "^4.2.0",
+    "vue": "^3.5.0"
   },
   "devDependencies": {
     "@moluoxixi/config-form": "workspace:*",
     "@vitest/coverage-v8": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "ant-design-vue": "catalog:ui",
+    "happy-dom": "catalog:dev",
     "unplugin-dts": "catalog:dev",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",

@@ -62,7 +62,7 @@ export interface FormRuntimePlugin {
 export interface FormRuntimeOptions {
   /** 全局组件注册表；用户注册优先于内置组件。 */
   components?: ComponentRegistry
-  /** 全局只读展示适配器注册表；用户注册优先于插件。 */
+  /** 全局只读展示适配器注册表；与插件 key 冲突时显式报错。 */
   readonlyAdapters?: ReadonlyAdapterRegistry
   /** 运行时插件列表；按用户注册顺序执行。 */
   plugins?: FormRuntimePlugin[]

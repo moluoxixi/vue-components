@@ -90,15 +90,21 @@ export function isResolvedContainer(value: ResolvedFormNode): value is ResolvedC
  *
  * slot 与顶层 fields 采用同一种声明模式；非节点配置会直接抛错，避免字段拓扑被静默漏收。
  */
-function collectSlotFields(slot: TraversableSlotContent | undefined, path = 'slot'): FieldConfig[] {
+function collectSlotFields(
+  slot: TraversableSlotContent | undefined,
+  fields: FieldConfig[],
+  path = 'slot',
+): void {
   if (slot === undefined)
-    return []
+    return
 
-  if (Array.isArray(slot))
-    return slot.flatMap((item, index) => collectSlotFields(item, `${path}.${index}`))
+  if (Array.isArray(slot)) {
+    slot.forEach((item, index) => collectSlotFields(item, fields, `${path}.${index}`))
+    return
+  }
 
   if (typeof slot === 'function')
-    return []
+    return
 
   if (!isFormNodeConfig(slot)) {
     throw new ConfigFormError(
@@ -108,7 +114,17 @@ function collectSlotFields(slot: TraversableSlotContent | undefined, path = 'slo
     )
   }
 
-  return collectFieldConfigsRaw([slot])
+  collectNodeFields(slot, fields)
+}
+
+/** 以前序顺序把单个节点及其 slot 字段写入共享结果数组。 */
+function collectNodeFields(node: TraversableFormNode, fields: FieldConfig[]): void {
+  if (isFieldConfig(node))
+    fields.push(node)
+
+  Object.entries(node.slots ?? {}).forEach(([key, slot]) => {
+    collectSlotFields(slot, fields, `${nodePath(node)}.slots.${key}`)
+  })
 }
 
 /**
@@ -117,10 +133,9 @@ function collectSlotFields(slot: TraversableSlotContent | undefined, path = 'slo
  * 该函数只负责拓扑遍历和容器字段边界校验，重复 field key 由外层统一处理。
  */
 function collectFieldConfigsRaw(nodes: readonly TraversableFormNode[]): FieldConfig[] {
-  return nodes.flatMap((node) => {
-    const nested = Object.entries(node.slots ?? {}).flatMap(([key, slot]) => collectSlotFields(slot, `${nodePath(node)}.slots.${key}`))
-    return isFieldConfig(node) ? [node, ...nested] : nested
-  })
+  const fields: FieldConfig[] = []
+  nodes.forEach(node => collectNodeFields(node, fields))
+  return fields
 }
 
 /** 多个真实字段绑定同一个表单值 key 时直接抛错。 */

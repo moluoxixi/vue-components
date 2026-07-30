@@ -36,5 +36,7 @@ export type {
   SlotContent,
   ValidateTrigger,
 } from './src/types'
+export { asVueFunctionalComponent } from './src/utils'
+export type { AdaptedVueFunctionalComponent } from './src/utils'
 export { defineField } from './src/utils/field'
 export { defineFields } from './src/utils/field'

@@ -10,6 +10,7 @@
 | out-components | [组件库对外文档索引](out-components/index.md) | 记录当前项目提供给外部消费方复用的组件契约。 |
 | prds | [需求文档索引](prds/index.md) | 记录业务背景、目标、范围、流程、字段口径、验收标准和变更历史。 |
 | test | [测试文档索引](test/index.md) | 记录测试策略、用例矩阵、数据准备、联调验证、回归范围和风险。 |
+| plan | [实现计划索引](plan/index.md) | 记录前后端实现方案、任务边界、依赖关系、验证命令和风险。 |
 | other | [其它文档索引](other/index.md) | 登记初始化前已存在但尚未归入架构、接口、需求、组件库或测试目录的项目文档。 |
 
 ## 当前组件库对外契约
@@ -23,11 +24,11 @@
 | RequestSelectV2 | [RequestSelectV2](out-components/RequestSelectV2.md) | `packages/components/src/RequestSelectV2` |
 | RequestCascader | [RequestCascader](out-components/RequestCascader.md) | `packages/components/src/RequestCascader` |
 | RequestTreeSelect | [RequestTreeSelect](out-components/RequestTreeSelect.md) | `packages/components/src/RequestTreeSelect` |
-| ElementConfigForm | [ElementConfigForm](out-components/ElementConfigForm.md) | `packages/ConfigForm/element` |
-| AntdConfigForm | [AntdConfigForm](out-components/AntdConfigForm.md) | `packages/ConfigForm/antd` |
+| ElementConfigForm | [ElementConfigForm](out-components/ElementConfigForm.md) | `packages/components/src/ElementConfigForm` |
+| AntdConfigForm | [AntdConfigForm](out-components/AntdConfigForm.md) | `packages/components/src/AntdConfigForm` |
 | ShadcnConfigForm | [ShadcnConfigForm](out-components/ShadcnConfigForm.md) | `packages/ConfigForm/shadcn` |
 | RuntimeConfigForm | [RuntimeConfigForm](out-components/RuntimeConfigForm.md) | `packages/ConfigForm/runtime` |
-| ConfigFormInternalComponents | [ConfigFormInternalComponents](out-components/ConfigFormInternalComponents.md) | `packages/ConfigForm/*/src/components` |
+| ConfigFormInternalComponents | [ConfigFormInternalComponents](out-components/ConfigFormInternalComponents.md) | `packages/components/src/*ConfigForm/src/components`、`packages/ConfigForm/*/src/components` |
 
 ## 外部组件库消费约束
 
@@ -43,6 +44,7 @@
 | 需求模块 | PRD | 架构 | API | 组件 | 测试 |
 |---|---|---|---|---|---|
 | 组件AI文档与调试助手 | [PRD](prds/组件AI文档与调试助手.md)（已定稿） | [架构概览](architecture/overview.md)（已定稿） | [BFF接口](out-api/ai-debug-assistant.md)（契约设计/planned） | 源码公共契约（Props/Emits/Slots/Model/类型与注释） | [测试设计](test/组件AI文档与调试助手.md)（已定稿） |
+| ConfigForm 运行时质量修复 | N/A；开发者明确指示直接实现，范围由[实现计划](plan/frontend/ConfigForm运行时质量修复.md)固化 | 既有 runtime / adapter 边界 | N/A | [RuntimeConfigForm](out-components/RuntimeConfigForm.md)（目标契约） | [测试设计](test/ConfigForm运行时质量修复.md)（已定稿） |
 
 ## 维护约定
 

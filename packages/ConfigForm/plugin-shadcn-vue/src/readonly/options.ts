@@ -7,7 +7,7 @@ export interface ShadcnOptionNode {
 
 /** shadcn-vue 选择字段统一通过 props.options 暴露候选项。 */
 export function readShadcnOptions(props: Record<string, unknown>): ShadcnOptionNode[] {
-  return props.options as ShadcnOptionNode[]
+  return Array.isArray(props.options) ? props.options as ShadcnOptionNode[] : []
 }
 
 export function findShadcnOptionLabel(options: readonly ShadcnOptionNode[], value: unknown): unknown | undefined {

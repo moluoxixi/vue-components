@@ -43,7 +43,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['@moluoxixi/config-form', '@moluoxixi/config-form/plugins', 'element-plus'],
+      external: ['@moluoxixi/config-form', '@moluoxixi/config-form/plugins', 'element-plus', 'vue'],
     },
   },
 })

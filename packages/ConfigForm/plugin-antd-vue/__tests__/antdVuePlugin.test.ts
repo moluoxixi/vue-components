@@ -1,4 +1,8 @@
-import type { NormalizedFieldConfig } from '@moluoxixi/config-form/plugins'
+import type { ResolvedBoundNode } from '@moluoxixi/config-form'
+import type {
+  ReadonlyAdapter,
+  ReadonlyRenderContext,
+} from '@moluoxixi/config-form/plugins'
 import { defineField } from '@moluoxixi/config-form'
 import { createFormRuntime } from '@moluoxixi/config-form/plugins'
 import { mount } from '@vue/test-utils'
@@ -25,15 +29,15 @@ const AUnknown = { name: 'AUnknown' }
 const CustomInput = { name: 'CustomInput' }
 
 /** 将 runtime 返回节点收窄为字段节点；本测试只传入带 field 的配置。 */
-function asField(node: unknown): NormalizedFieldConfig {
-  return node as NormalizedFieldConfig
+function asField(node: unknown): ResolvedBoundNode {
+  return node as ResolvedBoundNode
 }
 
 /** 将 readonly adapter 渲染成可断言的 DOM，保持测试只关心展示结果。 */
-function renderReadonly(adapter: (context: Record<string, unknown>) => unknown, context: Record<string, unknown>) {
+function renderReadonly(adapter: ReadonlyAdapter, context: ReadonlyRenderContext) {
   return mount(defineComponent({
     name: 'ReadonlyAdapterHarness',
-    setup: () => () => h('div', adapter(context)),
+    setup: () => () => h('div', [adapter(context)]),
   }))
 }
 
@@ -357,7 +361,7 @@ describe('antd vue plugin package', () => {
   })
 
   it('allows user readonly adapters to override plugin defaults', () => {
-    const override = ({ value }: Record<string, unknown>) => h('span', `override:${String(value)}`)
+    const override: ReadonlyAdapter = ({ value }) => h('span', `override:${String(value)}`)
     const runtime = createFormRuntime({
       plugins: [
         createAntdVuePlugin({

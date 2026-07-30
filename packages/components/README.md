@@ -2,10 +2,13 @@
 
 `@moluoxixi/components` 是 Moluoxixi 组件集合入口。
 
-当前包聚合转发 `packages/ConfigForm/*` 下的轻量配置表单包，并提供从旧组件库迁入的常用 Element Plus 辅助组件。ConfigForm 的公共协议和三个 UI 实现不在本包内维护。
+当前包在内部维护不含 runtime plugin 功能的 Element Plus、Ant Design Vue ConfigForm，并提供从旧组件库迁入的常用 Element Plus 辅助组件。两套 ConfigForm 直接由本包实现，不转发 runtime plugin 或其他 UI 实现；字段协议继续复用无插件的 `config-form-core`。
 
 ```ts
-import { defineField, ElementConfigForm } from '@moluoxixi/components'
+import { ElementConfigForm } from '@moluoxixi/components'
+import { defineFields } from '@moluoxixi/config-form-core'
+
+const { defineField } = defineFields<MyFormValues>()
 ```
 
 ```ts
@@ -14,18 +17,23 @@ import {
   antdConfigForm,
   ConfigTable,
   DateRangePicker,
-  defineField,
   ElementConfigForm,
   EnterNextContainer,
   PopoverTableSelect,
   RequestCascader,
   RequestSelectV2,
   RequestTreeSelect,
-  ShadcnConfigForm,
 } from '@moluoxixi/components'
 ```
 
-`ElementConfigForm` 直接使用 `ElForm` / `ElFormItem` 渲染，`antdConfigForm` 直接使用 `AForm` / `AFormItem` 渲染，`ShadcnConfigForm` 使用本地 form 壳渲染 label/error。三者都支持 `defineField` / `defineFields`、容器节点和配置化 slots；它们不接入 schema、runtime plugin 或自定义 FormItem。
+`ElementConfigForm` 直接使用 `ElForm` / `ElFormItem` 渲染，`antdConfigForm` 直接使用 `AForm` / `AFormItem` 渲染。两者都支持 `config-form-core` 的 `defineField` / `defineFields`、容器节点和配置化 slots；它们不接入 schema、runtime plugin 或自定义 FormItem。
+
+需要只加载单一 UI 实现时，使用本包的纯入口：
+
+```ts
+import { AntdConfigForm } from '@moluoxixi/components/antd'
+import { ElementConfigForm } from '@moluoxixi/components/element'
+```
 
 样式统一通过样式入口引入：
 

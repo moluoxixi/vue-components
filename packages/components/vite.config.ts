@@ -28,6 +28,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
+        antd: resolve(__dirname, 'antd.ts'),
+        element: resolve(__dirname, 'element.ts'),
         index: resolve(__dirname, 'index.ts'),
       },
       name: 'MoluoxixiComponents',
@@ -39,10 +41,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
-        '@moluoxixi/config-form-antd-vue',
         '@moluoxixi/config-form-core',
-        '@moluoxixi/config-form-element',
-        '@moluoxixi/config-form-shadcn-vue',
         '@moluoxixi/hooks',
         'vue',
         'element-plus',

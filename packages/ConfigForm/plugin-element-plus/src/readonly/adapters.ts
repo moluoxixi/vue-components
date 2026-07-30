@@ -6,7 +6,7 @@ import {
   readElementPlusOptionKeys,
   readElementPlusOptionSource,
   resolveElementPlusPathLabel,
-} from './options'
+} from './options.js'
 
 export function createElementPlusChoiceReadonlyAdapter(
   optionsKeys: readonly string[],

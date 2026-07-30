@@ -2,13 +2,14 @@
 
 ## 用途
 
-`AntdConfigForm` 用声明式 `fields` 渲染 Ant Design Vue 表单，统一字段绑定、递归节点、布局、校验、提交和模板 ref API。组件来源为 `packages/ConfigForm/antd`。
+`AntdConfigForm` 用声明式 `fields` 渲染 Ant Design Vue 表单，统一字段绑定、递归节点、布局、校验、提交和模板 ref API。组件由 `packages/components/src/AntdConfigForm` 独立实现，不经过 runtime plugin。
 
 ## 引入
 
 ```ts
 import type { AntdConfigFormExpose, AntdConfigFormProps } from '@moluoxixi/components'
-import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@moluoxixi/components'
+import { AntdConfigForm, antdConfigForm } from '@moluoxixi/components'
+import { defineField, defineFields } from '@moluoxixi/config-form-core'
 ```
 
 ## Props
@@ -45,7 +46,7 @@ import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@molu
 
 - 组件合并顶层 `rules` 与字段级 `rules`。
 - 有 `label` 的字段渲染为 Ant Design Vue FormItem；无 `label` 的字段直接渲染组件。
-- 支持 `valueProp/trigger/getValueFromEvent`，并通过 Ant Design Vue 插件适配 Switch 等组件的写回协议。
+- 支持 `valueProp/trigger/getValueFromEvent`，并在本地绑定层适配 Switch 等组件的写回协议。
 - inline 布局使用 Ant Design Vue Row，不为顶层节点包裹 Col。
 
 ## 可访问性

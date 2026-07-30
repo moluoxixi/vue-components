@@ -13,6 +13,11 @@ mindmap
       PropsControls复用ConfigForm
       索引状态条
       SSE流式消费
+    ConfigForm运行时质量修复
+      runtime正确性
+      校验低风险优化
+      adapter发布边界
+      性能基线
 ```
 
 ## task 导航
@@ -20,6 +25,7 @@ mindmap
 | 需求模块 | 任务书 | 核心范围 | 状态 |
 |---|---|---|---|
 | 组件AI文档与调试助手 | [组件AI文档与调试助手](组件AI文档与调试助手.md) | 调试台单页：问答区/预览区/Props控件/SSE消费/沙箱宿主 | 实现方案(PLAN) |
+| ConfigForm 运行时质量修复 | [ConfigForm运行时质量修复](ConfigForm运行时质量修复.md) | runtime 正确性、低风险性能、adapter 发布与契约修复 | 第一阶段 PASS；N/A separate PRD |
 
 ## 说明
 

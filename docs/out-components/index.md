@@ -4,11 +4,11 @@
 
 | 字段 | 值 |
 |---|---|
-| sourceCommit | `f70ab2d44f04` |
-| sourceState | dirty；当前未提交内容包含 ConfigTable 虚拟表格迁移、PopoverTableSelect 适配、RequestOptions 测试恢复、测试与文档更新。 |
-| generatedBy | `components-docs` provider mode |
-| sourceRoots | `packages/components`、`packages/ConfigForm/antd`、`packages/ConfigForm/element`、`packages/ConfigForm/shadcn`、`packages/ConfigForm/runtime` |
-| sourceFiles | `packages/components/src/index.ts`、`packages/components/src/ConfigTable`、`packages/components/src/DateRangePicker`、`packages/components/src/EnterNextContainer`、`packages/components/src/PopoverTableSelect`、`packages/components/src/RequestSelectV2`、`packages/components/src/RequestCascader`、`packages/components/src/RequestTreeSelect`、`packages/components/src/request`、`packages/ConfigForm/*/src`、`playgrounds/components-playground/src/examples/*ConfigForm.vue` |
+| sourceCommit | `db691ca08086` |
+| sourceState | dirty；本轮开始前已有 `AGENTS.md`、`CLAUDE.md` 未提交改动，本轮新增 ConfigForm 运行时质量修复契约与配套文档。 |
+| generatedBy | 手工契约修复；`components-docs` skill 不可用，开发者已于 2026-07-17 确认替代流程。 |
+| sourceRoots | `packages/components`、`packages/ConfigForm/shadcn`、`packages/ConfigForm/runtime` |
+| sourceFiles | `packages/components/src/index.ts`、`packages/components/src/ElementConfigForm`、`packages/components/src/AntdConfigForm`、`packages/components/src/ConfigTable`、`packages/components/src/DateRangePicker`、`packages/components/src/EnterNextContainer`、`packages/components/src/PopoverTableSelect`、`packages/components/src/RequestSelectV2`、`packages/components/src/RequestCascader`、`packages/components/src/RequestTreeSelect`、`packages/components/src/request`、`packages/ConfigForm/shadcn/src`、`packages/ConfigForm/runtime/src`、`playgrounds/components-playground/src/examples/*ConfigForm.vue` |
 
 ## 组件清单
 
@@ -21,11 +21,11 @@
 | RequestSelectV2 | [RequestSelectV2](RequestSelectV2.md) | `packages/components/src/RequestSelectV2` |
 | RequestCascader | [RequestCascader](RequestCascader.md) | `packages/components/src/RequestCascader` |
 | RequestTreeSelect | [RequestTreeSelect](RequestTreeSelect.md) | `packages/components/src/RequestTreeSelect` |
-| ElementConfigForm | [ElementConfigForm](ElementConfigForm.md) | `packages/ConfigForm/element` |
-| AntdConfigForm | [AntdConfigForm](AntdConfigForm.md) | `packages/ConfigForm/antd` |
+| ElementConfigForm | [ElementConfigForm](ElementConfigForm.md) | `packages/components/src/ElementConfigForm` |
+| AntdConfigForm | [AntdConfigForm](AntdConfigForm.md) | `packages/components/src/AntdConfigForm` |
 | ShadcnConfigForm | [ShadcnConfigForm](ShadcnConfigForm.md) | `packages/ConfigForm/shadcn` |
 | RuntimeConfigForm | [RuntimeConfigForm](RuntimeConfigForm.md) | `packages/ConfigForm/runtime` |
-| ConfigFormInternalComponents | [ConfigFormInternalComponents](ConfigFormInternalComponents.md) | `packages/ConfigForm/*/src/components` |
+| ConfigFormInternalComponents | [ConfigFormInternalComponents](ConfigFormInternalComponents.md) | `packages/components/src/*ConfigForm/src/components`、`packages/ConfigForm/*/src/components` |
 
 ## 发现说明
 

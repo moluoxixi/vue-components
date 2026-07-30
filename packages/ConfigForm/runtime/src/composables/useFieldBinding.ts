@@ -2,6 +2,7 @@ import type { ComputedRef } from 'vue'
 import type { ResolvedBoundNode } from '@/types'
 import { computed } from 'vue'
 import { useFormContext } from '@/composables/useFormContext'
+import { ConfigFormError } from '@/errors'
 
 export type FieldComponentListeners = Record<string, (...args: unknown[]) => Promise<boolean> | void>
 
@@ -21,6 +22,18 @@ function resolveFieldEventValue(field: ResolvedBoundNode, args: unknown[]): unkn
   return field.getValueFromEvent
     ? field.getValueFromEvent(...args)
     : args[0]
+}
+
+/** 组件卸载导致的内部校验取消不应进入 Vue 全局错误处理；其它异常继续显式冒泡。 */
+async function validateFromComponentEvent(validation: Promise<boolean>): Promise<boolean> {
+  try {
+    return await validation
+  }
+  catch (error) {
+    if (error instanceof ConfigFormError && error.code === 'CONFIG_FORM_VALIDATION_DISPOSED')
+      return true
+    throw error
+  }
 }
 
 /**
@@ -53,13 +66,13 @@ export function useFieldBinding(
   const listeners = computed<FieldComponentListeners>(() => ({
     [field.value.blurTrigger]: () => {
       const currentField = field.value
-      return ctx.validateField(currentField.field, 'blur')
+      return validateFromComponentEvent(ctx.validateField(currentField.field, 'blur'))
     },
     [field.value.trigger]: (...args: unknown[]) => {
       const currentField = field.value
       const value = resolveFieldEventValue(currentField, args)
       ctx.setValue(currentField.field, value)
-      return ctx.validateField(currentField.field, 'change')
+      return validateFromComponentEvent(ctx.validateField(currentField.field, 'change'))
     },
   }))
 

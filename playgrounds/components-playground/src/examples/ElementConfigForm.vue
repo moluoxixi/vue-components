@@ -10,8 +10,9 @@ export const exampleMeta = {
 </script>
 
 <script setup lang="ts">
-import type { ConfigFormValues } from '@moluoxixi/components'
-import { ElementConfigForm, defineField } from '@moluoxixi/components'
+import type { ConfigFormValues } from '@moluoxixi/config-form-core'
+import { defineFields } from '@moluoxixi/config-form-core'
+import { ElementConfigForm } from '@moluoxixi/components'
 import { ElCheckbox, ElInput, ElTag } from 'element-plus'
 import { computed, h, shallowRef } from 'vue'
 
@@ -27,9 +28,10 @@ const formModel = shallowRef<ElementFormValues>({
   advancedNote: '',
 })
 const submittedValues = shallowRef<Partial<ElementFormValues>>({})
+const { defineField } = defineFields<ElementFormValues>()
 
 const fields = [
-  defineField<ElementFormValues>({
+  defineField({
     component: ElInput,
     field: 'accountName',
     label: '账户名称',
@@ -39,7 +41,7 @@ const fields = [
     rules: [{ message: '请输入账户名称', required: true, trigger: 'blur' }],
     span: 12,
   }),
-  defineField<ElementFormValues>({
+  defineField({
     component: ElCheckbox,
     field: 'advanced',
     label: '高级模式',
@@ -48,7 +50,7 @@ const fields = [
     },
     span: 12,
   }),
-  defineField<ElementFormValues>({
+  defineField({
     component: ElInput,
     field: 'advancedNote',
     label: '高级备注',
@@ -58,7 +60,7 @@ const fields = [
     span: 24,
     visible: values => values.advanced,
   }),
-  defineField<ElementFormValues>({
+  defineField({
     component: ElTag,
     props: {
       type: 'info',

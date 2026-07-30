@@ -1,13 +1,14 @@
 # @moluoxixi/config-form-plugin-element-plus
 
-Element Plus 的 ConfigForm 运行时适配插件。它负责两件事：
+Element Plus 的 ConfigForm runtime adapter。它只负责组件级只读展示映射：
 
-1. 把 Element Plus 字段组件映射到 ConfigForm 的默认绑定协议。
-2. 通过 `readonlyAdapters` 提供只读展示映射，核心不做组件适配。
+- 通过 `readonlyAdapters` 把 select、tree、cascader、checkbox、radio、switch、color 等值映射成适合阅读的文本或色块。
+- 编辑绑定继续使用 ConfigForm 默认的 `modelValue/update:modelValue`，本 adapter 不注册组件，也不提供 `getDefaultField`。
 
 ## 使用
 
-```ts
+```vue
+<script setup lang="ts">
 import type { FormRuntimeOptions } from '@moluoxixi/config-form'
 import { ConfigForm, defineField } from '@moluoxixi/config-form'
 import { createElementPlusPlugin } from '@moluoxixi/config-form-plugin-element-plus'
@@ -30,6 +31,11 @@ const fields = [
     },
   }),
 ]
+</script>
+
+<template>
+  <ConfigForm :fields="fields" :runtime="runtime" />
+</template>
 ```
 
 ## 只读适配器

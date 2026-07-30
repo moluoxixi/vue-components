@@ -30,6 +30,10 @@ export interface FieldPipelineContext {
 
 type PipelineNode = NormalizedFieldConfig | NormalizedNodeConfig
 type PluginField = DefinedFormNodeConfig | NormalizedNodeConfig
+interface ResolvedComponentReference {
+  component: NormalizedNodeConfig['component']
+  key?: string
+}
 const FORBIDDEN_DEFAULT_FIELD_KEYS = new Set(['component', 'field', 'slots'])
 const PLUGIN_CLONE_CHILD_KEYS = ['props', 'slots']
 const HTML_TAG_NAME_RE = /^[a-z][a-z0-9-]*$/
@@ -48,15 +52,15 @@ export function createFieldPipeline(
    * 这里不再处理“谁能覆盖谁”的注册冲突，那件事已经在 createFormRuntime() 组装注册表时完成；
    * 当前阶段只负责消费最终注册表，并对未知组件 key 直接报错。
    */
-  function resolveComponent(component: NormalizedNodeConfig['component']): NormalizedNodeConfig['component'] {
+  function resolveComponent(component: NormalizedNodeConfig['component']): ResolvedComponentReference {
     if (typeof component !== 'string')
-      return component
+      return { component }
 
     if (Object.hasOwn(components, component))
-      return components[component]
+      return { component: components[component], key: component }
 
     if (HTML_TAG_NAME_RE.test(component))
-      return component
+      return { component }
 
     throw new ConfigFormError(
       'CONFIG_FORM_UNKNOWN_COMPONENT_KEY',
@@ -139,15 +143,20 @@ export function createFieldPipeline(
 
   /** 解析组件和 slot，产出渲染层可直接消费的最终节点。 */
   function resolveFinalField(field: PipelineNode): ResolvedFormNode {
-    return applyFieldDefaults<ResolvedSlotContent>({
+    const resolvedComponent = resolveComponent(field.component)
+    const resolvedField = applyFieldDefaults<ResolvedSlotContent>({
       ...field,
-      component: resolveComponent(field.component),
+      component: resolvedComponent.component,
       slots: field.slots
         ? Object.fromEntries(
             Object.entries(field.slots).map(([name, slot]) => [name, transformSlot(slot, name)]),
           )
         : field.slots,
     }) as ResolvedFormNode
+    delete resolvedField.resolvedComponentKey
+    if (resolvedComponent.key !== undefined)
+      resolvedField.resolvedComponentKey = resolvedComponent.key
+    return resolvedField
   }
 
   return { getFieldDefaults, transformField }

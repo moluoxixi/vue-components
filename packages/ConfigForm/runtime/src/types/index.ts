@@ -168,6 +168,8 @@ export interface NormalizedFieldConfig extends Omit<
 /** 组件、props 和 slots 全部处理后的可渲染容器节点。 */
 export interface ResolvedComponentNode extends Omit<NormalizedNodeConfig, 'slots'> {
   props: Record<string, unknown>
+  /** 字符串 registry key 解析后的运行时元数据，供 adapter 保留调用方 alias。 */
+  resolvedComponentKey?: string
   /** runtime 已递归处理完毕的 slot 节点或 render 函数。 */
   slots?: Record<string, ResolvedSlotContent>
 }
@@ -175,6 +177,8 @@ export interface ResolvedComponentNode extends Omit<NormalizedNodeConfig, 'slots
 /** 组件、props、slots 和字段绑定全部处理后的可渲染绑定节点基类。 */
 export interface ResolvedBoundNode extends Omit<NormalizedFieldConfig, 'label' | 'slots'> {
   label?: string
+  /** 字符串 registry key 解析后的运行时元数据，供 adapter 保留调用方 alias。 */
+  resolvedComponentKey?: string
   /** runtime 已递归处理完毕的 slot 节点或 render 函数。 */
   slots?: Record<string, ResolvedSlotContent>
 }
@@ -209,7 +213,7 @@ export interface ConfigFormProps<T extends object = FormValues> {
   inline?: boolean
   /** grid 列数（仅非 inline 模式生效），默认 24。 */
   columns?: number
-  /** 网格间距，默认 "16px 8px"。 */
+  /** 网格间距，默认 "8px 8px"。 */
   gap?: string
   /** 表单字段配置。 */
   fields: FormNodeConfig[]
@@ -217,7 +221,7 @@ export interface ConfigFormProps<T extends object = FormValues> {
   labelWidth?: string | number
   /** 表单初始值；仅在创建和 reset 时作为默认快照使用，不参与双向同步。 */
   defaultValues?: Partial<T>
-  /** 表单运行时配置，用于组件注册和字段插件生命周期。 */
+  /** 表单运行时配置，用于组件注册和字段 runtime adapter 生命周期。 */
   runtime?: FormRuntimeOptions
 }
 

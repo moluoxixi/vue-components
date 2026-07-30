@@ -58,23 +58,24 @@ export function useReadonlyField(props: ReadonlyFieldProps): UseReadonlyFieldRes
   }))
 
   /** 只读适配器按组件 key 查找；未命中时直接回退到 raw value 文本。 */
-  const readonlyRenderer = computed<() => VNodeChild>(() => {
+  const renderReadonly = (): VNodeChild => {
     const adapter = resolveReadonlyAdapter(runtime.value.readonlyAdapters, props.field)
     const value = currentValue.value
 
-    return () => {
-      const context = {
-        field: props.field.field,
-        node: props.field,
-        value,
-        values: ctx.values,
-      }
-
-      return adapter
-        ? adapter(context)
-        : renderReadonlyFallback(context.value)
+    const context = {
+      field: props.field.field,
+      node: props.field,
+      value,
+      values: ctx.values,
     }
-  })
+
+    return adapter
+      ? adapter(context)
+      : renderReadonlyFallback(context.value)
+  }
+
+  /** 动态组件类型保持稳定，内部读取最新值和 adapter。 */
+  const readonlyRenderer = computed<() => VNodeChild>(() => renderReadonly)
 
   return {
     componentAttrs,

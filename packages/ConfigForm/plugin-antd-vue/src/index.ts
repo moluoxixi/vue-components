@@ -4,12 +4,12 @@ import type {
   FormRuntimePlugin,
   ReadonlyAdapterRegistry,
 } from '@moluoxixi/config-form/plugins'
-import type { AntdVueFieldBinding } from './bindings'
+import type { AntdVueFieldBinding } from './bindings.js'
 import { ConfigFormError } from '@moluoxixi/config-form'
 import { hasFieldBinding } from '@moluoxixi/config-form/plugins'
-import { ANTD_VUE_FIELD_BINDINGS } from './bindings'
-import { isAntdVueLikeComponentName, resolveComponentName } from './component-name'
-import { ANTD_VUE_READONLY_ADAPTERS } from './readonly'
+import { ANTD_VUE_FIELD_BINDINGS } from './bindings.js'
+import { isAntdVueLikeComponentName, resolveComponentName } from './component-name.js'
+import { ANTD_VUE_READONLY_ADAPTERS } from './readonly/index.js'
 
 /** Ant Design Vue 插件配置。 */
 export interface AntdVuePluginOptions {
@@ -79,6 +79,6 @@ export function createAntdVuePlugin(config: AntdVuePluginOptions = {}): FormRunt
   return plugin
 }
 
-export { ANTD_VUE_FIELD_BINDINGS } from './bindings'
-export type { AntdVueFieldBinding } from './bindings'
-export { ANTD_VUE_READONLY_ADAPTERS } from './readonly'
+export { ANTD_VUE_FIELD_BINDINGS } from './bindings.js'
+export type { AntdVueFieldBinding } from './bindings.js'
+export { ANTD_VUE_READONLY_ADAPTERS } from './readonly/index.js'

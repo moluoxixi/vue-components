@@ -4,7 +4,7 @@ import {
   createElementPlusColorReadonlyAdapter,
   createElementPlusSwitchReadonlyAdapter,
   createRawReadonlyAdapter,
-} from './adapters'
+} from './adapters.js'
 
 const rawReadonlyAdapter = createRawReadonlyAdapter()
 

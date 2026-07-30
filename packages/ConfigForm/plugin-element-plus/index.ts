@@ -1,5 +1,5 @@
 export {
   createElementPlusPlugin,
   ELEMENT_PLUS_READONLY_ADAPTERS,
-} from './src'
-export type * from './src'
+} from './src/index.js'
+export type * from './src/index.js'

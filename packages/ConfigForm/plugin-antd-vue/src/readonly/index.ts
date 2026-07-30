@@ -3,7 +3,7 @@ import {
   createAntdVueChoiceReadonlyAdapter,
   createAntdVueSwitchReadonlyAdapter,
   createRawReadonlyAdapter,
-} from './adapters'
+} from './adapters.js'
 
 const rawReadonlyAdapter = createRawReadonlyAdapter()
 

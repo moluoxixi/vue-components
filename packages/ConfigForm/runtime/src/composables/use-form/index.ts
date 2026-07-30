@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 import type { FieldKey, FormErrors, FormValues, NormalizedFieldConfig, ResolvedFormNode } from '@/types'
-import { computed, watch } from 'vue'
+import { computed, getCurrentScope, onScopeDispose, watch } from 'vue'
 import { applyFieldTransform } from '@/utils/field'
 import { collectFieldConfigs, isFieldConfig } from '@/utils/node'
 import { resolveValue } from '@/utils/resolvable'
@@ -34,37 +34,50 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
   const fieldTopologyKey = computed(() => fieldConfigs.value.map(field => field.field).join('\0'))
 
   // 先同步校验初始字段拓扑，避免 Vue watcher 注册后才暴露重复 field 等配置错误。
-  collectFieldConfigs(fields.value)
-  createNodeTopology(fields.value)
+  void fieldConfigs.value
+  void nodeTopology.value
 
   const {
     values,
     errors,
+    getFieldRevision,
+    getValueChangesSince,
+    getValuesRevision,
+    setValueChangeRetention,
     initValues,
     syncErrorsToFields,
-    clearFieldError,
+    clearFieldError: clearStateFieldError,
     setValue: setStateValue,
     setValues: setStateValues,
     getValue: getStateValue,
     getValues,
-    reset,
+    reset: resetState,
   } = useFormState<T>({
     defaultValues,
     fields: fieldConfigs,
   })
 
   const {
+    dispose: disposeValidation,
+    invalidate: invalidateValidation,
     validate,
     validateSingleField,
   } = useFormValidation({
-    clearFieldError,
+    clearFieldError: clearStateFieldError,
     errors,
     fieldConfigMap,
     fields: fieldConfigs,
+    getFieldRevision,
+    getValueChangesSince,
+    getValuesRevision,
     nodeTopology,
     onError,
+    setValueChangeRetention,
     values: values as FormValues,
   })
+
+  if (getCurrentScope())
+    onScopeDispose(disposeValidation)
 
   // 字段拓扑变化时裁剪值和错误到当前真实字段集合。
   watch(
@@ -72,6 +85,7 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
     () => {
       initValues({ ...values }, true)
       syncErrorsToFields()
+      invalidateValidation()
     },
   )
 
@@ -137,11 +151,31 @@ export function useForm<T extends object = FormValues>(options: UseFormOptions<T
   /** 写入单个字段值。 */
   function setValue(field: string, value: unknown) {
     setStateValue(field, value)
+    invalidateValidation(field)
   }
 
   /** 批量写入模型值。 */
   function setValues(nextValues: Partial<T>, replace = false) {
     setStateValues(nextValues, replace)
+    if (replace) {
+      invalidateValidation()
+    }
+    else {
+      for (const fieldName of Object.keys(nextValues))
+        invalidateValidation(fieldName)
+    }
+  }
+
+  /** 重置全部字段并使运行中的校验结果失效。 */
+  function reset(): void {
+    resetState()
+    invalidateValidation()
+  }
+
+  /** 清理字段错误并阻止更早的校验结果重新写回。 */
+  function clearFieldError(fieldName?: string): void {
+    invalidateValidation(fieldName)
+    clearStateFieldError(fieldName)
   }
 
   /** 读取类型化字段值，返回值类型由外部 T 推导。 */

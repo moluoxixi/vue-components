@@ -5,11 +5,11 @@ import type {
   FormRuntimePlugin,
   ReadonlyAdapterRegistry,
 } from '@moluoxixi/config-form/plugins'
-import type { ShadcnVueFieldBinding } from './bindings'
+import type { ShadcnVueFieldBinding } from './bindings.js'
 import { ConfigFormError } from '@moluoxixi/config-form'
 import { hasFieldBinding } from '@moluoxixi/config-form/plugins'
-import { SHADCN_VUE_FIELD_BINDINGS } from './bindings'
-import { SHADCN_VUE_READONLY_ADAPTERS } from './readonly'
+import { SHADCN_VUE_FIELD_BINDINGS } from './bindings.js'
+import { SHADCN_VUE_READONLY_ADAPTERS } from './readonly/index.js'
 
 /** shadcn-vue 插件配置。 */
 export interface ShadcnVuePluginOptions {
@@ -80,6 +80,6 @@ function resolveComponentName(component: FormNodeConfig['component']): string {
   return ((component as { name?: string }).name ?? component) as string
 }
 
-export { SHADCN_VUE_FIELD_BINDINGS } from './bindings'
-export type { ShadcnVueFieldBinding } from './bindings'
-export { SHADCN_VUE_READONLY_ADAPTERS } from './readonly'
+export { SHADCN_VUE_FIELD_BINDINGS } from './bindings.js'
+export type { ShadcnVueFieldBinding } from './bindings.js'
+export { SHADCN_VUE_READONLY_ADAPTERS } from './readonly/index.js'

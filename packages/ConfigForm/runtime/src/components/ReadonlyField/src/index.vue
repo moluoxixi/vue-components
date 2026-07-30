@@ -27,6 +27,7 @@ const {
   <FormItem
     v-if="hasLabel"
     v-bind="formItemComponentProps"
+    :show-error="false"
   >
     <span :class="e('field', 'readonly')">
       <component :is="readonlyRenderer" />

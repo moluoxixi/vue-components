@@ -2,7 +2,7 @@
 
 ## 用途
 
-`ConfigFormInternalComponents` 记录 ConfigForm 各包中发现但不作为常规消费入口的内部渲染组件，避免组件发现阶段遗漏 `src/components/`。这些组件服务于 `ElementConfigForm`、`AntdConfigForm`、`ShadcnConfigForm` 和 `RuntimeConfigForm` 的递归渲染链路。
+`ConfigFormInternalComponents` 记录各 ConfigForm 实现中发现但不作为常规消费入口的内部渲染组件，避免组件发现阶段遗漏 `src/components/`。本地 `ElementConfigForm` / `AntdConfigForm`、独立 `ShadcnConfigForm` 和插件版 `RuntimeConfigForm` 分别维护自己的递归渲染链路。
 
 ## 引入
 
@@ -42,7 +42,10 @@
 
 ```ts
 // 推荐：通过顶层组件和 fields 配置使用内部组件链路。
-import { defineField, ElementConfigForm } from '@moluoxixi/components'
+import { ElementConfigForm } from '@moluoxixi/components'
+import { defineFields } from '@moluoxixi/config-form-core'
+
+const { defineField } = defineFields<MyFormValues>()
 ```
 
 ## 测试建议

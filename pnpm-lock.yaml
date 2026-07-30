@@ -363,6 +363,9 @@ importers:
       ant-design-vue:
         specifier: catalog:ui
         version: 4.2.6(vue@3.5.33(typescript@5.9.3))
+      happy-dom:
+        specifier: catalog:dev
+        version: 20.9.0
       unplugin-dts:
         specifier: catalog:dev
         version: 1.0.0(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.25.12)(rollup@4.60.2)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))
@@ -393,6 +396,9 @@ importers:
       element-plus:
         specifier: catalog:ui
         version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
+      happy-dom:
+        specifier: catalog:dev
+        version: 20.9.0
       unplugin-dts:
         specifier: catalog:dev
         version: 1.0.0(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.25.12)(rollup@4.60.2)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))
@@ -420,6 +426,9 @@ importers:
       '@vue/test-utils':
         specifier: catalog:dev
         version: 2.4.10(@vue/compiler-dom@3.5.33)(@vue/server-renderer@3.5.33(vue@3.5.33(typescript@5.9.3)))(vue@3.5.33(typescript@5.9.3))
+      happy-dom:
+        specifier: catalog:dev
+        version: 20.9.0
       unplugin-dts:
         specifier: catalog:dev
         version: 1.0.0(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.25.12)(rollup@4.60.2)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))
@@ -568,18 +577,9 @@ importers:
 
   packages/components:
     dependencies:
-      '@moluoxixi/config-form-antd-vue':
-        specifier: workspace:*
-        version: link:../ConfigForm/antd
       '@moluoxixi/config-form-core':
         specifier: workspace:*
         version: link:../ConfigForm/core
-      '@moluoxixi/config-form-element':
-        specifier: workspace:*
-        version: link:../ConfigForm/element
-      '@moluoxixi/config-form-shadcn-vue':
-        specifier: workspace:*
-        version: link:../ConfigForm/shadcn
       '@moluoxixi/hooks':
         specifier: workspace:*
         version: link:../hooks
@@ -659,6 +659,9 @@ importers:
       '@moluoxixi/components':
         specifier: workspace:*
         version: link:../../packages/components
+      '@moluoxixi/config-form-core':
+        specifier: workspace:*
+        version: link:../../packages/ConfigForm/core
       ant-design-vue:
         specifier: catalog:ui
         version: 4.2.6(vue@3.5.33(typescript@5.9.3))

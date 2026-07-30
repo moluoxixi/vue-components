@@ -34,8 +34,8 @@ export function resolveReadonlyAdapter(
   adapters: ReadonlyAdapterRegistry,
   node: ResolvedBoundNode,
 ): ReadonlyAdapter | undefined {
-  const key = resolveReadonlyAdapterKey(node.component)
-  return key ? adapters[key] : undefined
+  const key = node.resolvedComponentKey ?? resolveReadonlyAdapterKey(node.component)
+  return key !== undefined ? adapters[key] : undefined
 }
 
 /** 默认只读文本渲染器；只负责把原始值输出成稳定的文本节点。 */

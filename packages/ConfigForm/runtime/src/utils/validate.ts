@@ -48,7 +48,7 @@ export async function validateFieldRules(
 
   let validatorValue = value
   if (schema) {
-    const result = schema.safeParse(value)
+    const result = await schema.safeParseAsync(value)
     if (!result.success)
       return formatZodIssues(result.error.issues)
     validatorValue = result.data

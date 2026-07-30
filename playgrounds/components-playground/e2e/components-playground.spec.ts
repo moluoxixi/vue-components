@@ -19,7 +19,6 @@ async function openPlayground(page: Page): Promise<void> {
   await expect(page.getByRole('menuitem', { name: 'DateRangePicker', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'ElementConfigForm', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'antdConfigForm', exact: true })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'ShadcnConfigForm', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'PopoverTableSelect', exact: true })).toBeVisible()
 }
 
@@ -122,27 +121,7 @@ test.describe('components playground 交互', () => {
     await expect(example.getByTestId('antd-config-preview')).toContainText('"publishNote": "Antd 发布说明"')
   })
 
-  test('ShadcnConfigForm 可以展示必填错误、选择套餐并提交预览', async ({ page }) => {
-    await openPlayground(page)
-    await openComponent(page, 'ShadcnConfigForm')
-
-    const example = page.getByTestId('shadcn-config-form-example')
-
-    await example.getByTestId('shadcn-config-submit').click()
-    await expect(example.getByText('请输入工作区名称', { exact: true })).toBeVisible()
-    await example.getByLabel('工作区名称').fill('Shadcn Workspace')
-    await expect(example.getByText('请输入工作区名称', { exact: true })).toHaveCount(0)
-    await example.getByLabel('套餐').selectOption('enterprise')
-    await expect(example.getByLabel('企业备注')).toBeVisible()
-    await example.getByLabel('企业备注').fill('Shadcn 企业备注')
-    await example.getByTestId('shadcn-config-submit').click()
-
-    await expect(example.getByTestId('shadcn-config-preview')).toContainText('"workspaceName": "Shadcn Workspace"')
-    await expect(example.getByTestId('shadcn-config-preview')).toContainText('"plan": "enterprise"')
-    await expect(example.getByTestId('shadcn-config-preview')).toContainText('"notes": "Shadcn 企业备注"')
-  })
-
-  test('sidebar 可以在三个组件示例间切换', async ({ page }) => {
+  test('sidebar 可以在各组件示例间切换', async ({ page }) => {
     await openPlayground(page)
 
     for (const name of [
@@ -151,7 +130,6 @@ test.describe('components playground 交互', () => {
       'PopoverTableSelect',
       'ElementConfigForm',
       'antdConfigForm',
-      'ShadcnConfigForm',
     ]) {
       await openComponent(page, name)
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()

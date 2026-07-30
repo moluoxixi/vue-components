@@ -595,8 +595,7 @@ describe('config form component', () => {
     expect(wrapper.find('input').exists()).toBe(false)
     expect(wrapper.get('.cf-field').text()).toContain('Ada')
     expect(wrapper.get('.cf-field__readonly').text()).toBe('Ada')
-    expect(wrapper.findAll('.cf-field__error')).toHaveLength(1)
-    expect(wrapper.get('.cf-field__error').text()).toBe('')
+    expect(wrapper.find('.cf-field__error').exists()).toBe(false)
   })
 
   it('renders readonly component-only fields without adding a form field wrapper', () => {

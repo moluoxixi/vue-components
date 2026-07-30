@@ -1,5 +1,5 @@
 import type { FormRuntimePlugin, ReadonlyAdapterRegistry } from '@moluoxixi/config-form/plugins'
-import { ELEMENT_PLUS_READONLY_ADAPTERS } from './readonly'
+import { ELEMENT_PLUS_READONLY_ADAPTERS } from './readonly/index.js'
 
 /** Element Plus 插件配置。 */
 export interface ElementPlusPluginOptions {
@@ -24,4 +24,4 @@ export function createElementPlusPlugin(config: ElementPlusPluginOptions = {}): 
   }
 }
 
-export { ELEMENT_PLUS_READONLY_ADAPTERS } from './readonly'
+export { ELEMENT_PLUS_READONLY_ADAPTERS } from './readonly/index.js'

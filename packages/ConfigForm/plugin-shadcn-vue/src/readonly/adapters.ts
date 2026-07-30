@@ -1,7 +1,7 @@
 import type { ReadonlyAdapter } from '@moluoxixi/config-form/plugins'
 import type { VNodeChild } from 'vue'
 import { h, toDisplayString } from 'vue'
-import { findShadcnOptionLabel, joinShadcnLabels, readShadcnOptions } from './options'
+import { findShadcnOptionLabel, joinShadcnLabels, readShadcnOptions } from './options.js'
 
 export function createRawReadonlyAdapter(): ReadonlyAdapter {
   return ({ value }) => renderReadonlyText(value)

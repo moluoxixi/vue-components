@@ -2,7 +2,7 @@ import type { ReadonlyAdapterRegistry } from '@moluoxixi/config-form/plugins'
 import {
   createRawReadonlyAdapter,
   createShadcnChoiceReadonlyAdapter,
-} from './adapters'
+} from './adapters.js'
 
 const rawReadonlyAdapter = createRawReadonlyAdapter()
 
@@ -16,4 +16,4 @@ export const SHADCN_VUE_READONLY_ADAPTERS: ReadonlyAdapterRegistry = Object.free
 export {
   createRawReadonlyAdapter,
   createShadcnChoiceReadonlyAdapter,
-} from './adapters'
+} from './adapters.js'

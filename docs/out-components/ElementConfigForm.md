@@ -2,13 +2,14 @@
 
 ## 用途
 
-`ElementConfigForm` 用声明式 `fields` 渲染 Element Plus 表单，统一字段绑定、递归节点、布局、校验、提交和模板 ref API。组件来源为 `packages/ConfigForm/element`。
+`ElementConfigForm` 用声明式 `fields` 渲染 Element Plus 表单，统一字段绑定、递归节点、布局、校验、提交和模板 ref API。组件由 `packages/components/src/ElementConfigForm` 独立实现，不经过 runtime plugin。
 
 ## 引入
 
 ```ts
 import type { ElementConfigFormExpose, ElementConfigFormProps } from '@moluoxixi/components'
-import { defineField, defineFields, ElementConfigForm } from '@moluoxixi/components'
+import { ElementConfigForm } from '@moluoxixi/components'
+import { defineField, defineFields } from '@moluoxixi/config-form-core'
 ```
 
 ## Props

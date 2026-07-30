@@ -11,10 +11,22 @@ export interface UseFormStateOptions<T extends object = FormValues> {
   defaultValues?: Partial<T> | Ref<Partial<T> | undefined>
 }
 
+export interface FormValueChange {
+  fieldName: string
+  present: boolean
+  requiresFullSnapshot: boolean
+  revision: number
+  value: unknown
+}
+
 /** 无头表单状态控制器。 */
 export interface UseFormStateResult<T extends object = FormValues> {
   values: Reactive<T & FormValues>
   errors: Ref<FormErrors>
+  getFieldRevision: (fieldName: string) => number
+  getValueChangesSince: (revision: number) => FormValueChange[] | undefined
+  getValuesRevision: () => number
+  setValueChangeRetention: (revision: number | undefined) => void
   initValues: (source?: FormValues, pruneToFields?: boolean) => void
   syncErrorsToFields: () => void
   clearFieldError: (fieldName?: string) => void
@@ -39,23 +51,141 @@ export interface UseFormStateResult<T extends object = FormValues> {
 export function useFormState<T extends object = FormValues>(options: UseFormStateOptions<T>): UseFormStateResult<T> {
   const { fields, defaultValues } = options
 
+  const fieldRevisions = new Map<string, number>()
+  let trackedFieldNames = new Set(fields.value.map(field => field.field))
+  const valueChanges: FormValueChange[] = []
+  let firstRetainedChangeIndex = 0
+  let retainedChangesAfterRevision = 0
+  let retainValueChanges = false
+  let valuesRevision = 0
+
+  function recordValueChange(
+    fieldName: string,
+    value: unknown,
+    present: boolean,
+    requiresFullSnapshot = false,
+  ): void {
+    valuesRevision += 1
+    if (trackedFieldNames.has(fieldName))
+      fieldRevisions.set(fieldName, (fieldRevisions.get(fieldName) ?? 0) + 1)
+    if (retainValueChanges) {
+      valueChanges.push({ fieldName, present, requiresFullSnapshot, revision: valuesRevision, value })
+    }
+    else {
+      retainedChangesAfterRevision = valuesRevision
+    }
+  }
+
+  const trackedValues = new Proxy({} as T & FormValues, {
+    defineProperty(target, key, descriptor) {
+      const result = Reflect.defineProperty(target, key, descriptor)
+      if (result && typeof key === 'string') {
+        const nextDescriptor = Reflect.getOwnPropertyDescriptor(target, key)
+        const isEnumerable = nextDescriptor?.enumerable === true
+        const isAccessor = nextDescriptor !== undefined && !('value' in nextDescriptor)
+        recordValueChange(
+          key,
+          isAccessor ? undefined : nextDescriptor?.value,
+          isEnumerable,
+          isAccessor,
+        )
+      }
+      return result
+    },
+    deleteProperty(target, key) {
+      const hadValue = typeof key === 'string' && Object.hasOwn(target, key)
+      const result = Reflect.deleteProperty(target, key)
+      if (result && hadValue)
+        recordValueChange(key, undefined, false)
+      return result
+    },
+    set(target, key, value) {
+      const hadValue = typeof key === 'string' && Object.hasOwn(target, key)
+      const previous = typeof key === 'string' ? target[key] : undefined
+      const result = Reflect.set(target, key, value)
+      if (result && typeof key === 'string' && (!hadValue || !Object.is(previous, value))) {
+        const nextDescriptor = Reflect.getOwnPropertyDescriptor(target, key)
+        const isAccessor = nextDescriptor !== undefined && !('value' in nextDescriptor)
+        recordValueChange(
+          key,
+          isAccessor ? undefined : nextDescriptor?.value,
+          nextDescriptor?.enumerable === true,
+          isAccessor,
+        )
+      }
+      return result
+    },
+  })
+
   // T 提供外部类型安全，Record 允许内部动态 key 访问。
-  const values = reactive<T & FormValues>({} as T & FormValues)
+  const values = reactive<T & FormValues>(trackedValues)
   const valueStore = values as FormValues
   const errors = ref<FormErrors>({})
   const initialDefaultValues = { ...((unref(defaultValues) ?? {}) as FormValues) }
 
+  function getFieldRevision(fieldName: string): number {
+    return fieldRevisions.get(fieldName) ?? 0
+  }
+
+  function getValuesRevision(): number {
+    return valuesRevision
+  }
+
+  function getValueChangesSince(revision: number): FormValueChange[] | undefined {
+    if (revision < retainedChangesAfterRevision)
+      return undefined
+
+    const offset = Math.max(0, revision - retainedChangesAfterRevision)
+    return valueChanges.slice(firstRetainedChangeIndex + offset)
+  }
+
+  function pruneValueChangesThrough(revision: number): void {
+    const nextRetainedRevision = Math.min(revision, valuesRevision)
+    if (nextRetainedRevision <= retainedChangesAfterRevision)
+      return
+
+    firstRetainedChangeIndex += nextRetainedRevision - retainedChangesAfterRevision
+    retainedChangesAfterRevision = nextRetainedRevision
+    if (firstRetainedChangeIndex >= valueChanges.length) {
+      valueChanges.length = 0
+      firstRetainedChangeIndex = 0
+    }
+    else if (firstRetainedChangeIndex >= 1024 && firstRetainedChangeIndex * 2 >= valueChanges.length) {
+      valueChanges.splice(0, firstRetainedChangeIndex)
+      firstRetainedChangeIndex = 0
+    }
+  }
+
+  /** 只在 pending 交互校验需要刷新快照时保留变更日志。 */
+  function setValueChangeRetention(revision: number | undefined): void {
+    if (revision === undefined) {
+      retainValueChanges = false
+      pruneValueChangesThrough(valuesRevision)
+      return
+    }
+
+    pruneValueChangesThrough(revision)
+    retainValueChanges = true
+  }
+
   /** 初始化或重建内部表单值。 */
   function initValues(source: FormValues = initialDefaultValues, pruneToFields = false) {
+    const nextTrackedFieldNames = new Set(fields.value.map(field => field.field))
     const next = buildNextFormValues(source, fields.value, pruneToFields)
     syncValueStore(valueStore, next)
+    trackedFieldNames = nextTrackedFieldNames
+    for (const fieldName of fieldRevisions.keys()) {
+      if (!trackedFieldNames.has(fieldName))
+        fieldRevisions.delete(fieldName)
+    }
   }
 
   initValues()
+  setValueChangeRetention(undefined)
 
   /** 清理字段错误状态。 */
   function clearFieldError(fieldName?: string) {
-    if (!fieldName) {
+    if (fieldName === undefined) {
       errors.value = {}
       return
     }
@@ -112,6 +242,10 @@ export function useFormState<T extends object = FormValues>(options: UseFormStat
   return {
     values,
     errors,
+    getFieldRevision,
+    getValueChangesSince,
+    getValuesRevision,
+    setValueChangeRetention,
     initValues,
     syncErrorsToFields,
     clearFieldError,

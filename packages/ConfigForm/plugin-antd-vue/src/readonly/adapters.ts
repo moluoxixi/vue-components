@@ -5,7 +5,7 @@ import {
   findAntdVueOptionLabel,
   readAntdVueOptionSource,
   resolveAntdVuePathLabel,
-} from './options'
+} from './options.js'
 
 export function createAntdVueChoiceReadonlyAdapter(
   optionsKeys: readonly string[],

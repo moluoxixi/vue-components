@@ -19,6 +19,16 @@
     },
     "./styles": {
       "import": "./dist/components.css"
+    },
+    "./element": {
+      "source": "./element.ts",
+      "types": "./dist/element.d.ts",
+      "import": "./dist/element.js"
+    },
+    "./antd": {
+      "source": "./antd.ts",
+      "types": "./dist/antd.d.ts",
+      "import": "./dist/antd.js"
     }
   },
   "main": "./dist/index.js",
@@ -39,10 +49,7 @@
     "vue": "^3.5.0"
   },
   "dependencies": {
-    "@moluoxixi/config-form-antd-vue": "workspace:*",
     "@moluoxixi/config-form-core": "workspace:*",
-    "@moluoxixi/config-form-element": "workspace:*",
-    "@moluoxixi/config-form-shadcn-vue": "workspace:*",
     "@moluoxixi/hooks": "workspace:*",
     "dayjs": "catalog:build"
   },
