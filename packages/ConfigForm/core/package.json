@@ -30,6 +30,9 @@
   "peerDependencies": {
     "vue": "^3.5.0"
   },
+  "dependencies": {
+    "@moluoxixi/config-form-headless": "workspace:*"
+  },
   "devDependencies": {
     "unplugin-dts": "catalog:dev",
     "vite": "catalog:dev",

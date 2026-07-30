@@ -15,8 +15,8 @@ import type {
   ConfigFormCondition,
   ConfigFormValues,
   DefineConfigFormFieldFactory,
-} from '@moluoxixi/config-form-core'
-import { defineFields } from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
+import { defineFields } from '@moluoxixi/config-form-headless'
 import { antdConfigForm } from '@moluoxixi/config-form-antd-vue'
 import {
   AutoComplete as AAutoComplete,

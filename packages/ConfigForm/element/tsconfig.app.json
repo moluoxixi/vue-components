@@ -6,6 +6,6 @@
     "lib": ["DOM", "dom.iterable", "ESNext"],
     "types": ["vite/client", "vitest"]
   },
-  "include": ["src", "index.ts", "*.test.ts"],
+  "include": ["src", "index.ts", "__tests__"],
   "exclude": ["vite.config.ts"]
 }

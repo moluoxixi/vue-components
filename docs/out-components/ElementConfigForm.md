@@ -8,8 +8,7 @@
 
 ```ts
 import type { ElementConfigFormExpose, ElementConfigFormProps } from '@moluoxixi/components'
-import { ElementConfigForm } from '@moluoxixi/components'
-import { defineField, defineFields } from '@moluoxixi/config-form-core'
+import { defineField, defineFields, ElementConfigForm } from '@moluoxixi/components'
 ```
 
 ## Props

@@ -1,5 +1,5 @@
-import type { ConfigFormField, ConfigFormRule, ConfigFormRules, ConfigFormValues } from '@moluoxixi/config-form-core'
-import { resolveConfigFormCondition } from '@moluoxixi/config-form-core'
+import type { ConfigFormField, ConfigFormRule, ConfigFormRules, ConfigFormValues } from '@moluoxixi/config-form-headless'
+import { resolveConfigFormCondition } from '@moluoxixi/config-form-headless'
 
 export type ShadcnFieldErrorMessages = string[]
 

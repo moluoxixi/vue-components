@@ -1,4 +1,4 @@
-import type { ConfigFormColumnSpan, ConfigFormValues } from '@moluoxixi/config-form-core'
+import type { ConfigFormColumnSpan, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ElementConfigFormColProps, ElementConfigFormNode } from '../../../../types'
 
 export interface ConfigFormNodeProps<TValues extends ConfigFormValues = ConfigFormValues> {

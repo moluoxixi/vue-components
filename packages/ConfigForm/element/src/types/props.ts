@@ -13,7 +13,7 @@ import type {
   ConfigFormProps,
   ConfigFormSlotConfig,
   ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
 import type { ColProps, FormItemProps, FormProps, RowProps } from 'element-plus'
 import type { Component } from 'vue'
 

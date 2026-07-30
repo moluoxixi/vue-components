@@ -41,7 +41,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
-        '@moluoxixi/config-form-core',
+        '@moluoxixi/config-form-headless',
         '@moluoxixi/hooks',
         'vue',
         'element-plus',

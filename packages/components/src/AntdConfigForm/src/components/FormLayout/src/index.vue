@@ -2,13 +2,13 @@
 import type {
   ConfigFormFieldChangeRequest,
   ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
 import type { AntdConfigFormNode } from '../../../types'
 import type { FormLayoutEmits, FormLayoutProps } from './types'
 import { Row as ARow } from 'ant-design-vue'
 import { computed } from 'vue'
 import ConfigFormNodeItem from '../../ConfigFormNode'
-import { isConfigFormField, isConfigFormNodeVisible } from '@moluoxixi/config-form-core'
+import { isConfigFormField, isConfigFormNodeVisible } from '@moluoxixi/config-form-headless'
 
 defineOptions({
   name: 'AntdConfigFormLayout',

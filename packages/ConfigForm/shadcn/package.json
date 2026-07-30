@@ -37,11 +37,11 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form-core": "^0.1.0",
+    "@moluoxixi/config-form-headless": "^0.1.0",
     "vue": "^3.5.0"
   },
   "devDependencies": {
-    "@moluoxixi/config-form-core": "workspace:*",
+    "@moluoxixi/config-form-headless": "workspace:*",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "happy-dom": "catalog:dev",

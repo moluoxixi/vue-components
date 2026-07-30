@@ -12,7 +12,7 @@
 ```vue
 <script setup lang="ts">
 import { ElInput } from 'element-plus'
-import { defineField } from '@moluoxixi/config-form-core'
+import { defineField } from '@moluoxixi/config-form-headless'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
 import '@moluoxixi/config-form-element/styles'
 import { shallowRef } from 'vue'
@@ -70,7 +70,7 @@ const fields = [
 `visible`、`hidden` 和 `disabled` 支持布尔值或 `(values) => boolean` 函数条件。
 
 ```ts
-import { defineFields } from '@moluoxixi/config-form-core'
+import { defineFields } from '@moluoxixi/config-form-headless'
 import { ElOption, ElSelect } from 'element-plus'
 
 interface UserForm {

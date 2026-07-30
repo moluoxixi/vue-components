@@ -13,7 +13,7 @@ import type {
   ConfigFormProps,
   ConfigFormSlotConfig,
   ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
 export type ShadcnConfigFormFormProps = FormHTMLAttributes

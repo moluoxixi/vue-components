@@ -42,8 +42,7 @@
 
 ```ts
 // 推荐：通过顶层组件和 fields 配置使用内部组件链路。
-import { ElementConfigForm } from '@moluoxixi/components'
-import { defineFields } from '@moluoxixi/config-form-core'
+import { defineFields, ElementConfigForm } from '@moluoxixi/components'
 
 const { defineField } = defineFields<MyFormValues>()
 ```

@@ -95,7 +95,7 @@ pnpm test:config-form-packages
 pnpm -C packages/ConfigForm/runtime test:coverage
 pnpm lint
 pnpm test:e2e:config-form
-pnpm -C packages/ConfigForm/runtime test -- src/composables/use-form/__test__/performance.test.ts
+pnpm -C packages/ConfigForm/runtime test -- src/composables/use-form/__tests__/performance.test.ts
 rg -n "@vue/shared" packages/ConfigForm/plugin-antd-vue/dist/index.js packages/ConfigForm/plugin-element-plus/dist/index.js packages/ConfigForm/plugin-shadcn-vue/dist/index.js
 node -e "for (const p of ['plugin-antd-vue','plugin-element-plus','plugin-shadcn-vue']) { const j=require('./packages/ConfigForm/'+p+'/package.json'); if (j.peerDependencies?.vue !== '^3.5.0') process.exitCode=1 }"
 ```

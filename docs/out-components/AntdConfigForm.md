@@ -8,8 +8,7 @@
 
 ```ts
 import type { AntdConfigFormExpose, AntdConfigFormProps } from '@moluoxixi/components'
-import { AntdConfigForm, antdConfigForm } from '@moluoxixi/components'
-import { defineField, defineFields } from '@moluoxixi/config-form-core'
+import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@moluoxixi/components'
 ```
 
 ## Props

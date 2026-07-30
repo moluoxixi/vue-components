@@ -1,4 +1,4 @@
-import { withInstall } from '@moluoxixi/config-form-core'
+import { withInstall } from '@moluoxixi/config-form-headless'
 import ShadcnConfigFormSource from './src/index.vue'
 
 export type * from './src/types'

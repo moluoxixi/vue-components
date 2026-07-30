@@ -1,4 +1,4 @@
-import type { ConfigFormValues } from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ShadcnConfigFormField } from '../../../../types'
 
 export interface FormComponentProps<TValues extends ConfigFormValues = ConfigFormValues> {

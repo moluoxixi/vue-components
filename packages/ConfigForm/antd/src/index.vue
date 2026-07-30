@@ -1,8 +1,5 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
-import type {
-  ConfigFormFieldChangeRequest,
-  ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   AntdConfigFormEmits,
   AntdConfigFormExpose,
@@ -13,7 +10,7 @@ import type { FormInstance, FormProps } from 'ant-design-vue'
 import { Form as AForm } from 'ant-design-vue'
 import { computed, useAttrs, useTemplateRef } from 'vue'
 import FormLayout from './components/FormLayout'
-import { collectConfigFormFields } from '@moluoxixi/config-form-core'
+import { collectConfigFormFields, createConfigFormController } from '@moluoxixi/config-form-headless'
 import './styles.scss'
 
 defineOptions({
@@ -34,6 +31,22 @@ defineSlots<AntdConfigFormSlots<TValues>>()
 const model = defineModel<TValues>({ required: true })
 const formRef = useTemplateRef<FormInstance>('formRef')
 const attrs = useAttrs()
+const {
+  applyFieldChange: handleFieldChange,
+  getValue,
+  getValues,
+  setValue,
+  setValues,
+} = createConfigFormController<TValues>({
+  model: {
+    read: () => model.value,
+    write: (values) => {
+      model.value = values
+    },
+  },
+  onChange: values => emit('change', values),
+  onFieldChange: payload => emit('fieldChange', payload),
+})
 
 const formRules = computed<FormProps['rules']>(() => {
   const fieldRules = Object.fromEntries(
@@ -61,42 +74,6 @@ const formAttrs = computed<Record<string, unknown>>(() => {
 
   return nextAttrs
 })
-
-function getValues(): TValues {
-  return { ...model.value }
-}
-
-function getValue<K extends keyof TValues & string>(field: K): TValues[K]
-function getValue(field: string): unknown
-function getValue(field: string): unknown {
-  return model.value[field]
-}
-
-function commitValues(values: TValues): void {
-  model.value = values
-  emit('change', values)
-}
-
-function setValue<K extends keyof TValues & string>(field: K, value: TValues[K]): void
-function setValue(field: string, value: unknown): void
-function setValue(field: string, value: unknown): void {
-  const values = {
-    ...model.value,
-    [field]: value,
-  } as TValues
-
-  model.value = values
-  emit('fieldChange', { field, value, values })
-  emit('change', values)
-}
-
-function setValues(values: Partial<TValues>, replace = false): void {
-  commitValues((replace ? values : { ...model.value, ...values }) as TValues)
-}
-
-function handleFieldChange(payload: ConfigFormFieldChangeRequest<TValues>): void {
-  setValue(payload.field, payload.value)
-}
 
 async function submit(): Promise<boolean> {
   try {

@@ -1,5 +1,5 @@
-# ConfigForm
+# ConfigForm Core Compatibility
 
-`@moluoxixi/config-form-core` 是三套轻量 ConfigForm UI 包共享的公共协议层。
+`@moluoxixi/config-form-core` 是兼容入口，继续转发 `@moluoxixi/config-form-headless` 的公共 API。
 
-它只提供跨 UI 版本复用的节点类型、slot 配置、字段定义 helper 和节点工具，不渲染具体 UI 表单。
+新代码应直接依赖 headless 包；现有消费者无需立即迁移。

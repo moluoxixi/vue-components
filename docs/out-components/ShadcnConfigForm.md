@@ -8,7 +8,7 @@
 
 ```ts
 import type { ShadcnConfigFormExpose, ShadcnConfigFormProps } from '@moluoxixi/config-form-shadcn-vue'
-import { defineField, defineFields } from '@moluoxixi/config-form-core'
+import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { ShadcnConfigForm } from '@moluoxixi/config-form-shadcn-vue'
 ```
 

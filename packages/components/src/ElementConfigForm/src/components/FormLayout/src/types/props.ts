@@ -1,7 +1,7 @@
 import type {
   ConfigFormColumnSpan,
   ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
 import type {
   ElementConfigFormColProps,
   ElementConfigFormNode,

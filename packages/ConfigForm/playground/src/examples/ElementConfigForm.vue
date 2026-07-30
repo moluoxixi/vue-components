@@ -15,8 +15,8 @@ import type {
   ConfigFormCondition,
   ConfigFormValues,
   DefineConfigFormFieldFactory,
-} from '@moluoxixi/config-form-core'
-import { defineFields } from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
+import { defineFields } from '@moluoxixi/config-form-headless'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
 import {
   ElAutocomplete,

@@ -1,4 +1,4 @@
-import type { ConfigFormColumnSpan, ConfigFormValues } from '@moluoxixi/config-form-core'
+import type { ConfigFormColumnSpan, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { AntdConfigFormColProps, AntdConfigFormNode, AntdConfigFormRowProps } from '../../../../types'
 
 export interface FormLayoutProps<TValues extends ConfigFormValues = ConfigFormValues> {

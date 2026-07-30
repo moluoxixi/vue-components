@@ -166,9 +166,9 @@ importers:
 
   packages/ConfigForm/antd:
     devDependencies:
-      '@moluoxixi/config-form-core':
+      '@moluoxixi/config-form-headless':
         specifier: workspace:*
-        version: link:../core
+        version: link:../headless
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -201,6 +201,10 @@ importers:
         version: 2.2.12(typescript@5.9.3)
 
   packages/ConfigForm/core:
+    dependencies:
+      '@moluoxixi/config-form-headless':
+        specifier: workspace:*
+        version: link:../headless
     devDependencies:
       unplugin-dts:
         specifier: catalog:dev
@@ -266,9 +270,9 @@ importers:
 
   packages/ConfigForm/element:
     devDependencies:
-      '@moluoxixi/config-form-core':
+      '@moluoxixi/config-form-headless':
         specifier: workspace:*
-        version: link:../core
+        version: link:../headless
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -300,17 +304,35 @@ importers:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
 
+  packages/ConfigForm/headless:
+    devDependencies:
+      unplugin-dts:
+        specifier: catalog:dev
+        version: 1.0.0(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.25.12)(rollup@4.60.2)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))
+      vite:
+        specifier: catalog:dev
+        version: 6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0)
+      vitest:
+        specifier: catalog:dev
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0)
+      vue:
+        specifier: catalog:build
+        version: 3.5.33(typescript@5.9.3)
+      vue-tsc:
+        specifier: catalog:dev
+        version: 2.2.12(typescript@5.9.3)
+
   packages/ConfigForm/playground:
     dependencies:
       '@moluoxixi/config-form-antd-vue':
         specifier: workspace:*
         version: link:../antd
-      '@moluoxixi/config-form-core':
-        specifier: workspace:*
-        version: link:../core
       '@moluoxixi/config-form-element':
         specifier: workspace:*
         version: link:../element
+      '@moluoxixi/config-form-headless':
+        specifier: workspace:*
+        version: link:../headless
       '@moluoxixi/config-form-shadcn-vue':
         specifier: workspace:*
         version: link:../shadcn
@@ -486,9 +508,9 @@ importers:
 
   packages/ConfigForm/shadcn:
     devDependencies:
-      '@moluoxixi/config-form-core':
+      '@moluoxixi/config-form-headless':
         specifier: workspace:*
-        version: link:../core
+        version: link:../headless
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -577,9 +599,9 @@ importers:
 
   packages/components:
     dependencies:
-      '@moluoxixi/config-form-core':
+      '@moluoxixi/config-form-headless':
         specifier: workspace:*
-        version: link:../ConfigForm/core
+        version: link:../ConfigForm/headless
       '@moluoxixi/hooks':
         specifier: workspace:*
         version: link:../hooks

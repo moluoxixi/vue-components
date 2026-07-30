@@ -2,7 +2,7 @@
 import type {
   ConfigFormFieldChangeRequest,
   ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
 import type {
   ElementConfigFormComponentNode,
   ElementConfigFormComponentSlot,
@@ -20,7 +20,7 @@ import { ElCol } from 'element-plus'
 import { defineComponent, h, markRaw } from 'vue'
 import ConfigFormFieldItem from '../../ConfigFormField'
 import FormComponent from '../../FormComponent'
-import { isConfigFormField, isConfigFormNodeVisible } from '@moluoxixi/config-form-core'
+import { isConfigFormField, isConfigFormNodeVisible } from '@moluoxixi/config-form-headless'
 
 defineOptions({
   name: 'ConfigFormNode',

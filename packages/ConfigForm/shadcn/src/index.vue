@@ -1,8 +1,5 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
-import type {
-  ConfigFormFieldChangeRequest,
-  ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ShadcnConfigFormEmits,
   ShadcnConfigFormErrors,
@@ -12,7 +9,7 @@ import type {
 } from './types'
 import { computed, reactive, useAttrs, useTemplateRef } from 'vue'
 import FormLayout from './components/FormLayout'
-import { collectConfigFormFields } from '@moluoxixi/config-form-core'
+import { collectConfigFormFields, createConfigFormController } from '@moluoxixi/config-form-headless'
 import { collectShadcnFieldRules, getShadcnFieldErrorMessages } from './utils'
 import './styles.scss'
 
@@ -36,6 +33,25 @@ const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const attrs = useAttrs()
 const errors = reactive<ShadcnConfigFormErrors>({})
 const initialValues = { ...model.value } as TValues
+const {
+  applyFieldChange: handleFieldChange,
+  getValue,
+  getValues,
+  setValue,
+  setValues,
+} = createConfigFormController<TValues>({
+  model: {
+    read: () => model.value,
+    write: (values) => {
+      model.value = values
+    },
+  },
+  onChange: values => emit('change', values),
+  onFieldChange: (payload) => {
+    clearValidate(payload.field)
+    emit('fieldChange', payload)
+  },
+})
 
 const inlineLayout = computed(() => props.inline === true)
 
@@ -44,47 +60,10 @@ const formAttrs = computed<Record<string, unknown>>(() => ({
   ...props.formProps,
 }))
 
-function getValues(): TValues {
-  return { ...model.value }
-}
-
 function getErrors(): ShadcnConfigFormErrors {
   return Object.fromEntries(
     Object.entries(errors).map(([field, messages]) => [field, [...messages]]),
   )
-}
-
-function getValue<K extends keyof TValues & string>(field: K): TValues[K]
-function getValue(field: string): unknown
-function getValue(field: string): unknown {
-  return model.value[field]
-}
-
-function commitValues(values: TValues): void {
-  model.value = values
-  emit('change', values)
-}
-
-function setValue<K extends keyof TValues & string>(field: K, value: TValues[K]): void
-function setValue(field: string, value: unknown): void
-function setValue(field: string, value: unknown): void {
-  const values = {
-    ...model.value,
-    [field]: value,
-  } as TValues
-
-  model.value = values
-  clearValidate(field)
-  emit('fieldChange', { field, value, values })
-  emit('change', values)
-}
-
-function setValues(values: Partial<TValues>, replace = false): void {
-  commitValues((replace ? values : { ...model.value, ...values }) as TValues)
-}
-
-function handleFieldChange(payload: ConfigFormFieldChangeRequest<TValues>): void {
-  setValue(payload.field, payload.value)
 }
 
 async function validate(): Promise<boolean> {
@@ -131,7 +110,7 @@ function resetFields(fields?: keyof TValues & string | string | Array<keyof TVal
   const fieldNames = normalizeFieldNames(fields)
 
   if (fieldNames === undefined) {
-    commitValues({ ...initialValues })
+    setValues({ ...initialValues }, true)
     clearValidate()
     return
   }
@@ -140,7 +119,7 @@ function resetFields(fields?: keyof TValues & string | string | Array<keyof TVal
   fieldNames.forEach((field) => {
     values[field] = initialValues[field]
   })
-  commitValues(values as TValues)
+  setValues(values as TValues, true)
   clearValidate(fieldNames)
 }
 

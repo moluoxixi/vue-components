@@ -1,6 +1,6 @@
-import type { InstallableComponent } from '@moluoxixi/config-form-core'
+import type { InstallableComponent } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
-import { withInstall } from '@moluoxixi/config-form-core'
+import { withInstall } from '@moluoxixi/config-form-headless'
 import AntdConfigFormSource from './src/index.vue'
 
 export type * from './src/types'

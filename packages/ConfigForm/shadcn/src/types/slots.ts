@@ -1,4 +1,4 @@
-import type { ConfigFormValues } from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 
 export interface ShadcnConfigFormDefaultSlotContext<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 当前表单值快照。 */

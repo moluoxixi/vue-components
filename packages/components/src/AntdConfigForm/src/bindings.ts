@@ -1,4 +1,4 @@
-import type { ConfigFormField } from '@moluoxixi/config-form-core'
+import type { ConfigFormField } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
 
 /**

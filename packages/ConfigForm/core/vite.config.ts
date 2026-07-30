@@ -27,7 +27,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['vue'],
+      external: ['@moluoxixi/config-form-headless', 'vue'],
     },
   },
 })

@@ -2,11 +2,11 @@
 import type {
   ConfigFormFieldChangeRequest,
   ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
 import type { ConfigFormFieldEmits, ConfigFormFieldProps } from './types'
 import { computed, useSlots } from 'vue'
 import FormComponent from '../../FormComponent'
-import { resolveConfigFormCondition } from '@moluoxixi/config-form-core'
+import { resolveConfigFormCondition } from '@moluoxixi/config-form-headless'
 
 defineOptions({
   name: 'ShadcnConfigFormField',

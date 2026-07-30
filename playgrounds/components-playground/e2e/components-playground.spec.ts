@@ -20,6 +20,7 @@ async function openPlayground(page: Page): Promise<void> {
   await expect(page.getByRole('menuitem', { name: 'ElementConfigForm', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'antdConfigForm', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'PopoverTableSelect', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'HeadlessTable', exact: true })).toBeVisible()
 }
 
 test.describe('components playground 交互', () => {
@@ -85,6 +86,33 @@ test.describe('components playground 交互', () => {
     await expect(page.getByTestId('popover-selected-status')).toHaveText('启用')
   })
 
+  test('HeadlessTable 可以驱动 Element Plus Table 的筛选、列配置和 renderer', async ({ page }) => {
+    const consoleProblems: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'warning' || message.type() === 'error')
+        consoleProblems.push(message.text())
+    })
+
+    await openPlayground(page)
+    await openComponent(page, 'HeadlessTable')
+
+    const example = page.getByTestId('headless-table-example')
+    await expect(example.locator('.el-tag')).toHaveCount(4)
+    await expect(example.locator('.el-tag.is-round')).toHaveCount(4)
+    await expect(example.locator('.el-tag--success')).toHaveCount(3)
+
+    await example.getByPlaceholder('搜索仓库、负责人或状态').fill('维护')
+    await expect(example.locator('.el-table__body tbody tr')).toHaveCount(1)
+    await expect(example.getByText('西南仓', { exact: true })).toBeVisible()
+
+    await example.locator('.headless-table-example__columns .el-checkbox', { hasText: '负责人' }).click()
+    await expect(example.getByRole('columnheader', { name: '负责人' })).toHaveCount(0)
+
+    await example.getByRole('button', { name: '查看' }).click()
+    await expect(example.getByTestId('headless-table-selected')).toHaveText('C-003')
+    expect(consoleProblems).toEqual([])
+  })
+
   test('ElementConfigForm 可以写回字段、展开条件字段并提交预览', async ({ page }) => {
     await openPlayground(page)
     await openComponent(page, 'ElementConfigForm')
@@ -128,6 +156,7 @@ test.describe('components playground 交互', () => {
       'DateRangePicker',
       'EnterNextContainer',
       'PopoverTableSelect',
+      'HeadlessTable',
       'ElementConfigForm',
       'antdConfigForm',
     ]) {

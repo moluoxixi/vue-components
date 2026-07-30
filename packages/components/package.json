@@ -49,7 +49,7 @@
     "vue": "^3.5.0"
   },
   "dependencies": {
-    "@moluoxixi/config-form-core": "workspace:*",
+    "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/hooks": "workspace:*",
     "dayjs": "catalog:build"
   },

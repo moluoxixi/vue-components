@@ -1,4 +1,4 @@
-import type { ConfigFormValues } from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ElementConfigFormField } from '../../../../types'
 
 export interface ConfigFormFieldProps<TValues extends ConfigFormValues = ConfigFormValues> {

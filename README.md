@@ -10,7 +10,8 @@
 |---|---|
 | [`@moluoxixi/components`](./packages/components/) | 组件集合入口，内置独立的 Element/Antd 纯净 ConfigForm 和常用组件 |
 | [`@moluoxixi/config-form`](./packages/ConfigForm/runtime/) | 原配置化表单 runtime，负责 schema、runtime adapter、递归配置渲染和表单语义 |
-| [`@moluoxixi/config-form-core`](./packages/ConfigForm/core/) | 轻量 ConfigForm UI 包共享的字段配置协议和 helper |
+| [`@moluoxixi/config-form-headless`](./packages/ConfigForm/headless/) | 通用的 ConfigForm 字段协议、节点工具和无 UI 模型 controller |
+| [`@moluoxixi/config-form-core`](./packages/ConfigForm/core/) | headless 公共 API 的兼容入口 |
 | [`@moluoxixi/config-form-element`](./packages/ConfigForm/element/) | Element Plus 轻量 ConfigForm |
 | [`@moluoxixi/config-form-antd-vue`](./packages/ConfigForm/antd/) | Ant Design Vue 轻量 ConfigForm |
 | [`@moluoxixi/config-form-shadcn-vue`](./packages/ConfigForm/shadcn/) | shadcn-vue 轻量 ConfigForm 壳 |

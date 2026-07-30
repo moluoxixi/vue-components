@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@moluoxixi/config-form-antd-vue": "workspace:*",
-    "@moluoxixi/config-form-core": "workspace:*",
     "@moluoxixi/config-form-element": "workspace:*",
+    "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/config-form-shadcn-vue": "workspace:*",
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",

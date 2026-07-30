@@ -1,11 +1,11 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
 import type {
   ConfigFormValues,
-} from '@moluoxixi/config-form-core'
+} from '@moluoxixi/config-form-headless'
 import type { AntdConfigFormField } from '../../../types'
 import type { FormComponentEmits, FormComponentProps } from './types'
 import { markRaw, useSlots } from 'vue'
-import { resolveConfigFormCondition } from '@moluoxixi/config-form-core'
+import { resolveConfigFormCondition } from '@moluoxixi/config-form-headless'
 import { resolveAntdConfigFormFieldBinding } from '../../../bindings'
 
 defineOptions({
