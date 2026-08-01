@@ -1,4 +1,3 @@
-import type { ConfigFormDataAttributes } from '@moluoxixi/config-form-headless'
 import type { FormHTMLAttributes, HTMLAttributes } from 'vue'
 import type {
   ConfigFormRendererCellAttrs,
@@ -13,7 +12,7 @@ interface TestValues {
 }
 
 type AdapterFormAttrs = FormHTMLAttributes
-type AdapterDomAttrs = HTMLAttributes & ConfigFormDataAttributes
+type AdapterDomAttrs = HTMLAttributes
 
 const rendererAttrs: Pick<
   ConfigFormRendererProps<TestValues>,

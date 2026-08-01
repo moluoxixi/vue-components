@@ -4,7 +4,6 @@ import type {
   ConfigFormComponentSlotContent,
   ConfigFormComponentSlotContext,
   ConfigFormComponentSlots,
-  ConfigFormDataAttributes,
   ConfigFormField,
   ConfigFormFieldSlot,
   ConfigFormFieldSlotContent,
@@ -19,9 +18,9 @@ import type {
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
 export type AntdConfigFormFormAttrs = FormHTMLAttributes
-export type AntdConfigFormLayoutAttrs = HTMLAttributes & ConfigFormDataAttributes
-export type AntdConfigFormCellAttrs = HTMLAttributes & ConfigFormDataAttributes
-export type AntdConfigFormFieldAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type AntdConfigFormLayoutAttrs = HTMLAttributes
+export type AntdConfigFormCellAttrs = HTMLAttributes
+export type AntdConfigFormFieldAttrs = HTMLAttributes
 
 export type AntdConfigFormReadonlyRender<
   TValues extends ConfigFormValues = ConfigFormValues,

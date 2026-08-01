@@ -1,7 +1,6 @@
 import type {
   ConfigFormCondition,
   ConfigFormController,
-  ConfigFormDataAttributes,
   ConfigFormErrors,
   ConfigFormField,
   ConfigFormFieldChangePayload,
@@ -13,9 +12,9 @@ import type {
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
 export type ConfigFormRendererFormAttrs = FormHTMLAttributes
-export type ConfigFormRendererLayoutAttrs = HTMLAttributes & ConfigFormDataAttributes
-export type ConfigFormRendererCellAttrs = HTMLAttributes & ConfigFormDataAttributes
-export type ConfigFormRendererFieldAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type ConfigFormRendererLayoutAttrs = HTMLAttributes
+export type ConfigFormRendererCellAttrs = HTMLAttributes
+export type ConfigFormRendererFieldAttrs = HTMLAttributes
 
 export type ConfigFormRendererNode<TValues extends ConfigFormValues = ConfigFormValues>
   = ConfigFormNode<

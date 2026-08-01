@@ -6,7 +6,6 @@ export type ConfigFormFieldKey<TValues extends ConfigFormValues = ConfigFormValu
 export type ConfigFormCondition<TValues extends ConfigFormValues = ConfigFormValues> = boolean | ((values: TValues) => boolean)
 export type ConfigFormColumnSpan = number
 export type ConfigFormAttrs = Record<string, unknown>
-export type ConfigFormDataAttributes = { [TKey in `data-${string}`]?: unknown }
 export type ConfigFormValidateTrigger = 'submit' | 'blur' | 'change'
 export type ConfigFormFieldValidatorResult = string | string[] | void | null | undefined
 
