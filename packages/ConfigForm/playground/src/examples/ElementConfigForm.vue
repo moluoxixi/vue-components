@@ -807,7 +807,8 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="element-layout-grid-form"
             :field-span="12"
             :fields="layoutGridFields"
-            :row-props="{ gutter: 16, 'data-testid': 'element-layout-grid' }"
+            gap="16px"
+            :row-props="{ 'data-testid': 'element-layout-grid' }"
             @submit="submitLayoutGrid"
           >
             <template #default="{ submit }">
@@ -831,7 +832,8 @@ function submitLinked(values: ConfigFormValues): void {
               data-testid="element-layout-stress-form"
               :field-span="6"
               :fields="layoutStressFields"
-              :row-props="{ gutter: 12, 'data-testid': 'element-layout-stress-grid' }"
+              gap="12px"
+              :row-props="{ 'data-testid': 'element-layout-stress-grid' }"
               @submit="submitLayoutStress"
             >
               <template #default="{ submit }">
@@ -853,7 +855,8 @@ function submitLinked(values: ConfigFormValues): void {
             v-model="containerModel"
             data-testid="element-container-form"
             :fields="containerFields"
-            :row-props="{ gutter: 16, 'data-testid': 'element-container-row' }"
+            gap="16px"
+            :row-props="{ 'data-testid': 'element-container-row' }"
             @submit="submitContainer"
           >
             <template #default="{ submit }">
@@ -876,7 +879,8 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="element-linked-form"
             :field-span="12"
             :fields="linkedFields"
-            :row-props="{ gutter: 16, 'data-testid': 'element-linked-row' }"
+            gap="16px"
+            :row-props="{ 'data-testid': 'element-linked-row' }"
             @submit="submitLinked"
           >
             <template #default="{ submit }">

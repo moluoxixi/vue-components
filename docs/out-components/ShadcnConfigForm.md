@@ -18,10 +18,14 @@ import { ShadcnConfigForm } from '@moluoxixi/config-form-shadcn-vue'
 |---|---|---|---|---|
 | modelValue | `TValues` | 无 | 是 | 表单模型，使用默认 `v-model` 双向绑定。 |
 | fields | `ShadcnConfigFormNode<TValues>[]` | 无 | 是 | 表单节点配置；字段节点绑定值，容器节点只渲染组件和 slots。 |
-| rules | `ConfigFormRules<TValues>` | `{}` | 否 | 顶层字段校验规则。 |
+| defaultValues | `Partial<TValues>` | 无 | 否 | 显式 reset 基准。 |
+| readonly | `boolean \| ((values) => boolean)` | `false` | 否 | 表单级展示态。 |
+| readonlyRender | `ShadcnConfigFormReadonlyRender` | 内置文本 | 否 | 表单级只读展示函数。 |
 | formProps | `FormHTMLAttributes` | `{}` | 否 | 透传给原生 `form`。 |
 | rowProps | `HTMLAttributes` | `{}` | 否 | 透传给布局行容器。 |
 | colProps | `HTMLAttributes` | `{}` | 否 | 透传给 grid cell。 |
+| columns | `number` | `24` | 否 | CSS Grid 列数。 |
+| gap | `string` | `16px` | 否 | Grid/Flex 间距。 |
 | fieldSpan | `number` | `24` | 否 | grid 布局下字段默认栅格跨度。 |
 | inline | `boolean` | `false` | 否 | 行内布局开关。 |
 
@@ -44,14 +48,14 @@ import { ShadcnConfigForm } from '@moluoxixi/config-form-shadcn-vue'
 
 ## 状态
 
-- 内部维护 `errors`，`setValue` 会清理当前字段错误。
-- `resetFields` 将字段重置为初始快照并清理校验状态。
+- headless controller 维护 errors，`setValue` 会清理当前字段错误。
+- `resetFields` 将字段重置为初始快照或动态字段默认值并清理校验状态。
 - grid 布局使用 CSS grid，inline 布局使用 flex。
-- 必填校验、字段级规则和顶层规则由 shadcn 工具函数收集执行。
+- required、Zod schema 和异步 validator 由 headless controller 统一执行。
 
 ## 可访问性
 
-字段壳使用 `data-field` 与错误区域承载语义；调用方应提供 `label`，自定义字段组件应保留可访问名称和错误提示关联能力。
+共享 renderer 生成唯一 control/error id、label `for`、`aria-required`、`aria-invalid` 和 `aria-describedby`。无 label 字段仍保留错误关联，但真实控件需自行提供可访问名称。
 
 ## 示例
 

@@ -8,24 +8,27 @@ interface UserForm {
 
 const elementFields = [
   {
-    colProps: { span: 12 },
+    colProps: { class: 'profile-cell' },
     component: 'input',
     field: 'name',
     formItemProps: { class: 'profile-field' },
     label: '姓名',
+    span: 12,
   },
 ] satisfies ElementConfigFormProps<UserForm>['fields']
 
 const elementProps = {
+  columns: 12,
   fields: elementFields,
+  gap: '12px',
   inline: true,
-  rowProps: { justify: 'start' },
+  rowProps: { class: 'profile-grid' },
 } satisfies ElementConfigFormProps<UserForm>
 
 const elementInvalidFields = [
   {
     colProps: {
-      // @ts-expect-error Element Plus Col props do not accept Row gutter.
+      // @ts-expect-error Native grid cell props do not accept UI Row gutter.
       gutter: 16,
     },
     component: 'input',
@@ -37,8 +40,8 @@ const elementInvalidFields = [
 void elementInvalidFields
 
 describe('config form ui prop types', () => {
-  it('保留 Element Plus Row/Col 与原生字段壳类型示例', () => {
+  it('使用原生 Grid/Flex 布局与字段壳类型', () => {
     expect(elementFields).toHaveLength(1)
-    expect(elementProps.inline).toBe(true)
+    expect(elementProps.columns).toBe(12)
   })
 })

@@ -35,7 +35,11 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "antd.ts",
+    "dist",
+    "element.ts",
+    "index.ts",
+    "src"
   ],
   "scripts": {
     "build": "vite build",
@@ -50,6 +54,7 @@
     "zod": "^3.23.0"
   },
   "dependencies": {
+    "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/hooks": "workspace:*",
     "dayjs": "catalog:build"

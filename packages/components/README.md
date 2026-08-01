@@ -2,7 +2,7 @@
 
 `@moluoxixi/components` 是 Moluoxixi 组件集合入口。
 
-当前包在内部维护不含 runtime plugin 功能的 Element Plus、Ant Design Vue ConfigForm，并提供从旧组件库迁入的常用 Element Plus 辅助组件。两套 ConfigForm 直接由本包实现，不转发 runtime plugin 或其他 UI 实现；通用字段协议、节点工具和模型 controller 收敛在 headless 层，并由本包直接导出。
+当前包维护 Element Plus、Ant Design Vue ConfigForm 的独立公共类型和薄适配器，并提供从旧组件库迁入的常用 Element Plus 辅助组件。ConfigForm 的状态与 Zod 校验收敛在 headless 层，Vue DOM、原生 Grid/Flex、字段壳和 ARIA 收敛在 `@moluoxixi/config-form` renderer；本包保留两套 UI 的绑定预设、样式和就近测试。
 
 ```ts
 import { defineFields, ElementConfigForm } from '@moluoxixi/components'
@@ -25,7 +25,7 @@ import {
 } from '@moluoxixi/components'
 ```
 
-`ElementConfigForm` 直接使用 `ElForm` / `ElFormItem` 渲染，`antdConfigForm` 直接使用 `AForm` / `AFormItem` 渲染。两者都支持 headless 层的 `defineField` / `defineFields`、容器节点和配置化 slots；它们不接入 schema、runtime plugin 或自定义 FormItem。
+两套 ConfigForm 都使用原生 `<form>`、CSS Grid/Flex 和共享字段壳，不依赖 UI 库的 Form/FormItem/Row/Col。它们支持 headless 层的 `defineField` / `defineFields`、Zod schema、容器节点、配置化 slots、readonly 与 `readonlyRender`。
 
 需要只加载单一 UI 实现时，使用本包的纯入口：
 

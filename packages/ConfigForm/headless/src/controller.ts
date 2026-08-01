@@ -39,6 +39,11 @@ type ControllerFieldState<TValues extends ConfigFormValues> = ConfigFormResolved
   unknown
 >
 
+interface ControllerValidationResult<TValues extends ConfigFormValues> {
+  states: ControllerFieldState<TValues>[]
+  status: 'invalid' | 'stale' | 'valid'
+}
+
 export interface ConfigFormControllerOptions<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 对宿主模型的最小读写适配，不绑定 Vue ref 或具体状态库。 */
   model: ConfigFormModelAdapter<TValues>
@@ -261,7 +266,9 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     beginValidation([fieldName])
     try {
       const fieldErrors = await validateConfigFormFieldRules(values[fieldName], values, state.field)
-      const current = latestFieldRequest.get(fieldName) === requestId && valuesRevision === revision
+      const current = latestFieldRequest.get(fieldName) === requestId
+        && valuesRevision === revision
+        && shallowEqual(options.model.read(), values)
       if (!current)
         return false
 
@@ -279,7 +286,10 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   }
 
   async function validate(): Promise<boolean> {
-    const values = getValues()
+    return (await validateValues(getValues())).status === 'valid'
+  }
+
+  async function validateValues(values: TValues): Promise<ControllerValidationResult<TValues>> {
     const states = getFieldStates(values)
     const revision = valuesRevision
     const requestId = ++validationRequestId
@@ -300,8 +310,9 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
 
       const current = valuesRevision === revision
         && fieldNames.every(field => latestFieldRequest.get(field) === requestId)
+        && shallowEqual(options.model.read(), values)
       if (!current)
-        return false
+        return { states, status: 'stale' }
 
       const nextErrors: ConfigFormErrors = {}
       results.forEach(([field, fieldErrors]) => {
@@ -309,7 +320,10 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
           nextErrors[field] = fieldErrors
       })
       commitErrors(nextErrors)
-      return Object.keys(nextErrors).length === 0
+      return {
+        states,
+        status: Object.keys(nextErrors).length === 0 ? 'valid' : 'invalid',
+      }
     }
     finally {
       finishValidation(activeStates.map(state => state.field.field))
@@ -341,14 +355,15 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   function resetFields(fields?: ConfigFormFieldSelector<TValues>): void {
     const fieldNames = normalizeFieldNames(fields)
     if (fieldNames === undefined) {
-      commitValues({ ...initialValues })
+      commitValues(createResetValues())
       return
     }
 
     const values = { ...options.model.read() } as ConfigFormValues
+    const resetValues = createResetValues() as ConfigFormValues
     fieldNames.forEach((field) => {
-      if (Object.hasOwn(initialValues, field))
-        values[field] = initialValues[field]
+      if (Object.hasOwn(resetValues, field))
+        values[field] = resetValues[field]
       else
         delete values[field]
     })
@@ -356,15 +371,19 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   }
 
   async function submit(): Promise<boolean> {
-    if (!await validate()) {
+    const values = getValues()
+    const result = await validateValues(values)
+    if (result.status === 'stale')
+      return false
+    if (result.status === 'invalid') {
       options.onError?.(getErrors())
       return false
     }
+    if (!shallowEqual(options.model.read(), values))
+      return false
 
-    const values = getValues()
-    const states = getFieldStates(values)
     const submittedValues = Object.fromEntries(
-      states
+      result.states
         .filter(isFieldSubmittable)
         .map(({ field }) => [
           field.field,
@@ -398,13 +417,20 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   }
 
   function isFieldSubmittable(state: ControllerFieldState<TValues>): boolean {
-    if (state.readonly)
-      return true
     if (!state.visible && !state.field.submitWhenHidden)
       return false
     if (state.disabled && !state.field.submitWhenDisabled)
       return false
     return true
+  }
+
+  function createResetValues(): TValues {
+    const values = { ...initialValues } as ConfigFormValues
+    collectAllConfigFormFields(readFields()).forEach((field) => {
+      if (!Object.hasOwn(values, field.field) && field.defaultValue !== undefined)
+        values[field.field] = field.defaultValue
+    })
+    return values as TValues
   }
 
   return {

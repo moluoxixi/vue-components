@@ -2,6 +2,12 @@
 
 一个轻量的 Vue 3 配置化表单组件库，使用 Zod 和字段级配置完成渲染、校验、显隐、禁用和提交转换。
 
+## 当前架构
+
+`ConfigFormRenderer` 是本版新增的受控 Vue DOM renderer：它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue`、`config-form-shadcn-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
+
+下文的 `ConfigForm`、runtime plugin 与 `useForm` 是保留的旧 runtime host，供现有 plugin 消费者兼容迁移；新轻量 UI 适配器不再依赖这套状态机。
+
 ## 特性
 
 - 配置驱动：通过 `fields` 数组声明表单字段。

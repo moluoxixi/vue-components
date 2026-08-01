@@ -260,7 +260,8 @@ describe('shadcn config form', () => {
     })
 
     expect(wrapper.find('[data-testid="shadcn-container-stub"]').exists()).toBe(true)
-    expect(wrapper.find('[data-field="owner"]').exists()).toBe(false)
+    expect(wrapper.find('[data-field="owner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-field="owner"] [data-testid="shadcn-input-stub"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-testid="shadcn-option-stub"]').map(option => option.text())).toEqual(['容器说明', '企业版'])
 
     await wrapper.get('[data-testid="shadcn-select-change"]').trigger('click')

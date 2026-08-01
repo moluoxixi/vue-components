@@ -11,7 +11,7 @@
 - submit 字段筛选、`submitWhenHidden` / `submitWhenDisabled` 和 `transform`；
 - 字段级或表单级 `readonlyRender`。
 
-UI 包只负责 Row/Col 布局、自有字段壳、错误和 readonly 展示，以及真实输入组件的值/事件绑定。
+`@moluoxixi/config-form` 的 Vue renderer 负责原生 `<form>`、Grid/Flex、字段壳、错误 DOM、ARIA 和递归节点渲染。UI 包只保留真实输入组件的值/事件绑定预设与视觉样式。
 
 ```ts
 import { createConfigFormController, defineFields } from '@moluoxixi/config-form-headless'
@@ -46,4 +46,4 @@ const fields = [
 
 ## 本版边界
 
-本版只支持顶层对象字段，不包含嵌套路径、数组字段管理、dirty/touched、reaction、远程 DSL 或框架无关运行时。跨字段校验通过字段 `validator(value, values)` 完成。
+本版只支持顶层对象字段，不包含嵌套路径、数组字段管理、dirty/touched、reaction 或远程 DSL。跨字段校验通过字段 `validator(value, values)` 完成；Zod `schema` 的解析结果用于后续 validator，提交值转换需显式配置 `transform`。

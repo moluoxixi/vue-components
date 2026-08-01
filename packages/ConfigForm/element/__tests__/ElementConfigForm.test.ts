@@ -50,27 +50,6 @@ const ContainerStub = defineComponent({
   setup: (_props, { slots }) => () => h('article', { 'data-testid': 'container-stub' }, slots.default?.()),
 })
 
-function createLayoutStubs() {
-  return {
-    ElCol: defineComponent({
-      name: 'ElCol',
-      props: ['span'],
-      setup: (props, { slots }) => () => h('div', {
-        'data-span': props.span,
-        'data-testid': 'element-col',
-      }, slots.default?.()),
-    }),
-    ElRow: defineComponent({
-      name: 'ElRow',
-      props: ['gutter'],
-      setup: (props, { slots }) => () => h('div', {
-        'data-gutter': props.gutter,
-        'data-testid': 'element-row',
-      }, slots.default?.()),
-    }),
-  }
-}
-
 describe('element config form', () => {
   it('使用自有表单壳渲染字段、写回模型并执行 Zod 校验', async () => {
     const fields = [
@@ -94,12 +73,12 @@ describe('element config form', () => {
     ]
     const wrapper = mount(ElementConfigForm, {
       props: { fields, modelValue: { name: '', status: 'draft' } },
-      global: { stubs: createLayoutStubs() },
     })
 
     expect(wrapper.find('form.mx-element-config-form').exists()).toBe(true)
     expect(wrapper.get('[data-field="name"]').text()).toContain('姓名')
-    expect(wrapper.get('[data-testid="element-col"]').attributes('data-span')).toBe('12')
+    expect(wrapper.get('.mx-element-config-form__row').classes()).toContain('mx-element-config-form__row--grid')
+    expect(wrapper.get('.mx-element-config-form__cell').attributes('style')).toContain('grid-column: span 12 / span 12')
     expect(wrapper.find('[data-field="status"]').exists()).toBe(false)
 
     await wrapper.get('form').trigger('submit')
@@ -126,7 +105,7 @@ describe('element config form', () => {
         h(ElementConfigForm, { fields, modelValue: { name: '', status: 'draft' } }),
       ]),
     })
-    const wrapper = mount(Host, { global: { stubs: createLayoutStubs() } })
+    const wrapper = mount(Host)
     const forms = wrapper.findAll('form')
 
     expect(forms).toHaveLength(2)
@@ -177,7 +156,7 @@ describe('element config form', () => {
         ])
       },
     })
-    const wrapper = mount(Host, { global: { stubs: createLayoutStubs() } })
+    const wrapper = mount(Host)
     await flushPromises()
     const formFields = wrapper.findAll('.mx-element-config-form__field')
     const firstInput = formFields[0].get<HTMLInputElement>('input[type="checkbox"]')
@@ -194,17 +173,18 @@ describe('element config form', () => {
     expect(secondInput.element.checked).toBe(true)
   })
 
-  it('inline 布局保留 Element Plus Row，但不依赖 Form/FormItem', () => {
+  it('inline 布局使用原生 Flex，不依赖 Form/FormItem/Row/Col', () => {
     const fields = [
       defineField<UserForm>({ component: InputStub, field: 'name', label: '姓名' }),
       defineField<UserForm>({ component: InputStub, field: 'status', label: '状态' }),
     ]
     const wrapper = mount(ElementConfigForm, {
       props: { fields, inline: true, modelValue: { name: 'Ada', status: 'draft' } },
-      global: { stubs: createLayoutStubs() },
     })
 
-    expect(wrapper.find('[data-testid="element-col"]').exists()).toBe(false)
+    expect(wrapper.get('.mx-element-config-form__row').classes()).toContain('mx-element-config-form__row--inline')
+    expect(wrapper.get('.mx-element-config-form__row').attributes('style')).toContain('display: flex')
+    expect(wrapper.find('.mx-element-config-form__cell').exists()).toBe(false)
     expect(wrapper.findAll('.mx-element-config-form__field')).toHaveLength(2)
     expect(wrapper.find('.el-form').exists()).toBe(false)
   })
@@ -230,7 +210,6 @@ describe('element config form', () => {
     ]
     const wrapper = mount(ElementConfigForm, {
       props: { fields, modelValue: { name: 'Ada', status: 'draft' } },
-      global: { stubs: createLayoutStubs() },
     })
 
     expect(wrapper.find('[data-testid="container-stub"]').exists()).toBe(true)
@@ -252,12 +231,12 @@ describe('element config form', () => {
     })]
     const wrapper = mount(ElementConfigForm, {
       props: { fields, modelValue: initial },
-      global: { stubs: createLayoutStubs() },
     })
     const form = wrapper.vm as unknown as ElementConfigFormExpose<UserForm>
 
     form.setValue('name', '')
-    await form.validate()
+    expect(form.getValue('name')).toBe('')
+    expect(await form.validate()).toBe(false)
     expect(form.getErrors()).toEqual({ name: ['请输入姓名'] })
     form.resetFields()
     expect(form.getValues()).toEqual(initial)

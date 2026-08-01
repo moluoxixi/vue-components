@@ -2,7 +2,7 @@
 
 ## 用途
 
-`AntdConfigForm` 用声明式 `fields` 渲染 Ant Design Vue 表单，统一字段绑定、递归节点、布局、校验、提交和模板 ref API。组件由 `packages/components/src/AntdConfigForm` 独立实现，不经过 runtime plugin。
+`AntdConfigForm` 用声明式 `fields` 渲染 Ant Design Vue 输入组件，保留独立公共类型与绑定预设，并复用共享 Vue DOM renderer 的递归节点、原生布局、校验展示、提交和模板 ref API。
 
 ## 引入
 
@@ -17,12 +17,16 @@ import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@molu
 |---|---|---|---|---|
 | modelValue | `TValues` | 无 | 是 | 表单模型，使用默认 `v-model` 双向绑定。 |
 | fields | `AntdConfigFormNode<TValues>[]` | 无 | 是 | 表单节点配置；字段节点绑定值，容器节点只渲染组件和 slots。 |
-| rules | `ConfigFormRules<TValues>` | `{}` | 否 | Ant Design Vue Form 全局校验规则。 |
-| formProps | `Partial<Omit<FormProps, 'model' \| 'rules'>>` | `{}` | 否 | 透传给 Ant Design Vue Form。 |
-| rowProps | `Partial<RowProps>` | `{ gutter: 16 }` | 否 | 透传给 Ant Design Vue Row。 |
-| colProps | `Partial<ColProps>` | `{}` | 否 | 透传给 Ant Design Vue Col。 |
+| defaultValues | `Partial<TValues>` | 无 | 否 | 显式 reset 基准。 |
+| readonly | `boolean \| ((values) => boolean)` | `false` | 否 | 表单级展示态。 |
+| readonlyRender | `AntdConfigFormReadonlyRender` | 内置文本 | 否 | 表单级只读展示函数。 |
+| formProps | `FormHTMLAttributes` | `{}` | 否 | 透传给原生 `form`。 |
+| rowProps | `HTMLAttributes` | `{}` | 否 | 透传给原生 Grid/Flex 容器。 |
+| colProps | `HTMLAttributes` | `{}` | 否 | 透传给原生 grid cell。 |
+| columns | `number` | `24` | 否 | CSS Grid 列数。 |
+| gap | `string` | `16px` | 否 | Grid/Flex 间距。 |
 | fieldSpan | `number` | `24` | 否 | grid 布局下字段默认栅格跨度。 |
-| inline | `boolean` | `false` | 否 | 行内布局开关；也可由 `formProps.layout='inline'` 触发。 |
+| inline | `boolean` | `false` | 否 | 原生 Flex 行内布局开关。 |
 
 ## 事件与回调
 
@@ -32,7 +36,7 @@ import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@molu
 | change | 任意字段写入后触发，参数为完整表单值。 |
 | fieldChange | 单字段写入后触发，包含 `field`、`value`、`values`。 |
 | submit | `submit()` 或原生 submit 校验通过后触发。 |
-| error | 校验失败时触发，参数为 Ant Design Vue validate 错误对象。 |
+| error | 校验失败时触发，参数为 `{ [field]: string[] }`。 |
 
 ## 插槽或 Children
 
@@ -43,14 +47,14 @@ import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@molu
 
 ## 状态
 
-- 组件合并顶层 `rules` 与字段级 `rules`。
-- 有 `label` 的字段渲染为 Ant Design Vue FormItem；无 `label` 的字段直接渲染组件。
-- 支持 `valueProp/trigger/getValueFromEvent`，并在本地绑定层适配 Switch 等组件的写回协议。
-- inline 布局使用 Ant Design Vue Row，不为顶层节点包裹 Col。
+- required、Zod schema 和异步 validator 由 headless controller 统一执行。
+- 所有字段都生成原生字段壳；label 可选，错误 DOM 与 `data-field` 不依赖 label。
+- 支持 `valueProp/trigger/getValueFromEvent`，并在本地绑定层适配 Switch/Checkbox 的 checked 协议。
+- inline 使用 Flex 且不消费 `span/colProps`；grid 将 `span/fieldSpan` 映射到 CSS Grid。
 
 ## 可访问性
 
-字段 label、必填状态和错误提示由 Ant Design Vue FormItem 承载。配置字段时应提供可读 `label`，无 label 字段应由真实组件自行提供可访问名称。
+共享 renderer 生成唯一 control/error id、label `for`、`aria-required`、`aria-invalid` 和 `aria-describedby`。无 label 字段仍保留错误关联，但真实控件需自行提供可访问名称。
 
 ## 示例
 
@@ -58,7 +62,7 @@ import { AntdConfigForm, antdConfigForm, defineField, defineFields } from '@molu
 <AntdConfigForm
   v-model="model"
   :fields="fields"
-  :form-props="{ layout: 'vertical' }"
+  :columns="12"
   @submit="handleSubmit"
 />
 ```

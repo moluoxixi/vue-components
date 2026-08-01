@@ -7,24 +7,27 @@ interface UserForm {
 
 const antdFields = [
   {
-    colProps: { span: 8 },
+    colProps: { class: 'status-cell' },
     component: 'input',
     field: 'status',
     formItemProps: { class: 'status-field' },
     label: '状态',
+    span: 8,
   },
 ] satisfies AntdConfigFormProps<UserForm>['fields']
 
 const antdProps = {
+  columns: 12,
   fields: antdFields,
+  gap: '12px',
   inline: true,
-  rowProps: { justify: 'start' },
+  rowProps: { class: 'status-grid' },
 } satisfies AntdConfigFormProps<UserForm>
 
 const antdInvalidFields = [
   {
     colProps: {
-      // @ts-expect-error Ant Design Vue Col props do not accept Row gutter.
+      // @ts-expect-error Native grid cell props do not accept UI Row gutter.
       gutter: 16,
     },
     component: 'input',
@@ -36,8 +39,8 @@ const antdInvalidFields = [
 void antdInvalidFields
 
 describe('config form ui prop types', () => {
-  it('保留 Ant Design Vue Row/Col 与原生字段壳类型示例', () => {
+  it('使用原生 Grid/Flex 布局与字段壳类型', () => {
     expect(antdFields).toHaveLength(1)
-    expect(antdProps.inline).toBe(true)
+    expect(antdProps.columns).toBe(12)
   })
 })

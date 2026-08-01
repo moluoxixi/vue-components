@@ -202,14 +202,11 @@ async function expectInlineVisualSpacing(example: Locator, suite: ConfigFormSuit
   expect(metrics.flexWrap).toBe('wrap')
   expect(metrics.marginLeft).toBeGreaterThanOrEqual(0)
   expect(metrics.x).toBeGreaterThanOrEqual(0)
+  expect(metrics.rowGap).toBeGreaterThanOrEqual(14)
   if (suite.id === 'element') {
-    expect(metrics.rowGap).toBeLessThanOrEqual(10)
     expect(metrics.firstItemMarginRight).toBeLessThanOrEqual(16)
     expect(metrics.firstItemMarginBottom).toBeLessThanOrEqual(12)
-    return
   }
-
-  expect(metrics.rowGap).toBeGreaterThanOrEqual(14)
 }
 
 async function expectContainerVisualSpacing(containerNode: Locator, layoutSelector: string): Promise<void> {
@@ -541,7 +538,7 @@ test.describe('ConfigForm playground 容器场景', () => {
 
         await expect(containerNode).toBeVisible()
         await expect(containerNode).toHaveClass(containerNodeExpectation.classPattern)
-        await expect(containerNode.locator(suite.fieldShellSelector)).toHaveCount(0)
+        await expect(containerNode).not.toHaveClass(new RegExp(`${suite.fieldShellSelector.slice(1)}(?:\\s|$)`))
         await expectContainerVisualSpacing(containerNode, containerNodeExpectation.layoutSelector)
         if (containerNodeExpectation.testId === primaryContainerNode.testId)
           await expectKnownControlsVisible(containerNode, suite, containerNodeExpectation.fieldPrefix)

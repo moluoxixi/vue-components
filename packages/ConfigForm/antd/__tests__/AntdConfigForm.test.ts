@@ -59,27 +59,6 @@ const ContainerStub = defineComponent({
   setup: (_props, { slots }) => () => h('article', { 'data-testid': 'antd-container-stub' }, slots.default?.()),
 })
 
-function createLayoutStubs() {
-  return {
-    ACol: defineComponent({
-      name: 'ACol',
-      props: ['span'],
-      setup: (props, { slots }) => () => h('div', {
-        'data-span': props.span,
-        'data-testid': 'antd-col',
-      }, slots.default?.()),
-    }),
-    ARow: defineComponent({
-      name: 'ARow',
-      props: ['gutter'],
-      setup: (props, { slots }) => () => h('div', {
-        'data-gutter': props.gutter,
-        'data-testid': 'antd-row',
-      }, slots.default?.()),
-    }),
-  }
-}
-
 describe('antd config form', () => {
   it('使用自有表单壳写回模型并执行 Zod 校验', async () => {
     const fields = [
@@ -101,11 +80,11 @@ describe('antd config form', () => {
     ]
     const wrapper = mount(AntdConfigForm, {
       props: { fields, modelValue: { name: '', status: 'locked' } },
-      global: { stubs: createLayoutStubs() },
     })
 
     expect(wrapper.find('form.mx-antd-config-form').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="antd-col"]').attributes('data-span')).toBe('12')
+    expect(wrapper.get('.mx-antd-config-form__row').classes()).toContain('mx-antd-config-form__row--grid')
+    expect(wrapper.get('.mx-antd-config-form__cell').attributes('style')).toContain('grid-column: span 12 / span 12')
     expect(wrapper.findAll('[data-testid="antd-input-stub"]')[1].attributes('disabled')).toBeDefined()
 
     await wrapper.get('form').trigger('submit')
@@ -131,7 +110,7 @@ describe('antd config form', () => {
         h(AntdConfigForm, { fields, modelValue: { name: '', status: 'draft' } }),
       ]),
     })
-    const wrapper = mount(Host, { global: { stubs: createLayoutStubs() } })
+    const wrapper = mount(Host)
     const forms = wrapper.findAll('form')
 
     expect(forms).toHaveLength(2)
@@ -158,7 +137,7 @@ describe('antd config form', () => {
     expect(new Set(errorIds).size).toBe(2)
   })
 
-  it('保留 Ant Design Vue 组件绑定和 Row/Col 布局，不使用 Form/FormItem', async () => {
+  it('保留 Ant Design Vue checked 绑定并使用原生 Grid', async () => {
     const fields = [defineField<SwitchForm>({
       component: SwitchStub,
       field: 'enabled',
@@ -166,11 +145,14 @@ describe('antd config form', () => {
     })]
     const wrapper = mount(AntdConfigForm, {
       props: { fields, modelValue: { enabled: false } },
-      global: { stubs: createLayoutStubs() },
     })
 
+    expect(wrapper.get('.mx-antd-config-form__row').classes()).toContain('mx-antd-config-form__row--grid')
+    expect(wrapper.find('.mx-antd-config-form__cell').exists()).toBe(true)
+    expect(wrapper.find('.ant-form').exists()).toBe(false)
     await wrapper.get('[data-testid="antd-switch-stub"]').trigger('click')
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true }])
+    expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
     expect(wrapper.find('.ant-form').exists()).toBe(false)
   })
 
@@ -192,7 +174,6 @@ describe('antd config form', () => {
         readonly: true,
         readonlyRender: ({ value }: { value: unknown }) => h('em', { 'data-testid': 'antd-readonly' }, `状态:${value}`),
       },
-      global: { stubs: createLayoutStubs() },
     })
 
     expect(wrapper.find('[data-testid="antd-container-stub"]').exists()).toBe(true)
@@ -214,12 +195,12 @@ describe('antd config form', () => {
     })]
     const wrapper = mount(AntdConfigForm, {
       props: { fields, modelValue: initial },
-      global: { stubs: createLayoutStubs() },
     })
     const form = wrapper.vm as unknown as AntdConfigFormExpose<UserForm>
 
     form.setValue('name', '')
-    await form.validate()
+    expect(form.getValue('name')).toBe('')
+    expect(await form.validate()).toBe(false)
     expect(form.getErrors()).toEqual({ name: ['请输入姓名'] })
     form.clearValidate('name')
     expect(form.getErrors()).toEqual({})

@@ -55,7 +55,7 @@ export function collectAllConfigFormFields<
 >(
   nodes: ConfigFormNode<TValues, Component | string, TFormItemProps, TColProps>[],
 ): ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>[] {
-  return nodes.flatMap(node => collectAllConfigFormFieldsFromNode(node))
+  return nodes.flatMap(node => collectAllConfigFormFieldsFromNode(node, new Set()))
 }
 
 function collectAllConfigFormFieldsFromNode<
@@ -64,12 +64,15 @@ function collectAllConfigFormFieldsFromNode<
   TColProps,
 >(
   node: ConfigFormNode<TValues, Component | string, TFormItemProps, TColProps>,
+  ancestors: ReadonlySet<object>,
 ): ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>[] {
+  assertAcyclicConfigFormNode(node, ancestors)
+  const nextAncestors = new Set(ancestors).add(node as object)
   const current = isConfigFormField<TValues, Component | string, TFormItemProps, TColProps>(node)
     ? [node]
     : []
   const nested = Object.values(node.slots ?? {}).flatMap(slot =>
-    collectAllConfigFormFieldsFromSlot<TValues, TFormItemProps, TColProps>(slot),
+    collectAllConfigFormFieldsFromSlot<TValues, TFormItemProps, TColProps>(slot, nextAncestors),
   )
 
   return [...current, ...nested]
@@ -81,17 +84,18 @@ function collectAllConfigFormFieldsFromSlot<
   TColProps,
 >(
   slot: ConfigFormSlotConfig<TValues, Component | string, TFormItemProps, TColProps> | ((...args: unknown[]) => unknown),
+  ancestors: ReadonlySet<object>,
 ): ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>[] {
   if (typeof slot === 'function')
     return []
 
   if (Array.isArray(slot)) {
     return slot.flatMap(node =>
-      collectAllConfigFormFieldsFromNode<TValues, TFormItemProps, TColProps>(node),
+      collectAllConfigFormFieldsFromNode<TValues, TFormItemProps, TColProps>(node, ancestors),
     )
   }
 
-  return collectAllConfigFormFieldsFromNode<TValues, TFormItemProps, TColProps>(slot)
+  return collectAllConfigFormFieldsFromNode<TValues, TFormItemProps, TColProps>(slot, ancestors)
 }
 
 /** 解析全部声明字段在当前模型下的统一状态。 */
@@ -105,7 +109,7 @@ export function resolveConfigFormFieldStates<
   formReadonly?: ConfigFormCondition<TValues>,
 ): ConfigFormResolvedFieldState<TValues, TFormItemProps, TColProps>[] {
   const readonly = resolveConfigFormCondition(formReadonly, values, false)
-  return nodes.flatMap(node => resolveConfigFormFieldStatesFromNode(node, values, true, readonly))
+  return nodes.flatMap(node => resolveConfigFormFieldStatesFromNode(node, values, true, readonly, new Set()))
 }
 
 function resolveConfigFormFieldStatesFromNode<
@@ -117,7 +121,10 @@ function resolveConfigFormFieldStatesFromNode<
   values: TValues,
   parentVisible: boolean,
   formReadonly: boolean,
+  ancestors: ReadonlySet<object>,
 ): ConfigFormResolvedFieldState<TValues, TFormItemProps, TColProps>[] {
+  assertAcyclicConfigFormNode(node, ancestors)
+  const nextAncestors = new Set(ancestors).add(node as object)
   const visible = parentVisible && isConfigFormNodeVisible(node, values)
   const current = isConfigFormField<TValues, Component | string, TFormItemProps, TColProps>(node)
     ? [resolveConfigFormFieldState(node, values, visible, formReadonly)]
@@ -135,10 +142,16 @@ function resolveConfigFormFieldStatesFromNode<
       values,
       visible,
       formReadonly,
+      nextAncestors,
     ))
   })
 
   return [...current, ...nested]
+}
+
+function assertAcyclicConfigFormNode(node: object, ancestors: ReadonlySet<object>): void {
+  if (ancestors.has(node))
+    throw new Error('ConfigForm node slots must not contain circular references.')
 }
 
 function resolveConfigFormFieldState<

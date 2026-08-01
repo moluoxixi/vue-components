@@ -100,4 +100,9 @@ export interface ShadcnConfigFormProps<TValues extends ConfigFormValues = Config
     ShadcnConfigFormRowProps,
     ShadcnConfigFormColProps,
     ShadcnConfigFormItemProps
-  > {}
+  > {
+  /** 原生 CSS Grid 的列数。 */
+  columns?: number
+  /** 原生 Grid/Flex 的间距。 */
+  gap?: string
+}

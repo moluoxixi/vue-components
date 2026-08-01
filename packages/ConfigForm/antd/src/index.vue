@@ -1,128 +1,105 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
-  ConfigFormErrors,
-  ConfigFormFieldValidateRequest,
-  ConfigFormValues,
-} from '@moluoxixi/config-form-headless'
+  ConfigFormRendererExpose,
+  ConfigFormRendererField,
+  ConfigFormRendererNode,
+} from '@moluoxixi/config-form'
 import type {
   AntdConfigFormEmits,
   AntdConfigFormExpose,
   AntdConfigFormProps,
   AntdConfigFormSlots,
 } from './types'
-import { computed, shallowRef, useAttrs, useTemplateRef } from 'vue'
-import FormLayout from './components/FormLayout'
-import { createConfigFormController } from '@moluoxixi/config-form-headless'
+import { computed, useTemplateRef } from 'vue'
+import { ConfigFormRenderer } from '@moluoxixi/config-form'
+import { resolveAntdConfigFormFieldBinding } from './bindings'
 import './styles.scss'
 
 defineOptions({
-  name: 'antdConfigForm',
+  name: 'AntdConfigForm',
   inheritAttrs: false,
 })
 
 const props = withDefaults(defineProps<AntdConfigFormProps<TValues>>(), {
   colProps: () => ({}),
+  columns: 24,
   fieldSpan: 24,
   formProps: () => ({}),
-  rowProps: () => ({ gutter: 16 }),
+  gap: '16px',
+  rowProps: () => ({}),
 })
 
 const emit = defineEmits<AntdConfigFormEmits<TValues>>()
 defineSlots<AntdConfigFormSlots<TValues>>()
 const model = defineModel<TValues>({ required: true })
-const formRef = useTemplateRef<HTMLFormElement>('formRef')
-const attrs = useAttrs()
-const errors = shallowRef<ConfigFormErrors>({})
-const {
-  applyFieldChange: handleFieldChange,
-  clearValidate,
-  getErrors,
-  getValidating,
-  getValue,
-  getValues,
-  resetFields,
-  setValue,
-  setValues,
-  submit,
-  validate,
-  validateField,
-} = createConfigFormController<TValues>({
-  defaultValues: props.defaultValues,
-  fields: () => props.fields,
-  model: {
-    read: () => model.value,
-    write: (values) => {
-      model.value = values
-    },
-  },
-  onChange: values => emit('change', values),
-  onError: formErrors => emit('error', formErrors),
-  onErrorsChange: (formErrors) => {
-    errors.value = formErrors
-  },
-  onFieldChange: payload => emit('fieldChange', payload),
-  onSubmit: values => emit('submit', values),
-  readonly: () => props.readonly,
-})
+const rendererRef = useTemplateRef<ConfigFormRendererExpose<TValues>>('rendererRef')
+const rendererFields = computed(() => props.fields as unknown as ConfigFormRendererNode<TValues>[])
 
-const inlineLayout = computed(() => props.inline === true)
-
-const formAttrs = computed<Record<string, unknown>>(() => {
-  const nextAttrs: Record<string, unknown> = {
-    ...attrs,
-    ...props.formProps,
-  }
-
-  return nextAttrs
-})
-
-function scrollToField(field: keyof TValues & string | string): void {
-  formRef.value!.querySelector<HTMLElement>(`[data-field="${field}"]`)!.scrollIntoView()
+const expose: AntdConfigFormExpose<TValues> = {
+  clearValidate: fields => rendererRef.value!.clearValidate(fields),
+  getErrors: () => rendererRef.value!.getErrors(),
+  getValidating: () => rendererRef.value!.getValidating(),
+  getValue: rendererGetValue as AntdConfigFormExpose<TValues>['getValue'],
+  getValues: () => rendererRef.value!.getValues(),
+  resetFields: fields => rendererRef.value!.resetFields(fields),
+  scrollToField: field => rendererRef.value!.scrollToField(field),
+  setValue: rendererSetValue,
+  setValues: rendererSetValues,
+  submit: () => rendererRef.value!.submit(),
+  validate: () => rendererRef.value!.validate(),
+  validateField: (field, trigger) => rendererRef.value!.validateField(field, trigger),
 }
 
-function handleFieldValidate(request: ConfigFormFieldValidateRequest<TValues>): void {
-  void validateField(request.field, request.trigger)
+function resolveBinding(field: ConfigFormRendererField<TValues>) {
+  return resolveAntdConfigFormFieldBinding(field)
 }
 
-defineExpose<AntdConfigFormExpose<TValues>>({
-  clearValidate,
-  getErrors,
-  getValidating,
-  getValue,
-  getValues,
-  resetFields,
-  scrollToField,
-  setValue,
-  setValues,
-  submit,
-  validate,
-  validateField,
-})
+function rendererGetValue(field: string): unknown {
+  return rendererRef.value!.getValue(field)
+}
+
+function rendererSetValue(field: string, value: unknown): void {
+  ;(rendererRef.value!.setValue as (field: string, value: unknown) => void)(field, value)
+}
+
+function rendererSetValues(values: Partial<TValues>, replace?: boolean): void {
+  if (replace)
+    rendererRef.value!.setValues(values as TValues, true)
+  else
+    rendererRef.value!.setValues(values)
+}
+
+defineExpose(expose)
 </script>
 
 <template>
-  <form
-    ref="formRef"
-    class="mx-antd-config-form"
-    v-bind="formAttrs"
-    @submit.prevent="submit"
+  <ConfigFormRenderer
+    ref="rendererRef"
+    v-model="model"
+    v-bind="$attrs"
+    :col-props="props.colProps"
+    :columns="props.columns"
+    default-trigger="update:value"
+    default-value-prop="value"
+    :default-values="props.defaultValues"
+    :field-span="props.fieldSpan"
+    :fields="rendererFields"
+    :form-props="props.formProps"
+    :gap="props.gap"
+    :inline="props.inline"
+    namespace="mx-antd-config-form"
+    :readonly="props.readonly"
+    :readonly-render="props.readonlyRender"
+    :resolve-binding="resolveBinding"
+    :row-props="props.rowProps"
+    @change="emit('change', $event)"
+    @error="emit('error', $event)"
+    @field-change="emit('fieldChange', $event)"
+    @submit="emit('submit', $event)"
   >
-    <FormLayout
-      :col-props="props.colProps"
-      :errors="errors"
-      :field-span="props.fieldSpan"
-      :inline-layout="inlineLayout"
-      :model="model"
-      :nodes="props.fields"
-      :readonly="props.readonly"
-      :readonly-render="props.readonlyRender"
-      :row-props="props.rowProps"
-      @field-change="handleFieldChange"
-      @field-validate="handleFieldValidate"
-    />
-
-    <slot
-      v-bind="{ model, submit, resetFields }"
-    />
-  </form>
+    <template #default="slotProps">
+      <slot v-bind="slotProps" />
+    </template>
+  </ConfigFormRenderer>
 </template>

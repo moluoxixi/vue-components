@@ -28,7 +28,8 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "src/styles.scss"
+    "index.ts",
+    "src"
   ],
   "scripts": {
     "build": "vite build",
@@ -37,11 +38,13 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
+    "@moluoxixi/config-form": "^0.2.0",
     "@moluoxixi/config-form-headless": "^0.2.0",
     "vue": "^3.5.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",

@@ -16,12 +16,11 @@ import type {
   ConfigFormSlotConfig,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
-import type { ColProps, RowProps } from 'ant-design-vue'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
 export type AntdConfigFormFormProps = FormHTMLAttributes
-export type AntdConfigFormRowProps = Partial<RowProps> & ConfigFormDataAttributes
-export type AntdConfigFormColProps = Partial<ColProps> & ConfigFormDataAttributes
+export type AntdConfigFormRowProps = HTMLAttributes & ConfigFormDataAttributes
+export type AntdConfigFormColProps = HTMLAttributes & ConfigFormDataAttributes
 export type AntdConfigFormItemProps = HTMLAttributes & ConfigFormDataAttributes
 
 export type AntdConfigFormReadonlyRender<
@@ -101,4 +100,9 @@ export interface AntdConfigFormProps<TValues extends ConfigFormValues = ConfigFo
     AntdConfigFormRowProps,
     AntdConfigFormColProps,
     AntdConfigFormItemProps
-  > {}
+  > {
+  /** 原生 CSS Grid 的列数。 */
+  columns?: number
+  /** 原生 Grid/Flex 的间距。 */
+  gap?: string
+}

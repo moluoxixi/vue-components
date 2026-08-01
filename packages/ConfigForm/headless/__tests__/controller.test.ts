@@ -8,6 +8,11 @@ interface UserForm {
   name: string
 }
 
+interface DynamicForm {
+  extra?: string
+  name: string
+}
+
 describe('createConfigFormController', () => {
   it('reads the latest model and writes immutable field updates', () => {
     let model: UserForm = { age: 18, name: 'Ada' }
@@ -146,6 +151,80 @@ describe('createConfigFormController', () => {
 
     await expect(pending).resolves.toBe(false)
     expect(controller.getErrors()).toEqual({})
+  })
+
+  it('does not submit a model that replaced the validated snapshot', async () => {
+    let model: UserForm = { age: 18, name: 'Ada' }
+    let releaseValidation!: () => void
+    const onError = vi.fn()
+    const onSubmit = vi.fn()
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [{
+        component: 'input',
+        field: 'name',
+        validator: async () => {
+          await new Promise<void>((resolve) => {
+            releaseValidation = resolve
+          })
+        },
+      }],
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+      onError,
+      onSubmit,
+    })
+
+    const pending = controller.submit()
+    model = { age: 18, name: '' }
+    releaseValidation()
+
+    await expect(pending).resolves.toBe(false)
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('applies hidden and disabled submission filters before readonly semantics', async () => {
+    let model: UserForm = { age: 18, name: 'private' }
+    const onSubmit = vi.fn()
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [
+        { component: 'input', field: 'age' },
+        { component: 'input', field: 'name', hidden: true, readonly: true },
+      ],
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+      onSubmit,
+    })
+
+    await expect(controller.submit()).resolves.toBe(true)
+    expect(onSubmit).toHaveBeenCalledWith({ age: 18 })
+  })
+
+  it('uses defaults from fields added after controller creation when resetting', () => {
+    let model: DynamicForm = { name: 'Ada' }
+    const fields: Array<Record<string, unknown>> = [
+      { component: 'input', field: 'name' },
+    ]
+    const controller = createConfigFormController<DynamicForm>({
+      fields: () => fields as never,
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+    })
+
+    fields.push({ component: 'input', defaultValue: 'new default', field: 'extra' })
+    controller.setValue('extra', 'changed')
+    controller.resetFields('extra')
+    expect(model).toEqual({ extra: 'new default', name: 'Ada' })
+
+    controller.setValue('extra', 'changed again')
+    controller.resetFields()
+    expect(model).toEqual({ extra: 'new default', name: 'Ada' })
   })
 
   it('keeps field helpers typed against the model', () => {

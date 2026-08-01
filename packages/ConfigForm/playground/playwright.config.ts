@@ -29,7 +29,7 @@ export default defineConfig({
   webServer: {
     command: `pnpm dev --host 127.0.0.1 --port ${serverPort} --strictPort`,
     url: serverUrl,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

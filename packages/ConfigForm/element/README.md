@@ -1,13 +1,13 @@
 # ElementConfigForm
 
-`@moluoxixi/config-form-element` 是基于 Element Plus 输入组件和栅格的轻量配置表单。
+`@moluoxixi/config-form-element` 是面向 Element Plus 输入组件的轻量配置表单。
 
 - 根节点使用原生 `<form>`，字段使用包内自有 label/control/error 壳；
-- inline 布局使用 `ElRow`，grid 布局使用 `ElRow + ElCol`；
+- inline 布局使用原生 Flex，grid 布局使用原生 CSS Grid；
 - 字段默认通过 `modelValue` + `update:modelValue` 写回外部模型；
 - 校验、reset、submit 和 readonly 语义统一由 `@moluoxixi/config-form-headless` 提供。
 
-组件不使用 `ElForm`、`ElFormItem` 或 Element Plus `rules`。`formProps` 只接收原生 form attributes，标签和字段壳属性使用 `formItemProps`，栅格属性使用 `rowProps` / `colProps` / `span`。
+组件不使用 `ElForm`、`ElFormItem`、`ElRow`、`ElCol` 或 Element Plus `rules`。`formProps` 传给原生 form，`rowProps` / `colProps` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
 
 ```vue
 <script setup lang="ts">
@@ -45,7 +45,8 @@ const fields = [
     v-model="model"
     :fields="fields"
     :form-props="{ autocomplete: 'off' }"
-    :row-props="{ gutter: 16 }"
+    :columns="12"
+    gap="16px"
   />
 </template>
 ```
@@ -56,4 +57,4 @@ const fields = [
 
 `visible`、`hidden`、`disabled`、`readonly` 和 `required` 支持布尔值或 `(values) => boolean`。readonly 字段跳过校验但保留提交值。
 
-inline 布局不消费 `span` / `colProps`；grid 布局按 Element Plus `ColProps` 消费它们。`getValueFromEvent` 可覆盖默认的首参数取值逻辑。
+inline 布局不消费 `span` / `colProps`；grid 布局将 `span` 映射到 CSS Grid，并把 `colProps` 作为原生 div attributes。`getValueFromEvent` 可覆盖默认的首参数取值逻辑。

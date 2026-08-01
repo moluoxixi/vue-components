@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collectConfigFormFields, defineFields } from '../index'
+import { collectAllConfigFormFields, collectConfigFormFields, defineFields } from '../index'
 
 interface AccountForm {
   age: number
@@ -24,5 +24,17 @@ describe('collectConfigFormFields', () => {
       // @ts-expect-error Dynamic conditions require the current model.
       collectConfigFormFields(fields)
     }
+  })
+
+  it('fails fast for circular configured slots', () => {
+    const node: Record<string, unknown> = {
+      component: 'div',
+      slots: {},
+    }
+    ;(node.slots as Record<string, unknown>).default = node
+
+    expect(() => collectAllConfigFormFields([node as never])).toThrow(
+      'ConfigForm node slots must not contain circular references.',
+    )
   })
 })

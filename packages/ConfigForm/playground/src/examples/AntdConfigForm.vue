@@ -713,7 +713,8 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="antd-layout-grid-form"
             :field-span="12"
             :fields="layoutGridFields"
-            :row-props="{ gutter: 16, 'data-testid': 'antd-layout-grid' }"
+            gap="16px"
+            :row-props="{ 'data-testid': 'antd-layout-grid' }"
             @submit="submitLayoutGrid"
           >
             <template #default="{ submit }">
@@ -735,7 +736,8 @@ function submitLinked(values: ConfigFormValues): void {
             v-model="containerModel"
             data-testid="antd-container-form"
             :fields="containerFields"
-            :row-props="{ gutter: 16, 'data-testid': 'antd-container-row' }"
+            gap="16px"
+            :row-props="{ 'data-testid': 'antd-container-row' }"
             @submit="submitContainer"
           >
             <template #default="{ submit }">
@@ -758,7 +760,8 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="antd-linked-form"
             :field-span="12"
             :fields="linkedFields"
-            :row-props="{ gutter: 16, 'data-testid': 'antd-linked-row' }"
+            gap="16px"
+            :row-props="{ 'data-testid': 'antd-linked-row' }"
             @submit="submitLinked"
           >
             <template #default="{ submit }">

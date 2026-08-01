@@ -40,7 +40,7 @@ const shadcnInvalidFields = [
 void shadcnInvalidFields
 
 describe('config form ui prop types', () => {
-  it('保留 shadcn-vue 版本的 formItemProps 和 colProps 类型示例', () => {
+  it('使用原生 Grid/Flex 布局与字段壳类型', () => {
     expect(shadcnFields).toHaveLength(1)
     expect(shadcnProps.inline).toBe(true)
   })

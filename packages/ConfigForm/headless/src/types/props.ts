@@ -155,7 +155,7 @@ export interface ConfigFormNodeBase<
   component: TComponent
   /** 透传给真实字段组件的 props。 */
   props?: ConfigFormAttrs
-  /** 透传给当前 UI 版本列容器的 props；仅 grid 布局消费。 */
+  /** 透传给 renderer grid cell 的 props；inline 布局不消费。 */
   colProps?: TColProps
   /** grid 布局下的栅格跨度，默认使用 ConfigForm.fieldSpan。 */
   span?: ConfigFormColumnSpan
@@ -183,11 +183,11 @@ export interface ConfigFormField<
 > extends ConfigFormNodeBase<TValues, TComponent, TColProps> {
   /** 当前字段绑定的模型 key。 */
   field: ConfigFormFieldKey<TValues> | string
-  /** 当前 UI 版本 FormItem/字段壳 label。 */
+  /** 共享字段壳 label；未提供时仍保留字段壳、错误 DOM 与 ARIA。 */
   label?: string
   /** 透传给真实字段组件的 slots，支持 render 函数或配置化节点。 */
   slots?: ConfigFormFieldSlots<TValues, Component | string, TFormItemProps, TColProps>
-  /** 透传给当前 UI 版本字段壳的 props，field/label/error 由字段契约统一接管。 */
+  /** 透传给共享字段壳的 props，field/label/error 由 renderer 统一接管。 */
   formItemProps?: TFormItemProps
   /** 必填标记；函数形式可基于当前表单值动态计算。 */
   required?: ConfigFormCondition<TValues>
@@ -248,13 +248,13 @@ export interface ConfigFormProps<
   readonly?: ConfigFormCondition<TValues>
   /** 字段未声明 readonlyRender 时使用的表单级展示渲染函数。 */
   readonlyRender?: ConfigFormReadonlyRender<TValues, TComponent, TFormItemProps, TColProps>
-  /** 透传给当前 UI 版本原生 form 壳的 props。 */
+  /** 透传给 renderer 原生 form 壳的 props。 */
   formProps?: TFormProps
-  /** 是否使用行内布局；行内布局只使用 Row/flex 容器，不消费 span 或 colProps。 */
+  /** 是否使用行内布局；行内布局使用 Flex 容器，不消费 span 或 colProps。 */
   inline?: boolean
-  /** 透传给当前 UI 版本 Row/布局容器的 props。 */
+  /** 透传给 renderer 原生 Grid/Flex 布局容器的 props。 */
   rowProps?: TRowProps
-  /** 透传给当前 UI 版本 Col/单元格的默认 props；仅 grid 布局消费。 */
+  /** 透传给 renderer 原生 grid cell 的默认 props；仅 grid 布局消费。 */
   colProps?: TColProps
   /** grid 布局下的字段默认栅格跨度。 */
   fieldSpan?: ConfigFormColumnSpan

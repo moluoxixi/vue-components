@@ -1,0 +1,466 @@
+<script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
+import type {
+  ConfigFormComponentNode,
+  ConfigFormComponentSlot,
+  ConfigFormComponentSlotContent,
+  ConfigFormComponentSlotContext,
+  ConfigFormErrors,
+  ConfigFormFieldSlot,
+  ConfigFormFieldSlotContent,
+  ConfigFormFieldSlotContext,
+  ConfigFormReadonlyRender,
+  ConfigFormValues,
+} from '@moluoxixi/config-form-headless'
+import type {
+  ConfigFormControlBinding,
+  ConfigFormRendererEmits,
+  ConfigFormRendererField,
+  ConfigFormRendererNode,
+  ConfigFormRendererProps,
+} from './types'
+import type { Component, HTMLAttributes, ShallowRef, StyleValue, VNodeChild } from 'vue'
+import {
+  camelize,
+  computed,
+  defineComponent,
+  h,
+  markRaw,
+  shallowRef,
+  toHandlerKey,
+  useAttrs,
+  useId,
+  useTemplateRef,
+  watch,
+} from 'vue'
+import {
+  createConfigFormController,
+  formatConfigFormReadonlyValue,
+  isConfigFormField,
+  isConfigFormFieldReadonly,
+  isConfigFormNodeVisible,
+  resolveConfigFormCondition,
+  resolveConfigFormReadonlyRender,
+} from '@moluoxixi/config-form-headless'
+
+defineOptions({
+  name: 'ConfigFormRenderer',
+  inheritAttrs: false,
+})
+
+const props = withDefaults(defineProps<ConfigFormRendererProps<TValues>>(), {
+  colProps: () => ({}),
+  columns: 24,
+  defaultTrigger: 'update:modelValue',
+  defaultValueProp: 'modelValue',
+  fieldSpan: 24,
+  formProps: () => ({}),
+  gap: '16px',
+  namespace: 'mx-config-form',
+  rowProps: () => ({}),
+})
+
+const emit = defineEmits<ConfigFormRendererEmits<TValues>>()
+const controlledModel = defineModel<TValues>({ required: true })
+const model: ShallowRef<TValues> = shallowRef(controlledModel.value)
+const attrs = useAttrs()
+const formRef = useTemplateRef<HTMLFormElement>('formRef')
+const formId = useId()
+const errors = shallowRef<ConfigFormErrors>({})
+
+const {
+  applyFieldChange,
+  clearValidate,
+  getErrors,
+  getValidating,
+  getValue,
+  getValues,
+  resetFields,
+  setValue,
+  setValues,
+  submit,
+  validate,
+  validateField,
+} = createConfigFormController<TValues>({
+  defaultValues: props.defaultValues,
+  fields: () => props.fields,
+  model: {
+    read: () => model.value,
+    write: (values) => {
+      model.value = values
+      controlledModel.value = values
+    },
+  },
+  onChange: values => emit('change', values),
+  onError: formErrors => emit('error', formErrors),
+  onErrorsChange: (formErrors) => {
+    errors.value = formErrors
+  },
+  onFieldChange: payload => emit('fieldChange', payload),
+  onSubmit: values => emit('submit', values),
+  readonly: () => props.readonly,
+})
+
+watch(controlledModel, (values) => {
+  if (values !== model.value) {
+    model.value = values
+    clearValidate()
+  }
+})
+
+const formAttrs = computed<Record<string, unknown>>(() => ({
+  ...attrs,
+  ...props.formProps,
+  class: [props.namespace, attrs.class, props.formProps.class],
+}))
+
+const ConfigFormTree = defineComponent({
+  name: 'ConfigFormRendererTree',
+  setup: () => () => renderLayout(),
+})
+
+function bem(element: string, modifier?: string): string {
+  return modifier
+    ? `${props.namespace}__${element}--${modifier}`
+    : `${props.namespace}__${element}`
+}
+
+function renderLayout(): VNodeChild {
+  const layoutProps = props.rowProps as HTMLAttributes
+  const inline = props.inline === true
+  const style: StyleValue = [
+    layoutProps.style,
+    inline
+      ? {
+          alignItems: 'flex-start',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: props.gap,
+        }
+      : {
+          display: 'grid',
+          gap: props.gap,
+          gridTemplateColumns: `repeat(${props.columns}, minmax(0, 1fr))`,
+        },
+  ]
+
+  return h('div', {
+    ...layoutProps,
+    class: [bem('row'), bem('row', inline ? 'inline' : 'grid'), layoutProps.class],
+    style,
+  }, props.fields.map((node, index) => renderNode(node, !inline, `fields.${index}`, new Set())))
+}
+
+function renderNode(
+  node: ConfigFormRendererNode<TValues>,
+  wrapCell: boolean,
+  path: string,
+  ancestors: ReadonlySet<object>,
+): VNodeChild {
+  assertAcyclicNode(node, ancestors)
+  const nextAncestors = new Set(ancestors).add(node as object)
+  if (!isConfigFormNodeVisible(node, model.value))
+    return null
+
+  const body = isConfigFormField(node)
+    ? renderBoundNode(node, path, nextAncestors)
+    : renderComponentNode(node, path, nextAncestors)
+
+  if (!wrapCell)
+    return body
+
+  const cellProps = props.colProps as HTMLAttributes
+  const nodeCellProps = node.colProps as HTMLAttributes | undefined
+  const span = clampSpan(node.span ?? props.fieldSpan)
+  const style: StyleValue = [
+    cellProps.style,
+    nodeCellProps?.style,
+    props.inline
+      ? { flex: '0 1 auto', minWidth: 0 }
+      : { gridColumn: `span ${span} / span ${span}`, minWidth: 0 },
+  ]
+
+  return h('div', {
+    ...cellProps,
+    ...nodeCellProps,
+    class: [bem('cell'), cellProps.class, nodeCellProps?.class],
+    key: getNodeKey(node, path),
+    style,
+  }, [body])
+}
+
+function renderBoundNode(
+  field: ConfigFormRendererField<TValues>,
+  path: string,
+  ancestors: ReadonlySet<object>,
+): VNodeChild {
+  const configuredId = field.props?.id
+  const controlId = typeof configuredId === 'string' && configuredId
+    ? configuredId
+    : `${formId}-${toDomId(path)}-control`
+  const errorId = `${formId}-${toDomId(path)}-error`
+  const readonly = isConfigFormFieldReadonly(field, model.value, props.readonly)
+  const fieldErrors = readonly ? [] : (errors.value[field.field] ?? [])
+  const itemProps = field.formItemProps as HTMLAttributes | undefined
+  const label = typeof field.label === 'string'
+    ? h('label', {
+        class: bem('label'),
+        for: controlId,
+      }, field.label)
+    : null
+
+  return h('div', {
+    ...itemProps,
+    class: [bem('field'), itemProps?.class],
+    'data-field': field.field,
+    'data-required': resolveConfigFormCondition(field.required, model.value, false),
+    key: getNodeKey(field, path),
+    style: itemProps?.style,
+  }, [
+    label,
+    h('div', { class: bem('control') }, [renderControl(field, path, controlId, errorId, readonly, ancestors)]),
+    ...fieldErrors.map((message, index) => h('p', {
+      class: bem('error'),
+      id: index === 0 ? errorId : undefined,
+      key: `${message}-${index}`,
+    }, message)),
+  ])
+}
+
+function renderControl(
+  field: ConfigFormRendererField<TValues>,
+  path: string,
+  controlId?: string,
+  errorId?: string,
+  readonly = false,
+  ancestors: ReadonlySet<object> = new Set(),
+): VNodeChild {
+  if (readonly) {
+    const readonlyRender = resolveConfigFormReadonlyRender(
+      field,
+      props.readonlyRender as ConfigFormReadonlyRender<TValues, Component | string, HTMLAttributes, HTMLAttributes> | undefined,
+    )
+    const value = model.value[field.field]
+    const content = readonlyRender
+      ? readonlyRender({
+          componentProps: field.props ?? {},
+          field,
+          model: model.value,
+          value,
+        })
+      : formatConfigFormReadonlyValue(value)
+
+    return h('span', {
+      class: bem('readonly'),
+      id: controlId,
+      key: `${path}.readonly`,
+    }, [content])
+  }
+
+  const binding = resolveBinding(field)
+  const componentProps: Record<string, unknown> = {
+    ...field.props,
+    [binding.valueProp]: model.value[field.field],
+  }
+
+  if (controlId && !isNonEmptyString(componentProps.id))
+    componentProps.id = controlId
+
+  if (resolveConfigFormCondition(field.disabled, model.value, false))
+    componentProps.disabled = true
+
+  if (resolveConfigFormCondition(field.required, model.value, false))
+    componentProps['aria-required'] = true
+
+  if ((errors.value[field.field]?.length ?? 0) > 0) {
+    componentProps['aria-invalid'] = true
+    if (errorId)
+      componentProps['aria-describedby'] = mergeAriaTokens(componentProps['aria-describedby'], errorId)
+  }
+
+  addListener(componentProps, binding.trigger, (...args: unknown[]) => {
+    applyFieldChange({
+      field: field.field,
+      value: field.getValueFromEvent ? field.getValueFromEvent(...args) : args[0],
+    })
+  })
+  addListener(componentProps, field.blurTrigger ?? 'blur', () => {
+    void validateField(field.field, 'blur')
+  })
+
+  return h(resolveComponent(field.component), {
+    ...componentProps,
+    key: getNodeKey(field, `${path}.control`),
+  }, createNodeSlots(field, path, ancestors))
+}
+
+function renderComponentNode(
+  node: ConfigFormComponentNode<TValues, Component | string, HTMLAttributes, HTMLAttributes>,
+  path: string,
+  ancestors: ReadonlySet<object>,
+): VNodeChild {
+  const slots = createNodeSlots(node, path, ancestors)
+  const vnodeKey = node.props?.key as string | number | symbol | undefined ?? `${path}.component`
+
+  if (typeof node.component === 'string') {
+    return h(node.component, {
+      ...node.props,
+      key: vnodeKey,
+    }, slots?.default?.() ?? [])
+  }
+
+  return h(resolveComponent(node.component), {
+    ...node.props,
+    key: vnodeKey,
+  }, slots)
+}
+
+function createNodeSlots(
+  node: ConfigFormRendererNode<TValues>,
+  path: string,
+  ancestors: ReadonlySet<object>,
+): Record<string, (slotProps?: Record<string, unknown>) => VNodeChild> | undefined {
+  if (!node.slots)
+    return undefined
+
+  return Object.fromEntries(
+    Object.entries(node.slots).map(([slotName, slot]) => [
+      slotName,
+      (slotProps: Record<string, unknown> = {}) =>
+        renderSlotContent(slot, node, slotProps, `${path}.slots.${slotName}`, ancestors),
+    ]),
+  )
+}
+
+function renderSlotContent(
+  slot: ConfigFormComponentSlotContent<TValues, Component | string, HTMLAttributes, HTMLAttributes>
+    | ConfigFormFieldSlotContent<TValues, Component | string, HTMLAttributes, HTMLAttributes>,
+  ownerNode: ConfigFormRendererNode<TValues>,
+  slotProps: Record<string, unknown>,
+  path: string,
+  ancestors: ReadonlySet<object>,
+): VNodeChild {
+  if (typeof slot === 'function')
+    return renderSlotFunction(slot, ownerNode, slotProps)
+
+  if (Array.isArray(slot))
+    return slot.map((node, index) => renderNode(node, false, `${path}.${index}`, ancestors))
+
+  return renderNode(slot, false, path, ancestors)
+}
+
+function renderSlotFunction(
+  slot: ConfigFormComponentSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>
+    | ConfigFormFieldSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>,
+  ownerNode: ConfigFormRendererNode<TValues>,
+  slotProps: Record<string, unknown>,
+): VNodeChild {
+  if (isConfigFormField(ownerNode)) {
+    const context: ConfigFormFieldSlotContext<TValues, Component | string, HTMLAttributes, HTMLAttributes> = {
+      field: ownerNode,
+      model: model.value,
+      setValue: value => applyFieldChange({ field: ownerNode.field, value }),
+      slotProps,
+      value: model.value[ownerNode.field],
+    }
+    return (slot as ConfigFormFieldSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>)(context)
+  }
+
+  const context: ConfigFormComponentSlotContext<TValues, Component | string, HTMLAttributes, HTMLAttributes> = {
+    model: model.value,
+    node: ownerNode,
+    slotProps,
+  }
+  return (slot as ConfigFormComponentSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>)(context)
+}
+
+function resolveBinding(field: ConfigFormRendererField<TValues>): ConfigFormControlBinding {
+  const adapterBinding = props.resolveBinding?.(field)
+  return {
+    trigger: field.trigger ?? adapterBinding?.trigger ?? props.defaultTrigger,
+    valueProp: field.valueProp ?? adapterBinding?.valueProp ?? props.defaultValueProp,
+  }
+}
+
+function resolveComponent<TComponent extends Component | string>(component: TComponent): TComponent {
+  if (typeof component === 'object' || typeof component === 'function')
+    return markRaw(component as object) as TComponent
+  return component
+}
+
+function addListener(
+  target: Record<string, unknown>,
+  event: string,
+  listener: (...args: unknown[]) => void,
+): void {
+  const key = toHandlerKey(camelize(event))
+  const existing = target[key]
+  target[key] = typeof existing === 'function'
+    ? (...args: unknown[]) => {
+        ;(existing as (...args: unknown[]) => void)(...args)
+        listener(...args)
+      }
+    : listener
+}
+
+function mergeAriaTokens(current: unknown, token: string): string {
+  const tokens = typeof current === 'string' ? current.split(/\s+/).filter(Boolean) : []
+  return [...new Set([...tokens, token])].join(' ')
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function clampSpan(span: number): number {
+  return Math.max(1, Math.min(props.columns, span))
+}
+
+function assertAcyclicNode(node: object, ancestors: ReadonlySet<object>): void {
+  if (ancestors.has(node))
+    throw new Error('ConfigForm node slots must not contain circular references.')
+}
+
+function getNodeKey(node: ConfigFormRendererNode<TValues>, fallback: string): string | number | symbol {
+  const configuredKey = node.props?.key
+  if (typeof configuredKey === 'string' || typeof configuredKey === 'number' || typeof configuredKey === 'symbol')
+    return configuredKey
+  return isConfigFormField(node) ? `field:${node.field}` : fallback
+}
+
+function toDomId(path: string): string {
+  return path.replace(/[^a-z0-9_-]+/gi, '-')
+}
+
+function scrollToField(field: keyof TValues & string | string): void {
+  const target = Array.from(formRef.value?.querySelectorAll<HTMLElement>('[data-field]') ?? [])
+    .find(element => element.dataset.field === field)
+  target?.scrollIntoView()
+}
+
+defineExpose({
+  clearValidate,
+  getErrors,
+  getValidating,
+  getValue,
+  getValues,
+  resetFields,
+  scrollToField,
+  setValue,
+  setValues,
+  submit,
+  validate,
+  validateField,
+})
+</script>
+
+<template>
+  <form
+    ref="formRef"
+    v-bind="formAttrs"
+    @submit.prevent="submit"
+  >
+    <ConfigFormTree />
+
+    <slot v-bind="{ model, submit, resetFields }" />
+  </form>
+</template>
