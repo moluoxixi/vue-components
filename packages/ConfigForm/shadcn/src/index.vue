@@ -2,7 +2,6 @@
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererExpose,
-  ConfigFormRendererNode,
 } from '@moluoxixi/config-form'
 import type {
   ShadcnConfigFormEmits,
@@ -10,7 +9,7 @@ import type {
   ShadcnConfigFormProps,
   ShadcnConfigFormSlots,
 } from './types'
-import { computed, useTemplateRef } from 'vue'
+import { useTemplateRef } from 'vue'
 import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import './styles.scss'
 
@@ -32,7 +31,6 @@ const emit = defineEmits<ShadcnConfigFormEmits<TValues>>()
 defineSlots<ShadcnConfigFormSlots<TValues>>()
 const model = defineModel<TValues>({ required: true })
 const rendererRef = useTemplateRef<ConfigFormRendererExpose<TValues>>('rendererRef')
-const rendererFields = computed(() => props.fields as unknown as ConfigFormRendererNode<TValues>[])
 
 const expose: ShadcnConfigFormExpose<TValues> = {
   clearValidate: fields => rendererRef.value!.clearValidate(fields),
@@ -76,7 +74,7 @@ defineExpose(expose)
     :columns="props.columns"
     :default-values="props.defaultValues"
     :field-span="props.fieldSpan"
-    :fields="rendererFields"
+    :fields="props.fields"
     :form-attrs="props.formAttrs"
     :gap="props.gap"
     :inline="props.inline"
