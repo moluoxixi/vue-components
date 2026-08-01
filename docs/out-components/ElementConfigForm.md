@@ -20,9 +20,9 @@ import { defineField, defineFields, ElementConfigForm } from '@moluoxixi/compone
 | defaultValues | `Partial<TValues>` | 无 | 否 | 显式 reset 基准。 |
 | readonly | `boolean \| ((values) => boolean)` | `false` | 否 | 表单级展示态。 |
 | readonlyRender | `ElementConfigFormReadonlyRender` | 内置文本 | 否 | 表单级只读展示函数。 |
-| formProps | `FormHTMLAttributes` | `{}` | 否 | 透传给原生 `form`。 |
-| rowProps | `HTMLAttributes` | `{}` | 否 | 透传给原生 Grid/Flex 容器。 |
-| colProps | `HTMLAttributes` | `{}` | 否 | 透传给原生 grid cell。 |
+| formAttrs | `FormHTMLAttributes` | `{}` | 否 | 透传给原生 `form`。 |
+| layoutAttrs | `HTMLAttributes` | `{}` | 否 | 透传给原生 Grid/Flex 容器。 |
+| cellAttrs | `HTMLAttributes` | `{}` | 否 | 透传给原生 grid cell。 |
 | columns | `number` | `24` | 否 | CSS Grid 列数。 |
 | gap | `string` | `16px` | 否 | Grid/Flex 间距。 |
 | fieldSpan | `number` | `24` | 否 | grid 布局下字段默认栅格跨度。 |
@@ -50,7 +50,7 @@ import { defineField, defineFields, ElementConfigForm } from '@moluoxixi/compone
 - required、Zod schema 和异步 validator 由 headless controller 统一执行。
 - 所有字段都生成原生字段壳；label 可选，错误 DOM 与 `data-field` 不依赖 label。
 - `visible/hidden/disabled/readonly/required` 可基于当前模型动态计算。
-- inline 使用 Flex 且不消费 `span/colProps`；grid 将 `span/fieldSpan` 映射到 CSS Grid。
+- inline 使用 Flex 且不消费 `span/cellAttrs`；grid 将 `span/fieldSpan` 映射到 CSS Grid。
 
 ## 可访问性
 

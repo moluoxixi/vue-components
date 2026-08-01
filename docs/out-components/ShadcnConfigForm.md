@@ -21,9 +21,9 @@ import { ShadcnConfigForm } from '@moluoxixi/config-form-shadcn-vue'
 | defaultValues | `Partial<TValues>` | 无 | 否 | 显式 reset 基准。 |
 | readonly | `boolean \| ((values) => boolean)` | `false` | 否 | 表单级展示态。 |
 | readonlyRender | `ShadcnConfigFormReadonlyRender` | 内置文本 | 否 | 表单级只读展示函数。 |
-| formProps | `FormHTMLAttributes` | `{}` | 否 | 透传给原生 `form`。 |
-| rowProps | `HTMLAttributes` | `{}` | 否 | 透传给布局行容器。 |
-| colProps | `HTMLAttributes` | `{}` | 否 | 透传给 grid cell。 |
+| formAttrs | `FormHTMLAttributes` | `{}` | 否 | 透传给原生 `form`。 |
+| layoutAttrs | `HTMLAttributes` | `{}` | 否 | 透传给布局行容器。 |
+| cellAttrs | `HTMLAttributes` | `{}` | 否 | 透传给 grid cell。 |
 | columns | `number` | `24` | 否 | CSS Grid 列数。 |
 | gap | `string` | `16px` | 否 | Grid/Flex 间距。 |
 | fieldSpan | `number` | `24` | 否 | grid 布局下字段默认栅格跨度。 |

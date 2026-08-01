@@ -12,10 +12,10 @@ import { resolveConfigFormCondition } from './node'
 export function isConfigFormFieldReadonly<
   TValues extends ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  field: ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>,
+  field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>,
   values: TValues,
   formReadonly?: ConfigFormCondition<TValues>,
 ): boolean {
@@ -27,12 +27,12 @@ export function isConfigFormFieldReadonly<
 export function resolveConfigFormReadonlyRender<
   TValues extends ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  field: ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>,
-  fallback?: ConfigFormReadonlyRender<TValues, TComponent, TFormItemProps, TColProps>,
-): ConfigFormReadonlyRender<TValues, TComponent, TFormItemProps, TColProps> | undefined {
+  field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  fallback?: ConfigFormReadonlyRender<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+): ConfigFormReadonlyRender<TValues, TComponent, TFieldAttrs, TCellAttrs> | undefined {
   return field.readonlyRender ?? fallback
 }
 

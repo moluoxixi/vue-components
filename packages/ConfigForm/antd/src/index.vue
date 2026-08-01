@@ -22,12 +22,12 @@ defineOptions({
 })
 
 const props = withDefaults(defineProps<AntdConfigFormProps<TValues>>(), {
-  colProps: () => ({}),
+  cellAttrs: () => ({}),
   columns: 24,
   fieldSpan: 24,
-  formProps: () => ({}),
+  formAttrs: () => ({}),
   gap: '16px',
-  rowProps: () => ({}),
+  layoutAttrs: () => ({}),
 })
 
 const emit = defineEmits<AntdConfigFormEmits<TValues>>()
@@ -78,21 +78,21 @@ defineExpose(expose)
     ref="rendererRef"
     v-model="model"
     v-bind="$attrs"
-    :col-props="props.colProps"
+    :cell-attrs="props.cellAttrs"
     :columns="props.columns"
     default-trigger="update:value"
     default-value-prop="value"
     :default-values="props.defaultValues"
     :field-span="props.fieldSpan"
     :fields="rendererFields"
-    :form-props="props.formProps"
+    :form-attrs="props.formAttrs"
     :gap="props.gap"
     :inline="props.inline"
     namespace="mx-antd-config-form"
     :readonly="props.readonly"
     :readonly-render="props.readonlyRender"
     :resolve-binding="resolveBinding"
-    :row-props="props.rowProps"
+    :layout-attrs="props.layoutAttrs"
     @change="emit('change', $event)"
     @error="emit('error', $event)"
     @field-change="emit('fieldChange', $event)"

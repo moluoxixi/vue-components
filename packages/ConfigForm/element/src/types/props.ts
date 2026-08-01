@@ -18,10 +18,10 @@ import type {
 } from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
-export type ElementConfigFormFormProps = FormHTMLAttributes
-export type ElementConfigFormRowProps = HTMLAttributes & ConfigFormDataAttributes
-export type ElementConfigFormColProps = HTMLAttributes & ConfigFormDataAttributes
-export type ElementConfigFormItemProps = HTMLAttributes & ConfigFormDataAttributes
+export type ElementConfigFormFormAttrs = FormHTMLAttributes
+export type ElementConfigFormLayoutAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type ElementConfigFormCellAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type ElementConfigFormFieldAttrs = HTMLAttributes & ConfigFormDataAttributes
 
 export type ElementConfigFormReadonlyRender<
   TValues extends ConfigFormValues = ConfigFormValues,
@@ -29,77 +29,77 @@ export type ElementConfigFormReadonlyRender<
 > = ConfigFormReadonlyRender<
   TValues,
   TComponent,
-  ElementConfigFormItemProps,
-  ElementConfigFormColProps
+  ElementConfigFormFieldAttrs,
+  ElementConfigFormCellAttrs
 >
 
 export type ElementConfigFormComponentSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlotContext<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormComponentSlotContext<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormFieldSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlotContext<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormFieldSlotContext<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormComponentSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlot<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormComponentSlot<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormFieldSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlot<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormFieldSlot<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormSlotConfig<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormSlotConfig<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormSlotConfig<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormComponentSlotContent<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlotContent<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormComponentSlotContent<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormFieldSlotContent<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlotContent<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormFieldSlotContent<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormComponentSlots<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlots<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormComponentSlots<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormFieldSlots<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlots<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormFieldSlots<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormField<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormField<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormField<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormComponentNode<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentNode<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormComponentNode<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export type ElementConfigFormNode<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormNode<TValues, TComponent, ElementConfigFormItemProps, ElementConfigFormColProps>
+> = ConfigFormNode<TValues, TComponent, ElementConfigFormFieldAttrs, ElementConfigFormCellAttrs>
 
 export interface ElementConfigFormProps<TValues extends ConfigFormValues = ConfigFormValues>
   extends ConfigFormProps<
     TValues,
-    ElementConfigFormFormProps,
-    ElementConfigFormRowProps,
-    ElementConfigFormColProps,
-    ElementConfigFormItemProps
+    ElementConfigFormFormAttrs,
+    ElementConfigFormLayoutAttrs,
+    ElementConfigFormCellAttrs,
+    ElementConfigFormFieldAttrs
   > {
   /** 原生 CSS Grid 的列数。 */
   columns?: number

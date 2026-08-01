@@ -18,10 +18,10 @@ import type {
 } from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
-export type ShadcnConfigFormFormProps = FormHTMLAttributes
-export type ShadcnConfigFormRowProps = HTMLAttributes & ConfigFormDataAttributes
-export type ShadcnConfigFormColProps = HTMLAttributes & ConfigFormDataAttributes
-export type ShadcnConfigFormItemProps = HTMLAttributes & ConfigFormDataAttributes
+export type ShadcnConfigFormFormAttrs = FormHTMLAttributes
+export type ShadcnConfigFormLayoutAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type ShadcnConfigFormCellAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type ShadcnConfigFormFieldAttrs = HTMLAttributes & ConfigFormDataAttributes
 
 export type ShadcnConfigFormReadonlyRender<
   TValues extends ConfigFormValues = ConfigFormValues,
@@ -29,77 +29,77 @@ export type ShadcnConfigFormReadonlyRender<
 > = ConfigFormReadonlyRender<
   TValues,
   TComponent,
-  ShadcnConfigFormItemProps,
-  ShadcnConfigFormColProps
+  ShadcnConfigFormFieldAttrs,
+  ShadcnConfigFormCellAttrs
 >
 
 export type ShadcnConfigFormComponentSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlotContext<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormComponentSlotContext<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormFieldSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlotContext<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormFieldSlotContext<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormComponentSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlot<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormComponentSlot<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormFieldSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlot<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormFieldSlot<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormSlotConfig<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormSlotConfig<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormSlotConfig<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormComponentSlotContent<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlotContent<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormComponentSlotContent<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormFieldSlotContent<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlotContent<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormFieldSlotContent<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormComponentSlots<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentSlots<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormComponentSlots<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormFieldSlots<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormFieldSlots<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormFieldSlots<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormField<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormField<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormField<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormComponentNode<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormComponentNode<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormComponentNode<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export type ShadcnConfigFormNode<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-> = ConfigFormNode<TValues, TComponent, ShadcnConfigFormItemProps, ShadcnConfigFormColProps>
+> = ConfigFormNode<TValues, TComponent, ShadcnConfigFormFieldAttrs, ShadcnConfigFormCellAttrs>
 
 export interface ShadcnConfigFormProps<TValues extends ConfigFormValues = ConfigFormValues>
   extends ConfigFormProps<
     TValues,
-    ShadcnConfigFormFormProps,
-    ShadcnConfigFormRowProps,
-    ShadcnConfigFormColProps,
-    ShadcnConfigFormItemProps
+    ShadcnConfigFormFormAttrs,
+    ShadcnConfigFormLayoutAttrs,
+    ShadcnConfigFormCellAttrs,
+    ShadcnConfigFormFieldAttrs
   > {
   /** 原生 CSS Grid 的列数。 */
   columns?: number

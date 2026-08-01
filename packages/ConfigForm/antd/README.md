@@ -6,7 +6,7 @@
 
 字段默认通过 `value` + `update:value` 写回模型；Switch、Checkbox 等组件由包内 binding 映射到 `checked` + `update:checked`。校验、reset、submit 和 readonly 由 `@moluoxixi/config-form-headless` 统一处理，支持 `required`、Zod `schema`、异步 `validator`、`validateOn` 和 `readonlyRender`。
 
-`formProps` 只接收原生 form attributes，不能传 `labelCol` / `wrapperCol`。`rowProps` / `colProps` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
+`formAttrs` 只接收原生 form attributes，不能传 `labelCol` / `wrapperCol`。`layoutAttrs` / `cellAttrs` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
 
 ```ts
 import { defineFields } from '@moluoxixi/config-form-headless'
@@ -32,4 +32,4 @@ const fields = [
 ]
 ```
 
-配置化 slots 会递归处理字段与容器节点。inline 布局不消费 `span` / `colProps`；grid 布局将 `span` 映射到 CSS Grid，并把 `colProps` 作为原生 div attributes。
+配置化 slots 会递归处理字段与容器节点。inline 布局不消费 `span` / `cellAttrs`；grid 布局将 `span` 映射到 CSS Grid，并把 `cellAttrs` 作为原生 div attributes。

@@ -6,4 +6,4 @@ shadcn-vue 组件通常生成在业务项目中，因此本包不导入固定组
 
 根节点、Grid/Flex、field/label/control/error 壳与递归节点统一由 `@moluoxixi/config-form` renderer 生成。校验、reset、submit 和 readonly 由 `@moluoxixi/config-form-headless` 提供，支持 `required`、Zod `schema`、异步 `validator`、动态 `readonly` 以及字段级/表单级 `readonlyRender`。
 
-`formProps` 只接收原生 form attributes。inline 布局使用 Flex；grid 默认使用 24 列 CSS Grid，可通过 `columns`、`gap`、`fieldSpan`、字段 `span` 和原生 `colProps` 调整。
+`formAttrs` 只接收原生 form attributes。inline 布局使用 Flex；grid 默认使用 24 列 CSS Grid，可通过 `columns`、`gap`、`fieldSpan`、字段 `span` 和原生 `cellAttrs` 调整。

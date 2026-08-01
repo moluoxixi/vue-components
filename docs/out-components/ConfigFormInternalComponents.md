@@ -2,20 +2,20 @@
 
 ## 用途
 
-`ConfigFormInternalComponents` 记录各 ConfigForm 实现中发现但不作为常规消费入口的内部渲染组件，避免组件发现阶段遗漏 `src/components/`。本地 `ElementConfigForm` / `AntdConfigForm`、独立 `ShadcnConfigForm` 和插件版 `RuntimeConfigForm` 分别维护自己的递归渲染链路。
+`ConfigFormInternalComponents` 记录 ConfigForm 中不作为常规消费入口的内部渲染组件。Element、Antd、Shadcn 及 `@moluoxixi/components` 的适配器共享 runtime 的 `ConfigFormRenderer`；旧 runtime 组件仅作为兼容实现保留。
 
 ## 引入
 
-内部组件默认通过包内 `FormLayout`、`ConfigFormNode`、`ConfigFormField`、`FormComponent`、`FormNode`、`FormField`、`ReadonlyField`、`RecursiveField` 等门面被所属组件使用。消费方应优先使用对应顶层 ConfigForm 组件；直接引入内部组件属于 `MISSING public contract`。
+共享 DOM renderer 由 `@moluoxixi/config-form` 根入口导出，UI 适配器直接复用。`FormLayout`、`FormNode`、`FormField`、`ReadonlyField`、`RecursiveField` 等旧 runtime 组件不构成新的配置表单协议。
 
 ## Props
 
 | 名称 | 类型 | 默认值 | 必填 | 说明 |
 |---|---|---|---|---|
-| nodes/field/node | UI 包或 runtime 的已解析节点类型 | 按组件而定 | 是 | 递归渲染字段或容器节点。 |
-| model/values/errors | 表单模型与错误对象 | 按组件而定 | 是 | 供字段绑定、可见性和错误展示使用。 |
-| rowProps/colProps/fieldSpan/inlineLayout | UI 包布局 props | 按组件而定 | 否 | 由顶层 ConfigForm 传入并适配不同 UI 库。 |
-| fieldChange/onFieldChange | 字段变更请求回调 | 无 | 是 | 内部把子字段写回顶层模型。 |
+| fields | Headless `ConfigFormNode[]` | 无 | 是 | 递归渲染字段或容器节点。 |
+| modelValue | 表单模型 | 无 | 是 | 受控模型，由字段绑定写回。 |
+| formAttrs/layoutAttrs/cellAttrs | 原生 DOM attributes | `{}` | 否 | 分别传给 form、布局容器和 grid cell。 |
+| fieldSpan/columns/gap/inline | 原生布局参数 | 按组件而定 | 否 | 控制 Grid/Flex 布局。 |
 
 ## 事件与回调
 
@@ -30,9 +30,9 @@
 
 ## 状态
 
-- Element、Antd、Shadcn UI 包均发现 `FormLayout`、`ConfigFormNode`、`ConfigFormField`、`FormComponent`。
-- runtime 包发现 `FormLayout`、`FormNode`、`FormField`、`FormItem`、`FormComponent`、`ReadonlyField`、`RecursiveField`。
-- 这些组件不单独声明稳定对外 API；对外契约由对应顶层 ConfigForm 文档承载。
+- Element、Antd、Shadcn UI 包只保留薄适配器，不再维护独立递归组件树。
+- runtime 的 `ConfigFormRenderer` 是新的共享 Vue DOM renderer。
+- 旧 runtime 组件仍用于兼容入口，不应与新的 Headless 字段协议混用。
 
 ## 可访问性
 

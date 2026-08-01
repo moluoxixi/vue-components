@@ -131,7 +131,7 @@ const layoutGridFields = createKnownFields('element-grid', true, defineCommonFie
 const layoutStressFields = createStressFields()
 const containerFields = [
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ElCard,
     span: 24,
     props: {
@@ -146,7 +146,7 @@ const containerFields = [
     },
   }),
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ElCollapse,
     span: 24,
     props: {
@@ -156,7 +156,7 @@ const containerFields = [
     },
     slots: {
       default: defineCommonField({
-        colProps: {},
+        cellAttrs: {},
         component: ElCollapseItem,
         props: {
           name: 'profile',
@@ -164,7 +164,7 @@ const containerFields = [
         },
         slots: {
           default: defineCommonField({
-            colProps: {},
+            cellAttrs: {},
             component: 'p',
             props: { textContent: 'Collapse 容器承载非字段配置节点' },
           }),
@@ -173,7 +173,7 @@ const containerFields = [
     },
   }),
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ElTabs,
     span: 24,
     props: {
@@ -184,7 +184,7 @@ const containerFields = [
     slots: {
       default: [
         defineCommonField({
-          colProps: {},
+          cellAttrs: {},
           component: ElTabPane,
           props: {
             label: '基础',
@@ -192,14 +192,14 @@ const containerFields = [
           },
           slots: {
             default: defineCommonField({
-              colProps: {},
+              cellAttrs: {},
               component: 'p',
               props: { textContent: 'Tabs 基础容器内容' },
             }),
           },
         }),
         defineCommonField({
-          colProps: {},
+          cellAttrs: {},
           component: ElTabPane,
           props: {
             label: '偏好',
@@ -207,7 +207,7 @@ const containerFields = [
           },
           slots: {
             default: defineCommonField({
-              colProps: {},
+              cellAttrs: {},
               component: 'p',
               props: { textContent: 'Tabs 偏好容器内容' },
             }),
@@ -368,7 +368,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
       slots: {
         default: createFlatOptions(suffix).map(option =>
           defineField({
-            colProps: {},
+            cellAttrs: {},
             component: ElOption,
             props: option,
           }),
@@ -439,7 +439,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
       slots: {
         default: createCheckOptions(suffix).map(option =>
           defineField({
-            colProps: {},
+            cellAttrs: {},
             component: ElCheckbox,
             props: option,
           }),
@@ -470,7 +470,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
       slots: {
         default: createRadioOptions().map(option =>
           defineField({
-            colProps: {},
+            cellAttrs: {},
             component: ElRadio,
             props: option,
           }),
@@ -570,7 +570,7 @@ function createLinkedControlFields() {
       slots: {
         default: createRadioOptions().map(option =>
           defineLinkedField({
-            colProps: {},
+            cellAttrs: {},
             component: ElRadio,
             props: option,
           }),
@@ -634,7 +634,7 @@ function createLinkedControlFields() {
       slots: {
         default: createNotifyOptions().map(option =>
           defineLinkedField({
-            colProps: {},
+            cellAttrs: {},
             component: ElOption,
             props: option,
           }),
@@ -789,7 +789,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutInlineFields"
             inline
-            :row-props="{ 'data-testid': 'element-layout-inline-row' }"
+            :layout-attrs="{ 'data-testid': 'element-layout-inline-row' }"
             @submit="submitLayoutInline"
           >
             <template #default="{ submit }">
@@ -808,7 +808,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutGridFields"
             gap="16px"
-            :row-props="{ 'data-testid': 'element-layout-grid' }"
+            :layout-attrs="{ 'data-testid': 'element-layout-grid' }"
             @submit="submitLayoutGrid"
           >
             <template #default="{ submit }">
@@ -833,7 +833,7 @@ function submitLinked(values: ConfigFormValues): void {
               :field-span="6"
               :fields="layoutStressFields"
               gap="12px"
-              :row-props="{ 'data-testid': 'element-layout-stress-grid' }"
+              :layout-attrs="{ 'data-testid': 'element-layout-stress-grid' }"
               @submit="submitLayoutStress"
             >
               <template #default="{ submit }">
@@ -856,7 +856,7 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="element-container-form"
             :fields="containerFields"
             gap="16px"
-            :row-props="{ 'data-testid': 'element-container-row' }"
+            :layout-attrs="{ 'data-testid': 'element-container-row' }"
             @submit="submitContainer"
           >
             <template #default="{ submit }">
@@ -880,7 +880,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="linkedFields"
             gap="16px"
-            :row-props="{ 'data-testid': 'element-linked-row' }"
+            :layout-attrs="{ 'data-testid': 'element-linked-row' }"
             @submit="submitLinked"
           >
             <template #default="{ submit }">

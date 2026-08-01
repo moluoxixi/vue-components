@@ -20,12 +20,12 @@ defineOptions({
 })
 
 const props = withDefaults(defineProps<ElementConfigFormProps<TValues>>(), {
-  colProps: () => ({}),
+  cellAttrs: () => ({}),
   columns: 24,
   fieldSpan: 24,
-  formProps: () => ({}),
+  formAttrs: () => ({}),
   gap: '16px',
-  rowProps: () => ({}),
+  layoutAttrs: () => ({}),
 })
 
 const emit = defineEmits<ElementConfigFormEmits<TValues>>()
@@ -72,18 +72,18 @@ defineExpose(expose)
     ref="rendererRef"
     v-model="model"
     v-bind="$attrs"
-    :col-props="props.colProps"
+    :cell-attrs="props.cellAttrs"
     :columns="props.columns"
     :default-values="props.defaultValues"
     :field-span="props.fieldSpan"
     :fields="rendererFields"
-    :form-props="props.formProps"
+    :form-attrs="props.formAttrs"
     :gap="props.gap"
     :inline="props.inline"
     namespace="mx-element-config-form"
     :readonly="props.readonly"
     :readonly-render="props.readonlyRender"
-    :row-props="props.rowProps"
+    :layout-attrs="props.layoutAttrs"
     @change="emit('change', $event)"
     @error="emit('error', $event)"
     @field-change="emit('fieldChange', $event)"

@@ -31,15 +31,15 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   defaultValues?: Partial<TValues>
   readonly?: ConfigFormCondition<TValues>
   readonlyRender?: ConfigFormReadonlyRender<TValues, Component | string, HTMLAttributes, HTMLAttributes>
-  formProps?: FormHTMLAttributes & ConfigFormAttrs
+  formAttrs?: FormHTMLAttributes & ConfigFormAttrs
   inline?: boolean
   columns?: number
   gap?: string
   fieldSpan?: number
-  /** 透传给原生布局 div。保留名称以兼容现有 ConfigForm API。 */
-  rowProps?: HTMLAttributes & ConfigFormAttrs
-  /** 透传给原生字段单元格 div。保留名称以兼容现有 ConfigForm API。 */
-  colProps?: HTMLAttributes & ConfigFormAttrs
+  /** 透传给原生 Grid/Flex 布局容器。 */
+  layoutAttrs?: HTMLAttributes & ConfigFormAttrs
+  /** 透传给原生 grid cell；inline 布局不消费。 */
+  cellAttrs?: HTMLAttributes & ConfigFormAttrs
   namespace?: string
   defaultValueProp?: string
   defaultTrigger?: string

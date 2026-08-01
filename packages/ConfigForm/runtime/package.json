@@ -37,10 +37,10 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
+    "!src/**/__tests__",
     "dist",
     "index.ts",
     "src",
-    "!src/**/__tests__",
     "src/styles",
     "styles"
   ],

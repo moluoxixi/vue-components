@@ -7,7 +7,7 @@
 - 字段默认通过 `modelValue` + `update:modelValue` 写回外部模型；
 - 校验、reset、submit 和 readonly 语义统一由 `@moluoxixi/config-form-headless` 提供。
 
-组件不使用 `ElForm`、`ElFormItem`、`ElRow`、`ElCol` 或 Element Plus `rules`。`formProps` 传给原生 form，`rowProps` / `colProps` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
+组件不使用 `ElForm`、`ElFormItem`、`ElRow`、`ElCol` 或 Element Plus `rules`。`formAttrs` 传给原生 form，`layoutAttrs` / `cellAttrs` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
 
 ```vue
 <script setup lang="ts">
@@ -44,7 +44,7 @@ const fields = [
   <ElementConfigForm
     v-model="model"
     :fields="fields"
-    :form-props="{ autocomplete: 'off' }"
+    :form-attrs="{ autocomplete: 'off' }"
     :columns="12"
     gap="16px"
   />
@@ -57,4 +57,4 @@ const fields = [
 
 `visible`、`hidden`、`disabled`、`readonly` 和 `required` 支持布尔值或 `(values) => boolean`。readonly 字段跳过校验但保留提交值。
 
-inline 布局不消费 `span` / `colProps`；grid 布局将 `span` 映射到 CSS Grid，并把 `colProps` 作为原生 div attributes。`getValueFromEvent` 可覆盖默认的首参数取值逻辑。
+inline 布局不消费 `span` / `cellAttrs`；grid 布局将 `span` 映射到 CSS Grid，并把 `cellAttrs` 作为原生 div attributes。`getValueFromEvent` 可覆盖默认的首参数取值逻辑。

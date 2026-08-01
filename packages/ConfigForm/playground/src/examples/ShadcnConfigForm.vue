@@ -110,7 +110,7 @@ const layoutInlineFields = createKnownFields('shadcn-inline', true, defineCommon
 const layoutGridFields = createKnownFields('shadcn-grid', true, defineCommonField)
 const containerFields = [
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ShadcnCard,
     span: 24,
     props: {
@@ -123,7 +123,7 @@ const containerFields = [
     },
   }),
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ShadcnAccordion,
     span: 24,
     props: {
@@ -132,14 +132,14 @@ const containerFields = [
     },
     slots: {
       default: defineCommonField({
-        colProps: {},
+        cellAttrs: {},
         component: ShadcnAccordionItem,
         props: {
           title: 'Shadcn Accordion 容器',
         },
         slots: {
           default: defineCommonField({
-            colProps: {},
+            cellAttrs: {},
             component: 'p',
             props: { textContent: 'Accordion 容器承载非字段配置节点' },
           }),
@@ -148,7 +148,7 @@ const containerFields = [
     },
   }),
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ShadcnTabs,
     span: 24,
     props: {
@@ -163,28 +163,28 @@ const containerFields = [
     slots: {
       default: [
         defineCommonField({
-          colProps: {},
+          cellAttrs: {},
           component: ShadcnTabPane,
           props: {
             name: 'base',
           },
           slots: {
             default: defineCommonField({
-              colProps: {},
+              cellAttrs: {},
               component: 'p',
               props: { textContent: 'Tabs 基础容器内容' },
             }),
           },
         }),
         defineCommonField({
-          colProps: {},
+          cellAttrs: {},
           component: ShadcnTabPane,
           props: {
             name: 'preference',
           },
           slots: {
             default: defineCommonField({
-              colProps: {},
+              cellAttrs: {},
               component: 'p',
               props: { textContent: 'Tabs 偏好容器内容' },
             }),
@@ -245,7 +245,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
 
   return [
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnInput,
       field: 'input' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '文本输入' : undefined,
@@ -258,7 +258,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnPasswordInput,
       field: 'password' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '密码输入' : undefined,
@@ -271,7 +271,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnSearchInput,
       field: 'search' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '搜索输入' : undefined,
@@ -284,7 +284,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnCombobox,
       field: 'combobox' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '组合输入' : undefined,
@@ -298,7 +298,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnNativeSelect,
       field: 'nativeSelect' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '原生选择' : undefined,
@@ -309,7 +309,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       slots: {
         default: createSelectOptions(suffix).map(option =>
           defineField({
-            colProps: {},
+            cellAttrs: {},
             component: ShadcnOption,
             props: option,
           }),
@@ -319,7 +319,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnNumberInput,
       field: 'inputNumber' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '数字输入' : undefined,
@@ -333,7 +333,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnSlider,
       field: 'slider' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '滑块' : undefined,
@@ -346,7 +346,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnDatePicker,
       field: 'date' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '日期' : undefined,
@@ -358,7 +358,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnTimePicker,
       field: 'time' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '时间' : undefined,
@@ -370,7 +370,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnColorPicker,
       field: 'color' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '颜色' : undefined,
@@ -382,7 +382,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnTextarea,
       field: 'textarea' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '多行文本' : undefined,
@@ -395,7 +395,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnCheckbox,
       field: 'checkbox' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '勾选' : undefined,
@@ -408,7 +408,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnSwitch,
       field: 'switchValue' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '开关' : undefined,
@@ -420,7 +420,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       visible,
     }),
     defineField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnRadioGroup,
       field: 'radio' as ShadcnFieldKey<TValues>,
       label: withFormItem ? '单选组' : undefined,
@@ -431,7 +431,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
       slots: {
         default: createRadioOptions().map(option =>
           defineField({
-            colProps: {},
+            cellAttrs: {},
             component: ShadcnRadio,
             props: option,
           }),
@@ -446,7 +446,7 @@ function createKnownFields<TValues extends ShadcnKnownValues>(
 function createLinkedControlFields() {
   return [
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnRadioGroup,
       field: 'planType',
       label: '方案类型',
@@ -457,7 +457,7 @@ function createLinkedControlFields() {
       slots: {
         default: createRadioOptions().map(option =>
           defineLinkedField({
-            colProps: {},
+            cellAttrs: {},
             component: ShadcnRadio,
             props: option,
           }),
@@ -466,7 +466,7 @@ function createLinkedControlFields() {
       span: 12,
     }),
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnInput,
       field: 'enterpriseName',
       label: '企业名称',
@@ -489,7 +489,7 @@ function createLinkedControlFields() {
       visible: values => values.planType === 'enterprise',
     }),
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnCheckbox,
       field: 'marketing',
       label: '营销设置',
@@ -501,7 +501,7 @@ function createLinkedControlFields() {
       span: 12,
     }),
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnTextarea,
       field: 'marketingNote',
       label: '营销备注',
@@ -514,7 +514,7 @@ function createLinkedControlFields() {
       visible: values => values.marketing,
     }),
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnNativeSelect,
       field: 'notifyChannel',
       label: '通知方式',
@@ -525,7 +525,7 @@ function createLinkedControlFields() {
       slots: {
         default: createNotifyOptions().map(option =>
           defineLinkedField({
-            colProps: {},
+            cellAttrs: {},
             component: ShadcnOption,
             props: option,
           }),
@@ -534,7 +534,7 @@ function createLinkedControlFields() {
       span: 12,
     }),
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnInput,
       field: 'scheduledNote',
       label: '预约说明',
@@ -547,7 +547,7 @@ function createLinkedControlFields() {
       visible: values => values.notifyChannel === 'scheduled',
     }),
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnNumberInput,
       field: 'seatCount',
       label: '席位数',
@@ -560,7 +560,7 @@ function createLinkedControlFields() {
       span: 12,
     }),
     defineLinkedField({
-      colProps: {},
+      cellAttrs: {},
       component: ShadcnTextarea,
       field: 'seatNote',
       label: '席位说明',
@@ -669,7 +669,7 @@ function submitLinked(values: ConfigFormValues): void {
         :field-span="12"
         :fields="layoutInlineFields"
         inline
-        :row-props="{ 'data-testid': 'shadcn-layout-inline-row' }"
+        :layout-attrs="{ 'data-testid': 'shadcn-layout-inline-row' }"
         @submit="submitLayoutInline"
       >
         <template #default="{ submit }">
@@ -687,7 +687,7 @@ function submitLinked(values: ConfigFormValues): void {
         data-testid="shadcn-layout-grid-form"
         :field-span="12"
         :fields="layoutGridFields"
-        :row-props="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-layout-grid' }"
+        :layout-attrs="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-layout-grid' }"
         @submit="submitLayoutGrid"
       >
         <template #default="{ submit }">
@@ -707,7 +707,7 @@ function submitLinked(values: ConfigFormValues): void {
         v-model="containerModel"
         data-testid="shadcn-container-form"
         :fields="containerFields"
-        :row-props="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-container-row' }"
+        :layout-attrs="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-container-row' }"
         @submit="submitContainer"
       >
         <template #default="{ submit }">
@@ -728,7 +728,7 @@ function submitLinked(values: ConfigFormValues): void {
         data-testid="shadcn-linked-form"
         :field-span="12"
         :fields="linkedFields"
-        :row-props="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-linked-row' }"
+        :layout-attrs="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-linked-row' }"
         @submit="submitLinked"
       >
         <template #default="{ submit }">

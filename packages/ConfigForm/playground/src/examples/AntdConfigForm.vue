@@ -132,7 +132,7 @@ const layoutInlineFields = createKnownFields('antd-inline', true, defineCommonFi
 const layoutGridFields = createKnownFields('antd-grid', true, defineCommonField)
 const containerFields = [
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ACard,
     span: 24,
     props: {
@@ -146,7 +146,7 @@ const containerFields = [
     },
   }),
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ACollapse,
     span: 24,
     props: {
@@ -156,7 +156,7 @@ const containerFields = [
     },
     slots: {
       default: defineCommonField({
-        colProps: {},
+        cellAttrs: {},
         component: ACollapsePanel,
         props: {
           header: 'Antd Collapse 容器',
@@ -164,7 +164,7 @@ const containerFields = [
         },
         slots: {
           default: defineCommonField({
-            colProps: {},
+            cellAttrs: {},
             component: 'p',
             props: { textContent: 'Collapse 容器承载非字段配置节点' },
           }),
@@ -173,7 +173,7 @@ const containerFields = [
     },
   }),
   defineCommonField({
-    colProps: {},
+    cellAttrs: {},
     component: ATabs,
     span: 24,
     props: {
@@ -184,7 +184,7 @@ const containerFields = [
     slots: {
       default: [
         defineCommonField({
-          colProps: {},
+          cellAttrs: {},
           component: ATabPane,
           props: {
             key: 'base',
@@ -192,14 +192,14 @@ const containerFields = [
           },
           slots: {
             default: defineCommonField({
-              colProps: {},
+              cellAttrs: {},
               component: 'p',
               props: { textContent: 'Tabs 基础容器内容' },
             }),
           },
         }),
         defineCommonField({
-          colProps: {},
+          cellAttrs: {},
           component: ATabPane,
           props: {
             key: 'preference',
@@ -207,7 +207,7 @@ const containerFields = [
           },
           slots: {
             default: defineCommonField({
-              colProps: {},
+              cellAttrs: {},
               component: 'p',
               props: { textContent: 'Tabs 偏好容器内容' },
             }),
@@ -695,7 +695,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutInlineFields"
             inline
-            :row-props="{ 'data-testid': 'antd-layout-inline-row' }"
+            :layout-attrs="{ 'data-testid': 'antd-layout-inline-row' }"
             @submit="submitLayoutInline"
           >
             <template #default="{ submit }">
@@ -714,7 +714,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutGridFields"
             gap="16px"
-            :row-props="{ 'data-testid': 'antd-layout-grid' }"
+            :layout-attrs="{ 'data-testid': 'antd-layout-grid' }"
             @submit="submitLayoutGrid"
           >
             <template #default="{ submit }">
@@ -737,7 +737,7 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="antd-container-form"
             :fields="containerFields"
             gap="16px"
-            :row-props="{ 'data-testid': 'antd-container-row' }"
+            :layout-attrs="{ 'data-testid': 'antd-container-row' }"
             @submit="submitContainer"
           >
             <template #default="{ submit }">
@@ -761,7 +761,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="linkedFields"
             gap="16px"
-            :row-props="{ 'data-testid': 'antd-linked-row' }"
+            :layout-attrs="{ 'data-testid': 'antd-linked-row' }"
             @submit="submitLinked"
           >
             <template #default="{ submit }">

@@ -48,15 +48,15 @@ defineOptions({
 })
 
 const props = withDefaults(defineProps<ConfigFormRendererProps<TValues>>(), {
-  colProps: () => ({}),
+  cellAttrs: () => ({}),
   columns: 24,
   defaultTrigger: 'update:modelValue',
   defaultValueProp: 'modelValue',
   fieldSpan: 24,
-  formProps: () => ({}),
+  formAttrs: () => ({}),
   gap: '16px',
   namespace: 'mx-config-form',
-  rowProps: () => ({}),
+  layoutAttrs: () => ({}),
 })
 
 const emit = defineEmits<ConfigFormRendererEmits<TValues>>()
@@ -109,8 +109,8 @@ watch(controlledModel, (values) => {
 
 const formAttrs = computed<Record<string, unknown>>(() => ({
   ...attrs,
-  ...props.formProps,
-  class: [props.namespace, attrs.class, props.formProps.class],
+  ...props.formAttrs,
+  class: [props.namespace, attrs.class, props.formAttrs.class],
 }))
 
 const ConfigFormTree = defineComponent({
@@ -125,10 +125,10 @@ function bem(element: string, modifier?: string): string {
 }
 
 function renderLayout(): VNodeChild {
-  const layoutProps = props.rowProps as HTMLAttributes
+  const layoutAttrs = props.layoutAttrs as HTMLAttributes
   const inline = props.inline === true
   const style: StyleValue = [
-    layoutProps.style,
+    layoutAttrs.style,
     inline
       ? {
           alignItems: 'flex-start',
@@ -144,8 +144,8 @@ function renderLayout(): VNodeChild {
   ]
 
   return h('div', {
-    ...layoutProps,
-    class: [bem('row'), bem('row', inline ? 'inline' : 'grid'), layoutProps.class],
+    ...layoutAttrs,
+    class: [bem('row'), bem('row', inline ? 'inline' : 'grid'), layoutAttrs.class],
     style,
   }, props.fields.map((node, index) => renderNode(node, !inline, `fields.${index}`, new Set())))
 }
@@ -168,21 +168,21 @@ function renderNode(
   if (!wrapCell)
     return body
 
-  const cellProps = props.colProps as HTMLAttributes
-  const nodeCellProps = node.colProps as HTMLAttributes | undefined
+  const cellAttrs = props.cellAttrs as HTMLAttributes
+  const nodeCellAttrs = node.cellAttrs as HTMLAttributes | undefined
   const span = clampSpan(node.span ?? props.fieldSpan)
   const style: StyleValue = [
-    cellProps.style,
-    nodeCellProps?.style,
+    cellAttrs.style,
+    nodeCellAttrs?.style,
     props.inline
       ? { flex: '0 1 auto', minWidth: 0 }
       : { gridColumn: `span ${span} / span ${span}`, minWidth: 0 },
   ]
 
   return h('div', {
-    ...cellProps,
-    ...nodeCellProps,
-    class: [bem('cell'), cellProps.class, nodeCellProps?.class],
+    ...cellAttrs,
+    ...nodeCellAttrs,
+    class: [bem('cell'), cellAttrs.class, nodeCellAttrs?.class],
     key: getNodeKey(node, path),
     style,
   }, [body])
@@ -200,7 +200,7 @@ function renderBoundNode(
   const errorId = `${formId}-${toDomId(path)}-error`
   const readonly = isConfigFormFieldReadonly(field, model.value, props.readonly)
   const fieldErrors = readonly ? [] : (errors.value[field.field] ?? [])
-  const itemProps = field.formItemProps as HTMLAttributes | undefined
+  const fieldAttrs = field.fieldAttrs as HTMLAttributes | undefined
   const label = typeof field.label === 'string'
     ? h('label', {
         class: bem('label'),
@@ -209,12 +209,12 @@ function renderBoundNode(
     : null
 
   return h('div', {
-    ...itemProps,
-    class: [bem('field'), itemProps?.class],
+    ...fieldAttrs,
+    class: [bem('field'), fieldAttrs?.class],
     'data-field': field.field,
     'data-required': resolveConfigFormCondition(field.required, model.value, false),
     key: getNodeKey(field, path),
-    style: itemProps?.style,
+    style: fieldAttrs?.style,
   }, [
     label,
     h('div', { class: bem('control') }, [renderControl(field, path, controlId, errorId, readonly, ancestors)]),

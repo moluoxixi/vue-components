@@ -10,10 +10,10 @@ import type {
 
 export interface ConfigFormResolvedFieldState<
   TValues extends ConfigFormValues = ConfigFormValues,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > {
-  field: ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>
+  field: ConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>
   visible: boolean
   disabled: boolean
   readonly: boolean
@@ -25,23 +25,23 @@ export interface ConfigFormResolvedFieldState<
 export function isConfigFormField<
   TValues extends ConfigFormValues,
   TComponent = unknown,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  node: ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps>,
-): node is ConfigFormField<TValues, TComponent, TFormItemProps, TColProps> {
+  node: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+): node is ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs> {
   return 'field' in node
 }
 
 /** 从顶层节点和配置化 slot 子树中收集当前可编辑字段。 */
 export function collectConfigFormFields<
   TValues extends ConfigFormValues,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  nodes: ConfigFormNode<TValues, Component | string, TFormItemProps, TColProps>[],
+  nodes: ConfigFormNode<TValues, Component | string, TFieldAttrs, TCellAttrs>[],
   values: TValues,
-): ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>[] {
+): ConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>[] {
   return resolveConfigFormFieldStates(nodes, values)
     .filter(state => state.validatable)
     .map(state => state.field)
@@ -50,29 +50,29 @@ export function collectConfigFormFields<
 /** 收集全部静态声明字段；render function slot 无法在渲染前静态收集。 */
 export function collectAllConfigFormFields<
   TValues extends ConfigFormValues,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  nodes: ConfigFormNode<TValues, Component | string, TFormItemProps, TColProps>[],
-): ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>[] {
+  nodes: ConfigFormNode<TValues, Component | string, TFieldAttrs, TCellAttrs>[],
+): ConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>[] {
   return nodes.flatMap(node => collectAllConfigFormFieldsFromNode(node, new Set()))
 }
 
 function collectAllConfigFormFieldsFromNode<
   TValues extends ConfigFormValues,
-  TFormItemProps,
-  TColProps,
+  TFieldAttrs,
+  TCellAttrs,
 >(
-  node: ConfigFormNode<TValues, Component | string, TFormItemProps, TColProps>,
+  node: ConfigFormNode<TValues, Component | string, TFieldAttrs, TCellAttrs>,
   ancestors: ReadonlySet<object>,
-): ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>[] {
+): ConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>[] {
   assertAcyclicConfigFormNode(node, ancestors)
   const nextAncestors = new Set(ancestors).add(node as object)
-  const current = isConfigFormField<TValues, Component | string, TFormItemProps, TColProps>(node)
+  const current = isConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>(node)
     ? [node]
     : []
   const nested = Object.values(node.slots ?? {}).flatMap(slot =>
-    collectAllConfigFormFieldsFromSlot<TValues, TFormItemProps, TColProps>(slot, nextAncestors),
+    collectAllConfigFormFieldsFromSlot<TValues, TFieldAttrs, TCellAttrs>(slot, nextAncestors),
   )
 
   return [...current, ...nested]
@@ -80,64 +80,64 @@ function collectAllConfigFormFieldsFromNode<
 
 function collectAllConfigFormFieldsFromSlot<
   TValues extends ConfigFormValues,
-  TFormItemProps,
-  TColProps,
+  TFieldAttrs,
+  TCellAttrs,
 >(
-  slot: ConfigFormSlotConfig<TValues, Component | string, TFormItemProps, TColProps> | ((...args: unknown[]) => unknown),
+  slot: ConfigFormSlotConfig<TValues, Component | string, TFieldAttrs, TCellAttrs> | ((...args: unknown[]) => unknown),
   ancestors: ReadonlySet<object>,
-): ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>[] {
+): ConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>[] {
   if (typeof slot === 'function')
     return []
 
   if (Array.isArray(slot)) {
     return slot.flatMap(node =>
-      collectAllConfigFormFieldsFromNode<TValues, TFormItemProps, TColProps>(node, ancestors),
+      collectAllConfigFormFieldsFromNode<TValues, TFieldAttrs, TCellAttrs>(node, ancestors),
     )
   }
 
-  return collectAllConfigFormFieldsFromNode<TValues, TFormItemProps, TColProps>(slot, ancestors)
+  return collectAllConfigFormFieldsFromNode<TValues, TFieldAttrs, TCellAttrs>(slot, ancestors)
 }
 
 /** 解析全部声明字段在当前模型下的统一状态。 */
 export function resolveConfigFormFieldStates<
   TValues extends ConfigFormValues,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  nodes: ConfigFormNode<TValues, Component | string, TFormItemProps, TColProps>[],
+  nodes: ConfigFormNode<TValues, Component | string, TFieldAttrs, TCellAttrs>[],
   values: TValues,
   formReadonly?: ConfigFormCondition<TValues>,
-): ConfigFormResolvedFieldState<TValues, TFormItemProps, TColProps>[] {
+): ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs>[] {
   const readonly = resolveConfigFormCondition(formReadonly, values, false)
   return nodes.flatMap(node => resolveConfigFormFieldStatesFromNode(node, values, true, readonly, new Set()))
 }
 
 function resolveConfigFormFieldStatesFromNode<
   TValues extends ConfigFormValues,
-  TFormItemProps,
-  TColProps,
+  TFieldAttrs,
+  TCellAttrs,
 >(
-  node: ConfigFormNode<TValues, Component | string, TFormItemProps, TColProps>,
+  node: ConfigFormNode<TValues, Component | string, TFieldAttrs, TCellAttrs>,
   values: TValues,
   parentVisible: boolean,
   formReadonly: boolean,
   ancestors: ReadonlySet<object>,
-): ConfigFormResolvedFieldState<TValues, TFormItemProps, TColProps>[] {
+): ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs>[] {
   assertAcyclicConfigFormNode(node, ancestors)
   const nextAncestors = new Set(ancestors).add(node as object)
   const visible = parentVisible && isConfigFormNodeVisible(node, values)
-  const current = isConfigFormField<TValues, Component | string, TFormItemProps, TColProps>(node)
+  const current = isConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>(node)
     ? [resolveConfigFormFieldState(node, values, visible, formReadonly)]
     : []
   const slots = Object.values(node.slots ?? {}) as Array<
-    ConfigFormSlotConfig<TValues, Component | string, TFormItemProps, TColProps>
+    ConfigFormSlotConfig<TValues, Component | string, TFieldAttrs, TCellAttrs>
     | ((...args: unknown[]) => unknown)
   >
-  const nested: ConfigFormResolvedFieldState<TValues, TFormItemProps, TColProps>[] = slots.flatMap((slot) => {
+  const nested: ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs>[] = slots.flatMap((slot) => {
     if (typeof slot === 'function')
       return []
     const nodes = Array.isArray(slot) ? slot : [slot]
-    return nodes.flatMap(child => resolveConfigFormFieldStatesFromNode<TValues, TFormItemProps, TColProps>(
+    return nodes.flatMap(child => resolveConfigFormFieldStatesFromNode<TValues, TFieldAttrs, TCellAttrs>(
       child,
       values,
       visible,
@@ -156,14 +156,14 @@ function assertAcyclicConfigFormNode(node: object, ancestors: ReadonlySet<object
 
 function resolveConfigFormFieldState<
   TValues extends ConfigFormValues,
-  TFormItemProps,
-  TColProps,
+  TFieldAttrs,
+  TCellAttrs,
 >(
-  field: ConfigFormField<TValues, Component | string, TFormItemProps, TColProps>,
+  field: ConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>,
   values: TValues,
   visible: boolean,
   formReadonly: boolean,
-): ConfigFormResolvedFieldState<TValues, TFormItemProps, TColProps> {
+): ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs> {
   const disabled = resolveConfigFormCondition(field.disabled, values, false)
   const readonly = formReadonly || resolveConfigFormCondition(field.readonly, values, false)
   const required = resolveConfigFormCondition(field.required, values, false)
@@ -191,10 +191,10 @@ export function resolveConfigFormCondition<TValues extends ConfigFormValues>(
 export function isConfigFormNodeVisible<
   TValues extends ConfigFormValues,
   TComponent = unknown,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  node: ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps>,
+  node: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>,
   values: TValues,
 ): boolean {
   return resolveConfigFormCondition(node.visible, values, true)

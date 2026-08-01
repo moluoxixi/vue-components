@@ -25,11 +25,11 @@ export type ConfigFormFieldValidator<
 export interface ConfigFormComponentSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > {
   /** 当前容器节点配置，供 render slot 读取容器元信息。 */
-  node: ConfigFormComponentNode<TValues, TComponent, TFormItemProps, TColProps>
+  node: ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
   /** 当前表单值快照。 */
   model: TValues
   /** 真实 Vue 组件传出的原始 slot 作用域参数。 */
@@ -39,11 +39,11 @@ export interface ConfigFormComponentSlotContext<
 export interface ConfigFormFieldSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > {
   /** 当前字段配置，供 slot 读取字段元信息。 */
-  field: ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>
+  field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
   /** 当前表单值快照。 */
   model: TValues
   /** 当前字段值。 */
@@ -57,12 +57,12 @@ export interface ConfigFormFieldSlotContext<
 export interface ConfigFormReadonlyRenderContext<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
   TValue = unknown,
 > {
   /** 当前字段配置。 */
-  field: ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>
+  field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
   /** 当前表单值快照。 */
   model: TValues
   /** 当前字段值。 */
@@ -74,89 +74,89 @@ export interface ConfigFormReadonlyRenderContext<
 export type ConfigFormReadonlyRender<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
   TValue = unknown,
 > = (
-  context: ConfigFormReadonlyRenderContext<TValues, TComponent, TFormItemProps, TColProps, TValue>,
+  context: ConfigFormReadonlyRenderContext<TValues, TComponent, TFieldAttrs, TCellAttrs, TValue>,
 ) => VNodeChild
 
 export type ConfigFormComponentSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > = (
-  context: ConfigFormComponentSlotContext<TValues, TComponent, TFormItemProps, TColProps>,
+  context: ConfigFormComponentSlotContext<TValues, TComponent, TFieldAttrs, TCellAttrs>,
 ) => VNodeChild
 
 export type ConfigFormFieldSlot<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > = (
-  context: ConfigFormFieldSlotContext<TValues, TComponent, TFormItemProps, TColProps>,
+  context: ConfigFormFieldSlotContext<TValues, TComponent, TFieldAttrs, TCellAttrs>,
 ) => VNodeChild
 
 export type ConfigFormSlotConfig<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >
-  = | ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps>
-    | ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps>[]
+  = | ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    | ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>[]
 
 export type ConfigFormComponentSlotContent<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >
-  = | ConfigFormSlotConfig<TValues, TComponent, TFormItemProps, TColProps>
-    | ConfigFormComponentSlot<TValues, TComponent, TFormItemProps, TColProps>
+  = | ConfigFormSlotConfig<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    | ConfigFormComponentSlot<TValues, TComponent, TFieldAttrs, TCellAttrs>
 
 export type ConfigFormFieldSlotContent<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >
-  = | ConfigFormSlotConfig<TValues, TComponent, TFormItemProps, TColProps>
-    | ConfigFormFieldSlot<TValues, TComponent, TFormItemProps, TColProps>
+  = | ConfigFormSlotConfig<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    | ConfigFormFieldSlot<TValues, TComponent, TFieldAttrs, TCellAttrs>
 
 export type ConfigFormComponentSlots<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > = Record<
   string,
-  ConfigFormComponentSlotContent<TValues, TComponent, TFormItemProps, TColProps>
+  ConfigFormComponentSlotContent<TValues, TComponent, TFieldAttrs, TCellAttrs>
 >
 
 export type ConfigFormFieldSlots<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > = Record<
   string,
-  ConfigFormFieldSlotContent<TValues, TComponent, TFormItemProps, TColProps>
+  ConfigFormFieldSlotContent<TValues, TComponent, TFieldAttrs, TCellAttrs>
 >
 
 export interface ConfigFormNodeBase<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TColProps = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > {
   /** 真实渲染的 UI 组件、业务组件或原生标签。 */
   component: TComponent
   /** 透传给真实字段组件的 props。 */
   props?: ConfigFormAttrs
-  /** 透传给 renderer grid cell 的 props；inline 布局不消费。 */
-  colProps?: TColProps
+  /** 透传给 renderer grid cell 的 attributes；inline 布局不消费。 */
+  cellAttrs?: TCellAttrs
   /** grid 布局下的栅格跨度，默认使用 ConfigForm.fieldSpan。 */
   span?: ConfigFormColumnSpan
   /** 控制当前节点是否渲染；函数形式可基于当前表单值动态计算。 */
@@ -168,27 +168,27 @@ export interface ConfigFormNodeBase<
 export interface ConfigFormComponentNode<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
-> extends ConfigFormNodeBase<TValues, TComponent, TColProps> {
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
+> extends ConfigFormNodeBase<TValues, TComponent, TCellAttrs> {
   /** 容器节点的子级 slots；不绑定表单值，也不生成字段壳。 */
-  slots?: ConfigFormComponentSlots<TValues, Component | string, TFormItemProps, TColProps>
+  slots?: ConfigFormComponentSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>
 }
 
 export interface ConfigFormField<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
-> extends ConfigFormNodeBase<TValues, TComponent, TColProps> {
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
+> extends ConfigFormNodeBase<TValues, TComponent, TCellAttrs> {
   /** 当前字段绑定的模型 key。 */
   field: ConfigFormFieldKey<TValues> | string
   /** 共享字段壳 label；未提供时仍保留字段壳、错误 DOM 与 ARIA。 */
   label?: string
   /** 透传给真实字段组件的 slots，支持 render 函数或配置化节点。 */
-  slots?: ConfigFormFieldSlots<TValues, Component | string, TFormItemProps, TColProps>
-  /** 透传给共享字段壳的 props，field/label/error 由 renderer 统一接管。 */
-  formItemProps?: TFormItemProps
+  slots?: ConfigFormFieldSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>
+  /** 透传给共享字段壳的 attributes，field/label/error 由 renderer 统一接管。 */
+  fieldAttrs?: TFieldAttrs
   /** 必填标记；函数形式可基于当前表单值动态计算。 */
   required?: ConfigFormCondition<TValues>
   /** 必填校验失败时展示的错误文案。 */
@@ -206,7 +206,7 @@ export interface ConfigFormField<
   /** 控制字段是否进入展示态；展示态跳过校验但仍参与提交。 */
   readonly?: ConfigFormCondition<TValues>
   /** 当前字段进入展示态时优先使用的渲染函数。 */
-  readonlyRender?: ConfigFormReadonlyRender<TValues, TComponent, TFormItemProps, TColProps>
+  readonlyRender?: ConfigFormReadonlyRender<TValues, TComponent, TFieldAttrs, TCellAttrs>
   /** 隐藏字段是否仍参与提交和 submit 校验。 */
   submitWhenHidden?: boolean
   /** 禁用字段是否仍参与提交和 submit 校验。 */
@@ -226,36 +226,36 @@ export interface ConfigFormField<
 export type ConfigFormNode<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = Component | string,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >
-  = | ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>
-    | ConfigFormComponentNode<TValues, TComponent, TFormItemProps, TColProps>
+  = | ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    | ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
 
 export interface ConfigFormProps<
   TValues extends ConfigFormValues = ConfigFormValues,
-  TFormProps = ConfigFormAttrs,
-  TRowProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
-  TFormItemProps = ConfigFormAttrs,
+  TFormAttrs = ConfigFormAttrs,
+  TLayoutAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
   TComponent = Component | string,
 > {
   /** 表单节点配置；字段节点绑定表单值，容器节点只渲染组件和 slots。 */
-  fields: ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps>[]
+  fields: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>[]
   /** reset 使用的显式初始值；未提供时捕获首次 model。 */
   defaultValues?: Partial<TValues>
   /** 表单级展示态；命中后所有字段进入 readonly。 */
   readonly?: ConfigFormCondition<TValues>
   /** 字段未声明 readonlyRender 时使用的表单级展示渲染函数。 */
-  readonlyRender?: ConfigFormReadonlyRender<TValues, TComponent, TFormItemProps, TColProps>
-  /** 透传给 renderer 原生 form 壳的 props。 */
-  formProps?: TFormProps
-  /** 是否使用行内布局；行内布局使用 Flex 容器，不消费 span 或 colProps。 */
+  readonlyRender?: ConfigFormReadonlyRender<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  /** 透传给 renderer 原生 form 壳的 attributes。 */
+  formAttrs?: TFormAttrs
+  /** 是否使用行内布局；行内布局使用 Flex 容器，不消费 span 或 cellAttrs。 */
   inline?: boolean
-  /** 透传给 renderer 原生 Grid/Flex 布局容器的 props。 */
-  rowProps?: TRowProps
-  /** 透传给 renderer 原生 grid cell 的默认 props；仅 grid 布局消费。 */
-  colProps?: TColProps
+  /** 透传给 renderer 原生 Grid/Flex 布局容器的 attributes。 */
+  layoutAttrs?: TLayoutAttrs
+  /** 透传给 renderer 原生 grid cell 的默认 attributes；仅 grid 布局消费。 */
+  cellAttrs?: TCellAttrs
   /** grid 布局下的字段默认栅格跨度。 */
   fieldSpan?: ConfigFormColumnSpan
 }

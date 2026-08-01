@@ -31,12 +31,12 @@ interface ConfigFormComponentPart<TComponent> {
 type ConfigFormFieldInput<
   TValues extends ConfigFormValues,
   TComponent,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 > = {
   [TField in ConfigFormFieldKey<TValues>]:
     & Omit<
-      ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>,
+      ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>,
       | 'component'
       | 'defaultValue'
       | 'field'
@@ -55,8 +55,8 @@ type ConfigFormFieldInput<
       readonlyRender?: ConfigFormReadonlyRender<
         TValues,
         TComponent,
-        TFormItemProps,
-        TColProps,
+        TFieldAttrs,
+        TCellAttrs,
         TValues[TField]
       >
       schema?: ZodType<TValues[TField], ZodTypeDef, unknown>
@@ -68,23 +68,23 @@ type ConfigFormFieldInput<
 type ConfigFormComponentNodeInput<
   TValues extends ConfigFormValues,
   TComponent,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >
-  = & Omit<ConfigFormComponentNode<TValues, TComponent, TFormItemProps, TColProps>, 'component' | 'props'>
+  = & Omit<ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>, 'component' | 'props'>
     & ConfigFormComponentPart<TComponent>
 
 export interface DefineConfigFormFieldFactory<TValues extends ConfigFormValues> {
   /** 定义绑定表单值的真实字段节点。 */
-  <TComponent = unknown, TFormItemProps = ConfigFormAttrs, TColProps = ConfigFormAttrs>(
-    field: ConfigFormFieldInput<TValues, TComponent, TFormItemProps, TColProps>,
-  ): ConfigFormFieldInput<TValues, TComponent, TFormItemProps, TColProps>
-    & ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>
+  <TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(
+    field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  ): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
   /** 定义只渲染组件和 slots 的容器节点。 */
-  <TComponent = unknown, TFormItemProps = ConfigFormAttrs, TColProps = ConfigFormAttrs>(
-    field: ConfigFormComponentNodeInput<TValues, TComponent, TFormItemProps, TColProps>,
-  ): ConfigFormComponentNodeInput<TValues, TComponent, TFormItemProps, TColProps>
-    & ConfigFormComponentNode<TValues, TComponent, TFormItemProps, TColProps>
+  <TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(
+    field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  ): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
 }
 
 export interface DefineConfigFormFieldsResult<TValues extends ConfigFormValues> {
@@ -96,21 +96,21 @@ export interface DefineConfigFormFieldsResult<TValues extends ConfigFormValues> 
 export function defineConfigFormField<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = unknown,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  field: ConfigFormFieldInput<TValues, TComponent, TFormItemProps, TColProps>,
-): ConfigFormFieldInput<TValues, TComponent, TFormItemProps, TColProps>
-  & ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>
+  field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
 export function defineConfigFormField<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = unknown,
-  TFormItemProps = ConfigFormAttrs,
-  TColProps = ConfigFormAttrs,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
 >(
-  field: ConfigFormComponentNodeInput<TValues, TComponent, TFormItemProps, TColProps>,
-): ConfigFormComponentNodeInput<TValues, TComponent, TFormItemProps, TColProps>
-  & ConfigFormComponentNode<TValues, TComponent, TFormItemProps, TColProps>
+  field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
 export function defineConfigFormField(
   field: ConfigFormNode<ConfigFormValues, unknown, unknown, unknown>,
 ): ConfigFormNode<ConfigFormValues, unknown, unknown, unknown> {
@@ -134,20 +134,20 @@ function markConfigFormComponent<TComponent>(component: TComponent): TComponent 
   return component
 }
 
-function defineConfigFormNode<TValues extends ConfigFormValues, TComponent, TFormItemProps, TColProps>(
-  node: ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps>,
-): ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps> {
+function defineConfigFormNode<TValues extends ConfigFormValues, TComponent, TFieldAttrs, TCellAttrs>(
+  node: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+): ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs> {
   const next = {
     ...node,
     component: markConfigFormComponent(node.component),
-  } as ConfigFormNode<TValues, TComponent, TFormItemProps, TColProps>
+  } as ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
 
   if (node.slots) {
     const nodeWithSlots = next as {
       slots?: Record<
         string,
-        | ConfigFormComponentSlotContent<TValues, Component | string, TFormItemProps, TColProps>
-        | ConfigFormFieldSlotContent<TValues, Component | string, TFormItemProps, TColProps>
+        | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
+        | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
       >
     }
     nodeWithSlots.slots = defineConfigFormSlots(node.slots)
@@ -156,29 +156,29 @@ function defineConfigFormNode<TValues extends ConfigFormValues, TComponent, TFor
   return next
 }
 
-function defineConfigFormSlots<TValues extends ConfigFormValues, TFormItemProps, TColProps>(
+function defineConfigFormSlots<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
   slots: Record<
     string,
-    | ConfigFormComponentSlotContent<TValues, Component | string, TFormItemProps, TColProps>
-    | ConfigFormFieldSlotContent<TValues, Component | string, TFormItemProps, TColProps>
+    | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
+    | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
   >,
 ): Record<
   string,
-  | ConfigFormComponentSlotContent<TValues, Component | string, TFormItemProps, TColProps>
-  | ConfigFormFieldSlotContent<TValues, Component | string, TFormItemProps, TColProps>
+  | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
+  | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
 > {
   return Object.fromEntries(
     Object.entries(slots).map(([name, slot]) => [name, defineConfigFormSlotContent(slot)]),
   )
 }
 
-function defineConfigFormSlotContent<TValues extends ConfigFormValues, TFormItemProps, TColProps>(
+function defineConfigFormSlotContent<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
   slot:
-    | ConfigFormComponentSlotContent<TValues, Component | string, TFormItemProps, TColProps>
-    | ConfigFormFieldSlotContent<TValues, Component | string, TFormItemProps, TColProps>,
+    | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
+    | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>,
 ):
-  | ConfigFormComponentSlotContent<TValues, Component | string, TFormItemProps, TColProps>
-  | ConfigFormFieldSlotContent<TValues, Component | string, TFormItemProps, TColProps> {
+  | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
+  | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs> {
   if (typeof slot === 'function')
     return slot
 

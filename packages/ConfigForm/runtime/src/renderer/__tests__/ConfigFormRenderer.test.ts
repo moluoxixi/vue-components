@@ -77,10 +77,10 @@ describe('config form renderer', () => {
   it('同步写回受控模型，并统一处理 Grid、attrs、校验和 expose', async () => {
     const initial: TestValues = { enabled: false, name: 'Ada', status: 'draft' }
     const fields = [defineField<TestValues>({
-      colProps: { 'data-node-cell': 'name' },
+      cellAttrs: { 'data-node-cell': 'name' },
       component: InputStub,
       field: 'name',
-      formItemProps: { 'data-form-item': 'name' },
+      fieldAttrs: { 'data-field-shell': 'name' },
       label: 'Name',
       required: true,
       requiredMessage: 'Name is required',
@@ -93,14 +93,14 @@ describe('config form renderer', () => {
         'id': 'profile-form',
       },
       props: {
-        colProps: { 'data-cell': 'default' },
+        cellAttrs: { 'data-cell': 'default' },
         columns: 12,
         fields,
-        formProps: { autocomplete: 'off' },
+        formAttrs: { autocomplete: 'off' },
         gap: '8px',
         modelValue: initial,
         namespace: 'test-form',
-        rowProps: { 'data-row': 'root' },
+        layoutAttrs: { 'data-layout': 'root' },
       },
     })
     const form = wrapper.vm as unknown as ConfigFormRendererExpose<TestValues>
@@ -111,7 +111,7 @@ describe('config form renderer', () => {
       'id': 'profile-form',
     })
     expect(wrapper.get('form').classes()).toEqual(expect.arrayContaining(['test-form', 'consumer-form']))
-    expect(wrapper.get('.test-form__row').attributes('data-row')).toBe('root')
+    expect(wrapper.get('.test-form__row').attributes('data-layout')).toBe('root')
     expect(wrapper.get('.test-form__row').attributes('style')).toContain('grid-template-columns: repeat(12, minmax(0, 1fr))')
     expect(wrapper.get('.test-form__row').attributes('style')).toContain('gap: 8px')
     expect(wrapper.get('.test-form__cell').attributes()).toMatchObject({
@@ -119,7 +119,7 @@ describe('config form renderer', () => {
       'data-node-cell': 'name',
     })
     expect(wrapper.get('.test-form__cell').attributes('style')).toContain('grid-column: span 6 / span 6')
-    expect(wrapper.get('[data-field="name"]').attributes('data-form-item')).toBe('name')
+    expect(wrapper.get('[data-field="name"]').attributes('data-field-shell')).toBe('name')
 
     form.setValue('name', '')
     expect(form.getValue('name')).toBe('')
@@ -229,11 +229,11 @@ describe('config form renderer', () => {
     expect(wrapper.emitted('submit')).toBeUndefined()
   })
 
-  it('inline 使用原生 Flex 且不消费 span/colProps，并递归渲染配置化 slot', () => {
+  it('inline 使用原生 Flex 且不消费 span/cellAttrs，并递归渲染配置化 slot', () => {
     const { defineField: field } = defineFields<TestValues>()
     const fields = [
       field({
-        colProps: { 'data-ignored-cell': 'true' },
+        cellAttrs: { 'data-ignored-cell': 'true' },
         component: InputStub,
         field: 'name',
         label: 'Name',
@@ -252,7 +252,7 @@ describe('config form renderer', () => {
         inline: true,
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'inline-form',
-        rowProps: { 'data-layout': 'inline' },
+        layoutAttrs: { 'data-layout': 'inline' },
       },
     })
 
