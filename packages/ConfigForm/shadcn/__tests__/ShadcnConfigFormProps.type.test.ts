@@ -1,3 +1,4 @@
+import type { ConfigFormRendererProps } from '@moluoxixi/config-form'
 import type { ShadcnConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
@@ -22,6 +23,14 @@ const shadcnProps = {
   inline: true,
   layoutAttrs: { class: 'flex flex-wrap' },
 } satisfies ShadcnConfigFormProps<UserForm>
+
+const rendererAttrs: Pick<
+  ConfigFormRendererProps<UserForm>,
+  'cellAttrs' | 'formAttrs' | 'layoutAttrs'
+> = {} as Pick<
+  ShadcnConfigFormProps<UserForm>,
+  'cellAttrs' | 'formAttrs' | 'layoutAttrs'
+>
 
 const shadcnInvalidFields = [
   {
@@ -53,6 +62,7 @@ const shadcnInvalidProps = {
 
 void shadcnInvalidFields
 void shadcnInvalidProps
+void rendererAttrs
 
 describe('config form ui prop types', () => {
   it('使用原生 Grid/Flex 布局与字段壳类型', () => {

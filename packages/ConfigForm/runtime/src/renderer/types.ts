@@ -1,7 +1,7 @@
 import type {
-  ConfigFormAttrs,
   ConfigFormCondition,
   ConfigFormController,
+  ConfigFormDataAttributes,
   ConfigFormErrors,
   ConfigFormField,
   ConfigFormFieldChangePayload,
@@ -12,11 +12,26 @@ import type {
 } from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
+export type ConfigFormRendererFormAttrs = FormHTMLAttributes
+export type ConfigFormRendererLayoutAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type ConfigFormRendererCellAttrs = HTMLAttributes & ConfigFormDataAttributes
+export type ConfigFormRendererFieldAttrs = HTMLAttributes & ConfigFormDataAttributes
+
 export type ConfigFormRendererNode<TValues extends ConfigFormValues = ConfigFormValues>
-  = ConfigFormNode<TValues, Component | string, HTMLAttributes, HTMLAttributes>
+  = ConfigFormNode<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >
 
 export type ConfigFormRendererField<TValues extends ConfigFormValues = ConfigFormValues>
-  = ConfigFormField<TValues, Component | string, HTMLAttributes, HTMLAttributes>
+  = ConfigFormField<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >
 
 export interface ConfigFormControlBinding {
   trigger: string
@@ -30,16 +45,21 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   fields: ConfigFormRendererNode<TValues>[]
   defaultValues?: Partial<TValues>
   readonly?: ConfigFormCondition<TValues>
-  readonlyRender?: ConfigFormReadonlyRender<TValues, Component | string, HTMLAttributes, HTMLAttributes>
-  formAttrs?: FormHTMLAttributes & ConfigFormAttrs
+  readonlyRender?: ConfigFormReadonlyRender<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >
+  formAttrs?: ConfigFormRendererFormAttrs
   inline?: boolean
   columns?: number
   gap?: string
   fieldSpan?: number
   /** 透传给原生 Grid/Flex 布局容器。 */
-  layoutAttrs?: HTMLAttributes & ConfigFormAttrs
+  layoutAttrs?: ConfigFormRendererLayoutAttrs
   /** 透传给原生 grid cell；inline 布局不消费。 */
-  cellAttrs?: HTMLAttributes & ConfigFormAttrs
+  cellAttrs?: ConfigFormRendererCellAttrs
   namespace?: string
   defaultValueProp?: string
   defaultTrigger?: string

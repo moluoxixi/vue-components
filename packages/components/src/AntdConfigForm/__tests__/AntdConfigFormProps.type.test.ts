@@ -1,3 +1,4 @@
+import type { ConfigFormRendererProps } from '@moluoxixi/config-form'
 import type { AntdConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
@@ -25,6 +26,14 @@ const antdProps = {
   inline: true,
   layoutAttrs: { class: 'status-grid' },
 } satisfies AntdConfigFormProps<UserForm>
+
+const rendererAttrs: Pick<
+  ConfigFormRendererProps<UserForm>,
+  'cellAttrs' | 'formAttrs' | 'layoutAttrs'
+> = {} as Pick<
+  AntdConfigFormProps<UserForm>,
+  'cellAttrs' | 'formAttrs' | 'layoutAttrs'
+>
 
 const antdInvalidFields = [
   {
@@ -56,6 +65,7 @@ const antdInvalidProps = {
 
 void antdInvalidFields
 void antdInvalidProps
+void rendererAttrs
 
 describe('config form ui prop types', () => {
   it('使用原生 Grid/Flex 布局与字段壳类型', () => {

@@ -7,9 +7,13 @@ export { ConfigFormRenderer } from './src/renderer'
 export type {
   ConfigFormControlBinding,
   ConfigFormControlBindingResolver,
+  ConfigFormRendererCellAttrs,
   ConfigFormRendererEmits,
   ConfigFormRendererExpose,
   ConfigFormRendererField,
+  ConfigFormRendererFieldAttrs,
+  ConfigFormRendererFormAttrs,
+  ConfigFormRendererLayoutAttrs,
   ConfigFormRendererNode,
   ConfigFormRendererProps,
 } from './src/renderer'

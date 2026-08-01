@@ -1,3 +1,4 @@
+import type { ConfigFormRendererProps } from '@moluoxixi/config-form'
 import type { ElementConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
@@ -26,6 +27,14 @@ const elementProps = {
   inline: true,
   layoutAttrs: { class: 'profile-grid' },
 } satisfies ElementConfigFormProps<UserForm>
+
+const rendererAttrs: Pick<
+  ConfigFormRendererProps<UserForm>,
+  'cellAttrs' | 'formAttrs' | 'layoutAttrs'
+> = {} as Pick<
+  ElementConfigFormProps<UserForm>,
+  'cellAttrs' | 'formAttrs' | 'layoutAttrs'
+>
 
 const elementInvalidFields = [
   {
@@ -57,6 +66,7 @@ const elementInvalidProps = {
 
 void elementInvalidFields
 void elementInvalidProps
+void rendererAttrs
 
 describe('config form ui prop types', () => {
   it('使用原生 Grid/Flex 布局与字段壳类型', () => {

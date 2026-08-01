@@ -13,8 +13,10 @@ import type {
 } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormControlBinding,
+  ConfigFormRendererCellAttrs,
   ConfigFormRendererEmits,
   ConfigFormRendererField,
+  ConfigFormRendererFieldAttrs,
   ConfigFormRendererNode,
   ConfigFormRendererProps,
 } from './types'
@@ -237,7 +239,12 @@ function renderControl(
   if (readonly) {
     const readonlyRender = resolveConfigFormReadonlyRender(
       field,
-      props.readonlyRender as ConfigFormReadonlyRender<TValues, Component | string, HTMLAttributes, HTMLAttributes> | undefined,
+      props.readonlyRender as ConfigFormReadonlyRender<
+        TValues,
+        Component | string,
+        ConfigFormRendererFieldAttrs,
+        ConfigFormRendererCellAttrs
+      > | undefined,
     )
     const value = model.value[field.field]
     const content = readonlyRender
@@ -294,7 +301,12 @@ function renderControl(
 }
 
 function renderComponentNode(
-  node: ConfigFormComponentNode<TValues, Component | string, HTMLAttributes, HTMLAttributes>,
+  node: ConfigFormComponentNode<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >,
   path: string,
   ancestors: ReadonlySet<object>,
 ): VNodeChild {
@@ -332,8 +344,17 @@ function createNodeSlots(
 }
 
 function renderSlotContent(
-  slot: ConfigFormComponentSlotContent<TValues, Component | string, HTMLAttributes, HTMLAttributes>
-    | ConfigFormFieldSlotContent<TValues, Component | string, HTMLAttributes, HTMLAttributes>,
+  slot: ConfigFormComponentSlotContent<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  > | ConfigFormFieldSlotContent<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >,
   ownerNode: ConfigFormRendererNode<TValues>,
   slotProps: Record<string, unknown>,
   path: string,
@@ -349,28 +370,57 @@ function renderSlotContent(
 }
 
 function renderSlotFunction(
-  slot: ConfigFormComponentSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>
-    | ConfigFormFieldSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>,
+  slot: ConfigFormComponentSlot<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  > | ConfigFormFieldSlot<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >,
   ownerNode: ConfigFormRendererNode<TValues>,
   slotProps: Record<string, unknown>,
 ): VNodeChild {
   if (isConfigFormField(ownerNode)) {
-    const context: ConfigFormFieldSlotContext<TValues, Component | string, HTMLAttributes, HTMLAttributes> = {
+    const context: ConfigFormFieldSlotContext<
+      TValues,
+      Component | string,
+      ConfigFormRendererFieldAttrs,
+      ConfigFormRendererCellAttrs
+    > = {
       field: ownerNode,
       model: model.value,
       setValue: value => applyFieldChange({ field: ownerNode.field, value }),
       slotProps,
       value: model.value[ownerNode.field],
     }
-    return (slot as ConfigFormFieldSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>)(context)
+    return (slot as ConfigFormFieldSlot<
+      TValues,
+      Component | string,
+      ConfigFormRendererFieldAttrs,
+      ConfigFormRendererCellAttrs
+    >)(context)
   }
 
-  const context: ConfigFormComponentSlotContext<TValues, Component | string, HTMLAttributes, HTMLAttributes> = {
+  const context: ConfigFormComponentSlotContext<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  > = {
     model: model.value,
     node: ownerNode,
     slotProps,
   }
-  return (slot as ConfigFormComponentSlot<TValues, Component | string, HTMLAttributes, HTMLAttributes>)(context)
+  return (slot as ConfigFormComponentSlot<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >)(context)
 }
 
 function resolveBinding(field: ConfigFormRendererField<TValues>): ConfigFormControlBinding {
