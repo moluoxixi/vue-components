@@ -199,6 +199,9 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
 
   packages/ConfigForm/core:
     dependencies:
@@ -303,6 +306,9 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
 
   packages/ConfigForm/headless:
     devDependencies:
@@ -321,6 +327,9 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
 
   packages/ConfigForm/playground:
     dependencies:
@@ -538,6 +547,9 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
 
   packages/ai-doc-assistant:
     dependencies:
@@ -642,6 +654,9 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
 
   packages/hooks:
     devDependencies:
@@ -681,9 +696,9 @@ importers:
       '@moluoxixi/components':
         specifier: workspace:*
         version: link:../../packages/components
-      '@moluoxixi/config-form-core':
+      '@moluoxixi/config-form-headless':
         specifier: workspace:*
-        version: link:../../packages/ConfigForm/core
+        version: link:../../packages/ConfigForm/headless
       ant-design-vue:
         specifier: catalog:ui
         version: 4.2.6(vue@3.5.33(typescript@5.9.3))

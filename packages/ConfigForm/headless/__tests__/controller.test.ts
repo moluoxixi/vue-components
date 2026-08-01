@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import { createConfigFormController } from '../src/controller'
+import { defineFields } from '../src/utils/field'
 
 interface UserForm {
   age: number
@@ -66,6 +68,103 @@ describe('createConfigFormController', () => {
       controller.setValue('age', 'invalid')
       // @ts-expect-error Replacing the model requires a complete TValues object.
       controller.setValues({ age: 21 }, true)
+    }
+  })
+
+  it('owns Zod validation, readonly submission and reset lifecycle', async () => {
+    let model: UserForm = { age: 17, name: '' }
+    const onError = vi.fn()
+    const onSubmit = vi.fn()
+    const onErrorsChange = vi.fn()
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [
+        {
+          component: 'input',
+          field: 'age',
+          readonly: true,
+          schema: z.number().min(18),
+        },
+        {
+          component: 'input',
+          defaultValue: 'initial',
+          field: 'name',
+          required: true,
+          requiredMessage: '请输入姓名',
+          schema: z.string().min(2, '至少两个字符'),
+        },
+      ],
+      model: {
+        read: () => model,
+        write: (values) => {
+          model = values
+        },
+      },
+      onError,
+      onErrorsChange,
+      onSubmit,
+    })
+
+    await expect(controller.submit()).resolves.toBe(false)
+    expect(controller.getErrors()).toEqual({ name: ['请输入姓名'] })
+    expect(onError).toHaveBeenCalledWith({ name: ['请输入姓名'] })
+
+    controller.setValue('name', 'Ada')
+    await expect(controller.submit()).resolves.toBe(true)
+    expect(onSubmit).toHaveBeenCalledWith({ age: 17, name: 'Ada' })
+
+    controller.resetFields('name')
+    expect(model).toEqual({ age: 17, name: '' })
+    expect(controller.getErrors()).toEqual({})
+    expect(onErrorsChange).toHaveBeenCalled()
+  })
+
+  it('does not commit stale async cross-field validation results', async () => {
+    let model: UserForm = { age: 18, name: 'Ada' }
+    let releaseValidation!: () => void
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [{
+        component: 'input',
+        field: 'name',
+        validator: async (_value, values) => {
+          await new Promise<void>((resolve) => {
+            releaseValidation = resolve
+          })
+          return values.age >= 18 ? undefined : '未成年'
+        },
+      }],
+      model: {
+        read: () => model,
+        write: (values) => {
+          model = values
+        },
+      },
+    })
+
+    const pending = controller.validateField('name')
+    controller.setValue('age', 16)
+    releaseValidation()
+
+    await expect(pending).resolves.toBe(false)
+    expect(controller.getErrors()).toEqual({})
+  })
+
+  it('keeps field helpers typed against the model', () => {
+    const { defineField } = defineFields<UserForm>()
+    const field = defineField({
+      component: 'input',
+      field: 'age',
+      schema: z.number(),
+    })
+
+    expect(field.field).toBe('age')
+
+    if (false) {
+      // @ts-expect-error The schema output must match the model field type.
+      defineField({
+        component: 'input',
+        field: 'age',
+        schema: z.string(),
+      })
     }
   })
 })

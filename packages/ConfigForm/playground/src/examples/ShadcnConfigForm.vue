@@ -41,7 +41,8 @@ import {
   ShadcnTextarea,
   ShadcnTimePicker,
 } from './components/ShadcnDemoControls'
-import { computed, shallowRef } from 'vue'
+import { computed, h, shallowRef } from 'vue'
+import { z } from 'zod'
 
 type ScenarioTab = 'layout' | 'container' | 'linked'
 
@@ -137,7 +138,11 @@ const containerFields = [
           title: 'Shadcn Accordion 容器',
         },
         slots: {
-          default: createKnownFields('shadcn-container-accordion', false, defineCommonField),
+          default: defineCommonField({
+            colProps: {},
+            component: 'p',
+            props: { textContent: 'Accordion 容器承载非字段配置节点' },
+          }),
         },
       }),
     },
@@ -164,7 +169,11 @@ const containerFields = [
             name: 'base',
           },
           slots: {
-            default: createKnownFields('shadcn-container-tabs-base', false, defineCommonField),
+            default: defineCommonField({
+              colProps: {},
+              component: 'p',
+              props: { textContent: 'Tabs 基础容器内容' },
+            }),
           },
         }),
         defineCommonField({
@@ -174,7 +183,11 @@ const containerFields = [
             name: 'preference',
           },
           slots: {
-            default: createKnownFields('shadcn-container-tabs-preference', false, defineCommonField),
+            default: defineCommonField({
+              colProps: {},
+              component: 'p',
+              props: { textContent: 'Tabs 偏好容器内容' },
+            }),
           },
         }),
       ],
@@ -462,7 +475,17 @@ function createLinkedControlFields() {
         placeholder: '企业模式显示',
         'data-testid': 'shadcn-linked-enterprise-name',
       },
+      readonly: values => values.marketing,
+      readonlyRender: ({ value }) => h(
+        'span',
+        { 'data-testid': 'shadcn-linked-enterprise-name-readonly' },
+        `已锁定：${String(value || '未填写')}`,
+      ),
+      required: true,
+      requiredMessage: '请输入企业名称',
+      schema: z.string().trim().min(2, '企业名称至少 2 个字符'),
       span: 12,
+      validateOn: 'blur',
       visible: values => values.planType === 'enterprise',
     }),
     defineLinkedField({

@@ -1,5 +1,5 @@
-import type { ConfigFormColumnSpan, ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { ShadcnConfigFormColProps, ShadcnConfigFormErrors, ShadcnConfigFormNode } from '../../../../types'
+import type { ConfigFormColumnSpan, ConfigFormCondition, ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ShadcnConfigFormColProps, ShadcnConfigFormErrors, ShadcnConfigFormNode, ShadcnConfigFormReadonlyRender } from '../../../../types'
 
 export interface ConfigFormNodeProps<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 当前要递归渲染的字段或容器节点。 */
@@ -8,6 +8,8 @@ export interface ConfigFormNodeProps<TValues extends ConfigFormValues = ConfigFo
   model: TValues
   /** 当前字段错误集合，由根 ShadcnConfigForm 统一持有。 */
   errors: ShadcnConfigFormErrors
+  readonly?: ConfigFormCondition<TValues>
+  readonlyRender?: ShadcnConfigFormReadonlyRender<TValues>
   /** 顶层节点使用的默认单元格配置。 */
   colProps?: ShadcnConfigFormColProps
   /** 顶层节点使用的默认字段跨度。 */

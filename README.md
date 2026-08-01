@@ -2,7 +2,7 @@
 
 基于 Vue 3 的组件集合，Monorepo 结构。
 
-核心包支持 `runtime` adapter 边界，可注册组件、只读展示适配器，并通过 `transformField(field)` 转换字段配置。`ConfigForm` 会统一递归处理顶层字段和 slots 内配置，渲染组件只消费处理后的字段。
+仓库保留两条配置表单路径：`@moluoxixi/config-form` 是带 runtime adapter/plugin 的完整实现；Element、Antd、Shadcn 三个轻量 UI 包共享 `@moluoxixi/config-form-headless`，由 Headless 统一处理字段协议、required/Zod/validator、readonly、submit/reset 和校验状态，UI 包只负责布局、字段壳与真实组件绑定。
 
 ## 包
 
@@ -10,7 +10,7 @@
 |---|---|
 | [`@moluoxixi/components`](./packages/components/) | 组件集合入口，内置独立的 Element/Antd 纯净 ConfigForm 和常用组件 |
 | [`@moluoxixi/config-form`](./packages/ConfigForm/runtime/) | 原配置化表单 runtime，负责 schema、runtime adapter、递归配置渲染和表单语义 |
-| [`@moluoxixi/config-form-headless`](./packages/ConfigForm/headless/) | 通用的 ConfigForm 字段协议、节点工具和无 UI 模型 controller |
+| [`@moluoxixi/config-form-headless`](./packages/ConfigForm/headless/) | 轻量 ConfigForm 的字段协议、Zod 校验、readonly 与表单 controller |
 | [`@moluoxixi/config-form-core`](./packages/ConfigForm/core/) | headless 公共 API 的兼容入口 |
 | [`@moluoxixi/config-form-element`](./packages/ConfigForm/element/) | Element Plus 轻量 ConfigForm |
 | [`@moluoxixi/config-form-antd-vue`](./packages/ConfigForm/antd/) | Ant Design Vue 轻量 ConfigForm |

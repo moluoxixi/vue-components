@@ -46,7 +46,8 @@
   "peerDependencies": {
     "ant-design-vue": "^4.2.0",
     "element-plus": "^2.9.0",
-    "vue": "^3.5.0"
+    "vue": "^3.5.0",
+    "zod": "^3.23.0"
   },
   "dependencies": {
     "@moluoxixi/config-form-headless": "workspace:*",
@@ -64,7 +65,8 @@
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:build",
-    "vue-tsc": "catalog:dev"
+    "vue-tsc": "catalog:dev",
+    "zod": "catalog:dev"
   },
   "publishConfig": {
     "access": "public"

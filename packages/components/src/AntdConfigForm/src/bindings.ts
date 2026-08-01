@@ -26,7 +26,7 @@ function resolveComponentName(component: Component | string): string | undefined
 
 /** 根据 Ant Design Vue 组件名读取字段默认绑定；未命中时继续使用 antdConfigForm 的 value/update:value 默认值。 */
 export function resolveAntdConfigFormFieldBinding<TValues extends Record<string, unknown>>(
-  field: ConfigFormField<TValues, Component | string>,
+  field: Pick<ConfigFormField<TValues, Component | string>, 'component'>,
 ): AntdConfigFormFieldBinding | undefined {
   const componentName = resolveComponentName(field.component)
 

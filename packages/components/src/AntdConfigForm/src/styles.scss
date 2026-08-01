@@ -6,10 +6,37 @@
   width: 100%;
 }
 
-.mx-antd-config-form__row--inline .ant-form-item-control {
-  min-width: 120px;
-}
-
 .mx-antd-config-form__control {
   width: 100%;
+}
+
+.mx-antd-config-form__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mx-antd-config-form__label {
+  color: rgb(0 0 0 / 88%);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.mx-antd-config-form__field[data-required="true"] .mx-antd-config-form__label::before {
+  margin-right: 4px;
+  color: #ff4d4f;
+  content: "*";
+}
+
+.mx-antd-config-form__error {
+  margin: 0;
+  color: #ff4d4f;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mx-antd-config-form__readonly {
+  color: rgb(0 0 0 / 88%);
+  line-height: 32px;
+  overflow-wrap: anywhere;
 }

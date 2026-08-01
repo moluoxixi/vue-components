@@ -1,11 +1,14 @@
-import type { ConfigFormColumnSpan, ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { AntdConfigFormColProps, AntdConfigFormNode } from '../../../../types'
+import type { ConfigFormColumnSpan, ConfigFormCondition, ConfigFormErrors, ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { AntdConfigFormColProps, AntdConfigFormNode, AntdConfigFormReadonlyRender } from '../../../../types'
 
 export interface ConfigFormNodeProps<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 当前要递归渲染的字段或容器节点。 */
   node: AntdConfigFormNode<TValues>
   /** 当前表单模型，由根 antdConfigForm 统一持有。 */
   model: TValues
+  errors: ConfigFormErrors
+  readonly?: ConfigFormCondition<TValues>
+  readonlyRender?: AntdConfigFormReadonlyRender<TValues>
   /** 顶层节点使用的默认列配置。 */
   colProps?: AntdConfigFormColProps
   /** 顶层节点使用的默认字段跨度。 */

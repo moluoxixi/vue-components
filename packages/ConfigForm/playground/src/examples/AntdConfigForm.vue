@@ -40,7 +40,8 @@ import {
   TimeRangePicker as ATimeRangePicker,
   TreeSelect as ATreeSelect,
 } from 'ant-design-vue'
-import { computed, shallowRef } from 'vue'
+import { computed, h, shallowRef } from 'vue'
+import { z } from 'zod'
 
 type ScenarioTab = 'layout' | 'container' | 'linked'
 
@@ -162,7 +163,11 @@ const containerFields = [
           key: 'profile',
         },
         slots: {
-          default: createKnownFields('antd-container-collapse', false, defineCommonField),
+          default: defineCommonField({
+            colProps: {},
+            component: 'p',
+            props: { textContent: 'Collapse 容器承载非字段配置节点' },
+          }),
         },
       }),
     },
@@ -186,7 +191,11 @@ const containerFields = [
             tab: '基础',
           },
           slots: {
-            default: createKnownFields('antd-container-tabs-base', false, defineCommonField),
+            default: defineCommonField({
+              colProps: {},
+              component: 'p',
+              props: { textContent: 'Tabs 基础容器内容' },
+            }),
           },
         }),
         defineCommonField({
@@ -197,7 +206,11 @@ const containerFields = [
             tab: '偏好',
           },
           slots: {
-            default: createKnownFields('antd-container-tabs-preference', false, defineCommonField),
+            default: defineCommonField({
+              colProps: {},
+              component: 'p',
+              props: { textContent: 'Tabs 偏好容器内容' },
+            }),
           },
         }),
       ],
@@ -505,7 +518,17 @@ function createLinkedControlFields() {
         placeholder: '企业模式显示',
         'data-testid': 'antd-linked-enterprise-name',
       },
+      readonly: values => values.marketing,
+      readonlyRender: ({ value }) => h(
+        'span',
+        { 'data-testid': 'antd-linked-enterprise-name-readonly' },
+        `已锁定：${String(value || '未填写')}`,
+      ),
+      required: true,
+      requiredMessage: '请输入企业名称',
+      schema: z.string().trim().min(2, '企业名称至少 2 个字符'),
       span: 12,
+      validateOn: 'blur',
       visible: values => values.planType === 'enterprise',
     }),
     defineLinkedField({
@@ -672,7 +695,6 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutInlineFields"
             inline
-            :form-props="{ labelCol: { style: { width: '96px' } }, wrapperCol: { flex: 1 } }"
             :row-props="{ 'data-testid': 'antd-layout-inline-row' }"
             @submit="submitLayoutInline"
           >
@@ -691,7 +713,6 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="antd-layout-grid-form"
             :field-span="12"
             :fields="layoutGridFields"
-            :form-props="{ labelCol: { style: { width: '96px' } }, wrapperCol: { flex: 1 } }"
             :row-props="{ gutter: 16, 'data-testid': 'antd-layout-grid' }"
             @submit="submitLayoutGrid"
           >
@@ -714,7 +735,6 @@ function submitLinked(values: ConfigFormValues): void {
             v-model="containerModel"
             data-testid="antd-container-form"
             :fields="containerFields"
-            :form-props="{ labelCol: { style: { width: '96px' } }, wrapperCol: { flex: 1 } }"
             :row-props="{ gutter: 16, 'data-testid': 'antd-container-row' }"
             @submit="submitContainer"
           >
@@ -738,7 +758,6 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="antd-linked-form"
             :field-span="12"
             :fields="linkedFields"
-            :form-props="{ labelCol: { style: { width: '96px' } }, wrapperCol: { flex: 1 } }"
             :row-props="{ gutter: 16, 'data-testid': 'antd-linked-row' }"
             @submit="submitLinked"
           >

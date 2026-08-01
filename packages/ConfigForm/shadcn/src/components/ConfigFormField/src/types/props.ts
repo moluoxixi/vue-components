@@ -1,5 +1,5 @@
-import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
-import type { ShadcnConfigFormErrors, ShadcnConfigFormField } from '../../../../types'
+import type { ConfigFormCondition, ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ShadcnConfigFormErrors, ShadcnConfigFormField, ShadcnConfigFormReadonlyRender } from '../../../../types'
 
 export interface ConfigFormFieldProps<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 当前要渲染和绑定的 shadcn-vue 字段配置。 */
@@ -8,4 +8,6 @@ export interface ConfigFormFieldProps<TValues extends ConfigFormValues = ConfigF
   model: TValues
   /** 当前字段错误集合，由根 ShadcnConfigForm 统一持有。 */
   errors: ShadcnConfigFormErrors
+  readonly?: ConfigFormCondition<TValues>
+  readonlyRender?: ShadcnConfigFormReadonlyRender<TValues>
 }

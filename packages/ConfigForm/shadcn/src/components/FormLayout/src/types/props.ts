@@ -1,8 +1,9 @@
-import type { ConfigFormColumnSpan, ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ConfigFormColumnSpan, ConfigFormCondition, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ShadcnConfigFormColProps,
   ShadcnConfigFormErrors,
   ShadcnConfigFormNode,
+  ShadcnConfigFormReadonlyRender,
   ShadcnConfigFormRowProps,
 } from '../../../../types'
 
@@ -13,6 +14,8 @@ export interface FormLayoutProps<TValues extends ConfigFormValues = ConfigFormVa
   model: TValues
   /** 当前字段错误集合，由根 ShadcnConfigForm 统一持有。 */
   errors: ShadcnConfigFormErrors
+  readonly?: ConfigFormCondition<TValues>
+  readonlyRender?: ShadcnConfigFormReadonlyRender<TValues>
   /** 是否使用行内布局；行内布局使用 flex 容器且不生成 grid cell。 */
   inlineLayout?: boolean
   /** 透传给 ShadcnConfigForm 布局容器的 props。 */

@@ -10,11 +10,12 @@ export const exampleMeta = {
 </script>
 
 <script setup lang="ts">
-import type { ConfigFormValues } from '@moluoxixi/config-form-core'
-import { defineFields } from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
+import { defineFields } from '@moluoxixi/config-form-headless'
 import { ElementConfigForm } from '@moluoxixi/components'
 import { ElCheckbox, ElInput, ElTag } from 'element-plus'
 import { computed, h, shallowRef } from 'vue'
+import { z } from 'zod'
 
 interface ElementFormValues {
   accountName: string
@@ -38,8 +39,13 @@ const fields = [
     props: {
       placeholder: '请输入 Element 账户名称',
     },
-    rules: [{ message: '请输入账户名称', required: true, trigger: 'blur' }],
+    readonly: values => values.advanced,
+    readonlyRender: ({ value }) => h(ElTag, { type: 'success' }, () => value || '未填写'),
+    required: true,
+    requiredMessage: '请输入账户名称',
+    schema: z.string().trim().min(1, '请输入账户名称'),
     span: 12,
+    validateOn: 'blur',
   }),
   defineField({
     component: ElCheckbox,
@@ -66,7 +72,7 @@ const fields = [
       type: 'info',
     },
     slots: {
-      default: () => h('span', '容器节点不会生成 FormItem'),
+      default: () => h('span', '容器节点不会生成字段壳，也不绑定表单值'),
     },
     span: 24,
   }),
@@ -84,7 +90,6 @@ function handleSubmit(values: ConfigFormValues): void {
     <ElementConfigForm
       v-model="formModel"
       :fields="fields"
-      :form-props="{ labelWidth: '96px' }"
       @submit="handleSubmit"
     >
       <template #default="{ submit, resetFields }">
@@ -113,7 +118,6 @@ function handleSubmit(values: ConfigFormValues): void {
 .config-form-demo__actions {
   display: flex;
   gap: 10px;
-  margin-left: 96px;
 }
 
 .config-form-demo__preview {

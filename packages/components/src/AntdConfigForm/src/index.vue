@@ -1,16 +1,18 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
-import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type {
+  ConfigFormErrors,
+  ConfigFormFieldValidateRequest,
+  ConfigFormValues,
+} from '@moluoxixi/config-form-headless'
 import type {
   AntdConfigFormEmits,
   AntdConfigFormExpose,
   AntdConfigFormProps,
   AntdConfigFormSlots,
 } from './types'
-import type { FormInstance, FormProps } from 'ant-design-vue'
-import { Form as AForm } from 'ant-design-vue'
-import { computed, useAttrs, useTemplateRef } from 'vue'
+import { computed, shallowRef, useAttrs, useTemplateRef } from 'vue'
 import FormLayout from './components/FormLayout'
-import { collectConfigFormFields, createConfigFormController } from '@moluoxixi/config-form-headless'
+import { createConfigFormController } from '@moluoxixi/config-form-headless'
 import './styles.scss'
 
 defineOptions({
@@ -23,21 +25,30 @@ const props = withDefaults(defineProps<AntdConfigFormProps<TValues>>(), {
   fieldSpan: 24,
   formProps: () => ({}),
   rowProps: () => ({ gutter: 16 }),
-  rules: () => ({}),
 })
 
 const emit = defineEmits<AntdConfigFormEmits<TValues>>()
 defineSlots<AntdConfigFormSlots<TValues>>()
 const model = defineModel<TValues>({ required: true })
-const formRef = useTemplateRef<FormInstance>('formRef')
+const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const attrs = useAttrs()
+const errors = shallowRef<ConfigFormErrors>({})
 const {
   applyFieldChange: handleFieldChange,
+  clearValidate,
+  getErrors,
+  getValidating,
   getValue,
   getValues,
+  resetFields,
   setValue,
   setValues,
+  submit,
+  validate,
+  validateField,
 } = createConfigFormController<TValues>({
+  defaultValues: props.defaultValues,
+  fields: () => props.fields,
   model: {
     read: () => model.value,
     write: (values) => {
@@ -45,23 +56,16 @@ const {
     },
   },
   onChange: values => emit('change', values),
+  onError: formErrors => emit('error', formErrors),
+  onErrorsChange: (formErrors) => {
+    errors.value = formErrors
+  },
   onFieldChange: payload => emit('fieldChange', payload),
+  onSubmit: values => emit('submit', values),
+  readonly: () => props.readonly,
 })
 
-const formRules = computed<FormProps['rules']>(() => {
-  const fieldRules = Object.fromEntries(
-    collectConfigFormFields(props.fields, model.value)
-      .filter(field => field.rules)
-      .map(field => [field.field, field.rules]),
-  )
-
-  return {
-    ...props.rules,
-    ...fieldRules,
-  } as FormProps['rules']
-})
-
-const inlineLayout = computed(() => props.inline === true || props.formProps.layout === 'inline')
+const inlineLayout = computed(() => props.inline === true)
 
 const formAttrs = computed<Record<string, unknown>>(() => {
   const nextAttrs: Record<string, unknown> = {
@@ -69,47 +73,21 @@ const formAttrs = computed<Record<string, unknown>>(() => {
     ...props.formProps,
   }
 
-  if (props.inline === true)
-    nextAttrs.layout = 'inline'
-
   return nextAttrs
 })
 
-async function submit(): Promise<boolean> {
-  try {
-    await formRef.value!.validate()
-  }
-  catch (error) {
-    emit('error', error)
-    return false
-  }
-
-  emit('submit', getValues())
-  return true
-}
-
-function validate(): ReturnType<FormInstance['validate']> {
-  return formRef.value!.validate()
-}
-
-function validateFields(...args: Parameters<FormInstance['validateFields']>): ReturnType<FormInstance['validateFields']> {
-  return formRef.value!.validateFields(...args)
-}
-
-function resetFields(name?: Parameters<FormInstance['resetFields']>[0]): void {
-  formRef.value!.resetFields(name)
-}
-
-function clearValidate(name?: Parameters<FormInstance['clearValidate']>[0]): void {
-  formRef.value!.clearValidate(name)
-}
-
 function scrollToField(field: keyof TValues & string | string): void {
-  formRef.value!.scrollToField(field)
+  formRef.value!.querySelector<HTMLElement>(`[data-field="${field}"]`)!.scrollIntoView()
+}
+
+function handleFieldValidate(request: ConfigFormFieldValidateRequest<TValues>): void {
+  void validateField(request.field, request.trigger)
 }
 
 defineExpose<AntdConfigFormExpose<TValues>>({
   clearValidate,
+  getErrors,
+  getValidating,
   getValue,
   getValues,
   resetFields,
@@ -118,31 +96,33 @@ defineExpose<AntdConfigFormExpose<TValues>>({
   setValues,
   submit,
   validate,
-  validateFields,
+  validateField,
 })
 </script>
 
 <template>
-  <AForm
+  <form
     ref="formRef"
     class="mx-antd-config-form"
     v-bind="formAttrs"
-    :model="model"
-    :rules="formRules"
     @submit.prevent="submit"
   >
     <FormLayout
       :col-props="props.colProps"
+      :errors="errors"
       :field-span="props.fieldSpan"
       :inline-layout="inlineLayout"
       :model="model"
       :nodes="props.fields"
+      :readonly="props.readonly"
+      :readonly-render="props.readonlyRender"
       :row-props="props.rowProps"
       @field-change="handleFieldChange"
+      @field-validate="handleFieldValidate"
     />
 
     <slot
       v-bind="{ model, submit, resetFields }"
     />
-  </AForm>
+  </form>
 </template>

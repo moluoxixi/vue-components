@@ -1,10 +1,11 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
 import type {
   ConfigFormFieldChangeRequest,
+  ConfigFormFieldValidateRequest,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { ConfigFormFieldEmits, ConfigFormFieldProps } from './types'
-import { computed, useSlots } from 'vue'
+import { computed, useId, useSlots } from 'vue'
 import FormComponent from '../../FormComponent'
 import { resolveConfigFormCondition } from '@moluoxixi/config-form-headless'
 
@@ -15,11 +16,20 @@ defineOptions({
 const props = defineProps<ConfigFormFieldProps<TValues>>()
 const emit = defineEmits<ConfigFormFieldEmits<TValues>>()
 const slots = useSlots()
-
+const fieldId = useId()
 const fieldErrors = computed<string[]>(() => props.errors[props.field.field] ?? [])
+const controlId = computed(() => {
+  const configuredId = props.field.props?.id
+  return typeof configuredId === 'string' && configuredId ? configuredId : `${fieldId}-control`
+})
+const errorId = `${fieldId}-error`
 
 function handleFieldChange(payload: ConfigFormFieldChangeRequest<TValues>): void {
   emit('fieldChange', payload)
+}
+
+function handleFieldValidate(payload: ConfigFormFieldValidateRequest<TValues>): void {
+  emit('fieldValidate', payload)
 }
 
 function getForwardedSlotNames(): string[] {
@@ -40,16 +50,22 @@ function isFieldRequired(): boolean {
   >
     <label
       class="mx-shadcn-config-form__label"
-      :for="field.field"
+      :for="controlId"
     >
       {{ field.label }}
     </label>
 
     <div class="mx-shadcn-config-form__control">
       <FormComponent
+        :control-id="controlId"
+        :error-id="errorId"
+        :errors="errors"
         :field="field"
         :model="model"
+        :readonly="readonly"
+        :readonly-render="readonlyRender"
         @field-change="handleFieldChange"
+        @field-validate="handleFieldValidate"
       >
         <template
           v-for="slotName in getForwardedSlotNames()"
@@ -64,8 +80,9 @@ function isFieldRequired(): boolean {
     </div>
 
     <p
-      v-for="message in fieldErrors"
-      :key="message"
+      v-for="(message, index) in fieldErrors"
+      :id="index === 0 ? errorId : undefined"
+      :key="`${message}-${index}`"
       class="mx-shadcn-config-form__error"
     >
       {{ message }}

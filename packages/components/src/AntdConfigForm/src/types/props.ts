@@ -4,6 +4,7 @@ import type {
   ConfigFormComponentSlotContent,
   ConfigFormComponentSlotContext,
   ConfigFormComponentSlots,
+  ConfigFormDataAttributes,
   ConfigFormField,
   ConfigFormFieldSlot,
   ConfigFormFieldSlotContent,
@@ -11,16 +12,27 @@ import type {
   ConfigFormFieldSlots,
   ConfigFormNode,
   ConfigFormProps,
+  ConfigFormReadonlyRender,
   ConfigFormSlotConfig,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
-import type { ColProps, FormItemProps, FormProps, RowProps } from 'ant-design-vue'
-import type { Component } from 'vue'
+import type { ColProps, RowProps } from 'ant-design-vue'
+import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
-export type AntdConfigFormFormProps = Partial<Omit<FormProps, 'model' | 'rules'>>
-export type AntdConfigFormRowProps = Partial<RowProps>
-export type AntdConfigFormColProps = Partial<ColProps>
-export type AntdConfigFormItemProps = Partial<Omit<FormItemProps, 'label' | 'name' | 'prop' | 'required' | 'rules'>>
+export type AntdConfigFormFormProps = FormHTMLAttributes
+export type AntdConfigFormRowProps = Partial<RowProps> & ConfigFormDataAttributes
+export type AntdConfigFormColProps = Partial<ColProps> & ConfigFormDataAttributes
+export type AntdConfigFormItemProps = HTMLAttributes & ConfigFormDataAttributes
+
+export type AntdConfigFormReadonlyRender<
+  TValues extends ConfigFormValues = ConfigFormValues,
+  TComponent = Component | string,
+> = ConfigFormReadonlyRender<
+  TValues,
+  TComponent,
+  AntdConfigFormItemProps,
+  AntdConfigFormColProps
+>
 
 export type AntdConfigFormComponentSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,

@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
 import type {
   ConfigFormFieldChangeRequest,
+  ConfigFormFieldValidateRequest,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type {
@@ -50,6 +51,10 @@ function emitFieldChange(payload: ConfigFormFieldChangeRequest<TValues>): void {
   emit('fieldChange', payload)
 }
 
+function emitFieldValidate(payload: ConfigFormFieldValidateRequest<TValues>): void {
+  emit('fieldValidate', payload)
+}
+
 function renderNode(node: ElementConfigFormNode<TValues>, wrapCol: boolean, path: string): VNodeChild {
   if (!isConfigFormNodeVisible(node, props.model))
     return null
@@ -74,19 +79,27 @@ function renderBoundNode(field: ElementConfigFormField<TValues>, path: string): 
     return renderFormComponentNode(field, path)
 
   return h(ConfigFormFieldComponent, {
+    errors: props.errors,
     field,
     key: `${path}.field`,
     model: props.model,
+    readonly: props.readonly,
+    readonlyRender: props.readonlyRender,
     onFieldChange: emitFieldChange,
+    onFieldValidate: emitFieldValidate,
   }, createNodeSlots(field, path))
 }
 
 function renderFormComponentNode(field: ElementConfigFormField<TValues>, path: string): VNodeChild {
   return h(FormComponentItem, {
+    errors: props.errors,
     field,
     key: `${path}.component-field`,
     model: props.model,
+    readonly: props.readonly,
+    readonlyRender: props.readonlyRender,
     onFieldChange: emitFieldChange,
+    onFieldValidate: emitFieldValidate,
   }, createNodeSlots(field, path))
 }
 

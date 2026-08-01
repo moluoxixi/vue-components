@@ -10,11 +10,12 @@ export const exampleMeta = {
 </script>
 
 <script setup lang="ts">
-import type { ConfigFormValues } from '@moluoxixi/config-form-core'
-import { defineFields } from '@moluoxixi/config-form-core'
+import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
+import { defineFields } from '@moluoxixi/config-form-headless'
 import { antdConfigForm } from '@moluoxixi/components'
-import { Button as AButton, Checkbox as ACheckbox, Input as AInput, Tag as ATag } from 'ant-design-vue'
+import { Button as AButton, Checkbox as ACheckbox, Divider as ADivider, Input as AInput, Tag as ATag } from 'ant-design-vue'
 import { computed, h, shallowRef } from 'vue'
+import { z } from 'zod'
 
 interface AntdFormValues {
   projectName: string
@@ -38,8 +39,13 @@ const fields = [
     props: {
       placeholder: '请输入 Antd 项目名称',
     },
-    rules: [{ message: '请输入项目名称', required: true }],
+    readonly: values => values.publish,
+    readonlyRender: ({ value }) => h(ATag, { color: 'green' }, () => value || '未填写'),
+    required: true,
+    requiredMessage: '请输入项目名称',
+    schema: z.string().trim().min(1, '请输入项目名称'),
     span: 12,
+    validateOn: 'blur',
   }),
   defineField({
     component: ACheckbox,
@@ -66,7 +72,7 @@ const fields = [
       color: 'blue',
     },
     slots: {
-      default: () => h('span', '容器节点不会生成 FormItem'),
+      default: () => h('span', '容器节点不会生成字段壳，也不绑定表单值'),
     },
     span: 24,
   }),
@@ -84,7 +90,6 @@ function handleSubmit(values: ConfigFormValues): void {
     <antdConfigForm
       v-model="formModel"
       :fields="fields"
-      :form-props="{ labelCol: { style: { width: '96px' } }, wrapperCol: { flex: 1 } }"
       @submit="handleSubmit"
     >
       <template #default="{ submit, resetFields }">
@@ -99,7 +104,7 @@ function handleSubmit(values: ConfigFormValues): void {
       </template>
     </antdConfigForm>
 
-    <ElDivider />
+    <ADivider />
 
     <pre class="config-form-demo__preview" data-testid="antd-config-preview">{{ submittedText }}</pre>
   </div>
@@ -113,7 +118,6 @@ function handleSubmit(values: ConfigFormValues): void {
 .config-form-demo__actions {
   display: flex;
   gap: 10px;
-  margin-left: 96px;
 }
 
 .config-form-demo__preview {

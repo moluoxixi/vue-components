@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
 import type {
   ConfigFormFieldChangeRequest,
+  ConfigFormFieldValidateRequest,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { AntdConfigFormNode } from '../../../types'
@@ -40,6 +41,10 @@ function handleFieldChange(payload: ConfigFormFieldChangeRequest<TValues>): void
   emit('fieldChange', payload)
 }
 
+function handleFieldValidate(payload: ConfigFormFieldValidateRequest<TValues>): void {
+  emit('fieldValidate', payload)
+}
+
 function getNodeKey(node: AntdConfigFormNode<TValues>, index: number): string | number {
   return isConfigFormField(node) ? node.field : index
 }
@@ -55,11 +60,15 @@ function getNodeKey(node: AntdConfigFormNode<TValues>, index: number): string | 
       v-for="(node, index) in visibleNodes"
       :key="getNodeKey(node, index)"
       :col-props="props.colProps"
+      :errors="props.errors"
       :field-span="props.fieldSpan"
       :model="model"
       :node="node"
+      :readonly="props.readonly"
+      :readonly-render="props.readonlyRender"
       :wrap-col="!props.inlineLayout"
       @field-change="handleFieldChange"
+      @field-validate="handleFieldValidate"
     />
   </ARow>
 </template>

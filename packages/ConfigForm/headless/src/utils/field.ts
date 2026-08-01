@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { ZodType, ZodTypeDef } from 'zod'
 import type {
   ConfigFormAttrs,
   ConfigFormComponentNode,
@@ -6,7 +7,9 @@ import type {
   ConfigFormField,
   ConfigFormFieldKey,
   ConfigFormFieldSlotContent,
+  ConfigFormFieldValidator,
   ConfigFormNode,
+  ConfigFormReadonlyRender,
   ConfigFormValues,
 } from '../types'
 import { markRaw } from 'vue'
@@ -34,12 +37,31 @@ type ConfigFormFieldInput<
   [TField in ConfigFormFieldKey<TValues>]:
     & Omit<
       ConfigFormField<TValues, TComponent, TFormItemProps, TColProps>,
-      'component' | 'field' | 'getValueFromEvent' | 'props'
+      | 'component'
+      | 'defaultValue'
+      | 'field'
+      | 'getValueFromEvent'
+      | 'props'
+      | 'readonlyRender'
+      | 'schema'
+      | 'transform'
+      | 'validator'
     >
     & ConfigFormComponentPart<TComponent>
     & {
       field: TField
+      defaultValue?: TValues[TField]
       getValueFromEvent?: (...args: unknown[]) => TValues[TField]
+      readonlyRender?: ConfigFormReadonlyRender<
+        TValues,
+        TComponent,
+        TFormItemProps,
+        TColProps,
+        TValues[TField]
+      >
+      schema?: ZodType<TValues[TField], ZodTypeDef, unknown>
+      transform?: (value: TValues[TField], values: TValues) => unknown
+      validator?: ConfigFormFieldValidator<TValues, TValues[TField]>
     }
 }[ConfigFormFieldKey<TValues>]
 

@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
 import type {
   ConfigFormFieldChangeRequest,
+  ConfigFormFieldValidateRequest,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { ShadcnConfigFormNode } from '../../../types'
@@ -30,6 +31,10 @@ function handleFieldChange(payload: ConfigFormFieldChangeRequest<TValues>): void
   emit('fieldChange', payload)
 }
 
+function handleFieldValidate(payload: ConfigFormFieldValidateRequest<TValues>): void {
+  emit('fieldValidate', payload)
+}
+
 function getNodeKey(node: ShadcnConfigFormNode<TValues>, index: number): string | number {
   return isConfigFormField(node) ? node.field : index
 }
@@ -52,8 +57,11 @@ function getNodeKey(node: ShadcnConfigFormNode<TValues>, index: number): string 
       :field-span="props.fieldSpan"
       :model="model"
       :node="node"
+      :readonly="props.readonly"
+      :readonly-render="props.readonlyRender"
       :wrap-cell="!props.inlineLayout"
       @field-change="handleFieldChange"
+      @field-validate="handleFieldValidate"
     />
   </div>
 </template>

@@ -1,48 +1,41 @@
 # ElementConfigForm
 
-`@moluoxixi/config-form-element` 提供基于 Element Plus 的轻量配置表单。
+`@moluoxixi/config-form-element` 是基于 Element Plus 输入组件和栅格的轻量配置表单。
 
-它只做四件事：
+- 根节点使用原生 `<form>`，字段使用包内自有 label/control/error 壳；
+- inline 布局使用 `ElRow`，grid 布局使用 `ElRow + ElCol`；
+- 字段默认通过 `modelValue` + `update:modelValue` 写回外部模型；
+- 校验、reset、submit 和 readonly 语义统一由 `@moluoxixi/config-form-headless` 提供。
 
-- 用 `ElForm` / `ElFormItem` / `ElRow` 渲染字段，grid 布局下再用 `ElCol` 消费 `span`；
-- 通过字段配置把组件的 `modelValue` 和 `update:modelValue` 连接到外部 `v-model`；
-- 递归渲染 slots 内的字段节点和容器节点；
-- 把校验交给 Element Plus `rules`，不接入 schema、runtime plugin 或自定义 FormItem。
+组件不使用 `ElForm`、`ElFormItem` 或 Element Plus `rules`。`formProps` 只接收原生 form attributes，标签和字段壳属性使用 `formItemProps`，栅格属性使用 `rowProps` / `colProps` / `span`。
 
 ```vue
 <script setup lang="ts">
-import { ElInput } from 'element-plus'
-import { defineField } from '@moluoxixi/config-form-headless'
+import { defineFields } from '@moluoxixi/config-form-headless'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
 import '@moluoxixi/config-form-element/styles'
-import { shallowRef } from 'vue'
+import { ElInput, ElTag } from 'element-plus'
+import { h, shallowRef } from 'vue'
+import { z } from 'zod'
 
 interface UserForm {
+  locked: boolean
   name: string
-  status: string
 }
 
-const model = shallowRef<UserForm>({ name: '', status: 'enabled' })
-
+const model = shallowRef<UserForm>({ locked: false, name: '' })
+const { defineField } = defineFields<UserForm>()
 const fields = [
-  defineField<UserForm>({
+  defineField({
+    component: ElInput,
     field: 'name',
     label: '姓名',
-    component: ElInput,
     props: { placeholder: '请输入姓名' },
-    rules: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  }),
-  defineField<UserForm>({
-    component: 'section',
-    props: { class: 'toolbar' },
-    slots: {
-      default: [
-        defineField<UserForm>({
-          component: 'button',
-          props: { type: 'button', textContent: '普通容器子节点' },
-        }),
-      ],
-    },
+    required: true,
+    schema: z.string().trim().min(2, '姓名至少 2 个字符'),
+    validateOn: 'blur',
+    readonly: values => values.locked,
+    readonlyRender: ({ value }) => h(ElTag, null, () => value || '-'),
   }),
 ]
 </script>
@@ -51,57 +44,16 @@ const fields = [
   <ElementConfigForm
     v-model="model"
     :fields="fields"
-    inline
-    :form-props="{ labelWidth: '96px' }"
+    :form-props="{ autocomplete: 'off' }"
+    :row-props="{ gutter: 16 }"
   />
 </template>
 ```
 
-## 节点配置
+## 节点与布局
 
-`fields` 接收字段节点或容器节点：
+包含 `field` 的节点绑定模型并参与 Headless 生命周期；没有 `field` 的节点是纯容器。配置化 slots 会递归处理，render-function slot 只负责自定义渲染。
 
-- 字段节点：包含 `field`，会渲染 `ElFormItem`，绑定表单值并参与 Element Plus `rules`；
-- 无 label 字段节点：包含 `field` 但没有 `label`，只绑定表单值，不生成 `ElFormItem`；
-- 容器节点：不包含 `field`，只渲染 `component`、`props` 和 `slots`，不会生成 `ElFormItem`。
+`visible`、`hidden`、`disabled`、`readonly` 和 `required` 支持布尔值或 `(values) => boolean`。readonly 字段跳过校验但保留提交值。
 
-`slots` 支持配置化节点、节点数组或 render 函数。配置化 slot 会递归渲染，slot 内带 `field` 的节点仍然会绑定表单值和字段级规则。
-
-`visible`、`hidden` 和 `disabled` 支持布尔值或 `(values) => boolean` 函数条件。
-
-```ts
-import { defineFields } from '@moluoxixi/config-form-headless'
-import { ElOption, ElSelect } from 'element-plus'
-
-interface UserForm {
-  status: string
-}
-
-const { defineField } = defineFields<UserForm>()
-
-const fields = [
-  defineField({
-    field: 'status',
-    label: '状态',
-    component: ElSelect,
-    slots: {
-      default: [
-        defineField({
-          component: ElOption,
-          props: { label: '启用', value: 'enabled' },
-        }),
-        defineField({
-          component: ElOption,
-          props: { label: '停用', value: 'disabled' },
-        }),
-      ],
-    },
-  }),
-]
-```
-
-`getValueFromEvent` 用于从自定义组件事件参数中提取字段值；默认取事件第一个参数。常规 Element Plus `v-model` 组件不需要配置它。
-
-## 布局
-
-`inline` 布局只使用 Element Plus `ElRow`，顶层字段不包 `ElCol`，因此不会消费 `span` 或 `colProps`；grid 布局使用 `ElRow + ElCol`，字段 `span` 和 `colProps` 按 Element Plus `ColProps` 生效。
+inline 布局不消费 `span` / `colProps`；grid 布局按 Element Plus `ColProps` 消费它们。`getValueFromEvent` 可覆盖默认的首参数取值逻辑。

@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import type { ShadcnConfigFormExpose } from '../src/types'
 import { defineField, defineFields } from '@moluoxixi/config-form-headless'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import ShadcnConfigFormSource from '../src/index.vue'
@@ -88,7 +88,8 @@ describe('shadcn config form', () => {
         field: 'accountName',
         label: '账户名称',
         props: { placeholder: '请输入账户名称' },
-        rules: [{ message: '请输入账户名称', required: true }],
+        required: true,
+        requiredMessage: '请输入账户名称',
         span: 12,
       }),
       defineField<AccountForm>({
@@ -119,6 +120,7 @@ describe('shadcn config form', () => {
     expect(wrapper.get('.mx-shadcn-config-form__cell').attributes('style')).toContain('grid-column: span 12')
 
     await wrapper.get('form').trigger('submit')
+    await flushPromises()
     expect(wrapper.get('.mx-shadcn-config-form__error').text()).toBe('请输入账户名称')
     expect(wrapper.emitted('submit')).toBeUndefined()
     expect(wrapper.emitted('error')![0][0]).toEqual({
@@ -139,6 +141,47 @@ describe('shadcn config form', () => {
       value: 'Moluoxixi Cloud',
       values: nextValues,
     }])
+  })
+
+  it('同页同名字段生成唯一 control/error id 并关联本字段错误', async () => {
+    const fields = [defineField<AccountForm>({
+      component: InputStub,
+      field: 'accountName',
+      label: '账户名称',
+      required: true,
+      requiredMessage: '请输入账户名称',
+    })]
+    const Host = defineComponent({
+      setup: () => () => h('div', [
+        h(ShadcnConfigForm, { fields, modelValue: { accountName: '', owner: '', plan: 'starter' } }),
+        h(ShadcnConfigForm, { fields, modelValue: { accountName: '', owner: '', plan: 'starter' } }),
+      ]),
+    })
+    const wrapper = mount(Host)
+    const forms = wrapper.findAll('form')
+
+    expect(forms).toHaveLength(2)
+    for (const form of forms)
+      await form.trigger('submit')
+    await flushPromises()
+
+    const controlIds: string[] = []
+    const errorIds: string[] = []
+    for (const form of forms) {
+      const control = form.get('[data-testid="shadcn-input-stub"]')
+      const error = form.get('.mx-shadcn-config-form__error')
+      const label = form.get('.mx-shadcn-config-form__label')
+
+      controlIds.push(control.attributes('id') ?? '')
+      errorIds.push(error.attributes('id') ?? '')
+      expect(label.attributes('for')).toBe(control.attributes('id'))
+      expect(control.attributes('aria-describedby')).toBe(error.attributes('id'))
+    }
+
+    expect(controlIds.every(Boolean)).toBe(true)
+    expect(errorIds.every(Boolean)).toBe(true)
+    expect(new Set(controlIds).size).toBe(2)
+    expect(new Set(errorIds).size).toBe(2)
   })
 
   it('inline 布局使用 flex 行容器，不生成 grid cell', () => {
@@ -222,13 +265,13 @@ describe('shadcn config form', () => {
 
     await wrapper.get('[data-testid="shadcn-select-change"]').trigger('click')
     await wrapper.get('form').trigger('submit')
+    await flushPromises()
 
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({
       field: 'plan',
       value: 'enterprise',
     })
     expect(wrapper.emitted('submit')![0]).toEqual([{
-      accountName: 'Moluoxixi Cloud',
       owner: 'Ada',
       plan: 'enterprise',
     }])
@@ -239,12 +282,14 @@ describe('shadcn config form', () => {
       defineField<AccountForm>({
         component: InputStub,
         field: 'accountName',
-        rules: [{ message: '请输入账户名称', required: true }],
+        required: true,
+        requiredMessage: '请输入账户名称',
       }),
       defineField<AccountForm>({
         component: InputStub,
         field: 'owner',
-        rules: [{ message: '请输入负责人', required: true }],
+        required: true,
+        requiredMessage: '请输入负责人',
       }),
     ]
     const initialValues: AccountForm = {
@@ -282,5 +327,30 @@ describe('shadcn config form', () => {
     form.resetFields()
     expect(form.getValues()).toEqual(initialValues)
     expect(wrapper.emitted('change')!.at(-1)).toEqual([initialValues])
+  })
+
+  it('支持动态 readonly 和字段级 readonlyRender', async () => {
+    const fields = [
+      defineField<AccountForm>({
+        component: InputStub,
+        field: 'accountName',
+        label: '账户名称',
+        readonly: values => values.plan === 'locked',
+        readonlyRender: ({ value }) => h('strong', { 'data-testid': 'shadcn-readonly' }, `账户:${value}`),
+      }),
+    ]
+    const wrapper = mount(ShadcnConfigForm, {
+      props: {
+        fields,
+        modelValue: { accountName: 'Cloud', owner: 'Ada', plan: 'locked' },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="shadcn-readonly"]').text()).toBe('账户:Cloud')
+    expect(wrapper.find('[data-testid="shadcn-input-stub"]').exists()).toBe(false)
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.emitted('submit')![0]).toEqual([{ accountName: 'Cloud' }])
   })
 })

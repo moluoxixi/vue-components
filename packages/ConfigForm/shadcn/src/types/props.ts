@@ -4,6 +4,7 @@ import type {
   ConfigFormComponentSlotContent,
   ConfigFormComponentSlotContext,
   ConfigFormComponentSlots,
+  ConfigFormDataAttributes,
   ConfigFormField,
   ConfigFormFieldSlot,
   ConfigFormFieldSlotContent,
@@ -11,15 +12,26 @@ import type {
   ConfigFormFieldSlots,
   ConfigFormNode,
   ConfigFormProps,
+  ConfigFormReadonlyRender,
   ConfigFormSlotConfig,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
 export type ShadcnConfigFormFormProps = FormHTMLAttributes
-export type ShadcnConfigFormRowProps = HTMLAttributes
-export type ShadcnConfigFormColProps = HTMLAttributes
-export type ShadcnConfigFormItemProps = HTMLAttributes
+export type ShadcnConfigFormRowProps = HTMLAttributes & ConfigFormDataAttributes
+export type ShadcnConfigFormColProps = HTMLAttributes & ConfigFormDataAttributes
+export type ShadcnConfigFormItemProps = HTMLAttributes & ConfigFormDataAttributes
+
+export type ShadcnConfigFormReadonlyRender<
+  TValues extends ConfigFormValues = ConfigFormValues,
+  TComponent = Component | string,
+> = ConfigFormReadonlyRender<
+  TValues,
+  TComponent,
+  ShadcnConfigFormItemProps,
+  ShadcnConfigFormColProps
+>
 
 export type ShadcnConfigFormComponentSlotContext<
   TValues extends ConfigFormValues = ConfigFormValues,

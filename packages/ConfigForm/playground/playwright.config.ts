@@ -2,6 +2,8 @@ import process from 'node:process'
 import { defineConfig, devices } from '@playwright/test'
 
 const headedSlowMo = process.argv.includes('--headed') ? 500 : 0
+const serverPort = Number(process.env.CONFIG_FORM_PLAYGROUND_PORT ?? 4313)
+const serverUrl = `http://127.0.0.1:${serverPort}`
 
 export default defineConfig({
   testDir: './e2e',
@@ -16,7 +18,7 @@ export default defineConfig({
   ],
   use: {
     actionTimeout: 10_000,
-    baseURL: 'http://127.0.0.1:4313',
+    baseURL: serverUrl,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
@@ -25,8 +27,8 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: 'pnpm dev --host 127.0.0.1 --port 4313',
-    url: 'http://127.0.0.1:4313',
+    command: `pnpm dev --host 127.0.0.1 --port ${serverPort} --strictPort`,
+    url: serverUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

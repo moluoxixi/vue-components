@@ -21,7 +21,7 @@ interface ConfigFormSuite {
   knownControlSuffixes: string[]
   libraryTabName: string
   rootTestId: string
-  formItemSelector: string
+  fieldShellSelector: string
   linkedAdvancedProbeTestId: string
   fillKnownControls: (page: Page, scope: Locator, prefix: string) => Promise<FieldExpectation>
   setLinkedNotifyChannel: (page: Page, scenario: Locator) => Promise<void>
@@ -42,7 +42,7 @@ const suites: ConfigFormSuite[] = [
       { classPattern: /el-tabs/, fieldPrefix: 'element-container-tabs-base', layoutSelector: '.el-tab-pane', testId: 'element-container-tabs-node' },
     ],
     fillKnownControls: fillElementKnownControls,
-    formItemSelector: '.el-form-item',
+    fieldShellSelector: '.mx-element-config-form__field',
     id: 'element',
     knownControlSuffixes: [
       'input',
@@ -77,7 +77,7 @@ const suites: ConfigFormSuite[] = [
       { classPattern: /ant-tabs/, fieldPrefix: 'antd-container-tabs-base', layoutSelector: '.ant-tabs-tabpane-active', testId: 'antd-container-tabs-node' },
     ],
     fillKnownControls: fillAntdKnownControls,
-    formItemSelector: '.ant-form-item',
+    fieldShellSelector: '.mx-antd-config-form__field',
     id: 'antd',
     knownControlSuffixes: [
       'input',
@@ -113,7 +113,7 @@ const suites: ConfigFormSuite[] = [
       { classPattern: /shadcn-tabs-container/, fieldPrefix: 'shadcn-container-tabs-base', layoutSelector: '.shadcn-tab-pane', testId: 'shadcn-container-tabs-node' },
     ],
     fillKnownControls: fillShadcnKnownControls,
-    formItemSelector: '.mx-shadcn-config-form__field',
+    fieldShellSelector: '.mx-shadcn-config-form__field',
     id: 'shadcn',
     knownControlSuffixes: [
       'input',
@@ -181,10 +181,10 @@ async function expectInlineVisualSpacing(example: Locator, suite: ConfigFormSuit
 
   await expect(row).toBeVisible()
 
-  const metrics = await row.evaluate((element) => {
+  const metrics = await row.evaluate((element, fieldShellSelector) => {
     const rect = element.getBoundingClientRect()
     const styles = getComputedStyle(element)
-    const firstItem = element.querySelector('.el-form-item')
+    const firstItem = element.querySelector(fieldShellSelector)
     const firstItemStyles = firstItem ? getComputedStyle(firstItem) : undefined
 
     return {
@@ -196,7 +196,7 @@ async function expectInlineVisualSpacing(example: Locator, suite: ConfigFormSuit
       rowGap: Number.parseFloat(styles.rowGap),
       x: rect.x,
     }
-  })
+  }, suite.fieldShellSelector)
 
   expect(metrics.display).toBe('flex')
   expect(metrics.flexWrap).toBe('wrap')
@@ -344,7 +344,10 @@ async function fillElementKnownControls(page: Page, scope: Locator, prefix: stri
   await scope.locator('.el-cascader').click()
   await clickVisibleText(page, `${optionLabel} 华东`)
   await clickVisibleText(page, `${optionLabel} 上海`)
-  await scope.getByText(`${optionLabel} 开启`, { exact: true }).click()
+  const checkbox = scope.getByTestId(`${prefix}-checkbox`)
+
+  await checkbox.locator('.el-checkbox__label').click()
+  await expect(checkbox.locator('input[type="checkbox"]')).toBeChecked()
   await scope.getByText(`${optionLabel} 邮件`, { exact: true }).click()
   await scope.getByTestId(`${prefix}-switch`).click()
   await scope.getByTestId(`${prefix}-radio`).getByText('企业', { exact: true }).click()
@@ -459,7 +462,7 @@ async function setAntdLinkedNotifyChannel(page: Page, scenario: Locator): Promis
 }
 
 async function setAntdLinkedSeatCount(scenario: Locator): Promise<void> {
-  await scenario.getByRole('spinbutton', { name: /席位数/ }).fill('8')
+  await scenario.getByTestId('antd-linked-seat-count').fill('8')
 }
 
 async function setShadcnLinkedNotifyChannel(_page: Page, scenario: Locator): Promise<void> {
@@ -506,7 +509,7 @@ test.describe('ConfigForm playground 布局场景', () => {
     const stressForm = stressScenario.getByTestId('element-layout-stress-form')
 
     await expect(stressScenario.getByTestId('element-layout-stress-count')).toContainText('200 fields')
-    await expect(stressForm.locator('.el-form-item')).toHaveCount(200)
+    await expect(stressForm.locator('.mx-element-config-form__field')).toHaveCount(200)
 
     await stressForm.getByTestId('element-layout-stress-input-1').fill('性能字段 1')
     await stressForm.getByTestId('element-layout-stress-input-200').fill('性能字段 200')
@@ -525,7 +528,7 @@ test.describe('ConfigForm playground 布局场景', () => {
 
 test.describe('ConfigForm playground 容器场景', () => {
   for (const suite of suites) {
-    test(`${suite.libraryTabName} 多容器 tab 不生成 FormItem 且覆盖已知组件`, async ({ page }) => {
+    test(`${suite.libraryTabName} 多容器 tab 不生成字段壳且覆盖已知组件`, async ({ page }) => {
       await openPlayground(page)
       const example = await openConfigFormExample(page, suite)
 
@@ -538,9 +541,10 @@ test.describe('ConfigForm playground 容器场景', () => {
 
         await expect(containerNode).toBeVisible()
         await expect(containerNode).toHaveClass(containerNodeExpectation.classPattern)
-        await expect(containerNode.locator(suite.formItemSelector)).toHaveCount(0)
+        await expect(containerNode.locator(suite.fieldShellSelector)).toHaveCount(0)
         await expectContainerVisualSpacing(containerNode, containerNodeExpectation.layoutSelector)
-        await expectKnownControlsVisible(containerNode, suite, containerNodeExpectation.fieldPrefix)
+        if (containerNodeExpectation.testId === primaryContainerNode.testId)
+          await expectKnownControlsVisible(containerNode, suite, containerNodeExpectation.fieldPrefix)
       }
 
       const expected = await suite.fillKnownControls(page, scenario.getByTestId(primaryContainerNode.testId), `${suite.id}-container`)
@@ -578,6 +582,7 @@ test.describe('ConfigForm playground 联动场景', () => {
       await scenario.getByPlaceholder('企业模式显示').fill(`${suite.id} 企业名称`)
 
       await scenario.getByTestId(`${suite.id}-linked-marketing-checkbox`).click()
+      await expect(scenario.getByTestId(`${suite.id}-linked-enterprise-name-readonly`)).toContainText(`${suite.id} 企业名称`)
       await expect(scenario.getByTestId(`${suite.id}-linked-marketing-note`)).toBeVisible()
       await scenario.getByPlaceholder('勾选后显示').fill(`${suite.id} 营销备注`)
 

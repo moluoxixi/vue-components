@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@moluoxixi/components": "workspace:*",
-    "@moluoxixi/config-form-core": "workspace:*",
+    "@moluoxixi/config-form-headless": "workspace:*",
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "vue": "catalog:build",

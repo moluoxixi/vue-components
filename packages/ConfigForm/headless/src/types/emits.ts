@@ -1,4 +1,9 @@
-import type { ConfigFormFieldKey, ConfigFormValues } from './props'
+import type {
+  ConfigFormErrors,
+  ConfigFormFieldKey,
+  ConfigFormValidateTrigger,
+  ConfigFormValues,
+} from './props'
 
 export interface ConfigFormFieldChangePayload<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 被更新的字段名。 */
@@ -16,6 +21,13 @@ export interface ConfigFormFieldChangeRequest<TValues extends ConfigFormValues =
   value: unknown
 }
 
+export interface ConfigFormFieldValidateRequest<TValues extends ConfigFormValues = ConfigFormValues> {
+  /** 需要校验的字段名。 */
+  field: ConfigFormFieldKey<TValues> | string
+  /** 本次交互对应的校验触发时机。 */
+  trigger: Exclude<ConfigFormValidateTrigger, 'submit'>
+}
+
 export interface ConfigFormEmits<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 任意字段写入后触发，返回完整表单值。 */
   (event: 'change', values: TValues): void
@@ -23,6 +35,6 @@ export interface ConfigFormEmits<TValues extends ConfigFormValues = ConfigFormVa
   (event: 'fieldChange', payload: ConfigFormFieldChangePayload<TValues>): void
   /** submit 校验通过后触发。 */
   (event: 'submit', values: TValues): void
-  /** submit 校验未通过时触发，透出当前 UI 版本的错误对象。 */
-  (event: 'error', error: unknown): void
+  /** submit 校验未通过时触发，透出 Headless 标准错误集合。 */
+  (event: 'error', errors: ConfigFormErrors): void
 }
