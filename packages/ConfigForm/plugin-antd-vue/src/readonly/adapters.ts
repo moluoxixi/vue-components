@@ -13,8 +13,7 @@ export function createAntdVueChoiceReadonlyAdapter(
 ): ReadonlyAdapter {
   /** 选择类只读态只消费字段值和候选项元数据，不向原组件注入 readonly props。 */
   return ({ node, value }) => {
-    const props = node.props as Record<string, unknown>
-    const options = readAntdVueOptionSource(props, optionsKeys)
+    const options = readAntdVueOptionSource(node.props, optionsKeys)
 
     if (Array.isArray(value)) {
       if (pathMode) {
@@ -34,7 +33,7 @@ export function createAntdVueChoiceReadonlyAdapter(
 export function createAntdVueSwitchReadonlyAdapter(): ReadonlyAdapter {
   /** Switch 需要优先遵循 Ant Design Vue 的 checkedChildren 文案契约。 */
   return ({ node, value }) => {
-    const props = node.props as Record<string, unknown>
+    const props = node.props
     const checkedLabel = props.checkedChildren ?? props.activeText
     const uncheckedLabel = props.unCheckedChildren ?? props.inactiveText
     const nextLabel = value ? checkedLabel : uncheckedLabel

@@ -177,7 +177,7 @@ async function expectPreviewObject(preview: Locator, expected: unknown): Promise
 }
 
 async function expectInlineVisualSpacing(example: Locator, suite: ConfigFormSuite): Promise<void> {
-  const row = example.getByTestId(`${suite.id}-layout-inline-row`)
+  const row = example.locator(`#${suite.id}-layout-inline-row`)
 
   await expect(row).toBeVisible()
 

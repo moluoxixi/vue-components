@@ -789,7 +789,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutInlineFields"
             inline
-            :layout-attrs="{ 'data-testid': 'element-layout-inline-row' }"
+            :layout-attrs="{ id: 'element-layout-inline-row' }"
             @submit="submitLayoutInline"
           >
             <template #default="{ submit }">
@@ -808,7 +808,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutGridFields"
             gap="16px"
-            :layout-attrs="{ 'data-testid': 'element-layout-grid' }"
+            :layout-attrs="{ id: 'element-layout-grid' }"
             @submit="submitLayoutGrid"
           >
             <template #default="{ submit }">
@@ -833,7 +833,7 @@ function submitLinked(values: ConfigFormValues): void {
               :field-span="6"
               :fields="layoutStressFields"
               gap="12px"
-              :layout-attrs="{ 'data-testid': 'element-layout-stress-grid' }"
+              :layout-attrs="{ id: 'element-layout-stress-grid' }"
               @submit="submitLayoutStress"
             >
               <template #default="{ submit }">
@@ -856,7 +856,7 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="element-container-form"
             :fields="containerFields"
             gap="16px"
-            :layout-attrs="{ 'data-testid': 'element-container-row' }"
+            :layout-attrs="{ id: 'element-container-row' }"
             @submit="submitContainer"
           >
             <template #default="{ submit }">
@@ -880,7 +880,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="linkedFields"
             gap="16px"
-            :layout-attrs="{ 'data-testid': 'element-linked-row' }"
+            :layout-attrs="{ id: 'element-linked-row' }"
             @submit="submitLinked"
           >
             <template #default="{ submit }">
@@ -937,7 +937,7 @@ function submitLinked(values: ConfigFormValues): void {
   font-size: 13px;
 }
 
-:deep([data-testid="element-layout-inline-row"]) {
+:deep(#element-layout-inline-row) {
   row-gap: 8px;
 }
 
@@ -945,7 +945,7 @@ function submitLinked(values: ConfigFormValues): void {
   margin-bottom: 12px;
 }
 
-:deep([data-testid="element-layout-inline-row"] .mx-element-config-form__field) {
+:deep(#element-layout-inline-row .mx-element-config-form__field) {
   margin-right: 14px;
   margin-bottom: 10px;
 }

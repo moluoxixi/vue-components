@@ -2,6 +2,12 @@ import type { App, Component, Plugin } from 'vue'
 
 export type InstallableComponent<T extends Component> = T & Plugin
 
+function getComponentName(component: Component): string | undefined {
+  return 'name' in component && typeof component.name === 'string'
+    ? component.name
+    : undefined
+}
+
 /**
  * 为单个 ConfigForm UI 组件补充 Vue 插件安装契约。
  *
@@ -9,7 +15,7 @@ export type InstallableComponent<T extends Component> = T & Plugin
  */
 export function withInstall<T extends Component>(component: T): InstallableComponent<T> {
   const install = (app: App): void => {
-    const name = (component as { name?: string }).name
+    const name = getComponentName(component)
     if (!name)
       throw new Error('[ConfigFormCore] Component name is required before install.')
 

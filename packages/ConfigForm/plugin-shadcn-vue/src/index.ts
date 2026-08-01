@@ -49,6 +49,9 @@ export function createShadcnVuePlugin(config: ShadcnVuePluginOptions = {}): Form
       return undefined
 
     const componentName = resolveComponentName(node.component)
+    if (!componentName)
+      return undefined
+
     const binding = bindings[componentName]
     if (!binding) {
       if (strict && registeredComponentNames.has(componentName)) {
@@ -76,8 +79,18 @@ export function createShadcnVuePlugin(config: ShadcnVuePluginOptions = {}): Form
   }
 }
 
-function resolveComponentName(component: FormNodeConfig['component']): string {
-  return ((component as { name?: string }).name ?? component) as string
+function resolveComponentName(component: FormNodeConfig['component']): string | undefined {
+  if (typeof component === 'string')
+    return component
+
+  if (typeof component !== 'function' && typeof component !== 'object')
+    return undefined
+  if (!component || !('name' in component))
+    return undefined
+
+  return typeof component.name === 'string' && component.name.length > 0
+    ? component.name
+    : undefined
 }
 
 export { SHADCN_VUE_FIELD_BINDINGS } from './bindings.js'

@@ -1,13 +1,9 @@
-import type { Component } from 'vue'
-import type { InstallableComponent } from '../utils'
 import { withInstall } from '../utils'
 import AntdConfigFormSource from './src/index.vue'
 
 export type * from './src/types'
 
-const AntdConfigFormComponent = AntdConfigFormSource as Component
-
-export const antdConfigForm: InstallableComponent<Component> = withInstall(AntdConfigFormComponent)
-export const AntdConfigForm: InstallableComponent<Component> = antdConfigForm
+export const antdConfigForm = withInstall(AntdConfigFormSource)
+export const AntdConfigForm = antdConfigForm
 
 export default antdConfigForm

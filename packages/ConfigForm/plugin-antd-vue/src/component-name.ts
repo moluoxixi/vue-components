@@ -12,7 +12,12 @@ export function resolveComponentName(component: FieldConfig['component']): strin
   if (!component)
     return undefined
 
-  const name = (component as { name?: unknown }).name
+  if (typeof component !== 'function' && typeof component !== 'object')
+    return undefined
+  if (!('name' in component))
+    return undefined
+
+  const { name } = component
   return typeof name === 'string' && name.length > 0 ? name : undefined
 }
 

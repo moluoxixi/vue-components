@@ -695,7 +695,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutInlineFields"
             inline
-            :layout-attrs="{ 'data-testid': 'antd-layout-inline-row' }"
+            :layout-attrs="{ id: 'antd-layout-inline-row' }"
             @submit="submitLayoutInline"
           >
             <template #default="{ submit }">
@@ -714,7 +714,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="layoutGridFields"
             gap="16px"
-            :layout-attrs="{ 'data-testid': 'antd-layout-grid' }"
+            :layout-attrs="{ id: 'antd-layout-grid' }"
             @submit="submitLayoutGrid"
           >
             <template #default="{ submit }">
@@ -737,7 +737,7 @@ function submitLinked(values: ConfigFormValues): void {
             data-testid="antd-container-form"
             :fields="containerFields"
             gap="16px"
-            :layout-attrs="{ 'data-testid': 'antd-container-row' }"
+            :layout-attrs="{ id: 'antd-container-row' }"
             @submit="submitContainer"
           >
             <template #default="{ submit }">
@@ -761,7 +761,7 @@ function submitLinked(values: ConfigFormValues): void {
             :field-span="12"
             :fields="linkedFields"
             gap="16px"
-            :layout-attrs="{ 'data-testid': 'antd-linked-row' }"
+            :layout-attrs="{ id: 'antd-linked-row' }"
             @submit="submitLinked"
           >
             <template #default="{ submit }">
@@ -803,7 +803,7 @@ function submitLinked(values: ConfigFormValues): void {
   line-height: 1.4;
 }
 
-:deep([data-testid="antd-layout-inline-row"]) {
+:deep(#antd-layout-inline-row) {
   row-gap: 16px;
 }
 

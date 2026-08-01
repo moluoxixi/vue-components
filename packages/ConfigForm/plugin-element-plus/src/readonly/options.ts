@@ -17,12 +17,12 @@ interface OptionNode {
 
 /** Element Plus 支持通过 props.props 改写 options 的字段名映射。 */
 export function readElementPlusOptionKeys(node: ReadonlyRenderContext['node']): OptionKeys {
-  const optionProps = node.props.props as Partial<OptionKeys> | undefined
+  const optionProps = isOptionNode(node.props.props) ? node.props.props : {}
 
   return {
-    children: optionProps?.children ?? 'children',
-    label: optionProps?.label ?? 'label',
-    value: optionProps?.value ?? 'value',
+    children: typeof optionProps.children === 'string' ? optionProps.children : 'children',
+    label: typeof optionProps.label === 'string' ? optionProps.label : 'label',
+    value: typeof optionProps.value === 'string' ? optionProps.value : 'value',
   }
 }
 
@@ -44,7 +44,7 @@ export function findElementPlusOptionLabel(options: unknown, value: unknown, key
   if (!Array.isArray(options))
     return undefined
 
-  for (const rawItem of options as OptionNode[]) {
+  for (const rawItem of options.filter(isOptionNode)) {
     const item = normalizeOption(rawItem, keys)
     if (Object.is(item.value, value))
       return item.label ?? item.value
@@ -72,7 +72,8 @@ export function resolveElementPlusPathLabel(
     if (!Array.isArray(current))
       return undefined
 
-    const item = (current as OptionNode[])
+    const item = current
+      .filter(isOptionNode)
       .map(option => normalizeOption(option, keys))
       .find(option => Object.is(option.value, segment))
     if (!item)
@@ -89,17 +90,14 @@ function collectSlotOptions(slot: unknown, keys: OptionKeys): OptionNode[] {
   if (Array.isArray(slot))
     return slot.flatMap(item => collectSlotOptions(item, keys))
 
-  if (typeof slot === 'function' || slot === undefined)
+  if (typeof slot === 'function' || !isOptionNode(slot))
     return []
 
-  const slotNode = slot as {
-    props?: Record<string, unknown>
-    slots?: Record<string, unknown>
-  }
-  const props = slotNode.props ?? {}
+  const props = isOptionNode(slot.props) ? slot.props : {}
+  const slots = isOptionNode(slot.slots) ? slot.slots : {}
   const value = props[keys.value] ?? props.value ?? props.label
   const label = props[keys.label] ?? props.label ?? value
-  const children = collectSlotOptions(slotNode.slots?.default, keys)
+  const children = collectSlotOptions(slots.default, keys)
 
   return [{
     children: children.length > 0 ? children : undefined,
@@ -114,4 +112,8 @@ function normalizeOption(item: OptionNode, keys: OptionKeys): OptionNode {
     label: item[keys.label] ?? item.label,
     value: item[keys.value] ?? item.value,
   }
+}
+
+function isOptionNode(value: unknown): value is OptionNode {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

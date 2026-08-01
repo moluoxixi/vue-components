@@ -76,6 +76,30 @@ describe('createConfigFormController', () => {
     }
   })
 
+  it('stores __proto__ as a regular own field', () => {
+    let model: ConfigFormPrototypeField = { name: 'Ada' }
+    const controller = createConfigFormController<ConfigFormPrototypeField>({
+      fields: () => [{
+        component: 'input',
+        defaultValue: 'initial',
+        field: '__proto__',
+      }],
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+    })
+
+    expect(Object.hasOwn(model, '__proto__')).toBe(true)
+    expect(Object.getOwnPropertyDescriptor(model, '__proto__')?.value).toBe('initial')
+    expect(Object.getPrototypeOf(model)).toBe(Object.prototype)
+
+    controller.setValue('__proto__', 'changed')
+    expect(Object.hasOwn(model, '__proto__')).toBe(true)
+    expect(Object.getOwnPropertyDescriptor(model, '__proto__')?.value).toBe('changed')
+    expect(Object.getPrototypeOf(model)).toBe(Object.prototype)
+  })
+
   it('owns Zod validation, readonly submission and reset lifecycle', async () => {
     let model: UserForm = { age: 17, name: '' }
     const onError = vi.fn()
@@ -247,3 +271,8 @@ describe('createConfigFormController', () => {
     }
   })
 })
+
+interface ConfigFormPrototypeField {
+  [field: string]: unknown
+  name: string
+}

@@ -351,6 +351,8 @@ describe('antd vue plugin package', () => {
     expect(readAntdVueOptionSource({}, ['options'])).toBeUndefined()
     expect(findAntdVueOptionLabel(options, 'child')).toBe('子项')
     expect(findAntdVueOptionLabel([{ value: 'raw-value' }], 'raw-value')).toBe('raw-value')
+    expect(findAntdVueOptionLabel([null, 'invalid', { label: '有效项', value: 'valid' }], 'valid'))
+      .toBe('有效项')
     expect(findAntdVueOptionLabel('not-options', 'child')).toBeUndefined()
     expect(findAntdVueOptionLabel(options, 'missing')).toBeUndefined()
     expect(resolveAntdVuePathLabel(options, ['parent', 'child'])).toBe('父项 / 子项')
@@ -358,6 +360,7 @@ describe('antd vue plugin package', () => {
     expect(resolveAntdVuePathLabel('not-options', ['parent'])).toBeUndefined()
     expect(resolveAntdVuePathLabel(options, ['parent', 'missing'])).toBeUndefined()
     expect(resolveAntdVuePathLabel(options, ['parent', 'child', 'leaf'])).toBeUndefined()
+    expect(resolveAntdVuePathLabel([null], ['parent'])).toBeUndefined()
   })
 
   it('allows user readonly adapters to override plugin defaults', () => {

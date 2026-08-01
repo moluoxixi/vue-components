@@ -1,14 +1,11 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
 import type {
   ConfigFormComponentNode,
-  ConfigFormComponentSlot,
   ConfigFormComponentSlotContent,
   ConfigFormComponentSlotContext,
   ConfigFormErrors,
-  ConfigFormFieldSlot,
   ConfigFormFieldSlotContent,
   ConfigFormFieldSlotContext,
-  ConfigFormReadonlyRender,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type {
@@ -20,7 +17,7 @@ import type {
   ConfigFormRendererNode,
   ConfigFormRendererProps,
 } from './types'
-import type { Component, HTMLAttributes, ShallowRef, StyleValue, VNodeChild } from 'vue'
+import type { Component, ShallowRef, StyleValue, VNodeChild } from 'vue'
 import {
   camelize,
   computed,
@@ -127,7 +124,7 @@ function bem(element: string, modifier?: string): string {
 }
 
 function renderLayout(): VNodeChild {
-  const layoutAttrs = props.layoutAttrs as HTMLAttributes
+  const layoutAttrs = props.layoutAttrs
   const inline = props.inline === true
   const style: StyleValue = [
     layoutAttrs.style,
@@ -159,7 +156,7 @@ function renderNode(
   ancestors: ReadonlySet<object>,
 ): VNodeChild {
   assertAcyclicNode(node, ancestors)
-  const nextAncestors = new Set(ancestors).add(node as object)
+  const nextAncestors = new Set(ancestors).add(node)
   if (!isConfigFormNodeVisible(node, model.value))
     return null
 
@@ -170,8 +167,8 @@ function renderNode(
   if (!wrapCell)
     return body
 
-  const cellAttrs = props.cellAttrs as HTMLAttributes
-  const nodeCellAttrs = node.cellAttrs as HTMLAttributes | undefined
+  const cellAttrs = props.cellAttrs
+  const nodeCellAttrs = node.cellAttrs
   const span = clampSpan(node.span ?? props.fieldSpan)
   const style: StyleValue = [
     cellAttrs.style,
@@ -202,7 +199,7 @@ function renderBoundNode(
   const errorId = `${formId}-${toDomId(path)}-error`
   const readonly = isConfigFormFieldReadonly(field, model.value, props.readonly)
   const fieldErrors = readonly ? [] : (errors.value[field.field] ?? [])
-  const fieldAttrs = field.fieldAttrs as HTMLAttributes | undefined
+  const fieldAttrs = field.fieldAttrs
   const label = typeof field.label === 'string'
     ? h('label', {
         class: bem('label'),
@@ -239,12 +236,7 @@ function renderControl(
   if (readonly) {
     const readonlyRender = resolveConfigFormReadonlyRender(
       field,
-      props.readonlyRender as ConfigFormReadonlyRender<
-        TValues,
-        Component | string,
-        ConfigFormRendererFieldAttrs,
-        ConfigFormRendererCellAttrs
-      > | undefined,
+      props.readonlyRender,
     )
     const value = model.value[field.field]
     const content = readonlyRender
@@ -311,7 +303,8 @@ function renderComponentNode(
   ancestors: ReadonlySet<object>,
 ): VNodeChild {
   const slots = createNodeSlots(node, path, ancestors)
-  const vnodeKey = node.props?.key as string | number | symbol | undefined ?? `${path}.component`
+  const configuredKey = node.props?.key
+  const vnodeKey = isVNodeKey(configuredKey) ? configuredKey : `${path}.component`
 
   if (typeof node.component === 'string') {
     return h(node.component, {
@@ -331,6 +324,38 @@ function createNodeSlots(
   path: string,
   ancestors: ReadonlySet<object>,
 ): Record<string, (slotProps?: Record<string, unknown>) => VNodeChild> | undefined {
+  return isConfigFormField(node)
+    ? createFieldSlots(node, path, ancestors)
+    : createComponentSlots(node, path, ancestors)
+}
+
+function createFieldSlots(
+  field: ConfigFormRendererField<TValues>,
+  path: string,
+  ancestors: ReadonlySet<object>,
+): Record<string, (slotProps?: Record<string, unknown>) => VNodeChild> | undefined {
+  if (!field.slots)
+    return undefined
+
+  return Object.fromEntries(
+    Object.entries(field.slots).map(([slotName, slot]) => [
+      slotName,
+      (slotProps: Record<string, unknown> = {}) =>
+        renderFieldSlotContent(slot, field, slotProps, `${path}.slots.${slotName}`, ancestors),
+    ]),
+  )
+}
+
+function createComponentSlots(
+  node: ConfigFormComponentNode<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >,
+  path: string,
+  ancestors: ReadonlySet<object>,
+): Record<string, (slotProps?: Record<string, unknown>) => VNodeChild> | undefined {
   if (!node.slots)
     return undefined
 
@@ -338,30 +363,38 @@ function createNodeSlots(
     Object.entries(node.slots).map(([slotName, slot]) => [
       slotName,
       (slotProps: Record<string, unknown> = {}) =>
-        renderSlotContent(slot, node, slotProps, `${path}.slots.${slotName}`, ancestors),
+        renderComponentSlotContent(slot, node, slotProps, `${path}.slots.${slotName}`, ancestors),
     ]),
   )
 }
 
-function renderSlotContent(
-  slot: ConfigFormComponentSlotContent<
-    TValues,
-    Component | string,
-    ConfigFormRendererFieldAttrs,
-    ConfigFormRendererCellAttrs
-  > | ConfigFormFieldSlotContent<
+function renderFieldSlotContent(
+  slot: ConfigFormFieldSlotContent<
     TValues,
     Component | string,
     ConfigFormRendererFieldAttrs,
     ConfigFormRendererCellAttrs
   >,
-  ownerNode: ConfigFormRendererNode<TValues>,
+  field: ConfigFormRendererField<TValues>,
   slotProps: Record<string, unknown>,
   path: string,
   ancestors: ReadonlySet<object>,
 ): VNodeChild {
-  if (typeof slot === 'function')
-    return renderSlotFunction(slot, ownerNode, slotProps)
+  if (typeof slot === 'function') {
+    const context: ConfigFormFieldSlotContext<
+      TValues,
+      Component | string,
+      ConfigFormRendererFieldAttrs,
+      ConfigFormRendererCellAttrs
+    > = {
+      field,
+      model: model.value,
+      setValue: value => applyFieldChange({ field: field.field, value }),
+      slotProps,
+      value: model.value[field.field],
+    }
+    return slot(context)
+  }
 
   if (Array.isArray(slot))
     return slot.map((node, index) => renderNode(node, false, `${path}.${index}`, ancestors))
@@ -369,58 +402,41 @@ function renderSlotContent(
   return renderNode(slot, false, path, ancestors)
 }
 
-function renderSlotFunction(
-  slot: ConfigFormComponentSlot<
-    TValues,
-    Component | string,
-    ConfigFormRendererFieldAttrs,
-    ConfigFormRendererCellAttrs
-  > | ConfigFormFieldSlot<
+function renderComponentSlotContent(
+  slot: ConfigFormComponentSlotContent<
     TValues,
     Component | string,
     ConfigFormRendererFieldAttrs,
     ConfigFormRendererCellAttrs
   >,
-  ownerNode: ConfigFormRendererNode<TValues>,
+  node: ConfigFormComponentNode<
+    TValues,
+    Component | string,
+    ConfigFormRendererFieldAttrs,
+    ConfigFormRendererCellAttrs
+  >,
   slotProps: Record<string, unknown>,
+  path: string,
+  ancestors: ReadonlySet<object>,
 ): VNodeChild {
-  if (isConfigFormField(ownerNode)) {
-    const context: ConfigFormFieldSlotContext<
+  if (typeof slot === 'function') {
+    const context: ConfigFormComponentSlotContext<
       TValues,
       Component | string,
       ConfigFormRendererFieldAttrs,
       ConfigFormRendererCellAttrs
     > = {
-      field: ownerNode,
       model: model.value,
-      setValue: value => applyFieldChange({ field: ownerNode.field, value }),
+      node,
       slotProps,
-      value: model.value[ownerNode.field],
     }
-    return (slot as ConfigFormFieldSlot<
-      TValues,
-      Component | string,
-      ConfigFormRendererFieldAttrs,
-      ConfigFormRendererCellAttrs
-    >)(context)
+    return slot(context)
   }
 
-  const context: ConfigFormComponentSlotContext<
-    TValues,
-    Component | string,
-    ConfigFormRendererFieldAttrs,
-    ConfigFormRendererCellAttrs
-  > = {
-    model: model.value,
-    node: ownerNode,
-    slotProps,
-  }
-  return (slot as ConfigFormComponentSlot<
-    TValues,
-    Component | string,
-    ConfigFormRendererFieldAttrs,
-    ConfigFormRendererCellAttrs
-  >)(context)
+  if (Array.isArray(slot))
+    return slot.map((child, index) => renderNode(child, false, `${path}.${index}`, ancestors))
+
+  return renderNode(slot, false, path, ancestors)
 }
 
 function resolveBinding(field: ConfigFormRendererField<TValues>): ConfigFormControlBinding {
@@ -432,9 +448,13 @@ function resolveBinding(field: ConfigFormRendererField<TValues>): ConfigFormCont
 }
 
 function resolveComponent<TComponent extends Component | string>(component: TComponent): TComponent {
-  if (typeof component === 'object' || typeof component === 'function')
-    return markRaw(component as object) as TComponent
+  if (isObject(component))
+    return markRaw(component)
   return component
+}
+
+function isObject(value: unknown): value is object {
+  return value !== null && (typeof value === 'object' || typeof value === 'function')
 }
 
 function addListener(
@@ -446,7 +466,7 @@ function addListener(
   const existing = target[key]
   target[key] = typeof existing === 'function'
     ? (...args: unknown[]) => {
-        ;(existing as (...args: unknown[]) => void)(...args)
+        existing(...args)
         listener(...args)
       }
     : listener
@@ -459,6 +479,10 @@ function mergeAriaTokens(current: unknown, token: string): string {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0
+}
+
+function isVNodeKey(value: unknown): value is string | number | symbol {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'symbol'
 }
 
 function clampSpan(span: number): number {

@@ -139,24 +139,31 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   }
 
   function createInitialValues(): TValues {
-    const defaults = Object.fromEntries(
-      collectAllConfigFormFields(readFields())
-        .filter(field => field.defaultValue !== undefined)
-        .map(field => [field.field, field.defaultValue]),
-    )
+    const values = { ...options.model.read() }
+    const defaults: ConfigFormValues = {}
 
-    return {
-      ...defaults,
-      ...options.model.read(),
-      ...options.defaultValues,
-    } as TValues
+    collectAllConfigFormFields(readFields()).forEach((field) => {
+      if (field.defaultValue !== undefined)
+        setConfigFormValue(defaults, field.field, field.defaultValue)
+    })
+    Object.entries(defaults).forEach(([field, value]) => {
+      if (!Object.hasOwn(values, field))
+        setConfigFormValue(values, field, value)
+    })
+    Object.entries(options.defaultValues ?? {}).forEach(([field, value]) => {
+      setConfigFormValue(values, field, value)
+    })
+
+    return values
   }
 
   function getValues(): TValues {
     return { ...options.model.read() }
   }
 
-  function getValue(field: string): unknown {
+  function getValue<TField extends string>(
+    field: TField,
+  ): ConfigFormFieldValue<TValues, TField> {
     return options.model.read()[field]
   }
 
@@ -199,11 +206,16 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     options.onChange?.(values)
   }
 
-  function setValue(field: string, value: unknown): void {
-    const values = {
-      ...options.model.read(),
-      [field]: value,
-    } as TValues
+  function setValue<TField extends string>(
+    field: TField,
+    value: ConfigFormFieldValue<TValues, NoInfer<TField>>,
+  ): void {
+    commitFieldValue(field, value)
+  }
+
+  function commitFieldValue(field: string, value: unknown): void {
+    const values = { ...options.model.read() }
+    setConfigFormValue(values, field, value)
 
     invalidateValidation()
     clearFieldError(field)
@@ -212,15 +224,19 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     options.onChange?.(values)
   }
 
-  function setValues(values: Partial<TValues>, replace = false): void {
-    commitValues(
-      (replace ? values : { ...options.model.read(), ...values }) as TValues,
-      Object.keys(values),
-    )
+  function setValues(values: Partial<TValues>, replace?: false): void
+  function setValues(values: TValues, replace: true): void
+  function setValues(
+    ...args: [values: Partial<TValues>, replace?: false] | [values: TValues, replace: true]
+  ): void {
+    if (args[1] === true)
+      commitValues(args[0], Object.keys(args[0]))
+    else
+      commitValues({ ...options.model.read(), ...args[0] }, Object.keys(args[0]))
   }
 
   function applyFieldChange(request: ConfigFormFieldChangeRequest<TValues>): void {
-    setValue(request.field, request.value)
+    commitFieldValue(request.field, request.value)
     void validateField(request.field, 'change')
   }
 
@@ -299,14 +315,14 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     fieldNames.forEach(field => latestFieldRequest.set(field, requestId))
     beginValidation(activeStates.map(state => state.field.field))
     try {
-      const results = await Promise.all(activeStates.map(async state => [
+      const results = await Promise.all(activeStates.map(async (state): Promise<[string, string[]]> => [
         state.field.field,
         await validateConfigFormFieldRules(
           values[state.field.field],
           values,
           state.field,
         ),
-      ] as const))
+      ]))
 
       const current = valuesRevision === revision
         && fieldNames.every(field => latestFieldRequest.get(field) === requestId)
@@ -359,15 +375,15 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
       return
     }
 
-    const values = { ...options.model.read() } as ConfigFormValues
-    const resetValues = createResetValues() as ConfigFormValues
+    const values = { ...options.model.read() }
+    const resetValues = createResetValues()
     fieldNames.forEach((field) => {
       if (Object.hasOwn(resetValues, field))
-        values[field] = resetValues[field]
+        setConfigFormValue(values, field, resetValues[field])
       else
         delete values[field]
     })
-    commitValues(values as TValues, fieldNames)
+    commitValues(values, fieldNames)
   }
 
   async function submit(): Promise<boolean> {
@@ -425,12 +441,12 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   }
 
   function createResetValues(): TValues {
-    const values = { ...initialValues } as ConfigFormValues
+    const values = { ...initialValues }
     collectAllConfigFormFields(readFields()).forEach((field) => {
       if (!Object.hasOwn(values, field.field) && field.defaultValue !== undefined)
-        values[field.field] = field.defaultValue
+        setConfigFormValue(values, field.field, field.defaultValue)
     })
-    return values as TValues
+    return values
   }
 
   return {
@@ -438,12 +454,12 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     clearValidate,
     getErrors,
     getValidating,
-    getValue: getValue as ConfigFormController<TValues>['getValue'],
+    getValue,
     getValues,
     isFieldValidating,
     resetFields,
-    setValue: setValue as ConfigFormController<TValues>['setValue'],
-    setValues: setValues as ConfigFormController<TValues>['setValues'],
+    setValue,
+    setValues,
     submit,
     validate,
     validateField,
@@ -492,4 +508,13 @@ function shallowEqual<TValues extends ConfigFormValues>(left: TValues, right: TV
   const rightKeys = Object.keys(right)
   return leftKeys.length === rightKeys.length
     && leftKeys.every(key => Object.is(left[key], right[key]))
+}
+
+function setConfigFormValue(values: ConfigFormValues, field: string, value: unknown): void {
+  Object.defineProperty(values, field, {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  })
 }

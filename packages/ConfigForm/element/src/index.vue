@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="TValues extends ConfigFormValues = ConfigFormValues">
-import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ConfigFormFieldValue, ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererExpose,
 } from '@moluoxixi/config-form'
@@ -36,7 +36,7 @@ const expose: ElementConfigFormExpose<TValues> = {
   clearValidate: fields => rendererRef.value!.clearValidate(fields),
   getErrors: () => rendererRef.value!.getErrors(),
   getValidating: () => rendererRef.value!.getValidating(),
-  getValue: rendererGetValue as ElementConfigFormExpose<TValues>['getValue'],
+  getValue: rendererGetValue,
   getValues: () => rendererRef.value!.getValues(),
   resetFields: fields => rendererRef.value!.resetFields(fields),
   scrollToField: field => rendererRef.value!.scrollToField(field),
@@ -47,19 +47,28 @@ const expose: ElementConfigFormExpose<TValues> = {
   validateField: (field, trigger) => rendererRef.value!.validateField(field, trigger),
 }
 
-function rendererGetValue(field: string): unknown {
+function rendererGetValue<TField extends string>(
+  field: TField,
+): ConfigFormFieldValue<TValues, TField> {
   return rendererRef.value!.getValue(field)
 }
 
-function rendererSetValue(field: string, value: unknown): void {
-  ;(rendererRef.value!.setValue as (field: string, value: unknown) => void)(field, value)
+function rendererSetValue<TField extends string>(
+  field: TField,
+  value: ConfigFormFieldValue<TValues, NoInfer<TField>>,
+): void {
+  rendererRef.value!.setValue(field, value)
 }
 
-function rendererSetValues(values: Partial<TValues>, replace?: boolean): void {
-  if (replace)
-    rendererRef.value!.setValues(values as TValues, true)
+function rendererSetValues(values: Partial<TValues>, replace?: false): void
+function rendererSetValues(values: TValues, replace: true): void
+function rendererSetValues(
+  ...args: [values: Partial<TValues>, replace?: false] | [values: TValues, replace: true]
+): void {
+  if (args[1] === true)
+    rendererRef.value!.setValues(args[0], true)
   else
-    rendererRef.value!.setValues(values)
+    rendererRef.value!.setValues(args[0])
 }
 
 defineExpose(expose)

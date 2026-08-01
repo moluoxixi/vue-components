@@ -669,7 +669,7 @@ function submitLinked(values: ConfigFormValues): void {
         :field-span="12"
         :fields="layoutInlineFields"
         inline
-        :layout-attrs="{ 'data-testid': 'shadcn-layout-inline-row' }"
+        :layout-attrs="{ id: 'shadcn-layout-inline-row' }"
         @submit="submitLayoutInline"
       >
         <template #default="{ submit }">
@@ -687,7 +687,7 @@ function submitLinked(values: ConfigFormValues): void {
         data-testid="shadcn-layout-grid-form"
         :field-span="12"
         :fields="layoutGridFields"
-        :layout-attrs="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-layout-grid' }"
+        :layout-attrs="{ id: 'shadcn-layout-grid', style: { gap: '14px 16px' } }"
         @submit="submitLayoutGrid"
       >
         <template #default="{ submit }">
@@ -707,7 +707,7 @@ function submitLinked(values: ConfigFormValues): void {
         v-model="containerModel"
         data-testid="shadcn-container-form"
         :fields="containerFields"
-        :layout-attrs="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-container-row' }"
+        :layout-attrs="{ id: 'shadcn-container-row', style: { gap: '14px 16px' } }"
         @submit="submitContainer"
       >
         <template #default="{ submit }">
@@ -728,7 +728,7 @@ function submitLinked(values: ConfigFormValues): void {
         data-testid="shadcn-linked-form"
         :field-span="12"
         :fields="linkedFields"
-        :layout-attrs="{ style: { gap: '14px 16px' }, 'data-testid': 'shadcn-linked-row' }"
+        :layout-attrs="{ id: 'shadcn-linked-row', style: { gap: '14px 16px' } }"
         @submit="submitLinked"
       >
         <template #default="{ submit }">

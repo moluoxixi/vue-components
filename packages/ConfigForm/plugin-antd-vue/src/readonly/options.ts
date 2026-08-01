@@ -22,7 +22,7 @@ export function findAntdVueOptionLabel(options: unknown, value: unknown): unknow
   if (!Array.isArray(options))
     return undefined
 
-  for (const item of options as OptionNode[]) {
+  for (const item of options.filter(isOptionNode)) {
     if (Object.is(item.value, value))
       return item.label ?? item.value
 
@@ -46,7 +46,7 @@ export function resolveAntdVuePathLabel(options: unknown, value: unknown[]): unk
     if (!Array.isArray(current))
       return undefined
 
-    const item = (current as OptionNode[]).find(option => Object.is(option.value, segment))
+    const item = current.filter(isOptionNode).find(option => Object.is(option.value, segment))
     if (!item)
       return undefined
 
@@ -55,4 +55,8 @@ export function resolveAntdVuePathLabel(options: unknown, value: unknown[]): unk
   }
 
   return labels.map(label => toDisplayString(label)).join(' / ')
+}
+
+function isOptionNode(value: unknown): value is OptionNode {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

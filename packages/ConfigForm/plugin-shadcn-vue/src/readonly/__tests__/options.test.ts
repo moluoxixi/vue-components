@@ -59,4 +59,32 @@ describe('shadcn readonly options', () => {
     if (isVNode(rendered))
       expect(rendered.children).toBe('pro')
   })
+
+  it('ignores malformed option entries', () => {
+    const adapter = createShadcnChoiceReadonlyAdapter()
+    const runtime = createFormRuntime({
+      plugins: [createShadcnVuePlugin({
+        components: { NativeSelect: { name: 'NativeSelect' } },
+      })],
+    })
+    const node = runtime.transformField(defineField({
+      component: 'NativeSelect',
+      field: 'plan',
+      props: {
+        options: [null, 'invalid', { label: 'Professional', value: 'pro' }],
+      },
+    }))
+    if (!('field' in node))
+      throw new Error('Expected a resolved bound node')
+    const rendered = adapter({
+      field: 'plan',
+      node,
+      value: 'pro',
+      values: { plan: 'pro' },
+    })
+
+    expect(isVNode(rendered)).toBe(true)
+    if (isVNode(rendered))
+      expect(rendered.children).toBe('Professional')
+  })
 })

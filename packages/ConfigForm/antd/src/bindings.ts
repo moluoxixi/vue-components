@@ -21,7 +21,9 @@ function resolveComponentName(component: Component | string): string | undefined
   if (typeof component === 'string')
     return component
 
-  return (component as { name?: string }).name
+  return 'name' in component && typeof component.name === 'string'
+    ? component.name
+    : undefined
 }
 
 /** 根据 Ant Design Vue 组件名读取字段默认绑定；未命中时继续使用 antdConfigForm 的 value/update:value 默认值。 */

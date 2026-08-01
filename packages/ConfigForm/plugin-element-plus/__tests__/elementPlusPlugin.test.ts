@@ -286,6 +286,8 @@ describe('element plus plugin package', () => {
 
     const slotNode = createReadonlyNode({}, {
       default: [
+        null,
+        'invalid',
         {},
         {
           props: { label: '静态一', value: 'static-one' },
@@ -346,6 +348,8 @@ describe('element plus plugin package', () => {
     ])
     expect(findElementPlusOptionLabel(options, 'hangzhou', optionKeys)).toBe('杭州')
     expect(findElementPlusOptionLabel([{ id: 'raw-value' }], 'raw-value', optionKeys)).toBe('raw-value')
+    expect(findElementPlusOptionLabel([null, 'invalid', { id: 'valid', name: '有效项' }], 'valid', optionKeys))
+      .toBe('有效项')
     expect(findElementPlusOptionLabel(fallbackOptions, 'default-child', optionKeys)).toBe('默认子项')
     expect(findElementPlusOptionLabel(options, 'missing', optionKeys)).toBeUndefined()
     expect(resolveElementPlusPathLabel(options, ['east', 'hangzhou'], optionKeys)).toBe('华东 / 杭州')
@@ -354,5 +358,6 @@ describe('element plus plugin package', () => {
     expect(resolveElementPlusPathLabel('not-options', ['east'], optionKeys)).toBeUndefined()
     expect(resolveElementPlusPathLabel(options, ['east', 'missing'], optionKeys)).toBeUndefined()
     expect(resolveElementPlusPathLabel(options, ['east', 'hangzhou', 'xihu'], optionKeys)).toBeUndefined()
+    expect(resolveElementPlusPathLabel([null], ['east'], optionKeys)).toBeUndefined()
   })
 })

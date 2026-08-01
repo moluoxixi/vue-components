@@ -4,9 +4,11 @@ import type {
   ConfigFormAttrs,
   ConfigFormComponentNode,
   ConfigFormComponentSlotContent,
+  ConfigFormComponentSlots,
   ConfigFormField,
   ConfigFormFieldKey,
   ConfigFormFieldSlotContent,
+  ConfigFormFieldSlots,
   ConfigFormFieldValidator,
   ConfigFormNode,
   ConfigFormReadonlyRender,
@@ -119,8 +121,36 @@ export function defineConfigFormField(
 
 /** 先绑定表单模型类型，再定义字段配置。 */
 export function defineConfigFormFields<TValues extends ConfigFormValues = ConfigFormValues>(): DefineConfigFormFieldsResult<TValues> {
+  function defineBoundField<
+    TComponent = unknown,
+    TFieldAttrs = ConfigFormAttrs,
+    TCellAttrs = ConfigFormAttrs,
+  >(
+    field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  ): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  function defineBoundField<
+    TComponent = unknown,
+    TFieldAttrs = ConfigFormAttrs,
+    TCellAttrs = ConfigFormAttrs,
+  >(
+    field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  ): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  function defineBoundField<TComponent, TFieldAttrs, TCellAttrs>(
+    field:
+      | ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+      | ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  ):
+    | ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    | ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs> {
+    if ('field' in field)
+      return defineConfigFormField(field)
+    return defineConfigFormField(field)
+  }
+
   return {
-    defineField: defineConfigFormField as unknown as DefineConfigFormFieldFactory<TValues>,
+    defineField: defineBoundField,
   }
 }
 
@@ -128,57 +158,71 @@ export const defineField = defineConfigFormField
 export const defineFields = defineConfigFormFields
 
 function markConfigFormComponent<TComponent>(component: TComponent): TComponent {
-  if (typeof component === 'object' || typeof component === 'function')
-    return markRaw(component as object) as TComponent
+  if (isObject(component))
+    return markRaw(component)
 
   return component
+}
+
+function isObject(value: unknown): value is object {
+  return value !== null && (typeof value === 'object' || typeof value === 'function')
 }
 
 function defineConfigFormNode<TValues extends ConfigFormValues, TComponent, TFieldAttrs, TCellAttrs>(
   node: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>,
 ): ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs> {
-  const next = {
-    ...node,
-    component: markConfigFormComponent(node.component),
-  } as ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
-
-  if (node.slots) {
-    const nodeWithSlots = next as {
-      slots?: Record<
-        string,
-        | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-        | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-      >
+  if (isConfigFormFieldNode(node)) {
+    return {
+      ...node,
+      component: markConfigFormComponent(node.component),
+      slots: node.slots ? defineConfigFormFieldSlots(node.slots) : undefined,
     }
-    nodeWithSlots.slots = defineConfigFormSlots(node.slots)
   }
 
-  return next
+  return {
+    ...node,
+    component: markConfigFormComponent(node.component),
+    slots: node.slots ? defineConfigFormComponentSlots(node.slots) : undefined,
+  }
 }
 
-function defineConfigFormSlots<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
-  slots: Record<
-    string,
-    | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-    | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-  >,
-): Record<
-  string,
-  | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-  | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-> {
+function isConfigFormFieldNode<TValues extends ConfigFormValues, TComponent, TFieldAttrs, TCellAttrs>(
+  node: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+): node is ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs> {
+  return 'field' in node
+}
+
+function defineConfigFormComponentSlots<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
+  slots: ConfigFormComponentSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>,
+): ConfigFormComponentSlots<TValues, Component | string, TFieldAttrs, TCellAttrs> {
   return Object.fromEntries(
-    Object.entries(slots).map(([name, slot]) => [name, defineConfigFormSlotContent(slot)]),
+    Object.entries(slots).map(([name, slot]) => [name, defineConfigFormComponentSlotContent(slot)]),
   )
 }
 
-function defineConfigFormSlotContent<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
-  slot:
-    | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-    | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>,
-):
-  | ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>
-  | ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs> {
+function defineConfigFormFieldSlots<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
+  slots: ConfigFormFieldSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>,
+): ConfigFormFieldSlots<TValues, Component | string, TFieldAttrs, TCellAttrs> {
+  return Object.fromEntries(
+    Object.entries(slots).map(([name, slot]) => [name, defineConfigFormFieldSlotContent(slot)]),
+  )
+}
+
+function defineConfigFormComponentSlotContent<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
+  slot: ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>,
+): ConfigFormComponentSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs> {
+  if (typeof slot === 'function')
+    return slot
+
+  if (Array.isArray(slot))
+    return slot.map(node => defineConfigFormNode(node))
+
+  return defineConfigFormNode(slot)
+}
+
+function defineConfigFormFieldSlotContent<TValues extends ConfigFormValues, TFieldAttrs, TCellAttrs>(
+  slot: ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs>,
+): ConfigFormFieldSlotContent<TValues, Component | string, TFieldAttrs, TCellAttrs> {
   if (typeof slot === 'function')
     return slot
 
