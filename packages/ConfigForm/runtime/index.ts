@@ -3,7 +3,10 @@ export { useForm } from './src/composables/useForm'
 export type { UseFormOptions } from './src/composables/useForm'
 export { ConfigFormError } from './src/errors'
 export { default as ConfigForm } from './src/index.vue'
-export { ConfigFormRenderer } from './src/renderer'
+export {
+  ConfigFormRenderer,
+  createConfigFormRendererExpose,
+} from './src/renderer'
 export type {
   ConfigFormControlBinding,
   ConfigFormControlBindingResolver,
