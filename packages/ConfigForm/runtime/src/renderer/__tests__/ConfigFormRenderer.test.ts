@@ -135,6 +135,65 @@ describe('config form renderer', () => {
     expect(form.getValues()).toEqual(initial)
   })
 
+  it('同时提供 change/blur 校验触发与 dirty/touched 状态', async () => {
+    const initial: TestValues = { enabled: false, name: 'Ada', status: 'draft' }
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        fields: [defineField<TestValues>({
+          component: InputStub,
+          field: 'name',
+          validateOn: ['change', 'blur'],
+        })],
+        modelValue: initial,
+      },
+      slots: {
+        default: ({ meta }: { meta: { dirty: boolean, touched: boolean } }) => h('output', {
+          'data-dirty': String(meta.dirty),
+          'data-testid': 'form-meta',
+          'data-touched': String(meta.touched),
+        }),
+      },
+    })
+    const form = wrapper.vm as unknown as ConfigFormRendererExpose<TestValues>
+    const input = wrapper.get('[data-testid="renderer-input"]')
+
+    expect(form.getMeta()).toMatchObject({ dirty: false, touched: false })
+    expect(wrapper.get('form').attributes()).toMatchObject({
+      'data-dirty': 'false',
+      'data-touched': 'false',
+    })
+
+    await input.setValue('Grace')
+    expect(form.getFieldMeta('name')).toEqual({ dirty: true, touched: false })
+    expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: false })
+    expect(wrapper.get('[data-field="name"]').attributes()).toMatchObject({
+      'data-dirty': 'true',
+      'data-touched': 'false',
+    })
+
+    await input.trigger('blur')
+    expect(form.getFieldMeta('name')).toEqual({ dirty: true, touched: true })
+    expect(wrapper.get('[data-testid="form-meta"]').attributes()).toMatchObject({
+      'data-dirty': 'true',
+      'data-touched': 'true',
+    })
+
+    form.setValue('name', 'Ada')
+    form.setTouched(false)
+    await nextTick()
+    expect(form.getMeta()).toMatchObject({ dirty: false, touched: false })
+
+    await wrapper.setProps({ modelValue: { ...initial, name: 'External' } })
+    expect(form.getMeta()).toMatchObject({ dirty: true, touched: false })
+    expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: false })
+
+    form.setValue('name', 'Ada')
+    await nextTick()
+    expect(form.getMeta()).toMatchObject({ dirty: false, touched: false })
+    expect(wrapper.get('[data-testid="form-meta"]').attributes('data-dirty')).toBe('false')
+    expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: false, touched: false })
+  })
+
   it('同页实例生成唯一 control/error id，并建立完整 ARIA 关联', async () => {
     const fields = [defineField<TestValues>({
       component: InputStub,

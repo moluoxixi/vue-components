@@ -5,7 +5,7 @@
 - 根节点使用原生 `<form>`，字段使用包内自有 label/control/error 壳；
 - inline 布局使用原生 Flex，grid 布局使用原生 CSS Grid；
 - 字段默认通过 `modelValue` + `update:modelValue` 写回外部模型；
-- 校验、reset、submit 和 readonly 语义统一由 `@moluoxixi/config-form-headless` 提供。
+- 校验、reset、submit 和 readonly 语义统一由 `@moluoxixi/config-form-headless` 提供；`validateOn` 控制 change/blur 校验触发且 submit 校验始终启用；适配器同时透传独立的 dirty/touched 状态、`metaChange`、默认 slot `meta` 及 `getMeta` / `getFieldMeta` / `setTouched`。
 
 组件不使用 `ElForm`、`ElFormItem`、`ElRow`、`ElCol` 或 Element Plus `rules`。`formAttrs` 传给原生 form，`layoutAttrs` / `cellAttrs` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
 

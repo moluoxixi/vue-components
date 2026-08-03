@@ -25,7 +25,7 @@ import {
 } from '@moluoxixi/components'
 ```
 
-两套 ConfigForm 都使用原生 `<form>`、CSS Grid/Flex 和共享字段壳，不依赖 UI 库的 Form/FormItem/Row/Col。它们支持 headless 层的 `defineField` / `defineFields`、Zod schema、容器节点、配置化 slots、readonly 与 `readonlyRender`。
+两套 ConfigForm 都使用原生 `<form>`、CSS Grid/Flex 和共享字段壳，不依赖 UI 库的 Form/FormItem/Row/Col。它们支持 headless 层的 `defineField` / `defineFields`、Zod schema、`validateOn` 的 change/blur 校验触发、容器节点、配置化 slots、readonly 与 `readonlyRender`，并透传 dirty/touched、`metaChange`、默认 slot `meta` 及 `getMeta` / `getFieldMeta` / `setTouched`。
 
 需要只加载单一 UI 实现时，使用本包的纯入口：
 

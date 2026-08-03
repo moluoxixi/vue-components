@@ -1,6 +1,8 @@
 import type { FormHTMLAttributes, HTMLAttributes } from 'vue'
 import type {
   ConfigFormRendererCellAttrs,
+  ConfigFormRendererEmits,
+  ConfigFormRendererExpose,
   ConfigFormRendererFieldAttrs,
   ConfigFormRendererLayoutAttrs,
   ConfigFormRendererProps,
@@ -33,5 +35,13 @@ describe('config form renderer attr types', () => {
     expect(rendererCellAttrs).toEqual({})
     expect(rendererFieldAttrs).toEqual({})
     expect(rendererLayoutAttrs).toEqual({})
+
+    if (false) {
+      const emit = null as unknown as ConfigFormRendererEmits<TestValues>
+      const expose = null as unknown as ConfigFormRendererExpose<TestValues>
+      emit('metaChange', expose.getMeta())
+      expose.setTouched('name')
+      expose.setTouched(false)
+    }
   })
 })

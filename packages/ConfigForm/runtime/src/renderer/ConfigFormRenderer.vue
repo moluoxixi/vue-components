@@ -6,6 +6,7 @@ import type {
   ConfigFormErrors,
   ConfigFormFieldSlotContent,
   ConfigFormFieldSlotContext,
+  ConfigFormMeta,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type {
@@ -65,21 +66,9 @@ const attrs = useAttrs()
 const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const formId = useId()
 const errors = shallowRef<ConfigFormErrors>({})
+const meta = shallowRef<ConfigFormMeta>({ dirty: false, fields: {}, touched: false })
 
-const {
-  applyFieldChange,
-  clearValidate,
-  getErrors,
-  getValidating,
-  getValue,
-  getValues,
-  resetFields,
-  setValue,
-  setValues,
-  submit,
-  validate,
-  validateField,
-} = createConfigFormController<TValues>({
+const controller = createConfigFormController<TValues>({
   defaultValues: props.defaultValues,
   fields: () => props.fields,
   model: {
@@ -95,16 +84,47 @@ const {
     errors.value = formErrors
   },
   onFieldChange: payload => emit('fieldChange', payload),
+  onMetaChange: updateMeta,
   onSubmit: values => emit('submit', values),
   readonly: () => props.readonly,
 })
+
+const {
+  applyFieldChange,
+  clearValidate,
+  getFieldMeta,
+  getErrors,
+  getMeta,
+  getValidating,
+  getValue,
+  getValues,
+  refreshMeta,
+  resetFields,
+  setValue,
+  setValues,
+  setTouched,
+  submit,
+  validate,
+  validateField,
+} = controller
+
+meta.value = getMeta()
 
 watch(controlledModel, (values) => {
   if (values !== model.value) {
     model.value = values
     clearValidate()
+    refreshMeta()
   }
 })
+
+function updateMeta(nextMeta: ConfigFormMeta): void {
+  if (equalMeta(meta.value, nextMeta))
+    return
+
+  meta.value = nextMeta
+  emit('metaChange', nextMeta)
+}
 
 const formAttrs = computed<Record<string, unknown>>(() => ({
   ...attrs,
@@ -199,6 +219,7 @@ function renderBoundNode(
   const errorId = `${formId}-${toDomId(path)}-error`
   const readonly = isConfigFormFieldReadonly(field, model.value, props.readonly)
   const fieldErrors = readonly ? [] : (errors.value[field.field] ?? [])
+  const fieldMeta = meta.value.fields[field.field] ?? getFieldMeta(field.field)
   const fieldAttrs = field.fieldAttrs
   const label = typeof field.label === 'string'
     ? h('label', {
@@ -210,8 +231,10 @@ function renderBoundNode(
   return h('div', {
     ...fieldAttrs,
     class: [bem('field'), fieldAttrs?.class],
+    'data-dirty': fieldMeta.dirty,
     'data-field': field.field,
     'data-required': resolveConfigFormCondition(field.required, model.value, false),
+    'data-touched': fieldMeta.touched,
     key: getNodeKey(field, path),
     style: fieldAttrs?.style,
   }, [
@@ -283,6 +306,7 @@ function renderControl(
     })
   })
   addListener(componentProps, field.blurTrigger ?? 'blur', () => {
+    setTouched(field.field)
     void validateField(field.field, 'blur')
   })
 
@@ -389,6 +413,7 @@ function renderFieldSlotContent(
     > = {
       field,
       model: model.value,
+      meta: getFieldMeta(field.field),
       setValue: value => applyFieldChange({ field: field.field, value }),
       slotProps,
       value: model.value[field.field],
@@ -426,6 +451,7 @@ function renderComponentSlotContent(
       ConfigFormRendererFieldAttrs,
       ConfigFormRendererCellAttrs
     > = {
+      meta: meta.value,
       model: model.value,
       node,
       slotProps,
@@ -505,6 +531,20 @@ function toDomId(path: string): string {
   return path.replace(/[^a-z0-9_-]+/gi, '-')
 }
 
+function equalMeta(left: ConfigFormMeta, right: ConfigFormMeta): boolean {
+  const leftFields = Object.keys(left.fields)
+  const rightFields = Object.keys(right.fields)
+  return left.dirty === right.dirty
+    && left.touched === right.touched
+    && leftFields.length === rightFields.length
+    && leftFields.every((field) => {
+      const leftMeta = left.fields[field]
+      const rightMeta = right.fields[field]
+      return leftMeta?.dirty === rightMeta?.dirty
+        && leftMeta?.touched === rightMeta?.touched
+    })
+}
+
 function scrollToField(field: keyof TValues & string | string): void {
   const target = Array.from(formRef.value?.querySelectorAll<HTMLElement>('[data-field]') ?? [])
     .find(element => element.dataset.field === field)
@@ -513,7 +553,9 @@ function scrollToField(field: keyof TValues & string | string): void {
 
 defineExpose({
   clearValidate,
+  getFieldMeta,
   getErrors,
+  getMeta,
   getValidating,
   getValue,
   getValues,
@@ -521,6 +563,7 @@ defineExpose({
   scrollToField,
   setValue,
   setValues,
+  setTouched,
   submit,
   validate,
   validateField,
@@ -531,10 +574,12 @@ defineExpose({
   <form
     ref="formRef"
     v-bind="formAttrs"
+    :data-dirty="meta.dirty"
+    :data-touched="meta.touched"
     @submit.prevent="submit"
   >
     <ConfigFormTree />
 
-    <slot v-bind="{ model, submit, resetFields }" />
+    <slot v-bind="{ meta, model, submit, resetFields }" />
   </form>
 </template>

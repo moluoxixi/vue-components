@@ -1,10 +1,16 @@
 import type { ConfigFormRendererProps } from '@moluoxixi/config-form/renderer'
-import type { ElementConfigFormProps } from '../index'
+import type { ElementConfigFormDefaultSlotContext, ElementConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
 interface UserForm {
   name: string
   status: string
+}
+
+const elementMeta: ElementConfigFormDefaultSlotContext<UserForm>['meta'] = {
+  dirty: false,
+  fields: {},
+  touched: false,
 }
 
 const elementFields = [
@@ -64,6 +70,7 @@ const elementInvalidProps = {
 
 void elementInvalidFields
 void elementInvalidProps
+void elementMeta
 void rendererAttrs
 
 describe('config form ui prop types', () => {

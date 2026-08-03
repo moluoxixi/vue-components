@@ -8,6 +8,8 @@ Vue 3 配置化表单运行时。根入口提供面向 schema、低代码和 UI 
 
 根入口的 `ConfigForm`、runtime plugin 与 `useForm` 属于 Runtime/Plugin 路线，负责组件注册、字段转换和 UI plugin 扩展，后续可继续演进为 Pro/低代码能力。轻量 UI 适配器不依赖这套状态机，两条路线只共享明确的基础契约。
 
+轻量 `ConfigFormRenderer` 及其 UI adapters 同时支持 `validateOn` 的 change/blur 校验触发和独立的 dirty/touched 状态。renderer 发出 `metaChange`，在默认 slot 提供表单 `meta`、在字段 slot 提供字段 `meta`，并暴露 `getMeta`、`getFieldMeta` 和 `setTouched`；原生 form 与字段壳分别带有 `data-dirty` / `data-touched`。这些 API 属于 Headless/Renderer 路线，不会改变下文 Runtime/Plugin 根组件的 Events 与 Expose 契约。
+
 ## 特性
 
 - 配置驱动：通过 `fields` 数组声明表单字段。

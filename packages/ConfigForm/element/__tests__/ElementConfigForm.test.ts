@@ -113,6 +113,7 @@ describe('element config form', () => {
 
     await wrapper.get<HTMLInputElement>('[data-testid="input-stub"]').setValue('Ada')
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'name', value: 'Ada' })
+    expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: true })
     expect(wrapper.find('.mx-element-config-form__error').exists()).toBe(false)
   })
 

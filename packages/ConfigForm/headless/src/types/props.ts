@@ -1,5 +1,6 @@
 import type { Component, VNodeChild } from 'vue'
 import type { ZodTypeAny } from 'zod'
+import type { ConfigFormFieldMeta, ConfigFormMeta } from './meta'
 
 export type ConfigFormValues = Record<string, any>
 export type ConfigFormFieldKey<TValues extends ConfigFormValues = ConfigFormValues> = Extract<keyof TValues, string>
@@ -31,6 +32,8 @@ export interface ConfigFormComponentSlotContext<
   node: ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
   /** 当前表单值快照。 */
   model: TValues
+  /** 当前表单的 dirty/touched 状态。 */
+  meta: ConfigFormMeta
   /** 真实 Vue 组件传出的原始 slot 作用域参数。 */
   slotProps: Record<string, unknown>
 }
@@ -45,6 +48,8 @@ export interface ConfigFormFieldSlotContext<
   field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
   /** 当前表单值快照。 */
   model: TValues
+  /** 当前字段的 dirty/touched 状态。 */
+  meta: ConfigFormFieldMeta
   /** 当前字段值。 */
   value: unknown
   /** 真实 Vue 组件传出的原始 slot 作用域参数。 */

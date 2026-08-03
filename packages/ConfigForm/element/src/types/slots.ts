@@ -1,8 +1,10 @@
-import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
+import type { ConfigFormMeta, ConfigFormValues } from '@moluoxixi/config-form-headless'
 
 export interface ElementConfigFormDefaultSlotContext<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 当前表单值快照。 */
   model: TValues
+  /** 当前表单的 dirty/touched 状态。 */
+  meta: ConfigFormMeta
   /** 触发表单提交。 */
   submit: () => Promise<boolean>
   /** 重置 Element Plus 字段值和校验状态。 */

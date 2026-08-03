@@ -1,4 +1,5 @@
 import type {
+  ConfigFormFieldSelector,
   ConfigFormFieldValue,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
@@ -40,9 +41,26 @@ export function createConfigFormRendererExpose<TValues extends ConfigFormValues 
       readRenderer().setValues(args[0])
   }
 
+  function setTouched(): void
+  function setTouched(touched: boolean): void
+  function setTouched(fields: ConfigFormFieldSelector<TValues>, touched?: boolean): void
+  function setTouched(
+    fieldsOrTouched?: ConfigFormFieldSelector<TValues> | boolean,
+    touched?: boolean,
+  ): void {
+    if (fieldsOrTouched === undefined)
+      readRenderer().setTouched()
+    else if (typeof fieldsOrTouched === 'boolean')
+      readRenderer().setTouched(fieldsOrTouched)
+    else
+      readRenderer().setTouched(fieldsOrTouched, touched)
+  }
+
   return {
     clearValidate: fields => readRenderer().clearValidate(fields),
     getErrors: () => readRenderer().getErrors(),
+    getFieldMeta: field => readRenderer().getFieldMeta(field),
+    getMeta: () => readRenderer().getMeta(),
     getValidating: () => readRenderer().getValidating(),
     getValue,
     getValues: () => readRenderer().getValues(),
@@ -50,6 +68,7 @@ export function createConfigFormRendererExpose<TValues extends ConfigFormValues 
     scrollToField: field => readRenderer().scrollToField(field),
     setValue,
     setValues,
+    setTouched,
     submit: () => readRenderer().submit(),
     validate: () => readRenderer().validate(),
     validateField: (field, trigger) => readRenderer().validateField(field, trigger),

@@ -119,6 +119,7 @@ describe('antd config form', () => {
 
     await wrapper.get<HTMLInputElement>('[data-testid="antd-input-stub"]').setValue('Ada')
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'name', value: 'Ada' })
+    expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: true })
   })
 
   it('同页同名字段生成唯一 control/error id 并关联本字段错误', async () => {

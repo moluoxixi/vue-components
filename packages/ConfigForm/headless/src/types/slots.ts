@@ -1,8 +1,11 @@
+import type { ConfigFormMeta } from './meta'
 import type { ConfigFormValues } from './props'
 
 export interface ConfigFormDefaultSlotContext<TValues extends ConfigFormValues = ConfigFormValues> {
   /** 当前表单值快照。 */
   model: TValues
+  /** 当前表单的 dirty/touched 状态。 */
+  meta: ConfigFormMeta
   /** 触发表单提交。 */
   submit: () => Promise<boolean>
   /** 重置当前 UI 版本字段值和校验状态。 */

@@ -16,14 +16,44 @@ async function openDateRangePopover(page: Page): Promise<Locator> {
 
 async function openPlayground(page: Page): Promise<void> {
   await page.goto('/')
+  await expect(page.getByRole('menuitem', { name: 'CopyText', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'DateRangePicker', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'ElementConfigForm', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'antdConfigForm', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'PopoverTableSelect', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'HeadlessTable', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'RichTextEditor', exact: true })).toBeVisible()
 }
 
 test.describe('components playground 交互', () => {
+  test('CopyText 可以复制文本并反馈成功状态', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await openPlayground(page)
+    await openComponent(page, 'CopyText')
+
+    const example = page.getByTestId('copy-text-example')
+    await example.getByRole('button', { name: '复制', exact: true }).first().click()
+
+    await expect(example.getByRole('button', { name: '已复制', exact: true })).toBeVisible()
+    await expect(example.getByTestId('copy-text-last')).toHaveText('PO-2026-0803')
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('PO-2026-0803')
+  })
+
+  test('RichTextEditor 可以输入并格式化 HTML', async ({ page }) => {
+    await openPlayground(page)
+    await openComponent(page, 'RichTextEditor')
+
+    const example = page.getByTestId('rich-text-example')
+    const editor = example.getByRole('textbox', { name: '发布说明' })
+
+    await editor.fill('browser content')
+    await editor.press('ControlOrMeta+A')
+    await example.getByRole('button', { name: '粗体' }).click()
+
+    await expect(example.getByTestId('rich-text-html')).toContainText('<strong>browser content</strong>')
+    await expect(example.getByRole('button', { name: '粗体' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   test('DateRangePicker 可以选择日期范围并同步展示值', async ({ page }) => {
     await openPlayground(page)
     await openComponent(page, 'DateRangePicker')
@@ -162,10 +192,12 @@ test.describe('components playground 交互', () => {
     await openPlayground(page)
 
     for (const name of [
+      'CopyText',
       'DateRangePicker',
       'EnterNextContainer',
       'PopoverTableSelect',
       'HeadlessTable',
+      'RichTextEditor',
       'ElementConfigForm',
       'antdConfigForm',
     ]) {

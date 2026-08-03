@@ -17,6 +17,7 @@
 
 | 组件 | 文档 | 来源 |
 |---|---|---|
+| CopyText / HeadlessCopyText | [CopyText](out-components/CopyText.md) | `packages/components/src/CopyText`、`packages/components/src/HeadlessCopyText` |
 | DateRangePicker | [DateRangePicker](out-components/DateRangePicker.md) | `packages/components/src/DateRangePicker` |
 | EnterNextContainer | [EnterNextContainer](out-components/EnterNextContainer.md) | `packages/components/src/EnterNextContainer` |
 | ConfigTable | [ConfigTable](out-components/ConfigTable.md) | `packages/components/src/ConfigTable` |
@@ -24,6 +25,7 @@
 | RequestSelectV2 | [RequestSelectV2](out-components/RequestSelectV2.md) | `packages/components/src/RequestSelectV2` |
 | RequestCascader | [RequestCascader](out-components/RequestCascader.md) | `packages/components/src/RequestCascader` |
 | RequestTreeSelect | [RequestTreeSelect](out-components/RequestTreeSelect.md) | `packages/components/src/RequestTreeSelect` |
+| RichTextEditor | [RichTextEditor](out-components/RichTextEditor.md) | `packages/components/src/RichTextEditor` |
 | ElementConfigForm | [ElementConfigForm](out-components/ElementConfigForm.md) | `packages/components/src/ElementConfigForm` |
 | AntdConfigForm | [AntdConfigForm](out-components/AntdConfigForm.md) | `packages/components/src/AntdConfigForm` |
 | ShadcnConfigForm | [ShadcnConfigForm](out-components/ShadcnConfigForm.md) | `packages/ConfigForm/shadcn` |
@@ -36,6 +38,7 @@
 |---|---|---|
 | Ant Design Vue | [AntDesignVue](components/AntDesignVue.md) | Antd 版 ConfigForm、运行时适配插件和 playground 示例 |
 | Element Plus | [ElementPlus](components/ElementPlus.md) | Element 版 ConfigForm、基础组件封装、自动导入 Resolver 和 playground 示例 |
+| Tiptap / Lucide | [Tiptap](components/Tiptap.md) | RichTextEditor 编辑内核、工具栏图标与浮层基础依赖 |
 | shadcn-vue 本地组件协议 | [ShadcnVue](components/ShadcnVue.md) | 本地生成组件注册、字段绑定和只读展示适配 |
 | unplugin-vue-components | [UnpluginVueComponents](components/UnpluginVueComponents.md) | playground 自动导入 Element Plus 组件 |
 

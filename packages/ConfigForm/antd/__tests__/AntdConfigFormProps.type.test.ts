@@ -1,9 +1,15 @@
 import type { ConfigFormRendererProps } from '@moluoxixi/config-form/renderer'
-import type { AntdConfigFormProps } from '../index'
+import type { AntdConfigFormDefaultSlotContext, AntdConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
 interface UserForm {
   status: string
+}
+
+const antdMeta: AntdConfigFormDefaultSlotContext<UserForm>['meta'] = {
+  dirty: false,
+  fields: {},
+  touched: false,
 }
 
 const antdFields = [
@@ -63,6 +69,7 @@ const antdInvalidProps = {
 
 void antdInvalidFields
 void antdInvalidProps
+void antdMeta
 void rendererAttrs
 
 describe('config form ui prop types', () => {

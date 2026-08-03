@@ -1,3 +1,4 @@
+import type { ConfigFormMeta } from './meta'
 import type {
   ConfigFormErrors,
   ConfigFormFieldKey,
@@ -33,6 +34,8 @@ export interface ConfigFormEmits<TValues extends ConfigFormValues = ConfigFormVa
   (event: 'change', values: TValues): void
   /** 单字段写入后触发，返回字段维度变更信息。 */
   (event: 'fieldChange', payload: ConfigFormFieldChangePayload<TValues>): void
+  /** dirty 或 touched 状态变化后触发。 */
+  (event: 'metaChange', meta: ConfigFormMeta): void
   /** submit 校验通过后触发。 */
   (event: 'submit', values: TValues): void
   /** submit 校验未通过时触发，透出 Headless 标准错误集合。 */

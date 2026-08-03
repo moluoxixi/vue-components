@@ -76,6 +76,85 @@ describe('createConfigFormController', () => {
     }
   })
 
+  it('tracks dirty and touched independently from validation triggers', async () => {
+    let model: UserForm = { age: 18, name: 'Ada' }
+    const onMetaChange = vi.fn()
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [
+        { component: 'input', field: 'age' },
+        { component: 'input', field: 'name' },
+      ],
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+      onMetaChange,
+    })
+
+    expect(controller.getMeta()).toEqual({
+      dirty: false,
+      fields: {
+        age: { dirty: false, touched: false },
+        name: { dirty: false, touched: false },
+      },
+      touched: false,
+    })
+
+    controller.applyFieldChange({ field: 'name', value: 'Grace' })
+    expect(controller.getFieldMeta('name')).toEqual({ dirty: true, touched: false })
+    expect(onMetaChange).toHaveBeenLastCalledWith(expect.objectContaining({ dirty: true, touched: false }))
+
+    controller.setTouched('name')
+    expect(controller.getFieldMeta('name')).toEqual({ dirty: true, touched: true })
+    const metaChangeCount = onMetaChange.mock.calls.length
+    controller.setTouched('name')
+    expect(onMetaChange).toHaveBeenCalledTimes(metaChangeCount)
+
+    const snapshot = controller.getMeta()
+    snapshot.fields.name.dirty = false
+    expect(controller.getFieldMeta('name').dirty).toBe(true)
+
+    controller.setValue('name', 'Ada')
+    expect(controller.getFieldMeta('name')).toEqual({ dirty: false, touched: true })
+
+    controller.setValue('age', 19)
+    controller.setTouched('age')
+    controller.resetFields('name')
+    expect(controller.getMeta()).toMatchObject({
+      dirty: true,
+      fields: {
+        age: { dirty: true, touched: true },
+        name: { dirty: false, touched: false },
+      },
+      touched: true,
+    })
+
+    controller.resetFields()
+    expect(controller.getMeta()).toEqual({
+      dirty: false,
+      fields: {
+        age: { dirty: false, touched: false },
+        name: { dirty: false, touched: false },
+      },
+      touched: false,
+    })
+
+    await controller.submit()
+    expect(controller.getMeta().fields).toMatchObject({
+      age: { touched: true },
+      name: { touched: true },
+    })
+
+    controller.setTouched(false)
+    model = { ...model, name: 'External' }
+    expect(controller.refreshMeta()).toMatchObject({ dirty: true, touched: false })
+    expect(onMetaChange).toHaveBeenLastCalledWith(expect.objectContaining({ dirty: true, touched: false }))
+
+    controller.setValue('name', 'Ada')
+    expect(controller.getMeta()).toMatchObject({ dirty: false, touched: false })
+    expect(onMetaChange).toHaveBeenLastCalledWith(expect.objectContaining({ dirty: false, touched: false }))
+  })
+
   it('stores __proto__ as a regular own field', () => {
     let model: ConfigFormPrototypeField = { name: 'Ada' }
     const controller = createConfigFormController<ConfigFormPrototypeField>({
@@ -98,6 +177,12 @@ describe('createConfigFormController', () => {
     expect(Object.hasOwn(model, '__proto__')).toBe(true)
     expect(Object.getOwnPropertyDescriptor(model, '__proto__')?.value).toBe('changed')
     expect(Object.getPrototypeOf(model)).toBe(Object.prototype)
+
+    const meta = controller.getMeta()
+    expect(Object.hasOwn(meta.fields, '__proto__')).toBe(true)
+    expect(Object.getOwnPropertyDescriptor(meta.fields, '__proto__')?.value)
+      .toEqual({ dirty: true, touched: false })
+    expect(Object.getPrototypeOf(meta.fields)).toBe(Object.prototype)
   })
 
   it('owns Zod validation, readonly submission and reset lifecycle', async () => {

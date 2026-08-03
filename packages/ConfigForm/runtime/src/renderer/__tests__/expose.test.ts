@@ -27,10 +27,13 @@ describe('createConfigFormRendererExpose', () => {
     rendererRef.value = { ...controller, scrollToField }
     expose.setValue('name', 'Grace')
     expose.setValues({ age: 20 })
+    expose.setTouched('name')
     expose.scrollToField('name')
 
     expect(expose.getValue('name')).toBe('Grace')
     expect(expose.getValues()).toEqual({ age: 20, name: 'Grace' })
+    expect(expose.getFieldMeta('name')).toEqual({ dirty: true, touched: true })
+    expect(expose.getMeta()).toMatchObject({ dirty: true, touched: true })
     expect(scrollToField).toHaveBeenCalledWith('name')
 
     let replacementModel: TestValues = { age: 30, name: 'Lin' }

@@ -5,6 +5,7 @@ import type {
   ConfigFormField,
   ConfigFormFieldChangePayload,
   ConfigFormFieldKey,
+  ConfigFormMeta,
   ConfigFormNode,
   ConfigFormReadonlyRender,
   ConfigFormValues,
@@ -69,6 +70,7 @@ export interface ConfigFormRendererEmits<TValues extends ConfigFormValues = Conf
   (event: 'change', values: TValues): void
   (event: 'error', errors: ConfigFormErrors): void
   (event: 'fieldChange', payload: ConfigFormFieldChangePayload<TValues>): void
+  (event: 'metaChange', meta: ConfigFormMeta): void
   (event: 'submit', values: TValues): void
 }
 
@@ -77,12 +79,15 @@ export interface ConfigFormRendererExpose<TValues extends ConfigFormValues = Con
     ConfigFormController<TValues>,
     | 'clearValidate'
     | 'getErrors'
+    | 'getFieldMeta'
+    | 'getMeta'
     | 'getValidating'
     | 'getValue'
     | 'getValues'
     | 'resetFields'
     | 'setValue'
     | 'setValues'
+    | 'setTouched'
     | 'submit'
     | 'validate'
     | 'validateField'

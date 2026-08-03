@@ -4,7 +4,7 @@
 
 根节点使用原生 `<form>`，字段使用共享 label/control/error 壳；inline 布局使用原生 Flex，grid 布局使用原生 CSS Grid。组件不使用 `AForm`、`AFormItem`、`ARow`、`ACol` 或 Ant Design Vue rules。
 
-字段默认通过 `value` + `update:value` 写回模型；Switch、Checkbox 等组件由包内 binding 映射到 `checked` + `update:checked`。校验、reset、submit 和 readonly 由 `@moluoxixi/config-form-headless` 统一处理，支持 `required`、Zod `schema`、异步 `validator`、`validateOn` 和 `readonlyRender`。
+字段默认通过 `value` + `update:value` 写回模型；Switch、Checkbox 等组件由包内 binding 映射到 `checked` + `update:checked`。校验、reset、submit 和 readonly 由 `@moluoxixi/config-form-headless` 统一处理，支持 `required`、Zod `schema`、异步 `validator`、`validateOn` 和 `readonlyRender`。`validateOn` 控制 change/blur 校验触发且 submit 校验始终启用；适配器同时透传独立的 dirty/touched 状态、`metaChange`、默认 slot `meta` 及 `getMeta` / `getFieldMeta` / `setTouched`。
 
 `formAttrs` 只接收原生 form attributes，不能传 `labelCol` / `wrapperCol`。`layoutAttrs` / `cellAttrs` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
 

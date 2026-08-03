@@ -2,6 +2,7 @@ import type {
   ConfigFormDefaultSlotContext,
   ConfigFormErrors,
   ConfigFormFieldChangePayload,
+  ConfigFormMeta,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { PublicProps, VNode } from 'vue'
@@ -23,6 +24,7 @@ export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = 
     'onChange'?: (values: TValues) => unknown
     'onError'?: (errors: ConfigFormErrors) => unknown
     'onFieldChange'?: (payload: ConfigFormFieldChangePayload<TValues>) => unknown
+    'onMetaChange'?: (meta: ConfigFormMeta) => unknown
     'onSubmit'?: (values: TValues) => unknown
     'onUpdate:modelValue'?: (value: TValues) => unknown
   }

@@ -54,6 +54,7 @@ defineExpose(expose)
     @change="emit('change', $event)"
     @error="emit('error', $event)"
     @field-change="emit('fieldChange', $event)"
+    @meta-change="emit('metaChange', $event)"
     @submit="emit('submit', $event)"
   >
     <template #default="slotProps">

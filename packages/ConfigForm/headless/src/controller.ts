@@ -5,6 +5,8 @@ import type {
   ConfigFormFieldChangePayload,
   ConfigFormFieldChangeRequest,
   ConfigFormFieldKey,
+  ConfigFormFieldMeta,
+  ConfigFormMeta,
   ConfigFormNode,
   ConfigFormValidateTrigger,
   ConfigFormValues,
@@ -61,6 +63,8 @@ export interface ConfigFormControllerOptions<TValues extends ConfigFormValues = 
   onErrorsChange?: (errors: ConfigFormErrors) => void
   /** 校验状态变化后的通知。 */
   onValidatingChange?: (validating: boolean) => void
+  /** dirty 或 touched 状态变化后的通知。 */
+  onMetaChange?: (meta: ConfigFormMeta) => void
   /** submit 校验通过后的通知。 */
   onSubmit?: (values: TValues) => void
   /** submit 校验失败后的通知。 */
@@ -82,6 +86,12 @@ export interface ConfigFormController<TValues extends ConfigFormValues = ConfigF
   applyFieldChange: (request: ConfigFormFieldChangeRequest<TValues>) => void
   /** 获取当前模型的浅拷贝。 */
   getValues: () => TValues
+  /** 获取当前表单的 dirty/touched 状态快照。 */
+  getMeta: () => ConfigFormMeta
+  /** 获取指定字段的 dirty/touched 状态。 */
+  getFieldMeta: (field: ConfigFormFieldKey<TValues> | string) => ConfigFormFieldMeta
+  /** 宿主在 controller 之外替换模型或字段树后，重新计算并通知 meta。 */
+  refreshMeta: () => ConfigFormMeta
   /** 获取指定字段值。 */
   getValue: <TField extends string>(field: TField) => ConfigFormFieldValue<TValues, TField>
   /** 获取当前错误集合的防御性拷贝。 */
@@ -109,6 +119,12 @@ export interface ConfigFormController<TValues extends ConfigFormValues = ConfigF
   ) => Promise<boolean>
   /** 清除全部或指定字段错误，并使运行中的旧校验失效。 */
   clearValidate: (fields?: ConfigFormFieldSelector<TValues>) => void
+  /** 标记全部或指定字段的 touched 状态。 */
+  setTouched: {
+    (): void
+    (touched: boolean): void
+    (fields: ConfigFormFieldSelector<TValues>, touched?: boolean): void
+  }
   /** 重置全部或指定字段到初始快照。 */
   resetFields: (fields?: ConfigFormFieldSelector<TValues>) => void
   /** 校验并提交当前可提交字段。 */
@@ -125,10 +141,13 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   let activeValidationCount = 0
   const activeFieldValidationCounts = new Map<string, number>()
   const latestFieldRequest = new Map<string, number>()
+  const touchedFields = new Set<string>()
   const initialValues = createInitialValues()
 
   if (!shallowEqual(options.model.read(), initialValues))
     options.model.write({ ...initialValues })
+
+  let lastMeta = createMeta()
 
   function readFields(): ControllerNode<TValues>[] {
     return options.fields?.() ?? []
@@ -159,6 +178,23 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
 
   function getValues(): TValues {
     return { ...options.model.read() }
+  }
+
+  function getMeta(): ConfigFormMeta {
+    return cloneMeta(createMeta())
+  }
+
+  function getFieldMeta(field: string): ConfigFormFieldMeta {
+    const values = options.model.read()
+    const resetValues = createResetValues()
+    return {
+      dirty: isFieldDirty(field, values, resetValues),
+      touched: touchedFields.has(field),
+    }
+  }
+
+  function refreshMeta(): ConfigFormMeta {
+    return commitMeta()
   }
 
   function getValue<TField extends string>(
@@ -203,6 +239,7 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
       commitErrors(nextErrors)
     }
     options.model.write(values)
+    commitMeta()
     options.onChange?.(values)
   }
 
@@ -220,6 +257,7 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     invalidateValidation()
     clearFieldError(field)
     options.model.write(values)
+    commitMeta()
     options.onFieldChange?.({ field, value, values })
     options.onChange?.(values)
   }
@@ -238,6 +276,29 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   function applyFieldChange(request: ConfigFormFieldChangeRequest<TValues>): void {
     commitFieldValue(request.field, request.value)
     void validateField(request.field, 'change')
+  }
+
+  function setTouched(): void
+  function setTouched(touched: boolean): void
+  function setTouched(fields: ConfigFormFieldSelector<TValues>, touched?: boolean): void
+  function setTouched(
+    fieldsOrTouched?: ConfigFormFieldSelector<TValues> | boolean,
+    touched = true,
+  ): void {
+    const allFields = fieldsOrTouched === undefined || typeof fieldsOrTouched === 'boolean'
+    const nextTouched = typeof fieldsOrTouched === 'boolean' ? fieldsOrTouched : touched
+    const fieldNames = allFields
+      ? Object.keys(createMeta().fields)
+      : normalizeFieldNames(fieldsOrTouched)
+
+    if (allFields && !nextTouched) {
+      touchedFields.clear()
+    }
+    else {
+      fieldNames?.forEach(field => nextTouched ? touchedFields.add(field) : touchedFields.delete(field))
+    }
+
+    commitMeta()
   }
 
   function beginValidation(fieldNames: string[]): void {
@@ -371,10 +432,12 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   function resetFields(fields?: ConfigFormFieldSelector<TValues>): void {
     const fieldNames = normalizeFieldNames(fields)
     if (fieldNames === undefined) {
+      touchedFields.clear()
       commitValues(createResetValues())
       return
     }
 
+    fieldNames.forEach(field => touchedFields.delete(field))
     const values = { ...options.model.read() }
     const resetValues = createResetValues()
     fieldNames.forEach((field) => {
@@ -388,6 +451,12 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
 
   async function submit(): Promise<boolean> {
     const values = getValues()
+    const touchedFieldNames = getFieldStates(values)
+      .filter(state => state.visible && !state.disabled && !state.readonly)
+      .map(state => state.field.field)
+    if (touchedFieldNames.length > 0)
+      setTouched(touchedFieldNames)
+
     const result = await validateValues(values)
     if (result.status === 'stale')
       return false
@@ -449,21 +518,98 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     return values
   }
 
+  function createMeta(): ConfigFormMeta {
+    const values = options.model.read()
+    const resetValues = createResetValues()
+    const fieldNames = new Set([
+      ...Object.keys(values),
+      ...Object.keys(resetValues),
+      ...collectAllConfigFormFields(readFields()).map(field => field.field),
+      ...touchedFields,
+    ])
+    const fields: ConfigFormMeta['fields'] = Object.fromEntries(
+      [...fieldNames].map(field => [field, {
+        dirty: isFieldDirty(field, values, resetValues),
+        touched: touchedFields.has(field),
+      }]),
+    )
+
+    return {
+      dirty: Object.values(fields).some(field => field.dirty),
+      fields,
+      touched: Object.values(fields).some(field => field.touched),
+    }
+  }
+
+  function commitMeta(): ConfigFormMeta {
+    const nextMeta = createMeta()
+    if (!equalMeta(lastMeta, nextMeta)) {
+      lastMeta = nextMeta
+      options.onMetaChange?.(cloneMeta(nextMeta))
+    }
+    return cloneMeta(nextMeta)
+  }
+
   return {
     applyFieldChange,
     clearValidate,
+    getFieldMeta,
     getErrors,
+    getMeta,
     getValidating,
     getValue,
     getValues,
     isFieldValidating,
+    refreshMeta,
     resetFields,
     setValue,
     setValues,
+    setTouched,
     submit,
     validate,
     validateField,
   }
+}
+
+function cloneMeta(meta: ConfigFormMeta): ConfigFormMeta {
+  return {
+    dirty: meta.dirty,
+    fields: Object.fromEntries(
+      Object.entries(meta.fields).map(([field, fieldMeta]) => [
+        field,
+        { ...fieldMeta },
+      ]),
+    ),
+    touched: meta.touched,
+  }
+}
+
+function equalMeta(
+  left: ConfigFormMeta,
+  right: ConfigFormMeta,
+): boolean {
+  const leftFields = Object.keys(left.fields)
+  const rightFields = Object.keys(right.fields)
+  return left.dirty === right.dirty
+    && left.touched === right.touched
+    && leftFields.length === rightFields.length
+    && leftFields.every((field) => {
+      const leftMeta = left.fields[field]
+      const rightMeta = right.fields[field]
+      return leftMeta?.dirty === rightMeta?.dirty
+        && leftMeta?.touched === rightMeta?.touched
+    })
+}
+
+function isFieldDirty(
+  field: string,
+  values: ConfigFormValues,
+  resetValues: ConfigFormValues,
+): boolean {
+  const hasValue = Object.hasOwn(values, field)
+  const hasResetValue = Object.hasOwn(resetValues, field)
+  return hasValue !== hasResetValue
+    || (hasValue && !Object.is(values[field], resetValues[field]))
 }
 
 function assertUniqueFields<TValues extends ConfigFormValues>(

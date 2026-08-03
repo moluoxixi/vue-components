@@ -166,6 +166,7 @@ describe('shadcn config form', () => {
       value: 'Moluoxixi Cloud',
       values: nextValues,
     }])
+    expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: true })
   })
 
   it('同页同名字段生成唯一 control/error id 并关联本字段错误', async () => {

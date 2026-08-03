@@ -1,9 +1,15 @@
 import type { ConfigFormRendererProps } from '@moluoxixi/config-form/renderer'
-import type { ShadcnConfigFormProps } from '../index'
+import type { ShadcnConfigFormDefaultSlotContext, ShadcnConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
 interface UserForm {
   name: string
+}
+
+const shadcnMeta: ShadcnConfigFormDefaultSlotContext<UserForm>['meta'] = {
+  dirty: false,
+  fields: {},
+  touched: false,
 }
 
 const shadcnFields = [
@@ -62,6 +68,7 @@ const shadcnInvalidProps = {
 
 void shadcnInvalidFields
 void shadcnInvalidProps
+void shadcnMeta
 void rendererAttrs
 
 describe('config form ui prop types', () => {
