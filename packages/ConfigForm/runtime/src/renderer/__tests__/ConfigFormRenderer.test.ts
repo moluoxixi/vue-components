@@ -96,7 +96,7 @@ describe('config form renderer', () => {
         cellAttrs: { 'data-cell': 'default' },
         columns: 12,
         fields,
-        formAttrs: { autocomplete: 'off' },
+        formAttrs: { autocomplete: 'off', id: 'form-attrs-id' },
         gap: '8px',
         modelValue: initial,
         namespace: 'test-form',
@@ -108,7 +108,7 @@ describe('config form renderer', () => {
     expect(wrapper.get('form').attributes()).toMatchObject({
       'autocomplete': 'off',
       'data-consumer': 'true',
-      'id': 'profile-form',
+      'id': 'form-attrs-id',
     })
     expect(wrapper.get('form').classes()).toEqual(expect.arrayContaining(['test-form', 'consumer-form']))
     expect(wrapper.get('.test-form__row').attributes('data-layout')).toBe('root')

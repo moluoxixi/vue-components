@@ -1,5 +1,6 @@
 import type { App, Component, Plugin } from 'vue'
 
+/** @deprecated 请从具体 Vue 组件包使用其安装类型。 */
 export type InstallableComponent<T extends Component> = T & Plugin
 
 function getComponentName(component: Component): string | undefined {
@@ -13,11 +14,12 @@ function getComponentName(component: Component): string | undefined {
  *
  * 组件必须通过 defineOptions 声明稳定 name；缺失时在 install 阶段抛出明确错误。
  */
+/** @deprecated ConfigForm adapter 请改用 @moluoxixi/config-form/renderer。 */
 export function withInstall<T extends Component>(component: T): InstallableComponent<T> {
   const install = (app: App): void => {
     const name = getComponentName(component)
     if (!name)
-      throw new Error('[ConfigFormCore] Component name is required before install.')
+      throw new Error('[ConfigFormHeadless] Component name is required before install.')
 
     app.component(name, component)
   }

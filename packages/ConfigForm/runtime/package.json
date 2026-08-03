@@ -22,6 +22,11 @@
       "types": "./dist/src/plugins/index.d.ts",
       "import": "./dist/plugins.js"
     },
+    "./renderer": {
+      "source": "./renderer.ts",
+      "types": "./dist/renderer.d.ts",
+      "import": "./dist/renderer.js"
+    },
     "./styles": {
       "sass": "./src/styles/index.scss",
       "style": "./src/styles/index.scss",
@@ -40,6 +45,7 @@
     "!src/**/__tests__",
     "dist",
     "index.ts",
+    "renderer.ts",
     "src",
     "src/styles",
     "styles"

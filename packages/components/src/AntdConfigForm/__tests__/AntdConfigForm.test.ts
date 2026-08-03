@@ -60,6 +60,31 @@ const ContainerStub = defineComponent({
 })
 
 describe('antd config form', () => {
+  it('透传原生 attrs，并保持 formAttrs 与 adapter namespace 优先级', () => {
+    const wrapper = mount(AntdConfigForm, {
+      attrs: {
+        'class': 'consumer-form',
+        'data-consumer': 'true',
+        'id': 'consumer-id',
+        'namespace': 'consumer-namespace',
+      },
+      props: {
+        fields: [],
+        formAttrs: { 'data-form-attrs': 'true', 'id': 'form-attrs-id' },
+        modelValue: { name: '', status: 'draft' },
+      },
+    })
+
+    const form = wrapper.get('form')
+    expect(form.attributes()).toMatchObject({
+      'data-consumer': 'true',
+      'data-form-attrs': 'true',
+      'id': 'form-attrs-id',
+    })
+    expect(form.classes()).toEqual(expect.arrayContaining(['consumer-form', 'mx-antd-config-form']))
+    expect(form.classes()).not.toContain('consumer-namespace')
+  })
+
   it('使用自有表单壳写回模型并执行 Zod 校验', async () => {
     const fields = [
       defineField<UserForm>({

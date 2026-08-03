@@ -1,3 +1,5 @@
 export { default as ConfigFormRenderer } from './ConfigFormRenderer.vue'
 export { createConfigFormRendererExpose } from './expose'
+export { withConfigFormInstall } from './install'
+export type { InstallableConfigFormComponent } from './install'
 export type * from './types'

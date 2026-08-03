@@ -1,6 +1,6 @@
 import type { App, Component, Plugin } from 'vue'
 
-export type InstallableComponent<T extends Component> = T & Plugin
+export type InstallableConfigFormComponent<T extends Component> = T & Plugin
 
 function getComponentName(component: Component): string | undefined {
   return 'name' in component && typeof component.name === 'string'
@@ -8,12 +8,14 @@ function getComponentName(component: Component): string | undefined {
     : undefined
 }
 
-/** 为 components 包内组件补充 Vue 插件安装契约。 */
-export function withInstall<T extends Component>(component: T): InstallableComponent<T> {
+/** 为 ConfigForm renderer adapter 补充 Vue 插件安装契约。 */
+export function withConfigFormInstall<T extends Component>(
+  component: T,
+): InstallableConfigFormComponent<T> {
   const install = (app: App): void => {
     const name = getComponentName(component)
     if (!name)
-      throw new Error('[MoluoxixiComponents] Component name is required before install.')
+      throw new Error('[ConfigFormRenderer] Component name is required before install.')
 
     app.component(name, component)
   }

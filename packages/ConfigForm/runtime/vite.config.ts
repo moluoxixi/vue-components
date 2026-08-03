@@ -23,6 +23,7 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    conditions: ['source'],
     alias: {
       '@': resolve(__dirname, 'src'),
     },
@@ -57,6 +58,7 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, 'index.ts'),
         plugins: resolve(__dirname, 'src/plugins/index.ts'),
+        renderer: resolve(__dirname, 'renderer.ts'),
       },
       name: 'ConfigForm',
       /**

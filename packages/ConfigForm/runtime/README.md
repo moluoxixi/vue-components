@@ -1,17 +1,17 @@
 # @moluoxixi/config-form
 
-一个轻量的 Vue 3 配置化表单组件库，使用 Zod 和字段级配置完成渲染、校验、显隐、禁用和提交转换。
+Vue 3 配置化表单运行时。根入口提供面向 schema、低代码和 UI plugin 的 Runtime/Plugin 路线，`@moluoxixi/config-form/renderer` 提供面向轻量 ConfigForm adapter 的受控 Vue DOM renderer。
 
 ## 当前架构
 
-`ConfigFormRenderer` 是本版新增的受控 Vue DOM renderer：它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue`、`config-form-shadcn-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
+`ConfigFormRenderer` 从 `@moluoxixi/config-form/renderer` 导出。它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue`、`config-form-shadcn-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
 
-下文的 `ConfigForm`、runtime plugin 与 `useForm` 是保留的旧 runtime host，供现有 plugin 消费者兼容迁移；新轻量 UI 适配器不再依赖这套状态机。
+根入口的 `ConfigForm`、runtime plugin 与 `useForm` 属于 Runtime/Plugin 路线，负责组件注册、字段转换和 UI plugin 扩展，后续可继续演进为 Pro/低代码能力。轻量 UI 适配器不依赖这套状态机，两条路线只共享明确的基础契约。
 
 ## 特性
 
 - 配置驱动：通过 `fields` 数组声明表单字段。
-- UI 框架无关：支持 Vue 对象组件、显式包装的 Vue 函数组件、ConfigForm render function、原生标签和 runtime 组件注册。
+- UI 组件库无关：支持 Vue 对象组件、显式包装的 Vue 函数组件、ConfigForm render function、原生标签和 runtime 组件注册。
 - Zod + 自定义校验：字段支持 `schema`，也支持读取全量 values 的 `validator`。
 - 初始值快照：通过 `defaultValues` 提供初始值，内部值通过表单 ref API 读取和修改。
 - 只读展示：字段级 `readonly` 与 `readonlyAdapters` 分离，核心只负责状态和渲染分派，具体展示值由 runtime adapter 提供。

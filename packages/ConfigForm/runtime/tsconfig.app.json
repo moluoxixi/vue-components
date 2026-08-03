@@ -6,9 +6,6 @@
     "lib": ["DOM", "dom.iterable", "ESNext"],
     "types": ["vite/client"]
   },
-  "vueCompilerOptions": {
-    "plugins": []
-  },
-  "include": ["src/**/*.ts", "src/**/*.vue", "index.ts"],
+  "include": ["src/**/*.ts", "src/**/*.vue", "index.ts", "renderer.ts"],
   "exclude": ["vite.config.ts"]
 }

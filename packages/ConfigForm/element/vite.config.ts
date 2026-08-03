@@ -22,6 +22,9 @@ export default defineConfig({
       tsconfigPath: resolve(__dirname, 'tsconfig.app.json'),
     }),
   ],
+  resolve: {
+    conditions: ['source'],
+  },
   test: {
     environment: 'happy-dom',
   },
@@ -33,7 +36,14 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['@moluoxixi/config-form', '@moluoxixi/config-form-headless', 'vue', 'element-plus', /^element-plus\//],
+      external: [
+        '@moluoxixi/config-form',
+        '@moluoxixi/config-form/renderer',
+        '@moluoxixi/config-form-headless',
+        'vue',
+        'element-plus',
+        /^element-plus\//,
+      ],
     },
   },
 })

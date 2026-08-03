@@ -30,6 +30,111 @@ function fail(message) {
   throw new Error(`[ConfigForm adapter package] ${message}`)
 }
 
+function verifyRendererPackage() {
+  const packageDir = resolve(rootDir, 'packages', 'ConfigForm', 'runtime')
+  const manifest = JSON.parse(readFileSync(resolve(packageDir, 'package.json'), 'utf8'))
+  const rendererExport = manifest.exports?.['./renderer']
+
+  if (!rendererExport?.source || !rendererExport?.import || !rendererExport?.types)
+    fail('@moluoxixi/config-form/renderer must expose source, import, and types conditions')
+
+  const bundlePath = resolve(packageDir, rendererExport.import)
+  const declarationsPath = resolve(packageDir, rendererExport.types)
+  if (!existsSync(bundlePath) || !existsSync(declarationsPath))
+    fail('@moluoxixi/config-form/renderer build output or declarations are missing')
+
+  const importCheck = `
+    const loaded = await import('@moluoxixi/config-form/renderer')
+    const expected = ['ConfigFormRenderer', 'createConfigFormRendererExpose', 'withConfigFormInstall'].sort()
+    const actual = Object.keys(loaded).sort()
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error('Unexpected renderer exports: ' + actual.join(','))
+    }
+  `
+  const result = spawnSync(process.execPath, ['--input-type=module', '--eval', importCheck], {
+    cwd: packageDir,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0)
+    fail(`@moluoxixi/config-form/renderer package self-reference failed: ${result.stderr || result.stdout}`)
+
+  const consumerDir = mkdtempSync(resolve(packageDir, '.config-form-renderer-smoke-'))
+  try {
+    writeFileSync(resolve(consumerDir, 'consumer.ts'), `
+      import {
+        ConfigFormRenderer,
+        createConfigFormRendererExpose,
+        withConfigFormInstall,
+      } from '@moluoxixi/config-form/renderer'
+      import type {
+        ConfigFormRendererComponent,
+        ConfigFormRendererComponentInstance,
+        ConfigFormRendererComponentProps,
+        ConfigFormRendererExpose,
+        ConfigFormRendererProps,
+        InstallableConfigFormComponent,
+      } from '@moluoxixi/config-form/renderer'
+
+      void [ConfigFormRenderer, createConfigFormRendererExpose, withConfigFormInstall]
+      const typedRenderer: ConfigFormRendererComponent = ConfigFormRenderer
+      void typedRenderer
+      type RendererTypes = [
+        ConfigFormRendererComponentInstance,
+        ConfigFormRendererComponentProps,
+        ConfigFormRendererExpose,
+        ConfigFormRendererProps,
+        InstallableConfigFormComponent<never>,
+      ]
+      const rendererTypes: RendererTypes | undefined = undefined
+      void rendererTypes
+    `)
+    const compilerOptions = {
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      noEmit: true,
+      skipLibCheck: false,
+      strict: true,
+      target: 'ES2022',
+    }
+    const declarationsConfigPath = resolve(consumerDir, 'tsconfig.declarations.json')
+    const sourceConfigPath = resolve(consumerDir, 'tsconfig.source.json')
+    writeFileSync(declarationsConfigPath, JSON.stringify({
+      compilerOptions,
+      files: ['./consumer.ts'],
+    }, null, 2))
+    writeFileSync(sourceConfigPath, JSON.stringify({
+      compilerOptions: {
+        ...compilerOptions,
+        customConditions: ['source'],
+        types: ['vite/client'],
+      },
+      files: ['./consumer.ts'],
+    }, null, 2))
+
+    const tscPath = resolve(rootDir, 'node_modules', 'typescript', 'bin', 'tsc')
+    const declarationsResult = spawnSync(process.execPath, [tscPath, '--project', declarationsConfigPath], {
+      cwd: consumerDir,
+      encoding: 'utf8',
+    })
+    if (declarationsResult.status !== 0) {
+      fail(`@moluoxixi/config-form/renderer declaration consumer failed: ${declarationsResult.stderr || declarationsResult.stdout}`)
+    }
+
+    const vueTscPath = resolve(packageDir, 'node_modules', 'vue-tsc', 'bin', 'vue-tsc.js')
+    const sourceResult = spawnSync(process.execPath, [vueTscPath, '--project', sourceConfigPath], {
+      cwd: consumerDir,
+      encoding: 'utf8',
+    })
+    if (sourceResult.status !== 0)
+      fail(`@moluoxixi/config-form/renderer source consumer failed: ${sourceResult.stderr || sourceResult.stdout}`)
+  }
+  finally {
+    rmSync(consumerDir, { force: true, recursive: true })
+  }
+}
+
+verifyRendererPackage()
+
 for (const adapter of adapters) {
   const packageDir = resolve(rootDir, 'packages', 'ConfigForm', adapter.directory)
   const manifestPath = resolve(packageDir, 'package.json')

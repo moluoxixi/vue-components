@@ -27,7 +27,7 @@ describe('withInstall', () => {
     const app = createAppStub()
 
     expect(() => withInstall(component).install!(app)).toThrow(
-      '[ConfigFormCore] Component name is required before install.',
+      '[ConfigFormHeadless] Component name is required before install.',
     )
   })
 })

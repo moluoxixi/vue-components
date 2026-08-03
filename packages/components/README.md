@@ -2,7 +2,7 @@
 
 `@moluoxixi/components` 是 Moluoxixi 组件集合入口。
 
-当前包维护 Element Plus、Ant Design Vue ConfigForm 的独立公共类型和薄适配器，并提供从旧组件库迁入的常用 Element Plus 辅助组件。ConfigForm 的状态与 Zod 校验收敛在 headless 层，Vue DOM、原生 Grid/Flex、字段壳和 ARIA 收敛在 `@moluoxixi/config-form` renderer；本包保留两套 UI 的绑定预设、样式和就近测试。
+当前包维护 Element Plus、Ant Design Vue ConfigForm 的独立公共类型和薄适配器，并提供从旧组件库迁入的常用 Element Plus 辅助组件。ConfigForm 的状态与 Zod 校验收敛在 headless 层，Vue DOM、原生 Grid/Flex、字段壳和 ARIA 收敛在 `@moluoxixi/config-form/renderer`；本包保留两套 UI 的绑定预设、样式和就近测试。
 
 ```ts
 import { defineFields, ElementConfigForm } from '@moluoxixi/components'

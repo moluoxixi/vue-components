@@ -2,7 +2,7 @@
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererExpose,
-} from '@moluoxixi/config-form'
+} from '@moluoxixi/config-form/renderer'
 import type {
   ShadcnConfigFormEmits,
   ShadcnConfigFormExpose,
@@ -10,7 +10,7 @@ import type {
   ShadcnConfigFormSlots,
 } from './types'
 import { useTemplateRef } from 'vue'
-import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form'
+import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
 import './styles.scss'
 
 defineOptions({

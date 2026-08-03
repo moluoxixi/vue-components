@@ -81,6 +81,31 @@ const ContainerStub = defineComponent({
 })
 
 describe('shadcn config form', () => {
+  it('透传原生 attrs，并保持 formAttrs 与 adapter namespace 优先级', () => {
+    const wrapper = mount(ShadcnConfigForm, {
+      attrs: {
+        'class': 'consumer-form',
+        'data-consumer': 'true',
+        'id': 'consumer-id',
+        'namespace': 'consumer-namespace',
+      },
+      props: {
+        fields: [],
+        formAttrs: { 'data-form-attrs': 'true', 'id': 'form-attrs-id' },
+        modelValue: { accountName: '', owner: '', plan: 'free' },
+      },
+    })
+
+    const form = wrapper.get('form')
+    expect(form.attributes()).toMatchObject({
+      'data-consumer': 'true',
+      'data-form-attrs': 'true',
+      'id': 'form-attrs-id',
+    })
+    expect(form.classes()).toEqual(expect.arrayContaining(['consumer-form', 'mx-shadcn-config-form']))
+    expect(form.classes()).not.toContain('consumer-namespace')
+  })
+
   it('渲染字段壳、写回模型并在必填校验失败时展示错误', async () => {
     const fields = [
       defineField<AccountForm>({

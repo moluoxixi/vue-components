@@ -10,7 +10,7 @@ interface TestValues {
 }
 
 describe('createConfigFormRendererExpose', () => {
-  it('forwards methods to the mounted renderer while preserving field types', () => {
+  it('forwards methods to the latest mounted renderer while preserving field types', async () => {
     let model: TestValues = { age: 18, name: 'Ada' }
     const controller = createConfigFormController<TestValues>({
       model: {
@@ -32,6 +32,25 @@ describe('createConfigFormRendererExpose', () => {
     expect(expose.getValue('name')).toBe('Grace')
     expect(expose.getValues()).toEqual({ age: 20, name: 'Grace' })
     expect(scrollToField).toHaveBeenCalledWith('name')
+
+    let replacementModel: TestValues = { age: 30, name: 'Lin' }
+    const replacement = createConfigFormController<TestValues>({
+      model: {
+        read: () => replacementModel,
+        write: values => replacementModel = values,
+      },
+    })
+    const replacementSubmit = vi.spyOn(replacement, 'submit')
+    rendererRef.value = { ...replacement, scrollToField }
+
+    expose.setValues({ age: 31 }, false)
+    expect(expose.getValues()).toEqual({ age: 31, name: 'Lin' })
+    await expect(expose.validate()).resolves.toBe(true)
+    await expect(expose.submit()).resolves.toBe(true)
+    expect(replacementSubmit).toHaveBeenCalledOnce()
+
+    rendererRef.value = null
+    expect(() => expose.getValues()).toThrow('ConfigFormRenderer is not mounted.')
 
     if (false) {
       // @ts-expect-error Known fields must preserve their value type.

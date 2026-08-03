@@ -1,4 +1,4 @@
-import type { ConfigFormRendererProps } from '@moluoxixi/config-form'
+import type { ConfigFormRendererProps } from '@moluoxixi/config-form/renderer'
 import type { AntdConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 

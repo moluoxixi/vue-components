@@ -6,6 +6,7 @@
     "useDefineForClassFields": false,
     "experimentalDecorators": true,
     "baseUrl": ".",
+    "customConditions": ["source"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
