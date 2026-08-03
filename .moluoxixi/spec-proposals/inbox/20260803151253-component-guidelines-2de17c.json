@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260803151253-component-guidelines-2de17c",
+  "createdAt": "2026-08-03T15:12:53.551Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-03-vitepress-component-docs",
+  "reason": "Preserve the executable contract for filtering vue-component-meta public-instance noise from source-level defineExpose documentation and retaining transitive tooltip types.",
+  "target": "frontend/component-guidelines.md",
+  "kind": "file",
+  "baseHash": "7ca6ea4f9305a8267b7570505f9ebf6030bb5911cbe3f2a135cfb7ebd402805b",
+  "contentFile": "content/20260803151253-component-guidelines-2de17c.md",
+  "contentHash": "eb557a6e3969c421ed53f6e874d19e1fa4d34d1de3d94e593d97fc5d6e7df7a5"
+}
