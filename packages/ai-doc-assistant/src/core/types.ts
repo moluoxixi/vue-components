@@ -1,6 +1,6 @@
 /**
  * 组件契约领域模型：extractor 的产出、generator/indexer 的输入。
- * 字段口径对齐 docs/plan/backend「数据模型」节，以组件源码为权威来源。
+ * 字段口径以组件源码为权威来源。
  */
 
 /** 单个 Prop 定义。 */

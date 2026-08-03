@@ -102,10 +102,12 @@ test.describe('components playground 交互', () => {
     const popoverExample = page.getByTestId('popover-table-example')
     const input = popoverExample.locator('input').first()
 
+    await input.click()
     await input.fill('华南')
     await expect(input).toHaveValue('华南')
-    await expect(page.locator('.mx-popover-table-select-base__row')).toHaveCount(1)
-    const row = page.locator('.mx-popover-table-select-base__row', { hasText: '华南仓' })
+    await expect(page.locator('[data-testid^="config-table-cell-name-"]')).toHaveCount(1)
+    const row = page.getByTestId('config-table-cell-name-0')
+    await expect(row).toHaveText('华南仓')
     await expect(row).toBeVisible()
     await row.click()
 

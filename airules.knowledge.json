@@ -21,24 +21,6 @@
       "purpose": "project-overview",
       "owner": "project-maintainer",
       "trust": "registered"
-    },
-    {
-      "id": "repo-docs",
-      "type": "filesystem",
-      "include": [
-        "docs/**"
-      ],
-      "exclude": [
-        "vendor/**",
-        "node_modules/**",
-        "dist/**",
-        "coverage/**",
-        ".git/**",
-        ".codegraph/**"
-      ],
-      "purpose": "project-docs",
-      "owner": "project-maintainer",
-      "trust": "registered"
     }
   ]
 }

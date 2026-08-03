@@ -15,14 +15,8 @@ import type {
   ConfigTableSlots,
 } from './types'
 import { useRequestTable } from '@moluoxixi/hooks'
+import { ElPagination, ElTableV2 } from 'element-plus'
 import { computed, defineComponent, watch } from 'vue'
-
-const INTERNAL_ROW_KEY = '__mx_config_table_row_key'
-
-interface ConfigTableVirtualColumn extends TableV2Column<ConfigTableRow> {
-  configColumn: ConfigTableColumn
-  configColumnIndex: number
-}
 
 const props = withDefaults(defineProps<ConfigTableProps>(), {
   columns: () => [],
@@ -39,11 +33,20 @@ const props = withDefaults(defineProps<ConfigTableProps>(), {
   rowHeight: 44,
   headerHeight: 40,
   defaultColumnWidth: 160,
-  rowKey: INTERNAL_ROW_KEY,
+  rowKey: '__mx_config_table_row_key',
 })
 
 const emit = defineEmits<ConfigTableEmits>()
+
 const slots = defineSlots<ConfigTableSlots>()
+
+const INTERNAL_ROW_KEY = '__mx_config_table_row_key'
+
+interface ConfigTableVirtualColumn extends TableV2Column<ConfigTableRow> {
+  configColumn: ConfigTableColumn
+  configColumnIndex: number
+}
+
 const currentPage = defineModel<number>('currentPage', { default: 1 })
 const pageSize = defineModel<number>('pageSize', { default: 10 })
 

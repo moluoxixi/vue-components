@@ -40,21 +40,10 @@ const examples = Object
 const searchQuery = ref('')
 const activeExampleName = shallowRef<string | null>(null)
 
-const exampleGroups = computed<ExampleGroup[]>(() => {
-  const query = searchQuery.value.trim().toLocaleLowerCase()
+function groupExamples(items: ExampleItem[]): ExampleGroup[] {
   const groups = new Map<string, ExampleItem[]>()
 
-  examples.forEach((example) => {
-    const searchableText = [
-      example.title,
-      example.name,
-      example.category,
-      example.description,
-    ].join(' ').toLocaleLowerCase()
-
-    if (query && !searchableText.includes(query))
-      return
-
+  items.forEach((example) => {
     const groupExamples = groups.get(example.category)
 
     if (groupExamples) {
@@ -65,10 +54,28 @@ const exampleGroups = computed<ExampleGroup[]>(() => {
     groups.set(example.category, [example])
   })
 
-  return Array.from(groups, ([category, groupExamples]) => ({
+  return Array.from(groups, ([category, groupItems]) => ({
     category,
-    examples: groupExamples,
+    examples: groupItems,
   }))
+}
+
+const allExampleGroups = groupExamples(examples)
+
+const exampleGroups = computed<ExampleGroup[]>(() => {
+  const query = searchQuery.value.trim().toLocaleLowerCase()
+  const visibleExamples = examples.filter((example) => {
+    const searchableText = [
+      example.title,
+      example.name,
+      example.category,
+      example.description,
+    ].join(' ').toLocaleLowerCase()
+
+    return !query || searchableText.includes(query)
+  })
+
+  return groupExamples(visibleExamples)
 })
 
 const visibleExampleCount = computed(() => {
@@ -153,6 +160,7 @@ onBeforeUnmount(() => {
                 class="component-card"
                 type="button"
                 role="menuitem"
+                :aria-label="example.title"
                 @click="openExample(example.name)"
               >
                 <span class="component-card__topline">
@@ -191,12 +199,12 @@ onBeforeUnmount(() => {
 
         <ElMenu
           class="detail-menu"
-          :default-openeds="exampleGroups.map(group => group.category)"
+          :default-openeds="allExampleGroups.map(group => group.category)"
           :default-active="activeExampleName || undefined"
           @select="openExample"
         >
           <ElSubMenu
-            v-for="group in exampleGroups"
+            v-for="group in allExampleGroups"
             :key="group.category"
             :index="group.category"
           >
@@ -629,6 +637,7 @@ onBeforeUnmount(() => {
 
 .detail-stage {
   max-width: 1120px;
+  overflow-x: auto;
   margin: 0 auto;
   padding: 28px;
   border: 1px solid #e4e7ed;
@@ -708,6 +717,24 @@ onBeforeUnmount(() => {
 
   .detail-stage {
     padding: 18px;
+  }
+
+  .detail-stage :deep(.date-range-example .el-form-item) {
+    display: block;
+  }
+
+  .detail-stage :deep(.date-range-example .el-form-item__label) {
+    width: auto !important;
+    height: auto;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .detail-stage :deep(.date-range-example .el-form-item__content),
+  .detail-stage :deep(.date-range-example [data-testid^='date-range-']),
+  .detail-stage :deep(.date-range-example .el-date-editor) {
+    width: 100%;
+    min-width: 0;
   }
 }
 </style>

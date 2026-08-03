@@ -10,8 +10,8 @@ import type {
   PopoverTableVirtualRef,
   ThrottleOrDebounceOptions,
 } from './types'
-import { ElInput } from 'element-plus'
 import { useRequestTable } from '@moluoxixi/hooks'
+import { ElInput, ElPagination } from 'element-plus'
 import { computed, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { debounce, throttle } from '../../utils'
 import PopoverTableSelectBase from './base/index.vue'
@@ -20,8 +20,6 @@ defineOptions({
   name: 'PopoverTableSelect',
   inheritAttrs: false,
 })
-
-type RuntimeProps = Omit<PopoverTableSelectProps, 'inputValue'>
 
 const props = withDefaults(defineProps<RuntimeProps>(), {
   debounce: 0,
@@ -45,7 +43,10 @@ const props = withDefaults(defineProps<RuntimeProps>(), {
 })
 
 const emit = defineEmits<PopoverTableSelectEmits>()
+
 const slots = defineSlots<PopoverTableSelectSlots>()
+
+type RuntimeProps = Omit<PopoverTableSelectProps, 'inputValue'>
 
 const popoverModel = defineModel<boolean>({ default: false })
 const inputValue = defineModel<string>('inputValue', { default: '' })

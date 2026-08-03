@@ -9,6 +9,7 @@ packages:
 
 catalog:
   '@huggingface/transformers': ^4.0.0
+  '@opencode-ai/plugin': ^1.14.39
   vue3-sfc-loader: 0.9.5
 catalogs:
   build:
