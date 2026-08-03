@@ -97,9 +97,18 @@ test.describe('components playground 交互', () => {
     await openComponent(page, 'HeadlessTable')
 
     const example = page.getByTestId('headless-table-example')
-    await expect(example.locator('.el-tag')).toHaveCount(4)
-    await expect(example.locator('.el-tag.is-round')).toHaveCount(4)
-    await expect(example.locator('.el-tag--success')).toHaveCount(3)
+    await expect(example.locator('.el-tag')).toHaveCount(2)
+    await expect(example.locator('.el-tag.is-round')).toHaveCount(2)
+    await expect(example.locator('.el-tag--success')).toHaveCount(2)
+
+    await example.locator('.el-table__body tbody tr .el-checkbox').first().click()
+    await expect(example.getByText('已选择 1 行', { exact: true })).toBeVisible()
+    await expect(example.locator('.headless-table-example__selected-mark')).toHaveText('C-001')
+
+    await example.locator('.el-pagination .btn-next').click()
+    await expect(example.getByText('西南仓', { exact: true })).toBeVisible()
+    await expect(example.getByText('已选择 1 行', { exact: true })).toBeVisible()
+    await expect(example.locator('.headless-table-example__selected-mark')).toHaveText('C-001')
 
     await example.getByPlaceholder('搜索仓库、负责人或状态').fill('维护')
     await expect(example.locator('.el-table__body tbody tr')).toHaveCount(1)

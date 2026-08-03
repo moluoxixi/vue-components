@@ -6,9 +6,14 @@ import type {
   HeadlessTableRendererMap,
 } from '../index'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick, ref } from 'vue'
-import { createHeadlessTableRenderer, HeadlessTable, headlessTableRenderer } from '../index'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, nextTick, reactive, ref } from 'vue'
+import {
+  createHeadlessTableRenderer,
+  HeadlessTable,
+  headlessTableRenderer,
+  headlessTableRendererKey,
+} from '../index'
 
 interface InventoryRow {
   code: string
@@ -31,6 +36,11 @@ function renderTable(scope: HeadlessTableDefaultScope<InventoryRow>) {
 }
 
 describe('headless table', () => {
+  afterEach(() => {
+    headlessTableRenderer.clear()
+    vi.restoreAllMocks()
+  })
+
   it('通过 app.use 按稳定名称注册组件', () => {
     const component = vi.fn()
 
@@ -58,7 +68,7 @@ describe('headless table', () => {
     ]
 
     const wrapper = mount(HeadlessTable as any, {
-      props: { columns, data },
+      props: { columns, data, diagnostics: false },
       slots: {
         default: renderTable as any,
         nameCell: ({ row, value }: any) => h('span', { 'data-testid': 'name-cell' }, `${row.code}:${value}`),
@@ -129,12 +139,12 @@ describe('headless table', () => {
       renderDefault: () => h('span', { 'data-testid': 'live-renderer' }, 'renderer-a'),
     })
     const wrapper = mount(HeadlessTable as any, {
-      props: { columns, data },
+      props: { columns, data, diagnostics: false },
       slots: { default: renderTable as any },
     })
     expect(wrapper.get('[data-testid="live-renderer"]').text()).toBe('renderer-a')
 
-    headlessTableRenderer.add('toString', {
+    headlessTableRenderer.replace('toString', {
       renderDefault: () => h('span', { 'data-testid': 'live-renderer' }, 'renderer-b'),
     })
     await nextTick()
@@ -156,7 +166,7 @@ describe('headless table', () => {
     ]
     const Host = defineComponent({
       setup() {
-        return () => h(HeadlessTable as any, { columns, data }, {
+        return () => h(HeadlessTable as any, { columns, data, diagnostics: false }, {
           default: renderTable,
           ...(showSlot.value
             ? { dynamicCell: () => h('span', { 'data-testid': 'dynamic-slot' }, 'slot-value') }
@@ -197,5 +207,135 @@ describe('headless table', () => {
       slots: { default: ({ Empty }: any) => h(Empty) },
     })
     expect(defaultWrapper.text()).toBe('没有记录')
+  })
+
+  it('只在 slot 和 renderer 均未命中时执行 formatter，并向 renderer 暴露原值', () => {
+    const formatter = vi.fn(({ value }) => `formatted:${value}`)
+    const columns: HeadlessTableColumn<InventoryRow>[] = [
+      {
+        field: 'quantity',
+        formatter,
+        slots: { default: ({ value, rawValue }) => h('span', `slot:${value}:${rawValue}`) },
+      },
+      {
+        id: 'renderer-quantity',
+        accessor: row => row.quantity,
+        formatter,
+        cellRender: 'quantityRenderer',
+      },
+      { id: 'formatted-quantity', accessor: row => row.quantity, formatter },
+    ]
+    const data: InventoryRow[] = [
+      { code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' },
+    ]
+    const renderers: HeadlessTableRendererMap<InventoryRow> = {
+      quantityRenderer: {
+        renderDefault: (_, { value, rawValue }) => h('span', `renderer:${value}:${rawValue}`),
+      },
+    }
+
+    const wrapper = mount(HeadlessTable as any, {
+      props: { columns, data, renderers },
+      slots: { default: renderTable as any },
+    })
+
+    expect(wrapper.get('[data-testid="row-0"]').text())
+      .toBe('slot:12:12renderer:12:12formatted:12')
+    expect(formatter).toHaveBeenCalledTimes(1)
+  })
+
+  it('支持稳定列 id、函数 accessor 和无字段展示列', () => {
+    const columns: HeadlessTableColumn<InventoryRow>[] = [
+      { id: 'owner-label', accessor: row => `${row.owner.name}/${row.code}`, title: '负责人标识' },
+      { id: 'actions', title: '操作', slots: { default: () => h('button', '查看') } },
+    ]
+    const data: InventoryRow[] = [
+      { code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' },
+    ]
+
+    const wrapper = mount(HeadlessTable as any, {
+      props: { columns, data },
+      slots: {
+        default: (scope: HeadlessTableDefaultScope<InventoryRow>) => h('div', [
+          h('span', { 'data-testid': 'column-ids' }, scope.columns
+            .map((column, index) => scope.getColumnId(column, index)).join(',')),
+          renderTable(scope),
+        ]),
+      },
+    })
+
+    expect(wrapper.get('[data-testid="column-ids"]').text()).toBe('owner-label,actions')
+    expect(wrapper.get('[data-testid="row-0"]').text()).toBe('张三/C-001查看')
+  })
+
+  it('响应同一局部 renderer map 上动态增加的自有属性', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const columns: HeadlessTableColumn<InventoryRow>[] = [{ field: 'status', cellRender: 'late' }]
+    const data: InventoryRow[] = [
+      { code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' },
+    ]
+    const renderers = reactive<HeadlessTableRendererMap<InventoryRow>>({})
+    const wrapper = mount(HeadlessTable as any, {
+      props: { columns, data, renderers },
+      slots: { default: renderTable as any },
+    })
+
+    expect(wrapper.get('[data-testid="row-0"]').text()).toBe('启用')
+    renderers.late = {
+      renderDefault: () => h('span', { 'data-testid': 'late-renderer' }, '已接管'),
+    }
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="late-renderer"]').text()).toBe('已接管')
+    expect(warn).toHaveBeenCalledTimes(1)
+  })
+
+  it('优先使用表级 registry，并对重复 add 提供明确策略', () => {
+    const registry = createHeadlessTableRenderer()
+    registry.add('scoped', {
+      renderDefault: () => h('span', { 'data-testid': 'scoped-renderer' }, '表级'),
+    })
+    expect(registry.has('scoped')).toBe(true)
+    expect(() => registry.add('scoped', {})).toThrow(/use replace/)
+
+    registry.replace('scoped', {
+      renderDefault: () => h('span', { 'data-testid': 'scoped-renderer' }, '替换后'),
+    })
+    const wrapper = mount(HeadlessTable as any, {
+      props: {
+        columns: [{ field: 'status', cellRender: 'scoped' }],
+        data: [{ code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' }],
+        diagnostics: false,
+        rendererRegistry: registry,
+      },
+      slots: { default: renderTable as any },
+    })
+
+    expect(wrapper.get('[data-testid="scoped-renderer"]').text()).toBe('替换后')
+    registry.clear()
+    expect(registry.has('scoped')).toBe(false)
+  })
+
+  it('通过 injection 隔离应用级 renderer registry', () => {
+    headlessTableRenderer.add('isolated', {
+      renderDefault: () => h('span', '全局'),
+    })
+    const registry = createHeadlessTableRenderer()
+    registry.add('isolated', {
+      renderDefault: () => h('span', { 'data-testid': 'injected-renderer' }, '应用级'),
+    })
+
+    const wrapper = mount(HeadlessTable as any, {
+      props: {
+        columns: [{ field: 'status', cellRender: 'isolated' }],
+        data: [{ code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' }],
+      },
+      slots: { default: renderTable as any },
+      global: {
+        provide: { [headlessTableRendererKey as symbol]: registry },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="injected-renderer"]').text()).toBe('应用级')
   })
 })

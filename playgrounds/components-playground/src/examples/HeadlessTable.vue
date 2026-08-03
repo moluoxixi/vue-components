@@ -9,10 +9,14 @@ export const exampleMeta = {
 </script>
 
 <script setup lang="ts">
-import type { HeadlessTableColumn } from '@moluoxixi/components'
-import { HeadlessTable, headlessTableRenderer } from '@moluoxixi/components'
+import type {
+  HeadlessTableColumn,
+  HeadlessTableRendererMap,
+  HeadlessTableRowKey,
+} from '@moluoxixi/components'
+import { HeadlessTable, useHeadlessTable } from '@moluoxixi/components'
 import { ElButton, ElTag } from 'element-plus'
-import { computed, h, ref } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 
 interface WarehouseRow {
   code: string
@@ -23,7 +27,6 @@ interface WarehouseRow {
 }
 
 const keyword = ref('')
-const visibleFields = ref(['code', 'name', 'owner.name', 'utilization', 'status', 'actions'])
 const selectedCode = ref('未选择')
 
 const rows: WarehouseRow[] = [
@@ -33,20 +36,29 @@ const rows: WarehouseRow[] = [
   { code: 'C-004', name: '华北仓', owner: { name: '赵新', team: '运营四部' }, utilization: 74, status: '启用' },
 ]
 
-headlessTableRenderer.add<WarehouseRow>('statusTag', {
-  renderDefault(renderOptions, { value }) {
-    return h(ElTag, {
-      effect: 'light',
-      size: 'small',
-      type: value === '启用' ? 'success' : 'warning',
-      ...renderOptions.props,
-    }, () => value)
+const renderers: HeadlessTableRendererMap<WarehouseRow> = {
+  statusTag: {
+    renderDefault(renderOptions, { value }) {
+      return h(ElTag, {
+        effect: 'light',
+        size: 'small',
+        type: value === '启用' ? 'success' : 'warning',
+        ...renderOptions.props,
+      }, () => value)
+    },
   },
-})
+}
 
 const baseColumns: HeadlessTableColumn<WarehouseRow>[] = [
-  { field: 'code', title: '仓库编码', width: 120, columnProps: { fixed: 'left' } },
-  { field: 'name', title: '仓库名称', minWidth: 150 },
+  {
+    field: 'code',
+    title: '仓库编码',
+    width: 120,
+    filter: (_, query, row) => [row.code, row.name, row.owner.name, row.owner.team, row.status]
+      .some(value => value.toLowerCase().includes(String(query).toLowerCase())),
+    columnProps: { fixed: 'left', sortable: 'custom' },
+  },
+  { field: 'name', title: '仓库名称', minWidth: 150, columnProps: { sortable: 'custom' } },
   {
     field: 'owner.name',
     title: '负责人',
@@ -60,6 +72,7 @@ const baseColumns: HeadlessTableColumn<WarehouseRow>[] = [
     align: 'right',
     formatter: ({ value }) => `${value}%`,
     slots: { header: 'utilizationHeader' },
+    columnProps: { sortable: 'custom' },
   },
   {
     field: 'status',
@@ -69,7 +82,7 @@ const baseColumns: HeadlessTableColumn<WarehouseRow>[] = [
     cellRender: { name: 'statusTag', props: { round: true } },
   },
   {
-    field: 'actions',
+    id: 'actions',
     title: '操作',
     width: 90,
     align: 'center',
@@ -84,19 +97,67 @@ const baseColumns: HeadlessTableColumn<WarehouseRow>[] = [
   },
 ]
 
-const columns = computed(() => baseColumns.map(column => ({
-  ...column,
-  visible: visibleFields.value.includes(column.field),
-})))
-
-const filteredRows = computed(() => {
-  const query = keyword.value.trim().toLowerCase()
-  if (!query)
-    return rows
-
-  return rows.filter(row => [row.code, row.name, row.owner.name, row.owner.team, row.status]
-    .some(value => value.toLowerCase().includes(query)))
+const table = useHeadlessTable({
+  columns: baseColumns,
+  data: rows,
+  getRowId: row => row.code,
+  initialState: {
+    pagination: { currentPage: 1, pageSize: 2 },
+  },
 })
+
+const {
+  columns,
+  columnVisibility,
+  pageCount,
+  pagination,
+  rows: tableRows,
+  selectedCount,
+  selectedKeys,
+  setColumnVisible,
+  setFilter,
+  setPage,
+  setPageSize,
+  setSelectedKeys,
+  setSorting,
+  total,
+} = table
+
+const visibleFields = computed({
+  get: () => baseColumns
+    .map(column => column.id ?? column.field!)
+    .filter(id => columnVisibility.value[id] !== false),
+  set: (fields: string[]) => {
+    baseColumns.forEach((column) => {
+      const id = column.id ?? column.field!
+      setColumnVisible(id, fields.includes(id))
+    })
+  },
+})
+
+watch(keyword, (value) => {
+  setFilter('code', value.trim() || undefined)
+})
+
+function handleSortChange({ prop, order }: { prop?: string, order?: string | null }): void {
+  if (!prop || !order) {
+    setSorting([])
+    return
+  }
+
+  setSorting([{
+    id: prop,
+    direction: order === 'descending' ? 'desc' : 'asc',
+  }])
+}
+
+function handleSelectionChange(selection: WarehouseRow[]): void {
+  setSelectedKeys(selection.map(row => row.code))
+}
+
+function isSelected(key: HeadlessTableRowKey): boolean {
+  return selectedKeys.value.includes(key)
+}
 </script>
 
 <template>
@@ -124,13 +185,27 @@ const filteredRows = computed(() => {
       </ElCheckboxGroup>
     </div>
 
-    <HeadlessTable :columns="columns" :data="filteredRows" empty-text="没有匹配的仓库">
-      <template #default="{ columns: tableColumns, data, Cell, Header, Empty, getColumnLabel }">
-        <ElTable :data="data" border stripe row-key="code" data-testid="headless-element-table">
+    <HeadlessTable
+      :columns="columns"
+      :data="tableRows"
+      :renderers="renderers"
+      empty-text="没有匹配的仓库"
+    >
+      <template #default="{ columns: tableColumns, data, Cell, Header, Empty, getColumnId, getColumnLabel }">
+        <ElTable
+          :data="data"
+          border
+          stripe
+          row-key="code"
+          data-testid="headless-element-table"
+          @selection-change="handleSelectionChange"
+          @sort-change="handleSortChange"
+        >
+          <ElTableColumn type="selection" width="48" reserve-selection />
           <ElTableColumn
             v-for="(column, columnIndex) in tableColumns"
-            :key="column.field"
-            :prop="column.field"
+            :key="getColumnId(column, columnIndex)"
+            :prop="column.accessorKey ?? column.field"
             :label="getColumnLabel(column)"
             :width="column.width"
             :min-width="column.minWidth"
@@ -170,8 +245,23 @@ const filteredRows = computed(() => {
       </template>
     </HeadlessTable>
 
-    <div class="headless-table-example__selection" aria-live="polite">
-      当前选择：<strong data-testid="headless-table-selected">{{ selectedCode }}</strong>
+    <div class="headless-table-example__footer">
+      <div class="headless-table-example__selection" aria-live="polite">
+        当前操作：<strong data-testid="headless-table-selected">{{ selectedCode }}</strong>
+        <span>已选择 {{ selectedCount }} 行</span>
+        <span v-if="isSelected('C-001')" class="headless-table-example__selected-mark">C-001</span>
+      </div>
+      <ElPagination
+        background
+        layout="total, sizes, prev, pager, next"
+        :current-page="pagination.currentPage"
+        :page-size="pagination.pageSize"
+        :page-sizes="[2, 4]"
+        :page-count="pageCount"
+        :total="total"
+        @current-change="setPage"
+        @size-change="setPageSize"
+      />
     </div>
   </div>
 </template>
@@ -214,10 +304,24 @@ const filteredRows = computed(() => {
   cursor: help;
 }
 
-.headless-table-example__selection {
+.headless-table-example__footer {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
   margin-top: 12px;
+}
+
+.headless-table-example__selection {
+  display: flex;
+  gap: 12px;
+  align-items: center;
   color: var(--el-text-color-regular);
   font-size: 14px;
+}
+
+.headless-table-example__selected-mark {
+  color: var(--el-color-success);
 }
 
 @media (max-width: 780px) {
@@ -228,6 +332,11 @@ const filteredRows = computed(() => {
 
   .headless-table-example__columns {
     justify-content: flex-start;
+  }
+
+  .headless-table-example__footer {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

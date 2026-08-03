@@ -8,7 +8,18 @@ export { ElementConfigForm } from './ElementConfigForm'
 export type * from './ElementConfigForm'
 export { EnterNextContainer } from './EnterNextContainer'
 export type * from './EnterNextContainer'
-export { createHeadlessTableRenderer, HeadlessTable, headlessTableRenderer } from './HeadlessTable'
+export {
+  createHeadlessTableRenderer,
+  defineHeadlessTableRenderer,
+  getHeadlessTableColumnId,
+  getHeadlessTableColumnLabel,
+  getHeadlessTableRawValue,
+  HeadlessTable,
+  headlessTableRenderer,
+  headlessTableRendererKey,
+  provideHeadlessTableRenderer,
+  useHeadlessTable,
+} from './HeadlessTable'
 export type * from './HeadlessTable'
 export { PopoverTableSelect } from './PopoverTableSelect'
 export type * from './PopoverTableSelect'

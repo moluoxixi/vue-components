@@ -17,14 +17,20 @@ import type {
   HeadlessTableSlots,
   HeadlessTableEmptyComponent,
 } from './types'
-import { computed, defineComponent, markRaw, onUpdated, shallowRef } from 'vue'
-import { headlessTableRenderer } from './renderer'
+import { computed, defineComponent, inject, markRaw, onBeforeUpdate, shallowRef } from 'vue'
+import {
+  getHeadlessTableColumnId,
+  getHeadlessTableColumnLabel,
+  getHeadlessTableRawValue,
+} from './core'
+import { headlessTableRenderer, headlessTableRendererKey } from './renderer'
 
 defineOptions({ name: 'HeadlessTable' })
 
 const props = withDefaults(defineProps<HeadlessTableProps<TRow>>(), {
   columns: () => [],
   data: () => [],
+  diagnostics: true,
   emptyText: '暂无数据',
   renderers: () => ({}),
   slots: () => ({}),
@@ -32,22 +38,52 @@ const props = withDefaults(defineProps<HeadlessTableProps<TRow>>(), {
 
 const slots = defineSlots<HeadlessTableSlots<TRow>>()
 const slotsVersion = shallowRef(0)
+const warnedDiagnostics = new Set<string>()
+const injectedRendererRegistry = inject(headlessTableRendererKey, null)
 
-onUpdated(() => {
-  slotsVersion.value += 1
+function captureSlots(): Record<string, unknown> {
+  return Object.fromEntries(Object.keys(slots).map(name => [name, slots[name]]))
+}
+
+let slotSnapshot = captureSlots()
+
+onBeforeUpdate(() => {
+  const nextSnapshot = captureSlots()
+  const previousKeys = Object.keys(slotSnapshot)
+  const nextKeys = Object.keys(nextSnapshot)
+  const changed = previousKeys.length !== nextKeys.length
+    || nextKeys.some(name => slotSnapshot[name] !== nextSnapshot[name])
+
+  if (changed) {
+    slotSnapshot = nextSnapshot
+    slotsVersion.value += 1
+  }
 })
 
 const visibleColumns = computed(() => props.columns.filter(column => column.visible !== false))
 
-function getColumnLabel(column: HeadlessTableColumn<TRow>): string {
-  return column.label ?? column.title ?? column.field
+function warnOnce(key: string, message: string): void {
+  if (!import.meta.env.DEV || !props.diagnostics || warnedDiagnostics.has(key))
+    return
+
+  warnedDiagnostics.add(key)
+  console.warn(`[HeadlessTable] ${message}`)
 }
 
-function getFieldValue(row: TRow, field: string): any {
-  if (Object.prototype.hasOwnProperty.call(row, field))
-    return row[field]
+function getColumnId(column: HeadlessTableColumn<TRow>, columnIndex?: number): string {
+  return getHeadlessTableColumnId(column, columnIndex)
+}
 
-  return field.split('.').reduce<any>((value, key) => value?.[key], row)
+function getColumnLabel(column: HeadlessTableColumn<TRow>, columnIndex?: number): string {
+  return getHeadlessTableColumnLabel(column, columnIndex)
+}
+
+function getRawCellValue(
+  row: TRow,
+  column: HeadlessTableColumn<TRow>,
+  rowIndex: number,
+): any {
+  return getHeadlessTableRawValue(row, column, rowIndex)
 }
 
 function createHeaderScope(
@@ -55,6 +91,7 @@ function createHeaderScope(
   columnIndex: number,
 ): HeadlessTableHeaderScope<TRow> {
   return {
+    allColumns: props.columns,
     column,
     columnIndex,
     columns: visibleColumns.value,
@@ -69,7 +106,7 @@ function getCellValue(
   rowIndex: number,
   columnIndex: number,
 ): any {
-  const scope = createCellScope(row, column, rowIndex, columnIndex, false)
+  const scope = createCellScope(row, column, rowIndex, columnIndex)
   return column.formatter ? column.formatter(scope) : scope.value
 }
 
@@ -78,9 +115,10 @@ function createCellScope(
   column: HeadlessTableColumn<TRow>,
   rowIndex: number,
   columnIndex: number,
-  formatted = true,
 ): HeadlessTableCellScope<TRow> {
+  const rawValue = getRawCellValue(row, column, rowIndex)
   const scope: HeadlessTableCellScope<TRow> = {
+    allColumns: props.columns,
     row,
     column,
     rowIndex,
@@ -88,11 +126,9 @@ function createCellScope(
     columns: visibleColumns.value,
     data: props.data,
     index: rowIndex,
-    value: getFieldValue(row, column.field),
+    rawValue,
+    value: rawValue,
   }
-
-  if (formatted && column.formatter)
-    scope.value = column.formatter(scope)
 
   return scope
 }
@@ -106,13 +142,15 @@ function resolveRenderer(config: HeadlessTableRendererConfig): {
   renderer?: HeadlessTableRendererDefinition<TRow>
 } {
   const options = normalizeRenderOptions(config)
+  const localCandidate = props.renderers[options.name]
   const localRenderer = Object.prototype.hasOwnProperty.call(props.renderers, options.name)
-    ? props.renderers[options.name]
+    ? localCandidate
     : undefined
+  const registry = props.rendererRegistry ?? injectedRendererRegistry ?? headlessTableRenderer
   return {
     options,
     renderer: localRenderer
-      ?? headlessTableRenderer.get(options.name) as HeadlessTableRendererDefinition<TRow> | undefined,
+      ?? registry.get(options.name) as HeadlessTableRendererDefinition<TRow> | undefined,
   }
 }
 
@@ -124,16 +162,24 @@ function renderHeader(column: HeadlessTableColumn<TRow>, columnIndex: number): a
   if (typeof configuredSlot === 'function')
     return (configuredSlot as HeadlessTableHeaderRender<TRow>)(scope)
 
-  if (typeof configuredSlot === 'string' && slots[configuredSlot])
-    return slots[configuredSlot]?.(scope)
+  if (typeof configuredSlot === 'string') {
+    const configuredSlotRender = slots[configuredSlot]
+    if (configuredSlotRender)
+      return configuredSlotRender(scope)
+
+    warnOnce(`header-slot:${configuredSlot}`, `header slot "${configuredSlot}" was not found`)
+  }
 
   if (column.headerRender) {
     const { options, renderer } = resolveRenderer(column.headerRender)
     if (renderer?.renderHeader)
       return renderer.renderHeader(options, scope)
+
+    const reason = renderer ? 'does not implement renderHeader' : 'was not found'
+    warnOnce(`header-renderer:${options.name}:${reason}`, `renderer "${options.name}" ${reason}`)
   }
 
-  return getColumnLabel(column)
+  return getColumnLabel(column, columnIndex)
 }
 
 function renderCell(
@@ -149,32 +195,36 @@ function renderCell(
   if (typeof configuredSlot === 'function')
     return (configuredSlot as HeadlessTableCellRender<TRow>)(scope)
 
-  if (typeof configuredSlot === 'string' && slots[configuredSlot])
-    return slots[configuredSlot]?.(scope)
+  if (typeof configuredSlot === 'string') {
+    const configuredSlotRender = slots[configuredSlot]
+    if (configuredSlotRender)
+      return configuredSlotRender(scope)
+
+    warnOnce(`cell-slot:${configuredSlot}`, `cell slot "${configuredSlot}" was not found`)
+  }
 
   if (column.cellRender) {
     const { options, renderer } = resolveRenderer(column.cellRender)
     if (renderer?.renderDefault)
       return renderer.renderDefault(options, scope)
+
+    const reason = renderer ? 'does not implement renderDefault' : 'was not found'
+    warnOnce(`cell-renderer:${options.name}:${reason}`, `renderer "${options.name}" ${reason}`)
   }
 
-  return scope.value
-}
-
-function getColumnIndex(column: HeadlessTableColumn<TRow>, index?: number): number {
-  return index ?? visibleColumns.value.indexOf(column)
+  return column.formatter ? column.formatter(scope) : scope.value
 }
 
 const Header = markRaw(defineComponent({
   name: 'HeadlessTableHeader',
   props: {
     column: { type: Object, required: true },
-    columnIndex: { type: Number, default: undefined },
+    columnIndex: { type: Number, required: true },
   },
   setup(componentProps) {
     return () => renderHeader(
       componentProps.column as HeadlessTableColumn<TRow>,
-      getColumnIndex(componentProps.column as HeadlessTableColumn<TRow>, componentProps.columnIndex),
+      componentProps.columnIndex,
     )
   },
 }))
@@ -185,14 +235,14 @@ const Cell = markRaw(defineComponent({
     row: { type: Object, required: true },
     column: { type: Object, required: true },
     rowIndex: { type: Number, required: true },
-    columnIndex: { type: Number, default: undefined },
+    columnIndex: { type: Number, required: true },
   },
   setup(componentProps) {
     return () => renderCell(
       componentProps.row as TRow,
       componentProps.column as HeadlessTableColumn<TRow>,
       componentProps.rowIndex,
-      getColumnIndex(componentProps.column as HeadlessTableColumn<TRow>, componentProps.columnIndex),
+      componentProps.columnIndex,
     )
   },
 }))
@@ -203,6 +253,7 @@ const Empty = markRaw(defineComponent({
     return () => {
       void slotsVersion.value
       const scope: HeadlessTableEmptyScope<TRow> = {
+        allColumns: props.columns,
         columns: visibleColumns.value,
         data: props.data,
       }
@@ -225,14 +276,18 @@ const tableScope = computed<HeadlessTableDefaultScope<TRow>>(() => ({
   data: props.data,
   Empty,
   getCellValue,
+  getColumnId,
   getColumnLabel,
+  getRawCellValue,
   Header: TypedHeader,
 }))
 
 defineExpose({
   columns: visibleColumns,
   getCellValue,
+  getColumnId,
   getColumnLabel,
+  getRawCellValue,
 })
 </script>
 
