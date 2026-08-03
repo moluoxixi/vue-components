@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">MX Components</title>
+  <rect width="64" height="64" rx="10" fill="#409eff"/>
+  <path d="M13 45V19l10 16 10-16v26" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m40 24 12 16m0-16L40 40" fill="none" stroke="#d9ecff" stroke-width="5" stroke-linecap="round"/>
+</svg>

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { basename, join, relative } from 'node:path'
 import process from 'node:process'
 
 const SCAN_ROOTS = ['packages', 'playgrounds', 'docs']
@@ -32,7 +32,8 @@ function shouldScanFile(path) {
 function collectFiles(dir, files = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      if (!IGNORED_DIRS.has(entry.name))
+      const isVitePressCache = basename(dir) === '.vitepress' && entry.name === 'cache'
+      if (!IGNORED_DIRS.has(entry.name) && !isVitePressCache)
         collectFiles(join(dir, entry.name), files)
       continue
     }

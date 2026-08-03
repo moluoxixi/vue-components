@@ -2,14 +2,21 @@ shellEmulator: true
 
 trustPolicy: no-downgrade
 
+overrides:
+  vitepress>vite: "5.4.14"
+
 packages:
   - 'packages/*'
   - 'packages/ConfigForm/*'
   - 'playgrounds/*'
+  - 'docs/vitepress'
 
 catalog:
   '@huggingface/transformers': ^4.0.0
   '@opencode-ai/plugin': ^1.14.39
+  '@types/markdown-it-container': ^2.0.6
+  markdown-it-container: ^3.0.0
+  vitepress: ^1.6.3
   vue3-sfc-loader: 0.9.5
 catalogs:
   build:

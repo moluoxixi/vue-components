@@ -43,6 +43,11 @@ coverage
 /cypress/screenshots/
 stats.html
 
+# VitePress generated files
+**/.vitepress/cache/
+/docs/vitepress/.vitepress/api/
+/docs/vitepress/--force/
+
 # 日志
 logs
 *.log

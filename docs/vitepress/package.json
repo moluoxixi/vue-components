@@ -1,0 +1,31 @@
+{
+  "name": "@moluoxixi/docs",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "predev": "pnpm extract-api",
+    "dev": "vitepress dev",
+    "prebuild": "pnpm extract-api",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "preextract-api": "pnpm --filter @moluoxixi/ai-doc-assistant build:lib",
+    "extract-api": "node scripts/extract-api.mts"
+  },
+  "dependencies": {
+    "@lucide/vue": "catalog:ui",
+    "@moluoxixi/ai-doc-assistant": "workspace:*",
+    "@moluoxixi/components": "workspace:*",
+    "@tanstack/vue-query": "catalog:data",
+    "element-plus": "catalog:ui",
+    "vue": "catalog:build",
+    "vue3-sfc-loader": "0.9.5"
+  },
+  "devDependencies": {
+    "@types/markdown-it-container": "^2.0.6",
+    "@types/node": "catalog:type",
+    "@vitejs/plugin-vue": "catalog:dev",
+    "markdown-it-container": "^3.0.0",
+    "vitepress": "^1.6.3"
+  }
+}
