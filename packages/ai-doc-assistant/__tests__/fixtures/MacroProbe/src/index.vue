@@ -20,7 +20,7 @@ type VirtualRef = ComponentPublicInstance | ComponentInternalInstance | HTMLElem
 type PickPayload = ProbeItem | null
 type ExposedStatus = 'idle' | 'busy'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   /** 列表项 */
   items: ProbeItem[]
   /** 外部虚拟引用 */
@@ -42,7 +42,7 @@ function focus(): void {}
 function reset(): void {}
 const status: ExposedStatus = 'idle'
 function getStatus(): ExposedStatus { return status }
-defineExpose({ focus, reset, getStatus })
+defineExpose({ items: props.items, focus, reset, getStatus })
 </script>
 
 <template>

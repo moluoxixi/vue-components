@@ -124,6 +124,80 @@ export function extractSfcScriptTypeDefs(sfcPath: string): TypeDefInfo[] {
 }
 
 /**
+ * Read the public member names declared by `defineExpose`.
+ *
+ * vue-component-meta may include props, listeners, and `$slots` in `meta.exposed`.
+ * Those are component-instance members, but they are not declarations made through
+ * `defineExpose`. Returning `null` means the macro exists but uses a dynamic shape
+ * that cannot be resolved safely, so callers can retain the checker output.
+ */
+export function extractDefineExposeNames(sfcPath: string): string[] | null {
+  let src: string
+  try {
+    src = readFileSync(sfcPath, 'utf8')
+  }
+  catch {
+    return null
+  }
+
+  const names = new Set<string>()
+  let found = false
+  let unresolved = false
+
+  function addPropertyName(name: ts.PropertyName | undefined): void {
+    if (!name) {
+      unresolved = true
+      return
+    }
+    if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+      names.add(name.text)
+      return
+    }
+    if (ts.isComputedPropertyName(name) && ts.isStringLiteral(name.expression)) {
+      names.add(name.expression.text)
+      return
+    }
+    unresolved = true
+  }
+
+  function visit(node: ts.Node): void {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'defineExpose') {
+      found = true
+      const argument = node.arguments[0]
+      if (argument && ts.isObjectLiteralExpression(argument)) {
+        for (const property of argument.properties) {
+          if (ts.isSpreadAssignment(property)) {
+            unresolved = true
+            continue
+          }
+          addPropertyName(property.name)
+        }
+      }
+      else {
+        const typeArgument = node.typeArguments?.[0]
+        if (typeArgument && ts.isTypeLiteralNode(typeArgument)) {
+          for (const member of typeArgument.members)
+            addPropertyName(member.name)
+        }
+        else {
+          unresolved = true
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  for (const [index, match] of Array.from(src.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)).entries()) {
+    const sourceFile = ts.createSourceFile(`${sfcPath}.${index}.ts`, match[1], ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    visit(sourceFile)
+  }
+
+  if (!found)
+    return []
+  return unresolved ? null : Array.from(names)
+}
+
+/**
  * 从 SFC 路径向上查找名为 `src` 的祖先目录，作为类型源扫描根。
  * 组件约定结构为 `<pkg>/src/<Comp>/src/...` 或 `<Comp>/src/...`。找不到返回 null。
  */

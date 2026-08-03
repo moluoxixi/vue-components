@@ -220,7 +220,19 @@ describe('extractContract — vue-component-meta 引擎', () => {
     )
     expect(c.exposed).toBeTruthy()
     const exposedNames = c.exposed!.map(e => e.name)
-    expect(exposedNames).toEqual(expect.arrayContaining(['focus', 'reset']))
+    expect(exposedNames).toEqual(['items', 'focus', 'reset', 'getStatus'])
+    expect(exposedNames).not.toContain('$slots')
+    expect(exposedNames).not.toContain('placeholder')
+  })
+
+  it('无 defineExpose 时不产生伪 exposed 成员', async () => {
+    const c = await extractContract(
+      fx('NoForward/src/index.vue'),
+      '@test/pkg',
+      'NoForward',
+      FIXTURES_TSCONFIG,
+    )
+    expect(c.exposed).toBeUndefined()
   })
 
   it('契约序列化体积受控（schema.ignore 边界裁剪护栏，< 50KB）', async () => {

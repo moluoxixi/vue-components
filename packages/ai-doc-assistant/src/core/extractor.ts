@@ -14,6 +14,7 @@ import {
 import {
   collectLocalTypeDefs,
   extractDefineAttrsTypeName,
+  extractDefineExposeNames,
 } from './type-source'
 
 export { createMetaChecker } from './meta-extractor'
@@ -25,6 +26,7 @@ export { createMetaChecker } from './meta-extractor'
  * 后处理（meta 能力盲区）：
  * - 动态插槽：meta 丢弃索引签名/模板字面量键插槽，从 `<Comp>Slots` 契约接口补 `[dynamic]` 说明。
  * - defineAttrs：meta 完全不体现，从 SFC 抽 `defineAttrs<T>()` 泛型名再解析 T 字段，单独成 attrs 段。
+ * - defineExpose：meta.exposed 还包含 props/listeners/$slots，按宏的静态成员名收窄为真实公开成员。
  * - $attrs 定向转发：meta 不跟 `v-bind="$attrs"`，对接收 $attrs 的子组件单独跑 meta 合并 props/emits，
  *   合并项打 forwardedFrom 角标。
  */
@@ -361,7 +363,11 @@ export function extractContractWithChecker(
   const props = mapMetaProps(meta.props, collected)
   const emits = mapMetaEvents(meta, collected)
   const metaSlots = mapMetaSlots(meta, collected)
-  const exposed = mapMetaExposed(meta, collected)
+  const metaExposed = mapMetaExposed(meta, collected)
+  const defineExposeNames = extractDefineExposeNames(filePath)
+  const exposed = defineExposeNames === null
+    ? metaExposed
+    : metaExposed.filter(member => defineExposeNames.includes(member.name))
 
   // 后处理需要本地类型源（动态插槽契约 / defineAttrs T）
   const localDefs = collectLocalTypeDefs(filePath)
