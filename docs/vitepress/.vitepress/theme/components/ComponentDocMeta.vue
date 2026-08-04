@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import {
-  Braces,
   Check,
   CircleDot,
-  Clipboard,
   FilePenLine,
   FolderGit2,
   ListTodo,
@@ -60,17 +58,15 @@ onBeforeUnmount(() => {
           </th>
           <td>
             <div class="component-doc-import">
-              <Braces :size="15" aria-hidden="true" />
-              <code>{{ importStatement }}</code>
               <button
-                class="component-doc-copy"
+                class="component-doc-import-copy"
                 type="button"
                 :title="copied ? '已复制' : '复制导入语句'"
                 :aria-label="copied ? '已复制导入语句' : '复制导入语句'"
                 @click="copyImportStatement"
               >
-                <Check v-if="copied" :size="15" aria-hidden="true" />
-                <Clipboard v-else :size="15" aria-hidden="true" />
+                <code>{{ importStatement }}</code>
+                <Check v-if="copied" class="component-doc-copy-status" :size="14" aria-hidden="true" />
               </button>
             </div>
           </td>
@@ -82,15 +78,15 @@ onBeforeUnmount(() => {
           <td>
             <div class="component-doc-links">
               <a :href="sourceHref" target="_blank" rel="noreferrer">
-                <FolderGit2 :size="15" aria-hidden="true" />
+                <FolderGit2 :size="14" aria-hidden="true" />
                 components/{{ slug }}
               </a>
               <a :href="newIssueHref" target="_blank" rel="noreferrer">
-                <MessageSquareWarning :size="15" aria-hidden="true" />
+                <MessageSquareWarning :size="14" aria-hidden="true" />
                 提交问题
               </a>
               <a :href="openIssuesHref" target="_blank" rel="noreferrer">
-                <ListTodo :size="15" aria-hidden="true" />
+                <ListTodo :size="14" aria-hidden="true" />
                 待解决
               </a>
             </div>
@@ -103,15 +99,15 @@ onBeforeUnmount(() => {
           <td>
             <div class="component-doc-links">
               <a :href="editHref" target="_blank" rel="noreferrer">
-                <FilePenLine :size="15" aria-hidden="true" />
+                <FilePenLine :size="14" aria-hidden="true" />
                 {{ hasSourceDoc ? '编辑此页' : '补充文档' }}
               </a>
               <a :href="overviewHref">
-                <PanelsTopLeft :size="15" aria-hidden="true" />
+                <PanelsTopLeft :size="14" aria-hidden="true" />
                 组件总览
               </a>
               <a href="#api">
-                <CircleDot :size="15" aria-hidden="true" />
+                <CircleDot :size="14" aria-hidden="true" />
                 API
               </a>
             </div>

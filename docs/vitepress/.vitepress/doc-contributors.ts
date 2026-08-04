@@ -1,32 +1,39 @@
 export interface DocContributor {
-  id: string
-  displayName: string
-  initials: string
-  role: string
+  login: string
+  name: string
+  avatarUrl: string
+  profileUrl: string
+  repositoryContributions: number
 }
 
+export interface ComponentContributor {
+  login: string
+  contributions: number
+}
+
+// Public profile fields and contribution counts synced from the GitHub REST API.
 export const contributorProfiles: Record<string, DocContributor> = {
-  wl: {
-    id: 'wl',
-    displayName: 'wl',
-    initials: 'WL',
-    role: '组件与文档维护者',
+  moluoxixi: {
+    login: 'moluoxixi',
+    name: 'moluoxixi',
+    avatarUrl: 'https://avatars.githubusercontent.com/u/57121471?v=4',
+    profileUrl: 'https://github.com/moluoxixi',
+    repositoryContributions: 182,
   },
 }
 
-// This snapshot is derived from the local Git history for each public component directory.
-export const componentContributorIds: Record<string, readonly string[]> = {
-  AntdConfigForm: ['wl'],
-  ConfigTable: ['wl'],
-  CopyText: ['wl'],
-  DateRangePicker: ['wl'],
-  ElementConfigForm: ['wl'],
-  EnterNextContainer: ['wl'],
-  HeadlessCopyText: ['wl'],
-  HeadlessTable: ['wl'],
-  PopoverTableSelect: ['wl'],
-  RequestCascader: ['wl'],
-  RequestSelectV2: ['wl'],
-  RequestTreeSelect: ['wl'],
-  RichTextEditor: ['wl'],
+export const componentContributors: Record<string, readonly ComponentContributor[]> = {
+  AntdConfigForm: [{ login: 'moluoxixi', contributions: 16 }],
+  ConfigTable: [{ login: 'moluoxixi', contributions: 8 }],
+  CopyText: [{ login: 'moluoxixi', contributions: 3 }],
+  DateRangePicker: [{ login: 'moluoxixi', contributions: 8 }],
+  ElementConfigForm: [{ login: 'moluoxixi', contributions: 16 }],
+  EnterNextContainer: [{ login: 'moluoxixi', contributions: 8 }],
+  HeadlessCopyText: [{ login: 'moluoxixi', contributions: 3 }],
+  HeadlessTable: [{ login: 'moluoxixi', contributions: 4 }],
+  PopoverTableSelect: [{ login: 'moluoxixi', contributions: 16 }],
+  RequestCascader: [{ login: 'moluoxixi', contributions: 3 }],
+  RequestSelectV2: [{ login: 'moluoxixi', contributions: 3 }],
+  RequestTreeSelect: [{ login: 'moluoxixi', contributions: 3 }],
+  RichTextEditor: [{ login: 'moluoxixi', contributions: 3 }],
 }
