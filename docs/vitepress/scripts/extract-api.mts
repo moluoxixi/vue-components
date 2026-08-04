@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
+import { documentedComponentNames } from '../.vitepress/component-manifest.ts'
 
 interface ApiRow {
   name: string
@@ -24,20 +25,6 @@ interface ComponentApi {
   expose: ApiRow[]
   slots: ApiRow[]
 }
-
-const documentedComponents = [
-  'CopyText',
-  'HeadlessCopyText',
-  'DateRangePicker',
-  'RequestSelectV2',
-  'RequestCascader',
-  'RequestTreeSelect',
-  'EnterNextContainer',
-  'RichTextEditor',
-  'ConfigTable',
-  'HeadlessTable',
-  'PopoverTableSelect',
-] as const
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(scriptDir, '../../..')
@@ -132,21 +119,21 @@ async function main(): Promise<void> {
 
   await context.buildIndex()
   const contracts = new Map(context.getContracts().map(contract => [contract.name, contract]))
-  const missing = documentedComponents.filter(name => !contracts.has(name))
+  const missing = documentedComponentNames.filter(name => !contracts.has(name))
 
   if (missing.length > 0)
     throw new Error(`ai-doc-assistant did not extract: ${missing.join(', ')}`)
 
   mkdirSync(outDir, { recursive: true })
 
-  for (const name of documentedComponents) {
+  for (const name of documentedComponentNames) {
     const api = normalizeContract(contracts.get(name)!)
     const outPath = resolve(outDir, `${name}.json`)
     writeFileSync(outPath, `${JSON.stringify(api, null, 2)}\n`, 'utf-8')
     console.log(`generated ${name}.json`)
   }
 
-  console.log(`Generated API contracts for ${documentedComponents.length} components with ai-doc-assistant.`)
+  console.log(`Generated API contracts for ${documentedComponentNames.length} components with ai-doc-assistant.`)
 }
 
 main().catch((error: unknown) => {

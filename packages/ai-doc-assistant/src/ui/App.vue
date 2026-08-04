@@ -234,6 +234,7 @@ onMounted(async () => {
         v-model:question="question"
         :index-ready="indexState === 'ready'"
         :index-state="indexState"
+        @open-source="openDetail"
       />
     </main>
 

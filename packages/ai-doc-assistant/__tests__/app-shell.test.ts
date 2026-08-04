@@ -16,7 +16,7 @@ const readyStatus: IndexStatusResponse = {
   componentCount: 1,
 }
 const components: ComponentListItem[] = [
-  { name: 'PopoverTableSelect', packageName: '@moluoxixi/components', propsCount: 8, docPath: 'x' },
+  { name: 'PopoverTableSelect', packageName: '@moluoxixi/components', propsCount: 8, docPath: 'x', knowledgeKey: 'internal:%40moluoxixi%2Fcomponents:PopoverTableSelect' },
 ]
 
 let health: HealthResponse = readyHealth
@@ -34,9 +34,26 @@ vi.mock('../src/ui/views/ChatView.vue', () => ({
   default: defineComponent({
     name: 'ChatView',
     props: { question: String, indexReady: Boolean, indexState: String },
-    emits: ['update:question'],
+    emits: ['update:question', 'open-source'],
+    setup(props, { emit }) {
+      return () => h('section', { 'data-testid': 'chat-view' }, [
+        `AI Chat ${props.indexState}:${props.indexReady}`,
+        h('button', {
+          'data-testid': 'chat-source',
+          'onClick': () => emit('open-source', 'internal:%40moluoxixi%2Fcomponents:PopoverTableSelect'),
+        }, 'source'),
+      ])
+    },
+  }),
+}))
+
+vi.mock('../src/ui/views/DetailView.vue', () => ({
+  default: defineComponent({
+    name: 'DetailView',
+    props: { name: String },
+    emits: ['back', 'ask'],
     setup(props) {
-      return () => h('section', { 'data-testid': 'chat-view' }, `AI Chat ${props.indexState}:${props.indexReady}`)
+      return () => h('section', { 'data-testid': 'detail-view' }, props.name)
     },
   }),
 }))
@@ -111,5 +128,28 @@ describe('app shell', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="chat-view"]').text()).toContain('ready:true')
+  })
+
+  it('点击 AI 来源后直接打开对应知识库详情', async () => {
+    const { default: App } = await import('../src/ui/App.vue')
+    const wrapper = mount(App, {
+      global: {
+        stubs: {
+          ElDialog: defineComponent({
+            props: { modelValue: Boolean },
+            setup(props, { slots }) {
+              return () => props.modelValue ? h('section', slots.default?.()) : null
+            },
+          }),
+        },
+      },
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="chat-source"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="detail-view"]').text())
+      .toBe('internal:%40moluoxixi%2Fcomponents:PopoverTableSelect')
   })
 })

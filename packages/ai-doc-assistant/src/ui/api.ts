@@ -1,4 +1,5 @@
 import type {
+  ChatHistoryMessage,
   ComponentDetailResponse,
   ComponentListItem,
   HealthResponse,
@@ -78,13 +79,14 @@ export async function importKnowledge(payload: KnowledgeImportPayload, overwrite
 export async function streamQuery(
   question: string,
   topK: number,
+  history: ChatHistoryMessage[],
   onEvent: (event: SseEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
   const res = await fetch(`${API_PREFIX}/query`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ question, topK }),
+    body: JSON.stringify({ question, topK, history }),
     signal,
   })
   if (!res.ok || !res.body) {
@@ -96,26 +98,32 @@ export async function streamQuery(
   const decoder = new TextDecoder()
   let buffer = ''
 
-  // 逐块读取并按 SSE 帧边界（\n\n）切分，剩余不完整帧留在 buffer 等下一块
-  while (true) {
-    const { value, done } = await reader.read()
-    if (done)
-      break
-    buffer += decoder.decode(value, { stream: true })
-    const frames = buffer.split('\n\n')
-    buffer = frames.pop() ?? ''
-    for (const frame of frames) {
-      if (!frame.trim())
-        continue
-      const event = parseSseFrame(frame)
+  try {
+    // 同时兼容 LF 与 CRLF 帧边界，剩余不完整帧留在 buffer 等下一块。
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done)
+        break
+      buffer += decoder.decode(value, { stream: true })
+      const frames = buffer.split(/\r?\n\r?\n/)
+      buffer = frames.pop() ?? ''
+      for (const frame of frames) {
+        if (!frame.trim())
+          continue
+        const event = parseSseFrame(frame)
+        if (event)
+          onEvent(event)
+      }
+    }
+    buffer += decoder.decode()
+    // flush 末帧（若服务端最后一帧未带空行结尾）
+    if (buffer.trim()) {
+      const event = parseSseFrame(buffer)
       if (event)
         onEvent(event)
     }
   }
-  // flush 末帧（若服务端最后一帧未带空行结尾）
-  if (buffer.trim()) {
-    const event = parseSseFrame(buffer)
-    if (event)
-      onEvent(event)
+  finally {
+    reader.releaseLock()
   }
 }

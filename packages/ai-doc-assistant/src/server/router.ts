@@ -5,6 +5,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
   ApiErrorCode,
+  ChatHistoryMessage,
   ComponentDetailResponse,
   ComponentListItem,
   HealthResponse,
@@ -24,6 +25,11 @@ import {
 import { streamChat } from './ai-client'
 import { providerStatusOf } from './ai-provider'
 import { runQuery } from './query-handler'
+
+const MAX_QUESTION_CHARACTERS = 4_000
+const MAX_HISTORY_MESSAGES = 20
+const MAX_HISTORY_CHARACTERS = 20_000
+const MAX_TOP_K = 20
 
 /** 读取并解析 JSON 请求体（边界输入，解析失败抛 INVALID_REQUEST 语义）。 */
 async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
@@ -75,11 +81,43 @@ function deriveIndexState(ctx: ServerContext): IndexState {
   return 'not_built'
 }
 
+/** 校验不可信 query body；客户端只可回传完整的 user/assistant 对。 */
+function queryValidationError(body: QueryRequest): string | null {
+  if (typeof body.question !== 'string' || body.question.trim().length === 0)
+    return 'question is required'
+  if (body.question.length > MAX_QUESTION_CHARACTERS)
+    return `question must not exceed ${MAX_QUESTION_CHARACTERS} characters`
+  if (body.topK !== undefined && (!Number.isInteger(body.topK) || body.topK < 1 || body.topK > MAX_TOP_K))
+    return `topK must be an integer between 1 and ${MAX_TOP_K}`
+  if (body.history === undefined)
+    return null
+  if (!Array.isArray(body.history))
+    return 'history must be an array'
+  if (body.history.length > MAX_HISTORY_MESSAGES)
+    return `history must not exceed ${MAX_HISTORY_MESSAGES} messages`
+  if (body.history.length % 2 !== 0)
+    return 'history must contain complete user/assistant pairs'
+
+  let totalCharacters = 0
+  for (const [index, message] of body.history.entries()) {
+    const expectedRole: ChatHistoryMessage['role'] = index % 2 === 0 ? 'user' : 'assistant'
+    if (!message || message.role !== expectedRole)
+      return `history message ${index} must have role ${expectedRole}`
+    if (typeof message.content !== 'string' || message.content.trim().length === 0)
+      return `history message ${index} content is required`
+    totalCharacters += message.content.length
+  }
+  if (totalCharacters > MAX_HISTORY_CHARACTERS)
+    return `history must not exceed ${MAX_HISTORY_CHARACTERS} characters`
+  return null
+}
+
 /** POST /query —— SSE 流式问答。 */
 async function handleQuery(ctx: ServerContext, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJsonBody<QueryRequest>(req)
-  if (!body.question || typeof body.question !== 'string') {
-    sendError(res, 'INVALID_REQUEST', 'question is required')
+  const validationError = queryValidationError(body)
+  if (validationError) {
+    sendError(res, 'INVALID_REQUEST', validationError)
     return
   }
   if (!ctx.config) {
@@ -90,6 +128,31 @@ async function handleQuery(ctx: ServerContext, req: IncomingMessage, res: Server
   const strategy = ctx.getStrategy()
   if (!strategy) {
     sendError(res, 'INDEX_NOT_READY', 'index not ready')
+    return
+  }
+
+  const controller = new AbortController()
+  let clientDisconnected = false
+  const abortUpstream = (): void => {
+    clientDisconnected = true
+    controller.abort()
+  }
+  const onResponseClose = (): void => {
+    if (!res.writableEnded)
+      abortUpstream()
+  }
+  req.once('aborted', abortUpstream)
+  res.once('close', onResponseClose)
+
+  if (req.aborted || res.destroyed)
+    abortUpstream()
+
+  const canWrite = (): boolean =>
+    !clientDisconnected && !controller.signal.aborted && !res.destroyed && !res.writableEnded
+
+  if (!canWrite()) {
+    req.off('aborted', abortUpstream)
+    res.off('close', onResponseClose)
     return
   }
 
@@ -106,19 +169,33 @@ async function handleQuery(ctx: ServerContext, req: IncomingMessage, res: Server
   }
 
   try {
-    for await (const event of runQuery(body.question, body.topK ?? 5, deps))
+    for await (const event of runQuery(
+      body.question.trim(),
+      body.topK ?? 5,
+      deps,
+      body.history ?? [],
+      controller.signal,
+    )) {
+      if (!canWrite())
+        break
       res.write(encodeSseEvent(event))
+    }
   }
   catch (err) {
-    const code = classifyError(err)
-    res.write(encodeSseEvent({
-      type: 'error',
-      error: code,
-      message: err instanceof Error ? err.message : String(err),
-    }))
+    if (canWrite()) {
+      const code = classifyError(err)
+      res.write(encodeSseEvent({
+        type: 'error',
+        error: code,
+        message: err instanceof Error ? err.message : String(err),
+      }))
+    }
   }
   finally {
-    res.end()
+    req.off('aborted', abortUpstream)
+    res.off('close', onResponseClose)
+    if (canWrite())
+      res.end()
   }
 }
 
@@ -258,10 +335,12 @@ export async function dispatch(
     return true
   }
   catch (err) {
-    if (!res.headersSent)
-      sendError(res, classifyError(err), err instanceof Error ? err.message : String(err))
-    else
-      res.end()
+    if (!res.destroyed && !res.writableEnded) {
+      if (!res.headersSent)
+        sendError(res, classifyError(err), err instanceof Error ? err.message : String(err))
+      else
+        res.end()
+    }
     return true
   }
 }

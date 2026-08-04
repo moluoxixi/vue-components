@@ -5,7 +5,7 @@ import type {
 } from '../src/core/retrieval-strategy'
 import type { ProviderConfig } from '../src/server/ai-provider'
 import type { QueryDeps } from '../src/server/query-handler'
-import type { SseEvent } from '../src/shared/protocol'
+import type { ChatHistoryMessage, SseEvent } from '../src/shared/protocol'
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { runQuery } from '../src/server/query-handler'
@@ -17,6 +17,8 @@ function chunk(name: string): StrategyChunk {
     component: name,
     packageName: '@moluoxixi/components',
     docPath: `packages/${name}/src/index.vue`,
+    source: 'internal',
+    knowledgeKey: `internal:%40moluoxixi%2Fcomponents:${name}`,
     body: `${name} body`,
     example: `<${name} />`,
     // exampleCode 为 StrategyChunk 必填契约字段（双码），mock 必须满足
@@ -56,7 +58,7 @@ describe('runQuery SSE 编排', () => {
     const events = await collect(runQuery('怎么用按钮', 5, deps))
     expect(events[0]).toEqual({
       type: 'sources',
-      sources: [{ component: 'MyButton', packageName: '@moluoxixi/components', docPath: 'packages/MyButton/src/index.vue', score: 0.9 }],
+      sources: [{ component: 'MyButton', packageName: '@moluoxixi/components', docPath: 'packages/MyButton/src/index.vue', score: 0.9, source: 'internal', knowledgeKey: 'internal:%40moluoxixi%2Fcomponents:MyButton' }],
     })
     expect(events.filter(e => e.type === 'token').map(e => (e as { text: string }).text)).toEqual(['这是', '回答'])
     const example = events.find(e => e.type === 'example')
@@ -180,6 +182,59 @@ describe('runQuery SSE 编排', () => {
     expect(token.text).toContain('未找到')
     expect(events.find(e => e.type === 'example')).toBeUndefined()
     expect(events[events.length - 1]).toEqual({ type: 'done' })
+  })
+
+  it('按 system → 历史 → 当前问题构造消息，并用最近问题辅助检索', async () => {
+    const retrieved: string[] = []
+    const strategy = stubStrategy({ chunks: [chunk('RequestSelectV2')], empty: false })
+    strategy.retrieve = async (question) => {
+      retrieved.push(question)
+      return { chunks: [chunk('RequestSelectV2')], empty: false }
+    }
+    const history: ChatHistoryMessage[] = [
+      { role: 'user', content: 'RequestSelectV2 怎么用？' },
+      { role: 'assistant', content: '它是远程选择器。' },
+    ]
+    const controller = new AbortController()
+    let messages: Parameters<QueryDeps['chat']>[1] = []
+    let receivedSignal: AbortSignal | undefined
+    const deps: QueryDeps = {
+      strategy,
+      config: CONFIG,
+      async* chat(_config, incoming, signal) {
+        messages = incoming
+        receivedSignal = signal
+        yield '可以'
+      },
+    }
+
+    await collect(runQuery('它支持清空吗？', 5, deps, history, controller.signal))
+
+    expect(retrieved[0]).toContain('RequestSelectV2 怎么用？')
+    expect(retrieved[0]).toContain('它支持清空吗？')
+    expect(messages.map(message => message.role)).toEqual(['system', 'user', 'assistant', 'user'])
+    expect(messages[1]).toEqual(history[0])
+    expect(messages[2]).toEqual(history[1])
+    expect(messages[3].content).toContain('它支持清空吗？')
+    expect(receivedSignal).toBe(controller.signal)
+  })
+
+  it('中止后不再产出迟到 token、example 或 done', async () => {
+    const controller = new AbortController()
+    const deps: QueryDeps = {
+      strategy: stubStrategy({ chunks: [chunk('CopyText')], empty: false }),
+      config: CONFIG,
+      async* chat() {
+        yield 'partial'
+        yield 'late'
+      },
+    }
+    const generator = runQuery('CopyText', 5, deps, [], controller.signal)
+
+    expect((await generator.next()).value?.type).toBe('sources')
+    expect(await generator.next()).toMatchObject({ value: { type: 'token', text: 'partial' } })
+    controller.abort()
+    await expect(generator.next()).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('策略 retrieve 抛错时向上传播（不静默吞）', async () => {

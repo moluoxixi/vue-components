@@ -40,10 +40,17 @@ export interface ApiErrorBody {
   message: string
 }
 
+/** 由客户端回传的已完成对话消息；system 提示始终由服务端控制。 */
+export interface ChatHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 /** POST /query 请求体。 */
 export interface QueryRequest {
   question: string
   topK?: number
+  history?: ChatHistoryMessage[]
 }
 
 /** 检索命中的来源引用（回传给前端做可追溯展示）。 */
@@ -53,6 +60,8 @@ export interface SourceRef {
   docPath: string
   score: number
   source?: KnowledgeSourceWire
+  /** 同名组件跨来源时用于精确打开知识库详情。 */
+  knowledgeKey?: string
 }
 
 /** GET /index/status 响应体。 */

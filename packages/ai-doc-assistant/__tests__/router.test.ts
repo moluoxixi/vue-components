@@ -3,8 +3,10 @@ import type { ServerContext } from '../src/server/context'
 
 // @vitest-environment node
 import { Buffer } from 'node:buffer'
+import { EventEmitter } from 'node:events'
 import { Readable } from 'node:stream'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { streamChat } from '../src/server/ai-client'
 import { dispatch } from '../src/server/router'
 
 // mock ai-client：query 成功路径用流式 token，避免真实上游（content 策略无 embed）
@@ -17,11 +19,14 @@ vi.mock('../src/server/ai-client', () => ({
 
 /** 捕获响应的 mock ServerResponse。 */
 function makeRes() {
-  const res: any = {
+  const res: any = new EventEmitter()
+  Object.assign(res, {
     statusCode: 0,
     headers: {} as Record<string, unknown>,
     chunks: [] as string[],
     headersSent: false,
+    destroyed: false,
+    writableEnded: false,
     writeHead(status: number, headers?: Record<string, unknown>) {
       res.statusCode = status
       if (headers)
@@ -37,14 +42,16 @@ function makeRes() {
       if (s)
         res.chunks.push(s)
       res.ended = true
-    },
-    get body() {
-      return res.chunks.join('')
+      res.writableEnded = true
     },
     json() {
       return JSON.parse(res.body)
     },
-  }
+  })
+  Object.defineProperty(res, 'body', {
+    configurable: true,
+    get: () => res.chunks.join(''),
+  })
   return res
 }
 
@@ -84,6 +91,13 @@ function makeCtx(overrides: Partial<Record<string, unknown>> = {}): ServerContex
 }
 
 describe('dispatch 路由分发', () => {
+  beforeEach(() => {
+    vi.mocked(streamChat).mockImplementation(async function* () {
+      yield 'Hello'
+      yield ' world'
+    })
+  })
+
   it('非本插件前缀 → 返回 false（交还下游）', async () => {
     const res = makeRes()
     const handled = await dispatch(makeCtx(), makeReq('GET', '/other'), res)
@@ -179,6 +193,18 @@ describe('dispatch 路由分发', () => {
     expect(res.json().error).toBe('INVALID_REQUEST')
   })
 
+  it.each([
+    { history: 'bad' },
+    { history: [{ role: 'assistant', content: 'wrong order' }, { role: 'user', content: 'wrong order' }] },
+    { history: [{ role: 'user', content: 'incomplete' }] },
+    { history: [{ role: 'user', content: 'q' }, { role: 'assistant', content: '   ' }] },
+  ])('pOST /query 拒绝非法历史 %#', async (invalid) => {
+    const res = makeRes()
+    await dispatch(makeCtx(), makeReq('POST', '/__ai-doc/api/query', { question: 'hi', ...invalid }), res)
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('INVALID_REQUEST')
+  })
+
   it('pOST /knowledge/import 非法 JSON → INVALID_REQUEST 且不进入导入逻辑', async () => {
     const importKnowledge = vi.fn()
     const ctx = makeCtx({ importKnowledge })
@@ -222,7 +248,7 @@ describe('dispatch 路由分发', () => {
         build: async () => ({ builtAt: 'x', componentCount: 1 }),
         retrieve: async () => ({
           empty: false,
-          chunks: [{ component: 'Btn', packageName: '@x/c', docPath: 'packages/Btn/src/index.vue', body: 'Btn docs', example: '<Btn />', exampleCode: { ts: '<Btn />', js: '<Btn />' }, score: 0.9 }],
+          chunks: [{ component: 'Btn', packageName: '@x/c', docPath: 'packages/Btn/src/index.vue', source: 'internal', knowledgeKey: 'internal:%40x%2Fc:Btn', body: 'Btn docs', example: '<Btn />', exampleCode: { ts: '<Btn />', js: '<Btn />' }, score: 0.9 }],
         }),
       }) as unknown as RetrievalStrategy,
     })
@@ -235,5 +261,50 @@ describe('dispatch 路由分发', () => {
     expect(res.body).toContain('Hello')
     expect(res.body).toContain('event: done')
     expect(res.ended).toBe(true)
+  })
+
+  it('客户端断连会中止上游，且不再写 SSE error', async () => {
+    let upstreamSignal: AbortSignal | undefined
+    vi.mocked(streamChat).mockImplementationOnce(async function* (_config, _messages, signal) {
+      upstreamSignal = signal
+      yield 'first'
+      await new Promise<void>(resolve => signal?.addEventListener('abort', () => resolve(), { once: true }))
+      signal?.throwIfAborted()
+      yield 'late'
+    })
+    const ctx = makeCtx({
+      getStrategy: () => ({
+        mode: 'content',
+        isReady: () => true,
+        build: async () => ({ builtAt: 'x', componentCount: 1 }),
+        retrieve: async () => ({
+          empty: false,
+          chunks: [{ component: 'Btn', packageName: '@x/c', docPath: 'Btn.vue', source: 'internal', knowledgeKey: 'internal:%40x%2Fc:Btn', body: 'Btn docs', example: '<Btn />', exampleCode: { ts: '<Btn />', js: '<Btn />' }, score: 1 }],
+        }),
+      }) as unknown as RetrievalStrategy,
+    })
+    const res = makeRes()
+    const pending = dispatch(ctx, makeReq('POST', '/__ai-doc/api/query', { question: 'Btn' }), res)
+
+    await vi.waitFor(() => expect(res.body).toContain('first'))
+    res.emit('close')
+    await pending
+
+    expect(upstreamSignal?.aborted).toBe(true)
+    expect(res.body).not.toContain('event: error')
+    expect(res.body).not.toContain('late')
+    expect(res.ended).not.toBe(true)
+  })
+
+  it('进入流式处理前已断开的请求不会再写响应', async () => {
+    const req = makeReq('POST', '/__ai-doc/api/query', { question: 'Btn' })
+    req.aborted = true
+    const res = makeRes()
+
+    await dispatch(makeCtx(), req, res)
+
+    expect(res.headersSent).toBe(false)
+    expect(res.body).toBe('')
+    expect(res.ended).not.toBe(true)
   })
 })

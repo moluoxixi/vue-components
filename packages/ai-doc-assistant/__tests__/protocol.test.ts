@@ -10,7 +10,16 @@ describe('sSE 编解码', () => {
   const cases: SseEvent[] = [
     { type: 'sources', sources: [{ component: 'Foo', packageName: '@p/foo', docPath: 'a.vue', score: 0.9 }] },
     { type: 'token', text: 'hello' },
-    { type: 'example', code: '<Foo/>', lang: 'vue' },
+    {
+      type: 'example',
+      code: '<Foo/>',
+      lang: 'vue',
+      ts: '<Foo/>',
+      js: '<Foo/>',
+      component: 'Foo',
+      packageName: '@p/foo',
+      blocks: [{ ts: '<Foo/>', js: '<Foo/>', renderable: true }],
+    },
     { type: 'done' },
     { type: 'error', error: 'UPSTREAM_ERROR', message: 'boom' },
   ]
@@ -27,5 +36,10 @@ describe('sSE 编解码', () => {
 
   it('无 data 行的 frame 返回 null', () => {
     expect(parseSseFrame('event: ping\n\n')).toBeNull()
+  })
+
+  it('可解析 CRLF SSE 帧', () => {
+    expect(parseSseFrame('event: token\r\ndata: {"type":"token","text":"ok"}\r\n\r\n'))
+      .toEqual({ type: 'token', text: 'ok' })
   })
 })

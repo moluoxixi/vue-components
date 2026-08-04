@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, BookOpen } from '@lucide/vue'
 import { withBase } from 'vitepress'
+import { documentedComponents } from '../../component-manifest'
 import ComponentOverview from './ComponentOverview.vue'
 
 const logoSrc = withBase('/logo.svg')
@@ -33,7 +34,7 @@ const gettingStartedHref = withBase('/guide/getting-started.html')
     </header>
 
     <div class="overview-facts" aria-label="组件库概况">
-      <div><strong>11</strong><span>组件文档</span></div>
+      <div><strong>{{ documentedComponents.length }}</strong><span>组件文档</span></div>
       <div><strong>Vue 3.5</strong><span>运行基础</span></div>
       <div><strong>TypeScript</strong><span>完整契约</span></div>
       <div><strong>Element Plus</strong><span>视觉与交互</span></div>

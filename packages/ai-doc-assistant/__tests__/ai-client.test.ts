@@ -47,6 +47,24 @@ describe('streamChat 流式 chat', () => {
     const gen = streamChat(CONFIG, [{ role: 'user', content: 'hi' }])
     await expect(gen.next()).rejects.toThrow(/chat upstream 500/)
   })
+
+  it('把 messages 与 AbortSignal 原样传给上游 fetch', async () => {
+    const fetchMock = vi.fn(async () => new Response(streamFrom('data: [DONE]\r\n\r\n'), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const controller = new AbortController()
+    const messages = [
+      { role: 'system' as const, content: 'system' },
+      { role: 'user' as const, content: 'question' },
+    ]
+
+    for await (const _token of streamChat(CONFIG, messages, controller.signal)) {
+      // no token expected
+    }
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.signal).toBe(controller.signal)
+    expect(JSON.parse(String(init.body)).messages).toEqual(messages)
+  })
 })
 
 describe('embed 批量 embedding', () => {

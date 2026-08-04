@@ -8,7 +8,7 @@
  * 事件序列：sources → token* → example? → done；任意阶段异常 → error。
  */
 import type { RetrievalStrategy } from '../core/retrieval-strategy'
-import type { ExampleBlock, SourceRef, SseEvent } from '../shared/protocol'
+import type { ChatHistoryMessage, ExampleBlock, SourceRef, SseEvent } from '../shared/protocol'
 import type { ChatMessage, streamChat } from './ai-client'
 import type { ProviderConfig } from './ai-provider'
 import { transpileSfcToJs } from '../core/sfc-transpile'
@@ -39,6 +39,7 @@ const SYSTEM_PROMPT = `你是组件库文档助手。只依据提供的「组件
 
 /** 默认上下文纳入的组件数上限。 */
 const DEFAULT_TOP_K = 5
+const RETRIEVAL_HISTORY_QUESTIONS = 2
 const SCRIPT_OPEN_TAG_RE = /<script(?=[\s>])[^>]*>/gi
 const SCRIPT_LANG_TS_RE = /(?:^|\s)lang\s*=\s*(['"])ts\1/i
 
@@ -62,9 +63,18 @@ export async function* runQuery(
   question: string,
   topK: number,
   deps: QueryDeps,
+  history: ChatHistoryMessage[] = [],
+  signal?: AbortSignal,
 ): AsyncGenerator<SseEvent> {
+  signal?.throwIfAborted()
   // 1. 经策略检索相关契约（content=关键词 topK；vector=语义召回）
-  const { chunks, empty } = await deps.strategy.retrieve(question, topK || DEFAULT_TOP_K)
+  const previousQuestions = history
+    .filter(message => message.role === 'user')
+    .slice(-RETRIEVAL_HISTORY_QUESTIONS)
+    .map(message => message.content)
+  const retrievalQuestion = [...previousQuestions, question].join('\n')
+  const { chunks, empty } = await deps.strategy.retrieve(retrievalQuestion, topK || DEFAULT_TOP_K)
+  signal?.throwIfAborted()
 
   // 2. 推送来源（可追溯）
   const sources: SourceRef[] = chunks.map(c => ({
@@ -73,12 +83,15 @@ export async function* runQuery(
     docPath: c.docPath,
     score: c.score,
     source: c.source,
+    knowledgeKey: c.knowledgeKey,
   }))
   yield { type: 'sources', sources }
 
   // 3. 无依据兜底：无可用上下文时不调用模型编造，直接明确告知
   if (empty) {
+    signal?.throwIfAborted()
     yield { type: 'token', text: '未找到与该问题相关的组件信息。请换一种描述，或确认组件库中存在对应组件。' }
+    signal?.throwIfAborted()
     yield { type: 'done' }
     return
   }
@@ -88,14 +101,17 @@ export async function* runQuery(
   const context = chunks.map(c => c.body).join('\n\n')
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
+    ...history,
     { role: 'user', content: `组件契约上下文：\n${context}\n\n用户问题：${question}` },
   ]
 
   let answer = ''
-  for await (const token of deps.chat(deps.config, messages)) {
+  for await (const token of deps.chat(deps.config, messages, signal)) {
+    signal?.throwIfAborted()
     answer += token
     yield { type: 'token', text: token }
   }
+  signal?.throwIfAborted()
 
   // 5. 从回答中提取全部 vue 代码块，逐块判定能否转 demo（依赖白名单 + no-demo 标识）。
   //    可渲染块由前端编译挂载；不可渲染块仅展示源码 + reason。
@@ -143,5 +159,6 @@ export async function* runQuery(
     blocks,
   }
 
+  signal?.throwIfAborted()
   yield { type: 'done' }
 }

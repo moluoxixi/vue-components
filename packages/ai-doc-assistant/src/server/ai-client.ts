@@ -41,27 +41,39 @@ export async function* streamChat(
   const reader = resp.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let completed = false
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done)
-      break
-    buffer += decoder.decode(value, { stream: true })
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        completed = true
+        break
+      }
+      buffer += decoder.decode(value, { stream: true })
 
-    // OpenAI 流以 "data: {json}\n\n" 分帧，[DONE] 表示结束
-    const frames = buffer.split('\n\n')
-    buffer = frames.pop() ?? ''
-    for (const frame of frames) {
-      const line = frame.split('\n').find(l => l.startsWith('data:'))
-      if (!line)
-        continue
-      const payload = line.slice('data:'.length).trim()
-      if (payload === '[DONE]')
-        return
-      const delta = JSON.parse(payload)?.choices?.[0]?.delta?.content
-      if (typeof delta === 'string' && delta.length > 0)
-        yield delta
+      // OpenAI 流以空行分帧，[DONE] 表示结束；兼容 LF 与 CRLF。
+      const frames = buffer.split(/\r?\n\r?\n/)
+      buffer = frames.pop() ?? ''
+      for (const frame of frames) {
+        const line = frame.split(/\r?\n/).find(l => l.startsWith('data:'))
+        if (!line)
+          continue
+        const payload = line.slice('data:'.length).trim()
+        if (payload === '[DONE]') {
+          completed = true
+          return
+        }
+        const delta = JSON.parse(payload)?.choices?.[0]?.delta?.content
+        if (typeof delta === 'string' && delta.length > 0)
+          yield delta
+      }
     }
+  }
+  finally {
+    if (!completed)
+      await reader.cancel().catch(() => {})
+    reader.releaseLock()
   }
 }
 
