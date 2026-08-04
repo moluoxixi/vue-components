@@ -67,7 +67,3 @@
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="CopyText" />

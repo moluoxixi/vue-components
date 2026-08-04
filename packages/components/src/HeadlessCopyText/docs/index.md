@@ -48,7 +48,3 @@
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="HeadlessCopyText" />

@@ -94,7 +94,3 @@ const data = shallowRef([
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="ConfigTable" />

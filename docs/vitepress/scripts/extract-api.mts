@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
 import type { ComponentContract } from '@moluoxixi/ai-doc-assistant'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
 import { documentedComponentNames, documentedComponents } from '../.vitepress/component-manifest.ts'
+import { syncApiOutputDirectory } from './api-output.mts'
+import { syncComponentRoutes } from './component-routes.mts'
 
 interface ApiRow {
   name: string
@@ -147,44 +149,22 @@ async function main(): Promise<void> {
   if (undocumented.length > 0)
     throw new Error(`public components missing from documentation manifest: ${undocumented.join(', ')}`)
 
-  const routeDir = resolve(root, 'docs/vitepress/components')
-  const expectedRouteFiles = new Set(documentedComponents.map(component => `${component.slug}.md`))
-  const actualRouteFiles = readdirSync(routeDir)
-    .filter(file => file.endsWith('.md') && file !== 'index.md')
-  const missingRoutes = Array.from(expectedRouteFiles).filter(file => !actualRouteFiles.includes(file)).sort()
-  const unexpectedRoutes = actualRouteFiles.filter(file => !expectedRouteFiles.has(file)).sort()
+  const routeResult = syncComponentRoutes({
+    root,
+    routeDir: resolve(root, 'docs/vitepress/components'),
+    components: documentedComponents,
+  })
 
-  if (missingRoutes.length > 0)
-    throw new Error(`documentation routes missing: ${missingRoutes.join(', ')}`)
-  if (unexpectedRoutes.length > 0)
-    throw new Error(`documentation routes not in manifest: ${unexpectedRoutes.join(', ')}`)
+  for (const file of routeResult.generated)
+    console.log(`generated route ${file}`)
+  for (const file of routeResult.removed)
+    console.log(`removed stale route ${file}`)
+  for (const name of routeResult.apiOnly)
+    console.log(`generated API-only route for ${name}`)
 
-  const invalidBridges: string[] = []
-  const missingSourceDocs: string[] = []
-  const missingApiDocs: string[] = []
-  for (const component of documentedComponents) {
-    const routePath = resolve(routeDir, `${component.slug}.md`)
-    const expectedInclude = `<!--@include: ../../../packages/components/src/${component.name}/docs/index.md-->`
-    if (!readFileSync(routePath, 'utf8').includes(expectedInclude))
-      invalidBridges.push(component.slug)
-
-    const sourceDocPath = resolve(root, 'packages/components/src', component.name, 'docs/index.md')
-    if (!existsSync(sourceDocPath)) {
-      missingSourceDocs.push(component.name)
-      continue
-    }
-    if (!readFileSync(sourceDocPath, 'utf8').includes(`<ApiDocs name="${component.name}" />`))
-      missingApiDocs.push(component.name)
-  }
-
-  if (invalidBridges.length > 0)
-    throw new Error(`documentation route bridges invalid: ${invalidBridges.join(', ')}`)
-  if (missingSourceDocs.length > 0)
-    throw new Error(`component source documentation missing: ${missingSourceDocs.join(', ')}`)
-  if (missingApiDocs.length > 0)
-    throw new Error(`component source documentation missing ApiDocs: ${missingApiDocs.join(', ')}`)
-
-  mkdirSync(outDir, { recursive: true })
+  const removedApiFiles = syncApiOutputDirectory(outDir, documentedComponentNames)
+  for (const file of removedApiFiles)
+    console.log(`removed stale API contract ${file}`)
 
   for (const name of documentedComponentNames) {
     const api = normalizeContract(contracts.get(name)!)

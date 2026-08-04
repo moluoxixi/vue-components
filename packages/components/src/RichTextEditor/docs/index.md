@@ -50,7 +50,3 @@ const readonly = ref(false)
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="RichTextEditor" />

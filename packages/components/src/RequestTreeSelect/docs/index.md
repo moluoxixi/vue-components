@@ -33,7 +33,3 @@ async function queryDeptTree() {
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="RequestTreeSelect" />

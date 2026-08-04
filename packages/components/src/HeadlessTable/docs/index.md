@@ -147,10 +147,6 @@ function applySorting({ prop, order }) {
 ```
 :::
 
-## API
-
-<ApiDocs name="HeadlessTable" />
-
 ## useHeadlessTable
 
 `useHeadlessTable(options)` 返回响应式的 `rows`、`filteredRows`、`total`、`pageCount`、`pagination`、`sorting` 和 `selectedKeys`，并提供 `setPage`、`setPageSize`、`toggleSorting`、`setFilter`、`resetFilters`、`toggleRowSelected`、`setSelectedKeys`、`clearSelection` 与 `reset` 等操作方法。完整类型以包内导出的 `UseHeadlessTableReturn` 为准。

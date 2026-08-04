@@ -64,7 +64,3 @@ function handleSelect(row) {
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="PopoverTableSelect" />

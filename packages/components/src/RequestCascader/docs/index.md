@@ -38,7 +38,3 @@ async function queryRegions() {
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="RequestCascader" />

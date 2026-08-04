@@ -62,7 +62,3 @@ async function queryItems() {
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="RequestSelectV2" />

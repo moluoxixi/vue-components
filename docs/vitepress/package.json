@@ -10,7 +10,8 @@
     "build": "vitepress build",
     "preview": "vitepress preview",
     "preextract-api": "pnpm --filter @moluoxixi/ai-doc-assistant build",
-    "extract-api": "node scripts/extract-api.mts"
+    "extract-api": "node scripts/extract-api.mts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@lucide/vue": "catalog:ui",
@@ -26,6 +27,7 @@
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "markdown-it-container": "^3.0.0",
-    "vitepress": "^1.6.3"
+    "vitepress": "^1.6.3",
+    "vitest": "catalog:dev"
   }
 }

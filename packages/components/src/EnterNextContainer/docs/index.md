@@ -34,7 +34,3 @@
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="EnterNextContainer" />

@@ -93,7 +93,3 @@ const range = ref([])
 </template>
 ```
 :::
-
-## API
-
-<ApiDocs name="DateRangePicker" />
