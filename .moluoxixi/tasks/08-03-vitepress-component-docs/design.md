@@ -22,9 +22,9 @@ packages/components/index.ts
   -> component Markdown ApiTable sections
 ```
 
-`extract-api.mts` invokes the public `ServerContext` in content mode. It filters the 11 documented components, maps `defaultValue`, `payloadType`, `scopeType`, and `exposed`, and includes referenced `typeDefs` as expanded tooltip text. It fails the process if extraction fails or a requested component is missing.
+`extract-api.mts` invokes the public `ServerContext` in content mode. The public contract names and documentation manifest must match in both directions. It maps `defaultValue`, `payloadType`, `scopeType`, and `exposed`, includes referenced `typeDefs` as expanded tooltip text, and fails when extraction, manifest coverage, or route coverage drifts.
 
-Markdown pages import contract JSON through a small shared VitePress data loader instead of embedding arrays. Prose and examples stay handwritten, preserving the requested ownership split.
+Markdown pages import contract JSON through a small shared VitePress data loader instead of embedding arrays. Prose and examples stay handwritten, preserving the requested ownership split. Examples are optional for API rendering, so a newly documented public component may begin with an API-only page.
 
 ## Theme And Layout
 

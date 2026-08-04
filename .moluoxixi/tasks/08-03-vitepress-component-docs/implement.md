@@ -2,8 +2,8 @@
 
 1. Recover the task state and load frontend/spec guidance.
 2. Replace the direct `vue-component-meta` script with `@moluoxixi/ai-doc-assistant` contract extraction.
-3. Add a shared VitePress API data loader and migrate all 11 component Markdown pages from handwritten API arrays to generated data.
-4. Correct and complete the handwritten demos and prose using component tests/playground examples as evidence.
+3. Add a shared VitePress API data loader and ensure all 13 public components have routes backed by generated data.
+4. Correct and complete the existing handwritten demos and prose; allow API-only pages when a safe runnable demo is not yet available.
 5. Refine the custom theme, overview routes, static assets, tooltip accessibility, demo controls, and responsive behavior.
 6. Run AI assistant tests, repository type checks/tests as appropriate, API extraction, and VitePress production build.
 7. Start a local VitePress server and validate overview/component routes at desktop and mobile widths in the in-app browser.

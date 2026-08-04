@@ -2,9 +2,11 @@
 import type { Component } from 'vue'
 import type { ComponentIconName } from '../../component-manifest'
 import {
+  Blocks,
   CalendarRange,
   Copy,
   FilePenLine,
+  FormInput,
   GitBranch,
   ListFilter,
   PanelTopOpen,
@@ -18,9 +20,11 @@ import { componentGroups } from '../../component-manifest'
 import OverviewCard from './OverviewCard.vue'
 
 const iconByName: Record<ComponentIconName, Component> = {
+  'blocks': Blocks,
   'calendar-range': CalendarRange,
   'copy': Copy,
   'file-pen-line': FilePenLine,
+  'form-input': FormInput,
   'git-branch': GitBranch,
   'list-filter': ListFilter,
   'panel-top-open': PanelTopOpen,

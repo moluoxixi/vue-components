@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import type { ComponentContract } from '@moluoxixi/ai-doc-assistant'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
-import { documentedComponentNames } from '../.vitepress/component-manifest.ts'
+import { documentedComponentNames, documentedComponents } from '../.vitepress/component-manifest.ts'
 
 interface ApiRow {
   name: string
@@ -29,6 +29,17 @@ interface ComponentApi {
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(scriptDir, '../../..')
 const outDir = resolve(scriptDir, '../.vitepress/api')
+
+function duplicateValues(values: string[]): string[] {
+  const seen = new Set<string>()
+  const duplicates = new Set<string>()
+  for (const value of values) {
+    if (seen.has(value))
+      duplicates.add(value)
+    seen.add(value)
+  }
+  return Array.from(duplicates).sort()
+}
 
 function referencedTypeDefs(contract: ComponentContract, refs: string[]): ComponentContract['typeDefs'] {
   const availableNames = new Set(contract.typeDefs.map(definition => definition.name))
@@ -119,10 +130,59 @@ async function main(): Promise<void> {
 
   await context.buildIndex()
   const contracts = new Map(context.getContracts().map(contract => [contract.name, contract]))
+  const duplicateNames = duplicateValues(documentedComponentNames)
+  const duplicateSlugs = duplicateValues(documentedComponents.map(component => component.slug))
+
+  if (duplicateNames.length > 0)
+    throw new Error(`duplicate component names in documentation manifest: ${duplicateNames.join(', ')}`)
+  if (duplicateSlugs.length > 0)
+    throw new Error(`duplicate component slugs in documentation manifest: ${duplicateSlugs.join(', ')}`)
+
+  const documentedNames = new Set(documentedComponentNames)
   const missing = documentedComponentNames.filter(name => !contracts.has(name))
+  const undocumented = Array.from(contracts.keys()).filter(name => !documentedNames.has(name)).sort()
 
   if (missing.length > 0)
     throw new Error(`ai-doc-assistant did not extract: ${missing.join(', ')}`)
+  if (undocumented.length > 0)
+    throw new Error(`public components missing from documentation manifest: ${undocumented.join(', ')}`)
+
+  const routeDir = resolve(root, 'docs/vitepress/components')
+  const expectedRouteFiles = new Set(documentedComponents.map(component => `${component.slug}.md`))
+  const actualRouteFiles = readdirSync(routeDir)
+    .filter(file => file.endsWith('.md') && file !== 'index.md')
+  const missingRoutes = Array.from(expectedRouteFiles).filter(file => !actualRouteFiles.includes(file)).sort()
+  const unexpectedRoutes = actualRouteFiles.filter(file => !expectedRouteFiles.has(file)).sort()
+
+  if (missingRoutes.length > 0)
+    throw new Error(`documentation routes missing: ${missingRoutes.join(', ')}`)
+  if (unexpectedRoutes.length > 0)
+    throw new Error(`documentation routes not in manifest: ${unexpectedRoutes.join(', ')}`)
+
+  const invalidBridges: string[] = []
+  const missingSourceDocs: string[] = []
+  const missingApiDocs: string[] = []
+  for (const component of documentedComponents) {
+    const routePath = resolve(routeDir, `${component.slug}.md`)
+    const expectedInclude = `<!--@include: ../../../packages/components/src/${component.name}/docs/index.md-->`
+    if (!readFileSync(routePath, 'utf8').includes(expectedInclude))
+      invalidBridges.push(component.slug)
+
+    const sourceDocPath = resolve(root, 'packages/components/src', component.name, 'docs/index.md')
+    if (!existsSync(sourceDocPath)) {
+      missingSourceDocs.push(component.name)
+      continue
+    }
+    if (!readFileSync(sourceDocPath, 'utf8').includes(`<ApiDocs name="${component.name}" />`))
+      missingApiDocs.push(component.name)
+  }
+
+  if (invalidBridges.length > 0)
+    throw new Error(`documentation route bridges invalid: ${invalidBridges.join(', ')}`)
+  if (missingSourceDocs.length > 0)
+    throw new Error(`component source documentation missing: ${missingSourceDocs.join(', ')}`)
+  if (missingApiDocs.length > 0)
+    throw new Error(`component source documentation missing ApiDocs: ${missingApiDocs.join(', ')}`)
 
   mkdirSync(outDir, { recursive: true })
 
