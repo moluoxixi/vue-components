@@ -47,8 +47,6 @@ stats.html
 **/.vitepress/cache/
 /docs/vitepress/.vitepress/api/
 /docs/vitepress/--force/
-/docs/vitepress/components/*.md
-!/docs/vitepress/components/index.md
 
 # 日志
 logs

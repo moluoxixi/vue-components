@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
 import { documentedComponentNames, documentedComponents } from '../.vitepress/component-manifest.ts'
 import { syncApiOutputDirectory } from './api-output.mts'
-import { syncComponentRoutes } from './component-routes.mts'
+import { createComponentRoutePaths } from './component-routes.mts'
 
 interface ApiRow {
   name: string
@@ -31,17 +31,6 @@ interface ComponentApi {
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(scriptDir, '../../..')
 const outDir = resolve(scriptDir, '../.vitepress/api')
-
-function duplicateValues(values: string[]): string[] {
-  const seen = new Set<string>()
-  const duplicates = new Set<string>()
-  for (const value of values) {
-    if (seen.has(value))
-      duplicates.add(value)
-    seen.add(value)
-  }
-  return Array.from(duplicates).sort()
-}
 
 function referencedTypeDefs(contract: ComponentContract, refs: string[]): ComponentContract['typeDefs'] {
   const availableNames = new Set(contract.typeDefs.map(definition => definition.name))
@@ -132,13 +121,10 @@ async function main(): Promise<void> {
 
   await context.buildIndex()
   const contracts = new Map(context.getContracts().map(contract => [contract.name, contract]))
-  const duplicateNames = duplicateValues(documentedComponentNames)
-  const duplicateSlugs = duplicateValues(documentedComponents.map(component => component.slug))
-
-  if (duplicateNames.length > 0)
-    throw new Error(`duplicate component names in documentation manifest: ${duplicateNames.join(', ')}`)
-  if (duplicateSlugs.length > 0)
-    throw new Error(`duplicate component slugs in documentation manifest: ${duplicateSlugs.join(', ')}`)
+  const routeResult = createComponentRoutePaths({
+    root,
+    components: documentedComponents,
+  })
 
   const documentedNames = new Set(documentedComponentNames)
   const missing = documentedComponentNames.filter(name => !contracts.has(name))
@@ -149,18 +135,8 @@ async function main(): Promise<void> {
   if (undocumented.length > 0)
     throw new Error(`public components missing from documentation manifest: ${undocumented.join(', ')}`)
 
-  const routeResult = syncComponentRoutes({
-    root,
-    routeDir: resolve(root, 'docs/vitepress/components'),
-    components: documentedComponents,
-  })
-
-  for (const file of routeResult.generated)
-    console.log(`generated route ${file}`)
-  for (const file of routeResult.removed)
-    console.log(`removed stale route ${file}`)
   for (const name of routeResult.apiOnly)
-    console.log(`generated API-only route for ${name}`)
+    console.log(`validated API-only route for ${name}`)
 
   const removedApiFiles = syncApiOutputDirectory(outDir, documentedComponentNames)
   for (const file of removedApiFiles)

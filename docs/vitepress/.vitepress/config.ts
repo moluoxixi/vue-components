@@ -8,6 +8,9 @@ export default defineConfig({
   description: '基于 Element Plus 的业务组件库',
   base: '/',
   lastUpdated: true,
+  rewrites: {
+    'routes/:slug.md': 'components/:slug.md',
+  },
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],

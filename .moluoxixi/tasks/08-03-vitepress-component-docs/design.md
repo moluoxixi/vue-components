@@ -2,7 +2,7 @@
 
 ## Architecture
 
-The documentation remains a VitePress package under `docs/vitepress`. Component prose and demos remain next to component source under `packages/components/src/*/docs/index.md`. Those source documents are optional fragments: the extraction step generates physical VitePress routes before dev/build, includes a fragment when present, and always appends the generated API section.
+The documentation remains a VitePress package under `docs/vitepress`. Component prose and demos remain next to component source under `packages/components/src/*/docs/index.md`. Those source documents are optional fragments: one VitePress dynamic route template expands the component manifest into `/components/<slug>` pages, includes a fragment when present, and always appends the generated API section. No component route mirror is written under the documentation source tree.
 
 The custom theme extends VitePress DefaultTheme and owns four presentation components:
 
@@ -24,7 +24,7 @@ packages/components/index.ts
 
 `extract-api.mts` invokes the public `ServerContext` in content mode. The public contract names and documentation manifest must match in both directions. It maps `defaultValue`, `payloadType`, `scopeType`, and `exposed`, includes referenced `typeDefs` as expanded tooltip text, and fails when extraction, manifest coverage, or route coverage drifts.
 
-Markdown pages import contract JSON through a small shared VitePress data loader instead of embedding arrays. Prose and examples stay handwritten, preserving the requested ownership split. The generated physical route owns the API mount point; a source fragment never needs to declare `<ApiDocs>`. When no fragment exists, the route uses the manifest name and description before the API section, so every public component remains navigable and searchable.
+Markdown pages import contract JSON through a small shared VitePress data loader instead of embedding arrays. Prose and examples stay handwritten, preserving the requested ownership split. The dynamic route content owns the API mount point; a source fragment never needs to declare `<ApiDocs>`. When no fragment exists, the route uses the manifest name and description before the API section, so every public component remains navigable and searchable. A VitePress rewrite keeps the public `/components/` and `/components/<slug>` URLs independent from the internal route template path.
 
 ## Theme And Layout
 
@@ -39,8 +39,8 @@ Markdown pages import contract JSON through a small shared VitePress data loader
 - The docs build requires built workspace packages, including `@moluoxixi/ai-doc-assistant` and `@moluoxixi/components`.
 - The generation script runs on the repository's Node 22 toolchain. Extraction failures and missing components abort build.
 - Dynamic demos support only modules explicitly added to `Demo.vue`'s module cache. Examples should prefer APIs already provided by Vue, Element Plus, and the component package; dayjs is added only if a maintained example still imports it.
-- Generated API files and generated component route files are build artifacts and remain ignored by git. The handwritten component overview route is preserved.
+- Generated API files remain ignored build artifacts. Component routes are expanded in memory from the manifest and a single tracked dynamic route template; the component overview is a tracked internal route rewritten to `/components/`.
 
 ## Rollback
 
-Route generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It only replaces files carrying its generated marker (plus the exact legacy one-line include format) and never overwrites handwritten Markdown. No runtime component behavior or public package contract is changed.
+Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages. No runtime component behavior or public package contract is changed.
