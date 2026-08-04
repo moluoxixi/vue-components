@@ -28,9 +28,15 @@ describe('component documentation routes', () => {
       name: 'CopyText',
       slug: 'copy-text',
       description: '复制文本',
-    }, true)
+    }, {
+      contentStartLine: 1,
+      introductionEndLine: 3,
+      lastContentLine: 8,
+    })
 
-    expect(route).toBe('<!--@include: ../../../packages/components/src/CopyText/docs/index.md-->\n\n## API\n\n<ApiDocs name="CopyText" />\n')
+    expect(route).toContain('docs/index.md{1,3}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />')
+    expect(route).toContain('docs/index.md{4,8}-->\n\n## API')
+    expect(route).toContain('<ApiDocs name="CopyText" />\n\n## 文档贡献者\n\n<DocContributors name="CopyText" />')
   })
 
   it('renders a title and description when source documentation is absent', () => {
@@ -38,10 +44,10 @@ describe('component documentation routes', () => {
       name: 'CopyText',
       slug: 'copy-text',
       description: '复制文本',
-    }, false)
+    })
 
     expect(route).toContain('# CopyText\n\n复制文本')
-    expect(route).toMatch(/复制文本[\s\S]*## API[\s\S]*<ApiDocs name="CopyText" \/>/)
+    expect(route).toMatch(/复制文本[\s\S]*<ComponentDocMeta[\s\S]*## API[\s\S]*<ApiDocs name="CopyText" \/>/)
   })
 
   it('creates dynamic route content from optional component source documentation', () => {
@@ -58,7 +64,7 @@ describe('component documentation routes', () => {
     expect(result.apiOnly).toEqual([])
     expect(result.paths).toEqual([{
       params: { slug: 'copy-text' },
-      content: '<!--@include: ../../../packages/components/src/CopyText/docs/index.md-->\n\n## API\n\n<ApiDocs name="CopyText" />\n',
+      content: '<!--@include: ../../../packages/components/src/CopyText/docs/index.md{1,1}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />\n\n## API\n\n<ApiDocs name="CopyText" />\n\n## 文档贡献者\n\n<DocContributors name="CopyText" />\n',
     }])
   })
 
@@ -72,7 +78,37 @@ describe('component documentation routes', () => {
 
     expect(result.apiOnly).toEqual(['RequestSelectV2'])
     expect(result.paths[0]?.content)
-      .toContain('# RequestSelectV2\n\n远程选择器\n\n## API')
+      .toContain('# RequestSelectV2\n\n远程选择器\n\n<ComponentDocMeta name="RequestSelectV2" slug="request-select-v2" :has-source-doc="false" />\n\n## API')
+  })
+
+  it('inserts metadata after the first source-document paragraph', () => {
+    const root = createFixtureRoot()
+    const sourceDir = resolve(root, 'packages/components/src/CopyText/docs')
+    mkdirSync(sourceDir, { recursive: true })
+    writeFileSync(resolve(sourceDir, 'index.md'), '# CopyText\n\n首段描述。\n\n第二段说明。\n\n## 示例\n', 'utf8')
+
+    const result = createComponentRoutePaths({
+      root,
+      components: [{ name: 'CopyText', slug: 'copy-text', description: '复制文本' }],
+    })
+
+    expect(result.paths[0]?.content).toContain('docs/index.md{1,3}-->\n\n<ComponentDocMeta')
+    expect(result.paths[0]?.content).toContain('docs/index.md{4,7}-->\n\n## API')
+  })
+
+  it('excludes optional source frontmatter from ranged includes', () => {
+    const root = createFixtureRoot()
+    const sourceDir = resolve(root, 'packages/components/src/CopyText/docs')
+    mkdirSync(sourceDir, { recursive: true })
+    writeFileSync(resolve(sourceDir, 'index.md'), '---\ntitle: Copy\n---\n\n# CopyText\n\n复制文本。\n', 'utf8')
+
+    const result = createComponentRoutePaths({
+      root,
+      components: [{ name: 'CopyText', slug: 'copy-text', description: '复制文本' }],
+    })
+
+    expect(result.paths[0]?.content).toContain('docs/index.md{4,7}-->')
+    expect(result.paths[0]?.content).not.toContain('docs/index.md{1,')
   })
 
   it('rejects an API mount inside optional source documentation', () => {

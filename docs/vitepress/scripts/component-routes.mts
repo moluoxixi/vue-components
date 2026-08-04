@@ -14,6 +14,12 @@ export interface ComponentRoutePath {
   content: string
 }
 
+export interface SourceDocLayout {
+  contentStartLine: number
+  introductionEndLine: number
+  lastContentLine: number
+}
+
 export interface CreateComponentRoutePathsOptions {
   root: string
   components: ComponentRoute[]
@@ -28,8 +34,45 @@ const COMPONENT_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/
 const COMPONENT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const API_DOCS_TAG_PATTERN = /<\s*(?:ApiDocs|api-docs)\b/
 
-function sourceDocInclude(component: ComponentRoute): string {
-  return `<!--@include: ../../../packages/components/src/${component.name}/docs/index.md-->`
+function sourceDocInclude(component: ComponentRoute, startLine: number, endLine: number): string {
+  return `<!--@include: ../../../packages/components/src/${component.name}/docs/index.md{${startLine},${endLine}}-->`
+}
+
+function analyzeSourceDoc(content: string, component: ComponentRoute): SourceDocLayout {
+  const lines = content.split(/\r?\n/)
+  let contentStartIndex = 0
+
+  if (lines[0]?.trim() === '---') {
+    const frontmatterEndIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
+    if (frontmatterEndIndex < 0)
+      throw new Error(`component source documentation has unclosed frontmatter: ${component.name}`)
+    contentStartIndex = frontmatterEndIndex + 1
+  }
+
+  const headingIndex = lines.findIndex((line, index) => index >= contentStartIndex && /^#\s+\S/.test(line.trim()))
+  if (headingIndex < 0)
+    throw new Error(`component source documentation must declare a level-one heading: ${component.name}`)
+
+  let paragraphStartIndex = headingIndex + 1
+  while (paragraphStartIndex < lines.length && !lines[paragraphStartIndex]?.trim())
+    paragraphStartIndex += 1
+
+  let introductionEndIndex = headingIndex
+  if (paragraphStartIndex < lines.length && !/^#{1,6}\s+/.test(lines[paragraphStartIndex]?.trim() ?? '')) {
+    introductionEndIndex = paragraphStartIndex
+    while (introductionEndIndex + 1 < lines.length && lines[introductionEndIndex + 1]?.trim())
+      introductionEndIndex += 1
+  }
+
+  let lastContentIndex = lines.length - 1
+  while (lastContentIndex > introductionEndIndex && !lines[lastContentIndex]?.trim())
+    lastContentIndex -= 1
+
+  return {
+    contentStartLine: contentStartIndex + 1,
+    introductionEndLine: introductionEndIndex + 1,
+    lastContentLine: lastContentIndex + 1,
+  }
 }
 
 function assertSafeComponent(component: ComponentRoute): void {
@@ -52,14 +95,35 @@ function duplicateValues(values: string[]): string[] {
   return Array.from(duplicates).sort()
 }
 
-export function renderComponentRoute(component: ComponentRoute, hasSourceDoc: boolean): string {
+export function renderComponentRoute(component: ComponentRoute, sourceDoc?: SourceDocLayout): string {
   assertSafeComponent(component)
 
-  const introduction = hasSourceDoc
-    ? sourceDocInclude(component)
-    : `# ${component.name}\n\n${component.description}`
+  const content: string[] = []
+  if (sourceDoc) {
+    content.push(sourceDocInclude(
+      component,
+      sourceDoc.contentStartLine,
+      sourceDoc.introductionEndLine,
+    ))
+  }
+  else {
+    content.push(`# ${component.name}\n\n${component.description}`)
+  }
 
-  return `${introduction}\n\n## API\n\n<ApiDocs name="${component.name}" />\n`
+  content.push(`<ComponentDocMeta name="${component.name}" slug="${component.slug}" :has-source-doc="${Boolean(sourceDoc)}" />`)
+
+  if (sourceDoc && sourceDoc.introductionEndLine < sourceDoc.lastContentLine) {
+    content.push(sourceDocInclude(
+      component,
+      sourceDoc.introductionEndLine + 1,
+      sourceDoc.lastContentLine,
+    ))
+  }
+
+  content.push(`## API\n\n<ApiDocs name="${component.name}" />`)
+  content.push(`## 文档贡献者\n\n<DocContributors name="${component.name}" />`)
+
+  return `${content.join('\n\n')}\n`
 }
 
 export function createComponentRoutePaths(
@@ -80,14 +144,18 @@ export function createComponentRoutePaths(
   const paths = components.map((component) => {
     const sourceDocPath = resolve(root, 'packages/components/src', component.name, 'docs/index.md')
     const hasSourceDoc = existsSync(sourceDocPath)
-    if (hasSourceDoc && API_DOCS_TAG_PATTERN.test(readFileSync(sourceDocPath, 'utf8')))
+    const sourceDocContent = hasSourceDoc ? readFileSync(sourceDocPath, 'utf8') : undefined
+    if (sourceDocContent && API_DOCS_TAG_PATTERN.test(sourceDocContent))
       throw new Error(`component source documentation must not declare ApiDocs: ${component.name}`)
     if (!hasSourceDoc)
       apiOnly.push(component.name)
 
     return {
       params: { slug: component.slug },
-      content: renderComponentRoute(component, hasSourceDoc),
+      content: renderComponentRoute(
+        component,
+        sourceDocContent ? analyzeSourceDoc(sourceDocContent, component) : undefined,
+      ),
     }
   })
 
