@@ -5,7 +5,6 @@ import ElementPlus, { ID_INJECTION_KEY, ZINDEX_INJECTION_KEY } from 'element-plu
 import DefaultTheme from 'vitepress/theme'
 import ApiDocs from './components/ApiDocs.vue'
 import ApiTable from './components/ApiTable.vue'
-import ComponentCommitTimeline from './components/ComponentCommitTimeline.vue'
 import ComponentDocMeta from './components/ComponentDocMeta.vue'
 import ComponentOverview from './components/ComponentOverview.vue'
 import Demo from './components/Demo.vue'
@@ -39,7 +38,6 @@ const theme: Theme = {
     app.component('ApiTable', ApiTable)
     app.component('ComponentOverview', ComponentOverview)
     app.component('ComponentDocMeta', ComponentDocMeta)
-    app.component('ComponentCommitTimeline', ComponentCommitTimeline)
     app.component('DocContributors', DocContributors)
     app.component('TypeCell', TypeCell)
     app.component('OverviewHome', OverviewHome)

@@ -38,8 +38,6 @@ export interface ComponentRouteLocaleOptions {
   sourceDocIncludePrefix: string
   headings: {
     api: string
-    changelog: string
-    changelogPermalink: string
     contributors: string
   }
 }
@@ -61,8 +59,6 @@ export function createComponentRouteLocaleOptions(locale: DocsLocale): Component
     sourceDocIncludePrefix: configured.sourceDocIncludePrefix,
     headings: {
       api: messages.route.api,
-      changelog: messages.route.changelog,
-      changelogPermalink: messages.api.permanentLink.replace('{section}', messages.route.changelog),
       contributors: messages.route.contributors,
     },
   }
@@ -168,7 +164,6 @@ export function renderComponentRoute(
   }
 
   content.push(`## ${locale.headings.api}\n\n<ApiDocs name="${component.name}" />`)
-  content.push(`<h2 id="changelog" tabindex="-1">${locale.headings.changelog}<a class="header-anchor" href="#changelog" aria-label="${locale.headings.changelogPermalink}">&#8203;</a></h2>\n\n<ComponentCommitTimeline name="${component.name}" />`)
   content.push(`## ${locale.headings.contributors}\n\n<DocContributors name="${component.name}" />`)
 
   return `${content.join('\n\n')}\n`

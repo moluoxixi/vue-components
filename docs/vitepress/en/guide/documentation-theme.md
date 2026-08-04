@@ -7,7 +7,7 @@ The documentation solution keeps VitePress `DefaultTheme` as its layout runtime 
 1. Copy `docs/vitepress` and replace its component-library workspace dependency in `package.json`.
 2. Update `.vitepress/docs-site.ts`. Brand, logo, package name, API entry, style entry, GitHub repository, component source root, public routes, and locale paths are defined there. The theme consumes the target package through the stable `@docs-components` alias, so its Vue imports do not need project-specific edits.
 3. Replace `.vitepress/component-manifest.ts` with the new library's public Vue component catalog. The extractor reads `componentEntry` and stops the build when the extracted and documented component sets differ.
-4. Optionally author prose and examples in `<componentRoot>/<Component>/docs/index.md` and `index.en.md`. Without prose, the route still renders its title, description, API, changelog, and contributors.
+4. Optionally author prose and examples in `<componentRoot>/<Component>/docs/index.md` and `index.en.md`. Without prose, the route still renders its title, description, API, and contributors, while the fixed page metadata provides the component changelog dialog trigger.
 5. Edit messages in `.vitepress/docs-i18n.ts`. `docsLocales` drives VitePress locales, URL prefixes, rewrites, and source documents. A new locale also needs one thin route adapter matching `en/routes/[slug].paths.mts`.
 6. Run `pnpm --dir docs/vitepress sync-github-metadata`, then `pnpm --dir docs/vitepress build`.
 

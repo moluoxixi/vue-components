@@ -47,6 +47,8 @@ GitHub data is synchronized explicitly into a committed snapshot; normal dev and
 
 The snapshot records its schema version, repository identity, default branch, head SHA, generation time, repository issue count, component issue count, contributors, profiles, and commits. A failed or rate-limited sync never replaces the last valid snapshot.
 
+The route shell always appends generated API documentation and the current component's contributors after optional handwritten content. Changelog history is owned by the fixed page metadata component and opens in an accessible, responsive Element Plus dialog, so long commit histories do not expand the document outline or page length.
+
 ## Internationalization And Reuse
 
 Repository URL, package name, source root, route prefixes, locale settings, and GitHub attribution rules live in one documentation site configuration module. Locale-neutral component identifiers remain in the component manifest; display labels and custom-theme messages live in a `zh-CN` / `en-US` catalog. English component routes prefer `docs/index.en.md` and fall back to an API-first English shell when no translated source fragment exists.

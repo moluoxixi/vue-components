@@ -7,7 +7,7 @@
 1. 复制 `docs/vitepress`，并在它的 `package.json` 中把组件库 workspace 依赖替换为目标包。
 2. 修改 `.vitepress/docs-site.ts`。品牌、logo、包名、API 入口、样式入口、GitHub 仓库、组件源码根目录、公开路由和 locale 路径都在这里定义。主题通过 `@docs-components` 稳定别名消费目标包，无需再改 Vue 组件中的 import。
 3. 修改 `.vitepress/component-manifest.ts`，使其与新组件库的公开 Vue 组件一一对应。API 提取器会从 `componentEntry` 读取契约，并在缺失或多出组件时终止构建。
-4. 可选在 `<componentRoot>/<Component>/docs/index.md` 和 `index.en.md` 编写正文与示例。没有正文时，路由仍会生成标题、简介、API、更新日志和贡献者。
+4. 可选在 `<componentRoot>/<Component>/docs/index.md` 和 `index.en.md` 编写正文与示例。没有正文时，路由仍会生成标题、简介、API 和贡献者，头部固定提供组件更新日志弹窗入口。
 5. 调整 `.vitepress/docs-i18n.ts` 的文案。`docsLocales` 驱动 VitePress locale、路由前缀、rewrite 和源文档文件；新增语种时再为该语种添加一个与 `en/routes/[slug].paths.mts` 相同的薄路由适配文件。
 6. 运行 `pnpm --dir docs/vitepress sync-github-metadata` 生成新快照，再运行 `pnpm --dir docs/vitepress build`。
 

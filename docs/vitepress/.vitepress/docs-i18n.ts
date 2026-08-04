@@ -43,7 +43,6 @@ export interface DocsMessages {
   }
   route: {
     api: string
-    changelog: string
     contributors: string
     componentOverview: string
     componentOverviewDescription: string
@@ -151,7 +150,7 @@ const messages: Record<DocsLocale, DocsMessages> = {
         linkText: '返回首页',
       },
     },
-    route: { api: 'API', changelog: '更新日志', contributors: '组件贡献者', componentOverview: '组件总览', componentOverviewDescription: '按使用场景浏览 MX Components。每个页面均提供自动生成的 API，并可展示组件提交历史。' },
+    route: { api: 'API', contributors: '组件贡献者', componentOverview: '组件总览', componentOverviewDescription: '按使用场景浏览 MX Components。每个页面均提供自动生成的 API，并可展示组件提交历史。' },
     meta: { aria: '组件文档信息', usage: '使用', feedback: '反馈', documentation: '文档', copyImport: '复制导入语句', copied: '已复制导入语句', submitIssue: '提交问题', openIssues: '待解决', editPage: '编辑此页', addDocs: '补充文档', componentOverview: '组件总览', changelog: '更新日志' },
     contributors: { aria: '{name} 组件贡献者', contribution: '为 {name} 贡献 {count} 次提交', empty: '暂无贡献记录' },
     changelog: { aria: '{name} 更新日志', empty: '暂无提交记录', commitLink: '在 GitHub 查看提交 {sha}' },
@@ -195,7 +194,7 @@ const messages: Record<DocsLocale, DocsMessages> = {
         linkText: 'Take me home',
       },
     },
-    route: { api: 'API', changelog: 'Changelog', contributors: 'Component Contributors', componentOverview: 'Component Overview', componentOverviewDescription: 'Browse MX Components by use case. Every page includes generated API documentation and component commit history.' },
+    route: { api: 'API', contributors: 'Component Contributors', componentOverview: 'Component Overview', componentOverviewDescription: 'Browse MX Components by use case. Every page includes generated API documentation and component commit history.' },
     meta: { aria: 'Component documentation information', usage: 'Usage', feedback: 'Feedback', documentation: 'Docs', copyImport: 'Copy import statement', copied: 'Import statement copied', submitIssue: 'New issue', openIssues: 'Open issues', editPage: 'Edit this page', addDocs: 'Add documentation', componentOverview: 'Overview', changelog: 'Changelog' },
     contributors: { aria: '{name} component contributors', contribution: '{count} commits to {name}', empty: 'No contributor records yet' },
     changelog: { aria: '{name} changelog', empty: 'No commits yet', commitLink: 'View commit {sha} on GitHub' },

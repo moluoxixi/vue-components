@@ -45,3 +45,13 @@
 - Mobile check at 390 x 844: the document viewport had no page-level horizontal overflow and API tables remained available.
 - Overview check: all 13 public components were visible from `/`; browser console warnings/errors were empty.
 - Type and contributor tooltips were verified with complete details and without horizontal or vertical overflow in their rendered content.
+
+## Changelog Dialog Verification (2026-08-04)
+
+- The component route generator no longer emits a changelog heading or timeline in the document body. It always appends generated API documentation followed by the current component's contributors.
+- `AntdConfigForm` exposes `更新日志 16` in the fixed header metadata. The action opens an Element Plus dialog containing 16 component-scoped commits with message, author, localized date, SHA, and GitHub link.
+- The dialog title exposes level-two heading semantics. The dialog closes with `Escape`, restores focus to the changelog trigger with a visible 2px brand focus ring, and keeps `aria-expanded` synchronized.
+- At 390 x 844, the dialog measured 358px wide with 16px viewport gutters, no page/dialog horizontal overflow, and an internal `auto` scroll region for the 1438px commit timeline.
+- The English route renders `AntdConfigForm changelog`, `Close`, and locale-formatted dates such as `Aug 4, 2026`.
+- A clean browser tab after restarting the VitePress dynamic-route server reported no console warnings or errors; the page outline contained API and contributors but no changelog section.
+- Final checks passed: documentation ESLint, 5 Vitest files / 30 tests, all-workspace `pnpm typecheck`, deterministic 13-component API extraction, GitHub snapshot validation at `a3bb24a`, and the VitePress production build.

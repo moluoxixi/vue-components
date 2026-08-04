@@ -10,6 +10,7 @@
 8. Add an explicit GitHub metadata synchronizer and committed snapshot for component issues, contributors, and commit history.
 9. Add component changelog rendering, locale-aware custom-theme messages, and English route generation.
 10. Centralize repository-specific settings and document why the reusable theme keeps VitePress DefaultTheme as its base.
+11. Move component changelogs from the generated page body into a responsive header dialog while keeping API documentation and contributors as invariant footer content.
 
 ## Validation Commands
 

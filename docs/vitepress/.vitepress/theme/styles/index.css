@@ -247,7 +247,8 @@ body {
 
 .component-doc-import,
 .component-doc-links,
-.component-doc-links a {
+.component-doc-links > a,
+.component-doc-links > button {
   display: flex;
   align-items: flex-start;
 }
@@ -309,7 +310,8 @@ body {
   gap: 8px;
 }
 
-.vp-doc .component-doc-links a {
+.vp-doc .component-doc-links > a,
+.vp-doc .component-doc-links > button {
   min-width: 0;
   gap: 4px;
   padding: 0 4px;
@@ -321,15 +323,29 @@ body {
   text-decoration: none;
 }
 
-.component-doc-links a svg {
+.component-doc-links > button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.component-doc-links > :is(a, button) svg {
   flex: none;
   margin-block-start: 4px;
   margin-inline-end: 4px;
 }
 
-.vp-doc .component-doc-links a:hover,
-.vp-doc .component-doc-links a:focus-visible {
+.vp-doc .component-doc-links > :is(a, button):hover {
   color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.vp-doc .component-doc-links > :is(a, button):focus-visible {
+  border-radius: 2px;
+  color: var(--vp-c-brand-1);
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
   text-decoration: none;
 }
 
@@ -440,7 +456,7 @@ body {
   width: 7px;
   height: 7px;
   margin: 7px 0 0 3px;
-  border: 2px solid var(--vp-c-bg);
+  border: 2px solid var(--el-bg-color, var(--vp-c-bg));
   border-radius: 50%;
   background: var(--vp-c-brand-1);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--vp-c-brand-1) 45%, var(--mx-border));
@@ -450,7 +466,7 @@ body {
   min-width: 0;
 }
 
-.vp-doc .component-commit-message {
+.component-commit-message {
   display: inline;
   color: var(--vp-c-text-1);
   font-size: 14px;
@@ -460,8 +476,8 @@ body {
   text-decoration: none;
 }
 
-.vp-doc .component-commit-message:hover,
-.vp-doc .component-commit-message:focus-visible {
+.component-commit-message:hover,
+.component-commit-message:focus-visible {
   color: var(--vp-c-brand-1);
   text-decoration: none;
 }
@@ -478,7 +494,7 @@ body {
   line-height: 20px;
 }
 
-.vp-doc .component-commit-author {
+.component-commit-author {
   display: inline-flex;
   min-width: 0;
   align-items: center;
@@ -495,16 +511,16 @@ body {
   object-fit: cover;
 }
 
-.vp-doc .component-commit-sha {
+.component-commit-sha {
   color: var(--vp-c-text-3);
   font-family: var(--vp-font-family-mono);
   text-decoration: none;
 }
 
-.vp-doc .component-commit-author:hover,
-.vp-doc .component-commit-author:focus-visible,
-.vp-doc .component-commit-sha:hover,
-.vp-doc .component-commit-sha:focus-visible {
+.component-commit-author:hover,
+.component-commit-author:focus-visible,
+.component-commit-sha:hover,
+.component-commit-sha:focus-visible {
   color: var(--vp-c-brand-1);
   text-decoration: none;
 }
@@ -512,6 +528,72 @@ body {
 .component-commit-empty {
   color: var(--vp-c-text-3);
   font-size: 13px;
+}
+
+.component-changelog-dialog {
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.component-changelog-dialog .el-dialog__header {
+  margin: 0;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--mx-border-light);
+}
+
+.component-changelog-dialog .el-dialog__body {
+  padding: 0;
+}
+
+.component-changelog-dialog-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.component-changelog-dialog-header .el-dialog__title {
+  min-width: 0;
+  color: var(--vp-c-text-1);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.component-changelog-dialog-close {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vp-c-text-3);
+  cursor: pointer;
+}
+
+.component-changelog-dialog-close:hover,
+.component-changelog-dialog-close:focus-visible {
+  background: var(--mx-fill);
+  color: var(--vp-c-brand-1);
+  outline: none;
+}
+
+.component-changelog-dialog-scroll {
+  max-height: min(65vh, 620px);
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.component-changelog-dialog .component-commit-timeline {
+  margin: 0 !important;
 }
 
 .demo-block {

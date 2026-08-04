@@ -36,8 +36,9 @@ describe('component documentation routes', () => {
 
     expect(route).toContain('docs/index.md{1,3}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />')
     expect(route).toContain('docs/index.md{4,8}-->\n\n## API')
-    expect(route).toContain('<ApiDocs name="CopyText" />\n\n<h2 id="changelog"')
-    expect(route).toContain('<ComponentCommitTimeline name="CopyText" />\n\n## 组件贡献者\n\n<DocContributors name="CopyText" />')
+    expect(route).toContain('<ApiDocs name="CopyText" />\n\n## 组件贡献者\n\n<DocContributors name="CopyText" />')
+    expect(route).not.toContain('<ComponentCommitTimeline')
+    expect(route).not.toContain('id="changelog"')
   })
 
   it('renders a title and description when source documentation is absent', () => {
@@ -65,7 +66,7 @@ describe('component documentation routes', () => {
     expect(result.apiOnly).toEqual([])
     expect(result.paths).toEqual([{
       params: { slug: 'copy-text' },
-      content: '<!--@include: ../../../packages/components/src/CopyText/docs/index.md{1,1}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />\n\n## API\n\n<ApiDocs name="CopyText" />\n\n<h2 id="changelog" tabindex="-1">更新日志<a class="header-anchor" href="#changelog" aria-label="更新日志的永久链接">&#8203;</a></h2>\n\n<ComponentCommitTimeline name="CopyText" />\n\n## 组件贡献者\n\n<DocContributors name="CopyText" />\n',
+      content: '<!--@include: ../../../packages/components/src/CopyText/docs/index.md{1,1}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />\n\n## API\n\n<ApiDocs name="CopyText" />\n\n## 组件贡献者\n\n<DocContributors name="CopyText" />\n',
     }])
   })
 
@@ -83,8 +84,6 @@ describe('component documentation routes', () => {
         sourceDocIncludePrefix: '../../../../',
         headings: {
           api: 'API',
-          changelog: 'Changelog',
-          changelogPermalink: 'Permanent link to Changelog',
           contributors: 'Component Contributors',
         },
       },
@@ -92,7 +91,7 @@ describe('component documentation routes', () => {
 
     expect(result.apiOnly).toEqual([])
     expect(result.paths[0]?.content).toContain('../../../../packages/components/src/CopyText/docs/index.en.md{1,3}')
-    expect(result.paths[0]?.content).toContain('>Changelog<a class="header-anchor"')
+    expect(result.paths[0]?.content).not.toContain('<ComponentCommitTimeline')
     expect(result.paths[0]?.content).toContain('## Component Contributors')
   })
 
@@ -107,6 +106,8 @@ describe('component documentation routes', () => {
     expect(result.apiOnly).toEqual(['RequestSelectV2'])
     expect(result.paths[0]?.content)
       .toContain('# RequestSelectV2\n\n远程选择器\n\n<ComponentDocMeta name="RequestSelectV2" slug="request-select-v2" :has-source-doc="false" />\n\n## API')
+    expect(result.paths[0]?.content)
+      .toContain('<ApiDocs name="RequestSelectV2" />\n\n## 组件贡献者\n\n<DocContributors name="RequestSelectV2" />')
   })
 
   it('inserts metadata after the first source-document paragraph', () => {
