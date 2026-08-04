@@ -70,6 +70,26 @@ describe('extractContract — vue-component-meta 引擎', () => {
     expect(def!.raw).toContain('ComponentPublicInstance | ComponentInternalInstance | HTMLElement | null')
   })
 
+  it('组件位于内层 src 时跟随相对 import 收集包级共享类型别名', async () => {
+    const c = await extractContract(
+      fx('SharedRequestPackage/src/Component/src/index.vue'),
+      '@test/pkg',
+      'Component',
+      FIXTURES_TSCONFIG,
+    )
+    const query = c.props.find(p => p.name === 'query')
+    expect(query).toBeTruthy()
+    expect(query!.typeRefs).toEqual(expect.arrayContaining(['RequestParamsRecord', 'RequestOptionRecord']))
+
+    const paramsDef = c.typeDefs.find(t => t.name === 'RequestParamsRecord')
+    expect(paramsDef).toMatchObject({ kind: 'type', fields: [] })
+    expect(paramsDef!.raw).toContain('type RequestParamsRecord = Record<string, unknown>')
+
+    const optionDef = c.typeDefs.find(t => t.name === 'RequestOptionRecord')
+    expect(optionDef).toMatchObject({ kind: 'type', fields: [] })
+    expect(optionDef!.raw).toContain('type RequestOptionRecord = Record<string, any>')
+  })
+
   it('emits、slots、exposed 引用本地 type alias 时也纳入 typeDefs.raw', async () => {
     const macro = await extractContract(
       fx('MacroProbe/src/index.vue'),

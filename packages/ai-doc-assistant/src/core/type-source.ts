@@ -1,6 +1,6 @@
 import type { TypeDefInfo, TypeFieldDef } from './types'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import ts from 'typescript'
 
 /**
@@ -11,8 +11,8 @@ import ts from 'typescript'
  * - 动态插槽：从 `<Comp>Slots` 契约接口（含索引签名）派生 meta 丢弃的动态插槽说明。
  * - defineAttrs：meta 完全不体现 `defineAttrs<T>()`，需从 SFC 抽泛型名再解析 T 字段。
  *
- * 纯 ts.createSourceFile 语法遍历，不启动 type checker，确定性强。旧的 type-resolver/
- * external-type-resolver（Omit/Pick 模拟、import 跟随、第三方解析）已删除——那些由 checker 承担。
+ * 纯 TypeScript 语法遍历，不启动 type checker，确定性强。类型语义解析仍由 checker 承担；
+ * 此处只跟随本地相对 import 定位契约实际引用的 raw 声明，不模拟 Omit/Pick 或解析第三方类型。
  */
 
 /** 取节点前缀的 JSDoc 文本（若有），用于字段/类型说明。 */
@@ -210,15 +210,109 @@ function findSrcRoot(sfcPath: string): string | null {
   return null
 }
 
+/** Resolve a relative module specifier to a TypeScript source file. */
+function resolveRelativeTypeSource(importerPath: string, specifier: string): string | null {
+  if (!specifier.startsWith('.'))
+    return null
+
+  const base = resolve(dirname(importerPath), specifier)
+  const candidates = extname(base)
+    ? [base]
+    : [
+        `${base}.ts`,
+        `${base}.tsx`,
+        `${base}.mts`,
+        `${base}.cts`,
+        join(base, 'index.ts'),
+        join(base, 'index.tsx'),
+        join(base, 'index.mts'),
+        join(base, 'index.cts'),
+      ]
+
+  for (const candidate of candidates) {
+    if (candidate.endsWith('.d.ts') || !existsSync(candidate))
+      continue
+    try {
+      if (statSync(candidate).isFile())
+        return candidate
+    }
+    catch {
+      // The candidate can disappear between existsSync and statSync.
+    }
+  }
+  return null
+}
+
 /**
- * 收集组件目录下所有 `.ts` 类型源文件的本地 interface / type 定义（含 SFC 内联）。
+ * Follow relative imports from an SFC into TypeScript sources, including transitive imports.
+ * Imported definitions take precedence over the component-directory fallback scan because they
+ * are the exact symbols used by the component contract.
+ */
+function collectImportedTypeSources(sfcPath: string): string[] {
+  const sources: string[] = []
+  const visited = new Set<string>([sfcPath])
+
+  const visit = (filePath: string, source: string): void => {
+    const scriptSources = filePath.endsWith('.vue')
+      ? Array.from(source.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g), match => match[1])
+      : [source]
+
+    for (const scriptSource of scriptSources) {
+      const imports = ts.preProcessFile(scriptSource, true, true).importedFiles
+      for (const imported of imports) {
+        const resolved = resolveRelativeTypeSource(filePath, imported.fileName)
+        if (!resolved || visited.has(resolved))
+          continue
+        visited.add(resolved)
+        sources.push(resolved)
+        try {
+          visit(resolved, readFileSync(resolved, 'utf8'))
+        }
+        catch (err) {
+          throw new Error(`read imported type source failed for ${resolved}: ${(err as Error).message}`, { cause: err })
+        }
+      }
+    }
+  }
+
+  try {
+    visit(sfcPath, readFileSync(sfcPath, 'utf8'))
+  }
+  catch (err) {
+    throw new Error(`collect imported type sources failed for ${sfcPath}: ${(err as Error).message}`, { cause: err })
+  }
+  return sources
+}
+
+/**
+ * 收集 SFC 内联、相对 import 图和组件目录 `.ts` 中的本地 interface / type 定义。
  * 用于动态插槽契约（`<Comp>Slots`）与 defineAttrs 泛型 T 的字段解析。
- * 扫描根：从 SFC 向上找 `src`，找不到回退 SFC 同级目录。跳过 node_modules / .d.ts / 测试文件。
+ * 实际 import 优先；目录扫描作为未显式 import 契约的兜底。跳过 node_modules / .d.ts / 测试文件。
  */
 export function collectLocalTypeDefs(sfcPath: string): TypeDefInfo[] {
   const scanRoot = findSrcRoot(sfcPath) ?? dirname(sfcPath)
   const defs: TypeDefInfo[] = []
   const seen = new Set<string>()
+
+  const addDefs = (sourceDefs: TypeDefInfo[]): void => {
+    for (const def of sourceDefs) {
+      if (seen.has(def.name))
+        continue
+      seen.add(def.name)
+      defs.push(def)
+    }
+  }
+
+  // SFC inline and explicitly imported types are the most precise sources.
+  addDefs(extractSfcScriptTypeDefs(sfcPath))
+  for (const importedPath of collectImportedTypeSources(sfcPath)) {
+    try {
+      addDefs(parseTypeDefs(importedPath))
+    }
+    catch (err) {
+      throw new Error(`parseTypeDefs failed for ${importedPath}: ${(err as Error).message}`, { cause: err })
+    }
+  }
 
   const walk = (dir: string): void => {
     let entries: string[]
@@ -245,12 +339,7 @@ export function collectLocalTypeDefs(sfcPath: string): TypeDefInfo[] {
       if (!entry.endsWith('.ts') || entry.endsWith('.d.ts') || entry.includes('.test.') || entry.includes('.spec.'))
         continue
       try {
-        for (const def of parseTypeDefs(full)) {
-          if (seen.has(def.name))
-            continue
-          seen.add(def.name)
-          defs.push(def)
-        }
+        addDefs(parseTypeDefs(full))
       }
       catch (err) {
         throw new Error(`parseTypeDefs failed for ${full}: ${(err as Error).message}`, { cause: err })
@@ -259,14 +348,6 @@ export function collectLocalTypeDefs(sfcPath: string): TypeDefInfo[] {
   }
 
   walk(scanRoot)
-
-  // 合并 SFC `<script>` 内联定义（如 defineAttrs<T> 中 T 为 SFC 内联 interface）
-  for (const def of extractSfcScriptTypeDefs(sfcPath)) {
-    if (seen.has(def.name))
-      continue
-    seen.add(def.name)
-    defs.push(def)
-  }
 
   return defs
 }
