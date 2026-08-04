@@ -11,7 +11,7 @@
  *
  * 仅在索引就绪时可提问；网络/HTTP 错误显式展示，不静默吞掉。
  */
-import { computed, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import type { ExampleBlock, IndexState, SourceRef } from '../../shared/protocol'
 import { splitAnswerSegments } from '../../core'
 import { streamQuery } from '../api'
@@ -21,6 +21,7 @@ import { DemoPreview } from '../components'
 const question = defineModel<string>('question', { required: true })
 const props = defineProps<{ indexReady: boolean, indexState: IndexState }>()
 const questionInput = useTemplateRef<HTMLInputElement>('questionInput')
+const chatBody = useTemplateRef<HTMLElement>('chatBody')
 
 function focusQuestion(): void {
   questionInput.value?.focus()
@@ -90,6 +91,13 @@ const fallbackExampleBlocks = computed(() => {
   return exampleBlocks.value.filter(block => !inline.includes(normalizeSource(block.ts)))
 })
 
+async function scrollToLatest(): Promise<void> {
+  await nextTick()
+  const body = chatBody.value
+  if (body)
+    body.scrollTop = body.scrollHeight
+}
+
 /** 发起流式提问，分区渲染 SSE 事件。 */
 async function onAsk(): Promise<void> {
   if (!canAsk.value)
@@ -121,6 +129,7 @@ async function onAsk(): Promise<void> {
         case 'done':
           break
       }
+      void scrollToLatest()
     })
   }
   catch (err) {
@@ -134,21 +143,21 @@ async function onAsk(): Promise<void> {
 
 <template>
   <div class="chat" data-testid="chat-view">
-    <div class="chat-body">
-      <div v-if="errorMsg" class="hint error" data-testid="chat-error">
+    <div ref="chatBody" class="chat-body">
+      <div v-if="errorMsg" class="hint error" role="alert" data-testid="chat-error">
         {{ errorMsg }}
       </div>
 
       <section v-if="sources.length" class="sources" data-testid="sources">
         <h3>检索来源</h3>
         <ul>
-          <li v-for="s in sources" :key="s.component">
+          <li v-for="s in sources" :key="`${s.packageName}:${s.component}`">
             {{ s.component }} <small>{{ s.packageName }} · {{ s.score.toFixed(3) }}</small>
           </li>
         </ul>
       </section>
 
-      <section class="answer" data-testid="answer">
+      <section class="answer" aria-live="polite" data-testid="answer">
         <h3>回答</h3>
         <template v-if="segments.length || fallbackExampleBlocks.length">
           <!-- 正文分段：文字段原样展示，vue 代码块原位替换为 demo 预览块 -->
@@ -187,14 +196,18 @@ async function onAsk(): Promise<void> {
         <input
           ref="questionInput"
           v-model="question"
+          type="text"
+          aria-label="向 AI 提问"
           data-testid="question-input"
           placeholder="问点什么，比如：ElButton 怎么用？"
+          @keydown.ctrl.enter.prevent="onAsk"
+          @keydown.meta.enter.prevent="onAsk"
         >
         <button
           class="btn primary"
+          type="submit"
           data-testid="ask-btn"
           :disabled="!canAsk"
-          @keydown.ctrl.enter.prevent="onAsk"
         >
           {{ streaming ? '回答中…' : '提问' }}
         </button>
@@ -216,23 +229,26 @@ async function onAsk(): Promise<void> {
   overflow-y: auto;
   padding: 20px 20px 8px;
 }
+.chat-body > * { width: min(100%, 1080px); margin-right: auto; margin-left: auto; }
 .ask-panel {
   flex: 0 0 auto;
   padding: 12px 20px 16px;
   border-top: 1px solid #d0d7de;
   background: #fff;
 }
+.ask-panel > * { width: min(100%, 1080px); margin-right: auto; margin-left: auto; }
 .ask-row { display: flex; gap: 8px; }
 .ask-row input {
   flex: 1; padding: 10px 12px; border: 1px solid #d0d7de;
   border-radius: 6px; font-size: 14px;
 }
+.ask-row input:focus { border-color: #409eff; outline: 2px solid rgba(64,158,255,.14); outline-offset: 0; }
 .btn {
   padding: 8px 14px; border: 1px solid #d0d7de; border-radius: 6px;
   background: #f6f8fa; cursor: pointer; font-size: 13px;
 }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.primary { background: #238636; color: #fff; border-color: #238636; }
+.btn.primary { background: #409eff; color: #fff; border-color: #409eff; }
 .hint { color: #57606a; font-size: 13px; margin-bottom: 12px; }
 .hint.error { color: #cf222e; }
 section { margin-bottom: 16px; }
@@ -240,6 +256,6 @@ section h3 { font-size: 13px; color: #57606a; margin: 0 0 8px; }
 .answer-text { white-space: pre-wrap; line-height: 1.6; margin: 0 0 12px; }
 .answer-text.placeholder { color: #8b949e; }
 .sources ul { list-style: none; padding: 0; margin: 0; }
-.sources li { padding: 4px 0; font-size: 13px; }
+.sources li { margin-bottom: 6px; padding: 7px 10px; border: 1px solid #ebeef5; border-radius: 4px; background: #fafafa; font-size: 13px; }
 .sources small { color: #57606a; }
 </style>

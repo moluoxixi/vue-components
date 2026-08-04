@@ -15,6 +15,11 @@ export default defineConfig({
   themeConfig: {
     logo: '/logo.svg',
     siteTitle: 'MX Components',
+    returnToTopLabel: '返回顶部',
+    sidebarMenuLabel: '菜单',
+    darkModeSwitchLabel: '主题',
+    lightModeSwitchTitle: '切换到浅色主题',
+    darkModeSwitchTitle: '切换到深色主题',
 
     nav: [
       { text: '概览', link: '/' },
@@ -73,6 +78,23 @@ export default defineConfig({
 
     search: {
       provider: 'local',
+      options: {
+        translations: {
+          button: {
+            buttonText: '搜索',
+            buttonAriaLabel: '搜索文档',
+          },
+          modal: {
+            noResultsText: '未找到相关结果',
+            resetButtonTitle: '清除查询',
+            footer: {
+              selectText: '选择',
+              navigateText: '切换',
+              closeText: '关闭',
+            },
+          },
+        },
+      },
     },
 
     outline: {

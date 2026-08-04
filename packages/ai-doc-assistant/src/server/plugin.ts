@@ -41,7 +41,23 @@ export interface AiDocPluginOptions {
 /** 解析包内 dist/ui 目录（本文件位于 dist/plugin.js，故 dist/ui 为同级子目录）。 */
 function defaultUiDir(): string {
   const here = dirname(fileURLToPath(import.meta.url))
-  return resolve(here, 'ui')
+  const bundledUiDir = resolve(here, 'ui')
+  if (existsSync(join(bundledUiDir, 'index.html')))
+    return bundledUiDir
+
+  // Workspace tools may resolve the package's `source` export to this TS file.
+  // In that case the built UI still lives under the package-level dist/ui.
+  return resolve(here, '../../dist/ui')
+}
+
+/** Fail during server startup instead of advertising a panel that can only return 404. */
+export function assertUiPanelAvailable(uiDir: string): void {
+  const entry = join(uiDir, 'index.html')
+  if (!existsSync(entry)) {
+    throw new Error(
+      `[ai-doc] UI assets not found at ${entry}; build or reinstall @moluoxixi/ai-doc-assistant`,
+    )
+  }
 }
 
 /**
@@ -113,6 +129,7 @@ export function aiDocAssistant(options: AiDocPluginOptions = {}): Plugin {
     name: 'vite-plugin-ai-doc-assistant',
     apply: 'serve',
     configureServer(server: ViteDevServer) {
+      assertUiPanelAvailable(uiDir)
       const root = options.root ?? server.config.root
       ctx = new ServerContext({
         root,

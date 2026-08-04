@@ -100,10 +100,15 @@ async function recompile(): Promise<void> {
 
 /** 源码或语言变化时重新编译预览。 */
 watch(
-  () => currentCode.value,
+  [() => currentCode.value, () => props.renderable],
   () => { void recompile() },
   { immediate: true },
 )
+
+watch(hasJs, (available) => {
+  if (!available && lang.value === 'js')
+    lang.value = 'ts'
+})
 
 /** 组件卸载时清理最后一次注入的样式与定时器，避免泄漏。 */
 onUnmounted(() => {
@@ -215,9 +220,9 @@ async function copy(which: CopyLang): Promise<void> {
 <template>
   <section class="demo-preview" data-testid="demo-preview">
     <!-- 预览区：可渲染时实时挂载真实组件；不可渲染时展示原因（依赖白名单外） -->
-    <div class="dp-live" data-testid="demo-live">
+    <div class="dp-live" aria-live="polite" data-testid="demo-live">
       <div v-if="!renderable" class="dp-hint warn" data-testid="demo-unrenderable">
-        ⚠ 该示例无法实时预览：{{ reason }}
+        ⚠ 该示例无法实时预览：{{ reason || '当前预览环境不支持该示例依赖。' }}
       </div>
       <div v-else-if="compiling" class="dp-hint" data-testid="demo-compiling">
         编译中…

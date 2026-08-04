@@ -1,6 +1,6 @@
 import type { SseEvent } from '../src/shared/protocol'
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
 const streamQuery = vi.fn()
@@ -47,6 +47,10 @@ async function mountChat(question = 'EnterNextContainer 怎么用？') {
 }
 
 describe('chat view', () => {
+  beforeEach(() => {
+    streamQuery.mockReset()
+  })
+
   it('把提问表单固定在回答区域之后，并在知识库构建中提示等待', async () => {
     const { default: ChatView } = await import('../src/ui/views/ChatView.vue')
     const wrapper = mount(ChatView, {
@@ -129,6 +133,19 @@ describe('chat view', () => {
 
     expect(streamQuery).toHaveBeenCalledWith('ElButton 怎么用？', 5, expect.any(Function))
     expect((wrapper.get('[data-testid="question-input"]').element as HTMLInputElement).value).toBe('')
+  })
+
+  it('在提问输入框按 Ctrl+Enter 时发起请求', async () => {
+    streamQuery.mockResolvedValueOnce(undefined)
+    const wrapper = await mountChat('CopyText 怎么用？')
+
+    await wrapper.get('[data-testid="question-input"]').trigger('keydown', {
+      key: 'Enter',
+      ctrlKey: true,
+    })
+    await flushPromises()
+
+    expect(streamQuery).toHaveBeenCalledWith('CopyText 怎么用？', 5, expect.any(Function))
   })
 
   it('按归一化后的源码匹配后端双码块，避免尾随空白导致 JS 切换丢失', async () => {

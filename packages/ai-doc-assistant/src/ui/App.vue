@@ -6,7 +6,7 @@
  * 知识库入口。默认 content 模式在面板打开后自动准备知识库；vector 模式或未就绪时
  * 保留手动构建/更新入口。主区域默认且始终展示 Chat；组件总览/详情放进知识库弹框。
  */
-import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import type { ComponentListItem, HealthResponse, IndexState } from '../shared/protocol'
 import { buildIndex, fetchComponents, fetchHealth, fetchStatus, importKnowledge } from './api'
 import { readKnowledgeImportFile } from './export'
@@ -70,15 +70,23 @@ async function onBuild(): Promise<void> {
     const status = await buildIndex()
     indexState.value = status.state
     componentCount.value = status.componentCount
-    components.value = await fetchComponents()
   }
   catch (err) {
     indexState.value = previousIndexState
     componentCount.value = previousComponentCount
     errorMsg.value = err instanceof Error ? err.message : String(err)
+    return
   }
   finally {
     building.value = false
+  }
+
+  try {
+    components.value = await fetchComponents()
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    errorMsg.value = `知识库已更新，但组件清单刷新失败：${message}`
   }
 }
 
@@ -93,6 +101,7 @@ function openDetail(name: string): void {
 function askAbout(name: string): void {
   question.value = `${name} 怎么用？给个示例`
   showKnowledgeDialog.value = false
+  void nextTick(() => focusChat())
 }
 
 /** 打开知识库弹框，用于检查当前知识库里有哪些组件契约。 */
@@ -176,11 +185,20 @@ onMounted(async () => {
           知识库
         </button>
         <span class="import-dropdown">
-          <button class="btn" data-testid="import-trigger" :disabled="importing" @click="importMenuOpen = !importMenuOpen">
+          <button
+            class="btn"
+            type="button"
+            aria-haspopup="menu"
+            :aria-expanded="importMenuOpen"
+            data-testid="import-trigger"
+            :disabled="importing"
+            @click="importMenuOpen = !importMenuOpen"
+            @keydown.esc="importMenuOpen = false"
+          >
             {{ importing ? '导入中...' : '导入' }} ▾
           </button>
-          <span v-if="importMenuOpen" class="import-menu" data-testid="import-menu">
-            <button class="import-option" type="button" data-testid="import-external-json" @click="chooseImportFile">
+          <span v-if="importMenuOpen" class="import-menu" role="menu" data-testid="import-menu" @keydown.esc="importMenuOpen = false">
+            <button class="import-option" type="button" role="menuitem" data-testid="import-external-json" @click="chooseImportFile">
               外部知识库 JSON
             </button>
           </span>
@@ -195,11 +213,13 @@ onMounted(async () => {
         </span>
         <button
           class="ai-icon active"
+          type="button"
           title="问 AI"
+          aria-label="聚焦 AI 提问输入框"
           data-testid="ai-icon"
           @click="focusChat"
         >
-          🤖
+          AI
         </button>
       </div>
     </header>
@@ -248,27 +268,45 @@ onMounted(async () => {
 }
 
 .ai-doc-app {
-  font-family: system-ui, sans-serif; color: #1f2328;
-  height: 100vh; display: flex; flex-direction: column;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f7fa;
+  color: #303133;
+  font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
 .topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: #0d1117; color: #fff;
-  position: sticky; top: 0; z-index: 10;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #fff;
 }
-.topbar h1 { font-size: 18px; margin: 0; }
-.status-chips { display: flex; gap: 8px; align-items: center; }
+.topbar h1 { margin: 0; color: #303133; font-size: 18px; font-weight: 650; }
+.topbar h1::before { content: ''; display: inline-block; width: 4px; height: 18px; margin-right: 10px; border-radius: 2px; background: #409eff; vertical-align: -3px; }
+.status-chips { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .chip {
-  font-size: 12px; padding: 4px 10px; border-radius: 999px;
-  background: #30363d; color: #c9d1d9;
+  padding: 4px 9px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #f5f7fa;
+  color: #606266;
+  font-size: 12px;
 }
-.chip.mode-vector { background: #1f6feb; color: #fff; }
-.chip.index-ready { background: #238636; color: #fff; }
-.chip.index-not_built { background: #6e7681; color: #fff; }
+.chip.mode-vector { border-color: #b3d8ff; background: #ecf5ff; color: #337ecc; }
+.chip.index-ready { border-color: #b3e19d; background: #f0f9eb; color: #529b2e; }
+.chip.index-not_built { color: #909399; }
 .btn {
-  padding: 8px 14px; border: 1px solid #d0d7de; border-radius: 6px;
-  background: #f6f8fa; cursor: pointer; font-size: 13px;
+  padding: 7px 12px; border: 1px solid #dcdfe6; border-radius: 4px;
+  background: #fff; color: #606266; cursor: pointer; font-size: 13px;
 }
+.btn:hover { border-color: #409eff; color: #409eff; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .import-dropdown { position: relative; display: inline-flex; }
 .import-menu {
@@ -283,18 +321,24 @@ onMounted(async () => {
 .import-option:hover { background: #f6f8fa; }
 .visually-hidden { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .ai-icon {
-  border: none; background: #21262d; border-radius: 8px; cursor: pointer;
-  font-size: 16px; padding: 6px 10px; line-height: 1;
+  display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center;
+  border: 1px solid #409eff; background: #fff; border-radius: 4px; color: #409eff;
+  cursor: pointer; font-size: 11px; font-weight: 700; line-height: 1;
 }
-.ai-icon.active { background: #238636; }
+.ai-icon.active { background: #409eff; color: #fff; }
 .error-bar {
   background: #ffebe9; color: #cf222e; padding: 8px 20px;
   font-size: 13px; border-bottom: 1px solid #ffccc7;
 }
-.content { flex: 1; overflow-y: auto; min-height: 0; }
+.content { flex: 1; overflow-y: auto; min-height: 0; background: #fff; }
 .kb-debug-dialog :deep(.el-dialog__body) {
   max-height: min(72vh, 760px);
   overflow: auto;
   padding: 0;
+}
+
+@media (max-width: 900px) {
+  .topbar { align-items: flex-start; flex-direction: column; }
+  .status-chips { width: 100%; justify-content: flex-start; }
 }
 </style>

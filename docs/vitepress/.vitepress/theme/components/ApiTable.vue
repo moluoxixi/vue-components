@@ -33,11 +33,11 @@ const typeColumnLabel = {
       </colgroup>
       <thead>
         <tr>
-          <th>名称</th>
-          <th>{{ typeColumnLabel }}</th>
-          <th v-if="type === 'props'">默认值</th>
-          <th v-if="type === 'props'">必填</th>
-          <th>说明</th>
+          <th scope="col">名称</th>
+          <th scope="col">{{ typeColumnLabel }}</th>
+          <th v-if="type === 'props'" scope="col">默认值</th>
+          <th v-if="type === 'props'" scope="col">必填</th>
+          <th scope="col">说明</th>
         </tr>
       </thead>
       <tbody>

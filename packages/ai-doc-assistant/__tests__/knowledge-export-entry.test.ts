@@ -41,6 +41,18 @@ describe('knowledge export entry points', () => {
     exportComponentDetail.mockClear()
   })
 
+  it('总览卡片主体使用独立按钮打开详情', async () => {
+    const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
+    const wrapper = mount(OverviewView, { props: { components } })
+    const openButton = wrapper.find('[data-testid="component-open"]')
+
+    expect(openButton.element.tagName).toBe('BUTTON')
+    expect(openButton.find('button').exists()).toBe(false)
+
+    await openButton.trigger('click')
+    expect(wrapper.emitted('open')).toEqual([['DemoButton']])
+  })
+
   it('总览卡片只显示一个导出按钮，点击后下拉选择普通 JSON 且不打开详情', async () => {
     const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
     const wrapper = mount(OverviewView, { props: { components } })

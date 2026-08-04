@@ -1,5 +1,6 @@
 ---
 outline: false
+aside: false
 ---
 
 # 组件总览

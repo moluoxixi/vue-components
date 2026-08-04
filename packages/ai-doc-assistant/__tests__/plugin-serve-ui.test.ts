@@ -1,6 +1,8 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { resolveUiAsset } from '../src/server/plugin'
+import { assertUiPanelAvailable, resolveUiAsset } from '../src/server/plugin'
 
 /**
  * UI 静态资源路径解析与越界防护单测。
@@ -63,5 +65,32 @@ describe('resolveUiAsset 越界防护', () => {
 
   it('非法 URL 编码（孤立 %）回落 index.html 不抛错', () => {
     expect(resolveUiAsset(uiDir, '/__ai-doc/%E0%A4%A')).toEqual({ rel: 'index.html' })
+  })
+})
+
+describe('assertUiPanelAvailable', () => {
+  it('ui 入口存在时允许启动', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ai-doc-ui-'))
+    const uiDir = join(root, 'ui')
+    try {
+      await mkdir(uiDir)
+      await writeFile(join(uiDir, 'index.html'), '<!doctype html>', 'utf8')
+      expect(() => assertUiPanelAvailable(uiDir)).not.toThrow()
+    }
+    finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('ui 入口缺失时给出可操作的启动错误', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ai-doc-ui-'))
+    try {
+      expect(() => assertUiPanelAvailable(join(root, 'ui'))).toThrow(
+        /UI assets not found.*build or reinstall @moluoxixi\/ai-doc-assistant/,
+      )
+    }
+    finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })

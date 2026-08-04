@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ArrowRight, BookOpen } from '@lucide/vue'
+import { withBase } from 'vitepress'
 import ComponentOverview from './ComponentOverview.vue'
+
+const logoSrc = withBase('/logo.svg')
+const gettingStartedHref = withBase('/guide/getting-started.html')
 </script>
 
 <template>
   <main class="overview-page">
     <header class="overview-header">
       <div class="overview-brand-lockup">
-        <img src="/logo.svg" width="56" height="56" alt="MX Components">
+        <img :src="logoSrc" width="56" height="56" alt="MX Components">
         <div>
           <p class="overview-kicker">Vue 3 Component Library</p>
           <h1>MX Components</h1>
@@ -17,7 +21,7 @@ import ComponentOverview from './ComponentOverview.vue'
         基于 Element Plus 的业务组件库，覆盖高频表单、数据展示与内容编辑场景。
       </p>
       <div class="overview-actions">
-        <a class="overview-action is-primary" href="/guide/getting-started">
+        <a class="overview-action is-primary" :href="gettingStartedHref">
           <BookOpen :size="17" aria-hidden="true" />
           快速开始
         </a>

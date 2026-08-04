@@ -14,6 +14,7 @@
   --vp-sidebar-width: 252px;
   --vp-layout-max-width: 1440px;
   --vp-code-font-size: 13px;
+  --mx-doc-aside-width: 256px;
   --mx-border: #dcdfe6;
   --mx-border-light: #ebeef5;
   --mx-fill: #f5f7fa;
@@ -79,6 +80,30 @@ body {
   border-right: 1px solid var(--mx-border-light);
 }
 
+@media (min-width: 960px) {
+  .VPSidebar,
+  .VPNavBar.has-sidebar .title {
+    width: var(--vp-sidebar-width) !important;
+    padding-left: 32px !important;
+  }
+
+  .VPContent.has-sidebar {
+    padding-right: 0 !important;
+    padding-left: var(--vp-sidebar-width) !important;
+  }
+
+  .VPDoc.has-sidebar {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .VPDoc.has-aside .content-container {
+    width: 100%;
+    max-width: none !important;
+    margin-inline: 0;
+  }
+}
+
 .VPSidebarItem .text {
   font-size: 13px;
   line-height: 1.45;
@@ -111,12 +136,27 @@ body {
   font-weight: 600;
 }
 
-.VPDoc.has-aside .content-container {
-  max-width: 860px !important;
-}
-
 .VPDoc:not(.has-aside) .content-container {
   max-width: 900px !important;
+}
+
+@media (min-width: 1280px) {
+  .VPDoc.has-aside .container {
+    justify-content: flex-start;
+  }
+
+  .VPDoc.has-aside .content {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .VPDoc.has-aside .aside {
+    flex: 0 0 var(--mx-doc-aside-width);
+    width: var(--mx-doc-aside-width);
+    max-width: var(--mx-doc-aside-width);
+  }
 }
 
 .vp-doc h1 {

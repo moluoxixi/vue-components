@@ -21,6 +21,7 @@ const errorMsg = ref('')
 const loading = ref(false)
 const exportingFormat = ref<KnowledgeExportFormat | ''>('')
 const exportMenuOpen = ref(false)
+let loadRequestId = 0
 /** Tooltip 内容样式：保留字段换行，避免复杂类型挤成一行。 */
 const typeTooltipStyle = { whiteSpace: 'pre-line', maxWidth: '520px' } as const
 
@@ -75,17 +76,22 @@ function hasTypeTooltip(typeText: string, explicitRefs: string[] = []): boolean 
 
 /** 拉取指定组件的契约详情。 */
 async function load(name: string): Promise<void> {
+  const requestId = ++loadRequestId
   loading.value = true
   errorMsg.value = ''
   detail.value = null
   try {
-    detail.value = await fetchComponentDetail(name)
+    const nextDetail = await fetchComponentDetail(name)
+    if (requestId === loadRequestId)
+      detail.value = nextDetail
   }
   catch (err) {
-    errorMsg.value = err instanceof Error ? err.message : String(err)
+    if (requestId === loadRequestId)
+      errorMsg.value = err instanceof Error ? err.message : String(err)
   }
   finally {
-    loading.value = false
+    if (requestId === loadRequestId)
+      loading.value = false
   }
 }
 
@@ -96,6 +102,9 @@ function exportCurrentDetail(format: KnowledgeExportFormat): void {
   exportingFormat.value = format
   try {
     exportComponentDetail(detail.value, format)
+  }
+  catch (err) {
+    errorMsg.value = err instanceof Error ? err.message : String(err)
   }
   finally {
     exportingFormat.value = ''
@@ -116,18 +125,21 @@ watch(() => props.name, load, { immediate: true })
           <button
             class="export-button"
             type="button"
+            aria-haspopup="menu"
+            :aria-expanded="exportMenuOpen"
             data-testid="detail-export-trigger"
             @click="exportMenuOpen = !exportMenuOpen"
           >
             <span class="export-button-icon" aria-hidden="true">⬇️</span>
             导出
           </button>
-          <div v-if="exportMenuOpen" class="detail-export-menu" data-testid="detail-export-menu">
+          <div v-if="exportMenuOpen" class="detail-export-menu" role="menu" data-testid="detail-export-menu">
             <button
               v-for="format in KNOWLEDGE_EXPORT_FORMATS"
               :key="format.id"
               class="detail-export-option"
               type="button"
+              role="menuitem"
               :disabled="exportingFormat === format.id"
               data-testid="detail-export-option"
               @click="exportCurrentDetail(format.id)"
@@ -149,8 +161,11 @@ watch(() => props.name, load, { immediate: true })
     <div v-if="loading" class="hint" data-testid="detail-loading">
       加载中…
     </div>
-    <div v-else-if="errorMsg" class="hint error" data-testid="detail-error">
-      {{ errorMsg }}
+    <div v-else-if="errorMsg" class="hint error" role="alert" data-testid="detail-error">
+      <span>{{ errorMsg }}</span>
+      <button class="link-btn retry" type="button" data-testid="detail-retry" @click="load(name)">
+        重试
+      </button>
     </div>
 
     <template v-else-if="detail">
@@ -353,7 +368,7 @@ watch(() => props.name, load, { immediate: true })
 </template>
 
 <style scoped>
-.detail { padding: 20px; }
+.detail { padding: 20px; overflow-x: hidden; }
 .detail-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .detail-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 .export-buttons { position: relative; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -381,7 +396,8 @@ watch(() => props.name, load, { immediate: true })
 }
 .link-btn.ask { color: #238636; }
 .hint { color: #57606a; padding: 30px 0; }
-.hint.error { color: #cf222e; }
+.hint.error { display: flex; align-items: center; gap: 10px; color: #cf222e; }
+.link-btn.retry { color: #cf222e; text-decoration: underline; }
 .comp-title { font-size: 22px; margin: 0 0 4px; }
 .comp-title small { font-size: 13px; color: #8b949e; font-weight: 400; margin-left: 8px; }
 .source-badge {
@@ -389,10 +405,10 @@ watch(() => props.name, load, { immediate: true })
   padding: 2px 8px; border-radius: 999px; vertical-align: middle;
 }
 .desc { color: #57606a; margin: 0 0 18px; }
-section { margin-bottom: 24px; }
+section { margin-bottom: 24px; overflow-x: auto; }
 section h3 { font-size: 14px; color: #1f2328; margin: 0 0 10px; }
 .contract-table {
-  width: 100%; border-collapse: collapse; font-size: 13px;
+  width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px;
   border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden;
 }
 .contract-table th, .contract-table td {

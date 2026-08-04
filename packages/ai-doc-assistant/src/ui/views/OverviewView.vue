@@ -54,6 +54,8 @@ function toggleExportMenu(key: string): void {
     <div class="search-row">
       <input
         v-model="keyword"
+        type="search"
+        aria-label="搜索组件名或包名"
         class="search-input"
         data-testid="overview-search"
         placeholder="搜索组件名或包名…"
@@ -66,7 +68,7 @@ function toggleExportMenu(key: string): void {
     </div>
 
     <div v-if="!filtered.length" class="empty" data-testid="overview-empty">
-      没有匹配的组件
+      {{ components.length ? '没有匹配的组件' : '知识库中还没有组件' }}
     </div>
 
     <div class="card-grid">
@@ -74,30 +76,40 @@ function toggleExportMenu(key: string): void {
         v-for="c in filtered"
         :key="c.knowledgeKey ?? c.packageName + c.name"
         class="card"
-        role="button"
-        tabindex="0"
         data-testid="component-card"
-        @click="emit('open', c.knowledgeKey ?? c.name)"
-        @keydown.enter.self.prevent="emit('open', c.knowledgeKey ?? c.name)"
-        @keydown.space.self.prevent="emit('open', c.knowledgeKey ?? c.name)"
       >
+        <button
+          class="card-open"
+          type="button"
+          :aria-label="`查看 ${c.name} 组件契约`"
+          data-testid="component-open"
+          @click="emit('open', c.knowledgeKey ?? c.name)"
+        >
+          <strong class="card-name">{{ c.name }}</strong>
+          <small class="card-pkg">{{ c.packageName }}</small>
+          <span class="card-props">{{ c.propsCount }} props</span>
+          <span v-if="c.source === 'external'" class="source-badge">外部</span>
+        </button>
         <span class="card-export-actions" aria-label="导出组件契约" @click.stop>
           <button
             class="export-icon"
             type="button"
             title="导出组件契约"
+            aria-haspopup="menu"
+            :aria-expanded="openExportKey === (c.knowledgeKey ?? c.name)"
             :aria-label="`导出 ${c.name}`"
             data-testid="card-export-trigger"
             @click.stop="toggleExportMenu(c.knowledgeKey ?? c.name)"
           >
             ⬇️
           </button>
-          <span v-if="openExportKey === (c.knowledgeKey ?? c.name)" class="export-menu" data-testid="card-export-menu">
+          <span v-if="openExportKey === (c.knowledgeKey ?? c.name)" class="export-menu" role="menu" data-testid="card-export-menu">
             <button
               v-for="format in KNOWLEDGE_EXPORT_FORMATS"
               :key="format.id"
               class="export-option"
               type="button"
+              role="menuitem"
               :disabled="exportingKey === `${c.knowledgeKey ?? c.name}:${format.id}`"
               data-testid="card-export-option"
               @click.stop="exportComponent(c.knowledgeKey ?? c.name, format.id)"
@@ -108,10 +120,6 @@ function toggleExportMenu(key: string): void {
             </button>
           </span>
         </span>
-        <strong class="card-name">{{ c.name }}</strong>
-        <small class="card-pkg">{{ c.packageName }}</small>
-        <span class="card-props">{{ c.propsCount }} props</span>
-        <span v-if="c.source === 'external'" class="source-badge">外部</span>
       </article>
     </div>
   </div>
@@ -136,11 +144,17 @@ function toggleExportMenu(key: string): void {
 }
 .card {
   position: relative;
-  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
-  padding: 16px; border: 1px solid #d0d7de; border-radius: 10px;
-  background: #fff; cursor: pointer; text-align: left; transition: all .15s;
+  min-height: 112px; border: 1px solid #d0d7de; border-radius: 8px;
+  background: #fff; transition: all .15s;
 }
-.card:hover { border-color: #1f6feb; box-shadow: 0 2px 8px rgba(31,111,235,.12); }
+.card:hover,
+.card:focus-within { border-color: #1f6feb; box-shadow: 0 2px 8px rgba(31,111,235,.12); }
+.card-open {
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+  width: 100%; min-height: 110px; padding: 16px; border: 0; border-radius: 7px;
+  background: transparent; color: inherit; cursor: pointer; text-align: left;
+}
+.card-open:focus-visible { outline: 2px solid #409eff; outline-offset: -2px; }
 .card-export-actions {
   position: absolute; top: 10px; right: 10px;
   display: flex; gap: 4px;

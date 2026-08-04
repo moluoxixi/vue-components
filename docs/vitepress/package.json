@@ -9,7 +9,7 @@
     "prebuild": "pnpm extract-api",
     "build": "vitepress build",
     "preview": "vitepress preview",
-    "preextract-api": "pnpm --filter @moluoxixi/ai-doc-assistant build:lib",
+    "preextract-api": "pnpm --filter @moluoxixi/ai-doc-assistant build",
     "extract-api": "node scripts/extract-api.mts"
   },
   "dependencies": {

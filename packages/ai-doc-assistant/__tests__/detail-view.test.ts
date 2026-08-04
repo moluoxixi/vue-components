@@ -1,6 +1,6 @@
 import type { ComponentDetailResponse } from '../src/shared/protocol'
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 
 const detail: ComponentDetailResponse = {
@@ -107,11 +107,18 @@ const detail: ComponentDetailResponse = {
   ],
 }
 
+const fetchComponentDetailMock = vi.hoisted(() => vi.fn())
+
 vi.mock('../src/ui/api', () => ({
-  fetchComponentDetail: vi.fn(async () => detail),
+  fetchComponentDetail: fetchComponentDetailMock,
 }))
 
 describe('detail view', () => {
+  beforeEach(() => {
+    fetchComponentDetailMock.mockReset()
+    fetchComponentDetailMock.mockResolvedValue(detail)
+  })
+
   it('prop 类型通过 tooltip 展示展开后的字段明细', async () => {
     const { default: DetailView } = await import('../src/ui/views/DetailView.vue')
     const wrapper = mount(DetailView, {
@@ -148,5 +155,28 @@ describe('detail view', () => {
     expect(tooltips.length).toBeGreaterThanOrEqual(6)
     expect(tooltips.some(t => t.text() === 'string')).toBe(false)
     expect(tooltips.some(t => t.text() === 'PopoverTableRowExtra')).toBe(false)
+  })
+
+  it('快速切换组件时忽略较晚返回的旧详情', async () => {
+    let resolveFirst!: (value: ComponentDetailResponse) => void
+    fetchComponentDetailMock
+      .mockImplementationOnce(() => new Promise<ComponentDetailResponse>((resolve) => {
+        resolveFirst = resolve
+      }))
+      .mockResolvedValueOnce({ ...detail, name: 'CopyText' })
+
+    const { default: DetailView } = await import('../src/ui/views/DetailView.vue')
+    const wrapper = mount(DetailView, {
+      props: { name: 'PopoverTableSelect' },
+      global: { stubs: { ElTooltip: true } },
+    })
+
+    await wrapper.setProps({ name: 'CopyText' })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="detail-title"]').text()).toContain('CopyText')
+
+    resolveFirst(detail)
+    await flushPromises()
+    expect(wrapper.get('[data-testid="detail-title"]').text()).toContain('CopyText')
   })
 })

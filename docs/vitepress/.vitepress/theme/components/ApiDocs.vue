@@ -1,16 +1,5 @@
 <script setup lang="ts">
 import type { ApiRow } from './ApiTable.vue'
-import ConfigTable from '../../api/ConfigTable.json'
-import CopyText from '../../api/CopyText.json'
-import DateRangePicker from '../../api/DateRangePicker.json'
-import EnterNextContainer from '../../api/EnterNextContainer.json'
-import HeadlessCopyText from '../../api/HeadlessCopyText.json'
-import HeadlessTable from '../../api/HeadlessTable.json'
-import PopoverTableSelect from '../../api/PopoverTableSelect.json'
-import RequestCascader from '../../api/RequestCascader.json'
-import RequestSelectV2 from '../../api/RequestSelectV2.json'
-import RequestTreeSelect from '../../api/RequestTreeSelect.json'
-import RichTextEditor from '../../api/RichTextEditor.json'
 
 type ApiSectionType = 'props' | 'emits' | 'expose' | 'slots'
 
@@ -23,22 +12,17 @@ interface ComponentApi {
   slots: ApiRow[]
 }
 
-const apiByName = {
-  ConfigTable,
-  CopyText,
-  DateRangePicker,
-  EnterNextContainer,
-  HeadlessCopyText,
-  HeadlessTable,
-  PopoverTableSelect,
-  RequestCascader,
-  RequestSelectV2,
-  RequestTreeSelect,
-  RichTextEditor,
-} satisfies Record<string, ComponentApi>
+const apiModules = import.meta.glob<ComponentApi>('../../api/*.json', {
+  eager: true,
+  import: 'default',
+})
+
+const apiByName = Object.fromEntries(
+  Object.values(apiModules).map(api => [api.name, api]),
+) as Record<string, ComponentApi>
 
 const props = defineProps<{
-  name: keyof typeof apiByName
+  name: string
 }>()
 
 const sectionMeta: Array<{ key: ApiSectionType, label: string }> = [
@@ -49,6 +33,9 @@ const sectionMeta: Array<{ key: ApiSectionType, label: string }> = [
 ]
 
 const api = apiByName[props.name]
+if (!api)
+  throw new Error(`Missing generated API contract: ${props.name}`)
+
 const sections = sectionMeta.filter(section => api[section.key].length > 0)
 </script>
 
