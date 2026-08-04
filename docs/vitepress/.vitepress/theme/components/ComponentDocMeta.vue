@@ -4,13 +4,16 @@ import {
   CircleDot,
   FilePenLine,
   FolderGit2,
+  History,
   ListTodo,
   MessageSquareWarning,
   PanelsTopLeft,
 } from '@lucide/vue'
-import { copyText } from '@moluoxixi/components'
-import { withBase } from 'vitepress'
+import { copyText } from '@docs-components'
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { docsSite, componentSourcePath as getComponentSourcePath, getDocsLocaleConfig } from '../../docs-site'
+import { getComponentGithubMetadata, githubMetadata } from '../../github-metadata'
+import { useDocsLocale } from '../use-docs-locale'
 
 const props = defineProps<{
   name: string
@@ -18,19 +21,22 @@ const props = defineProps<{
   hasSourceDoc: boolean
 }>()
 
-const repositoryUrl = 'https://github.com/moluoxixi/vue-components'
+const { link, locale, messages } = useDocsLocale()
 const copied = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
-const importStatement = computed(() => `import { ${props.name} } from '@moluoxixi/components';`)
-const componentSourcePath = computed(() => `packages/components/src/${props.name}`)
-const sourceHref = computed(() => `${repositoryUrl}/tree/main/${componentSourcePath.value}`)
-const newIssueHref = computed(() => `${repositoryUrl}/issues/new?title=${encodeURIComponent(`[${props.name}] `)}`)
-const openIssuesHref = computed(() => `${repositoryUrl}/issues?q=${encodeURIComponent(`is:issue is:open ${props.name}`)}`)
+const componentMetadata = computed(() => getComponentGithubMetadata(props.name))
+const importStatement = computed(() => `import { ${props.name} } from '${docsSite.packageName}';`)
+const componentSourcePath = computed(() => getComponentSourcePath(props.name))
+const sourceHref = computed(() => `${docsSite.repository.url}/tree/${githubMetadata.repository.defaultBranch}/${componentSourcePath.value}`)
+const newIssueHref = computed(() => `${docsSite.repository.url}/issues/new?title=${encodeURIComponent(`${docsSite.github.issueTitlePrefix(props.name)} `)}`)
+const openIssuesHref = computed(() => `${docsSite.repository.url}/issues?q=${encodeURIComponent(`is:issue is:open in:title "${docsSite.github.issueTitlePrefix(props.name)}"`)}`)
 const editHref = computed(() => props.hasSourceDoc
-  ? `${repositoryUrl}/edit/main/${componentSourcePath.value}/docs/index.md`
+  ? `${docsSite.repository.url}/edit/${githubMetadata.repository.defaultBranch}/${componentSourcePath.value}/${getDocsLocaleConfig(locale.value).sourceDoc}`
   : sourceHref.value)
-const overviewHref = withBase('/components/')
+const overviewHref = computed(() => link(docsSite.routes.components))
+const openIssueCount = computed(() => componentMetadata.value.openIssueCount)
+const commitCount = computed(() => componentMetadata.value.commits.length)
 
 async function copyImportStatement() {
   await copyText(importStatement.value)
@@ -49,20 +55,20 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="component-doc-meta" aria-label="组件文档信息">
+  <div class="component-doc-meta" :aria-label="messages.meta.aria">
     <table class="component-doc-meta-table">
       <tbody>
         <tr>
           <th scope="row">
-            使用
+            {{ messages.meta.usage }}
           </th>
           <td>
             <div class="component-doc-import">
               <button
                 class="component-doc-import-copy"
                 type="button"
-                :title="copied ? '已复制' : '复制导入语句'"
-                :aria-label="copied ? '已复制导入语句' : '复制导入语句'"
+                :title="copied ? messages.meta.copied : messages.meta.copyImport"
+                :aria-label="copied ? messages.meta.copied : messages.meta.copyImport"
                 @click="copyImportStatement"
               >
                 <code>{{ importStatement }}</code>
@@ -73,7 +79,7 @@ onBeforeUnmount(() => {
         </tr>
         <tr>
           <th scope="row">
-            反馈
+            {{ messages.meta.feedback }}
           </th>
           <td>
             <div class="component-doc-links">
@@ -83,32 +89,38 @@ onBeforeUnmount(() => {
               </a>
               <a :href="newIssueHref" target="_blank" rel="noreferrer">
                 <MessageSquareWarning :size="14" aria-hidden="true" />
-                提交问题
+                {{ messages.meta.submitIssue }}
               </a>
               <a :href="openIssuesHref" target="_blank" rel="noreferrer">
                 <ListTodo :size="14" aria-hidden="true" />
-                待解决
+                {{ messages.meta.openIssues }}
+                <span class="component-doc-count">{{ openIssueCount }}</span>
               </a>
             </div>
           </td>
         </tr>
         <tr>
           <th scope="row">
-            文档
+            {{ messages.meta.documentation }}
           </th>
           <td>
             <div class="component-doc-links">
               <a :href="editHref" target="_blank" rel="noreferrer">
                 <FilePenLine :size="14" aria-hidden="true" />
-                {{ hasSourceDoc ? '编辑此页' : '补充文档' }}
+                {{ hasSourceDoc ? messages.meta.editPage : messages.meta.addDocs }}
               </a>
               <a :href="overviewHref">
                 <PanelsTopLeft :size="14" aria-hidden="true" />
-                组件总览
+                {{ messages.meta.componentOverview }}
               </a>
               <a href="#api">
                 <CircleDot :size="14" aria-hidden="true" />
-                API
+                {{ messages.route.api }}
+              </a>
+              <a href="#changelog">
+                <History :size="14" aria-hidden="true" />
+                {{ messages.meta.changelog }}
+                <span class="component-doc-count">{{ commitCount }}</span>
               </a>
             </div>
           </td>

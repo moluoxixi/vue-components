@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import type { ComponentIconName } from '../../component-manifest'
 import {
   Blocks,
@@ -16,8 +17,10 @@ import {
   TextCursorInput,
   TreePine,
 } from '@lucide/vue'
-import { componentGroups } from '../../component-manifest'
+import { getLocalizedComponentGroups } from '../../docs-i18n'
+import { docsRoutePath } from '../../docs-site'
 import OverviewCard from './OverviewCard.vue'
+import { useDocsLocale } from '../use-docs-locale'
 
 const iconByName: Record<ComponentIconName, Component> = {
   'blocks': Blocks,
@@ -35,15 +38,16 @@ const iconByName: Record<ComponentIconName, Component> = {
   'tree-pine': TreePine,
 }
 
-const groups = componentGroups.map(group => ({
+const { link, locale } = useDocsLocale()
+const groups = computed(() => getLocalizedComponentGroups(locale.value).map(group => ({
   ...group,
   items: group.items.map(component => ({
     name: component.name,
     desc: component.description,
-    link: `/components/${component.slug}.html`,
+    link: link(docsRoutePath('components', `${component.slug}.html`)),
     icon: iconByName[component.icon],
   })),
-}))
+})))
 </script>
 
 <template>

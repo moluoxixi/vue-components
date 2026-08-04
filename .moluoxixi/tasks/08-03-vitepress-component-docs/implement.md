@@ -7,6 +7,9 @@
 5. Refine the custom theme, overview routes, static assets, tooltip accessibility, demo controls, and responsive behavior.
 6. Run AI assistant tests, repository type checks/tests as appropriate, API extraction, and VitePress production build.
 7. Start a local VitePress server and validate overview/component routes at desktop and mobile widths in the in-app browser.
+8. Add an explicit GitHub metadata synchronizer and committed snapshot for component issues, contributors, and commit history.
+9. Add component changelog rendering, locale-aware custom-theme messages, and English route generation.
+10. Centralize repository-specific settings and document why the reusable theme keeps VitePress DefaultTheme as its base.
 
 ## Validation Commands
 
@@ -16,6 +19,7 @@ pnpm build
 pnpm typecheck
 pnpm --filter @moluoxixi/docs extract-api
 pnpm --filter @moluoxixi/docs build
+pnpm --filter @moluoxixi/docs sync-github-metadata
 pnpm --filter @moluoxixi/docs exec vitepress dev --host 127.0.0.1 --port 5174
 ```
 

@@ -12,6 +12,10 @@ interface ComponentApi {
   slots: ApiRow[]
 }
 
+import { formatDocsMessage } from '../../docs-i18n'
+import { useDocsLocale } from '../use-docs-locale'
+import { computed } from 'vue'
+
 const apiModules = import.meta.glob<ComponentApi>('../../api/*.json', {
   eager: true,
   import: 'default',
@@ -25,18 +29,20 @@ const props = defineProps<{
   name: string
 }>()
 
-const sectionMeta: Array<{ key: ApiSectionType, label: string }> = [
-  { key: 'props', label: 'Props' },
-  { key: 'emits', label: 'Emits' },
-  { key: 'slots', label: 'Slots' },
-  { key: 'expose', label: 'Expose' },
-]
+const { messages } = useDocsLocale()
+
+const sectionMeta = computed<Array<{ key: ApiSectionType, label: string }>>(() => [
+  { key: 'props', label: messages.value.api.sections.props },
+  { key: 'emits', label: messages.value.api.sections.emits },
+  { key: 'slots', label: messages.value.api.sections.slots },
+  { key: 'expose', label: messages.value.api.sections.expose },
+])
 
 const api = apiByName[props.name]
 if (!api)
   throw new Error(`Missing generated API contract: ${props.name}`)
 
-const sections = sectionMeta.filter(section => api[section.key].length > 0)
+const sections = computed(() => sectionMeta.value.filter(section => api[section.key].length > 0))
 </script>
 
 <template>
@@ -47,13 +53,13 @@ const sections = sectionMeta.filter(section => api[section.key].length > 0)
         <a
           class="header-anchor"
           :href="`#${name}-${section.key}`"
-          :aria-label="`${section.label} 的永久链接`"
+          :aria-label="formatDocsMessage(messages.api.permanentLink, { section: section.label })"
         >&#8203;</a>
       </h3>
       <ApiTable :data="api[section.key]" :type="section.key" />
     </section>
     <p v-if="sections.length === 0" class="api-docs-empty">
-      该组件没有公开的组件契约。
+      {{ messages.api.empty }}
     </p>
   </div>
 </template>

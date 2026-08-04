@@ -288,6 +288,15 @@ body {
   color: var(--mx-success);
 }
 
+.component-doc-count {
+  min-width: 1ch;
+  color: var(--vp-c-text-3);
+  font-family: var(--vp-font-family-base);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .component-doc-import-copy:hover,
 .component-doc-import-copy:focus-visible {
   color: var(--vp-c-brand-1);
@@ -391,6 +400,118 @@ body {
 .doc-contributor-tooltip-content strong {
   font-size: 13px;
   font-weight: 600;
+}
+
+.component-commit-timeline {
+  margin: 16px 0 28px !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+.component-commit {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 0 18px;
+}
+
+.component-commit:last-child {
+  padding-bottom: 0;
+}
+
+.component-commit::before {
+  position: absolute;
+  top: 8px;
+  bottom: -8px;
+  left: 6px;
+  width: 1px;
+  background: var(--mx-border-light);
+  content: '';
+}
+
+.component-commit:last-child::before {
+  display: none;
+}
+
+.component-commit-marker {
+  position: relative;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  margin: 7px 0 0 3px;
+  border: 2px solid var(--vp-c-bg);
+  border-radius: 50%;
+  background: var(--vp-c-brand-1);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--vp-c-brand-1) 45%, var(--mx-border));
+}
+
+.component-commit-content {
+  min-width: 0;
+}
+
+.vp-doc .component-commit-message {
+  display: inline;
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.vp-doc .component-commit-message:hover,
+.vp-doc .component-commit-message:focus-visible {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.component-commit-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 4px;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.vp-doc .component-commit-author {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+}
+
+.component-commit-author img {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.vp-doc .component-commit-sha {
+  color: var(--vp-c-text-3);
+  font-family: var(--vp-font-family-mono);
+  text-decoration: none;
+}
+
+.vp-doc .component-commit-author:hover,
+.vp-doc .component-commit-author:focus-visible,
+.vp-doc .component-commit-sha:hover,
+.vp-doc .component-commit-sha:focus-visible {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.component-commit-empty {
+  color: var(--vp-c-text-3);
+  font-size: 13px;
 }
 
 .demo-block {

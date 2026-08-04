@@ -1,97 +1,131 @@
+import type { DefaultTheme } from 'vitepress'
+import type { DocsLocale } from './docs-site'
 import { defineConfig } from 'vitepress'
-import { componentGroups } from './component-manifest'
+import {
+
+  getDocsMessages,
+  getLocalizedComponentGroups,
+  localePath,
+} from './docs-i18n'
+import {
+  defaultDocsLocale,
+  docsLocales,
+  docsRoutePath,
+  docsSite,
+} from './docs-site'
 import { demoPlugin } from './plugins/demo'
 
-export default defineConfig({
-  lang: 'zh-CN',
-  title: 'MoluoXixi Components',
-  description: '基于 Element Plus 的业务组件库',
-  base: '/',
-  lastUpdated: true,
-  rewrites: {
-    'routes/:slug.md': 'components/:slug.md',
-  },
+function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
+  const messages = getDocsMessages(locale)
+  const componentGroups = getLocalizedComponentGroups(locale)
+  const localPath = (path: string) => localePath(locale, path)
 
-  head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
-  ],
-
-  themeConfig: {
-    logo: '/logo.svg',
-    siteTitle: 'MX Components',
-    returnToTopLabel: '返回顶部',
-    sidebarMenuLabel: '菜单',
-    darkModeSwitchLabel: '主题',
-    lightModeSwitchTitle: '切换到浅色主题',
-    darkModeSwitchTitle: '切换到深色主题',
-
+  return {
+    logo: docsSite.logo.src,
+    siteTitle: docsSite.siteTitle,
+    returnToTopLabel: messages.theme.returnToTop,
+    sidebarMenuLabel: messages.theme.menu,
+    darkModeSwitchLabel: messages.theme.theme,
+    lightModeSwitchTitle: messages.theme.lightMode,
+    darkModeSwitchTitle: messages.theme.darkMode,
+    langMenuLabel: messages.theme.languageMenu,
+    skipToContentLabel: messages.theme.skipToContent,
+    notFound: messages.theme.notFound,
     nav: [
-      { text: '概览', link: '/' },
-      { text: '指南', link: '/guide/getting-started', activeMatch: '/guide/' },
-      { text: '组件', link: '/components/', activeMatch: '/components/' },
+      { text: messages.nav.overview, link: localPath('/') },
+      { text: messages.nav.guide, link: localPath(docsRoutePath('guide', 'getting-started')), activeMatch: localPath(docsRoutePath('guide')) },
+      { text: messages.nav.components, link: localPath(docsRoutePath('components')), activeMatch: localPath(docsRoutePath('components')) },
     ],
-
     sidebar: {
-      '/guide/': [
+      [localPath(docsRoutePath('guide'))]: [
         {
-          text: '指南',
+          text: messages.nav.guide,
           items: [
-            { text: '快速开始', link: '/guide/getting-started' },
+            { text: messages.nav.gettingStarted, link: localPath(docsRoutePath('guide', 'getting-started')) },
+            { text: messages.nav.customization, link: localPath(docsRoutePath('guide', 'documentation-theme')) },
           ],
         },
       ],
-      '/components/': componentGroups.map((group, index) => ({
+      [localPath(docsRoutePath('components'))]: componentGroups.map((group, index) => ({
         text: group.title,
         items: [
-          ...(index === 0 ? [{ text: '组件总览', link: '/components/' }] : []),
+          ...(index === 0 ? [{ text: messages.nav.componentOverview, link: localPath(docsRoutePath('components')) }] : []),
           ...group.items.map(component => ({
             text: component.sidebarText,
-            link: `/components/${component.slug}`,
+            link: localPath(docsRoutePath('components', component.slug)),
           })),
         ],
       })),
     },
-
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/moluoxixi/vue-components' },
+      { icon: 'github', link: docsSite.repository.url },
     ],
-
     search: {
       provider: 'local',
       options: {
         translations: {
           button: {
-            buttonText: '搜索',
-            buttonAriaLabel: '搜索文档',
+            buttonText: messages.theme.search,
+            buttonAriaLabel: messages.theme.searchAria,
           },
           modal: {
-            noResultsText: '未找到相关结果',
-            resetButtonTitle: '清除查询',
+            noResultsText: messages.theme.noResults,
+            resetButtonTitle: messages.theme.resetSearch,
             footer: {
-              selectText: '选择',
-              navigateText: '切换',
-              closeText: '关闭',
+              selectText: messages.theme.select,
+              navigateText: messages.theme.navigate,
+              closeText: messages.theme.close,
             },
           },
         },
       },
     },
-
     outline: {
       level: [2, 3],
-      label: '本页目录',
+      label: messages.theme.outline,
     },
-
     docFooter: {
-      prev: '上一页',
-      next: '下一页',
+      prev: messages.theme.previous,
+      next: messages.theme.next,
     },
-
     lastUpdated: {
-      text: '最后更新于',
+      text: messages.theme.lastUpdated,
     },
-  },
+  }
+}
 
+const vitepressLocales = Object.fromEntries(
+  (Object.keys(docsLocales) as DocsLocale[]).map((locale) => {
+    const configured = docsLocales[locale]
+    return [configured.siteKey, {
+      label: configured.label,
+      lang: configured.lang,
+      ...(locale === defaultDocsLocale ? {} : { link: `${configured.pathPrefix}/` }),
+      title: docsSite.title,
+      description: getDocsMessages(locale).siteDescription,
+      themeConfig: createThemeConfig(locale),
+    }]
+  }),
+)
+
+const rewrites = Object.fromEntries(
+  (Object.keys(docsLocales) as DocsLocale[]).map((locale) => {
+    const configured = docsLocales[locale]
+    const target = localePath(locale, docsRoutePath('components')).replace(/^\//, '')
+    return [`${configured.sourceDirectory}routes/:slug.md`, `${target}:slug.md`]
+  }),
+)
+
+export default defineConfig({
+  title: docsSite.title,
+  description: getDocsMessages(defaultDocsLocale).siteDescription,
+  base: '/',
+  lastUpdated: true,
+  locales: vitepressLocales,
+  rewrites,
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: docsSite.logo.src }],
+  ],
   markdown: {
     theme: {
       light: 'github-light',
@@ -101,10 +135,12 @@ export default defineConfig({
       md.use(demoPlugin)
     },
   },
-
   vite: {
     resolve: {
-      alias: {},
+      alias: [
+        { find: '@docs-components/styles', replacement: docsSite.packageStylesImport },
+        { find: '@docs-components', replacement: docsSite.packageName },
+      ],
     },
     optimizeDeps: {
       include: ['@lucide/vue', 'element-plus', 'vue3-sfc-loader'],

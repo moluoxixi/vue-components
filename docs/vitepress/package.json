@@ -4,11 +4,13 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "predev": "pnpm extract-api",
+    "predev": "pnpm extract-api && pnpm validate-github-metadata",
     "dev": "vitepress dev",
-    "prebuild": "pnpm extract-api",
+    "prebuild": "pnpm extract-api && pnpm validate-github-metadata",
     "build": "vitepress build",
     "preview": "vitepress preview",
+    "sync-github-metadata": "node scripts/sync-github-metadata.mts",
+    "validate-github-metadata": "node scripts/validate-github-metadata.mts",
     "preextract-api": "pnpm --filter @moluoxixi/ai-doc-assistant build",
     "extract-api": "node scripts/extract-api.mts",
     "test": "vitest run"

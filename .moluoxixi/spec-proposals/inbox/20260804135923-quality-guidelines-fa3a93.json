@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260804135923-quality-guidelines-fa3a93",
+  "createdAt": "2026-08-04T13:59:23.039Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-03-vitepress-component-docs",
+  "reason": "Preserve the deterministic, component-scoped GitHub metadata snapshot contract and failure behavior for reusable documentation sites.",
+  "target": "frontend/quality-guidelines.md",
+  "kind": "file",
+  "baseHash": "ac5a4da858d93492cbb4c721b164850b625f38696905e463e8feb5968eae78bc",
+  "contentFile": "content/20260804135923-quality-guidelines-fa3a93.md",
+  "contentHash": "e7cdeb0116c573d1b9ee92b723e89b6b031ecce8fb9fb2e46505b9e43bd57aee"
+}

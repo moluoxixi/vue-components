@@ -22,6 +22,7 @@ export interface DocComponent {
 }
 
 export interface DocComponentGroup {
+  id: 'general' | 'forms' | 'data-display' | 'rich-text'
   title: string
   description: string
   items: DocComponent[]
@@ -30,6 +31,7 @@ export interface DocComponentGroup {
 /** 文档导航、总览和 API 抽取共同使用的组件清单。 */
 export const componentGroups: DocComponentGroup[] = [
   {
+    id: 'general',
     title: '通用',
     description: '复制等高频交互原语',
     items: [
@@ -38,6 +40,7 @@ export const componentGroups: DocComponentGroup[] = [
     ],
   },
   {
+    id: 'forms',
     title: '表单',
     description: '配置化表单、键盘录入、日期与异步数据选择',
     items: [
@@ -51,6 +54,7 @@ export const componentGroups: DocComponentGroup[] = [
     ],
   },
   {
+    id: 'data-display',
     title: '数据展示',
     description: '配置驱动与无头表格能力',
     items: [
@@ -60,6 +64,7 @@ export const componentGroups: DocComponentGroup[] = [
     ],
   },
   {
+    id: 'rich-text',
     title: '富文本',
     description: '面向业务内容的编辑能力',
     items: [

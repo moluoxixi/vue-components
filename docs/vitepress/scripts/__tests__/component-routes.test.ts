@@ -36,7 +36,8 @@ describe('component documentation routes', () => {
 
     expect(route).toContain('docs/index.md{1,3}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />')
     expect(route).toContain('docs/index.md{4,8}-->\n\n## API')
-    expect(route).toContain('<ApiDocs name="CopyText" />\n\n## 文档贡献者\n\n<DocContributors name="CopyText" />')
+    expect(route).toContain('<ApiDocs name="CopyText" />\n\n<h2 id="changelog"')
+    expect(route).toContain('<ComponentCommitTimeline name="CopyText" />\n\n## 组件贡献者\n\n<DocContributors name="CopyText" />')
   })
 
   it('renders a title and description when source documentation is absent', () => {
@@ -64,8 +65,35 @@ describe('component documentation routes', () => {
     expect(result.apiOnly).toEqual([])
     expect(result.paths).toEqual([{
       params: { slug: 'copy-text' },
-      content: '<!--@include: ../../../packages/components/src/CopyText/docs/index.md{1,1}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />\n\n## API\n\n<ApiDocs name="CopyText" />\n\n## 文档贡献者\n\n<DocContributors name="CopyText" />\n',
+      content: '<!--@include: ../../../packages/components/src/CopyText/docs/index.md{1,1}-->\n\n<ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />\n\n## API\n\n<ApiDocs name="CopyText" />\n\n<h2 id="changelog" tabindex="-1">更新日志<a class="header-anchor" href="#changelog" aria-label="更新日志的永久链接">&#8203;</a></h2>\n\n<ComponentCommitTimeline name="CopyText" />\n\n## 组件贡献者\n\n<DocContributors name="CopyText" />\n',
     }])
+  })
+
+  it('generates localized routes from locale-specific source documents', () => {
+    const root = createFixtureRoot()
+    const sourceDir = resolve(root, 'packages/components/src/CopyText/docs')
+    mkdirSync(sourceDir, { recursive: true })
+    writeFileSync(resolve(sourceDir, 'index.en.md'), '# CopyText\n\nEnglish introduction.\n', 'utf8')
+
+    const result = createComponentRoutePaths({
+      root,
+      components: [{ name: 'CopyText', slug: 'copy-text', description: 'Copy action' }],
+      locale: {
+        sourceDocFile: 'docs/index.en.md',
+        sourceDocIncludePrefix: '../../../../',
+        headings: {
+          api: 'API',
+          changelog: 'Changelog',
+          changelogPermalink: 'Permanent link to Changelog',
+          contributors: 'Component Contributors',
+        },
+      },
+    })
+
+    expect(result.apiOnly).toEqual([])
+    expect(result.paths[0]?.content).toContain('../../../../packages/components/src/CopyText/docs/index.en.md{1,3}')
+    expect(result.paths[0]?.content).toContain('>Changelog<a class="header-anchor"')
+    expect(result.paths[0]?.content).toContain('## Component Contributors')
   })
 
   it('creates an API-only dynamic route when docs/index.md does not exist', () => {

@@ -41,6 +41,18 @@ Markdown pages import contract JSON through a small shared VitePress data loader
 - Dynamic demos support only modules explicitly added to `Demo.vue`'s module cache. Examples should prefer APIs already provided by Vue, Element Plus, and the component package; dayjs is added only if a maintained example still imports it.
 - Generated API files remain ignored build artifacts. Component routes are expanded in memory from the manifest and a single tracked dynamic route template; the component overview is a tracked internal route rewritten to `/components/`.
 
+## GitHub Metadata
+
+GitHub data is synchronized explicitly into a committed snapshot; normal dev and build commands remain offline and deterministic. The synchronizer fixes a repository head SHA, follows REST pagination, fetches open issues once, excludes pull requests, and attributes issues by the `[ComponentName]` title prefix used by the issue link. Component commits are queried by component source path. The same commit set produces both the component contributor projection and the complete changelog timeline.
+
+The snapshot records its schema version, repository identity, default branch, head SHA, generation time, repository issue count, component issue count, contributors, profiles, and commits. A failed or rate-limited sync never replaces the last valid snapshot.
+
+## Internationalization And Reuse
+
+Repository URL, package name, source root, route prefixes, locale settings, and GitHub attribution rules live in one documentation site configuration module. Locale-neutral component identifiers remain in the component manifest; display labels and custom-theme messages live in a `zh-CN` / `en-US` catalog. English component routes prefer `docs/index.en.md` and fall back to an API-first English shell when no translated source fragment exists.
+
+The theme continues to extend VitePress DefaultTheme. A full rewrite is rejected for now because it would reimplement local search integration, accessible navigation, mobile drawers, outline behavior, dark mode, and previous/next routing while providing no corresponding reuse advantage. Customization remains isolated in theme components, CSS tokens, and the site configuration module, so consumers can replace presentation incrementally without replacing the stable layout runtime.
+
 ## Rollback
 
 Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages. No runtime component behavior or public package contract is changed.

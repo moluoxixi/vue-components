@@ -31,3 +31,17 @@
 - Component tests: `packages/components/src/*/__tests__/`.
 - HeadlessTable guidance: `packages/components/src/HeadlessTable/README.md:8`.
 - Request component query behavior: `packages/components/src/RequestOptions/__tests__/RequestOptions.test.ts:115`.
+
+## Final Verification (2026-08-04)
+
+- `pnpm exec eslint docs/vitepress/.vitepress docs/vitepress/scripts docs/vitepress/routes docs/vitepress/en` passed with generated `api`, `cache`, and `dist` directories ignored.
+- `pnpm --filter @moluoxixi/docs test` passed: 5 files and 30 tests, including route, locale, type-detail, API-output, pagination, branch, contributor-policy, and snapshot-validation coverage.
+- `pnpm typecheck` passed for all selected workspace packages and playgrounds.
+- `pnpm --filter @moluoxixi/docs validate-github-metadata` validated 13 components at fixed head `a3bb24a01605eb1ca64c04f80fd025a513c8983b`.
+- `pnpm --filter @moluoxixi/docs build` passed API extraction for all 13 public components, client/server bundling, and SSR page rendering.
+- In-app browser desktop check at 1440 x 900: the sidebar is fixed at 252px, the outline column is fixed at 256px, and the document content occupies the remaining width without page overflow.
+- Chinese `AntdConfigForm`: real open-issue count 1, 16 component-scoped commits, and 1 avatar-only component contributor.
+- English `CopyText`: English navigation, generated shell, API controls, contributor labels, dates, and 3 component-scoped commits.
+- Mobile check at 390 x 844: the document viewport had no page-level horizontal overflow and API tables remained available.
+- Overview check: all 13 public components were visible from `/`; browser console warnings/errors were empty.
+- Type and contributor tooltips were verified with complete details and without horizontal or vertical overflow in their rendered content.

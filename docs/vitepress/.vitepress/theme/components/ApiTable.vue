@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { formatDocsMessage } from '../../docs-i18n'
+import { useDocsLocale } from '../use-docs-locale'
+
 export interface ApiRow {
   name: string
   type: string
@@ -13,17 +17,21 @@ const props = defineProps<{
   type: 'props' | 'emits' | 'expose' | 'slots'
 }>()
 
-const typeColumnLabel = {
-  props: '类型',
-  emits: '参数',
-  expose: '类型',
-  slots: '作用域',
-}[props.type]
+const { messages } = useDocsLocale()
+const typeColumnLabel = computed(() => ({
+  props: messages.value.api.type,
+  emits: messages.value.api.parameters,
+  expose: messages.value.api.type,
+  slots: messages.value.api.scope,
+}[props.type]))
+const tableAriaLabel = computed(() => formatDocsMessage(messages.value.api.tableAria, {
+  section: messages.value.api.sections[props.type],
+}))
 </script>
 
 <template>
   <div class="api-table-wrapper">
-    <table class="api-table" :aria-label="`${type} API`">
+    <table class="api-table" :aria-label="tableAriaLabel">
       <colgroup>
         <col style="width: 160px">
         <col style="width: 240px">
@@ -33,11 +41,11 @@ const typeColumnLabel = {
       </colgroup>
       <thead>
         <tr>
-          <th scope="col">名称</th>
+          <th scope="col">{{ messages.api.name }}</th>
           <th scope="col">{{ typeColumnLabel }}</th>
-          <th v-if="type === 'props'" scope="col">默认值</th>
-          <th v-if="type === 'props'" scope="col">必填</th>
-          <th scope="col">说明</th>
+          <th v-if="type === 'props'" scope="col">{{ messages.api.defaultValue }}</th>
+          <th v-if="type === 'props'" scope="col">{{ messages.api.required }}</th>
+          <th scope="col">{{ messages.api.description }}</th>
         </tr>
       </thead>
       <tbody>
@@ -53,7 +61,7 @@ const typeColumnLabel = {
             <span v-else class="prop-default">—</span>
           </td>
           <td v-if="type === 'props'">
-            <span v-if="row.required" class="prop-required" aria-label="必填">是</span>
+            <span v-if="row.required" class="prop-required" :aria-label="messages.api.required">{{ messages.api.yes }}</span>
             <span v-else style="color: var(--vp-c-text-3)">—</span>
           </td>
           <td>

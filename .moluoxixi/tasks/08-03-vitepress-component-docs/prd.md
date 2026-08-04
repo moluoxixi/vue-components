@@ -20,6 +20,11 @@ Deliver a production-ready component-library documentation site whose navigation
 - R6: Preserve local search, sidebar navigation, previous/next links, dark mode, responsive layout, and code-copy/source-toggle interactions.
 - R7: Correct known documentation/runtime defects: missing assets, non-running dayjs demo, wrong ConfigTable response contract/defaults, wrong PopoverTableSelect prop values, API extraction false-green behavior, and mobile overflow.
 - R8: Verify the built site in a real browser, including the overview, representative component pages, dynamic demos, tooltips, desktop/mobile layouts, and console errors.
+- R9: Sync repository metadata from GitHub into a committed offline snapshot. Show the real open issue count, component-scoped contributors, and every commit that touched the current component.
+- R10: Add a component changelog entry in the page metadata and render a component-scoped commit timeline after the API contract.
+- R11: Support `zh-CN` and `en-US` for generated routes, navigation, and custom-theme UI. Handwritten component prose may be translated incrementally through locale-specific source documents.
+- R12: Keep the documentation solution fast to adopt in another component library by centralizing repository, package, source-path, route, locale, and GitHub-sync settings.
+- R13: Evaluate a full replacement of VitePress DefaultTheme. Retain it unless a replacement demonstrably improves reuse without regressing search, navigation, responsive behavior, dark mode, or accessibility.
 
 ## Acceptance Criteria
 
@@ -31,6 +36,10 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] All 13 public components have generated API pages; the existing 11 demo-bearing pages continue to render without compilation errors.
 - [x] Static assets render without 404s and component demos remain scrollable/usable at narrow widths.
 - [x] Relevant tests/type checks pass, VitePress production build succeeds, and browser smoke checks show no blocking console/page errors.
+- [x] Open issue counts, contributor avatars, contributor names, and commit timelines come from a validated GitHub snapshot and are scoped to the current component.
+- [x] Every component page links to and renders its changelog, including commit message, SHA, author, date, and GitHub URL.
+- [x] Chinese and English locale routes build successfully, and all custom-theme controls use locale messages.
+- [x] Repository-specific values are isolated in one reusable documentation configuration module.
 
 ## Out Of Scope
 

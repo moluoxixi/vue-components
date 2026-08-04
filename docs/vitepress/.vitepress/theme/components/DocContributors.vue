@@ -1,24 +1,35 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  componentContributors,
-  contributorProfiles,
-} from '../../doc-contributors'
+import { formatDocsMessage } from '../../docs-i18n'
+import { getComponentGithubMetadata, githubMetadata } from '../../github-metadata'
+import { useDocsLocale } from '../use-docs-locale'
 
 const props = defineProps<{
   name: string
 }>()
 
-const contributors = computed(() => (componentContributors[props.name] ?? [])
+const { messages } = useDocsLocale()
+const contributors = computed(() => getComponentGithubMetadata(props.name).contributors
   .map((contribution) => {
-    const profile = contributorProfiles[contribution.login]
+    const profile = githubMetadata.profiles[contribution.login]
     return profile ? { ...profile, contributions: contribution.contributions } : undefined
   })
   .filter(contributor => contributor !== undefined))
+
+function contributionText(count: number): string {
+  return formatDocsMessage(messages.value.contributors.contribution, {
+    name: props.name,
+    count,
+  })
+}
 </script>
 
 <template>
-  <ul v-if="contributors.length" class="doc-contributors" :aria-label="`${name} 文档贡献者`">
+  <ul
+    v-if="contributors.length"
+    class="doc-contributors"
+    :aria-label="formatDocsMessage(messages.contributors.aria, { name })"
+  >
     <li v-for="contributor in contributors" :key="contributor.login">
       <ElTooltip
         :trigger="['hover', 'focus']"
@@ -34,7 +45,7 @@ const contributors = computed(() => (componentContributors[props.name] ?? [])
           <span class="doc-contributor-tooltip-content">
             <strong>{{ contributor.name }}</strong>
             <span>GitHub @{{ contributor.login }}</span>
-            <span>为 {{ name }} 贡献 {{ contributor.contributions }} 次提交</span>
+            <span>{{ contributionText(contributor.contributions) }}</span>
           </span>
         </template>
         <a
@@ -42,7 +53,7 @@ const contributors = computed(() => (componentContributors[props.name] ?? [])
           :href="contributor.profileUrl"
           target="_blank"
           rel="noreferrer"
-          :aria-label="`${contributor.name}，GitHub @${contributor.login}，为 ${name} 贡献 ${contributor.contributions} 次提交`"
+          :aria-label="`${contributor.name}, GitHub @${contributor.login}, ${contributionText(contributor.contributions)}`"
         >
           <img
             class="doc-contributor-avatar"
@@ -58,6 +69,6 @@ const contributors = computed(() => (componentContributors[props.name] ?? [])
     </li>
   </ul>
   <p v-else class="doc-contributors-empty">
-    暂无贡献记录
+    {{ messages.contributors.empty }}
   </p>
 </template>

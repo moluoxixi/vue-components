@@ -7,6 +7,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
 import { documentedComponentNames, documentedComponents } from '../.vitepress/component-manifest.ts'
+import { docsSite } from '../.vitepress/docs-site.ts'
 import { syncApiOutputDirectory } from './api-output.mts'
 import { createTypeDetail } from './api-type-detail.mts'
 import { createComponentRoutePaths } from './component-routes.mts'
@@ -69,7 +70,7 @@ function normalizeContract(contract: ComponentContract): ComponentApi {
 async function main(): Promise<void> {
   const context = new ServerContext({
     root,
-    componentEntries: ['packages/components/index.ts'],
+    componentEntries: [docsSite.componentEntry],
     mode: 'content',
   })
 

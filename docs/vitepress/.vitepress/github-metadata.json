@@ -1,0 +1,1418 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-04T12:43:28.255Z",
+  "repository": {
+    "owner": "moluoxixi",
+    "name": "vue-components",
+    "defaultBranch": "main",
+    "headSha": "a3bb24a01605eb1ca64c04f80fd025a513c8983b",
+    "openIssueCount": 1
+  },
+  "profiles": {
+    "moluoxixi": {
+      "login": "moluoxixi",
+      "name": "moluoxixi",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+      "profileUrl": "https://github.com/moluoxixi"
+    }
+  },
+  "components": {
+    "CopyText": {
+      "path": "packages/components/src/CopyText",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 3
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "message": "Update Vue component library implementation",
+          "date": "2026-08-03T07:20:01Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/134f5faf82e479c5a9de6448966dbc73004db27c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "HeadlessCopyText": {
+      "path": "packages/components/src/HeadlessCopyText",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 3
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "message": "Update Vue component library implementation",
+          "date": "2026-08-03T07:20:01Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/134f5faf82e479c5a9de6448966dbc73004db27c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "AntdConfigForm": {
+      "path": "packages/components/src/AntdConfigForm",
+      "openIssueCount": 1,
+      "openIssues": [
+        {
+          "number": 4,
+          "title": "[AntdConfigForm]",
+          "url": "https://github.com/moluoxixi/vue-components/issues/4"
+        }
+      ],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 16
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "cadeddfdf0e03673ccb80701e1b66e051c186a7e",
+          "shortSha": "cadeddf",
+          "message": "docs: cover all public components",
+          "date": "2026-08-04T05:41:22Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/cadeddfdf0e03673ccb80701e1b66e051c186a7e",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "message": "Update Vue component library implementation",
+          "date": "2026-08-03T07:20:01Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/134f5faf82e479c5a9de6448966dbc73004db27c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155",
+          "shortSha": "f9497c2",
+          "message": "Refine ConfigForm renderer architecture and release checks",
+          "date": "2026-08-03T04:38:45Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "564bd335961fbea718755d7aa332e1ab86bc9c41",
+          "shortSha": "564bd33",
+          "message": "Refactor ConfigForm renderer expose handling",
+          "date": "2026-08-03T02:12:11Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/564bd335961fbea718755d7aa332e1ab86bc9c41",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "98ba65e7e401cf686cc33fae2ae7be4f1f50bf31",
+          "shortSha": "98ba65e",
+          "message": "refactor: remove config form type assertions",
+          "date": "2026-08-01T11:47:21Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/98ba65e7e401cf686cc33fae2ae7be4f1f50bf31",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "03d7436a02eb89f67ae2d45086b2ed016656f52c",
+          "shortSha": "03d7436",
+          "message": "refactor: pass config form fields directly",
+          "date": "2026-08-01T11:01:14Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/03d7436a02eb89f67ae2d45086b2ed016656f52c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "95f00210cdd9f31abaf91dd0067fd192e8d10596",
+          "shortSha": "95f0021",
+          "message": "refactor: use native config form attr types",
+          "date": "2026-08-01T10:26:36Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/95f00210cdd9f31abaf91dd0067fd192e8d10596",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "c087fd0b6d8e512e0303aa07370eb913e716f2fd",
+          "shortSha": "c087fd0",
+          "message": "fix: align config form renderer attr types",
+          "date": "2026-08-01T09:56:09Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/c087fd0b6d8e512e0303aa07370eb913e716f2fd",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "b0855cef617aac246f84c20d93e9ab1fc0c9c2d1",
+          "shortSha": "b0855ce",
+          "message": "refactor: rename config form DOM attrs",
+          "date": "2026-08-01T09:37:24Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/b0855cef617aac246f84c20d93e9ab1fc0c9c2d1",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "c0e530f36ca8cdd99c78eb3c72747360d8997753",
+          "shortSha": "c0e530f",
+          "message": "feat: share config form headless renderer",
+          "date": "2026-08-01T08:16:11Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/c0e530f36ca8cdd99c78eb3c72747360d8997753",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9",
+          "shortSha": "70c9054",
+          "message": "feat: add headless config form runtime",
+          "date": "2026-08-01T05:28:07Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "message": "refactor: extract reusable headless components",
+          "date": "2026-07-30T17:12:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "e11fc22cd58f6e847bd5063d4f23e8605e99d33d",
+          "shortSha": "e11fc22",
+          "message": "feat(config-form): harden runtime and add standalone forms",
+          "date": "2026-07-30T06:35:53Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/e11fc22cd58f6e847bd5063d4f23e8605e99d33d",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "62549b4804a85e2c260d04e98cc92735228b192c",
+          "shortSha": "62549b4",
+          "message": "feat(config-form): 拆分 runtime 与 UI 子包并调整工作区 (main)",
+          "date": "2026-06-02T06:44:11Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/62549b4804a85e2c260d04e98cc92735228b192c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f9af5ae708c153d4bddb136177af723c40e472c2",
+          "shortSha": "f9af5ae",
+          "message": "feat(components): add ui config forms",
+          "date": "2026-06-02T05:35:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f9af5ae708c153d4bddb136177af723c40e472c2",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "ElementConfigForm": {
+      "path": "packages/components/src/ElementConfigForm",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 16
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "cadeddfdf0e03673ccb80701e1b66e051c186a7e",
+          "shortSha": "cadeddf",
+          "message": "docs: cover all public components",
+          "date": "2026-08-04T05:41:22Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/cadeddfdf0e03673ccb80701e1b66e051c186a7e",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "message": "Update Vue component library implementation",
+          "date": "2026-08-03T07:20:01Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/134f5faf82e479c5a9de6448966dbc73004db27c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155",
+          "shortSha": "f9497c2",
+          "message": "Refine ConfigForm renderer architecture and release checks",
+          "date": "2026-08-03T04:38:45Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "564bd335961fbea718755d7aa332e1ab86bc9c41",
+          "shortSha": "564bd33",
+          "message": "Refactor ConfigForm renderer expose handling",
+          "date": "2026-08-03T02:12:11Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/564bd335961fbea718755d7aa332e1ab86bc9c41",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "98ba65e7e401cf686cc33fae2ae7be4f1f50bf31",
+          "shortSha": "98ba65e",
+          "message": "refactor: remove config form type assertions",
+          "date": "2026-08-01T11:47:21Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/98ba65e7e401cf686cc33fae2ae7be4f1f50bf31",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "03d7436a02eb89f67ae2d45086b2ed016656f52c",
+          "shortSha": "03d7436",
+          "message": "refactor: pass config form fields directly",
+          "date": "2026-08-01T11:01:14Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/03d7436a02eb89f67ae2d45086b2ed016656f52c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "95f00210cdd9f31abaf91dd0067fd192e8d10596",
+          "shortSha": "95f0021",
+          "message": "refactor: use native config form attr types",
+          "date": "2026-08-01T10:26:36Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/95f00210cdd9f31abaf91dd0067fd192e8d10596",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "c087fd0b6d8e512e0303aa07370eb913e716f2fd",
+          "shortSha": "c087fd0",
+          "message": "fix: align config form renderer attr types",
+          "date": "2026-08-01T09:56:09Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/c087fd0b6d8e512e0303aa07370eb913e716f2fd",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "b0855cef617aac246f84c20d93e9ab1fc0c9c2d1",
+          "shortSha": "b0855ce",
+          "message": "refactor: rename config form DOM attrs",
+          "date": "2026-08-01T09:37:24Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/b0855cef617aac246f84c20d93e9ab1fc0c9c2d1",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "c0e530f36ca8cdd99c78eb3c72747360d8997753",
+          "shortSha": "c0e530f",
+          "message": "feat: share config form headless renderer",
+          "date": "2026-08-01T08:16:11Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/c0e530f36ca8cdd99c78eb3c72747360d8997753",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9",
+          "shortSha": "70c9054",
+          "message": "feat: add headless config form runtime",
+          "date": "2026-08-01T05:28:07Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "message": "refactor: extract reusable headless components",
+          "date": "2026-07-30T17:12:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "e11fc22cd58f6e847bd5063d4f23e8605e99d33d",
+          "shortSha": "e11fc22",
+          "message": "feat(config-form): harden runtime and add standalone forms",
+          "date": "2026-07-30T06:35:53Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/e11fc22cd58f6e847bd5063d4f23e8605e99d33d",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "62549b4804a85e2c260d04e98cc92735228b192c",
+          "shortSha": "62549b4",
+          "message": "feat(config-form): 拆分 runtime 与 UI 子包并调整工作区 (main)",
+          "date": "2026-06-02T06:44:11Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/62549b4804a85e2c260d04e98cc92735228b192c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f9af5ae708c153d4bddb136177af723c40e472c2",
+          "shortSha": "f9af5ae",
+          "message": "feat(components): add ui config forms",
+          "date": "2026-06-02T05:35:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f9af5ae708c153d4bddb136177af723c40e472c2",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "DateRangePicker": {
+      "path": "packages/components/src/DateRangePicker",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 8
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "message": "refactor: extract reusable headless components",
+          "date": "2026-07-30T17:12:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "d1ac52d7a3f365f4860f74ec4bff9ec7da26229e",
+          "shortSha": "d1ac52d",
+          "message": "fix(ai-doc-assistant): stabilize generated demo previews",
+          "date": "2026-06-14T19:01:33Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/d1ac52d7a3f365f4860f74ec4bff9ec7da26229e",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "shortSha": "18fece7",
+          "message": "fix: 修复组件与 devtools 审查问题",
+          "date": "2026-06-03T09:20:39Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "209ffcb4293694af9531d27e3f8541f25807f030",
+          "shortSha": "209ffcb",
+          "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
+          "date": "2026-05-27T02:20:22Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/209ffcb4293694af9531d27e3f8541f25807f030",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "5712e133338c5862fbc26ef98a78c92018198dd8",
+          "shortSha": "5712e13",
+          "message": "test: add components playground coverage",
+          "date": "2026-05-27T01:21:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/5712e133338c5862fbc26ef98a78c92018198dd8",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "5e4604a1058139241f243d3ee8225645741c4dae",
+          "shortSha": "5e4604a",
+          "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
+          "date": "2026-05-26T13:33:24Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/5e4604a1058139241f243d3ee8225645741c4dae",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "EnterNextContainer": {
+      "path": "packages/components/src/EnterNextContainer",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 8
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "message": "refactor: extract reusable headless components",
+          "date": "2026-07-30T17:12:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "02a71884ba229bc54681aeea3676a8ddf55e0f9f",
+          "shortSha": "02a7188",
+          "message": "feat： aaa",
+          "date": "2026-06-15T12:14:38Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/02a71884ba229bc54681aeea3676a8ddf55e0f9f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "23c0fa3c9328bfeb07307ecf4ca098e064015c67",
+          "shortSha": "23c0fa3",
+          "message": "fix: 加固运行时空值边界并补充布局压测",
+          "date": "2026-06-03T15:37:38Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/23c0fa3c9328bfeb07307ecf4ca098e064015c67",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "shortSha": "18fece7",
+          "message": "fix: 修复组件与 devtools 审查问题",
+          "date": "2026-06-03T09:20:39Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "209ffcb4293694af9531d27e3f8541f25807f030",
+          "shortSha": "209ffcb",
+          "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
+          "date": "2026-05-27T02:20:22Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/209ffcb4293694af9531d27e3f8541f25807f030",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "5e4604a1058139241f243d3ee8225645741c4dae",
+          "shortSha": "5e4604a",
+          "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
+          "date": "2026-05-26T13:33:24Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/5e4604a1058139241f243d3ee8225645741c4dae",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "RequestSelectV2": {
+      "path": "packages/components/src/RequestSelectV2",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 3
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "message": "feat: add request cached components",
+          "date": "2026-06-19T06:28:37Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f70ab2d44f0414f3257d40a67e55215daa327221",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "RequestCascader": {
+      "path": "packages/components/src/RequestCascader",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 3
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "message": "feat: add request cached components",
+          "date": "2026-06-19T06:28:37Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f70ab2d44f0414f3257d40a67e55215daa327221",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "RequestTreeSelect": {
+      "path": "packages/components/src/RequestTreeSelect",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 3
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "message": "feat: add request cached components",
+          "date": "2026-06-19T06:28:37Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f70ab2d44f0414f3257d40a67e55215daa327221",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "ConfigTable": {
+      "path": "packages/components/src/ConfigTable",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 8
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "665435673970d5daf1e29b947cb9dcab2d4ed96c",
+          "shortSha": "6654356",
+          "message": "Refactor component library structure",
+          "date": "2026-08-03T09:07:58Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/665435673970d5daf1e29b947cb9dcab2d4ed96c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "message": "refactor: extract reusable headless components",
+          "date": "2026-07-30T17:12:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "db691ca08086479af9189eb4a28ec1fe9fc646f5",
+          "shortSha": "db691ca",
+          "message": "feat(components): switch config table to virtual table",
+          "date": "2026-06-24T07:31:54Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/db691ca08086479af9189eb4a28ec1fe9fc646f5",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "message": "feat: add request cached components",
+          "date": "2026-06-19T06:28:37Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f70ab2d44f0414f3257d40a67e55215daa327221",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "458683afa5924246e03733e5bda73450c9b8dcff",
+          "shortSha": "458683a",
+          "message": "feat(components): 支持表格 render 插槽并优化导出交互(main)",
+          "date": "2026-06-18T02:44:46Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/458683afa5924246e03733e5bda73450c9b8dcff",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "888834a54cd07e4ff8ca236792b676ad93f81bf4",
+          "shortSha": "888834a",
+          "message": "feat(components): add config table and pdf export safeguards",
+          "date": "2026-06-18T02:00:20Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/888834a54cd07e4ff8ca236792b676ad93f81bf4",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "HeadlessTable": {
+      "path": "packages/components/src/HeadlessTable",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 4
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "498fd4bd67ee5449d70d7ec81d104d603b1b2db7",
+          "shortSha": "498fd4b",
+          "message": "feat: expand headless table capabilities",
+          "date": "2026-08-03T06:20:29Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/498fd4bd67ee5449d70d7ec81d104d603b1b2db7",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "message": "refactor: extract reusable headless components",
+          "date": "2026-07-30T17:12:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "PopoverTableSelect": {
+      "path": "packages/components/src/PopoverTableSelect",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 16
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "665435673970d5daf1e29b947cb9dcab2d4ed96c",
+          "shortSha": "6654356",
+          "message": "Refactor component library structure",
+          "date": "2026-08-03T09:07:58Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/665435673970d5daf1e29b947cb9dcab2d4ed96c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "message": "refactor: extract reusable headless components",
+          "date": "2026-07-30T17:12:34Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "db691ca08086479af9189eb4a28ec1fe9fc646f5",
+          "shortSha": "db691ca",
+          "message": "feat(components): switch config table to virtual table",
+          "date": "2026-06-24T07:31:54Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/db691ca08086479af9189eb4a28ec1fe9fc646f5",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "message": "feat: add request cached components",
+          "date": "2026-06-19T06:28:37Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/f70ab2d44f0414f3257d40a67e55215daa327221",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "458683afa5924246e03733e5bda73450c9b8dcff",
+          "shortSha": "458683a",
+          "message": "feat(components): 支持表格 render 插槽并优化导出交互(main)",
+          "date": "2026-06-18T02:44:46Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/458683afa5924246e03733e5bda73450c9b8dcff",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "888834a54cd07e4ff8ca236792b676ad93f81bf4",
+          "shortSha": "888834a",
+          "message": "feat(components): add config table and pdf export safeguards",
+          "date": "2026-06-18T02:00:20Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/888834a54cd07e4ff8ca236792b676ad93f81bf4",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "a5e12a2aebe4d1f3035d96da8ffbfbc57eea3a77",
+          "shortSha": "a5e12a2",
+          "message": "feat(ai-doc-assistant): 补全插槽作用域与类型透传(main)",
+          "date": "2026-06-18T01:18:24Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/a5e12a2aebe4d1f3035d96da8ffbfbc57eea3a77",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "02a71884ba229bc54681aeea3676a8ddf55e0f9f",
+          "shortSha": "02a7188",
+          "message": "feat： aaa",
+          "date": "2026-06-15T12:14:38Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/02a71884ba229bc54681aeea3676a8ddf55e0f9f",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "d1ac52d7a3f365f4860f74ec4bff9ec7da26229e",
+          "shortSha": "d1ac52d",
+          "message": "fix(ai-doc-assistant): stabilize generated demo previews",
+          "date": "2026-06-14T19:01:33Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/d1ac52d7a3f365f4860f74ec4bff9ec7da26229e",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "23c0fa3c9328bfeb07307ecf4ca098e064015c67",
+          "shortSha": "23c0fa3",
+          "message": "fix: 加固运行时空值边界并补充布局压测",
+          "date": "2026-06-03T15:37:38Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/23c0fa3c9328bfeb07307ecf4ca098e064015c67",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "shortSha": "18fece7",
+          "message": "fix: 修复组件与 devtools 审查问题",
+          "date": "2026-06-03T09:20:39Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "209ffcb4293694af9531d27e3f8541f25807f030",
+          "shortSha": "209ffcb",
+          "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
+          "date": "2026-05-27T02:20:22Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/209ffcb4293694af9531d27e3f8541f25807f030",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "5712e133338c5862fbc26ef98a78c92018198dd8",
+          "shortSha": "5712e13",
+          "message": "test: add components playground coverage",
+          "date": "2026-05-27T01:21:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/5712e133338c5862fbc26ef98a78c92018198dd8",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "5e4604a1058139241f243d3ee8225645741c4dae",
+          "shortSha": "5e4604a",
+          "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
+          "date": "2026-05-26T13:33:24Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/5e4604a1058139241f243d3ee8225645741c4dae",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    },
+    "RichTextEditor": {
+      "path": "packages/components/src/RichTextEditor",
+      "openIssueCount": 0,
+      "openIssues": [],
+      "contributors": [
+        {
+          "login": "moluoxixi",
+          "contributions": 3
+        }
+      ],
+      "commits": [
+        {
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "message": "docs: generate component API routes",
+          "date": "2026-08-04T07:22:31Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "message": "docs: add Element Plus-style component documentation",
+          "date": "2026-08-03T15:26:51Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        },
+        {
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "message": "Update Vue component library implementation",
+          "date": "2026-08-03T07:20:01Z",
+          "url": "https://github.com/moluoxixi/vue-components/commit/134f5faf82e479c5a9de6448966dbc73004db27c",
+          "author": {
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "avatarUrl": "https://avatars.githubusercontent.com/u/57121471?v=4",
+            "profileUrl": "https://github.com/moluoxixi"
+          }
+        }
+      ]
+    }
+  }
+}

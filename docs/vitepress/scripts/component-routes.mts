@@ -1,5 +1,12 @@
+import type { DocsLocale } from '../.vitepress/docs-site.ts'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { getDocsMessages } from '../.vitepress/docs-i18n.ts'
+import {
+  componentSourcePath,
+  defaultDocsLocale,
+  getDocsLocaleConfig,
+} from '../.vitepress/docs-site.ts'
 
 export interface ComponentRoute {
   name: string
@@ -23,6 +30,18 @@ export interface SourceDocLayout {
 export interface CreateComponentRoutePathsOptions {
   root: string
   components: ComponentRoute[]
+  locale?: ComponentRouteLocaleOptions
+}
+
+export interface ComponentRouteLocaleOptions {
+  sourceDocFile: string
+  sourceDocIncludePrefix: string
+  headings: {
+    api: string
+    changelog: string
+    changelogPermalink: string
+    contributors: string
+  }
 }
 
 export interface CreateComponentRoutePathsResult {
@@ -34,8 +53,30 @@ const COMPONENT_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/
 const COMPONENT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const API_DOCS_TAG_PATTERN = /<\s*(?:ApiDocs|api-docs)\b/
 
-function sourceDocInclude(component: ComponentRoute, startLine: number, endLine: number): string {
-  return `<!--@include: ../../../packages/components/src/${component.name}/docs/index.md{${startLine},${endLine}}-->`
+export function createComponentRouteLocaleOptions(locale: DocsLocale): ComponentRouteLocaleOptions {
+  const configured = getDocsLocaleConfig(locale)
+  const messages = getDocsMessages(locale)
+  return {
+    sourceDocFile: configured.sourceDoc,
+    sourceDocIncludePrefix: configured.sourceDocIncludePrefix,
+    headings: {
+      api: messages.route.api,
+      changelog: messages.route.changelog,
+      changelogPermalink: messages.api.permanentLink.replace('{section}', messages.route.changelog),
+      contributors: messages.route.contributors,
+    },
+  }
+}
+
+const DEFAULT_LOCALE_OPTIONS = createComponentRouteLocaleOptions(defaultDocsLocale)
+
+function sourceDocInclude(
+  component: ComponentRoute,
+  startLine: number,
+  endLine: number,
+  locale: ComponentRouteLocaleOptions,
+): string {
+  return `<!--@include: ${locale.sourceDocIncludePrefix}${componentSourcePath(component.name)}/${locale.sourceDocFile}{${startLine},${endLine}}-->`
 }
 
 function analyzeSourceDoc(content: string, component: ComponentRoute): SourceDocLayout {
@@ -95,7 +136,11 @@ function duplicateValues(values: string[]): string[] {
   return Array.from(duplicates).sort()
 }
 
-export function renderComponentRoute(component: ComponentRoute, sourceDoc?: SourceDocLayout): string {
+export function renderComponentRoute(
+  component: ComponentRoute,
+  sourceDoc?: SourceDocLayout,
+  locale: ComponentRouteLocaleOptions = DEFAULT_LOCALE_OPTIONS,
+): string {
   assertSafeComponent(component)
 
   const content: string[] = []
@@ -104,6 +149,7 @@ export function renderComponentRoute(component: ComponentRoute, sourceDoc?: Sour
       component,
       sourceDoc.contentStartLine,
       sourceDoc.introductionEndLine,
+      locale,
     ))
   }
   else {
@@ -117,11 +163,13 @@ export function renderComponentRoute(component: ComponentRoute, sourceDoc?: Sour
       component,
       sourceDoc.introductionEndLine + 1,
       sourceDoc.lastContentLine,
+      locale,
     ))
   }
 
-  content.push(`## API\n\n<ApiDocs name="${component.name}" />`)
-  content.push(`## 文档贡献者\n\n<DocContributors name="${component.name}" />`)
+  content.push(`## ${locale.headings.api}\n\n<ApiDocs name="${component.name}" />`)
+  content.push(`<h2 id="changelog" tabindex="-1">${locale.headings.changelog}<a class="header-anchor" href="#changelog" aria-label="${locale.headings.changelogPermalink}">&#8203;</a></h2>\n\n<ComponentCommitTimeline name="${component.name}" />`)
+  content.push(`## ${locale.headings.contributors}\n\n<DocContributors name="${component.name}" />`)
 
   return `${content.join('\n\n')}\n`
 }
@@ -130,6 +178,7 @@ export function createComponentRoutePaths(
   options: CreateComponentRoutePathsOptions,
 ): CreateComponentRoutePathsResult {
   const { root, components } = options
+  const locale = options.locale ?? DEFAULT_LOCALE_OPTIONS
   components.forEach(assertSafeComponent)
 
   const duplicateNames = duplicateValues(components.map(component => component.name))
@@ -142,7 +191,7 @@ export function createComponentRoutePaths(
 
   const apiOnly: string[] = []
   const paths = components.map((component) => {
-    const sourceDocPath = resolve(root, 'packages/components/src', component.name, 'docs/index.md')
+    const sourceDocPath = resolve(root, componentSourcePath(component.name), locale.sourceDocFile)
     const hasSourceDoc = existsSync(sourceDocPath)
     const sourceDocContent = hasSourceDoc ? readFileSync(sourceDocPath, 'utf8') : undefined
     if (sourceDocContent && API_DOCS_TAG_PATTERN.test(sourceDocContent))
@@ -155,6 +204,7 @@ export function createComponentRoutePaths(
       content: renderComponentRoute(
         component,
         sourceDocContent ? analyzeSourceDoc(sourceDocContent, component) : undefined,
+        locale,
       ),
     }
   })

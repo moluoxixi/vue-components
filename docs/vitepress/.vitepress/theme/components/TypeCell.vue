@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { formatDocsMessage } from '../../docs-i18n'
+import { useDocsLocale } from '../use-docs-locale'
 
 const props = defineProps<{
   type: string
   detail?: string
 }>()
+
+const { messages } = useDocsLocale()
 
 interface TooltipHandle {
   hide: (event?: Event) => void
@@ -56,7 +60,7 @@ function handlePointerDown(event: PointerEvent): void {
     <button
       type="button"
       class="type-cell type-cell-trigger"
-      :aria-label="`查看类型详情：${type}`"
+      :aria-label="formatDocsMessage(messages.api.typeDetails, { type })"
       @pointerdown="handlePointerDown"
       @keydown.esc.stop.prevent="hideTooltip($event)"
     >

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { ArrowRight } from '@lucide/vue'
-import { withBase } from 'vitepress'
 
 export interface CardItem {
   name: string
@@ -20,7 +19,7 @@ defineProps<{
     <a
       v-for="item in items"
       :key="item.name"
-      :href="withBase(item.link)"
+      :href="item.link"
       class="overview-card"
     >
       <span class="overview-card-icon" aria-hidden="true">

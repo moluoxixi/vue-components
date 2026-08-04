@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { Check, ChevronUp, Code2, Copy } from '@lucide/vue'
-import * as Components from '@moluoxixi/components'
+import * as Components from '@docs-components'
 import * as ElementPlusRuntime from 'element-plus'
 import type { Component } from 'vue'
 import * as VueRuntime from 'vue'
 import { onMounted, onUnmounted, ref, shallowRef, useId } from 'vue'
+import { docsSite } from '../../docs-site'
+import { useDocsLocale } from '../use-docs-locale'
 
 const props = defineProps<{
   code: string       // base64(utf-8) 编码的 SFC 源码
   highlighted: string // base64(utf-8) 编码的高亮 HTML
   title?: string
 }>()
+
+const { messages } = useDocsLocale()
 
 const isExpanded = ref(false)
 const isCopied = ref(false)
@@ -47,8 +51,8 @@ async function initDemo(): Promise<void> {
         vue: VueRuntime,
         'element-plus': ElementPlusRuntime,
         'element-plus/dist/index.css': {},
-        '@moluoxixi/components': Components,
-        '@moluoxixi/components/styles': {},
+        [docsSite.packageName]: Components,
+        [docsSite.packageStylesImport]: {},
       },
       getFile: async () => ({
         getContentData: () => sourceCode,
@@ -113,10 +117,10 @@ async function copyCode(): Promise<void> {
       <div class="demo-preview">
         <component :is="DemoComp" v-if="DemoComp && !error" />
         <div v-if="error" class="demo-error" role="alert">
-          <strong>编译错误</strong><br>{{ error }}
+          <strong>{{ messages.demo.compileError }}</strong><br>{{ error }}
         </div>
         <div v-if="isLoading && !error" class="demo-loading" role="status">
-          <span>加载中…</span>
+          <span>{{ messages.demo.loading }}</span>
         </div>
       </div>
 
@@ -127,11 +131,11 @@ async function copyCode(): Promise<void> {
 
       <!-- 操作栏 -->
       <div class="demo-footer">
-        <div class="demo-actions" aria-label="示例操作">
+        <div class="demo-actions" :aria-label="messages.demo.actions">
           <button
             class="demo-action-btn"
-            :title="isCopied ? '已复制' : '复制代码'"
-            :aria-label="isCopied ? '代码已复制' : '复制代码'"
+            :title="isCopied ? messages.demo.copied : messages.demo.copyCode"
+            :aria-label="isCopied ? messages.demo.codeCopied : messages.demo.copyCode"
             @click="copyCode"
           >
             <Copy v-if="!isCopied" :size="16" aria-hidden="true" />
@@ -139,8 +143,8 @@ async function copyCode(): Promise<void> {
           </button>
           <button
             class="demo-action-btn"
-            :title="isExpanded ? '收起代码' : '展开代码'"
-            :aria-label="isExpanded ? '收起示例代码' : '展开示例代码'"
+            :title="isExpanded ? messages.demo.collapseCode : messages.demo.expandCode"
+            :aria-label="isExpanded ? messages.demo.collapseExampleCode : messages.demo.expandExampleCode"
             :aria-expanded="isExpanded"
             :aria-controls="sourceId"
             @click="isExpanded = !isExpanded"
