@@ -50,6 +50,9 @@ function handlePointerDown(event: PointerEvent): void {
     :teleported="true"
     @hide="touchVisible = false"
   >
+    <template #content>
+      <span class="mx-type-tooltip-content">{{ tooltip }}</span>
+    </template>
     <button
       type="button"
       class="type-cell type-cell-trigger"

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
 import { documentedComponentNames, documentedComponents } from '../.vitepress/component-manifest.ts'
 import { syncApiOutputDirectory } from './api-output.mts'
+import { createTypeDetail } from './api-type-detail.mts'
 import { createComponentRoutePaths } from './component-routes.mts'
 
 interface ApiRow {
@@ -32,53 +33,6 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(scriptDir, '../../..')
 const outDir = resolve(scriptDir, '../.vitepress/api')
 
-function referencedTypeDefs(contract: ComponentContract, refs: string[]): ComponentContract['typeDefs'] {
-  const availableNames = new Set(contract.typeDefs.map(definition => definition.name))
-  const selectedNames = new Set(refs.filter(ref => availableNames.has(ref)))
-
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const definition of contract.typeDefs) {
-      if (!selectedNames.has(definition.name))
-        continue
-
-      const identifiers = definition.raw.match(/[a-z_$][\w$]*/gi) ?? []
-      for (const identifier of identifiers) {
-        if (!availableNames.has(identifier) || selectedNames.has(identifier))
-          continue
-        selectedNames.add(identifier)
-        changed = true
-      }
-    }
-  }
-
-  return contract.typeDefs.filter(definition => selectedNames.has(definition.name))
-}
-
-function typeDetail(contract: ComponentContract, type: string, refs: string[]): string | undefined {
-  const referenced = referencedTypeDefs(contract, refs)
-  if (referenced.length === 0)
-    return type.length > 42 ? type : undefined
-
-  const definitions = referenced.map((definition) => {
-    const raw = definition.raw.replace(/\r\n/g, '\n')
-    if (raw.length <= 1800)
-      return raw
-
-    const fields = definition.fields.slice(0, 14).map((field) => {
-      const optional = field.optional ? '?' : ''
-      return `  ${field.name}${optional}: ${field.type}`
-    })
-    const remaining = definition.fields.length - fields.length
-    if (remaining > 0)
-      fields.push(`  // ... ${remaining} more fields`)
-    return `${definition.kind} ${definition.name} {\n${fields.join('\n')}\n}`
-  })
-
-  return [type, ...definitions].join('\n\n')
-}
-
 function normalizeContract(contract: ComponentContract): ComponentApi {
   return {
     name: contract.name,
@@ -86,7 +40,7 @@ function normalizeContract(contract: ComponentContract): ComponentApi {
     props: contract.props.map(prop => ({
       name: prop.name,
       type: prop.type,
-      typeDetail: typeDetail(contract, prop.type, prop.typeRefs),
+      typeDetail: createTypeDetail(contract.typeDefs, prop.type, prop.typeRefs),
       required: prop.required,
       default: prop.defaultValue && prop.defaultValue !== 'undefined' ? prop.defaultValue : undefined,
       description: prop.description || '—',
@@ -94,19 +48,19 @@ function normalizeContract(contract: ComponentContract): ComponentApi {
     emits: contract.emits.map(emit => ({
       name: emit.name,
       type: emit.payloadType,
-      typeDetail: typeDetail(contract, emit.payloadType, emit.typeRefs),
+      typeDetail: createTypeDetail(contract.typeDefs, emit.payloadType, emit.typeRefs),
       description: emit.description || '—',
     })),
     expose: (contract.exposed ?? []).map(exposed => ({
       name: exposed.name,
       type: exposed.type,
-      typeDetail: typeDetail(contract, exposed.type, exposed.typeRefs),
+      typeDetail: createTypeDetail(contract.typeDefs, exposed.type, exposed.typeRefs),
       description: exposed.description || '—',
     })),
     slots: contract.slots.map(slot => ({
       name: slot.name,
       type: slot.scopeType,
-      typeDetail: typeDetail(contract, slot.scopeType, slot.typeRefs),
+      typeDetail: createTypeDetail(contract.typeDefs, slot.scopeType, slot.typeRefs),
       description: slot.description || '—',
     })),
   }

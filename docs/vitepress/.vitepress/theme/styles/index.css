@@ -406,13 +406,22 @@ body {
 
 .el-popper.mx-type-tooltip {
   max-width: min(560px, calc(100vw - 32px));
-  max-height: min(360px, calc(100vh - 32px));
-  overflow: auto;
   font-family: var(--vp-font-family-mono);
   font-size: 12px;
   line-height: 1.6;
-  white-space: pre-wrap;
   user-select: text;
+}
+
+.mx-type-tooltip-content {
+  display: block;
+  max-height: min(440px, calc(100vh - 42px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--vp-c-divider) transparent;
+  scrollbar-width: thin;
+  white-space: pre-wrap;
 }
 
 .overview-page {
