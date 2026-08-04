@@ -13,7 +13,10 @@ import { createMetaChecker, extractContract, extractContracts, extractContractWi
  */
 
 const FIXTURES_TSCONFIG = resolve(__dirname, '../tsconfig.fixtures.json')
+const WORKSPACE_ROOT = resolve(__dirname, '../../..')
+const COMPONENTS_TSCONFIG = resolve(WORKSPACE_ROOT, 'packages/components/tsconfig.app.json')
 const fx = (rel: string): string => resolve(__dirname, 'fixtures', rel)
+const component = (rel: string): string => resolve(WORKSPACE_ROOT, 'packages/components/src', rel)
 
 describe('extractContract — vue-component-meta 引擎', () => {
   it('解析 defineProps 导入接口的真实类型并展开可达类型（含传递闭包）', async () => {
@@ -335,6 +338,89 @@ describe('extractContract — vue-component-meta 引擎', () => {
     await expect(
       extractContract(fx('NotExist/src/index.vue'), '@test/pkg', 'NotExist', FIXTURES_TSCONFIG),
     ).rejects.toThrow()
+  })
+
+  it('解析 paths workspace 类型闭包，并处理共用泛型、循环、缺失模块和外部依赖边界', async () => {
+    const c = await extractContract(
+      fx('WorkspaceTypeGraph/packages/consumer/src/index.vue'),
+      '@fixture/consumer',
+      'WorkspaceTypeGraph',
+      FIXTURES_TSCONFIG,
+      WORKSPACE_ROOT,
+    )
+
+    expect(c.props.find(p => p.name === 'shared')?.typeRefs).toContain('SharedWorkspaceType')
+    expect(c.emits.find(e => e.name === 'change')?.typeRefs).toContain('SharedWorkspaceType')
+    expect(c.slots.find(s => s.name === 'default')?.typeRefs).toContain('SharedWorkspaceType')
+    expect(c.exposed?.find(e => e.name === 'inspect')?.typeRefs).toEqual(
+      expect.arrayContaining(['SharedWorkspaceType', 'CycleA']),
+    )
+
+    const defNames = c.typeDefs.map(def => def.name)
+    expect(defNames).toEqual(expect.arrayContaining([
+      'CycleA',
+      'CycleB',
+      'SharedWorkspaceType',
+      'WorkspaceEnvelope',
+      'WorkspaceLeaf',
+      'WorkspacePage',
+    ]))
+    for (const name of new Set(defNames))
+      expect(defNames.filter(defName => defName === name)).toHaveLength(1)
+
+    expect(defNames).not.toContain('ComponentPublicInstance')
+    expect(defNames).not.toContain('MissingWorkspaceType')
+    expect(c.props.find(p => p.name === 'missing')).toBeTruthy()
+  })
+})
+
+describe('extractContracts — real workspace package types', () => {
+  let contracts: Awaited<ReturnType<typeof extractContracts>>
+
+  beforeAll(async () => {
+    contracts = await extractContracts(
+      [
+        {
+          exportName: 'AntdConfigForm',
+          filePath: component('AntdConfigForm/src/index.vue'),
+          packageName: '@moluoxixi/components',
+        },
+        {
+          exportName: 'PopoverTableSelect',
+          filePath: component('PopoverTableSelect/src/index.vue'),
+          packageName: '@moluoxixi/components',
+        },
+      ],
+      COMPONENTS_TSCONFIG,
+    )
+  })
+
+  it('展开 ConfigForm 泛型 emit payload 的字段与依赖定义', () => {
+    const contract = contracts.find(item => item.name === 'AntdConfigForm')!
+    const fieldChange = contract.emits.find(item => item.name === 'fieldChange')!
+    expect(fieldChange.typeRefs).toContain('ConfigFormFieldChangePayload')
+
+    const payload = contract.typeDefs.find(item => item.name === 'ConfigFormFieldChangePayload')
+    expect(payload?.raw).toContain('ConfigFormFieldChangePayload<TValues extends ConfigFormValues')
+    expect(payload?.fields.map(field => field.name)).toEqual(['field', 'value', 'values'])
+    expect(contract.typeDefs.map(item => item.name)).toEqual(
+      expect.arrayContaining(['ConfigFormFieldKey', 'ConfigFormValues']),
+    )
+  })
+
+  it('展开 hooks workspace 包的查询泛型闭包且不收集框架类型', () => {
+    const contract = contracts.find(item => item.name === 'PopoverTableSelect')!
+    expect(contract.typeDefs.map(item => item.name)).toEqual(expect.arrayContaining([
+      'QueryKeyBase',
+      'RequestTablePageParams',
+      'RequestTableQuery',
+      'RequestTableResult',
+    ]))
+    expect(contract.typeDefs.map(item => item.name)).not.toEqual(expect.arrayContaining([
+      'ComponentPublicInstance',
+      'PopoverProps',
+      'Ref',
+    ]))
   })
 })
 

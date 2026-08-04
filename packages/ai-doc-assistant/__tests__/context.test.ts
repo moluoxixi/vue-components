@@ -9,6 +9,7 @@ import { ServerContext } from '../src/server/context'
 // 实际抽取契约的用例必须用包内 fixture 工作区：vue-component-meta 需被分析 SFC 落在 tsconfig
 // program 内（临时目录无法解析 vue 类型）。fixture 工作区含 demo 包 + tsconfig，可被 checker 解析。
 const FIXTURE_ROOT = resolve(__dirname, 'fixtures', 'ctx-workspace')
+const COMPONENT_PACKAGE_ROOT = resolve(__dirname, '../../components')
 
 // 一个最小可解析的 SFC：驱动契约抽取 → content 策略关键词检索态构建。
 const SFC = `<script setup lang="ts">
@@ -100,6 +101,19 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
     const result = await strategy!.retrieve('label disabled 按钮', 5)
     expect(result.empty).toBe(false)
     expect(result.chunks.length).toBe(1)
+  })
+
+  it('package discovery root 不限制兄弟 workspace 包的类型闭包', async () => {
+    const ctx = new ServerContext({
+      componentGlobs: ['src/AntdConfigForm/src/index.vue'],
+      env: {},
+      root: COMPONENT_PACKAGE_ROOT,
+    })
+    await ctx.buildIndex()
+
+    const contract = ctx.getContracts()[0]
+    const payload = contract.typeDefs.find(def => def.name === 'ConfigFormFieldChangePayload')
+    expect(payload?.fields.map(field => field.name)).toEqual(['field', 'value', 'values'])
   })
 
   it('空目录 buildIndex → FAIL，不伪装为空索引 ready', async () => {

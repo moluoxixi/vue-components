@@ -1,4 +1,5 @@
 import type { MetaChecker } from './meta-extractor'
+import type { TypeSourceResolutionContext } from './type-source'
 import type { ComponentContract, EmitDef, ModelDef, PropDef, SlotDef, TypeDefInfo, TypeFieldDef } from './types'
 import { existsSync, readFileSync } from 'node:fs'
 import { basename, dirname, resolve as resolvePath } from 'node:path'
@@ -13,11 +14,39 @@ import {
 } from './meta-extractor'
 import {
   collectLocalTypeDefs,
+  createTypeSourceResolutionContext,
   extractDefineAttrsTypeName,
   extractDefineExposeNames,
+  resolveWorkspaceRoot,
 } from './type-source'
 
 export { createMetaChecker } from './meta-extractor'
+
+const typeSourceContextByChecker = new WeakMap<MetaChecker, Map<string, TypeSourceResolutionContext>>()
+
+function getTypeSourceResolutionContext(
+  checker: MetaChecker,
+  filePath: string,
+  workspaceRoot?: string,
+): TypeSourceResolutionContext {
+  const root = resolvePath(workspaceRoot ?? resolveWorkspaceRoot(filePath))
+  const cacheKey = process.platform === 'win32' ? root.toLowerCase() : root
+  let contexts = typeSourceContextByChecker.get(checker)
+  if (!contexts) {
+    contexts = new Map()
+    typeSourceContextByChecker.set(checker, contexts)
+  }
+
+  let context = contexts.get(cacheKey)
+  if (!context) {
+    const program = checker.getProgram()
+    if (!program)
+      throw new Error(`meta checker program unavailable after extracting ${filePath}`)
+    context = createTypeSourceResolutionContext(program.getCompilerOptions(), root)
+    contexts.set(cacheKey, context)
+  }
+  return context
+}
 
 /**
  * 组件契约提取（vue-component-meta 引擎）。
@@ -350,12 +379,14 @@ function mergeForwardedSubComponent(
  * @param packageName 所属包名，写入契约用于来源可追溯。
  * @param checker meta checker（批量提取复用同一实例）。
  * @param exportName 公共入口导出名，displayName 不可靠时用于稳定组件名。
+ * @param workspaceRoot workspace 源码边界；省略时从 SFC 向上探测。
  */
 export function extractContractWithChecker(
   filePath: string,
   packageName: string,
   checker: MetaChecker,
   exportName?: string,
+  workspaceRoot?: string,
 ): ComponentContract {
   const meta = checker.getComponentMeta(filePath)
 
@@ -370,7 +401,10 @@ export function extractContractWithChecker(
     : metaExposed.filter(member => defineExposeNames.includes(member.name))
 
   // 后处理需要本地类型源（动态插槽契约 / defineAttrs T）
-  const localDefs = collectLocalTypeDefs(filePath)
+  const localDefs = collectLocalTypeDefs(
+    filePath,
+    getTypeSourceResolutionContext(checker, filePath, workspaceRoot),
+  )
 
   // 转发合并与 defineAttrs 都需要 SFC 源码。该文件在上方 getComponentMeta 已被成功读取，
   // 此处直接读取；读失败属真实异常，显式抛出（不静默吞错回退空串掩盖问题）。
@@ -419,15 +453,17 @@ export function extractContractWithChecker(
  * @param packageName 所属包名。
  * @param exportName 公共入口导出名（可选）。
  * @param tsconfigPath 用于建 program 的 tsconfig 路径（默认组件包 tsconfig）。
+ * @param workspaceRoot workspace 源码边界（默认从 SFC 向上探测）。
  */
 export async function extractContract(
   filePath: string,
   packageName: string,
   exportName?: string,
   tsconfigPath?: string,
+  workspaceRoot?: string,
 ): Promise<ComponentContract> {
   const checker = createMetaChecker(tsconfigPath ?? resolveTsconfigFor(filePath))
-  return extractContractWithChecker(filePath, packageName, checker, exportName)
+  return extractContractWithChecker(filePath, packageName, checker, exportName, workspaceRoot)
 }
 
 /**
@@ -436,6 +472,7 @@ export async function extractContract(
 export async function extractContracts(
   files: { exportName?: string, filePath: string, packageName: string }[],
   tsconfigPath?: string,
+  workspaceRoot?: string,
 ): Promise<ComponentContract[]> {
   const results: ComponentContract[] = []
   // 按 tsconfig 分组复用 checker（同包组件共享 program）
@@ -452,7 +489,7 @@ export async function extractContracts(
   for (const { exportName, filePath, packageName } of files) {
     const cfg = tsconfigPath ?? resolveTsconfigFor(filePath)
     try {
-      results.push(extractContractWithChecker(filePath, packageName, getChecker(cfg), exportName))
+      results.push(extractContractWithChecker(filePath, packageName, getChecker(cfg), exportName, workspaceRoot))
     }
     catch (err) {
       throw new Error(`extractContract failed for ${filePath}: ${(err as Error).message}`, { cause: err })

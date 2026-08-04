@@ -1,6 +1,6 @@
 import type { TypeDefInfo, TypeFieldDef } from './types'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { basename, dirname, extname, join, resolve } from 'node:path'
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'
 
 /**
@@ -11,9 +11,119 @@ import ts from 'typescript'
  * - 动态插槽：从 `<Comp>Slots` 契约接口（含索引签名）派生 meta 丢弃的动态插槽说明。
  * - defineAttrs：meta 完全不体现 `defineAttrs<T>()`，需从 SFC 抽泛型名再解析 T 字段。
  *
- * 纯 TypeScript 语法遍历，不启动 type checker，确定性强。类型语义解析仍由 checker 承担；
- * 此处只跟随本地相对 import 定位契约实际引用的 raw 声明，不模拟 Omit/Pick 或解析第三方类型。
+ * 纯 TypeScript 语法遍历，不启动额外 type checker，确定性强。类型语义解析仍由 checker 承担；
+ * 此处复用 checker 的 compiler options 跟随 workspace 内 import，定位契约实际引用的 raw 声明，
+ * 不模拟 Omit/Pick，也不展开第三方类型。
  */
+
+const MAX_IMPORTED_TYPE_SOURCES = 1000
+const TYPE_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts'])
+const IGNORED_SOURCE_SEGMENTS = new Set([
+  '.git',
+  '.vite',
+  'coverage',
+  'dist',
+  'node_modules',
+])
+const TEST_SOURCE_SEGMENTS = new Set(['__tests__', 'test', 'tests'])
+
+export interface TypeSourceResolutionContext {
+  compilerOptions: ts.CompilerOptions
+  moduleResolutionCache: ts.ModuleResolutionCache
+  moduleResolutionHost: ts.ModuleResolutionHost
+  workspaceRoot: string
+}
+
+function canonicalPath(path: string): string {
+  let canonical = resolve(path)
+  try {
+    canonical = realpathSync.native(canonical)
+  }
+  catch {
+    // Missing paths are kept resolved so callers can still compare boundaries safely.
+  }
+  return ts.sys.useCaseSensitiveFileNames ? canonical : canonical.toLowerCase()
+}
+
+function isWithinRoot(root: string, path: string): boolean {
+  const rel = relative(root, path)
+  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel))
+}
+
+function hasIgnoredSourceSegment(root: string, path: string): boolean {
+  const rel = relative(root, path)
+  return rel.split(/[\\/]+/).some(segment => IGNORED_SOURCE_SEGMENTS.has(segment))
+}
+
+function hasTestSourceSegment(root: string, path: string): boolean {
+  const rel = relative(root, path)
+  return rel.split(/[\\/]+/).some(segment => TEST_SOURCE_SEGMENTS.has(segment))
+}
+
+function isTypeScriptSource(path: string): boolean {
+  return TYPE_SOURCE_EXTENSIONS.has(extname(path))
+    && !/\.d\.(?:ts|mts|cts)$/.test(path)
+    && !/\.(?:test|spec)\.[cm]?tsx?$/.test(path)
+}
+
+function isWorkspaceSource(
+  context: TypeSourceResolutionContext,
+  path: string,
+  allowTestSources = false,
+): boolean {
+  return isWithinRoot(context.workspaceRoot, path)
+    && !hasIgnoredSourceSegment(context.workspaceRoot, path)
+    && (allowTestSources || !hasTestSourceSegment(context.workspaceRoot, path))
+    && isTypeScriptSource(path)
+}
+
+export function createTypeSourceResolutionContext(
+  compilerOptions: ts.CompilerOptions,
+  workspaceRoot: string,
+): TypeSourceResolutionContext {
+  const canonicalRoot = canonicalPath(workspaceRoot)
+  const canonicalFileName = ts.sys.useCaseSensitiveFileNames
+    ? (fileName: string): string => fileName
+    : (fileName: string): string => fileName.toLowerCase()
+
+  return {
+    compilerOptions,
+    moduleResolutionCache: ts.createModuleResolutionCache(
+      canonicalRoot,
+      canonicalFileName,
+      compilerOptions,
+    ),
+    moduleResolutionHost: ts.sys,
+    workspaceRoot: canonicalRoot,
+  }
+}
+
+/** Find the nearest package/workspace boundary for direct extractor API calls. */
+export function resolveWorkspaceRoot(filePath: string): string {
+  let dir = dirname(resolve(filePath))
+  let nearestPackageRoot: string | null = null
+
+  for (let previous = ''; dir && dir !== previous; previous = dir, dir = dirname(dir)) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml')) || existsSync(join(dir, 'pnpm-workspace.yml')))
+      return dir
+
+    const packageJsonPath = join(dir, 'package.json')
+    if (!nearestPackageRoot && existsSync(packageJsonPath))
+      nearestPackageRoot = dir
+    if (existsSync(packageJsonPath)) {
+      try {
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { workspaces?: unknown }
+        if (packageJson.workspaces)
+          return dir
+      }
+      catch {
+        // An invalid package manifest is not a reason to widen past the nearest package boundary.
+      }
+    }
+  }
+
+  return nearestPackageRoot ?? dirname(resolve(filePath))
+}
 
 /** 取节点前缀的 JSDoc 文本（若有），用于字段/类型说明。 */
 function jsDocOf(node: ts.Node, full: string): string {
@@ -210,49 +320,59 @@ function findSrcRoot(sfcPath: string): string | null {
   return null
 }
 
-/** Resolve a relative module specifier to a TypeScript source file. */
-function resolveRelativeTypeSource(importerPath: string, specifier: string): string | null {
-  if (!specifier.startsWith('.'))
+/** Resolve relative, paths-alias, and workspace-package imports with the component program's rules. */
+function resolveTypeSource(
+  context: TypeSourceResolutionContext,
+  importerPath: string,
+  specifier: string,
+  allowTestSources: boolean,
+): string | null {
+  const resolvedModule = ts.resolveModuleName(
+    specifier,
+    importerPath,
+    context.compilerOptions,
+    context.moduleResolutionHost,
+    context.moduleResolutionCache,
+  ).resolvedModule
+  if (!resolvedModule)
     return null
 
-  const base = resolve(dirname(importerPath), specifier)
-  const candidates = extname(base)
-    ? [base]
-    : [
-        `${base}.ts`,
-        `${base}.tsx`,
-        `${base}.mts`,
-        `${base}.cts`,
-        join(base, 'index.ts'),
-        join(base, 'index.tsx'),
-        join(base, 'index.mts'),
-        join(base, 'index.cts'),
-      ]
+  const resolvedPath = canonicalPath(resolvedModule.resolvedFileName)
+  if (!isWorkspaceSource(context, resolvedPath, allowTestSources))
+    return null
 
-  for (const candidate of candidates) {
-    if (candidate.endsWith('.d.ts') || !existsSync(candidate))
-      continue
-    try {
-      if (statSync(candidate).isFile())
-        return candidate
-    }
-    catch {
-      // The candidate can disappear between existsSync and statSync.
-    }
+  try {
+    return statSync(resolvedPath).isFile() ? resolvedPath : null
   }
-  return null
+  catch {
+    return null
+  }
 }
 
 /**
- * Follow relative imports from an SFC into TypeScript sources, including transitive imports.
+ * Follow workspace imports from an SFC into TypeScript sources, including transitive imports.
  * Imported definitions take precedence over the component-directory fallback scan because they
  * are the exact symbols used by the component contract.
  */
-function collectImportedTypeSources(sfcPath: string): string[] {
+function collectImportedTypeSources(
+  sfcPath: string,
+  context: TypeSourceResolutionContext,
+): string[] {
   const sources: string[] = []
-  const visited = new Set<string>([sfcPath])
+  const canonicalSfcPath = canonicalPath(sfcPath)
+  const allowTestSources = hasTestSourceSegment(context.workspaceRoot, canonicalSfcPath)
+  const visited = new Set<string>([canonicalSfcPath])
+  const queue: { filePath: string, source: string }[] = []
 
-  const visit = (filePath: string, source: string): void => {
+  try {
+    queue.push({ filePath: sfcPath, source: readFileSync(sfcPath, 'utf8') })
+  }
+  catch (err) {
+    throw new Error(`collect imported type sources failed for ${sfcPath}: ${(err as Error).message}`, { cause: err })
+  }
+
+  for (let queueIndex = 0; queueIndex < queue.length; queueIndex++) {
+    const { filePath, source } = queue[queueIndex]
     const scriptSources = filePath.endsWith('.vue')
       ? Array.from(source.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g), match => match[1])
       : [source]
@@ -260,13 +380,20 @@ function collectImportedTypeSources(sfcPath: string): string[] {
     for (const scriptSource of scriptSources) {
       const imports = ts.preProcessFile(scriptSource, true, true).importedFiles
       for (const imported of imports) {
-        const resolved = resolveRelativeTypeSource(filePath, imported.fileName)
+        const resolved = resolveTypeSource(context, filePath, imported.fileName, allowTestSources)
         if (!resolved || visited.has(resolved))
           continue
+
+        if (sources.length >= MAX_IMPORTED_TYPE_SOURCES) {
+          throw new Error(
+            `workspace type import graph exceeds ${MAX_IMPORTED_TYPE_SOURCES} files for ${sfcPath}`,
+          )
+        }
+
         visited.add(resolved)
         sources.push(resolved)
         try {
-          visit(resolved, readFileSync(resolved, 'utf8'))
+          queue.push({ filePath: resolved, source: readFileSync(resolved, 'utf8') })
         }
         catch (err) {
           throw new Error(`read imported type source failed for ${resolved}: ${(err as Error).message}`, { cause: err })
@@ -274,23 +401,20 @@ function collectImportedTypeSources(sfcPath: string): string[] {
       }
     }
   }
-
-  try {
-    visit(sfcPath, readFileSync(sfcPath, 'utf8'))
-  }
-  catch (err) {
-    throw new Error(`collect imported type sources failed for ${sfcPath}: ${(err as Error).message}`, { cause: err })
-  }
   return sources
 }
 
 /**
- * 收集 SFC 内联、相对 import 图和组件目录 `.ts` 中的本地 interface / type 定义。
+ * 收集 SFC 内联、workspace import 图和组件目录 `.ts` 中的本地 interface / type 定义。
  * 用于动态插槽契约（`<Comp>Slots`）与 defineAttrs 泛型 T 的字段解析。
  * 实际 import 优先；目录扫描作为未显式 import 契约的兜底。跳过 node_modules / .d.ts / 测试文件。
  */
-export function collectLocalTypeDefs(sfcPath: string): TypeDefInfo[] {
+export function collectLocalTypeDefs(
+  sfcPath: string,
+  context: TypeSourceResolutionContext,
+): TypeDefInfo[] {
   const scanRoot = findSrcRoot(sfcPath) ?? dirname(sfcPath)
+  const allowTestSources = hasTestSourceSegment(context.workspaceRoot, canonicalPath(sfcPath))
   const defs: TypeDefInfo[] = []
   const seen = new Set<string>()
 
@@ -305,7 +429,7 @@ export function collectLocalTypeDefs(sfcPath: string): TypeDefInfo[] {
 
   // SFC inline and explicitly imported types are the most precise sources.
   addDefs(extractSfcScriptTypeDefs(sfcPath))
-  for (const importedPath of collectImportedTypeSources(sfcPath)) {
+  for (const importedPath of collectImportedTypeSources(sfcPath, context)) {
     try {
       addDefs(parseTypeDefs(importedPath))
     }
@@ -314,16 +438,25 @@ export function collectLocalTypeDefs(sfcPath: string): TypeDefInfo[] {
     }
   }
 
+  const visitedDirs = new Set<string>()
   const walk = (dir: string): void => {
+    const canonicalDir = canonicalPath(dir)
+    if (visitedDirs.has(canonicalDir)
+      || !isWithinRoot(context.workspaceRoot, canonicalDir)
+      || hasIgnoredSourceSegment(context.workspaceRoot, canonicalDir)) {
+      return
+    }
+    visitedDirs.add(canonicalDir)
+
     let entries: string[]
     try {
-      entries = readdirSync(dir)
+      entries = readdirSync(canonicalDir)
     }
     catch {
       return
     }
     for (const entry of entries) {
-      const full = join(dir, entry)
+      const full = join(canonicalDir, entry)
       let isDir = false
       try {
         isDir = statSync(full).isDirectory()
@@ -332,11 +465,10 @@ export function collectLocalTypeDefs(sfcPath: string): TypeDefInfo[] {
         continue
       }
       if (isDir) {
-        if (entry !== 'node_modules')
-          walk(full)
+        walk(full)
         continue
       }
-      if (!entry.endsWith('.ts') || entry.endsWith('.d.ts') || entry.includes('.test.') || entry.includes('.spec.'))
+      if (!isWorkspaceSource(context, canonicalPath(full), allowTestSources))
         continue
       try {
         addDefs(parseTypeDefs(full))
