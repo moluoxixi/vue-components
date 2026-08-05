@@ -1,17 +1,7 @@
-<script lang="ts">
-// 示例元信息由 playground 通过 import.meta.glob 读取，用于生成侧栏和页面标题。
-export const exampleMeta = {
-  name: 'antdConfigForm',
-  title: 'antdConfigForm',
-  category: '配置表单',
-  description: 'components 包内置 Ant Design Vue 配置表单的字段写回、checked 协议自动适配和提交场景。',
-  order: 50,
-}
-</script>
-
 <script setup lang="ts">
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import { defineFields } from '@moluoxixi/config-form-headless'
+import 'ant-design-vue/dist/reset.css'
 import { antdConfigForm } from '@moluoxixi/components'
 import { Button as AButton, Checkbox as ACheckbox, Divider as ADivider, Input as AInput, Tag as ATag } from 'ant-design-vue'
 import { computed, h, shallowRef } from 'vue'

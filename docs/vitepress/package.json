@@ -26,6 +26,7 @@
     "vue3-sfc-loader": "catalog:"
   },
   "devDependencies": {
+    "@moluoxixi/components-auto-loaders": "workspace:*",
     "@types/markdown-it": "catalog:",
     "@types/markdown-it-container": "catalog:",
     "@types/node": "catalog:type",

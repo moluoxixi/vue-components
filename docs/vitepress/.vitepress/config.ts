@@ -1,6 +1,7 @@
 import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './docs-site'
 import { defineConfig } from 'vitepress'
+import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
 import { createComponentAutoLoadPlugins } from './auto-loaders'
 import { getDocsMessages, getLocalizedComponentGroups, localePath } from './docs-i18n'
 import {
@@ -114,7 +115,9 @@ const rewrites = Object.fromEntries(
 
 // VitePress 1.x exposes Vite 5 types while the workspace unplugins resolve Vite 6.
 // Their runtime plugin contract is compatible; keep the version bridge at this boundary.
-const componentAutoLoadPlugins = createComponentAutoLoadPlugins() as NonNullable<UserConfig['vite']>['plugins']
+type VitePressPlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
+
+const componentAutoLoadPlugins = createComponentAutoLoadPlugins() as VitePressPlugins
 
 export default defineConfig({
   title: docsSite.title,
@@ -136,7 +139,15 @@ export default defineConfig({
     },
   },
   vite: {
-    plugins: componentAutoLoadPlugins,
+    plugins: [
+      ...componentAutoLoadPlugins,
+      createStableChunksPlugin({
+        antd: false,
+        configForm: false,
+        element: false,
+        richText: false,
+      }),
+    ] as VitePressPlugins,
     resolve: {
       alias: [
         { find: '@docs-components/styles', replacement: docsSite.packageStylesImport },

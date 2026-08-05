@@ -48,12 +48,15 @@ import '@moluoxixi/components/styles'
 
 ## 自动按需加载
 
-组件包提供 `unplugin-vue-components` 与 `unplugin-auto-import` 的官方接入配置：
+独立的 `@moluoxixi/components-auto-loaders` 包提供 `unplugin-vue-components` 与 `unplugin-auto-import` 的官方接入配置：
+
+```bash
+pnpm add -D @moluoxixi/components-auto-loaders unplugin-auto-import unplugin-vue-components
+```
 
 ```ts
 // vite.config.ts
-import { autoComponent } from '@moluoxixi/components/autoComponent'
-import { autoImport } from '@moluoxixi/components/autoImport'
+import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 
@@ -65,7 +68,7 @@ export default {
 }
 ```
 
-`autoComponent` 只解析根入口公开的组件，并自动加载 `@moluoxixi/components/styles`。`autoImport` 按使用情况注入 `defineFields`、`copyText`、`useHeadlessTable` 等运行时 API；TypeScript 类型仍需使用 `import type` 显式导入。
+`autoComponent` 只解析公开组件，并从对应组件子入口按需导入，同时加载 `@moluoxixi/components/styles`。`autoImport` 也按 `configForm`、`CopyText`、`HeadlessTable` 等最小子入口注入运行时 API，避免一个工具函数把根 barrel 带入首包；TypeScript 类型仍需使用 `import type` 显式导入。
 
 ## 请求缓存组件
 

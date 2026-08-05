@@ -20,6 +20,76 @@
     "./styles": {
       "import": "./dist/components.css"
     },
+    "./AntdConfigForm": {
+      "source": "./src/AntdConfigForm/index.ts",
+      "types": "./dist/src/AntdConfigForm/index.d.ts",
+      "import": "./dist/AntdConfigForm.js"
+    },
+    "./ConfigTable": {
+      "source": "./src/ConfigTable/index.ts",
+      "types": "./dist/src/ConfigTable/index.d.ts",
+      "import": "./dist/ConfigTable.js"
+    },
+    "./CopyText": {
+      "source": "./src/CopyText/index.ts",
+      "types": "./dist/src/CopyText/index.d.ts",
+      "import": "./dist/CopyText.js"
+    },
+    "./DateRangePicker": {
+      "source": "./src/DateRangePicker/index.ts",
+      "types": "./dist/src/DateRangePicker/index.d.ts",
+      "import": "./dist/DateRangePicker.js"
+    },
+    "./ElementConfigForm": {
+      "source": "./src/ElementConfigForm/index.ts",
+      "types": "./dist/src/ElementConfigForm/index.d.ts",
+      "import": "./dist/ElementConfigForm.js"
+    },
+    "./EnterNextContainer": {
+      "source": "./src/EnterNextContainer/index.ts",
+      "types": "./dist/src/EnterNextContainer/index.d.ts",
+      "import": "./dist/EnterNextContainer.js"
+    },
+    "./HeadlessCopyText": {
+      "source": "./src/HeadlessCopyText/index.ts",
+      "types": "./dist/src/HeadlessCopyText/index.d.ts",
+      "import": "./dist/HeadlessCopyText.js"
+    },
+    "./HeadlessTable": {
+      "source": "./src/HeadlessTable/index.ts",
+      "types": "./dist/src/HeadlessTable/index.d.ts",
+      "import": "./dist/HeadlessTable.js"
+    },
+    "./PopoverTableSelect": {
+      "source": "./src/PopoverTableSelect/index.ts",
+      "types": "./dist/src/PopoverTableSelect/index.d.ts",
+      "import": "./dist/PopoverTableSelect.js"
+    },
+    "./RequestCascader": {
+      "source": "./src/RequestCascader/index.ts",
+      "types": "./dist/src/RequestCascader/index.d.ts",
+      "import": "./dist/RequestCascader.js"
+    },
+    "./RequestSelectV2": {
+      "source": "./src/RequestSelectV2/index.ts",
+      "types": "./dist/src/RequestSelectV2/index.d.ts",
+      "import": "./dist/RequestSelectV2.js"
+    },
+    "./RequestTreeSelect": {
+      "source": "./src/RequestTreeSelect/index.ts",
+      "types": "./dist/src/RequestTreeSelect/index.d.ts",
+      "import": "./dist/RequestTreeSelect.js"
+    },
+    "./RichTextEditor": {
+      "source": "./src/RichTextEditor/index.ts",
+      "types": "./dist/src/RichTextEditor/index.d.ts",
+      "import": "./dist/RichTextEditor.js"
+    },
+    "./configForm": {
+      "source": "./src/configForm.ts",
+      "types": "./dist/src/configForm.d.ts",
+      "import": "./dist/configForm.js"
+    },
     "./element": {
       "source": "./element.ts",
       "types": "./dist/element.d.ts",
@@ -29,16 +99,6 @@
       "source": "./antd.ts",
       "types": "./dist/antd.d.ts",
       "import": "./dist/antd.js"
-    },
-    "./autoComponent": {
-      "source": "./autoComponent.ts",
-      "types": "./dist/autoComponent.d.ts",
-      "import": "./dist/autoComponent.js"
-    },
-    "./autoImport": {
-      "source": "./autoImport.ts",
-      "types": "./dist/autoImport.d.ts",
-      "import": "./dist/autoImport.js"
     }
   },
   "main": "./dist/index.js",
@@ -46,8 +106,6 @@
   "types": "./dist/index.d.ts",
   "files": [
     "antd.ts",
-    "autoComponent.ts",
-    "autoImport.ts",
     "dist",
     "element.ts",
     "index.ts",
@@ -62,18 +120,8 @@
   "peerDependencies": {
     "ant-design-vue": "^4.2.0",
     "element-plus": "^2.9.0",
-    "unplugin-auto-import": "^19.1.2",
-    "unplugin-vue-components": "^28.4.1",
     "vue": "^3.5.0",
     "zod": "^3.23.0"
-  },
-  "peerDependenciesMeta": {
-    "unplugin-auto-import": {
-      "optional": true
-    },
-    "unplugin-vue-components": {
-      "optional": true
-    }
   },
   "dependencies": {
     "@floating-ui/dom": "catalog:ui",
@@ -96,9 +144,7 @@
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "happy-dom": "catalog:dev",
-    "unplugin-auto-import": "catalog:dev",
     "unplugin-dts": "catalog:dev",
-    "unplugin-vue-components": "catalog:dev",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:build",

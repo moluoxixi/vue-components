@@ -1,14 +1,3 @@
-<script lang="ts">
-// 示例元信息由 playground 通过 import.meta.glob 读取，用于生成侧栏和页面标题。
-export const exampleMeta = {
-  name: 'EnterNextContainer',
-  title: 'EnterNextContainer',
-  category: '表单输入',
-  description: '表单控件之间的 Enter 顺序聚焦和末尾事件场景。',
-  order: 20,
-}
-</script>
-
 <script setup lang="ts">
 import { EnterNextContainer } from '@moluoxixi/components'
 import { reactive, shallowRef } from 'vue'

@@ -1,13 +1,3 @@
-<script lang="ts">
-export const exampleMeta = {
-  name: 'CopyText',
-  title: 'CopyText',
-  category: '通用交互',
-  description: '复制文本的默认视觉、插槽定制与 headless 组合能力。',
-  order: 12,
-}
-</script>
-
 <script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 import { shallowRef } from 'vue'

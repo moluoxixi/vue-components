@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ApiTable from './ApiTable.vue'
 import type { ApiRow } from './ApiTable.vue'
 
 type ApiSectionType = 'props' | 'emits' | 'expose' | 'slots'

@@ -29,7 +29,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - R15: Add an Element Plus-style "edit in playground" action to every runnable demo. The action opens a dedicated, lazily loaded playground with a single Vue SFC editor, manual run, reset, copy, preview, and structured compile/runtime errors.
 - R16: Reuse one hardened SFC compilation boundary for static demos and the playground. It must allow only configured modules, reject unknown files/imports, use unique virtual filenames, clean injected styles on success, failure, rerun, and unmount, and ignore stale async compile results.
 - R17: Keep playground source out of shareable URLs in the first release. Transfer the trusted demo source through an ephemeral same-origin session and provide a safe starter when the playground is opened directly.
-- R18: Publish reusable `autoComponent` and `autoImport` package integrations for `unplugin-vue-components` and `unplugin-auto-import`, with component styles and runtime helper names maintained from one package-owned manifest. The VitePress host and component playground must consume those package integrations themselves.
+- R18: Publish reusable `autoComponent` and `autoImport` integrations for `unplugin-vue-components` and `unplugin-auto-import` from an independent monorepo package, with component styles and runtime helper names maintained from one package-owned manifest. The VitePress host and component playground must consume that package themselves.
 
 ## Acceptance Criteria
 

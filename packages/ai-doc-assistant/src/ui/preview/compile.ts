@@ -1,7 +1,4 @@
 import type { Component } from 'vue'
-// 本地 workspace 组件库运行时（vite.ui.config alias 解析到 dist 实体）。
-import * as Components from '@moluoxixi/components'
-import * as ElementPlusRuntime from 'element-plus'
 /**
  * demo 预览块运行时：把示例 SFC 源码字符串在浏览器内编译为 Vue 组件并挂载真实组件。
  *
@@ -9,8 +6,25 @@ import * as ElementPlusRuntime from 'element-plus'
  * 组件库，CDN 不可解析，故必须在父应用内用 vue3-sfc-loader + moduleCache 注入本地组件库运行时。
  * 该路径已由 .spike/preview 真实浏览器验证通过。
  */
-import * as VueRuntime from 'vue'
-import { loadModule } from 'vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
+async function loadPreviewRuntime() {
+  const [{ loadModule }, VueRuntime, ElementPlusRuntime, Components] = await Promise.all([
+    import('vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'),
+    import('vue'),
+    import('element-plus'),
+    import('@moluoxixi/components'),
+  ])
+
+  return {
+    loadModule,
+    moduleCache: {
+      'vue': VueRuntime,
+      'element-plus': ElementPlusRuntime,
+      'element-plus/dist/index.css': {},
+      '@moluoxixi/components': Components,
+      '@moluoxixi/components/styles': {},
+    },
+  }
+}
 
 /**
  * 把 SFC 源码编译为可挂载组件。
@@ -25,24 +39,14 @@ export async function compileSfc(
   source: string,
   onError: (e: unknown) => void,
 ): Promise<{ component: Component, dispose: () => void }> {
+  const { loadModule, moduleCache } = await loadPreviewRuntime()
   const styleEls: HTMLStyleElement[] = []
   const dispose = (): void => {
     for (const el of styleEls.splice(0))
       el.remove()
   }
   const options = {
-    moduleCache: {
-      // 注入 vue 运行时，保证与宿主同实例（避免双 Vue 实例导致挂载失败）。
-      'vue': VueRuntime,
-      // 示例可直接 `import { ElButton } from 'element-plus'`；宿主入口也已全局注册 Element Plus。
-      'element-plus': ElementPlusRuntime,
-      // 样式副作用模块占位（宿主已全局注入，吞掉避免 loader 再解析）。
-      'element-plus/dist/index.css': {},
-      // 示例里 `import { X } from '@moluoxixi/components'` 命中此处运行时。
-      '@moluoxixi/components': Components,
-      // 样式副作用模块占位（宿主已全局注入，吞掉避免 loader 再解析）。
-      '@moluoxixi/components/styles': {},
-    },
+    moduleCache,
     getFile: async (path: string) => {
       if (path === '/preview.vue' || path.endsWith('.vue'))
         return { getContentData: () => source, type: '.vue' as const }

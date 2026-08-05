@@ -1,14 +1,3 @@
-<script lang="ts">
-// 示例元信息由 playground 通过 import.meta.glob 读取，用于生成侧栏和页面标题。
-export const exampleMeta = {
-  name: 'PopoverTableSelect',
-  title: 'PopoverTableSelect',
-  category: '弹层选择',
-  description: '输入框触发弹层表格、筛选数据并回填选中行的场景。',
-  order: 30,
-}
-</script>
-
 <script setup lang="ts">
 import type { PopoverTableColumn, PopoverTableRow } from '@moluoxixi/components'
 import { PopoverTableSelect } from '@moluoxixi/components'

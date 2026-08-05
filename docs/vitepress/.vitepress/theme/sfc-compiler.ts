@@ -1,7 +1,4 @@
 import type { Component } from 'vue'
-import * as Components from '@docs-components'
-import * as ElementPlusRuntime from 'element-plus'
-import * as VueRuntime from 'vue'
 import { docsSite } from '../docs-site'
 
 export interface LocalSfcCompileOptions {
@@ -14,24 +11,28 @@ export interface LocalSfcCompileResult {
   dispose: () => void
 }
 
-type RuntimeModuleFactory = () => unknown
-
-const runtimeModuleFactories: Readonly<Record<string, RuntimeModuleFactory>> = Object.freeze({
-  'vue': () => VueRuntime,
-  'element-plus': () => ElementPlusRuntime,
-  'element-plus/dist/index.css': () => ({}),
-  [docsSite.packageName]: () => Components,
-  [docsSite.packageStylesImport]: () => ({}),
-})
-
-export const supportedLocalSfcModules = Object.freeze(Object.keys(runtimeModuleFactories))
+export const supportedLocalSfcModules = Object.freeze([
+  'vue',
+  'element-plus',
+  'element-plus/dist/index.css',
+  docsSite.packageName,
+  docsSite.packageStylesImport,
+])
 
 let compileVersion = 0
 
-function createModuleCache(): Record<string, unknown> {
+async function createModuleCache(): Promise<Record<string, unknown>> {
+  const [VueRuntime, ElementPlusRuntime, Components] = await Promise.all([
+    import('vue'),
+    import('element-plus'),
+    import('@docs-components'),
+  ])
   const cache = Object.create(null) as Record<string, unknown>
-  for (const [name, createRuntime] of Object.entries(runtimeModuleFactories))
-    cache[name] = createRuntime()
+  cache.vue = VueRuntime
+  cache['element-plus'] = ElementPlusRuntime
+  cache['element-plus/dist/index.css'] = {}
+  cache[docsSite.packageName] = Components
+  cache[docsSite.packageStylesImport] = {}
   return cache
 }
 
@@ -61,9 +62,12 @@ export async function compileLocalSfc(
   }
 
   try {
-    const { loadModule } = await import('vue3-sfc-loader')
+    const [{ loadModule }, moduleCache] = await Promise.all([
+      import('vue3-sfc-loader'),
+      createModuleCache(),
+    ])
     const component = await loadModule(virtualPath, {
-      moduleCache: createModuleCache(),
+      moduleCache,
       getFile: async (requestedPath: string) => {
         if (requestedPath !== virtualPath)
           throw new Error(`Unsupported SFC file request: ${requestedPath}`)

@@ -1,8 +1,8 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { autoComponent } from '@moluoxixi/components/autoComponent'
-import { autoImport } from '@moluoxixi/components/autoImport'
+import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
 import AutoImport from 'unplugin-auto-import/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -24,7 +24,7 @@ export function createComponentAutoLoadPlugins() {
     Components({
       dts: resolve(__dirname, 'components.d.ts'),
       include: componentIncludes,
-      resolvers: [autoComponent],
+      resolvers: [autoComponent, ElementPlusResolver()],
     }),
   ]
 }

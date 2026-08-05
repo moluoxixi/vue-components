@@ -1,47 +1,23 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-
-interface ExampleMeta {
-  name: string
-  title: string
-  category: string
-  description: string
-  order: number
-}
-
-interface ExampleModule {
-  default: Component
-  exampleMeta: ExampleMeta
-}
-
-interface ExampleItem extends ExampleMeta {
-  component: Component
-}
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import type { ExampleDefinition } from './example-registry'
+import { examples } from './example-registry'
 
 interface ExampleGroup {
   category: string
-  examples: ExampleItem[]
+  examples: ExampleDefinition[]
 }
-
-const exampleModules = import.meta.glob<ExampleModule>([
-  './examples/*.vue',
-  './examples/*/index.vue',
-], { eager: true })
-
-const examples = Object
-  .values(exampleModules)
-  .map((module): ExampleItem => ({
-    ...module.exampleMeta,
-    component: module.default,
-  }))
-  .sort((current, next) => current.order - next.order)
 
 const searchQuery = ref('')
 const activeExampleName = shallowRef<string | null>(null)
+const activeComponent = shallowRef<Component | null>(null)
+const exampleLoadError = ref('')
+const isExampleLoading = ref(false)
+let exampleLoadVersion = 0
 
-function groupExamples(items: ExampleItem[]): ExampleGroup[] {
-  const groups = new Map<string, ExampleItem[]>()
+function groupExamples(items: ExampleDefinition[]): ExampleGroup[] {
+  const groups = new Map<string, ExampleDefinition[]>()
 
   items.forEach((example) => {
     const groupExamples = groups.get(example.category)
@@ -82,8 +58,32 @@ const visibleExampleCount = computed(() => {
   return exampleGroups.value.reduce((count, group) => count + group.examples.length, 0)
 })
 
-const activeExample = computed<ExampleItem | undefined>(() => {
+const activeExample = computed<ExampleDefinition | undefined>(() => {
   return examples.find(example => example.name === activeExampleName.value)
+})
+
+watch(activeExample, async (example) => {
+  const version = ++exampleLoadVersion
+  activeComponent.value = null
+  exampleLoadError.value = ''
+  isExampleLoading.value = Boolean(example)
+
+  if (!example)
+    return
+
+  try {
+    const module = await example.load()
+    if (version === exampleLoadVersion)
+      activeComponent.value = module.default
+  }
+  catch (error) {
+    if (version === exampleLoadVersion)
+      exampleLoadError.value = error instanceof Error ? error.message : String(error)
+  }
+  finally {
+    if (version === exampleLoadVersion)
+      isExampleLoading.value = false
+  }
 })
 
 function syncExampleFromHash(): void {
@@ -238,7 +238,13 @@ onBeforeUnmount(() => {
         </header>
 
         <section class="detail-stage">
-          <component :is="activeExample.component" />
+          <div v-if="isExampleLoading" class="example-status" role="status">
+            正在加载示例...
+          </div>
+          <div v-else-if="exampleLoadError" class="example-status example-status--error" role="alert">
+            示例加载失败：{{ exampleLoadError }}
+          </div>
+          <component :is="activeComponent" v-else-if="activeComponent" />
         </section>
       </ElMain>
     </ElContainer>
@@ -644,6 +650,18 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background: #fff;
   box-shadow: 0 4px 18px rgb(31 35 41 / 4%);
+}
+
+.example-status {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  color: #909399;
+  font-size: 14px;
+}
+
+.example-status--error {
+  color: #f56c6c;
 }
 
 @media (max-width: 900px) {

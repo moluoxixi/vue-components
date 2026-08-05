@@ -2,6 +2,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
+import { createStableChunksPlugin } from '../../scripts/vite-chunks'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 // monorepo 根：用于解析 workspace 组件库实体与放开 dev server 文件访问范围。
@@ -20,7 +21,7 @@ const REPO_ROOT = resolve(__dirname, '..', '..')
  */
 export default defineConfig({
   base: '/__ai-doc/',
-  plugins: [vue()],
+  plugins: [vue(), createStableChunksPlugin()],
   root: resolve(__dirname, 'src/ui'),
   resolve: {
     alias: {

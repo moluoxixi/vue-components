@@ -1,13 +1,3 @@
-<script lang="ts">
-export const exampleMeta = {
-  name: 'HeadlessTable',
-  title: 'HeadlessTable',
-  category: '数据展示',
-  description: '由无样式的表格内核驱动 Element Plus Table，列、renderer 和 slots 均由配置控制。',
-  order: 25,
-}
-</script>
-
 <script setup lang="ts">
 import type {
   HeadlessTableColumn,

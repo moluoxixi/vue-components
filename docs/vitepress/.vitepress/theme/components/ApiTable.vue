@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { formatDocsMessage } from '../../docs-i18n'
 import { useDocsLocale } from '../use-docs-locale'
+import TypeCell from './TypeCell.vue'
 
 export interface ApiRow {
   name: string

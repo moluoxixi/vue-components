@@ -1,14 +1,3 @@
-<script lang="ts">
-// 示例元信息由 playground 通过 import.meta.glob 读取，用于生成侧栏和页面标题。
-export const exampleMeta = {
-  name: 'DateRangePicker',
-  title: 'DateRangePicker',
-  category: '表单输入',
-  description: '统一日期选择器的范围、时间范围和输出格式场景。',
-  order: 10,
-}
-</script>
-
 <script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { reactive, shallowRef } from 'vue'

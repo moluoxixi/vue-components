@@ -1,13 +1,13 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { autoComponent } from '@moluoxixi/components/autoComponent'
-import { autoImport } from '@moluoxixi/components/autoImport'
+import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
 import Vue from '@vitejs/plugin-vue'
 import VueJsx from '@vitejs/plugin-vue-jsx'
 import AutoImport from 'unplugin-auto-import/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
+import { createStableChunksPlugin } from '../../scripts/vite-chunks'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const playgroundSource = /[\\/]playgrounds[\\/]components-playground[\\/]src[\\/].*(?:\.[jt]sx?|\.vue(?:\?vue.*)?)$/
@@ -25,6 +25,11 @@ export default defineConfig({
     Components({
       dts: resolve(__dirname, 'src/components.d.ts'),
       resolvers: [autoComponent, ElementPlusResolver()],
+    }),
+    createStableChunksPlugin({
+      element: false,
+      query: false,
+      sfcRuntime: false,
     }),
   ],
   resolve: {

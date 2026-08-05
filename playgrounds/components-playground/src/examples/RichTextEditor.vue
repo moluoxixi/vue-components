@@ -1,13 +1,3 @@
-<script lang="ts">
-export const exampleMeta = {
-  name: 'RichTextEditor',
-  title: 'RichTextEditor',
-  category: '表单输入',
-  description: '支持 HTML 双向绑定、常用格式、链接、列表、对齐和历史操作的富文本编辑器。',
-  order: 15,
-}
-</script>
-
 <script setup lang="ts">
 import { RichTextEditor } from '@moluoxixi/components'
 import { shallowRef } from 'vue'

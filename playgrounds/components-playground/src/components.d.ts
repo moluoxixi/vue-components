@@ -31,6 +31,6 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
-    HeadlessCopyText: typeof import('@moluoxixi/components')['HeadlessCopyText']
+    HeadlessCopyText: typeof import('@moluoxixi/components/HeadlessCopyText')['HeadlessCopyText']
   }
 }

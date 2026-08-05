@@ -1,14 +1,3 @@
-<script lang="ts">
-// 示例元信息由 playground 通过 import.meta.glob 读取，用于生成侧栏和页面标题。
-export const exampleMeta = {
-  name: 'ElementConfigForm',
-  title: 'ElementConfigForm',
-  category: '配置表单',
-  description: 'components 包内置 Element Plus 配置表单的字段写回、条件字段和提交场景。',
-  order: 40,
-}
-</script>
-
 <script setup lang="ts">
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import { defineFields } from '@moluoxixi/config-form-headless'
