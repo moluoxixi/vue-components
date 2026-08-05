@@ -92,7 +92,7 @@ describe('chat view', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="answer"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="answer"]').exists()).toBe(true)
     expect(wrapper.element.lastElementChild).toBe(wrapper.get('[data-testid="ask-panel"]').element)
     expect(wrapper.get('[data-testid="chat-need-index"]').text()).toContain('正在准备')
     expect(wrapper.get('[data-testid="ask-btn"]').attributes('disabled')).toBeDefined()

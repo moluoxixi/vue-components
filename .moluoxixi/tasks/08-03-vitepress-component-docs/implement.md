@@ -11,6 +11,11 @@
 9. Add component changelog rendering, locale-aware custom-theme messages, and English route generation.
 10. Centralize repository-specific settings and document why the reusable theme keeps VitePress DefaultTheme as its base.
 11. Move component changelogs from the generated page body into a responsive header dialog while keeping API documentation and contributors as invariant footer content.
+12. Repair root lint/typecheck coverage, add a docs tsconfig/typecheck script, include omitted package tests, and resolve every newly surfaced project error.
+13. Extract a hardened documentation SFC compiler and migrate `Demo.vue` to unique entry paths, strict file/module resolution, complete style disposal, runtime error capture, and stale-run protection.
+14. Add a stable Demo identifier and an Element Plus-style playground action that transfers source through an ephemeral same-origin session.
+15. Add the standalone lazy playground route/component with single-SFC editing, run/reset/copy controls, responsive layout, and compile/runtime diagnostics.
+16. Add unit tests for compiler cleanup/session behavior and browser coverage for opening, editing, rerunning, failure recovery, reset, and mobile layout.
 
 ## Validation Commands
 
@@ -20,6 +25,9 @@ pnpm build
 pnpm typecheck
 pnpm --filter @moluoxixi/docs extract-api
 pnpm --filter @moluoxixi/docs build
+pnpm --filter @moluoxixi/docs typecheck
+pnpm exec eslint packages docs/vitepress playgrounds scripts
+pnpm test:e2e:components
 pnpm --filter @moluoxixi/docs sync-github-metadata
 pnpm --filter @moluoxixi/docs exec vitepress dev --host 127.0.0.1 --port 5174
 ```

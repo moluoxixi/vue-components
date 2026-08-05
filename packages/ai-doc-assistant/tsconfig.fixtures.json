@@ -1,9 +1,9 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "composite": false,
     "lib": ["DOM", "dom.iterable", "ESNext"],
+    "baseUrl": ".",
     "paths": {
       "@fixture/contracts": ["__tests__/fixtures/WorkspaceTypeGraph/packages/contracts/index.ts"]
     },

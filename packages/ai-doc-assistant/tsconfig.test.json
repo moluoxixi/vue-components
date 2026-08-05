@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client", "vitest"],
+    "noEmit": true
+  },
+  "include": [
+    "src",
+    "index.ts",
+    "cli.ts",
+    "__tests__",
+    "__e2e__",
+    "playwright.config.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["__tests__/fixtures"]
+}

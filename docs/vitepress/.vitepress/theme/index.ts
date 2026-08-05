@@ -3,6 +3,7 @@ import * as MxComponents from '@docs-components'
 import { VueQueryPlugin } from '@tanstack/vue-query'
 import ElementPlus, { ID_INJECTION_KEY, ZINDEX_INJECTION_KEY } from 'element-plus'
 import DefaultTheme from 'vitepress/theme'
+import { defineAsyncComponent } from 'vue'
 import ApiDocs from './components/ApiDocs.vue'
 import ApiTable from './components/ApiTable.vue'
 import ComponentDocMeta from './components/ComponentDocMeta.vue'
@@ -14,6 +15,8 @@ import TypeCell from './components/TypeCell.vue'
 import 'element-plus/dist/index.css'
 import '@docs-components/styles'
 import './styles/index.css'
+
+const Playground = defineAsyncComponent(() => import('./components/Playground.vue'))
 
 const theme: Theme = {
   extends: DefaultTheme,
@@ -41,6 +44,7 @@ const theme: Theme = {
     app.component('DocContributors', DocContributors)
     app.component('TypeCell', TypeCell)
     app.component('OverviewHome', OverviewHome)
+    app.component('Playground', Playground)
   },
 }
 

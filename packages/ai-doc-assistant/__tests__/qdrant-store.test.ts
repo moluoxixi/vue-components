@@ -1,4 +1,5 @@
 import type { AddressInfo, Server } from 'node:net'
+import type { VectorDoc } from '../src/core/vector-store'
 import { Buffer } from 'node:buffer'
 /**
  * QdrantVectorStore 真实 HTTP 往返测试。
@@ -113,9 +114,30 @@ function startFakeQdrant(): Promise<{ server: Server, url: string, calls: string
 
 /** 造一个指定维度、在某一维置 1 的单位向量，便于构造可预期的相似度排序。 */
 function unitVec(hot: number): number[] {
-  const v = Array.from({ length: EMBEDDING_DIM }).fill(0)
+  const v = Array.from({ length: EMBEDDING_DIM }).fill(0) as number[]
   v[hot] = 1
   return v
+}
+
+function vectorDoc(
+  component: string,
+  packageName: string,
+  docPath: string,
+  body: string,
+  example: string,
+  embedding: number[],
+): VectorDoc {
+  return {
+    component,
+    packageName,
+    docPath,
+    source: 'internal',
+    knowledgeKey: `internal:${packageName}:${component}`,
+    body,
+    example,
+    exampleJs: example,
+    embedding,
+  }
 }
 
 describe('qdrantVectorStore 真实 HTTP 往返', () => {
@@ -132,22 +154,8 @@ describe('qdrantVectorStore 真实 HTTP 往返', () => {
   it('build 后经真实 HTTP search 命中最相近文档', async () => {
     const store = new QdrantVectorStore({ url: fake.url, collection: 'docs' })
     await store.build([
-      {
-        component: 'ElButton',
-        packageName: '@moluoxixi/button',
-        docPath: 'packages/button/src/index.vue',
-        body: '按钮组件 支持类型与尺寸',
-        example: '<ElButton type="primary" />',
-        embedding: unitVec(0),
-      },
-      {
-        component: 'ElTable',
-        packageName: '@moluoxixi/table',
-        docPath: 'packages/table/src/index.vue',
-        body: '表格组件 支持分页与排序',
-        example: '<ElTable :data="rows" />',
-        embedding: unitVec(1),
-      },
+      vectorDoc('ElButton', '@moluoxixi/button', 'packages/button/src/index.vue', '按钮组件 支持类型与尺寸', '<ElButton type="primary" />', unitVec(0)),
+      vectorDoc('ElTable', '@moluoxixi/table', 'packages/table/src/index.vue', '表格组件 支持分页与排序', '<ElTable :data="rows" />', unitVec(1)),
     ])
 
     expect(store.isReady()).toBe(true)
@@ -172,14 +180,7 @@ describe('qdrantVectorStore 真实 HTTP 往返', () => {
   it('维度不匹配在 build 时显式抛错', async () => {
     const store = new QdrantVectorStore({ url: fake.url, collection: 'docs3' })
     await expect(store.build([
-      {
-        component: 'Bad',
-        packageName: '@moluoxixi/bad',
-        docPath: 'x.vue',
-        body: 'b',
-        example: 'e',
-        embedding: [1, 2, 3],
-      },
+      vectorDoc('Bad', '@moluoxixi/bad', 'x.vue', 'b', 'e', [1, 2, 3]),
     ])).rejects.toThrow(/dim mismatch/)
   })
 
@@ -197,14 +198,7 @@ describe('qdrantVectorStore 真实 HTTP 往返', () => {
     // 真正的 4xx 由请求工具的 res.ok 判定覆盖（见 qdrant-store.request）。
     const store = new QdrantVectorStore({ url: `${fake.url}`, collection: 'docs5' })
     await store.build([
-      {
-        component: 'Solo',
-        packageName: '@moluoxixi/solo',
-        docPath: 's.vue',
-        body: 'b',
-        example: 'e',
-        embedding: unitVec(2),
-      },
+      vectorDoc('Solo', '@moluoxixi/solo', 's.vue', 'b', 'e', unitVec(2)),
     ])
     const r = await store.search('q', unitVec(400), 1)
     // 查询向量与库内向量正交 → 相似度 0，低于阈值 → empty

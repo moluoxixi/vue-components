@@ -16,7 +16,7 @@ describe('streamQuery', () => {
         controller.close()
       },
     })
-    const fetchMock = vi.fn(async () => new Response(body, { status: 200 }))
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(body, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const history: ChatHistoryMessage[] = [
       { role: 'user', content: 'first' },
@@ -27,7 +27,9 @@ describe('streamQuery', () => {
 
     await streamQuery('follow-up', 5, history, event => events.push(event.type), controller.signal)
 
-    const init = fetchMock.mock.calls[0][1] as RequestInit
+    const init = fetchMock.mock.calls[0][1]
+    if (!init)
+      throw new Error('expected fetch request init')
     expect(init.signal).toBe(controller.signal)
     expect(JSON.parse(String(init.body))).toEqual({ question: 'follow-up', topK: 5, history })
     expect(events).toEqual(['token', 'done'])

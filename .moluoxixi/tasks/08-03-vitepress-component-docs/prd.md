@@ -25,6 +25,10 @@ Deliver a production-ready component-library documentation site whose navigation
 - R11: Support `zh-CN` and `en-US` for generated routes, navigation, and custom-theme UI. Handwritten component prose may be translated incrementally through locale-specific source documents.
 - R12: Keep the documentation solution fast to adopt in another component library by centralizing repository, package, source-path, route, locale, and GitHub-sync settings.
 - R13: Evaluate a full replacement of VitePress DefaultTheme. Retain it unless a replacement demonstrably improves reuse without regressing search, navigation, responsive behavior, dark mode, or accessibility.
+- R14: Make repository quality gates truthful for the documentation work: root lint must not be dominated by managed Moluoxixi/Codex output, and type checking must cover the docs package plus package-level test suites that are currently omitted by incorrect or incomplete tsconfig includes.
+- R15: Add an Element Plus-style "edit in playground" action to every runnable demo. The action opens a dedicated, lazily loaded playground with a single Vue SFC editor, manual run, reset, copy, preview, and structured compile/runtime errors.
+- R16: Reuse one hardened SFC compilation boundary for static demos and the playground. It must allow only configured modules, reject unknown files/imports, use unique virtual filenames, clean injected styles on success, failure, rerun, and unmount, and ignore stale async compile results.
+- R17: Keep playground source out of shareable URLs in the first release. Transfer the trusted demo source through an ephemeral same-origin session and provide a safe starter when the playground is opened directly.
 
 ## Acceptance Criteria
 
@@ -40,6 +44,11 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] Every component page opens its changelog from the fixed header metadata in an accessible dialog, including commit message, SHA, author, date, and GitHub URL; API documentation and contributors remain fixed footer content.
 - [x] Chinese and English locale routes build successfully, and all custom-theme controls use locale messages.
 - [x] Repository-specific values are isolated in one reusable documentation configuration module.
+- [x] Root lint reports actionable project findings without traversing managed workflow/runtime output, and the scoped business lint passes.
+- [x] Root type checking covers `docs/vitepress` and the previously omitted package test suites; all newly covered TypeScript errors are resolved.
+- [x] Every runnable Demo exposes a keyboard-accessible playground action that opens a dedicated editor without adding the editor implementation to ordinary component-page bundles.
+- [x] The playground can run, reset, and copy one Vue SFC, reports compile and runtime failures, remains usable at desktop/mobile widths, and does not auto-run source supplied through the URL.
+- [x] Static demos and repeated playground runs do not reuse stale modules or leak styles, and focused unit/browser tests cover those failure paths.
 
 ## Out Of Scope
 
@@ -47,3 +56,4 @@ Deliver a production-ready component-library documentation site whose navigation
 - Documenting standalone ConfigForm adapter packages that are not exported by `@moluoxixi/components`.
 - Reworking `packages/ai-doc-assistant` features beyond what is required to consume its existing public contract output.
 - Changing component runtime APIs to make documentation easier.
+- Arbitrary npm installation, relative multi-file imports, preprocessors, asset files, collaborative editing, persistence, and source-sharing URLs in the playground.

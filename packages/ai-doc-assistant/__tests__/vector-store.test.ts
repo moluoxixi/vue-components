@@ -7,13 +7,16 @@ import { createVectorStore, VECTOR_STORE_KINDS } from '../src/core/vector-store'
 function makeDoc(component: string, body: string, vec: number[]): VectorDoc {
   const embedding = vec.length === EMBEDDING_DIM
     ? vec
-    : [...vec, ...Array.from({ length: EMBEDDING_DIM - vec.length }).fill(0)]
+    : [...vec, ...(Array.from({ length: EMBEDDING_DIM - vec.length }).fill(0) as number[])]
   return {
     component,
     packageName: '@x/c',
     docPath: `${component}.md`,
+    source: 'internal',
+    knowledgeKey: `internal:@x/c:${component}`,
     body,
     example: `<${component} />`,
+    exampleJs: `<${component} />`,
     embedding,
   }
 }
@@ -68,8 +71,11 @@ describe('oramaVectorStore 构建与检索', () => {
       component: 'Bad',
       packageName: '@x/c',
       docPath: 'Bad.md',
+      source: 'internal',
+      knowledgeKey: 'internal:@x/c:Bad',
       body: 'x',
       example: '<Bad />',
+      exampleJs: '<Bad />',
       embedding: [1, 2, 3], // 远小于 EMBEDDING_DIM
     }
     await expect(store.build([bad])).rejects.toThrow(/embedding dim mismatch/)
@@ -77,7 +83,7 @@ describe('oramaVectorStore 构建与检索', () => {
 
   it('未 build 即 search 显式抛错，不伪装无命中', async () => {
     const store = await createVectorStore('orama')
-    const v = Array.from({ length: EMBEDDING_DIM }).fill(0)
+    const v = Array.from({ length: EMBEDDING_DIM }).fill(0) as number[]
     await expect(store.search('任意查询', v, 5)).rejects.toThrow(/not built/)
   })
 })

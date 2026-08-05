@@ -7,7 +7,7 @@ interface Detail { id: number, title: string }
 
 describe('useDetailPage', () => {
   it('主键存在时拉取详情并暴露 detail', async () => {
-    const fetcher = vi.fn(async (id: number): Promise<Detail> => ({ id, title: `t-${id}` }))
+    const fetcher = vi.fn(async (id: string | number): Promise<Detail> => ({ id: Number(id), title: `t-${id}` }))
     const { result, unmount } = withSetup(() => useDetailPage<Detail>({ queryKey: 'detail', fetcher, id: 7 }))
 
     await waitFor(() => !result.isLoading.value)
@@ -18,7 +18,7 @@ describe('useDetailPage', () => {
   })
 
   it('主键为 null 时禁用查询，不发起请求', async () => {
-    const fetcher = vi.fn(async (id: number): Promise<Detail> => ({ id, title: `t-${id}` }))
+    const fetcher = vi.fn(async (id: string | number): Promise<Detail> => ({ id: Number(id), title: `t-${id}` }))
     const { result, unmount } = withSetup(() => useDetailPage<Detail>({ queryKey: 'detail', fetcher, id: null }))
 
     await new Promise(r => setTimeout(r, 50))
@@ -29,7 +29,7 @@ describe('useDetailPage', () => {
   })
 
   it('主键从空变为有值时自动启用并拉取', async () => {
-    const fetcher = vi.fn(async (id: number): Promise<Detail> => ({ id, title: `t-${id}` }))
+    const fetcher = vi.fn(async (id: string | number): Promise<Detail> => ({ id: Number(id), title: `t-${id}` }))
     const id = ref<number | null>(null)
     const { result, unmount } = withSetup(() => useDetailPage<Detail>({ queryKey: 'detail', fetcher, id }))
 
@@ -44,7 +44,7 @@ describe('useDetailPage', () => {
   })
 
   it('enabled 为 false 时即使有主键也不查询', async () => {
-    const fetcher = vi.fn(async (id: number): Promise<Detail> => ({ id, title: `t-${id}` }))
+    const fetcher = vi.fn(async (id: string | number): Promise<Detail> => ({ id: Number(id), title: `t-${id}` }))
     const { result, unmount } = withSetup(() => useDetailPage<Detail>({ queryKey: 'detail', fetcher, id: 1, enabled: false }))
 
     await new Promise(r => setTimeout(r, 50))

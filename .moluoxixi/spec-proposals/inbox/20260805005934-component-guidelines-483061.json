@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260805005934-component-guidelines-483061",
+  "createdAt": "2026-08-05T00:59:34.320Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-03-vitepress-component-docs",
+  "reason": "Preserve the validated browser SFC compiler lifecycle, allowlist, cleanup, and stale-result contract for documentation previews.",
+  "target": "frontend/component-guidelines.md",
+  "kind": "file",
+  "baseHash": "7ca6ea4f9305a8267b7570505f9ebf6030bb5911cbe3f2a135cfb7ebd402805b",
+  "contentFile": "content/20260805005934-component-guidelines-483061.md",
+  "contentHash": "a3940fc0a7ac822db9f38feb94b95888be6d0c424ae7f7c2cd15969ccbea131c"
+}

@@ -14,10 +14,10 @@ function makeContract(over: Partial<ComponentContract> = {}): ComponentContract 
       { name: 'count', type: 'number', required: true, defaultValue: null, description: '计数', typeRefs: [] },
     ],
     emits: [
-      { name: 'click', payloadType: 'MouseEvent', description: '点击事件' },
+      { name: 'click', payloadType: 'MouseEvent', description: '点击事件', typeRefs: [] },
     ],
     slots: [
-      { name: 'default', scopeType: '', description: '默认插槽' },
+      { name: 'default', scopeType: '', description: '默认插槽', typeRefs: [] },
     ],
     models: [
       { name: 'modelValue', type: 'string', description: '双向绑定值' },
@@ -119,8 +119,8 @@ describe('renderExampleSkeleton', () => {
         { name: 'popType', type: 'PopoverTablePopType', required: false, defaultValue: '\'input\'', description: '触发方式', typeRefs: [] },
         { name: 'debounce', type: 'number', required: false, defaultValue: '0', description: '防抖', typeRefs: [] },
       ],
-      emits: [{ name: 'select', payloadType: 'PopoverTableRow', description: '选择行' }],
-      slots: [{ name: '[dynamic]', scopeType: 'Record<string, any>', description: '按列 field 声明的单元格插槽' }],
+      emits: [{ name: 'select', payloadType: 'PopoverTableRow', description: '选择行', typeRefs: [] }],
+      slots: [{ name: '[dynamic]', scopeType: 'Record<string, any>', description: '按列 field 声明的单元格插槽', typeRefs: [] }],
       models: [],
       typeDefs: [
         {
@@ -187,7 +187,7 @@ describe('renderExampleSkeleton', () => {
   it('事件 payload 为联合类型时逐个导入用到的契约类型', () => {
     const c = makeContract({
       props: [],
-      emits: [{ name: 'change', payloadType: 'FooPayload | BarPayload', description: '变更事件' }],
+      emits: [{ name: 'change', payloadType: 'FooPayload | BarPayload', description: '变更事件', typeRefs: [] }],
       slots: [],
       models: [],
       typeDefs: [
@@ -209,7 +209,7 @@ describe('renderExampleSkeleton', () => {
         { name: 'columns', type: 'TableColumn[]', required: false, defaultValue: null, description: '列定义', typeRefs: ['TableColumn'] },
       ],
       emits: [],
-      slots: [{ name: 'default', scopeType: '', description: '渲染每一列内容' }],
+      slots: [{ name: 'default', scopeType: '', description: '渲染每一列内容', typeRefs: [] }],
       models: [],
       typeDefs: [
         {

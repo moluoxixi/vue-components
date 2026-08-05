@@ -18,7 +18,7 @@ import { Retriever } from '../src/core/retriever'
 const VOCAB = ['date', 'range', 'picker', 'button', 'click', 'disabled', 'table', 'select']
 function stubEmbed(texts: string[]): Promise<number[][]> {
   return Promise.resolve(texts.map((t) => {
-    const vec = Array.from({ length: EMBEDDING_DIM }).fill(0)
+    const vec = Array.from({ length: EMBEDDING_DIM }).fill(0) as number[]
     const lower = t.toLowerCase()
     VOCAB.forEach((word, i) => {
       if (lower.includes(word))
@@ -34,7 +34,7 @@ function contract(name: string, desc: string): ComponentContract {
     packageName: '@moluoxixi/components',
     description: desc,
     props: [{ name: 'disabled', type: 'boolean', required: false, defaultValue: 'false', description: '禁用', typeRefs: [] }],
-    emits: [{ name: 'click', payloadType: 'MouseEvent', description: '点击' }],
+    emits: [{ name: 'click', payloadType: 'MouseEvent', description: '点击', typeRefs: [] }],
     slots: [],
     models: [],
     sourceFile: `packages/components/src/${name}/src/index.vue`,

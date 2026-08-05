@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/docs",
-  "version": "0.1.0",
   "type": "module",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "predev": "pnpm extract-api && pnpm validate-github-metadata",
@@ -13,7 +13,8 @@
     "validate-github-metadata": "node scripts/validate-github-metadata.mts",
     "preextract-api": "pnpm --filter @moluoxixi/ai-doc-assistant build",
     "extract-api": "node scripts/extract-api.mts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@lucide/vue": "catalog:ui",
@@ -22,14 +23,19 @@
     "@tanstack/vue-query": "catalog:data",
     "element-plus": "catalog:ui",
     "vue": "catalog:build",
-    "vue3-sfc-loader": "0.9.5"
+    "vue3-sfc-loader": "catalog:"
   },
   "devDependencies": {
-    "@types/markdown-it-container": "^2.0.6",
+    "@types/markdown-it": "catalog:",
+    "@types/markdown-it-container": "catalog:",
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
-    "markdown-it-container": "^3.0.0",
-    "vitepress": "^1.6.3",
-    "vitest": "catalog:dev"
+    "@vue/test-utils": "catalog:dev",
+    "happy-dom": "catalog:dev",
+    "markdown-it-container": "catalog:",
+    "vite": "catalog:dev",
+    "vitepress": "catalog:",
+    "vitest": "catalog:dev",
+    "vue-tsc": "catalog:dev"
   }
 }

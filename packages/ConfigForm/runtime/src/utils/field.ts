@@ -188,21 +188,21 @@ type DefineFieldComponentNodeConfig<
   : ComponentNodeConfigCore<C, NoInfer<TValues>>
 
 interface DefineFieldFactory<TValues extends object> {
-  <C = unknown, TSchema extends ZodTypeAny = ZodTypeAny>(
-    config: DefineFieldSchemaConfig<TValues, C, TSchema>,
-  ): DefinedFieldConfig<DefineFieldSchemaConfig<TValues, C, TSchema>>
-  <C = unknown, TValue = unknown>(
-    config: DefineFieldDefaultValueConfig<TValues, C, TValue>,
-  ): DefinedFieldConfig<DefineFieldDefaultValueConfig<TValues, C, TValue>>
+  <C = unknown, TSchema extends ZodTypeAny = ZodTypeAny, TField extends string = string>(
+    config: DefineFieldSchemaConfig<NoInfer<TValues>, C, TSchema, TField>,
+  ): DefinedFieldConfig<DefineFieldSchemaConfig<TValues, C, TSchema, TField>>
+  <C = unknown, TValue = unknown, TField extends string = string>(
+    config: DefineFieldDefaultValueConfig<NoInfer<TValues>, C, TValue, TField>,
+  ): DefinedFieldConfig<DefineFieldDefaultValueConfig<TValues, C, TValue, TField>>
+  <C = unknown, TField extends string = string>(
+    config: DefineFieldUnknownValueConfig<NoInfer<TValues>, C, TField>,
+  ): DefinedFieldConfig<DefineFieldUnknownValueConfig<TValues, C, TField>>
   <C = unknown>(
-    config: DefineFieldUnknownValueConfig<TValues, C>,
-  ): DefinedFieldConfig<DefineFieldUnknownValueConfig<TValues, C>>
-  <C = unknown>(
-    config: DefineFieldComponentNodeConfig<TValues, C>,
+    config: DefineFieldComponentNodeConfig<NoInfer<TValues>, C>,
   ): DefinedComponentNodeConfig<DefineFieldComponentNodeConfig<TValues, C>>
 }
 
-export interface DefineFieldsFactory<TValues extends FormValues> {
+export interface DefineFieldsFactory<TValues extends object> {
   defineField: DefineFieldFactory<TValues>
 }
 
@@ -227,33 +227,36 @@ export function defineField<
   TValues extends object = FormValues,
   C = unknown,
   TSchema extends ZodTypeAny = ZodTypeAny,
+  TField extends string = string,
 >(
-  config: DefineFieldSchemaConfig<TValues, C, TSchema>,
-): DefinedFieldConfig<DefineFieldSchemaConfig<TValues, C, TSchema>>
+  config: DefineFieldSchemaConfig<NoInfer<TValues>, C, TSchema, TField>,
+): DefinedFieldConfig<DefineFieldSchemaConfig<TValues, C, TSchema, TField>>
 
 /** 根据 defaultValue 推导字段值类型；传入表单模型泛型时以模型字段值为准。 */
 export function defineField<
   TValues extends object = FormValues,
   C = unknown,
   TValue = unknown,
+  TField extends string = string,
 >(
-  config: DefineFieldDefaultValueConfig<TValues, C, TValue>,
-): DefinedFieldConfig<DefineFieldDefaultValueConfig<TValues, C, TValue>>
+  config: DefineFieldDefaultValueConfig<NoInfer<TValues>, C, TValue, TField>,
+): DefinedFieldConfig<DefineFieldDefaultValueConfig<TValues, C, TValue, TField>>
 
 /** 没有 schema/defaultValue 时字段值保持 unknown，传入表单模型泛型时仍约束字段名。 */
 export function defineField<
   TValues extends object = FormValues,
   C = unknown,
+  TField extends string = string,
 >(
-  config: DefineFieldUnknownValueConfig<TValues, C>,
-): DefinedFieldConfig<DefineFieldUnknownValueConfig<TValues, C>>
+  config: DefineFieldUnknownValueConfig<NoInfer<TValues>, C, TField>,
+): DefinedFieldConfig<DefineFieldUnknownValueConfig<TValues, C, TField>>
 
 /** 定义用于 slot 或顶层布局的容器节点。 */
 export function defineField<
   TValues extends object = FormValues,
   C = unknown,
 >(
-  config: DefineFieldComponentNodeConfig<TValues, C>,
+  config: DefineFieldComponentNodeConfig<NoInfer<TValues>, C>,
 ): DefinedComponentNodeConfig<DefineFieldComponentNodeConfig<TValues, C>>
 
 /** 所有 defineField 重载共用的运行时实现，只负责复制配置，不写入隐藏标记。 */
@@ -266,7 +269,7 @@ export function defineField(config: FormNodeInput): DefinedFormNodeConfig {
  *
  * 工厂只提供类型上下文，不保存运行时状态；返回的 defineField 仍然只复制字段配置。
  */
-export function defineFields<TValues extends FormValues = FormValues>(): DefineFieldsFactory<TValues> {
+export function defineFields<TValues extends object = FormValues>(): DefineFieldsFactory<TValues> {
   return {
     defineField: defineField as unknown as DefineFieldFactory<TValues>,
   }

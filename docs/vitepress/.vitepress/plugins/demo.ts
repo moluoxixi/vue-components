@@ -1,14 +1,23 @@
 import type MarkdownIt from 'markdown-it'
 import type Token from 'markdown-it/lib/token.mjs'
 import { Buffer } from 'node:buffer'
+import { createHash } from 'node:crypto'
 import container from 'markdown-it-container'
+
+// markdown-it-container still publishes MarkdownIt 13 types while VitePress uses 14.
+// Keep the compatibility cast at the plugin boundary; its runtime API is unchanged.
+const compatibleContainer = container as unknown as Parameters<MarkdownIt['use']>[0]
 
 function encodeBase64(str: string): string {
   return Buffer.from(str, 'utf-8').toString('base64')
 }
 
+export function createDemoId(title: string, code: string): string {
+  return `demo-${createHash('sha256').update(title).update('\0').update(code).digest('hex').slice(0, 16)}`
+}
+
 export function demoPlugin(md: MarkdownIt): void {
-  md.use(container, 'demo', {
+  md.use(compatibleContainer, 'demo', {
     validate(params: string) {
       return /^demo\b/.test(params.trim())
     },
@@ -35,10 +44,11 @@ export function demoPlugin(md: MarkdownIt): void {
           }
         }
 
-        const safeTitle = title.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+        const safeTitle = md.utils.escapeHtml(title)
         const encodedCode = encodeBase64(code)
         const encodedHl = encodeBase64(highlighted)
-        return `<Demo code="${encodedCode}" highlighted="${encodedHl}" title="${safeTitle}">\n`
+        const demoId = createDemoId(title, code)
+        return `<Demo demo-id="${demoId}" code="${encodedCode}" highlighted="${encodedHl}" title="${safeTitle}">\n`
       }
       else {
         return `</Demo>\n`

@@ -2,18 +2,18 @@ shellEmulator: true
 
 trustPolicy: no-downgrade
 
-overrides:
-  vitepress>vite: "5.4.14"
-
 packages:
   - 'packages/*'
   - 'packages/ConfigForm/*'
   - 'playgrounds/*'
-  - 'docs/vitepress'
+  - docs/vitepress
+
+overrides:
+  vitepress>vite: 5.4.14
 
 catalog:
   '@huggingface/transformers': ^4.0.0
-  '@opencode-ai/plugin': ^1.14.39
+  '@types/markdown-it': ^14.1.2
   '@types/markdown-it-container': ^2.0.6
   markdown-it-container: ^3.0.0
   vitepress: ^1.6.3
@@ -59,6 +59,7 @@ catalogs:
     '@types/node': ^25.6.0
   ui:
     '@floating-ui/dom': ^1.8.0
+    '@lucide/vue': ^1.28.0
     '@tiptap/core': ^3.29.2
     '@tiptap/extension-placeholder': ^3.29.2
     '@tiptap/extension-text-align': ^3.29.2
@@ -67,4 +68,3 @@ catalogs:
     '@tiptap/vue-3': ^3.29.2
     ant-design-vue: ^4.2.6
     element-plus: ^2.9.1
-    '@lucide/vue': ^1.28.0

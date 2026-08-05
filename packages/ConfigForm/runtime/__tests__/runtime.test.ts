@@ -318,7 +318,7 @@ describe('form runtime', () => {
   })
 
   it('merges readonly adapters from runtime config and keeps key conflicts explicit', () => {
-    const readonlyAdapter: ReadonlyAdapter = ({ value }) => value
+    const readonlyAdapter: ReadonlyAdapter = ({ value }) => String(value)
 
     const runtime = createFormRuntime({
       readonlyAdapters: {
@@ -336,7 +336,7 @@ describe('form runtime', () => {
         {
           name: 'readonly-conflict',
           readonlyAdapters: {
-            MyInput: ({ value }) => value,
+            MyInput: ({ value }) => String(value),
           },
         },
       ],

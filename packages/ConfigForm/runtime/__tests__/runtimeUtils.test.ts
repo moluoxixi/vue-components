@@ -262,7 +262,7 @@ describe('runtime utilities', () => {
 
     const resolved = resolveSlotNodes([
       field,
-      [renderSlot, identifiedNode],
+      [renderSlot, identifiedNode] as never,
     ], 'default')
 
     expect(resolved).toEqual([

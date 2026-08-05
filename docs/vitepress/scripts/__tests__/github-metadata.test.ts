@@ -85,7 +85,7 @@ describe('gitHub documentation metadata', () => {
       expect(new Set(component.commits.map(commit => commit.sha)).size).toBe(component.commits.length)
       expect(component.contributors.length, name).toBeGreaterThan(0)
       component.contributors.forEach((contributor) => {
-        expect(snapshot.profiles[contributor.login], `${name}: ${contributor.login}`).toBeDefined()
+        expect(Object.hasOwn(snapshot.profiles, contributor.login), `${name}: ${contributor.login}`).toBe(true)
         expect(contributor.contributions).toBeGreaterThan(0)
       })
     }

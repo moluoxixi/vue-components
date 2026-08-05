@@ -10,6 +10,9 @@ The custom theme extends VitePress DefaultTheme and owns four presentation compo
 - `ApiTable.vue`: renders one generated contract section.
 - `TypeCell.vue`: renders compact type text with an accessible expanded-type tooltip.
 - `OverviewCard.vue`: renders the shared overview card grid used by the home and component overview routes.
+- `Playground.vue`: owns the dedicated single-SFC editor, manual execution controls, preview, and compile/runtime diagnostics.
+
+`Demo.vue` and `Playground.vue` consume one documentation-local SFC compiler instead of maintaining separate `vue3-sfc-loader` adapters. The compiler receives an explicit module allowlist, accepts exactly one versioned virtual entry path, returns a disposer for injected styles, and removes partial styles before propagating failures.
 
 ## API Data Flow
 
@@ -39,6 +42,9 @@ Markdown pages import contract JSON through a small shared VitePress data loader
 - The docs build requires built workspace packages, including `@moluoxixi/ai-doc-assistant` and `@moluoxixi/components`.
 - The generation script runs on the repository's Node 22 toolchain. Extraction failures and missing components abort build.
 - Dynamic demos support only modules explicitly added to `Demo.vue`'s module cache. Examples should prefer APIs already provided by Vue, Element Plus, and the component package; dayjs is added only if a maintained example still imports it.
+- The demo action writes the source and a stable demo identifier to an ephemeral same-origin session key, then opens the dedicated playground route. URL state contains only the opaque session identifier; opening the route directly uses a built-in starter. Version one does not provide source-sharing URLs.
+- The playground compiles only on initial load or an explicit Run action. Each run gets a unique virtual filename and fresh module cache, disposes the prior result before replacement, and uses a monotonically increasing run id so stale promises cannot replace newer output.
+- Unknown module or file requests fail with a readable diagnostic. Relative imports, preprocessors, external assets, and arbitrary package resolution remain unsupported.
 - Generated API files remain ignored build artifacts. Component routes are expanded in memory from the manifest and a single tracked dynamic route template; the component overview is a tracked internal route rewritten to `/components/`.
 
 ## GitHub Metadata
@@ -58,3 +64,5 @@ The theme continues to extend VitePress DefaultTheme. A full rewrite is rejected
 ## Rollback
 
 Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages. No runtime component behavior or public package contract is changed.
+
+The playground is isolated behind one Demo toolbar action and one standalone route. Removing the action and route restores the previous documentation behavior; the hardened compiler remains a compatible replacement for the former inline loader adapter.

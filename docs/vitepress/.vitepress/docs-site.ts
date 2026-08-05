@@ -45,6 +45,7 @@ export const docsSite = {
   routes: {
     components: '/components/',
     guide: '/guide/',
+    playground: '/playground',
   },
   github: {
     issueTitlePrefix: (componentName: string) => `[${componentName}]`,

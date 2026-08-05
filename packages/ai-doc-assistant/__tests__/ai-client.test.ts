@@ -49,7 +49,7 @@ describe('streamChat 流式 chat', () => {
   })
 
   it('把 messages 与 AbortSignal 原样传给上游 fetch', async () => {
-    const fetchMock = vi.fn(async () => new Response(streamFrom('data: [DONE]\r\n\r\n'), { status: 200 }))
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(streamFrom('data: [DONE]\r\n\r\n'), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const controller = new AbortController()
     const messages = [
@@ -61,7 +61,9 @@ describe('streamChat 流式 chat', () => {
       // no token expected
     }
 
-    const init = fetchMock.mock.calls[0][1] as RequestInit
+    const init = fetchMock.mock.calls[0][1]
+    if (!init)
+      throw new Error('expected fetch request init')
     expect(init.signal).toBe(controller.signal)
     expect(JSON.parse(String(init.body)).messages).toEqual(messages)
   })

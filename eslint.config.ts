@@ -1,6 +1,12 @@
 import antfu from '@antfu/eslint-config'
 
 export default antfu({
-  ignores: ['**/dist', 'spikes/**'],
+  ignores: [
+    '**/dist',
+    '.agents/**',
+    '.codex/**',
+    '.moluoxixi/**',
+    'spikes/**',
+  ],
   rules: {},
 })

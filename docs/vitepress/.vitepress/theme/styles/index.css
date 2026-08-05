@@ -694,6 +694,26 @@ body {
   text-align: center;
 }
 
+.demo-action-error {
+  padding: 8px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--mx-danger) 35%, transparent);
+  background: color-mix(in srgb, var(--mx-danger) 7%, transparent);
+  color: var(--mx-danger);
+  font-size: 12px;
+}
+
+.VPContent.docs-playground-page,
+.docs-playground-page .VPPage {
+  padding: 0 !important;
+}
+
+.docs-playground-page .VPPage > .container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
 .api-docs-section + .api-docs-section {
   margin-top: 28px;
 }
