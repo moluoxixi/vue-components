@@ -1,5 +1,11 @@
-import type { ImportsMap } from 'unplugin-auto-import/types'
-import type { ComponentResolverFunction } from 'unplugin-vue-components/types'
+interface AutoComponentResolution {
+  from: string
+  name: string
+  sideEffects: string | string[]
+}
+
+type AutoComponentResolver = (name: string) => AutoComponentResolution | undefined
+type AutoImportPreset = Record<string, string[]>
 
 const packageName = '@moluoxixi/components'
 const packageStyles = '@moluoxixi/components/styles'
@@ -23,7 +29,7 @@ export const componentNames = [
 const componentNameSet = new Set<string>(componentNames)
 
 /** Resolve public components from their smallest package subpath. */
-export const autoComponent: ComponentResolverFunction = (name) => {
+export const autoComponent: AutoComponentResolver = (name) => {
   if (!componentNameSet.has(name))
     return undefined
 
@@ -71,4 +77,4 @@ export const autoImport = {
     'validateConfigFormFieldRules',
     'withInstall',
   ],
-} satisfies ImportsMap
+} satisfies AutoImportPreset

@@ -1,6 +1,6 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
+import { autoComponent, autoImport } from '@moluoxixi/components/auto-loaders'
 import AutoImport from 'unplugin-auto-import/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'

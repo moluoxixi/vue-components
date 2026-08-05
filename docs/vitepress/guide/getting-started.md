@@ -54,12 +54,12 @@ app.component('DateRangePicker', DateRangePicker)
 安装两个 Vite 插件后，可以让组件、样式和常用运行时 API 按使用情况自动导入：
 
 ```bash
-pnpm add -D @moluoxixi/components-auto-loaders unplugin-auto-import unplugin-vue-components
+pnpm add -D unplugin-auto-import unplugin-vue-components
 ```
 
 ```ts
 // vite.config.ts
-import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
+import { autoComponent, autoImport } from '@moluoxixi/components/auto-loaders'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 

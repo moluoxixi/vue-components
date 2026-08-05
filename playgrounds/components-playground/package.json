@@ -18,7 +18,6 @@
     "zod": "catalog:dev"
   },
   "devDependencies": {
-    "@moluoxixi/components-auto-loaders": "workspace:*",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vitejs/plugin-vue-jsx": "catalog:dev",
     "sass": "catalog:dev",

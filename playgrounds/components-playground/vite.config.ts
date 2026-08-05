@@ -1,6 +1,6 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
+import { autoComponent, autoImport } from '@moluoxixi/components/auto-loaders'
 import Vue from '@vitejs/plugin-vue'
 import VueJsx from '@vitejs/plugin-vue-jsx'
 import AutoImport from 'unplugin-auto-import/vite'

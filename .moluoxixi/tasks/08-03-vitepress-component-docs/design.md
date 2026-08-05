@@ -14,7 +14,7 @@ The custom theme extends VitePress DefaultTheme and owns four presentation compo
 
 `Demo.vue` and `Playground.vue` consume one documentation-local SFC compiler instead of maintaining separate `vue3-sfc-loader` adapters. The compiler receives an explicit module allowlist, accepts exactly one versioned virtual entry path, returns a disposer for injected styles, and removes partial styles before propagating failures.
 
-The VitePress host and its Vitest transform use `autoComponent` and `autoImport` from the independent `@moluoxixi/components-auto-loaders` workspace package. That build-time package owns the component and runtime-helper manifest while `@moluoxixi/components` remains focused on runtime components and styles. Static theme components therefore exercise the same automatic component, style, and runtime-helper imports documented for consumers. Browser-compiled demo source remains outside Vite's transform pipeline and continues to use explicit imports resolved by the SFC compiler allowlist.
+The VitePress host and its Vitest transform use `autoComponent` and `autoImport` from the isolated `@moluoxixi/components/auto-loaders` subpath. The subpath owns the component and runtime-helper manifest, has its own build entry, and is intentionally absent from the component root barrel. Its public declarations use local structural types, so ordinary component consumers do not inherit unplugin peer dependencies. Static theme components therefore exercise the same automatic component, style, and runtime-helper imports documented for consumers. Browser-compiled demo source remains outside Vite's transform pipeline and continues to use explicit imports resolved by the SFC compiler allowlist.
 
 ## API Data Flow
 

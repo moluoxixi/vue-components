@@ -18,12 +18,12 @@ Component pages combine optional handwritten examples with generated API contrac
 ## Automatic imports
 
 ```bash
-pnpm add -D @moluoxixi/components-auto-loaders unplugin-auto-import unplugin-vue-components
+pnpm add -D unplugin-auto-import unplugin-vue-components
 ```
 
 ```ts
 // vite.config.ts
-import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
+import { autoComponent, autoImport } from '@moluoxixi/components/auto-loaders'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 

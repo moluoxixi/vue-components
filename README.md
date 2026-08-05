@@ -8,8 +8,7 @@
 
 | 包 | 说明 |
 |---|---|
-| [`@moluoxixi/components`](./packages/components/) | 组件集合入口，内置独立的 Element/Antd 纯净 ConfigForm 和常用组件 |
-| [`@moluoxixi/components-auto-loaders`](./packages/components-auto-loaders/) | Vite 自动组件与运行时 API 导入预设 |
+| [`@moluoxixi/components`](./packages/components/) | 组件集合入口，内置 Element/Antd ConfigForm、常用组件及 `/auto-loaders` 自动导入预设 |
 | [`@moluoxixi/config-form`](./packages/ConfigForm/runtime/) | Runtime/Plugin 配置表单，并通过 `/renderer` 提供轻量 Vue DOM renderer |
 | [`@moluoxixi/config-form-headless`](./packages/ConfigForm/headless/) | Vue headless 字段协议、Zod 校验、readonly 与表单 controller |
 | [`@moluoxixi/config-form-core`](./packages/ConfigForm/core/) | headless 公共 API 的兼容入口 |

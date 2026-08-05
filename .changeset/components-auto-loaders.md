@@ -1,9 +1,7 @@
 ---
-"@moluoxixi/components-auto-loaders": patch
 "@moluoxixi/components": minor
 ---
 
-Publish automatic component and runtime import presets as the independent
-`@moluoxixi/components-auto-loaders` package. Migrate imports from
-`@moluoxixi/components/autoComponent` and `@moluoxixi/components/autoImport` to
-the new package root.
+Expose automatic component and runtime import presets from the isolated
+`@moluoxixi/components/auto-loaders` subpath. The subpath does not load the
+component root barrel or expose unplugin types from its public declarations.

@@ -17,6 +17,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./auto-loaders": {
+      "source": "./auto-loaders.ts",
+      "types": "./dist/auto-loaders.d.ts",
+      "import": "./dist/auto-loaders.js"
+    },
     "./styles": {
       "import": "./dist/components.css"
     },
@@ -106,6 +111,7 @@
   "types": "./dist/index.d.ts",
   "files": [
     "antd.ts",
+    "auto-loaders.ts",
     "dist",
     "element.ts",
     "index.ts",

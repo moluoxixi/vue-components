@@ -6,6 +6,7 @@ import { defineConfig } from 'vitest/config'
 import { failOnDtsDiagnostics } from '../../scripts/fail-on-dts-diagnostics.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const autoLoadersEntryName = 'auto-loaders'
 
 export default defineConfig({
   plugins: [
@@ -45,6 +46,7 @@ export default defineConfig({
         RequestTreeSelect: resolve(__dirname, 'src/RequestTreeSelect/index.ts'),
         RichTextEditor: resolve(__dirname, 'src/RichTextEditor/index.ts'),
         antd: resolve(__dirname, 'antd.ts'),
+        [autoLoadersEntryName]: resolve(__dirname, 'auto-loaders.ts'),
         configForm: resolve(__dirname, 'src/configForm.ts'),
         element: resolve(__dirname, 'element.ts'),
         index: resolve(__dirname, 'index.ts'),

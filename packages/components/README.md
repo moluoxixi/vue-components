@@ -48,15 +48,15 @@ import '@moluoxixi/components/styles'
 
 ## 自动按需加载
 
-独立的 `@moluoxixi/components-auto-loaders` 包提供 `unplugin-vue-components` 与 `unplugin-auto-import` 的官方接入配置：
+`@moluoxixi/components/auto-loaders` 子路径提供 `unplugin-vue-components` 与 `unplugin-auto-import` 的官方接入配置。它不经过组件根入口，也不会在 Vite 配置期加载组件运行时：
 
 ```bash
-pnpm add -D @moluoxixi/components-auto-loaders unplugin-auto-import unplugin-vue-components
+pnpm add -D unplugin-auto-import unplugin-vue-components
 ```
 
 ```ts
 // vite.config.ts
-import { autoComponent, autoImport } from '@moluoxixi/components-auto-loaders'
+import { autoComponent, autoImport } from '@moluoxixi/components/auto-loaders'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 

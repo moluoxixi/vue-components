@@ -16,7 +16,7 @@
 14. Add a stable Demo identifier and an Element Plus-style playground action that transfers source through an ephemeral same-origin session.
 15. Add the standalone lazy playground route/component with single-SFC editing, run/reset/copy controls, responsive layout, and compile/runtime diagnostics.
 16. Add unit tests for compiler cleanup/session behavior and browser coverage for opening, editing, rerunning, failure recovery, reset, and mobile layout.
-17. Add the independent `@moluoxixi/components-auto-loaders` workspace package with `autoComponent` and `autoImport` integrations from one export manifest, wire it into VitePress and the component playground, and verify package exports, types, tests, and production consumption.
+17. Add the isolated `@moluoxixi/components/auto-loaders` subpath with `autoComponent` and `autoImport` integrations from one export manifest, keep it out of the root barrel, wire it into VitePress and the component playground, and verify package exports, types, tests, and production consumption.
 
 ## Validation Commands
 
