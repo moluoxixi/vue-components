@@ -49,6 +49,31 @@ app.component('CopyText', CopyText)
 app.component('DateRangePicker', DateRangePicker)
 ```
 
+## 自动按需加载
+
+安装两个 Vite 插件后，可以让组件、样式和常用运行时 API 按使用情况自动导入：
+
+```bash
+pnpm add -D unplugin-auto-import unplugin-vue-components
+```
+
+```ts
+// vite.config.ts
+import { autoComponent } from '@moluoxixi/components/autoComponent'
+import { autoImport } from '@moluoxixi/components/autoImport'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+
+export default {
+  plugins: [
+    AutoImport({ imports: [autoImport] }),
+    Components({ resolvers: [autoComponent] }),
+  ],
+}
+```
+
+组件模板和共享样式由 `autoComponent` 处理；`defineFields`、`copyText`、`useHeadlessTable` 等运行时值由 `autoImport` 处理。Props 等 TypeScript 类型仍需显式 `import type`，以保证类型来源清晰。
+
 ## 版本要求
 
 | 依赖 | 最低版本 |

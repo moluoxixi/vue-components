@@ -9,7 +9,7 @@ export const exampleMeta = {
 </script>
 
 <script setup lang="ts">
-import { CopyText, HeadlessCopyText } from '@moluoxixi/components'
+import { CopyText } from '@moluoxixi/components'
 import { shallowRef } from 'vue'
 
 const lastCopied = shallowRef('等待复制')

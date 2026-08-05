@@ -775,9 +775,15 @@ importers:
       happy-dom:
         specifier: catalog:dev
         version: 20.9.0
+      unplugin-auto-import:
+        specifier: catalog:dev
+        version: 19.3.0(@vueuse/core@14.3.0(vue@3.5.33(typescript@5.9.3)))
       unplugin-dts:
         specifier: catalog:dev
         version: 1.0.0(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.25.12)(rollup@4.60.2)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0))
+      unplugin-vue-components:
+        specifier: catalog:dev
+        version: 28.8.0(@babel/parser@7.29.7)(vue@3.5.33(typescript@5.9.3))
       vite:
         specifier: catalog:dev
         version: 6.4.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(yaml@2.9.0)

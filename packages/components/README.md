@@ -46,6 +46,27 @@ import { createConfigFormController, defineFields } from '@moluoxixi/config-form
 import '@moluoxixi/components/styles'
 ```
 
+## 自动按需加载
+
+组件包提供 `unplugin-vue-components` 与 `unplugin-auto-import` 的官方接入配置：
+
+```ts
+// vite.config.ts
+import { autoComponent } from '@moluoxixi/components/autoComponent'
+import { autoImport } from '@moluoxixi/components/autoImport'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+
+export default {
+  plugins: [
+    AutoImport({ imports: [autoImport] }),
+    Components({ resolvers: [autoComponent] }),
+  ],
+}
+```
+
+`autoComponent` 只解析根入口公开的组件，并自动加载 `@moluoxixi/components/styles`。`autoImport` 按使用情况注入 `defineFields`、`copyText`、`useHeadlessTable` 等运行时 API；TypeScript 类型仍需使用 `import type` 显式导入。
+
 ## 请求缓存组件
 
 `RequestSelectV2`、`RequestCascader`、`RequestTreeSelect`、`ConfigTable` 和 `PopoverTableSelect` 的 `query` 模式基于 `@moluoxixi/hooks` 与 TanStack Vue Query。宿主应用需要提供唯一 `QueryClient`：

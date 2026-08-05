@@ -14,7 +14,7 @@ import type {
   HeadlessTableRendererMap,
   HeadlessTableRowKey,
 } from '@moluoxixi/components'
-import { HeadlessTable, useHeadlessTable } from '@moluoxixi/components'
+import { HeadlessTable } from '@moluoxixi/components'
 import { ElButton, ElTag } from 'element-plus'
 import { computed, h, ref, watch } from 'vue'
 

@@ -32,6 +32,8 @@ export default defineConfig({
     lib: {
       entry: {
         antd: resolve(__dirname, 'antd.ts'),
+        autoComponent: resolve(__dirname, 'autoComponent.ts'),
+        autoImport: resolve(__dirname, 'autoImport.ts'),
         element: resolve(__dirname, 'element.ts'),
         index: resolve(__dirname, 'index.ts'),
       },

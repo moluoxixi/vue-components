@@ -29,6 +29,16 @@
       "source": "./antd.ts",
       "types": "./dist/antd.d.ts",
       "import": "./dist/antd.js"
+    },
+    "./autoComponent": {
+      "source": "./autoComponent.ts",
+      "types": "./dist/autoComponent.d.ts",
+      "import": "./dist/autoComponent.js"
+    },
+    "./autoImport": {
+      "source": "./autoImport.ts",
+      "types": "./dist/autoImport.d.ts",
+      "import": "./dist/autoImport.js"
     }
   },
   "main": "./dist/index.js",
@@ -36,6 +46,8 @@
   "types": "./dist/index.d.ts",
   "files": [
     "antd.ts",
+    "autoComponent.ts",
+    "autoImport.ts",
     "dist",
     "element.ts",
     "index.ts",
@@ -50,8 +62,18 @@
   "peerDependencies": {
     "ant-design-vue": "^4.2.0",
     "element-plus": "^2.9.0",
+    "unplugin-auto-import": "^19.1.2",
+    "unplugin-vue-components": "^28.4.1",
     "vue": "^3.5.0",
     "zod": "^3.23.0"
+  },
+  "peerDependenciesMeta": {
+    "unplugin-auto-import": {
+      "optional": true
+    },
+    "unplugin-vue-components": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@floating-ui/dom": "catalog:ui",
@@ -74,7 +96,9 @@
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "happy-dom": "catalog:dev",
+    "unplugin-auto-import": "catalog:dev",
     "unplugin-dts": "catalog:dev",
+    "unplugin-vue-components": "catalog:dev",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:build",
