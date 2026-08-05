@@ -1,9 +1,10 @@
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
+import { createComponentAutoLoadPlugins } from './.vitepress/auto-loaders'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), ...createComponentAutoLoadPlugins()],
   resolve: {
     alias: {
       '@docs-components': fileURLToPath(new URL('../../packages/components/index.ts', import.meta.url)),

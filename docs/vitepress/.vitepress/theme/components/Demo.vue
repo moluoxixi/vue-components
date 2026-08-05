@@ -106,18 +106,13 @@ function openPlayground(): void {
 
 async function copyCode(): Promise<void> {
   try {
-    await navigator.clipboard.writeText(sourceCode)
+    await copyText(sourceCode)
   }
-  catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = sourceCode
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    textarea.remove()
+  catch (copyError) {
+    actionError.value = copyError instanceof Error ? copyError.message : String(copyError)
+    return
   }
+  actionError.value = null
   isCopied.value = true
   if (copyTimer)
     window.clearTimeout(copyTimer)

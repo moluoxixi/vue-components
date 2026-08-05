@@ -56,10 +56,8 @@ const demoId = ref('starter')
 const previewComponent = shallowRef<Component | null>(null)
 const compileError = ref('')
 const isRunning = ref(false)
-const isCopied = ref(false)
 let activeDispose: (() => void) | null = null
 let runId = 0
-let copyTimer = 0
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -104,29 +102,6 @@ function reset(): void {
   void run()
 }
 
-async function copySource(): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(source.value)
-  }
-  catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = source.value
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    textarea.remove()
-  }
-
-  isCopied.value = true
-  if (copyTimer)
-    window.clearTimeout(copyTimer)
-  copyTimer = window.setTimeout(() => {
-    isCopied.value = false
-  }, 2000)
-}
-
 onErrorCaptured((error) => {
   compileError.value = formatError(error)
   return false
@@ -153,8 +128,6 @@ onUnmounted(() => {
   runId += 1
   activeDispose?.()
   activeDispose = null
-  if (copyTimer)
-    window.clearTimeout(copyTimer)
 })
 </script>
 
@@ -171,11 +144,20 @@ onUnmounted(() => {
           <RotateCcw :size="16" aria-hidden="true" />
           {{ messages.playground.reset }}
         </button>
-        <button data-testid="playground-copy" type="button" @click="copySource">
-          <Check v-if="isCopied" :size="16" aria-hidden="true" />
-          <Copy v-else :size="16" aria-hidden="true" />
-          {{ isCopied ? messages.playground.copied : messages.playground.copy }}
-        </button>
+        <HeadlessCopyText :text="source">
+          <template #default="{ copied, copying, copy }">
+            <button
+              data-testid="playground-copy"
+              type="button"
+              :disabled="copying"
+              @click="copy().catch(() => undefined)"
+            >
+              <Check v-if="copied" :size="16" aria-hidden="true" />
+              <Copy v-else :size="16" aria-hidden="true" />
+              {{ copied ? messages.playground.copied : messages.playground.copy }}
+            </button>
+          </template>
+        </HeadlessCopyText>
       </div>
     </header>
 

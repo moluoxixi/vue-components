@@ -10,8 +10,7 @@ import {
   PanelsTopLeft,
   X,
 } from '@lucide/vue'
-import { copyText } from '@docs-components'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { formatDocsMessage } from '../../docs-i18n'
 import { docsSite, componentSourcePath as getComponentSourcePath, getDocsLocaleConfig } from '../../docs-site'
 import { getComponentGithubMetadata, githubMetadata } from '../../github-metadata'
@@ -25,9 +24,7 @@ const props = defineProps<{
 }>()
 
 const { link, locale, messages } = useDocsLocale()
-const copied = ref(false)
 const changelogVisible = ref(false)
-let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
 const componentMetadata = computed(() => getComponentGithubMetadata(props.name))
 const importStatement = computed(() => `import { ${props.name} } from '${docsSite.packageName}';`)
@@ -42,21 +39,6 @@ const overviewHref = computed(() => link(docsSite.routes.components))
 const openIssueCount = computed(() => componentMetadata.value.openIssueCount)
 const commitCount = computed(() => componentMetadata.value.commits.length)
 const changelogTitle = computed(() => formatDocsMessage(messages.value.changelog.aria, { name: props.name }))
-
-async function copyImportStatement() {
-  await copyText(importStatement.value)
-  copied.value = true
-  if (copiedTimer)
-    clearTimeout(copiedTimer)
-  copiedTimer = setTimeout(() => {
-    copied.value = false
-  }, 1600)
-}
-
-onBeforeUnmount(() => {
-  if (copiedTimer)
-    clearTimeout(copiedTimer)
-})
 </script>
 
 <template>
@@ -69,16 +51,21 @@ onBeforeUnmount(() => {
           </th>
           <td>
             <div class="component-doc-import">
-              <button
-                class="component-doc-import-copy"
-                type="button"
-                :title="copied ? messages.meta.copied : messages.meta.copyImport"
-                :aria-label="copied ? messages.meta.copied : messages.meta.copyImport"
-                @click="copyImportStatement"
-              >
-                <code>{{ importStatement }}</code>
-                <Check v-if="copied" class="component-doc-copy-status" :size="14" aria-hidden="true" />
-              </button>
+              <HeadlessCopyText :text="importStatement" :reset-delay="1600">
+                <template #default="{ copied, copying, copy }">
+                  <button
+                    class="component-doc-import-copy"
+                    type="button"
+                    :disabled="copying"
+                    :title="copied ? messages.meta.copied : messages.meta.copyImport"
+                    :aria-label="copied ? messages.meta.copied : messages.meta.copyImport"
+                    @click="copy().catch(() => undefined)"
+                  >
+                    <code>{{ importStatement }}</code>
+                    <Check v-if="copied" class="component-doc-copy-status" :size="14" aria-hidden="true" />
+                  </button>
+                </template>
+              </HeadlessCopyText>
             </div>
           </td>
         </tr>

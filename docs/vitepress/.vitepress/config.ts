@@ -1,12 +1,8 @@
-import type { DefaultTheme } from 'vitepress'
+import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './docs-site'
 import { defineConfig } from 'vitepress'
-import {
-
-  getDocsMessages,
-  getLocalizedComponentGroups,
-  localePath,
-} from './docs-i18n'
+import { createComponentAutoLoadPlugins } from './auto-loaders'
+import { getDocsMessages, getLocalizedComponentGroups, localePath } from './docs-i18n'
 import {
   defaultDocsLocale,
   docsLocales,
@@ -116,6 +112,10 @@ const rewrites = Object.fromEntries(
   }),
 )
 
+// VitePress 1.x exposes Vite 5 types while the workspace unplugins resolve Vite 6.
+// Their runtime plugin contract is compatible; keep the version bridge at this boundary.
+const componentAutoLoadPlugins = createComponentAutoLoadPlugins() as NonNullable<UserConfig['vite']>['plugins']
+
 export default defineConfig({
   title: docsSite.title,
   description: getDocsMessages(defaultDocsLocale).siteDescription,
@@ -136,6 +136,7 @@ export default defineConfig({
     },
   },
   vite: {
+    plugins: componentAutoLoadPlugins,
     resolve: {
       alias: [
         { find: '@docs-components/styles', replacement: docsSite.packageStylesImport },

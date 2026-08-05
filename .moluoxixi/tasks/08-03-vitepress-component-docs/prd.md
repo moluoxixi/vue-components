@@ -29,7 +29,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - R15: Add an Element Plus-style "edit in playground" action to every runnable demo. The action opens a dedicated, lazily loaded playground with a single Vue SFC editor, manual run, reset, copy, preview, and structured compile/runtime errors.
 - R16: Reuse one hardened SFC compilation boundary for static demos and the playground. It must allow only configured modules, reject unknown files/imports, use unique virtual filenames, clean injected styles on success, failure, rerun, and unmount, and ignore stale async compile results.
 - R17: Keep playground source out of shareable URLs in the first release. Transfer the trusted demo source through an ephemeral same-origin session and provide a safe starter when the playground is opened directly.
-- R18: Publish reusable `autoComponent` and `autoImport` package integrations for `unplugin-vue-components` and `unplugin-auto-import`, with component styles and runtime helper names maintained from one package-owned manifest.
+- R18: Publish reusable `autoComponent` and `autoImport` package integrations for `unplugin-vue-components` and `unplugin-auto-import`, with component styles and runtime helper names maintained from one package-owned manifest. The VitePress host and component playground must consume those package integrations themselves.
 
 ## Acceptance Criteria
 
@@ -50,7 +50,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] Every runnable Demo exposes a keyboard-accessible playground action that opens a dedicated editor without adding the editor implementation to ordinary component-page bundles.
 - [x] The playground can run, reset, and copy one Vue SFC, reports compile and runtime failures, remains usable at desktop/mobile widths, and does not auto-run source supplied through the URL.
 - [x] Static demos and repeated playground runs do not reuse stale modules or leak styles, and focused unit/browser tests cover those failure paths.
-- [x] Consumers can enable package-owned automatic component/style resolution and runtime helper imports, and the component playground verifies both paths without representative explicit imports.
+- [x] Consumers can enable package-owned automatic component/style resolution and runtime helper imports; the VitePress host and component playground both verify the paths without representative explicit imports.
 
 ## Out Of Scope
 

@@ -33,6 +33,8 @@
     "@vue/test-utils": "catalog:dev",
     "happy-dom": "catalog:dev",
     "markdown-it-container": "catalog:",
+    "unplugin-auto-import": "catalog:dev",
+    "unplugin-vue-components": "catalog:dev",
     "vite": "catalog:dev",
     "vitepress": "catalog:",
     "vitest": "catalog:dev",
