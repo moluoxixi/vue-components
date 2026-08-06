@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260806144549-component-guidelines-cb86ca",
+  "createdAt": "2026-08-06T14:45:49.330Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-03-vitepress-component-docs",
+  "reason": "Preserve compiler macros, public JSDoc, type barrels, and generated API parity during component structure refactors.",
+  "target": "frontend/component-guidelines.md",
+  "kind": "file",
+  "baseHash": "7ca6ea4f9305a8267b7570505f9ebf6030bb5911cbe3f2a135cfb7ebd402805b",
+  "contentFile": "content/20260806144549-component-guidelines-cb86ca.md",
+  "contentHash": "715a11595812c0fecccfb4a5e005c6aca316e201f6644aa153d91ebed9a30718"
+}

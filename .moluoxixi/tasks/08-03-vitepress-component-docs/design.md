@@ -30,6 +30,10 @@ Column settings additionally own a numeric pixel-width map keyed by the same sta
 
 ConfigTable continues to render Element Plus `ElPagination`. Controlled page, page-size, and total state are owned by ConfigTable and cannot be replaced by the pagination passthrough object. The documentation layout supplies the Element Plus locale that matches the active VitePress locale, and narrow layouts keep pagination controls horizontally usable without overflowing the page.
 
+ConfigTable's SFC remains the composition and template boundary. Data/pagination, column projection/state, and renderer/slot adaptation live in focused internal composables. Public contracts are grouped behind a `types/index.ts` barrel with separate props, emits, slots, pagination, and table contracts. RichTextEditor follows the same barrel pattern for props, emits, slots, expose, and shared types. Vue compiler macros stay in each SFC so API extraction continues to resolve imported types through the TypeScript program.
+
+Element Plus component roots are treated as implementation-owned surfaces. ConfigTable does not attach internal layout classes to `ElTableV2` or `ElPagination`; spacing, alignment, and narrow-screen overflow belong to ordinary package-owned wrappers. This preserves Element Plus root layout and avoids selector coupling to its internal DOM.
+
 ## API Data Flow
 
 ```text

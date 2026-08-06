@@ -33,6 +33,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - R19: Keep every browser-compiled documentation demo self-contained by requiring explicit imports for component-library and Element Plus components, and reject example regressions that would render as unresolved custom elements.
 - R20: Extend ConfigTable with the shared HeadlessTable renderer contract, named Vue slots, stable column ordering and visibility state, plus an opt-in accessible column-settings dialog with drag, keyboard reordering, and show/hide controls.
 - R21: Make named table renderers easy to register once per Vue application and reuse across ConfigTable and HeadlessTable instances. Extend ConfigTable column settings with controlled width state and UI, and keep its Element Plus pagination localized, responsive, and protected from conflicting passthrough state.
+- R22: Keep Element Plus table and pagination roots free from internal layout classes. Split large component implementations and public contracts by responsibility while preserving one component entry and generated API accuracy.
 
 ## Acceptance Criteria
 
@@ -60,6 +61,8 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] One application-level renderer plugin can serve multiple ConfigTable/HeadlessTable instances while per-table renderers remain a compatible override.
 - [x] ConfigTable exposes controlled column width state and its dialog can edit, reset, and apply order, width, and visibility without mutating source columns.
 - [x] ConfigTable pagination remains Element Plus based, follows the documentation locale, does not allow passthrough props to override controlled page state, and remains usable at narrow widths.
+- [x] ConfigTable applies responsive layout only through package-owned wrappers, not through classes or CSS overrides on the ElTableV2 and ElPagination roots.
+- [x] ConfigTable logic and ConfigTable/RichTextEditor contracts are split into focused modules behind their existing public entry points, with props, emits, slots, and expose extraction unchanged.
 
 ## Out Of Scope
 

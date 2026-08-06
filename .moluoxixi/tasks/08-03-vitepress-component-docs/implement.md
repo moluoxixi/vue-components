@@ -21,10 +21,11 @@
 19. Extract reusable HeadlessTable renderer resolution and column projection helpers, then adopt them in ConfigTable without changing its pagination or formatter semantics.
 20. Add ConfigTable renderer/slot coverage and an opt-in column-settings dialog with draft apply/cancel, drag sorting, keyboard movement, and visibility controls.
 21. Add an application-scoped shared renderer plugin, controlled ConfigTable column widths with dialog editing/reset, and localized/responsive Element Plus pagination with regression coverage.
+22. Remove layout classes from Element Plus table/pagination roots, split ConfigTable logic and ConfigTable/RichTextEditor contracts by responsibility, and verify generated API parity plus responsive browser behavior.
 
 ## Completion
 
-- Implementation steps 1-21 are complete.
+- Implementation steps 1-22 are complete.
 - Root lint, type checking, and the full workspace test suite pass.
 - The component package build verifies NodeNext declaration resolution for every public typed entry.
 - VitePress API extraction, GitHub metadata validation, unit tests, production builds for both locales, and desktop/mobile browser checks pass.
