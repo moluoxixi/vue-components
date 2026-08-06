@@ -8,6 +8,7 @@ import ComponentOverview from './components/ComponentOverview.vue'
 import Demo from './components/Demo.vue'
 import DocContributors from './components/DocContributors.vue'
 import OverviewHome from './components/OverviewHome.vue'
+import DocsLayout from './DocsLayout.vue'
 import 'element-plus/dist/index.css'
 import '@docs-components/styles'
 import './styles/index.css'
@@ -17,6 +18,7 @@ const Playground = defineAsyncComponent(() => import('./components/Playground.vu
 
 const theme: Theme = {
   extends: DefaultTheme,
+  Layout: DocsLayout,
   enhanceApp({ app }) {
     app.provide(ID_INJECTION_KEY, { prefix: 1024, current: 0 })
     app.provide(ZINDEX_INJECTION_KEY, { current: 0 })

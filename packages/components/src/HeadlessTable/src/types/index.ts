@@ -1,4 +1,5 @@
 import type {
+  App,
   Component,
   ComputedRef,
   MaybeRefOrGetter,
@@ -142,6 +143,20 @@ export interface HeadlessTableRendererRegistry {
   has: (name: string) => boolean
   delete: (name: string) => boolean
   clear: () => void
+}
+
+export interface HeadlessTableRendererPluginOptions {
+  /** Reuse an existing registry when several apps or adapters share one. */
+  registry?: HeadlessTableRendererRegistry
+  /** Register these renderers during plugin installation. */
+  renderers?: HeadlessTableRendererMap<any>
+  /** Replace existing names instead of throwing on duplicate registration. */
+  replace?: boolean
+}
+
+export interface HeadlessTableRendererPlugin {
+  registry: HeadlessTableRendererRegistry
+  install: (app: App) => void
 }
 
 export interface HeadlessTableProps<TRow extends HeadlessTableRow = HeadlessTableRow> {

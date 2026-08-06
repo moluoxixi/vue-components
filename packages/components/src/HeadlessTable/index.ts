@@ -9,6 +9,7 @@ export {
 } from './src/core'
 export {
   createHeadlessTableRenderer,
+  createHeadlessTableRendererPlugin,
   defineHeadlessTableRenderer,
   headlessTableRenderer,
   headlessTableRendererKey,

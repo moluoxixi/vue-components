@@ -14,6 +14,7 @@ export { HeadlessCopyText } from './HeadlessCopyText'
 export type * from './HeadlessCopyText'
 export {
   createHeadlessTableRenderer,
+  createHeadlessTableRendererPlugin,
   defineHeadlessTableRenderer,
   getHeadlessTableColumnId,
   getHeadlessTableColumnLabel,

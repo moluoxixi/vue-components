@@ -32,6 +32,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - R18: Publish reusable `autoComponent` and `autoImport` integrations for `unplugin-vue-components` and `unplugin-auto-import` from an isolated `@moluoxixi/components/auto-loaders` subpath, with component styles and runtime helper names maintained from one package-owned manifest. The root component entry must not re-export the loaders, and the VitePress host and component playground must consume the subpath themselves.
 - R19: Keep every browser-compiled documentation demo self-contained by requiring explicit imports for component-library and Element Plus components, and reject example regressions that would render as unresolved custom elements.
 - R20: Extend ConfigTable with the shared HeadlessTable renderer contract, named Vue slots, stable column ordering and visibility state, plus an opt-in accessible column-settings dialog with drag, keyboard reordering, and show/hide controls.
+- R21: Make named table renderers easy to register once per Vue application and reuse across ConfigTable and HeadlessTable instances. Extend ConfigTable column settings with controlled width state and UI, and keep its Element Plus pagination localized, responsive, and protected from conflicting passthrough state.
 
 ## Acceptance Criteria
 
@@ -56,6 +57,9 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] Every browser-compiled Vue demo imports its runtime components explicitly and renders without unresolved-component warnings.
 - [x] ConfigTable supports local/registered cell and header renderers, preserves slot and formatter precedence, and keeps existing value/index semantics compatible.
 - [x] ConfigTable column settings can reorder and show/hide stable columns by drag or keyboard without mutating the caller's `columns` array.
+- [x] One application-level renderer plugin can serve multiple ConfigTable/HeadlessTable instances while per-table renderers remain a compatible override.
+- [x] ConfigTable exposes controlled column width state and its dialog can edit, reset, and apply order, width, and visibility without mutating source columns.
+- [x] ConfigTable pagination remains Element Plus based, follows the documentation locale, does not allow passthrough props to override controlled page state, and remains usable at narrow widths.
 
 ## Out Of Scope
 

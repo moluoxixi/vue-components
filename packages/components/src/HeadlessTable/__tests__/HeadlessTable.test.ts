@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, reactive, ref } from 'vue'
 import {
   createHeadlessTableRenderer,
+  createHeadlessTableRendererPlugin,
   HeadlessTable,
   headlessTableRenderer,
   headlessTableRendererKey,
@@ -337,5 +338,41 @@ describe('headless table', () => {
     })
 
     expect(wrapper.get('[data-testid="injected-renderer"]').text()).toBe('应用级')
+  })
+
+  it('通过 app plugin 让多个实例共享 renderer，并保留表级覆盖', () => {
+    const registry = createHeadlessTableRenderer()
+    const plugin = createHeadlessTableRendererPlugin({
+      registry,
+      renderers: {
+        shared: {
+          renderDefault: () => h('span', { 'data-testid': 'shared-renderer' }, '应用级'),
+        },
+      },
+    })
+    const Host = defineComponent({
+      setup() {
+        return () => h('section', [
+          h(HeadlessTable as any, {
+            columns: [{ field: 'status', cellRender: 'shared' }],
+            data: [{ status: '启用' }],
+          }, { default: renderTable as any }),
+          h(HeadlessTable as any, {
+            columns: [{ field: 'status', cellRender: 'shared' }],
+            data: [{ status: '维护' }],
+            renderers: {
+              shared: {
+                renderDefault: () => h('span', { 'data-testid': 'local-renderer' }, '表级'),
+              },
+            },
+          }, { default: renderTable as any }),
+        ])
+      },
+    })
+
+    const wrapper = mount(Host, { global: { plugins: [plugin] } })
+
+    expect(wrapper.findAll('[data-testid="shared-renderer"]')).toHaveLength(1)
+    expect(wrapper.find('[data-testid="local-renderer"]').exists()).toBe(true)
   })
 })

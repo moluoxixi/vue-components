@@ -5,6 +5,7 @@ import type {
   ConfigTableColumn,
   ConfigTableColumnConfig,
   ConfigTableColumnSettingChange,
+  ConfigTableColumnWidthState,
   ConfigTableEmits,
   ConfigTablePageChangeParams,
   ConfigTablePaginationProps,
@@ -29,12 +30,17 @@ import {
   resolveHeadlessTableRenderer,
 } from '../../HeadlessTable/src/renderer'
 import ConfigTableColumnSettings from './ColumnSettings.vue'
+import {
+  getConfigTableColumnMinWidth,
+  getConfigTableColumnWidth,
+} from './column-width'
 
 const props = withDefaults(defineProps<ConfigTableProps>(), {
   columns: () => [],
   columnConfig: false,
   columnOrder: () => [],
   columnVisibility: () => ({}),
+  columnWidths: () => ({}),
   data: () => [],
   diagnostics: true,
   tableProps: () => ({}),
@@ -83,6 +89,7 @@ const INTERNAL_ROW_KEY = '__mx_config_table_row_key'
 
 interface ConfigTableVirtualColumn extends TableV2Column<ConfigTableRow> {
   configColumn: ConfigTableColumn
+  columnId: string
   configColumnIndex: number
   visibleColumnIndex: number
 }
@@ -91,6 +98,7 @@ const currentPage = defineModel<number>('currentPage', { default: 1 })
 const pageSize = defineModel<number>('pageSize', { default: 10 })
 const columnOrderState = ref<string[]>([...props.columnOrder])
 const columnVisibilityState = ref<Record<string, boolean>>({ ...props.columnVisibility })
+const columnWidthsState = ref<ConfigTableColumnWidthState>({ ...props.columnWidths })
 
 const ConfigTableRenderNode = defineComponent({
   name: 'ConfigTableRenderNode',
@@ -108,6 +116,9 @@ const normalizedColumnConfig = computed<ConfigTableColumnConfig>(() => ({
   draggable: true,
   title: '列设置',
   width: 440,
+  minColumnWidth: props.minColumnWidth,
+  maxColumnWidth: props.maxColumnWidth,
+  columnWidthStep: props.columnWidthStep ?? 10,
   ...(typeof props.columnConfig === 'object' ? props.columnConfig : {}),
 }))
 
@@ -119,6 +130,10 @@ watch(() => props.columnOrder, (value) => {
 
 watch(() => props.columnVisibility, (value) => {
   columnVisibilityState.value = { ...value }
+}, { deep: true })
+
+watch(() => props.columnWidths, (value) => {
+  columnWidthsState.value = { ...value }
 }, { deep: true })
 
 const requestTable = props.query
@@ -148,7 +163,7 @@ const virtualRows = computed<ConfigTableRow[]>(() => {
   }))
 })
 
-const requestTotal = computed<number>(() => requestTable?.total.value ?? tableData.value.length)
+const requestTotal = computed<number>(() => requestTable?.total.value ?? props.total ?? tableData.value.length)
 
 const isRequestLoading = computed<boolean>(() => {
   return Boolean(requestTable && (requestTable.isLoading.value || requestTable.isFetching.value))
@@ -177,7 +192,7 @@ const visibleColumns = computed<ConfigTableColumn[]>(() => (
 ))
 
 const virtualColumns = computed<ConfigTableVirtualColumn[]>(() => {
-  return columnProjection.value.columns.map(({ column: projectedColumn, sourceIndex }, visibleColumnIndex) => {
+  return columnProjection.value.columns.map(({ column: projectedColumn, columnId, sourceIndex }, visibleColumnIndex) => {
     const column = projectedColumn as ConfigTableColumn
     const columnProps = column.columnProps ?? {}
 
@@ -187,11 +202,21 @@ const virtualColumns = computed<ConfigTableVirtualColumn[]>(() => {
       class: columnProps.class ?? columnProps.className,
       configColumn: column,
       configColumnIndex: sourceIndex,
+      columnId,
       dataKey: columnProps.dataKey ?? column.field,
       key: columnProps.key ?? column.field,
-      minWidth: getColumnMinWidth(column),
+      minWidth: getConfigTableColumnMinWidth(column),
       title: getColumnLabel(column),
-      width: getColumnWidth(column),
+      width: getConfigTableColumnWidth(
+        column,
+        sourceIndex,
+        columnWidthsState.value,
+        {
+          defaultColumnWidth: props.defaultColumnWidth,
+          minColumnWidth: props.minColumnWidth,
+          maxColumnWidth: props.maxColumnWidth,
+        },
+      ),
       visibleColumnIndex,
     } as ConfigTableVirtualColumn
   })
@@ -225,9 +250,20 @@ const paginationProps = computed<ConfigTablePaginationProps>(() => {
   const defaults: ConfigTablePaginationProps = {
     layout: 'total, sizes, prev, pager, next, jumper',
   }
-  return typeof props.pagination === 'object'
-    ? { ...defaults, ...props.pagination }
-    : defaults
+  if (typeof props.pagination !== 'object')
+    return defaults
+
+  const {
+    currentPage: _currentPage,
+    pageSize: _pageSize,
+    total: _total,
+    pageCount: _pageCount,
+    defaultCurrentPage: _defaultCurrentPage,
+    defaultPageSize: _defaultPageSize,
+    ...passthrough
+  } = props.pagination
+
+  return { ...defaults, ...passthrough }
 })
 
 if (requestTable) {
@@ -250,30 +286,6 @@ if (requestTable) {
 
 function getColumnLabel(column: ConfigTableColumn): string {
   return column.label ?? column.title ?? column.field
-}
-
-function toNumberSize(value: number | string | undefined, fallback?: number): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value))
-    return value
-
-  if (typeof value === 'string') {
-    const match = value.trim().match(/^(\d+(?:\.\d+)?)(?:px)?$/i)
-    if (match)
-      return Number(match[1])
-  }
-
-  return fallback
-}
-
-function getColumnMinWidth(column: ConfigTableColumn): number | undefined {
-  return toNumberSize(column.minWidth ?? column.columnProps?.minWidth)
-}
-
-function getColumnWidth(column: ConfigTableColumn): number {
-  return toNumberSize(
-    column.width ?? column.columnProps?.width ?? column.minWidth ?? column.columnProps?.minWidth,
-    props.defaultColumnWidth,
-  ) ?? props.defaultColumnWidth
 }
 
 function getRawRow(rowData: ConfigTableRow, rowIndex: number): ConfigTableRow {
@@ -547,11 +559,14 @@ function renderVirtualCell(params: {
 function applyColumnSettings(value: ConfigTableColumnSettingChange): void {
   columnOrderState.value = [...value.columnOrder]
   columnVisibilityState.value = { ...value.columnVisibility }
+  columnWidthsState.value = { ...value.columnWidths }
   emit('update:columnOrder', [...value.columnOrder])
   emit('update:columnVisibility', { ...value.columnVisibility })
+  emit('update:columnWidths', { ...value.columnWidths })
   emit('columnSettingChange', {
     columnOrder: [...value.columnOrder],
     columnVisibility: { ...value.columnVisibility },
+    columnWidths: { ...value.columnWidths },
   })
 }
 
@@ -599,6 +614,8 @@ function handlePageSizeUpdate(size: number): void {
       :columns="props.columns"
       :column-order="columnOrderState"
       :column-visibility="columnVisibilityState"
+      :column-widths="columnWidthsState"
+      :default-column-width="props.defaultColumnWidth"
       :config="normalizedColumnConfig"
       @apply="applyColumnSettings"
     />
@@ -692,8 +709,18 @@ function handlePageSizeUpdate(size: number): void {
 }
 
 .mx-config-table__pagination {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   display: flex;
   justify-content: flex-end;
   margin-top: 12px;
+  padding-bottom: 2px;
+}
+
+.mx-config-table__pagination :deep(.el-pagination) {
+  flex-wrap: nowrap;
+  min-width: max-content;
 }
 </style>

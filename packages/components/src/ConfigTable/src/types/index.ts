@@ -1,5 +1,5 @@
 import type { QueryKeyBase, RequestTableQuery, RequestTableResult } from '@moluoxixi/hooks'
-import type { Column as TableV2Column, TableV2Props } from 'element-plus'
+import type { PaginationProps, Column as TableV2Column, TableV2Props } from 'element-plus'
 import type { VNodeChild } from 'vue'
 import type {
   HeadlessTableColumnOrderState,
@@ -10,6 +10,7 @@ import type {
 } from '../../../HeadlessTable/src/types'
 
 export type ConfigTableRow = Record<string, any>
+export type ConfigTableColumnWidthState = Record<string, number>
 
 export interface ConfigTableColumn {
   /** 稳定列标识，用于列排序与显示隐藏；默认使用 field。 */
@@ -71,6 +72,8 @@ export interface ConfigTableProps {
   columnOrder?: HeadlessTableColumnOrderState
   /** 受控或初始列显隐状态，优先于 column.visible。 */
   columnVisibility?: HeadlessTableColumnVisibilityState
+  /** 受控列宽，按 column.id 或 field 映射到像素值。 */
+  columnWidths?: ConfigTableColumnWidthState
   /** 是否显示内置列设置，也可传入弹窗配置。 */
   columnConfig?: boolean | ConfigTableColumnConfig
   emptyText?: string
@@ -81,6 +84,8 @@ export interface ConfigTableProps {
   enabled?: boolean
   staleTime?: number
   pagination?: boolean | ConfigTablePaginationProps
+  /** 非请求模式下的分页总数，默认为 data.length。 */
+  total?: number
   resetPageOnParamsChange?: boolean
   currentPage?: number
   pageSize?: number
@@ -89,6 +94,12 @@ export interface ConfigTableProps {
   rowHeight?: number
   headerHeight?: number
   defaultColumnWidth?: number
+  /** 列设置允许的最小宽度，未设置时不限制源列宽。 */
+  minColumnWidth?: number
+  /** 列设置允许的最大宽度，未设置时不限制源列宽。 */
+  maxColumnWidth?: number
+  /** 列设置输入框的步进值。 */
+  columnWidthStep?: number
   rowKey?: string
 }
 
@@ -105,6 +116,7 @@ export interface ConfigTableEmits {
   (event: 'pageChange', params: ConfigTablePageChangeParams): void
   (event: 'update:columnOrder', value: HeadlessTableColumnOrderState): void
   (event: 'update:columnVisibility', value: HeadlessTableColumnVisibilityState): void
+  (event: 'update:columnWidths', value: ConfigTableColumnWidthState): void
   (event: 'columnSettingChange', value: ConfigTableColumnSettingChange): void
 }
 
@@ -117,21 +129,24 @@ export interface ConfigTableColumnConfig {
   width?: number | string
   /** 是否启用拖拽，默认启用。 */
   draggable?: boolean
+  /** 输入框允许的最小宽度。 */
+  minColumnWidth?: number
+  /** 输入框允许的最大宽度。 */
+  maxColumnWidth?: number
+  /** 输入框步进值。 */
+  columnWidthStep?: number
 }
 
 export interface ConfigTableColumnSettingChange {
   columnOrder: HeadlessTableColumnOrderState
   columnVisibility: HeadlessTableColumnVisibilityState
+  columnWidths: ConfigTableColumnWidthState
 }
 
-export interface ConfigTablePaginationProps {
-  layout?: string
-  pageSizes?: number[]
-  background?: boolean
-  small?: boolean
-  hideOnSinglePage?: boolean
-  [key: string]: any
-}
+export type ConfigTablePaginationProps = Partial<Omit<
+  PaginationProps,
+  'currentPage' | 'pageSize' | 'total' | 'pageCount' | 'defaultCurrentPage' | 'defaultPageSize'
+>> & Record<string, any>
 
 export interface ConfigTablePageChangeParams {
   currentPage: number

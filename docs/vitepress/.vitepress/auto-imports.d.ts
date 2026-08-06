@@ -13,6 +13,7 @@ declare global {
   const copyText: typeof import('@moluoxixi/components/CopyText')['copyText']
   const createConfigFormController: typeof import('@moluoxixi/components/configForm')['createConfigFormController']
   const createHeadlessTableRenderer: typeof import('@moluoxixi/components/HeadlessTable')['createHeadlessTableRenderer']
+  const createHeadlessTableRendererPlugin: typeof import('@moluoxixi/components/HeadlessTable')['createHeadlessTableRendererPlugin']
   const defineConfigFormField: typeof import('@moluoxixi/components/configForm')['defineConfigFormField']
   const defineConfigFormFields: typeof import('@moluoxixi/components/configForm')['defineConfigFormFields']
   const defineField: typeof import('@moluoxixi/components/configForm')['defineField']

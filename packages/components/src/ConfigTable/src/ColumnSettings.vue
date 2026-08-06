@@ -4,27 +4,35 @@ import type {
   ConfigTableColumn,
   ConfigTableColumnConfig,
   ConfigTableColumnSettingChange,
+  ConfigTableColumnWidthState,
   ConfigTableRow,
 } from './types'
 import { ChevronDown, ChevronUp, GripVertical, Settings } from '@lucide/vue'
-import { ElButton, ElCheckbox, ElDialog, ElTooltip } from 'element-plus'
+import { ElButton, ElCheckbox, ElDialog, ElInputNumber, ElTooltip } from 'element-plus'
 import Sortable from 'sortablejs'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import {
   getHeadlessTableColumnLabel,
   projectHeadlessTableColumns,
 } from '../../HeadlessTable/src/core'
+import {
+  getConfigTableColumnId,
+  getConfigTableColumnWidth,
+} from './column-width'
 
 interface ColumnSettingItem {
   id: string
   label: string
   visible: boolean
+  width: number
 }
 
 const props = defineProps<{
   columns: ConfigTableColumn[]
   columnOrder: string[]
   columnVisibility: Record<string, boolean>
+  columnWidths: ConfigTableColumnWidthState
+  defaultColumnWidth: number
   config: ConfigTableColumnConfig
 }>()
 
@@ -51,6 +59,44 @@ function createDraft(): ColumnSettingItem[] {
     id: columnId,
     label: getHeadlessTableColumnLabel(column, sourceIndex),
     visible: visibleIds.has(columnId),
+    width: getConfigTableColumnWidth(
+      column as ConfigTableColumn,
+      sourceIndex,
+      props.columnWidths,
+      {
+        defaultColumnWidth: props.defaultColumnWidth,
+        minColumnWidth: props.config.minColumnWidth,
+        maxColumnWidth: props.config.maxColumnWidth,
+      },
+    ),
+  }))
+}
+
+function resetSettings(): void {
+  draftItems.value = createDraftFromSource()
+}
+
+function createDraftFromSource(): ColumnSettingItem[] {
+  const sourceColumns = props.columns.map((column, sourceIndex) => ({
+    column: column as HeadlessTableColumn<ConfigTableRow>,
+    columnId: getConfigTableColumnId(column, sourceIndex),
+    sourceIndex,
+  }))
+
+  return sourceColumns.map(({ column, columnId, sourceIndex }) => ({
+    id: columnId,
+    label: getHeadlessTableColumnLabel(column, sourceIndex),
+    visible: column.visible !== false,
+    width: getConfigTableColumnWidth(
+      column as ConfigTableColumn,
+      sourceIndex,
+      {},
+      {
+        defaultColumnWidth: props.defaultColumnWidth,
+        minColumnWidth: props.config.minColumnWidth,
+        maxColumnWidth: props.config.maxColumnWidth,
+      },
+    ),
   }))
 }
 
@@ -112,6 +158,7 @@ function applySettings(): void {
   emit('apply', {
     columnOrder: draftItems.value.map(item => item.id),
     columnVisibility: Object.fromEntries(draftItems.value.map(item => [item.id, item.visible])),
+    columnWidths: Object.fromEntries(draftItems.value.map(item => [item.id, item.width])),
   })
   dialogVisible.value = false
 }
@@ -170,6 +217,15 @@ onBeforeUnmount(destroySortable)
           >
             {{ item.label }}
           </ElCheckbox>
+          <ElInputNumber
+            v-model="item.width"
+            class="mx-config-table-column-settings__width"
+            :aria-label="`${item.label} 宽度`"
+            :min="props.config.minColumnWidth"
+            :max="props.config.maxColumnWidth"
+            :step="props.config.columnWidthStep ?? 10"
+            controls-position="right"
+          />
           <div class="mx-config-table-column-settings__moves">
             <ElTooltip content="上移" placement="top">
               <ElButton
@@ -198,6 +254,10 @@ onBeforeUnmount(destroySortable)
       </div>
 
       <template #footer>
+        <ElButton text @click="resetSettings">
+          重置
+        </ElButton>
+        <span class="mx-config-table-column-settings__footer-spacer" />
         <ElButton @click="dialogVisible = false">
           取消
         </ElButton>
@@ -228,7 +288,7 @@ onBeforeUnmount(destroySortable)
 
 .mx-config-table-column-settings__item {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(112px, 132px) auto;
   align-items: center;
   min-height: 42px;
   padding: 4px 8px;
@@ -277,14 +337,36 @@ onBeforeUnmount(destroySortable)
   white-space: nowrap;
 }
 
+.mx-config-table-column-settings__width {
+  width: 132px;
+}
+
 .mx-config-table-column-settings__moves {
   display: flex;
   gap: 2px;
 }
 
+.mx-config-table-column-settings__footer-spacer {
+  flex: 1;
+}
+
+:global(.mx-config-table-column-settings__dialog .el-dialog__footer) {
+  display: flex;
+  align-items: center;
+}
+
 @media (max-width: 520px) {
   :global(.mx-config-table-column-settings__dialog) {
     width: calc(100vw - 32px) !important;
+  }
+
+  .mx-config-table-column-settings__item {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .mx-config-table-column-settings__width {
+    grid-column: 2 / 4;
+    width: 100%;
   }
 }
 </style>

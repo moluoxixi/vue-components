@@ -2,6 +2,7 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
+import { createHeadlessTableRendererPlugin } from '../../HeadlessTable'
 import { ConfigTable } from '../index'
 
 const sortableCreate = vi.hoisted(() => vi.fn(() => ({ destroy: vi.fn() })))
@@ -175,6 +176,29 @@ const ElCheckboxStub = defineComponent({
   },
 })
 
+const ElInputNumberStub = defineComponent({
+  name: 'ElInputNumber',
+  props: {
+    modelValue: { type: Number, default: 0 },
+    min: { type: Number, default: undefined },
+    max: { type: Number, default: undefined },
+    step: { type: Number, default: 1 },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { attrs, emit }) {
+    return () => h('input', {
+      ...attrs,
+      class: ['el-input-number-stub', attrs.class],
+      min: props.min,
+      max: props.max,
+      step: props.step,
+      type: 'number',
+      value: props.modelValue,
+      onInput: (event: Event) => emit('update:modelValue', Number((event.target as HTMLInputElement).value)),
+    })
+  },
+})
+
 const ElDialogStub = defineComponent({
   name: 'ElDialog',
   props: { modelValue: Boolean, title: String },
@@ -202,6 +226,7 @@ const elementStubs = {
   ElButton: ElButtonStub,
   ElCheckbox: ElCheckboxStub,
   ElDialog: ElDialogStub,
+  ElInputNumber: ElInputNumberStub,
   ElPagination: ElPaginationStub,
   ElTableV2: ElTableV2Stub,
   ElTooltip: ElTooltipStub,
@@ -517,6 +542,75 @@ describe('config table', () => {
     expect(wrapper.emitted('update:columnVisibility')?.at(-1)).toEqual([{ name: true, status: false }])
   })
 
+  it('列设置可以一起编辑稳定列宽、顺序和显隐，并支持重置且不修改源配置', async () => {
+    const sourceColumns = [
+      { id: 'name-column', field: 'name', label: '仓库', width: 120 },
+      { id: 'status-column', field: 'status', label: '状态', width: 180, visible: false },
+    ]
+    const sourceSnapshot = structuredClone(sourceColumns)
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columnConfig: true,
+        columns: sourceColumns,
+        columnWidths: { 'name-column': 240 },
+        data: [{ name: '华南仓', status: '启用' }],
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('[data-testid="virtual-column-name"]').attributes('data-width')).toBe('240')
+    await wrapper.get('.mx-config-table-column-settings__trigger').trigger('click')
+    await wrapper.get('[aria-label="仓库 宽度"]').setValue('300')
+    await wrapper.get('[aria-label="下移 仓库"]').trigger('click')
+    await wrapper.get('[data-column-id="status-column"] input').setValue(true)
+
+    const confirm = wrapper.findAll('button').find(button => button.text() === '确定')
+    await confirm!.trigger('click')
+
+    expect(wrapper.findAll('[data-testid^="virtual-column-"]').map(node => node.attributes('data-testid')))
+      .toEqual(['virtual-column-status', 'virtual-column-name'])
+    expect(wrapper.get('[data-testid="virtual-column-name"]').attributes('data-width')).toBe('300')
+    expect(wrapper.get('[data-testid="virtual-column-status"]').attributes('data-width')).toBe('180')
+    expect(wrapper.emitted('update:columnWidths')?.at(-1)).toEqual([{ 'name-column': 300, 'status-column': 180 }])
+    expect(sourceColumns).toEqual(sourceSnapshot)
+
+    await wrapper.get('.mx-config-table-column-settings__trigger').trigger('click')
+    await wrapper.get('[aria-label="仓库 宽度"]').setValue('320')
+    await wrapper.get('[aria-label="上移 仓库"]').trigger('click')
+    await wrapper.get('[data-column-id="status-column"] input').setValue(false)
+    await wrapper.findAll('button').find(button => button.text() === '重置')!.trigger('click')
+
+    expect((wrapper.get('[aria-label="仓库 宽度"]').element as HTMLInputElement).value).toBe('120')
+    expect((wrapper.get('[aria-label="状态 宽度"]').element as HTMLInputElement).value).toBe('180')
+    expect((wrapper.get('[data-column-id="status-column"] input').element as HTMLInputElement).checked).toBe(false)
+    await wrapper.findAll('button').find(button => button.text() === '确定')!.trigger('click')
+
+    expect(wrapper.findAll('[data-testid^="virtual-column-"]').map(node => node.attributes('data-testid')))
+      .toEqual(['virtual-column-name'])
+    expect(wrapper.get('[data-testid="virtual-column-name"]').attributes('data-width')).toBe('120')
+  })
+
+  it('app renderer plugin 可被 ConfigTable 实例消费', () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'status', title: '状态', cellRender: 'app-status' }],
+        data: [{ status: '启用' }],
+      },
+      global: {
+        plugins: [createHeadlessTableRendererPlugin({
+          renderers: {
+            'app-status': {
+              renderDefault: () => h('strong', { 'data-testid': 'app-status-renderer' }, '应用 renderer'),
+            },
+          },
+        })],
+        stubs: elementStubs,
+      },
+    })
+
+    expect(wrapper.get('[data-testid="app-status-renderer"]').text()).toBe('应用 renderer')
+  })
+
   it('单元格点击和双击事件返回行列配置与索引', async () => {
     const wrapper = mount(ConfigTable, {
       props: {
@@ -569,6 +663,48 @@ describe('config table', () => {
     expect(query).toHaveBeenCalledWith({ keyword: '仓库', currentPage: 1, pageSize: 10 })
     expect(wrapper.get('[data-testid="pagination-state"]').text()).toBe('1/10/33')
     expect(loaded).toHaveBeenCalledWith({ data: [{ code: 'Q-001', name: '请求仓库', qty: 1 }], total: 33 })
+  })
+
+  it('分页透传对象不能覆盖受控页码、页大小、总数和 pageCount', async () => {
+    const query = vi.fn(async () => ({
+      data: [{ name: '请求仓库' }],
+      total: 33,
+    }))
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', label: '仓库' }],
+        currentPage: 2,
+        pageSize: 20,
+        pagination: {
+          currentPage: 99,
+          pageSize: 50,
+          total: 999,
+          pageCount: 999,
+          layout: 'total',
+        },
+        query,
+      },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: elementStubs,
+      },
+    })
+
+    await waitFor(() => wrapper.get('[data-testid="pagination-state"]').text() === '2/20/33')
+  })
+
+  it('静态数据分页支持显式 total', () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', label: '仓库' }],
+        data: [{ name: '仓库' }],
+        pagination: true,
+        total: 88,
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('[data-testid="pagination-state"]').text()).toBe('1/10/88')
   })
 
   it('query 失败时触发 error 并展示加载失败空态', async () => {

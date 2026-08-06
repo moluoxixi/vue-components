@@ -31,30 +31,29 @@ const data = shallowRef([
 
 ## Renderer 与列设置
 
-:::demo `cellRender` / `headerRender` 使用与 HeadlessTable 相同的命名 renderer 协议；开启 `columnConfig` 后，可在弹窗中拖拽排序或显示隐藏列。
+:::demo renderer 可以在应用级 registry 中注册一次，ConfigTable 和 HeadlessTable 的多个实例都能复用；开启 `columnConfig` 后，可在弹窗中拖拽排序、调整宽度或显示隐藏列。
 ```vue
 <script setup>
-import { ConfigTable, defineHeadlessTableRenderer } from '@moluoxixi/components'
+import { ConfigTable, defineHeadlessTableRenderer, headlessTableRenderer } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { h, ref, shallowRef } from 'vue'
 
 const columnOrder = ref([])
 const columnVisibility = ref({})
-const renderers = {
-  status: defineHeadlessTableRenderer({
-    renderDefault: (renderOptions, { rawValue }) => h(
-      ElTag,
-      {
-        size: 'small',
-        type: rawValue === '启用' ? 'success' : 'warning',
-      },
-      () => `${renderOptions.props?.prefix ?? ''}${rawValue}`,
-    ),
-  }),
-  scoreHeader: defineHeadlessTableRenderer({
-    renderHeader: (_, { column }) => h('strong', { style: 'color:#409eff' }, column.title),
-  }),
-}
+const columnWidths = ref({})
+headlessTableRenderer.replace('docs-config-status', defineHeadlessTableRenderer({
+  renderDefault: (renderOptions, { rawValue }) => h(
+    ElTag,
+    {
+      size: 'small',
+      type: rawValue === '启用' ? 'success' : 'warning',
+    },
+    () => `${renderOptions.props?.prefix ?? ''}${rawValue}`,
+  ),
+}))
+headlessTableRenderer.replace('docs-config-score-header', defineHeadlessTableRenderer({
+  renderHeader: (_, { column }) => h('strong', { style: 'color:#409eff' }, column.title),
+}))
 const columns = [
   { field: 'name', title: '姓名', minWidth: 140, slots: { header: 'nameHeader' } },
   {
@@ -62,14 +61,14 @@ const columns = [
     title: '状态',
     width: 110,
     align: 'center',
-    cellRender: { name: 'status', props: { prefix: '账号' } },
+    cellRender: { name: 'docs-config-status', props: { prefix: '账号' } },
   },
   {
     field: 'score',
     title: '分数',
     width: 100,
     align: 'right',
-    headerRender: 'scoreHeader',
+    headerRender: 'docs-config-score-header',
     formatter: ({ value }) => `${value} 分`,
   },
 ]
@@ -78,15 +77,19 @@ const data = shallowRef([
   { name: '李四', status: '维护', score: 78 },
   { name: '王五', status: '启用', score: 85 },
 ])
+const secondData = shallowRef([
+  { name: '赵六', status: '启用', score: 88 },
+])
+const secondaryColumns = columns.map(column => ({ ...column, slots: undefined }))
 </script>
 
 <template>
   <ConfigTable
     v-model:column-order="columnOrder"
     v-model:column-visibility="columnVisibility"
+    v-model:column-widths="columnWidths"
     :columns="columns"
     :data="data"
-    :renderers="renderers"
     :width="720"
     :height="200"
     column-config
@@ -95,6 +98,13 @@ const data = shallowRef([
       <strong>姓名（Slot）</strong>
     </template>
   </ConfigTable>
+  <ConfigTable
+    class="mx-config-table-docs__secondary"
+    :columns="secondaryColumns"
+    :data="secondData"
+    :width="720"
+    :height="120"
+  />
 </template>
 ```
 :::

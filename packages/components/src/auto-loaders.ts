@@ -46,6 +46,7 @@ export const autoImport = {
   [`${packageName}/CopyText`]: ['ClipboardCopyError', 'copyText'],
   [`${packageName}/HeadlessTable`]: [
     'createHeadlessTableRenderer',
+    'createHeadlessTableRendererPlugin',
     'defineHeadlessTableRenderer',
     'getHeadlessTableColumnId',
     'getHeadlessTableColumnLabel',

@@ -128,7 +128,18 @@ SSR 或多应用场景应使用隔离 registry：
 
 ```ts
 const registry = createHeadlessTableRenderer()
-app.provide(headlessTableRendererKey, registry)
+app.use(createHeadlessTableRendererPlugin({
+  registry,
+  renderers: { statusTag: statusRenderer },
+}))
+```
+
+插件会把同一个 registry 提供给当前 Vue 应用中的所有 `HeadlessTable` 和 `ConfigTable`。
+如果 registry 已经提前通过 `mixin` 注册 renderer，也可以直接传入 registry：
+
+```ts
+const registry = createHeadlessTableRenderer().mixin({ statusTag: statusRenderer })
+app.use(createHeadlessTableRendererPlugin(registry))
 ```
 
 也可以在组件 setup 中调用 `provideHeadlessTableRenderer(registry)`。开发环境默认会对缺失 renderer、

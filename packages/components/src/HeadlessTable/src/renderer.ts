@@ -1,9 +1,11 @@
-import type { InjectionKey } from 'vue'
+import type { App, InjectionKey } from 'vue'
 import type {
   HeadlessTableRendererConfig,
   HeadlessTableRendererDefinition,
   HeadlessTableRendererMap,
   HeadlessTableRendererOptions,
+  HeadlessTableRendererPlugin,
+  HeadlessTableRendererPluginOptions,
   HeadlessTableRendererRegistry,
   HeadlessTableRow,
 } from './types'
@@ -93,6 +95,25 @@ export function provideHeadlessTableRenderer(
 ): HeadlessTableRendererRegistry {
   provide(headlessTableRendererKey, registry)
   return registry
+}
+
+export function createHeadlessTableRendererPlugin(
+  options: HeadlessTableRendererPluginOptions | HeadlessTableRendererRegistry = {},
+): HeadlessTableRendererPlugin {
+  const registry = 'get' in options && 'mixin' in options
+    ? options
+    : options.registry ?? createHeadlessTableRenderer()
+
+  if (!('get' in options && 'mixin' in options) && options.renderers) {
+    registry.mixin(options.renderers, { replace: options.replace })
+  }
+
+  return {
+    registry,
+    install(app: App) {
+      app.provide(headlessTableRendererKey, registry)
+    },
+  }
 }
 
 export function normalizeHeadlessTableRendererOptions(

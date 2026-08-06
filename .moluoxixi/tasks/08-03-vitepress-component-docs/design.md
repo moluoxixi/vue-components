@@ -24,6 +24,12 @@ ConfigTable reuses HeadlessTable's renderer configuration, registry, stable colu
 
 Column settings are opt-in. The dialog edits a draft order and visibility map, then emits controlled updates only when confirmed. It uses stable column ids, never mutates the caller's column objects or array, and offers both a drag handle and explicit move controls. Existing inline render functions, named slots, formatter behavior, source `columnIndex`, and `field`-based TableV2 data keys remain compatible.
 
+The shared renderer registry also exposes an application plugin factory. The plugin provides one app-scoped registry through the existing injection key, so ConfigTable and HeadlessTable instances share registrations without receiving a `renderers` prop. Per-table renderers remain the highest-priority compatibility override; the module singleton remains available for process-level registration.
+
+Column settings additionally own a numeric pixel-width map keyed by the same stable column ids. Draft width, order, and visibility changes are applied together and emitted through dedicated v-model updates without mutating source columns. A reset action restores source order, source visibility, and resolved source/default widths.
+
+ConfigTable continues to render Element Plus `ElPagination`. Controlled page, page-size, and total state are owned by ConfigTable and cannot be replaced by the pagination passthrough object. The documentation layout supplies the Element Plus locale that matches the active VitePress locale, and narrow layouts keep pagination controls horizontally usable without overflowing the page.
+
 ## API Data Flow
 
 ```text
