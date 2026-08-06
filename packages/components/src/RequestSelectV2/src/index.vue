@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { RequestOptionsComponentEmits, RequestOptionsComponentProps, RequestOptionRecord, RequestParamsRecord } from '../../request/types'
 import { useRequestOptions } from '@moluoxixi/hooks'
+import { ElSelectV2 } from 'element-plus'
 import { computed, useAttrs, watch } from 'vue'
 
 defineOptions({

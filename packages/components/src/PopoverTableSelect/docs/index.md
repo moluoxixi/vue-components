@@ -7,6 +7,8 @@
 :::demo 配置 `columns` 和 `data`，点击输入框弹出表格，点击行触发 `select` 事件。
 ```vue
 <script setup>
+import { PopoverTableSelect } from '@moluoxixi/components'
+import { ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus'
 import { computed, ref } from 'vue'
 
 const inputValue = ref('C-001 华东仓')

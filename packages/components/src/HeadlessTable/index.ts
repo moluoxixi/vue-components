@@ -5,13 +5,16 @@ export {
   getHeadlessTableColumnId,
   getHeadlessTableColumnLabel,
   getHeadlessTableRawValue,
+  projectHeadlessTableColumns,
 } from './src/core'
 export {
   createHeadlessTableRenderer,
   defineHeadlessTableRenderer,
   headlessTableRenderer,
   headlessTableRendererKey,
+  normalizeHeadlessTableRendererOptions,
   provideHeadlessTableRenderer,
+  resolveHeadlessTableRenderer,
 } from './src/renderer'
 export type * from './src/types'
 export { useHeadlessTable } from './src/useHeadlessTable'

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { RequestOptionsComponentEmits, RequestOptionsComponentProps, RequestOptionRecord, RequestParamsRecord } from '../../request/types'
 import { useRequestOptions } from '@moluoxixi/hooks'
+import { ElTreeSelect } from 'element-plus'
 import { computed, useAttrs, watch } from 'vue'
 
 defineOptions({
@@ -12,7 +13,14 @@ const props = withDefaults(defineProps<RequestOptionsComponentProps>(), {
   enabled: true,
 })
 const emit = defineEmits<RequestOptionsComponentEmits>()
-const modelValue = defineModel<unknown>()
+const modelValue = defineModel<
+  | string
+  | number
+  | boolean
+  | Record<string, unknown>
+  | Array<string | number | boolean | Record<string, unknown>>
+  | null
+>()
 const attrs = useAttrs()
 
 const request = useRequestOptions<RequestOptionRecord, RequestParamsRecord>({

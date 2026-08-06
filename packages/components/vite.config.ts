@@ -74,6 +74,7 @@ export default defineConfig({
         'dayjs',
         /^dayjs\//,
         '@lucide/vue',
+        'sortablejs',
       ],
     },
   },

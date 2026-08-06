@@ -1,4 +1,5 @@
 import type { ComponentContract } from '@moluoxixi/ai-doc-assistant'
+import ts from 'typescript'
 
 type TypeDefinition = ComponentContract['typeDefs'][number]
 
@@ -25,29 +26,89 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function identifiersInType(value: string): string[] {
-  const withoutLabels = value.replace(/\b[a-z_$][\w$]*\s*(?=\??:)/gi, '')
-  return withoutLabels.match(/[a-z_$][\w$]*/gi) ?? []
-}
-
 function definitionReferences(definition: TypeDefinition, availableNames: Set<string>): string[] {
-  const sources = definition.fields.map(field => field.type)
-  if (definition.kind === 'interface') {
-    const declarationStart = definition.raw.search(
-      new RegExp(`(?:export\\s+)?interface\\s+${escapeRegExp(definition.name)}\\b`),
-    )
-    const openingBrace = declarationStart >= 0 ? definition.raw.indexOf('{', declarationStart) : -1
-    if (declarationStart >= 0 && openingBrace > declarationStart)
-      sources.push(definition.raw.slice(declarationStart, openingBrace))
-  }
-
   const result: string[] = []
-  for (const source of sources) {
-    for (const identifier of identifiersInType(source)) {
-      if (identifier !== definition.name && availableNames.has(identifier) && !result.includes(identifier))
-        result.push(identifier)
+  const sourceFile = ts.createSourceFile(
+    `${definition.name}.ts`,
+    definition.raw,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  )
+
+  const addReference = (name: string, boundNames: ReadonlySet<string>) => {
+    if (
+      name !== definition.name
+      && !boundNames.has(name)
+      && availableNames.has(name)
+      && !result.includes(name)
+    ) {
+      result.push(name)
     }
   }
+
+  const visitEntityName = (name: ts.EntityName, boundNames: ReadonlySet<string>) => {
+    if (ts.isIdentifier(name)) {
+      addReference(name.text, boundNames)
+      return
+    }
+    visitEntityName(name.left, boundNames)
+    addReference(name.right.text, boundNames)
+  }
+
+  const visitExpressionName = (expression: ts.Expression, boundNames: ReadonlySet<string>) => {
+    if (ts.isIdentifier(expression)) {
+      addReference(expression.text, boundNames)
+      return
+    }
+    if (ts.isPropertyAccessExpression(expression)) {
+      visitExpressionName(expression.expression, boundNames)
+      addReference(expression.name.text, boundNames)
+    }
+  }
+
+  const collectInferNames = (node: ts.Node, names: Set<string>) => {
+    if (ts.isInferTypeNode(node))
+      names.add(node.typeParameter.name.text)
+    ts.forEachChild(node, child => collectInferNames(child, names))
+  }
+
+  const visit = (node: ts.Node, inheritedBoundNames: ReadonlySet<string>) => {
+    const declaredTypeParameters = (node as ts.Node & {
+      typeParameters?: ts.NodeArray<ts.TypeParameterDeclaration>
+    }).typeParameters
+    const singularTypeParameter = ts.isMappedTypeNode(node) || ts.isInferTypeNode(node)
+      ? node.typeParameter
+      : undefined
+    const boundNames = declaredTypeParameters?.length || singularTypeParameter
+      ? new Set([
+          ...inheritedBoundNames,
+          ...(declaredTypeParameters?.map(parameter => parameter.name.text) ?? []),
+          ...(singularTypeParameter ? [singularTypeParameter.name.text] : []),
+        ])
+      : inheritedBoundNames
+
+    if (ts.isTypeReferenceNode(node))
+      visitEntityName(node.typeName, boundNames)
+    else if (ts.isExpressionWithTypeArguments(node))
+      visitExpressionName(node.expression, boundNames)
+    else if (ts.isTypeQueryNode(node))
+      visitEntityName(node.exprName, boundNames)
+
+    if (ts.isConditionalTypeNode(node)) {
+      visit(node.checkType, boundNames)
+      visit(node.extendsType, boundNames)
+      const inferNames = new Set<string>()
+      collectInferNames(node.extendsType, inferNames)
+      visit(node.trueType, inferNames.size > 0 ? new Set([...boundNames, ...inferNames]) : boundNames)
+      visit(node.falseType, boundNames)
+      return
+    }
+
+    ts.forEachChild(node, child => visit(child, boundNames))
+  }
+
+  visit(sourceFile, new Set())
   return result
 }
 

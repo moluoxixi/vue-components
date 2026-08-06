@@ -6,6 +6,10 @@
 
 :::demo 将 `text` 属性设置为要复制的文本。
 ```vue
+<script setup>
+import { CopyText } from '@moluoxixi/components'
+</script>
+
 <template>
   <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
     <CopyText text="Hello, World!" />
@@ -20,6 +24,10 @@
 
 :::demo 通过默认插槽自定义文本区域的展示。
 ```vue
+<script setup>
+import { CopyText } from '@moluoxixi/components'
+</script>
+
 <template>
   <CopyText text="token-abc-123456-xyz">
     <template #default="{ text }">
@@ -43,6 +51,10 @@
 
 :::demo 通过 `icon` 插槽替换按钮图标，slot scope 包含 `copied` / `copying` / `error` 状态。
 ```vue
+<script setup>
+import { CopyText } from '@moluoxixi/components'
+</script>
+
 <template>
   <CopyText text="自定义图标示例">
     <template #icon="{ copied }">
@@ -59,6 +71,10 @@
 
 :::demo 设置 `disabled` 禁用复制功能。
 ```vue
+<script setup>
+import { CopyText } from '@moluoxixi/components'
+</script>
+
 <template>
   <div style="display:flex;gap:16px;">
     <CopyText text="正常状态" />

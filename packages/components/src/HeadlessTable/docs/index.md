@@ -7,6 +7,9 @@
 :::demo 用 `HeadlessTable` 提供列配置，在默认插槽内接入 `ElTable`，无需改动 `useHeadlessTable` 逻辑。
 ```vue
 <script setup>
+import { HeadlessTable } from '@moluoxixi/components'
+import { ElTable, ElTableColumn, ElTag } from 'element-plus'
+
 const rows = [
   { id: 1, code: 'W-001', name: '华东仓', status: '启用',  utilization: 87 },
   { id: 2, code: 'W-002', name: '华南仓', status: '启用',  utilization: 63 },
@@ -65,6 +68,7 @@ const baseColumns = [
 <script setup>
 import { ref } from 'vue'
 import { useHeadlessTable } from '@moluoxixi/components'
+import { ElInput, ElPagination, ElTable, ElTableColumn } from 'element-plus'
 
 const rawRows = Array.from({ length: 20 }, (_, i) => ({
   id: i + 1,

@@ -11,7 +11,7 @@ import type {
   UseHeadlessTableReturn,
 } from './types'
 import { computed, ref, toValue, watch } from 'vue'
-import { getHeadlessTableColumnId, getHeadlessTableRawValue } from './core'
+import { getHeadlessTableColumnId, getHeadlessTableRawValue, projectHeadlessTableColumns } from './core'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 10
@@ -105,31 +105,16 @@ export function useHeadlessTable<TRow extends HeadlessTableRow = HeadlessTableRo
   ])
   const allRows = computed<TRow[]>(() => [...toValue(options.data)])
 
-  const allColumns = computed<HeadlessTableColumn<TRow>[]>(() => {
-    const order = new Map(columnOrder.value.map((id, index) => [id, index]))
-    return sourceColumns.value
-      .map((column, index) => ({ column, index }))
-      .sort((left, right) => {
-        const leftOrder = order.get(getHeadlessTableColumnId(left.column, left.index))
-        const rightOrder = order.get(getHeadlessTableColumnId(right.column, right.index))
-        if (leftOrder == null && rightOrder == null)
-          return left.index - right.index
-        if (leftOrder == null)
-          return 1
-        if (rightOrder == null)
-          return -1
-        return leftOrder - rightOrder
-      })
-      .map(item => item.column)
-  })
-
-  const columns = computed<HeadlessTableColumn<TRow>[]>(() => allColumns.value.filter(
-    (column, index) => {
-      const id = getHeadlessTableColumnId(column, index)
-      return Object.hasOwn(columnVisibility.value, id)
-        ? columnVisibility.value[id] !== false
-        : column.visible !== false
-    },
+  const columnProjection = computed(() => projectHeadlessTableColumns(
+    sourceColumns.value,
+    columnOrder.value,
+    columnVisibility.value,
+  ))
+  const allColumns = computed<HeadlessTableColumn<TRow>[]>(() => (
+    columnProjection.value.allColumns.map(item => item.column)
+  ))
+  const columns = computed<HeadlessTableColumn<TRow>[]>(() => (
+    columnProjection.value.columns.map(item => item.column)
   ))
 
   const filteredRows = computed<TRow[]>(() => {

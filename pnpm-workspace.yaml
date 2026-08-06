@@ -9,19 +9,24 @@ packages:
   - docs/vitepress
 
 overrides:
+  '@vue/compiler-dom': 3.5.33
+  '@vue/compiler-sfc': 3.5.33
+  '@vue/server-renderer': 3.5.33
   vitepress>vite: 5.4.14
 
 catalog:
   '@huggingface/transformers': ^4.0.0
   '@types/markdown-it': ^14.1.2
   '@types/markdown-it-container': ^2.0.6
+  '@types/sortablejs': ^1.15.9
   markdown-it-container: ^3.0.0
+  sortablejs: ^1.15.7
   vitepress: ^1.6.3
   vue3-sfc-loader: 0.9.5
 catalogs:
   build:
     dayjs: ^1.11.20
-    vue: ^3.5.13
+    vue: 3.5.33
   data:
     '@orama/orama': ^3.1.18
     '@orama/plugin-data-persistence': ^3.1.18
@@ -35,8 +40,10 @@ catalogs:
     '@vitejs/plugin-vue': ^5.2.3
     '@vitejs/plugin-vue-jsx': ^4.2.0
     '@vitest/coverage-v8': ^3.2.4
-    '@vue/compiler-sfc': ^3.5.13
+    '@vue/compiler-dom': 3.5.33
+    '@vue/compiler-sfc': 3.5.33
     '@vue/language-core': ~3.1.8
+    '@vue/server-renderer': 3.5.33
     '@vue/test-utils': ^2.4.10
     eslint: ^9.5.0
     eslint-plugin-format: ^2.0.1

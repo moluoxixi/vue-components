@@ -7,6 +7,7 @@
 :::demo 传入 `query` 异步函数，组件自动发起请求并填充选项。
 ```vue
 <script setup>
+import { RequestSelectV2 } from '@moluoxixi/components'
 import { ref } from 'vue'
 const value = ref(null)
 
@@ -38,6 +39,8 @@ async function queryUsers() {
 :::demo `enabled` 为 `false` 时不发起请求，可用于条件渲染场景。
 ```vue
 <script setup>
+import { RequestSelectV2 } from '@moluoxixi/components'
+import { ElSwitch } from 'element-plus'
 import { ref } from 'vue'
 const value = ref(null)
 const enabled = ref(false)
@@ -49,7 +52,7 @@ async function queryItems() {
 </script>
 <template>
   <div style="display:flex;flex-direction:column;gap:12px;">
-    <el-switch v-model="enabled" active-text="启用请求" />
+    <ElSwitch v-model="enabled" active-text="启用请求" />
     <RequestSelectV2
       v-model="value"
       :query="queryItems"

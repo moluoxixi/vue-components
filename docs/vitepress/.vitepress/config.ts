@@ -149,6 +149,7 @@ export default defineConfig({
       }),
     ] as VitePressPlugins,
     resolve: {
+      conditions: ['source'],
       alias: [
         { find: '@docs-components/styles', replacement: docsSite.packageStylesImport },
         { find: '@docs-components', replacement: docsSite.packageName },

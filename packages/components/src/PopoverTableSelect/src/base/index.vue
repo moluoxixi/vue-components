@@ -6,6 +6,7 @@ import type {
   PopoverTableRow,
   PopoverTableSelectBaseEmits,
   PopoverTableSelectBaseProps,
+  PopoverTableSelectSlotScope,
   PopoverTableSelectSlots,
   PopoverTableVirtualRef,
 } from '../types'
@@ -381,7 +382,7 @@ onUnmounted(() => {
             v-for="name in tableSlotNames"
             #[name]="slotParams"
           >
-            <slot :name="name" v-bind="slotParams" />
+            <slot :name="name" v-bind="slotParams as PopoverTableSelectSlotScope" />
           </template>
           <template #empty>
             <span v-if="props.loading">加载中...</span>

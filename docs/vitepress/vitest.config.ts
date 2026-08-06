@@ -6,6 +6,7 @@ import { createComponentAutoLoadPlugins } from './.vitepress/auto-loaders'
 export default defineConfig({
   plugins: [vue(), ...createComponentAutoLoadPlugins()],
   resolve: {
+    conditions: ['source'],
     alias: {
       '@docs-components': fileURLToPath(new URL('../../packages/components/index.ts', import.meta.url)),
     },

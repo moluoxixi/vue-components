@@ -1,8 +1,14 @@
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import { ConfigTable } from '../index'
+
+const sortableCreate = vi.hoisted(() => vi.fn(() => ({ destroy: vi.fn() })))
+
+vi.mock('sortablejs', () => ({
+  default: { create: sortableCreate },
+}))
 
 function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -140,9 +146,65 @@ const ElPaginationStub = defineComponent({
   },
 })
 
+const ElButtonStub = defineComponent({
+  name: 'ElButton',
+  props: { disabled: Boolean },
+  setup(props, { attrs, slots }) {
+    return () => h('button', {
+      ...attrs,
+      disabled: props.disabled,
+      type: 'button',
+    }, slots.default?.())
+  },
+})
+
+const ElCheckboxStub = defineComponent({
+  name: 'ElCheckbox',
+  props: { disabled: Boolean, modelValue: Boolean },
+  emits: ['change'],
+  setup(props, { emit, slots }) {
+    return () => h('label', [
+      h('input', {
+        checked: props.modelValue,
+        disabled: props.disabled,
+        type: 'checkbox',
+        onChange: (event: Event) => emit('change', (event.target as HTMLInputElement).checked),
+      }),
+      slots.default?.(),
+    ])
+  },
+})
+
+const ElDialogStub = defineComponent({
+  name: 'ElDialog',
+  props: { modelValue: Boolean, title: String },
+  emits: ['update:modelValue'],
+  setup(props, { slots }) {
+    return () => props.modelValue
+      ? h('div', { 'data-testid': 'column-settings-dialog' }, [
+          h('h2', props.title),
+          slots.default?.(),
+          slots.footer?.(),
+        ])
+      : null
+  },
+})
+
+const ElTooltipStub = defineComponent({
+  name: 'ElTooltip',
+  props: { content: String, placement: String },
+  setup(_, { slots }) {
+    return () => slots.default?.()
+  },
+})
+
 const elementStubs = {
+  ElButton: ElButtonStub,
+  ElCheckbox: ElCheckboxStub,
+  ElDialog: ElDialogStub,
   ElPagination: ElPaginationStub,
   ElTableV2: ElTableV2Stub,
+  ElTooltip: ElTooltipStub,
 }
 
 describe('config table', () => {
@@ -229,18 +291,24 @@ describe('config table', () => {
 
     expect(wrapper.get('[data-testid="el-table-v2-stub"]').text()).toBe('没有数据')
 
+    let emptySlotScope: unknown
+    const slotColumns = [{ field: 'name', label: '仓库' }]
     const slotWrapper = mount(ConfigTable, {
       props: {
-        columns: [{ field: 'name', label: '仓库' }],
+        columns: slotColumns,
         data: [],
       },
       slots: {
-        empty: () => h('strong', { 'data-testid': 'empty-slot' }, '自定义空态'),
+        empty: (scope) => {
+          emptySlotScope = scope
+          return h('strong', { 'data-testid': 'empty-slot' }, '自定义空态')
+        },
       },
       global: { stubs: elementStubs },
     })
 
     expect(slotWrapper.get('[data-testid="empty-slot"]').text()).toBe('自定义空态')
+    expect(emptySlotScope).toMatchObject({ columns: slotColumns, data: [] })
 
     const renderWrapper = mount(ConfigTable, {
       props: {
@@ -280,6 +348,173 @@ describe('config table', () => {
 
     expect(wrapper.get('[data-testid="header-render"]').text()).toBe('name:0:0:1:1')
     expect(wrapper.get('[data-testid="cell-render"]').text()).toBe('C-001:华南仓:0:0:0:1:1')
+  })
+
+  it('父组件动态移除命名 slot 后回退到格式化值', async () => {
+    const showSlot = ref(true)
+    const columns = [{
+      field: 'name',
+      formatter: ({ value }: any) => `格式化:${value}`,
+      slots: { default: 'dynamicCell' },
+    }]
+    const data = [{ name: '华南仓' }]
+    const Host = defineComponent({
+      setup() {
+        return () => h(ConfigTable, { columns, data, diagnostics: false }, {
+          ...(showSlot.value
+            ? { dynamicCell: () => h('span', { 'data-testid': 'dynamic-slot' }, '插槽值') }
+            : {}),
+        })
+      },
+    })
+    const wrapper = mount(Host, { global: { stubs: elementStubs } })
+
+    expect(wrapper.get('[data-testid="dynamic-slot"]').text()).toBe('插槽值')
+    showSlot.value = false
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="dynamic-slot"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="config-table-cell-name-0"]').text()).toBe('格式化:华南仓')
+  })
+
+  it('按 slot、renderer、formatter 的优先级渲染表头和单元格', () => {
+    const formatter = vi.fn(({ value }: any) => `格式化:${value}`)
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [
+          {
+            cellRender: { name: 'status', props: { prefix: 'R' } },
+            field: 'status',
+            formatter,
+            headerRender: 'status',
+          },
+          {
+            cellRender: 'status',
+            field: 'name',
+            slots: { default: 'nameCell', header: 'nameHeader' },
+          },
+        ],
+        data: [{ name: '华南仓', status: '启用' }],
+        renderers: {
+          status: {
+            renderDefault: (options, { rawValue }) => h(
+              'strong',
+              { 'data-testid': 'cell-renderer' },
+              `${String(options.props?.prefix ?? '')}:${rawValue}`,
+            ),
+            renderHeader: (_, { columnIndex }) => h(
+              'b',
+              { 'data-testid': 'header-renderer' },
+              `renderer:${columnIndex}`,
+            ),
+          },
+        },
+      },
+      slots: {
+        nameCell: ({ value }: any) => h('span', { 'data-testid': 'slot-cell-wins' }, value),
+        nameHeader: () => h('span', { 'data-testid': 'slot-header-wins' }, '插槽表头'),
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('[data-testid="header-renderer"]').text()).toBe('renderer:0')
+    expect(wrapper.get('[data-testid="cell-renderer"]').text()).toBe('R:启用')
+    expect(wrapper.get('[data-testid="slot-header-wins"]').text()).toBe('插槽表头')
+    expect(wrapper.get('[data-testid="slot-cell-wins"]').text()).toBe('华南仓')
+    expect(formatter).not.toHaveBeenCalled()
+  })
+
+  it('按稳定列 id 排序和显隐，并在事件中保留源索引', async () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [
+          { field: 'name', label: '仓库' },
+          { field: 'status', label: '状态' },
+          { field: 'qty', label: '数量' },
+        ],
+        columnOrder: ['qty', 'name'],
+        columnVisibility: { status: false },
+        data: [{ name: '华南仓', qty: 12, status: '启用' }],
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.findAll('[data-testid^="virtual-column-"]').map(node => node.attributes('data-testid')))
+      .toEqual(['virtual-column-qty', 'virtual-column-name'])
+
+    await wrapper.get('[data-testid="config-table-cell-qty-0"]').trigger('click')
+    expect(wrapper.emitted('cellClick')![0][0]).toMatchObject({
+      columnIndex: 2,
+      sourceColumnIndex: 2,
+      visibleColumnIndex: 0,
+      rawValue: 12,
+      value: 12,
+    })
+  })
+
+  it('通过列设置弹窗确认排序和显示隐藏并发出受控更新', async () => {
+    sortableCreate.mockClear()
+    const sourceColumns = [
+      { field: 'name', label: '仓库' },
+      { field: 'status', label: '状态' },
+      { field: 'qty', label: '数量' },
+    ]
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columnConfig: true,
+        columns: sourceColumns,
+        data: [{ name: '华南仓', qty: 12, status: '启用' }],
+      },
+      global: { stubs: elementStubs },
+    })
+
+    await wrapper.get('.mx-config-table-column-settings__trigger').trigger('click')
+    expect(wrapper.find('[data-testid="column-settings-dialog"]').exists()).toBe(true)
+    expect(sortableCreate).toHaveBeenCalledTimes(1)
+
+    await wrapper.get('[aria-label="下移 仓库"]').trigger('click')
+    await wrapper.get('[data-column-id="status"] input').setValue(false)
+    expect(wrapper.findAll('[data-testid^="virtual-column-"]').map(node => node.attributes('data-testid')))
+      .toEqual(['virtual-column-name', 'virtual-column-status', 'virtual-column-qty'])
+
+    const confirm = wrapper.findAll('button').find(button => button.text() === '确定')
+    expect(confirm).toBeDefined()
+    await confirm!.trigger('click')
+
+    expect(wrapper.findAll('[data-testid^="virtual-column-"]').map(node => node.attributes('data-testid')))
+      .toEqual(['virtual-column-name', 'virtual-column-qty'])
+    expect(wrapper.emitted('update:columnOrder')?.at(-1)).toEqual([['status', 'name', 'qty']])
+    expect(wrapper.emitted('update:columnVisibility')?.at(-1)).toEqual([{ name: true, qty: true, status: false }])
+    expect(sourceColumns.map(column => column.field)).toEqual(['name', 'status', 'qty'])
+  })
+
+  it('列设置不会确认零个可见列', async () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columnConfig: true,
+        columns: [
+          { field: 'name', label: '仓库' },
+          { field: 'status', label: '状态' },
+        ],
+        columnVisibility: { name: false, status: false },
+        data: [{ name: '华南仓', status: '启用' }],
+      },
+      global: { stubs: elementStubs },
+    })
+
+    await wrapper.get('.mx-config-table-column-settings__trigger').trigger('click')
+    const confirm = wrapper.findAll('button').find(button => button.text() === '确定')
+    expect(confirm?.attributes('disabled')).toBeDefined()
+
+    await confirm!.trigger('click')
+    expect(wrapper.emitted('columnSettingChange')).toBeUndefined()
+
+    await wrapper.get('[data-column-id="name"] input').setValue(true)
+    expect(confirm?.attributes('disabled')).toBeUndefined()
+    await confirm!.trigger('click')
+
+    expect(wrapper.emitted('update:columnVisibility')?.at(-1)).toEqual([{ name: true, status: false }])
   })
 
   it('单元格点击和双击事件返回行列配置与索引', async () => {

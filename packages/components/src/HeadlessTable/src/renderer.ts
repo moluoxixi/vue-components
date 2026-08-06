@@ -1,7 +1,9 @@
 import type { InjectionKey } from 'vue'
 import type {
+  HeadlessTableRendererConfig,
   HeadlessTableRendererDefinition,
   HeadlessTableRendererMap,
+  HeadlessTableRendererOptions,
   HeadlessTableRendererRegistry,
   HeadlessTableRow,
 } from './types'
@@ -91,4 +93,31 @@ export function provideHeadlessTableRenderer(
 ): HeadlessTableRendererRegistry {
   provide(headlessTableRendererKey, registry)
   return registry
+}
+
+export function normalizeHeadlessTableRendererOptions(
+  config: HeadlessTableRendererConfig,
+): HeadlessTableRendererOptions {
+  return typeof config === 'string' ? { name: config } : config
+}
+
+export function resolveHeadlessTableRenderer<TRow extends HeadlessTableRow = HeadlessTableRow>(
+  config: HeadlessTableRendererConfig,
+  renderers: HeadlessTableRendererMap<TRow>,
+  registry: HeadlessTableRendererRegistry,
+): {
+  options: HeadlessTableRendererOptions
+  renderer?: HeadlessTableRendererDefinition<TRow>
+} {
+  const options = normalizeHeadlessTableRendererOptions(config)
+  const localCandidate = renderers[options.name]
+  const localRenderer = Object.hasOwn(renderers, options.name)
+    ? localCandidate
+    : undefined
+
+  return {
+    options,
+    renderer: localRenderer
+      ?? registry.get(options.name) as HeadlessTableRendererDefinition<TRow> | undefined,
+  }
 }

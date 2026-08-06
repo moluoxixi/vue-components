@@ -39,6 +39,58 @@ describe('api type detail', () => {
     expect(detail.indexOf('interface Payload')).toBeLessThan(detail.indexOf('type Values'))
   })
 
+  it('follows union type aliases without treating comments as dependencies', () => {
+    const typeDefs = [
+      definition('SlotScope', '/** IgnoredScope is only documentation. */\ntype SlotScope = HeaderScope | CellScope'),
+      definition('HeaderScope', 'interface HeaderScope {\n  columnIndex: number\n}', [field('columnIndex', 'number')]),
+      definition('CellScope', 'interface CellScope {\n  rowIndex: number\n}', [field('rowIndex', 'number')]),
+      definition('IgnoredScope', 'interface IgnoredScope {\n  ignored: true\n}', [field('ignored', 'true')]),
+    ]
+
+    const detail = createTypeDetail(typeDefs, 'SlotScope', ['SlotScope'])!
+
+    expect(detail).toContain('interface HeaderScope')
+    expect(detail).toContain('interface CellScope')
+    expect(detail).not.toContain('interface IgnoredScope')
+  })
+
+  it('ignores identifiers in literals while following generic constraints and defaults', () => {
+    const typeDefs = [
+      definition('Alias', `type Alias<T extends Dependency = Fallback> = T | 'LiteralDependency'`),
+      definition('Dependency', 'interface Dependency {\n  id: string\n}', [field('id', 'string')]),
+      definition('Fallback', 'interface Fallback {\n  fallback: true\n}', [field('fallback', 'true')]),
+      definition('LiteralDependency', 'interface LiteralDependency {\n  ignored: true\n}', [field('ignored', 'true')]),
+    ]
+
+    const detail = createTypeDetail(typeDefs, 'Alias', ['Alias'])!
+
+    expect(detail).toContain('interface Dependency')
+    expect(detail).toContain('interface Fallback')
+    expect(detail).not.toContain('interface LiteralDependency')
+  })
+
+  it('does not expand locally bound generic names', () => {
+    const typeDefs = [
+      definition('GenericAlias', 'type GenericAlias<Other> = Other'),
+      definition('Other', 'interface Other {\n  value: string\n}', [field('value', 'string')]),
+    ]
+
+    const detail = createTypeDetail(typeDefs, 'GenericAlias', ['GenericAlias'])!
+
+    expect(detail).not.toContain('interface Other')
+  })
+
+  it('does not expand names introduced by infer clauses', () => {
+    const typeDefs = [
+      definition('ConditionalAlias', 'type ConditionalAlias<Value> = Value extends infer Other ? Other : never'),
+      definition('Other', 'interface Other {\n  value: string\n}', [field('value', 'string')]),
+    ]
+
+    const detail = createTypeDetail(typeDefs, 'ConditionalAlias<string>', ['ConditionalAlias'])!
+
+    expect(detail).not.toContain('interface Other')
+  })
+
   it('keeps every summarized direct definition structurally complete', () => {
     const fields = Array.from({ length: 40 }, (_, index) => field(`field${index}`, 'string'))
     const rawFields = fields.map(item => `  ${item.name}: ${item.type}`).join('\n')

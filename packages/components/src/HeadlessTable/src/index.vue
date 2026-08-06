@@ -10,9 +10,6 @@ import type {
   HeadlessTableHeaderComponent,
   HeadlessTableHeaderScope,
   HeadlessTableProps,
-  HeadlessTableRendererConfig,
-  HeadlessTableRendererDefinition,
-  HeadlessTableRendererOptions,
   HeadlessTableRow,
   HeadlessTableSlots,
   HeadlessTableEmptyComponent,
@@ -23,7 +20,11 @@ import {
   getHeadlessTableColumnLabel,
   getHeadlessTableRawValue,
 } from './core'
-import { headlessTableRenderer, headlessTableRendererKey } from './renderer'
+import {
+  headlessTableRenderer,
+  headlessTableRendererKey,
+  resolveHeadlessTableRenderer,
+} from './renderer'
 
 defineOptions({ name: 'HeadlessTable' })
 
@@ -133,27 +134,6 @@ function createCellScope(
   return scope
 }
 
-function normalizeRenderOptions(config: HeadlessTableRendererConfig): HeadlessTableRendererOptions {
-  return typeof config === 'string' ? { name: config } : config
-}
-
-function resolveRenderer(config: HeadlessTableRendererConfig): {
-  options: HeadlessTableRendererOptions
-  renderer?: HeadlessTableRendererDefinition<TRow>
-} {
-  const options = normalizeRenderOptions(config)
-  const localCandidate = props.renderers[options.name]
-  const localRenderer = Object.prototype.hasOwnProperty.call(props.renderers, options.name)
-    ? localCandidate
-    : undefined
-  const registry = props.rendererRegistry ?? injectedRendererRegistry ?? headlessTableRenderer
-  return {
-    options,
-    renderer: localRenderer
-      ?? registry.get(options.name) as HeadlessTableRendererDefinition<TRow> | undefined,
-  }
-}
-
 function renderHeader(column: HeadlessTableColumn<TRow>, columnIndex: number): any {
   void slotsVersion.value
   const scope = createHeaderScope(column, columnIndex)
@@ -171,7 +151,11 @@ function renderHeader(column: HeadlessTableColumn<TRow>, columnIndex: number): a
   }
 
   if (column.headerRender) {
-    const { options, renderer } = resolveRenderer(column.headerRender)
+    const { options, renderer } = resolveHeadlessTableRenderer(
+      column.headerRender,
+      props.renderers,
+      props.rendererRegistry ?? injectedRendererRegistry ?? headlessTableRenderer,
+    )
     if (renderer?.renderHeader)
       return renderer.renderHeader(options, scope)
 
@@ -204,7 +188,11 @@ function renderCell(
   }
 
   if (column.cellRender) {
-    const { options, renderer } = resolveRenderer(column.cellRender)
+    const { options, renderer } = resolveHeadlessTableRenderer(
+      column.cellRender,
+      props.renderers,
+      props.rendererRegistry ?? injectedRendererRegistry ?? headlessTableRenderer,
+    )
     if (renderer?.renderDefault)
       return renderer.renderDefault(options, scope)
 
