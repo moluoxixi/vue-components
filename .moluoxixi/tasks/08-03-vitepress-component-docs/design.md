@@ -16,6 +16,14 @@ The custom theme extends VitePress DefaultTheme and owns four presentation compo
 
 The VitePress host and its Vitest transform use `autoComponent` and `autoImport` from the isolated `@moluoxixi/components/auto-loaders` subpath. The subpath owns the component and runtime-helper manifest, has its own build entry, and is intentionally absent from the component root barrel. Its public declarations use local structural types, so ordinary component consumers do not inherit unplugin peer dependencies. Static theme components therefore exercise the same automatic component, style, and runtime-helper imports documented for consumers. Browser-compiled demo source remains outside Vite's transform pipeline and continues to use explicit imports resolved by the SFC compiler allowlist.
 
+Every demo fence is therefore a self-contained SFC. A documentation test parses all component demo fences and verifies that non-native component tags have matching imports or local definitions before VitePress build time.
+
+## ConfigTable Extension
+
+ConfigTable reuses HeadlessTable's renderer configuration, registry, stable column identity, and order/visibility projection helpers while retaining Element Plus TableV2 as its renderer. It does not use the complete `useHeadlessTable` composable because ConfigTable owns remote loading and pagination.
+
+Column settings are opt-in. The dialog edits a draft order and visibility map, then emits controlled updates only when confirmed. It uses stable column ids, never mutates the caller's column objects or array, and offers both a drag handle and explicit move controls. Existing inline render functions, named slots, formatter behavior, source `columnIndex`, and `field`-based TableV2 data keys remain compatible.
+
 ## API Data Flow
 
 ```text
@@ -65,6 +73,8 @@ The theme continues to extend VitePress DefaultTheme. A full rewrite is rejected
 
 ## Rollback
 
-Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages. No runtime component behavior or public package contract is changed.
+Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages.
+
+ConfigTable runtime changes are isolated behind additive props, column fields, emits, and the opt-in settings control. Removing those additions restores the previous behavior; the shared HeadlessTable helpers remain compatible with their existing consumer.
 
 The playground is isolated behind one Demo toolbar action and one standalone route. Removing the action and route restores the previous documentation behavior; the hardened compiler remains a compatible replacement for the former inline loader adapter.

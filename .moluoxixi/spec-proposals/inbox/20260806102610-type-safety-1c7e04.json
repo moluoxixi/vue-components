@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260806102610-type-safety-1c7e04",
+  "createdAt": "2026-08-06T10:26:10.765Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-03-vitepress-component-docs",
+  "reason": "Preserve AST-based type dependency traversal, NodeNext declaration finalization, public ESM entry verification, and generic parameter narrowing across recursive helpers.",
+  "target": "frontend/type-safety.md",
+  "kind": "file",
+  "baseHash": "1ced8d3ea4f5e6e63599a5a606db52fa86b3973046db57d550ed2964a8d4c40f",
+  "contentFile": "content/20260806102610-type-safety-1c7e04.md",
+  "contentHash": "8c2c6e1e948940b925df8e623b2a311c6683dddbc3fe68d7d203d2d1f67d240f"
+}

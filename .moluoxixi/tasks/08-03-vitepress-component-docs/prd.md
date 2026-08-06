@@ -30,6 +30,8 @@ Deliver a production-ready component-library documentation site whose navigation
 - R16: Reuse one hardened SFC compilation boundary for static demos and the playground. It must allow only configured modules, reject unknown files/imports, use unique virtual filenames, clean injected styles on success, failure, rerun, and unmount, and ignore stale async compile results.
 - R17: Keep playground source out of shareable URLs in the first release. Transfer the trusted demo source through an ephemeral same-origin session and provide a safe starter when the playground is opened directly.
 - R18: Publish reusable `autoComponent` and `autoImport` integrations for `unplugin-vue-components` and `unplugin-auto-import` from an isolated `@moluoxixi/components/auto-loaders` subpath, with component styles and runtime helper names maintained from one package-owned manifest. The root component entry must not re-export the loaders, and the VitePress host and component playground must consume the subpath themselves.
+- R19: Keep every browser-compiled documentation demo self-contained by requiring explicit imports for component-library and Element Plus components, and reject example regressions that would render as unresolved custom elements.
+- R20: Extend ConfigTable with the shared HeadlessTable renderer contract, named Vue slots, stable column ordering and visibility state, plus an opt-in accessible column-settings dialog with drag, keyboard reordering, and show/hide controls.
 
 ## Acceptance Criteria
 
@@ -51,11 +53,14 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] The playground can run, reset, and copy one Vue SFC, reports compile and runtime failures, remains usable at desktop/mobile widths, and does not auto-run source supplied through the URL.
 - [x] Static demos and repeated playground runs do not reuse stale modules or leak styles, and focused unit/browser tests cover those failure paths.
 - [x] Consumers can enable package-owned automatic component/style resolution and runtime helper imports; the VitePress host and component playground both verify the paths without representative explicit imports.
+- [x] Every browser-compiled Vue demo imports its runtime components explicitly and renders without unresolved-component warnings.
+- [x] ConfigTable supports local/registered cell and header renderers, preserves slot and formatter precedence, and keeps existing value/index semantics compatible.
+- [x] ConfigTable column settings can reorder and show/hide stable columns by drag or keyboard without mutating the caller's `columns` array.
 
 ## Out Of Scope
 
 - Publishing or deploying the site.
 - Documenting standalone ConfigForm adapter packages that are not exported by `@moluoxixi/components`.
 - Reworking `packages/ai-doc-assistant` features beyond what is required to consume its existing public contract output.
-- Changing component runtime APIs to make documentation easier.
+- Runtime API changes unrelated to the requested ConfigTable renderer and column-settings feature.
 - Arbitrary npm installation, relative multi-file imports, preprocessors, asset files, collaborative editing, persistence, and source-sharing URLs in the playground.

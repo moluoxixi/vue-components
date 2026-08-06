@@ -17,6 +17,16 @@
 15. Add the standalone lazy playground route/component with single-SFC editing, run/reset/copy controls, responsive layout, and compile/runtime diagnostics.
 16. Add unit tests for compiler cleanup/session behavior and browser coverage for opening, editing, rerunning, failure recovery, reset, and mobile layout.
 17. Add the isolated `@moluoxixi/components/auto-loaders` subpath with `autoComponent` and `autoImport` integrations from one export manifest, keep it out of the root barrel, wire it into VitePress and the component playground, and verify package exports, types, tests, and production consumption.
+18. Make every browser-compiled component demo self-contained with explicit runtime imports and add a regression check for unresolved component tags.
+19. Extract reusable HeadlessTable renderer resolution and column projection helpers, then adopt them in ConfigTable without changing its pagination or formatter semantics.
+20. Add ConfigTable renderer/slot coverage and an opt-in column-settings dialog with draft apply/cancel, drag sorting, keyboard movement, and visibility controls.
+
+## Completion
+
+- Implementation steps 1-20 are complete.
+- Root lint, type checking, and the full workspace test suite pass.
+- The component package build verifies NodeNext declaration resolution for every public typed entry.
+- VitePress API extraction, GitHub metadata validation, unit tests, production builds for both locales, and desktop/mobile browser checks pass.
 
 ## Validation Commands
 
