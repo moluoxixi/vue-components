@@ -304,6 +304,22 @@ describe('config table', () => {
     expect(wrapper.get('[data-testid="table-row-0"]').classes()).toContain('mx-config-table__row--current')
   })
 
+  it('不在 Element Plus 表格和分页根节点上注入内部布局 class', () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', label: '仓库' }],
+        data: [{ name: '华南仓' }],
+        pagination: true,
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('[data-testid="el-table-v2-stub"]').classes()).not.toContain('mx-config-table')
+    expect(wrapper.get('[data-testid="pagination-stub"]').classes()).not.toContain('mx-config-table__pagination')
+    expect(wrapper.find('.mx-config-table__pagination-shell').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-table__pagination-content').exists()).toBe(true)
+  })
+
   it('空数据时渲染默认空态文案并支持 empty 插槽和 render 配置', () => {
     const wrapper = mount(ConfigTable, {
       props: {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  HeadlessTableCellScope,
   HeadlessTableColumn,
   HeadlessTableRendererMap,
   HeadlessTableRowKey,
@@ -78,7 +79,7 @@ const baseColumns: HeadlessTableColumn<WarehouseRow>[] = [
     align: 'center',
     columnProps: { fixed: 'right' },
     slots: {
-      default: ({ row }) => h(ElButton, {
+      default: ({ row }: HeadlessTableCellScope<WarehouseRow>) => h(ElButton, {
         link: true,
         type: 'primary',
         onClick: () => selectedCode.value = row.code,

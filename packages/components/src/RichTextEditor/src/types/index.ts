@@ -1,5 +1,5 @@
 export type * from './emits'
-export type * from './pagination'
+export type * from './expose'
 export type * from './props'
+export type * from './shared'
 export type * from './slots'
-export type * from './table'
