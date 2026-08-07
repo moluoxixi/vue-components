@@ -3,7 +3,7 @@
   "name": "reusable-element-plus-docs-theme",
   "title": "可复用 Element Plus 文档主题包",
   "description": "",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [
@@ -28,7 +28,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-07",
-  "completedAt": null,
+  "completedAt": "2026-08-07",
   "branch": "codex/reusable-element-plus-docs-theme",
   "base_branch": "main",
   "worktree_path": null,
