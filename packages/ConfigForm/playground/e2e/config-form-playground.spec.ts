@@ -34,6 +34,17 @@ interface KnownControlFallback {
   text?: string
 }
 
+interface DesignerPreviewSignature {
+  cards: number
+  fields: Array<{
+    control: string
+    field: string
+    label: string
+    required: boolean
+  }>
+  sections: number
+}
+
 const suites: ConfigFormSuite[] = [
   {
     containerNodes: [
@@ -174,6 +185,58 @@ async function selectScenarioTab(example: Locator, tabName: string): Promise<voi
 
 async function expectPreviewObject(preview: Locator, expected: unknown): Promise<void> {
   await expect.poll(async () => JSON.parse((await preview.textContent())!)).toMatchObject(expected)
+}
+
+async function readDesignerPreviewSignature(preview: Locator): Promise<DesignerPreviewSignature> {
+  return preview.locator('form').evaluate((form) => {
+    const fields = [...form.querySelectorAll<HTMLElement>('[data-field]')].map(field => ({
+      control: field.querySelector('.mx-config-form__control')?.firstElementChild?.getAttribute('class') || '',
+      field: field.dataset.field || '',
+      label: field.querySelector('.mx-config-form__label')?.textContent?.trim() || '',
+      required: field.dataset.required === 'true',
+    }))
+
+    return {
+      cards: form.querySelectorAll('.el-card').length,
+      fields,
+      sections: form.querySelectorAll('.mx-element-designer-section').length,
+    }
+  })
+}
+
+async function dragSortableItem(
+  page: Page,
+  source: Locator,
+  target: Locator,
+  approach: 'horizontal' | 'vertical' = 'horizontal',
+): Promise<void> {
+  const sourceBox = await source.boundingBox()
+  const targetBox = await target.boundingBox()
+  if (!sourceBox || !targetBox)
+    throw new Error('Sortable source or target is not visible')
+
+  const sourceX = sourceBox.x + sourceBox.width / 2
+  const sourceY = sourceBox.y + sourceBox.height / 2
+  await page.mouse.move(sourceX, sourceY)
+  await page.mouse.down()
+  await page.mouse.move(sourceX + 12, sourceY + 12, { steps: 4 })
+  await page.waitForTimeout(50)
+  const draggable = source.locator('xpath=ancestor-or-self::*[@data-designer-draggable][1]')
+  await expect(draggable.first()).toHaveClass(/sortable-chosen/)
+  const targetX = targetBox.x + targetBox.width / 2
+  const targetY = approach === 'vertical'
+    ? targetBox.y + targetBox.height / 2
+    : targetBox.y + targetBox.height - 12
+  if (approach === 'vertical') {
+    await page.mouse.move(targetX, sourceY + 12, { steps: 12 })
+    await page.mouse.move(targetX, targetY, { steps: 18 })
+  }
+  else {
+    await page.mouse.move(sourceX + 12, targetY, { steps: 12 })
+    await page.mouse.move(targetX, targetY, { steps: 18 })
+  }
+  await page.waitForTimeout(200)
+  await page.mouse.up()
 }
 
 async function expectInlineVisualSpacing(example: Locator, suite: ConfigFormSuite): Promise<void> {
@@ -616,4 +679,122 @@ test('ConfigForm 示例用 Element Tabs 切换三套 UI 库', async ({ page }) =
     await libraryTabs.getByRole('tab', { name: suite.libraryTabName, exact: true }).click()
     await expect(page.getByTestId(suite.rootTestId)).toBeVisible()
   }
+})
+
+test.describe('ConfigForm visual designer', () => {
+  test('supports controlled editing, nested movement, history, export/import and preview', async ({ page }) => {
+    await openPlayground(page)
+
+    const libraryTabs = page.getByTestId('config-form-library-tabs')
+    await libraryTabs.getByRole('tab', { name: 'Designer', exact: true }).click()
+
+    const example = page.getByTestId('designer-example')
+    const canvas = example.getByLabel('Form canvas')
+    const palette = example.getByLabel('Materials')
+    const properties = example.getByLabel('Properties')
+    const toolbar = example.getByRole('toolbar', { name: 'Designer commands' })
+
+    await expect(example).toBeVisible()
+    await expect(canvas.locator('[data-node-id]')).toHaveCount(5)
+
+    await dragSortableItem(
+      page,
+      palette.getByRole('button', { name: 'Input', exact: true }),
+      canvas.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first(),
+    )
+    await expect(canvas.locator('[data-node-id]')).toHaveCount(6)
+
+    const selectedNode = canvas.locator('.mx-config-form-designer__node.is-selected')
+    await expect(selectedNode).toHaveCount(1)
+    const labelInput = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Label' }).locator('input').first()
+    await labelInput.fill('Email')
+    await labelInput.blur()
+    await expect(selectedNode.locator('.mx-config-form-designer__node-title')).toHaveText('Email')
+
+    await properties.getByRole('tab', { name: 'Validation', exact: true }).click()
+    const validationSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Rules' })
+    await validationSetter.locator('textarea').fill(JSON.stringify({
+      version: 1,
+      base: { type: 'string' },
+      rules: [{ kind: 'email', message: 'Enter a valid email' }],
+    }))
+    await validationSetter.getByRole('button', { name: 'Apply', exact: true }).click()
+
+    await properties.getByRole('tab', { name: 'Conditions', exact: true }).click()
+    const requiredSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Required' })
+    await requiredSetter.locator('textarea').fill(JSON.stringify({ kind: 'literal', value: true }))
+    await requiredSetter.getByRole('button', { name: 'Apply', exact: true }).click()
+
+    const enabledNode = canvas.locator('[data-node-id="designer-enabled"]')
+    await dragSortableItem(
+      page,
+      enabledNode.getByRole('button', { name: 'Move node', exact: true }),
+      canvas.locator('.mx-config-form-designer__node-list[data-parent-id="designer-card"]'),
+      'vertical',
+    )
+    await expect(canvas.locator('[data-node-id="designer-card"] [data-node-id="designer-enabled"]')).toBeVisible()
+
+    await toolbar.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect(canvas.locator('[data-node-id="designer-card"] [data-node-id="designer-enabled"]')).toHaveCount(0)
+    await toolbar.getByRole('button', { name: 'Redo', exact: true }).click()
+    await expect(canvas.locator('[data-node-id="designer-card"] [data-node-id="designer-enabled"]')).toBeVisible()
+
+    await toolbar.getByRole('button', { name: 'Export document', exact: true }).click()
+    const exportDialog = example.getByRole('dialog', { name: 'Export document' })
+    const exported = await exportDialog.locator('textarea').inputValue()
+    const exportedDocument = JSON.parse(exported)
+    const exportedEmail = exportedDocument.nodes.find((node: { label?: string }) => node.label === 'Email')
+    expect(exportedDocument.version).toBe(1)
+    expect(exportedEmail).toMatchObject({
+      material: 'element.input',
+      field: 'input',
+      label: 'Email',
+      validation: {
+        version: 1,
+        base: { type: 'string' },
+        rules: [{ kind: 'email', message: 'Enter a valid email' }],
+      },
+      conditions: {
+        required: { kind: 'literal', value: true },
+      },
+    })
+    await exportDialog.getByRole('button', { name: 'Close', exact: true }).click()
+
+    await toolbar.getByRole('button', { name: 'Preview form', exact: true }).click()
+    const previewDialog = example.getByRole('dialog', { name: 'Form preview' })
+    await expect(previewDialog).toContainText('Email')
+    await expect(previewDialog).toContainText('Choice')
+    const exportedPreviewSignature = await readDesignerPreviewSignature(previewDialog)
+    expect(exportedPreviewSignature).toMatchObject({
+      cards: 1,
+      sections: 1,
+      fields: expect.arrayContaining([
+        expect.objectContaining({ field: 'input', label: 'Email', required: true }),
+        expect.objectContaining({ field: 'choice', label: 'Choice' }),
+      ]),
+    })
+    await previewDialog.getByRole('button', { name: 'Close preview', exact: true }).click()
+
+    await toolbar.getByRole('button', { name: 'Import document', exact: true }).click()
+    const importDialog = example.getByRole('dialog', { name: 'Import document' })
+    await importDialog.locator('textarea').fill(exported)
+    await importDialog.getByRole('button', { name: 'Apply', exact: true }).click()
+    await expect(example.locator('.mx-config-form-designer__status')).toContainText('Ready')
+
+    const emailFocusTarget = canvas.locator('.mx-config-form-designer__node-select').filter({ hasText: 'Email' })
+    const rootNodes = canvas.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first().locator(':scope > [data-node-id]')
+    await emailFocusTarget.click()
+    await emailFocusTarget.press('ArrowUp')
+    await expect(rootNodes.nth(1)).toContainText('Email')
+    await expect(emailFocusTarget).toBeFocused()
+    await emailFocusTarget.press('ArrowDown')
+    await expect(rootNodes.nth(2)).toContainText('Email')
+    await expect(emailFocusTarget).toBeFocused()
+
+    await toolbar.getByRole('button', { name: 'Preview form', exact: true }).click()
+    const importedPreview = example.getByRole('dialog', { name: 'Form preview' })
+    await expect(importedPreview).toContainText('Email')
+    await expect(importedPreview).toContainText('Choice')
+    expect(await readDesignerPreviewSignature(importedPreview)).toEqual(exportedPreviewSignature)
+  })
 })

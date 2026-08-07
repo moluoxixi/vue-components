@@ -1,0 +1,67 @@
+{
+  "name": "@moluoxixi/config-form-designer",
+  "type": "module",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ConfigForm/designer"
+  },
+  "sideEffects": [
+    "**/*.scss",
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles": {
+      "sass": "./src/styles.scss",
+      "style": "./src/styles.scss",
+      "default": "./src/styles.scss"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "index.ts",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0",
+    "zod": "^3.23.0"
+  },
+  "dependencies": {
+    "@lucide/vue": "catalog:ui",
+    "@moluoxixi/config-form": "workspace:*",
+    "@moluoxixi/config-form-headless": "workspace:*",
+    "@moluoxixi/zod3-to-rule": "workspace:*",
+    "sortablejs": "catalog:"
+  },
+  "devDependencies": {
+    "@types/sortablejs": "catalog:",
+    "@vitejs/plugin-vue": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
+    "happy-dom": "catalog:dev",
+    "sass": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-tsc": "catalog:dev",
+    "zod": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

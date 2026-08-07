@@ -13,6 +13,7 @@ export const exampleMeta = {
 import { ElTabPane, ElTabs } from 'element-plus'
 import { shallowRef } from 'vue'
 import AntdConfigForm from './AntdConfigForm.vue'
+import DesignerConfigForm from './components/DesignerConfigForm.vue'
 import ElementConfigForm from './ElementConfigForm.vue'
 import ShadcnConfigForm from './ShadcnConfigForm.vue'
 
@@ -31,6 +32,9 @@ const activeLibrary = shallowRef<LibraryTab>('element')
     </ElTabPane>
     <ElTabPane label="Shadcn" name="shadcn">
       <ShadcnConfigForm />
+    </ElTabPane>
+    <ElTabPane label="Designer" name="designer">
+      <DesignerConfigForm />
     </ElTabPane>
   </ElTabs>
 </template>
