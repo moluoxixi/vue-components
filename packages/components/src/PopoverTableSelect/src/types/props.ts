@@ -44,6 +44,8 @@ export interface PopoverTableSelectProps {
   pageSize?: number
 }
 
+export type PopoverTableSelectRuntimeProps = Omit<PopoverTableSelectProps, 'inputValue'>
+
 export interface PopoverTablePaginationProps {
   layout?: string
   pageSizes?: number[]

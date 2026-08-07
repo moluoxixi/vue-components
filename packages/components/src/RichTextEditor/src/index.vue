@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/core'
 import type {
   RichTextEditorAutofocus,
   RichTextEditorEmits,
   RichTextEditorExpose,
   RichTextEditorProps,
   RichTextEditorSlots,
-  RichTextEditorToolbarScope,
 } from './types'
 import {
   AlignCenter,
@@ -33,7 +31,9 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
+import { useRichTextEditorLink, useRichTextEditorToolbar } from './composables'
+import { getOutputHTML, toCssDimension } from './utils'
 
 defineOptions({ name: 'RichTextEditor' })
 
@@ -53,19 +53,6 @@ const emit = defineEmits<RichTextEditorEmits>()
 defineSlots<RichTextEditorSlots>()
 
 const toolbarVersion = shallowRef(0)
-const linkPanelVisible = shallowRef(false)
-const linkHref = shallowRef('')
-const linkInputRef = useTemplateRef<HTMLInputElement>('linkInputRef')
-
-function toCssDimension(value: number | string | undefined): string | undefined {
-  if (value === undefined || value === '')
-    return undefined
-  return typeof value === 'number' ? `${value}px` : value
-}
-
-function getOutputHTML(editorInstance: Editor): string {
-  return editorInstance.isEmpty ? '' : editorInstance.getHTML()
-}
 
 const editorStyle = computed<Record<string, string | undefined>>(() => ({
   '--mx-rich-text-max-height': toCssDimension(props.maxHeight),
@@ -128,107 +115,23 @@ const editor = useEditor({
   },
 })
 
-const toolbarScope = computed<RichTextEditorToolbarScope | null>(() => {
-  void toolbarVersion.value
+const {
+  blockType,
+  canRun,
+  isActive,
+  isTextAligned,
+  setBlockType,
+  toolbarScope,
+} = useRichTextEditorToolbar(editor, props, toolbarVersion)
 
-  return editor.value
-    ? {
-        disabled: props.disabled,
-        editor: editor.value,
-        readonly: props.readonly,
-      }
-    : null
-})
-
-const blockType = computed(() => {
-  void toolbarVersion.value
-  const editorInstance = editor.value
-
-  if (!editorInstance)
-    return 'paragraph'
-  if (editorInstance.isActive('heading', { level: 1 }))
-    return 'heading-1'
-  if (editorInstance.isActive('heading', { level: 2 }))
-    return 'heading-2'
-  if (editorInstance.isActive('heading', { level: 3 }))
-    return 'heading-3'
-  return 'paragraph'
-})
-
-function isActive(name: string, attributes?: Record<string, unknown>): boolean {
-  void toolbarVersion.value
-  return editor.value?.isActive(name, attributes) ?? false
-}
-
-function isTextAligned(alignment: 'left' | 'center' | 'right'): boolean {
-  void toolbarVersion.value
-  return editor.value?.isActive({ textAlign: alignment }) ?? false
-}
-
-function canRun(command: (editorInstance: Editor) => boolean): boolean {
-  void toolbarVersion.value
-  return editor.value ? command(editor.value) : false
-}
-
-function setBlockType(event: Event): void {
-  const value = (event.target as HTMLSelectElement).value
-  const chain = editor.value?.chain().focus()
-
-  if (!chain)
-    return
-  if (value === 'paragraph') {
-    chain.setParagraph().run()
-    return
-  }
-
-  const level = Number(value.split('-')[1]) as 1 | 2 | 3
-  chain.toggleHeading({ level }).run()
-}
-
-function normalizeHref(value: string): string {
-  const href = value.trim()
-  if (!href || /^(?:https?:|mailto:|tel:|#|\/)/i.test(href))
-    return href
-  if (/^[a-z][a-z\d+.-]*:/i.test(href))
-    return ''
-  return `https://${href}`
-}
-
-async function openLinkPanel(): Promise<void> {
-  const editorInstance = editor.value
-  if (!editorInstance)
-    return
-
-  linkHref.value = editorInstance.getAttributes('link').href ?? ''
-  linkPanelVisible.value = true
-  await nextTick()
-  linkInputRef.value?.focus()
-  linkInputRef.value?.select()
-}
-
-function closeLinkPanel(): void {
-  linkPanelVisible.value = false
-}
-
-function applyLink(): void {
-  const href = normalizeHref(linkHref.value)
-  const chain = editor.value?.chain().focus().extendMarkRange('link')
-
-  if (!chain)
-    return
-  if (href)
-    chain.setLink({ href }).run()
-  else
-    chain.unsetLink().run()
-
-  closeLinkPanel()
-}
-
-function removeLink(): void {
-  editor.value?.chain().focus().extendMarkRange('link').unsetLink().run()
-  linkHref.value = ''
-  closeLinkPanel()
-}
+const {
+  applyLink,
+  closeLinkPanel,
+  linkHref,
+  linkPanelVisible,
+  openLinkPanel,
+  removeLink,
+} = useRichTextEditorLink(editor)
 
 function focus(position: RichTextEditorAutofocus = 'end'): void {
   editor.value?.commands.focus(position)

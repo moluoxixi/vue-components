@@ -1,49 +1,25 @@
 <script setup lang="ts">
-import type { RequestOptionsComponentEmits, RequestOptionsComponentProps, RequestOptionRecord, RequestParamsRecord } from '../../request/types'
-import { useRequestOptions } from '@moluoxixi/hooks'
+import type { RequestSelectV2Emits, RequestSelectV2Expose, RequestSelectV2ModelValue, RequestSelectV2Props } from './types'
 import { ElSelectV2 } from 'element-plus'
-import { computed, useAttrs, watch } from 'vue'
+import { useAttrs } from 'vue'
+import { useRequestOptionsComponent } from '../../request/composables'
 
 defineOptions({
   name: 'RequestSelectV2',
 })
 
-const props = withDefaults(defineProps<RequestOptionsComponentProps>(), {
+const props = withDefaults(defineProps<RequestSelectV2Props>(), {
   params: () => ({}),
   enabled: true,
 })
-const emit = defineEmits<RequestOptionsComponentEmits>()
-const modelValue = defineModel<unknown>()
+const emit = defineEmits<RequestSelectV2Emits>()
+const modelValue = defineModel<RequestSelectV2ModelValue>()
 const attrs = useAttrs()
 
-const request = useRequestOptions<RequestOptionRecord, RequestParamsRecord>({
-  queryKey: props.cacheKey ?? 'RequestSelectV2',
-  query: props.query,
-  params: computed(() => props.params),
-  enabled: computed(() => props.enabled),
-  staleTime: props.staleTime,
-})
+const { loading, options, refetch } = useRequestOptionsComponent(props, emit, 'RequestSelectV2')
 
-const loading = computed(() => request.isLoading.value || request.isFetching.value)
-
-watch(
-  () => request.query.data.value,
-  (options) => {
-    if (options)
-      emit('loaded', options)
-  },
-)
-
-watch(
-  () => request.error.value,
-  (error) => {
-    if (error)
-      emit('error', error)
-  },
-)
-
-defineExpose({
-  refetch: request.refetch,
+defineExpose<RequestSelectV2Expose>({
+  refetch,
 })
 </script>
 
@@ -51,7 +27,7 @@ defineExpose({
   <ElSelectV2
     v-bind="attrs"
     v-model="modelValue"
-    :options="request.options.value"
+    :options="options"
     :loading="loading"
   />
 </template>

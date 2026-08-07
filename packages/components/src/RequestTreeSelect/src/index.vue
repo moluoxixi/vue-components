@@ -1,56 +1,25 @@
 <script setup lang="ts">
-import type { RequestOptionsComponentEmits, RequestOptionsComponentProps, RequestOptionRecord, RequestParamsRecord } from '../../request/types'
-import { useRequestOptions } from '@moluoxixi/hooks'
+import type { RequestTreeSelectEmits, RequestTreeSelectExpose, RequestTreeSelectModelValue, RequestTreeSelectProps } from './types'
 import { ElTreeSelect } from 'element-plus'
-import { computed, useAttrs, watch } from 'vue'
+import { useAttrs } from 'vue'
+import { useRequestOptionsComponent } from '../../request/composables'
 
 defineOptions({
   name: 'RequestTreeSelect',
 })
 
-const props = withDefaults(defineProps<RequestOptionsComponentProps>(), {
+const props = withDefaults(defineProps<RequestTreeSelectProps>(), {
   params: () => ({}),
   enabled: true,
 })
-const emit = defineEmits<RequestOptionsComponentEmits>()
-const modelValue = defineModel<
-  | string
-  | number
-  | boolean
-  | Record<string, unknown>
-  | Array<string | number | boolean | Record<string, unknown>>
-  | null
->()
+const emit = defineEmits<RequestTreeSelectEmits>()
+const modelValue = defineModel<RequestTreeSelectModelValue>()
 const attrs = useAttrs()
 
-const request = useRequestOptions<RequestOptionRecord, RequestParamsRecord>({
-  queryKey: props.cacheKey ?? 'RequestTreeSelect',
-  query: props.query,
-  params: computed(() => props.params),
-  enabled: computed(() => props.enabled),
-  staleTime: props.staleTime,
-})
+const { loading, options, refetch } = useRequestOptionsComponent(props, emit, 'RequestTreeSelect')
 
-const loading = computed(() => request.isLoading.value || request.isFetching.value)
-
-watch(
-  () => request.query.data.value,
-  (options) => {
-    if (options)
-      emit('loaded', options)
-  },
-)
-
-watch(
-  () => request.error.value,
-  (error) => {
-    if (error)
-      emit('error', error)
-  },
-)
-
-defineExpose({
-  refetch: request.refetch,
+defineExpose<RequestTreeSelectExpose>({
+  refetch,
 })
 </script>
 
@@ -58,7 +27,7 @@ defineExpose({
   <ElTreeSelect
     v-bind="attrs"
     v-model="modelValue"
-    :data="request.options.value"
+    :data="options"
     :loading="loading"
   />
 </template>

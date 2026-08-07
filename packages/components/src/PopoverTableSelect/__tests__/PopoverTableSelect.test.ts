@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { PopoverTableSelect } from '../index'
-import PopoverTableSelectBase from '../src/base/index.vue'
+import { PopoverTableSelectBase } from '../src/components'
 
 const selectedRow: PopoverTableRow = {
   code: 'C-009',

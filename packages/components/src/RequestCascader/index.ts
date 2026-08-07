@@ -3,4 +3,6 @@ import RequestCascaderSource from './src/index.vue'
 
 export const RequestCascader = withInstall(RequestCascaderSource)
 
+export type * from './src/types'
+
 export default RequestCascader

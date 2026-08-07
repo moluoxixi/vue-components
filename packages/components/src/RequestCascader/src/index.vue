@@ -1,60 +1,25 @@
 <script setup lang="ts">
-import type { RequestOptionsComponentEmits, RequestOptionsComponentProps, RequestOptionRecord, RequestParamsRecord } from '../../request/types'
-import { useRequestOptions } from '@moluoxixi/hooks'
+import type { RequestCascaderEmits, RequestCascaderExpose, RequestCascaderModelValue, RequestCascaderProps } from './types'
 import { ElCascader } from 'element-plus'
-import { computed, useAttrs, watch } from 'vue'
+import { useAttrs } from 'vue'
+import { useRequestOptionsComponent } from '../../request/composables'
 
 defineOptions({
   name: 'RequestCascader',
 })
 
-const props = withDefaults(defineProps<RequestOptionsComponentProps>(), {
+const props = withDefaults(defineProps<RequestCascaderProps>(), {
   params: () => ({}),
   enabled: true,
 })
-const emit = defineEmits<RequestOptionsComponentEmits>()
-const modelValue = defineModel<
-  | string
-  | number
-  | Record<string, unknown>
-  | Array<
-    | string
-    | number
-    | Record<string, unknown>
-    | Array<string | number | Record<string, unknown>>
-  >
-  | null
->()
+const emit = defineEmits<RequestCascaderEmits>()
+const modelValue = defineModel<RequestCascaderModelValue>()
 const attrs = useAttrs()
 
-const request = useRequestOptions<RequestOptionRecord, RequestParamsRecord>({
-  queryKey: props.cacheKey ?? 'RequestCascader',
-  query: props.query,
-  params: computed(() => props.params),
-  enabled: computed(() => props.enabled),
-  staleTime: props.staleTime,
-})
+const { loading, options, refetch } = useRequestOptionsComponent(props, emit, 'RequestCascader')
 
-const loading = computed(() => request.isLoading.value || request.isFetching.value)
-
-watch(
-  () => request.query.data.value,
-  (options) => {
-    if (options)
-      emit('loaded', options)
-  },
-)
-
-watch(
-  () => request.error.value,
-  (error) => {
-    if (error)
-      emit('error', error)
-  },
-)
-
-defineExpose({
-  refetch: request.refetch,
+defineExpose<RequestCascaderExpose>({
+  refetch,
 })
 </script>
 
@@ -62,7 +27,7 @@ defineExpose({
   <ElCascader
     v-bind="attrs"
     v-model="modelValue"
-    :options="request.options.value"
+    :options="options"
     :loading="loading"
   />
 </template>

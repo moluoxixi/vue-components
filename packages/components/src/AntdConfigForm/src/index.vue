@@ -12,7 +12,7 @@ import type {
 } from './types'
 import { useTemplateRef } from 'vue'
 import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
-import { resolveAntdConfigFormFieldBinding } from './bindings'
+import { resolveAntdConfigFormFieldBinding } from './utils'
 import './styles.scss'
 
 defineOptions({

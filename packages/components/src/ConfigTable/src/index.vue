@@ -5,11 +5,12 @@ import type {
   ConfigTableSlots,
 } from './types'
 import { ElPagination, ElTableV2 } from 'element-plus'
-import ConfigTableColumnSettings from './ColumnSettings.vue'
-import { ConfigTableRenderNode } from './ConfigTableRenderNode'
-import { useConfigTableColumns } from './use-config-table-columns'
-import { useConfigTableData } from './use-config-table-data'
-import { useConfigTableRenderer } from './use-config-table-renderer'
+import { ConfigTableColumnSettings, ConfigTableRenderNode } from './components'
+import {
+  useConfigTableColumns,
+  useConfigTableData,
+  useConfigTableRenderer,
+} from './composables'
 
 defineOptions({ name: 'ConfigTable' })
 
@@ -153,16 +154,14 @@ const {
       v-if="shouldShowPagination"
       class="mx-config-table__pagination-shell"
     >
-      <div class="mx-config-table__pagination-content">
-        <ElPagination
-          :current-page="currentPage"
-          :page-size="pageSize"
-          :total="requestTotal"
-          v-bind="paginationProps"
-          @update:current-page="handleCurrentPageUpdate"
-          @update:page-size="handlePageSizeUpdate"
-        />
-      </div>
+      <ElPagination
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :total="requestTotal"
+        v-bind="paginationProps"
+        @update:current-page="handleCurrentPageUpdate"
+        @update:page-size="handlePageSizeUpdate"
+      />
     </div>
   </div>
 </template>
@@ -192,17 +191,12 @@ const {
 }
 
 .mx-config-table__pagination-shell {
+  display: grid;
+  grid-template-columns: minmax(100%, max-content);
+  justify-items: end;
   max-width: 100%;
-  margin-top: 12px;
   overflow-x: auto;
   overflow-y: visible;
   padding: 2px 0;
-}
-
-.mx-config-table__pagination-content {
-  display: flex;
-  width: max-content;
-  min-width: 100%;
-  justify-content: flex-end;
 }
 </style>

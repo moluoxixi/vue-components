@@ -317,7 +317,7 @@ describe('config table', () => {
     expect(wrapper.get('[data-testid="el-table-v2-stub"]').classes()).not.toContain('mx-config-table')
     expect(wrapper.get('[data-testid="pagination-stub"]').classes()).not.toContain('mx-config-table__pagination')
     expect(wrapper.find('.mx-config-table__pagination-shell').exists()).toBe(true)
-    expect(wrapper.find('.mx-config-table__pagination-content').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-table__pagination-content').exists()).toBe(false)
   })
 
   it('空数据时渲染默认空态文案并支持 empty 插槽和 render 配置', () => {

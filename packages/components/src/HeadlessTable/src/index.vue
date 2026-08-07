@@ -19,12 +19,12 @@ import {
   getHeadlessTableColumnId,
   getHeadlessTableColumnLabel,
   getHeadlessTableRawValue,
-} from './core'
+} from './utils'
 import {
   headlessTableRenderer,
   headlessTableRendererKey,
   resolveHeadlessTableRenderer,
-} from './renderer'
+} from './core'
 
 defineOptions({ name: 'HeadlessTable' })
 
