@@ -16,6 +16,7 @@ overrides:
 
 catalog:
   '@huggingface/transformers': ^4.0.0
+  '@mdit-vue/shared': ^3.0.2
   '@types/markdown-it': ^14.1.2
   '@types/markdown-it-container': ^2.0.6
   '@types/sortablejs': ^1.15.9

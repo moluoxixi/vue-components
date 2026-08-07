@@ -1,5 +1,6 @@
+import type { MarkdownRenderer } from 'vitepress'
 import type { ElementPlusDocsOptions } from '../index'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineElementPlusDocs } from '../index'
 
 describe('defineElementPlusDocs', () => {
@@ -9,6 +10,42 @@ describe('defineElementPlusDocs', () => {
     })
     expect(config.title).toBe('Fixture')
     expect(config.themeConfig).toMatchObject({ siteTitle: 'Fixture' })
+  })
+
+  it('installs the upstream heading extractor before consumer markdown plugins', () => {
+    const consumerPlugin = vi.fn()
+    const config = defineElementPlusDocs({
+      site: { title: 'Fixture' },
+      vitepress: {
+        markdown: {
+          config(md) {
+            md.use(consumerPlugin)
+          },
+        },
+      },
+    })
+    const use = vi.fn()
+    const md = { use } as unknown as MarkdownRenderer
+
+    config.markdown?.config?.(md)
+
+    expect(use).toHaveBeenCalledTimes(2)
+    expect(use.mock.calls[0][0]).not.toBe(consumerPlugin)
+    expect(use.mock.calls[1][0]).toBe(consumerPlugin)
+  })
+
+  it('allows consumers to disable the upstream heading extractor', () => {
+    const config = defineElementPlusDocs({
+      site: { title: 'Fixture' },
+      vitepress: { markdown: { headers: false } },
+    })
+    const use = vi.fn()
+    const md = { use } as unknown as MarkdownRenderer
+
+    config.markdown?.config?.(md)
+
+    expect(use).not.toHaveBeenCalled()
+    expect(config.markdown?.headers).toBe(false)
   })
 
   it('fails with field-specific diagnostics for missing site identity', () => {

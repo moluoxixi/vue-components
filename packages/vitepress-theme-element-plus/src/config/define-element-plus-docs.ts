@@ -5,6 +5,7 @@ import type {
   ElementPlusDocsRuntimeLocale,
   ElementPlusDocsThemeConfig,
 } from '../types'
+import headersPlugin from '../upstream/plugins/headers'
 
 const consumerStylesModuleId = 'virtual:moluoxixi-element-plus-docs-consumer-styles'
 const resolvedConsumerStylesModuleId = `\0${consumerStylesModuleId}`
@@ -126,6 +127,19 @@ function createConsumerStylesPlugin(styles: string | string[] | undefined) {
   }
 }
 
+function createMarkdownConfig(markdown: UserConfig['markdown'] | undefined): NonNullable<UserConfig['markdown']> {
+  const configureConsumerMarkdown = markdown?.config
+
+  return {
+    ...markdown,
+    config(md) {
+      if (markdown?.headers !== false)
+        md.use(headersPlugin)
+      configureConsumerMarkdown?.(md)
+    },
+  }
+}
+
 export function defineElementPlusDocs(options: ElementPlusDocsOptions): UserConfig {
   validate(options)
   const configuredLocales = options.site.locales ?? {
@@ -155,7 +169,7 @@ export function defineElementPlusDocs(options: ElementPlusDocsOptions): UserConf
     lastUpdated: true,
     locales: localeConfigs,
     rewrites: options.vitepress?.rewrites,
-    markdown: options.vitepress?.markdown,
+    markdown: createMarkdownConfig(options.vitepress?.markdown),
     head: options.vitepress?.head ?? [],
     themeConfig: localeThemeConfig(
       options,

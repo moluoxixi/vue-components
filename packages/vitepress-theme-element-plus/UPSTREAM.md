@@ -13,10 +13,11 @@ source copy from the Element Plus documentation site.
 | --- | --- | --- |
 | `docs/.vitepress/vitepress/components/**` | `src/upstream/vitepress/components/**` | Layout templates are copied; imports, consumer identity, links, icons, and locale access are adapted. |
 | `docs/.vitepress/vitepress/composables/**` | `src/upstream/vitepress/composables/**` | Navigation, sidebar, outline, search, appearance, and page behavior are copied; repository, locale, and site data now come from VitePress theme config. |
-| `docs/.vitepress/vitepress/styles/**` | `src/upstream/vitepress/styles/**` | The 21 SCSS source files are copied without redesign, apart from moving VitePress compatibility imports out of `code.scss`, and compiled into the package CSS. |
+| `docs/.vitepress/vitepress/styles/**` | `src/upstream/vitepress/styles/**` | The 21 SCSS source files are copied without redesign, apart from moving VitePress compatibility imports out of `code.scss`, scoping the official heading rules to `.doc-content` so VitePress's later reset cannot flatten them, and compiling into the package CSS. |
 | `docs/.vitepress/vitepress/constant.ts` | `src/upstream/vitepress/constant.ts` | Copied constants, with consumer-specific values removed from callers. |
 | `docs/.vitepress/vitepress/types.ts` | `src/upstream/vitepress/types.ts` | Copied internal theme types. |
 | `docs/.vitepress/vitepress/utils/**` | `src/upstream/vitepress/utils/**` | Copied browser utilities with package-local import adjustments where required. |
+| `docs/.vitepress/plugins/headers.ts` | `src/upstream/plugins/headers.ts` | Copied header extraction plugin preserves the official `h2`-`h6` document outline behavior. |
 
 A blob comparison against the pinned tree identified 81 mapped files in the
 initial import: 40 exact copies and 41 adapted copies. Package-owned config,

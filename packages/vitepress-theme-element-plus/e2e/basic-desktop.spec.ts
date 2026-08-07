@@ -20,5 +20,28 @@ test('built theme renders and searches fixture content in light and dark modes',
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.goto('/')
   await expect(page).toHaveScreenshot('basic-desktop-dark.png', { animations: 'disabled', fullPage: true })
+
+  await page.goto('/guide/')
+  await expect(page.getByRole('heading', { level: 1, name: 'Guide' })).toBeVisible()
+  const toc = page.locator('.toc-wrapper')
+  await expect(toc).toBeVisible()
+  await expect(toc.getByRole('link', { name: 'Heading level 2', exact: true })).toBeVisible()
+  const headings = await page.locator('.doc-content h1, .doc-content h2, .doc-content h3, .doc-content h4, .doc-content h5, .doc-content h6').evaluateAll(elements => elements.map((element) => {
+    const style = getComputedStyle(element)
+    return {
+      tag: element.tagName,
+      display: style.display,
+      fontSize: Number.parseFloat(style.fontSize),
+      fontWeight: style.fontWeight,
+      lineHeight: Number.parseFloat(style.lineHeight),
+    }
+  }))
+  expect(headings.map(({ tag }) => tag)).toEqual(['H1', 'H2', 'H3', 'H4', 'H5', 'H6'])
+  expect(headings.map(({ display }) => display)).toEqual(Array.from({ length: 6 }).fill('flex'))
+  expect(headings.map(({ fontWeight }) => fontWeight)).toEqual(Array.from({ length: 6 }).fill('600'))
+  expect(headings.map(({ fontSize }) => fontSize)).toEqual([35.2, 26.4, 21.6, 18.4, 16, 16])
+  headings.forEach(({ fontSize, lineHeight }) => {
+    expect(lineHeight / fontSize).toBeCloseTo(1.25, 1)
+  })
   expect(browserProblems).toEqual([])
 })

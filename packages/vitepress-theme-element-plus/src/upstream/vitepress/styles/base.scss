@@ -128,6 +128,51 @@ h4 {
   font-size: 1.15rem;
 }
 
+// VitePress injects its default document reset after the custom theme styles
+// in consumer dev builds. Keep the copied Element Plus heading scale scoped to
+// the custom document root so that reset cannot flatten every heading to 16px.
+.doc-content {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+    line-height: 1.25;
+    font-weight: 600;
+  }
+
+  h1 {
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+    font-size: 1.9rem;
+  }
+
+  @include respond-to('sm') {
+    h1 {
+      font-size: 2.2rem;
+    }
+  }
+
+  h2 {
+    margin-top: 2.25rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.3rem;
+    line-height: 1.25;
+    font-size: 1.65rem;
+  }
+
+  h3 {
+    margin-top: 2rem;
+    font-size: 1.35rem;
+  }
+
+  h4 {
+    font-size: 1.15rem;
+  }
+}
+
 p,
 ol,
 ul {

@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@lucide/vue": "catalog:ui",
+    "@mdit-vue/shared": "catalog:",
     "@vueuse/core": "catalog:",
     "normalize.css": "catalog:",
     "nprogress": "catalog:"

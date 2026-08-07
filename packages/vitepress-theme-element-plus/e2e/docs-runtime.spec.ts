@@ -9,6 +9,13 @@ test('current component page renders consumer features in light and dark modes',
   await expect(page.locator('.component-doc-meta')).toHaveCSS('border-bottom-style', 'solid')
   await expect(page.getByRole('list', { name: 'CopyText 组件贡献者' })).toBeVisible()
 
+  const headingSizes = await page.locator('.doc-content').evaluate(element => ({
+    h1: Number.parseFloat(getComputedStyle(element.querySelector('h1')!).fontSize),
+    h2: Number.parseFloat(getComputedStyle(element.querySelector('h2')!).fontSize),
+  }))
+  expect(headingSizes.h1).toBeGreaterThan(headingSizes.h2)
+  expect(headingSizes.h2).toBeGreaterThan(16)
+
   const demo = page.locator('.demo-block').first()
   await expect(demo).toBeVisible()
   await expect(demo.getByText('Hello, World!', { exact: true })).toBeVisible()
@@ -59,6 +66,10 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
   await page.goto('/components/config-table.html')
   await expect(page.getByText('10条/页', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('前往', { exact: true }).first()).toBeVisible()
+  const toc = page.locator('.toc-wrapper')
+  await expect(toc).toBeVisible()
+  await expect(toc.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
+  await expect(toc.getByRole('link', { name: 'Renderer 与列设置', exact: true })).toBeVisible()
 
   await page.goto('/playground.html')
   const playground = page.locator('main.page-content.docs-playground-page')
@@ -69,6 +80,63 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
   await page.getByTestId('playground-reset').click()
   await expect(editor).toHaveValue(/Hello, MX Components!/)
   await expect(page.getByTestId('playground-diagnostics')).toHaveCount(0)
+
+  expect(browserProblems).toEqual([])
+})
+
+test('current docs preserve the official responsive layout at supported widths', async ({ page }) => {
+  const browserProblems = collectBrowserProblems(page)
+  const viewports = [
+    { width: 390, mobileSidebar: true, toc: false },
+    { width: 768, mobileSidebar: true, toc: false },
+    { width: 1024, mobileSidebar: false, toc: false },
+    { width: 1280, mobileSidebar: false, toc: false },
+    { width: 1440, mobileSidebar: false, toc: true },
+  ] as const
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: 900 })
+    await page.goto('/components/config-table.html')
+
+    const widths = await page.evaluate(() => ({
+      body: document.body.scrollWidth,
+      root: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }))
+    expect(widths.body).toBeLessThanOrEqual(widths.viewport)
+    expect(widths.root).toBeLessThanOrEqual(widths.viewport)
+
+    const sidebar = page.locator('.sidebar')
+    const content = page.locator('.doc-content-container')
+    const toc = page.locator('.toc-wrapper')
+    const sidebarBox = await sidebar.boundingBox()
+    expect(sidebarBox).not.toBeNull()
+
+    if (viewport.mobileSidebar) {
+      expect(sidebarBox!.x + sidebarBox!.width).toBeLessThanOrEqual(1)
+    }
+    else {
+      const contentBox = await content.boundingBox()
+      expect(contentBox).not.toBeNull()
+      expect(sidebarBox!.x).toBeGreaterThanOrEqual(-1)
+      expect(sidebarBox!.x + sidebarBox!.width).toBeLessThanOrEqual(contentBox!.x + 1)
+    }
+
+    if (viewport.toc) {
+      await expect(toc).toBeVisible()
+      await expect(toc.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
+      const [contentBox, tocBox] = await Promise.all([
+        content.boundingBox(),
+        toc.boundingBox(),
+      ])
+      expect(contentBox).not.toBeNull()
+      expect(tocBox).not.toBeNull()
+      expect(contentBox!.x + contentBox!.width).toBeLessThanOrEqual(tocBox!.x + 1)
+    }
+    else {
+      await expect(toc).toBeHidden()
+    }
+  }
 
   expect(browserProblems).toEqual([])
 })
