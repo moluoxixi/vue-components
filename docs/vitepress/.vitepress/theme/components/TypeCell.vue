@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { formatDocsMessage } from '../../docs-i18n'
 import { useDocsLocale } from '../use-docs-locale'
 
@@ -17,10 +17,15 @@ interface TooltipHandle {
 
 const tooltipRef = ref<TooltipHandle>()
 const touchVisible = ref(false)
+const isMounted = ref(false)
 const tooltip = computed(() => props.detail ?? (props.type.length > 42 ? props.type : ''))
 const displayType = computed(() => {
   const normalized = props.type.replace(/\s+/g, ' ')
   return normalized.length > 42 ? `${normalized.slice(0, 39)}...` : normalized
+})
+
+onMounted(() => {
+  isMounted.value = true
 })
 
 function hideTooltip(event?: Event): void {
@@ -51,7 +56,7 @@ function handlePointerDown(event: PointerEvent): void {
     placement="top-start"
     effect="dark"
     popper-class="mx-type-tooltip"
-    :teleported="true"
+    :teleported="isMounted"
     @hide="touchVisible = false"
   >
     <template #content>

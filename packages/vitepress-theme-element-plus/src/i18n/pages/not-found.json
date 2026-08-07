@@ -1,0 +1,4 @@
+{
+  "en-US": { "title": "Page not found", "desc": "The page you are looking for does not exist.", "button-title": "Back to home" },
+  "zh-CN": { "title": "页面未找到", "desc": "你访问的页面不存在。", "button-title": "返回首页" }
+}

@@ -1,6 +1,7 @@
 import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './docs-site'
-import { defineConfig } from 'vitepress'
+import { fileURLToPath } from 'node:url'
+import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
 import { createComponentAutoLoadPlugins } from './auto-loaders'
 import { getDocsMessages, getLocalizedComponentGroups, localePath } from './docs-i18n'
@@ -94,11 +95,11 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
 const vitepressLocales = Object.fromEntries(
   (Object.keys(docsLocales) as DocsLocale[]).map((locale) => {
     const configured = docsLocales[locale]
-    return [configured.siteKey, {
+    return [locale, {
+      siteKey: configured.siteKey,
       label: configured.label,
       lang: configured.lang,
-      ...(locale === defaultDocsLocale ? {} : { link: `${configured.pathPrefix}/` }),
-      title: docsSite.title,
+      pathPrefix: configured.pathPrefix,
       description: getDocsMessages(locale).siteDescription,
       themeConfig: createThemeConfig(locale),
     }]
@@ -118,48 +119,68 @@ const rewrites = Object.fromEntries(
 type VitePressPlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
 
 const componentAutoLoadPlugins = createComponentAutoLoadPlugins() as VitePressPlugins
+const consumerStylesAlias = '@moluoxixi/docs-consumer-styles'
 
-export default defineConfig({
-  title: docsSite.title,
-  description: getDocsMessages(defaultDocsLocale).siteDescription,
-  base: '/',
-  lastUpdated: true,
-  locales: vitepressLocales,
-  rewrites,
-  head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: docsSite.logo.src }],
-  ],
-  markdown: {
-    theme: {
-      light: 'github-light',
-      dark: 'github-dark',
-    },
-    config(md) {
-      md.use(demoPlugin)
-    },
+export default defineElementPlusDocs({
+  site: {
+    title: docsSite.title,
+    siteTitle: docsSite.siteTitle,
+    description: getDocsMessages(defaultDocsLocale).siteDescription,
+    logo: docsSite.logo.src,
+    base: '/',
+    locales: vitepressLocales,
+    defaultLocale: defaultDocsLocale,
   },
-  vite: {
-    plugins: [
-      ...componentAutoLoadPlugins,
-      createStableChunksPlugin({
-        antd: false,
-        configForm: false,
-        element: false,
-        richText: false,
-      }),
-    ] as VitePressPlugins,
-    resolve: {
-      conditions: ['source'],
-      alias: [
-        { find: '@docs-components/styles', replacement: docsSite.packageStylesImport },
-        { find: '@docs-components', replacement: docsSite.packageName },
-      ],
+  repository: {
+    ...docsSite.repository,
+    editLinks: false,
+  },
+  components: {
+    styles: [docsSite.packageStylesImport, consumerStylesAlias],
+  },
+  routes: {
+    overview: '/',
+    guide: docsSite.routes.guide,
+    components: docsSite.routes.components,
+  },
+  search: 'local',
+  vitepress: {
+    rewrites,
+    head: [
+      ['link', { rel: 'icon', type: 'image/svg+xml', href: docsSite.logo.src }],
+    ],
+    markdown: {
+      theme: {
+        light: 'github-light',
+        dark: 'github-dark',
+      },
+      config(md) {
+        md.use(demoPlugin)
+      },
     },
-    optimizeDeps: {
-      include: ['@lucide/vue', 'element-plus', 'vue3-sfc-loader'],
-    },
-    ssr: {
-      noExternal: ['element-plus', 'vue3-sfc-loader'],
+    vite: {
+      plugins: [
+        ...componentAutoLoadPlugins,
+        createStableChunksPlugin({
+          antd: false,
+          configForm: false,
+          element: false,
+          richText: false,
+        }),
+      ] as VitePressPlugins,
+      resolve: {
+        conditions: ['source'],
+        alias: [
+          { find: '@docs-components', replacement: docsSite.packageName },
+          { find: consumerStylesAlias, replacement: fileURLToPath(new URL('./theme/styles/index.css', import.meta.url)) },
+        ],
+      },
+      optimizeDeps: {
+        include: ['@lucide/vue', 'element-plus', 'vue3-sfc-loader'],
+      },
+      ssr: {
+        noExternal: ['element-plus', 'vue3-sfc-loader'],
+      },
     },
   },
 })

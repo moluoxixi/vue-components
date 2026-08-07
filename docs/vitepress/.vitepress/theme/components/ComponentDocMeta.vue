@@ -125,31 +125,33 @@ const changelogTitle = computed(() => formatDocsMessage(messages.value.changelog
       </tbody>
     </table>
 
-    <ElDialog
-      v-model="changelogVisible"
-      align-center
-      append-to-body
-      class="component-changelog-dialog"
-      destroy-on-close
-      :show-close="false"
-      width="min(760px, calc(100vw - 32px))"
-    >
-      <template #header="{ close, titleId, titleClass }">
-        <div class="component-changelog-dialog-header">
-          <span :id="titleId" :class="titleClass" role="heading" aria-level="2">{{ changelogTitle }}</span>
-          <button
-            class="component-changelog-dialog-close"
-            type="button"
-            :aria-label="messages.theme.close"
-            @click="close"
-          >
-            <X :size="18" aria-hidden="true" />
-          </button>
+    <ClientOnly>
+      <ElDialog
+        v-model="changelogVisible"
+        align-center
+        append-to-body
+        class="component-changelog-dialog"
+        destroy-on-close
+        :show-close="false"
+        width="min(760px, calc(100vw - 32px))"
+      >
+        <template #header="{ close, titleId, titleClass }">
+          <div class="component-changelog-dialog-header">
+            <span :id="titleId" :class="titleClass" role="heading" aria-level="2">{{ changelogTitle }}</span>
+            <button
+              class="component-changelog-dialog-close"
+              type="button"
+              :aria-label="messages.theme.close"
+              @click="close"
+            >
+              <X :size="18" aria-hidden="true" />
+            </button>
+          </div>
+        </template>
+        <div class="component-changelog-dialog-scroll">
+          <ComponentCommitTimeline :name="name" />
         </div>
-      </template>
-      <div class="component-changelog-dialog-scroll">
-        <ComponentCommitTimeline :name="name" />
-      </div>
-    </ElDialog>
+      </ElDialog>
+    </ClientOnly>
   </div>
 </template>

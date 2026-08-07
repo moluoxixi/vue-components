@@ -18,6 +18,7 @@ component-ideas
 .agent
 .playwright-mcp
 .playwright-cli
+**/.playwright/
 .spike
 /spikes/
 

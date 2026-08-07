@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "tsBuildInfoFile": "./.tsbuildinfo/tsconfig.app.tsbuildinfo",
+    "types": ["vite/client"]
+  },
+  "include": ["index.ts", "src/**/*.ts", "src/**/*.vue", "src/**/*.json"],
+  "exclude": ["vite.config.ts", "test", "fixtures"]
+}

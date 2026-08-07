@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { formatDocsMessage } from '../../docs-i18n'
 import { getComponentGithubMetadata, githubMetadata } from '../../github-metadata'
 import { useDocsLocale } from '../use-docs-locale'
@@ -9,12 +9,17 @@ const props = defineProps<{
 }>()
 
 const { messages } = useDocsLocale()
+const isMounted = ref(false)
 const contributors = computed(() => getComponentGithubMetadata(props.name).contributors
   .map((contribution) => {
     const profile = githubMetadata.profiles[contribution.login]
     return profile ? { ...profile, contributions: contribution.contributions } : undefined
   })
   .filter(contributor => contributor !== undefined))
+
+onMounted(() => {
+  isMounted.value = true
+})
 
 function contributionText(count: number): string {
   return formatDocsMessage(messages.value.contributors.contribution, {
@@ -39,7 +44,7 @@ function contributionText(count: number): string {
         placement="top"
         effect="dark"
         popper-class="doc-contributor-tooltip"
-        :teleported="true"
+        :teleported="isMounted"
       >
         <template #content>
           <span class="doc-contributor-tooltip-content">

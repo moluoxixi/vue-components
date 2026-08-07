@@ -23,6 +23,7 @@
     "@lucide/vue": "catalog:ui",
     "@moluoxixi/ai-doc-assistant": "workspace:*",
     "@moluoxixi/components": "workspace:*",
+    "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
     "@tanstack/vue-query": "catalog:data",
     "element-plus": "catalog:ui",
     "vue": "catalog:build",
