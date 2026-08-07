@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260807161229-index-535ae9",
+  "createdAt": "2026-08-07T16:12:29.325Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-07-visual-form-designer",
+  "reason": "Expose the proposed ConfigForm designer contract from the frontend specification index after human review",
+  "target": "frontend/index.md",
+  "kind": "file",
+  "baseHash": "da69420eb4aa777a3e21234602d58b2fc5ea117fa330e03c07d73a785e5447a5",
+  "contentFile": "content/20260807161229-index-535ae9.md",
+  "contentHash": "9fd00bf3a31003d2b6fb5b1e06c5258fe075f17983c83e019f2592598e63801b"
+}

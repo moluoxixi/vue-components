@@ -1,0 +1,25 @@
+.mx-element-designer-section {
+  padding: 16px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: 4px;
+}
+
+.mx-element-designer-section > header {
+  margin-bottom: 14px;
+}
+
+.mx-element-designer-section h3,
+.mx-element-designer-section p {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.mx-element-designer-section h3 {
+  font-size: 15px;
+}
+
+.mx-element-designer-section p {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 13px;
+}

@@ -1,0 +1,5 @@
+export { default as ConfigFormDesigner } from './ConfigFormDesigner.vue'
+export { default as DesignerCanvas } from './DesignerCanvas.vue'
+export { default as DesignerPalette } from './DesignerPalette.vue'
+export { default as DesignerPropertyPanel } from './DesignerPropertyPanel.vue'
+export type * from './types'

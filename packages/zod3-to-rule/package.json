@@ -1,0 +1,45 @@
+{
+  "name": "@moluoxixi/zod3-to-rule",
+  "type": "module",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/zod3-to-rule"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "index.ts",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "peerDependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue-tsc": "catalog:dev",
+    "zod": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
