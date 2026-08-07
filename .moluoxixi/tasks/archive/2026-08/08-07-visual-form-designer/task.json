@@ -3,7 +3,7 @@
   "name": "visual-form-designer",
   "title": "配置化表单可视化设计器",
   "description": "",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [],
@@ -23,7 +23,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-07",
-  "completedAt": null,
+  "completedAt": "2026-08-08",
   "branch": "codex/visual-form-designer",
   "base_branch": "main",
   "worktree_path": null,
