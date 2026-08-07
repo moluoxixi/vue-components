@@ -21,6 +21,7 @@ describe('documentation internationalization', () => {
   it('resolves locale paths without changing default URLs', () => {
     expect(resolveDocsLocale('en-GB')).toBe('en-US')
     expect(resolveDocsLocale('zh-CN')).toBe('zh-CN')
+    expect(resolveDocsLocale(undefined, 'en')).toBe('en-US')
     expect(localePath('zh-CN', '/components/')).toBe('/components/')
     expect(localePath('en-US', '/components/')).toBe('/en/components/')
   })

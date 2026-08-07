@@ -84,6 +84,50 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
   expect(browserProblems).toEqual([])
 })
 
+test('component overview search and English routes stay localized', async ({ page }) => {
+  const browserProblems = collectBrowserProblems(page)
+
+  await page.goto('/components/')
+  const overview = page.locator('.component-overview')
+  const search = overview.getByRole('textbox', { name: '搜索组件' })
+  await expect(search).toHaveAttribute('placeholder', '搜索组件')
+  await search.fill('复制')
+  await expect(overview.getByRole('link', { name: /CopyText 带状态反馈的复制按钮/ })).toBeVisible()
+  await expect(overview.getByRole('link', { name: /ConfigTable/ })).toHaveCount(0)
+  await search.fill('不存在的组件')
+  await expect(overview.getByText('未找到匹配的组件', { exact: true })).toBeVisible()
+
+  await page.goto('/en/components/')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US')
+  const englishOverview = page.locator('.component-overview')
+  const englishSearch = englishOverview.getByRole('textbox', { name: 'Search components' })
+  await expect(englishSearch).toHaveAttribute('placeholder', 'Search Components')
+  await englishSearch.fill('CopyText')
+  await expect(englishOverview.getByRole('link', { name: /CopyText Copy actions with built-in status feedback/ })).toBeVisible()
+  await expect(englishOverview.getByRole('link', { name: /ConfigTable/ })).toHaveCount(0)
+  await englishSearch.fill('No such component')
+  await expect(englishOverview.getByText('No matching components found', { exact: true })).toBeVisible()
+
+  await page.goto('/en/components/copy-text.html')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US')
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Language' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Language' }).click()
+  await page.getByRole('link', { name: '简体中文' }).click()
+  await expect(page).toHaveURL(/\/components\/copy-text\.html$/)
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN')
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+
+  await page.getByRole('button', { name: '语言' }).click()
+  await page.getByRole('link', { name: 'English' }).click()
+  await expect(page).toHaveURL(/\/en\/components\/copy-text\.html$/)
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US')
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+
+  expect(browserProblems).toEqual([])
+})
+
 test('current docs preserve the official responsive layout at supported widths', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
   const viewports = [

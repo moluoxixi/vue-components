@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ComponentIconName } from '../../component-manifest'
 import {
   Blocks,
@@ -13,6 +13,7 @@ import {
   PanelTopOpen,
   Rows3,
   ScanText,
+  Search,
   TableProperties,
   TextCursorInput,
   TreePine,
@@ -38,7 +39,7 @@ const iconByName: Record<ComponentIconName, Component> = {
   'tree-pine': TreePine,
 }
 
-const { link, locale } = useDocsLocale()
+const { link, locale, messages } = useDocsLocale()
 const groups = computed(() => getLocalizedComponentGroups(locale.value).map(group => ({
   ...group,
   items: group.items.map(component => ({
@@ -48,19 +49,58 @@ const groups = computed(() => getLocalizedComponentGroups(locale.value).map(grou
     icon: iconByName[component.icon],
   })),
 })))
+
+const query = ref('')
+const normalizedQuery = computed(() => query.value.trim().toLowerCase().replace(/-/g, ' '))
+
+function matchesQuery(value: string): boolean {
+  return value.toLowerCase().replace(/-/g, ' ').includes(normalizedQuery.value)
+}
+
+const filteredGroups = computed(() => {
+  const value = normalizedQuery.value
+  if (!value)
+    return groups.value
+
+  return groups.value
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item =>
+        matchesQuery(group.title)
+        || matchesQuery(group.description)
+        || matchesQuery(item.name)
+        || matchesQuery(item.desc)),
+    }))
+    .filter(group => group.items.length > 0)
+})
 </script>
 
 <template>
   <div class="component-overview">
-    <section v-for="group in groups" :key="group.title" class="overview-group">
-      <div class="overview-group-heading">
-        <div>
-          <h2>{{ group.title }}</h2>
-          <p>{{ group.description }}</p>
+    <div class="component-overview-search">
+      <el-input
+        v-model="query"
+        :prefix-icon="Search"
+        :placeholder="messages.overview.searchPlaceholder"
+        :aria-label="messages.overview.searchAria"
+        clearable
+        size="large"
+      />
+    </div>
+
+    <template v-if="filteredGroups.length">
+      <section v-for="group in filteredGroups" :key="group.title" class="overview-group">
+        <div class="overview-group-heading">
+          <div>
+            <h2>{{ group.title }}</h2>
+            <p>{{ group.description }}</p>
+          </div>
+          <span>{{ group.items.length }}</span>
         </div>
-        <span>{{ group.items.length }}</span>
-      </div>
-      <OverviewCard :items="group.items" />
-    </section>
+        <OverviewCard :items="group.items" />
+      </section>
+    </template>
+
+    <el-empty v-else class="component-overview-empty" :description="messages.overview.noResults" />
   </div>
 </template>

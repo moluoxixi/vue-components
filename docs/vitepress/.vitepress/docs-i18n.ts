@@ -124,6 +124,9 @@ export interface DocsMessages {
     visualInteraction: string
     catalogKicker: string
     title: string
+    searchPlaceholder: string
+    searchAria: string
+    noResults: string
   }
 }
 
@@ -171,7 +174,7 @@ const messages: Record<DocsLocale, DocsMessages> = {
     api: { permanentLink: '{section}的永久链接', empty: '该组件没有公开的组件契约。', name: '名称', type: '类型', parameters: '参数', scope: '作用域', defaultValue: '默认值', required: '必填', description: '说明', yes: '是', typeDetails: '查看类型详情：{type}', tableAria: '{section} API', sections: { props: 'Props', emits: 'Emits', slots: 'Slots', expose: 'Expose' } },
     demo: { compileError: '编译错误', loading: '加载中…', actions: '示例操作', copied: '已复制', copyCode: '复制代码', codeCopied: '代码已复制', collapseCode: '收起代码', expandCode: '展开代码', collapseExampleCode: '收起示例代码', expandExampleCode: '展开示例代码', openPlayground: '在游乐场中打开', playgroundUnavailable: '无法打开游乐场' },
     playground: { title: '组件游乐场', editor: '单文件组件', preview: '预览', run: '运行', running: '运行中', reset: '重置', copy: '复制', copied: '已复制', editorAria: 'Vue 单文件组件源码', diagnostics: '运行错误' },
-    overview: { brandKicker: 'Vue 3 组件库', intro: '基于 Element Plus 的业务组件库，覆盖高频表单、数据展示与内容编辑场景。', gettingStarted: '快速开始', browseComponents: '浏览组件', factsAria: '组件库概况', componentDocs: '组件文档', runtime: '运行基础', typedContracts: '完整契约', visualInteraction: '视觉与交互', catalogKicker: 'Component Overview', title: '组件总览' },
+    overview: { brandKicker: 'Vue 3 组件库', intro: '基于 Element Plus 的业务组件库，覆盖高频表单、数据展示与内容编辑场景。', gettingStarted: '快速开始', browseComponents: '浏览组件', factsAria: '组件库概况', componentDocs: '组件文档', runtime: '运行基础', typedContracts: '完整契约', visualInteraction: '视觉与交互', catalogKicker: 'Component Overview', title: '组件总览', searchPlaceholder: '搜索组件', searchAria: '搜索组件', noResults: '未找到匹配的组件' },
   },
   'en-US': {
     siteDescription: 'Business components built on Element Plus',
@@ -216,7 +219,7 @@ const messages: Record<DocsLocale, DocsMessages> = {
     api: { permanentLink: 'Permanent link to {section}', empty: 'This component has no public component contract.', name: 'Name', type: 'Type', parameters: 'Parameters', scope: 'Scope', defaultValue: 'Default', required: 'Required', description: 'Description', yes: 'Yes', typeDetails: 'View type details: {type}', tableAria: '{section} API', sections: { props: 'Props', emits: 'Emits', slots: 'Slots', expose: 'Expose' } },
     demo: { compileError: 'Compilation error', loading: 'Loading…', actions: 'Example actions', copied: 'Copied', copyCode: 'Copy code', codeCopied: 'Code copied', collapseCode: 'Collapse code', expandCode: 'Expand code', collapseExampleCode: 'Collapse example source', expandExampleCode: 'Expand example source', openPlayground: 'Open in playground', playgroundUnavailable: 'Unable to open playground' },
     playground: { title: 'Component Playground', editor: 'Single File Component', preview: 'Preview', run: 'Run', running: 'Running', reset: 'Reset', copy: 'Copy', copied: 'Copied', editorAria: 'Vue Single File Component source', diagnostics: 'Runtime error' },
-    overview: { brandKicker: 'Vue 3 Component Library', intro: 'Business components built on Element Plus for forms, data presentation, and rich content editing.', gettingStarted: 'Getting Started', browseComponents: 'Browse Components', factsAria: 'Library overview', componentDocs: 'component docs', runtime: 'runtime', typedContracts: 'typed contracts', visualInteraction: 'visual language', catalogKicker: 'Component Overview', title: 'Components' },
+    overview: { brandKicker: 'Vue 3 Component Library', intro: 'Business components built on Element Plus for forms, data presentation, and rich content editing.', gettingStarted: 'Getting Started', browseComponents: 'Browse Components', factsAria: 'Library overview', componentDocs: 'component docs', runtime: 'runtime', typedContracts: 'typed contracts', visualInteraction: 'visual language', catalogKicker: 'Component Overview', title: 'Components', searchPlaceholder: 'Search Components', searchAria: 'Search components', noResults: 'No matching components found' },
   },
 }
 
@@ -243,15 +246,18 @@ const englishComponents: Record<string, Pick<DocComponent, 'description' | 'side
   RichTextEditor: { sidebarText: 'RichTextEditor Rich Text Editor', description: 'A complete rich text editor powered by Tiptap' },
 }
 
-export function resolveDocsLocale(lang: string | undefined): DocsLocale {
+export function resolveDocsLocale(lang: string | undefined, localeIndex?: string): DocsLocale {
   const normalized = lang?.toLowerCase()
-  if (!normalized)
-    return defaultDocsLocale
-
-  return (Object.keys(docsLocales) as DocsLocale[]).find((locale) => {
+  const byLanguage = (Object.keys(docsLocales) as DocsLocale[]).find((locale) => {
     const configured = docsLocales[locale].lang.toLowerCase()
-    return normalized === configured || normalized.split('-')[0] === configured.split('-')[0]
-  }) ?? defaultDocsLocale
+    return normalized === configured || normalized?.split('-')[0] === configured.split('-')[0]
+  })
+  if (byLanguage)
+    return byLanguage
+
+  const normalizedIndex = localeIndex?.toLowerCase()
+  return (Object.keys(docsLocales) as DocsLocale[]).find(locale => docsLocales[locale].siteKey.toLowerCase() === normalizedIndex)
+    ?? defaultDocsLocale
 }
 
 export function getDocsMessages(locale: DocsLocale): DocsMessages {
