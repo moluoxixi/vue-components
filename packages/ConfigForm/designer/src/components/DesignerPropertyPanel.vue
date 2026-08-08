@@ -38,7 +38,7 @@ const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
           { key: 'label', label: 'Label', path: ['label'], control: 'text' as const },
         ]
       : []),
-    { key: 'span', label: 'Span', path: ['span'], control: 'number' as const },
+    { key: 'span', label: 'Span', path: ['span'], control: 'number' as const, min: 1, max: 12, step: 1 },
   ]
 })
 
@@ -80,18 +80,24 @@ function readPath(path: string[]): unknown {
 }
 
 function formSetter(
-  key: 'inline' | 'columns' | 'gap' | 'fieldSpan',
+  key: keyof DesignerFormSettings,
   label: string,
   control: DesignerPropertySetterDefinition['control'],
+  options?: DesignerPropertySetterDefinition['options'],
+  constraints?: Pick<DesignerPropertySetterDefinition, 'min' | 'max' | 'step'>,
 ): DesignerPropertySetterDefinition {
-  return { key, label, path: [key], control }
+  return { key, label, path: [key], control, options, ...constraints }
 }
 
 const formSetters = [
   formSetter('inline', 'Inline', 'boolean'),
-  formSetter('columns', 'Columns', 'number'),
+  formSetter('labelPosition', 'Label position', 'select', [
+    { label: 'Left', value: 'left' },
+    { label: 'Top', value: 'top' },
+  ]),
+  formSetter('columns', 'Columns', 'number', undefined, { min: 1, max: 12, step: 1 }),
   formSetter('gap', 'Gap', 'text'),
-  formSetter('fieldSpan', 'Field span', 'number'),
+  formSetter('fieldSpan', 'Field span', 'number', undefined, { min: 1, max: 12, step: 1 }),
 ]
 
 function readFormValue(setter: DesignerPropertySetterDefinition): unknown {

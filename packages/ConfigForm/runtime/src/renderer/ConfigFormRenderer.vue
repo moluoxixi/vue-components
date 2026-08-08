@@ -55,6 +55,7 @@ const props = withDefaults(defineProps<ConfigFormRendererProps<TValues>>(), {
   fieldSpan: 24,
   formAttrs: () => ({}),
   gap: '16px',
+  labelPosition: 'left',
   namespace: 'mx-config-form',
   layoutAttrs: () => ({}),
 })
@@ -221,7 +222,8 @@ function renderBoundNode(
   const fieldErrors = readonly ? [] : (errors.value[field.field] ?? [])
   const fieldMeta = meta.value.fields[field.field] ?? getFieldMeta(field.field)
   const fieldAttrs = field.fieldAttrs
-  const label = typeof field.label === 'string'
+  const hasLabel = typeof field.label === 'string'
+  const label = hasLabel
     ? h('label', {
         class: bem('label'),
         for: controlId,
@@ -230,22 +232,46 @@ function renderBoundNode(
 
   return h('div', {
     ...fieldAttrs,
-    class: [bem('field'), fieldAttrs?.class],
+    class: [bem('field'), bem('field', `label-${props.labelPosition}`), fieldAttrs?.class],
     'data-dirty': fieldMeta.dirty,
     'data-field': field.field,
+    'data-label-position': props.labelPosition,
     'data-required': resolveConfigFormCondition(field.required, model.value, false),
     'data-touched': fieldMeta.touched,
     key: getNodeKey(field, path),
-    style: fieldAttrs?.style,
+    style: [fieldLayoutStyle(hasLabel), fieldAttrs?.style],
   }, [
     label,
-    h('div', { class: bem('control') }, [renderControl(field, path, controlId, errorId, readonly, ancestors)]),
+    h('div', {
+      class: bem('control'),
+      style: props.labelPosition === 'left' && hasLabel ? { gridColumn: 2, minWidth: 0 } : { minWidth: 0 },
+    }, [renderControl(field, path, controlId, errorId, readonly, ancestors)]),
     ...fieldErrors.map((message, index) => h('p', {
       class: bem('error'),
       id: index === 0 ? errorId : undefined,
       key: `${message}-${index}`,
+      style: props.labelPosition === 'left' && hasLabel ? { gridColumn: 2 } : undefined,
     }, message)),
   ])
+}
+
+function fieldLayoutStyle(hasLabel: boolean): StyleValue {
+  if (props.labelPosition === 'left' && hasLabel) {
+    return {
+      alignItems: 'start',
+      columnGap: '12px',
+      display: 'grid',
+      gridTemplateColumns: 'max-content minmax(0, 1fr)',
+      minWidth: 0,
+      rowGap: '6px',
+    }
+  }
+
+  return {
+    display: 'grid',
+    gap: '6px',
+    minWidth: 0,
+  }
 }
 
 function renderControl(

@@ -5,6 +5,16 @@ test('mobile navigation stays accessible without horizontal overflow', async ({ 
   const browserProblems = collectBrowserProblems(page)
 
   await page.goto('/')
+  const tocTrigger = page.getByRole('button', { name: 'On this page', exact: true })
+  await expect(tocTrigger).toBeVisible()
+  await expect(tocTrigger).toHaveAttribute('aria-expanded', 'false')
+  await tocTrigger.click()
+  await expect(tocTrigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('#toc-compact-panel').locator('a[href^="#"]')).toHaveText([
+    'Navigation',
+  ])
+  await tocTrigger.click()
+  await expect(tocTrigger).toHaveAttribute('aria-expanded', 'false')
   await expect(page).toHaveScreenshot('basic-mobile-light.png', { animations: 'disabled', fullPage: true })
 
   const toggle = page.getByRole('button', { name: 'Toggle navigation' })

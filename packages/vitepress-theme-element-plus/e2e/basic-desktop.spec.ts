@@ -25,7 +25,13 @@ test('built theme renders and searches fixture content in light and dark modes',
   await expect(page.getByRole('heading', { level: 1, name: 'Guide' })).toBeVisible()
   const toc = page.locator('.toc-wrapper')
   await expect(toc).toBeVisible()
-  await expect(toc.getByRole('link', { name: 'Heading level 2', exact: true })).toBeVisible()
+  await expect(toc.locator('a[href^="#"]')).toHaveText([
+    'Heading level 2',
+    'Heading level 3',
+    'Heading level 4',
+    'Heading level 5',
+    'Heading level 6',
+  ])
   const headings = await page.locator('.doc-content h1, .doc-content h2, .doc-content h3, .doc-content h4, .doc-content h5, .doc-content h6').evaluateAll(elements => elements.map((element) => {
     const style = getComputedStyle(element)
     return {

@@ -99,6 +99,38 @@ afterEach(() => {
 })
 
 describe('config form designer', () => {
+  it('updates the form label position through the form property setter', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: emptyDocument(), registry },
+    })
+
+    const setter = wrapper.findAll('.mx-config-form-designer__setter')
+      .find(candidate => candidate.text().includes('Label position'))
+    const top = setter!.findAll('button').find(button => button.text() === 'Top')
+    await top!.trigger('click')
+
+    expect(lastDocument(wrapper).form.labelPosition).toBe('top')
+  })
+
+  it('uses direct manipulation controls for boolean and numeric form settings', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: { ...emptyDocument(), form: { columns: 2, inline: false } },
+        registry,
+      },
+    })
+
+    const columns = wrapper.findAll('.mx-config-form-designer__setter')
+      .find(candidate => candidate.text().includes('Columns'))!
+    await columns.get('button[aria-label="Increase Columns"]').trigger('click')
+    expect(lastDocument(wrapper).form.columns).toBe(3)
+
+    const inline = wrapper.findAll('.mx-config-form-designer__setter')
+      .find(candidate => candidate.text().includes('Inline'))!
+    await inline.get('button[role="switch"]').trigger('click')
+    expect(lastDocument(wrapper).form.inline).toBe(true)
+  })
+
   it('adds materials, commits text on blur, and preserves undo/redo boundaries', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       attachTo: document.body,
@@ -157,7 +189,7 @@ describe('config form designer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('external')
+    expect(wrapper.get('[data-node-id="external"] [data-focus-node-id="external"]').attributes('aria-label')).toBe('Select external')
     expect(wrapper.get('button[aria-label="Undo"]').attributes('disabled')).toBeDefined()
   })
 
@@ -173,15 +205,13 @@ describe('config form designer', () => {
     expect(lastDocument(wrapper).nodes.map(node => node.id)).toEqual(['second', 'first'])
 
     await wrapper.get('button[role="tab"]:nth-of-type(2)').trigger('click')
-    const validation = wrapper.get('.mx-config-form-designer__setter textarea')
-    await validation.setValue(JSON.stringify({
-      version: 1,
-      base: { type: 'string' },
-      rules: [{ kind: 'required', message: 'Required' }],
-    }))
-    const apply = wrapper.findAll('.mx-config-form-designer__command-button')
-      .find(button => button.text().includes('Apply'))
-    await apply!.trigger('click')
+    const validation = wrapper.get('.mx-config-form-designer__validation-editor')
+    await validation.get('button[role="switch"]').trigger('click')
+    await validation.get('.mx-config-form-designer__add-row').trigger('click')
+    await validation.get('.mx-config-form-designer__rule-row select').setValue('required')
+    const message = validation.get('input[aria-label="Rule 1 message"]')
+    await message.setValue('Required')
+    await message.trigger('blur')
     expect(lastDocument(wrapper).nodes[0]).toMatchObject({
       validation: {
         version: 1,

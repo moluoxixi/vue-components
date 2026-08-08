@@ -79,7 +79,7 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
       },
     },
     outline: {
-      level: [2, 3],
+      level: [2, 6],
       label: messages.theme.outline,
     },
     docFooter: {

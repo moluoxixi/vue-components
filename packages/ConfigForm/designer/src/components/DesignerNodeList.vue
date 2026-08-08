@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DesignerDropTarget } from '../history'
-import type { DesignerNode } from '../document'
+import type { DesignerFormSettings, DesignerNode } from '../document'
 import type { DesignerNodeAction } from './types'
 import type { DesignerMaterialSlotDefinition, DesignerRegistry } from '../registry'
 import {
@@ -14,6 +14,7 @@ import {
 } from '@lucide/vue'
 import Sortable from 'sortablejs'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import DesignerNodePreview from './DesignerNodePreview.vue'
 
 defineOptions({ name: 'DesignerNodeList' })
 
@@ -22,6 +23,7 @@ const props = defineProps<{
   parentId: string | null
   slotName?: string
   registry: DesignerRegistry
+  labelPosition?: DesignerFormSettings['labelPosition']
   selectedId?: string
   readonly?: boolean
 }>()
@@ -62,6 +64,10 @@ function destroySortable(): void {
   sortable = undefined
 }
 
+function setDragging(active: boolean): void {
+  listRef.value?.closest<HTMLElement>('.mx-config-form-designer')?.classList.toggle('is-dragging', active)
+}
+
 async function createSortable(): Promise<void> {
   destroySortable()
   if (props.readonly)
@@ -78,13 +84,16 @@ async function createSortable(): Promise<void> {
       pull: true,
       put: true,
     },
+    dragoverBubble: false,
     handle: '[data-drag-handle]',
+    onStart: () => setDragging(true),
     onAdd: ({ item, newIndex }) => {
       const materialKey = item.dataset.materialKey
       if (materialKey)
         emit('addMaterial', materialKey, localTarget(newIndex))
     },
     onEnd: ({ item, newIndex, to }) => {
+      setDragging(false)
       const nodeId = item.dataset.nodeId
       const target = newIndex === undefined ? undefined : targetFromElement(to, newIndex)
       if (nodeId && target)
@@ -154,31 +163,17 @@ onBeforeUnmount(destroySortable)
       <div
         class="mx-config-form-designer__node-header"
       >
-        <button
-          type="button"
-          class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle"
-          data-drag-handle
-          :disabled="readonly"
-          title="Move"
-          aria-label="Move node"
-        >
-          <GripVertical :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="mx-config-form-designer__node-select"
-          :data-focus-node-id="node.id"
-          :aria-pressed="selectedId === node.id"
-          @click.stop="emit('select', node.id)"
-          @focus="emit('select', node.id)"
-          @keydown="handleKeydown($event, node.id)"
-        >
-          <span class="mx-config-form-designer__node-title">
-            {{ node.kind === 'field' ? (node.label || node.field) : registry.getMaterial(node.material)?.title }}
-          </span>
-          <code v-if="node.kind === 'field'">{{ node.field }}</code>
-        </button>
         <span class="mx-config-form-designer__node-actions">
+          <button
+            type="button"
+            class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle"
+            data-drag-handle
+            :disabled="readonly"
+            title="Move"
+            aria-label="Move node"
+          >
+            <GripVertical :size="16" aria-hidden="true" />
+          </button>
           <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" title="Move up" aria-label="Move node up" @click.stop="emit('action', 'moveBefore', node.id)">
             <ChevronUp :size="15" aria-hidden="true" />
           </button>
@@ -200,28 +195,44 @@ onBeforeUnmount(destroySortable)
         </span>
       </div>
 
-      <div v-if="node.kind === 'container'" class="mx-config-form-designer__container-slots">
-        <section
-          v-for="slot in materialSlots(node)"
-          :key="slot.name"
-          class="mx-config-form-designer__slot"
-        >
-          <h3>{{ slot.title }}</h3>
-          <DesignerNodeList
-            :nodes="node.slots[slot.name] ?? []"
-            :parent-id="node.id"
-            :slot-name="slot.name"
-            :registry="registry"
-            :selected-id="selectedId"
-            :readonly="readonly"
-            @select="emit('select', $event)"
-            @move="forwardMove"
-            @add-material="forwardAddMaterial"
-            @action="forwardAction"
-          />
-        </section>
+      <div
+        class="mx-config-form-designer__node-preview-shell"
+        :class="{ 'is-container': node.kind === 'container' }"
+        :data-focus-node-id="node.id"
+        :aria-label="`Select ${node.kind === 'field' ? (node.label || node.field) : (registry.getMaterial(node.material)?.title || node.material)}`"
+        role="group"
+        tabindex="0"
+        @click.stop="emit('select', node.id)"
+        @focus="emit('select', node.id)"
+        @keydown="handleKeydown($event, node.id)"
+      >
+        <DesignerNodePreview :node="node" :registry="registry" :label-position="labelPosition">
+          <template v-for="slot in materialSlots(node)" #[slot.name]>
+            <DesignerNodeList
+              :nodes="node.kind === 'container' ? (node.slots[slot.name] ?? []) : []"
+              :parent-id="node.id"
+              :slot-name="slot.name"
+              :registry="registry"
+              :label-position="labelPosition"
+              :selected-id="selectedId"
+              :readonly="readonly"
+              @select="emit('select', $event)"
+              @move="forwardMove"
+              @add-material="forwardAddMaterial"
+              @action="forwardAction"
+            />
+          </template>
+        </DesignerNodePreview>
+      </div>
+
+      <div v-if="node.kind === 'container'" class="mx-config-form-designer__container-slots" aria-hidden="true">
+        <template v-for="slot in materialSlots(node)" :key="slot.name">
+          <span class="mx-config-form-designer__slot-marker" :title="slot.title" />
+        </template>
       </div>
     </li>
-    <li v-if="nodes.length === 0" class="mx-config-form-designer__empty-slot" aria-hidden="true">Empty</li>
+    <li v-if="nodes.length === 0" class="mx-config-form-designer__empty-slot" aria-hidden="true">
+      <span class="mx-config-form-designer__empty-slot-icon">+</span>
+    </li>
   </ol>
 </template>

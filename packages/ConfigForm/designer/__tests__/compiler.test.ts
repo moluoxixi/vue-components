@@ -49,7 +49,7 @@ const materials: DesignerMaterialDefinition[] = [
 function createDocument(): DesignerDocument {
   return {
     version: 1,
-    form: { columns: 3, gap: '12px', fieldSpan: 1 },
+    form: { columns: 3, gap: '12px', fieldSpan: 1, labelPosition: 'top' },
     nodes: [
       {
         id: 'section',
@@ -111,6 +111,7 @@ describe('designer compiler', () => {
       columns: 3,
       gap: '12px',
       fieldSpan: 1,
+      labelPosition: 'top',
     })
     const section = compiled.fields[0]!
     expect(section).toMatchObject({ component: 'section', props: { title: 'Profile' } })

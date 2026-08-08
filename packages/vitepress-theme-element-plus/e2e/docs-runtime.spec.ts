@@ -111,8 +111,20 @@ test('component overview search and English routes stay localized', async ({ pag
   await page.goto('/en/components/copy-text.html')
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-US')
   await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Basic Usage' })).toBeVisible()
+  await expect(page.getByText('A copy-to-clipboard component with built-in loading, copied, and error feedback states.')).toBeVisible()
+  await expect(page.locator('.api-docs')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Language' })).toBeVisible()
 
+  await page.goto('/en/components/headless-table.html')
+  await expect(page.locator('.api-docs')).toHaveCount(1)
+  await expect(page.locator('.api-docs')).toContainText('"暂无数据"')
+
+  await page.goto('/components/headless-table.html')
+  await expect(page.locator('.api-docs')).toHaveCount(1)
+  await expect(page.locator('.api-docs')).toContainText('"暂无数据"')
+
+  await page.goto('/en/components/copy-text.html')
   await page.getByRole('button', { name: 'Language' }).click()
   await page.getByRole('link', { name: '简体中文' }).click()
   await expect(page).toHaveURL(/\/components\/copy-text\.html$/)
@@ -128,14 +140,14 @@ test('component overview search and English routes stay localized', async ({ pag
   expect(browserProblems).toEqual([])
 })
 
-test('current docs preserve the official responsive layout at supported widths', async ({ page }) => {
+test('current docs provide title navigation at every supported width', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
   const viewports = [
-    { width: 390, mobileSidebar: true, toc: false },
-    { width: 768, mobileSidebar: true, toc: false },
-    { width: 1024, mobileSidebar: false, toc: false },
-    { width: 1280, mobileSidebar: false, toc: false },
-    { width: 1440, mobileSidebar: false, toc: true },
+    { width: 390, mobileSidebar: true, compactToc: true },
+    { width: 768, mobileSidebar: true, compactToc: true },
+    { width: 1024, mobileSidebar: false, compactToc: true },
+    { width: 1280, mobileSidebar: false, compactToc: true },
+    { width: 1440, mobileSidebar: false, compactToc: false },
   ] as const
 
   for (const viewport of viewports) {
@@ -151,10 +163,27 @@ test('current docs preserve the official responsive layout at supported widths',
     expect(widths.root).toBeLessThanOrEqual(widths.viewport)
 
     const sidebar = page.locator('.sidebar')
+    const pageContent = page.locator('main.page-content')
     const content = page.locator('.doc-content-container')
     const toc = page.locator('.toc-wrapper')
+    const compactTrigger = toc.getByRole('button', { name: '本页目录', exact: true })
+    const tocPanel = page.locator('#toc-compact-panel')
     const sidebarBox = await sidebar.boundingBox()
+    const pageContentBox = await pageContent.boundingBox()
     expect(sidebarBox).not.toBeNull()
+    expect(pageContentBox).not.toBeNull()
+    await expect(sidebar).toHaveCSS('position', 'fixed')
+    expect(pageContentBox!.y).toBeLessThan(900)
+    await expect(toc).toBeVisible()
+    await expect(tocPanel).toHaveCount(1)
+    await expect(tocPanel.locator('a[href^="#"]')).toHaveText([
+      '基础用法',
+      'Renderer 与列设置',
+      '远程请求 + 分页',
+      '自定义单元格插槽',
+      'API',
+      '组件贡献者',
+    ])
 
     if (viewport.mobileSidebar) {
       expect(sidebarBox!.x + sidebarBox!.width).toBeLessThanOrEqual(1)
@@ -166,8 +195,23 @@ test('current docs preserve the official responsive layout at supported widths',
       expect(sidebarBox!.x + sidebarBox!.width).toBeLessThanOrEqual(contentBox!.x + 1)
     }
 
-    if (viewport.toc) {
-      await expect(toc).toBeVisible()
+    if (viewport.compactToc) {
+      await expect(compactTrigger).toBeVisible()
+      await expect(compactTrigger).toHaveAttribute('aria-expanded', 'false')
+      await expect(tocPanel).toBeHidden()
+      await compactTrigger.click()
+      await expect(compactTrigger).toHaveAttribute('aria-expanded', 'true')
+      await expect(tocPanel).toBeVisible()
+      await expect(toc.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
+      const linksResolveToHeadings = await tocPanel.locator('a[href^="#"]').evaluateAll(links => links.every((link) => {
+        const href = link.getAttribute('href')
+        return Boolean(href && document.querySelector(href))
+      }))
+      expect(linksResolveToHeadings).toBe(true)
+    }
+    else {
+      await expect(compactTrigger).toBeHidden()
+      await expect(tocPanel).toBeVisible()
       await expect(toc.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
       const [contentBox, tocBox] = await Promise.all([
         content.boundingBox(),
@@ -177,10 +221,27 @@ test('current docs preserve the official responsive layout at supported widths',
       expect(tocBox).not.toBeNull()
       expect(contentBox!.x + contentBox!.width).toBeLessThanOrEqual(tocBox!.x + 1)
     }
-    else {
-      await expect(toc).toBeHidden()
-    }
   }
+
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/en/components/headless-table.html')
+  const longTitle = page.locator('.toc-wrapper').getByRole('link', {
+    name: 'Sorting and Filtering with useHeadlessTable',
+    exact: true,
+  })
+  await expect(longTitle).toBeVisible()
+  const titleLayout = await longTitle.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+    }
+  })
+  expect(titleLayout.whiteSpace).toBe('normal')
+  expect(titleLayout.textOverflow).toBe('clip')
+  expect(titleLayout.scrollWidth).toBeLessThanOrEqual(titleLayout.clientWidth)
 
   expect(browserProblems).toEqual([])
 })

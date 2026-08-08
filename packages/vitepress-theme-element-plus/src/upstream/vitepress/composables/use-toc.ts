@@ -23,10 +23,14 @@ export function resolveHeaders(headers: PageData['headers']) {
 }
 
 export function groupHeaders(headers: PageData['headers']) {
-  headers = headers.map(h => Object.assign({}, h))
-  let lastH2
+  const flattenHeaders = (items: Headers): Headers => items.flatMap((header) => {
+    const clone = { ...header, children: undefined }
+    return [clone, ...(header.children ? flattenHeaders(header.children) : [])]
+  })
+  const flattenedHeaders = flattenHeaders(headers as Headers)
+  let lastH2: Headers[number] | undefined
 
-  headers.forEach((h) => {
+  flattenedHeaders.forEach((h) => {
     if (h.level === 2) {
       lastH2 = h
     }
@@ -34,7 +38,7 @@ export function groupHeaders(headers: PageData['headers']) {
       ;(lastH2.children || (lastH2.children = [])).push(h)
     }
   })
-  return headers.filter(h => h.level === 2)
+  return flattenedHeaders.filter(h => h.level === 2)
 }
 
 export function mapHeaders(headers: Headers) {

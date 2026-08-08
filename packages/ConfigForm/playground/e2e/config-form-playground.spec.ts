@@ -225,11 +225,11 @@ async function dragSortableItem(
   await expect(draggable.first()).toHaveClass(/sortable-chosen/)
   const targetX = targetBox.x + targetBox.width / 2
   const targetY = approach === 'vertical'
-    ? targetBox.y + targetBox.height / 2
+    ? targetBox.y + targetBox.height - 6
     : targetBox.y + targetBox.height - 12
   if (approach === 'vertical') {
-    await page.mouse.move(targetX, sourceY + 12, { steps: 12 })
-    await page.mouse.move(targetX, targetY, { steps: 18 })
+    await page.mouse.move(targetX, targetY + 12, { steps: 24 })
+    await page.mouse.move(targetX, targetY, { steps: 8 })
   }
   else {
     await page.mouse.move(sourceX + 12, targetY, { steps: 12 })
@@ -696,6 +696,86 @@ test.describe('ConfigForm visual designer', () => {
 
     await expect(example).toBeVisible()
     await expect(canvas.locator('[data-node-id]')).toHaveCount(5)
+    await expect(canvas.locator('input[placeholder="Your name"]')).toBeVisible()
+    await expect(canvas.locator('.mx-config-form-designer__node-preview-label').first()).toHaveText('Name')
+    const canvasLabelStyle = await canvas.locator('.mx-config-form-designer__node-preview-label').first().evaluate((element) => {
+      const styles = getComputedStyle(element)
+      return { clipPath: styles.clipPath, position: styles.position, width: styles.width }
+    })
+    expect(canvasLabelStyle.position).toBe('static')
+    expect(canvasLabelStyle.clipPath).toBe('none')
+    expect(canvasLabelStyle.width).not.toBe('1px')
+
+    const columnsSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Columns' })
+    await columnsSetter.getByRole('button', { name: 'Increase Columns', exact: true }).click()
+    await expect(columnsSetter.getByRole('spinbutton', { name: 'Columns' })).toHaveValue('3')
+    await columnsSetter.getByRole('button', { name: 'Decrease Columns', exact: true }).click()
+    await expect(columnsSetter.getByRole('spinbutton', { name: 'Columns' })).toHaveValue('2')
+
+    const inlineSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Inline' })
+    const inlineSwitch = inlineSetter.getByRole('switch')
+    await inlineSwitch.click()
+    await expect(inlineSwitch).toHaveAttribute('aria-checked', 'true')
+    await inlineSwitch.click()
+
+    const labelPositionSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Label position' })
+    await labelPositionSetter.getByRole('button', { name: 'Top', exact: true }).click()
+    await expect(canvas.locator('.mx-config-form-designer__node-preview.is-label-top')).toHaveCount(3)
+    await labelPositionSetter.getByRole('button', { name: 'Left', exact: true }).click()
+    await expect(canvas.locator('.mx-config-form-designer__node-preview.is-label-left')).toHaveCount(3)
+
+    const enabledInitialNode = canvas.locator('[data-node-id="designer-enabled"]')
+    const unselectedBox = await enabledInitialNode.boundingBox()
+    const unselectedOverlay = await enabledInitialNode.evaluate(element => getComputedStyle(element, '::after').content)
+    expect(unselectedOverlay).toBe('none')
+    await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    const selectedBox = await enabledInitialNode.boundingBox()
+    expect(selectedBox?.width).toBeCloseTo(unselectedBox!.width, 1)
+    expect(selectedBox?.height).toBeCloseTo(unselectedBox!.height, 1)
+    const overlayStyle = await enabledInitialNode.evaluate((element) => {
+      const styles = getComputedStyle(element, '::after')
+      return {
+        borderStyle: styles.borderStyle,
+        pointerEvents: styles.pointerEvents,
+        top: styles.top,
+        right: styles.right,
+        bottom: styles.bottom,
+        left: styles.left,
+      }
+    })
+    expect(overlayStyle).toEqual({
+      borderStyle: 'dashed',
+      pointerEvents: 'none',
+      top: '-5px',
+      right: '-5px',
+      bottom: '-5px',
+      left: '-5px',
+    })
+    const nodeToolbarBox = await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-header').boundingBox()
+    await expect(enabledInitialNode.locator(':scope > .mx-config-form-designer__node-header > .mx-config-form-designer__node-actions [data-drag-handle]')).toBeVisible()
+    expect(nodeToolbarBox!.height).toBeLessThanOrEqual(28)
+    expect(Math.abs(nodeToolbarBox!.y + nodeToolbarBox!.height - (selectedBox!.y - 5))).toBeLessThanOrEqual(1)
+    expect(Math.abs(nodeToolbarBox!.x + nodeToolbarBox!.width - (selectedBox!.x + selectedBox!.width + 5))).toBeLessThanOrEqual(1)
+
+    const choiceNode = canvas.locator('[data-node-id="designer-choice"]')
+    await choiceNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    const choiceToolbar = choiceNode.locator(':scope > .mx-config-form-designer__node-header')
+    const choiceToolbarStyle = await choiceToolbar.evaluate(element => ({
+      zIndex: Number(getComputedStyle(element).zIndex),
+      cardBodyOverflow: getComputedStyle(element.closest('.el-card__body')!).overflow,
+    }))
+    expect(choiceToolbarStyle.zIndex).toBeGreaterThanOrEqual(100)
+    expect(choiceToolbarStyle.cardBodyOverflow).toBe('visible')
+    const choiceToolbarHit = await choiceToolbar.evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest('button')?.getAttribute('aria-label')
+    })
+    expect(choiceToolbarHit).toBeTruthy()
+    const optionsSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Options' })
+    await expect(optionsSetter.locator('.mx-config-form-designer__collection-row')).toHaveCount(2)
+    await expect(optionsSetter.locator('textarea')).toHaveCount(0)
+    await optionsSetter.getByRole('button', { name: 'Add option', exact: true }).click()
+    await optionsSetter.getByRole('button', { name: 'Delete option 3', exact: true }).click()
 
     await dragSortableItem(
       page,
@@ -709,23 +789,24 @@ test.describe('ConfigForm visual designer', () => {
     const labelInput = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Label' }).locator('input').first()
     await labelInput.fill('Email')
     await labelInput.blur()
-    await expect(selectedNode.locator('.mx-config-form-designer__node-title')).toHaveText('Email')
+    await expect(selectedNode.locator('.mx-config-form-designer__node-preview-label')).toHaveText('Email')
 
     await properties.getByRole('tab', { name: 'Validation', exact: true }).click()
     const validationSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Rules' })
-    await validationSetter.locator('textarea').fill(JSON.stringify({
-      version: 1,
-      base: { type: 'string' },
-      rules: [{ kind: 'email', message: 'Enter a valid email' }],
-    }))
-    await validationSetter.getByRole('button', { name: 'Apply', exact: true }).click()
+    await validationSetter.getByRole('switch', { name: 'Enable validation' }).click()
+    await validationSetter.getByRole('button', { name: 'Add rule', exact: true }).click()
+    await validationSetter.getByRole('combobox', { name: 'Rule 1 type' }).selectOption('email')
+    await validationSetter.getByRole('textbox', { name: 'Rule 1 message' }).fill('Enter a valid email')
+    await validationSetter.getByRole('textbox', { name: 'Rule 1 message' }).blur()
+    await expect(validationSetter.locator('textarea')).toHaveCount(0)
 
     await properties.getByRole('tab', { name: 'Conditions', exact: true }).click()
     const requiredSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Required' })
-    await requiredSetter.locator('textarea').fill(JSON.stringify({ kind: 'literal', value: true }))
-    await requiredSetter.getByRole('button', { name: 'Apply', exact: true }).click()
+    await requiredSetter.getByRole('button', { name: 'Always', exact: true }).click()
+    await expect(requiredSetter.locator('textarea')).toHaveCount(0)
 
     const enabledNode = canvas.locator('[data-node-id="designer-enabled"]')
+    await enabledNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
     await dragSortableItem(
       page,
       enabledNode.getByRole('button', { name: 'Move node', exact: true }),
@@ -745,6 +826,7 @@ test.describe('ConfigForm visual designer', () => {
     const exportedDocument = JSON.parse(exported)
     const exportedEmail = exportedDocument.nodes.find((node: { label?: string }) => node.label === 'Email')
     expect(exportedDocument.version).toBe(1)
+    expect(exportedDocument.form.labelPosition).toBe('left')
     expect(exportedEmail).toMatchObject({
       material: 'element.input',
       field: 'input',
@@ -781,7 +863,7 @@ test.describe('ConfigForm visual designer', () => {
     await importDialog.getByRole('button', { name: 'Apply', exact: true }).click()
     await expect(example.locator('.mx-config-form-designer__status')).toContainText('Ready')
 
-    const emailFocusTarget = canvas.locator('.mx-config-form-designer__node-select').filter({ hasText: 'Email' })
+    const emailFocusTarget = canvas.locator(`[data-focus-node-id="${exportedEmail.id}"]`)
     const rootNodes = canvas.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first().locator(':scope > [data-node-id]')
     await emailFocusTarget.click()
     await emailFocusTarget.press('ArrowUp')

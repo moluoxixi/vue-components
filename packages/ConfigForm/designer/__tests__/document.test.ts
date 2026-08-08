@@ -8,7 +8,7 @@ import {
 function createDocument(): DesignerDocument {
   return {
     version: DESIGNER_DOCUMENT_VERSION,
-    form: { columns: 2, gap: '16px' },
+    form: { columns: 2, gap: '16px', labelPosition: 'left' },
     nodes: [
       {
         id: 'field-name',
@@ -67,6 +67,11 @@ describe('designer document', () => {
     const withDate = createDocument()
     withDate.nodes[0]!.props = { date: new Date() as never }
     expect(parseDesignerDocument(withDate).success).toBe(false)
+
+    expect(parseDesignerDocument({
+      ...createDocument(),
+      form: { ...createDocument().form, labelPosition: 'inline' },
+    }).success).toBe(false)
   })
 
   it('reports duplicate node ids and field keys at the second occurrence', () => {

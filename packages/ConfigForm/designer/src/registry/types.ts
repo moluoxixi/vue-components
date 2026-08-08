@@ -30,6 +30,9 @@ export interface DesignerPropertySetterDefinition {
   path: string[]
   control: DesignerSetterControl
   options?: DesignerSetterOption[]
+  min?: number
+  max?: number
+  step?: number
   component?: Component
 }
 

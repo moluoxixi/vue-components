@@ -73,6 +73,7 @@ export const designerDocumentSchema: z.ZodType<DesignerDocument> = z.object({
     columns: z.number().int().positive().optional(),
     gap: z.string().min(1).optional(),
     fieldSpan: z.number().int().positive().optional(),
+    labelPosition: z.enum(['left', 'top']).optional(),
   }).strict(),
   nodes: z.array(designerNodeSchema),
 }).strict()

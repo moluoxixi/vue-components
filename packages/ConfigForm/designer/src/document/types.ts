@@ -11,6 +11,7 @@ export interface DesignerFormSettings {
   columns?: number
   gap?: string
   fieldSpan?: number
+  labelPosition?: 'left' | 'top'
 }
 
 export interface DesignerNodeBase {

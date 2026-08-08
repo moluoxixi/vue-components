@@ -4,9 +4,14 @@
 .doc-content-wrapper {
   --vp-content-width: 800px;
 
+  display: flex;
+  flex-direction: column;
   padding: 32px 24px;
 
   .doc-content-container {
+    min-width: 0;
+    order: 1;
+
     .doc-content {
       width: 100%;
     }
@@ -25,10 +30,9 @@
   }
   @include respond-to('xxl') {
     padding: 64px 0 48px 64px;
-    display: flex;
+    flex-direction: row;
   }
   @include respond-to('max') {
     padding: 64px 0 48px 64px;
-    display: flex;
   }
 }

@@ -9,11 +9,11 @@ const { page } = useData()
 
 <template>
   <div class="doc-content-wrapper">
+    <VPTableOfContent v-if="page.headers?.length" />
     <div class="doc-content-container">
       <Content class="doc-content" />
       <VPPageFooter />
       <VPPageNav />
     </div>
-    <VPTableOfContent v-if="page.headers" />
   </div>
 </template>

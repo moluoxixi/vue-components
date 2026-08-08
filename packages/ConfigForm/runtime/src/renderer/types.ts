@@ -56,6 +56,7 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   columns?: number
   gap?: string
   fieldSpan?: number
+  labelPosition?: 'left' | 'top'
   /** 透传给原生 Grid/Flex 布局容器。 */
   layoutAttrs?: ConfigFormRendererLayoutAttrs
   /** 透传给原生 grid cell；inline 布局不消费。 */

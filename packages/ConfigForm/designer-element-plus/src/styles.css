@@ -23,3 +23,9 @@
   color: var(--el-text-color-secondary, #909399);
   font-size: 13px;
 }
+
+.mx-config-form-designer__node-preview-shell .el-card,
+.mx-config-form-designer__node-preview-shell .el-card__body,
+.mx-config-form-designer__node-preview-shell .el-tabs__content {
+  overflow: visible;
+}

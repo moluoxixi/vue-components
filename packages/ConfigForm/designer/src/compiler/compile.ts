@@ -168,6 +168,7 @@ function rendererConfig(document: DesignerDocument, fields: ConfigFormRendererNo
     ...(document.form.columns === undefined ? {} : { columns: document.form.columns }),
     ...(document.form.gap === undefined ? {} : { gap: document.form.gap }),
     ...(document.form.fieldSpan === undefined ? {} : { fieldSpan: document.form.fieldSpan }),
+    ...(document.form.labelPosition === undefined ? {} : { labelPosition: document.form.labelPosition }),
   }
 }
 

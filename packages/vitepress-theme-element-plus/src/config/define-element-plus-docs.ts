@@ -93,7 +93,7 @@ function localeThemeConfig(
       { text: 'Components', link: route(options.routes?.components ?? '/components/'), activeMatch: route(options.routes?.components ?? '/components/') },
     ],
     sidebar: {},
-    outline: { level: [2, 3], label: 'On this page' },
+    outline: { level: [2, 6], label: 'On this page' },
     docFooter: { prev: 'Previous page', next: 'Next page' },
     lastUpdated: { text: 'Last updated' },
     search: (options.search === undefined || options.search === 'local'
@@ -129,9 +129,11 @@ function createConsumerStylesPlugin(styles: string | string[] | undefined) {
 
 function createMarkdownConfig(markdown: UserConfig['markdown'] | undefined): NonNullable<UserConfig['markdown']> {
   const configureConsumerMarkdown = markdown?.config
+  const headers = markdown?.headers ?? { level: [2, 3, 4, 5, 6] }
 
   return {
     ...markdown,
+    headers,
     config(md) {
       if (markdown?.headers !== false)
         md.use(headersPlugin)

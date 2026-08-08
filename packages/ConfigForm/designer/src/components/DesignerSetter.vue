@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { DesignerPropertySetterDefinition } from '../registry'
-import { Check, RotateCcw } from '@lucide/vue'
+import { Minus, Plus } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
+import DesignerConditionSetter from './DesignerConditionSetter.vue'
+import DesignerOptionsSetter from './DesignerOptionsSetter.vue'
+import DesignerValidationSetter from './DesignerValidationSetter.vue'
 
 const props = defineProps<{
   setter: DesignerPropertySetterDefinition
@@ -14,11 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const textDraft = ref('')
-const jsonDraft = ref('')
-const error = ref('')
 const compound = computed(() => ['options', 'condition', 'validation'].includes(props.setter.control))
-const selectedOptionIndex = computed(() => props.setter.options
-  ?.findIndex(option => Object.is(option.value, props.value)))
 
 function displayText(value: unknown): string {
   return value === undefined || value === null ? '' : String(value)
@@ -26,8 +25,6 @@ function displayText(value: unknown): string {
 
 function resetDraft(): void {
   textDraft.value = displayText(props.value)
-  jsonDraft.value = props.value === undefined ? '' : JSON.stringify(props.value, null, 2)
-  error.value = ''
 }
 
 watch(() => props.value, resetDraft, { deep: true, immediate: true })
@@ -35,7 +32,14 @@ watch(() => props.value, resetDraft, { deep: true, immediate: true })
 function commitText(): void {
   const next = textDraft.value
   if (props.setter.control === 'number') {
-    emit('commit', next.trim() ? Number(next) : undefined)
+    if (!next.trim()) {
+      emit('commit', undefined)
+      return
+    }
+    const numeric = Number(next)
+    const clamped = Math.min(props.setter.max ?? Number.POSITIVE_INFINITY, Math.max(props.setter.min ?? Number.NEGATIVE_INFINITY, numeric))
+    textDraft.value = String(clamped)
+    emit('commit', clamped)
     return
   }
   emit('commit', next || undefined)
@@ -54,28 +58,22 @@ function handleTextKeydown(event: KeyboardEvent): void {
   }
 }
 
-function commitBoolean(event: Event): void {
-  emit('commit', (event.currentTarget as HTMLInputElement).checked)
+function stepNumber(direction: -1 | 1): void {
+  const current = Number(textDraft.value)
+  const fallback = props.setter.min ?? 0
+  const step = props.setter.step ?? 1
+  const next = (Number.isFinite(current) ? current : fallback) + direction * step
+  const clamped = Math.min(props.setter.max ?? Number.POSITIVE_INFINITY, Math.max(props.setter.min ?? Number.NEGATIVE_INFINITY, next))
+  textDraft.value = String(clamped)
+  emit('commit', clamped)
 }
 
-function commitSelect(event: Event): void {
-  const index = Number((event.currentTarget as HTMLSelectElement).value)
-  emit('commit', props.setter.options?.[index]?.value)
+function commitBoolean(): void {
+  emit('commit', !Boolean(props.value))
 }
 
-function applyJson(): void {
-  if (!jsonDraft.value.trim()) {
-    emit('commit', undefined)
-    error.value = ''
-    return
-  }
-  try {
-    emit('commit', JSON.parse(jsonDraft.value))
-    error.value = ''
-  }
-  catch {
-    error.value = 'Invalid JSON'
-  }
+function commitSelect(value: unknown): void {
+  emit('commit', value)
 }
 
 function commitCustom(value: unknown): void {
@@ -84,13 +82,14 @@ function commitCustom(value: unknown): void {
 </script>
 
 <template>
-  <label class="mx-config-form-designer__setter" :class="{ 'is-compound': compound }">
+  <div class="mx-config-form-designer__setter" :class="{ 'is-compound': compound }">
     <span class="mx-config-form-designer__setter-label">{{ setter.label }}</span>
 
     <input
-      v-if="setter.control === 'text' || setter.control === 'number'"
+      v-if="setter.control === 'text'"
       v-model="textDraft"
-      :type="setter.control === 'number' ? 'number' : 'text'"
+      type="text"
+      :aria-label="setter.label"
       :disabled="readonly"
       @blur="commitText"
       @keydown="handleTextKeydown"
@@ -99,27 +98,58 @@ function commitCustom(value: unknown): void {
       v-else-if="setter.control === 'textarea'"
       v-model="textDraft"
       rows="3"
+      :aria-label="setter.label"
       :disabled="readonly"
       @blur="commitText"
       @keydown.esc.prevent="resetDraft"
     />
-    <input
+    <div v-else-if="setter.control === 'number'" class="mx-config-form-designer__stepper">
+      <button type="button" :aria-label="`Decrease ${setter.label}`" :disabled="readonly || (setter.min !== undefined && Number(textDraft) <= setter.min)" @click="stepNumber(-1)">
+        <Minus :size="15" aria-hidden="true" />
+      </button>
+      <input
+        v-model="textDraft"
+        type="number"
+        :aria-label="setter.label"
+        :min="setter.min"
+        :max="setter.max"
+        :step="setter.step"
+        :disabled="readonly"
+        @blur="commitText"
+        @keydown="handleTextKeydown"
+      >
+      <button type="button" :aria-label="`Increase ${setter.label}`" :disabled="readonly || (setter.max !== undefined && Number(textDraft) >= setter.max)" @click="stepNumber(1)">
+        <Plus :size="15" aria-hidden="true" />
+      </button>
+    </div>
+    <button
       v-else-if="setter.control === 'boolean'"
-      type="checkbox"
-      :checked="Boolean(value)"
+      type="button"
+      class="mx-config-form-designer__switch-row"
+      role="switch"
+      :aria-checked="Boolean(value)"
       :disabled="readonly"
-      @change="commitBoolean"
+      @click="commitBoolean"
     >
-    <select
+      <span>{{ value ? 'On' : 'Off' }}</span>
+      <span class="mx-config-form-designer__switch" :class="{ 'is-on': Boolean(value) }" aria-hidden="true"><span /></span>
+    </button>
+    <div
       v-else-if="setter.control === 'select'"
-      :value="selectedOptionIndex"
-      :disabled="readonly"
-      @change="commitSelect"
+      class="mx-config-form-designer__segmented"
+      role="group"
+      :aria-label="setter.label"
     >
-      <option v-for="(option, index) in setter.options" :key="index" :value="index">
-        {{ option.label }}
-      </option>
-    </select>
+      <button
+        v-for="(option, index) in setter.options"
+        :key="index"
+        type="button"
+        :class="{ 'is-active': Object.is(option.value, value) }"
+        :aria-pressed="Object.is(option.value, value)"
+        :disabled="readonly"
+        @click="commitSelect(option.value)"
+      >{{ option.label }}</button>
+    </div>
     <component
       :is="setter.component"
       v-else-if="setter.control === 'custom' && setter.component"
@@ -127,17 +157,8 @@ function commitCustom(value: unknown): void {
       :disabled="readonly"
       @update:model-value="commitCustom"
     />
-    <template v-else>
-      <textarea v-model="jsonDraft" rows="8" spellcheck="false" :disabled="readonly" />
-      <span v-if="error" class="mx-config-form-designer__setter-error" role="alert">{{ error }}</span>
-      <span class="mx-config-form-designer__setter-actions">
-        <button type="button" class="mx-config-form-designer__command-button" :disabled="readonly" @click="applyJson">
-          <Check :size="15" aria-hidden="true" /> Apply
-        </button>
-        <button type="button" class="mx-config-form-designer__command-button is-secondary" :disabled="readonly" @click="resetDraft">
-          <RotateCcw :size="15" aria-hidden="true" /> Cancel
-        </button>
-      </span>
-    </template>
-  </label>
+    <DesignerOptionsSetter v-else-if="setter.control === 'options'" :model-value="value" :disabled="readonly" @update:model-value="commitCustom" />
+    <DesignerConditionSetter v-else-if="setter.control === 'condition'" :model-value="value" :disabled="readonly" @update:model-value="commitCustom" />
+    <DesignerValidationSetter v-else-if="setter.control === 'validation'" :model-value="value" :disabled="readonly" @update:model-value="commitCustom" />
+  </div>
 </template>

@@ -12,6 +12,7 @@ const documentModel = ref<DesignerDocument>({
     columns: 2,
     gap: '16px',
     fieldSpan: 1,
+    labelPosition: 'left',
   },
   nodes: [
     {

@@ -9,7 +9,11 @@ describe('defineElementPlusDocs', () => {
       site: { title: 'Fixture' },
     })
     expect(config.title).toBe('Fixture')
-    expect(config.themeConfig).toMatchObject({ siteTitle: 'Fixture' })
+    expect(config.themeConfig).toMatchObject({
+      siteTitle: 'Fixture',
+      outline: { level: [2, 6] },
+    })
+    expect(config.markdown?.headers).toEqual({ level: [2, 3, 4, 5, 6] })
   })
 
   it('installs the upstream heading extractor before consumer markdown plugins', () => {

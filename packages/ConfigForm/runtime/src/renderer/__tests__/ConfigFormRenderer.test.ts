@@ -135,6 +135,34 @@ describe('config form renderer', () => {
     expect(form.getValues()).toEqual(initial)
   })
 
+  it('支持 label 左右和上下布局，并保持真实 label/control 结构', async () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        fields: [defineField<TestValues>({
+          component: InputStub,
+          field: 'name',
+          label: 'Name',
+        })],
+        labelPosition: 'left',
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        namespace: 'layout-form',
+      },
+    })
+
+    const field = wrapper.get('[data-field="name"]')
+    expect(field.classes()).toContain('layout-form__field--label-left')
+    expect(field.attributes('data-label-position')).toBe('left')
+    expect(field.attributes('style')).toContain('grid-template-columns: max-content minmax(0, 1fr)')
+    expect(field.get('.layout-form__label').text()).toBe('Name')
+    expect(field.get('.layout-form__control').attributes('style')).toContain('grid-column: 2')
+
+    await wrapper.setProps({ labelPosition: 'top' })
+    expect(field.classes()).toContain('layout-form__field--label-top')
+    expect(field.attributes('data-label-position')).toBe('top')
+    expect(field.attributes('style')).not.toContain('grid-template-columns')
+    expect(field.get('.layout-form__control').attributes('style')).not.toContain('grid-column')
+  })
+
   it('同时提供 change/blur 校验触发与 dirty/touched 状态', async () => {
     const initial: TestValues = { enabled: false, name: 'Ada', status: 'draft' }
     const wrapper = mount(ConfigFormRenderer, {

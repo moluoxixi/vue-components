@@ -35,14 +35,21 @@ import ElementRadioField from './components/ElementRadioField.vue'
 import ElementSection from './components/ElementSection.vue'
 import ElementSelectField from './components/ElementSelectField.vue'
 
+interface NumericSetterConstraints {
+  min?: number
+  max?: number
+  step?: number
+}
+
 function setter(
   key: string,
   label: string,
   path: string[],
   control: DesignerPropertySetterDefinition['control'],
   options?: DesignerPropertySetterDefinition['options'],
+  constraints?: NumericSetterConstraints,
 ): DesignerPropertySetterDefinition {
-  return { key, label, path, control, ...(options ? { options } : {}) }
+  return { key, label, path, control, ...(options ? { options } : {}), ...constraints }
 }
 
 function propSetter(
@@ -50,8 +57,9 @@ function propSetter(
   label: string,
   control: DesignerPropertySetterDefinition['control'],
   options?: DesignerPropertySetterDefinition['options'],
+  constraints?: NumericSetterConstraints,
 ): DesignerPropertySetterDefinition {
-  return setter(key, label, ['props', key], control, options)
+  return setter(key, label, ['props', key], control, options, constraints)
 }
 
 const placeholderSetter = propSetter('placeholder', 'Placeholder', 'text')
@@ -76,7 +84,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     category: 'Fields',
     icon: TypeIcon,
     runtime: { component: ElInput },
-    setters: [placeholderSetter, clearableSetter, propSetter('maxlength', 'Max length', 'number')],
+    setters: [placeholderSetter, clearableSetter, propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 })],
     createNode: ({ id, field = 'input' }) => ({
       id,
       kind: 'field',
@@ -94,7 +102,11 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     category: 'Fields',
     icon: AlignLeft,
     runtime: { component: ElInput },
-    setters: [placeholderSetter, propSetter('rows', 'Rows', 'number'), propSetter('maxlength', 'Max length', 'number')],
+    setters: [
+      placeholderSetter,
+      propSetter('rows', 'Rows', 'number', undefined, { min: 1, max: 20, step: 1 }),
+      propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 }),
+    ],
     createNode: ({ id, field = 'textarea' }) => ({
       id,
       kind: 'field',
@@ -115,7 +127,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     setters: [
       propSetter('min', 'Minimum', 'number'),
       propSetter('max', 'Maximum', 'number'),
-      propSetter('step', 'Step', 'number'),
+      propSetter('step', 'Step', 'number', undefined, { min: 0 }),
       propSetter('controls', 'Controls', 'boolean'),
     ],
     createNode: ({ id, field = 'number' }) => ({

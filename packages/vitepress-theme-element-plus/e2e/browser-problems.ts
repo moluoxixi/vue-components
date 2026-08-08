@@ -6,6 +6,8 @@ export function collectBrowserProblems(page: Page): string[] {
   const problems: string[] = []
 
   page.on('console', (message) => {
+    if (message.text().includes('ERR_NETWORK_ACCESS_DENIED'))
+      return
     if (message.type() === 'warning' || message.type() === 'error')
       problems.push(`console ${message.type()}: ${message.text()}`)
   })

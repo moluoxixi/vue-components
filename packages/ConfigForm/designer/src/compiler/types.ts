@@ -9,6 +9,7 @@ export interface DesignerRendererConfig {
   columns?: number
   gap?: string
   fieldSpan?: number
+  labelPosition?: 'left' | 'top'
 }
 
 export interface DesignerCompileSuccess {
