@@ -14,7 +14,7 @@ import { computed, ref } from 'vue'
 import { formatDocsMessage } from '../../docs-i18n'
 import { docsSite, componentSourcePath as getComponentSourcePath, getDocsLocaleConfig } from '../../docs-site'
 import { getComponentGithubMetadata, githubMetadata } from '../../github-metadata'
-import { useDocsLocale } from '../use-docs-locale'
+import { useDocsLocale } from '../composables/use-docs-locale'
 import ComponentCommitTimeline from './ComponentCommitTimeline.vue'
 
 const props = defineProps<{

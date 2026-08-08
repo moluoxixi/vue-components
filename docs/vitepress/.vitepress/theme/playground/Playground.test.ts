@@ -9,12 +9,12 @@ const { compileLocalSfc, consumePlaygroundSession } = vi.hoisted(() => ({
   consumePlaygroundSession: vi.fn(() => null),
 }))
 
-vi.mock('../sfc-compiler', () => ({ compileLocalSfc }))
-vi.mock('../playground-session', () => ({
+vi.mock('./sfc-compiler', () => ({ compileLocalSfc }))
+vi.mock('./playground-session', () => ({
   consumePlaygroundSession,
   playgroundSessionQuery: 'session',
 }))
-vi.mock('../use-docs-locale', async () => {
+vi.mock('../composables/use-docs-locale', async () => {
   const { ref } = await import('vue')
   return {
     useDocsLocale: () => ({

@@ -13,9 +13,9 @@ import {
 import {
   consumePlaygroundSession,
   playgroundSessionQuery,
-} from '../playground-session'
-import { compileLocalSfc } from '../sfc-compiler'
-import { useDocsLocale } from '../use-docs-locale'
+} from './playground-session'
+import { compileLocalSfc } from './sfc-compiler'
+import { useDocsLocale } from '../composables/use-docs-locale'
 
 const starterSource = `<script setup lang="ts">
 import { ref } from 'vue'

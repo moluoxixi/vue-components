@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import ApiTable from './ApiTable.vue'
-import type { ApiRow } from './ApiTable.vue'
+import { ElementPlusDocsApiTable } from '@moluoxixi/vitepress-theme-element-plus'
+import type { ElementPlusDocsApiRow } from '@moluoxixi/vitepress-theme-element-plus'
 
 type ApiSectionType = 'props' | 'emits' | 'expose' | 'slots'
 
 interface ComponentApi {
   name: string
   description: string
-  props: ApiRow[]
-  emits: ApiRow[]
-  expose: ApiRow[]
-  slots: ApiRow[]
+  props: ElementPlusDocsApiRow[]
+  emits: ElementPlusDocsApiRow[]
+  expose: ElementPlusDocsApiRow[]
+  slots: ElementPlusDocsApiRow[]
 }
 
 import { formatDocsMessage } from '../../docs-i18n'
-import { useDocsLocale } from '../use-docs-locale'
+import { useDocsLocale } from '../composables/use-docs-locale'
 import { computed } from 'vue'
 
 const apiModules = import.meta.glob<ComponentApi>('../../api/*.json', {
@@ -57,7 +57,11 @@ const sections = computed(() => sectionMeta.value.filter(section => api[section.
           :aria-label="formatDocsMessage(messages.api.permanentLink, { section: section.label })"
         >&#8203;</a>
       </h3>
-      <ApiTable :data="api[section.key]" :type="section.key" />
+      <ElementPlusDocsApiTable
+        :data="api[section.key]"
+        :type="section.key"
+        :messages="messages.api"
+      />
     </section>
     <p v-if="sections.length === 0" class="api-docs-empty">
       {{ messages.api.empty }}

@@ -167,7 +167,6 @@ test('current docs provide title navigation at every supported width', async ({ 
     const content = page.locator('.doc-content-container')
     const toc = page.locator('.toc-wrapper')
     const compactTrigger = toc.getByRole('button', { name: '本页目录', exact: true })
-    const tocPanel = page.locator('#toc-compact-panel')
     const sidebarBox = await sidebar.boundingBox()
     const pageContentBox = await pageContent.boundingBox()
     expect(sidebarBox).not.toBeNull()
@@ -175,15 +174,6 @@ test('current docs provide title navigation at every supported width', async ({ 
     await expect(sidebar).toHaveCSS('position', 'fixed')
     expect(pageContentBox!.y).toBeLessThan(900)
     await expect(toc).toBeVisible()
-    await expect(tocPanel).toHaveCount(1)
-    await expect(tocPanel.locator('a[href^="#"]')).toHaveText([
-      '基础用法',
-      'Renderer 与列设置',
-      '远程请求 + 分页',
-      '自定义单元格插槽',
-      'API',
-      '组件贡献者',
-    ])
 
     if (viewport.mobileSidebar) {
       expect(sidebarBox!.x + sidebarBox!.width).toBeLessThanOrEqual(1)
@@ -197,20 +187,37 @@ test('current docs provide title navigation at every supported width', async ({ 
 
     if (viewport.compactToc) {
       await expect(compactTrigger).toBeVisible()
+      await expect(toc).toHaveCSS('position', 'sticky')
       await expect(compactTrigger).toHaveAttribute('aria-expanded', 'false')
-      await expect(tocPanel).toBeHidden()
+      const tocPanel = page.locator('#toc-compact-panel')
+      await expect(tocPanel).toHaveCount(0)
       await compactTrigger.click()
       await expect(compactTrigger).toHaveAttribute('aria-expanded', 'true')
+      const dialog = page.getByRole('dialog', { name: '本页目录' })
+      await expect(dialog).toBeVisible()
+      await expect(tocPanel).toHaveCount(1)
       await expect(tocPanel).toBeVisible()
-      await expect(toc.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
+      await expect(tocPanel.locator('a[href^="#"]')).toHaveText([
+        '基础用法',
+        'Renderer 与列设置',
+        '远程请求 + 分页',
+        '自定义单元格插槽',
+        'API',
+        '组件贡献者',
+      ])
+      await expect(tocPanel.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
       const linksResolveToHeadings = await tocPanel.locator('a[href^="#"]').evaluateAll(links => links.every((link) => {
         const href = link.getAttribute('href')
         return Boolean(href && document.querySelector(href))
       }))
       expect(linksResolveToHeadings).toBe(true)
+      await tocPanel.getByRole('link', { name: '基础用法', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+      await expect(compactTrigger).toHaveAttribute('aria-expanded', 'false')
     }
     else {
       await expect(compactTrigger).toBeHidden()
+      const tocPanel = page.locator('#toc-desktop-panel')
       await expect(tocPanel).toBeVisible()
       await expect(toc.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
       const [contentBox, tocBox] = await Promise.all([

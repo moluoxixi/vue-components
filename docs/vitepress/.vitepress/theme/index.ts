@@ -1,14 +1,14 @@
 import { createElementPlusDocsTheme } from '@moluoxixi/vitepress-theme-element-plus'
 import { VueQueryPlugin } from '@tanstack/vue-query'
 import { defineAsyncComponent } from 'vue'
-import ComponentDocMeta from './components/ComponentDocMeta.vue'
-import ComponentOverview from './components/ComponentOverview.vue'
-import Demo from './components/Demo.vue'
-import DocContributors from './components/DocContributors.vue'
-import OverviewHome from './components/OverviewHome.vue'
+import ComponentOverview from './catalog/ComponentOverview.vue'
+import OverviewHome from './catalog/OverviewHome.vue'
+import ComponentDocMeta from './component-meta/ComponentDocMeta.vue'
+import DocContributors from './component-meta/DocContributors.vue'
+import Demo from './playground/Demo.vue'
 
-const ApiDocs = defineAsyncComponent(() => import('./components/ApiDocs.vue'))
-const Playground = defineAsyncComponent(() => import('./components/Playground.vue'))
+const ApiDocs = defineAsyncComponent(() => import('./api/ApiDocs.vue'))
+const Playground = defineAsyncComponent(() => import('./playground/Playground.vue'))
 
 const theme = createElementPlusDocsTheme({
   enhanceApp({ app }) {

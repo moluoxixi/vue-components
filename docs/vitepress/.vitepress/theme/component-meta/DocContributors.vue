@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { formatDocsMessage } from '../../docs-i18n'
 import { getComponentGithubMetadata, githubMetadata } from '../../github-metadata'
-import { useDocsLocale } from '../use-docs-locale'
+import { useDocsLocale } from '../composables/use-docs-locale'
 
 const props = defineProps<{
   name: string

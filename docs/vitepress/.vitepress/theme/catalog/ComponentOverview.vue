@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { ElementPlusDocsOverviewCard } from '@moluoxixi/vitepress-theme-element-plus'
 import { computed, ref } from 'vue'
 import type { ComponentIconName } from '../../component-manifest'
 import {
@@ -20,8 +21,7 @@ import {
 } from '@lucide/vue'
 import { getLocalizedComponentGroups } from '../../docs-i18n'
 import { docsRoutePath } from '../../docs-site'
-import OverviewCard from './OverviewCard.vue'
-import { useDocsLocale } from '../use-docs-locale'
+import { useDocsLocale } from '../composables/use-docs-locale'
 
 const iconByName: Record<ComponentIconName, Component> = {
   'blocks': Blocks,
@@ -97,7 +97,7 @@ const filteredGroups = computed(() => {
           </div>
           <span>{{ group.items.length }}</span>
         </div>
-        <OverviewCard :items="group.items" />
+        <ElementPlusDocsOverviewCard :items="group.items" />
       </section>
     </template>
 

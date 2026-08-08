@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { docsSite } from '../docs-site'
+import { docsSite } from '../../docs-site'
 
 export interface LocalSfcCompileOptions {
   id: string

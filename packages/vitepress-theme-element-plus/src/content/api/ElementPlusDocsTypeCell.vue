@@ -1,14 +1,12 @@
 <script setup lang="ts">
+import { ElTooltip } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
-import { formatDocsMessage } from '../../docs-i18n'
-import { useDocsLocale } from '../use-docs-locale'
 
 const props = defineProps<{
-  type: string
   detail?: string
+  type: string
+  typeDetailsLabel: string
 }>()
-
-const { messages } = useDocsLocale()
 
 interface TooltipHandle {
   hide: (event?: Event) => void
@@ -65,7 +63,7 @@ function handlePointerDown(event: PointerEvent): void {
     <button
       type="button"
       class="type-cell type-cell-trigger"
-      :aria-label="formatDocsMessage(messages.api.typeDetails, { type })"
+      :aria-label="typeDetailsLabel"
       @pointerdown="handlePointerDown"
       @keydown.esc.stop.prevent="hideTooltip($event)"
     >
@@ -76,3 +74,57 @@ function handlePointerDown(event: PointerEvent): void {
     <span class="type-cell-text type-cell-text-static">{{ displayType }}</span>
   </span>
 </template>
+
+<style scoped>
+.type-cell {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  color: var(--mx-type, var(--el-color-primary));
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.type-cell-trigger {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dashed currentcolor;
+  border-radius: 0;
+  background: transparent;
+  cursor: help;
+}
+
+.type-cell-trigger:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--brand-color);
+  outline-offset: 3px;
+}
+
+.type-cell-text-static {
+  border-bottom: 0;
+}
+</style>
+
+<style>
+.el-popper.mx-type-tooltip {
+  max-width: min(560px, calc(100vw - 32px));
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  user-select: text;
+}
+
+.mx-type-tooltip-content {
+  display: block;
+  max-height: min(440px, calc(100vh - 42px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--border-color) transparent;
+  scrollbar-width: thin;
+  white-space: pre-wrap;
+}
+</style>

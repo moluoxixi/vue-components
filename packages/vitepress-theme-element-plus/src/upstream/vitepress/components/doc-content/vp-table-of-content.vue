@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ChevronDown } from '@lucide/vue'
+import { List, X } from '@lucide/vue'
+import { ElDialog } from 'element-plus'
 import { computed, ref } from 'vue'
 import { useLang } from '../../composables/lang'
 import { useToc } from '../../composables/use-toc'
+import VPTableOfContentLinks from './vp-table-of-content-links.vue'
 
 const headers = useToc()
 const lang = useLang()
 const isCompactOpen = ref(false)
 const compactPanelId = 'toc-compact-panel'
+const desktopPanelId = 'toc-desktop-panel'
 const label = computed(() => lang.value.toLowerCase().startsWith('zh') ? '本页目录' : 'On this page')
-const removeTag = (str: string) => str.replace(/<span.*<\/span>/g, '')
 
 function closeCompactToc() {
   isCompactOpen.value = false
@@ -21,53 +23,56 @@ function closeCompactToc() {
     <button
       class="toc-compact-trigger"
       type="button"
-      :aria-controls="compactPanelId"
+      :aria-controls="isCompactOpen ? compactPanelId : undefined"
       :aria-expanded="isCompactOpen"
-      @click="isCompactOpen = !isCompactOpen"
+      @click="isCompactOpen = true"
     >
+      <List aria-hidden="true" class="toc-compact-trigger__icon" />
       <span>{{ label }}</span>
-      <ChevronDown aria-hidden="true" class="toc-compact-trigger__icon" />
+      <span class="toc-compact-trigger__hint" aria-hidden="true">{{ headers.length }}</span>
     </button>
     <nav
-      :id="compactPanelId"
-      class="toc-content"
-      :class="{ 'is-compact-open': isCompactOpen }"
+      :id="desktopPanelId"
+      class="toc-content toc-content--desktop"
       :aria-label="label"
-      @click="closeCompactToc"
     >
       <h3 class="toc-content__heading">{{ label }}</h3>
-      <el-anchor :offset="70" :bound="120">
-        <el-anchor-link
-          v-for="{ link, text, children } in headers"
-          :key="link"
-          :href="link"
-          :title="text"
-        >
-          <div :title="removeTag(text)" v-html="text" />
-          <template v-if="children" #sub-link>
-            <el-anchor-link
-              v-for="{ link: childLink, text: childText } in children"
-              :key="childLink"
-              :href="childLink"
-              :title="childText"
-            >
-              <div :title="removeTag(childText)" v-html="childText" />
-            </el-anchor-link>
-          </template>
-        </el-anchor-link>
-      </el-anchor>
+      <VPTableOfContentLinks :headers="headers" />
     </nav>
     <div class="toc-content-mask" />
+
+    <ClientOnly>
+      <ElDialog
+        v-model="isCompactOpen"
+        align-center
+        append-to-body
+        class="toc-compact-dialog"
+        destroy-on-close
+        :show-close="false"
+        width="min(560px, calc(100vw - 24px))"
+      >
+        <template #header="{ close, titleId, titleClass }">
+          <div class="toc-compact-dialog__header">
+            <span :id="titleId" :class="titleClass" role="heading" aria-level="2">{{ label }}</span>
+            <button
+              class="toc-compact-dialog__close"
+              type="button"
+              :aria-label="lang.toLowerCase().startsWith('zh') ? '关闭' : 'Close'"
+              @click="close"
+            >
+              <X :size="18" aria-hidden="true" />
+            </button>
+          </div>
+        </template>
+        <nav
+          :id="compactPanelId"
+          class="toc-compact-dialog__content"
+          :aria-label="label"
+          @click="closeCompactToc"
+        >
+          <VPTableOfContentLinks :headers="headers" />
+        </nav>
+      </ElDialog>
+    </ClientOnly>
   </aside>
 </template>
-
-<style scoped lang="scss">
-:deep(.el-anchor__link),
-:deep(.el-anchor__link > div) {
-  overflow: visible;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-  white-space: normal;
-  word-break: break-word;
-}
-</style>

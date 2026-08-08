@@ -5,7 +5,7 @@ import { computed } from 'vue'
 import { documentedComponents } from '../../component-manifest'
 import { docsRoutePath, docsSite } from '../../docs-site'
 import ComponentOverview from './ComponentOverview.vue'
-import { useDocsLocale } from '../use-docs-locale'
+import { useDocsLocale } from '../composables/use-docs-locale'
 
 const { link, messages } = useDocsLocale()
 const logoSrc = withBase(docsSite.logo.src)
