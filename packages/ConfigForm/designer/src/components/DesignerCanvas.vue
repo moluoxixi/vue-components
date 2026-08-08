@@ -41,7 +41,7 @@ function forwardAction(action: DesignerNodeAction, nodeId: string): void {
         :nodes="document.nodes"
         :parent-id="null"
         :registry="registry"
-        :label-position="document.form.labelPosition ?? 'left'"
+        :form="document.form"
         :selected-id="selectedId"
         :readonly="readonly"
         @select="emit('select', $event)"

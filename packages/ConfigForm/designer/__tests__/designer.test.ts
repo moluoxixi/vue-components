@@ -194,13 +194,54 @@ describe('config form designer', () => {
 
     const columns = wrapper.findAll('.mx-config-form-designer__setter')
       .find(candidate => candidate.text().includes('Columns'))!
+    expect(columns.get('input').attributes('max')).toBe('24')
     await columns.get('button[aria-label="Increase Columns"]').trigger('click')
     expect(lastDocument(wrapper).form.columns).toBe(3)
+
+    const fieldSpan = wrapper.findAll('.mx-config-form-designer__setter')
+      .find(candidate => candidate.text().includes('Field span'))!
+    expect(fieldSpan.get('input').attributes('max')).toBe('24')
 
     const inline = wrapper.findAll('.mx-config-form-designer__setter')
       .find(candidate => candidate.text().includes('Inline'))!
     await inline.get('button[role="switch"]').trigger('click')
     expect(lastDocument(wrapper).form.inline).toBe(true)
+  })
+
+  it('applies every form setting to the design canvas', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: {
+          ...twoFieldDocument(),
+          form: {
+            readonly: true,
+            inline: false,
+            columns: 2,
+            gap: '12px',
+            fieldSpan: 1,
+            labelPosition: 'top',
+          },
+        },
+        registry,
+      },
+    })
+
+    const rootList = wrapper.get('.mx-config-form-designer__canvas-sheet > .mx-config-form-designer__node-list')
+    expect(rootList.attributes('data-layout')).toBe('grid')
+    expect(rootList.attributes('style')).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))')
+    expect(rootList.attributes('style')).toContain('gap: 12px')
+    expect(rootList.findAll(':scope > .mx-config-form-designer__node').every(node => node.attributes('style')?.includes('span 1'))).toBe(true)
+    expect(rootList.findAll('input').every(input => input.attributes('readonly') !== undefined)).toBe(true)
+    expect(rootList.findAll('.mx-config-form-designer__node-preview.is-label-top')).toHaveLength(2)
+
+    const inline = wrapper.findAll('.mx-config-form-designer__setter')
+      .find(candidate => candidate.text().includes('Inline'))!
+    await inline.get('button[role="switch"]').trigger('click')
+
+    const inlineRootList = wrapper.get('.mx-config-form-designer__canvas-sheet > .mx-config-form-designer__node-list')
+    expect(inlineRootList.attributes('data-layout')).toBe('inline')
+    expect(inlineRootList.attributes('style')).toContain('flex-wrap: wrap')
+    expect(inlineRootList.attributes('style')).toContain('gap: 12px')
   })
 
   it('adds materials, commits text on blur, and preserves undo/redo boundaries', async () => {

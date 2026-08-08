@@ -7,6 +7,7 @@ const props = defineProps<{
   node: DesignerNode
   registry: DesignerRegistry
   labelPosition?: DesignerFormSettings['labelPosition']
+  readonly?: boolean
 }>()
 
 const material = computed<DesignerMaterialDefinition | undefined>(() => (
@@ -38,6 +39,8 @@ const componentProps = computed<Record<string, unknown>>(() => {
   nextProps[eventPropName(trigger)] = () => undefined
   if (definition.runtime.blurTrigger)
     nextProps[eventPropName(definition.runtime.blurTrigger)] = () => undefined
+  if (props.readonly)
+    nextProps[definition.runtime.readonlyProp ?? 'readonly'] = true
   return nextProps
 })
 </script>
@@ -49,6 +52,7 @@ const componentProps = computed<Record<string, unknown>>(() => {
       'is-field': node.kind === 'field',
       'is-container': node.kind === 'container',
       'is-unsupported': !material,
+      'is-readonly': readonly,
       'has-label': node.kind === 'field' && Boolean(node.label),
       'is-label-left': node.kind === 'field' && labelPosition !== 'top',
       'is-label-top': node.kind === 'field' && labelPosition === 'top',

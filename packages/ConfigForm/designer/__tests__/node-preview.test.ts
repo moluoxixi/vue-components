@@ -9,12 +9,14 @@ const InputStub = defineComponent({
   props: {
     modelValue: { type: String, default: '' },
     placeholder: { type: String, default: '' },
+    readonly: { type: Boolean, default: false },
   },
   emits: ['update:modelValue'],
   setup(props) {
     return () => h('input', {
       value: props.modelValue,
       placeholder: props.placeholder,
+      readonly: props.readonly,
     })
   },
 })
@@ -105,6 +107,24 @@ describe('designer node preview', () => {
 
     expect(wrapper.classes()).toContain('is-label-top')
     expect(wrapper.find('input').exists()).toBe(true)
+  })
+
+  it('maps form readonly state to the real preview component', () => {
+    const wrapper = mount(DesignerNodePreview, {
+      props: {
+        readonly: true,
+        registry,
+        node: {
+          id: 'name',
+          kind: 'field',
+          material: 'test.input',
+          field: 'name',
+        },
+      },
+    })
+
+    expect(wrapper.classes()).toContain('is-readonly')
+    expect(wrapper.get('input').attributes('readonly')).toBeDefined()
   })
 
   it('passes nested content through a real container material', () => {

@@ -706,16 +706,38 @@ test.describe('ConfigForm visual designer', () => {
     expect(canvasLabelStyle.clipPath).toBe('none')
     expect(canvasLabelStyle.width).not.toBe('1px')
 
+    const rootList = canvas.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first()
+    await expect.poll(() => rootList.evaluate(element => ({
+      columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      display: getComputedStyle(element).display,
+      gap: getComputedStyle(element).gap,
+    }))).toEqual({ columns: 2, display: 'grid', gap: '16px' })
+
     const columnsSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Columns' })
     await columnsSetter.getByRole('button', { name: 'Increase Columns', exact: true }).click()
     await expect(columnsSetter.getByRole('spinbutton', { name: 'Columns' })).toHaveValue('3')
+    await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(3)
     await columnsSetter.getByRole('button', { name: 'Decrease Columns', exact: true }).click()
     await expect(columnsSetter.getByRole('spinbutton', { name: 'Columns' })).toHaveValue('2')
+
+    const gapSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Gap' })
+    await gapSetter.getByRole('textbox', { name: 'Gap' }).fill('20px')
+    await gapSetter.getByRole('textbox', { name: 'Gap' }).blur()
+    await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gap)).toBe('20px')
+
+    const fieldSpanSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Field span' })
+    await fieldSpanSetter.getByRole('button', { name: 'Increase Field span', exact: true }).click()
+    await expect.poll(() => canvas.locator('[data-node-id="designer-section"]').evaluate(element => getComputedStyle(element).gridColumnEnd)).toBe('span 2')
+    await fieldSpanSetter.getByRole('button', { name: 'Decrease Field span', exact: true }).click()
 
     const inlineSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Inline' })
     const inlineSwitch = inlineSetter.getByRole('switch')
     await inlineSwitch.click()
     await expect(inlineSwitch).toHaveAttribute('aria-checked', 'true')
+    await expect.poll(() => rootList.evaluate(element => ({
+      display: getComputedStyle(element).display,
+      flexWrap: getComputedStyle(element).flexWrap,
+    }))).toEqual({ display: 'flex', flexWrap: 'wrap' })
     await inlineSwitch.click()
 
     const labelPositionSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Label position' })
@@ -723,6 +745,12 @@ test.describe('ConfigForm visual designer', () => {
     await expect(canvas.locator('.mx-config-form-designer__node-preview.is-label-top')).toHaveCount(3)
     await labelPositionSetter.getByRole('button', { name: 'Left', exact: true }).click()
     await expect(canvas.locator('.mx-config-form-designer__node-preview.is-label-left')).toHaveCount(3)
+
+    const readonlySetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Readonly' })
+    await readonlySetter.getByRole('switch').click()
+    await expect(canvas.locator('input[placeholder="Your name"]')).toHaveAttribute('readonly', '')
+    await expect(canvas.locator('[data-node-id="designer-choice"] [role="combobox"]')).toBeDisabled()
+    await readonlySetter.getByRole('switch').click()
 
     const enabledInitialNode = canvas.locator('[data-node-id="designer-enabled"]')
     const unselectedBox = await enabledInitialNode.boundingBox()
@@ -771,6 +799,10 @@ test.describe('ConfigForm visual designer', () => {
       return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest('button')?.getAttribute('aria-label')
     })
     expect(choiceToolbarHit).toBeTruthy()
+    const defaultValueSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Default value' })
+    await expect(defaultValueSetter.getByRole('button', { name: 'Playground', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await defaultValueSetter.getByRole('button', { name: 'Production', exact: true }).click()
+    await expect(choiceNode).toContainText('Production')
     const optionsSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Options' })
     await expect(optionsSetter.locator('.mx-config-form-designer__collection-row')).toHaveCount(2)
     await expect(optionsSetter.locator('textarea')).toHaveCount(0)
@@ -807,12 +839,8 @@ test.describe('ConfigForm visual designer', () => {
 
     const enabledNode = canvas.locator('[data-node-id="designer-enabled"]')
     await enabledNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
-    await dragSortableItem(
-      page,
-      enabledNode.getByRole('button', { name: 'Move node', exact: true }),
-      canvas.locator('.mx-config-form-designer__node-list[data-parent-id="designer-card"]'),
-      'vertical',
-    )
+    await enabledNode.getByRole('button', { name: 'Move node up', exact: true }).click()
+    await enabledNode.getByRole('button', { name: 'Move node into previous container', exact: true }).click()
     await expect(canvas.locator('[data-node-id="designer-card"] [data-node-id="designer-enabled"]')).toBeVisible()
 
     await toolbar.getByRole('button', { name: 'Undo', exact: true }).click()
@@ -845,14 +873,14 @@ test.describe('ConfigForm visual designer', () => {
     await toolbar.getByRole('button', { name: 'Preview form', exact: true }).click()
     const previewDialog = example.getByRole('dialog', { name: 'Form preview' })
     await expect(previewDialog).toContainText('Email')
-    await expect(previewDialog).toContainText('Choice')
+    await expect(previewDialog).toContainText('Environment')
     const exportedPreviewSignature = await readDesignerPreviewSignature(previewDialog)
     expect(exportedPreviewSignature).toMatchObject({
       cards: 1,
       sections: 1,
       fields: expect.arrayContaining([
         expect.objectContaining({ field: 'input', label: 'Email', required: true }),
-        expect.objectContaining({ field: 'choice', label: 'Choice' }),
+        expect.objectContaining({ field: 'environment', label: 'Environment' }),
       ]),
     })
     await previewDialog.getByRole('button', { name: 'Close preview', exact: true }).click()
@@ -876,7 +904,7 @@ test.describe('ConfigForm visual designer', () => {
     await toolbar.getByRole('button', { name: 'Preview form', exact: true }).click()
     const importedPreview = example.getByRole('dialog', { name: 'Form preview' })
     await expect(importedPreview).toContainText('Email')
-    await expect(importedPreview).toContainText('Choice')
+    await expect(importedPreview).toContainText('Environment')
     expect(await readDesignerPreviewSignature(importedPreview)).toEqual(exportedPreviewSignature)
   })
 })
@@ -940,6 +968,13 @@ test('standalone designer renders real flex/grid materials and form readonly pre
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/designer.html')
   const designer = page.getByTestId('designer-example')
+
+  const environmentNode = designer.locator('[data-node-id="designer-choice"]')
+  await expect(environmentNode).toContainText('Playground')
+  await environmentNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+  const environmentDefault = designer.locator('.mx-config-form-designer__properties .mx-config-form-designer__setter').filter({ hasText: '默认值' })
+  await environmentDefault.getByRole('button', { name: 'Production', exact: true }).click()
+  await expect(environmentNode).toContainText('Production')
 
   await designer.getByRole('button', { name: 'Flex 换行', exact: true }).click()
   await expect(designer.locator('.mx-element-flex-layout')).toBeVisible()

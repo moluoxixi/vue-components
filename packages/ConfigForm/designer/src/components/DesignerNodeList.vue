@@ -3,6 +3,7 @@ import type { DesignerDropTarget } from '../history'
 import type { DesignerFormSettings, DesignerNode } from '../document'
 import type { DesignerNodeAction } from './types'
 import type { DesignerMaterialSlotDefinition, DesignerRegistry } from '../registry'
+import type { StyleValue } from 'vue'
 import {
   ChevronDown,
   ChevronUp,
@@ -13,7 +14,7 @@ import {
   Trash2,
 } from '@lucide/vue'
 import Sortable from 'sortablejs'
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import DesignerNodePreview from './DesignerNodePreview.vue'
 
@@ -24,7 +25,7 @@ const props = defineProps<{
   parentId: string | null
   slotName?: string
   registry: DesignerRegistry
-  labelPosition?: DesignerFormSettings['labelPosition']
+  form?: DesignerFormSettings
   selectedId?: string
   readonly?: boolean
 }>()
@@ -39,6 +40,36 @@ const emit = defineEmits<{
 
 const listRef = ref<HTMLElement>()
 let sortable: Sortable | undefined
+
+const formColumns = computed(() => Math.max(1, Math.floor(props.form?.columns ?? 24)))
+const listStyle = computed<StyleValue | undefined>(() => {
+  if (props.parentId !== null)
+    return undefined
+  if (props.form?.inline) {
+    return {
+      alignItems: 'flex-start',
+      display: 'flex',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: props.form.gap ?? '16px',
+    }
+  }
+  return {
+    display: 'grid',
+    gap: props.form?.gap ?? '16px',
+    gridTemplateColumns: `repeat(${formColumns.value}, minmax(0, 1fr))`,
+  }
+})
+
+function nodeStyle(node: DesignerNode): StyleValue | undefined {
+  if (props.parentId !== null)
+    return undefined
+  if (props.form?.inline)
+    return { flex: '0 1 auto', minWidth: 0 }
+  const configuredSpan = node.span ?? props.form?.fieldSpan ?? 24
+  const span = Math.min(formColumns.value, Math.max(1, Math.floor(configuredSpan)))
+  return { gridColumn: `span ${span} / span ${span}`, minWidth: 0 }
+}
 
 function localTarget(index?: number): DesignerDropTarget {
   return props.parentId === null
@@ -150,7 +181,9 @@ onBeforeUnmount(destroySortable)
   <ol
     ref="listRef"
     class="mx-config-form-designer__node-list"
-    :class="{ 'is-empty': nodes.length === 0 }"
+    :class="{ 'is-empty': nodes.length === 0, 'is-root': parentId === null }"
+    :style="listStyle"
+    :data-layout="parentId === null ? (form?.inline ? 'inline' : 'grid') : undefined"
     :data-parent-id="parentId ?? ''"
     :data-slot="slotName"
   >
@@ -161,6 +194,7 @@ onBeforeUnmount(destroySortable)
       :class="{ 'is-selected': selectedId === node.id, 'is-container': node.kind === 'container' }"
       data-designer-draggable
       :data-node-id="node.id"
+      :style="nodeStyle(node)"
     >
       <div
         class="mx-config-form-designer__node-header"
@@ -208,14 +242,14 @@ onBeforeUnmount(destroySortable)
         @focus="emit('select', node.id)"
         @keydown="handleKeydown($event, node.id)"
       >
-        <DesignerNodePreview :node="node" :registry="registry" :label-position="labelPosition">
+        <DesignerNodePreview :node="node" :registry="registry" :label-position="form?.labelPosition ?? 'left'" :readonly="form?.readonly">
           <template v-for="slot in materialSlots(node)" #[slot.name]>
             <DesignerNodeList
               :nodes="node.kind === 'container' ? (node.slots[slot.name] ?? []) : []"
               :parent-id="node.id"
               :slot-name="slot.name"
               :registry="registry"
-              :label-position="labelPosition"
+              :form="form"
               :selected-id="selectedId"
               :readonly="readonly"
               @select="emit('select', $event)"

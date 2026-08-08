@@ -8,6 +8,7 @@ import type {
 import type {
   DesignerMaterialDefinition,
   DesignerPropertySetterDefinition,
+  DesignerSetterOption,
 } from '../registry'
 import { computed, ref } from 'vue'
 import { useDesignerLocale } from '../locale'
@@ -40,7 +41,7 @@ const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
           { key: 'label', label: locale.t('property.label', 'Label'), path: ['label'], control: 'text' as const },
         ]
       : []),
-    { key: 'span', label: locale.t('property.span', 'Span'), path: ['span'], control: 'number' as const, min: 1, max: 12, step: 1 },
+    { key: 'span', label: locale.t('property.span', 'Span'), path: ['span'], control: 'number' as const, min: 1, max: 24, step: 1 },
   ]
 })
 
@@ -48,14 +49,17 @@ const propertySetters = computed(() => [
   ...commonSetters.value,
   ...(props.material?.setters
     .filter(setter => !['condition', 'validation'].includes(setter.control))
-    .map(setter => ({
-      ...setter,
-      label: locale.materialSetterLabel(props.material!, setter.key, setter.label),
-      options: setter.options?.map(option => ({
-        ...option,
-        label: locale.materialSetterOptionLabel(props.material!, setter.key, option.value, option.label),
-      })),
-    })) ?? []),
+    .map(setter => {
+      const options = resolveSetterOptions(setter)
+      return {
+        ...setter,
+        label: locale.materialSetterLabel(props.material!, setter.key, setter.label),
+        options: options?.map(option => ({
+          ...option,
+          label: locale.materialSetterOptionLabel(props.material!, setter.key, option.value, option.label),
+        })),
+      }
+    }) ?? []),
 ].filter((setter, index, entries) => entries.findIndex(entry => entry.path.join('.') === setter.path.join('.')) === index))
 
 const conditionSetters = computed<DesignerPropertySetterDefinition[]>(() => {
@@ -90,6 +94,31 @@ function readPath(path: string[]): unknown {
   return value
 }
 
+function resolveSetterOptions(setter: DesignerPropertySetterDefinition): DesignerSetterOption[] | undefined {
+  if (!setter.optionsPath)
+    return setter.options
+
+  const value = readPath(setter.optionsPath)
+  if (!Array.isArray(value))
+    return []
+
+  return value.flatMap((option) => {
+    if (typeof option !== 'object' || option === null || Array.isArray(option))
+      return []
+    const record = option as Record<string, unknown>
+    const value = record.value
+    if (
+      typeof record.label !== 'string'
+      || !Object.hasOwn(record, 'value')
+      || !['string', 'number', 'boolean'].includes(typeof value)
+      || (typeof value === 'number' && !Number.isFinite(value))
+      || (setter.valueKind === 'multiselect' && typeof value === 'boolean')
+    )
+      return []
+    return [{ label: record.label, value: value as string | number | boolean }]
+  })
+}
+
 function formSetter(
   key: keyof DesignerFormSettings,
   label: string,
@@ -107,9 +136,9 @@ const formSetters = computed(() => [
     { label: locale.t('option.left', 'Left'), value: 'left' },
     { label: locale.t('option.top', 'Top'), value: 'top' },
   ]),
-  formSetter('columns', locale.t('property.columns', 'Columns'), 'number', undefined, { min: 1, max: 12, step: 1 }),
+  formSetter('columns', locale.t('property.columns', 'Columns'), 'number', undefined, { min: 1, max: 24, step: 1 }),
   formSetter('gap', locale.t('property.gap', 'Gap'), 'text'),
-  formSetter('fieldSpan', locale.t('property.fieldSpan', 'Field span'), 'number', undefined, { min: 1, max: 12, step: 1 }),
+  formSetter('fieldSpan', locale.t('property.fieldSpan', 'Field span'), 'number', undefined, { min: 1, max: 24, step: 1 }),
 ])
 
 function readFormValue(setter: DesignerPropertySetterDefinition): unknown {

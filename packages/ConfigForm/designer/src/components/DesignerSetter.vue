@@ -4,6 +4,7 @@ import { Minus, Plus } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import DesignerConditionSetter from './DesignerConditionSetter.vue'
+import DesignerDefaultValueSetter from './DesignerDefaultValueSetter.vue'
 import DesignerOptionsSetter from './DesignerOptionsSetter.vue'
 import DesignerValidationSetter from './DesignerValidationSetter.vue'
 
@@ -19,7 +20,7 @@ const emit = defineEmits<{
 const locale = useDesignerLocale()
 
 const textDraft = ref('')
-const compound = computed(() => ['options', 'condition', 'validation'].includes(props.setter.control))
+const compound = computed(() => ['defaultValue', 'options', 'condition', 'validation'].includes(props.setter.control))
 
 function displayText(value: unknown): string {
   return value === undefined || value === null ? '' : String(value)
@@ -157,6 +158,14 @@ function commitCustom(value: unknown): void {
       :is="setter.component"
       v-else-if="setter.control === 'custom' && setter.component"
       :model-value="value"
+      :disabled="readonly"
+      @update:model-value="commitCustom"
+    />
+    <DesignerDefaultValueSetter
+      v-else-if="setter.control === 'defaultValue' && setter.valueKind"
+      :model-value="value"
+      :kind="setter.valueKind"
+      :options="setter.options"
       :disabled="readonly"
       @update:model-value="commitCustom"
     />

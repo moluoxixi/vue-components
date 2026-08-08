@@ -14,10 +14,20 @@ export type DesignerSetterControl
     | 'number'
     | 'boolean'
     | 'select'
+    | 'defaultValue'
     | 'options'
     | 'condition'
     | 'validation'
     | 'custom'
+
+export type DesignerDefaultValueKind
+  = | 'text'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'multiselect'
+    | 'date'
+    | 'time'
 
 export interface DesignerSetterOption {
   label: string
@@ -30,6 +40,8 @@ export interface DesignerPropertySetterDefinition {
   path: string[]
   control: DesignerSetterControl
   options?: DesignerSetterOption[]
+  optionsPath?: string[]
+  valueKind?: DesignerDefaultValueKind
   min?: number
   max?: number
   step?: number
@@ -50,6 +62,7 @@ export interface DesignerRuntimeMaterialBinding {
   valueProp?: string
   trigger?: string
   blurTrigger?: string
+  readonlyProp?: string
   getValueFromEvent?: (...args: unknown[]) => unknown
 }
 

@@ -666,6 +666,37 @@
   box-shadow: 0 1px 2px rgb(15 23 42 / 7%);
 }
 
+.mx-config-form-designer__default-value,
+.mx-config-form-designer__default-multiselect {
+  display: grid;
+  gap: 6px;
+}
+
+.mx-config-form-designer__default-value .mx-config-form-designer__segmented {
+  flex-wrap: wrap;
+}
+
+.mx-config-form-designer__default-value .mx-config-form-designer__segmented button {
+  flex: 1 1 calc(50% - 2px);
+}
+
+.mx-config-form-designer__unset-button {
+  min-height: 30px;
+  padding: 4px 8px;
+  color: var(--mx-designer-muted);
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__unset-button.is-active {
+  color: var(--mx-designer-accent);
+  font-weight: 650;
+  border-color: var(--mx-designer-accent-line);
+  background: var(--mx-designer-accent-soft);
+}
+
 .mx-config-form-designer__condition-editor,
 .mx-config-form-designer__validation-editor,
 .mx-config-form-designer__collection-editor,

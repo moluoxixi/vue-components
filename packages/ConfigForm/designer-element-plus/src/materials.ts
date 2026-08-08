@@ -1,4 +1,5 @@
 import type {
+  DesignerDefaultValueKind,
   DesignerLocaleOptions,
   DesignerMaterialDefinition,
   DesignerPropertySetterDefinition,
@@ -67,6 +68,20 @@ function propSetter(
   return setter(key, label, ['props', key], control, options, constraints)
 }
 
+function defaultValueSetter(
+  valueKind: DesignerDefaultValueKind,
+  optionsPath?: string[],
+): DesignerPropertySetterDefinition {
+  return {
+    key: 'defaultValue',
+    label: 'Default value',
+    path: ['defaultValue'],
+    control: 'defaultValue',
+    valueKind,
+    ...(optionsPath ? { optionsPath } : {}),
+  }
+}
+
 const placeholderSetter = propSetter('placeholder', 'Placeholder', 'text')
 const clearableSetter = propSetter('clearable', 'Clearable', 'boolean')
 const disabledSetter = propSetter('disabled', 'Disabled', 'boolean')
@@ -88,8 +103,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Input',
     category: 'Fields',
     icon: TypeIcon,
-    runtime: { component: ElInput },
-    setters: [placeholderSetter, clearableSetter, propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 })],
+    runtime: { component: ElInput, readonlyProp: 'readonly' },
+    setters: [defaultValueSetter('text'), placeholderSetter, clearableSetter, propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 })],
     createNode: ({ id, field = 'input' }) => ({
       id,
       kind: 'field',
@@ -106,8 +121,9 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Textarea',
     category: 'Fields',
     icon: AlignLeft,
-    runtime: { component: ElInput },
+    runtime: { component: ElInput, readonlyProp: 'readonly' },
     setters: [
+      defaultValueSetter('text'),
       placeholderSetter,
       propSetter('rows', 'Rows', 'number', undefined, { min: 1, max: 20, step: 1 }),
       propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 }),
@@ -128,8 +144,9 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Number',
     category: 'Fields',
     icon: Hash,
-    runtime: { component: ElInputNumber },
+    runtime: { component: ElInputNumber, readonlyProp: 'disabled' },
     setters: [
+      defaultValueSetter('number'),
       propSetter('min', 'Minimum', 'number'),
       propSetter('max', 'Maximum', 'number'),
       propSetter('step', 'Step', 'number', undefined, { min: 0 }),
@@ -151,8 +168,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Select',
     category: 'Choices',
     icon: List,
-    runtime: { component: ElementSelectField },
-    setters: [placeholderSetter, clearableSetter, propSetter('filterable', 'Filterable', 'boolean'), optionsSetter],
+    runtime: { component: ElementSelectField, readonlyProp: 'disabled' },
+    setters: [defaultValueSetter('select', ['props', 'options']), placeholderSetter, clearableSetter, propSetter('filterable', 'Filterable', 'boolean'), optionsSetter],
     createNode: ({ id, field = 'select' }) => ({
       id,
       kind: 'field',
@@ -169,8 +186,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Radio',
     category: 'Choices',
     icon: CircleDot,
-    runtime: { component: ElementRadioField },
-    setters: [optionsSetter, disabledSetter],
+    runtime: { component: ElementRadioField, readonlyProp: 'disabled' },
+    setters: [defaultValueSetter('select', ['props', 'options']), optionsSetter, disabledSetter],
     createNode: ({ id, field = 'radio' }) => ({
       id,
       kind: 'field',
@@ -187,8 +204,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Checkbox',
     category: 'Choices',
     icon: CheckSquare,
-    runtime: { component: ElementCheckboxField },
-    setters: [optionsSetter, disabledSetter],
+    runtime: { component: ElementCheckboxField, readonlyProp: 'disabled' },
+    setters: [defaultValueSetter('multiselect', ['props', 'options']), optionsSetter, disabledSetter],
     createNode: ({ id, field = 'checkbox' }) => ({
       id,
       kind: 'field',
@@ -206,8 +223,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Switch',
     category: 'Choices',
     icon: ToggleLeft,
-    runtime: { component: ElSwitch },
-    setters: [propSetter('activeText', 'Active text', 'text'), propSetter('inactiveText', 'Inactive text', 'text')],
+    runtime: { component: ElSwitch, readonlyProp: 'disabled' },
+    setters: [defaultValueSetter('boolean'), propSetter('activeText', 'Active text', 'text'), propSetter('inactiveText', 'Inactive text', 'text')],
     createNode: ({ id, field = 'switch' }) => ({
       id,
       kind: 'field',
@@ -224,8 +241,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Date',
     category: 'Date & time',
     icon: Calendar,
-    runtime: { component: ElDatePicker },
-    setters: [placeholderSetter, clearableSetter, propSetter('format', 'Display format', 'text')],
+    runtime: { component: ElDatePicker, readonlyProp: 'readonly' },
+    setters: [defaultValueSetter('date'), placeholderSetter, clearableSetter, propSetter('format', 'Display format', 'text')],
     createNode: ({ id, field = 'date' }) => ({
       id,
       kind: 'field',
@@ -242,8 +259,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Time',
     category: 'Date & time',
     icon: Clock,
-    runtime: { component: ElTimePicker },
-    setters: [placeholderSetter, clearableSetter, propSetter('format', 'Display format', 'text')],
+    runtime: { component: ElTimePicker, readonlyProp: 'readonly' },
+    setters: [defaultValueSetter('time'), placeholderSetter, clearableSetter, propSetter('format', 'Display format', 'text')],
     createNode: ({ id, field = 'time' }) => ({
       id,
       kind: 'field',
@@ -482,6 +499,8 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'property.columns': '列数',
     'property.gap': '间距',
     'property.fieldSpan': '字段宽度',
+    'default.value': '默认值',
+    'default.unset': '未设置',
     'option.left': '左侧',
     'option.top': '顶部',
     'setter.decrease': '减少 {label}',
@@ -588,15 +607,15 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'node.select': '选择 {label}',
   },
   materials: {
-    'element.input': { title: '输入框', category: '字段', setters: { placeholder: '占位文本', clearable: '可清空', maxlength: '最大长度' } },
-    'element.textarea': { title: '多行输入', category: '字段', setters: { placeholder: '占位文本', rows: '行数', maxlength: '最大长度' } },
-    'element.input-number': { title: '数字输入', category: '字段', setters: { min: '最小值', max: '最大值', step: '步长', controls: '显示控件' } },
-    'element.select': { title: '选择器', category: '选择', setters: { placeholder: '占位文本', clearable: '可清空', filterable: '可筛选', options: '选项' } },
-    'element.radio': { title: '单选框', category: '选择', setters: { options: '选项', disabled: '禁用' } },
-    'element.checkbox': { title: '复选框', category: '选择', setters: { options: '选项', disabled: '禁用' } },
-    'element.switch': { title: '开关', category: '选择', setters: { activeText: '开启文案', inactiveText: '关闭文案' } },
-    'element.date': { title: '日期', category: '日期时间', setters: { placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },
-    'element.time': { title: '时间', category: '日期时间', setters: { placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },
+    'element.input': { title: '输入框', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', maxlength: '最大长度' } },
+    'element.textarea': { title: '多行输入', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', rows: '行数', maxlength: '最大长度' } },
+    'element.input-number': { title: '数字输入', category: '字段', setters: { defaultValue: '默认值', min: '最小值', max: '最大值', step: '步长', controls: '显示控件' } },
+    'element.select': { title: '选择器', category: '选择', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', filterable: '可筛选', options: '选项' } },
+    'element.radio': { title: '单选框', category: '选择', setters: { defaultValue: '默认值', options: '选项', disabled: '禁用' } },
+    'element.checkbox': { title: '复选框', category: '选择', setters: { defaultValue: '默认值', options: '选项', disabled: '禁用' } },
+    'element.switch': { title: '开关', category: '选择', setters: { defaultValue: '默认值', activeText: '开启文案', inactiveText: '关闭文案' } },
+    'element.date': { title: '日期', category: '日期时间', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },
+    'element.time': { title: '时间', category: '日期时间', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },
     'element.section': { title: '分区', category: '布局', setters: { title: '标题', description: '描述' }, slots: { default: '内容' } },
     'element.card': { title: '卡片', category: '布局', setters: { header: '头部', shadow: '阴影' }, options: { shadow: { always: '总是', hover: '悬停', never: '从不' } }, slots: { default: '内容' } },
     'element.tabs': { title: '标签页', category: '布局', setters: { tabPosition: '位置', stretch: '拉伸' }, options: { tabPosition: { top: '顶部', right: '右侧', bottom: '底部', left: '左侧' } }, slots: { default: '面板' } },

@@ -44,6 +44,35 @@ describe('element plus designer materials', () => {
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
   })
 
+  it('provides typed visual default-value setters and readonly preview bindings', () => {
+    const fields = ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')
+    expect(fields.every(material => material.setters.some(setter => setter.path.join('.') === 'defaultValue'))).toBe(true)
+    expect(Object.fromEntries(fields.map(material => [material.key, material.runtime.readonlyProp]))).toEqual({
+      'element.input': 'readonly',
+      'element.textarea': 'readonly',
+      'element.input-number': 'disabled',
+      'element.select': 'disabled',
+      'element.radio': 'disabled',
+      'element.checkbox': 'disabled',
+      'element.switch': 'disabled',
+      'element.date': 'readonly',
+      'element.time': 'readonly',
+    })
+
+    const select = fields.find(material => material.key === 'element.select')!
+    expect(select.setters.find(setter => setter.key === 'defaultValue')).toMatchObject({
+      control: 'defaultValue',
+      valueKind: 'select',
+      optionsPath: ['props', 'options'],
+    })
+    expect(select.runtime.readonlyProp).toBe('disabled')
+
+    const checkbox = fields.find(material => material.key === 'element.checkbox')!
+    expect(checkbox.setters.find(setter => setter.key === 'defaultValue')).toMatchObject({
+      valueKind: 'multiselect',
+    })
+  })
+
   it('creates valid independent defaults with JSON-safe date and time values', () => {
     const registry = createElementPlusDesignerRegistry()
     const selectOne = registry.createNode('element.select', { id: 'select-1', field: 'choiceOne' })
