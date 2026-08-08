@@ -19,8 +19,9 @@ import {
   Undo2,
   X,
 } from '@lucide/vue'
-import { computed, nextTick, ref, shallowRef } from 'vue'
+import { computed, nextTick, provide, reactive, ref, shallowRef, watch } from 'vue'
 import { useDesignerController } from '../composables'
+import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
 import DesignerCanvas from './DesignerCanvas.vue'
 import DesignerPalette from './DesignerPalette.vue'
 import DesignerPropertyPanel from './DesignerPropertyPanel.vue'
@@ -32,6 +33,12 @@ const props = withDefaults(defineProps<ConfigFormDesignerProps>(), {
 })
 const emit = defineEmits<ConfigFormDesignerEmits>()
 defineSlots<ConfigFormDesignerSlots>()
+const locale = reactive(createDesignerLocale(props.locale))
+provide(DESIGNER_LOCALE_KEY, locale)
+
+watch(() => props.locale, value => {
+  Object.assign(locale, createDesignerLocale(value))
+}, { deep: true })
 
 const rootRef = ref<HTMLElement>()
 const previewResult = shallowRef<DesignerCompileResult>()
@@ -148,11 +155,11 @@ function applyImport(): boolean {
     input = JSON.parse(transferText.value)
   }
   catch {
-    transferError.value = 'Invalid JSON'
+    transferError.value = locale.t('error.invalidJson', 'Invalid JSON')
     return false
   }
   if (!controller.importDocument(input)) {
-    transferError.value = controller.diagnostics.value[0]?.message ?? 'Import failed'
+    transferError.value = controller.diagnostics.value[0]?.message ?? locale.t('error.importFailed', 'Import failed')
     return false
   }
   emit('import', controller.document.value)
@@ -210,23 +217,23 @@ defineExpose<ConfigFormDesignerExpose>({
 <template>
   <div ref="rootRef" class="mx-config-form-designer" @keydown="handleRootKeydown">
     <header class="mx-config-form-designer__toolbar">
-      <strong>Form Designer</strong>
+      <strong>{{ locale.t('designer.title', 'Form Designer') }}</strong>
       <slot name="toolbar" v-bind="toolbarScope">
-        <div class="mx-config-form-designer__toolbar-actions" role="toolbar" aria-label="Designer commands">
-          <button type="button" class="mx-config-form-designer__icon-button" :disabled="!controller.canUndo.value" title="Undo" aria-label="Undo" @click="handleUndo">
+        <div class="mx-config-form-designer__toolbar-actions" role="toolbar" :aria-label="locale.t('designer.commands', 'Designer commands')">
+          <button type="button" class="mx-config-form-designer__icon-button" :disabled="!controller.canUndo.value" :title="locale.t('action.undo', 'Undo')" :aria-label="locale.t('action.undo', 'Undo')" @click="handleUndo">
             <Undo2 :size="17" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__icon-button" :disabled="!controller.canRedo.value" title="Redo" aria-label="Redo" @click="handleRedo">
+          <button type="button" class="mx-config-form-designer__icon-button" :disabled="!controller.canRedo.value" :title="locale.t('action.redo', 'Redo')" :aria-label="locale.t('action.redo', 'Redo')" @click="handleRedo">
             <Redo2 :size="17" aria-hidden="true" />
           </button>
           <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
-          <button type="button" class="mx-config-form-designer__icon-button" title="Preview" aria-label="Preview form" @click="handlePreview">
+          <button type="button" class="mx-config-form-designer__icon-button" :title="locale.t('action.preview', 'Preview')" :aria-label="locale.t('action.previewForm', 'Preview form')" @click="handlePreview">
             <Eye :size="17" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" title="Import" aria-label="Import document" @click="openImport">
+          <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :title="locale.t('action.import', 'Import')" :aria-label="locale.t('action.importDocument', 'Import document')" @click="openImport">
             <FileUp :size="17" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__icon-button" title="Export" aria-label="Export document" @click="openExport">
+          <button type="button" class="mx-config-form-designer__icon-button" :title="locale.t('action.export', 'Export')" :aria-label="locale.t('action.exportDocument', 'Export document')" @click="openExport">
             <FileDown :size="17" aria-hidden="true" />
           </button>
         </div>
@@ -289,17 +296,17 @@ defineExpose<ConfigFormDesignerExpose>({
     <footer class="mx-config-form-designer__status" aria-live="polite">
       <slot name="diagnostics" :diagnostics="controller.diagnostics.value">
         <span v-if="controller.diagnostics.value.length">
-          {{ controller.diagnostics.value.length }} issue{{ controller.diagnostics.value.length === 1 ? '' : 's' }} · {{ controller.diagnostics.value[0]?.message }}
+          {{ locale.t('status.issues', '{count} issue{suffix}', { count: controller.diagnostics.value.length, suffix: controller.diagnostics.value.length === 1 ? '' : 's' }) }} · {{ controller.diagnostics.value[0]?.message }}
         </span>
-        <span v-else>Ready</span>
+        <span v-else>{{ locale.t('status.ready', 'Ready') }}</span>
       </slot>
     </footer>
 
     <div v-if="transferMode" class="mx-config-form-designer__dialog-backdrop" @mousedown.self="closeTransfer">
-      <section class="mx-config-form-designer__dialog" role="dialog" aria-modal="true" :aria-label="transferMode === 'import' ? 'Import document' : 'Export document'">
+      <section class="mx-config-form-designer__dialog" role="dialog" aria-modal="true" :aria-label="transferMode === 'import' ? locale.t('action.importDocument', 'Import document') : locale.t('action.exportDocument', 'Export document')">
         <header>
-          <strong>{{ transferMode === 'import' ? 'Import document' : 'Export document' }}</strong>
-          <button type="button" class="mx-config-form-designer__icon-button" title="Close" aria-label="Close" @click="closeTransfer">
+          <strong>{{ transferMode === 'import' ? locale.t('action.importDocument', 'Import document') : locale.t('action.exportDocument', 'Export document') }}</strong>
+          <button type="button" class="mx-config-form-designer__icon-button" :title="locale.t('action.close', 'Close')" :aria-label="locale.t('action.close', 'Close')" @click="closeTransfer">
             <X :size="17" aria-hidden="true" />
           </button>
         </header>
@@ -307,15 +314,15 @@ defineExpose<ConfigFormDesignerExpose>({
         <p v-if="transferError" class="mx-config-form-designer__dialog-error" role="alert">{{ transferError }}</p>
         <footer>
           <template v-if="transferMode === 'import'">
-            <button type="button" class="mx-config-form-designer__command-button is-secondary" @click="closeTransfer">Cancel</button>
-            <button type="button" class="mx-config-form-designer__command-button" @click="applyImport">Apply</button>
+            <button type="button" class="mx-config-form-designer__command-button is-secondary" @click="closeTransfer">{{ locale.t('action.cancel', 'Cancel') }}</button>
+            <button type="button" class="mx-config-form-designer__command-button" @click="applyImport">{{ locale.t('action.apply', 'Apply') }}</button>
           </template>
           <template v-else>
             <button type="button" class="mx-config-form-designer__command-button is-secondary" @click="copyExport">
-              <Clipboard :size="15" aria-hidden="true" /> Copy
+              <Clipboard :size="15" aria-hidden="true" /> {{ locale.t('action.copy', 'Copy') }}
             </button>
             <button type="button" class="mx-config-form-designer__command-button" @click="downloadExport">
-              <Download :size="15" aria-hidden="true" /> Download
+              <Download :size="15" aria-hidden="true" /> {{ locale.t('action.download', 'Download') }}
             </button>
           </template>
         </footer>
@@ -323,10 +330,10 @@ defineExpose<ConfigFormDesignerExpose>({
     </div>
 
     <div v-if="previewOpen && previewResult" class="mx-config-form-designer__dialog-backdrop" @mousedown.self="previewOpen = false">
-      <section class="mx-config-form-designer__dialog is-preview" role="dialog" aria-modal="true" aria-label="Form preview">
+      <section class="mx-config-form-designer__dialog is-preview" role="dialog" aria-modal="true" :aria-label="locale.t('dialog.preview', 'Form preview')">
         <header>
-          <strong>Preview</strong>
-          <button type="button" class="mx-config-form-designer__icon-button" title="Close" aria-label="Close preview" @click="previewOpen = false">
+          <strong>{{ locale.t('action.preview', 'Preview') }}</strong>
+          <button type="button" class="mx-config-form-designer__icon-button" :title="locale.t('action.close', 'Close')" :aria-label="locale.t('action.closePreview', 'Close preview')" @click="previewOpen = false">
             <X :size="17" aria-hidden="true" />
           </button>
         </header>

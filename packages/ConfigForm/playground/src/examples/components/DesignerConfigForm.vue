@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import type { DesignerDocument } from '@moluoxixi/config-form-designer'
+import type { DesignerDocument, DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import { ConfigFormDesigner } from '@moluoxixi/config-form-designer'
 import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
 import { ref } from 'vue'
+
+defineProps<{
+  locale?: DesignerLocaleOptions
+  showHeader?: boolean
+}>()
 
 const registry = createElementPlusDesignerRegistry()
 
@@ -89,7 +94,7 @@ function handleExport(json: string): void {
 
 <template>
   <section class="designer-example" data-testid="designer-example">
-    <header class="designer-example__header">
+    <header v-if="showHeader !== false" class="designer-example__header">
       <div>
         <h2>Visual form designer</h2>
         <p>Element Plus adapter with controlled JSON document and runtime preview.</p>
@@ -100,6 +105,7 @@ function handleExport(json: string): void {
     <ConfigFormDesigner
       v-model:document="documentModel"
       :registry="registry"
+      :locale="locale"
       @export="handleExport"
     />
 

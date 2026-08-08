@@ -56,12 +56,17 @@
 }
 
 .mx-config-form-designer__toolbar {
+  min-width: 0;
   justify-content: space-between;
   border-bottom: 1px solid var(--mx-designer-border);
   box-shadow: 0 1px 0 rgb(15 23 42 / 2%);
 }
 
 .mx-config-form-designer__toolbar > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
 }
 
@@ -109,7 +114,7 @@
 
 .mx-config-form-designer__workspace {
   display: grid;
-  grid-template-columns: 232px minmax(360px, 1fr) 304px;
+  grid-template-columns: 232px minmax(0, 1fr) 304px;
   min-width: 0;
   min-height: 0;
 }
@@ -286,6 +291,7 @@
   right: -5px;
   display: block;
   width: max-content;
+  max-width: min(100%, calc(100vw - 24px));
   padding: 0;
   cursor: default;
   opacity: 0;
@@ -313,6 +319,9 @@
   border-radius: 6px;
   box-shadow: 0 2px 6px rgb(15 23 42 / 9%);
   pointer-events: auto;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .mx-config-form-designer__node-actions .mx-config-form-designer__icon-button {
@@ -356,6 +365,13 @@
 .mx-config-form-designer__node-preview.is-field.is-label-top {
   display: grid;
   gap: 6px;
+}
+
+.mx-config-form-designer__toolbar-actions {
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .mx-config-form-designer__node-preview-real {
@@ -857,7 +873,7 @@
 
 @media (max-width: 1100px) {
   .mx-config-form-designer__workspace {
-    grid-template-columns: 210px minmax(360px, 1fr);
+    grid-template-columns: 210px minmax(0, 1fr);
     grid-template-rows: minmax(440px, 1fr) auto;
   }
 
@@ -880,6 +896,15 @@
     overflow: auto;
   }
 
+  .mx-config-form-designer__toolbar {
+    gap: 8px;
+    padding-inline: 8px;
+  }
+
+  .mx-config-form-designer__toolbar-actions {
+    max-width: 58vw;
+  }
+
   .mx-config-form-designer__palette,
   .mx-config-form-designer__properties {
     max-height: 260px;
@@ -894,11 +919,6 @@
 
   .mx-config-form-designer__canvas-sheet {
     padding: 16px;
-  }
-
-  .mx-config-form-designer__node-actions button:nth-child(4),
-  .mx-config-form-designer__node-actions button:nth-child(5) {
-    display: none;
   }
 
   .mx-config-form-designer__container-slots {

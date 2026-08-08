@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createElementPlusDesignerRegistry,
   ELEMENT_PLUS_DESIGNER_MATERIALS,
+  ELEMENT_PLUS_DESIGNER_ZH_CN,
 } from '../index'
 
 const expectedKeys = [
@@ -29,6 +30,12 @@ const expectedKeys = [
 ]
 
 describe('element plus designer materials', () => {
+  it('ships a locale map for every registered material', () => {
+    expect(Object.keys(ELEMENT_PLUS_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
+    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['designer.title']).toBe('表单设计器')
+    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.materials?.['element.input']?.setters?.placeholder).toBe('占位文本')
+  })
+
   it('registers the complete MVP field and container set', () => {
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')).toHaveLength(9)

@@ -99,6 +99,60 @@ afterEach(() => {
 })
 
 describe('config form designer', () => {
+  it('reacts to locale replacements without changing document values', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: emptyDocument(),
+        registry,
+        locale: {
+          locale: 'zh-CN',
+          messages: {
+            'designer.title': '表单设计器',
+            'palette.materials': '物料',
+          },
+          materials: {
+            'element.input': {
+              title: '输入框',
+              category: '字段',
+              setters: { placeholder: '占位文本' },
+            },
+          },
+        },
+      },
+    })
+
+    expect(wrapper.get('.mx-config-form-designer__toolbar').text()).toContain('表单设计器')
+    expect(wrapper.get('.mx-config-form-designer__palette').attributes('aria-label')).toBe('物料')
+    expect(wrapper.get('[data-material-key="element.input"]').text()).toContain('输入框')
+
+    await wrapper.get('[data-material-key="element.input"]').trigger('click')
+    expect(wrapper.findAll('.mx-config-form-designer__setter').some(setter => setter.text().includes('占位文本'))).toBe(true)
+    expect(lastDocument(wrapper).nodes[0]).toMatchObject({ material: 'element.input', field: 'input' })
+
+    await wrapper.setProps({
+      locale: {
+        locale: 'en-US',
+        messages: {
+          'designer.title': 'Localized designer',
+          'palette.materials': 'Localized materials',
+        },
+        materials: {
+          'element.input': {
+            title: 'Localized input',
+            category: 'Localized fields',
+            setters: { placeholder: 'Localized placeholder' },
+          },
+        },
+      },
+    })
+
+    expect(wrapper.get('.mx-config-form-designer__toolbar').text()).toContain('Localized designer')
+    expect(wrapper.get('.mx-config-form-designer__palette').attributes('aria-label')).toBe('Localized materials')
+    expect(wrapper.get('[data-material-key="element.input"]').text()).toContain('Localized input')
+    expect(wrapper.findAll('.mx-config-form-designer__setter').some(setter => setter.text().includes('Localized placeholder'))).toBe(true)
+    expect(lastDocument(wrapper).nodes[0]).toMatchObject({ material: 'element.input', field: 'input' })
+  })
+
   it('updates the form label position through the form property setter', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       props: { document: emptyDocument(), registry },

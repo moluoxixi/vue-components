@@ -3,7 +3,8 @@ import type {
   DesignerConditionCompareOperator,
   DesignerConditionExpression,
 } from '../condition'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useDesignerLocale } from '../locale'
 
 type ConditionMode = 'off' | 'always' | 'never' | 'when' | 'custom'
 type LiteralType = 'text' | 'number' | 'boolean'
@@ -16,6 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: DesignerConditionExpression | undefined]
 }>()
+const locale = useDesignerLocale()
 
 const mode = ref<ConditionMode>('off')
 const field = ref('')
@@ -23,24 +25,24 @@ const operator = ref<DesignerConditionCompareOperator>('eq')
 const literalType = ref<LiteralType>('text')
 const literalValue = ref<string | number | boolean>('')
 
-const modes: { label: string, value: ConditionMode }[] = [
-  { label: 'Off', value: 'off' },
-  { label: 'Always', value: 'always' },
-  { label: 'Never', value: 'never' },
-  { label: 'When', value: 'when' },
-  { label: 'Custom', value: 'custom' },
-]
+const modes = computed<{ label: string, value: ConditionMode }[]>(() => [
+  { label: locale.t('condition.off', 'Off'), value: 'off' },
+  { label: locale.t('condition.always', 'Always'), value: 'always' },
+  { label: locale.t('condition.never', 'Never'), value: 'never' },
+  { label: locale.t('condition.when', 'When'), value: 'when' },
+  { label: locale.t('condition.custom', 'Custom'), value: 'custom' },
+])
 
-const operators: { label: string, value: DesignerConditionCompareOperator }[] = [
-  { label: 'Equals', value: 'eq' },
-  { label: 'Not equal', value: 'neq' },
-  { label: 'Greater than', value: 'gt' },
-  { label: 'At least', value: 'gte' },
-  { label: 'Less than', value: 'lt' },
-  { label: 'At most', value: 'lte' },
-  { label: 'In', value: 'in' },
-  { label: 'Contains', value: 'contains' },
-]
+const operators = computed<{ label: string, value: DesignerConditionCompareOperator }[]>(() => [
+  { label: locale.t('operator.eq', 'Equals'), value: 'eq' },
+  { label: locale.t('operator.neq', 'Not equal'), value: 'neq' },
+  { label: locale.t('operator.gt', 'Greater than'), value: 'gt' },
+  { label: locale.t('operator.gte', 'At least'), value: 'gte' },
+  { label: locale.t('operator.lt', 'Less than'), value: 'lt' },
+  { label: locale.t('operator.lte', 'At most'), value: 'lte' },
+  { label: locale.t('operator.in', 'In'), value: 'in' },
+  { label: locale.t('operator.contains', 'Contains'), value: 'contains' },
+])
 
 function syncValue(): void {
   if (typeof props.modelValue !== 'object' || props.modelValue === null || Array.isArray(props.modelValue)) {
@@ -62,7 +64,7 @@ function syncValue(): void {
     && left?.kind === 'field'
     && typeof left.field === 'string'
     && right?.kind === 'literal'
-    && operators.some(item => item.value === value.operator)) {
+    && operators.value.some(item => item.value === value.operator)) {
     field.value = left.field
     operator.value = value.operator as DesignerConditionCompareOperator
     const nextValue = right.value
@@ -118,7 +120,7 @@ function updateNumber(event: Event): void {
 
 <template>
   <div class="mx-config-form-designer__condition-editor">
-    <div class="mx-config-form-designer__segmented" role="group" aria-label="Condition mode">
+    <div class="mx-config-form-designer__segmented" role="group" :aria-label="locale.t('condition.mode', 'Condition mode')">
       <button
         v-for="item in modes"
         :key="item.value"
@@ -133,22 +135,22 @@ function updateNumber(event: Event): void {
     </div>
 
     <div v-if="mode === 'when'" class="mx-config-form-designer__condition-builder">
-      <input v-model="field" type="text" aria-label="Condition field" placeholder="Field name" :disabled="disabled" @blur="commit">
-      <select v-model="operator" aria-label="Condition operator" :disabled="disabled" @change="commit">
+      <input v-model="field" type="text" :aria-label="locale.t('condition.field', 'Condition field')" :placeholder="locale.t('condition.fieldPlaceholder', 'Field name')" :disabled="disabled" @blur="commit">
+      <select v-model="operator" :aria-label="locale.t('condition.operator', 'Condition operator')" :disabled="disabled" @change="commit">
         <option v-for="item in operators" :key="item.value" :value="item.value">{{ item.label }}</option>
       </select>
       <div class="mx-config-form-designer__typed-value">
-        <select :value="literalType" aria-label="Condition value type" :disabled="disabled" @change="changeLiteralType(($event.currentTarget as HTMLSelectElement).value as LiteralType)">
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="boolean">Boolean</option>
+        <select :value="literalType" :aria-label="locale.t('condition.valueType', 'Condition value type')" :disabled="disabled" @change="changeLiteralType(($event.currentTarget as HTMLSelectElement).value as LiteralType)">
+          <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
+          <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
+          <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
         </select>
-        <select v-if="literalType === 'boolean'" v-model="literalValue" aria-label="Condition value" :disabled="disabled" @change="commit">
-          <option :value="true">True</option>
-          <option :value="false">False</option>
+        <select v-if="literalType === 'boolean'" v-model="literalValue" :aria-label="locale.t('condition.value', 'Condition value')" :disabled="disabled" @change="commit">
+          <option :value="true">{{ locale.t('value.true', 'True') }}</option>
+          <option :value="false">{{ locale.t('value.false', 'False') }}</option>
         </select>
-        <input v-else-if="literalType === 'number'" :value="literalValue" type="number" aria-label="Condition value" :disabled="disabled" @change="updateNumber">
-        <input v-else v-model="literalValue" type="text" aria-label="Condition value" placeholder="Value" :disabled="disabled" @blur="commit">
+        <input v-else-if="literalType === 'number'" :value="literalValue" type="number" :aria-label="locale.t('condition.value', 'Condition value')" :disabled="disabled" @change="updateNumber">
+        <input v-else v-model="literalValue" type="text" :aria-label="locale.t('condition.value', 'Condition value')" :placeholder="locale.t('condition.valuePlaceholder', 'Value')" :disabled="disabled" @blur="commit">
       </div>
     </div>
   </div>

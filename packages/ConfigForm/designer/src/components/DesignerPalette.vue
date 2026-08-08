@@ -3,11 +3,13 @@ import type { DesignerMaterialDefinition } from '../registry'
 import { Search } from '@lucide/vue'
 import Sortable from 'sortablejs'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useDesignerLocale } from '../locale'
 
 const props = defineProps<{
   materials: DesignerMaterialDefinition[]
   readonly?: boolean
 }>()
+const locale = useDesignerLocale()
 
 const emit = defineEmits<{
   addMaterial: [materialKey: string]
@@ -20,13 +22,14 @@ let sortables: Sortable[] = []
 const groups = computed(() => {
   const normalized = query.value.trim().toLowerCase()
   const matched = normalized
-    ? props.materials.filter(material => `${material.title} ${material.category}`.toLowerCase().includes(normalized))
+    ? props.materials.filter(material => `${locale.materialTitle(material)} ${locale.materialCategory(material)}`.toLowerCase().includes(normalized))
     : props.materials
   const grouped = new Map<string, DesignerMaterialDefinition[]>()
   for (const material of matched) {
-    const entries = grouped.get(material.category) ?? []
+    const category = locale.materialCategory(material)
+    const entries = grouped.get(category) ?? []
     entries.push(material)
-    grouped.set(material.category, entries)
+    grouped.set(category, entries)
   }
   return [...grouped.entries()]
 })
@@ -67,10 +70,10 @@ onBeforeUnmount(destroySortable)
 </script>
 
 <template>
-  <aside class="mx-config-form-designer__palette" aria-label="Materials">
+  <aside class="mx-config-form-designer__palette" :aria-label="locale.t('palette.materials', 'Materials')">
     <div class="mx-config-form-designer__search">
       <Search :size="16" aria-hidden="true" />
-      <input v-model="query" type="search" placeholder="Search" aria-label="Search materials">
+      <input v-model="query" type="search" :placeholder="locale.t('palette.search', 'Search')" :aria-label="locale.t('palette.searchMaterials', 'Search materials')">
     </div>
     <div ref="listRef" class="mx-config-form-designer__palette-list">
       <section v-for="[category, entries] in groups" :key="category" class="mx-config-form-designer__palette-group">
@@ -84,18 +87,18 @@ onBeforeUnmount(destroySortable)
             data-designer-draggable
             :data-material-key="material.key"
             :disabled="readonly"
-            :title="material.title"
+            :title="locale.materialTitle(material)"
             @click="emit('addMaterial', material.key)"
           >
             <component :is="material.icon" v-if="material.icon" :size="17" aria-hidden="true" />
             <span class="mx-config-form-designer__palette-icon" v-else aria-hidden="true">
               {{ material.kind === 'field' ? 'F' : 'L' }}
             </span>
-            <span>{{ material.title }}</span>
+            <span>{{ locale.materialTitle(material) }}</span>
           </button>
         </div>
       </section>
-      <p v-if="groups.length === 0" class="mx-config-form-designer__empty-state">No materials</p>
+      <p v-if="groups.length === 0" class="mx-config-form-designer__empty-state">{{ locale.t('palette.empty', 'No materials') }}</p>
     </div>
   </aside>
 </template>

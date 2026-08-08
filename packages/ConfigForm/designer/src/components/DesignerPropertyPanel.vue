@@ -10,6 +10,7 @@ import type {
   DesignerPropertySetterDefinition,
 } from '../registry'
 import { computed, ref } from 'vue'
+import { useDesignerLocale } from '../locale'
 import DesignerSetter from './DesignerSetter.vue'
 
 const props = defineProps<{
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 type PropertyTab = 'properties' | 'validation' | 'conditions'
 const activeTab = ref<PropertyTab>('properties')
+const locale = useDesignerLocale()
 
 const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
   if (!props.node)
@@ -34,17 +36,19 @@ const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
   return [
     ...(props.node.kind === 'field'
       ? [
-          { key: 'field', label: 'Field', path: ['field'], control: 'text' as const },
-          { key: 'label', label: 'Label', path: ['label'], control: 'text' as const },
+          { key: 'field', label: locale.t('property.field', 'Field'), path: ['field'], control: 'text' as const },
+          { key: 'label', label: locale.t('property.label', 'Label'), path: ['label'], control: 'text' as const },
         ]
       : []),
-    { key: 'span', label: 'Span', path: ['span'], control: 'number' as const, min: 1, max: 12, step: 1 },
+    { key: 'span', label: locale.t('property.span', 'Span'), path: ['span'], control: 'number' as const, min: 1, max: 12, step: 1 },
   ]
 })
 
 const propertySetters = computed(() => [
   ...commonSetters.value,
-  ...(props.material?.setters.filter(setter => !['condition', 'validation'].includes(setter.control)) ?? []),
+  ...(props.material?.setters
+    .filter(setter => !['condition', 'validation'].includes(setter.control))
+    .map(setter => ({ ...setter, label: locale.materialSetterLabel(props.material!, setter.key, setter.label) })) ?? []),
 ].filter((setter, index, entries) => entries.findIndex(entry => entry.path.join('.') === setter.path.join('.')) === index))
 
 const conditionSetters = computed<DesignerPropertySetterDefinition[]>(() => {
@@ -55,14 +59,14 @@ const conditionSetters = computed<DesignerPropertySetterDefinition[]>(() => {
     : ['visible', 'hidden']
   return targets.map(target => ({
     key: `condition-${target}`,
-    label: target[0]!.toUpperCase() + target.slice(1),
+    label: locale.t(`condition.target.${target}`, target[0]!.toUpperCase() + target.slice(1)),
     path: ['conditions', target],
     control: 'condition',
   }))
 })
 
 const validationSetters = computed<DesignerPropertySetterDefinition[]>(() => props.node?.kind === 'field'
-  ? [{ key: 'validation', label: 'Rules', path: ['validation'], control: 'validation' }]
+  ? [{ key: 'validation', label: locale.t('property.rules', 'Rules'), path: ['validation'], control: 'validation' }]
   : [])
 
 const selectedDiagnostics = computed(() => props.node
@@ -89,16 +93,16 @@ function formSetter(
   return { key, label, path: [key], control, options, ...constraints }
 }
 
-const formSetters = [
-  formSetter('inline', 'Inline', 'boolean'),
-  formSetter('labelPosition', 'Label position', 'select', [
-    { label: 'Left', value: 'left' },
-    { label: 'Top', value: 'top' },
+const formSetters = computed(() => [
+  formSetter('inline', locale.t('property.inline', 'Inline'), 'boolean'),
+  formSetter('labelPosition', locale.t('property.labelPosition', 'Label position'), 'select', [
+    { label: locale.t('option.left', 'Left'), value: 'left' },
+    { label: locale.t('option.top', 'Top'), value: 'top' },
   ]),
-  formSetter('columns', 'Columns', 'number', undefined, { min: 1, max: 12, step: 1 }),
-  formSetter('gap', 'Gap', 'text'),
-  formSetter('fieldSpan', 'Field span', 'number', undefined, { min: 1, max: 12, step: 1 }),
-]
+  formSetter('columns', locale.t('property.columns', 'Columns'), 'number', undefined, { min: 1, max: 12, step: 1 }),
+  formSetter('gap', locale.t('property.gap', 'Gap'), 'text'),
+  formSetter('fieldSpan', locale.t('property.fieldSpan', 'Field span'), 'number', undefined, { min: 1, max: 12, step: 1 }),
+])
 
 function readFormValue(setter: DesignerPropertySetterDefinition): unknown {
   return props.document.form[setter.key as keyof DesignerFormSettings]
@@ -115,16 +119,16 @@ function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): v
 </script>
 
 <template>
-  <aside class="mx-config-form-designer__properties" aria-label="Properties">
+  <aside class="mx-config-form-designer__properties" :aria-label="locale.t('property.properties', 'Properties')">
     <template v-if="node">
       <div class="mx-config-form-designer__property-heading">
-        <strong>{{ node.kind === 'field' ? (node.label || node.field) : material?.title }}</strong>
+        <strong>{{ node.kind === 'field' ? (node.label || node.field) : material && locale.materialTitle(material) }}</strong>
         <code>{{ node.material }}</code>
       </div>
-      <div class="mx-config-form-designer__tabs" role="tablist" aria-label="Property views">
-        <button type="button" role="tab" :aria-selected="activeTab === 'properties'" @click="activeTab = 'properties'">Properties</button>
-        <button v-if="node.kind === 'field'" type="button" role="tab" :aria-selected="activeTab === 'validation'" @click="activeTab = 'validation'">Validation</button>
-        <button type="button" role="tab" :aria-selected="activeTab === 'conditions'" @click="activeTab = 'conditions'">Conditions</button>
+      <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
+        <button type="button" role="tab" :aria-selected="activeTab === 'properties'" @click="activeTab = 'properties'">{{ locale.t('property.properties', 'Properties') }}</button>
+        <button v-if="node.kind === 'field'" type="button" role="tab" :aria-selected="activeTab === 'validation'" @click="activeTab = 'validation'">{{ locale.t('property.validation', 'Validation') }}</button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'conditions'" @click="activeTab = 'conditions'">{{ locale.t('property.conditions', 'Conditions') }}</button>
       </div>
 
       <div class="mx-config-form-designer__property-fields">
@@ -141,7 +145,7 @@ function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): v
 
     <template v-else>
       <div class="mx-config-form-designer__property-heading">
-        <strong>Form</strong>
+        <strong>{{ locale.t('property.form', 'Form') }}</strong>
       </div>
       <div class="mx-config-form-designer__property-fields">
         <DesignerSetter
@@ -155,7 +159,7 @@ function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): v
       </div>
     </template>
 
-    <ul v-if="selectedDiagnostics.length" class="mx-config-form-designer__property-diagnostics" aria-label="Diagnostics">
+    <ul v-if="selectedDiagnostics.length" class="mx-config-form-designer__property-diagnostics" :aria-label="locale.t('property.diagnostics', 'Diagnostics')">
       <li v-for="(diagnostic, index) in selectedDiagnostics" :key="`${diagnostic.code}-${index}`">
         {{ diagnostic.message }}
       </li>

@@ -880,3 +880,45 @@ test.describe('ConfigForm visual designer', () => {
     expect(await readDesignerPreviewSignature(importedPreview)).toEqual(exportedPreviewSignature)
   })
 })
+
+test('standalone designer entry exposes localized controls on narrow screens', async ({ page }) => {
+  await page.goto('/designer.html')
+  await expect(page.getByRole('heading', { name: '可视化表单设计器', exact: true })).toBeVisible()
+
+  const designer = page.getByTestId('designer-example')
+  await expect(designer.getByRole('toolbar', { name: '设计器操作' })).toBeVisible()
+  await expect(designer.getByRole('complementary', { name: '物料', exact: true })).toBeVisible()
+  await expect(designer.getByRole('button', { name: '输入框', exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'English', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Visual Form Designer', exact: true })).toBeVisible()
+  await expect(designer.getByRole('toolbar', { name: 'Designer commands', exact: true })).toBeVisible()
+  await expect(designer.getByRole('button', { name: 'Input', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '中文', exact: true }).click()
+  await expect(designer.getByRole('toolbar', { name: '设计器操作', exact: true })).toBeVisible()
+
+  await page.setViewportSize({ width: 900, height: 900 })
+  const workspace = designer.locator('.mx-config-form-designer__workspace')
+  const palette = designer.locator('.mx-config-form-designer__palette')
+  const properties = designer.locator('.mx-config-form-designer__properties')
+  const [workspaceBox, paletteBox, propertiesBox] = await Promise.all([
+    workspace.boundingBox(),
+    palette.boundingBox(),
+    properties.boundingBox(),
+  ])
+  expect(workspaceBox).not.toBeNull()
+  expect(paletteBox).not.toBeNull()
+  expect(propertiesBox).not.toBeNull()
+  expect(propertiesBox!.y).toBeGreaterThan(paletteBox!.y)
+  expect(Math.abs(propertiesBox!.x - workspaceBox!.x)).toBeLessThanOrEqual(1)
+  expect(Math.abs(propertiesBox!.width - workspaceBox!.width)).toBeLessThanOrEqual(1)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  await expect(designer.getByRole('button', { name: '导出文档', exact: true })).toBeVisible()
+
+  await designer.locator('[data-focus-node-id="designer-name"]').click()
+  const nodeActions = designer.locator('[data-node-id="designer-name"] > .mx-config-form-designer__node-header')
+  for (const name of ['上移节点', '下移节点', '移入上一个容器', '移出容器', '复制节点', '删除节点'])
+    await expect(nodeActions.getByRole('button', { name, exact: true })).toBeVisible()
+})

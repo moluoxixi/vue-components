@@ -2,6 +2,7 @@
 import type { DesignerJsonValue } from '../document'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from '@lucide/vue'
 import { ref, watch } from 'vue'
+import { useDesignerLocale } from '../locale'
 
 type OptionValueType = 'text' | 'number' | 'boolean' | 'complex'
 
@@ -17,6 +18,7 @@ const props = defineProps<{
   modelValue: unknown
   disabled?: boolean
 }>()
+const locale = useDesignerLocale()
 
 const emit = defineEmits<{
   'update:modelValue': [value: DesignerJsonValue[]]
@@ -100,42 +102,42 @@ function updateNumber(row: OptionDraft, event: Event): void {
 </script>
 
 <template>
-  <div class="mx-config-form-designer__collection-editor" aria-label="Options editor">
+  <div class="mx-config-form-designer__collection-editor" :aria-label="locale.t('options.editor', 'Options editor')">
     <div v-for="(row, index) in rows" :key="index" class="mx-config-form-designer__collection-row">
       <div class="mx-config-form-designer__collection-row-heading">
-        <span>Option {{ index + 1 }}</span>
+        <span>{{ locale.t('options.option', 'Option {index}', { index: index + 1 }) }}</span>
         <span class="mx-config-form-designer__mini-actions">
-          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="`Move option ${index + 1} up`" :disabled="disabled || index === 0" @click="moveRow(index, -1)">
+          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('options.moveUp', 'Move option {index} up', { index: index + 1 })" :disabled="disabled || index === 0" @click="moveRow(index, -1)">
             <ChevronUp :size="14" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="`Move option ${index + 1} down`" :disabled="disabled || index === rows.length - 1" @click="moveRow(index, 1)">
+          <button type="button" class="mx-config-form-designer__mini-button" :aria-label="locale.t('options.moveDown', 'Move option {index} down', { index: index + 1 })" :disabled="disabled || index === rows.length - 1" @click="moveRow(index, 1)">
             <ChevronDown :size="14" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="`Delete option ${index + 1}`" :disabled="disabled" @click="removeRow(index)">
+          <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('options.delete', 'Delete option {index}', { index: index + 1 })" :disabled="disabled" @click="removeRow(index)">
             <Trash2 :size="14" aria-hidden="true" />
           </button>
         </span>
       </div>
-      <input v-model="row.label" type="text" :aria-label="`Option ${index + 1} label`" placeholder="Label" :disabled="disabled" @blur="commit">
+      <input v-model="row.label" type="text" :aria-label="locale.t('options.labelAria', 'Option {index} label', { index: index + 1 })" :placeholder="locale.t('property.label', 'Label')" :disabled="disabled" @blur="commit">
       <div class="mx-config-form-designer__typed-value">
-        <select :value="row.valueType" :aria-label="`Option ${index + 1} value type`" :disabled="disabled" @change="changeType(row, ($event.currentTarget as HTMLSelectElement).value as OptionValueType)">
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="boolean">Boolean</option>
-          <option v-if="row.valueType === 'complex'" value="complex" disabled>Structured</option>
+        <select :value="row.valueType" :aria-label="locale.t('options.valueTypeAria', 'Option {index} value type', { index: index + 1 })" :disabled="disabled" @change="changeType(row, ($event.currentTarget as HTMLSelectElement).value as OptionValueType)">
+          <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
+          <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
+          <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
+          <option v-if="row.valueType === 'complex'" value="complex" disabled>{{ locale.t('valueType.structured', 'Structured') }}</option>
         </select>
-        <output v-if="row.valueType === 'complex'">Structured value</output>
-        <select v-else-if="row.valueType === 'boolean'" v-model="row.value" :aria-label="`Option ${index + 1} value`" :disabled="disabled" @change="commit">
-          <option :value="true">True</option>
-          <option :value="false">False</option>
+        <output v-if="row.valueType === 'complex'">{{ locale.t('valueType.structuredValue', 'Structured value') }}</output>
+        <select v-else-if="row.valueType === 'boolean'" v-model="row.value" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :disabled="disabled" @change="commit">
+          <option :value="true">{{ locale.t('value.true', 'True') }}</option>
+          <option :value="false">{{ locale.t('value.false', 'False') }}</option>
         </select>
-        <input v-else-if="row.valueType === 'number'" :value="row.value" type="number" :aria-label="`Option ${index + 1} value`" :disabled="disabled" @change="updateNumber(row, $event)">
-        <input v-else v-model="row.value" type="text" :aria-label="`Option ${index + 1} value`" placeholder="Value" :disabled="disabled" @blur="commit">
+        <input v-else-if="row.valueType === 'number'" :value="row.value" type="number" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :disabled="disabled" @change="updateNumber(row, $event)">
+        <input v-else v-model="row.value" type="text" :aria-label="locale.t('options.valueAria', 'Option {index} value', { index: index + 1 })" :placeholder="locale.t('condition.valuePlaceholder', 'Value')" :disabled="disabled" @blur="commit">
       </div>
     </div>
     <button type="button" class="mx-config-form-designer__add-row" :disabled="disabled" @click="addRow">
       <Plus :size="15" aria-hidden="true" />
-      Add option
+      {{ locale.t('options.add', 'Add option') }}
     </button>
   </div>
 </template>

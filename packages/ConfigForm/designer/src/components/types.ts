@@ -1,11 +1,13 @@
 import type { DesignerCompileResult } from '../compiler'
 import type { DesignerDiagnostic, DesignerDocument, DesignerNode } from '../document'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
+import type { DesignerLocaleOptions } from '../locale'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 
 export interface ConfigFormDesignerProps {
   document: DesignerDocument
   registry: DesignerRegistry
+  locale?: DesignerLocaleOptions
   historyLimit?: number
   readonly?: boolean
 }

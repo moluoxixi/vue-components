@@ -3,6 +3,7 @@ import type { DesignerDocument } from '../document'
 import type { DesignerDropTarget } from '../history'
 import type { DesignerRegistry } from '../registry'
 import type { DesignerNodeAction } from './types'
+import { useDesignerLocale } from '../locale'
 import DesignerNodeList from './DesignerNodeList.vue'
 
 defineProps<{
@@ -18,6 +19,7 @@ const emit = defineEmits<{
   addMaterial: [materialKey: string, target: DesignerDropTarget]
   action: [action: DesignerNodeAction, nodeId: string]
 }>()
+const locale = useDesignerLocale()
 
 function forwardMove(nodeId: string, target: DesignerDropTarget): void {
   emit('move', nodeId, target)
@@ -33,7 +35,7 @@ function forwardAction(action: DesignerNodeAction, nodeId: string): void {
 </script>
 
 <template>
-  <main class="mx-config-form-designer__canvas" aria-label="Form canvas" @click.self="emit('select', '')">
+  <main class="mx-config-form-designer__canvas" :aria-label="locale.t('canvas.form', 'Form canvas')" @click.self="emit('select', '')">
     <div class="mx-config-form-designer__canvas-sheet">
       <DesignerNodeList
         :nodes="document.nodes"

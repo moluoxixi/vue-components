@@ -2,6 +2,7 @@
 import type { DesignerPropertySetterDefinition } from '../registry'
 import { Minus, Plus } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
+import { useDesignerLocale } from '../locale'
 import DesignerConditionSetter from './DesignerConditionSetter.vue'
 import DesignerOptionsSetter from './DesignerOptionsSetter.vue'
 import DesignerValidationSetter from './DesignerValidationSetter.vue'
@@ -15,6 +16,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   commit: [value: unknown]
 }>()
+const locale = useDesignerLocale()
 
 const textDraft = ref('')
 const compound = computed(() => ['options', 'condition', 'validation'].includes(props.setter.control))
@@ -104,7 +106,7 @@ function commitCustom(value: unknown): void {
       @keydown.esc.prevent="resetDraft"
     />
     <div v-else-if="setter.control === 'number'" class="mx-config-form-designer__stepper">
-      <button type="button" :aria-label="`Decrease ${setter.label}`" :disabled="readonly || (setter.min !== undefined && Number(textDraft) <= setter.min)" @click="stepNumber(-1)">
+      <button type="button" :aria-label="locale.t('setter.decrease', 'Decrease {label}', { label: setter.label })" :disabled="readonly || (setter.min !== undefined && Number(textDraft) <= setter.min)" @click="stepNumber(-1)">
         <Minus :size="15" aria-hidden="true" />
       </button>
       <input
@@ -118,7 +120,7 @@ function commitCustom(value: unknown): void {
         @blur="commitText"
         @keydown="handleTextKeydown"
       >
-      <button type="button" :aria-label="`Increase ${setter.label}`" :disabled="readonly || (setter.max !== undefined && Number(textDraft) >= setter.max)" @click="stepNumber(1)">
+      <button type="button" :aria-label="locale.t('setter.increase', 'Increase {label}', { label: setter.label })" :disabled="readonly || (setter.max !== undefined && Number(textDraft) >= setter.max)" @click="stepNumber(1)">
         <Plus :size="15" aria-hidden="true" />
       </button>
     </div>
@@ -131,7 +133,7 @@ function commitCustom(value: unknown): void {
       :disabled="readonly"
       @click="commitBoolean"
     >
-      <span>{{ value ? 'On' : 'Off' }}</span>
+      <span>{{ value ? locale.t('switch.on', 'On') : locale.t('switch.off', 'Off') }}</span>
       <span class="mx-config-form-designer__switch" :class="{ 'is-on': Boolean(value) }" aria-hidden="true"><span /></span>
     </button>
     <div
