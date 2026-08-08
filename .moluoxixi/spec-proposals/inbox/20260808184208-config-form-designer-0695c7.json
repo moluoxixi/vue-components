@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260808184208-config-form-designer-0695c7",
+  "createdAt": "2026-08-08T18:42:08.154Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-08-config-form-designer-advanced",
+  "reason": "Preserve cross-layer ConfigForm designer contracts and prevent raw/resolved state plus native input normalization regressions",
+  "target": "frontend/config-form-designer.md",
+  "kind": "file",
+  "baseHash": null,
+  "contentFile": "content/20260808184208-config-form-designer-0695c7.md",
+  "contentHash": "78f4f04531df7a5009a448ecdb5eabb42ca5f63167bfce835b377e389e7638d6"
+}

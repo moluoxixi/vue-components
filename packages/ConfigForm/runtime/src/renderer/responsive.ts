@@ -54,6 +54,6 @@ function clampResolvedLayout(layout: ConfigFormResolvedLayout): ConfigFormResolv
 
 function normalizeLayoutValue(value: number | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value)
-    ? Math.max(1, Math.floor(value))
+    ? Math.min(24, Math.max(1, Math.floor(value)))
     : fallback
 }

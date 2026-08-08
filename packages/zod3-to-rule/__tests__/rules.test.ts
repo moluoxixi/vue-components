@@ -178,6 +178,70 @@ describe('zod3-to-rule', () => {
     expect(compiled.diagnostics).toEqual([
       expect.objectContaining({ code: 'RULE_OPTIONAL_REQUIRED_CONFLICT' }),
     ])
+    expect(compiled.schema.safeParse(undefined).success).toBe(false)
+  })
+
+  it('keeps required semantics after nullable and optional wrappers', () => {
+    const schema = rulesToZod({
+      version: 1,
+      base: { type: 'string' },
+      rules: [{ kind: 'required', message: 'Required' }],
+      nullable: true,
+      optional: true,
+    })
+
+    expect(schema.safeParse(null).success).toBe(false)
+    expect(schema.safeParse(undefined).success).toBe(false)
+    expect(schema.safeParse('  ').success).toBe(false)
+    expect(schema.safeParse('value').success).toBe(true)
+  })
+
+  it('compares strings and date values consistently', async () => {
+    const strings = compileRules({
+      version: 1,
+      base: { type: 'string' },
+      rules: [{ kind: 'compare', field: 'start', operator: 'gte' }],
+    })
+    await expect(strings.validator?.('b', { start: 'a' })).resolves.toEqual([])
+    await expect(strings.validator?.('a', { start: 'b' })).resolves.toHaveLength(1)
+
+    const dates = compileRules({
+      version: 1,
+      base: { type: 'date' },
+      rules: [{ kind: 'compare', field: 'start', operator: 'eq' }],
+    })
+    await expect(dates.validator?.(
+      new Date('2026-01-01T00:00:00.000Z'),
+      { start: new Date('2026-01-01T00:00:00.000Z') },
+    )).resolves.toEqual([])
+    await expect(dates.validator?.(
+      new Date('2026-01-01T00:00:00.000Z'),
+      { start: '2026-01-01T00:00:00.000Z' },
+    )).resolves.toEqual([])
+    const orderedDates = compileRules({
+      version: 1,
+      base: { type: 'date' },
+      rules: [{ kind: 'compare', field: 'start', operator: 'gte' }],
+    })
+    await expect(orderedDates.validator?.(
+      new Date('2026-01-02T00:00:00.000Z'),
+      { start: '2026-01-01T00:00:00.000Z' },
+    )).resolves.toEqual([])
+    await expect(strings.validator?.(2, { start: '10' })).resolves.toHaveLength(1)
+    const mismatchedEquality = compileRules({
+      version: 1,
+      base: { type: 'number' },
+      rules: [{ kind: 'compare', field: 'start', operator: 'neq' }],
+    })
+    await expect(mismatchedEquality.validator?.(2, { start: '2' })).resolves.toHaveLength(1)
+    const dateSchema = rulesToZod({
+      version: 1,
+      base: { type: 'date' },
+      rules: [],
+    })
+    expect(dateSchema.safeParse('2026-01-01T00:00:00.000Z').success).toBe(true)
+    expect(dateSchema.safeParse(null).success).toBe(false)
+    expect(dateSchema.safeParse(false).success).toBe(false)
   })
 
   it('exports supported Zod checks and preserves optional/nullable wrappers', () => {

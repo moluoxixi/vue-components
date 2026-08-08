@@ -335,6 +335,33 @@ describe('config form designer', () => {
     expect(exposed.exportDocument()).toBe(exportedBeforePreview)
   })
 
+  it('activates linkage preview when a condition is edited', async () => {
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'enabled',
+        kind: 'field',
+        material: 'element.input',
+        field: 'enabled',
+        label: 'Enabled',
+      }],
+    }
+    const wrapper = mount(ConfigFormDesigner, { props: { document, registry } })
+
+    await wrapper.get('[data-node-id="enabled"] [data-focus-node-id="enabled"]').trigger('click')
+    await wrapper.get('[role="tab"][aria-selected="false"]:last-child').trigger('click')
+    const disabledSetter = wrapper.findAll('.mx-config-form-designer__setter')
+      .find(setter => setter.text().includes('Disabled'))!
+    await disabledSetter.findAll('button').find(button => button.text() === 'Always')!.trigger('click')
+
+    expect(wrapper.get('button[aria-label="Linkage preview"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-node-id="enabled"] input').attributes('disabled')).toBeDefined()
+    expect(lastDocument(wrapper).nodes[0]).toMatchObject({
+      conditions: { disabled: { kind: 'literal', value: true } },
+    })
+  })
+
   it('adds materials, commits text on blur, and preserves undo/redo boundaries', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       attachTo: document.body,

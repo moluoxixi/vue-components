@@ -783,6 +783,10 @@ test.describe('ConfigForm visual designer', () => {
     const unselectedOverlay = await enabledInitialNode.evaluate(element => getComputedStyle(element, '::after').content)
     expect(unselectedOverlay).toBe('none')
     await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    const inheritedSpan = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Span' })
+    await expect(inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true })).toHaveValue('24')
+    await expect(inheritedSpan).toContainText('Inherited')
+    await inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true }).blur()
     const selectedBox = await enabledInitialNode.boundingBox()
     expect(selectedBox?.width).toBeCloseTo(unselectedBox!.width, 1)
     expect(selectedBox?.height).toBeCloseTo(unselectedBox!.height, 1)
@@ -893,9 +897,14 @@ test.describe('ConfigForm visual designer', () => {
     const requiredSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Required' })
     await requiredSetter.getByRole('button', { name: 'Always', exact: true }).click()
     await expect(requiredSetter.locator('textarea')).toHaveCount(0)
+    await expect(linkagePreview).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.locator('.mx-config-form-designer__node.is-selected input')).toHaveAttribute('aria-required', 'true')
 
     const enabledNode = canvas.locator('[data-node-id="designer-enabled"]')
     await enabledNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    const disabledSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Disabled' })
+    await disabledSetter.getByRole('button', { name: 'Always', exact: true }).click()
+    await expect(enabledNode.locator('.el-switch__input')).toBeDisabled()
     await enabledNode.getByRole('button', { name: 'Move node up', exact: true }).click()
     await enabledNode.getByRole('button', { name: 'Move node into previous container', exact: true }).click()
     await expect(canvas.locator('[data-node-id="designer-card"] [data-node-id="designer-enabled"]')).toBeVisible()
@@ -920,6 +929,10 @@ test.describe('ConfigForm visual designer', () => {
       mobile: { columns: 1, fieldSpan: 1 },
     })
     expect(exportedEnabled.defaultValue).toBe(true)
+    expect(exportedEnabled).not.toHaveProperty('span')
+    expect(exportedEnabled.conditions).toMatchObject({
+      disabled: { kind: 'literal', value: true },
+    })
     expect(exportedChoice.props.optionSource).toEqual({ kind: 'dictionary', key: 'environments' })
     expect(exportedEmail).toMatchObject({
       material: 'element.input',

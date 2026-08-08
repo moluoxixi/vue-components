@@ -141,7 +141,11 @@ function handleAddMaterial(materialKey: string, target: DesignerDropTarget): voi
 }
 
 function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
-  dispatch({ type: 'updateNodePath', nodeId, path, value })
+  const changed = dispatch({ type: 'updateNodePath', nodeId, path, value })
+  if (changed && path[0] === 'conditions' && !linkagePreview.value) {
+    linkagePreview.value = true
+    previewModel.value = createDesignerPreviewModel(controller.document.value)
+  }
 }
 
 function handleUpdateForm(changes: Record<string, unknown>): void {
@@ -343,6 +347,8 @@ defineExpose<ConfigFormDesignerExpose>({
           :node="controller.selectedNode.value"
           :material="controller.selectedMaterial.value"
           :diagnostics="controller.diagnostics.value"
+          :breakpoint="activeBreakpoint"
+          :validator-options="registry.listValidators()"
           :readonly="readonly"
           @update-path="handleUpdatePath"
           @update-form="handleUpdateForm"

@@ -187,6 +187,7 @@ export function resolveNodeVisibility(
   }
 
   const visible = resolveValue(node.visible, values, true)
+    && !resolveValue(node.hidden, values, false)
   cache?.set(node, visible)
   return visible
 }

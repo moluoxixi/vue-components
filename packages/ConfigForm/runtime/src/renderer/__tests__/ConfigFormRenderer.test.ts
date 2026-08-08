@@ -167,6 +167,21 @@ describe('config form renderer', () => {
     expect(cellStyle).toContain('--mx-config-form-span-mobile: 4')
   })
 
+  it('clamps external layout values to the 24-column contract', () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        columns: 30,
+        fieldSpan: 28,
+        fields: [defineField<TestValues>({ component: InputStub, field: 'name' })],
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        namespace: 'bounded-form',
+      },
+    })
+
+    expect(wrapper.get('.bounded-form__row').attributes('style')).toContain('--mx-config-form-columns-desktop: 24')
+    expect(wrapper.get('.bounded-form__cell').attributes('style')).toContain('--mx-config-form-span-desktop: 24')
+  })
+
   it('支持 label 左右和上下布局，并保持真实 label/control 结构', async () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {

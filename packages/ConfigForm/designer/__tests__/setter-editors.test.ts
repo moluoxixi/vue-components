@@ -1,3 +1,4 @@
+import { parseRuleSet } from '@moluoxixi/zod3-to-rule'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import DesignerConditionSetter from '../src/components/DesignerConditionSetter.vue'
@@ -27,6 +28,42 @@ describe('designer structured setters', () => {
     await input.setValue('12')
     await input.trigger('change')
     expect(wrapper.emitted('commit')?.at(-1)).toEqual([12])
+  })
+
+  it('shows an inherited span without materializing it on blur', async () => {
+    const node = {
+      id: 'name',
+      kind: 'field' as const,
+      material: 'test.input',
+      field: 'name',
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        breakpoint: 'mobile',
+        diagnostics: [],
+        document: {
+          version: 1,
+          form: {
+            fieldSpan: 8,
+            responsive: { mobile: { columns: 4, fieldSpan: 2 } },
+          },
+          nodes: [node],
+        },
+        node,
+      },
+    })
+
+    const span = wrapper.findAll('.mx-config-form-designer__setter')
+      .find(setter => setter.text().includes('Span'))!
+    expect((span.get('input').element as HTMLInputElement).value).toBe('2')
+    expect(span.text()).toContain('Inherited')
+
+    await span.get('input').trigger('blur')
+    expect(wrapper.emitted('updatePath')).toBeUndefined()
+
+    await span.get('input').setValue('3')
+    await span.get('input').trigger('change')
+    expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['name', ['span'], 3])
   })
 
   it('keeps boolean default values distinct from the unset state', async () => {
@@ -212,6 +249,92 @@ describe('designer structured setters', () => {
       key: 'strong-password',
       params: { score: 3 },
       message: 'Use a stronger password',
+    })
+  })
+
+  it('keeps date and numeric rule edits inside the serializable rule contract', async () => {
+    const date = mount(DesignerValidationSetter, {
+      props: {
+        modelValue: {
+          version: 1,
+          base: { type: 'date' },
+          rules: [{ kind: 'dateMin', value: '2025-01-02T00:00:00.000Z' }],
+        },
+      },
+    })
+    const dateInput = date.get('input[type="date"]')
+    expect((dateInput.element as HTMLInputElement).value).toBe('2025-01-02')
+    await dateInput.setValue('2026-03-04')
+    await dateInput.trigger('change')
+    const dateRules = date.emitted('update:modelValue')!.at(-1)![0]
+    expect(dateRules).toMatchObject({
+      rules: [{ kind: 'dateMin', value: '2026-03-04T00:00:00.000Z' }],
+    })
+    expect(parseRuleSet(dateRules).success).toBe(true)
+
+    const number = mount(DesignerValidationSetter, {
+      props: {
+        modelValue: {
+          version: 1,
+          base: { type: 'number' },
+          rules: [{ kind: 'multipleOf', value: 2 }],
+        },
+      },
+    })
+    const numberInput = number.get('input[type="number"]')
+    await numberInput.setValue('')
+    expect(number.emitted('update:modelValue')).toBeUndefined()
+    expect((numberInput.element as HTMLInputElement).value).toBe('2')
+  })
+
+  it('keeps literal number values numeric and restores invalid edits', async () => {
+    const wrapper = mount(DesignerValidationSetter, {
+      props: {
+        modelValue: {
+          version: 1,
+          base: { type: 'literal', value: 2 },
+          rules: [],
+        },
+      },
+    })
+
+    const input = wrapper.get('input[aria-label="Literal value"]')
+    await input.setValue('5')
+    await input.trigger('blur')
+    expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toMatchObject({
+      base: { type: 'literal', value: 5 },
+    })
+
+    await input.setValue('')
+    await input.trigger('blur')
+    expect((input.element as HTMLInputElement).value).toBe('5')
+    expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toMatchObject({
+      base: { type: 'literal', value: 5 },
+    })
+  })
+
+  it('uses known fields and validators when creating executable rules', async () => {
+    const wrapper = mount(DesignerValidationSetter, {
+      props: {
+        currentField: 'end',
+        fieldOptions: ['start', 'end'],
+        validatorOptions: ['available'],
+        modelValue: {
+          version: 1,
+          base: { type: 'number' },
+          rules: [{ kind: 'required' }],
+        },
+      },
+    })
+
+    await wrapper.get('select[aria-label="Rule 1 type"]').setValue('compare')
+    expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toMatchObject({
+      rules: [{ kind: 'compare', field: 'start', operator: 'eq' }],
+    })
+
+    await wrapper.get('select[aria-label="Rule 1 type"]').setValue('custom')
+    expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toMatchObject({
+      rules: [{ kind: 'custom', key: 'available' }],
     })
   })
 })

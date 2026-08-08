@@ -85,6 +85,8 @@ export interface ComponentNodeConfig {
   span?: number
   /** 节点显隐条件；容器隐藏时其子树字段也按隐藏语义处理。 */
   visible?: FieldCondition<FormValues>
+  /** 节点隐藏条件；优先级低于父节点，但与 visible 共同决定渲染。 */
+  hidden?: FieldCondition<FormValues>
   /** 传给渲染组件的 props。 */
   props?: Record<string, unknown>
   /** 子级 slots；其中的表单节点配置或 render 函数可以来自 defineField(...) 或普通 config。 */

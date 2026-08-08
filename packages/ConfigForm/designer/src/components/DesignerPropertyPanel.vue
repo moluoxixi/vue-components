@@ -5,12 +5,15 @@ import type {
   DesignerFormSettings,
   DesignerNode,
 } from '../document'
+import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type {
   DesignerMaterialDefinition,
   DesignerPropertySetterDefinition,
   DesignerSetterOption,
 } from '../registry'
+import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed, ref } from 'vue'
+import { walkDesignerNodes } from '../document'
 import { useDesignerLocale } from '../locale'
 import DesignerSetter from './DesignerSetter.vue'
 import DesignerResponsiveSettings from './DesignerResponsiveSettings.vue'
@@ -20,6 +23,8 @@ const props = defineProps<{
   node?: DesignerNode
   material?: DesignerMaterialDefinition
   diagnostics: DesignerDiagnostic[]
+  breakpoint?: ConfigFormBreakpoint
+  validatorOptions?: string[]
   readonly?: boolean
 }>()
 
@@ -31,6 +36,20 @@ const emit = defineEmits<{
 type PropertyTab = 'properties' | 'validation' | 'conditions'
 const activeTab = ref<PropertyTab>('properties')
 const locale = useDesignerLocale()
+const resolvedLayout = computed(() => resolveConfigFormLayout(
+  props.document.form.columns,
+  props.document.form.fieldSpan,
+  props.document.form.responsive,
+  props.breakpoint ?? 'desktop',
+))
+const fieldOptions = computed(() => {
+  const fields: string[] = []
+  walkDesignerNodes(props.document.nodes, ({ node }) => {
+    if (node.kind === 'field')
+      fields.push(node.field)
+  })
+  return fields
+})
 
 const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
   if (!props.node)
@@ -93,6 +112,12 @@ function readPath(path: string[]): unknown {
     value = (value as Record<string, unknown>)[segment]
   }
   return value
+}
+
+function inheritedValue(setter: DesignerPropertySetterDefinition): unknown {
+  return setter.key === 'span' && readPath(setter.path) === undefined
+    ? resolvedLayout.value.fieldSpan
+    : undefined
 }
 
 function resolveSetterOptions(setter: DesignerPropertySetterDefinition): DesignerSetterOption[] | undefined {
@@ -179,8 +204,11 @@ function commitResponsive(value: DesignerFormSettings['responsive']): void {
           :key="setter.key"
           :setter="setter"
           :value="readPath(setter.path)"
+          :inherited-value="inheritedValue(setter)"
           :readonly="readonly"
           :node="node"
+          :field-options="fieldOptions"
+          :validator-options="validatorOptions"
           @commit="commitNodePath($event, setter)"
         />
       </div>

@@ -12,6 +12,9 @@ type RuleDraft = { kind: RuleKind, message?: string } & Record<string, unknown>
 const props = defineProps<{
   modelValue: unknown
   disabled?: boolean
+  currentField?: string
+  fieldOptions?: string[]
+  validatorOptions?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -37,7 +40,8 @@ const baseTypes = computed<{ label: string, value: BaseType }[]>(() => [
   { label: locale.t('valueType.literal', 'Literal'), value: 'literal' },
 ])
 
-const ruleTypes = computed<{ label: string, value: RuleKind }[]>(() => [
+const comparableFields = computed(() => (props.fieldOptions ?? []).filter(field => field !== props.currentField))
+const ruleTypes = computed<{ disabled?: boolean, label: string, value: RuleKind }[]>(() => [
   { label: locale.t('rule.required', 'Required'), value: 'required' },
   { label: locale.t('rule.minLength', 'Minimum length'), value: 'minLength' },
   { label: locale.t('rule.maxLength', 'Maximum length'), value: 'maxLength' },
@@ -53,8 +57,8 @@ const ruleTypes = computed<{ label: string, value: RuleKind }[]>(() => [
   { label: locale.t('rule.multipleOf', 'Multiple of'), value: 'multipleOf' },
   { label: locale.t('rule.dateMin', 'Earliest date'), value: 'dateMin' },
   { label: locale.t('rule.dateMax', 'Latest date'), value: 'dateMax' },
-  { label: locale.t('rule.compare', 'Compare field'), value: 'compare' },
-  { label: locale.t('rule.custom', 'Custom'), value: 'custom' },
+  { label: locale.t('rule.compare', 'Compare field'), value: 'compare', disabled: comparableFields.value.length === 0 },
+  { label: locale.t('rule.custom', 'Custom'), value: 'custom', disabled: (props.validatorOptions?.length ?? 0) === 0 },
 ])
 
 const numberKinds: RuleKind[] = ['minLength', 'maxLength', 'length', 'min', 'max', 'multipleOf']
@@ -171,13 +175,13 @@ function defaultRule(kind: RuleKind): RuleDraft {
   if (numberKinds.includes(kind))
     return { kind, value: kind === 'multipleOf' ? 1 : 0 }
   if (kind === 'regex')
-    return { kind, source: '' }
+    return { kind, source: '.*' }
   if (kind === 'dateMin' || kind === 'dateMax')
-    return { kind, value: '' }
+    return { kind, value: `${localCalendarDate()}T00:00:00.000Z` }
   if (kind === 'compare')
-    return { kind, field: '', operator: 'eq' }
+    return { kind, field: comparableFields.value[0] ?? props.currentField ?? '', operator: 'eq' }
   if (kind === 'custom')
-    return { kind, key: '' }
+    return { kind, key: props.validatorOptions?.[0] ?? '' }
   return { kind }
 }
 
@@ -199,6 +203,85 @@ function changeRuleKind(index: number, kind: RuleKind): void {
 function updateRule(index: number, key: string, value: unknown): void {
   rules.value[index]![key] = value
   commit()
+}
+
+function localCalendarDate(): string {
+  const date = new Date()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+function dateInputValue(value: unknown): string {
+  if (typeof value !== 'string')
+    return ''
+  const calendarDate = /^(\d{4}-\d{2}-\d{2})/.exec(value)?.[1]
+  if (calendarDate)
+    return calendarDate
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
+}
+
+function updateDateRule(index: number, event: Event): void {
+  const input = event.currentTarget as HTMLInputElement
+  if (!input.value) {
+    input.value = dateInputValue(rules.value[index]?.value)
+    return
+  }
+  updateRule(index, 'value', `${input.value}T00:00:00.000Z`)
+}
+
+function updateNumberRule(index: number, event: Event): void {
+  const input = event.currentTarget as HTMLInputElement
+  const rule = rules.value[index]
+  const numeric = Number(input.value)
+  const valid = input.value.trim() !== ''
+    && Number.isFinite(numeric)
+    && (rule?.kind !== 'multipleOf' || numeric > 0)
+
+  if (!valid) {
+    input.value = String(rule?.value ?? '')
+    return
+  }
+
+  const value = rule && ['minLength', 'maxLength', 'length'].includes(rule.kind)
+    ? Math.max(0, Math.floor(numeric))
+    : numeric
+  input.value = String(value)
+  updateRule(index, 'value', value)
+}
+
+function updateLiteralValue(event: Event): void {
+  const input = event.currentTarget as HTMLInputElement
+  if (literalType.value !== 'number') {
+    literalValue.value = input.value
+    commit()
+    return
+  }
+
+  const numeric = Number(input.value)
+  if (input.value.trim() === '' || !Number.isFinite(numeric)) {
+    input.value = String(literalValue.value ?? '')
+    return
+  }
+
+  literalValue.value = numeric
+  input.value = String(numeric)
+  commit()
+}
+
+function fieldChoices(rule: RuleDraft): string[] {
+  return [...new Set([
+    ...(typeof rule.field === 'string' && rule.field ? [rule.field] : []),
+    ...comparableFields.value,
+  ])]
+}
+
+function validatorChoices(rule: RuleDraft): string[] {
+  return [...new Set([
+    ...(typeof rule.key === 'string' && rule.key ? [rule.key] : []),
+    ...(props.validatorOptions ?? []),
+  ])]
 }
 </script>
 
@@ -243,28 +326,30 @@ function updateRule(index: number, key: string, value: unknown): void {
           <option :value="true">{{ locale.t('value.true', 'True') }}</option>
           <option :value="false">{{ locale.t('value.false', 'False') }}</option>
         </select>
-        <input v-else v-model="literalValue" :type="literalType === 'number' ? 'number' : 'text'" aria-label="Literal value" :disabled="disabled" @blur="commit">
+        <input v-else :value="literalValue" :type="literalType === 'number' ? 'number' : 'text'" aria-label="Literal value" :disabled="disabled" @blur="updateLiteralValue">
       </div>
 
       <div class="mx-config-form-designer__rule-list">
         <div v-for="(rule, index) in rules" :key="index" class="mx-config-form-designer__rule-row">
           <div class="mx-config-form-designer__collection-row-heading">
             <select :value="rule.kind" :aria-label="locale.t('validation.ruleType', 'Rule {index} type', { index: index + 1 })" :disabled="disabled" @change="changeRuleKind(index, ($event.currentTarget as HTMLSelectElement).value as RuleKind)">
-              <option v-for="item in ruleTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
+              <option v-for="item in ruleTypes" :key="item.value" :value="item.value" :disabled="item.disabled">{{ item.label }}</option>
             </select>
             <button type="button" class="mx-config-form-designer__mini-button is-danger" :aria-label="locale.t('validation.deleteRule', 'Delete rule {index}', { index: index + 1 })" :disabled="disabled" @click="removeRule(index)">
               <Trash2 :size="14" aria-hidden="true" />
             </button>
           </div>
 
-          <input v-if="numberKinds.includes(rule.kind)" :value="rule.value" type="number" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'value', Number(($event.currentTarget as HTMLInputElement).value))">
+          <input v-if="numberKinds.includes(rule.kind)" :value="rule.value" type="number" :aria-label="locale.t('validation.ruleValue', 'Rule {index} value', { index: index + 1 })" :disabled="disabled" @change="updateNumberRule(index, $event)">
           <template v-else-if="rule.kind === 'regex'">
             <input :value="rule.source" type="text" :aria-label="locale.t('validation.rulePattern', 'Rule {index} pattern', { index: index + 1 })" :placeholder="locale.t('rule.regex', 'Pattern')" :disabled="disabled" @blur="updateRule(index, 'source', ($event.currentTarget as HTMLInputElement).value)">
             <input :value="rule.flags" type="text" :aria-label="locale.t('validation.ruleFlags', 'Rule {index} flags', { index: index + 1 })" :placeholder="locale.t('validation.flags', 'Flags')" :disabled="disabled" @blur="updateRule(index, 'flags', ($event.currentTarget as HTMLInputElement).value || undefined)">
           </template>
-          <input v-else-if="rule.kind === 'dateMin' || rule.kind === 'dateMax'" :value="rule.value" type="date" :aria-label="locale.t('validation.ruleDate', 'Rule {index} date', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'value', ($event.currentTarget as HTMLInputElement).value)">
+          <input v-else-if="rule.kind === 'dateMin' || rule.kind === 'dateMax'" :value="dateInputValue(rule.value)" type="date" :aria-label="locale.t('validation.ruleDate', 'Rule {index} date', { index: index + 1 })" :disabled="disabled" @change="updateDateRule(index, $event)">
           <template v-else-if="rule.kind === 'compare'">
-            <input :value="rule.field" type="text" :aria-label="locale.t('validation.ruleField', 'Rule {index} field', { index: index + 1 })" :placeholder="locale.t('condition.fieldPlaceholder', 'Field name')" :disabled="disabled" @blur="updateRule(index, 'field', ($event.currentTarget as HTMLInputElement).value)">
+            <select :value="rule.field" :aria-label="locale.t('validation.ruleField', 'Rule {index} field', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'field', ($event.currentTarget as HTMLSelectElement).value)">
+              <option v-for="field in fieldChoices(rule)" :key="field" :value="field">{{ field }}</option>
+            </select>
             <select :value="rule.operator" :aria-label="locale.t('validation.ruleOperator', 'Rule {index} operator', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'operator', ($event.currentTarget as HTMLSelectElement).value)">
               <option value="eq">{{ locale.t('operator.eq', 'Equals') }}</option>
               <option value="neq">{{ locale.t('operator.neq', 'Not equal') }}</option>
@@ -274,7 +359,9 @@ function updateRule(index: number, key: string, value: unknown): void {
               <option value="lte">{{ locale.t('operator.lte', 'At most') }}</option>
             </select>
           </template>
-          <input v-else-if="rule.kind === 'custom'" :value="rule.key" type="text" :aria-label="locale.t('validation.ruleKey', 'Rule {index} key', { index: index + 1 })" :placeholder="locale.t('validation.validatorKey', 'Validator key')" :disabled="disabled" @blur="updateRule(index, 'key', ($event.currentTarget as HTMLInputElement).value)">
+          <select v-else-if="rule.kind === 'custom'" :value="rule.key" :aria-label="locale.t('validation.ruleKey', 'Rule {index} key', { index: index + 1 })" :disabled="disabled" @change="updateRule(index, 'key', ($event.currentTarget as HTMLSelectElement).value)">
+            <option v-for="key in validatorChoices(rule)" :key="key" :value="key">{{ key }}</option>
+          </select>
 
           <button v-if="inclusiveKinds.includes(rule.kind)" type="button" class="mx-config-form-designer__switch-row is-compact" role="switch" :aria-checked="rule.inclusive !== false" :disabled="disabled" @click="updateRule(index, 'inclusive', rule.inclusive === false)">
             <span>{{ locale.t('validation.inclusive', 'Inclusive') }}</span>

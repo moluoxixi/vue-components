@@ -1,5 +1,6 @@
 import type {
   CompiledRuleSet,
+  RuleBase,
   RuleCompileContext,
   RuleDescriptor,
   RuleSet,
@@ -18,14 +19,33 @@ function compareValues(
   value: unknown,
   other: unknown,
   operator: Extract<RuleDescriptor, { kind: 'compare' }>['operator'],
+  baseType: RuleBase['type'],
 ): boolean {
+  const comparable = (input: unknown): { kind: 'date' | 'number' | 'string', value: number | string } | undefined => {
+    if (input instanceof Date)
+      return Number.isNaN(input.getTime()) ? undefined : { kind: 'date', value: input.getTime() }
+    if (baseType === 'date' && typeof input === 'string') {
+      const date = new Date(input)
+      return Number.isNaN(date.getTime()) ? undefined : { kind: 'date', value: date.getTime() }
+    }
+    if (typeof input === 'number' || typeof input === 'string')
+      return { kind: typeof input === 'number' ? 'number' : 'string', value: input }
+    return undefined
+  }
+
+  const left = comparable(value)
+  const right = comparable(other)
+
+  if (!left || !right || left.kind !== right.kind)
+    return false
+
   switch (operator) {
-    case 'eq': return value === other
-    case 'neq': return value !== other
-    case 'gt': return typeof value === 'number' && typeof other === 'number' && value > other
-    case 'gte': return typeof value === 'number' && typeof other === 'number' && value >= other
-    case 'lt': return typeof value === 'number' && typeof other === 'number' && value < other
-    case 'lte': return typeof value === 'number' && typeof other === 'number' && value <= other
+    case 'eq': return Object.is(left.value, right.value)
+    case 'neq': return !Object.is(left.value, right.value)
+    case 'gt': return left.value > right.value
+    case 'gte': return left.value >= right.value
+    case 'lt': return left.value < right.value
+    case 'lte': return left.value <= right.value
   }
 }
 
@@ -46,7 +66,7 @@ export function compileRules(
     }
 
     if (rule.kind === 'compare') {
-      validators.push((value, values) => compareValues(value, values[rule.field], rule.operator)
+      validators.push((value, values) => compareValues(value, values[rule.field], rule.operator, ruleSet.base.type)
         ? undefined
         : rule.message ?? `字段 ${rule.field} 比较失败`)
       continue

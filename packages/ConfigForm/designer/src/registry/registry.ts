@@ -55,6 +55,7 @@ export function createDesignerRegistry(layers: DesignerRegistryLayer[]): Designe
     getMaterial: key => materials.get(key),
     getValidator: key => validators.get(key),
     listMaterials: () => [...materials.values()],
+    listValidators: () => [...validators.keys()],
     createNode: (key, context) => {
       const material = materials.get(key)
       if (!material) {

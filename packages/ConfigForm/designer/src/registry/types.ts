@@ -107,5 +107,6 @@ export interface DesignerRegistry {
   getMaterial: (key: string) => DesignerMaterialDefinition | undefined
   getValidator: (key: string) => RuleCustomValidator | undefined
   listMaterials: () => DesignerMaterialDefinition[]
+  listValidators: () => string[]
   createNode: (key: string, context: DesignerCreateNodeContext) => DesignerNode
 }

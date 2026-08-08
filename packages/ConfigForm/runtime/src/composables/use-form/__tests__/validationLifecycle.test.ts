@@ -39,6 +39,7 @@ describe('field validation lifecycle', () => {
     for (const trigger of ['change', 'blur'] as const) {
       for (const state of [
         { disabled: true },
+        { hidden: true },
         { readonly: true },
         { visible: false },
       ]) {

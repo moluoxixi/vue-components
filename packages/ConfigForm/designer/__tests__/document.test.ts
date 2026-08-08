@@ -93,6 +93,14 @@ describe('designer document', () => {
         responsive: { mobile: { columns: 25 } },
       },
     }).success).toBe(false)
+
+    // Numeric documents from before the 24-cell designer remain importable;
+    // runtime layout resolution clamps them at the rendering boundary.
+    expect(parseDesignerDocument({
+      ...document,
+      form: { ...document.form, columns: 25, fieldSpan: 25 },
+      nodes: [{ ...document.nodes[0]!, span: 25 }, document.nodes[1]!],
+    }).success).toBe(true)
   })
 
   it('reports duplicate node ids and field keys at the second occurrence', () => {

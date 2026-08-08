@@ -133,12 +133,26 @@ export function rulesToZod(ruleSet: RuleSet): z.ZodTypeAny {
       requiredRule = rule
   }
 
-  if (requiredRule && schema instanceof z.ZodString)
-    schema = schema.refine(value => value.trim().length > 0, applyMessage(requiredRule))
+  if (ruleSet.base.type === 'date') {
+    // Calendar controls commonly emit ISO strings. Coerce only strings here,
+    // after applying date checks, so null/boolean/number do not become dates.
+    schema = z.preprocess(value => typeof value === 'string' ? new Date(value) : value, schema)
+  }
 
   if (ruleSet.nullable)
     schema = schema.nullable()
   if (ruleSet.optional)
     schema = schema.optional()
+
+  // Keep the public Zod schema aligned with ConfigForm's required pre-check.
+  // The refinement must wrap optional/nullable schemas so those flags cannot
+  // silently bypass an explicit required rule.
+  if (requiredRule) {
+    schema = schema.refine((value: unknown) => (
+      value !== undefined
+      && value !== null
+      && (typeof value !== 'string' || value.trim().length > 0)
+    ), applyMessage(requiredRule))
+  }
   return schema
 }
