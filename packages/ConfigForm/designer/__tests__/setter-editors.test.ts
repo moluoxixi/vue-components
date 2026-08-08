@@ -4,9 +4,31 @@ import DesignerConditionSetter from '../src/components/DesignerConditionSetter.v
 import DesignerDefaultValueSetter from '../src/components/DesignerDefaultValueSetter.vue'
 import DesignerOptionsSetter from '../src/components/DesignerOptionsSetter.vue'
 import DesignerPropertyPanel from '../src/components/DesignerPropertyPanel.vue'
+import DesignerSetter from '../src/components/DesignerSetter.vue'
 import DesignerValidationSetter from '../src/components/DesignerValidationSetter.vue'
 
 describe('designer structured setters', () => {
+  it('commits numeric values from the native change event', async () => {
+    const wrapper = mount(DesignerSetter, {
+      props: {
+        setter: {
+          key: 'columns',
+          label: 'Columns',
+          path: ['columns'],
+          control: 'number',
+          min: 1,
+          max: 24,
+        },
+        value: 24,
+      },
+    })
+
+    const input = wrapper.get('input')
+    await input.setValue('12')
+    await input.trigger('change')
+    expect(wrapper.emitted('commit')?.at(-1)).toEqual([12])
+  })
+
   it('keeps boolean default values distinct from the unset state', async () => {
     const wrapper = mount(DesignerDefaultValueSetter, {
       props: { kind: 'boolean', modelValue: undefined },

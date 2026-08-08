@@ -2,12 +2,19 @@
 import type { DesignerFormSettings, DesignerNode } from '../document'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import { computed } from 'vue'
+import { evaluateDesignerCondition } from '../condition'
 
 const props = defineProps<{
   node: DesignerNode
   registry: DesignerRegistry
   labelPosition?: DesignerFormSettings['labelPosition']
   readonly?: boolean
+  interactive?: boolean
+  model?: Record<string, unknown>
+}>()
+
+const emit = defineEmits<{
+  updateField: [field: string, value: unknown]
 }>()
 
 const material = computed<DesignerMaterialDefinition | undefined>(() => (
@@ -17,6 +24,17 @@ const material = computed<DesignerMaterialDefinition | undefined>(() => (
 const materialSlots = computed(() => (
   material.value?.kind === 'container' ? material.value.slots : []
 ))
+
+function condition(target: 'required' | 'disabled' | 'readonly', fallback = false): boolean {
+  const expression = props.node.conditions?.[target]
+  return props.interactive && expression
+    ? evaluateDesignerCondition(expression, props.model ?? {})
+    : fallback
+}
+
+const required = computed(() => props.node.kind === 'field' && condition('required'))
+const disabled = computed(() => props.node.kind === 'field' && condition('disabled'))
+const fieldReadonly = computed(() => props.readonly || (props.node.kind === 'field' && condition('readonly')))
 
 function eventPropName(eventName: string): string {
   return `on${eventName.slice(0, 1).toUpperCase()}${eventName.slice(1)}`
@@ -32,15 +50,27 @@ const componentProps = computed<Record<string, unknown>>(() => {
     return nextProps
 
   const valueProp = definition.runtime.valueProp ?? 'modelValue'
-  if (!Object.hasOwn(nextProps, valueProp) && props.node.defaultValue !== undefined)
+  if (props.interactive && props.model && Object.hasOwn(props.model, props.node.field))
+    nextProps[valueProp] = props.model[props.node.field]
+  else if (!Object.hasOwn(nextProps, valueProp) && props.node.defaultValue !== undefined)
     nextProps[valueProp] = props.node.defaultValue
 
   const trigger = definition.runtime.trigger ?? `update:${valueProp}`
-  nextProps[eventPropName(trigger)] = () => undefined
+  nextProps[eventPropName(trigger)] = (...args: unknown[]) => {
+    if (!props.interactive)
+      return
+    emit('updateField', props.node.kind === 'field' ? props.node.field : '', definition.runtime.getValueFromEvent
+      ? definition.runtime.getValueFromEvent(...args)
+      : args[0])
+  }
   if (definition.runtime.blurTrigger)
     nextProps[eventPropName(definition.runtime.blurTrigger)] = () => undefined
-  if (props.readonly)
+  if (fieldReadonly.value)
     nextProps[definition.runtime.readonlyProp ?? 'readonly'] = true
+  if (disabled.value)
+    nextProps.disabled = true
+  if (required.value)
+    nextProps['aria-required'] = true
   return nextProps
 })
 </script>
@@ -52,21 +82,28 @@ const componentProps = computed<Record<string, unknown>>(() => {
       'is-field': node.kind === 'field',
       'is-container': node.kind === 'container',
       'is-unsupported': !material,
-      'is-readonly': readonly,
+      'is-readonly': fieldReadonly,
+      'is-interactive': interactive,
+      'is-required': required,
       'has-label': node.kind === 'field' && Boolean(node.label),
       'is-label-left': node.kind === 'field' && labelPosition !== 'top',
       'is-label-top': node.kind === 'field' && labelPosition === 'top',
     }"
   >
     <template v-if="material">
-      <div v-if="node.kind === 'field' && node.label" class="mx-config-form-designer__node-preview-label">
+      <div v-if="node.kind === 'field' && node.label" class="mx-config-form-designer__node-preview-label" :data-required="required">
         {{ node.label }}
       </div>
       <div
         class="mx-config-form-designer__node-preview-real"
         :class="{ 'is-field': node.kind === 'field' }"
       >
-        <div v-if="node.kind === 'field'" class="mx-config-form-designer__node-preview-control" inert aria-hidden="true">
+        <div
+          v-if="node.kind === 'field'"
+          class="mx-config-form-designer__node-preview-control"
+          :inert="interactive ? undefined : true"
+          :aria-hidden="interactive ? undefined : 'true'"
+        >
           <component :is="material.runtime.component" v-bind="componentProps" />
         </div>
         <component v-else :is="material.runtime.component" v-bind="componentProps">

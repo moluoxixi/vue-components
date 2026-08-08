@@ -133,6 +133,7 @@ select {
   padding-inline: 2px 4px;
   font-size: 12px;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .designer-app__language button {
@@ -143,6 +144,7 @@ select {
   border-radius: 3px;
   background: transparent;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .designer-app__language button[aria-pressed="true"] {
@@ -163,6 +165,7 @@ select {
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   background: #fff;
+  white-space: nowrap;
 }
 
 .designer-app__back:hover {

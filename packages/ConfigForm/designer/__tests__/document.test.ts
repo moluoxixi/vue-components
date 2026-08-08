@@ -74,6 +74,27 @@ describe('designer document', () => {
     }).success).toBe(false)
   })
 
+  it('parses responsive overrides without changing numeric form settings', () => {
+    const document = createDocument()
+    document.form.responsive = {
+      tablet: { columns: 12, fieldSpan: 6 },
+      mobile: { columns: 4, fieldSpan: 4 },
+    }
+
+    expect(parseDesignerDocument(document)).toEqual({
+      success: true,
+      data: document,
+      diagnostics: [],
+    })
+    expect(parseDesignerDocument({
+      ...document,
+      form: {
+        ...document.form,
+        responsive: { mobile: { columns: 25 } },
+      },
+    }).success).toBe(false)
+  })
+
   it('reports duplicate node ids and field keys at the second occurrence', () => {
     const document = createDocument()
     document.nodes.push({

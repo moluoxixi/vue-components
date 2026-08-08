@@ -1,3 +1,5 @@
+@use '@moluoxixi/config-form/styles';
+
 .mx-config-form-designer {
   --mx-designer-border: #d9dee7;
   --mx-designer-muted: #64748b;
@@ -244,6 +246,21 @@
   background: var(--mx-designer-canvas);
 }
 
+.mx-config-form-designer__canvas-tools {
+  position: sticky;
+  z-index: 120;
+  top: 0;
+  width: 136px;
+  margin: 0 0 10px auto;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 8%);
+}
+
+.mx-config-form-designer__canvas-tools button {
+  display: grid;
+  place-items: center;
+}
+
 .mx-config-form-designer__canvas-sheet {
   width: min(100%, 900px);
   min-height: 100%;
@@ -253,6 +270,14 @@
   border: 1px solid var(--mx-designer-border);
   border-radius: 8px;
   box-shadow: 0 12px 30px rgb(15 23 42 / 7%);
+}
+
+.mx-config-form-designer__canvas-sheet[data-sheet-breakpoint="tablet"] {
+  width: min(100%, 720px);
+}
+
+.mx-config-form-designer__canvas-sheet[data-sheet-breakpoint="mobile"] {
+  width: min(100%, 390px);
 }
 
 .mx-config-form-designer__node-list {
@@ -394,6 +419,16 @@
 .mx-config-form-designer__node-preview-control {
   min-width: 0;
   pointer-events: none;
+}
+
+.mx-config-form-designer__node-preview.is-interactive .mx-config-form-designer__node-preview-control {
+  pointer-events: auto;
+}
+
+.mx-config-form-designer__node-preview-label[data-required="true"]::after {
+  margin-left: 3px;
+  color: var(--mx-designer-danger);
+  content: "*";
 }
 
 .mx-config-form-designer__node-preview-label {
@@ -542,6 +577,41 @@
   color: #394657;
   font-size: 12px;
   font-weight: 600;
+}
+
+.mx-config-form-designer__responsive-settings,
+.mx-config-form-designer__responsive-breakpoint,
+.mx-config-form-designer__responsive-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.mx-config-form-designer__responsive-settings {
+  padding-top: 4px;
+  border-top: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__responsive-heading {
+  padding-top: 7px;
+  color: #394657;
+  font-size: 12px;
+}
+
+.mx-config-form-designer__responsive-breakpoint {
+  padding: 7px;
+  background: var(--mx-designer-subtle);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 5px;
+}
+
+.mx-config-form-designer__responsive-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mx-config-form-designer__responsive-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .mx-config-form-designer__stepper {

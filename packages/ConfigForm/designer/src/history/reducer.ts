@@ -121,7 +121,10 @@ function finalizeCandidate(
   const parsed = parseDesignerDocument(candidate)
   if (!parsed.success)
     return unchanged(current, parsed.diagnostics)
-  const diagnostics = analyzeDesignerDocument(parsed.data, registry)
+  const diagnostics = analyzeDesignerDocument(parsed.data, registry, {
+    includeDefaultDiagnostics: false,
+    includeMaterialDiagnostics: false,
+  })
   if (hasDesignerErrors(diagnostics))
     return unchanged(current, diagnostics)
   if (areDesignerJsonValuesEqual(current, parsed.data))

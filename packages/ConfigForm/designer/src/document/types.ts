@@ -1,3 +1,4 @@
+import type { ConfigFormResponsiveLayout } from '@moluoxixi/config-form/renderer'
 import type { RuleJsonValue, RuleSet } from '@moluoxixi/zod3-to-rule'
 import type { DesignerConditionExpression, DesignerConditionTarget } from '../condition'
 import type { DESIGNER_DOCUMENT_VERSION } from '../constants'
@@ -13,6 +14,7 @@ export interface DesignerFormSettings {
   gap?: string
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
+  responsive?: ConfigFormResponsiveLayout
 }
 
 export interface DesignerNodeBase {

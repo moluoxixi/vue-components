@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DesignerPropertySetterDefinition } from '../registry'
+import type { DesignerNode } from '../document'
 import { Minus, Plus } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
@@ -12,6 +13,7 @@ const props = defineProps<{
   setter: DesignerPropertySetterDefinition
   value: unknown
   readonly?: boolean
+  node?: DesignerNode
 }>()
 
 const emit = defineEmits<{
@@ -46,6 +48,11 @@ function commitText(): void {
     return
   }
   emit('commit', next || undefined)
+}
+
+function commitNumberChange(event: Event): void {
+  textDraft.value = (event.currentTarget as HTMLInputElement).value
+  commitText()
 }
 
 function handleTextKeydown(event: KeyboardEvent): void {
@@ -118,6 +125,7 @@ function commitCustom(value: unknown): void {
         :max="setter.max"
         :step="setter.step"
         :disabled="readonly"
+        @change="commitNumberChange"
         @blur="commitText"
         @keydown="handleTextKeydown"
       >
@@ -159,6 +167,8 @@ function commitCustom(value: unknown): void {
       v-else-if="setter.control === 'custom' && setter.component"
       :model-value="value"
       :disabled="readonly"
+      :node="node"
+      v-bind="setter.componentProps"
       @update:model-value="commitCustom"
     />
     <DesignerDefaultValueSetter

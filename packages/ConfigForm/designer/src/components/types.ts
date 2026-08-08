@@ -1,3 +1,4 @@
+import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCompileResult } from '../compiler'
 import type { DesignerDiagnostic, DesignerDocument, DesignerNode } from '../document'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
@@ -46,6 +47,9 @@ export interface DesignerCanvasScope {
   selectedId: string | undefined
   select: (nodeId: string | undefined) => void
   move: (nodeId: string, target: DesignerDropTarget) => void
+  breakpoint: ConfigFormBreakpoint
+  interactive: boolean
+  model: Record<string, unknown>
 }
 
 export interface DesignerPropertiesScope {

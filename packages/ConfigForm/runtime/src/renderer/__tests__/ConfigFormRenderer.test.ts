@@ -112,13 +112,15 @@ describe('config form renderer', () => {
     })
     expect(wrapper.get('form').classes()).toEqual(expect.arrayContaining(['test-form', 'consumer-form']))
     expect(wrapper.get('.test-form__row').attributes('data-layout')).toBe('root')
-    expect(wrapper.get('.test-form__row').attributes('style')).toContain('grid-template-columns: repeat(12, minmax(0, 1fr))')
+    expect(wrapper.get('.test-form__row').attributes('style')).toContain('--mx-config-form-columns-desktop: 12')
+    expect(wrapper.get('.test-form__row').attributes('style')).toContain('grid-template-columns: repeat(var(--mx-config-form-active-columns), minmax(0, 1fr))')
     expect(wrapper.get('.test-form__row').attributes('style')).toContain('gap: 8px')
     expect(wrapper.get('.test-form__cell').attributes()).toMatchObject({
       'data-cell': 'default',
       'data-node-cell': 'name',
     })
-    expect(wrapper.get('.test-form__cell').attributes('style')).toContain('grid-column: span 6 / span 6')
+    expect(wrapper.get('.test-form__cell').attributes('style')).toContain('--mx-config-form-span-desktop: 6')
+    expect(wrapper.get('.test-form__cell').attributes('style')).toContain('grid-column: span var(--mx-config-form-active-span) / span var(--mx-config-form-active-span)')
     expect(wrapper.get('[data-field="name"]').attributes('data-field-shell')).toBe('name')
 
     form.setValue('name', '')
@@ -133,6 +135,36 @@ describe('config form renderer', () => {
     expect(form.getValues()).toEqual({ enabled: false, name: 'Grace', status: 'published' })
     form.resetFields()
     expect(form.getValues()).toEqual(initial)
+  })
+
+  it('emits matching desktop, tablet, and mobile grid variables', () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        columns: 24,
+        fieldSpan: 24,
+        fields: [defineField<TestValues>({
+          component: InputStub,
+          field: 'name',
+          span: 20,
+        })],
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        namespace: 'responsive-form',
+        responsive: {
+          tablet: { columns: 12, fieldSpan: 6 },
+          mobile: { columns: 4, fieldSpan: 4 },
+        },
+      },
+    })
+
+    const rowStyle = wrapper.get('.responsive-form__row').attributes('style')
+    expect(rowStyle).toContain('--mx-config-form-columns-desktop: 24')
+    expect(rowStyle).toContain('--mx-config-form-columns-tablet: 12')
+    expect(rowStyle).toContain('--mx-config-form-columns-mobile: 4')
+
+    const cellStyle = wrapper.get('.responsive-form__cell').attributes('style')
+    expect(cellStyle).toContain('--mx-config-form-span-desktop: 20')
+    expect(cellStyle).toContain('--mx-config-form-span-tablet: 12')
+    expect(cellStyle).toContain('--mx-config-form-span-mobile: 4')
   })
 
   it('支持 label 左右和上下布局，并保持真实 label/control 结构', async () => {

@@ -13,6 +13,7 @@ import type {
 import { computed, ref } from 'vue'
 import { useDesignerLocale } from '../locale'
 import DesignerSetter from './DesignerSetter.vue'
+import DesignerResponsiveSettings from './DesignerResponsiveSettings.vue'
 
 const props = defineProps<{
   document: DesignerDocument
@@ -153,6 +154,10 @@ function commitNodePath(value: unknown, setter: DesignerPropertySetterDefinition
 function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): void {
   emit('updateForm', { [setter.key]: value })
 }
+
+function commitResponsive(value: DesignerFormSettings['responsive']): void {
+  emit('updateForm', { responsive: value })
+}
 </script>
 
 <template>
@@ -175,6 +180,7 @@ function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): v
           :setter="setter"
           :value="readPath(setter.path)"
           :readonly="readonly"
+          :node="node"
           @commit="commitNodePath($event, setter)"
         />
       </div>
@@ -192,6 +198,11 @@ function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): v
           :value="readFormValue(setter)"
           :readonly="readonly"
           @commit="commitForm($event, setter)"
+        />
+        <DesignerResponsiveSettings
+          :form="document.form"
+          :readonly="readonly"
+          @commit="commitResponsive"
         />
       </div>
     </template>

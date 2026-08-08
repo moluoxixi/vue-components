@@ -7,6 +7,35 @@ import { fileURLToPath } from 'node:url'
 const rootDir = fileURLToPath(new URL('..', import.meta.url))
 const adapters = [
   {
+    directory: 'designer-element-plus',
+    exports: [
+      'ELEMENT_PLUS_DESIGNER_MATERIALS',
+      'ELEMENT_PLUS_DESIGNER_ZH_CN',
+      'ELEMENT_PLUS_OPTION_RESOLVER_KEY',
+      'createElementPlusDesignerRegistry',
+      'createElementPlusOptionDiagnostics',
+      'createElementPlusOptionResolverContext',
+      'createElementPlusOptionResolverPlugin',
+      'elementPlusDesignerRegistryLayer',
+      'elementPlusOptionKey',
+      'normalizeElementPlusOptions',
+      'provideElementPlusOptionResolver',
+      'readElementPlusOptionSource',
+      'useElementPlusOptionResolverContext',
+      'useElementPlusResolvedOptions',
+    ],
+    name: '@moluoxixi/config-form-designer-element-plus',
+    types: [
+      'ElementPlusDesignerOption',
+      'ElementPlusOptionProvider',
+      'ElementPlusOptionProviderContext',
+      'ElementPlusOptionResolverConfig',
+      'ElementPlusOptionSource',
+      'ElementPlusOptionStatus',
+      'ElementPlusResolvedOptionState',
+    ],
+  },
+  {
     directory: 'plugin-antd-vue',
     exports: ['ANTD_VUE_FIELD_BINDINGS', 'ANTD_VUE_READONLY_ADAPTERS', 'createAntdVuePlugin'],
     name: '@moluoxixi/config-form-plugin-antd-vue',
@@ -45,7 +74,7 @@ function verifyRendererPackage() {
 
   const importCheck = `
     const loaded = await import('@moluoxixi/config-form/renderer')
-    const expected = ['ConfigFormRenderer', 'createConfigFormRendererExpose', 'withConfigFormInstall'].sort()
+    const expected = ['ConfigFormRenderer', 'createConfigFormRendererExpose', 'resolveConfigFormLayout', 'withConfigFormInstall'].sort()
     const actual = Object.keys(loaded).sort()
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       throw new Error('Unexpected renderer exports: ' + actual.join(','))
@@ -64,18 +93,24 @@ function verifyRendererPackage() {
       import {
         ConfigFormRenderer,
         createConfigFormRendererExpose,
+        resolveConfigFormLayout,
         withConfigFormInstall,
       } from '@moluoxixi/config-form/renderer'
       import type {
+        ConfigFormBreakpoint,
         ConfigFormRendererComponent,
         ConfigFormRendererComponentInstance,
         ConfigFormRendererComponentProps,
         ConfigFormRendererExpose,
         ConfigFormRendererProps,
+        ConfigFormResponsiveLayout,
         InstallableConfigFormComponent,
       } from '@moluoxixi/config-form/renderer'
 
-      void [ConfigFormRenderer, createConfigFormRendererExpose, withConfigFormInstall]
+      const responsive: ConfigFormResponsiveLayout = { tablet: { columns: 12 } }
+      const breakpoint: ConfigFormBreakpoint = 'tablet'
+      const layout = resolveConfigFormLayout(24, 24, responsive, breakpoint)
+      void [ConfigFormRenderer, createConfigFormRendererExpose, layout, withConfigFormInstall]
       const typedRenderer: ConfigFormRendererComponent = ConfigFormRenderer
       void typedRenderer
       type RendererTypes = [
@@ -210,4 +245,4 @@ for (const adapter of adapters) {
   }
 }
 
-console.log('PASS ConfigForm runtime adapter package boundaries')
+console.log('PASS ConfigForm public package boundaries')

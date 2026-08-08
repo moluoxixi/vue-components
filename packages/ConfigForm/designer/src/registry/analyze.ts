@@ -1,6 +1,109 @@
-import type { DesignerDiagnostic, DesignerDocument, DesignerNode } from '../document'
-import type { DesignerMaterialSlotDefinition, DesignerRegistry } from './types'
-import { designerDiagnostic, walkDesignerNodes } from '../document'
+import type { DesignerDiagnostic, DesignerDocument, DesignerFieldNode, DesignerNode } from '../document'
+import type {
+  DesignerDefaultValueKind,
+  DesignerFieldMaterialDefinition,
+  DesignerMaterialSlotDefinition,
+  DesignerPropertySetterDefinition,
+  DesignerRegistry,
+} from './types'
+import { areDesignerJsonValuesEqual, designerDiagnostic, walkDesignerNodes } from '../document'
+
+export interface AnalyzeDesignerDocumentOptions {
+  includeDefaultDiagnostics?: boolean
+  includeMaterialDiagnostics?: boolean
+}
+
+function readPath(node: DesignerNode, path: string[]): unknown {
+  let value: unknown = node
+  for (const segment of path) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value))
+      return undefined
+    value = (value as Record<string, unknown>)[segment]
+  }
+  return value
+}
+
+function matchesDefaultKind(value: unknown, kind: DesignerDefaultValueKind): boolean {
+  if (value === null)
+    return true
+  switch (kind) {
+    case 'text':
+    case 'date':
+    case 'time': return typeof value === 'string'
+    case 'number': return typeof value === 'number' && Number.isFinite(value)
+    case 'boolean': return typeof value === 'boolean'
+    case 'select': return ['string', 'number', 'boolean'].includes(typeof value)
+    case 'multiselect': return Array.isArray(value)
+      && value.every(item => typeof item === 'string' || (typeof item === 'number' && Number.isFinite(item)))
+  }
+}
+
+function optionValues(node: DesignerFieldNode, setter: DesignerPropertySetterDefinition): unknown[] | undefined {
+  if (!setter.optionsPath)
+    return undefined
+  const source = setter.optionSourcePath ? readPath(node, setter.optionSourcePath) : undefined
+  if (
+    typeof source === 'object'
+    && source !== null
+    && !Array.isArray(source)
+    && (source as Record<string, unknown>).kind !== 'static'
+  ) {
+    return undefined
+  }
+
+  const options = readPath(node, setter.optionsPath)
+  if (!Array.isArray(options))
+    return []
+  return options.flatMap((option) => {
+    if (typeof option !== 'object' || option === null || Array.isArray(option) || !Object.hasOwn(option, 'value'))
+      return []
+    return [(option as Record<string, unknown>).value]
+  })
+}
+
+function analyzeFieldDefault(
+  node: DesignerFieldNode,
+  material: DesignerFieldMaterialDefinition,
+  path: (string | number)[],
+): DesignerDiagnostic[] {
+  if (node.defaultValue === undefined)
+    return []
+  const setter = material.setters.find(candidate => candidate.key === 'defaultValue' && candidate.valueKind)
+  if (!setter?.valueKind)
+    return []
+
+  const diagnostics: DesignerDiagnostic[] = []
+  if (!matchesDefaultKind(node.defaultValue, setter.valueKind)) {
+    diagnostics.push(designerDiagnostic(
+      'DESIGNER_DEFAULT_KIND_INVALID',
+      `Default value must match the ${setter.valueKind} field value kind`,
+      [...path, 'defaultValue'],
+      'error',
+      node.id,
+    ))
+    return diagnostics
+  }
+
+  if (node.defaultValue === null)
+    return diagnostics
+
+  const values = optionValues(node, setter)
+  if (values) {
+    const defaults = setter.valueKind === 'multiselect' && Array.isArray(node.defaultValue)
+      ? node.defaultValue
+      : [node.defaultValue]
+    if (defaults.some(value => !values.some(option => areDesignerJsonValuesEqual(option, value)))) {
+      diagnostics.push(designerDiagnostic(
+        'DESIGNER_DEFAULT_OPTION_UNKNOWN',
+        'Default value is not present in the current options',
+        [...path, 'defaultValue'],
+        'error',
+        node.id,
+      ))
+    }
+  }
+  return diagnostics
+}
 
 function validateSlotChild(
   child: DesignerNode,
@@ -32,8 +135,11 @@ function validateSlotChild(
 export function analyzeDesignerDocument(
   document: DesignerDocument,
   registry: DesignerRegistry,
+  options: AnalyzeDesignerDocumentOptions = {},
 ): DesignerDiagnostic[] {
   const diagnostics: DesignerDiagnostic[] = []
+  const includeDefaultDiagnostics = options.includeDefaultDiagnostics ?? true
+  const includeMaterialDiagnostics = options.includeMaterialDiagnostics ?? true
 
   walkDesignerNodes(document.nodes, ({ node, path }) => {
     const material = registry.getMaterial(node.material)
@@ -58,8 +164,15 @@ export function analyzeDesignerDocument(
       return
     }
 
-    if (node.kind === 'field')
+    if (node.kind === 'field') {
+      if (material.kind === 'field') {
+        if (includeDefaultDiagnostics)
+          diagnostics.push(...analyzeFieldDefault(node, material, path))
+        if (includeMaterialDiagnostics)
+          diagnostics.push(...(material.analyze?.(node, path) ?? []))
+      }
       return
+    }
 
     if (node.conditions?.required || node.conditions?.disabled || node.conditions?.readonly) {
       diagnostics.push(designerDiagnostic(
@@ -73,6 +186,8 @@ export function analyzeDesignerDocument(
 
     if (material.kind !== 'container')
       return
+    if (includeMaterialDiagnostics)
+      diagnostics.push(...(material.analyze?.(node, path) ?? []))
     const slots = new Map(material.slots.map(slot => [slot.name, slot]))
     for (const [slotName, children] of Object.entries(node.slots)) {
       const slot = slots.get(slotName)

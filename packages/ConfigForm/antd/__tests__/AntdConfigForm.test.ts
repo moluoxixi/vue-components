@@ -109,7 +109,8 @@ describe('antd config form', () => {
 
     expect(wrapper.find('form.mx-antd-config-form').exists()).toBe(true)
     expect(wrapper.get('.mx-antd-config-form__row').classes()).toContain('mx-antd-config-form__row--grid')
-    expect(wrapper.get('.mx-antd-config-form__cell').attributes('style')).toContain('grid-column: span 12 / span 12')
+    expect(wrapper.get('.mx-antd-config-form__cell').attributes('style')).toEqual(expect.stringContaining('--mx-config-form-span-desktop: 12'))
+    expect(wrapper.get('.mx-antd-config-form__cell').attributes('style')).toEqual(expect.stringContaining('grid-column: span var(--mx-config-form-active-span) / span var(--mx-config-form-active-span)'))
     expect(wrapper.findAll('[data-testid="antd-input-stub"]')[1].attributes('disabled')).toBeDefined()
 
     await wrapper.get('form').trigger('submit')

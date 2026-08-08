@@ -41,6 +41,7 @@ import {
   resolveConfigFormCondition,
   resolveConfigFormReadonlyRender,
 } from '@moluoxixi/config-form-headless'
+import { resolveConfigFormLayout } from './responsive'
 
 defineOptions({
   name: 'ConfigFormRenderer',
@@ -138,6 +139,12 @@ const ConfigFormTree = defineComponent({
   setup: () => () => renderLayout(),
 })
 
+const responsiveLayouts = computed(() => ({
+  desktop: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'desktop'),
+  tablet: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'tablet'),
+  mobile: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'mobile'),
+}))
+
 function bem(element: string, modifier?: string): string {
   return modifier
     ? `${props.namespace}__${element}--${modifier}`
@@ -147,6 +154,7 @@ function bem(element: string, modifier?: string): string {
 function renderLayout(): VNodeChild {
   const layoutAttrs = props.layoutAttrs
   const inline = props.inline === true
+  const layouts = responsiveLayouts.value
   const style: StyleValue = [
     layoutAttrs.style,
     inline
@@ -157,15 +165,19 @@ function renderLayout(): VNodeChild {
           gap: props.gap,
         }
       : {
+          '--mx-config-form-columns-desktop': layouts.desktop.columns,
+          '--mx-config-form-columns-mobile': layouts.mobile.columns,
+          '--mx-config-form-columns-tablet': layouts.tablet.columns,
           display: 'grid',
           gap: props.gap,
-          gridTemplateColumns: `repeat(${props.columns}, minmax(0, 1fr))`,
+          gridTemplateColumns: 'repeat(var(--mx-config-form-active-columns), minmax(0, 1fr))',
         },
   ]
 
   return h('div', {
     ...layoutAttrs,
     class: [bem('row'), bem('row', inline ? 'inline' : 'grid'), layoutAttrs.class],
+    'data-config-form-responsive-layout': inline ? undefined : '',
     style,
   }, props.fields.map((node, index) => renderNode(node, !inline, `fields.${index}`, new Set())))
 }
@@ -190,19 +202,29 @@ function renderNode(
 
   const cellAttrs = props.cellAttrs
   const nodeCellAttrs = node.cellAttrs
-  const span = clampSpan(node.span ?? props.fieldSpan)
+  const layouts = responsiveLayouts.value
+  const desktopSpan = resolveNodeSpan(node.span, layouts.desktop)
+  const tabletSpan = resolveNodeSpan(node.span, layouts.tablet)
+  const mobileSpan = resolveNodeSpan(node.span, layouts.mobile)
   const style: StyleValue = [
     cellAttrs.style,
     nodeCellAttrs?.style,
     props.inline
       ? { flex: '0 1 auto', minWidth: 0 }
-      : { gridColumn: `span ${span} / span ${span}`, minWidth: 0 },
+      : {
+          '--mx-config-form-span-desktop': desktopSpan,
+          '--mx-config-form-span-mobile': mobileSpan,
+          '--mx-config-form-span-tablet': tabletSpan,
+          gridColumn: 'span var(--mx-config-form-active-span) / span var(--mx-config-form-active-span)',
+          minWidth: 0,
+        },
   ]
 
   return h('div', {
     ...cellAttrs,
     ...nodeCellAttrs,
     class: [bem('cell'), cellAttrs.class, nodeCellAttrs?.class],
+    'data-config-form-responsive-cell': '',
     key: getNodeKey(node, path),
     style,
   }, [body])
@@ -537,8 +559,12 @@ function isVNodeKey(value: unknown): value is string | number | symbol {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'symbol'
 }
 
-function clampSpan(span: number): number {
-  return Math.max(1, Math.min(props.columns, span))
+function resolveNodeSpan(
+  nodeSpan: number | undefined,
+  layout: { columns: number, fieldSpan: number },
+): number {
+  const span = nodeSpan ?? layout.fieldSpan
+  return Math.max(1, Math.min(layout.columns, Math.floor(span)))
 }
 
 function assertAcyclicNode(node: object, ancestors: ReadonlySet<object>): void {
@@ -609,3 +635,7 @@ defineExpose({
     <slot v-bind="{ meta, model, submit, resetFields }" />
   </form>
 </template>
+
+<style lang="scss">
+@use '../styles/responsive';
+</style>

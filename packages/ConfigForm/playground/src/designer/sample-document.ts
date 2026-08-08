@@ -4,16 +4,21 @@ export function createDesignerSampleDocument(): DesignerDocument {
   return {
     version: 1,
     form: {
-      columns: 2,
+      columns: 24,
       gap: '16px',
-      fieldSpan: 1,
+      fieldSpan: 24,
       labelPosition: 'left',
+      responsive: {
+        tablet: { columns: 12, fieldSpan: 12 },
+        mobile: { columns: 1, fieldSpan: 1 },
+      },
     },
     nodes: [
       {
         id: 'designer-section',
         kind: 'container',
         material: 'element.section',
+        span: 12,
         props: {
           title: 'Account details',
           description: 'Edit the structure and preview the real Element Plus form.',
@@ -43,6 +48,7 @@ export function createDesignerSampleDocument(): DesignerDocument {
         id: 'designer-card',
         kind: 'container',
         material: 'element.card',
+        span: 12,
         props: { header: 'Preferences', shadow: 'never' },
         slots: {
           default: [
@@ -53,7 +59,16 @@ export function createDesignerSampleDocument(): DesignerDocument {
               field: 'environment',
               label: 'Environment',
               defaultValue: 'playground',
+              conditions: {
+                disabled: {
+                  kind: 'compare',
+                  operator: 'eq',
+                  left: { kind: 'field', field: 'enabled' },
+                  right: { kind: 'literal', value: false },
+                },
+              },
               props: {
+                optionSource: { kind: 'dictionary', key: 'environments' },
                 options: [
                   { label: 'Playground', value: 'playground' },
                   { label: 'Production', value: 'production' },

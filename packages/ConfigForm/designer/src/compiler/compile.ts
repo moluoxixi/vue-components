@@ -1,6 +1,7 @@
 import type {
   ConfigFormRendererField,
   ConfigFormRendererNode,
+  ConfigFormResponsiveLayout,
 } from '@moluoxixi/config-form/renderer'
 import type {
   CompiledRuleSet,
@@ -76,6 +77,46 @@ function compileValidation(
   }
 }
 
+function diagnoseDefaultRules(
+  node: DesignerFieldNode,
+  path: (string | number)[],
+  validation: CompiledRuleSet | undefined,
+  diagnostics: DesignerDiagnostic[],
+): void {
+  if (node.defaultValue === undefined)
+    return
+
+  const required = node.validation?.rules.some(rule => rule.kind === 'required')
+    || (node.conditions?.required?.kind === 'literal' && node.conditions.required.value)
+  if (node.defaultValue === null && required) {
+    diagnostics.push(designerDiagnostic(
+      'DESIGNER_DEFAULT_REQUIRED_NULL',
+      'A required field cannot use null as its default value',
+      [...path, 'defaultValue'],
+      'error',
+      node.id,
+    ))
+    return
+  }
+
+  if (!node.validation || !validation)
+    return
+
+  const candidate = node.validation.base.type === 'date' && typeof node.defaultValue === 'string'
+    ? new Date(node.defaultValue)
+    : node.defaultValue
+  const result = validation.schema.safeParse(candidate)
+  if (!result.success) {
+    diagnostics.push(designerDiagnostic(
+      'DESIGNER_DEFAULT_RULE_INVALID',
+      result.error.issues[0]?.message ?? 'Default value does not satisfy the field rules',
+      [...path, 'defaultValue'],
+      'error',
+      node.id,
+    ))
+  }
+}
+
 function compileNodeBase(node: DesignerNode, component: ConfigFormRendererNode['component']) {
   return {
     component,
@@ -97,6 +138,7 @@ function compileField(
     return undefined
 
   const validation = compileValidation(node, path, registry, diagnostics)
+  diagnoseDefaultRules(node, path, validation, diagnostics)
   const required = node.conditions?.required
     ? compileDesignerCondition(node.conditions.required)
     : validation?.required
@@ -170,6 +212,14 @@ function rendererConfig(document: DesignerDocument, fields: ConfigFormRendererNo
     ...(document.form.gap === undefined ? {} : { gap: document.form.gap }),
     ...(document.form.fieldSpan === undefined ? {} : { fieldSpan: document.form.fieldSpan }),
     ...(document.form.labelPosition === undefined ? {} : { labelPosition: document.form.labelPosition }),
+    ...(document.form.responsive === undefined ? {} : { responsive: cloneResponsiveLayout(document.form.responsive) }),
+  }
+}
+
+function cloneResponsiveLayout(responsive: ConfigFormResponsiveLayout): ConfigFormResponsiveLayout {
+  return {
+    ...(responsive.tablet ? { tablet: { ...responsive.tablet } } : {}),
+    ...(responsive.mobile ? { mobile: { ...responsive.mobile } } : {}),
   }
 }
 

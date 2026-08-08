@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DesignerCompileResult } from '../compiler'
+import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
 import type {
   ConfigFormDesignerEmits,
@@ -19,8 +20,9 @@ import {
   Undo2,
   X,
 } from '@lucide/vue'
-import { computed, nextTick, provide, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch } from 'vue'
 import { useDesignerController } from '../composables'
+import { createDesignerPreviewModel } from '../document'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
 import DesignerCanvas from './DesignerCanvas.vue'
 import DesignerPalette from './DesignerPalette.vue'
@@ -43,10 +45,42 @@ watch(() => props.locale, value => {
 const rootRef = ref<HTMLElement>()
 const previewResult = shallowRef<DesignerCompileResult>()
 const previewOpen = ref(false)
-const previewModel = ref<Record<string, unknown>>({})
+const previewModel = ref<Record<string, unknown>>(createDesignerPreviewModel(props.document))
+const linkagePreview = ref(false)
 const transferMode = ref<'import' | 'export'>()
 const transferText = ref('')
 const transferError = ref('')
+const activeBreakpoint = ref<ConfigFormBreakpoint>(recommendedBreakpoint())
+let breakpointManuallySelected = false
+
+function recommendedBreakpoint(): ConfigFormBreakpoint {
+  if (typeof window === 'undefined')
+    return 'desktop'
+  if (window.innerWidth <= 720)
+    return 'mobile'
+  if (window.innerWidth <= 1024)
+    return 'tablet'
+  return 'desktop'
+}
+
+function syncBreakpointToViewport(): void {
+  if (!breakpointManuallySelected)
+    activeBreakpoint.value = recommendedBreakpoint()
+}
+
+function selectBreakpoint(breakpoint: ConfigFormBreakpoint): void {
+  breakpointManuallySelected = true
+  activeBreakpoint.value = breakpoint
+}
+
+onMounted(() => {
+  syncBreakpointToViewport()
+  window.addEventListener('resize', syncBreakpointToViewport)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncBreakpointToViewport)
+})
 
 const controller = useDesignerController({
   document: () => props.document,
@@ -125,10 +159,21 @@ function handlePreview(): DesignerCompileResult {
   previewResult.value = result
   emit('preview', result)
   if (result.success) {
-    previewModel.value = {}
+    if (!linkagePreview.value)
+      previewModel.value = createDesignerPreviewModel(result.document)
     previewOpen.value = true
   }
   return result
+}
+
+function toggleLinkagePreview(): void {
+  linkagePreview.value = !linkagePreview.value
+  if (linkagePreview.value)
+    previewModel.value = createDesignerPreviewModel(controller.document.value)
+}
+
+function updatePreviewField(field: string, value: unknown): void {
+  previewModel.value = { ...previewModel.value, [field]: value }
 }
 
 function openImport(): void {
@@ -140,8 +185,11 @@ function openImport(): void {
 function openExport(): void {
   transferMode.value = 'export'
   transferText.value = controller.exportDocument()
-  transferError.value = ''
-  emit('export', transferText.value)
+  transferError.value = transferText.value
+    ? ''
+    : controller.diagnostics.value[0]?.message ?? locale.t('error.exportFailed', 'Export validation failed')
+  if (transferText.value)
+    emit('export', transferText.value)
 }
 
 function closeTransfer(): void {
@@ -260,6 +308,9 @@ defineExpose<ConfigFormDesignerExpose>({
         :selected-id="controller.selectedId.value"
         :select="controller.select"
         :move="handleMove"
+        :breakpoint="activeBreakpoint"
+        :interactive="linkagePreview"
+        :model="previewModel"
       >
         <DesignerCanvas
           :key="controller.renderVersion.value"
@@ -267,10 +318,16 @@ defineExpose<ConfigFormDesignerExpose>({
           :registry="registry"
           :selected-id="controller.selectedId.value"
           :readonly="readonly"
+          :breakpoint="activeBreakpoint"
+          :interactive="linkagePreview"
+          :model="previewModel"
           @select="controller.select($event || undefined)"
           @move="handleMove"
           @add-material="handleAddMaterial"
           @action="handleAction"
+          @update-breakpoint="selectBreakpoint"
+          @toggle-interactive="toggleLinkagePreview"
+          @update-field="updatePreviewField"
         />
       </slot>
 
@@ -318,10 +375,10 @@ defineExpose<ConfigFormDesignerExpose>({
             <button type="button" class="mx-config-form-designer__command-button" @click="applyImport">{{ locale.t('action.apply', 'Apply') }}</button>
           </template>
           <template v-else>
-            <button type="button" class="mx-config-form-designer__command-button is-secondary" @click="copyExport">
+            <button type="button" class="mx-config-form-designer__command-button is-secondary" :disabled="Boolean(transferError)" @click="copyExport">
               <Clipboard :size="15" aria-hidden="true" /> {{ locale.t('action.copy', 'Copy') }}
             </button>
-            <button type="button" class="mx-config-form-designer__command-button" @click="downloadExport">
+            <button type="button" class="mx-config-form-designer__command-button" :disabled="Boolean(transferError)" @click="downloadExport">
               <Download :size="15" aria-hidden="true" /> {{ locale.t('action.download', 'Download') }}
             </button>
           </template>

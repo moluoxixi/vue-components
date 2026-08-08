@@ -20,7 +20,13 @@ const materials: DesignerMaterialDefinition[] = [
       valueProp: 'modelValue',
       trigger: 'update:modelValue',
     },
-    setters: [],
+    setters: [{
+      key: 'defaultValue',
+      label: 'Default value',
+      path: ['defaultValue'],
+      control: 'defaultValue',
+      valueKind: 'text',
+    }],
     createNode: ({ id, field = 'field' }) => ({
       id,
       kind: 'field',
@@ -44,12 +50,43 @@ const materials: DesignerMaterialDefinition[] = [
       slots: { default: [] },
     }),
   },
+  {
+    key: 'element.number',
+    version: 1,
+    kind: 'field',
+    title: 'Number',
+    category: 'Fields',
+    runtime: { component: 'input' },
+    setters: [{
+      key: 'defaultValue',
+      label: 'Default value',
+      path: ['defaultValue'],
+      control: 'defaultValue',
+      valueKind: 'number',
+    }],
+    createNode: ({ id, field = 'number' }) => ({
+      id,
+      kind: 'field',
+      material: 'element.number',
+      field,
+    }),
+  },
 ]
 
 function createDocument(): DesignerDocument {
   return {
     version: 1,
-    form: { readonly: true, columns: 3, gap: '12px', fieldSpan: 1, labelPosition: 'top' },
+    form: {
+      readonly: true,
+      columns: 3,
+      gap: '12px',
+      fieldSpan: 1,
+      labelPosition: 'top',
+      responsive: {
+        tablet: { columns: 2, fieldSpan: 1 },
+        mobile: { columns: 1, fieldSpan: 1 },
+      },
+    },
     nodes: [
       {
         id: 'section',
@@ -113,6 +150,10 @@ describe('designer compiler', () => {
       gap: '12px',
       fieldSpan: 1,
       labelPosition: 'top',
+      responsive: {
+        tablet: { columns: 2, fieldSpan: 1 },
+        mobile: { columns: 1, fieldSpan: 1 },
+      },
     })
     const section = compiled.fields[0]!
     expect(section).toMatchObject({ component: 'section', props: { title: 'Profile' } })
@@ -165,6 +206,88 @@ describe('designer compiler', () => {
       diagnostics: [{ code: 'RULE_TYPE_MISMATCH', nodeId: 'email' }],
     })
     expect('fields' in mismatchResult).toBe(false)
+  })
+
+  it('blocks invalid defaults while preserving nullable optional defaults', () => {
+    const registry = createDesignerRegistry([{ name: 'adapter', materials }])
+    const invalidKind: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'name',
+        kind: 'field',
+        material: 'element.input',
+        field: 'name',
+        defaultValue: 42,
+      }],
+    }
+    expect(compileDesignerDocument(invalidKind, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_DEFAULT_KIND_INVALID', nodeId: 'name' }],
+    })
+
+    const invalidRule = createDocument()
+    const section = invalidRule.nodes[0]
+    if (section?.kind !== 'container')
+      throw new Error('Expected container fixture')
+    const email = section.slots.default?.[0]
+    if (email?.kind !== 'field')
+      throw new Error('Expected field fixture')
+    email.defaultValue = 'not-an-email'
+    expect(compileDesignerDocument(invalidRule, registry)).toMatchObject({
+      success: false,
+      diagnostics: [expect.objectContaining({ code: 'DESIGNER_DEFAULT_RULE_INVALID', nodeId: 'email' })],
+    })
+
+    const invalidMinimum: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'quantity',
+        kind: 'field',
+        material: 'element.number',
+        field: 'quantity',
+        defaultValue: 1,
+        validation: {
+          version: 1,
+          base: { type: 'number' },
+          rules: [{ kind: 'min', value: 2 }],
+        },
+      }],
+    }
+    expect(compileDesignerDocument(invalidMinimum, registry)).toMatchObject({
+      success: false,
+      diagnostics: [expect.objectContaining({ code: 'DESIGNER_DEFAULT_RULE_INVALID', nodeId: 'quantity' })],
+    })
+
+    const requiredNull: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'required',
+        kind: 'field',
+        material: 'element.input',
+        field: 'required',
+        defaultValue: null,
+        conditions: { required: { kind: 'literal', value: true } },
+      }],
+    }
+    expect(compileDesignerDocument(requiredNull, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_DEFAULT_REQUIRED_NULL', nodeId: 'required' }],
+    })
+
+    const optionalNull = structuredClone(requiredNull)
+    optionalNull.nodes[0]!.conditions = undefined
+    if (optionalNull.nodes[0]?.kind !== 'field')
+      throw new Error('Expected field fixture')
+    optionalNull.nodes[0].validation = {
+      version: 1,
+      base: { type: 'string' },
+      rules: [],
+      nullable: true,
+    }
+    expect(compileDesignerDocument(optionalNull, registry).success).toBe(true)
   })
 
   it('does not compile conditions or comparison rules with unknown field references', () => {

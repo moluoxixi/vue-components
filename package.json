@@ -22,7 +22,7 @@
     "release": "pnpm release:check && pnpm build && changeset publish",
     "release:check": "node scripts/check-workspace-peer-ranges.mjs",
     "test": "pnpm -C packages/ConfigForm/runtime build && pnpm -r --filter \"./packages/**\" test && pnpm --filter @moluoxixi/docs test && pnpm test:config-form-packages",
-    "test:config-form-packages": "pnpm -r --filter \"./packages/ConfigForm/plugin-*\" build && node scripts/verify-config-form-adapter-packages.mjs",
+    "test:config-form-packages": "pnpm -r --filter \"./packages/ConfigForm/plugin-*\" --filter \"@moluoxixi/config-form-designer-element-plus\" build && node scripts/verify-config-form-adapter-packages.mjs",
     "test:coverage": "pnpm -C packages/ConfigForm/runtime build && pnpm -r --filter \"./packages/**\" test:coverage",
     "test:e2e:config-form": "pnpm build && pnpm -C packages/ConfigForm/playground test:e2e",
     "test:e2e:components": "pnpm build && pnpm -C playgrounds/components-playground test:e2e",

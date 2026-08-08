@@ -10,13 +10,16 @@ const InputStub = defineComponent({
     modelValue: { type: String, default: '' },
     placeholder: { type: String, default: '' },
     readonly: { type: Boolean, default: false },
+    disabled: { type: Boolean, default: false },
   },
   emits: ['update:modelValue'],
-  setup(props) {
+  setup(props, { attrs }) {
     return () => h('input', {
+      ...attrs,
       value: props.modelValue,
       placeholder: props.placeholder,
       readonly: props.readonly,
+      disabled: props.disabled,
     })
   },
 })
@@ -68,6 +71,7 @@ describe('designer node preview', () => {
     const wrapper = mount(DesignerNodePreview, {
       props: {
         labelPosition: 'left',
+        model: { name: 'Stale mock value' },
         registry,
         node: {
           id: 'name',
@@ -146,5 +150,46 @@ describe('designer node preview', () => {
     expect(wrapper.find('.container-stub').exists()).toBe(true)
     expect(wrapper.find('[data-testid="nested-content"]').text()).toBe('Nested content')
     expect(wrapper.find('.mx-config-form-designer__node-preview-control').exists()).toBe(false)
+  })
+
+  it('updates an isolated model and derives required, disabled, and readonly states', async () => {
+    const wrapper = mount(DesignerNodePreview, {
+      props: {
+        interactive: true,
+        model: { enabled: true, name: 'Ada' },
+        registry,
+        node: {
+          id: 'name',
+          kind: 'field',
+          material: 'test.input',
+          field: 'name',
+          label: 'Name',
+          conditions: {
+            required: { kind: 'literal', value: true },
+            disabled: {
+              kind: 'compare',
+              operator: 'eq',
+              left: { kind: 'field', field: 'enabled' },
+              right: { kind: 'literal', value: true },
+            },
+            readonly: { kind: 'literal', value: true },
+          },
+        },
+      },
+    })
+
+    const input = wrapper.get('input')
+    expect(input.attributes()).toMatchObject({
+      'aria-required': 'true',
+      'disabled': '',
+      'readonly': '',
+      'value': 'Ada',
+    })
+    expect(wrapper.get('.mx-config-form-designer__node-preview-label').attributes('data-required')).toBe('true')
+    expect(wrapper.get('.mx-config-form-designer__node-preview-control').attributes('inert')).toBeUndefined()
+
+    wrapper.getComponent(InputStub).vm.$emit('update:modelValue', 'Grace')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('updateField')).toEqual([['name', 'Grace']])
   })
 })

@@ -2,6 +2,7 @@ import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component } from 'vue'
 import type {
   DesignerContainerNode,
+  DesignerDiagnostic,
   DesignerFieldNode,
   DesignerJsonValue,
   DesignerNode,
@@ -41,11 +42,13 @@ export interface DesignerPropertySetterDefinition {
   control: DesignerSetterControl
   options?: DesignerSetterOption[]
   optionsPath?: string[]
+  optionSourcePath?: string[]
   valueKind?: DesignerDefaultValueKind
   min?: number
   max?: number
   step?: number
   component?: Component
+  componentProps?: Record<string, unknown>
 }
 
 export interface DesignerMaterialSlotDefinition {
@@ -80,6 +83,7 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   icon?: Component
   runtime: DesignerRuntimeMaterialBinding
   setters: DesignerPropertySetterDefinition[]
+  analyze?: (node: Extract<DesignerNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
 }
 
 export interface DesignerFieldMaterialDefinition extends DesignerMaterialDefinitionBase<'field'> {

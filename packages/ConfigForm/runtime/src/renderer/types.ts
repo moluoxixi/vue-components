@@ -11,6 +11,7 @@ import type {
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
+import type { ConfigFormResponsiveLayout } from './responsive'
 
 export type ConfigFormRendererFormAttrs = FormHTMLAttributes
 export type ConfigFormRendererLayoutAttrs = HTMLAttributes
@@ -57,6 +58,7 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   gap?: string
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
+  responsive?: ConfigFormResponsiveLayout
   /** 透传给原生 Grid/Flex 布局容器。 */
   layoutAttrs?: ConfigFormRendererLayoutAttrs
   /** 透传给原生 grid cell；inline 布局不消费。 */

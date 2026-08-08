@@ -103,7 +103,8 @@ describe('element config form', () => {
     expect(wrapper.find('form.mx-element-config-form').exists()).toBe(true)
     expect(wrapper.get('[data-field="name"]').text()).toContain('姓名')
     expect(wrapper.get('.mx-element-config-form__row').classes()).toContain('mx-element-config-form__row--grid')
-    expect(wrapper.get('.mx-element-config-form__cell').attributes('style')).toContain('grid-column: span 12 / span 12')
+    expect(wrapper.get('.mx-element-config-form__cell').attributes('style')).toEqual(expect.stringContaining('--mx-config-form-span-desktop: 12'))
+    expect(wrapper.get('.mx-element-config-form__cell').attributes('style')).toEqual(expect.stringContaining('grid-column: span var(--mx-config-form-active-span) / span var(--mx-config-form-active-span)'))
     expect(wrapper.find('[data-field="status"]').exists()).toBe(false)
 
     await wrapper.get('form').trigger('submit')

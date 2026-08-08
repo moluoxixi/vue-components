@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DesignerDropTarget } from '../history'
 import type { DesignerFormSettings, DesignerNode } from '../document'
+import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerNodeAction } from './types'
 import type { DesignerMaterialSlotDefinition, DesignerRegistry } from '../registry'
 import type { StyleValue } from 'vue'
@@ -14,8 +15,10 @@ import {
   Trash2,
 } from '@lucide/vue'
 import Sortable from 'sortablejs'
+import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
+import { evaluateDesignerCondition } from '../condition'
 import DesignerNodePreview from './DesignerNodePreview.vue'
 
 defineOptions({ name: 'DesignerNodeList' })
@@ -28,6 +31,9 @@ const props = defineProps<{
   form?: DesignerFormSettings
   selectedId?: string
   readonly?: boolean
+  breakpoint?: ConfigFormBreakpoint
+  interactive?: boolean
+  model?: Record<string, unknown>
 }>()
 const locale = useDesignerLocale()
 
@@ -36,12 +42,19 @@ const emit = defineEmits<{
   move: [nodeId: string, target: DesignerDropTarget]
   addMaterial: [materialKey: string, target: DesignerDropTarget]
   action: [action: DesignerNodeAction, nodeId: string]
+  updateField: [field: string, value: unknown]
 }>()
 
 const listRef = ref<HTMLElement>()
 let sortable: Sortable | undefined
 
-const formColumns = computed(() => Math.max(1, Math.floor(props.form?.columns ?? 24)))
+const resolvedLayout = computed(() => resolveConfigFormLayout(
+  props.form?.columns,
+  props.form?.fieldSpan,
+  props.form?.responsive,
+  props.breakpoint ?? 'desktop',
+))
+const formColumns = computed(() => resolvedLayout.value.columns)
 const listStyle = computed<StyleValue | undefined>(() => {
   if (props.parentId !== null)
     return undefined
@@ -66,9 +79,22 @@ function nodeStyle(node: DesignerNode): StyleValue | undefined {
     return undefined
   if (props.form?.inline)
     return { flex: '0 1 auto', minWidth: 0 }
-  const configuredSpan = node.span ?? props.form?.fieldSpan ?? 24
+  const configuredSpan = node.span ?? resolvedLayout.value.fieldSpan
   const span = Math.min(formColumns.value, Math.max(1, Math.floor(configuredSpan)))
   return { gridColumn: `span ${span} / span ${span}`, minWidth: 0 }
+}
+
+function isNodeVisible(node: DesignerNode): boolean {
+  if (!props.interactive)
+    return true
+  const values = props.model ?? {}
+  const visible = node.conditions?.visible
+    ? evaluateDesignerCondition(node.conditions.visible, values)
+    : true
+  const hidden = node.conditions?.hidden
+    ? evaluateDesignerCondition(node.conditions.hidden, values)
+    : false
+  return visible && !hidden
 }
 
 function localTarget(index?: number): DesignerDropTarget {
@@ -172,6 +198,10 @@ function forwardAction(action: DesignerNodeAction, nodeId: string): void {
   emit('action', action, nodeId)
 }
 
+function forwardUpdateField(field: string, value: unknown): void {
+  emit('updateField', field, value)
+}
+
 watch(() => props.readonly, createSortable)
 onMounted(createSortable)
 onBeforeUnmount(destroySortable)
@@ -189,6 +219,7 @@ onBeforeUnmount(destroySortable)
   >
     <li
       v-for="node in nodes"
+      v-show="isNodeVisible(node)"
       :key="node.id"
       class="mx-config-form-designer__node"
       :class="{ 'is-selected': selectedId === node.id, 'is-container': node.kind === 'container' }"
@@ -242,7 +273,15 @@ onBeforeUnmount(destroySortable)
         @focus="emit('select', node.id)"
         @keydown="handleKeydown($event, node.id)"
       >
-        <DesignerNodePreview :node="node" :registry="registry" :label-position="form?.labelPosition ?? 'left'" :readonly="form?.readonly">
+        <DesignerNodePreview
+          :node="node"
+          :registry="registry"
+          :label-position="form?.labelPosition ?? 'left'"
+          :readonly="form?.readonly"
+          :interactive="interactive"
+          :model="model"
+          @update-field="forwardUpdateField"
+        >
           <template v-for="slot in materialSlots(node)" #[slot.name]>
             <DesignerNodeList
               :nodes="node.kind === 'container' ? (node.slots[slot.name] ?? []) : []"
@@ -252,10 +291,14 @@ onBeforeUnmount(destroySortable)
               :form="form"
               :selected-id="selectedId"
               :readonly="readonly"
+              :breakpoint="breakpoint"
+              :interactive="interactive"
+              :model="model"
               @select="emit('select', $event)"
               @move="forwardMove"
               @add-material="forwardAddMaterial"
               @action="forwardAction"
+              @update-field="forwardUpdateField"
             />
           </template>
         </DesignerNodePreview>

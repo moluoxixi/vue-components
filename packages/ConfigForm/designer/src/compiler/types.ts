@@ -1,5 +1,6 @@
 import type {
   ConfigFormRendererNode,
+  ConfigFormResponsiveLayout,
 } from '@moluoxixi/config-form/renderer'
 import type { DesignerDiagnostic, DesignerDocument } from '../document'
 
@@ -11,6 +12,7 @@ export interface DesignerRendererConfig {
   gap?: string
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
+  responsive?: ConfigFormResponsiveLayout
 }
 
 export interface DesignerCompileSuccess {

@@ -43,11 +43,26 @@ describe('createConfigFormRendererExpose', () => {
         write: values => replacementModel = values,
       },
     })
+    const replacementClearValidate = vi.spyOn(replacement, 'clearValidate')
+    const replacementGetErrors = vi.spyOn(replacement, 'getErrors')
+    const replacementGetValidating = vi.spyOn(replacement, 'getValidating')
+    const replacementResetFields = vi.spyOn(replacement, 'resetFields')
     const replacementSubmit = vi.spyOn(replacement, 'submit')
+    const replacementValidateField = vi.spyOn(replacement, 'validateField')
     rendererRef.value = { ...replacement, scrollToField }
 
     expose.setValues({ age: 31 }, false)
     expect(expose.getValues()).toEqual({ age: 31, name: 'Lin' })
+    expose.clearValidate('name')
+    expect(expose.getErrors()).toEqual({})
+    expect(expose.getValidating()).toBe(false)
+    await expect(expose.validateField('name')).resolves.toBe(true)
+    expose.resetFields('name')
+    expect(replacementClearValidate).toHaveBeenCalledWith('name')
+    expect(replacementGetErrors).toHaveBeenCalledOnce()
+    expect(replacementGetValidating).toHaveBeenCalledOnce()
+    expect(replacementResetFields).toHaveBeenCalledWith('name')
+    expect(replacementValidateField).toHaveBeenCalledWith('name', undefined)
     await expect(expose.validate()).resolves.toBe(true)
     await expect(expose.submit()).resolves.toBe(true)
     expect(replacementSubmit).toHaveBeenCalledOnce()

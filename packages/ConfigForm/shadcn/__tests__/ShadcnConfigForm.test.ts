@@ -142,7 +142,8 @@ describe('shadcn config form', () => {
     expect(wrapper.get('[data-field="owner"]').attributes('data-required')).toBe('true')
     expect(wrapper.findAll('[data-testid="shadcn-input-stub"]')[1].attributes('disabled')).toBeDefined()
     expect(wrapper.get('.mx-shadcn-config-form__row').classes()).toContain('mx-shadcn-config-form__row--grid')
-    expect(wrapper.get('.mx-shadcn-config-form__cell').attributes('style')).toContain('grid-column: span 12')
+    expect(wrapper.get('.mx-shadcn-config-form__cell').attributes('style')).toEqual(expect.stringContaining('--mx-config-form-span-desktop: 12'))
+    expect(wrapper.get('.mx-shadcn-config-form__cell').attributes('style')).toEqual(expect.stringContaining('grid-column: span var(--mx-config-form-active-span) / span var(--mx-config-form-active-span)'))
 
     await wrapper.get('form').trigger('submit')
     await flushPromises()

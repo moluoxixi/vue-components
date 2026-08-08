@@ -7,6 +7,7 @@ import { compileDesignerDocument } from '@moluoxixi/config-form-designer'
 import { describe, expect, it } from 'vitest'
 import {
   createElementPlusDesignerRegistry,
+  createElementPlusOptionResolverContext,
   ELEMENT_PLUS_DESIGNER_MATERIALS,
   ELEMENT_PLUS_DESIGNER_ZH_CN,
 } from '../index'
@@ -61,9 +62,12 @@ describe('element plus designer materials', () => {
 
     const select = fields.find(material => material.key === 'element.select')!
     expect(select.setters.find(setter => setter.key === 'defaultValue')).toMatchObject({
-      control: 'defaultValue',
+      control: 'custom',
       valueKind: 'select',
-      optionsPath: ['props', 'options'],
+    })
+    expect(select.setters.find(setter => setter.key === 'optionSource')).toMatchObject({
+      control: 'custom',
+      path: ['props', 'optionSource'],
     })
     expect(select.runtime.readonlyProp).toBe('disabled')
 
@@ -187,6 +191,97 @@ describe('element plus designer materials', () => {
     expect(flex).toMatchObject({ props: { wrap: true, gap: 8 } })
     const nestedField = flex && Array.isArray(flex.slots?.default) ? flex.slots.default[0] : undefined
     expect(nestedField).toMatchObject({ field: 'name' })
+  })
+
+  it('validates dictionary defaults against normalized resolved options', () => {
+    const optionResolver = createElementPlusOptionResolverContext({
+      dictionaries: {
+        environments: [
+          { label: 'Playground', value: 'playground' },
+          { label: 'Production', value: 'production' },
+        ],
+      },
+    })
+    const registry = createElementPlusDesignerRegistry([], { optionResolver })
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'environment',
+        kind: 'field',
+        material: 'element.select',
+        field: 'environment',
+        defaultValue: 'playground',
+        props: { optionSource: { kind: 'dictionary', key: 'environments' } },
+      }],
+    }
+
+    expect(compileDesignerDocument(document, registry).success).toBe(true)
+    const environment = document.nodes[0]
+    if (environment?.kind !== 'field')
+      throw new Error('Expected field fixture')
+    environment.defaultValue = 'missing'
+    expect(compileDesignerDocument(document, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_DEFAULT_OPTION_UNKNOWN', nodeId: 'environment' }],
+    })
+    environment.defaultValue = null
+    expect(compileDesignerDocument(document, registry).success).toBe(true)
+
+    environment.defaultValue = undefined
+    environment.props = { optionSource: { kind: 'provider' } }
+    expect(compileDesignerDocument(document, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_INVALID', nodeId: 'environment' }],
+    })
+  })
+
+  it('tracks provider resolution states and blocks unresolved defaults', () => {
+    const optionResolver = createElementPlusOptionResolverContext()
+    const registry = createElementPlusDesignerRegistry([], { optionResolver })
+    const optionSource = { kind: 'provider' as const, key: 'projects' }
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'project',
+        kind: 'field',
+        material: 'element.select',
+        field: 'project',
+        defaultValue: 'website',
+        props: { optionSource },
+      }],
+    }
+
+    expect(compileDesignerDocument(document, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_UNRESOLVED', nodeId: 'project' }],
+    })
+    optionResolver.writeState(optionSource, { status: 'loading', options: [] })
+    expect(compileDesignerDocument(document, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_LOADING', nodeId: 'project' }],
+    })
+    optionResolver.writeState(optionSource, {
+      status: 'ready',
+      options: [{ label: 'Website', value: 'website' }],
+    })
+    expect(compileDesignerDocument(document, registry).success).toBe(true)
+
+    optionResolver.writeState(optionSource, {
+      status: 'ready',
+      options: [{ label: 'Admin', value: 'admin' }],
+    })
+    expect(compileDesignerDocument(document, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_DEFAULT_OPTION_UNKNOWN', nodeId: 'project' }],
+    })
+
+    optionResolver.writeState(optionSource, { status: 'error', options: [], error: 'Provider failed' })
+    expect(compileDesignerDocument(document, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_ERROR', message: 'Provider failed' }],
+    })
   })
 
   it('keeps caller layers above adapter defaults', () => {

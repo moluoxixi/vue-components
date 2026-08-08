@@ -35,11 +35,14 @@ import {
   ElTimePicker,
 } from 'element-plus'
 import ElementCheckboxField from './components/ElementCheckboxField.vue'
+import ElementChoiceDefaultSetter from './components/ElementChoiceDefaultSetter.vue'
+import ElementOptionSourceSetter from './components/ElementOptionSourceSetter.vue'
 import ElementRadioField from './components/ElementRadioField.vue'
 import ElementSection from './components/ElementSection.vue'
 import ElementSelectField from './components/ElementSelectField.vue'
 import ElementFlexLayout from './layout/ElementFlexLayout.vue'
 import ElementGridLayout from './layout/ElementGridLayout.vue'
+import { createElementPlusOptionDiagnostics } from './options'
 
 interface NumericSetterConstraints {
   min?: number
@@ -85,7 +88,14 @@ function defaultValueSetter(
 const placeholderSetter = propSetter('placeholder', 'Placeholder', 'text')
 const clearableSetter = propSetter('clearable', 'Clearable', 'boolean')
 const disabledSetter = propSetter('disabled', 'Disabled', 'boolean')
-const optionsSetter = propSetter('options', 'Options', 'options')
+const optionsSetter = propSetter('options', 'Static options', 'options')
+const optionSourceSetter: DesignerPropertySetterDefinition = {
+  key: 'optionSource',
+  label: 'Option source',
+  path: ['props', 'optionSource'],
+  control: 'custom',
+  component: ElementOptionSourceSetter,
+}
 const optionDefaults = [
   { label: 'Option A', value: 'a' },
   { label: 'Option B', value: 'b' },
@@ -93,6 +103,22 @@ const optionDefaults = [
 
 function defaultOptions(): typeof optionDefaults {
   return optionDefaults.map(option => ({ ...option }))
+}
+
+function choiceDefaultValueSetter(
+  valueKind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>,
+): DesignerPropertySetterDefinition {
+  return {
+    key: 'defaultValue',
+    label: 'Default value',
+    path: ['defaultValue'],
+    control: 'custom',
+    component: ElementChoiceDefaultSetter,
+    componentProps: { kind: valueKind },
+    optionsPath: ['props', 'options'],
+    optionSourcePath: ['props', 'optionSource'],
+    valueKind,
+  }
 }
 
 export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
@@ -169,7 +195,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     category: 'Choices',
     icon: List,
     runtime: { component: ElementSelectField, readonlyProp: 'disabled' },
-    setters: [defaultValueSetter('select', ['props', 'options']), placeholderSetter, clearableSetter, propSetter('filterable', 'Filterable', 'boolean'), optionsSetter],
+    analyze: createElementPlusOptionDiagnostics(),
+    setters: [choiceDefaultValueSetter('select'), optionSourceSetter, optionsSetter, placeholderSetter, clearableSetter, propSetter('filterable', 'Filterable', 'boolean')],
     createNode: ({ id, field = 'select' }) => ({
       id,
       kind: 'field',
@@ -187,7 +214,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     category: 'Choices',
     icon: CircleDot,
     runtime: { component: ElementRadioField, readonlyProp: 'disabled' },
-    setters: [defaultValueSetter('select', ['props', 'options']), optionsSetter, disabledSetter],
+    analyze: createElementPlusOptionDiagnostics(),
+    setters: [choiceDefaultValueSetter('select'), optionSourceSetter, optionsSetter, disabledSetter],
     createNode: ({ id, field = 'radio' }) => ({
       id,
       kind: 'field',
@@ -205,7 +233,8 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     category: 'Choices',
     icon: CheckSquare,
     runtime: { component: ElementCheckboxField, readonlyProp: 'disabled' },
-    setters: [defaultValueSetter('multiselect', ['props', 'options']), optionsSetter, disabledSetter],
+    analyze: createElementPlusOptionDiagnostics(),
+    setters: [choiceDefaultValueSetter('multiselect'), optionSourceSetter, optionsSetter, disabledSetter],
     createNode: ({ id, field = 'checkbox' }) => ({
       id,
       kind: 'field',
@@ -476,6 +505,7 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'dialog.preview': '表单预览',
     'error.invalidJson': 'JSON 格式无效',
     'error.importFailed': '导入失败',
+    'error.exportFailed': '导出校验失败',
     'status.ready': '就绪',
     'status.issues': '{count} 个问题{suffix}',
     'palette.materials': '物料',
@@ -499,6 +529,13 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'property.columns': '列数',
     'property.gap': '间距',
     'property.fieldSpan': '字段宽度',
+    'property.responsive': '响应式布局',
+    'property.breakpointLayout': '{breakpoint}布局',
+    'breakpoint.desktop': '桌面',
+    'breakpoint.tablet': '平板',
+    'breakpoint.mobile': '手机',
+    'canvas.breakpoint': '预览断点',
+    'canvas.linkagePreview': '联动预演',
     'default.value': '默认值',
     'default.unset': '未设置',
     'option.left': '左侧',
@@ -610,9 +647,9 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'element.input': { title: '输入框', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', maxlength: '最大长度' } },
     'element.textarea': { title: '多行输入', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', rows: '行数', maxlength: '最大长度' } },
     'element.input-number': { title: '数字输入', category: '字段', setters: { defaultValue: '默认值', min: '最小值', max: '最大值', step: '步长', controls: '显示控件' } },
-    'element.select': { title: '选择器', category: '选择', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', filterable: '可筛选', options: '选项' } },
-    'element.radio': { title: '单选框', category: '选择', setters: { defaultValue: '默认值', options: '选项', disabled: '禁用' } },
-    'element.checkbox': { title: '复选框', category: '选择', setters: { defaultValue: '默认值', options: '选项', disabled: '禁用' } },
+    'element.select': { title: '选择器', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', placeholder: '占位文本', clearable: '可清空', filterable: '可筛选', options: '静态选项' } },
+    'element.radio': { title: '单选框', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', disabled: '禁用' } },
+    'element.checkbox': { title: '复选框', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', disabled: '禁用' } },
     'element.switch': { title: '开关', category: '选择', setters: { defaultValue: '默认值', activeText: '开启文案', inactiveText: '关闭文案' } },
     'element.date': { title: '日期', category: '日期时间', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },
     'element.time': { title: '时间', category: '日期时间', setters: { defaultValue: '默认值', placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },

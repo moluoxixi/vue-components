@@ -1,6 +1,7 @@
 import type {
   DesignerDocument,
   DesignerMaterialDefinition,
+  DesignerPropertySetterDefinition,
 } from '../index'
 import { describe, expect, it } from 'vitest'
 import {
@@ -9,19 +10,23 @@ import {
   DesignerRegistryError,
 } from '../index'
 
-function fieldMaterial(title: string): DesignerMaterialDefinition {
+function fieldMaterial(
+  title: string,
+  key = 'element.input',
+  setters: DesignerPropertySetterDefinition[] = [],
+): DesignerMaterialDefinition {
   return {
-    key: 'element.input',
+    key,
     version: 1,
     kind: 'field',
     title,
     category: 'Fields',
     runtime: { component: 'input' },
-    setters: [],
+    setters,
     createNode: ({ id, field = 'field' }) => ({
       id,
       kind: 'field',
-      material: 'element.input',
+      material: key,
       field,
     }),
   }
@@ -132,6 +137,72 @@ describe('designer registry', () => {
         code: 'DESIGNER_SLOT_MIN_UNMET',
         nodeId: 'section',
         path: ['nodes', 0, 'slots', 'default'],
+      }),
+    ])
+  })
+
+  it('diagnoses default value kinds and static option membership without rejecting null', () => {
+    const textDefault: DesignerPropertySetterDefinition = {
+      key: 'defaultValue',
+      label: 'Default value',
+      path: ['defaultValue'],
+      control: 'defaultValue',
+      valueKind: 'text',
+    }
+    const selectDefault: DesignerPropertySetterDefinition = {
+      ...textDefault,
+      valueKind: 'select',
+      optionsPath: ['props', 'options'],
+    }
+    const registry = createDesignerRegistry([{
+      name: 'adapter',
+      materials: [
+        fieldMaterial('Input', 'element.input', [textDefault]),
+        fieldMaterial('Select', 'element.select', [selectDefault]),
+      ],
+    }])
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [
+        {
+          id: 'name',
+          kind: 'field',
+          material: 'element.input',
+          field: 'name',
+          defaultValue: 42,
+        },
+        {
+          id: 'environment',
+          kind: 'field',
+          material: 'element.select',
+          field: 'environment',
+          defaultValue: 'missing',
+          props: { options: [{ label: 'Playground', value: 'playground' }] },
+        },
+        {
+          id: 'optional',
+          kind: 'field',
+          material: 'element.select',
+          field: 'optional',
+          defaultValue: null,
+          props: { options: [{ label: 'Playground', value: 'playground' }] },
+        },
+      ],
+    }
+
+    expect(analyzeDesignerDocument(document, registry)).toEqual([
+      expect.objectContaining({
+        code: 'DESIGNER_DEFAULT_KIND_INVALID',
+        nodeId: 'name',
+        path: ['nodes', 0, 'defaultValue'],
+        severity: 'error',
+      }),
+      expect.objectContaining({
+        code: 'DESIGNER_DEFAULT_OPTION_UNKNOWN',
+        nodeId: 'environment',
+        path: ['nodes', 1, 'defaultValue'],
+        severity: 'error',
       }),
     ])
   })

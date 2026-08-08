@@ -38,6 +38,11 @@ const conditionsSchema = z.object({
   readonly: designerConditionSchema.optional(),
 }).strict()
 
+const responsiveLayoutOverrideSchema = z.object({
+  columns: z.number().int().min(1).max(24).optional(),
+  fieldSpan: z.number().int().min(1).max(24).optional(),
+}).strict()
+
 const nodeBaseShape = {
   id: z.string().min(1),
   material: z.string().min(1),
@@ -75,6 +80,10 @@ export const designerDocumentSchema: z.ZodType<DesignerDocument> = z.object({
     gap: z.string().min(1).optional(),
     fieldSpan: z.number().int().positive().optional(),
     labelPosition: z.enum(['left', 'top']).optional(),
+    responsive: z.object({
+      tablet: responsiveLayoutOverrideSchema.optional(),
+      mobile: responsiveLayoutOverrideSchema.optional(),
+    }).strict().optional(),
   }).strict(),
   nodes: z.array(designerNodeSchema),
 }).strict()

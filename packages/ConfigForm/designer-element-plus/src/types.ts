@@ -1,5 +1,1 @@
-export interface ElementPlusDesignerOption {
-  label: string
-  value: string | number | boolean
-  disabled?: boolean
-}
+export type * from './options/types'

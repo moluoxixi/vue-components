@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { DesignerDocument, DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import { ConfigFormDesigner } from '@moluoxixi/config-form-designer'
-import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
+import {
+  createElementPlusDesignerRegistry,
+  provideElementPlusOptionResolver,
+} from '@moluoxixi/config-form-designer-element-plus'
 import { ref } from 'vue'
 import { createDesignerSampleDocument } from './sample-document'
 
@@ -13,7 +16,21 @@ const props = withDefaults(defineProps<{
   showExportPreview: true,
 })
 
-const registry = createElementPlusDesignerRegistry()
+const optionResolver = provideElementPlusOptionResolver({
+  dictionaries: {
+    environments: [
+      { label: 'Playground', value: 'playground' },
+      { label: 'Production', value: 'production' },
+    ],
+  },
+  providers: {
+    projects: async () => [
+      { label: 'Website', value: 'website' },
+      { label: 'Admin console', value: 'admin' },
+    ],
+  },
+})
+const registry = createElementPlusDesignerRegistry([], { optionResolver })
 const documentModel = ref<DesignerDocument>(createDesignerSampleDocument())
 const lastExport = ref('')
 

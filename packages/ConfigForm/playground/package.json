@@ -10,13 +10,13 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
+    "@lucide/vue": "catalog:ui",
     "@moluoxixi/config-form-antd-vue": "workspace:*",
     "@moluoxixi/config-form-designer": "workspace:*",
     "@moluoxixi/config-form-designer-element-plus": "workspace:*",
     "@moluoxixi/config-form-element": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/config-form-shadcn-vue": "workspace:*",
-    "@lucide/vue": "catalog:ui",
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "vue": "catalog:build",

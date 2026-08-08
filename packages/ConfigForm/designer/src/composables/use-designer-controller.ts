@@ -78,7 +78,10 @@ function initialState(input: unknown, registry: DesignerRegistry): {
   const parsed = parseDesignerDocument(input)
   if (!parsed.success)
     return { document: emptyDocument(), diagnostics: parsed.diagnostics }
-  const diagnostics = analyzeDesignerDocument(parsed.data, registry)
+  const diagnostics = analyzeDesignerDocument(parsed.data, registry, {
+    includeDefaultDiagnostics: false,
+    includeMaterialDiagnostics: false,
+  })
   return hasDesignerErrors(diagnostics)
     ? { document: emptyDocument(), diagnostics }
     : { document: parsed.data, diagnostics }
@@ -125,7 +128,9 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   const initial = initialState(options.document(), options.registry())
   const history = shallowRef(createDesignerHistory(initial.document, normalizeHistoryLimit(options.historyLimit())))
   const selectedId = ref<string>()
-  const commandDiagnostics = ref<DesignerDiagnostic[]>(initial.diagnostics)
+  const commandDiagnostics = ref<DesignerDiagnostic[]>(
+    hasDesignerErrors(initial.diagnostics) ? initial.diagnostics : [],
+  )
   const renderVersion = ref(0)
   const document = computed(() => history.value.present)
   const compileResult = computed(() => compileDesignerDocument(document.value, options.registry()))
@@ -146,7 +151,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     if (areDesignerJsonValuesEqual(value, document.value))
       return
     const next = initialState(value, options.registry())
-    commandDiagnostics.value = next.diagnostics
+    commandDiagnostics.value = hasDesignerErrors(next.diagnostics) ? next.diagnostics : []
     if (hasDesignerErrors(next.diagnostics))
       return
     history.value = resetDesignerHistory(history.value, next.document)
@@ -187,7 +192,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     if (rejectReadonly())
       return false
     const result = applyDesignerCommand(history.value, command, options.registry())
-    commandDiagnostics.value = result.diagnostics
+    commandDiagnostics.value = result.changed ? [] : result.diagnostics
     renderVersion.value += 1
     if (!result.changed)
       return false
@@ -199,7 +204,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   }
 
   function applyHistory(next: ReturnType<typeof undoDesignerHistory>): boolean {
-    commandDiagnostics.value = next.diagnostics
+    commandDiagnostics.value = next.changed ? [] : next.diagnostics
     renderVersion.value += 1
     if (!next.changed)
       return false
@@ -319,7 +324,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
 
   function preview(): DesignerCompileResult {
     const result = compileDesignerDocument(document.value, options.registry())
-    commandDiagnostics.value = result.diagnostics
+    commandDiagnostics.value = []
     return result
   }
 
@@ -331,8 +336,11 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
       commandDiagnostics.value = parsed.diagnostics
       return false
     }
-    const semanticDiagnostics = analyzeDesignerDocument(parsed.data, options.registry())
-    commandDiagnostics.value = semanticDiagnostics
+    const semanticDiagnostics = analyzeDesignerDocument(parsed.data, options.registry(), {
+      includeDefaultDiagnostics: false,
+      includeMaterialDiagnostics: false,
+    })
+    commandDiagnostics.value = hasDesignerErrors(semanticDiagnostics) ? semanticDiagnostics : []
     if (hasDesignerErrors(semanticDiagnostics))
       return false
     history.value = resetDesignerHistory(history.value, parsed.data)
@@ -344,6 +352,10 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   }
 
   function exportDocument(): string {
+    const result = compileDesignerDocument(document.value, options.registry())
+    commandDiagnostics.value = []
+    if (!result.success)
+      return ''
     return JSON.stringify(document.value, null, 2)
   }
 

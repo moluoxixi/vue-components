@@ -1,11 +1,13 @@
 import type {
   ConfigFormDesignerExpose,
   DesignerDocument,
+  DesignerFieldNode,
   DesignerMaterialDefinition,
 } from '../index'
 import { flushPromises, mount } from '@vue/test-utils'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ConfigFormDesigner, createDesignerLocale, createDesignerRegistry } from '../index'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
+import { ConfigFormDesigner, createDesignerLocale, createDesignerRegistry, designerDiagnostic } from '../index'
 
 const sortableMock = vi.hoisted(() => ({
   create: vi.fn((element: HTMLElement, options: {
@@ -37,7 +39,12 @@ const materials: DesignerMaterialDefinition[] = [
     kind: 'field',
     title: 'Input',
     category: 'Fields',
-    runtime: { component: 'input' },
+    runtime: {
+      component: 'input',
+      valueProp: 'value',
+      trigger: 'input',
+      getValueFromEvent: event => (event as Event & { target: HTMLInputElement }).target.value,
+    },
     setters: [{
       key: 'placeholder',
       label: 'Placeholder',
@@ -70,6 +77,10 @@ const materials: DesignerMaterialDefinition[] = [
 ]
 
 const registry = createDesignerRegistry([{ name: 'adapter', materials }])
+
+beforeEach(() => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440, writable: true })
+})
 
 function emptyDocument(): DesignerDocument {
   return { version: 1, form: {}, nodes: [] }
@@ -244,6 +255,86 @@ describe('config form designer', () => {
     expect(inlineRootList.attributes('style')).toContain('gap: 12px')
   })
 
+  it('switches responsive canvas presets and edits overrides visually', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: {
+          ...twoFieldDocument(),
+          form: {
+            columns: 24,
+            fieldSpan: 24,
+            responsive: {
+              tablet: { columns: 12, fieldSpan: 6 },
+              mobile: { columns: 4, fieldSpan: 4 },
+            },
+          },
+        },
+        registry,
+      },
+    })
+
+    const rootList = () => wrapper.get('.mx-config-form-designer__canvas-sheet > .mx-config-form-designer__node-list')
+    expect(rootList().attributes('style')).toContain('repeat(24, minmax(0, 1fr))')
+    expect(rootList().findAll(':scope > .mx-config-form-designer__node')[0]!.attributes('style')).toContain('span 24')
+
+    await wrapper.get('button[aria-label="Tablet"]').trigger('click')
+    expect(rootList().attributes('style')).toContain('repeat(12, minmax(0, 1fr))')
+    expect(rootList().findAll(':scope > .mx-config-form-designer__node')[0]!.attributes('style')).toContain('span 6')
+
+    await wrapper.get('button[aria-label="Mobile"]').trigger('click')
+    expect(rootList().attributes('style')).toContain('repeat(4, minmax(0, 1fr))')
+    expect(rootList().findAll(':scope > .mx-config-form-designer__node')[0]!.attributes('style')).toContain('span 4')
+
+    const mobileLayout = wrapper.get('button[aria-label="Mobile layout"]')
+    await mobileLayout.trigger('click')
+    expect(lastDocument(wrapper).form.responsive).toEqual({
+      tablet: { columns: 12, fieldSpan: 6 },
+    })
+  })
+
+  it('previews linkage against an isolated editable model', async () => {
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [
+        {
+          id: 'controller',
+          kind: 'field',
+          material: 'element.input',
+          field: 'controller',
+          defaultValue: 'hide',
+        },
+        {
+          id: 'dependent',
+          kind: 'field',
+          material: 'element.input',
+          field: 'dependent',
+          conditions: {
+            visible: {
+              kind: 'compare',
+              operator: 'eq',
+              left: { kind: 'field', field: 'controller' },
+              right: { kind: 'literal', value: 'show' },
+            },
+          },
+        },
+      ],
+    }
+    const wrapper = mount(ConfigFormDesigner, { props: { document, registry } })
+    const exposed = wrapper.vm as unknown as ConfigFormDesignerExpose
+    const exportedBeforePreview = exposed.exportDocument()
+
+    expect(wrapper.get('[data-node-id="dependent"]').attributes('style') ?? '').not.toContain('display: none')
+    await wrapper.get('button[aria-label="Linkage preview"]').trigger('click')
+    expect(wrapper.get('[data-node-id="dependent"]').attributes('style')).toContain('display: none')
+
+    const controller = wrapper.get('[data-node-id="controller"] input')
+    await controller.setValue('show')
+    expect(wrapper.get('[data-node-id="dependent"]').attributes('style') ?? '').not.toContain('display: none')
+    expect(wrapper.emitted('update:document')).toBeUndefined()
+    expect(exposed.exportDocument()).toBe(exportedBeforePreview)
+  })
+
   it('adds materials, commits text on blur, and preserves undo/redo boundaries', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       attachTo: document.body,
@@ -403,5 +494,47 @@ describe('config form designer', () => {
     await wrapper.get('button[aria-label="Preview form"]').trigger('click')
     expect(wrapper.get('[role="dialog"]').attributes('aria-label')).toBe('Form preview')
     expect(wrapper.emitted('preview')).toHaveLength(1)
+  })
+
+  it('keeps documents editable while diagnostics block export and refresh reactively', async () => {
+    const blocked = ref(true)
+    const diagnosticMaterials: DesignerMaterialDefinition[] = materials.map(material => (
+      material.key === 'element.input' && material.kind === 'field'
+        ? {
+            ...material,
+            analyze: (node: DesignerFieldNode, path: (string | number)[]) => blocked.value
+              ? [designerDiagnostic(
+                  'DESIGNER_OPTION_SOURCE_LOADING',
+                  'Options are still loading',
+                  [...path, 'props', 'optionSource'],
+                  'error',
+                  node.id,
+                )]
+              : [],
+          }
+        : material
+    ))
+    const diagnosticRegistry = createDesignerRegistry([{ name: 'adapter', materials: diagnosticMaterials }])
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: twoFieldDocument(), registry: diagnosticRegistry },
+    })
+    const exposed = wrapper.vm as unknown as ConfigFormDesignerExpose
+
+    expect(wrapper.find('[data-node-id="first"]').exists()).toBe(true)
+    expect(exposed.dispatch({ type: 'updateForm', changes: { columns: 12 } })).toBe(true)
+    expect(lastDocument(wrapper).form.columns).toBe(12)
+
+    await wrapper.get('button[aria-label="Export document"]').trigger('click')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Options are still loading')
+    expect(wrapper.emitted('export')).toBeUndefined()
+    const copy = wrapper.findAll('button').find(button => button.text().includes('Copy'))
+    const download = wrapper.findAll('button').find(button => button.text().includes('Download'))
+    expect(copy?.attributes('disabled')).toBeDefined()
+    expect(download?.attributes('disabled')).toBeDefined()
+
+    await wrapper.get('button[aria-label="Close"]').trigger('click')
+    blocked.value = false
+    await flushPromises()
+    expect(wrapper.get('.mx-config-form-designer__status').text()).toContain('Ready')
   })
 })

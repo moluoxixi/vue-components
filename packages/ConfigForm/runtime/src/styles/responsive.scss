@@ -1,0 +1,27 @@
+[data-config-form-responsive-layout] {
+  --mx-config-form-active-columns: var(--mx-config-form-columns-desktop);
+}
+
+[data-config-form-responsive-cell] {
+  --mx-config-form-active-span: var(--mx-config-form-span-desktop);
+}
+
+@media (max-width: 1024px) {
+  [data-config-form-responsive-layout] {
+    --mx-config-form-active-columns: var(--mx-config-form-columns-tablet);
+  }
+
+  [data-config-form-responsive-cell] {
+    --mx-config-form-active-span: var(--mx-config-form-span-tablet);
+  }
+}
+
+@media (max-width: 720px) {
+  [data-config-form-responsive-layout] {
+    --mx-config-form-active-columns: var(--mx-config-form-columns-mobile);
+  }
+
+  [data-config-form-responsive-cell] {
+    --mx-config-form-active-span: var(--mx-config-form-span-mobile);
+  }
+}

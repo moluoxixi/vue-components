@@ -16,6 +16,8 @@ import ConfigFormRendererSource from './src/renderer/ConfigFormRenderer.vue'
 export { createConfigFormRendererExpose } from './src/renderer/expose'
 export { withConfigFormInstall } from './src/renderer/install'
 export type { InstallableConfigFormComponent } from './src/renderer/install'
+export { resolveConfigFormLayout } from './src/renderer/responsive'
+export type * from './src/renderer/responsive'
 export type * from './src/renderer/types'
 
 export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = ConfigFormValues>
