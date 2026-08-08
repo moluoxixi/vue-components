@@ -12,6 +12,7 @@ component-ideas
 # 依赖（可选）
 *-lock.yaml
 !pnpm-lock.yaml
+.pnpm-store/
 
 # 测试产物
 .snapshot

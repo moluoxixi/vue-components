@@ -36,7 +36,7 @@ defineProps<{
 
 .overview-card {
   display: grid;
-  min-height: 88px;
+  min-height: 80px;
   grid-template-columns: 38px minmax(0, 1fr) 18px;
   align-items: center;
   gap: 12px;
@@ -46,16 +46,16 @@ defineProps<{
   background: var(--bg-color);
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.16s, box-shadow 0.16s, transform 0.16s;
+  transition: border-color 0.16s, box-shadow 0.16s, background-color 0.16s;
 }
 
 .overview-card:hover,
 .overview-card:focus-visible {
   border-color: var(--brand-color);
-  box-shadow: var(--mx-shadow, var(--el-box-shadow-light));
+  background: var(--mx-fill-light, var(--bg-color-soft));
+  box-shadow: 0 2px 8px rgba(31, 35, 41, 0.06);
   color: inherit;
   text-decoration: none;
-  transform: translateY(-1px);
   outline: none;
 }
 

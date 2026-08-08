@@ -2,13 +2,17 @@
 import {
   ElementPlusDocsDemo,
 } from '@moluoxixi/vitepress-theme-element-plus'
-import type { ElementPlusDocsDemoProps } from '@moluoxixi/vitepress-theme-element-plus'
 import { docsRoutePath } from '../../docs-site'
 import { createPlaygroundSession, playgroundSessionQuery } from './playground-session'
 import { compileLocalSfc } from './sfc-compiler'
 import { useDocsLocale } from '../composables/use-docs-locale'
 
-const props = defineProps<Pick<ElementPlusDocsDemoProps, 'code' | 'demoId' | 'highlighted' | 'title'>>()
+const props = defineProps<{
+  code: string
+  demoId: string
+  highlighted: string
+  title?: string
+}>()
 const { link, messages } = useDocsLocale()
 
 function copySource(source: string): Promise<void> {

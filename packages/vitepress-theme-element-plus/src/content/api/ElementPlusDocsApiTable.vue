@@ -77,7 +77,7 @@ function typeDetailsLabel(type: string): string {
 
 <style scoped>
 .api-table-wrapper {
-  margin: 14px 0 20px;
+  margin: 12px 0 18px;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   border: 1px solid var(--mx-border, var(--border-color));
@@ -96,7 +96,7 @@ function typeDetailsLabel(type: string): string {
 }
 
 .api-table th {
-  padding: 11px 14px;
+  padding: 10px 14px;
   border: 0;
   border-bottom: 1px solid var(--mx-border, var(--border-color));
   background: var(--mx-fill, var(--bg-color-soft));
@@ -108,7 +108,7 @@ function typeDetailsLabel(type: string): string {
 }
 
 .api-table td {
-  padding: 11px 14px;
+  padding: 10px 14px;
   border: 0;
   border-bottom: 1px solid var(--mx-border-light, var(--border-color-lighter));
   color: var(--text-color);

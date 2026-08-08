@@ -189,14 +189,14 @@ test('current docs provide title navigation at every supported width', async ({ 
       await expect(compactTrigger).toBeVisible()
       await expect(toc).toHaveCSS('position', 'sticky')
       await expect(compactTrigger).toHaveAttribute('aria-expanded', 'false')
+      await expect(compactTrigger).toHaveAttribute('aria-haspopup', 'dialog')
       const tocPanel = page.locator('#toc-compact-panel')
       await expect(tocPanel).toHaveCount(0)
       await compactTrigger.click()
       await expect(compactTrigger).toHaveAttribute('aria-expanded', 'true')
-      const dialog = page.getByRole('dialog', { name: '本页目录' })
-      await expect(dialog).toBeVisible()
       await expect(tocPanel).toHaveCount(1)
       await expect(tocPanel).toBeVisible()
+      await expect(tocPanel).toHaveAttribute('aria-label', '本页目录')
       await expect(tocPanel.locator('a[href^="#"]')).toHaveText([
         '基础用法',
         'Renderer 与列设置',
@@ -212,7 +212,7 @@ test('current docs provide title navigation at every supported width', async ({ 
       }))
       expect(linksResolveToHeadings).toBe(true)
       await tocPanel.getByRole('link', { name: '基础用法', exact: true }).click()
-      await expect(dialog).toHaveCount(0)
+      await expect(tocPanel).toHaveCount(0)
       await expect(compactTrigger).toHaveAttribute('aria-expanded', 'false')
     }
     else {

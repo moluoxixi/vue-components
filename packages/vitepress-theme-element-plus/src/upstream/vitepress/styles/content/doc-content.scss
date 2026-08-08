@@ -29,10 +29,10 @@
     padding: 48px 32px;
   }
   @include respond-to('xxl') {
-    padding: 64px 0 48px 64px;
+    padding: 48px 0 48px 48px;
     flex-direction: row;
   }
   @include respond-to('max') {
-    padding: 64px 0 48px 64px;
+    padding: 56px 0 48px 56px;
   }
 }

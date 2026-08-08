@@ -12,7 +12,7 @@
   @include respond-to('xxl') {
     margin-bottom: 0;
     order: 2;
-    padding-left: 48px;
+    padding-left: 40px;
     padding-right: 32px;
     position: relative;
     top: auto;
@@ -21,17 +21,16 @@
   }
 
   @include respond-to('max') {
-    padding-left: 64px;
+    padding-left: 56px;
     padding-right: 48px;
   }
 
   .toc-compact-trigger {
     align-items: center;
-    background: color-mix(in srgb, var(--bg-color) 94%, transparent);
+    background: var(--bg-color);
     border: 1px solid var(--border-color-light);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(31, 35, 41, 0.06);
-    backdrop-filter: blur(10px);
+    box-shadow: 0 1px 2px rgba(31, 35, 41, 0.04);
     color: var(--text-color);
     cursor: pointer;
     display: flex;
@@ -45,6 +44,15 @@
     padding: 10px 14px;
     text-align: left;
     width: 100%;
+    transition:
+      background-color var(--el-transition-duration-fast),
+      border-color var(--el-transition-duration-fast),
+      color var(--el-transition-duration-fast);
+
+    &[aria-expanded='true'] {
+      border-color: color-mix(in srgb, var(--brand-color) 45%, var(--border-color-light));
+      color: var(--brand-color);
+    }
 
     &:focus-visible {
       outline: 2px solid var(--brand-color);
@@ -70,6 +78,19 @@
       color: var(--text-color-lighter);
       font-size: 11px;
       font-weight: 500;
+    }
+
+    &__chevron {
+      flex: none;
+      height: 16px;
+      width: 16px;
+      color: var(--text-color-lighter);
+      transition: transform 0.18s ease;
+    }
+
+    &[aria-expanded='true'] &__chevron {
+      color: var(--brand-color);
+      transform: rotate(180deg);
     }
 
     @include respond-to('xxl') {
@@ -132,69 +153,56 @@
   }
 }
 
-.toc-compact-dialog {
+.toc-compact-popper.el-popper {
+  width: min(560px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px);
   overflow: hidden;
-  border-radius: 6px;
-
-  .el-dialog__header {
-    margin: 0;
-    padding: 0;
-  }
-
-  .el-dialog__body {
-    padding: 0;
-  }
-}
-
-.toc-compact-dialog__header {
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 12px 10px 18px;
-  border-bottom: 1px solid var(--border-color-light);
-
-  .el-dialog__title {
-    color: var(--text-color);
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 0;
-  }
-}
-
-.toc-compact-dialog__close {
-  display: inline-flex;
-  width: 34px;
-  height: 34px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
   padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-color-light);
-  cursor: pointer;
+  border: 1px solid var(--border-color-light);
+  border-radius: 6px;
+  background: var(--bg-color);
+  box-shadow: 0 10px 30px rgba(31, 35, 41, 0.12), 0 2px 8px rgba(31, 35, 41, 0.06);
 
-  &:hover,
-  &:focus-visible {
-    background: var(--bg-color-soft);
-    color: var(--brand-color);
-    outline: none;
-  }
-}
-
-.toc-compact-dialog__content {
-  max-height: min(68vh, 560px);
-  padding: 12px 18px 20px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-}
-
-@include respond-to('xxl') {
-  .toc-compact-dialog {
+  > .el-popover__title {
     display: none;
   }
+}
+
+.toc-compact-panel {
+  background: var(--bg-color);
+
+  &__header {
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-color-lighter);
+    background: var(--bg-color-soft);
+  }
+
+  &__title {
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  &__count {
+    color: var(--text-color-lighter);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__content {
+    max-height: min(62vh, 520px);
+    padding: 10px 14px 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+}
+
+.dark .toc-compact-popper.el-popper {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
 }

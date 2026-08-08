@@ -64,16 +64,18 @@ test('English component pages expose the complete compact table of contents', as
   const trigger = toc.getByRole('button', { name: 'On this page', exact: true })
   await expect(trigger).toBeVisible()
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
   await expect(trigger).not.toHaveAttribute('aria-controls', /.+/)
 
   await trigger.click()
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect(trigger).toHaveAttribute('aria-controls', 'toc-compact-panel')
-  const dialog = page.getByRole('dialog', { name: 'On this page' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeVisible()
+  const panel = page.locator('#toc-compact-panel')
+  await expect(panel).toBeVisible()
+  await expect(panel).toHaveAttribute('aria-label', 'On this page')
+  await expect(page.locator('.toc-compact-panel__title')).toHaveText('On this page')
 
-  const longTitle = dialog.getByRole('link', {
+  const longTitle = panel.getByRole('link', {
     name: 'Sorting and Filtering with useHeadlessTable',
     exact: true,
   })
@@ -89,7 +91,7 @@ test('English component pages expose the complete compact table of contents', as
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth)
 
   await longTitle.click()
-  await expect(dialog).toHaveCount(0)
+  await expect(panel).toHaveCount(0)
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   await expect(trigger).not.toHaveAttribute('aria-controls', /.+/)
   expect(browserProblems).toEqual([])

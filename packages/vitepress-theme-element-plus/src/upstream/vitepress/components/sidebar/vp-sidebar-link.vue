@@ -50,10 +50,10 @@ watch([activeLink, sidebarItem], ([active, el]) => {
 }
 
 .link {
-  padding: 10px 16px;
+  padding: 9px 14px;
   line-height: 1.5;
   font-size: 0.9rem;
-  border-radius: 8px;
+  border-radius: 6px;
 
   .link-text {
     margin: 0;
@@ -71,6 +71,7 @@ watch([activeLink, sidebarItem], ([active, el]) => {
 
 .link.active {
   background-color: var(--link-active-bg-color);
+  box-shadow: inset 2px 0 0 var(--brand-color);
 
   .link-text {
     font-weight: 600;

@@ -8,11 +8,11 @@
   --mx-warning: var(--warning-color);
   --mx-danger: var(--danger-color);
   --mx-type: var(--warning-color);
-  --mx-shadow: 0 8px 24px rgba(31, 35, 41, 0.08);
+  --mx-shadow: 0 4px 12px rgba(31, 35, 41, 0.07);
 }
 
 .dark {
-  --mx-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --mx-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
 }
 
 .doc-content .demo-block {
@@ -444,7 +444,7 @@
 .overview-page {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
-  padding: 46px 0 80px;
+  padding: 40px 0 72px;
 }
 
 .overview-header {
@@ -476,7 +476,7 @@
 .overview-page h1 {
   margin: 0;
   color: var(--text-color);
-  font-size: 42px;
+  font-size: 38px;
   font-weight: 650;
   line-height: 1.15;
   letter-spacing: 0;
@@ -484,10 +484,10 @@
 
 .overview-intro {
   max-width: 680px;
-  margin: 20px 0 0;
+  margin: 18px 0 0;
   color: var(--text-color-light);
-  font-size: 17px;
-  line-height: 1.75;
+  font-size: 16px;
+  line-height: 1.7;
 }
 
 .overview-actions {
@@ -534,7 +534,7 @@
 .overview-facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 40px 0 44px;
+  margin: 32px 0 36px;
   border-top: 1px solid var(--mx-border);
   border-bottom: 1px solid var(--mx-border);
 }

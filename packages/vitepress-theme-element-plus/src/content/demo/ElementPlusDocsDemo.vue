@@ -213,8 +213,8 @@ async function copyCode(): Promise<void> {
 }
 
 .demo-block:hover {
-  border-color: #c6e2ff;
-  box-shadow: 0 3px 12px rgba(31, 35, 41, 0.06);
+  border-color: color-mix(in srgb, var(--brand-color) 45%, var(--mx-border, var(--border-color)));
+  box-shadow: 0 2px 8px rgba(31, 35, 41, 0.05);
 }
 
 .demo-preview {
