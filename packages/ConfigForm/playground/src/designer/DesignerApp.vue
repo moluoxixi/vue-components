@@ -1,25 +1,15 @@
 <script setup lang="ts">
 import { ELEMENT_PLUS_DESIGNER_ZH_CN } from '@moluoxixi/config-form-designer-element-plus'
+import { ArrowLeft } from '@lucide/vue'
 import { computed, ref, watchEffect } from 'vue'
-import DesignerConfigForm from './examples/components/DesignerConfigForm.vue'
+import DesignerExample from './DesignerExample.vue'
+import { getDesignerPageCopy } from './page-copy'
 
 const language = ref<'zh-CN' | 'en-US'>('zh-CN')
 const designerLocale = computed(() => language.value === 'zh-CN'
   ? ELEMENT_PLUS_DESIGNER_ZH_CN
   : { locale: 'en-US' })
-const copy = computed(() => language.value === 'zh-CN'
-  ? {
-      title: '可视化表单设计器',
-      description: '使用 Element Plus 物料编辑表单结构，预览与导出共用同一份 JSON 文档。',
-      language: '语言',
-      back: '返回 Playground',
-    }
-  : {
-      title: 'Visual Form Designer',
-      description: 'Build forms with Element Plus materials using one JSON document for editing, preview, and export.',
-      language: 'Language',
-      back: 'Back to Playground',
-    })
+const copy = computed(() => getDesignerPageCopy(language.value))
 
 watchEffect(() => {
   document.documentElement.lang = language.value
@@ -29,10 +19,9 @@ watchEffect(() => {
 <template>
   <main class="designer-app">
     <header class="designer-app__header">
-      <div>
-        <p class="designer-app__eyebrow">ConfigForm</p>
+      <div class="designer-app__identity">
+        <span class="designer-app__eyebrow">ConfigForm</span>
         <h1>{{ copy.title }}</h1>
-        <p>{{ copy.description }}</p>
       </div>
       <div class="designer-app__actions">
         <div class="designer-app__language" role="group" :aria-label="copy.language">
@@ -40,10 +29,15 @@ watchEffect(() => {
           <button type="button" :aria-pressed="language === 'zh-CN'" @click="language = 'zh-CN'">中文</button>
           <button type="button" :aria-pressed="language === 'en-US'" @click="language = 'en-US'">English</button>
         </div>
-        <a class="designer-app__back" href="/">{{ copy.back }}</a>
+        <a class="designer-app__back" href="/">
+          <ArrowLeft :size="15" aria-hidden="true" />
+          <span>{{ copy.back }}</span>
+        </a>
       </div>
     </header>
-    <DesignerConfigForm :locale="designerLocale" :show-header="false" />
+    <div class="designer-app__body">
+      <DesignerExample :locale="designerLocale" :show-header="false" :show-export-preview="false" />
+    </div>
   </main>
 </template>
 
@@ -71,50 +65,53 @@ select {
 }
 
 .designer-app {
-  width: min(1480px, 100%);
+  display: flex;
+  width: 100%;
   min-height: 100vh;
-  margin: 0 auto;
-  padding: clamp(16px, 3vw, 36px);
+  flex-direction: column;
+  background: #f3f6fa;
 }
 
 .designer-app__header {
   display: flex;
   min-width: 0;
-  margin-bottom: 20px;
-  align-items: flex-start;
+  padding: 12px 20px;
+  align-items: center;
   justify-content: space-between;
   gap: 20px;
+  border-bottom: 1px solid #d9dee7;
+  background: #fff;
+}
+
+.designer-app__identity {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .designer-app__eyebrow {
-  margin: 0 0 4px;
+  margin: 0;
   color: #2563eb;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
-.designer-app h1,
-.designer-app p {
-  margin: 0;
-}
-
 .designer-app h1 {
-  font-size: 30px;
+  margin: 0;
+  overflow: hidden;
+  color: #17202a;
+  font-size: 20px;
   line-height: 1.2;
-}
-
-.designer-app__header > div > p:last-child {
-  max-width: 720px;
-  margin-top: 8px;
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .designer-app__actions {
   display: flex;
+  min-width: 0;
   flex: 0 0 auto;
   align-items: center;
   gap: 8px;
@@ -122,7 +119,7 @@ select {
 
 .designer-app__language {
   display: flex;
-  height: 34px;
+  min-height: 32px;
   padding: 2px 3px 2px 8px;
   align-items: center;
   gap: 3px;
@@ -139,7 +136,7 @@ select {
 }
 
 .designer-app__language button {
-  height: 28px;
+  min-height: 26px;
   padding: 0 8px;
   color: #475569;
   border: 0;
@@ -155,8 +152,11 @@ select {
 }
 
 .designer-app__back {
-  flex: 0 0 auto;
-  padding: 8px 10px;
+  display: inline-flex;
+  min-height: 32px;
+  padding: 0 9px;
+  align-items: center;
+  gap: 5px;
   color: #334155;
   font-size: 13px;
   text-decoration: none;
@@ -170,13 +170,32 @@ select {
   border-color: #93c5fd;
 }
 
+.designer-app__body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 16px;
+}
+
+.designer-app__body > .designer-example {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+}
+
 @media (max-width: 640px) {
   .designer-app__header {
+    padding: 10px 12px;
+    align-items: flex-start;
     flex-direction: column;
+    gap: 10px;
   }
 
-  .designer-app h1 {
-    font-size: 24px;
+  .designer-app__identity {
+    align-items: center;
+    gap: 8px;
   }
 
   .designer-app__actions {
@@ -184,9 +203,8 @@ select {
     flex-wrap: wrap;
   }
 
-  .designer-app__back,
-  .designer-app__language {
-    align-self: flex-start;
+  .designer-app__body {
+    padding: 8px;
   }
 }
 </style>

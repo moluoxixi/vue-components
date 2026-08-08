@@ -16,6 +16,7 @@
     "@moluoxixi/config-form-element": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/config-form-shadcn-vue": "workspace:*",
+    "@lucide/vue": "catalog:ui",
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "vue": "catalog:build",

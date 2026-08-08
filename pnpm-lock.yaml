@@ -567,6 +567,9 @@ importers:
 
   packages/ConfigForm/playground:
     dependencies:
+      '@lucide/vue':
+        specifier: catalog:ui
+        version: 1.28.0(vue@3.5.33(typescript@5.9.3))
       '@moluoxixi/config-form-antd-vue':
         specifier: workspace:*
         version: link:../antd

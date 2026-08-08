@@ -10,11 +10,13 @@ import {
   CircleDot,
   Clock,
   Hash,
+  LayoutGrid,
   LayoutPanelTop,
   List,
   ListCollapse,
   PanelBottom,
   PanelsTopLeft,
+  Rows3,
   Square,
   ToggleLeft,
   Type as TypeIcon,
@@ -35,6 +37,8 @@ import ElementCheckboxField from './components/ElementCheckboxField.vue'
 import ElementRadioField from './components/ElementRadioField.vue'
 import ElementSection from './components/ElementSection.vue'
 import ElementSelectField from './components/ElementSelectField.vue'
+import ElementFlexLayout from './layout/ElementFlexLayout.vue'
+import ElementGridLayout from './layout/ElementGridLayout.vue'
 
 interface NumericSetterConstraints {
   min?: number
@@ -372,6 +376,65 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
       slots: { default: [] },
     }),
   },
+  {
+    key: 'element.flex',
+    version: 1,
+    kind: 'container',
+    title: 'Flex Wrap',
+    category: 'Layout',
+    icon: Rows3,
+    runtime: { component: ElementFlexLayout },
+    setters: [
+      propSetter('direction', 'Direction', 'select', [
+        { label: 'Row', value: 'row' },
+        { label: 'Column', value: 'column' },
+      ]),
+      propSetter('wrap', 'Wrap', 'boolean'),
+      propSetter('justify', 'Justify', 'select', [
+        { label: 'Start', value: 'flex-start' },
+        { label: 'Center', value: 'center' },
+        { label: 'End', value: 'flex-end' },
+        { label: 'Between', value: 'space-between' },
+      ]),
+      propSetter('align', 'Align', 'select', [
+        { label: 'Start', value: 'flex-start' },
+        { label: 'Center', value: 'center' },
+        { label: 'End', value: 'flex-end' },
+        { label: 'Stretch', value: 'stretch' },
+      ]),
+      propSetter('gap', 'Gap', 'number', undefined, { min: 0, max: 64, step: 4 }),
+      propSetter('itemWidth', 'Item width', 'number', undefined, { min: 80, max: 600, step: 20 }),
+    ],
+    slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
+    createNode: ({ id }) => ({
+      id,
+      kind: 'container',
+      material: 'element.flex',
+      props: { direction: 'row', wrap: true, gap: 12, justify: 'flex-start', align: 'stretch', itemWidth: 220 },
+      slots: { default: [] },
+    }),
+  },
+  {
+    key: 'element.grid',
+    version: 1,
+    kind: 'container',
+    title: 'Grid',
+    category: 'Layout',
+    icon: LayoutGrid,
+    runtime: { component: ElementGridLayout },
+    setters: [
+      propSetter('columns', 'Columns', 'number', undefined, { min: 1, max: 12, step: 1 }),
+      propSetter('gap', 'Gap', 'number', undefined, { min: 0, max: 64, step: 4 }),
+    ],
+    slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
+    createNode: ({ id }) => ({
+      id,
+      kind: 'container',
+      material: 'element.grid',
+      props: { columns: 2, gap: 12 },
+      slots: { default: [] },
+    }),
+  },
 ]
 
 export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
@@ -393,6 +456,7 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'action.apply': '应用',
     'action.copy': '复制',
     'action.download': '下载',
+    'dialog.preview': '表单预览',
     'error.invalidJson': 'JSON 格式无效',
     'error.importFailed': '导入失败',
     'status.ready': '就绪',
@@ -408,6 +472,7 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'property.conditions': '条件',
     'property.diagnostics': '诊断信息',
     'property.form': '表单',
+    'property.readonly': '表单只读',
     'property.field': '字段',
     'property.label': '标签',
     'property.span': '栅格宽度',
@@ -533,10 +598,27 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'element.date': { title: '日期', category: '日期时间', setters: { placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },
     'element.time': { title: '时间', category: '日期时间', setters: { placeholder: '占位文本', clearable: '可清空', format: '显示格式' } },
     'element.section': { title: '分区', category: '布局', setters: { title: '标题', description: '描述' }, slots: { default: '内容' } },
-    'element.card': { title: '卡片', category: '布局', setters: { header: '头部', shadow: '阴影' }, slots: { default: '内容' } },
-    'element.tabs': { title: '标签页', category: '布局', setters: { tabPosition: '位置', stretch: '拉伸' }, slots: { default: '面板' } },
+    'element.card': { title: '卡片', category: '布局', setters: { header: '头部', shadow: '阴影' }, options: { shadow: { always: '总是', hover: '悬停', never: '从不' } }, slots: { default: '内容' } },
+    'element.tabs': { title: '标签页', category: '布局', setters: { tabPosition: '位置', stretch: '拉伸' }, options: { tabPosition: { top: '顶部', right: '右侧', bottom: '底部', left: '左侧' } }, slots: { default: '面板' } },
     'element.tab-pane': { title: '标签面板', category: '布局', setters: { label: '标签', disabled: '禁用' }, slots: { default: '内容' } },
     'element.collapse': { title: '折叠面板', category: '布局', setters: { accordion: '手风琴模式' }, slots: { default: '面板项' } },
     'element.collapse-item': { title: '折叠项', category: '布局', setters: { title: '标题', disabled: '禁用' }, slots: { default: '内容' } },
+    'element.flex': {
+      title: 'Flex 换行',
+      category: '布局',
+      setters: { direction: '方向', wrap: '换行', justify: '主轴对齐', align: '交叉轴对齐', gap: '间距', itemWidth: '项目宽度' },
+      options: {
+        direction: { row: '横向', column: '纵向' },
+        justify: { 'flex-start': '起始', 'center': '居中', 'flex-end': '结束', 'space-between': '两端' },
+        align: { 'flex-start': '起始', 'center': '居中', 'flex-end': '结束', 'stretch': '拉伸' },
+      },
+      slots: { default: '内容' },
+    },
+    'element.grid': {
+      title: 'Grid 栅格',
+      category: '布局',
+      setters: { columns: '列数', gap: '间距' },
+      slots: { default: '内容' },
+    },
   },
 }

@@ -129,6 +129,7 @@ function commitCustom(value: unknown): void {
       type="button"
       class="mx-config-form-designer__switch-row"
       role="switch"
+      :aria-label="setter.label"
       :aria-checked="Boolean(value)"
       :disabled="readonly"
       @click="commitBoolean"

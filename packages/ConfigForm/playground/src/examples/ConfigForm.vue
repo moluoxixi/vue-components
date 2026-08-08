@@ -13,7 +13,7 @@ export const exampleMeta = {
 import { ElTabPane, ElTabs } from 'element-plus'
 import { shallowRef } from 'vue'
 import AntdConfigForm from './AntdConfigForm.vue'
-import DesignerConfigForm from './components/DesignerConfigForm.vue'
+import DesignerConfigForm from '../designer/DesignerExample.vue'
 import ElementConfigForm from './ElementConfigForm.vue'
 import ShadcnConfigForm from './ShadcnConfigForm.vue'
 

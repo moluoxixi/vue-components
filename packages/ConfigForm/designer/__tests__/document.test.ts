@@ -8,7 +8,7 @@ import {
 function createDocument(): DesignerDocument {
   return {
     version: DESIGNER_DOCUMENT_VERSION,
-    form: { columns: 2, gap: '16px', labelPosition: 'left' },
+    form: { readonly: true, columns: 2, gap: '16px', labelPosition: 'left' },
     nodes: [
       {
         id: 'field-name',

@@ -1,4 +1,5 @@
 import type { InjectionKey } from 'vue'
+import type { DesignerJsonValue } from './document'
 import type { DesignerMaterialDefinition } from './registry'
 import { inject } from 'vue'
 
@@ -6,6 +7,7 @@ export interface DesignerMaterialLocale {
   title?: string
   category?: string
   setters?: Record<string, string>
+  options?: Record<string, Record<string, string>>
   slots?: Record<string, string>
 }
 
@@ -22,6 +24,7 @@ export interface DesignerLocale {
   materialTitle: (material: DesignerMaterialDefinition) => string
   materialCategory: (material: DesignerMaterialDefinition) => string
   materialSetterLabel: (material: DesignerMaterialDefinition, setterKey: string, fallback: string) => string
+  materialSetterOptionLabel: (material: DesignerMaterialDefinition, setterKey: string, optionValue: DesignerJsonValue, fallback: string) => string
   materialSlotTitle: (material: DesignerMaterialDefinition, slotName: string, fallback: string) => string
 }
 
@@ -29,6 +32,10 @@ function interpolate(value: string, params?: Record<string, unknown>): string {
   if (!params)
     return value
   return value.replace(/\{(\w+)\}/g, (_, key: string) => String(params[key] ?? `{${key}}`))
+}
+
+function optionLocaleKey(value: DesignerJsonValue): string {
+  return typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)
 }
 
 export function createDesignerLocale(options: DesignerLocaleOptions = {}): DesignerLocale {
@@ -51,6 +58,11 @@ export function createDesignerLocale(options: DesignerLocaleOptions = {}): Desig
     materialCategory: material => materialEntry(material)?.category ?? t(`material.${material.key}.category`, material.category),
     materialSetterLabel: (material, setterKey, fallback) => materialEntry(material)?.setters?.[setterKey]
       ?? t(`material.${material.key}.setter.${setterKey}`, fallback),
+    materialSetterOptionLabel: (material, setterKey, optionValue, fallback) => {
+      const optionKey = optionLocaleKey(optionValue)
+      return materialEntry(material)?.options?.[setterKey]?.[optionKey]
+        ?? t(`material.${material.key}.option.${setterKey}.${optionKey}`, fallback)
+    },
     materialSlotTitle: (material, slotName, fallback) => materialEntry(material)?.slots?.[slotName]
       ?? t(`material.${material.key}.slot.${slotName}`, fallback),
   }

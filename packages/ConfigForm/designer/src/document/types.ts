@@ -7,6 +7,7 @@ export interface DesignerJsonObject { [key: string]: DesignerJsonValue }
 export type DesignerNodeKind = 'field' | 'container'
 
 export interface DesignerFormSettings {
+  readonly?: boolean
   inline?: boolean
   columns?: number
   gap?: string

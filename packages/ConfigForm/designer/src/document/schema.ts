@@ -69,6 +69,7 @@ export const designerNodeSchema: z.ZodType<DesignerNode> = z.lazy(() => z.discri
 export const designerDocumentSchema: z.ZodType<DesignerDocument> = z.object({
   version: z.literal(DESIGNER_DOCUMENT_VERSION),
   form: z.object({
+    readonly: z.boolean().optional(),
     inline: z.boolean().optional(),
     columns: z.number().int().positive().optional(),
     gap: z.string().min(1).optional(),

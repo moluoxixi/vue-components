@@ -27,6 +27,8 @@ const expectedKeys = [
   'element.tab-pane',
   'element.collapse',
   'element.collapse-item',
+  'element.flex',
+  'element.grid',
 ]
 
 describe('element plus designer materials', () => {
@@ -39,7 +41,7 @@ describe('element plus designer materials', () => {
   it('registers the complete MVP field and container set', () => {
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')).toHaveLength(9)
-    expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(6)
+    expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
   })
 
   it('creates valid independent defaults with JSON-safe date and time values', () => {
@@ -111,6 +113,51 @@ describe('element plus designer materials', () => {
       }],
     }
     expect(compileDesignerDocument(valid, registry).success).toBe(true)
+  })
+
+  it('compiles real flex and grid layout containers with nested fields', () => {
+    const registry = createElementPlusDesignerRegistry()
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'grid',
+        kind: 'container',
+        material: 'element.grid',
+        props: { columns: 3, gap: 16 },
+        slots: {
+          default: [{
+            id: 'flex',
+            kind: 'container',
+            material: 'element.flex',
+            props: { wrap: true, gap: 8 },
+            slots: {
+              default: [{
+                id: 'name',
+                kind: 'field',
+                material: 'element.input',
+                field: 'name',
+              }],
+            },
+          }],
+        },
+      }],
+    }
+
+    const compiled = compileDesignerDocument(document, registry)
+    expect(compiled.success).toBe(true)
+    if (!compiled.success)
+      return
+
+    expect(compiled.fields[0]).toMatchObject({
+      component: expect.anything(),
+      props: { columns: 3, gap: 16 },
+    })
+    const grid = compiled.fields[0]!
+    const flex = Array.isArray(grid.slots?.default) ? grid.slots.default[0] : undefined
+    expect(flex).toMatchObject({ props: { wrap: true, gap: 8 } })
+    const nestedField = flex && Array.isArray(flex.slots?.default) ? flex.slots.default[0] : undefined
+    expect(nestedField).toMatchObject({ field: 'name' })
   })
 
   it('keeps caller layers above adapter defaults', () => {

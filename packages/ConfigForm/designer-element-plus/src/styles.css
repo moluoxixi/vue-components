@@ -29,3 +29,71 @@
 .mx-config-form-designer__node-preview-shell .el-tabs__content {
   overflow: visible;
 }
+
+.mx-element-flex-layout {
+  display: flex;
+  min-width: 0;
+  flex-direction: var(--mx-element-flex-direction);
+  flex-wrap: var(--mx-element-flex-wrap);
+  align-items: var(--mx-element-flex-align);
+  justify-content: var(--mx-element-flex-justify);
+  gap: var(--mx-element-flex-gap);
+}
+
+.mx-element-flex-layout > :not(.mx-config-form-designer__node-list) {
+  min-width: min(100%, var(--mx-element-flex-item-width));
+  flex: 1 1 var(--mx-element-flex-item-width);
+}
+
+.mx-element-flex-layout > .mx-config-form-designer__node-list {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 100%;
+  flex-direction: var(--mx-element-flex-direction);
+  flex-wrap: var(--mx-element-flex-wrap);
+  align-items: var(--mx-element-flex-align);
+  justify-content: var(--mx-element-flex-justify);
+  gap: var(--mx-element-flex-gap);
+}
+
+.mx-element-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
+  min-width: min(100%, var(--mx-element-flex-item-width));
+  flex: 1 1 var(--mx-element-flex-item-width);
+}
+
+.mx-element-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__empty-slot {
+  flex: 1 1 100%;
+}
+
+.mx-element-flex-layout.is-column > :not(.mx-config-form-designer__node-list),
+.mx-element-flex-layout.is-column > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
+  width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.mx-element-grid-layout {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(var(--mx-element-grid-columns), minmax(0, 1fr));
+  gap: var(--mx-element-grid-gap);
+}
+
+.mx-element-grid-layout > * {
+  min-width: 0;
+}
+
+.mx-element-grid-layout > .mx-config-form-designer__node-list {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(var(--mx-element-grid-columns), minmax(0, 1fr));
+  gap: var(--mx-element-grid-gap);
+}
+
+.mx-element-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
+  min-width: 0;
+}
+
+.mx-element-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__empty-slot {
+  grid-column: 1 / -1;
+}

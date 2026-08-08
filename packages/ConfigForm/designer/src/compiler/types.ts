@@ -5,6 +5,7 @@ import type { DesignerDiagnostic, DesignerDocument } from '../document'
 
 export interface DesignerRendererConfig {
   fields: ConfigFormRendererNode[]
+  readonly?: boolean
   inline?: boolean
   columns?: number
   gap?: string

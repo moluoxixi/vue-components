@@ -916,9 +916,62 @@ test('standalone designer entry exposes localized controls on narrow screens', a
   await page.setViewportSize({ width: 390, height: 844 })
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await expect(designer.getByRole('button', { name: '导出文档', exact: true })).toBeVisible()
+  const [mobileWorkspaceBox, mobilePaletteBox, mobileCanvasBox, mobilePropertiesBox] = await Promise.all([
+    workspace.boundingBox(),
+    palette.boundingBox(),
+    designer.locator('.mx-config-form-designer__canvas').boundingBox(),
+    properties.boundingBox(),
+  ])
+  expect(mobileWorkspaceBox).not.toBeNull()
+  expect(mobilePaletteBox).not.toBeNull()
+  expect(mobileCanvasBox).not.toBeNull()
+  expect(mobilePropertiesBox).not.toBeNull()
+  expect(Math.abs(mobileCanvasBox!.x - mobileWorkspaceBox!.x)).toBeLessThanOrEqual(1)
+  expect(mobileCanvasBox!.y).toBeGreaterThanOrEqual(mobilePaletteBox!.y + mobilePaletteBox!.height - 1)
+  expect(mobilePropertiesBox!.y).toBeGreaterThanOrEqual(mobileCanvasBox!.y + mobileCanvasBox!.height - 1)
 
   await designer.locator('[data-focus-node-id="designer-name"]').click()
   const nodeActions = designer.locator('[data-node-id="designer-name"] > .mx-config-form-designer__node-header')
   for (const name of ['上移节点', '下移节点', '移入上一个容器', '移出容器', '复制节点', '删除节点'])
     await expect(nodeActions.getByRole('button', { name, exact: true })).toBeVisible()
+})
+
+test('standalone designer renders real flex/grid materials and form readonly preview', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/designer.html')
+  const designer = page.getByTestId('designer-example')
+
+  await designer.getByRole('button', { name: 'Flex 换行', exact: true }).click()
+  await expect(designer.locator('.mx-element-flex-layout')).toBeVisible()
+  const flexProperties = designer.locator('.mx-config-form-designer__properties')
+  await expect(flexProperties).toContainText('换行')
+  await expect(flexProperties.locator('.mx-config-form-designer__switch-row')).toHaveCount(1)
+  await designer.getByRole('button', { name: '输入框', exact: true }).click()
+  await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
+    .getByRole('button', { name: '移入上一个容器', exact: true })
+    .click()
+  await expect(designer.locator('.mx-element-flex-layout [data-node-id]')).toHaveCount(1)
+
+  await designer.getByRole('button', { name: 'Grid 栅格', exact: true }).click()
+  await expect(designer.locator('.mx-element-grid-layout')).toBeVisible()
+  await designer.getByRole('button', { name: '输入框', exact: true }).click()
+  await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
+    .getByRole('button', { name: '移入上一个容器', exact: true })
+    .click()
+  await expect(designer.locator('.mx-element-grid-layout [data-node-id]')).toHaveCount(1)
+  await expect(designer.locator('.mx-config-form-designer__properties')).not.toContainText('表单只读')
+
+  await designer.locator('.mx-config-form-designer__canvas').click({ position: { x: 5, y: 5 } })
+  const formProperties = designer.locator('.mx-config-form-designer__properties')
+  const formReadonly = formProperties.getByRole('switch', { name: '表单只读', exact: true })
+  await expect(formReadonly).toBeVisible()
+  await formReadonly.click()
+
+  await designer.getByRole('button', { name: '预览表单', exact: true }).click()
+  const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })
+  await expect(preview.locator('.mx-config-form__readonly')).toHaveCount(5)
+  await expect(preview.locator('.mx-element-flex-layout > .mx-config-form__field')).toHaveCount(1)
+  await expect(preview.locator('.mx-element-grid-layout > .mx-config-form__field')).toHaveCount(1)
+  await expect.poll(() => preview.locator('.mx-element-flex-layout > .mx-config-form__field').evaluate(element => getComputedStyle(element).flexBasis)).toBe('220px')
+  await expect(preview.locator('input')).toHaveCount(0)
 })

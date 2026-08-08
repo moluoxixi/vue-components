@@ -113,14 +113,16 @@
 }
 
 .mx-config-form-designer__workspace {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr) 304px;
+  display: flex;
+  flex-wrap: nowrap;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .mx-config-form-designer__palette,
 .mx-config-form-designer__properties {
+  flex: 0 0 auto;
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -128,11 +130,17 @@
 }
 
 .mx-config-form-designer__palette {
+  width: 232px;
   border-right: 1px solid var(--mx-designer-border);
 }
 
 .mx-config-form-designer__properties {
+  width: 304px;
   border-left: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__canvas {
+  flex: 1 1 auto;
 }
 
 .mx-config-form-designer__search {
@@ -873,12 +881,22 @@
 
 @media (max-width: 1100px) {
   .mx-config-form-designer__workspace {
-    grid-template-columns: 210px minmax(0, 1fr);
-    grid-template-rows: minmax(440px, 1fr) auto;
+    flex-wrap: wrap;
+    overflow: auto;
+  }
+
+  .mx-config-form-designer__palette {
+    width: 210px;
+  }
+
+  .mx-config-form-designer__canvas {
+    min-width: 0;
+    flex: 1 1 calc(100% - 210px);
   }
 
   .mx-config-form-designer__properties {
-    grid-column: 1 / -1;
+    width: 100%;
+    flex: 1 0 100%;
     max-height: 300px;
     border-top: 1px solid var(--mx-designer-border);
     border-left: 0;
@@ -893,6 +911,7 @@
   .mx-config-form-designer__workspace {
     display: flex;
     flex-direction: column;
+    flex-wrap: nowrap;
     overflow: auto;
   }
 
@@ -907,6 +926,8 @@
 
   .mx-config-form-designer__palette,
   .mx-config-form-designer__properties {
+    width: 100%;
+    flex: 0 0 auto;
     max-height: 260px;
     border: 0;
     border-bottom: 1px solid var(--mx-designer-border);

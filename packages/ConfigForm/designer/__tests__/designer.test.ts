@@ -5,7 +5,7 @@ import type {
 } from '../index'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ConfigFormDesigner, createDesignerRegistry } from '../index'
+import { ConfigFormDesigner, createDesignerLocale, createDesignerRegistry } from '../index'
 
 const sortableMock = vi.hoisted(() => ({
   create: vi.fn((element: HTMLElement, options: {
@@ -99,6 +99,24 @@ afterEach(() => {
 })
 
 describe('config form designer', () => {
+  it('localizes scalar and structured setter options without changing their values', () => {
+    const locale = createDesignerLocale({
+      materials: {
+        'element.input': {
+          options: {
+            mode: {
+              'row': '横向',
+              '{"kind":"dense"}': '紧凑',
+            },
+          },
+        },
+      },
+    })
+
+    expect(locale.materialSetterOptionLabel(materials[0]!, 'mode', 'row', 'Row')).toBe('横向')
+    expect(locale.materialSetterOptionLabel(materials[0]!, 'mode', { kind: 'dense' }, 'Dense')).toBe('紧凑')
+  })
+
   it('reacts to locale replacements without changing document values', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       props: {

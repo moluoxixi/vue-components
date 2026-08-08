@@ -49,7 +49,7 @@ const materials: DesignerMaterialDefinition[] = [
 function createDocument(): DesignerDocument {
   return {
     version: 1,
-    form: { columns: 3, gap: '12px', fieldSpan: 1, labelPosition: 'top' },
+    form: { readonly: true, columns: 3, gap: '12px', fieldSpan: 1, labelPosition: 'top' },
     nodes: [
       {
         id: 'section',
@@ -108,6 +108,7 @@ describe('designer compiler', () => {
       return
 
     expect(compiled.renderer).toMatchObject({
+      readonly: true,
       columns: 3,
       gap: '12px',
       fieldSpan: 1,

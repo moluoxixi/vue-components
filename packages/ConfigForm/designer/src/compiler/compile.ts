@@ -164,6 +164,7 @@ function compileNode(
 function rendererConfig(document: DesignerDocument, fields: ConfigFormRendererNode[]): DesignerRendererConfig {
   return {
     fields,
+    ...(document.form.readonly === undefined ? {} : { readonly: document.form.readonly }),
     ...(document.form.inline === undefined ? {} : { inline: document.form.inline }),
     ...(document.form.columns === undefined ? {} : { columns: document.form.columns }),
     ...(document.form.gap === undefined ? {} : { gap: document.form.gap }),

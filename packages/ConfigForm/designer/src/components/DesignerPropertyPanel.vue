@@ -48,7 +48,14 @@ const propertySetters = computed(() => [
   ...commonSetters.value,
   ...(props.material?.setters
     .filter(setter => !['condition', 'validation'].includes(setter.control))
-    .map(setter => ({ ...setter, label: locale.materialSetterLabel(props.material!, setter.key, setter.label) })) ?? []),
+    .map(setter => ({
+      ...setter,
+      label: locale.materialSetterLabel(props.material!, setter.key, setter.label),
+      options: setter.options?.map(option => ({
+        ...option,
+        label: locale.materialSetterOptionLabel(props.material!, setter.key, option.value, option.label),
+      })),
+    })) ?? []),
 ].filter((setter, index, entries) => entries.findIndex(entry => entry.path.join('.') === setter.path.join('.')) === index))
 
 const conditionSetters = computed<DesignerPropertySetterDefinition[]>(() => {
@@ -94,6 +101,7 @@ function formSetter(
 }
 
 const formSetters = computed(() => [
+  formSetter('readonly', locale.t('property.readonly', 'Readonly'), 'boolean'),
   formSetter('inline', locale.t('property.inline', 'Inline'), 'boolean'),
   formSetter('labelPosition', locale.t('property.labelPosition', 'Label position'), 'select', [
     { label: locale.t('option.left', 'Left'), value: 'left' },
