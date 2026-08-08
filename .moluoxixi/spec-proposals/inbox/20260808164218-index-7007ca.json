@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260808164218-index-7007ca",
+  "createdAt": "2026-08-08T16:42:18.746Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-08-config-form-designer-advanced",
+  "reason": "Index the proposed ConfigForm designer code-spec without modifying approved frontend guidance directly.",
+  "target": "frontend/index.md",
+  "kind": "file",
+  "baseHash": "adc1694bfef9c77bc01cec36589d9f05a97178cc5d5d965bdf324a555048ceb7",
+  "contentFile": "content/20260808164218-index-7007ca.md",
+  "contentHash": "a75245996519d6380c91687c1343a20a597f25f9abad54c98012b634781ebc12"
+}

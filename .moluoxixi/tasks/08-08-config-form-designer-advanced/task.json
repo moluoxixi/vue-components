@@ -1,0 +1,38 @@
+{
+  "id": "config-form-designer-advanced",
+  "name": "config-form-designer-advanced",
+  "title": "ConfigForm designer advanced capabilities",
+  "description": "",
+  "status": "in_progress",
+  "complexity": {
+    "level": "complex",
+    "signals": [],
+    "reason": ""
+  },
+  "executionApproval": {
+    "mode": "manual",
+    "granted": true,
+    "source": "explicit_user",
+    "grantedAt": "2026-08-08T13:50:18.737072Z",
+    "reason": "Final planning artifacts approved before start"
+  },
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-08",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
