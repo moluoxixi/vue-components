@@ -106,3 +106,36 @@ Added standalone designer directory structure, localized visual property options
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Fix ConfigForm designer form settings and defaults
+
+**Date**: 2026-08-08
+**Task**: Fix ConfigForm designer form settings and defaults
+**Branch**: `main`
+
+### Summary
+
+Applied all form settings to the real designer canvas, added typed visual default-value setters for Element Plus fields, updated the Playground sample, and added unit and E2E regression coverage.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `be56481` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
