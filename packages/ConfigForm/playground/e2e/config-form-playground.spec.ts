@@ -764,8 +764,22 @@ test.describe('ConfigForm visual designer', () => {
 
     const readonlySetter = formSetters.filter({ hasText: 'Readonly' })
     await readonlySetter.getByRole('switch').click()
-    await expect(canvas.locator('input[placeholder="Your name"]')).toHaveAttribute('readonly', '')
-    await expect(canvas.locator('[data-node-id="designer-choice"] [role="combobox"]')).toBeDisabled()
+    await expect(canvas.locator('.mx-config-form-designer__node-preview-readonly')).toHaveCount(3)
+    await expect(canvas.locator('input[placeholder="Your name"]')).toHaveCount(0)
+    await expect(canvas.locator('[data-node-id="designer-choice"] [role="combobox"]')).toHaveCount(0)
+    const readonlyName = canvas.locator('[data-node-id="designer-name"] .mx-config-form-designer__node-preview')
+    const readonlyNameAlignment = await readonlyName.evaluate((element) => {
+      const label = element.querySelector('.mx-config-form-designer__node-preview-label')?.getBoundingClientRect()
+      const value = element.querySelector('.mx-config-form-designer__node-preview-readonly')?.getBoundingClientRect()
+      return {
+        labelHeight: label?.height ?? 0,
+        labelTop: label?.top ?? 0,
+        valueHeight: value?.height ?? 0,
+        valueTop: value?.top ?? 0,
+      }
+    })
+    expect(Math.abs(readonlyNameAlignment.labelTop - readonlyNameAlignment.valueTop)).toBeLessThanOrEqual(1)
+    expect(readonlyNameAlignment.valueHeight).toBeCloseTo(readonlyNameAlignment.labelHeight, 1)
     await readonlySetter.getByRole('switch').click()
 
     const linkagePreview = canvas.getByRole('button', { name: 'Linkage preview', exact: true })
@@ -849,6 +863,7 @@ test.describe('ConfigForm visual designer', () => {
     })
     expect(choiceToolbarHit).toBeTruthy()
     const defaultValueSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Default value' })
+    await expect(defaultValueSetter.locator('.mx-config-form-designer__unset-button')).toHaveCount(0)
     await expect(defaultValueSetter.getByRole('button', { name: 'Playground', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await defaultValueSetter.getByRole('button', { name: 'Production', exact: true }).click()
     await expect(choiceNode).toContainText('Production')
@@ -891,7 +906,8 @@ test.describe('ConfigForm visual designer', () => {
     await expect(invalidExport.getByRole('button', { name: 'Copy', exact: true })).toBeDisabled()
     await expect(invalidExport.getByRole('button', { name: 'Download', exact: true })).toBeDisabled()
     await invalidExport.getByRole('button', { name: 'Close', exact: true }).click()
-    await invalidDefaultSetter.getByRole('button', { name: 'Unset', exact: true }).click()
+    await invalidDefaultSetter.getByRole('textbox', { name: 'Default value', exact: true }).fill('valid@example.com')
+    await invalidDefaultSetter.getByRole('textbox', { name: 'Default value', exact: true }).blur()
 
     await properties.getByRole('tab', { name: 'Conditions', exact: true }).click()
     const requiredSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Required' })

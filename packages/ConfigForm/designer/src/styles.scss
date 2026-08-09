@@ -378,6 +378,10 @@
   outline: none;
 }
 
+.mx-config-form-designer .mx-config-form-designer__node-preview-shell:focus-visible {
+  outline: none;
+}
+
 .mx-config-form-designer__node-preview-shell.is-container {
   overflow: visible;
 }
@@ -421,6 +425,15 @@
   pointer-events: none;
 }
 
+.mx-config-form-designer__node-preview-readonly {
+  display: inline-block;
+  min-height: 24px;
+  color: var(--mx-designer-text);
+  line-height: 24px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .mx-config-form-designer__node-preview.is-interactive .mx-config-form-designer__node-preview-control {
   pointer-events: auto;
 }
@@ -440,6 +453,11 @@
 }
 
 .mx-config-form-designer__node-preview.is-label-left .mx-config-form-designer__node-preview-label {
+  line-height: 32px;
+}
+
+.mx-config-form-designer__node-preview.is-label-left .mx-config-form-designer__node-preview-readonly {
+  min-height: 32px;
   line-height: 32px;
 }
 
@@ -762,23 +780,6 @@
 
 .mx-config-form-designer__default-value .mx-config-form-designer__segmented button {
   flex: 1 1 calc(50% - 2px);
-}
-
-.mx-config-form-designer__unset-button {
-  min-height: 30px;
-  padding: 4px 8px;
-  color: var(--mx-designer-muted);
-  background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-border);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.mx-config-form-designer__unset-button.is-active {
-  color: var(--mx-designer-accent);
-  font-weight: 650;
-  border-color: var(--mx-designer-accent-line);
-  background: var(--mx-designer-accent-soft);
 }
 
 .mx-config-form-designer__condition-editor,

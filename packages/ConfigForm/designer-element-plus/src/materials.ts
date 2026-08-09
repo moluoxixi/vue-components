@@ -43,6 +43,11 @@ import ElementSelectField from './components/ElementSelectField.vue'
 import ElementFlexLayout from './layout/ElementFlexLayout.vue'
 import ElementGridLayout from './layout/ElementGridLayout.vue'
 import { createElementPlusOptionDiagnostics } from './options'
+import {
+  renderElementPlusChoiceReadonly,
+  renderElementPlusRawReadonly,
+  renderElementPlusSwitchReadonly,
+} from './readonly'
 
 interface NumericSetterConstraints {
   min?: number
@@ -129,7 +134,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Input',
     category: 'Fields',
     icon: TypeIcon,
-    runtime: { component: ElInput, readonlyProp: 'readonly' },
+    runtime: { component: ElInput, readonlyProp: 'readonly', readonlyRender: renderElementPlusRawReadonly },
     setters: [defaultValueSetter('text'), placeholderSetter, clearableSetter, propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 })],
     createNode: ({ id, field = 'input' }) => ({
       id,
@@ -147,7 +152,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Textarea',
     category: 'Fields',
     icon: AlignLeft,
-    runtime: { component: ElInput, readonlyProp: 'readonly' },
+    runtime: { component: ElInput, readonlyProp: 'readonly', readonlyRender: renderElementPlusRawReadonly },
     setters: [
       defaultValueSetter('text'),
       placeholderSetter,
@@ -170,7 +175,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Number',
     category: 'Fields',
     icon: Hash,
-    runtime: { component: ElInputNumber, readonlyProp: 'disabled' },
+    runtime: { component: ElInputNumber, readonlyProp: 'disabled', readonlyRender: renderElementPlusRawReadonly },
     setters: [
       defaultValueSetter('number'),
       propSetter('min', 'Minimum', 'number'),
@@ -194,7 +199,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Select',
     category: 'Choices',
     icon: List,
-    runtime: { component: ElementSelectField, readonlyProp: 'disabled' },
+    runtime: { component: ElementSelectField, readonlyProp: 'disabled', readonlyRender: renderElementPlusChoiceReadonly },
     analyze: createElementPlusOptionDiagnostics(),
     setters: [choiceDefaultValueSetter('select'), optionSourceSetter, optionsSetter, placeholderSetter, clearableSetter, propSetter('filterable', 'Filterable', 'boolean')],
     createNode: ({ id, field = 'select' }) => ({
@@ -213,7 +218,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Radio',
     category: 'Choices',
     icon: CircleDot,
-    runtime: { component: ElementRadioField, readonlyProp: 'disabled' },
+    runtime: { component: ElementRadioField, readonlyProp: 'disabled', readonlyRender: renderElementPlusChoiceReadonly },
     analyze: createElementPlusOptionDiagnostics(),
     setters: [choiceDefaultValueSetter('select'), optionSourceSetter, optionsSetter, disabledSetter],
     createNode: ({ id, field = 'radio' }) => ({
@@ -232,7 +237,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Checkbox',
     category: 'Choices',
     icon: CheckSquare,
-    runtime: { component: ElementCheckboxField, readonlyProp: 'disabled' },
+    runtime: { component: ElementCheckboxField, readonlyProp: 'disabled', readonlyRender: renderElementPlusChoiceReadonly },
     analyze: createElementPlusOptionDiagnostics(),
     setters: [choiceDefaultValueSetter('multiselect'), optionSourceSetter, optionsSetter, disabledSetter],
     createNode: ({ id, field = 'checkbox' }) => ({
@@ -252,7 +257,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Switch',
     category: 'Choices',
     icon: ToggleLeft,
-    runtime: { component: ElSwitch, readonlyProp: 'disabled' },
+    runtime: { component: ElSwitch, readonlyProp: 'disabled', readonlyRender: renderElementPlusSwitchReadonly },
     setters: [defaultValueSetter('boolean'), propSetter('activeText', 'Active text', 'text'), propSetter('inactiveText', 'Inactive text', 'text')],
     createNode: ({ id, field = 'switch' }) => ({
       id,
@@ -270,7 +275,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Date',
     category: 'Date & time',
     icon: Calendar,
-    runtime: { component: ElDatePicker, readonlyProp: 'readonly' },
+    runtime: { component: ElDatePicker, readonlyProp: 'readonly', readonlyRender: renderElementPlusRawReadonly },
     setters: [defaultValueSetter('date'), placeholderSetter, clearableSetter, propSetter('format', 'Display format', 'text')],
     createNode: ({ id, field = 'date' }) => ({
       id,
@@ -288,7 +293,7 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Time',
     category: 'Date & time',
     icon: Clock,
-    runtime: { component: ElTimePicker, readonlyProp: 'readonly' },
+    runtime: { component: ElTimePicker, readonlyProp: 'readonly', readonlyRender: renderElementPlusRawReadonly },
     setters: [defaultValueSetter('time'), placeholderSetter, clearableSetter, propSetter('format', 'Display format', 'text')],
     createNode: ({ id, field = 'time' }) => ({
       id,
@@ -537,7 +542,6 @@ export const ELEMENT_PLUS_DESIGNER_ZH_CN: DesignerLocaleOptions = {
     'canvas.breakpoint': '预览断点',
     'canvas.linkagePreview': '联动预演',
     'default.value': '默认值',
-    'default.unset': '未设置',
     'option.left': '左侧',
     'option.top': '顶部',
     'setter.decrease': '减少 {label}',

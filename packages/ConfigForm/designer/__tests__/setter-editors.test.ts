@@ -66,20 +66,17 @@ describe('designer structured setters', () => {
     expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['name', ['span'], 3])
   })
 
-  it('keeps boolean default values distinct from the unset state', async () => {
+  it('edits boolean defaults without exposing a reset control', async () => {
     const wrapper = mount(DesignerDefaultValueSetter, {
       props: { kind: 'boolean', modelValue: undefined },
     })
 
+    expect(wrapper.text()).not.toContain('Unset')
     await wrapper.findAll('button').find(button => button.text() === 'On')!.trigger('click')
     expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toBe(true)
-
-    await wrapper.setProps({ modelValue: true })
-    await wrapper.findAll('button').find(button => button.text() === 'Unset')!.trigger('click')
-    expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toBeUndefined()
   })
 
-  it('keeps an empty text default distinct from the unset state', async () => {
+  it('commits empty text defaults without exposing a reset control', async () => {
     const wrapper = mount(DesignerDefaultValueSetter, {
       props: { kind: 'text', modelValue: undefined },
     })
@@ -89,10 +86,7 @@ describe('designer structured setters', () => {
     await input.setValue('')
     await input.trigger('blur')
     expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toBe('')
-
-    await wrapper.setProps({ modelValue: '' })
-    await wrapper.get('.mx-config-form-designer__unset-button').trigger('click')
-    expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toBeUndefined()
+    expect(wrapper.text()).not.toContain('Unset')
   })
 
   it('does not rewrite an imported null default when the input was not edited', async () => {
@@ -119,7 +113,7 @@ describe('designer structured setters', () => {
         options: [{ label: 'Playground', value: 'playground' }],
       },
     })
-    expect(multiple.get('.mx-config-form-designer__unset-button').attributes('aria-pressed')).toBe('false')
+    expect(multiple.text()).not.toContain('Unset')
     await multiple.findAll('button').find(button => button.text() === 'Playground')!.trigger('click')
     expect(multiple.emitted('update:modelValue')!.at(-1)![0]).toEqual(['playground'])
   })

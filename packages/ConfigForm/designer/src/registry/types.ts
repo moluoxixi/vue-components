@@ -1,5 +1,5 @@
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
-import type { Component } from 'vue'
+import type { Component, VNodeChild } from 'vue'
 import type {
   DesignerContainerNode,
   DesignerDiagnostic,
@@ -66,8 +66,18 @@ export interface DesignerRuntimeMaterialBinding {
   trigger?: string
   blurTrigger?: string
   readonlyProp?: string
+  readonlyRender?: DesignerReadonlyRender
   getValueFromEvent?: (...args: unknown[]) => unknown
 }
+
+export interface DesignerReadonlyRenderContext {
+  node: DesignerFieldNode
+  model: Record<string, unknown>
+  value: unknown
+  componentProps: Record<string, unknown>
+}
+
+export type DesignerReadonlyRender = (context: DesignerReadonlyRenderContext) => VNodeChild
 
 export interface DesignerCreateNodeContext {
   id: string

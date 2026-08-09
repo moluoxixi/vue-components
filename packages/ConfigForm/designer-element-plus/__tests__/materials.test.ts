@@ -11,6 +11,11 @@ import {
   ELEMENT_PLUS_DESIGNER_MATERIALS,
   ELEMENT_PLUS_DESIGNER_ZH_CN,
 } from '../index'
+import {
+  renderElementPlusChoiceReadonly,
+  renderElementPlusRawReadonly,
+  renderElementPlusSwitchReadonly,
+} from '../src/readonly'
 
 const expectedKeys = [
   'element.input',
@@ -48,6 +53,7 @@ describe('element plus designer materials', () => {
   it('provides typed visual default-value setters and readonly preview bindings', () => {
     const fields = ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')
     expect(fields.every(material => material.setters.some(setter => setter.path.join('.') === 'defaultValue'))).toBe(true)
+    expect(fields.every(material => typeof material.runtime.readonlyRender === 'function')).toBe(true)
     expect(Object.fromEntries(fields.map(material => [material.key, material.runtime.readonlyProp]))).toEqual({
       'element.input': 'readonly',
       'element.textarea': 'readonly',
@@ -75,6 +81,49 @@ describe('element plus designer materials', () => {
     expect(checkbox.setters.find(setter => setter.key === 'defaultValue')).toMatchObject({
       valueKind: 'multiselect',
     })
+  })
+
+  it('renders semantic readonly values for Element Plus choice fields', () => {
+    const registry = createElementPlusDesignerRegistry()
+    const select = registry.createNode('element.select', { id: 'select', field: 'environment' })
+    const checkbox = registry.createNode('element.checkbox', { id: 'checkbox', field: 'tags' })
+    const switchNode = registry.createNode('element.switch', { id: 'switch', field: 'enabled' })
+    if (select.kind !== 'field' || checkbox.kind !== 'field' || switchNode.kind !== 'field')
+      throw new Error('Expected field fixtures')
+
+    expect(renderElementPlusChoiceReadonly({
+      node: select,
+      model: { environment: 'a' },
+      value: 'a',
+      componentProps: { options: [{ label: 'Playground', value: 'a' }] },
+    })).toBe('Playground')
+    expect(renderElementPlusChoiceReadonly({
+      node: checkbox,
+      model: { tags: ['a', 'b'] },
+      value: ['a', 'b'],
+      componentProps: { options: [
+        { label: 'Alpha', value: 'a' },
+        { label: 'Beta', value: 'b' },
+      ] },
+    })).toBe('Alpha、Beta')
+    expect(renderElementPlusSwitchReadonly({
+      node: switchNode,
+      model: { enabled: true },
+      value: true,
+      componentProps: { activeText: 'Enabled', inactiveText: 'Disabled' },
+    })).toBe('Enabled')
+    expect(renderElementPlusSwitchReadonly({
+      node: switchNode,
+      model: { enabled: false },
+      value: false,
+      componentProps: { activeText: 'Enabled', inactiveText: 'Disabled' },
+    })).toBe('Disabled')
+    expect(renderElementPlusRawReadonly({
+      node: select,
+      model: { environment: 'free text' },
+      value: 'free text',
+      componentProps: {},
+    })).toBe('free text')
   })
 
   it('creates valid independent defaults with JSON-safe date and time values', () => {

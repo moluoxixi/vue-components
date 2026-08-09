@@ -37,7 +37,10 @@ const materials: DesignerMaterialDefinition[] = [
     kind: 'field',
     title: 'Input',
     category: 'Fields',
-    runtime: { component: InputStub },
+    runtime: {
+      component: InputStub,
+      readonlyRender: ({ value }) => `readonly:${String(value ?? '')}`,
+    },
     setters: [],
     createNode: ({ id, field = 'input' }) => ({
       id,
@@ -60,6 +63,24 @@ const materials: DesignerMaterialDefinition[] = [
       kind: 'container',
       material: 'test.container',
       slots: { default: [] },
+    }),
+  },
+  {
+    key: 'test.vnode',
+    version: 1,
+    kind: 'field',
+    title: 'VNode field',
+    category: 'Fields',
+    runtime: {
+      component: InputStub,
+      readonlyRender: ({ value }) => h('strong', { 'data-testid': 'readonly-vnode' }, String(value ?? '')),
+    },
+    setters: [],
+    createNode: ({ id, field = 'vnode' }) => ({
+      id,
+      kind: 'field',
+      material: 'test.vnode',
+      field,
     }),
   },
 ]
@@ -113,7 +134,7 @@ describe('designer node preview', () => {
     expect(wrapper.find('input').exists()).toBe(true)
   })
 
-  it('maps form readonly state to the real preview component', () => {
+  it('maps form readonly state to a readonly value renderer', () => {
     const wrapper = mount(DesignerNodePreview, {
       props: {
         readonly: true,
@@ -128,7 +149,26 @@ describe('designer node preview', () => {
     })
 
     expect(wrapper.classes()).toContain('is-readonly')
-    expect(wrapper.get('input').attributes('readonly')).toBeDefined()
+    expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').text()).toBe('readonly:')
+    expect(wrapper.find('input').exists()).toBe(false)
+  })
+
+  it('renders custom readonly VNode content instead of stringifying it', () => {
+    const wrapper = mount(DesignerNodePreview, {
+      props: {
+        readonly: true,
+        registry,
+        node: {
+          id: 'status',
+          kind: 'field',
+          material: 'test.vnode',
+          field: 'status',
+          defaultValue: 'Ready',
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="readonly-vnode"]').text()).toBe('Ready')
   })
 
   it('passes nested content through a real container material', () => {
@@ -178,18 +218,10 @@ describe('designer node preview', () => {
       },
     })
 
-    const input = wrapper.get('input')
-    expect(input.attributes()).toMatchObject({
-      'aria-required': 'true',
-      'disabled': '',
-      'readonly': '',
-      'value': 'Ada',
-    })
+    expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').text()).toBe('readonly:Ada')
     expect(wrapper.get('.mx-config-form-designer__node-preview-label').attributes('data-required')).toBe('true')
     expect(wrapper.get('.mx-config-form-designer__node-preview-control').attributes('inert')).toBeUndefined()
-
-    wrapper.getComponent(InputStub).vm.$emit('update:modelValue', 'Grace')
-    await wrapper.vm.$nextTick()
-    expect(wrapper.emitted('updateField')).toEqual([['name', 'Grace']])
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.emitted('updateField')).toBeUndefined()
   })
 })

@@ -242,7 +242,8 @@ describe('config form designer', () => {
     expect(rootList.attributes('style')).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))')
     expect(rootList.attributes('style')).toContain('gap: 12px')
     expect(rootList.findAll(':scope > .mx-config-form-designer__node').every(node => node.attributes('style')?.includes('span 1'))).toBe(true)
-    expect(rootList.findAll('input').every(input => input.attributes('readonly') !== undefined)).toBe(true)
+    expect(rootList.findAll('.mx-config-form-designer__node-preview-readonly')).toHaveLength(2)
+    expect(rootList.findAll('input')).toHaveLength(0)
     expect(rootList.findAll('.mx-config-form-designer__node-preview.is-label-top')).toHaveLength(2)
 
     const inline = wrapper.findAll('.mx-config-form-designer__setter')

@@ -72,22 +72,8 @@ function toggleValue(value: unknown): void {
       @blur="commitDraft"
       @keydown.enter.prevent="commitDraft"
     >
-    <button
-      v-if="['text', 'number', 'date', 'time'].includes(kind)"
-      type="button"
-      class="mx-config-form-designer__unset-button"
-      :class="{ 'is-active': modelValue === undefined }"
-      :aria-pressed="modelValue === undefined"
-      :disabled="disabled"
-      @click="emit('update:modelValue', undefined)"
-    >
-      {{ locale.t('default.unset', 'Unset') }}
-    </button>
 
     <div v-else-if="kind === 'boolean'" class="mx-config-form-designer__segmented" role="group" :aria-label="locale.t('default.value', 'Default value')">
-      <button type="button" :class="{ 'is-active': modelValue === undefined }" :aria-pressed="modelValue === undefined" :disabled="disabled" @click="emit('update:modelValue', undefined)">
-        {{ locale.t('default.unset', 'Unset') }}
-      </button>
       <button type="button" :class="{ 'is-active': modelValue === false }" :aria-pressed="modelValue === false" :disabled="disabled" @click="emit('update:modelValue', false)">
         {{ locale.t('switch.off', 'Off') }}
       </button>
@@ -97,9 +83,6 @@ function toggleValue(value: unknown): void {
     </div>
 
     <div v-else-if="kind === 'select'" class="mx-config-form-designer__segmented" role="group" :aria-label="locale.t('default.value', 'Default value')">
-      <button type="button" :class="{ 'is-active': modelValue === undefined }" :aria-pressed="modelValue === undefined" :disabled="disabled" @click="emit('update:modelValue', undefined)">
-        {{ locale.t('default.unset', 'Unset') }}
-      </button>
       <button
         v-for="(option, index) in options"
         :key="index"
@@ -112,9 +95,6 @@ function toggleValue(value: unknown): void {
     </div>
 
     <div v-else class="mx-config-form-designer__default-multiselect">
-      <button type="button" class="mx-config-form-designer__unset-button" :class="{ 'is-active': modelValue === undefined }" :aria-pressed="modelValue === undefined" :disabled="disabled" @click="emit('update:modelValue', undefined)">
-        {{ locale.t('default.unset', 'Unset') }}
-      </button>
       <div class="mx-config-form-designer__choice-list" role="group" :aria-label="locale.t('default.value', 'Default value')">
         <button
           v-for="(option, index) in options"

@@ -158,6 +158,20 @@ function compileField(
     ...(material.runtime.valueProp ? { valueProp: material.runtime.valueProp } : {}),
     ...(material.runtime.trigger ? { trigger: material.runtime.trigger } : {}),
     ...(material.runtime.blurTrigger ? { blurTrigger: material.runtime.blurTrigger } : {}),
+    ...(material.runtime.readonlyRender
+      ? {
+          readonlyRender: ({ componentProps, model, value }: {
+            componentProps: Record<string, unknown>
+            model: Record<string, unknown>
+            value: unknown
+          }) => material.runtime.readonlyRender!({
+            componentProps,
+            model,
+            node,
+            value,
+          }),
+        }
+      : {}),
     ...(material.runtime.getValueFromEvent ? { getValueFromEvent: material.runtime.getValueFromEvent } : {}),
   }
 }

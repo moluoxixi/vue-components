@@ -19,6 +19,7 @@ const materials: DesignerMaterialDefinition[] = [
       component: 'input',
       valueProp: 'modelValue',
       trigger: 'update:modelValue',
+      readonlyRender: ({ node, value }) => `${node.field}:${String(value ?? '')}`,
     },
     setters: [{
       key: 'defaultValue',
@@ -173,6 +174,13 @@ describe('designer compiler', () => {
     expect(typeof field.required).toBe('function')
     expect((field.visible as (values: Record<string, unknown>) => boolean)({ enabled: true })).toBe(true)
     expect((field.visible as (values: Record<string, unknown>) => boolean)({ enabled: false })).toBe(false)
+    expect(typeof field.readonlyRender).toBe('function')
+    expect(field.readonlyRender?.({
+      componentProps: { placeholder: 'Email' },
+      field,
+      model: { email: 'person@example.com' },
+      value: 'person@example.com',
+    })).toBe('email:person@example.com')
     expect(field.schema?.safeParse('bad').success).toBe(false)
     expect(field.schema?.safeParse('person@example.com').success).toBe(true)
   })

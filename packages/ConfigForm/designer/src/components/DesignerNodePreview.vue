@@ -1,8 +1,21 @@
 <script setup lang="ts">
 import type { DesignerFormSettings, DesignerNode } from '../document'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
-import { computed } from 'vue'
+import type { PropType, VNodeChild } from 'vue'
+import { computed, defineComponent } from 'vue'
+import { formatConfigFormReadonlyValue } from '@moluoxixi/config-form-headless'
 import { evaluateDesignerCondition } from '../condition'
+
+const DesignerReadonlyContent = defineComponent({
+  name: 'DesignerReadonlyContent',
+  props: {
+    content: {
+      type: null as unknown as PropType<VNodeChild>,
+      required: true,
+    },
+  },
+  setup: props => () => props.content,
+})
 
 const props = defineProps<{
   node: DesignerNode
@@ -73,6 +86,21 @@ const componentProps = computed<Record<string, unknown>>(() => {
     nextProps['aria-required'] = true
   return nextProps
 })
+
+const readonlyContent = computed(() => {
+  if (!fieldReadonly.value || props.node.kind !== 'field')
+    return ''
+
+  const definition = material.value
+  const valueProp = definition?.runtime.valueProp ?? 'modelValue'
+  const value = componentProps.value[valueProp]
+  return definition?.runtime.readonlyRender?.({
+    componentProps: props.node.props ?? {},
+    model: props.model ?? {},
+    node: props.node,
+    value,
+  }) ?? formatConfigFormReadonlyValue(value)
+})
 </script>
 
 <template>
@@ -104,7 +132,8 @@ const componentProps = computed<Record<string, unknown>>(() => {
           :inert="interactive ? undefined : true"
           :aria-hidden="interactive ? undefined : 'true'"
         >
-          <component :is="material.runtime.component" v-bind="componentProps" />
+          <span v-if="fieldReadonly" class="mx-config-form-designer__node-preview-readonly" aria-readonly="true"><DesignerReadonlyContent :content="readonlyContent" /></span>
+          <component v-else :is="material.runtime.component" v-bind="componentProps" />
         </div>
         <component v-else :is="material.runtime.component" v-bind="componentProps">
           <template v-for="slot in materialSlots" :key="slot.name" #[slot.name]>
