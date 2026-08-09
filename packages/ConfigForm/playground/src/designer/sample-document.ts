@@ -1,6 +1,9 @@
 import type { DesignerDocument } from '@moluoxixi/config-form-designer'
 
-export function createDesignerSampleDocument(): DesignerDocument {
+export type DesignerAdapter = 'element-plus' | 'antd-vue'
+
+export function createDesignerSampleDocument(adapter: DesignerAdapter = 'element-plus'): DesignerDocument {
+  const prefix = adapter === 'element-plus' ? 'element' : 'antd'
   return {
     version: 1,
     form: {
@@ -17,18 +20,18 @@ export function createDesignerSampleDocument(): DesignerDocument {
       {
         id: 'designer-section',
         kind: 'container',
-        material: 'element.section',
+        material: `${prefix}.section`,
         span: 12,
         props: {
           title: 'Account details',
-          description: 'Edit the structure and preview the real Element Plus form.',
+          description: `Edit the structure and preview the real ${adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue'} form.`,
         },
         slots: {
           default: [
             {
               id: 'designer-name',
               kind: 'field',
-              material: 'element.input',
+              material: `${prefix}.input`,
               field: 'name',
               label: 'Name',
               props: { placeholder: 'Your name' },
@@ -47,15 +50,17 @@ export function createDesignerSampleDocument(): DesignerDocument {
       {
         id: 'designer-card',
         kind: 'container',
-        material: 'element.card',
+        material: `${prefix}.card`,
         span: 12,
-        props: { header: 'Preferences', shadow: 'never' },
+        props: adapter === 'element-plus'
+          ? { header: 'Preferences', shadow: 'never' }
+          : { title: 'Preferences', bordered: true },
         slots: {
           default: [
             {
               id: 'designer-choice',
               kind: 'field',
-              material: 'element.select',
+              material: `${prefix}.select`,
               field: 'environment',
               label: 'Environment',
               defaultValue: 'playground',
@@ -82,7 +87,7 @@ export function createDesignerSampleDocument(): DesignerDocument {
       {
         id: 'designer-enabled',
         kind: 'field',
-        material: 'element.switch',
+        material: `${prefix}.switch`,
         field: 'enabled',
         label: 'Enabled',
         defaultValue: true,

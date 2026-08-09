@@ -4,7 +4,7 @@ Vue 3 配置化表单运行时。根入口提供面向 schema、低代码和 UI 
 
 ## 当前架构
 
-`ConfigFormRenderer` 从 `@moluoxixi/config-form/renderer` 导出。它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue`、`config-form-shadcn-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
+`ConfigFormRenderer` 从 `@moluoxixi/config-form/renderer` 导出。它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
 
 根入口的 `ConfigForm`、runtime plugin 与 `useForm` 属于 Runtime/Plugin 路线，负责组件注册、字段转换和 UI plugin 扩展，后续可继续演进为 Pro/低代码能力。轻量 UI 适配器不依赖这套状态机，两条路线只共享明确的基础契约。
 

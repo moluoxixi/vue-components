@@ -1,6 +1,6 @@
 # ConfigForm Headless
 
-`@moluoxixi/config-form-headless` 是轻量 ConfigForm 的 Vue headless 字段协议和表单内核。它不渲染 DOM，也不依赖 Element Plus、Ant Design Vue 或 shadcn-vue 的 Form/FormItem，但公共组件、slot 和 readonly render 契约使用 Vue 类型。
+`@moluoxixi/config-form-headless` 是轻量 ConfigForm 的 Vue headless 字段协议和表单内核。它不渲染 DOM，也不依赖 Element Plus 或 Ant Design Vue 的 Form/FormItem，但公共组件、slot 和 readonly render 契约使用 Vue 类型。
 
 本版 Headless 负责：
 

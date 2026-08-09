@@ -442,6 +442,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
       props: {
         max: 100,
         min: 0,
+        style: { width: '160px' },
         'data-testid': `${prefix}-slider`,
       },
       span: 12,

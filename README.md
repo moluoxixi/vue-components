@@ -2,7 +2,7 @@
 
 基于 Vue 3 的组件集合，Monorepo 结构。
 
-仓库保留两条配置表单路径：`@moluoxixi/config-form` 根入口是面向 schema、低代码和 UI plugin 的 Runtime/Plugin 实现；Element、Antd、Shadcn 三个轻量 UI 包共享 Vue headless 内核，并通过 `@moluoxixi/config-form/renderer` 生成 DOM。Headless 统一处理字段协议、required/Zod/validator、readonly、submit/reset 和校验状态，轻量 UI 包只保留真实组件绑定与样式。
+仓库保留两条配置表单路径：`@moluoxixi/config-form` 根入口是面向 schema、低代码和 UI plugin 的 Runtime/Plugin 实现；Element 与 Antd 两个轻量 UI 包共享 Vue headless 内核，并通过 `@moluoxixi/config-form/renderer` 生成 DOM。Headless 统一处理字段协议、required/Zod/validator、readonly、submit/reset 和校验状态，轻量 UI 包只保留真实组件绑定与样式。
 
 ## 包
 
@@ -14,13 +14,13 @@
 | [`@moluoxixi/config-form-core`](./packages/ConfigForm/core/) | headless 公共 API 的兼容入口 |
 | [`@moluoxixi/config-form-element`](./packages/ConfigForm/element/) | Element Plus 轻量 ConfigForm |
 | [`@moluoxixi/config-form-antd-vue`](./packages/ConfigForm/antd/) | Ant Design Vue 轻量 ConfigForm |
-| [`@moluoxixi/config-form-shadcn-vue`](./packages/ConfigForm/shadcn/) | shadcn-vue 轻量 ConfigForm 壳 |
 | [`@moluoxixi/config-form-devtools-vite-plugin`](./packages/ConfigForm/devtools-vite-plugin/) | 开发态源码定位 Vite 插件 |
+| [`@moluoxixi/config-form-designer-element-plus`](./packages/ConfigForm/designer-element-plus/) | Element Plus 可视化设计器适配 |
+| [`@moluoxixi/config-form-designer-antd-vue`](./packages/ConfigForm/designer-antd-vue/) | Ant Design Vue 可视化设计器适配 |
 | [`@moluoxixi/config-form-plugin-antd-vue`](./packages/ConfigForm/plugin-antd-vue/) | Ant Design Vue runtime adapter |
 | [`@moluoxixi/config-form-plugin-element-plus`](./packages/ConfigForm/plugin-element-plus/) | Element Plus runtime adapter |
-| [`@moluoxixi/config-form-plugin-shadcn-vue`](./packages/ConfigForm/plugin-shadcn-vue/) | shadcn-vue runtime adapter |
 | [`components-playground`](./playgrounds/components-playground/) | `@moluoxixi/components` 包组件示例 |
-| [`config-form-playground`](./packages/ConfigForm/playground/) | 三套轻量 ConfigForm UI 包示例和交互测试 |
+| [`config-form-playground`](./packages/ConfigForm/playground/) | Element Plus、Ant Design Vue 与可视化设计器示例和交互测试 |
 
 ConfigForm runtime adapter 包不单独提供 playground，也不是 Vue `app.use()` 插件；需要接入 adapter 时，由对应 UI 示例或业务入口传给 `runtime.plugins`。
 

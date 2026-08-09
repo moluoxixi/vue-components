@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 
-type SuiteId = 'element' | 'antd' | 'shadcn'
+type SuiteId = 'element' | 'antd'
 type ExpectedValues = Record<string, unknown>
 
 interface FieldExpectation {
@@ -116,37 +116,6 @@ const suites: ConfigFormSuite[] = [
     rootTestId: 'antd-config-form-example',
     setLinkedNotifyChannel: setAntdLinkedNotifyChannel,
     setLinkedSeatCount: setAntdLinkedSeatCount,
-  },
-  {
-    containerNodes: [
-      { classPattern: /shadcn-card/, fieldPrefix: 'shadcn-container', layoutSelector: '.shadcn-card__body', testId: 'shadcn-container-node' },
-      { classPattern: /shadcn-accordion/, fieldPrefix: 'shadcn-container-accordion', layoutSelector: '.shadcn-accordion__body', testId: 'shadcn-container-accordion-node' },
-      { classPattern: /shadcn-tabs-container/, fieldPrefix: 'shadcn-container-tabs-base', layoutSelector: '.shadcn-tab-pane', testId: 'shadcn-container-tabs-node' },
-    ],
-    fillKnownControls: fillShadcnKnownControls,
-    fieldShellSelector: '.mx-shadcn-config-form__field',
-    id: 'shadcn',
-    knownControlSuffixes: [
-      'input',
-      'password',
-      'search',
-      'combobox',
-      'native-select',
-      'input-number',
-      'slider',
-      'date',
-      'time',
-      'color',
-      'textarea',
-      'checkbox',
-      'switch',
-      'radio',
-    ],
-    libraryTabName: 'Shadcn',
-    linkedAdvancedProbeTestId: 'shadcn-linked-native-select',
-    rootTestId: 'shadcn-config-form-example',
-    setLinkedNotifyChannel: setShadcnLinkedNotifyChannel,
-    setLinkedSeatCount: setShadcnLinkedSeatCount,
   },
 ]
 
@@ -321,7 +290,7 @@ async function expectKnownControlsVisible(scope: Locator, suite: ConfigFormSuite
 }
 
 function getOptionLabel(prefix: string): string {
-  return prefix.replace(/^(element|antd|shadcn)-/, '')
+  return prefix.replace(/^(element|antd)-/, '')
 }
 
 async function clickVisibleText(page: Page, text: string): Promise<void> {
@@ -465,49 +434,6 @@ async function fillAntdKnownControls(page: Page, scope: Locator, prefix: string)
   return { values }
 }
 
-async function fillShadcnKnownControls(_page: Page, scope: Locator, prefix: string): Promise<FieldExpectation> {
-  const optionLabel = getOptionLabel(prefix)
-  const values = {
-    checkbox: true,
-    color: '#16a34a',
-    combobox: `${optionLabel}-enabled`,
-    date: '2026-06-02',
-    input: `${prefix} 文本`,
-    inputNumber: 42,
-    nativeSelect: `${optionLabel}-enabled`,
-    password: `${prefix} 密码`,
-    radio: 'enterprise',
-    search: `${prefix} 搜索`,
-    slider: 10,
-    switchValue: true,
-    textarea: `${prefix} 多行内容`,
-    time: '10:30',
-  }
-
-  await scope.getByTestId(`${prefix}-input`).fill(values.input)
-  await scope.getByTestId(`${prefix}-password`).fill(values.password)
-  await scope.getByTestId(`${prefix}-search`).fill(values.search)
-  await scope.getByTestId(`${prefix}-combobox`).locator('input').fill(values.combobox)
-  await scope.getByTestId(`${prefix}-native-select`).selectOption(values.nativeSelect)
-  await scope.getByTestId(`${prefix}-input-number`).fill(String(values.inputNumber))
-  await expect(scope.getByTestId(`${prefix}-slider`)).toBeVisible()
-  await scope.getByTestId(`${prefix}-date`).fill(values.date)
-  await scope.getByTestId(`${prefix}-time`).fill(values.time)
-  await scope.getByTestId(`${prefix}-color`).evaluate((element, color) => {
-    const input = element as HTMLInputElement
-
-    input.value = color
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    input.dispatchEvent(new Event('change', { bubbles: true }))
-  }, values.color)
-  await scope.getByTestId(`${prefix}-textarea`).fill(values.textarea)
-  await scope.getByTestId(`${prefix}-checkbox`).click()
-  await scope.getByTestId(`${prefix}-switch`).click()
-  await scope.getByTestId(`${prefix}-radio`).getByRole('radio', { name: '企业', exact: true }).click()
-
-  return { values }
-}
-
 async function setElementLinkedNotifyChannel(page: Page, scenario: Locator): Promise<void> {
   await chooseElementLinkedSelectOption(page, scenario.getByTestId('element-linked-notify-channel'), '预约通知')
 }
@@ -523,14 +449,6 @@ async function setAntdLinkedNotifyChannel(page: Page, scenario: Locator): Promis
 
 async function setAntdLinkedSeatCount(scenario: Locator): Promise<void> {
   await scenario.getByTestId('antd-linked-seat-count').fill('8')
-}
-
-async function setShadcnLinkedNotifyChannel(_page: Page, scenario: Locator): Promise<void> {
-  await scenario.getByTestId('shadcn-linked-notify-channel').selectOption('scheduled')
-}
-
-async function setShadcnLinkedSeatCount(scenario: Locator): Promise<void> {
-  await scenario.getByTestId('shadcn-linked-seat-count').fill('8')
 }
 
 test.describe('ConfigForm playground 布局场景', () => {
@@ -630,7 +548,7 @@ test.describe('ConfigForm playground 联动场景', () => {
 
       const scheduledProbe = suite.id === 'antd'
         ? scenario.getByRole('textbox', { name: /预约时间/ })
-        : scenario.getByTestId(suite.id === 'shadcn' ? 'shadcn-linked-scheduled-note' : `${suite.id}-linked-scheduled-time`)
+        : scenario.getByTestId(`${suite.id}-linked-scheduled-time`)
 
       await expect(scheduledProbe).toBeHidden()
 
@@ -1007,6 +925,8 @@ test.describe('ConfigForm visual designer', () => {
 test('standalone designer entry exposes localized controls on narrow screens', async ({ page }) => {
   await page.goto('/designer.html')
   await expect(page.getByRole('heading', { name: '可视化表单设计器', exact: true })).toBeVisible()
+  const framework = page.getByRole('group', { name: '组件库', exact: true })
+  await expect(framework.getByRole('button', { name: 'Element Plus', exact: true })).toHaveAttribute('aria-pressed', 'true')
 
   const designer = page.getByTestId('designer-example')
   await expect(designer.getByRole('toolbar', { name: '设计器操作' })).toBeVisible()
@@ -1037,6 +957,12 @@ test('standalone designer entry exposes localized controls on narrow screens', a
   expect(Math.abs(propertiesBox!.width - workspaceBox!.width)).toBeLessThanOrEqual(1)
 
   await page.setViewportSize({ width: 390, height: 844 })
+  await framework.getByRole('button', { name: 'Ant Design Vue', exact: true }).click()
+  await expect(designer.locator('.mx-config-form-designer')).toHaveAttribute('data-adapter', 'antd-vue')
+  await expect(designer.locator('.ant-input')).toBeVisible()
+  await expect(designer.locator('.ant-select')).toBeVisible()
+  await expect(designer.locator('.ant-switch')).toBeVisible()
+  await expect(designer.locator('.el-input')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await expect(designer.getByRole('button', { name: '导出文档', exact: true })).toBeVisible()
   await expect(designer.getByRole('button', { name: '手机', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -1060,64 +986,106 @@ test('standalone designer entry exposes localized controls on narrow screens', a
     await expect(nodeActions.getByRole('button', { name, exact: true })).toBeVisible()
 })
 
-test('standalone designer renders real flex/grid materials and form readonly preview', async ({ page }) => {
+test('standalone designer keeps independent Element Plus and Ant Design Vue documents', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/designer.html')
   const designer = page.getByTestId('designer-example')
+  const framework = page.getByRole('group', { name: '组件库', exact: true })
 
-  const environmentNode = designer.locator('[data-node-id="designer-choice"]')
-  await expect(environmentNode).toContainText('Playground')
-  await environmentNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
-  const environmentDefault = designer.locator('.mx-config-form-designer__properties .mx-config-form-designer__setter').filter({ hasText: '默认值' })
-  await environmentDefault.getByRole('button', { name: 'Production', exact: true }).click()
-  await expect(environmentNode).toContainText('Production')
+  await framework.getByRole('button', { name: 'Ant Design Vue', exact: true }).click()
+  await expect(designer.locator('.mx-antd-designer-section')).toBeVisible()
+  await expect(designer.locator('[data-node-id="designer-name"] .ant-input')).toBeVisible()
+  await expect(designer.locator('[data-node-id="designer-choice"] .ant-select')).toBeVisible()
+  await expect(designer.locator('[data-node-id="designer-enabled"] .ant-switch')).toBeVisible()
+  await expect.poll(() => designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first().evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(24)
 
-  await designer.getByRole('button', { name: 'Flex 换行', exact: true }).click()
-  await expect(designer.locator('.mx-element-flex-layout')).toBeVisible()
-  const flexProperties = designer.locator('.mx-config-form-designer__properties')
-  await expect(flexProperties).toContainText('换行')
-  await expect(flexProperties.locator('.mx-config-form-designer__switch-row')).toHaveCount(1)
+  const antInputCount = await designer.locator('.ant-input').count()
   await designer.getByRole('button', { name: '输入框', exact: true }).click()
-  await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
-    .getByRole('button', { name: '移入上一个容器', exact: true })
-    .click()
-  await expect(designer.locator('.mx-element-flex-layout [data-node-id]')).toHaveCount(1)
+  await expect(designer.locator('.ant-input')).toHaveCount(antInputCount + 1)
 
-  await designer.getByRole('button', { name: 'Grid 栅格', exact: true }).click()
-  await expect(designer.locator('.mx-element-grid-layout')).toBeVisible()
-  await designer.getByRole('button', { name: '输入框', exact: true }).click()
-  await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
-    .getByRole('button', { name: '移入上一个容器', exact: true })
-    .click()
-  await expect(designer.locator('.mx-element-grid-layout [data-node-id]')).toHaveCount(1)
-  await expect(designer.locator('.mx-config-form-designer__properties')).not.toContainText('表单只读')
+  await framework.getByRole('button', { name: 'Element Plus', exact: true }).click()
+  await expect(designer.locator('.mx-element-designer-section')).toBeVisible()
+  await expect(designer.locator('.ant-input')).toHaveCount(0)
 
-  await designer.locator('.mx-config-form-designer__canvas').click({ position: { x: 5, y: 5 } })
-  const formProperties = designer.locator('.mx-config-form-designer__properties')
-  const formReadonly = formProperties.getByRole('switch', { name: '表单只读', exact: true })
-  await expect(formReadonly).toBeVisible()
-  await formReadonly.click()
-
-  await designer.getByRole('button', { name: '预览表单', exact: true }).click()
-  const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })
-  await expect(preview.locator('.mx-config-form__readonly')).toHaveCount(5)
-  await expect(preview.locator('.mx-element-flex-layout > .mx-config-form__field')).toHaveCount(1)
-  await expect(preview.locator('.mx-element-grid-layout > .mx-config-form__field')).toHaveCount(1)
-  await expect.poll(() => preview.locator('.mx-element-flex-layout > .mx-config-form__field').evaluate(element => getComputedStyle(element).flexBasis)).toBe('220px')
-  await expect(preview.locator('input')).toHaveCount(0)
-
-  const designerRow = designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first()
-  const runtimeRow = preview.locator('.mx-config-form__row').first()
-  const columnCount = (locator: typeof designerRow) => locator.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)
-
-  await expect.poll(() => columnCount(designerRow)).toBe(24)
-  await expect.poll(() => columnCount(runtimeRow)).toBe(24)
-
-  await page.setViewportSize({ width: 900, height: 900 })
-  await expect.poll(() => columnCount(designerRow)).toBe(12)
-  await expect.poll(() => columnCount(runtimeRow)).toBe(12)
-
-  await page.setViewportSize({ width: 390, height: 844 })
-  await expect.poll(() => columnCount(designerRow)).toBe(1)
-  await expect.poll(() => columnCount(runtimeRow)).toBe(1)
+  await framework.getByRole('button', { name: 'Ant Design Vue', exact: true }).click()
+  await expect(designer.locator('.ant-input')).toHaveCount(antInputCount + 1)
 })
+
+for (const adapter of [
+  {
+    flexSelector: '.mx-element-flex-layout',
+    framework: 'Element Plus',
+    gridSelector: '.mx-element-grid-layout',
+  },
+  {
+    flexSelector: '.mx-antd-flex-layout',
+    framework: 'Ant Design Vue',
+    gridSelector: '.mx-antd-grid-layout',
+  },
+] as const) {
+  test(`standalone designer renders real flex/grid materials and form readonly preview with ${adapter.framework}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/designer.html')
+    const designer = page.getByTestId('designer-example')
+
+    if (adapter.framework === 'Ant Design Vue')
+      await page.getByRole('group', { name: '组件库', exact: true }).getByRole('button', { name: adapter.framework, exact: true }).click()
+
+    const environmentNode = designer.locator('[data-node-id="designer-choice"]')
+    await expect(environmentNode).toContainText('Playground')
+    await environmentNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    const environmentDefault = designer.locator('.mx-config-form-designer__properties .mx-config-form-designer__setter').filter({ hasText: '默认值' })
+    await environmentDefault.getByRole('button', { name: 'Production', exact: true }).click()
+    await expect(environmentNode).toContainText('Production')
+
+    await designer.getByRole('button', { name: 'Flex 换行', exact: true }).click()
+    await expect(designer.locator(adapter.flexSelector)).toBeVisible()
+    const flexProperties = designer.locator('.mx-config-form-designer__properties')
+    await expect(flexProperties).toContainText('换行')
+    await expect(flexProperties.locator('.mx-config-form-designer__switch-row')).toHaveCount(1)
+    await designer.getByRole('button', { name: '输入框', exact: true }).click()
+    await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
+      .getByRole('button', { name: '移入上一个容器', exact: true })
+      .click()
+    await expect(designer.locator(`${adapter.flexSelector} [data-node-id]`)).toHaveCount(1)
+
+    await designer.getByRole('button', { name: 'Grid 栅格', exact: true }).click()
+    await expect(designer.locator(adapter.gridSelector)).toBeVisible()
+    await designer.getByRole('button', { name: '输入框', exact: true }).click()
+    await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
+      .getByRole('button', { name: '移入上一个容器', exact: true })
+      .click()
+    await expect(designer.locator(`${adapter.gridSelector} [data-node-id]`)).toHaveCount(1)
+    await expect(designer.locator('.mx-config-form-designer__properties')).not.toContainText('表单只读')
+
+    await designer.locator('.mx-config-form-designer__canvas').click({ position: { x: 5, y: 5 } })
+    const formProperties = designer.locator('.mx-config-form-designer__properties')
+    const formReadonly = formProperties.getByRole('switch', { name: '表单只读', exact: true })
+    await expect(formReadonly).toBeVisible()
+    await formReadonly.click()
+
+    await designer.getByRole('button', { name: '预览表单', exact: true }).click()
+    const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })
+    await expect(preview.locator('.mx-config-form__readonly')).toHaveCount(5)
+    await expect(preview).toContainText('Production')
+    await expect(preview.locator(`${adapter.flexSelector} > .mx-config-form__field`)).toHaveCount(1)
+    await expect(preview.locator(`${adapter.gridSelector} > .mx-config-form__field`)).toHaveCount(1)
+    await expect.poll(() => preview.locator(`${adapter.flexSelector} > .mx-config-form__field`).evaluate(element => getComputedStyle(element).flexBasis)).toBe('220px')
+    await expect(preview.locator('input')).toHaveCount(0)
+
+    const designerRow = designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first()
+    const runtimeRow = preview.locator('.mx-config-form__row').first()
+    const columnCount = (locator: typeof designerRow) => locator.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)
+
+    await expect.poll(() => columnCount(designerRow)).toBe(24)
+    await expect.poll(() => columnCount(runtimeRow)).toBe(24)
+
+    await page.setViewportSize({ width: 900, height: 900 })
+    await expect.poll(() => columnCount(designerRow)).toBe(12)
+    await expect.poll(() => columnCount(runtimeRow)).toBe(12)
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect.poll(() => columnCount(designerRow)).toBe(1)
+    await expect.poll(() => columnCount(runtimeRow)).toBe(1)
+  })
+}

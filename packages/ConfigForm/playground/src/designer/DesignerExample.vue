@@ -2,21 +2,28 @@
 import type { DesignerDocument, DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import { ConfigFormDesigner } from '@moluoxixi/config-form-designer'
 import {
+  createAntdVueDesignerRegistry,
+  provideAntdVueOptionResolver,
+} from '@moluoxixi/config-form-designer-antd-vue'
+import {
   createElementPlusDesignerRegistry,
   provideElementPlusOptionResolver,
 } from '@moluoxixi/config-form-designer-element-plus'
-import { ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { createDesignerSampleDocument } from './sample-document'
+import type { DesignerAdapter } from './sample-document'
 
 const props = withDefaults(defineProps<{
   locale?: DesignerLocaleOptions
+  adapter?: DesignerAdapter
   showHeader?: boolean
   showExportPreview?: boolean
 }>(), {
+  adapter: 'element-plus',
   showExportPreview: true,
 })
 
-const optionResolver = provideElementPlusOptionResolver({
+const optionResolverConfig = {
   dictionaries: {
     environments: [
       { label: 'Playground', value: 'playground' },
@@ -29,9 +36,25 @@ const optionResolver = provideElementPlusOptionResolver({
       { label: 'Admin console', value: 'admin' },
     ],
   },
+}
+const elementOptionResolver = provideElementPlusOptionResolver(optionResolverConfig)
+const antdOptionResolver = provideAntdVueOptionResolver(optionResolverConfig)
+const registries = {
+  'element-plus': createElementPlusDesignerRegistry([], { optionResolver: elementOptionResolver }),
+  'antd-vue': createAntdVueDesignerRegistry([], { optionResolver: antdOptionResolver }),
+}
+const elementDocument = shallowRef<DesignerDocument>(createDesignerSampleDocument('element-plus'))
+const antdDocument = shallowRef<DesignerDocument>(createDesignerSampleDocument('antd-vue'))
+const registry = computed(() => registries[props.adapter])
+const documentModel = computed({
+  get: (): DesignerDocument => props.adapter === 'element-plus' ? elementDocument.value : antdDocument.value,
+  set: (value: DesignerDocument): void => {
+    if (props.adapter === 'element-plus')
+      elementDocument.value = value
+    else
+      antdDocument.value = value
+  },
 })
-const registry = createElementPlusDesignerRegistry([], { optionResolver })
-const documentModel = ref<DesignerDocument>(createDesignerSampleDocument())
 const lastExport = ref('')
 
 function handleExport(json: string): void {
@@ -44,15 +67,17 @@ function handleExport(json: string): void {
     <header v-if="showHeader !== false" class="designer-example__header">
       <div>
         <h2>Visual form designer</h2>
-        <p>Element Plus adapter with controlled JSON document and runtime preview.</p>
+        <p>{{ props.adapter === 'element-plus' ? 'Element Plus' : 'Ant Design Vue' }} adapter with controlled JSON document and runtime preview.</p>
       </div>
       <span class="designer-example__version">document v{{ documentModel.version }}</span>
     </header>
 
     <ConfigFormDesigner
+      :key="props.adapter"
       v-model:document="documentModel"
       :registry="registry"
       :locale="props.locale"
+      :data-adapter="props.adapter"
       @export="handleExport"
     />
 

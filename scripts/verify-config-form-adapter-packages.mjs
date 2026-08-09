@@ -7,6 +7,34 @@ import { fileURLToPath } from 'node:url'
 const rootDir = fileURLToPath(new URL('..', import.meta.url))
 const adapters = [
   {
+    directory: 'designer-antd-vue',
+    exports: [
+      'ANTD_VUE_DESIGNER_MATERIALS',
+      'ANTD_VUE_DESIGNER_ZH_CN',
+      'ANTD_VUE_OPTION_RESOLVER_KEY',
+      'antdVueDesignerRegistryLayer',
+      'createAntdVueDesignerRegistry',
+      'createAntdVueOptionDiagnostics',
+      'createAntdVueOptionResolverContext',
+      'createAntdVueOptionResolverPlugin',
+      'normalizeAntdVueOptions',
+      'provideAntdVueOptionResolver',
+      'readAntdVueOptionSource',
+      'useAntdVueOptionResolverContext',
+      'useAntdVueResolvedOptions',
+    ],
+    name: '@moluoxixi/config-form-designer-antd-vue',
+    types: [
+      'AntdVueDesignerOption',
+      'AntdVueOptionProvider',
+      'AntdVueOptionProviderContext',
+      'AntdVueOptionResolverConfig',
+      'AntdVueOptionSource',
+      'AntdVueOptionStatus',
+      'AntdVueResolvedOptionState',
+    ],
+  },
+  {
     directory: 'designer-element-plus',
     exports: [
       'ELEMENT_PLUS_DESIGNER_MATERIALS',
@@ -46,12 +74,6 @@ const adapters = [
     exports: ['ELEMENT_PLUS_READONLY_ADAPTERS', 'createElementPlusPlugin'],
     name: '@moluoxixi/config-form-plugin-element-plus',
     types: ['ElementPlusPluginOptions'],
-  },
-  {
-    directory: 'plugin-shadcn-vue',
-    exports: ['SHADCN_VUE_FIELD_BINDINGS', 'SHADCN_VUE_READONLY_ADAPTERS', 'createShadcnVuePlugin'],
-    name: '@moluoxixi/config-form-plugin-shadcn-vue',
-    types: ['ShadcnVueFieldBinding', 'ShadcnVuePluginOptions'],
   },
 ]
 

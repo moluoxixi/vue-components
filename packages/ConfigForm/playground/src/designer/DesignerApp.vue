@@ -1,14 +1,27 @@
 <script setup lang="ts">
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import { ANTD_VUE_DESIGNER_ZH_CN } from '@moluoxixi/config-form-designer-antd-vue'
 import { ELEMENT_PLUS_DESIGNER_ZH_CN } from '@moluoxixi/config-form-designer-element-plus'
 import { ArrowLeft } from '@lucide/vue'
 import { computed, ref, watchEffect } from 'vue'
 import DesignerExample from './DesignerExample.vue'
 import { getDesignerPageCopy } from './page-copy'
+import type { DesignerAdapter } from './sample-document'
 
 const language = ref<'zh-CN' | 'en-US'>('zh-CN')
-const designerLocale = computed(() => language.value === 'zh-CN'
-  ? ELEMENT_PLUS_DESIGNER_ZH_CN
-  : { locale: 'en-US' })
+const adapter = ref<DesignerAdapter>('element-plus')
+const designerLocale = computed<DesignerLocaleOptions>(() => {
+  if (language.value !== 'zh-CN')
+    return { locale: 'en-US' }
+  const adapterLocale = adapter.value === 'element-plus'
+    ? ELEMENT_PLUS_DESIGNER_ZH_CN
+    : ANTD_VUE_DESIGNER_ZH_CN
+  return {
+    locale: 'zh-CN',
+    messages: ELEMENT_PLUS_DESIGNER_ZH_CN.messages,
+    materials: adapterLocale.materials,
+  }
+})
 const copy = computed(() => getDesignerPageCopy(language.value))
 
 watchEffect(() => {
@@ -24,8 +37,13 @@ watchEffect(() => {
         <h1>{{ copy.title }}</h1>
       </div>
       <div class="designer-app__actions">
+        <div class="designer-app__framework" role="group" :aria-label="copy.framework">
+          <span class="designer-app__control-label">{{ copy.framework }}</span>
+          <button type="button" :aria-pressed="adapter === 'element-plus'" @click="adapter = 'element-plus'">{{ copy.elementPlus }}</button>
+          <button type="button" :aria-pressed="adapter === 'antd-vue'" @click="adapter = 'antd-vue'">{{ copy.antDesignVue }}</button>
+        </div>
         <div class="designer-app__language" role="group" :aria-label="copy.language">
-          <span class="designer-app__language-label">{{ copy.language }}</span>
+          <span class="designer-app__control-label">{{ copy.language }}</span>
           <button type="button" :aria-pressed="language === 'zh-CN'" @click="language = 'zh-CN'">中文</button>
           <button type="button" :aria-pressed="language === 'en-US'" @click="language = 'en-US'">English</button>
         </div>
@@ -36,7 +54,7 @@ watchEffect(() => {
       </div>
     </header>
     <div class="designer-app__body">
-      <DesignerExample :locale="designerLocale" :show-header="false" :show-export-preview="false" />
+      <DesignerExample :adapter="adapter" :locale="designerLocale" :show-header="false" :show-export-preview="false" />
     </div>
   </main>
 </template>
@@ -117,8 +135,10 @@ select {
   gap: 8px;
 }
 
+.designer-app__framework,
 .designer-app__language {
   display: flex;
+  max-width: 100%;
   min-height: 32px;
   padding: 2px 3px 2px 8px;
   align-items: center;
@@ -129,14 +149,16 @@ select {
   background: #fff;
 }
 
-.designer-app__language-label {
+.designer-app__control-label {
   padding-inline: 2px 4px;
   font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
 }
 
+.designer-app__framework button,
 .designer-app__language button {
+  min-width: 0;
   min-height: 26px;
   padding: 0 8px;
   color: #475569;
@@ -147,6 +169,7 @@ select {
   white-space: nowrap;
 }
 
+.designer-app__framework button[aria-pressed="true"],
 .designer-app__language button[aria-pressed="true"] {
   color: #1d4ed8;
   background: #eff6ff;
@@ -188,7 +211,7 @@ select {
   flex-direction: column;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   .designer-app__header {
     padding: 10px 12px;
     align-items: flex-start;
@@ -204,6 +227,18 @@ select {
   .designer-app__actions {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .designer-app__framework {
+    flex: 1 1 320px;
+  }
+
+  .designer-app__framework button {
+    flex: 1 1 0;
+  }
+
+  .designer-app__language {
+    flex: 1 1 210px;
   }
 
   .designer-app__body {

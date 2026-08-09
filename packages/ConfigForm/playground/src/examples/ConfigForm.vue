@@ -1,10 +1,10 @@
 <script lang="ts">
-// 统一入口把三套 UI 库示例收在一个页面中，库级切换统一使用 Element Plus Tabs。
+// 统一入口把两套 UI 库和设计器示例收在一个页面中，库级切换统一使用 Element Plus Tabs。
 export const exampleMeta = {
   name: 'ConfigForm',
   title: 'ConfigForm',
   category: '配置表单',
-  description: '使用 Element Plus Tabs 切换 Element、Ant Design Vue 和 shadcn-vue 配置表单示例。',
+  description: '使用 Element Plus Tabs 切换 Element、Ant Design Vue 和可视化设计器示例。',
   order: 40,
 }
 </script>
@@ -15,9 +15,8 @@ import { shallowRef } from 'vue'
 import AntdConfigForm from './AntdConfigForm.vue'
 import DesignerConfigForm from '../designer/DesignerExample.vue'
 import ElementConfigForm from './ElementConfigForm.vue'
-import ShadcnConfigForm from './ShadcnConfigForm.vue'
 
-type LibraryTab = 'element' | 'antd' | 'shadcn'
+type LibraryTab = 'element' | 'antd' | 'designer'
 
 const activeLibrary = shallowRef<LibraryTab>('element')
 </script>
@@ -29,9 +28,6 @@ const activeLibrary = shallowRef<LibraryTab>('element')
     </ElTabPane>
     <ElTabPane label="Antd" name="antd">
       <AntdConfigForm />
-    </ElTabPane>
-    <ElTabPane label="Shadcn" name="shadcn">
-      <ShadcnConfigForm />
     </ElTabPane>
     <ElTabPane label="Designer" name="designer">
       <DesignerConfigForm />

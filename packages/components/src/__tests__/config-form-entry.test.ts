@@ -21,7 +21,6 @@ describe('pure ConfigForm entry points', () => {
   it('keeps the root entry independent from external ConfigForm implementations', () => {
     expect(ComponentsRoot.ElementConfigForm).toBe(LocalElementConfigForm)
     expect(ComponentsRoot.AntdConfigForm).toBe(LocalAntdConfigForm)
-    expect(ComponentsRoot).not.toHaveProperty('ShadcnConfigForm')
     expect(ComponentsRoot.defineField).toBe(HeadlessEntry.defineField)
     expect(ComponentsRoot.defineFields).toBe(HeadlessEntry.defineFields)
     expect(ComponentsRoot.createConfigFormController).toBe(HeadlessEntry.createConfigFormController)
