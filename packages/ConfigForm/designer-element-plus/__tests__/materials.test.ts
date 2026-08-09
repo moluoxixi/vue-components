@@ -85,6 +85,7 @@ describe('element plus designer materials', () => {
 
   it('renders semantic readonly values for Element Plus choice fields', () => {
     const registry = createElementPlusDesignerRegistry()
+    expect(registry.rendererNamespace).toBe('mx-element-config-form')
     const select = registry.createNode('element.select', { id: 'select', field: 'environment' })
     const checkbox = registry.createNode('element.checkbox', { id: 'checkbox', field: 'tags' })
     const switchNode = registry.createNode('element.switch', { id: 'switch', field: 'enabled' })
@@ -142,6 +143,26 @@ describe('element plus designer materials', () => {
     })
     expect(registry.createNode('element.checkbox', { id: 'tags', field: 'tags' })).toMatchObject({
       defaultValue: [],
+    })
+    expect(registry.createNode('element.tabs', { id: 'tabs' })).toMatchObject({
+      props: { modelValue: 'tabs-pane-1' },
+      slots: {
+        default: [{
+          id: 'tabs-pane-1',
+          material: 'element.tab-pane',
+          props: { label: 'Tab 1', name: 'tabs-pane-1' },
+        }],
+      },
+    })
+    expect(registry.createNode('element.collapse', { id: 'collapse' })).toMatchObject({
+      props: { modelValue: ['collapse-item-1'] },
+      slots: {
+        default: [{
+          id: 'collapse-item-1',
+          material: 'element.collapse-item',
+          props: { title: 'Item 1', name: 'collapse-item-1' },
+        }],
+      },
     })
   })
 

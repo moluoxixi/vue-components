@@ -103,6 +103,33 @@ describe('designer document', () => {
     }).success).toBe(true)
   })
 
+  it('preserves imported nested spans even though only root nodes consume them', () => {
+    const nested = {
+      id: 'nested-name',
+      kind: 'field' as const,
+      material: 'element.input',
+      field: 'nestedName',
+      span: 24,
+    }
+    const document: DesignerDocument = {
+      version: DESIGNER_DOCUMENT_VERSION,
+      form: { columns: 24, fieldSpan: 8 },
+      nodes: [{
+        id: 'section',
+        kind: 'container',
+        material: 'element.section',
+        span: 24,
+        slots: { default: [nested] },
+      }],
+    }
+
+    expect(parseDesignerDocument(JSON.parse(JSON.stringify(document)))).toEqual({
+      success: true,
+      data: document,
+      diagnostics: [],
+    })
+  })
+
   it('reports duplicate node ids and field keys at the second occurrence', () => {
     const document = createDocument()
     document.nodes.push({

@@ -87,7 +87,11 @@ const controller = useDesignerController({
   registry: () => props.registry,
   historyLimit: () => props.historyLimit,
   readonly: () => props.readonly,
-  onDocumentChange: document => emit('update:document', document),
+  onDocumentChange: (document) => {
+    if (!linkagePreview.value)
+      previewModel.value = createDesignerPreviewModel(document)
+    emit('update:document', document)
+  },
   onCommand: (command, document) => emit('command', command, document),
   onDiagnostics: diagnostics => emit('diagnostics', diagnostics),
   onSelectionChange: nodeId => emit('selectionChange', nodeId),
@@ -172,8 +176,7 @@ function handlePreview(): DesignerCompileResult {
 
 function toggleLinkagePreview(): void {
   linkagePreview.value = !linkagePreview.value
-  if (linkagePreview.value)
-    previewModel.value = createDesignerPreviewModel(controller.document.value)
+  previewModel.value = createDesignerPreviewModel(controller.document.value)
 }
 
 function updatePreviewField(field: string, value: unknown): void {
@@ -404,6 +407,7 @@ defineExpose<ConfigFormDesignerExpose>({
           <ConfigFormRenderer
             v-if="previewResult.success"
             v-model="previewModel"
+            :namespace="registry.rendererNamespace"
             v-bind="previewResult.renderer"
           />
         </slot>

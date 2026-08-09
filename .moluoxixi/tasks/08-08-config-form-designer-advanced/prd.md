@@ -58,6 +58,40 @@ The standalone designer must also prove that the core is UI-framework independen
 - Remove shadcn from component aggregation entry points and documentation so no supported path advertises an unavailable adapter.
 - Treat the package removal as an explicit breaking change in release notes.
 
+### R8. Single focus-bound selection frame
+
+- Render exactly one dashed selection frame, 5px outside the selected node's real layout cell, with the compact action bar attached to the frame's top-right edge.
+- Do not render a second component-sized frame or a separate span footprint. A root 24-span node therefore has one full-row frame while an intrinsic control remains compact inside it.
+- Show the frame and action bar only while focus remains inside the node or its action bar. Moving focus to properties, tools, or elsewhere hides the frame without discarding the selected node's property context.
+- The frame uses non-layout CSS positioning and requires no component measurement or resize observation.
+
+### R9. Expanded Ant Design Vue materials
+
+- Add production-ready password, search, autocomplete, slider, and rate field materials.
+- Every new material provides native Ant Design Vue binding, visual setters, a default-value contract, readonly rendering, zh-CN metadata, and automated coverage.
+- Autocomplete reuses the normalized option-source contract and diagnostics instead of introducing an adapter-specific data format.
+
+### R10. Root grid span semantics
+
+- `span` controls only direct children of the root ConfigForm grid; a root `span: 24` node occupies one complete row before following `span: 8` nodes.
+- Nested Card and Section content stacks according to the container, while Flex and Grid materials own their child sizing contracts.
+- The property panel does not offer an ineffective Span setter for nested nodes. Imported nested `span` values remain round-trip compatible and are not silently deleted.
+
+### R11. Runtime-faithful canvas
+
+- The designer canvas uses the same resolved span, field layout, semantic classes, condition state, readonly state, model value, and adapter Runtime styles as `ConfigFormRenderer`.
+- A root `span: 24` field owns the complete grid row even when its real control, such as Switch or Rate, keeps its intrinsic width.
+- Selection chrome remains an editor-only projection: one focus-bound frame follows the complete node cell without changing component width or layout.
+- Linkage conditions always evaluate against the isolated preview model. The linkage interaction toggle controls whether preview controls accept input; it does not switch condition rendering on or off.
+
+### R12. Production container canvas language
+
+- Keep every layout material rendered by its real adapter component and preserve its runtime slot hierarchy; design chrome must not replace Card, Tabs, Collapse, Flex, Grid, or their child containers with generic wrappers.
+- Non-empty container slots add no generic inner border or artificial padding. Section uses a heading-and-divider hierarchy, while Card, Tabs, and Collapse retain their native framework appearance.
+- Empty slots expose one quiet, icon-only drop surface. The surface becomes accent-colored only during drag interaction and must not create a second selection frame.
+- Flex and Grid empty states communicate their layout structure with subtle guides rather than canvas instructions or permanent labels.
+- Element Plus and Ant Design Vue provide the same container semantics, and selecting a container continues to use the single focus-bound node frame.
+
 ## Acceptance Criteria
 
 - [x] Playground opens with a 24-column root grid; the sample’s two-up sections are achieved with explicit 12-cell spans.
@@ -70,6 +104,12 @@ The standalone designer must also prove that the core is UI-framework independen
 - [x] Element Plus and Ant Design Vue can be switched visually in the standalone designer and both render real adapter components.
 - [x] Ant Design Vue adapter package tests, typecheck, build, export-boundary checks, and browser smoke tests pass.
 - [x] No supported package, Playground path, verification script, or lockfile importer references shadcn.
+- [x] Selected nodes expose one full-cell dashed frame with a compact action bar at its top-right edge for both adapters and all field/container materials.
+- [x] Password, search, autocomplete, slider, and rate are complete Ant Design Vue designer materials with locale and test coverage.
+- [x] Runtime and designer regressions prove the root `24 / 8 / 8 / 8` layout, and nested nodes no longer expose an ineffective Span setter.
+- [x] Runtime and designer use the same field layout and adapter Runtime namespace; a 24-span Switch occupies a full-row cell while the Switch remains intrinsic-width.
+- [x] Selection chrome does not alter geometry and disappears on focus loss while the selected node remains available in the property panel.
+- [x] Section, Card, Tabs, Collapse, Flex, and Grid use a production container language with one quiet empty drop surface, no generic nested frame, no canvas instructions, and adapter-parity browser coverage.
 
 ## Out of Scope
 

@@ -11,6 +11,7 @@ import {
   CircleDot,
   Clock,
   Hash,
+  KeyRound,
   LayoutGrid,
   LayoutPanelTop,
   List,
@@ -18,7 +19,11 @@ import {
   PanelBottom,
   PanelsTopLeft,
   Rows3,
+  Search as SearchIcon,
+  SlidersHorizontal,
   Square,
+  Star,
+  TextCursorInput,
   ToggleLeft,
   Type as TypeIcon,
 } from '@lucide/vue'
@@ -29,22 +34,32 @@ import {
   DatePicker,
   Input,
   InputNumber,
+  Rate,
+  Slider,
   Switch,
   TabPane,
   Tabs,
   TimePicker,
 } from 'ant-design-vue'
+import AntdAutoCompleteField from './components/AntdAutoCompleteField.vue'
 import AntdCheckboxField from './components/AntdCheckboxField.vue'
 import AntdChoiceDefaultSetter from './components/AntdChoiceDefaultSetter.vue'
 import AntdOptionSourceSetter from './components/AntdOptionSourceSetter.vue'
 import AntdRadioField from './components/AntdRadioField.vue'
 import AntdSection from './components/AntdSection.vue'
 import AntdSelectField from './components/AntdSelectField.vue'
+import {
+  AntdCollapseItemPreview,
+  AntdCollapsePreview,
+  AntdTabPanePreview,
+  AntdTabsPreview,
+} from './components/AntdStructuralPreview'
 import AntdFlexLayout from './layout/AntdFlexLayout.vue'
 import AntdGridLayout from './layout/AntdGridLayout.vue'
 import { createAntdVueOptionDiagnostics } from './options'
 import {
   renderAntdVueChoiceReadonly,
+  renderAntdVuePasswordReadonly,
   renderAntdVueRawReadonly,
   renderAntdVueSwitchReadonly,
 } from './readonly'
@@ -145,6 +160,42 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     }),
   },
   {
+    key: 'antd.password',
+    version: 1,
+    kind: 'field',
+    title: 'Password',
+    category: 'Fields',
+    icon: KeyRound,
+    runtime: { component: Input.Password, ...valueBinding, readonlyProp: 'readonly', readonlyRender: renderAntdVuePasswordReadonly },
+    setters: [defaultValueSetter('text'), placeholderSetter, allowClearSetter, propSetter('visibilityToggle', 'Visibility toggle', 'boolean'), propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 })],
+    createNode: ({ id, field = 'password' }) => ({
+      id,
+      kind: 'field',
+      material: 'antd.password',
+      field,
+      label: 'Password',
+      props: { placeholder: '', visibilityToggle: true },
+    }),
+  },
+  {
+    key: 'antd.search',
+    version: 1,
+    kind: 'field',
+    title: 'Search',
+    category: 'Fields',
+    icon: SearchIcon,
+    runtime: { component: Input.Search, ...valueBinding, readonlyProp: 'readonly', readonlyRender: renderAntdVueRawReadonly },
+    setters: [defaultValueSetter('text'), placeholderSetter, allowClearSetter, propSetter('enterButton', 'Search button', 'boolean')],
+    createNode: ({ id, field = 'search' }) => ({
+      id,
+      kind: 'field',
+      material: 'antd.search',
+      field,
+      label: 'Search',
+      props: { placeholder: '', enterButton: false },
+    }),
+  },
+  {
     key: 'antd.textarea',
     version: 1,
     kind: 'field',
@@ -211,6 +262,25 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     }),
   },
   {
+    key: 'antd.auto-complete',
+    version: 1,
+    kind: 'field',
+    title: 'Autocomplete',
+    category: 'Choices',
+    icon: TextCursorInput,
+    runtime: { component: AntdAutoCompleteField, ...valueBinding, readonlyProp: 'disabled', readonlyRender: renderAntdVueChoiceReadonly },
+    analyze: createAntdVueOptionDiagnostics(),
+    setters: [choiceDefaultValueSetter('select'), optionSourceSetter, optionsSetter, placeholderSetter, allowClearSetter],
+    createNode: ({ id, field = 'autoComplete' }) => ({
+      id,
+      kind: 'field',
+      material: 'antd.auto-complete',
+      field,
+      label: 'Autocomplete',
+      props: { options: defaultOptions(), placeholder: '' },
+    }),
+  },
+  {
     key: 'antd.radio',
     version: 1,
     kind: 'field',
@@ -265,6 +335,44 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
       field,
       label: 'Switch',
       defaultValue: false,
+    }),
+  },
+  {
+    key: 'antd.slider',
+    version: 1,
+    kind: 'field',
+    title: 'Slider',
+    category: 'Choices',
+    icon: SlidersHorizontal,
+    runtime: { component: Slider, ...valueBinding, readonlyProp: 'disabled', readonlyRender: renderAntdVueRawReadonly },
+    setters: [defaultValueSetter('number'), propSetter('min', 'Minimum', 'number'), propSetter('max', 'Maximum', 'number'), propSetter('step', 'Step', 'number', undefined, { min: 0 })],
+    createNode: ({ id, field = 'slider' }) => ({
+      id,
+      kind: 'field',
+      material: 'antd.slider',
+      field,
+      label: 'Slider',
+      defaultValue: 0,
+      props: { min: 0, max: 100, step: 1 },
+    }),
+  },
+  {
+    key: 'antd.rate',
+    version: 1,
+    kind: 'field',
+    title: 'Rate',
+    category: 'Choices',
+    icon: Star,
+    runtime: { component: Rate, ...valueBinding, readonlyProp: 'disabled', readonlyRender: renderAntdVueRawReadonly },
+    setters: [defaultValueSetter('number'), propSetter('count', 'Count', 'number', undefined, { min: 1, max: 10, step: 1 }), propSetter('allowHalf', 'Allow half', 'boolean'), allowClearSetter],
+    createNode: ({ id, field = 'rate' }) => ({
+      id,
+      kind: 'field',
+      material: 'antd.rate',
+      field,
+      label: 'Rate',
+      defaultValue: 0,
+      props: { count: 5, allowHalf: false, allowClear: true },
     }),
   },
   {
@@ -346,7 +454,7 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Tabs',
     category: 'Layout',
     icon: PanelsTopLeft,
-    runtime: { component: Tabs },
+    runtime: { component: Tabs, designerComponent: AntdTabsPreview },
     setters: [
       propSetter('tabPosition', 'Position', 'select', [
         { label: 'Top', value: 'top' },
@@ -357,13 +465,24 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
       propSetter('centered', 'Centered', 'boolean'),
     ],
     slots: [{ name: 'default', title: 'Panes', accepts: ['container'], materials: ['antd.tab-pane'] }],
-    createNode: ({ id }) => ({
-      id,
-      kind: 'container',
-      material: 'antd.tabs',
-      props: { tabPosition: 'top' },
-      slots: { default: [] },
-    }),
+    createNode: ({ id }) => {
+      const paneId = `${id}-pane-1`
+      return {
+        id,
+        kind: 'container',
+        material: 'antd.tabs',
+        props: { tabPosition: 'top', activeKey: paneId },
+        slots: {
+          default: [{
+            id: paneId,
+            kind: 'container',
+            material: 'antd.tab-pane',
+            props: { tab: 'Tab 1', key: paneId },
+            slots: { default: [] },
+          }],
+        },
+      }
+    },
   },
   {
     key: 'antd.tab-pane',
@@ -372,7 +491,7 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Tab pane',
     category: 'Layout',
     icon: PanelBottom,
-    runtime: { component: TabPane },
+    runtime: { component: TabPane, designerComponent: AntdTabPanePreview },
     setters: [propSetter('tab', 'Label', 'text'), propSetter('disabled', 'Disabled', 'boolean')],
     slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
     createNode: ({ id }) => ({
@@ -390,16 +509,27 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Collapse',
     category: 'Layout',
     icon: ListCollapse,
-    runtime: { component: Collapse },
+    runtime: { component: Collapse, designerComponent: AntdCollapsePreview },
     setters: [propSetter('accordion', 'Accordion', 'boolean')],
     slots: [{ name: 'default', title: 'Items', accepts: ['container'], materials: ['antd.collapse-item'] }],
-    createNode: ({ id }) => ({
-      id,
-      kind: 'container',
-      material: 'antd.collapse',
-      props: { accordion: false },
-      slots: { default: [] },
-    }),
+    createNode: ({ id }) => {
+      const itemId = `${id}-item-1`
+      return {
+        id,
+        kind: 'container',
+        material: 'antd.collapse',
+        props: { accordion: false, activeKey: [itemId] },
+        slots: {
+          default: [{
+            id: itemId,
+            kind: 'container',
+            material: 'antd.collapse-item',
+            props: { header: 'Item 1', key: itemId },
+            slots: { default: [] },
+          }],
+        },
+      }
+    },
   },
   {
     key: 'antd.collapse-item',
@@ -408,7 +538,7 @@ export const ANTD_VUE_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     title: 'Collapse item',
     category: 'Layout',
     icon: PanelBottom,
-    runtime: { component: CollapsePanel },
+    runtime: { component: CollapsePanel, designerComponent: AntdCollapseItemPreview },
     setters: [propSetter('header', 'Title', 'text'), propSetter('disabled', 'Disabled', 'boolean')],
     slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
     createNode: ({ id }) => ({
@@ -484,12 +614,17 @@ export const ANTD_VUE_DESIGNER_ZH_CN: DesignerLocaleOptions = {
   locale: 'zh-CN',
   materials: {
     'antd.input': { title: '输入框', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', allowClear: '可清空', maxlength: '最大长度' } },
+    'antd.password': { title: '密码框', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', allowClear: '可清空', visibilityToggle: '显示切换', maxlength: '最大长度' } },
+    'antd.search': { title: '搜索框', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', allowClear: '可清空', enterButton: '搜索按钮' } },
     'antd.textarea': { title: '多行输入', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', rows: '行数', maxlength: '最大长度' } },
     'antd.input-number': { title: '数字输入', category: '字段', setters: { defaultValue: '默认值', min: '最小值', max: '最大值', step: '步长', controls: '显示控件' } },
     'antd.select': { title: '选择器', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', placeholder: '占位文本', allowClear: '可清空', showSearch: '可搜索' } },
+    'antd.auto-complete': { title: '自动完成', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', placeholder: '占位文本', allowClear: '可清空' } },
     'antd.radio': { title: '单选框', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', disabled: '禁用' } },
     'antd.checkbox': { title: '复选框', category: '选择', setters: { defaultValue: '默认值', optionSource: '选项来源', options: '静态选项', disabled: '禁用' } },
     'antd.switch': { title: '开关', category: '选择', setters: { defaultValue: '默认值', checkedChildren: '开启文案', unCheckedChildren: '关闭文案' } },
+    'antd.slider': { title: '滑块', category: '选择', setters: { defaultValue: '默认值', min: '最小值', max: '最大值', step: '步长' } },
+    'antd.rate': { title: '评分', category: '选择', setters: { defaultValue: '默认值', count: '数量', allowHalf: '允许半选', allowClear: '可清空' } },
     'antd.date': { title: '日期', category: '日期时间', setters: { defaultValue: '默认值', placeholder: '占位文本', allowClear: '可清空', format: '显示格式' } },
     'antd.time': { title: '时间', category: '日期时间', setters: { defaultValue: '默认值', placeholder: '占位文本', allowClear: '可清空', format: '显示格式' } },
     'antd.section': { title: '分区', category: '布局', setters: { title: '标题', description: '描述' }, slots: { default: '内容' } },

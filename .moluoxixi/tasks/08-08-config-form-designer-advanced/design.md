@@ -43,3 +43,27 @@ Old documents remain valid because all new fields are optional. If a responsive 
 ## Trade-offs
 
 CSS media variables are preferred for runtime responsive layout because they avoid duplicating layout math in JavaScript. The designer may use an explicit breakpoint switch for deterministic review while emitting the same variables. Resolver execution is adapter-owned to keep the core package browser-safe and transport agnostic. Duplicating the small adapter-specific view glue is accepted to preserve package independence; reusable semantic contracts stay in the core designer rather than creating cross-framework imports.
+
+## Selection Geometry
+
+The selectable document node remains the interaction owner and the only selection boundary. Its `position: relative` layout cell owns a dashed `::after` frame at `inset: -5px`; the action bar is an absolutely positioned direct child aligned to the frame's top-right edge. The frame exists only under `:focus-within`, so moving into the property panel hides editor chrome without clearing the controller selection. This removes component measurement, resize observers, and competing component/span outlines while keeping the frame outside normal layout.
+
+## Additional Ant Design Vue Materials
+
+Password and search extend the existing input contract. Slider and rate reuse the numeric default and raw readonly contracts. Autocomplete reuses the adapter's normalized option resolver, option-source setter, default choice setter, and diagnostics. Hierarchical choices and range values remain deferred until the shared document/default-value contract can model them without lossy editor controls.
+
+## Span Ownership
+
+The Runtime and designer apply `node.span` only while wrapping direct root nodes in the ConfigForm grid. Container slot children are rendered without a root grid cell: Card and Section use their natural flow, Flex uses item width, and Grid uses its local column contract. The property panel derives the selected node location and exposes Span only when the node has no parent. Parsing and exporting keep existing nested span values unchanged for backward compatibility.
+
+## Runtime-faithful Canvas
+
+Runtime owns the canonical node-span and field-layout projections. The designer imports those projections, emits the active adapter's Runtime namespace, and loads both supported Runtime style entries in the standalone page. This keeps label placement, control width, readonly rendering, conditions, and root-cell geometry aligned without importing a concrete UI library into the designer core.
+
+The single node-cell frame makes the root span visible while compact controls remain visually honest inside the cell. The frame and action bar use absolute positioning and never influence grid sizing or component width. Conditions always derive from the isolated preview model; interaction mode only gates emitted value changes.
+
+## Container Canvas Language
+
+The recursive node list projects its parent material key as designer-only DOM metadata. Core CSS owns the shared empty-slot and dragging states; adapter CSS owns the visual treatment for custom Section, Flex, and Grid runtimes. Native Card, Tabs, TabPane, Collapse, and CollapseItem components keep their framework DOM and styling.
+
+Non-empty recursive lists contribute layout flow only: no generic padding, background, or border. Empty lists render one icon-only surface, while Grid and Flex may inherit adapter layout variables to draw non-semantic structural guides. No material-name label or instructional copy is added to the canvas. Selection remains the existing node-cell pseudo-element, so container styling cannot introduce a competing selection boundary.

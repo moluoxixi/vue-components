@@ -4,6 +4,7 @@ import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import type { PropType, VNodeChild } from 'vue'
 import { computed, defineComponent } from 'vue'
 import { formatConfigFormReadonlyValue } from '@moluoxixi/config-form-headless'
+import { resolveConfigFormFieldLayout } from '@moluoxixi/config-form/renderer'
 import { evaluateDesignerCondition } from '../condition'
 
 const DesignerReadonlyContent = defineComponent({
@@ -37,10 +38,22 @@ const material = computed<DesignerMaterialDefinition | undefined>(() => (
 const materialSlots = computed(() => (
   material.value?.kind === 'container' ? material.value.slots : []
 ))
+const runtimeComponent = computed(() => (
+  material.value?.runtime.designerComponent ?? material.value?.runtime.component
+))
+const rendererNamespace = computed(() => props.registry.rendererNamespace)
+const hasLabel = computed(() => props.node.kind === 'field' && Boolean(props.node.label))
+const fieldLayout = computed(() => resolveConfigFormFieldLayout(
+  props.labelPosition ?? 'left',
+  hasLabel.value,
+))
+const controlId = computed(() => props.node.kind === 'field'
+  ? `${rendererNamespace.value}-${props.node.id.replace(/[^a-z0-9_-]+/gi, '-')}-control`
+  : undefined)
 
 function condition(target: 'required' | 'disabled' | 'readonly', fallback = false): boolean {
   const expression = props.node.conditions?.[target]
-  return props.interactive && expression
+  return expression
     ? evaluateDesignerCondition(expression, props.model ?? {})
     : fallback
 }
@@ -59,11 +72,17 @@ const componentProps = computed<Record<string, unknown>>(() => {
     return {}
 
   const nextProps: Record<string, unknown> = { ...(props.node.props ?? {}) }
-  if (props.node.kind !== 'field')
+  if (props.node.kind !== 'field') {
+    if (definition.runtime.designerComponent)
+      nextProps.designerNode = props.node
     return nextProps
+  }
+
+  if (!Object.hasOwn(nextProps, 'id'))
+    nextProps.id = controlId.value
 
   const valueProp = definition.runtime.valueProp ?? 'modelValue'
-  if (props.interactive && props.model && Object.hasOwn(props.model, props.node.field))
+  if (props.model && Object.hasOwn(props.model, props.node.field))
     nextProps[valueProp] = props.model[props.node.field]
   else if (!Object.hasOwn(nextProps, valueProp) && props.node.defaultValue !== undefined)
     nextProps[valueProp] = props.node.defaultValue
@@ -106,22 +125,35 @@ const readonlyContent = computed(() => {
 <template>
   <div
     class="mx-config-form-designer__node-preview"
-    :class="{
-      'is-field': node.kind === 'field',
-      'is-container': node.kind === 'container',
-      'is-unsupported': !material,
-      'is-readonly': fieldReadonly,
-      'is-interactive': interactive,
-      'is-required': required,
-      'has-label': node.kind === 'field' && Boolean(node.label),
-      'is-label-left': node.kind === 'field' && labelPosition !== 'top',
-      'is-label-top': node.kind === 'field' && labelPosition === 'top',
-    }"
+    :class="[
+      {
+        'is-field': node.kind === 'field',
+        'is-container': node.kind === 'container',
+        'is-unsupported': !material,
+        'is-readonly': fieldReadonly,
+        'is-interactive': interactive,
+        'is-required': required,
+        'has-label': hasLabel,
+        'is-label-left': node.kind === 'field' && labelPosition !== 'top',
+        'is-label-top': node.kind === 'field' && labelPosition === 'top',
+      },
+      node.kind === 'field' ? `${rendererNamespace}__field` : undefined,
+      node.kind === 'field' ? `${rendererNamespace}__field--label-${labelPosition ?? 'left'}` : undefined,
+    ]"
+    :data-field="node.kind === 'field' ? node.field : undefined"
+    :data-label-position="node.kind === 'field' ? (labelPosition ?? 'left') : undefined"
+    :data-required="node.kind === 'field' ? required : undefined"
+    :style="node.kind === 'field' ? fieldLayout.field : undefined"
   >
     <template v-if="material">
-      <div v-if="node.kind === 'field' && node.label" class="mx-config-form-designer__node-preview-label" :data-required="required">
+      <label
+        v-if="node.kind === 'field' && node.label"
+        class="mx-config-form-designer__node-preview-label"
+        :class="`${rendererNamespace}__label`"
+        :for="controlId"
+      >
         {{ node.label }}
-      </div>
+      </label>
       <div
         class="mx-config-form-designer__node-preview-real"
         :class="{ 'is-field': node.kind === 'field' }"
@@ -129,13 +161,21 @@ const readonlyContent = computed(() => {
         <div
           v-if="node.kind === 'field'"
           class="mx-config-form-designer__node-preview-control"
+          :class="`${rendererNamespace}__control`"
+          :style="fieldLayout.control"
           :inert="interactive ? undefined : true"
           :aria-hidden="interactive ? undefined : 'true'"
         >
-          <span v-if="fieldReadonly" class="mx-config-form-designer__node-preview-readonly" aria-readonly="true"><DesignerReadonlyContent :content="readonlyContent" /></span>
-          <component v-else :is="material.runtime.component" v-bind="componentProps" />
+          <span
+            v-if="fieldReadonly"
+            class="mx-config-form-designer__node-preview-readonly"
+            :class="`${rendererNamespace}__readonly`"
+            :id="controlId"
+            aria-readonly="true"
+          ><DesignerReadonlyContent :content="readonlyContent" /></span>
+          <component v-else :is="runtimeComponent" v-bind="componentProps" />
         </div>
-        <component v-else :is="material.runtime.component" v-bind="componentProps">
+        <component v-else :is="runtimeComponent" v-bind="componentProps">
           <template v-for="slot in materialSlots" :key="slot.name" #[slot.name]>
             <slot :name="slot.name" />
           </template>

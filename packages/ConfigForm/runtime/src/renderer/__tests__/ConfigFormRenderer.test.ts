@@ -11,7 +11,9 @@ const ConfigFormRenderer = ConfigFormRendererSource as Component
 interface TestValues {
   enabled: boolean
   name: string
+  notes?: string
   status: string
+  summary?: string
 }
 
 const InputStub = defineComponent({
@@ -165,6 +167,30 @@ describe('config form renderer', () => {
     expect(cellStyle).toContain('--mx-config-form-span-desktop: 20')
     expect(cellStyle).toContain('--mx-config-form-span-tablet: 12')
     expect(cellStyle).toContain('--mx-config-form-span-mobile: 4')
+  })
+
+  it('lays out a full-width root field before three 8-column fields', () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        columns: 24,
+        fieldSpan: 8,
+        fields: [
+          defineField<TestValues>({ component: InputStub, field: 'name', span: 24 }),
+          defineField<TestValues>({ component: InputStub, field: 'status', span: 8 }),
+          defineField<TestValues>({ component: InputStub, field: 'summary', span: 8 }),
+          defineField<TestValues>({ component: InputStub, field: 'notes', span: 8 }),
+        ],
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        namespace: 'root-span-form',
+      },
+    })
+
+    expect(wrapper.findAll('.root-span-form__cell').map(cell => cell.attributes('style'))).toEqual([
+      expect.stringContaining('--mx-config-form-span-desktop: 24'),
+      expect.stringContaining('--mx-config-form-span-desktop: 8'),
+      expect.stringContaining('--mx-config-form-span-desktop: 8'),
+      expect.stringContaining('--mx-config-form-span-desktop: 8'),
+    ])
   })
 
   it('clamps external layout values to the 24-column contract', () => {

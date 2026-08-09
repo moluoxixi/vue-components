@@ -12,10 +12,11 @@ import {
   CornerDownLeft,
   CornerDownRight,
   GripVertical,
+  Plus,
   Trash2,
 } from '@lucide/vue'
 import Sortable from 'sortablejs'
-import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
+import { resolveConfigFormLayout, resolveConfigFormNodeSpan } from '@moluoxixi/config-form/renderer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import { evaluateDesignerCondition } from '../condition'
@@ -27,6 +28,7 @@ const props = defineProps<{
   nodes: DesignerNode[]
   parentId: string | null
   slotName?: string
+  parentMaterial?: string
   registry: DesignerRegistry
   form?: DesignerFormSettings
   selectedId?: string
@@ -55,6 +57,7 @@ const resolvedLayout = computed(() => resolveConfigFormLayout(
   props.breakpoint ?? 'desktop',
 ))
 const formColumns = computed(() => resolvedLayout.value.columns)
+const isRootGrid = computed(() => props.parentId === null && !props.form?.inline)
 const listStyle = computed<StyleValue | undefined>(() => {
   if (props.parentId !== null)
     return undefined
@@ -79,14 +82,17 @@ function nodeStyle(node: DesignerNode): StyleValue | undefined {
     return undefined
   if (props.form?.inline)
     return { flex: '0 1 auto', minWidth: 0 }
-  const configuredSpan = node.span ?? resolvedLayout.value.fieldSpan
-  const span = Math.min(formColumns.value, Math.max(1, Math.floor(configuredSpan)))
+  const span = resolveConfigFormNodeSpan(node.span, resolvedLayout.value)
   return { gridColumn: `span ${span} / span ${span}`, minWidth: 0 }
 }
 
+function nodeSpan(node: DesignerNode): number | undefined {
+  return isRootGrid.value
+    ? resolveConfigFormNodeSpan(node.span, resolvedLayout.value)
+    : undefined
+}
+
 function isNodeVisible(node: DesignerNode): boolean {
-  if (!props.interactive)
-    return true
   const values = props.model ?? {}
   const visible = node.conditions?.visible
     ? evaluateDesignerCondition(node.conditions.visible, values)
@@ -119,6 +125,7 @@ function materialSlots(node: DesignerNode): DesignerMaterialSlotDefinition[] {
 }
 
 function destroySortable(): void {
+  setDragging(false)
   sortable?.destroy()
   sortable = undefined
 }
@@ -211,10 +218,15 @@ onBeforeUnmount(destroySortable)
   <ol
     ref="listRef"
     class="mx-config-form-designer__node-list"
-    :class="{ 'is-empty': nodes.length === 0, 'is-root': parentId === null }"
+    :class="[
+      { 'is-empty': nodes.length === 0, 'is-nested': parentId !== null, 'is-root': parentId === null },
+      parentId === null ? `${registry.rendererNamespace}__row` : undefined,
+      parentId === null ? `${registry.rendererNamespace}__row--${form?.inline ? 'inline' : 'grid'}` : undefined,
+    ]"
     :style="listStyle"
     :data-layout="parentId === null ? (form?.inline ? 'inline' : 'grid') : undefined"
     :data-parent-id="parentId ?? ''"
+    :data-parent-material="parentMaterial"
     :data-slot="slotName"
   >
     <li
@@ -222,15 +234,19 @@ onBeforeUnmount(destroySortable)
       v-show="isNodeVisible(node)"
       :key="node.id"
       class="mx-config-form-designer__node"
-      :class="{ 'is-selected': selectedId === node.id, 'is-container': node.kind === 'container' }"
+      :class="[
+        { 'is-selected': selectedId === node.id, 'is-container': node.kind === 'container' },
+        isRootGrid ? `${registry.rendererNamespace}__cell` : undefined,
+      ]"
       data-designer-draggable
+      :data-designer-grid-cell="isRootGrid ? '' : undefined"
+      :data-material="node.material"
+      :data-node-kind="node.kind"
       :data-node-id="node.id"
+      :data-designer-span="nodeSpan(node)"
       :style="nodeStyle(node)"
     >
-      <div
-        class="mx-config-form-designer__node-header"
-      >
-        <span class="mx-config-form-designer__node-actions">
+      <span v-if="selectedId === node.id" class="mx-config-form-designer__node-actions">
           <button
             type="button"
             class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle"
@@ -259,8 +275,7 @@ onBeforeUnmount(destroySortable)
           <button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="readonly" :title="locale.t('node.delete', 'Delete')" :aria-label="locale.t('node.deleteNode', 'Delete node')" @click.stop="emit('action', 'remove', node.id)">
             <Trash2 :size="15" aria-hidden="true" />
           </button>
-        </span>
-      </div>
+      </span>
 
       <div
         class="mx-config-form-designer__node-preview-shell"
@@ -286,6 +301,7 @@ onBeforeUnmount(destroySortable)
             <DesignerNodeList
               :nodes="node.kind === 'container' ? (node.slots[slot.name] ?? []) : []"
               :parent-id="node.id"
+              :parent-material="node.material"
               :slot-name="slot.name"
               :registry="registry"
               :form="form"
@@ -311,7 +327,9 @@ onBeforeUnmount(destroySortable)
       </div>
     </li>
     <li v-if="nodes.length === 0" class="mx-config-form-designer__empty-slot" aria-hidden="true">
-      <span class="mx-config-form-designer__empty-slot-icon">+</span>
+      <span class="mx-config-form-designer__empty-slot-icon">
+        <Plus :size="14" aria-hidden="true" />
+      </span>
     </li>
   </ol>
 </template>

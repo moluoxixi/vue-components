@@ -62,6 +62,7 @@ export interface DesignerMaterialSlotDefinition {
 
 export interface DesignerRuntimeMaterialBinding {
   component: Component | string
+  designerComponent?: Component | string
   valueProp?: string
   trigger?: string
   blurTrigger?: string
@@ -113,7 +114,12 @@ export interface DesignerRegistryLayer {
   validators?: Record<string, RuleCustomValidator>
 }
 
+export interface DesignerRegistryOptions {
+  rendererNamespace?: string
+}
+
 export interface DesignerRegistry {
+  rendererNamespace: string
   getMaterial: (key: string) => DesignerMaterialDefinition | undefined
   getValidator: (key: string) => RuleCustomValidator | undefined
   listMaterials: () => DesignerMaterialDefinition[]

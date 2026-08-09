@@ -365,13 +365,24 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
       propSetter('stretch', 'Stretch', 'boolean'),
     ],
     slots: [{ name: 'default', title: 'Panes', accepts: ['container'], materials: ['element.tab-pane'] }],
-    createNode: ({ id }) => ({
-      id,
-      kind: 'container',
-      material: 'element.tabs',
-      props: { tabPosition: 'top' },
-      slots: { default: [] },
-    }),
+    createNode: ({ id }) => {
+      const paneId = `${id}-pane-1`
+      return {
+        id,
+        kind: 'container',
+        material: 'element.tabs',
+        props: { tabPosition: 'top', modelValue: paneId },
+        slots: {
+          default: [{
+            id: paneId,
+            kind: 'container',
+            material: 'element.tab-pane',
+            props: { label: 'Tab 1', name: paneId },
+            slots: { default: [] },
+          }],
+        },
+      }
+    },
   },
   {
     key: 'element.tab-pane',
@@ -401,13 +412,24 @@ export const ELEMENT_PLUS_DESIGNER_MATERIALS: DesignerMaterialDefinition[] = [
     runtime: { component: ElCollapse },
     setters: [propSetter('accordion', 'Accordion', 'boolean')],
     slots: [{ name: 'default', title: 'Items', accepts: ['container'], materials: ['element.collapse-item'] }],
-    createNode: ({ id }) => ({
-      id,
-      kind: 'container',
-      material: 'element.collapse',
-      props: { accordion: false },
-      slots: { default: [] },
-    }),
+    createNode: ({ id }) => {
+      const itemId = `${id}-item-1`
+      return {
+        id,
+        kind: 'container',
+        material: 'element.collapse',
+        props: { accordion: false, modelValue: [itemId] },
+        slots: {
+          default: [{
+            id: itemId,
+            kind: 'container',
+            material: 'element.collapse-item',
+            props: { title: 'Item 1', name: itemId },
+            slots: { default: [] },
+          }],
+        },
+      }
+    },
   },
   {
     key: 'element.collapse-item',

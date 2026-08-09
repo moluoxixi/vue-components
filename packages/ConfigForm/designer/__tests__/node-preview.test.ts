@@ -30,6 +30,15 @@ const ContainerStub = defineComponent({
   },
 })
 
+const DesignerContainerStub = defineComponent({
+  props: {
+    designerNode: { type: Object, required: true },
+  },
+  setup(_, { slots }) {
+    return () => h('section', { class: 'designer-container-stub' }, slots.default?.())
+  },
+})
+
 const materials: DesignerMaterialDefinition[] = [
   {
     key: 'test.input',
@@ -83,6 +92,25 @@ const materials: DesignerMaterialDefinition[] = [
       field,
     }),
   },
+  {
+    key: 'test.designer-container',
+    version: 1,
+    kind: 'container',
+    title: 'Designer container',
+    category: 'Layout',
+    runtime: {
+      component: ContainerStub,
+      designerComponent: DesignerContainerStub,
+    },
+    setters: [],
+    slots: [{ name: 'default', title: 'Content' }],
+    createNode: ({ id }) => ({
+      id,
+      kind: 'container',
+      material: 'test.designer-container',
+      slots: { default: [] },
+    }),
+  },
 ]
 
 const registry = createDesignerRegistry([{ name: 'test', materials }])
@@ -107,12 +135,20 @@ describe('designer node preview', () => {
     })
 
     expect(wrapper.classes()).toEqual(expect.arrayContaining(['is-label-left', 'has-label']))
-    expect(wrapper.find('.mx-config-form-designer__node-preview-label').text()).toBe('Name')
-    expect(wrapper.find('.mx-config-form-designer__node-preview-label').attributes('aria-hidden')).toBeUndefined()
-    expect(wrapper.find('input').attributes('value')).toBe('Ada')
+    const label = wrapper.get('.mx-config-form-designer__node-preview-label')
+    const input = wrapper.get('input')
+    expect(wrapper.classes()).toContain('mx-config-form__field')
+    expect(label.element.tagName).toBe('LABEL')
+    expect(label.text()).toBe('Name')
+    expect(label.classes()).toContain('mx-config-form__label')
+    expect(label.attributes('aria-hidden')).toBeUndefined()
+    expect(label.attributes('for')).toBe(input.attributes('id'))
+    expect(input.attributes('value')).toBe('Stale mock value')
     expect(wrapper.find('input').attributes('placeholder')).toBe('Your name')
-    expect(wrapper.find('.mx-config-form-designer__node-preview-control').attributes('inert')).toBe('')
-    expect(wrapper.find('.mx-config-form-designer__node-preview-control').attributes('aria-hidden')).toBe('true')
+    const control = wrapper.get('.mx-config-form-designer__node-preview-control')
+    expect(control.classes()).toContain('mx-config-form__control')
+    expect(control.attributes('inert')).toBe('')
+    expect(control.attributes('aria-hidden')).toBe('true')
   })
 
   it('renders the same real field component with a top-positioned label', () => {
@@ -149,6 +185,7 @@ describe('designer node preview', () => {
     })
 
     expect(wrapper.classes()).toContain('is-readonly')
+    expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').classes()).toContain('mx-config-form__readonly')
     expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').text()).toBe('readonly:')
     expect(wrapper.find('input').exists()).toBe(false)
   })
@@ -192,10 +229,29 @@ describe('designer node preview', () => {
     expect(wrapper.find('.mx-config-form-designer__node-preview-control').exists()).toBe(false)
   })
 
+  it('uses a designer container override without changing the runtime component contract', () => {
+    const node = {
+      id: 'tabs',
+      kind: 'container' as const,
+      material: 'test.designer-container',
+      slots: { default: [] },
+    }
+    const wrapper = mount(DesignerNodePreview, {
+      props: { registry, node },
+      slots: {
+        default: () => h('span', { 'data-testid': 'designer-nested-content' }, 'Nested content'),
+      },
+    })
+
+    const designerContainer = wrapper.getComponent(DesignerContainerStub)
+    expect(designerContainer.props('designerNode')).toEqual(node)
+    expect(wrapper.findComponent(ContainerStub).exists()).toBe(false)
+    expect(wrapper.get('[data-testid="designer-nested-content"]').text()).toBe('Nested content')
+  })
+
   it('updates an isolated model and derives required, disabled, and readonly states', async () => {
     const wrapper = mount(DesignerNodePreview, {
       props: {
-        interactive: true,
         model: { enabled: true, name: 'Ada' },
         registry,
         node: {
@@ -219,8 +275,8 @@ describe('designer node preview', () => {
     })
 
     expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').text()).toBe('readonly:Ada')
-    expect(wrapper.get('.mx-config-form-designer__node-preview-label').attributes('data-required')).toBe('true')
-    expect(wrapper.get('.mx-config-form-designer__node-preview-control').attributes('inert')).toBeUndefined()
+    expect(wrapper.attributes('data-required')).toBe('true')
+    expect(wrapper.get('.mx-config-form-designer__node-preview-control').attributes('inert')).toBe('')
     expect(wrapper.find('input').exists()).toBe(false)
     expect(wrapper.emitted('updateField')).toBeUndefined()
   })

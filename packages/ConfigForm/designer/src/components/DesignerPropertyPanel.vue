@@ -14,6 +14,7 @@ import type {
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed, ref } from 'vue'
 import { walkDesignerNodes } from '../document'
+import { findDesignerNode } from '../history'
 import { useDesignerLocale } from '../locale'
 import DesignerSetter from './DesignerSetter.vue'
 import DesignerResponsiveSettings from './DesignerResponsiveSettings.vue'
@@ -50,6 +51,12 @@ const fieldOptions = computed(() => {
   })
   return fields
 })
+const isRootNode = computed(() => {
+  if (!props.node)
+    return false
+  const location = findDesignerNode(props.document, props.node.id)
+  return Boolean(location && location.parent === undefined)
+})
 
 const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
   if (!props.node)
@@ -61,7 +68,9 @@ const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
           { key: 'label', label: locale.t('property.label', 'Label'), path: ['label'], control: 'text' as const },
         ]
       : []),
-    { key: 'span', label: locale.t('property.span', 'Span'), path: ['span'], control: 'number' as const, min: 1, max: 24, step: 1 },
+    ...(isRootNode.value
+      ? [{ key: 'span', label: locale.t('property.span', 'Span'), path: ['span'], control: 'number' as const, min: 1, max: 24, step: 1 }]
+      : []),
   ]
 })
 

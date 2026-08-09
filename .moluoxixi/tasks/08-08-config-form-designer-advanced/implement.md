@@ -10,6 +10,14 @@
 8. [x] Add a visual framework switch and adapter-specific sample documents to the standalone designer.
 9. [x] Remove shadcn packages and all supported-code, test, documentation, release, verification, and lockfile references.
 10. [x] Run full package-boundary, unit, typecheck, build, desktop/narrow browser, and cross-layer verification.
+11. [x] Replace node-sized selection outlines with observed component-sized overlays as an intermediate iteration and update drag/action E2E selectors.
+12. [x] Add password, search, autocomplete, slider, and rate Ant Design Vue materials with locale, readonly/default, option-source, unit, and browser coverage.
+13. [x] Run scoped tests, typechecks, builds, desktop/mobile geometry checks, then rerun the full quality gate.
+14. [x] Make root-only span ownership explicit, hide ineffective nested Span setters, and cover `24 / 8 / 8 / 8` parity in Runtime and designer tests.
+15. [x] Share Runtime span/field-layout projections with the designer, apply adapter Runtime namespaces/styles, and verify intrinsic controls plus full-row cell footprints in Runtime before the designer.
+16. [x] Replace the dual measured-component/span chrome with one focus-bound full-node frame, attach actions to its top-right edge, and verify focus-loss behavior.
+17. [x] Replace generic nested container framing with one icon-only empty drop surface, native non-empty flow, and adapter-specific Section/Flex/Grid visual guides.
+18. [x] Add DOM, computed-style, drag-state, Element Plus/Ant Design Vue, desktop/mobile, and browser screenshot verification for the container canvas language.
 
 ## Validation Commands
 
@@ -32,7 +40,7 @@
 - [x] `pnpm --filter @moluoxixi/config-form test:coverage` (95.88% functions, 95.75% statements)
 - [x] `pnpm build`
 - [x] `pnpm --filter @config-form/playground build`
-- [x] Full Playground Playwright suite (13 passed, including Element Plus and Ant Design Vue designer layout/readonly coverage)
+- [x] Full Playground Playwright suite (14 passed, including root span parity and Element Plus/Ant Design Vue designer layout/readonly coverage)
 - [x] Cross-layer review of document, compiler, Designer, Element Plus/Ant Design Vue adapters, and Runtime boundaries
 
 ## Risk Gates

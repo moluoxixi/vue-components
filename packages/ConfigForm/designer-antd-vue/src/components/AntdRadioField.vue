@@ -27,6 +27,7 @@ const emit = defineEmits<{
   <span class="mx-antd-designer-choice-field">
     <RadioGroup
       v-bind="$attrs"
+      data-designer-selection-target
       :value="value"
       :options="state.options"
       @update:value="emit('update:value', $event)"

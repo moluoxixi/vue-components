@@ -13,6 +13,7 @@ const sortableMock = vi.hoisted(() => ({
   create: vi.fn((element: HTMLElement, options: {
     onAdd?: (event: { item: HTMLElement, newIndex?: number }) => void
     onEnd?: (event: { item: HTMLElement, newIndex?: number, to: HTMLElement }) => void
+    onStart?: () => void
   }) => {
     const instance = { destroy: vi.fn(), element, options }
     sortableMock.instances.push(instance)
@@ -24,6 +25,7 @@ const sortableMock = vi.hoisted(() => ({
     options: {
       onAdd?: (event: { item: HTMLElement, newIndex?: number }) => void
       onEnd?: (event: { item: HTMLElement, newIndex?: number, to: HTMLElement }) => void
+      onStart?: () => void
     }
   }>,
 }))
@@ -293,7 +295,90 @@ describe('config form designer', () => {
     })
   })
 
-  it('previews linkage against an isolated editable model', async () => {
+  it('lays out root spans as one full row followed by three equal columns', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: {
+          version: 1,
+          form: { columns: 24, fieldSpan: 8 },
+          nodes: [
+            { id: 'full', kind: 'field', material: 'element.input', field: 'full', span: 24 },
+            { id: 'left', kind: 'field', material: 'element.input', field: 'left', span: 8 },
+            { id: 'middle', kind: 'field', material: 'element.input', field: 'middle', span: 8 },
+            { id: 'right', kind: 'field', material: 'element.input', field: 'right', span: 8 },
+          ],
+        },
+        registry,
+      },
+    })
+
+    const rootList = wrapper.get('.mx-config-form-designer__canvas-sheet > .mx-config-form-designer__node-list')
+    const rootNodes = rootList.findAll(':scope > .mx-config-form-designer__node')
+    expect(rootList.classes()).toEqual(expect.arrayContaining(['mx-config-form__row', 'mx-config-form__row--grid']))
+    expect(rootNodes.map(node => node.attributes('style'))).toEqual([
+      expect.stringContaining('span 24 / span 24'),
+      expect.stringContaining('span 8 / span 8'),
+      expect.stringContaining('span 8 / span 8'),
+      expect.stringContaining('span 8 / span 8'),
+    ])
+    expect(rootNodes.map(node => node.attributes('data-designer-span'))).toEqual(['24', '8', '8', '8'])
+    expect(rootNodes.every(node => node.classes().includes('mx-config-form__cell'))).toBe(true)
+
+    await rootNodes[0]!.get(':scope > .mx-config-form-designer__node-preview-shell').trigger('focus')
+    expect(rootNodes[0]!.find(':scope > .mx-config-form-designer__node-actions').exists()).toBe(true)
+    expect(rootNodes[0]!.find(':scope > .mx-config-form-designer__selection-overlay').exists()).toBe(false)
+    expect(rootNodes[0]!.find(':scope > [data-designer-span-footprint]').exists()).toBe(false)
+    expect(rootNodes[1]!.find(':scope > .mx-config-form-designer__node-actions').exists()).toBe(false)
+  })
+
+  it('projects container metadata and keeps one empty drop surface without nested chrome', () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: {
+          version: 1,
+          form: {},
+          nodes: [
+            {
+              id: 'empty-section',
+              kind: 'container',
+              material: 'element.section',
+              slots: { default: [] },
+            },
+            {
+              id: 'filled-section',
+              kind: 'container',
+              material: 'element.section',
+              slots: {
+                default: [{ id: 'nested-input', kind: 'field', material: 'element.input', field: 'nested' }],
+              },
+            },
+          ],
+        },
+        registry,
+      },
+    })
+
+    const emptySection = wrapper.get('[data-node-id="empty-section"]')
+    expect(emptySection.attributes('data-material')).toBe('element.section')
+    expect(emptySection.attributes('data-node-kind')).toBe('container')
+    const emptyList = emptySection.get('.mx-config-form-designer__node-list[data-parent-id="empty-section"]')
+    expect(emptyList.classes()).toContain('is-nested')
+    expect(emptyList.attributes('data-parent-material')).toBe('element.section')
+    expect(emptyList.attributes('data-slot')).toBe('default')
+    expect(emptyList.findAll(':scope > .mx-config-form-designer__empty-slot')).toHaveLength(1)
+    expect(emptyList.get(':scope > .mx-config-form-designer__empty-slot').text()).toBe('')
+    expect(emptyList.get(':scope > .mx-config-form-designer__empty-slot svg').attributes('aria-hidden')).toBe('true')
+
+    const filledSection = wrapper.get('[data-node-id="filled-section"]')
+    const filledList = filledSection.get('.mx-config-form-designer__node-list[data-parent-id="filled-section"]')
+    expect(filledList.findAll(':scope > .mx-config-form-designer__empty-slot')).toHaveLength(0)
+    expect(filledList.get(':scope > [data-node-id="nested-input"]').attributes()).toMatchObject({
+      'data-material': 'element.input',
+      'data-node-kind': 'field',
+    })
+  })
+
+  it('always previews linkage against an isolated model and gates only editing', async () => {
     const document: DesignerDocument = {
       version: 1,
       form: {},
@@ -325,7 +410,8 @@ describe('config form designer', () => {
     const exposed = wrapper.vm as unknown as ConfigFormDesignerExpose
     const exportedBeforePreview = exposed.exportDocument()
 
-    expect(wrapper.get('[data-node-id="dependent"]').attributes('style') ?? '').not.toContain('display: none')
+    expect(wrapper.get('[data-node-id="dependent"]').attributes('style')).toContain('display: none')
+    expect(wrapper.get('[data-node-id="controller"] .mx-config-form-designer__node-preview-control').attributes()).toHaveProperty('inert')
     await wrapper.get('button[aria-label="Linkage preview"]').trigger('click')
     expect(wrapper.get('[data-node-id="dependent"]').attributes('style')).toContain('display: none')
 
@@ -334,6 +420,20 @@ describe('config form designer', () => {
     expect(wrapper.get('[data-node-id="dependent"]').attributes('style') ?? '').not.toContain('display: none')
     expect(wrapper.emitted('update:document')).toBeUndefined()
     expect(exposed.exportDocument()).toBe(exportedBeforePreview)
+
+    await wrapper.get('button[aria-label="Linkage preview"]').trigger('click')
+    expect(wrapper.get('[data-node-id="dependent"]').attributes('style')).toContain('display: none')
+    expect((wrapper.get('[data-node-id="controller"] input').element as HTMLInputElement).value).toBe('hide')
+
+    expect(exposed.dispatch({
+      type: 'updateNodePath',
+      nodeId: 'controller',
+      path: ['defaultValue'],
+      value: 'show',
+    })).toBe(true)
+    await flushPromises()
+    expect((wrapper.get('[data-node-id="controller"] input').element as HTMLInputElement).value).toBe('show')
+    expect(wrapper.get('[data-node-id="dependent"]').attributes('style') ?? '').not.toContain('display: none')
   })
 
   it('activates linkage preview when a condition is edited', async () => {
@@ -374,6 +474,10 @@ describe('config form designer', () => {
     expect(paletteSortables).toHaveLength(2)
     expect(paletteSortables.every(instance => [...instance.element.children]
       .every(child => (child as HTMLElement).hasAttribute('data-designer-draggable')))).toBe(true)
+    paletteSortables[0]!.options.onStart?.()
+    expect(wrapper.get('.mx-config-form-designer').classes()).toContain('is-dragging')
+    paletteSortables[0]!.options.onEnd?.({ item: document.createElement('button'), to: paletteSortables[0]!.element })
+    expect(wrapper.get('.mx-config-form-designer').classes()).not.toContain('is-dragging')
 
     await wrapper.get('[data-material-key="element.input"]').trigger('click')
     await flushPromises()
@@ -461,8 +565,11 @@ describe('config form designer', () => {
     expect(rootSortable).toBeDefined()
 
     const second = wrapper.get('[data-node-id="second"]').element as HTMLElement
+    rootSortable!.options.onStart?.()
+    expect(wrapper.get('.mx-config-form-designer').classes()).toContain('is-dragging')
     rootSortable!.options.onEnd?.({ item: second, newIndex: 0, to: rootSortable!.element })
     await flushPromises()
+    expect(wrapper.get('.mx-config-form-designer').classes()).not.toContain('is-dragging')
     expect(lastDocument(wrapper).nodes.map(node => node.id)).toEqual(['second', 'first'])
 
     const material = document.createElement('button')
@@ -471,6 +578,21 @@ describe('config form designer', () => {
     refreshedRoot!.options.onAdd?.({ item: material, newIndex: 1 })
     await flushPromises()
     expect(lastDocument(wrapper).nodes).toHaveLength(3)
+  })
+
+  it('clears palette drag state when readonly tears down Sortable instances', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: twoFieldDocument(), registry },
+    })
+    await flushPromises()
+    const paletteSortable = sortableMock.instances.find(instance => instance.element.classList.contains('mx-config-form-designer__palette-items'))
+    expect(paletteSortable).toBeDefined()
+
+    paletteSortable!.options.onStart?.()
+    expect(wrapper.get('.mx-config-form-designer').classes()).toContain('is-dragging')
+    await wrapper.setProps({ readonly: true })
+    await flushPromises()
+    expect(wrapper.get('.mx-config-form-designer').classes()).not.toContain('is-dragging')
   })
 
   it('restores document-rendered DOM after an invalid Sortable target', async () => {

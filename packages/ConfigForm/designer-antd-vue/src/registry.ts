@@ -17,9 +17,12 @@ export function createAntdVueDesignerRegistry(
   options: { optionResolver?: AntdVueOptionResolverContext } = {},
 ): DesignerRegistry {
   const materials = ANTD_VUE_DESIGNER_MATERIALS.map(material => (
-    ['antd.select', 'antd.radio', 'antd.checkbox'].includes(material.key) && material.kind === 'field'
+    ['antd.select', 'antd.auto-complete', 'antd.radio', 'antd.checkbox'].includes(material.key) && material.kind === 'field'
       ? { ...material, analyze: createAntdVueOptionDiagnostics(options.optionResolver) }
       : material
   ))
-  return createDesignerRegistry([...layers, { ...antdVueDesignerRegistryLayer, materials }])
+  return createDesignerRegistry(
+    [...layers, { ...antdVueDesignerRegistryLayer, materials }],
+    { rendererNamespace: 'mx-antd-config-form' },
+  )
 }

@@ -19,6 +19,10 @@ const query = ref('')
 const listRef = ref<HTMLElement>()
 let sortables: Sortable[] = []
 
+function setDragging(active: boolean): void {
+  listRef.value?.closest<HTMLElement>('.mx-config-form-designer')?.classList.toggle('is-dragging', active)
+}
+
 const groups = computed(() => {
   const normalized = query.value.trim().toLowerCase()
   const matched = normalized
@@ -35,6 +39,7 @@ const groups = computed(() => {
 })
 
 function destroySortable(): void {
+  setDragging(false)
   for (const sortable of sortables)
     sortable.destroy()
   sortables = []
@@ -59,6 +64,8 @@ async function createSortable(): Promise<void> {
       forceFallback: true,
       group,
       sort: false,
+      onStart: () => setDragging(true),
+      onEnd: () => setDragging(false),
     }))
   }
 }

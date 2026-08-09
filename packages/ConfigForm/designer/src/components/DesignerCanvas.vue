@@ -60,7 +60,7 @@ function forwardUpdateField(field: string, value: unknown): void {
 </script>
 
 <template>
-  <main class="mx-config-form-designer__canvas" :aria-label="locale.t('canvas.form', 'Form canvas')" :data-preview-breakpoint="breakpoint ?? 'desktop'" @click.self="emit('select', '')">
+  <main class="mx-config-form-designer__canvas" :aria-label="locale.t('canvas.form', 'Form canvas')" :data-preview-breakpoint="breakpoint ?? 'desktop'" @click="emit('select', '')">
     <div class="mx-config-form-designer__canvas-tools mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.breakpoint', 'Preview breakpoint')">
       <button
         v-for="item in breakpoints"

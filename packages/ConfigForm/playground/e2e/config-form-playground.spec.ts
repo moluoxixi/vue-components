@@ -158,12 +158,19 @@ async function expectPreviewObject(preview: Locator, expected: unknown): Promise
 
 async function readDesignerPreviewSignature(preview: Locator): Promise<DesignerPreviewSignature> {
   return preview.locator('form').evaluate((form) => {
-    const fields = [...form.querySelectorAll<HTMLElement>('[data-field]')].map(field => ({
-      control: field.querySelector('.mx-config-form__control')?.firstElementChild?.getAttribute('class') || '',
-      field: field.dataset.field || '',
-      label: field.querySelector('.mx-config-form__label')?.textContent?.trim() || '',
-      required: field.dataset.required === 'true',
-    }))
+    const fields = [...form.querySelectorAll<HTMLElement>('[data-field]')].map((field) => {
+      const fieldClass = [...field.classList].find(className => className.endsWith('__field'))
+      const namespace = fieldClass?.slice(0, -'__field'.length)
+      const control = namespace ? field.querySelector(`.${CSS.escape(namespace)}__control`) : null
+      const label = namespace ? field.querySelector(`.${CSS.escape(namespace)}__label`) : null
+
+      return {
+        control: control?.firstElementChild?.getAttribute('class') || '',
+        field: field.dataset.field || '',
+        label: label?.textContent?.trim() || '',
+        required: field.dataset.required === 'true',
+      }
+    })
 
     return {
       cards: form.querySelectorAll('.el-card').length,
@@ -205,6 +212,28 @@ async function dragSortableItem(
     await page.mouse.move(targetX, targetY, { steps: 18 })
   }
   await page.waitForTimeout(200)
+  await page.mouse.up()
+}
+
+async function inspectSortableDrag(
+  page: Page,
+  source: Locator,
+  duringDrag: () => Promise<void>,
+): Promise<void> {
+  const sourceBox = await source.boundingBox()
+  if (!sourceBox)
+    throw new Error('Sortable source is not visible')
+
+  const sourceX = sourceBox.x + sourceBox.width / 2
+  const sourceY = sourceBox.y + sourceBox.height / 2
+  await page.mouse.move(sourceX, sourceY)
+  await page.mouse.down()
+  await page.mouse.move(sourceX + 12, sourceY + 12, { steps: 4 })
+  await page.waitForTimeout(50)
+  const draggable = source.locator('xpath=ancestor-or-self::*[@data-designer-draggable][1]')
+  await expect(draggable.first()).toHaveClass(/sortable-chosen/)
+  await duringDrag()
+  await page.mouse.move(sourceX, sourceY, { steps: 4 })
   await page.mouse.up()
 }
 
@@ -270,6 +299,80 @@ async function expectContainerVisualSpacing(containerNode: Locator, layoutSelect
   expect(metrics.display).toBe('grid')
   expect(metrics.gap).toBeGreaterThanOrEqual(14)
   expect(metrics.firstVisibleChildOffset).toBeLessThan(metrics.width / 2)
+}
+
+async function expectSingleSelectionFrameMatchesNode(node: Locator): Promise<void> {
+  await expect(node).toHaveClass(/is-selected/)
+  await expect(node.locator(':scope > .mx-config-form-designer__node-actions')).toBeVisible()
+  const metrics = await node.evaluate((element) => {
+    const frame = getComputedStyle(element, '::after')
+    return {
+      borderStyle: frame.borderStyle,
+      bottom: frame.bottom,
+      left: frame.left,
+      pointerEvents: frame.pointerEvents,
+      right: frame.right,
+      top: frame.top,
+      oldFrameCount: element.querySelectorAll('.mx-config-form-designer__selection-overlay, [data-designer-span-footprint]').length,
+    }
+  })
+
+  expect(metrics).toEqual({
+    borderStyle: 'dashed',
+    bottom: '-5px',
+    left: '-5px',
+    oldFrameCount: 0,
+    pointerEvents: 'none',
+    right: '-5px',
+    top: '-5px',
+  })
+}
+
+async function expectQuietEmptySlot(list: Locator): Promise<Locator> {
+  const emptySlot = list.locator(':scope > .mx-config-form-designer__empty-slot')
+  await expect(emptySlot).toHaveCount(1)
+  expect(await emptySlot.evaluate((element) => {
+    const styles = getComputedStyle(element)
+    const icon = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer__empty-slot-icon')!
+    const iconStyles = getComputedStyle(icon)
+    return {
+      backgroundColor: styles.backgroundColor,
+      borderColor: styles.borderTopColor,
+      borderStyle: styles.borderTopStyle,
+      childCount: element.children.length,
+      hasIcon: Boolean(element.querySelector(':scope > .mx-config-form-designer__empty-slot-icon > svg')),
+      iconBorderStyle: iconStyles.borderTopStyle,
+      text: element.textContent?.trim() ?? '',
+    }
+  })).toEqual({
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+    borderColor: 'rgba(0, 0, 0, 0)',
+    borderStyle: 'solid',
+    childCount: 1,
+    hasIcon: true,
+    iconBorderStyle: 'none',
+    text: '',
+  })
+  return emptySlot
+}
+
+async function expectNativeNestedFlow(list: Locator): Promise<void> {
+  expect(await list.evaluate((element) => {
+    const styles = getComputedStyle(element)
+    return {
+      borderStyle: styles.borderTopStyle,
+      paddingBottom: styles.paddingBottom,
+      paddingLeft: styles.paddingLeft,
+      paddingRight: styles.paddingRight,
+      paddingTop: styles.paddingTop,
+    }
+  })).toEqual({
+    borderStyle: 'none',
+    paddingBottom: '0px',
+    paddingLeft: '0px',
+    paddingRight: '0px',
+    paddingTop: '0px',
+  })
 }
 
 async function expectKnownControlsVisible(scope: Locator, suite: ConfigFormSuite, prefix: string): Promise<void> {
@@ -712,8 +815,7 @@ test.describe('ConfigForm visual designer', () => {
 
     const enabledInitialNode = canvas.locator('[data-node-id="designer-enabled"]')
     const unselectedBox = await enabledInitialNode.boundingBox()
-    const unselectedOverlay = await enabledInitialNode.evaluate(element => getComputedStyle(element, '::after').content)
-    expect(unselectedOverlay).toBe('none')
+    await expect(enabledInitialNode.locator(':scope > .mx-config-form-designer__node-actions')).toHaveCount(0)
     await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
     const inheritedSpan = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Span' })
     await expect(inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true })).toHaveValue('24')
@@ -722,39 +824,29 @@ test.describe('ConfigForm visual designer', () => {
     const selectedBox = await enabledInitialNode.boundingBox()
     expect(selectedBox?.width).toBeCloseTo(unselectedBox!.width, 1)
     expect(selectedBox?.height).toBeCloseTo(unselectedBox!.height, 1)
-    const overlayStyle = await enabledInitialNode.evaluate((element) => {
-      const styles = getComputedStyle(element, '::after')
-      return {
-        borderStyle: styles.borderStyle,
-        pointerEvents: styles.pointerEvents,
-        top: styles.top,
-        right: styles.right,
-        bottom: styles.bottom,
-        left: styles.left,
-      }
-    })
-    expect(overlayStyle).toEqual({
-      borderStyle: 'dashed',
-      pointerEvents: 'none',
-      top: '-5px',
-      right: '-5px',
-      bottom: '-5px',
-      left: '-5px',
-    })
-    const nodeToolbarBox = await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-header').boundingBox()
-    await expect(enabledInitialNode.locator(':scope > .mx-config-form-designer__node-header > .mx-config-form-designer__node-actions [data-drag-handle]')).toBeVisible()
+    await expectSingleSelectionFrameMatchesNode(enabledInitialNode)
+    const nodeToolbar = enabledInitialNode.locator(':scope > .mx-config-form-designer__node-actions')
+    const nodeToolbarBox = await nodeToolbar.boundingBox()
+    await expect(nodeToolbar.locator('[data-drag-handle]')).toBeVisible()
     expect(nodeToolbarBox!.height).toBeLessThanOrEqual(28)
     expect(Math.abs(nodeToolbarBox!.y + nodeToolbarBox!.height - (selectedBox!.y - 5))).toBeLessThanOrEqual(1)
     expect(Math.abs(nodeToolbarBox!.x + nodeToolbarBox!.width - (selectedBox!.x + selectedBox!.width + 5))).toBeLessThanOrEqual(1)
+    await inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true }).focus()
+    await expect(enabledInitialNode).toHaveClass(/is-selected/)
+    await expect(inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true })).toHaveValue('24')
+    await expect(nodeToolbar).toBeHidden()
+    await expect.poll(() => enabledInitialNode.evaluate(element => getComputedStyle(element, '::after').borderStyle)).toBe('none')
+    await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
 
     const initialRootOrder = await rootList.locator(':scope > [data-node-id]').evaluateAll(elements => (
       elements.map(element => (element as HTMLElement).dataset.nodeId)
     ))
     const sectionNode = canvas.locator('[data-node-id="designer-section"]')
     await sectionNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expectSingleSelectionFrameMatchesNode(sectionNode)
     await dragSortableItem(
       page,
-      sectionNode.locator(':scope > .mx-config-form-designer__node-header [data-drag-handle]'),
+      sectionNode.locator(':scope > .mx-config-form-designer__node-actions [data-drag-handle]'),
       rootList,
       'vertical',
     )
@@ -768,7 +860,7 @@ test.describe('ConfigForm visual designer', () => {
 
     const choiceNode = canvas.locator('[data-node-id="designer-choice"]')
     await choiceNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
-    const choiceToolbar = choiceNode.locator(':scope > .mx-config-form-designer__node-header')
+    const choiceToolbar = choiceNode.locator(':scope > .mx-config-form-designer__node-actions')
     const choiceToolbarStyle = await choiceToolbar.evaluate(element => ({
       zIndex: Number(getComputedStyle(element).zIndex),
       cardBodyOverflow: getComputedStyle(element.closest('.el-card__body')!).overflow,
@@ -981,7 +1073,7 @@ test('standalone designer entry exposes localized controls on narrow screens', a
   expect(mobilePropertiesBox!.y).toBeGreaterThanOrEqual(mobileCanvasBox!.y + mobileCanvasBox!.height - 1)
 
   await designer.locator('[data-focus-node-id="designer-name"]').click()
-  const nodeActions = designer.locator('[data-node-id="designer-name"] > .mx-config-form-designer__node-header')
+  const nodeActions = designer.locator('[data-node-id="designer-name"] > .mx-config-form-designer__node-actions')
   for (const name of ['上移节点', '下移节点', '移入上一个容器', '移出容器', '复制节点', '删除节点'])
     await expect(nodeActions.getByRole('button', { name, exact: true })).toBeVisible()
 })
@@ -999,6 +1091,57 @@ test('standalone designer keeps independent Element Plus and Ant Design Vue docu
   await expect(designer.locator('[data-node-id="designer-enabled"] .ant-switch')).toBeVisible()
   await expect.poll(() => designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first().evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(24)
 
+  const antCanvas = designer.locator('.mx-config-form-designer__canvas')
+  await antCanvas.click({ position: { x: 5, y: 5 } })
+  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '标签位置' }).getByRole('button', { name: '顶部', exact: true }).click()
+  const antNameNode = designer.locator('[data-node-id="designer-name"]')
+  await antNameNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+  await expect(antNameNode.locator('.mx-config-form-designer__node-preview.is-label-top')).toBeVisible()
+  await expectSingleSelectionFrameMatchesNode(antNameNode)
+
+  await antCanvas.click({ position: { x: 5, y: 5 } })
+  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '标签位置' }).getByRole('button', { name: '左侧', exact: true }).click()
+  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '表单只读' }).getByRole('switch').click()
+  await antNameNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+  await expect(antNameNode.locator('.mx-config-form-designer__node-preview-readonly')).toBeVisible()
+  await expectSingleSelectionFrameMatchesNode(antNameNode)
+
+  await antCanvas.click({ position: { x: 5, y: 5 } })
+  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '表单只读' }).getByRole('switch').click()
+
+  for (const field of [
+    { nodeId: 'designer-name', selector: '.ant-input' },
+    { nodeId: 'designer-choice', selector: '.ant-select' },
+    { nodeId: 'designer-enabled', selector: '.ant-switch' },
+  ]) {
+    const node = designer.locator(`[data-node-id="${field.nodeId}"]`)
+    await node.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expectSingleSelectionFrameMatchesNode(node)
+  }
+
+  for (const container of [
+    { nodeId: 'designer-section', selector: '.mx-antd-designer-section' },
+    { nodeId: 'designer-card', selector: '.ant-card' },
+  ]) {
+    const node = designer.locator(`[data-node-id="${container.nodeId}"]`)
+    await node.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expectSingleSelectionFrameMatchesNode(node)
+  }
+
+  for (const material of [
+    { name: '密码框', selector: '.ant-input-password' },
+    { name: '搜索框', selector: '.ant-input-search' },
+    { name: '自动完成', selector: '.ant-select-auto-complete' },
+    { name: '滑块', selector: '.ant-slider' },
+    { name: '评分', selector: '.ant-rate' },
+  ]) {
+    await designer.getByRole('button', { name: material.name, exact: true }).click()
+    const selectedMaterial = designer.locator('.mx-config-form-designer__node.is-selected')
+    await expect(selectedMaterial.locator(material.selector)).toBeVisible()
+    await selectedMaterial.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expectSingleSelectionFrameMatchesNode(selectedMaterial)
+  }
+
   const antInputCount = await designer.locator('.ant-input').count()
   await designer.getByRole('button', { name: '输入框', exact: true }).click()
   await expect(designer.locator('.ant-input')).toHaveCount(antInputCount + 1)
@@ -1011,25 +1154,211 @@ test('standalone designer keeps independent Element Plus and Ant Design Vue docu
   await expect(designer.locator('.ant-input')).toHaveCount(antInputCount + 1)
 })
 
+test('keeps root span placement aligned between runtime preview and designer canvas', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/designer.html')
+  const designer = page.getByTestId('designer-example')
+  const document = {
+    version: 1,
+    form: { columns: 24, fieldSpan: 8, gap: '16px', labelPosition: 'left' },
+    nodes: [
+      { id: 'full-switch', kind: 'field', material: 'element.switch', field: 'enabled', label: 'Full width', span: 24 },
+      { id: 'left', kind: 'field', material: 'element.input', field: 'left', label: 'Left', span: 8 },
+      { id: 'middle', kind: 'field', material: 'element.input', field: 'middle', label: 'Middle', span: 8 },
+      { id: 'right', kind: 'field', material: 'element.input', field: 'right', label: 'Right', span: 8 },
+      {
+        id: 'section',
+        kind: 'container',
+        material: 'element.section',
+        span: 24,
+        props: { title: 'Nested content' },
+        slots: {
+          default: [{
+            id: 'nested',
+            kind: 'field',
+            material: 'element.input',
+            field: 'nested',
+            label: 'Nested',
+            span: 24,
+          }],
+        },
+      },
+    ],
+  }
+
+  await designer.getByRole('button', { name: '导入文档', exact: true }).click()
+  const importDialog = designer.getByRole('dialog', { name: '导入文档', exact: true })
+  await importDialog.locator('textarea').fill(JSON.stringify(document))
+  await importDialog.getByRole('button', { name: '应用', exact: true }).click()
+
+  await designer.getByRole('button', { name: '预览表单', exact: true }).click()
+  const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })
+  const runtimeRow = preview.locator('[data-config-form-responsive-layout]').first()
+  const runtimeCells = runtimeRow.locator(':scope > [data-config-form-responsive-cell]')
+  await expect(runtimeCells).toHaveCount(5)
+  const runtimePlacement = await runtimeCells.evaluateAll(elements => elements.slice(0, 4).map(element => ({
+    column: getComputedStyle(element).gridColumn,
+    top: Math.round(element.getBoundingClientRect().top),
+    width: element.getBoundingClientRect().width,
+  })))
+  expect(runtimePlacement.map(item => item.column)).toEqual([
+    'span 24 / span 24',
+    'span 8 / span 8',
+    'span 8 / span 8',
+    'span 8 / span 8',
+  ])
+  expect(runtimePlacement[0]!.top).toBeLessThan(runtimePlacement[1]!.top)
+  expect(new Set(runtimePlacement.slice(1).map(item => item.top))).toHaveProperty('size', 1)
+  const runtimeRowWidth = await runtimeRow.evaluate(element => element.getBoundingClientRect().width)
+  expect(runtimePlacement[0]!.width).toBeCloseTo(runtimeRowWidth, 0)
+  expect(runtimePlacement[0]!.width).toBeGreaterThan(runtimePlacement[1]!.width * 2.8)
+  await preview.getByRole('button', { name: '关闭预览', exact: true }).click()
+
+  const designerCells = designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first().locator(':scope > .mx-config-form-designer__node')
+  await expect(designerCells).toHaveCount(5)
+  const designerPlacement = await designerCells.evaluateAll(elements => elements.slice(0, 4).map(element => ({
+    column: getComputedStyle(element).gridColumn,
+    top: Math.round(element.getBoundingClientRect().top),
+    width: element.getBoundingClientRect().width,
+  })))
+  expect(designerPlacement.map(item => item.column)).toEqual(runtimePlacement.map(item => item.column))
+  expect(designerPlacement[0]!.top).toBeLessThan(designerPlacement[1]!.top)
+  expect(new Set(designerPlacement.slice(1).map(item => item.top))).toHaveProperty('size', 1)
+  expect(designerPlacement[0]!.width).toBeGreaterThan(designerPlacement[1]!.width * 2.8)
+
+  const properties = designer.locator('.mx-config-form-designer__properties')
+  const fullSwitchNode = designer.locator('[data-node-id="full-switch"]')
+  await fullSwitchNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+  await expect(fullSwitchNode).toHaveClass(/mx-element-config-form__cell/)
+  await expect(fullSwitchNode.locator('.mx-element-config-form__field')).toHaveCount(1)
+  await expectSingleSelectionFrameMatchesNode(fullSwitchNode)
+  const fullSwitchGeometry = await fullSwitchNode.evaluate((element) => {
+    const cell = element.getBoundingClientRect()
+    const control = element.querySelector<HTMLElement>('.el-switch')!.getBoundingClientRect()
+    const frame = getComputedStyle(element, '::after')
+    return {
+      cellWidth: cell.width,
+      controlWidth: control.width,
+      frameBorder: frame.borderStyle,
+      frameInsets: [frame.top, frame.right, frame.bottom, frame.left],
+      oldFrameCount: element.querySelectorAll(':scope > .mx-config-form-designer__selection-overlay, :scope > [data-designer-span-footprint]').length,
+    }
+  })
+  expect(fullSwitchGeometry.frameBorder).toBe('dashed')
+  expect(fullSwitchGeometry.frameInsets).toEqual(['-5px', '-5px', '-5px', '-5px'])
+  expect(fullSwitchGeometry.oldFrameCount).toBe(0)
+  expect(fullSwitchGeometry.controlWidth).toBeLessThan(fullSwitchGeometry.cellWidth / 2)
+  await expect(properties.getByRole('spinbutton', { name: '栅格宽度', exact: true })).toHaveCount(1)
+  await designer.locator('[data-node-id="nested"] > .mx-config-form-designer__node-preview-shell').click()
+  await expect(properties.getByRole('spinbutton', { name: '栅格宽度', exact: true })).toHaveCount(0)
+})
+
 for (const adapter of [
   {
+    cardBodySelector: '.el-card__body',
+    cardHeaderSelector: '.el-card__header',
+    cardMaterial: 'element.card',
+    cardSelector: '.el-card',
+    collapseHeaderSelector: '.el-collapse-item__header',
+    collapseItemMaterial: 'element.collapse-item',
+    collapseMaterial: 'element.collapse',
+    collapseSelector: '.el-collapse',
     flexSelector: '.mx-element-flex-layout',
+    flexMaterial: 'element.flex',
     framework: 'Element Plus',
     gridSelector: '.mx-element-grid-layout',
+    gridMaterial: 'element.grid',
+    namespace: 'mx-element-config-form',
+    sectionMaterial: 'element.section',
+    sectionSelector: '.mx-element-designer-section',
+    tabHeaderSelector: '.el-tabs__item',
+    tabPaneMaterial: 'element.tab-pane',
+    tabsMaterial: 'element.tabs',
+    tabsSelector: '.el-tabs',
   },
   {
+    cardBodySelector: '.ant-card-body',
+    cardHeaderSelector: '.ant-card-head',
+    cardMaterial: 'antd.card',
+    cardSelector: '.ant-card',
+    collapseHeaderSelector: '.ant-collapse-header',
+    collapseItemMaterial: 'antd.collapse-item',
+    collapseMaterial: 'antd.collapse',
+    collapseSelector: '.ant-collapse',
     flexSelector: '.mx-antd-flex-layout',
+    flexMaterial: 'antd.flex',
     framework: 'Ant Design Vue',
     gridSelector: '.mx-antd-grid-layout',
+    gridMaterial: 'antd.grid',
+    namespace: 'mx-antd-config-form',
+    sectionMaterial: 'antd.section',
+    sectionSelector: '.mx-antd-designer-section',
+    tabHeaderSelector: '.ant-tabs-tab',
+    tabPaneMaterial: 'antd.tab-pane',
+    tabsMaterial: 'antd.tabs',
+    tabsSelector: '.ant-tabs',
   },
 ] as const) {
   test(`standalone designer renders real flex/grid materials and form readonly preview with ${adapter.framework}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/designer.html')
     const designer = page.getByTestId('designer-example')
+    const designerCanvas = designer.locator('.mx-config-form-designer__canvas')
 
     if (adapter.framework === 'Ant Design Vue')
       await page.getByRole('group', { name: '组件库', exact: true }).getByRole('button', { name: adapter.framework, exact: true }).click()
+
+    const initialRootCells = designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first().locator(':scope > .mx-config-form-designer__node')
+    await expect.poll(async () => initialRootCells.count()).toBeGreaterThan(0)
+    expect(await initialRootCells.evaluateAll((elements, namespace) => elements.every(element => element.classList.contains(`${namespace}__cell`)), adapter.namespace)).toBe(true)
+    const initialFields = designer.locator(`.${adapter.namespace}__field`)
+    await expect.poll(async () => initialFields.count()).toBeGreaterThan(0)
+    expect(await initialFields.evaluateAll((elements, namespace) => elements.every(element => (
+      Boolean(element.querySelector(`.${namespace}__control`))
+      && (!element.textContent?.trim() || Boolean(element.querySelector(`.${namespace}__label`)) || !element.classList.contains('has-label'))
+    )), adapter.namespace)).toBe(true)
+
+    const sectionNode = designer.locator(`[data-material="${adapter.sectionMaterial}"]`).first()
+    const sectionMetrics = await sectionNode.locator(adapter.sectionSelector).evaluate((element) => {
+      const header = element.querySelector<HTMLElement>(':scope > header')!
+      const list = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer__node-list')!
+      return {
+        borderStyle: getComputedStyle(element).borderTopStyle,
+        headerBorderStyle: getComputedStyle(header).borderBottomStyle,
+        listBorderStyle: getComputedStyle(list).borderTopStyle,
+        listPadding: getComputedStyle(list).paddingTop,
+      }
+    })
+    expect(sectionMetrics).toEqual({
+      borderStyle: 'none',
+      headerBorderStyle: 'solid',
+      listBorderStyle: 'none',
+      listPadding: '0px',
+    })
+    const sectionList = sectionNode.locator(`${adapter.sectionSelector} > .mx-config-form-designer__node-list`)
+    await expectNativeNestedFlow(sectionList)
+    const initialCardNode = designer.locator('[data-node-id="designer-card"]')
+    await expect(initialCardNode.locator(adapter.cardSelector)).toBeVisible()
+    await expect(initialCardNode.locator(adapter.cardHeaderSelector)).toBeVisible()
+    await expect(initialCardNode.locator(adapter.cardBodySelector)).toBeVisible()
+    const cardList = designer.locator('[data-node-id="designer-card"] .mx-config-form-designer__node-list[data-parent-id="designer-card"]')
+    await expectNativeNestedFlow(cardList)
+
+    await designerCanvas.click({ position: { x: 5, y: 5 } })
+    await designer.getByRole('button', { name: '分区', exact: true }).click()
+    const emptySectionNode = designer.locator(`[data-material="${adapter.sectionMaterial}"]`).last()
+    const emptySectionList = emptySectionNode.locator(`${adapter.sectionSelector} > .mx-config-form-designer__node-list`)
+    await expectNativeNestedFlow(emptySectionList)
+    await expectQuietEmptySlot(emptySectionList)
+
+    await designerCanvas.click({ position: { x: 5, y: 5 } })
+    await designer.getByRole('button', { name: '卡片', exact: true }).click()
+    const emptyCardNode = designer.locator(`[data-material="${adapter.cardMaterial}"]`).last()
+    await expect(emptyCardNode.locator(adapter.cardSelector)).toBeVisible()
+    await expect(emptyCardNode.locator(adapter.cardHeaderSelector)).toBeVisible()
+    const emptyCardList = emptyCardNode.locator(`${adapter.cardBodySelector} > .mx-config-form-designer__node-list`)
+    await expectNativeNestedFlow(emptyCardList)
+    await expectQuietEmptySlot(emptyCardList)
 
     const environmentNode = designer.locator('[data-node-id="designer-choice"]')
     await expect(environmentNode).toContainText('Playground')
@@ -1038,27 +1367,148 @@ for (const adapter of [
     await environmentDefault.getByRole('button', { name: 'Production', exact: true }).click()
     await expect(environmentNode).toContainText('Production')
 
+    await designerCanvas.click({ position: { x: 5, y: 5 } })
+    await designer.getByRole('button', { name: '标签页', exact: true }).click()
+    const tabsNode = designer.locator(`[data-material="${adapter.tabsMaterial}"]`).last()
+    await expect(tabsNode.locator(adapter.tabsSelector)).toBeVisible()
+    await expect(tabsNode.locator(adapter.tabHeaderSelector)).toContainText('Tab 1')
+    const tabPaneNode = tabsNode.locator(`[data-material="${adapter.tabPaneMaterial}"]`)
+    await expect(tabPaneNode).toHaveCount(1)
+    const tabPaneList = tabPaneNode.locator(`.mx-config-form-designer__node-list.is-empty[data-parent-material="${adapter.tabPaneMaterial}"]`)
+    await expectNativeNestedFlow(tabPaneList)
+    await expectQuietEmptySlot(tabPaneList)
+    if (adapter.framework === 'Ant Design Vue')
+      await tabsNode.locator('.mx-antd-designer-structural-label').first().click()
+    else
+      await tabPaneNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expect(designer.locator('.mx-config-form-designer__node.is-selected:focus-within')).toHaveCount(1)
+    await expectSingleSelectionFrameMatchesNode(tabPaneNode)
+
+    await designerCanvas.click({ position: { x: 5, y: 5 } })
+    await designer.getByRole('button', { name: '折叠面板', exact: true }).click()
+    const collapseNode = designer.locator(`[data-material="${adapter.collapseMaterial}"]`).last()
+    await expect(collapseNode.locator(adapter.collapseSelector)).toBeVisible()
+    await expect(collapseNode.locator(adapter.collapseHeaderSelector)).toContainText('Item 1')
+    const collapseItemNode = collapseNode.locator(`[data-material="${adapter.collapseItemMaterial}"]`)
+    await expect(collapseItemNode).toHaveCount(1)
+    const collapseItemList = collapseItemNode.locator(`.mx-config-form-designer__node-list.is-empty[data-parent-material="${adapter.collapseItemMaterial}"]`)
+    await expectNativeNestedFlow(collapseItemList)
+    await expectQuietEmptySlot(collapseItemList)
+    if (adapter.framework === 'Ant Design Vue')
+      await collapseNode.locator('.mx-antd-designer-structural-label').last().click()
+    else
+      await collapseItemNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expect(designer.locator('.mx-config-form-designer__node.is-selected:focus-within')).toHaveCount(1)
+    await expectSingleSelectionFrameMatchesNode(collapseItemNode)
+
+    await designerCanvas.click({ position: { x: 5, y: 5 } })
     await designer.getByRole('button', { name: 'Flex 换行', exact: true }).click()
-    await expect(designer.locator(adapter.flexSelector)).toBeVisible()
+    const flexNode = designer.locator(`[data-material="${adapter.flexMaterial}"]`).last()
+    await expect(flexNode.locator(adapter.flexSelector)).toBeVisible()
+    const flexList = flexNode.locator(`${adapter.flexSelector} > .mx-config-form-designer__node-list`)
+    await expect(flexList).toHaveAttribute('data-parent-material', adapter.flexMaterial)
+    await expectNativeNestedFlow(flexList)
+    const flexEmptySlot = await expectQuietEmptySlot(flexList)
+    const quietFlexSurface = await flexEmptySlot.evaluate((element) => {
+      const styles = getComputedStyle(element)
+      return { backgroundColor: styles.backgroundColor, borderColor: styles.borderTopColor }
+    })
+    expect(await flexList.evaluate((element) => {
+      const empty = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer__empty-slot')!
+      return {
+        backgroundImage: getComputedStyle(empty).backgroundImage,
+        borderStyle: getComputedStyle(element).borderTopStyle,
+        emptyBorderStyle: getComputedStyle(empty).borderTopStyle,
+        emptyFlexBasis: getComputedStyle(empty).flexBasis,
+        padding: getComputedStyle(element).paddingTop,
+      }
+    })).toMatchObject({
+      borderStyle: 'none',
+      emptyBorderStyle: 'solid',
+      emptyFlexBasis: '100%',
+      padding: '0px',
+    })
+    expect(await flexList.locator(':scope > .mx-config-form-designer__empty-slot').evaluate(element => getComputedStyle(element).backgroundImage)).not.toBe('none')
     const flexProperties = designer.locator('.mx-config-form-designer__properties')
     await expect(flexProperties).toContainText('换行')
     await expect(flexProperties.locator('.mx-config-form-designer__switch-row')).toHaveCount(1)
+    await inspectSortableDrag(
+      page,
+      designer.getByRole('button', { name: '输入框', exact: true }),
+      async () => {
+        await expect(designer.locator('.mx-config-form-designer')).toHaveClass(/is-dragging/)
+        const draggingSurface = await flexEmptySlot.evaluate((element) => {
+          const styles = getComputedStyle(element)
+          return {
+            backgroundColor: styles.backgroundColor,
+            borderColor: styles.borderTopColor,
+            borderStyle: styles.borderTopStyle,
+          }
+        })
+        expect(draggingSurface.borderStyle).toBe('dashed')
+        expect(draggingSurface.backgroundColor).not.toBe(quietFlexSurface.backgroundColor)
+        expect(draggingSurface.borderColor).not.toBe(quietFlexSurface.borderColor)
+      },
+    )
+    await expect(designer.locator('.mx-config-form-designer')).not.toHaveClass(/is-dragging/)
+    await flexNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
     await designer.getByRole('button', { name: '输入框', exact: true }).click()
-    await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
-      .getByRole('button', { name: '移入上一个容器', exact: true })
-      .click()
-    await expect(designer.locator(`${adapter.flexSelector} [data-node-id]`)).toHaveCount(1)
+    const flexField = flexNode.locator(`${adapter.flexSelector} [data-node-kind="field"]`)
+    await expect(flexField).toHaveCount(1)
+    await expect(flexList.locator(':scope > .mx-config-form-designer__empty-slot')).toHaveCount(0)
+    await flexField.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expect(designer.locator('.mx-config-form-designer__node.is-selected:focus-within')).toHaveCount(1)
+    await expectSingleSelectionFrameMatchesNode(flexField)
 
+    await designerCanvas.click({ position: { x: 5, y: 5 } })
     await designer.getByRole('button', { name: 'Grid 栅格', exact: true }).click()
-    await expect(designer.locator(adapter.gridSelector)).toBeVisible()
+    const gridNode = designer.locator(`[data-material="${adapter.gridMaterial}"]`).last()
+    await expect(gridNode.locator(adapter.gridSelector)).toBeVisible()
+    const gridList = gridNode.locator(`${adapter.gridSelector} > .mx-config-form-designer__node-list`)
+    await expect(gridList).toHaveAttribute('data-parent-material', adapter.gridMaterial)
+    await expectNativeNestedFlow(gridList)
+    const gridEmptySlot = await expectQuietEmptySlot(gridList)
+    expect(await gridList.evaluate((element) => {
+      const empty = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer__empty-slot')!
+      return {
+        backgroundImage: getComputedStyle(empty).backgroundImage,
+        borderStyle: getComputedStyle(element).borderTopStyle,
+        emptyBorderStyle: getComputedStyle(empty).borderTopStyle,
+        emptyGridColumn: getComputedStyle(empty).gridColumn,
+        padding: getComputedStyle(element).paddingTop,
+      }
+    })).toMatchObject({
+      borderStyle: 'none',
+      emptyBorderStyle: 'solid',
+      emptyGridColumn: '1 / -1',
+      padding: '0px',
+    })
+    expect(await gridList.locator(':scope > .mx-config-form-designer__empty-slot').evaluate(element => getComputedStyle(element).backgroundImage)).not.toBe('none')
+    await inspectSortableDrag(
+      page,
+      designer.getByRole('button', { name: '输入框', exact: true }),
+      async () => {
+        await expect(designer.locator('.mx-config-form-designer')).toHaveClass(/is-dragging/)
+        expect(await gridEmptySlot.evaluate((element) => {
+          const styles = getComputedStyle(element)
+          return {
+            backgroundImage: styles.backgroundImage,
+            borderStyle: styles.borderTopStyle,
+          }
+        })).toMatchObject({ borderStyle: 'dashed' })
+      },
+    )
+    await expect(designer.locator('.mx-config-form-designer')).not.toHaveClass(/is-dragging/)
     await designer.getByRole('button', { name: '输入框', exact: true }).click()
-    await designer.locator('.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-header')
-      .getByRole('button', { name: '移入上一个容器', exact: true })
-      .click()
-    await expect(designer.locator(`${adapter.gridSelector} [data-node-id]`)).toHaveCount(1)
+    const gridField = gridNode.locator(`${adapter.gridSelector} [data-node-kind="field"]`)
+    await expect(gridField).toHaveCount(1)
+    await expect(gridList.locator(':scope > .mx-config-form-designer__empty-slot')).toHaveCount(0)
+    await gridField.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expect(designer.locator('.mx-config-form-designer__node.is-selected:focus-within')).toHaveCount(1)
+    await expectSingleSelectionFrameMatchesNode(gridField)
     await expect(designer.locator('.mx-config-form-designer__properties')).not.toContainText('表单只读')
 
-    await designer.locator('.mx-config-form-designer__canvas').click({ position: { x: 5, y: 5 } })
+    await designerCanvas.click({ position: { x: 5, y: 5 } })
     const formProperties = designer.locator('.mx-config-form-designer__properties')
     const formReadonly = formProperties.getByRole('switch', { name: '表单只读', exact: true })
     await expect(formReadonly).toBeVisible()
@@ -1066,15 +1516,15 @@ for (const adapter of [
 
     await designer.getByRole('button', { name: '预览表单', exact: true }).click()
     const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })
-    await expect(preview.locator('.mx-config-form__readonly')).toHaveCount(5)
+    await expect(preview.locator(`.${adapter.namespace}__readonly`)).toHaveCount(5)
     await expect(preview).toContainText('Production')
-    await expect(preview.locator(`${adapter.flexSelector} > .mx-config-form__field`)).toHaveCount(1)
-    await expect(preview.locator(`${adapter.gridSelector} > .mx-config-form__field`)).toHaveCount(1)
-    await expect.poll(() => preview.locator(`${adapter.flexSelector} > .mx-config-form__field`).evaluate(element => getComputedStyle(element).flexBasis)).toBe('220px')
+    await expect(preview.locator(`${adapter.flexSelector} > .${adapter.namespace}__field`)).toHaveCount(1)
+    await expect(preview.locator(`${adapter.gridSelector} > .${adapter.namespace}__field`)).toHaveCount(1)
+    await expect.poll(() => preview.locator(`${adapter.flexSelector} > .${adapter.namespace}__field`).evaluate(element => getComputedStyle(element).flexBasis)).toBe('220px')
     await expect(preview.locator('input')).toHaveCount(0)
 
     const designerRow = designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first()
-    const runtimeRow = preview.locator('.mx-config-form__row').first()
+    const runtimeRow = preview.locator(`.${adapter.namespace}__row`).first()
     const columnCount = (locator: typeof designerRow) => locator.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)
 
     await expect.poll(() => columnCount(designerRow)).toBe(24)
@@ -1087,5 +1537,32 @@ for (const adapter of [
     await page.setViewportSize({ width: 390, height: 844 })
     await expect.poll(() => columnCount(designerRow)).toBe(1)
     await expect.poll(() => columnCount(runtimeRow)).toBe(1)
+    await preview.locator('header button').click()
+    await expect(preview).toHaveCount(0)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true)
+
+    const canvasSheet = designer.locator('.mx-config-form-designer__canvas-sheet')
+    for (const containerNode of [emptySectionNode, emptyCardNode, tabsNode, collapseNode, flexNode, gridNode]) {
+      await containerNode.scrollIntoViewIfNeeded()
+      const [containerBox, canvasBox] = await Promise.all([containerNode.boundingBox(), canvasSheet.boundingBox()])
+      expect(containerBox).not.toBeNull()
+      expect(canvasBox).not.toBeNull()
+      expect(containerBox!.width).toBeLessThanOrEqual(canvasBox!.width + 1)
+    }
+    await expectQuietEmptySlot(emptySectionList)
+    await expectQuietEmptySlot(emptyCardList)
+    await expectQuietEmptySlot(tabPaneList)
+    await expectQuietEmptySlot(collapseItemList)
+    await expect(tabsNode.locator(adapter.tabHeaderSelector)).toBeVisible()
+    await expect(collapseItemList).toBeVisible()
+
+    await flexField.scrollIntoViewIfNeeded()
+    await flexField.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await expect(designer.locator('.mx-config-form-designer__node.is-selected:focus-within')).toHaveCount(1)
+    await expectSingleSelectionFrameMatchesNode(flexField)
+    const mobileActions = await flexField.locator(':scope > .mx-config-form-designer__node-actions').boundingBox()
+    expect(mobileActions).not.toBeNull()
+    expect(mobileActions!.x).toBeGreaterThanOrEqual(0)
+    expect(mobileActions!.x + mobileActions!.width).toBeLessThanOrEqual(391)
   })
 }

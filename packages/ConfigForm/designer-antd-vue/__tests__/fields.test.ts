@@ -1,7 +1,8 @@
 import type { DesignerFieldNode } from '@moluoxixi/config-form-designer'
 import { flushPromises, mount } from '@vue/test-utils'
-import { CheckboxGroup, RadioGroup, Select } from 'ant-design-vue'
+import { AutoComplete, CheckboxGroup, RadioGroup, Select } from 'ant-design-vue'
 import { describe, expect, it, vi } from 'vitest'
+import AntdAutoCompleteField from '../src/components/AntdAutoCompleteField.vue'
 import AntdCheckboxField from '../src/components/AntdCheckboxField.vue'
 import AntdChoiceDefaultSetter from '../src/components/AntdChoiceDefaultSetter.vue'
 import AntdRadioField from '../src/components/AntdRadioField.vue'
@@ -24,9 +25,18 @@ describe('ant design vue designer fields', () => {
     })
     const select = wrapper.getComponent(Select)
     expect(select.props('options')).toHaveLength(2)
+    expect(wrapper.get('[data-designer-selection-target]').classes()).toContain('ant-select')
     select.vm.$emit('update:value', '1')
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('update:value')).toEqual([['1']])
+
+    const autoComplete = mount(AntdAutoCompleteField, {
+      props: { value: 'a', options: [{ label: 'Option A', value: 'a' }] },
+    })
+    expect(autoComplete.get('[data-designer-selection-target]').classes()).toContain('ant-select-auto-complete')
+    autoComplete.getComponent(AutoComplete).vm.$emit('update:value', 'b')
+    await autoComplete.vm.$nextTick()
+    expect(autoComplete.emitted('update:value')).toEqual([['b']])
   })
 
   it('resolves dictionaries for fields and default-value controls', async () => {
@@ -41,12 +51,16 @@ describe('ant design vue designer fields', () => {
     const global = { provide: { [ANTD_VUE_OPTION_RESOLVER_KEY as symbol]: context } }
     const optionSource = { kind: 'dictionary' as const, key: 'environments' }
     const select = mount(AntdSelectField, { global, props: { optionSource } })
+    const autoComplete = mount(AntdAutoCompleteField, { global, props: { optionSource } })
     const radio = mount(AntdRadioField, { global, props: { optionSource } })
     const checkbox = mount(AntdCheckboxField, { global, props: { optionSource } })
     await flushPromises()
     expect(select.getComponent(Select).props('options')).toHaveLength(2)
+    expect(autoComplete.getComponent(AutoComplete).props('options')).toHaveLength(2)
     expect(radio.getComponent(RadioGroup).props('options')).toHaveLength(2)
     expect(checkbox.getComponent(CheckboxGroup).props('options')).toHaveLength(2)
+    expect(radio.get('[data-designer-selection-target]').classes()).toContain('ant-radio-group')
+    expect(checkbox.get('[data-designer-selection-target]').classes()).toContain('ant-checkbox-group')
 
     const node: DesignerFieldNode = {
       id: 'environment',

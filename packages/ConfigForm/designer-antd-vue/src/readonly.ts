@@ -1,11 +1,22 @@
 import type { DesignerReadonlyRenderContext } from '@moluoxixi/config-form-designer'
+import type { VNodeChild } from 'vue'
+import { h } from 'vue'
+import AntdChoiceReadonlyContent from './components/AntdChoiceReadonlyContent.vue'
+import { normalizeAntdVueOptions, readAntdVueOptionSource } from './options'
 
 export function renderAntdVueRawReadonly({ value }: DesignerReadonlyRenderContext): string {
   return formatReadonlyValue(value)
 }
 
-export function renderAntdVueChoiceReadonly({ componentProps, value }: DesignerReadonlyRenderContext): string {
-  const options = readOptions(componentProps.options)
+export function renderAntdVuePasswordReadonly({ value }: DesignerReadonlyRenderContext): string {
+  return value == null || value === '' ? '' : '********'
+}
+
+export function renderAntdVueChoiceReadonly({ componentProps, value }: DesignerReadonlyRenderContext): VNodeChild {
+  const options = normalizeAntdVueOptions(Array.isArray(componentProps.options) ? componentProps.options : undefined)
+  const optionSource = readAntdVueOptionSource(componentProps.optionSource)
+  if (optionSource)
+    return h(AntdChoiceReadonlyContent, { value, options, optionSource })
   if (Array.isArray(value))
     return value.map(item => resolveOptionLabel(options, item)).join('、')
   return resolveOptionLabel(options, value)
@@ -24,12 +35,6 @@ export function renderAntdVueSwitchReadonly({ componentProps, value }: DesignerR
 interface ReadonlyOption {
   label?: unknown
   value?: unknown
-}
-
-function readOptions(value: unknown): ReadonlyOption[] {
-  return Array.isArray(value)
-    ? value.filter((option): option is ReadonlyOption => typeof option === 'object' && option !== null)
-    : []
 }
 
 function resolveOptionLabel(options: ReadonlyOption[], value: unknown): string {

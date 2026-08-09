@@ -32,6 +32,7 @@ const emit = defineEmits<{
   <span class="mx-antd-designer-choice-field">
     <Select
       v-bind="$attrs"
+      data-designer-selection-target
       :value="value"
       :options="selectOptions"
       :loading="state.status === 'loading'"

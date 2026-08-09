@@ -1,11 +1,23 @@
 .mx-antd-designer-section {
-  padding: 16px;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  padding: 2px 0 0;
 }
 
 .mx-antd-designer-section > header {
-  margin-bottom: 14px;
+  position: relative;
+  margin-bottom: 16px;
+  padding: 0 0 10px 11px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.mx-antd-designer-section > header::before {
+  position: absolute;
+  top: 3px;
+  bottom: 12px;
+  left: 0;
+  width: 2px;
+  background: #1677ff;
+  border-radius: 1px;
+  content: "";
 }
 
 .mx-antd-designer-section h3,
@@ -15,18 +27,30 @@
 }
 
 .mx-antd-designer-section h3 {
+  color: rgba(0, 0, 0, 0.88);
+  font-family: inherit;
   font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
 }
 
 .mx-antd-designer-section p {
   margin-top: 4px;
   color: rgba(0, 0, 0, 0.45);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .mx-config-form-designer__node-preview-shell .ant-card,
 .mx-config-form-designer__node-preview-shell .ant-card-body,
 .mx-config-form-designer__node-preview-shell .ant-tabs-content-holder {
+  overflow: visible;
+}
+
+.mx-config-form-designer__node-preview-shell .ant-tabs-content-holder:has(.mx-config-form-designer__node.is-selected:focus-within),
+.mx-config-form-designer__node-preview-shell .ant-collapse-content:has(.mx-config-form-designer__node.is-selected:focus-within) {
+  position: relative;
+  z-index: 70;
   overflow: visible;
 }
 
@@ -65,6 +89,26 @@
   flex: 1 1 100%;
 }
 
+.mx-config-form-designer__node-preview-shell .mx-antd-flex-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
+  background-repeat: repeat-x;
+  background-size: min(var(--mx-antd-flex-item-width), 50%) 100%;
+}
+
+.mx-config-form-designer__node-preview-shell .mx-antd-flex-layout.is-column > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
+  background-repeat: repeat-y;
+  background-size: 100% 36px;
+}
+
+.mx-config-form-designer.is-dragging .mx-antd-flex-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
+}
+
+.mx-config-form-designer.is-dragging .mx-antd-flex-layout.is-column > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
+}
+
 .mx-antd-flex-layout.is-column > :not(.mx-config-form-designer__node-list),
 .mx-antd-flex-layout.is-column > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
   width: 100%;
@@ -89,6 +133,16 @@
   grid-column: 1 / -1;
 }
 
+.mx-config-form-designer__node-preview-shell .mx-antd-grid-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
+  background-repeat: repeat-x;
+  background-size: calc(100% / var(--mx-antd-grid-columns)) 100%;
+}
+
+.mx-config-form-designer.is-dragging .mx-antd-grid-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
+}
+
 .mx-antd-designer-choice-field {
   position: relative;
   display: inline-flex;
@@ -101,6 +155,11 @@
 .mx-antd-designer-choice-field > .ant-select {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.mx-config-form-designer__node-preview-control > .ant-slider {
+  width: 100%;
+  min-width: min(160px, 100%);
 }
 
 .mx-antd-designer-option-state {

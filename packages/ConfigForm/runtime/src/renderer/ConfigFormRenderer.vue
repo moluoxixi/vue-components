@@ -41,7 +41,8 @@ import {
   resolveConfigFormCondition,
   resolveConfigFormReadonlyRender,
 } from '@moluoxixi/config-form-headless'
-import { resolveConfigFormLayout } from './responsive'
+import { resolveConfigFormFieldLayout } from './layout'
+import { resolveConfigFormLayout, resolveConfigFormNodeSpan } from './responsive'
 
 defineOptions({
   name: 'ConfigFormRenderer',
@@ -203,9 +204,9 @@ function renderNode(
   const cellAttrs = props.cellAttrs
   const nodeCellAttrs = node.cellAttrs
   const layouts = responsiveLayouts.value
-  const desktopSpan = resolveNodeSpan(node.span, layouts.desktop)
-  const tabletSpan = resolveNodeSpan(node.span, layouts.tablet)
-  const mobileSpan = resolveNodeSpan(node.span, layouts.mobile)
+  const desktopSpan = resolveConfigFormNodeSpan(node.span, layouts.desktop)
+  const tabletSpan = resolveConfigFormNodeSpan(node.span, layouts.tablet)
+  const mobileSpan = resolveConfigFormNodeSpan(node.span, layouts.mobile)
   const style: StyleValue = [
     cellAttrs.style,
     nodeCellAttrs?.style,
@@ -245,6 +246,7 @@ function renderBoundNode(
   const fieldMeta = meta.value.fields[field.field] ?? getFieldMeta(field.field)
   const fieldAttrs = field.fieldAttrs
   const hasLabel = typeof field.label === 'string'
+  const layout = resolveConfigFormFieldLayout(props.labelPosition, hasLabel)
   const label = hasLabel
     ? h('label', {
         class: bem('label'),
@@ -261,39 +263,20 @@ function renderBoundNode(
     'data-required': resolveConfigFormCondition(field.required, model.value, false),
     'data-touched': fieldMeta.touched,
     key: getNodeKey(field, path),
-    style: [fieldLayoutStyle(hasLabel), fieldAttrs?.style],
+    style: [layout.field, fieldAttrs?.style],
   }, [
     label,
     h('div', {
       class: bem('control'),
-      style: props.labelPosition === 'left' && hasLabel ? { gridColumn: 2, minWidth: 0 } : { minWidth: 0 },
+      style: layout.control,
     }, [renderControl(field, path, controlId, errorId, readonly, ancestors)]),
     ...fieldErrors.map((message, index) => h('p', {
       class: bem('error'),
       id: index === 0 ? errorId : undefined,
       key: `${message}-${index}`,
-      style: props.labelPosition === 'left' && hasLabel ? { gridColumn: 2 } : undefined,
+      style: layout.error,
     }, message)),
   ])
-}
-
-function fieldLayoutStyle(hasLabel: boolean): StyleValue {
-  if (props.labelPosition === 'left' && hasLabel) {
-    return {
-      alignItems: 'start',
-      columnGap: '12px',
-      display: 'grid',
-      gridTemplateColumns: 'max-content minmax(0, 1fr)',
-      minWidth: 0,
-      rowGap: '6px',
-    }
-  }
-
-  return {
-    display: 'grid',
-    gap: '6px',
-    minWidth: 0,
-  }
 }
 
 function renderControl(
@@ -320,6 +303,7 @@ function renderControl(
       : formatConfigFormReadonlyValue(value)
 
     return h('span', {
+      'aria-readonly': 'true',
       class: bem('readonly'),
       id: controlId,
       key: `${path}.readonly`,
@@ -557,14 +541,6 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isVNodeKey(value: unknown): value is string | number | symbol {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'symbol'
-}
-
-function resolveNodeSpan(
-  nodeSpan: number | undefined,
-  layout: { columns: number, fieldSpan: number },
-): number {
-  const span = nodeSpan ?? layout.fieldSpan
-  return Math.max(1, Math.min(layout.columns, Math.floor(span)))
 }
 
 function assertAcyclicNode(node: object, ancestors: ReadonlySet<object>): void {

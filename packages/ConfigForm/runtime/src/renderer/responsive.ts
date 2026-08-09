@@ -15,6 +15,14 @@ export interface ConfigFormResolvedLayout {
   fieldSpan: number
 }
 
+export function resolveConfigFormNodeSpan(
+  nodeSpan: number | undefined,
+  layout: ConfigFormResolvedLayout,
+): number {
+  const span = nodeSpan ?? layout.fieldSpan
+  return Math.max(1, Math.min(layout.columns, Math.floor(span)))
+}
+
 export function resolveConfigFormLayout(
   columns = 24,
   fieldSpan = 24,

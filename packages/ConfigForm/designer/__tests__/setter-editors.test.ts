@@ -66,6 +66,35 @@ describe('designer structured setters', () => {
     expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['name', ['span'], 3])
   })
 
+  it('does not offer the root-grid span setter for nested nodes', () => {
+    const nested = {
+      id: 'nested-name',
+      kind: 'field' as const,
+      material: 'test.input',
+      field: 'name',
+      span: 24,
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        diagnostics: [],
+        document: {
+          version: 1,
+          form: { columns: 24, fieldSpan: 8 },
+          nodes: [{
+            id: 'section',
+            kind: 'container' as const,
+            material: 'test.section',
+            slots: { default: [nested] },
+          }],
+        },
+        node: nested,
+      },
+    })
+
+    expect(wrapper.findAll('.mx-config-form-designer__setter')
+      .some(setter => setter.text().includes('Span'))).toBe(false)
+  })
+
   it('edits boolean defaults without exposing a reset control', async () => {
     const wrapper = mount(DesignerDefaultValueSetter, {
       props: { kind: 'boolean', modelValue: undefined },

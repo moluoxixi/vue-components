@@ -21,5 +21,8 @@ export function createElementPlusDesignerRegistry(
       ? { ...material, analyze: createElementPlusOptionDiagnostics(options.optionResolver) }
       : material
   ))
-  return createDesignerRegistry([...layers, { ...elementPlusDesignerRegistryLayer, materials }])
+  return createDesignerRegistry(
+    [...layers, { ...elementPlusDesignerRegistryLayer, materials }],
+    { rendererNamespace: 'mx-element-config-form' },
+  )
 }

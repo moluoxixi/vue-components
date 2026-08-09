@@ -64,6 +64,7 @@ describe('designer registry', () => {
     ])
 
     expect(registry.getMaterial('element.input')?.title).toBe('Local input')
+    expect(registry.rendererNamespace).toBe('mx-config-form')
     expect(registry.createNode('element.input', { id: 'name', field: 'name' })).toEqual({
       id: 'name',
       kind: 'field',
@@ -139,6 +140,15 @@ describe('designer registry', () => {
         path: ['nodes', 0, 'slots', 'default'],
       }),
     ])
+  })
+
+  it('exposes an adapter runtime namespace for WYSIWYG field markup', () => {
+    const registry = createDesignerRegistry(
+      [{ name: 'adapter', materials: [fieldMaterial('Input')] }],
+      { rendererNamespace: 'mx-adapter-config-form' },
+    )
+
+    expect(registry.rendererNamespace).toBe('mx-adapter-config-form')
   })
 
   it('diagnoses default value kinds and static option membership without rejecting null', () => {
