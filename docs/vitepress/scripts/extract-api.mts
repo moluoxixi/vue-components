@@ -1,71 +1,20 @@
 #!/usr/bin/env node
 
-import type { ComponentContract } from '@moluoxixi/ai-doc-assistant'
 import { writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
+import { normalizeComponentApiContract } from '@moluoxixi/ai-doc-assistant/api-contract'
 import { documentedComponentNames, documentedComponents } from '../.vitepress/component-manifest.ts'
 import { docsSite } from '../.vitepress/docs-site.ts'
 import { syncApiOutputDirectory } from './api-output.mts'
 import { createTypeDetail } from './api-type-detail.mts'
 import { createComponentRoutePaths } from './component-routes.mts'
 
-interface ApiRow {
-  name: string
-  type: string
-  typeDetail?: string
-  required?: boolean
-  default?: string
-  description: string
-}
-
-interface ComponentApi {
-  name: string
-  description: string
-  props: ApiRow[]
-  emits: ApiRow[]
-  expose: ApiRow[]
-  slots: ApiRow[]
-}
-
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(scriptDir, '../../..')
 const outDir = resolve(scriptDir, '../.vitepress/api')
-
-function normalizeContract(contract: ComponentContract): ComponentApi {
-  return {
-    name: contract.name,
-    description: contract.description,
-    props: contract.props.map(prop => ({
-      name: prop.name,
-      type: prop.type,
-      typeDetail: createTypeDetail(contract.typeDefs, prop.type, prop.typeRefs),
-      required: prop.required,
-      default: prop.defaultValue && prop.defaultValue !== 'undefined' ? prop.defaultValue : undefined,
-      description: prop.description || '—',
-    })),
-    emits: contract.emits.map(emit => ({
-      name: emit.name,
-      type: emit.payloadType,
-      typeDetail: createTypeDetail(contract.typeDefs, emit.payloadType, emit.typeRefs),
-      description: emit.description || '—',
-    })),
-    expose: (contract.exposed ?? []).map(exposed => ({
-      name: exposed.name,
-      type: exposed.type,
-      typeDetail: createTypeDetail(contract.typeDefs, exposed.type, exposed.typeRefs),
-      description: exposed.description || '—',
-    })),
-    slots: contract.slots.map(slot => ({
-      name: slot.name,
-      type: slot.scopeType,
-      typeDetail: createTypeDetail(contract.typeDefs, slot.scopeType, slot.typeRefs),
-      description: slot.description || '—',
-    })),
-  }
-}
 
 async function main(): Promise<void> {
   const context = new ServerContext({
@@ -98,7 +47,9 @@ async function main(): Promise<void> {
     console.log(`removed stale API contract ${file}`)
 
   for (const name of documentedComponentNames) {
-    const api = normalizeContract(contracts.get(name)!)
+    const api = normalizeComponentApiContract(contracts.get(name)!, {
+      resolveTypeDetail: ({ typeDefs, type, typeRefs }) => createTypeDetail(typeDefs, type, typeRefs),
+    })
     const outPath = resolve(outDir, `${name}.json`)
     writeFileSync(outPath, `${JSON.stringify(api, null, 2)}\n`, 'utf-8')
     console.log(`generated ${name}.json`)

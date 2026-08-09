@@ -1,6 +1,7 @@
 import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './docs-site'
 import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
+import { elementPlusDocsDemoPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
 import { createComponentAutoLoadPlugins } from './auto-loaders'
 import { getDocsMessages, getLocalizedComponentGroups, localePath } from './docs-i18n'
@@ -10,7 +11,6 @@ import {
   docsRoutePath,
   docsSite,
 } from './docs-site'
-import { demoPlugin } from './plugins/demo'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
   const messages = getDocsMessages(locale)
@@ -153,7 +153,7 @@ export default defineElementPlusDocs({
         dark: 'github-dark',
       },
       config(md) {
-        md.use(demoPlugin)
+        md.use(elementPlusDocsDemoPlugin)
       },
     },
     vite: {
@@ -173,10 +173,10 @@ export default defineElementPlusDocs({
         ],
       },
       optimizeDeps: {
-        include: ['@lucide/vue', 'element-plus', 'vue3-sfc-loader'],
+        include: ['@lucide/vue', 'element-plus'],
       },
       ssr: {
-        noExternal: ['element-plus', 'vue3-sfc-loader'],
+        noExternal: ['element-plus'],
       },
     },
   },

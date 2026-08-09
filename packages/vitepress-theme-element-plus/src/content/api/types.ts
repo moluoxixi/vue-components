@@ -1,13 +1,12 @@
-export type ElementPlusDocsApiSection = 'props' | 'emits' | 'expose' | 'slots'
+import type {
+  ApiContractRow,
+  ApiContractSection,
+  ComponentApiContract,
+} from '@moluoxixi/ai-doc-assistant/api-contract'
 
-export interface ElementPlusDocsApiRow {
-  name: string
-  type: string
-  typeDetail?: string
-  required?: boolean
-  default?: string
-  description: string
-}
+export type ElementPlusDocsApiSection = ApiContractSection
+
+export type ElementPlusDocsApiRow = ApiContractRow
 
 export interface ElementPlusDocsApiMessages {
   defaultValue: string
@@ -22,3 +21,10 @@ export interface ElementPlusDocsApiMessages {
   typeDetails: string
   yes: string
 }
+
+export interface ElementPlusDocsApiDocsMessages extends ElementPlusDocsApiMessages {
+  empty: string
+  permanentLink: string
+}
+
+export type ElementPlusDocsComponentApiContract = ComponentApiContract

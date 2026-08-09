@@ -1,18 +1,10 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createElementPlusDocsSfcCompiler } from '../index'
 
 const { loadModule } = vi.hoisted(() => ({ loadModule: vi.fn() }))
 
 vi.mock('vue3-sfc-loader', () => ({ loadModule }))
-vi.mock('@docs-components', () => ({ CopyText: {} }))
-vi.mock('element-plus', () => ({ ElButton: {} }))
-
-// The compiler import must run after Vitest installs the loader/runtime mocks above.
-// eslint-disable-next-line import/first
-import {
-  compileLocalSfc,
-  supportedLocalSfcModules,
-} from './sfc-compiler'
 
 interface LoaderOptions {
   addStyle: (css: string) => void
@@ -21,7 +13,16 @@ interface LoaderOptions {
   moduleCache: Record<string, unknown>
 }
 
-describe('compileLocalSfc', () => {
+const supportedModules = {
+  'element-plus': { ElButton: {} },
+  'fixture-components': { CopyText: {} },
+  'vue': { ref: () => undefined },
+}
+const compile = createElementPlusDocsSfcCompiler({
+  createModuleCache: () => supportedModules,
+})
+
+describe('createElementPlusDocsSfcCompiler', () => {
   beforeEach(() => {
     loadModule.mockReset()
     document.head.querySelectorAll('[data-mx-docs-sfc]').forEach(element => element.remove())
@@ -34,16 +35,16 @@ describe('compileLocalSfc', () => {
       return { name: 'Preview' }
     })
 
-    await compileLocalSfc('<template>one</template>', { id: 'same demo' })
-    await compileLocalSfc('<template>two</template>', { id: 'same demo' })
+    await compile('<template>one</template>', { id: 'same demo' })
+    await compile('<template>two</template>', { id: 'same demo' })
 
-    expect(calls[0].path).toMatch(/^\/__mx_docs_sfc__\/same-demo\.v\d+\.vue$/)
-    expect(calls[1].path).not.toBe(calls[0].path)
-    expect(Object.getPrototypeOf(calls[0].options.moduleCache)).toBeNull()
-    expect(calls[0].options.moduleCache).not.toBe(calls[1].options.moduleCache)
-    expect(Object.keys(calls[0].options.moduleCache).sort()).toEqual([...supportedLocalSfcModules].sort())
-    await expect(calls[0].options.getFile(calls[0].path)).resolves.toMatchObject({})
-    await expect(calls[0].options.getFile('./relative.vue')).rejects.toThrow('Unsupported SFC file request')
+    expect(calls[0]!.path).toMatch(/^\/__mx_docs_sfc__\/same-demo\.v\d+\.vue$/)
+    expect(calls[1]!.path).not.toBe(calls[0]!.path)
+    expect(Object.getPrototypeOf(calls[0]!.options.moduleCache)).toBeNull()
+    expect(calls[0]!.options.moduleCache).not.toBe(calls[1]!.options.moduleCache)
+    expect(Object.keys(calls[0]!.options.moduleCache).sort()).toEqual(Object.keys(supportedModules).sort())
+    await expect(calls[0]!.options.getFile(calls[0]!.path)).resolves.toMatchObject({})
+    await expect(calls[0]!.options.getFile('./relative.vue')).rejects.toThrow('Unsupported SFC file request')
   })
 
   it('owns and idempotently disposes styles from a successful compile', async () => {
@@ -52,7 +53,7 @@ describe('compileLocalSfc', () => {
       return { name: 'Preview' }
     })
 
-    const result = await compileLocalSfc('<template />', { id: 'styled' })
+    const result = await compile('<template />', { id: 'styled' })
     expect(document.head.querySelectorAll('[data-mx-docs-sfc]')).toHaveLength(1)
     result.dispose()
     result.dispose()
@@ -65,7 +66,7 @@ describe('compileLocalSfc', () => {
       throw new Error('compile failed')
     })
 
-    await expect(compileLocalSfc('<template>', { id: 'broken' })).rejects.toThrow('compile failed')
+    await expect(compile('<template>', { id: 'broken' })).rejects.toThrow('compile failed')
     expect(document.head.querySelectorAll('[data-mx-docs-sfc]')).toHaveLength(0)
   })
 
@@ -76,7 +77,7 @@ describe('compileLocalSfc', () => {
       return { name: 'Preview' }
     })
 
-    await compileLocalSfc('<template />', { id: 'diagnostic', onError })
+    await compile('<template />', { id: 'diagnostic', onError })
     expect(onError).toHaveBeenCalledWith('bad template 42')
   })
 })

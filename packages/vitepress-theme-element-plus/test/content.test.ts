@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { createApp, defineComponent, h, markRaw, ref } from 'vue'
 import {
   createElementPlusDocsContent,
+  ElementPlusDocsApiDocs,
   ElementPlusDocsComponentOverview,
 } from '../index'
 
@@ -28,8 +29,37 @@ const overviewMessages: ElementPlusDocsOverviewMessages = {
 }
 
 const contentMessages: ElementPlusDocsContentMessages = {
+  api: {
+    defaultValue: 'Default',
+    description: 'Description',
+    empty: 'No API',
+    name: 'Name',
+    parameters: 'Parameters',
+    permanentLink: 'Permanent link to {section}',
+    required: 'Required',
+    scope: 'Scope',
+    sections: { emits: 'Emits', expose: 'Expose', props: 'Props', slots: 'Slots' },
+    tableAria: '{section} API',
+    type: 'Type',
+    typeDetails: 'Details for {type}',
+    yes: 'Yes',
+  },
   changelog: { aria: '{name} changelog', commitLink: 'Commit {sha}', empty: 'No commits' },
   contributors: { aria: '{name} contributors', contribution: '{count} commits to {name}', empty: 'No contributors' },
+  demo: {
+    actions: 'Actions',
+    codeCopied: 'Code copied',
+    collapseCode: 'Collapse',
+    collapseExampleCode: 'Collapse example',
+    compileError: 'Compile error',
+    copied: 'Copied',
+    copyCode: 'Copy',
+    expandCode: 'Expand',
+    expandExampleCode: 'Expand example',
+    loading: 'Loading',
+    openPlayground: 'Open playground',
+    playgroundUnavailable: 'Playground unavailable',
+  },
   meta: {
     addDocs: 'Add docs',
     aria: 'Component information',
@@ -45,6 +75,18 @@ const contentMessages: ElementPlusDocsContentMessages = {
     usage: 'Usage',
   },
   overview: overviewMessages,
+  playground: {
+    copied: 'Copied',
+    copy: 'Copy',
+    diagnostics: 'Diagnostics',
+    editor: 'Editor',
+    editorAria: 'Editor source',
+    preview: 'Preview',
+    reset: 'Reset',
+    run: 'Run',
+    running: 'Running',
+    title: 'Playground',
+  },
   route: { api: 'API' },
   theme: { close: 'Close' },
 }
@@ -74,14 +116,48 @@ describe('reusable content modules', () => {
     expect(wrapper.text()).not.toContain('RequestSelect')
   })
 
+  it('renders a normalized component API contract', () => {
+    const wrapper = mount(ElementPlusDocsApiDocs, {
+      props: {
+        api: {
+          description: 'Copies text',
+          emits: [],
+          expose: [],
+          name: 'CopyText',
+          props: [{ description: 'Text to copy', name: 'text', required: true, type: 'string' }],
+          slots: [],
+        },
+        messages: contentMessages.api,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Props')
+    expect(wrapper.text()).toContain('Text to copy')
+    expect(wrapper.find('#CopyText-props').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Emits')
+  })
+
   it('registers the conventional Markdown components from one integration', () => {
     const plugin = createElementPlusDocsContent({
+      playground: {
+        compile: async () => ({ component: icon, dispose: () => undefined }),
+        path: '/playground',
+        starterSource: '<template />',
+      },
       overview: {
         gettingStartedPath: '/guide/',
         logo: { alt: 'Fixture', src: '/logo.svg' },
         siteTitle: 'Fixture',
       },
       resolveCatalog: () => groups,
+      resolveApi: ({ name }) => ({
+        description: '',
+        emits: [],
+        expose: [],
+        name,
+        props: [],
+        slots: [],
+      }),
       resolveComponentMeta: ({ hasSourceDoc, name }) => ({
         commits: [],
         editHref: '/edit',
@@ -109,11 +185,15 @@ describe('reusable content modules', () => {
     app.use(plugin)
 
     expect(Object.keys(plugin.components)).toEqual([
+      'ApiDocs',
       'ComponentDocMeta',
       'ComponentOverview',
+      'Demo',
       'DocContributors',
       'OverviewHome',
+      'Playground',
     ])
+    expect(app.component('ApiDocs')).toBe(plugin.components.ApiDocs)
     expect(app.component('ComponentDocMeta')).toBe(plugin.components.ComponentDocMeta)
     expect(app.component('OverviewHome')).toBe(plugin.components.OverviewHome)
   })

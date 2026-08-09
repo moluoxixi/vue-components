@@ -1,10 +1,13 @@
 export { defineElementPlusDocs } from './src/config/define-element-plus-docs'
+export { default as ElementPlusDocsApiDocs } from './src/content/api/ElementPlusDocsApiDocs.vue'
 export { default as ElementPlusDocsApiTable } from './src/content/api/ElementPlusDocsApiTable.vue'
 export { default as ElementPlusDocsTypeCell } from './src/content/api/ElementPlusDocsTypeCell.vue'
 export type {
+  ElementPlusDocsApiDocsMessages,
   ElementPlusDocsApiMessages,
   ElementPlusDocsApiRow,
   ElementPlusDocsApiSection,
+  ElementPlusDocsComponentApiContract,
 } from './src/content/api/types'
 export { default as ElementPlusDocsComponentOverview } from './src/content/catalog/ElementPlusDocsComponentOverview.vue'
 export { default as ElementPlusDocsOverviewCard } from './src/content/catalog/ElementPlusDocsOverviewCard.vue'
@@ -24,6 +27,7 @@ export type {
 } from './src/content/demo/types'
 export { createElementPlusDocsContent } from './src/content/integration/create-element-plus-docs-content'
 export type {
+  ElementPlusDocsApiResolverInput,
   ElementPlusDocsComponentResolverInput,
   ElementPlusDocsContentComponents,
   ElementPlusDocsContentIntegration,
@@ -40,6 +44,23 @@ export type {
   ElementPlusDocsComponentMetaData,
   ElementPlusDocsContributor,
 } from './src/content/meta/types'
+export { createElementPlusDocsSfcCompiler } from './src/content/playground/create-sfc-compiler'
+export { default as ElementPlusDocsPlayground } from './src/content/playground/ElementPlusDocsPlayground.vue'
+export {
+  consumeElementPlusDocsPlaygroundSession,
+  createElementPlusDocsPlaygroundSession,
+  elementPlusDocsPlaygroundSessionQuery,
+} from './src/content/playground/session'
+export type {
+  ElementPlusDocsPlaygroundSession,
+  ElementPlusDocsSessionStorage,
+} from './src/content/playground/session'
+export type {
+  ElementPlusDocsPlaygroundMessages,
+  ElementPlusDocsPlaygroundProps,
+  ElementPlusDocsSfcCompiler,
+  ElementPlusDocsSfcCompilerOptions,
+} from './src/content/playground/types'
 export type {
   ElementPlusDocsChangelogMessages,
   ElementPlusDocsContentMessages,

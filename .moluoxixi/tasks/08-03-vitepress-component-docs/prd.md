@@ -36,6 +36,8 @@ Deliver a production-ready component-library documentation site whose navigation
 - R22: Keep Element Plus table and pagination roots free from internal layout classes. Split large component implementations and public contracts by responsibility while preserving one component entry and generated API accuracy.
 - R23: Move the reusable overview home, searchable component catalog, component metadata, changelog timeline, contributor list, and issue actions into `@moluoxixi/vitepress-theme-element-plus`. The theme package owns their UI, interaction, accessibility, responsive behavior, styles, public types, and integration factory; a consuming documentation site supplies only normalized catalog, locale, repository-link, and metadata data.
 - R24: Remove the migrated consumer component files, duplicate style rules, and every directory left empty by the migration. Preserve consumer-owned API extraction, GitHub synchronization/snapshot validation, component manifests, and repository credentials outside the browser theme dependency graph.
+- R25: Move the reusable Demo Markdown plugin, SFC compiler boundary, playground session/runtime, Playground UI, and generated API document UI into `@moluoxixi/vitepress-theme-element-plus`. Consumers supply only their allowed runtime modules, starter source, playground route, generated API records, and localized messages.
+- R26: Publish a browser-safe `@moluoxixi/ai-doc-assistant/api-contract` entry for normalized API-document types and contract normalization. Keep Node extraction, TypeScript-based type-detail expansion, JSON discovery, route generation, and filesystem output in the consuming documentation build.
 
 ## Acceptance Criteria
 
@@ -67,6 +69,8 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] ConfigTable logic and ConfigTable/RichTextEditor contracts are split into focused modules behind their existing public entry points, with props, emits, slots, and expose extraction unchanged.
 - [x] A new documentation consumer can enable the overview, searchable catalog, component metadata, changelog, contributors, and issue actions through the theme package public API without copying their Vue components or CSS.
 - [x] The current documentation site supplies normalized project data to the theme content integration, retains its existing Markdown component names and behavior, and no longer contains duplicate catalog/component-meta implementations or empty migration directories.
+- [x] A new documentation consumer can enable Demo, Playground, and ApiDocs through package public APIs without copying Vue components, the SFC compiler, session utilities, or the Markdown demo plugin.
+- [x] API JSON uses the browser-safe ai-doc contract entry, the theme renders normalized contracts without importing Node extraction code, and the current consumer contains only project-specific runtime/API adapters with no empty migration directories.
 
 ## Out Of Scope
 

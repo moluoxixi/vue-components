@@ -54,10 +54,11 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, 'index.ts'),
-        plugin: resolve(__dirname, 'src/server/plugin.ts'),
-        cli: resolve(__dirname, 'cli.ts'),
-        protocol: resolve(__dirname, 'src/shared/protocol.ts'),
+        'index': resolve(__dirname, 'index.ts'),
+        'api-contract': resolve(__dirname, 'src/api-contract.ts'),
+        'plugin': resolve(__dirname, 'src/server/plugin.ts'),
+        'cli': resolve(__dirname, 'cli.ts'),
+        'protocol': resolve(__dirname, 'src/shared/protocol.ts'),
       },
       formats: ['es'],
       fileName: (_, entryName) => `${entryName}.js`,

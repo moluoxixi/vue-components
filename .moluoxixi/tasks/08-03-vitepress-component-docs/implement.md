@@ -23,10 +23,11 @@
 21. Add an application-scoped shared renderer plugin, controlled ConfigTable column widths with dialog editing/reset, and localized/responsive Element Plus pagination with regression coverage.
 22. Remove layout classes from Element Plus table/pagination roots, split ConfigTable logic and ConfigTable/RichTextEditor contracts by responsibility, and verify generated API parity plus responsive browser behavior.
 23. Extract the overview home, searchable component catalog, component metadata, changelog, contributors, and issue actions into `@moluoxixi/vitepress-theme-element-plus`; add a typed content integration factory, migrate the current docs to it, move shared styles into the package, and delete duplicate files and empty directories.
+24. Publish the ai-doc API-contract subpath; move Demo plugin, compiler, sessions, Playground, and ApiDocs into the theme integration; reduce the docs site to runtime/data adapters; extend the independent fixture; and remove migrated files and empty directories.
 
 ## Completion
 
-- Implementation steps 1-23 are complete.
+- Implementation steps 1-24 are complete.
 - Root lint, type checking, and the full workspace test suite pass.
 - The component package build verifies NodeNext declaration resolution for every public typed entry.
 - VitePress API extraction, GitHub metadata validation, unit tests, production builds for both locales, and desktop/mobile browser checks pass.

@@ -1,3 +1,7 @@
+import type { ElementPlusDocsApiDocsMessages } from './api/types'
+import type { ElementPlusDocsDemoMessages } from './demo/types'
+import type { ElementPlusDocsPlaygroundMessages } from './playground/types'
+
 export interface ElementPlusDocsOverviewMessages {
   brandKicker: string
   browseComponents: string
@@ -43,10 +47,13 @@ export interface ElementPlusDocsChangelogMessages {
 }
 
 export interface ElementPlusDocsContentMessages {
+  api: ElementPlusDocsApiDocsMessages
   changelog: ElementPlusDocsChangelogMessages
   contributors: ElementPlusDocsContributorsMessages
+  demo: ElementPlusDocsDemoMessages
   meta: ElementPlusDocsMetaMessages
   overview: ElementPlusDocsOverviewMessages
+  playground: ElementPlusDocsPlaygroundMessages
   route: {
     api: string
   }

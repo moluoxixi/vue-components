@@ -15,6 +15,11 @@
       "source": "./index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./markdown": {
+      "source": "./markdown.ts",
+      "types": "./dist/markdown.d.ts",
+      "import": "./dist/markdown.js"
     }
   },
   "main": "./dist/index.js",
@@ -40,12 +45,17 @@
   "dependencies": {
     "@lucide/vue": "catalog:ui",
     "@mdit-vue/shared": "catalog:",
+    "@moluoxixi/ai-doc-assistant": "workspace:*",
     "@vueuse/core": "catalog:",
+    "markdown-it-container": "catalog:",
     "normalize.css": "catalog:",
-    "nprogress": "catalog:"
+    "nprogress": "catalog:",
+    "vue3-sfc-loader": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "catalog:dev",
+    "@types/markdown-it": "catalog:",
+    "@types/markdown-it-container": "catalog:",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "element-plus": "catalog:ui",

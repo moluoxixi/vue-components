@@ -1,3 +1,4 @@
+import type { ComponentApiContract } from '@moluoxixi/ai-doc-assistant/api-contract'
 import type { Component } from 'vue'
 import type { ComponentIconName } from '../component-manifest'
 import type { DocsLocale } from '../docs-site'
@@ -16,7 +17,10 @@ import {
   TextCursorInput,
   TreePine,
 } from '@lucide/vue'
-import { createElementPlusDocsContent } from '@moluoxixi/vitepress-theme-element-plus'
+import {
+  createElementPlusDocsContent,
+  createElementPlusDocsSfcCompiler,
+} from '@moluoxixi/vitepress-theme-element-plus'
 import { getLocalizedComponentGroups } from '../docs-i18n'
 import {
   componentSourcePath,
@@ -43,7 +47,76 @@ const iconByName: Record<ComponentIconName, Component> = {
   'tree-pine': TreePine,
 }
 
+const apiModules = import.meta.glob<ComponentApiContract>('../api/*.json', {
+  eager: true,
+  import: 'default',
+})
+const apiByName = Object.fromEntries(
+  Object.values(apiModules).map(api => [api.name, api]),
+) as Record<string, ComponentApiContract>
+
+export const supportedLocalSfcModules = Object.freeze([
+  'vue',
+  'element-plus',
+  'element-plus/dist/index.css',
+  docsSite.packageName,
+  docsSite.packageStylesImport,
+])
+
+const compileLocalSfc = createElementPlusDocsSfcCompiler({
+  async createModuleCache() {
+    const [VueRuntime, ElementPlusRuntime, Components] = await Promise.all([
+      import('vue'),
+      import('element-plus'),
+      import('@docs-components'),
+    ])
+    return {
+      'vue': VueRuntime,
+      'element-plus': ElementPlusRuntime,
+      'element-plus/dist/index.css': {},
+      [docsSite.packageName]: Components,
+      [docsSite.packageStylesImport]: {},
+    }
+  },
+})
+
+const playgroundStarterSource = `<script setup lang="ts">
+import { ref } from 'vue'
+import { CopyText } from '${docsSite.packageName}'
+
+const text = ref('Hello, MX Components!')
+<\/script>
+
+<template>
+  <div class="playground-example">
+    <input v-model="text" aria-label="Text to copy">
+    <CopyText :text="text" />
+  </div>
+</template>
+
+<style scoped>
+.playground-example {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+input {
+  width: 240px;
+  padding: 8px 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+}
+</style>
+`
+
 export const docsContent = createElementPlusDocsContent({
+  playground: {
+    compile: compileLocalSfc,
+    path: docsRoutePath('playground'),
+    starterSource: playgroundStarterSource,
+  },
   overview: {
     gettingStartedPath: docsRoutePath('guide', 'getting-started.html'),
     logo: docsSite.logo,
@@ -60,6 +133,12 @@ export const docsContent = createElementPlusDocsContent({
       })),
       title: group.title,
     }))
+  },
+  resolveApi({ name }) {
+    const api = apiByName[name]
+    if (!api)
+      throw new Error(`Missing generated API contract: ${name}`)
+    return api
   },
   resolveOverviewFacts({ groups, messages }) {
     const componentCount = groups.reduce((count, group) => count + group.items.length, 0)

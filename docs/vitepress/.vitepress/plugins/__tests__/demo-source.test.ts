@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { describe, expect, it } from 'vitest'
 import { docsLocales, docsSite } from '../../docs-site'
-import { supportedLocalSfcModules } from '../../theme/playground/sfc-compiler'
+import { supportedLocalSfcModules } from '../../theme/content'
 
 const workspaceRoot = resolve(process.cwd(), '../..')
 const componentSourceRoot = resolve(workspaceRoot, docsSite.source.componentRoot)

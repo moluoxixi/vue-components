@@ -1,6 +1,8 @@
 import type { Component, Plugin, Ref } from 'vue'
+import type { ElementPlusDocsComponentApiContract } from '../api/types'
 import type { ElementPlusDocsCatalogGroup, ElementPlusDocsOverviewFact } from '../catalog/types'
 import type { ElementPlusDocsComponentMetaData, ElementPlusDocsContributor } from '../meta/types'
+import type { ElementPlusDocsSfcCompiler } from '../playground/types'
 import type { ElementPlusDocsContentMessages } from '../types'
 
 export interface ElementPlusDocsContentRuntime {
@@ -22,7 +24,17 @@ export interface ElementPlusDocsComponentResolverInput extends ElementPlusDocsCo
   slug: string
 }
 
+export interface ElementPlusDocsApiResolverInput extends ElementPlusDocsContentResolverContext {
+  name: string
+}
+
 export interface ElementPlusDocsContentIntegration {
+  playground: {
+    compile: ElementPlusDocsSfcCompiler
+    copy?: (source: string) => Promise<void>
+    path: string
+    starterSource: string
+  }
   overview: {
     gettingStartedPath: string
     logo: {
@@ -34,6 +46,9 @@ export interface ElementPlusDocsContentIntegration {
   resolveCatalog: (
     context: ElementPlusDocsContentResolverContext,
   ) => readonly ElementPlusDocsCatalogGroup[]
+  resolveApi: (
+    input: ElementPlusDocsApiResolverInput,
+  ) => ElementPlusDocsComponentApiContract
   resolveComponentMeta: (
     input: ElementPlusDocsComponentResolverInput,
   ) => ElementPlusDocsComponentMetaData
@@ -49,10 +64,13 @@ export interface ElementPlusDocsContentIntegration {
 }
 
 export interface ElementPlusDocsContentComponents {
+  ApiDocs: Component
   ComponentDocMeta: Component
   ComponentOverview: Component
+  Demo: Component
   DocContributors: Component
   OverviewHome: Component
+  Playground: Component
 }
 
 export type ElementPlusDocsContentPlugin = Plugin & {

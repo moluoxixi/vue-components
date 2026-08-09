@@ -98,6 +98,20 @@ consumer manifest / validated metadata snapshot / repository config
 
 The package owns filtering, dialog state/focus behavior, date presentation, responsive layout, and accessibility. The consumer owns repository identity, issue attribution rules, source/edit URL construction, metadata generation and validation, icon choice, locale selection, and final localized strings. Migrated component styles ship in the theme CSS asset. After cutover, the old consumer SFCs and their duplicate CSS blocks are deleted, followed by any empty directories.
 
+## Reusable Demo, Playground, And API Runtime
+
+The content integration also owns the conventional `Demo`, `Playground`, and `ApiDocs` global components. The theme package ships the demo Markdown plugin, opaque playground-session utilities, a strict single-SFC compiler factory, and the complete Demo/Playground/API presentation. The compiler factory receives a fresh module-cache callback from the consumer; it never imports the target component library or guesses allowed modules. The consumer also supplies its playground route/starter source and resolves generated API records by component name.
+
+API contract normalization belongs to a browser-safe `@moluoxixi/ai-doc-assistant/api-contract` subpath. It exposes only serializable contract types and a pure normalizer with an injectable type-detail resolver. The Node extraction script continues to own `ServerContext`, TypeScript AST expansion, filesystem writes, manifest coverage checks, and Vite `import.meta.glob` discovery. The theme depends only on the normalized structural contract, so no Node or extraction dependency enters its browser graph.
+
+The resulting flow is:
+
+```text
+component source -> ai-doc ServerContext -> api-contract normalizer -> generated JSON
+generated JSON glob + consumer module cache/messages/routes -> theme content integration
+theme Demo / Playground / ApiDocs presentation and runtime
+```
+
 ## Rollback
 
 Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages.

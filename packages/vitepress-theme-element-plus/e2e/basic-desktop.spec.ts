@@ -51,3 +51,27 @@ test('built theme renders and searches fixture content in light and dark modes',
   })
   expect(browserProblems).toEqual([])
 })
+
+test('fresh consumer enables Demo, Playground, and ApiDocs from public package APIs', async ({ page }) => {
+  const browserProblems = collectBrowserProblems(page)
+
+  await page.goto('/content.html')
+  const demoButton = page.getByTestId('fixture-demo-button')
+  await expect(demoButton).toHaveText('Fixture count: 0')
+  await demoButton.click()
+  await expect(demoButton).toHaveText('Fixture count: 1')
+
+  await expect(page.getByRole('heading', { level: 3, name: 'Props' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Text rendered inside the button.' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Open in playground' }).click()
+  await expect(page).toHaveURL(/\/playground\.html\?session=[a-z0-9-]+$/i)
+  const editor = page.getByTestId('playground-editor')
+  await expect(editor).toHaveValue(/Fixture count/)
+  await expect(page.getByTestId('fixture-demo-button')).toHaveText('Fixture count: 0')
+
+  await editor.fill(`<template><p data-testid="fixture-edited-preview">Edited preview</p></template>`)
+  await page.getByTestId('playground-run').click()
+  await expect(page.getByTestId('fixture-edited-preview')).toHaveText('Edited preview')
+  await expect(browserProblems).toEqual([])
+})

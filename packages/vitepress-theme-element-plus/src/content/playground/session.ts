@@ -1,25 +1,25 @@
-export const playgroundSessionQuery = 'session'
+export const elementPlusDocsPlaygroundSessionQuery = 'session'
 
 const sessionKeyPrefix = 'mx-docs:playground:v1:'
 const sessionMaxAgeMs = 30 * 60 * 1000
 
-export interface PlaygroundSession {
+export interface ElementPlusDocsPlaygroundSession {
   demoId: string
   source: string
 }
 
-interface StoredPlaygroundSession extends PlaygroundSession {
+interface StoredPlaygroundSession extends ElementPlusDocsPlaygroundSession {
   createdAt: number
   version: 1
 }
 
-interface SessionStorageLike {
+export interface ElementPlusDocsSessionStorage {
   getItem: (key: string) => string | null
   removeItem: (key: string) => void
   setItem: (key: string, value: string) => void
 }
 
-function getSessionStorage(): SessionStorageLike {
+function getSessionStorage(): ElementPlusDocsSessionStorage {
   if (typeof window === 'undefined')
     throw new Error('Playground sessions are only available in the browser.')
   return window.sessionStorage
@@ -38,10 +38,10 @@ function isValidToken(token: string): boolean {
   return /^[a-z0-9-]{16,64}$/i.test(token)
 }
 
-export function createPlaygroundSession(
+export function createElementPlusDocsPlaygroundSession(
   source: string,
   demoId: string,
-  storage: SessionStorageLike = getSessionStorage(),
+  storage: ElementPlusDocsSessionStorage = getSessionStorage(),
 ): string {
   const token = createSessionToken()
   const value: StoredPlaygroundSession = {
@@ -54,11 +54,11 @@ export function createPlaygroundSession(
   return token
 }
 
-export function consumePlaygroundSession(
+export function consumeElementPlusDocsPlaygroundSession(
   token: string | null,
-  storage: SessionStorageLike = getSessionStorage(),
+  storage: ElementPlusDocsSessionStorage = getSessionStorage(),
   now = Date.now(),
-): PlaygroundSession | null {
+): ElementPlusDocsPlaygroundSession | null {
   if (!token || !isValidToken(token))
     return null
 

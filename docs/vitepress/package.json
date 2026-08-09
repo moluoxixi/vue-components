@@ -28,18 +28,13 @@
     "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
     "@tanstack/vue-query": "catalog:data",
     "element-plus": "catalog:ui",
-    "vue": "catalog:build",
-    "vue3-sfc-loader": "catalog:"
+    "vue": "catalog:build"
   },
   "devDependencies": {
-    "@types/markdown-it": "catalog:",
-    "@types/markdown-it-container": "catalog:",
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/compiler-sfc": "catalog:dev",
-    "@vue/test-utils": "catalog:dev",
     "happy-dom": "catalog:dev",
-    "markdown-it-container": "catalog:",
     "typescript": "catalog:dev",
     "unplugin-auto-import": "catalog:dev",
     "unplugin-vue-components": "catalog:dev",

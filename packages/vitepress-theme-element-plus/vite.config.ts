@@ -66,9 +66,12 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, 'index.ts'),
+      entry: {
+        index: resolve(__dirname, 'index.ts'),
+        markdown: resolve(__dirname, 'markdown.ts'),
+      },
       name: 'MoluoxixiElementPlusDocs',
-      fileName: () => 'index.js',
+      fileName: (_, entryName) => `${entryName}.js`,
       cssFileName: 'vitepress-theme-element-plus',
       formats: ['es'],
     },
@@ -82,7 +85,9 @@ export default defineConfig({
         '@vueuse/core',
         'nprogress',
         'normalize.css',
+        'markdown-it-container',
         'virtual:moluoxixi-element-plus-docs-consumer-styles',
+        /^node:/,
       ],
       output: {
         inlineDynamicImports: false,

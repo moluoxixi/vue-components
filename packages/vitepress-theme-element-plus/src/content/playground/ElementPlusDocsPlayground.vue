@@ -11,60 +11,33 @@ import {
   useId,
 } from 'vue'
 import {
-  consumePlaygroundSession,
-  playgroundSessionQuery,
-} from './playground-session'
-import { compileLocalSfc } from './sfc-compiler'
-import { useDocsLocale } from '../composables/use-docs-locale'
+  consumeElementPlusDocsPlaygroundSession,
+  elementPlusDocsPlaygroundSessionQuery,
+} from './session'
+import type { ElementPlusDocsPlaygroundProps } from './types'
 
-const starterSource = `<script setup lang="ts">
-import { ref } from 'vue'
-import { CopyText } from '@moluoxixi/components'
+const props = withDefaults(defineProps<ElementPlusDocsPlaygroundProps>(), {
+  sessionQuery: elementPlusDocsPlaygroundSessionQuery,
+})
 
-const text = ref('Hello, MX Components!')
-<\/script>
-
-<template>
-  <div class="playground-example">
-    <input v-model="text" aria-label="Text to copy">
-    <CopyText :text="text" />
-  </div>
-</template>
-
-<style scoped>
-.playground-example {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-input {
-  width: 240px;
-  padding: 8px 10px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-}
-</style>
-`
-
-const { messages } = useDocsLocale()
 const editorId = `playground-editor-${useId()}`
-const source = ref(starterSource)
-const initialSource = ref(starterSource)
+const source = ref(props.starterSource)
+const initialSource = ref(props.starterSource)
 const demoId = ref('starter')
 const previewComponent = shallowRef<Component | null>(null)
 const compileError = ref('')
 const isRunning = ref(false)
+const isCopied = ref(false)
 let activeDispose: (() => void) | null = null
 let runId = 0
+let copyTimer = 0
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
 async function run(): Promise<void> {
-  const seq = ++runId
+  const sequence = ++runId
   activeDispose?.()
   activeDispose = null
   previewComponent.value = null
@@ -73,14 +46,14 @@ async function run(): Promise<void> {
 
   await nextTick()
   try {
-    const result = await compileLocalSfc(source.value, {
+    const result = await props.compile(source.value, {
       id: `${demoId.value}-playground`,
       onError: (error) => {
-        if (seq === runId)
+        if (sequence === runId)
           compileError.value = formatError(error)
       },
     })
-    if (seq !== runId) {
+    if (sequence !== runId) {
       result.dispose()
       return
     }
@@ -88,11 +61,11 @@ async function run(): Promise<void> {
     previewComponent.value = result.component
   }
   catch (error) {
-    if (seq === runId)
+    if (sequence === runId)
       compileError.value = formatError(error)
   }
   finally {
-    if (seq === runId)
+    if (sequence === runId)
       isRunning.value = false
   }
 }
@@ -102,19 +75,39 @@ function reset(): void {
   void run()
 }
 
+async function copySource(): Promise<void> {
+  try {
+    if (props.copy)
+      await props.copy(source.value)
+    else
+      await navigator.clipboard.writeText(source.value)
+  }
+  catch (error) {
+    compileError.value = formatError(error)
+    return
+  }
+
+  isCopied.value = true
+  if (copyTimer)
+    window.clearTimeout(copyTimer)
+  copyTimer = window.setTimeout(() => {
+    isCopied.value = false
+  }, 2000)
+}
+
 onErrorCaptured((error) => {
   compileError.value = formatError(error)
   return false
 })
 
 onMounted(() => {
-  const token = new URL(window.location.href).searchParams.get(playgroundSessionQuery)
-  let session: ReturnType<typeof consumePlaygroundSession> = null
+  const token = new URL(window.location.href).searchParams.get(props.sessionQuery)
+  let session: ReturnType<typeof consumeElementPlusDocsPlaygroundSession> = null
   try {
-    session = consumePlaygroundSession(token)
+    session = consumeElementPlusDocsPlaygroundSession(token)
   }
   catch {
-    // Storage may be unavailable in privacy-restricted contexts; the starter remains usable.
+    // Storage may be unavailable in privacy-restricted contexts.
   }
   if (session) {
     source.value = session.source
@@ -128,43 +121,36 @@ onUnmounted(() => {
   runId += 1
   activeDispose?.()
   activeDispose = null
+  if (copyTimer)
+    window.clearTimeout(copyTimer)
 })
 </script>
 
 <template>
   <main class="component-playground">
     <header class="playground-header">
-      <h1>{{ messages.playground.title }}</h1>
+      <h1>{{ messages.title }}</h1>
       <div class="playground-actions">
         <button data-testid="playground-run" type="button" :disabled="isRunning" @click="run">
           <Play :size="16" aria-hidden="true" />
-          {{ isRunning ? messages.playground.running : messages.playground.run }}
+          {{ isRunning ? messages.running : messages.run }}
         </button>
         <button data-testid="playground-reset" type="button" @click="reset">
           <RotateCcw :size="16" aria-hidden="true" />
-          {{ messages.playground.reset }}
+          {{ messages.reset }}
         </button>
-        <HeadlessCopyText :text="source">
-          <template #default="{ copied, copying, copy }">
-            <button
-              data-testid="playground-copy"
-              type="button"
-              :disabled="copying"
-              @click="copy().catch(() => undefined)"
-            >
-              <Check v-if="copied" :size="16" aria-hidden="true" />
-              <Copy v-else :size="16" aria-hidden="true" />
-              {{ copied ? messages.playground.copied : messages.playground.copy }}
-            </button>
-          </template>
-        </HeadlessCopyText>
+        <button data-testid="playground-copy" type="button" @click="copySource">
+          <Check v-if="isCopied" :size="16" aria-hidden="true" />
+          <Copy v-else :size="16" aria-hidden="true" />
+          {{ isCopied ? messages.copied : messages.copy }}
+        </button>
       </div>
     </header>
 
     <div class="playground-workspace">
       <section class="playground-pane playground-editor-pane">
         <div class="playground-pane-title">
-          <label :for="editorId">{{ messages.playground.editor }}</label>
+          <label :for="editorId">{{ messages.editor }}</label>
           <span>Vue SFC</span>
         </div>
         <textarea
@@ -172,7 +158,7 @@ onUnmounted(() => {
           v-model="source"
           data-testid="playground-editor"
           class="playground-editor"
-          :aria-label="messages.playground.editorAria"
+          :aria-label="messages.editorAria"
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
@@ -182,15 +168,15 @@ onUnmounted(() => {
 
       <section class="playground-pane playground-preview-pane">
         <div class="playground-pane-title">
-          <span>{{ messages.playground.preview }}</span>
+          <span>{{ messages.preview }}</span>
           <span>Browser</span>
         </div>
         <div class="playground-preview" aria-live="polite" data-testid="playground-preview">
           <div v-if="isRunning" class="playground-status" role="status">
-            {{ messages.playground.running }}…
+            {{ messages.running }}...
           </div>
           <div v-else-if="compileError" class="playground-diagnostics" role="alert" data-testid="playground-diagnostics">
-            <strong>{{ messages.playground.diagnostics }}</strong>
+            <strong>{{ messages.diagnostics }}</strong>
             <pre>{{ compileError }}</pre>
           </div>
           <component :is="previewComponent" v-else-if="previewComponent" />

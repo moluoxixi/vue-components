@@ -5,10 +5,17 @@ import type {
   ElementPlusDocsContentRuntime,
 } from './types'
 import { computed, defineComponent, h } from 'vue'
+import ElementPlusDocsApiDocs from '../api/ElementPlusDocsApiDocs.vue'
 import ElementPlusDocsComponentOverview from '../catalog/ElementPlusDocsComponentOverview.vue'
 import ElementPlusDocsOverviewHome from '../catalog/ElementPlusDocsOverviewHome.vue'
+import ElementPlusDocsDemo from '../demo/ElementPlusDocsDemo.vue'
 import ElementPlusDocsComponentMeta from '../meta/ElementPlusDocsComponentMeta.vue'
 import ElementPlusDocsContributors from '../meta/ElementPlusDocsContributors.vue'
+import ElementPlusDocsPlayground from '../playground/ElementPlusDocsPlayground.vue'
+import {
+  createElementPlusDocsPlaygroundSession,
+  elementPlusDocsPlaygroundSessionQuery,
+} from '../playground/session'
 
 function resolverContext(runtime: ElementPlusDocsContentRuntime): ElementPlusDocsContentResolverContext {
   return {
@@ -21,6 +28,56 @@ function resolverContext(runtime: ElementPlusDocsContentRuntime): ElementPlusDoc
 export function createElementPlusDocsContent(
   integration: ElementPlusDocsContentIntegration,
 ): ElementPlusDocsContentPlugin {
+  const ApiDocs = defineComponent({
+    name: 'ElementPlusDocsIntegratedApiDocs',
+    props: {
+      name: { type: String, required: true },
+    },
+    setup(props) {
+      const runtime = integration.useLocale()
+      const api = computed(() => integration.resolveApi({
+        ...resolverContext(runtime),
+        name: props.name,
+      }))
+
+      return () => h(ElementPlusDocsApiDocs, {
+        api: api.value,
+        messages: runtime.messages.value.api,
+      })
+    },
+  })
+
+  const Demo = defineComponent({
+    name: 'ElementPlusDocsIntegratedDemo',
+    props: {
+      code: { type: String, required: true },
+      demoId: { type: String, required: true },
+      highlighted: { type: String, required: true },
+      title: { type: String, required: false },
+    },
+    setup(props) {
+      const runtime = integration.useLocale()
+      const openPlayground = (source: string, demoId: string): void => {
+        const token = createElementPlusDocsPlaygroundSession(source, demoId)
+        const query = new URLSearchParams({
+          [elementPlusDocsPlaygroundSessionQuery]: token,
+        })
+        window.location.assign(`${runtime.link(integration.playground.path)}?${query.toString()}`)
+      }
+
+      return () => h(ElementPlusDocsDemo, {
+        code: props.code,
+        compile: integration.playground.compile,
+        copy: integration.playground.copy,
+        demoId: props.demoId,
+        highlighted: props.highlighted,
+        messages: runtime.messages.value.demo,
+        openPlayground,
+        title: props.title,
+      })
+    },
+  })
+
   const ComponentOverview = defineComponent({
     name: 'ElementPlusDocsIntegratedComponentOverview',
     setup() {
@@ -104,11 +161,28 @@ export function createElementPlusDocsContent(
     },
   })
 
+  const Playground = defineComponent({
+    name: 'ElementPlusDocsIntegratedPlayground',
+    setup() {
+      const runtime = integration.useLocale()
+
+      return () => h(ElementPlusDocsPlayground, {
+        compile: integration.playground.compile,
+        copy: integration.playground.copy,
+        messages: runtime.messages.value.playground,
+        starterSource: integration.playground.starterSource,
+      })
+    },
+  })
+
   const components = {
+    ApiDocs,
     ComponentDocMeta,
     ComponentOverview,
+    Demo,
     DocContributors,
     OverviewHome,
+    Playground,
   }
 
   return {

@@ -23,6 +23,11 @@
       "source": "./src/shared/protocol.ts",
       "types": "./dist/src/shared/protocol.d.ts",
       "import": "./dist/protocol.js"
+    },
+    "./api-contract": {
+      "source": "./src/api-contract.ts",
+      "types": "./dist/src/api-contract.d.ts",
+      "import": "./dist/api-contract.js"
     }
   },
   "main": "./dist/index.js",
