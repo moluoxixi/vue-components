@@ -16,6 +16,7 @@ function enhanceApp({ app, router }: Parameters<NonNullable<Theme['enhanceApp']>
     import('normalize.css'),
     import('element-plus/dist/index.css'),
     import('element-plus/theme-chalk/dark/css-vars.css'),
+    import('../content/styles.css'),
     import('virtual:moluoxixi-element-plus-docs-consumer-styles'),
     import('../upstream/vitepress/styles/css-vars.scss'),
     import('../upstream/vitepress/styles/app.scss'),

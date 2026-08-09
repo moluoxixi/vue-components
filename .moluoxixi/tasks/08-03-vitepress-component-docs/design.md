@@ -81,6 +81,23 @@ Repository URL, package name, source root, route prefixes, locale settings, and 
 
 The theme continues to extend VitePress DefaultTheme. A full rewrite is rejected for now because it would reimplement local search integration, accessible navigation, mobile drawers, outline behavior, dark mode, and previous/next routing while providing no corresponding reuse advantage. Customization remains isolated in theme components, CSS tokens, and the site configuration module, so consumers can replace presentation incrementally without replacing the stable layout runtime.
 
+## Reusable Theme Content Modules
+
+The later `@moluoxixi/vitepress-theme-element-plus` extraction supersedes the original presentation-ownership split above. The package now owns reusable content presentation as well as the global theme runtime: overview home, searchable component catalog, component metadata, changelog timeline/dialog, contributor list, and issue actions. These modules expose typed, normalized browser data contracts and do not import a consuming site's manifest, repository configuration, GitHub snapshot, synchronization scripts, or locale composables.
+
+One package-owned integration factory accepts consumer resolver callbacks and returns the conventional global components used by generated Markdown (`OverviewHome`, `ComponentOverview`, `ComponentDocMeta`, and `DocContributors`). The factory wrappers resolve the active locale, catalog, component metadata, links, and messages, then render package-owned pure presentation components. This keeps existing route output stable while making adoption a single integration object instead of five copied Vue files and a copied stylesheet.
+
+The data flow is:
+
+```text
+consumer manifest / validated metadata snapshot / repository config
+  -> consumer integration resolvers
+  -> normalized theme content contracts
+  -> package-owned content components
+```
+
+The package owns filtering, dialog state/focus behavior, date presentation, responsive layout, and accessibility. The consumer owns repository identity, issue attribution rules, source/edit URL construction, metadata generation and validation, icon choice, locale selection, and final localized strings. Migrated component styles ship in the theme CSS asset. After cutover, the old consumer SFCs and their duplicate CSS blocks are deleted, followed by any empty directories.
+
 ## Rollback
 
 Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages.

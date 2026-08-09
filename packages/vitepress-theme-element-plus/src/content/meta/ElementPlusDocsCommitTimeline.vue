@@ -1,25 +1,39 @@
 <script setup lang="ts">
+import type { ElementPlusDocsContentMessages } from '../types'
+import type { ElementPlusDocsCommit } from './types'
 import { computed } from 'vue'
-import { formatDocsMessage } from '../../docs-i18n'
-import { getComponentGithubMetadata } from '../../github-metadata'
-import { useDocsLocale } from '../composables/use-docs-locale'
+import { formatElementPlusDocsMessage } from '../format-message'
 
 const props = defineProps<{
+  commits: readonly ElementPlusDocsCommit[]
+  locale: string
+  messages: ElementPlusDocsContentMessages
   name: string
 }>()
 
-const { locale, messages } = useDocsLocale()
-const commits = computed(() => getComponentGithubMetadata(props.name).commits)
-const dateFormatter = computed(() => new Intl.DateTimeFormat(locale.value, {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-}))
+const dateFormatter = computed(() => {
+  try {
+    return new Intl.DateTimeFormat(props.locale, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+  catch {
+    return new Intl.DateTimeFormat(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+})
 
 function formatDate(date: string): string {
   if (!date)
     return ''
-  return dateFormatter.value.format(new Date(date))
+
+  const value = new Date(date)
+  return Number.isNaN(value.getTime()) ? date : dateFormatter.value.format(value)
 }
 </script>
 
@@ -27,7 +41,7 @@ function formatDate(date: string): string {
   <ol
     v-if="commits.length"
     class="component-commit-timeline"
-    :aria-label="formatDocsMessage(messages.changelog.aria, { name })"
+    :aria-label="formatElementPlusDocsMessage(messages.changelog.aria, { name })"
   >
     <li v-for="commit in commits" :key="commit.sha" class="component-commit">
       <span class="component-commit-marker" aria-hidden="true" />
@@ -61,7 +75,7 @@ function formatDate(date: string): string {
             :href="commit.url"
             target="_blank"
             rel="noreferrer"
-            :aria-label="formatDocsMessage(messages.changelog.commitLink, { sha: commit.shortSha })"
+            :aria-label="formatElementPlusDocsMessage(messages.changelog.commitLink, { sha: commit.shortSha })"
           >{{ commit.shortSha }}</a>
         </div>
       </div>

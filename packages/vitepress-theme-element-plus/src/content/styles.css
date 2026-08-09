@@ -1,3 +1,4 @@
+/* Package-owned content surfaces shared by documentation consumers. */
 :root {
   --mx-border: var(--border-color);
   --mx-border-light: var(--border-color-light);

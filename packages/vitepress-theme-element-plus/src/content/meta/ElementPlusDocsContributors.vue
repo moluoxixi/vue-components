@@ -1,31 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { formatDocsMessage } from '../../docs-i18n'
-import { getComponentGithubMetadata, githubMetadata } from '../../github-metadata'
-import { useDocsLocale } from '../composables/use-docs-locale'
+import type { ElementPlusDocsContentMessages } from '../types'
+import type { ElementPlusDocsContributor } from './types'
+import { ElTooltip } from 'element-plus'
+import { onMounted, ref } from 'vue'
+import { formatElementPlusDocsMessage } from '../format-message'
 
-const props = defineProps<{
+defineProps<{
+  contributors: readonly ElementPlusDocsContributor[]
+  messages: ElementPlusDocsContentMessages
   name: string
 }>()
 
-const { messages } = useDocsLocale()
 const isMounted = ref(false)
-const contributors = computed(() => getComponentGithubMetadata(props.name).contributors
-  .map((contribution) => {
-    const profile = githubMetadata.profiles[contribution.login]
-    return profile ? { ...profile, contributions: contribution.contributions } : undefined
-  })
-  .filter(contributor => contributor !== undefined))
 
 onMounted(() => {
   isMounted.value = true
 })
 
-function contributionText(count: number): string {
-  return formatDocsMessage(messages.value.contributors.contribution, {
-    name: props.name,
-    count,
-  })
+function contributionText(
+  template: string,
+  name: string,
+  count: number,
+): string {
+  return formatElementPlusDocsMessage(template, { name, count })
 }
 </script>
 
@@ -33,7 +30,7 @@ function contributionText(count: number): string {
   <ul
     v-if="contributors.length"
     class="doc-contributors"
-    :aria-label="formatDocsMessage(messages.contributors.aria, { name })"
+    :aria-label="formatElementPlusDocsMessage(messages.contributors.aria, { name })"
   >
     <li v-for="contributor in contributors" :key="contributor.login">
       <ElTooltip
@@ -50,7 +47,7 @@ function contributionText(count: number): string {
           <span class="doc-contributor-tooltip-content">
             <strong>{{ contributor.name }}</strong>
             <span>GitHub @{{ contributor.login }}</span>
-            <span>{{ contributionText(contributor.contributions) }}</span>
+            <span>{{ contributionText(messages.contributors.contribution, name, contributor.contributions) }}</span>
           </span>
         </template>
         <a
@@ -58,7 +55,7 @@ function contributionText(count: number): string {
           :href="contributor.profileUrl"
           target="_blank"
           rel="noreferrer"
-          :aria-label="`${contributor.name}, GitHub @${contributor.login}, ${contributionText(contributor.contributions)}`"
+          :aria-label="`${contributor.name}, GitHub @${contributor.login}, ${contributionText(messages.contributors.contribution, name, contributor.contributions)}`"
         >
           <img
             class="doc-contributor-avatar"

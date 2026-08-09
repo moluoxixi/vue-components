@@ -1,6 +1,5 @@
 import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './docs-site'
-import { fileURLToPath } from 'node:url'
 import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
 import { createComponentAutoLoadPlugins } from './auto-loaders'
@@ -119,7 +118,6 @@ const rewrites = Object.fromEntries(
 type VitePressPlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
 
 const componentAutoLoadPlugins = createComponentAutoLoadPlugins() as VitePressPlugins
-const consumerStylesAlias = '@moluoxixi/docs-consumer-styles'
 
 export default defineElementPlusDocs({
   site: {
@@ -136,7 +134,7 @@ export default defineElementPlusDocs({
     editLinks: false,
   },
   components: {
-    styles: [docsSite.packageStylesImport, consumerStylesAlias],
+    styles: docsSite.packageStylesImport,
   },
   routes: {
     overview: '/',
@@ -172,7 +170,6 @@ export default defineElementPlusDocs({
         conditions: ['source'],
         alias: [
           { find: '@docs-components', replacement: docsSite.packageName },
-          { find: consumerStylesAlias, replacement: fileURLToPath(new URL('./theme/styles/index.css', import.meta.url)) },
         ],
       },
       optimizeDeps: {

@@ -3,7 +3,7 @@ import { ArrowRight } from '@lucide/vue'
 import type { ElementPlusDocsOverviewCardItem } from './types'
 
 defineProps<{
-  items: ElementPlusDocsOverviewCardItem[]
+  items: readonly ElementPlusDocsOverviewCardItem[]
 }>()
 </script>
 

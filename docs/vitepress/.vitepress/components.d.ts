@@ -8,10 +8,6 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    ElDialog: typeof import('element-plus/es')['ElDialog']
-    ElEmpty: typeof import('element-plus/es')['ElEmpty']
-    ElInput: typeof import('element-plus/es')['ElInput']
-    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     HeadlessCopyText: typeof import('@moluoxixi/components/HeadlessCopyText')['HeadlessCopyText']
   }
 }

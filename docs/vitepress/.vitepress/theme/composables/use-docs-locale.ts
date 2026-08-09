@@ -10,7 +10,8 @@ export function useDocsLocale() {
   const { lang, localeIndex } = useData()
   const locale = computed(() => resolveDocsLocale(lang.value, localeIndex.value))
   const messages = computed(() => getDocsMessages(locale.value))
+  const asset = (path: string) => withBase(path)
   const link = (path: string) => withBase(localePath(locale.value, path))
 
-  return { locale, messages, link }
+  return { asset, locale, messages, link }
 }

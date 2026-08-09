@@ -34,6 +34,8 @@ Deliver a production-ready component-library documentation site whose navigation
 - R20: Extend ConfigTable with the shared HeadlessTable renderer contract, named Vue slots, stable column ordering and visibility state, plus an opt-in accessible column-settings dialog with drag, keyboard reordering, and show/hide controls.
 - R21: Make named table renderers easy to register once per Vue application and reuse across ConfigTable and HeadlessTable instances. Extend ConfigTable column settings with controlled width state and UI, and keep its Element Plus pagination localized, responsive, and protected from conflicting passthrough state.
 - R22: Keep Element Plus table and pagination roots free from internal layout classes. Split large component implementations and public contracts by responsibility while preserving one component entry and generated API accuracy.
+- R23: Move the reusable overview home, searchable component catalog, component metadata, changelog timeline, contributor list, and issue actions into `@moluoxixi/vitepress-theme-element-plus`. The theme package owns their UI, interaction, accessibility, responsive behavior, styles, public types, and integration factory; a consuming documentation site supplies only normalized catalog, locale, repository-link, and metadata data.
+- R24: Remove the migrated consumer component files, duplicate style rules, and every directory left empty by the migration. Preserve consumer-owned API extraction, GitHub synchronization/snapshot validation, component manifests, and repository credentials outside the browser theme dependency graph.
 
 ## Acceptance Criteria
 
@@ -63,6 +65,8 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] ConfigTable pagination remains Element Plus based, follows the documentation locale, does not allow passthrough props to override controlled page state, and remains usable at narrow widths.
 - [x] ConfigTable applies responsive layout only through package-owned wrappers, not through classes or CSS overrides on the ElTableV2 and ElPagination roots.
 - [x] ConfigTable logic and ConfigTable/RichTextEditor contracts are split into focused modules behind their existing public entry points, with props, emits, slots, and expose extraction unchanged.
+- [x] A new documentation consumer can enable the overview, searchable catalog, component metadata, changelog, contributors, and issue actions through the theme package public API without copying their Vue components or CSS.
+- [x] The current documentation site supplies normalized project data to the theme content integration, retains its existing Markdown component names and behavior, and no longer contains duplicate catalog/component-meta implementations or empty migration directories.
 
 ## Out Of Scope
 
