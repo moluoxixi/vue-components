@@ -42,7 +42,7 @@ test('current component page renders consumer features in light and dark modes',
   const sourceLink = demo.getByTestId('demo-source-link')
   await expect(sourceLink).toHaveAttribute(
     'href',
-    /github\.com\/moluoxixi\/vue-components\/blob\/main\/packages\/components\/src\/CopyText\/docs\/index\.md#L\d+-L\d+$/,
+    /github\.com\/moluoxixi\/vue-components\/blob\/main\/packages\/components\/src\/CopyText\/docs\/index\.md\?plain=1#L\d+-L\d+$/,
   )
   await demo.getByTestId('demo-source-collapse').click()
   await expect(demo.getByRole('button', { name: '展开示例代码' })).toHaveAttribute('aria-expanded', 'false')

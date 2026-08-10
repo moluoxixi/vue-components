@@ -185,26 +185,15 @@ async function collapseSource(): Promise<void> {
         />
         <div class="demo-actions" role="group" :aria-label="messages.actions">
           <button
-            v-if="openPlayground"
+            v-if="openCodeSandbox"
             class="demo-action-btn"
             type="button"
-            :title="messages.openPlayground"
-            :aria-label="messages.openPlayground"
-            data-testid="demo-lightweight-playground"
-            @click="handleOpenPlayground(openPlayground)"
+            :title="messages.openCodeSandbox"
+            :aria-label="messages.openCodeSandbox"
+            data-testid="demo-codesandbox"
+            @click="handleOpenPlayground(openCodeSandbox)"
           >
-            <SquareTerminal :size="16" aria-hidden="true" />
-          </button>
-          <button
-            v-if="openElementPlusPlayground"
-            class="demo-action-btn"
-            type="button"
-            :title="messages.openElementPlusPlayground"
-            :aria-label="messages.openElementPlusPlayground"
-            data-testid="demo-element-plus-playground"
-            @click="handleOpenPlayground(openElementPlusPlayground)"
-          >
-            <ExternalLink :size="16" aria-hidden="true" />
+            <Box :size="16" aria-hidden="true" />
           </button>
           <button
             v-if="openStackBlitz"
@@ -218,15 +207,26 @@ async function collapseSource(): Promise<void> {
             <Zap :size="16" aria-hidden="true" />
           </button>
           <button
-            v-if="openCodeSandbox"
+            v-if="openElementPlusPlayground"
             class="demo-action-btn"
             type="button"
-            :title="messages.openCodeSandbox"
-            :aria-label="messages.openCodeSandbox"
-            data-testid="demo-codesandbox"
-            @click="handleOpenPlayground(openCodeSandbox)"
+            :title="messages.openElementPlusPlayground"
+            :aria-label="messages.openElementPlusPlayground"
+            data-testid="demo-element-plus-playground"
+            @click="handleOpenPlayground(openElementPlusPlayground)"
           >
-            <Box :size="16" aria-hidden="true" />
+            <ExternalLink :size="16" aria-hidden="true" />
+          </button>
+          <button
+            v-if="openPlayground"
+            class="demo-action-btn"
+            type="button"
+            :title="messages.openPlayground"
+            :aria-label="messages.openPlayground"
+            data-testid="demo-lightweight-playground"
+            @click="handleOpenPlayground(openPlayground)"
+          >
+            <SquareTerminal :size="16" aria-hidden="true" />
           </button>
           <a
             v-if="sourceHref"

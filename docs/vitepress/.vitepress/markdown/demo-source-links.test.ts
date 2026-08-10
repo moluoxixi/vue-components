@@ -26,7 +26,7 @@ describe('docs demo source links', () => {
     })
 
     expect(href).toBe(
-      `https://github.com/moluoxixi/vue-components/blob/main/packages/components/src/CopyText/docs/index.md#L${demo!.startLine}-L${demo!.endLine}`,
+      `https://github.com/moluoxixi/vue-components/blob/main/packages/components/src/CopyText/docs/index.md?plain=1#L${demo!.startLine}-L${demo!.endLine}`,
     )
     const lines = markdown.split(/\r?\n/)
     expect(lines[demo!.startLine - 1]).toMatch(/^```/)

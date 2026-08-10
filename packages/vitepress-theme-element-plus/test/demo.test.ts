@@ -126,11 +126,14 @@ describe('elementPlusDocsDemo', () => {
     await flushPromises()
 
     const actions = [
-      ['demo-lightweight-playground', 'Edit in lightweight playground'],
-      ['demo-element-plus-playground', 'Edit in Vue Playground'],
-      ['demo-stackblitz', 'Edit in StackBlitz'],
       ['demo-codesandbox', 'Edit in CodeSandbox'],
+      ['demo-stackblitz', 'Edit in StackBlitz'],
+      ['demo-element-plus-playground', 'Edit in Vue Playground'],
+      ['demo-lightweight-playground', 'Edit in lightweight playground'],
     ] as const
+    expect(wrapper.findAll('.demo-actions > [data-testid]').slice(0, 4).map(action => action.attributes('data-testid'))).toEqual(
+      actions.map(([testId]) => testId),
+    )
     for (const [testId, label] of actions) {
       const action = wrapper.get(`[data-testid="${testId}"]`)
       expect(action.attributes('title')).toBe(label)

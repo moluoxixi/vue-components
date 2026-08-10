@@ -46,7 +46,7 @@ export function createDocsDemoSourceHrefResolver(
         for (const demo of collectElementPlusDocsDemos(md, markdown)) {
           if (demo.startLine <= 0 || demo.endLine < demo.startLine)
             continue
-          const href = `${docsSite.repository.url}/blob/${docsSite.repository.defaultBranch}/${sourceRelativePath}#L${demo.startLine}-L${demo.endLine}`
+          const href = `${docsSite.repository.url}/blob/${docsSite.repository.defaultBranch}/${sourceRelativePath}?plain=1#L${demo.startLine}-L${demo.endLine}`
           links.set(`${routeRelativePath}\0${demo.demoId}`, href)
         }
       }
