@@ -86,6 +86,7 @@ export default defineConfig({
         'nprogress',
         'normalize.css',
         'markdown-it-container',
+        'typescript',
         'virtual:moluoxixi-element-plus-docs-consumer-styles',
         /^node:/,
       ],

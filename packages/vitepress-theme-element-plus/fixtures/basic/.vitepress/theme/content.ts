@@ -37,6 +37,8 @@ const messages = ref<ElementPlusDocsContentMessages>({
     loading: 'Loading example',
     openPlayground: 'Open in playground',
     playgroundUnavailable: 'Playground unavailable',
+    sourceLanguage: 'Example source language',
+    viewSource: 'View example source',
   },
   meta: {
     addDocs: 'Add docs',

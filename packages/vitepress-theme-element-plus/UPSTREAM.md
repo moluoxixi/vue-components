@@ -12,6 +12,7 @@ source copy from the Element Plus documentation site.
 | Element Plus path at the pinned commit | Package path | Local boundary |
 | --- | --- | --- |
 | `docs/.vitepress/vitepress/components/**` | `src/upstream/vitepress/components/**` | Layout templates are copied; imports, consumer identity, links, icons, and locale access are adapted. |
+| `docs/.vitepress/vitepress/components/demo/code-fold.ts` | `src/content/demo/code-fold.ts` | The official indentation-based source folding algorithm is copied into the reusable Demo content module. |
 | `docs/.vitepress/vitepress/composables/**` | `src/upstream/vitepress/composables/**` | Navigation, sidebar, outline, search, appearance, and page behavior are copied; repository, locale, and site data now come from VitePress theme config. |
 | `docs/.vitepress/vitepress/styles/**` | `src/upstream/vitepress/styles/**` | The 21 SCSS source files are copied without redesign, apart from moving VitePress compatibility imports out of `code.scss`, scoping the official heading rules to `.doc-content` so VitePress's later reset cannot flatten them, and compiling into the package CSS. |
 | `docs/.vitepress/vitepress/constant.ts` | `src/upstream/vitepress/constant.ts` | Copied constants, with consumer-specific values removed from callers. |

@@ -11,6 +11,7 @@ import {
   docsRoutePath,
   docsSite,
 } from './docs-site'
+import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
   const messages = getDocsMessages(locale)
@@ -105,14 +106,6 @@ const vitepressLocales = Object.fromEntries(
   }),
 )
 
-const rewrites = Object.fromEntries(
-  (Object.keys(docsLocales) as DocsLocale[]).map((locale) => {
-    const configured = docsLocales[locale]
-    const target = localePath(locale, docsRoutePath('components')).replace(/^\//, '')
-    return [`${configured.sourceDirectory}routes/:slug.md`, `${target}:slug.md`]
-  }),
-)
-
 // VitePress 1.x exposes Vite 5 types while the workspace unplugins resolve Vite 6.
 // Their runtime plugin contract is compatible; keep the version bridge at this boundary.
 type VitePressPlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
@@ -143,7 +136,6 @@ export default defineElementPlusDocs({
   },
   search: 'local',
   vitepress: {
-    rewrites,
     head: [
       ['link', { rel: 'icon', type: 'image/svg+xml', href: docsSite.logo.src }],
     ],
@@ -153,7 +145,9 @@ export default defineElementPlusDocs({
         dark: 'github-dark',
       },
       config(md) {
-        md.use(elementPlusDocsDemoPlugin)
+        md.use(elementPlusDocsDemoPlugin, {
+          resolveSourceHref: createDocsDemoSourceHrefResolver(md),
+        })
       },
     },
     vite: {

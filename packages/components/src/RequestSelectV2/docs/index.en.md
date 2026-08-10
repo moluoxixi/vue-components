@@ -6,7 +6,7 @@ A remote-data selector built on Element Plus `ElSelectV2`. It manages request, l
 
 :::demo Provide an asynchronous `query` function and the component loads the options automatically.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RequestSelectV2 } from '@moluoxixi/components'
 import { ref } from 'vue'
 const value = ref(null)
@@ -37,7 +37,7 @@ async function queryUsers() {
 
 :::demo When `enabled` is `false`, the request does not run. This is useful for dependent or conditionally rendered fields.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RequestSelectV2 } from '@moluoxixi/components'
 import { ElSwitch } from 'element-plus'
 import { ref } from 'vue'

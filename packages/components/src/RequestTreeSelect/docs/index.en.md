@@ -6,7 +6,7 @@ A remote-data tree selector built on Element Plus `ElTreeSelect`. It manages the
 
 :::demo Provide a `query` function that returns hierarchical data, and the component populates the tree nodes.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RequestTreeSelect } from '@moluoxixi/components'
 import { ref } from 'vue'
 const value = ref(null)

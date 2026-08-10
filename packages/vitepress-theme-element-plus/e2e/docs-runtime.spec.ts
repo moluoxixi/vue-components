@@ -35,7 +35,16 @@ test('current component page renders consumer features in light and dark modes',
   const collapseDemo = demo.getByRole('button', { name: '收起示例代码' })
   await expect(collapseDemo).toHaveAttribute('aria-expanded', 'true')
   await expect(demo.locator('.demo-source')).toHaveAttribute('aria-hidden', 'false')
-  await collapseDemo.click()
+  await expect(demo.getByTestId('demo-source-language')).toBeVisible()
+  await expect(demo.locator('.demo-source')).toContainText('lang="ts"')
+  await demo.getByTestId('demo-source-language').getByText('JS', { exact: true }).click()
+  await expect(demo.locator('.demo-source')).not.toContainText('lang="ts"')
+  const sourceLink = demo.getByTestId('demo-source-link')
+  await expect(sourceLink).toHaveAttribute(
+    'href',
+    /github\.com\/moluoxixi\/vue-components\/blob\/main\/packages\/components\/src\/CopyText\/docs\/index\.md#L\d+-L\d+$/,
+  )
+  await demo.getByTestId('demo-source-collapse').click()
   await expect(demo.getByRole('button', { name: '展开示例代码' })).toHaveAttribute('aria-expanded', 'false')
   await expect(demo.locator('.demo-source')).toHaveAttribute('aria-hidden', 'true')
 
@@ -56,6 +65,14 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
   const browserProblems = collectBrowserProblems(page)
 
   await page.goto('/guide/documentation-theme.html')
+  await page.getByRole('button', { name: '搜索文档' }).click()
+  await page.getByRole('searchbox').fill('configForm')
+  const configFormResults = page.getByRole('option').filter({ hasText: /ConfigForm/ })
+  await expect(configFormResults).toHaveCount(2)
+  await expect(configFormResults.filter({ hasText: 'AntdConfigForm' })).toBeVisible()
+  await expect(configFormResults.filter({ hasText: 'ElementConfigForm' })).toBeVisible()
+  await page.keyboard.press('Escape')
+
   await page.getByRole('button', { name: '搜索文档' }).click()
   await page.getByRole('searchbox').fill('迁移到另一个组件库')
   const result = page.getByRole('option', { name: '文档主题与复用 > 迁移到另一个组件库' })

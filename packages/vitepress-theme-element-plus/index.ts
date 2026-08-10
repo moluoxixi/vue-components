@@ -24,6 +24,7 @@ export type {
   ElementPlusDocsDemoCompileResult,
   ElementPlusDocsDemoMessages,
   ElementPlusDocsDemoProps,
+  ElementPlusDocsDemoSourceLanguage,
 } from './src/content/demo/types'
 export { createElementPlusDocsContent } from './src/content/integration/create-element-plus-docs-content'
 export type {

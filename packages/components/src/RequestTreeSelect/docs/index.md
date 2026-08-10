@@ -6,7 +6,7 @@
 
 :::demo 传入返回树形数据的 `query` 函数，组件自动填充树节点。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RequestTreeSelect } from '@moluoxixi/components'
 import { ref } from 'vue'
 const value = ref(null)

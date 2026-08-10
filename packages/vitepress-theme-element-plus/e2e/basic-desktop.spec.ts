@@ -64,10 +64,17 @@ test('fresh consumer enables Demo, Playground, and ApiDocs from public package A
   await expect(page.getByRole('heading', { level: 3, name: 'Props' })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Text rendered inside the button.' })).toBeVisible()
 
+  const demo = page.locator('.demo-block').first()
+  await demo.getByRole('button', { name: 'Expand example code' }).click()
+  await expect(demo.locator('.demo-source')).toContainText('lang="ts"')
+  await demo.getByTestId('demo-source-language').getByText('JS', { exact: true }).click()
+  await expect(demo.locator('.demo-source')).not.toContainText('lang="ts"')
+
   await page.getByRole('button', { name: 'Open in playground' }).click()
   await expect(page).toHaveURL(/\/playground\.html\?session=[a-z0-9-]+$/i)
   const editor = page.getByTestId('playground-editor')
   await expect(editor).toHaveValue(/Fixture count/)
+  await expect(editor).not.toHaveValue(/lang="ts"/)
   await expect(page.getByTestId('fixture-demo-button')).toHaveText('Fixture count: 0')
 
   await editor.fill(`<template><p data-testid="fixture-edited-preview">Edited preview</p></template>`)

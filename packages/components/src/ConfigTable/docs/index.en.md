@@ -6,7 +6,7 @@ A high-performance, configuration-driven virtual table built on Element Plus `El
 
 :::demo Provide `columns` and static `data` to render a virtualized table.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
 import { shallowRef } from 'vue'
 
@@ -33,7 +33,7 @@ const data = shallowRef([
 
 :::demo Register a named renderer once and reuse it across table instances. Enable `columnConfig` to let users reorder, resize, show, or hide columns.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable, defineHeadlessTableRenderer, headlessTableRenderer } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { h, ref, shallowRef } from 'vue'
@@ -89,7 +89,7 @@ Column content resolves in this order: an inline renderer or named slot, a named
 
 :::demo Provide a `query` function to load data and display the pagination controls automatically.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
 
 const columns = [
@@ -124,7 +124,7 @@ async function queryUsers({ currentPage, pageSize }) {
 
 :::demo Set `column.slots.default` to a slot name and provide the matching named slot in the template.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { shallowRef } from 'vue'

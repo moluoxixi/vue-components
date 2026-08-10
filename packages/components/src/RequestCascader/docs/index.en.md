@@ -6,7 +6,7 @@ A remote-data cascader built on Element Plus `ElCascader`. It manages the reques
 
 :::demo Provide a `query` function that returns hierarchical data, and the component populates the cascader options.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RequestCascader } from '@moluoxixi/components'
 import { ref } from 'vue'
 const value = ref([])

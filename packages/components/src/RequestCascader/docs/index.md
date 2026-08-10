@@ -6,7 +6,7 @@
 
 :::demo 传入返回树形数据的 `query` 函数，组件自动填充级联选项。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RequestCascader } from '@moluoxixi/components'
 import { ref } from 'vue'
 const value = ref([])

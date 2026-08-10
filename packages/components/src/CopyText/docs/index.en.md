@@ -6,7 +6,7 @@ A copy-to-clipboard component with built-in loading, copied, and error feedback 
 
 :::demo Set `text` to the value that should be copied.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 
@@ -24,7 +24,7 @@ import { CopyText } from '@moluoxixi/components'
 
 :::demo Use the default slot to customize the displayed text.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 
@@ -46,7 +46,7 @@ import { CopyText } from '@moluoxixi/components'
 
 :::demo Use the `icon` slot to replace the button icon. The slot exposes the `copied`, `copying`, and `error` states.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 
@@ -66,7 +66,7 @@ import { CopyText } from '@moluoxixi/components'
 
 :::demo Set `disabled` to prevent copying.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 

@@ -6,7 +6,7 @@
 
 :::demo 单日期选择，`v-model` 绑定日期字符串。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const date = ref('')
@@ -24,7 +24,7 @@ const date = ref('')
 
 :::demo `type="daterange"` 开启范围模式，`v-model` 为 `[start, end]` 字符串数组。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const range = ref([])
@@ -44,7 +44,7 @@ const range = ref([])
 
 :::demo `type="datetimerange"` 支持精确到秒，`shortcuts` 快捷选项。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const range = ref([])
@@ -83,7 +83,7 @@ const shortcuts = [
 
 :::demo 用 `dateRange` 设置初始默认范围（相对于今天的偏移天数）。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const range = ref([])

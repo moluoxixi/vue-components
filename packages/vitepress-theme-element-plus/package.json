@@ -47,9 +47,11 @@
     "@mdit-vue/shared": "catalog:",
     "@moluoxixi/ai-doc-assistant": "workspace:*",
     "@vueuse/core": "catalog:",
+    "markdown-it": "catalog:",
     "markdown-it-container": "catalog:",
     "normalize.css": "catalog:",
     "nprogress": "catalog:",
+    "typescript": "catalog:dev",
     "vue3-sfc-loader": "catalog:"
   },
   "devDependencies": {

@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { Check, ChevronUp, Code2, Copy, ExternalLink } from '@lucide/vue'
+import { Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch } from '@lucide/vue'
+import { useLocalStorage } from '@vueuse/core'
+import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
 import {
   computed,
+  nextTick,
   onErrorCaptured,
   onMounted,
   onUnmounted,
@@ -10,7 +13,8 @@ import {
   shallowRef,
   useId,
 } from 'vue'
-import type { ElementPlusDocsDemoProps } from './types'
+import type { ElementPlusDocsDemoProps, ElementPlusDocsDemoSourceLanguage } from './types'
+import ElementPlusDocsDemoSource from './ElementPlusDocsDemoSource.vue'
 
 const props = defineProps<ElementPlusDocsDemoProps>()
 
@@ -20,7 +24,14 @@ const error = ref<string | null>(null)
 const actionError = ref<string | null>(null)
 const demoComponent = shallowRef<Component | null>(null)
 const isLoading = ref(true)
+const sourceToggle = ref<HTMLButtonElement | null>(null)
 const sourceId = `demo-source-${useId()}`
+const sourceLanguages: ElementPlusDocsDemoSourceLanguage[] = ['TS', 'JS']
+const sourceLanguage = useLocalStorage<ElementPlusDocsDemoSourceLanguage>(
+  'elementPlusDocsDemoLanguage',
+  'TS',
+  { initOnMounted: true },
+)
 let disposeStyles: (() => void) | null = null
 let runId = 0
 let copyTimer = 0
@@ -35,7 +46,19 @@ function decode(encoded: string): string {
 }
 
 const sourceCode = computed(() => decode(props.code))
-const highlightedHtml = computed(() => decode(props.highlighted))
+const javaScriptSourceCode = computed(() => props.jsCode ? decode(props.jsCode) : sourceCode.value)
+const hasJavaScriptSource = computed(() => Boolean(props.jsCode && props.jsHighlighted))
+const selectedSourceLanguage = computed(() => (
+  sourceLanguage.value === 'JS' && hasJavaScriptSource.value ? 'JS' : 'TS'
+))
+const displayedSourceCode = computed(() => (
+  selectedSourceLanguage.value === 'JS' ? javaScriptSourceCode.value : sourceCode.value
+))
+const highlightedHtml = computed(() => (
+  selectedSourceLanguage.value === 'JS' && props.jsHighlighted
+    ? decode(props.jsHighlighted)
+    : decode(props.highlighted)
+))
 
 function formatError(value: unknown): string {
   return value instanceof Error ? value.message : String(value)
@@ -101,7 +124,7 @@ async function handleOpenPlayground(): Promise<void> {
     return
   try {
     actionError.value = null
-    await props.openPlayground(sourceCode.value, props.demoId)
+    await props.openPlayground(displayedSourceCode.value, props.demoId)
   }
   catch (sessionError) {
     actionError.value = formatError(sessionError)
@@ -111,9 +134,9 @@ async function handleOpenPlayground(): Promise<void> {
 async function copyCode(): Promise<void> {
   try {
     if (props.copy)
-      await props.copy(sourceCode.value)
+      await props.copy(displayedSourceCode.value)
     else
-      await navigator.clipboard.writeText(sourceCode.value)
+      await navigator.clipboard.writeText(displayedSourceCode.value)
   }
   catch (copyError) {
     actionError.value = formatError(copyError)
@@ -127,6 +150,12 @@ async function copyCode(): Promise<void> {
   copyTimer = window.setTimeout(() => {
     isCopied.value = false
   }, 2000)
+}
+
+async function collapseSource(): Promise<void> {
+  isExpanded.value = false
+  await nextTick()
+  sourceToggle.value?.focus()
 }
 </script>
 
@@ -148,6 +177,15 @@ async function copyCode(): Promise<void> {
       </div>
 
       <div class="demo-footer">
+        <ElSegmented
+          v-if="hasJavaScriptSource"
+          v-model="sourceLanguage"
+          class="demo-source-languages"
+          data-testid="demo-source-language"
+          :aria-label="messages.sourceLanguage"
+          :options="sourceLanguages"
+          size="small"
+        />
         <div class="demo-actions" :aria-label="messages.actions">
           <button
             v-if="openPlayground"
@@ -159,6 +197,18 @@ async function copyCode(): Promise<void> {
           >
             <ExternalLink :size="16" aria-hidden="true" />
           </button>
+          <a
+            v-if="sourceHref"
+            class="demo-action-btn"
+            data-testid="demo-source-link"
+            :href="sourceHref"
+            target="_blank"
+            rel="noreferrer noopener"
+            :title="messages.viewSource"
+            :aria-label="messages.viewSource"
+          >
+            <GitBranch :size="16" aria-hidden="true" />
+          </a>
           <button
             class="demo-action-btn"
             type="button"
@@ -170,6 +220,7 @@ async function copyCode(): Promise<void> {
             <Check v-else :size="16" aria-hidden="true" />
           </button>
           <button
+            ref="sourceToggle"
             class="demo-action-btn"
             type="button"
             :title="isExpanded ? messages.collapseCode : messages.expandCode"
@@ -195,8 +246,22 @@ async function copyCode(): Promise<void> {
           class="demo-source"
           :aria-hidden="!isExpanded"
         >
-          <!-- eslint-disable-next-line vue/no-v-html -->
-          <div v-html="highlightedHtml" />
+          <ElementPlusDocsDemoSource
+            :source="highlightedHtml"
+            :fold-code-region="messages.foldCodeRegion"
+            :folded-line="messages.foldedLine"
+            :folded-lines="messages.foldedLines"
+            :unfold-code-region="messages.unfoldCodeRegion"
+          />
+          <button
+            class="demo-collapse-control"
+            data-testid="demo-source-collapse"
+            type="button"
+            @click="collapseSource"
+          >
+            <ChevronUp :size="16" aria-hidden="true" />
+            <span>{{ messages.collapseCode }}</span>
+          </button>
         </div>
       </Transition>
     </div>
@@ -237,15 +302,20 @@ async function copyCode(): Promise<void> {
   display: flex;
   min-height: 44px;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 5px 10px;
   border-top: 1px solid var(--mx-border-light, var(--border-color-lighter));
   background: var(--mx-fill-light, var(--bg-color-soft));
 }
 
+.demo-source-languages {
+  flex: none;
+}
+
 .demo-actions {
   display: flex;
   gap: 4px;
+  margin-left: auto;
 }
 
 .demo-action-btn {
@@ -275,13 +345,29 @@ async function copyCode(): Promise<void> {
   background: var(--mx-fill, var(--bg-color-soft));
 }
 
-.demo-source :deep(div[class*='language-']) {
-  margin: 0;
-  border-radius: 0;
+.demo-collapse-control {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 0;
+  border-top: 1px solid var(--mx-border-light, var(--border-color-lighter));
+  background: var(--bg-color);
+  color: var(--text-color-light);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  transition: color 0.15s, background-color 0.15s;
 }
 
-.demo-source :deep(.shiki) {
-  padding: 18px 22px;
+.demo-collapse-control:hover,
+.demo-collapse-control:focus-visible {
+  background: var(--mx-hover, var(--el-color-primary-light-9));
+  color: var(--brand-color);
+  outline: none;
 }
 
 .demo-error {
@@ -312,20 +398,23 @@ async function copyCode(): Promise<void> {
 
 .demo-expand-enter-active,
 .demo-expand-leave-active {
-  max-height: 800px;
   overflow: hidden;
-  transition: opacity 0.2s, max-height 0.3s;
+  transition: opacity 0.2s;
 }
 
 .demo-expand-enter-from,
 .demo-expand-leave-to {
-  max-height: 0;
   opacity: 0;
 }
 
 @media (max-width: 639px) {
   .demo-preview {
     padding: 20px 16px;
+  }
+
+  .demo-footer {
+    gap: 6px;
+    padding-inline: 8px;
   }
 }
 </style>

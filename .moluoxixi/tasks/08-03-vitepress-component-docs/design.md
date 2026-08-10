@@ -2,7 +2,7 @@
 
 ## Architecture
 
-The documentation remains a VitePress package under `docs/vitepress`. Component prose and demos remain next to component source under `packages/components/src/*/docs/index.md`. Those source documents are optional fragments: one VitePress dynamic route template expands the component manifest into `/components/<slug>` pages, includes a fragment when present, and always appends the generated API section. No component route mirror is written under the documentation source tree.
+The documentation remains a VitePress package under `docs/vitepress`. Component prose and demos remain next to component source under `packages/components/src/*/docs/index.md`. Those source documents are optional fragments: a deterministic generator materializes thin `/components/<slug>.md` route pages from the component manifest, includes a fragment when present, and always appends the generated API section. The generated pages are committed and refreshed by normal dev/build commands so VitePress local search can index every component route; they are never maintained by hand.
 
 The custom theme extends VitePress DefaultTheme and owns four presentation components:
 
@@ -65,7 +65,7 @@ Markdown pages import contract JSON through a small shared VitePress data loader
 - The demo action writes the source and a stable demo identifier to an ephemeral same-origin session key, then opens the dedicated playground route. URL state contains only the opaque session identifier; opening the route directly uses a built-in starter. Version one does not provide source-sharing URLs.
 - The playground compiles only on initial load or an explicit Run action. Each run gets a unique virtual filename and fresh module cache, disposes the prior result before replacement, and uses a monotonically increasing run id so stale promises cannot replace newer output.
 - Unknown module or file requests fail with a readable diagnostic. Relative imports, preprocessors, external assets, and arbitrary package resolution remain unsupported.
-- Generated API files remain ignored build artifacts. Component routes are expanded in memory from the manifest and a single tracked dynamic route template; the component overview is a tracked internal route rewritten to `/components/`.
+- Generated API files remain ignored build artifacts. Searchable component route wrappers are deterministic tracked output generated from the manifest, while the component overview is a normal tracked `/components/` page.
 
 ## GitHub Metadata
 
@@ -112,9 +112,17 @@ generated JSON glob + consumer module cache/messages/routes -> theme content int
 theme Demo / Playground / ApiDocs presentation and runtime
 ```
 
+## Search And Demo Source Tooling
+
+VitePress local search indexes physical Markdown pages rather than the expanded output of dynamic route paths. The documentation consumer therefore supplies a deterministic search projection for every generated component route. Each projection contains the public route, localized title/description, canonical component name, and normalized search aliases. Aliases are data owned by the consumer manifest; the theme search UI remains VitePress DefaultTheme behavior.
+
+The theme Markdown plugin owns the Element Plus-style TS/JS source projection. A TypeScript Vue SFC remains the handwritten source of truth; the plugin transpiles only its TypeScript script blocks into a JavaScript SFC at build time and passes both highlighted and raw variants to the Demo component. The selected variant is persisted in browser storage and drives source display, copy, and the existing editable Playground session. Existing single-source Demo props remain compatible.
+
+GitHub source navigation follows the existing consumer-data boundary. The reusable Markdown plugin accepts an optional resolver and exposes only a normalized `sourceHref` to the Demo runtime. The documentation consumer resolves repository URL, branch or immutable ref, original Markdown path, and the fence's one-based line range. The theme renders the external action without importing repository configuration or assuming GitHub for other consumers.
+
 ## Rollback
 
-Route content generation is isolated in `scripts/component-routes.mts` and can be rolled back independently from component source. It is a pure read-only transform over the component manifest and optional source Markdown, so it never writes or overwrites documentation pages.
+Route content generation is isolated in `scripts/component-routes.mts` and `scripts/generate-component-routes.mts` and can be rolled back independently from component source. The writer only overwrites or removes files carrying its generated marker and refuses to replace an unmanaged component page.
 
 ConfigTable runtime changes are isolated behind additive props, column fields, emits, and the opt-in settings control. Removing those additions restores the previous behavior; the shared HeadlessTable helpers remain compatible with their existing consumer.
 

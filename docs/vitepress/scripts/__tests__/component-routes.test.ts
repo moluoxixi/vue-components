@@ -52,6 +52,17 @@ describe('component documentation routes', () => {
     expect(route).toMatch(/复制文本[\s\S]*<ComponentDocMeta[\s\S]*## API[\s\S]*<ApiDocs name="CopyText" \/>/)
   })
 
+  it('renders escaped search-only aliases inside the indexed page section', () => {
+    const route = renderComponentRoute({
+      name: 'AntdConfigForm',
+      slug: 'antd-config-form',
+      description: '配置表单',
+      searchAliases: ['ConfigForm', '<Form>'],
+    })
+
+    expect(route).toContain('<span hidden data-doc-search-aliases>ConfigForm &lt;Form&gt;</span>')
+  })
+
   it('creates dynamic route content from optional component source documentation', () => {
     const root = createFixtureRoot()
     const sourceDir = resolve(root, 'packages/components/src/CopyText/docs')

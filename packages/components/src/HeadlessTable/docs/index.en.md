@@ -6,7 +6,7 @@ A renderless table core that exposes column, row, and rendering contexts through
 
 :::demo Use `HeadlessTable` for column configuration and render the result with `ElTable` inside the default slot.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { HeadlessTable } from '@moluoxixi/components'
 import { ElTable, ElTableColumn, ElTag } from 'element-plus'
 
@@ -67,7 +67,7 @@ const columns = [
 
 :::demo `useHeadlessTable` provides client-side sorting, filtering, and pagination independently of any table UI.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useHeadlessTable } from '@moluoxixi/components'
 import { ElInput, ElPagination, ElTable, ElTableColumn } from 'element-plus'

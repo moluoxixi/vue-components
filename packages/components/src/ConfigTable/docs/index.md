@@ -6,7 +6,7 @@
 
 :::demo 传入 `columns` 配置和静态 `data`，即可渲染虚拟列表表格。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
 import { shallowRef } from 'vue'
 
@@ -33,7 +33,7 @@ const data = shallowRef([
 
 :::demo renderer 可以在应用级 registry 中注册一次，ConfigTable 和 HeadlessTable 的多个实例都能复用；开启 `columnConfig` 后，可在弹窗中拖拽排序、调整宽度或显示隐藏列。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable, defineHeadlessTableRenderer, headlessTableRenderer } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { h, ref, shallowRef } from 'vue'
@@ -115,7 +115,7 @@ const secondaryColumns = columns.map(column => ({ ...column, slots: undefined })
 
 :::demo 传入 `query` 函数，组件自动发请求并展示分页栏。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
 
 const columns = [
@@ -151,7 +151,7 @@ async function queryUsers({ currentPage, pageSize }) {
 
 :::demo `column.slots.default` 可以是插槽名字符串，在模板中声明对应具名插槽进行自定义渲染。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { shallowRef } from 'vue'

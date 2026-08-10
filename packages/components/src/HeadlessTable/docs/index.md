@@ -6,7 +6,7 @@
 
 :::demo 用 `HeadlessTable` 提供列配置，在默认插槽内接入 `ElTable`，无需改动 `useHeadlessTable` 逻辑。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { HeadlessTable } from '@moluoxixi/components'
 import { ElTable, ElTableColumn, ElTag } from 'element-plus'
 
@@ -65,7 +65,7 @@ const baseColumns = [
 
 :::demo `useHeadlessTable` 提供客户端排序、筛选和分页，与任意表格 UI 解耦。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useHeadlessTable } from '@moluoxixi/components'
 import { ElInput, ElPagination, ElTable, ElTableColumn } from 'element-plus'

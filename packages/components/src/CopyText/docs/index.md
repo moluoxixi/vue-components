@@ -6,7 +6,7 @@
 
 :::demo 将 `text` 属性设置为要复制的文本。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 
@@ -24,7 +24,7 @@ import { CopyText } from '@moluoxixi/components'
 
 :::demo 通过默认插槽自定义文本区域的展示。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 
@@ -51,7 +51,7 @@ import { CopyText } from '@moluoxixi/components'
 
 :::demo 通过 `icon` 插槽替换按钮图标，slot scope 包含 `copied` / `copying` / `error` 状态。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 
@@ -71,7 +71,7 @@ import { CopyText } from '@moluoxixi/components'
 
 :::demo 设置 `disabled` 禁用复制功能。
 ```vue
-<script setup>
+<script setup lang="ts">
 import { CopyText } from '@moluoxixi/components'
 </script>
 

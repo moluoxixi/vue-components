@@ -53,6 +53,9 @@ export function createElementPlusDocsContent(
       code: { type: String, required: true },
       demoId: { type: String, required: true },
       highlighted: { type: String, required: true },
+      jsCode: { type: String, required: false },
+      jsHighlighted: { type: String, required: false },
+      sourceHref: { type: String, required: false },
       title: { type: String, required: false },
     },
     setup(props) {
@@ -71,8 +74,11 @@ export function createElementPlusDocsContent(
         copy: integration.playground.copy,
         demoId: props.demoId,
         highlighted: props.highlighted,
+        jsCode: props.jsCode,
+        jsHighlighted: props.jsHighlighted,
         messages: runtime.messages.value.demo,
         openPlayground,
+        sourceHref: props.sourceHref,
         title: props.title,
       })
     },

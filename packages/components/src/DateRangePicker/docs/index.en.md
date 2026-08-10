@@ -6,7 +6,7 @@ A business-oriented wrapper around Element Plus `ElDatePicker` with normalized o
 
 :::demo For a single date, `v-model` contains a date string.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const date = ref('')
@@ -24,7 +24,7 @@ const date = ref('')
 
 :::demo Set `type="daterange"` to bind an array containing the start and end date strings.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const range = ref([])
@@ -44,7 +44,7 @@ const range = ref([])
 
 :::demo Set `type="datetimerange"` for second-level precision and provide `shortcuts` for common ranges.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const range = ref([])
@@ -83,7 +83,7 @@ const shortcuts = [
 
 :::demo Use `dateRange` to set an initial range as day offsets relative to today.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
 const range = ref([])

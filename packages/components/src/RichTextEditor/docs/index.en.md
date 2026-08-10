@@ -6,7 +6,7 @@ A ready-to-use rich text editor with formatting, links, lists, alignment, and hi
 
 :::demo `v-model` provides two-way binding for the HTML string. The toolbar includes common formatting actions.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RichTextEditor } from '@moluoxixi/components'
 import { ref } from 'vue'
 
@@ -25,7 +25,7 @@ const content = ref('<p>Start writing here...</p>')
 
 :::demo Use `disabled` and `readonly` to control whether the content can be edited.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { RichTextEditor } from '@moluoxixi/components'
 import { ElSwitch } from 'element-plus'
 import { ref } from 'vue'

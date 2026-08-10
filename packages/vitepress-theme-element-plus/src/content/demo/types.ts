@@ -20,10 +20,18 @@ export interface ElementPlusDocsDemoMessages {
   copyCode: string
   expandCode: string
   expandExampleCode: string
+  foldCodeRegion: string
+  foldedLine: string
+  foldedLines: string
   loading: string
   openPlayground: string
   playgroundUnavailable: string
+  sourceLanguage: string
+  unfoldCodeRegion: string
+  viewSource: string
 }
+
+export type ElementPlusDocsDemoSourceLanguage = 'JS' | 'TS'
 
 export interface ElementPlusDocsDemoProps {
   code: string
@@ -34,7 +42,10 @@ export interface ElementPlusDocsDemoProps {
   copy?: (source: string) => Promise<void>
   demoId: string
   highlighted: string
+  jsCode?: string
+  jsHighlighted?: string
   messages: ElementPlusDocsDemoMessages
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
+  sourceHref?: string
   title?: string
 }

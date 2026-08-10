@@ -7,7 +7,8 @@
     "moduleResolution": "Bundler",
     "paths": {
       "@docs-components": ["../../packages/components/index.ts"],
-      "@docs-components/styles": ["../../packages/components/src/styles/index.scss"]
+      "@docs-components/styles": ["../../packages/components/src/styles/index.scss"],
+      "@moluoxixi/components/auto-loaders": ["../../packages/components/auto-loaders.ts"]
     },
     "resolveJsonModule": true,
     "types": ["node", "vite/client", "vitest"],

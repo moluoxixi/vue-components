@@ -6,7 +6,7 @@ A table selector opened from an input. It supports filtering rows and writing th
 
 :::demo Configure `columns` and `data`, then handle the `select` event when the user chooses a row.
 ```vue
-<script setup>
+<script setup lang="ts">
 import { PopoverTableSelect } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { computed, ref } from 'vue'
