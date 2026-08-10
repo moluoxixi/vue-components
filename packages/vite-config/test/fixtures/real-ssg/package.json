@@ -1,0 +1,10 @@
+{
+  "name": "real-ssg-consumer-app",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-ssg": "catalog:build",
+    "vite-ssg-sitemap": "catalog:build"
+  }
+}

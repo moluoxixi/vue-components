@@ -1,0 +1,183 @@
+{
+  "name": "@moluoxixi/vite-config",
+  "type": "module",
+  "version": "0.0.37",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moluoxixi/vue-components.git",
+    "directory": "packages/vite-config"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./addons": {
+      "types": "./dist/addons/index.d.ts",
+      "import": "./dist/addons/index.js"
+    },
+    "./addons/*": {
+      "types": "./dist/addons/*.d.ts",
+      "import": "./dist/addons/*.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "DESIGN.md",
+    "README.md",
+    "dist/**/*.d.ts",
+    "dist/**/*.js"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/addons/index.ts \"src/addons/*.ts\" --format esm --dts --clean",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@intlify/unplugin-vue-i18n": "catalog:build",
+    "@shikijs/markdown-it": "catalog:build",
+    "@tailwindcss/postcss": "catalog:build",
+    "@tailwindcss/vite": "catalog:build",
+    "@unhead/vue": "catalog:build",
+    "@vitejs/plugin-react": "catalog:build",
+    "@vitejs/plugin-vue": "catalog:conflicts_dev_h6_0_4",
+    "@vueuse/core": "catalog:conflicts_@vueuse/core_h12_0_0",
+    "autoprefixer": "catalog:build",
+    "markdown-it-link-attributes": "catalog:build",
+    "react": "catalog:build",
+    "tailwindcss": "catalog:build",
+    "unocss": "catalog:build",
+    "unplugin-auto-import": "catalog:conflicts_dev_h21_0_0",
+    "unplugin-vue-components": "catalog:conflicts_dev_h31_0_0",
+    "unplugin-vue-markdown": "catalog:build",
+    "unplugin-vue-router": "catalog:build",
+    "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-plugin-pwa": "catalog:build",
+    "vite-plugin-vue-devtools": "catalog:build",
+    "vite-plugin-vue-layouts": "catalog:build",
+    "vite-ssg": "catalog:build",
+    "vite-ssg-sitemap": "catalog:build",
+    "vitest": "catalog:conflicts_dev_h4_0_0",
+    "vue": "catalog:build",
+    "vue-router": "catalog:build"
+  },
+  "peerDependenciesMeta": {
+    "@intlify/unplugin-vue-i18n": {
+      "optional": true
+    },
+    "@shikijs/markdown-it": {
+      "optional": true
+    },
+    "@tailwindcss/postcss": {
+      "optional": true
+    },
+    "@tailwindcss/vite": {
+      "optional": true
+    },
+    "@unhead/vue": {
+      "optional": true
+    },
+    "@vitejs/plugin-react": {
+      "optional": true
+    },
+    "@vitejs/plugin-vue": {
+      "optional": true
+    },
+    "@vueuse/core": {
+      "optional": true
+    },
+    "autoprefixer": {
+      "optional": true
+    },
+    "markdown-it-link-attributes": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "tailwindcss": {
+      "optional": true
+    },
+    "unocss": {
+      "optional": true
+    },
+    "unplugin-auto-import": {
+      "optional": true
+    },
+    "unplugin-vue-components": {
+      "optional": true
+    },
+    "unplugin-vue-markdown": {
+      "optional": true
+    },
+    "unplugin-vue-router": {
+      "optional": true
+    },
+    "vite-plugin-pwa": {
+      "optional": true
+    },
+    "vite-plugin-vue-devtools": {
+      "optional": true
+    },
+    "vite-plugin-vue-layouts": {
+      "optional": true
+    },
+    "vite-ssg": {
+      "optional": true
+    },
+    "vite-ssg-sitemap": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "vue-router": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@moluoxixi/utils": "workspace:*",
+    "defu": "catalog:build"
+  },
+  "devDependencies": {
+    "@intlify/unplugin-vue-i18n": "catalog:build",
+    "@playwright/test": "catalog:dev",
+    "@shikijs/markdown-it": "catalog:build",
+    "@tailwindcss/postcss": "catalog:build",
+    "@tailwindcss/vite": "catalog:build",
+    "@types/markdown-it-link-attributes": "catalog:types",
+    "@unhead/vue": "catalog:build",
+    "@vitejs/plugin-react": "catalog:build",
+    "@vitejs/plugin-vue": "catalog:conflicts_dev_h6_0_4",
+    "@vitest/coverage-v8": "catalog:conflicts_dev_h4_0_0",
+    "@vueuse/core": "catalog:conflicts_@vueuse/core_h12_0_0",
+    "autoprefixer": "catalog:build",
+    "markdown-it-link-attributes": "catalog:build",
+    "postcss": "catalog:build",
+    "react": "catalog:build",
+    "tailwindcss": "catalog:build",
+    "tsup": "catalog:dev",
+    "typescript": "catalog:dev",
+    "unocss": "catalog:build",
+    "unplugin-auto-import": "catalog:conflicts_dev_h21_0_0",
+    "unplugin-vue-components": "catalog:conflicts_dev_h31_0_0",
+    "unplugin-vue-markdown": "catalog:build",
+    "unplugin-vue-router": "catalog:build",
+    "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-plugin-pwa": "catalog:build",
+    "vite-plugin-vue-devtools": "catalog:build",
+    "vite-plugin-vue-layouts": "catalog:build",
+    "vite-ssg": "catalog:build",
+    "vite-ssg-sitemap": "catalog:build",
+    "vitest": "catalog:conflicts_dev_h4_0_0",
+    "vue": "catalog:build",
+    "vue-router": "catalog:build"
+  }
+}

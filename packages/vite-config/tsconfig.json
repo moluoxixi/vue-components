@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "baseUrl": ".",
+    "paths": {
+      "@moluoxixi/vite-config": ["src/index.ts"],
+      "@moluoxixi/vite-config/addons": ["src/addons/index.ts"],
+      "@moluoxixi/vite-config/addons/*": ["src/addons/*"],
+      "@moluoxixi/vite-config/config/*": ["src/config/*"],
+      "vite": ["node_modules/vite"]
+    },
+    "types": ["node"],
+    "declaration": true,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist", "test/fixtures/**/*"]
+}

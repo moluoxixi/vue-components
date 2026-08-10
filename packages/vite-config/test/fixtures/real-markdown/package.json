@@ -1,0 +1,13 @@
+{
+  "name": "real-markdown-consumer-app",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@shikijs/markdown-it": "catalog:build",
+    "@vitejs/plugin-vue": "catalog:conflicts_dev_h6_0_4",
+    "markdown-it-link-attributes": "catalog:build",
+    "unplugin-vue-markdown": "catalog:build",
+    "vite": "catalog:conflicts_dev_h7_3_1",
+    "vue": "catalog:build"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "real-react-consumer-app",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@vitejs/plugin-react": "catalog:build",
+    "react": "catalog:build",
+    "vite": "catalog:conflicts_dev_h7_3_1"
+  }
+}

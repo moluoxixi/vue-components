@@ -1,0 +1,17 @@
+{
+  "name": "real-vue-consumer-app",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@intlify/unplugin-vue-i18n": "catalog:build",
+    "@vitejs/plugin-vue": "catalog:conflicts_dev_h6_0_4",
+    "unplugin-auto-import": "catalog:conflicts_dev_h21_0_0",
+    "unplugin-vue-components": "catalog:conflicts_dev_h31_0_0",
+    "unplugin-vue-router": "catalog:build",
+    "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-plugin-vue-devtools": "catalog:build",
+    "vitest": "catalog:dev",
+    "vue": "catalog:build",
+    "vue-router": "catalog:build"
+  }
+}

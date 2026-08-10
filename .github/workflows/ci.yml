@@ -40,6 +40,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test release automation
+        run: pnpm test:release
+
       - name: Coverage
         run: pnpm test:coverage
 
@@ -131,6 +134,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Create patch changesets for changed packages
+        run: pnpm release:changesets
+        env:
+          AUTO_CHANGESET_BASE: ${{ github.event.before }}
+          AUTO_CHANGESET_HEAD: ${{ github.sha }}
 
       - name: Create release PR or publish
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1

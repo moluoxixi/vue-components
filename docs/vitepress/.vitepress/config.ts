@@ -5,7 +5,7 @@ import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
 import { elementPlusDocsDemoPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
 import { createComponentAutoLoadPlugins } from './auto-loaders'
-import { getDocsMessages, getLocalizedComponentGroups, localePath } from './docs-i18n'
+import { getDocsMessages, getLocalizedComponentGroups, getLocalizedUtilityGroups, localePath } from './docs-i18n'
 import {
   defaultDocsLocale,
   docsLocales,
@@ -17,6 +17,7 @@ import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
   const messages = getDocsMessages(locale)
   const componentGroups = getLocalizedComponentGroups(locale)
+  const utilityGroups = getLocalizedUtilityGroups(locale)
   const localPath = (path: string) => localePath(locale, path)
 
   return {
@@ -34,6 +35,7 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
       { text: messages.nav.overview, link: localPath('/') },
       { text: messages.nav.guide, link: localPath(docsRoutePath('guide', 'getting-started')), activeMatch: localPath(docsRoutePath('guide')) },
       { text: messages.nav.components, link: localPath(docsRoutePath('components')), activeMatch: localPath(docsRoutePath('components')) },
+      { text: messages.nav.utilities, link: localPath(docsRoutePath('utilities')), activeMatch: localPath(docsRoutePath('utilities')) },
     ],
     sidebar: {
       [localPath(docsRoutePath('guide'))]: [
@@ -52,6 +54,16 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
           ...group.items.map(component => ({
             text: component.sidebarText,
             link: localPath(docsRoutePath('components', component.slug)),
+          })),
+        ],
+      })),
+      [localPath(docsRoutePath('utilities'))]: utilityGroups.map((group, index) => ({
+        text: group.title,
+        items: [
+          ...(index === 0 ? [{ text: messages.nav.utilityOverview, link: localPath(docsRoutePath('utilities')) }] : []),
+          ...group.items.map(utility => ({
+            text: utility.sidebarText,
+            link: localPath(docsRoutePath('utilities', utility.slug)),
           })),
         ],
       })),

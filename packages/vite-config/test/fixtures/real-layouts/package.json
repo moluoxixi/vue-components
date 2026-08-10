@@ -1,0 +1,11 @@
+{
+  "name": "real-layouts-consumer-app",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@vitejs/plugin-vue": "catalog:conflicts_dev_h6_0_4",
+    "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-plugin-vue-layouts": "catalog:build",
+    "vue": "catalog:build"
+  }
+}

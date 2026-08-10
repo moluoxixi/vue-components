@@ -1,7 +1,9 @@
 import type { DocComponent, DocComponentGroup } from './component-manifest.ts'
 import type { DocsLocale } from './docs-site.ts'
+import type { DocUtility, DocUtilityGroup } from './utility-manifest.ts'
 import { componentGroups } from './component-manifest.ts'
 import { localePath as createLocalePath, defaultDocsLocale, docsLocales } from './docs-site.ts'
+import { utilityGroups } from './utility-manifest.ts'
 
 export type { DocsLocale } from './docs-site.ts'
 
@@ -11,9 +13,11 @@ export interface DocsMessages {
     overview: string
     guide: string
     components: string
+    utilities: string
     gettingStarted: string
     customization: string
     componentOverview: string
+    utilityOverview: string
   }
   theme: {
     returnToTop: string
@@ -146,9 +150,11 @@ const messages: Record<DocsLocale, DocsMessages> = {
       overview: '概览',
       guide: '指南',
       components: '组件',
+      utilities: '工具',
       gettingStarted: '快速开始',
       customization: '文档定制',
       componentOverview: '组件总览',
+      utilityOverview: '工具总览',
     },
     theme: {
       returnToTop: '返回顶部',
@@ -191,9 +197,11 @@ const messages: Record<DocsLocale, DocsMessages> = {
       overview: 'Overview',
       guide: 'Guide',
       components: 'Components',
+      utilities: 'Utilities',
       gettingStarted: 'Getting Started',
       customization: 'Documentation Theme',
       componentOverview: 'Component Overview',
+      utilityOverview: 'Utility Overview',
     },
     theme: {
       returnToTop: 'Return to top',
@@ -255,6 +263,21 @@ const englishComponents: Record<string, Pick<DocComponent, 'description' | 'side
   RichTextEditor: { sidebarText: 'RichTextEditor Rich Text Editor', description: 'A complete rich text editor powered by Tiptap' },
 }
 
+const englishUtilityGroups: Record<DocUtilityGroup['id'], Pick<DocUtilityGroup, 'description' | 'title'>> = {
+  runtime: { title: 'Runtime Utilities', description: 'Framework-independent data, network, file, and browser storage capabilities' },
+  tooling: { title: 'Tooling', description: 'Packages for code quality, stylesheet processing, and build configuration' },
+}
+
+const englishUtilities: Record<string, Pick<DocUtility, 'description' | 'sidebarText'>> = {
+  '@moluoxixi/utils': { sidebarText: 'Utils', description: 'Cross-runtime functions and Node.js project manifest utilities' },
+  '@moluoxixi/ajax-package': { sidebarText: 'Ajax Package', description: 'A UI-independent HTTP client built on Axios' },
+  '@moluoxixi/excel': { sidebarText: 'Excel', description: 'UI-independent Excel and CSV data utilities' },
+  '@moluoxixi/indexed-db': { sidebarText: 'IndexedDB', description: 'Explicitly configured IndexedDB key-value storage' },
+  '@moluoxixi/eslint-config': { sidebarText: 'ESLint Config', description: 'A shared configuration factory built on Antfu ESLint Config' },
+  '@moluoxixi/postcss-selector-prefix': { sidebarText: 'PostCSS Selector Prefix', description: 'AST-based class and id selector prefix replacement' },
+  '@moluoxixi/vite-config': { sidebarText: 'Vite Config', description: 'A Vite preset that assembles plugins from the dependency graph' },
+}
+
 export function resolveDocsLocale(lang: string | undefined, localeIndex?: string): DocsLocale {
   const normalized = lang?.toLowerCase()
   const byLanguage = (Object.keys(docsLocales) as DocsLocale[]).find((locale) => {
@@ -297,4 +320,22 @@ export function getLocalizedComponentGroups(locale: DocsLocale): DocComponentGro
 
 export function getLocalizedComponents(locale: DocsLocale): DocComponent[] {
   return getLocalizedComponentGroups(locale).flatMap(group => group.items)
+}
+
+export function getLocalizedUtilityGroups(locale: DocsLocale): DocUtilityGroup[] {
+  if (locale === 'zh-CN')
+    return utilityGroups
+
+  return utilityGroups.map(group => ({
+    ...group,
+    ...englishUtilityGroups[group.id],
+    items: group.items.map(utility => ({
+      ...utility,
+      ...englishUtilities[utility.packageName],
+    })),
+  }))
+}
+
+export function getLocalizedUtilities(locale: DocsLocale): DocUtility[] {
+  return getLocalizedUtilityGroups(locale).flatMap(group => group.items)
 }

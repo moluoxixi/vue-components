@@ -1,0 +1,11 @@
+{
+  "name": "real-vue-consumer-lib",
+  "type": "module",
+  "private": true,
+  "peerDependencies": {
+    "@vueuse/core": "catalog:conflicts_@vueuse/core_h12_0_0"
+  },
+  "dependencies": {
+    "vue": "catalog:build"
+  }
+}

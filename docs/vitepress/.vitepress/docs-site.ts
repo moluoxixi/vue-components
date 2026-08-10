@@ -46,6 +46,7 @@ export const docsSite = {
     components: '/components/',
     guide: '/guide/',
     playground: '/playground',
+    utilities: '/utils/',
   },
   github: {
     issueTitlePrefix: (componentName: string) => `[${componentName}]`,

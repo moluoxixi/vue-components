@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+.style-fixture {
+  color: rgb(15 23 42);
+}

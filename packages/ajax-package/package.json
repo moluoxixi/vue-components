@@ -1,0 +1,41 @@
+{
+  "name": "@moluoxixi/ajax-package",
+  "type": "module",
+  "version": "0.0.58",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moluoxixi/vue-components.git",
+    "directory": "packages/ajax-package"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "README.md",
+    "dist/**/*.d.ts",
+    "dist/**/*.js"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@moluoxixi/utils": "workspace:*",
+    "axios": "catalog:build"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "catalog:dev",
+    "tsup": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  }
+}

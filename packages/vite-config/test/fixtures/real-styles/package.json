@@ -1,0 +1,11 @@
+{
+  "name": "real-style-consumer-app",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@tailwindcss/vite": "catalog:build",
+    "tailwindcss": "catalog:build",
+    "unocss": "catalog:build",
+    "vite": "catalog:conflicts_dev_h7_3_1"
+  }
+}

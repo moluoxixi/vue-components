@@ -1,0 +1,41 @@
+{
+  "name": "@moluoxixi/utils",
+  "type": "module",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moluoxixi/vue-components.git",
+    "directory": "packages/utils"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "README.md",
+    "dist/**/*.d.ts",
+    "dist/**/*.js"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/node.ts --format esm --dts --clean",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "catalog:conflicts_dev_h4_0_0",
+    "tsup": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:conflicts_dev_h4_0_0"
+  }
+}
