@@ -32,7 +32,7 @@ export function readValueByPath(
   for (const segment of segments) {
     if (!isReadablePathTarget(current) || !(segment in current)) {
       if (options.strict) {
-        throw options.createMissingPathError?.(path) ?? new Error(`[core] path not found: ${path}`)
+        throw options.createMissingPathError?.(path) ?? new Error(`[utils] path not found: ${path}`)
       }
 
       return undefined

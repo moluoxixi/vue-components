@@ -21,13 +21,13 @@ function validateDependencySection(section: unknown, fieldName: string, pkgPath:
   }
 
   if (!isRecord(section)) {
-    throw new TypeError(`[core] invalid package.json field \"${fieldName}\" at ${pkgPath}: expected an object map`)
+    throw new TypeError(`[utils] invalid package.json field \"${fieldName}\" at ${pkgPath}: expected an object map`)
   }
 
   const validated: Record<string, string> = {}
   for (const [name, version] of Object.entries(section)) {
     if (typeof version !== 'string') {
-      throw new TypeError(`[core] invalid package.json field \"${fieldName}.${name}\" at ${pkgPath}: expected a string version`)
+      throw new TypeError(`[utils] invalid package.json field \"${fieldName}.${name}\" at ${pkgPath}: expected a string version`)
     }
     validated[name] = version
   }
@@ -58,13 +58,13 @@ export function isFileExists(filePath: string): boolean {
 export function readPackageJSON(cwd: string = process.cwd()): PackageManifest {
   const pkgPath = path.resolve(cwd, 'package.json')
   if (!isFileExists(pkgPath)) {
-    throw new Error(`[core] package.json not found at ${pkgPath}`)
+    throw new Error(`[utils] package.json not found at ${pkgPath}`)
   }
 
   try {
     const parsed = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as unknown
     if (!isRecord(parsed)) {
-      throw new Error(`[core] invalid package.json shape at ${pkgPath}: expected an object`)
+      throw new Error(`[utils] invalid package.json shape at ${pkgPath}: expected an object`)
     }
 
     return {
@@ -76,11 +76,11 @@ export function readPackageJSON(cwd: string = process.cwd()): PackageManifest {
     }
   }
   catch (cause) {
-    if (cause instanceof Error && cause.message.startsWith('[core]')) {
+    if (cause instanceof Error && cause.message.startsWith('[utils]')) {
       throw cause
     }
 
-    throw new Error(`[core] failed to read package.json at ${pkgPath}`, { cause })
+    throw new Error(`[utils] failed to read package.json at ${pkgPath}`, { cause })
   }
 }
 

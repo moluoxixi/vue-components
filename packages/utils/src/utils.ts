@@ -76,11 +76,11 @@ function cloneDeepValue<T>(obj: T, seen: WeakMap<object, unknown>): T {
   }
 
   if (obj instanceof WeakMap) {
-    throw new TypeError('[core] deepClone does not support WeakMap because its entries are not enumerable')
+    throw new TypeError('[utils] deepClone does not support WeakMap because its entries are not enumerable')
   }
 
   if (obj instanceof WeakSet) {
-    throw new TypeError('[core] deepClone does not support WeakSet because its entries are not enumerable')
+    throw new TypeError('[utils] deepClone does not support WeakSet because its entries are not enumerable')
   }
 
   if (obj instanceof Date) {
@@ -147,7 +147,7 @@ function cloneDeepValue<T>(obj: T, seen: WeakMap<object, unknown>): T {
     }
 
     if (!('value' in descriptor)) {
-      throw new TypeError(`[core] deepClone does not support accessor property: ${String(key)}`)
+      throw new TypeError(`[utils] deepClone does not support accessor property: ${String(key)}`)
     }
 
     descriptor.value = cloneDeepValue(descriptor.value, seen)

@@ -119,7 +119,7 @@ describe('core Utilities', () => {
       },
     }
 
-    expect(() => deepClone(source)).toThrow('[core] deepClone does not support accessor property: nested')
+    expect(() => deepClone(source)).toThrow('[utils] deepClone does not support accessor property: nested')
   })
 
   it('deepClone clones ArrayBuffer, DataView, and typed array storage', () => {
