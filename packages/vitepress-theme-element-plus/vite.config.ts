@@ -69,6 +69,7 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, 'index.ts'),
         markdown: resolve(__dirname, 'markdown.ts'),
+        repl: resolve(__dirname, 'repl.ts'),
       },
       name: 'MoluoxixiElementPlusDocs',
       fileName: (_, entryName) => `${entryName}.js`,
@@ -83,6 +84,8 @@ export default defineConfig({
         'element-plus',
         /^element-plus\//,
         '@vueuse/core',
+        '@vue/repl',
+        /^@vue\/repl\//,
         'nprogress',
         'normalize.css',
         'markdown-it-container',

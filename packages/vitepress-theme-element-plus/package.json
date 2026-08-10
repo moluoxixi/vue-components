@@ -20,12 +20,18 @@
       "source": "./markdown.ts",
       "types": "./dist/markdown.d.ts",
       "import": "./dist/markdown.js"
-    }
+    },
+    "./repl": {
+      "source": "./repl.ts",
+      "types": "./dist/repl.d.ts",
+      "import": "./dist/repl.js"
+    },
+    "./repl.css": "./src/repl/styles.css"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["LICENSE", "THIRD_PARTY_NOTICES.md", "UPSTREAM.md", "dist", "index.ts", "src"],
+  "files": ["LICENSE", "THIRD_PARTY_NOTICES.md", "UPSTREAM.md", "dist", "index.ts", "markdown.ts", "repl.ts", "src"],
   "scripts": {
     "build": "vite build && pnpm test:provenance",
     "dev": "vite build --watch",
@@ -46,6 +52,7 @@
     "@lucide/vue": "catalog:ui",
     "@mdit-vue/shared": "catalog:",
     "@moluoxixi/ai-doc-assistant": "workspace:*",
+    "@vue/repl": "catalog:",
     "@vueuse/core": "catalog:",
     "lz-string": "catalog:",
     "markdown-it": "catalog:",

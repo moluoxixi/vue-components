@@ -114,7 +114,9 @@ input {
 export const docsContent = createElementPlusDocsContent({
   playground: {
     compile: compileLocalSfc,
-    elementPlus: {},
+    elementPlus: {
+      path: '/vue-playground/',
+    },
     external: {
       codeSandbox: {},
       project: {

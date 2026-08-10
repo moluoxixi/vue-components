@@ -7,6 +7,13 @@ source copy from the Element Plus documentation site.
 - Commit: `c2a63a79be394b1a73a8dcff505260dbc9a34a33`
 - License: MIT, reproduced in `THIRD_PARTY_NOTICES.md`
 
+The reusable REPL under `src/repl` is an adapted source copy from the separate
+Element Plus Playground application.
+
+- Repository: <https://github.com/element-plus/element-plus-playground>
+- Commit: `a9e5499b339b7a67e89a2624fd2898f920bf4d7b`
+- License: MIT, reproduced in `THIRD_PARTY_NOTICES.md`
+
 ## Copied source map
 
 | Element Plus path at the pinned commit | Package path | Local boundary |
@@ -20,6 +27,10 @@ source copy from the Element Plus documentation site.
 | `docs/.vitepress/vitepress/types.ts` | `src/upstream/vitepress/types.ts` | Copied internal theme types. |
 | `docs/.vitepress/vitepress/utils/**` | `src/upstream/vitepress/utils/**` | Copied browser utilities with package-local import adjustments where required. |
 | `docs/.vitepress/plugins/headers.ts` | `src/upstream/plugins/headers.ts` | Copied header extraction plugin preserves the official `h2`-`h6` document outline behavior. |
+| `element-plus-playground/src/App.vue` | `src/repl/ElementPlusDocsRepl.vue` | The official `@vue/repl` shell, theme synchronization, URL persistence, reset, reload, and version-selection behavior are adapted into a reusable component with consumer-owned package identity and assets. |
+| `element-plus-playground/src/composables/store.ts` | `src/repl/store.ts` | The official multi-file store, hidden setup files, version switching, import-map updates, reset, and hash serialization are adapted to accept a consumer package module URL. |
+| `element-plus-playground/src/utils/dependency.ts` | `src/repl/dependency.ts` | CDN URL, compiler URL, import-map, and package-version discovery behavior are adapted while the consumer package itself remains same-origin. |
+| `element-plus-playground/src/template/**` | `src/repl/templates.ts` | The official hidden main/setup/tsconfig file model is represented as typed reusable templates. |
 
 A blob comparison against the pinned tree identified 81 mapped files in the
 initial import: 40 exact copies and 41 adapted copies. Package-owned config,
@@ -51,4 +62,7 @@ upstream component message shapes into a two-locale runtime map.
 - Locale routing and Element Plus locale injection are package adapters in
   `site-locale.ts` and `src/runtime/element-plus-docs-layout.ts`.
 
-This first version intentionally has no automatic upstream synchronization.
+The REPL deliberately does not retain Element Plus branding, PR-preview
+switches, UnoCSS, or its Luna console panel. Its consumer package JavaScript
+and CSS are supplied by the host so a component library does not need a public
+CDN package. This first version intentionally has no automatic upstream synchronization.

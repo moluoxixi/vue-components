@@ -169,6 +169,7 @@ describe('reusable content modules', () => {
     const plugin = createElementPlusDocsContent({
       playground: {
         compile: async () => ({ component: icon, dispose: () => undefined }),
+        elementPlus: { path: '/vue-playground/' },
         external: {
           codeSandbox: {},
           project: { title: 'Fixture demo' },
@@ -231,6 +232,7 @@ describe('reusable content modules', () => {
     expect(app.component('OverviewHome')).toBe(plugin.components.OverviewHome)
 
     const submittedForms: HTMLFormElement[] = []
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(function (this: HTMLFormElement) {
       submittedForms.push(this.cloneNode(true) as HTMLFormElement)
     })
@@ -255,6 +257,7 @@ describe('reusable content modules', () => {
     await flushPromises()
     await demo.get('[data-testid="demo-stackblitz"]').trigger('click')
     await demo.get('[data-testid="demo-codesandbox"]').trigger('click')
+    await demo.get('[data-testid="demo-element-plus-playground"]').trigger('click')
 
     const stackBlitzForm = submittedForms.find(form => new URL(form.action).host === 'stackblitz.com')
     const codeSandboxForm = submittedForms.find(form => new URL(form.action).host === 'codesandbox.io')
@@ -263,6 +266,9 @@ describe('reusable content modules', () => {
     expect(formFields(stackBlitzForm!)['project[files][src/App.vue]']).toBe(jsSource)
     const codeSandboxPayload = decodeCodeSandboxParameters(formFields(codeSandboxForm!).parameters!)
     expect(codeSandboxPayload.files['src/App.vue']?.content).toBe(jsSource)
+    const replUrl = new URL(String(open.mock.calls[0]?.[0]))
+    expect(replUrl.pathname).toBe('/vue-playground/')
+    expect(replUrl.hash).not.toBe('')
     demo.unmount()
   })
 })

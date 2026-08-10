@@ -110,6 +110,9 @@ function verifyPagesOutput(basePath) {
     'components-playground/index.html',
     'config-form-playground/index.html',
     'config-form-playground/designer.html',
+    'vue-playground/index.html',
+    'vue-playground/runtime/moluoxixi-components.js',
+    'vue-playground/runtime/moluoxixi-components.css',
   ]
 
   const missingEntries = requiredEntries.filter(entry => !existsSync(resolve(pagesOutput, entry)))
@@ -139,6 +142,7 @@ function verifyPagesOutput(basePath) {
 const pagesBase = normalizeBasePath(process.env.PAGES_BASE_PATH ?? '/vue-components/')
 const componentsPlaygroundBase = appendBasePath(pagesBase, 'components-playground')
 const configFormPlaygroundBase = appendBasePath(pagesBase, 'config-form-playground')
+const vuePlaygroundBase = appendBasePath(pagesBase, 'vue-playground')
 
 runPnpm(['build'])
 runPnpm(['--filter', '@config-form/components-playground', 'build'], {
@@ -146,6 +150,9 @@ runPnpm(['--filter', '@config-form/components-playground', 'build'], {
 })
 runPnpm(['--filter', '@config-form/playground', 'build'], {
   CONFIG_FORM_PLAYGROUND_BASE: configFormPlaygroundBase,
+})
+runPnpm(['--filter', '@moluoxixi/vue-playground', 'build'], {
+  VUE_PLAYGROUND_BASE: vuePlaygroundBase,
 })
 runPnpm(['--filter', '@moluoxixi/docs', 'build'], {
   DOCS_BASE: pagesBase,
@@ -160,6 +167,10 @@ copyOutput(
 copyOutput(
   resolve(repositoryRoot, 'packages/ConfigForm/playground/dist'),
   resolve(pagesOutput, 'config-form-playground'),
+)
+copyOutput(
+  resolve(repositoryRoot, 'playgrounds/vue-playground/dist'),
+  resolve(pagesOutput, 'vue-playground'),
 )
 writeFileSync(resolve(pagesOutput, '.nojekyll'), '', 'utf8')
 

@@ -1,0 +1,23 @@
+{
+  "name": "@moluoxixi/vue-playground",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "vite build && pnpm build:runtime",
+    "build:runtime": "vite build --config vite.runtime.config.ts",
+    "dev": "pnpm --filter @moluoxixi/vitepress-theme-element-plus build && pnpm build:runtime && vite",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "dependencies": {
+    "@moluoxixi/components": "workspace:*",
+    "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
+    "ant-design-vue": "catalog:ui",
+    "element-plus": "catalog:ui",
+    "vue": "catalog:build"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:dev",
+    "vite": "catalog:dev",
+    "vue-tsc": "catalog:dev"
+  }
+}

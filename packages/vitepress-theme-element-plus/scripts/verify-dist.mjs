@@ -28,11 +28,14 @@ const browserArtifacts = (await Promise.all(
 )).join('\n')
 const nodeModuleSpecifier = /(?:\bfrom\s*|\bimport\s*\(\s*)["']node:/
 
-if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify(['.', './markdown'])) {
-  failures.push('package exports must expose the browser root and markdown entries')
+if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify(['.', './markdown', './repl', './repl.css'])) {
+  failures.push('package exports must expose the browser root, markdown, and REPL entries')
 }
 if (!jsFiles.some(file => file.endsWith('/markdown.js'))) {
   failures.push('markdown entry is missing')
+}
+if (!jsFiles.some(file => file.endsWith('/repl.js'))) {
+  failures.push('REPL entry is missing')
 }
 if (!cssFiles.some(file => file.endsWith('/vitepress-theme-element-plus.css'))) {
   failures.push('theme CSS asset is missing')
@@ -48,13 +51,15 @@ if (nodeModuleSpecifier.test(browserArtifacts)) {
 }
 for (const forbidden of [
   '@moluoxixi/ai-doc-assistant',
-  '@element-plus/',
   'packages/theme-chalk',
   'element-plus.gitee.io',
   'element-plus@outlook.com',
 ]) {
   if (browserArtifacts.includes(forbidden))
     failures.push(`forbidden browser artifact reference: ${forbidden}`)
+}
+if (/(?:\bfrom\s*|\bimport\s*\(\s*)["']@element-plus\//.test(browserArtifacts)) {
+  failures.push('forbidden browser artifact import: @element-plus/ package')
 }
 if (!notices.includes('Copyright (c) 2020-PRESENT Element Plus')) {
   failures.push('Element Plus copyright notice is missing')

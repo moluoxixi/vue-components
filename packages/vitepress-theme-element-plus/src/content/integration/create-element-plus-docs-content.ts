@@ -76,9 +76,13 @@ export function createElementPlusDocsContent(
       }
       const openElementPlusPlayground = integration.playground.elementPlus
         ? (source: string): void => {
+            const configuredPlayground = integration.playground.elementPlus
+            const configuredUrl = configuredPlayground.path
+              ? new URL(runtime.asset(configuredPlayground.path), window.location.href).toString()
+              : configuredPlayground.url
             const href = createElementPlusPlaygroundUrl(source, {
               dark: document.documentElement.classList.contains('dark'),
-              url: integration.playground.elementPlus?.url,
+              url: configuredUrl,
             })
             window.open(href, '_blank', 'noopener,noreferrer')
           }

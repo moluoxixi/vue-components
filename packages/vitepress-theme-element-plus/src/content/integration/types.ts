@@ -37,6 +37,7 @@ export interface ElementPlusDocsContentIntegration {
     copy?: (source: string) => Promise<void>
     path: string
     elementPlus?: {
+      path?: string
       url?: string
     }
     external?: {

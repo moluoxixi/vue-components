@@ -143,3 +143,18 @@ The Pages build is reproducible locally through a root script. It builds publish
 The script assembles those outputs under one artifact root, writes `.nojekyll`, checks required entry files, and rejects HTML that still points at an unrelated domain-root path. `PAGES_BASE_PATH` remains overridable for a future custom domain while defaulting to the current project-page path.
 
 Package publication continues to use Changesets rather than a second package-order implementation. A successful verified Pages build gates the release job; pending changesets create or update the version PR, and a merged version PR publishes through `pnpm release` with npm provenance and the existing npm token fallback. Release concurrency is serialized so two `main` pushes cannot publish simultaneously.
+
+## Self-Hosted Vue Playground
+
+The Vue Playground is adapted from the pinned Element Plus Playground source and split across a reusable theme entry and a small consumer application. `@moluoxixi/vitepress-theme-element-plus/repl` owns the `@vue/repl` store, official wrapper/setup templates, Monaco shell, version controls, state serialization, responsive UI, and public package/style contracts. `playgrounds/vue-playground` supplies the documentation project's package name, starter source, repository link, and deployed asset URLs.
+
+The browser module flow is:
+
+```text
+Demo action -> /vue-playground/#<serialized files>
+  -> theme REPL compiles PlaygroundMain.vue + App.vue
+  -> import map resolves Vue and Element Plus from their browser distributions
+  -> import map resolves @moluoxixi/components from same-origin /runtime/moluoxixi-components.js
+```
+
+The component runtime bundle externalizes Vue and Element Plus so the preview shares the import-map instances instead of loading duplicate frameworks. It is built and copied with the Pages artifact together with its package styles. The REPL overrides `@vue/repl` initialization in the same way as the official playground because its hidden `PlaygroundMain.vue` is the sandbox entry and must be compiled before preview mounting. Demo source remains explicit about component imports; implicit global Element Plus registration is only a compatibility aid, not the example contract.

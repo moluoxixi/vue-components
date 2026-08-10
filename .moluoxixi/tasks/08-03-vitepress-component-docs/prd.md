@@ -44,6 +44,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - R30: Build the documentation site, components playground, and ConfigForm playground as one deterministic GitHub Pages artifact. Every application must use its deployed project-page base path instead of assuming the domain root.
 - R31: Deploy GitHub Pages from `main` only after the repository quality gate passes. Pull requests must still build and validate the complete Pages artifact without receiving deployment or release permissions.
 - R32: Publish public workspace packages through the existing Changesets flow only after verification succeeds, with npm provenance, branch restrictions, serialized publication, and job-scoped least-privilege permissions.
+- R33: Replace the external Element Plus playground handoff with a self-hosted playground adapted from the pinned official Element Plus Playground source. Publish its reusable REPL UI/store from the theme package, keep `@moluoxixi/components` on a same-origin browser runtime bundle, and retain CodeSandbox, StackBlitz, and the lightweight playground as separate demo actions.
 
 ## Acceptance Criteria
 
@@ -83,6 +84,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - [ ] GitHub Actions builds one Pages artifact containing the VitePress site plus both standalone playgrounds, with correct project-page asset URLs and all expected HTML entry points.
 - [ ] Successful `main` builds deploy the Pages artifact while pull requests perform the same build validation without deployment credentials.
 - [ ] Changesets can create a version PR or publish packages from verified `main` revisions with npm provenance; no unverified or non-main workflow run can publish.
+- [x] The Vue Playground is built from the reusable theme REPL, opens under the documentation Pages base path, compiles the official wrapper entry, resolves Element Plus and `@moluoxixi/components`, and renders the starter demo without runtime or unresolved-component errors.
 
 ## Out Of Scope
 
