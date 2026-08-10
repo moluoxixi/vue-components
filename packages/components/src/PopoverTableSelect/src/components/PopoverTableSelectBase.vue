@@ -5,6 +5,7 @@ import type {
   PopoverTableSelectSlotScope,
   PopoverTableSelectSlots,
 } from '../types'
+import type { ConfigTableCellParams } from '../../../ConfigTable'
 import { ElPopover } from 'element-plus'
 import { computed, useTemplateRef } from 'vue'
 import { ConfigTable } from '../../../ConfigTable'
@@ -37,6 +38,32 @@ const currentRowIndex = defineModel<number>('currentRowIndex', { default: 0 })
 const popoverRef = useTemplateRef<HTMLElement>('popoverRef')
 const elPopoverRef = useTemplateRef<any>('elPopoverRef')
 const tableSlotNames = computed<string[]>(() => Object.keys(slots).filter(name => name !== 'footer'))
+
+function onCellClick(params: ConfigTableCellParams): void {
+  if (!params.event)
+    return
+
+  handleCellClick(
+    params.row,
+    params.column,
+    params.rowIndex,
+    params.columnIndex,
+    params.event,
+  )
+}
+
+function onCellDblClick(params: ConfigTableCellParams): void {
+  if (!params.event)
+    return
+
+  handleCellDblClick(
+    params.row,
+    params.column,
+    params.rowIndex,
+    params.columnIndex,
+    params.event,
+  )
+}
 
 const {
   computedPopoverProps,
@@ -80,8 +107,8 @@ const {
           :height="tableHeight"
           :table-props="popoverTableProps"
           :width="tableWidth"
-          @cell-click="({ row, column, rowIndex, columnIndex, event }) => handleCellClick(row, column, rowIndex, columnIndex, event as MouseEvent)"
-          @cell-dbl-click="({ row, column, rowIndex, columnIndex, event }) => handleCellDblClick(row, column, rowIndex, columnIndex, event as MouseEvent)"
+          @cell-click="onCellClick"
+          @cell-dbl-click="onCellDblClick"
         >
           <template
             v-for="name in tableSlotNames"

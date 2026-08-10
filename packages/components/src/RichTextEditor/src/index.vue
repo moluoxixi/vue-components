@@ -27,6 +27,7 @@ import {
   Unlink,
   X,
 } from '@lucide/vue'
+import type { Editor } from '@tiptap/core'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import StarterKit from '@tiptap/starter-kit'
@@ -141,6 +142,14 @@ function clearContent(): void {
   editor.value?.commands.clearContent()
 }
 
+function canUndo(instance: Editor): boolean {
+  return instance.can().chain().focus().undo().run()
+}
+
+function canRedo(instance: Editor): boolean {
+  return instance.can().chain().focus().redo().run()
+}
+
 watch(
   () => props.modelValue,
   (value) => {
@@ -226,7 +235,7 @@ defineExpose<RichTextEditorExpose>({
             type="button"
             title="撤销"
             aria-label="撤销"
-            :disabled="props.disabled || !canRun(instance => instance.can().chain().focus().undo().run())"
+            :disabled="props.disabled || !canRun(canUndo)"
             @click="editor?.chain().focus().undo().run()"
           ><Undo2 :size="17" aria-hidden="true" /></button>
           <button
@@ -234,7 +243,7 @@ defineExpose<RichTextEditorExpose>({
             type="button"
             title="重做"
             aria-label="重做"
-            :disabled="props.disabled || !canRun(instance => instance.can().chain().focus().redo().run())"
+            :disabled="props.disabled || !canRun(canRedo)"
             @click="editor?.chain().focus().redo().run()"
           ><Redo2 :size="17" aria-hidden="true" /></button>
         </span>
