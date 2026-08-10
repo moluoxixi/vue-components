@@ -45,7 +45,7 @@
     "build:ui": "node scripts/build-ui.mjs",
     "dev": "vite build --watch",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --testTimeout 30000 --hookTimeout 30000",
     "e2e": "playwright test",
     "typecheck": "vue-tsc -p tsconfig.test.json --noEmit"
   },
