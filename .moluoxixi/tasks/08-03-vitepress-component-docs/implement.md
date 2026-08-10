@@ -27,6 +27,7 @@
 25. Add deterministic local-search records for dynamic component routes and canonical family aliases, including ConfigForm coverage across locales and input casing.
 26. Port the Element Plus documentation's build-time TS-to-JS Demo projection into the reusable Markdown plugin, add a persisted TS/JS segmented control, keep source collapse/copy/playground behavior synchronized, and preserve the old single-source contract.
 27. Add an optional consumer-resolved GitHub Markdown line link to Demo, then cover search, source variants, collapse, links, and editable Playground behavior with focused unit and browser tests.
+28. Consolidate CI and delivery into a least-privilege workflow, add a reproducible GitHub Pages artifact builder for the docs and both playgrounds, configure project-page base paths, retain Changesets npm publication with provenance, and verify the live workflows after pushing `main`.
 
 ## Completion
 

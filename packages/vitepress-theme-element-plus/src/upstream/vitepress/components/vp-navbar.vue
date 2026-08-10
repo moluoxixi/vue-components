@@ -28,7 +28,7 @@ const showVersion = computed(() => String(theme.value.version ?? ''))
         <a :href="withBase(currentLink)">
           <img
             class="logo"
-            :src="String(theme.logo ?? '')"
+            :src="withBase(String(theme.logo ?? ''))"
             :alt="String(site?.title ?? '')"
           />
         </a>

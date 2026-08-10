@@ -32,8 +32,8 @@
     "vue": "catalog:build"
   },
   "devDependencies": {
-    "@types/node": "catalog:type",
     "@types/markdown-it": "catalog:",
+    "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/compiler-sfc": "catalog:dev",
     "happy-dom": "catalog:dev",

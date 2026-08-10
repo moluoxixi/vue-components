@@ -127,3 +127,19 @@ Route content generation is isolated in `scripts/component-routes.mts` and `scri
 ConfigTable runtime changes are isolated behind additive props, column fields, emits, and the opt-in settings control. Removing those additions restores the previous behavior; the shared HeadlessTable helpers remain compatible with their existing consumer.
 
 The playground is isolated behind one Demo toolbar action and one standalone route. Removing the action and route restores the previous documentation behavior; the hardened compiler remains a compatible replacement for the former inline loader adapter.
+
+## Continuous Delivery
+
+One GitHub Actions workflow owns verification and delivery so the exact revision that passes the quality gate is the revision eligible for deployment and publication. The default workflow permission remains `contents: read`. The Pages deployment job receives only `pages: write` and `id-token: write`; the Changesets job receives only the repository, pull-request, and npm OIDC permissions it needs. Pull requests run verification and build the complete Pages artifact, but both delivery jobs are restricted to `main` push or manual runs on `main`.
+
+The Pages build is reproducible locally through a root script. It builds publishable workspace packages first, then builds each browser application with an explicit base path:
+
+```text
+/<repository>/                         VitePress documentation and in-doc playground
+/<repository>/components-playground/  component showcase application
+/<repository>/config-form-playground/ ConfigForm examples and designer.html
+```
+
+The script assembles those outputs under one artifact root, writes `.nojekyll`, checks required entry files, and rejects HTML that still points at an unrelated domain-root path. `PAGES_BASE_PATH` remains overridable for a future custom domain while defaulting to the current project-page path.
+
+Package publication continues to use Changesets rather than a second package-order implementation. A successful verified Pages build gates the release job; pending changesets create or update the version PR, and a merged version PR publishes through `pnpm release` with npm provenance and the existing npm token fallback. Release concurrency is serialized so two `main` pushes cannot publish simultaneously.

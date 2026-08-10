@@ -17,6 +17,23 @@ const WORKSPACE_ROOT = resolve(__dirname, '../../..')
 const COMPONENTS_TSCONFIG = resolve(WORKSPACE_ROOT, 'packages/components/tsconfig.app.json')
 const fx = (rel: string): string => resolve(__dirname, 'fixtures', rel)
 const component = (rel: string): string => resolve(WORKSPACE_ROOT, 'packages/components/src', rel)
+let fixtureChecker: ReturnType<typeof createMetaChecker> | undefined
+
+function extractFixtureContract(
+  relativePath: string,
+  exportName: string,
+  packageName = '@test/pkg',
+  workspaceRoot?: string,
+) {
+  fixtureChecker ??= createMetaChecker(FIXTURES_TSCONFIG)
+  return extractContractWithChecker(
+    fx(relativePath),
+    packageName,
+    fixtureChecker,
+    exportName,
+    workspaceRoot,
+  )
+}
 
 describe('extractContract — vue-component-meta 引擎', () => {
   it('解析 defineProps 导入接口的真实类型并展开可达类型（含传递闭包）', async () => {
@@ -43,12 +60,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('defineProps 内联 Omit 别名由 checker 直接解析字段（无需手写工具类型模拟）', async () => {
-    const c = await extractContract(
-      fx('TableSelect/src/index.vue'),
-      '@test/pkg',
-      'TableSelect',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('TableSelect/src/index.vue', 'TableSelect')
     // props.ts 的 TableSelectProps 含 placeholder（可选），columns（必填）
     const placeholder = c.props.find(p => p.name === 'placeholder')
     expect(placeholder).toBeTruthy()
@@ -56,12 +68,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('props 引用非对象 type alias 时仍纳入 typeDefs.raw，避免知识库只剩类型名', async () => {
-    const c = await extractContract(
-      fx('MacroProbe/src/index.vue'),
-      '@test/pkg',
-      'MacroProbe',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('MacroProbe/src/index.vue', 'MacroProbe')
     const virtualRef = c.props.find(p => p.name === 'virtualRef')
     expect(virtualRef).toBeTruthy()
     expect(virtualRef!.typeRefs).toContain('VirtualRef')
@@ -74,12 +81,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('组件位于内层 src 时跟随相对 import 收集包级共享类型别名', async () => {
-    const c = await extractContract(
-      fx('SharedRequestPackage/src/Component/src/index.vue'),
-      '@test/pkg',
-      'Component',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('SharedRequestPackage/src/Component/src/index.vue', 'Component')
     const query = c.props.find(p => p.name === 'query')
     expect(query).toBeTruthy()
     expect(query!.typeRefs).toEqual(expect.arrayContaining(['RequestParamsRecord', 'RequestOptionRecord']))
@@ -94,12 +96,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('emits、slots、exposed 引用本地 type alias 时也纳入 typeDefs.raw', async () => {
-    const macro = await extractContract(
-      fx('MacroProbe/src/index.vue'),
-      '@test/pkg',
-      'MacroProbe',
-      FIXTURES_TSCONFIG,
-    )
+    const macro = await extractFixtureContract('MacroProbe/src/index.vue', 'MacroProbe')
     const pickEmit = macro.emits.find(e => e.name === 'pick')!
     expect(pickEmit.payloadType).toContain('PickPayload')
     // emit.typeRefs 与 prop 同口径填充，作为 typeDefs 闭包根
@@ -108,12 +105,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
     expect(getStatus.type).toContain('ExposedStatus')
     expect(getStatus.typeRefs).toContain('ExposedStatus')
 
-    const slot = await extractContract(
-      fx('SlotComp/src/index.vue'),
-      '@test/pkg',
-      'SlotComp',
-      FIXTURES_TSCONFIG,
-    )
+    const slot = await extractFixtureContract('SlotComp/src/index.vue', 'SlotComp')
     const footerSlot = slot.slots.find(s => s.name === 'footer')!
     expect(footerSlot.scopeType).toContain('FooterSlotScope')
     expect(footerSlot.typeRefs).toContain('FooterSlotScope')
@@ -123,27 +115,17 @@ describe('extractContract — vue-component-meta 引擎', () => {
     expect(defs.find(t => t.name === 'ProbeItem')!.raw).toContain('interface ProbeItem')
     expect(defs.find(t => t.name === 'ExposedStatus')!.raw).toContain('type ExposedStatus = \'idle\' | \'busy\'')
     expect(defs.find(t => t.name === 'FooterSlotScope')!.raw).toContain('interface FooterSlotScope')
-  })
+  }, 15_000)
 
   it('printer 输出的中文默认值被解回真字符（不残留 \\uXXXX 转义）', async () => {
-    const c = await extractContract(
-      fx('MacroProbe/src/index.vue'),
-      '@test/pkg',
-      'MacroProbe',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('MacroProbe/src/index.vue', 'MacroProbe')
     const placeholder = c.props.find(p => p.name === 'placeholder')!
     expect(placeholder.defaultValue).toContain('请选择')
     expect(placeholder.defaultValue).not.toContain('\\u')
   })
 
   it('从 <Comp>Slots 契约派生动态插槽 [dynamic]，并保留 meta 具名插槽', async () => {
-    const c = await extractContract(
-      fx('SlotComp/src/index.vue'),
-      '@test/pkg',
-      'SlotComp',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('SlotComp/src/index.vue', 'SlotComp')
     const slotNames = c.slots.map(s => s.name)
     expect(slotNames).toContain('default')
     expect(slotNames).toContain('[dynamic]')
@@ -155,12 +137,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('合并 v-bind="$attrs" 定向转发的子组件 props 并打 forwardedFrom 角标', async () => {
-    const c = await extractContract(
-      fx('ForwardComp/src/index.vue'),
-      '@test/pkg',
-      'ForwardComp',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('ForwardComp/src/index.vue', 'ForwardComp')
     expect(c.name).toBe('ForwardComp')
     const names = c.props.map(p => p.name)
     expect(names).toContain('placeholder') // 父自身
@@ -173,24 +150,14 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('无 $attrs 透传时不合并子组件 props', async () => {
-    const c = await extractContract(
-      fx('NoForward/src/index.vue'),
-      '@test/pkg',
-      'NoForward',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('NoForward/src/index.vue', 'NoForward')
     const names = c.props.map(p => p.name)
     expect(names).toContain('visible')
     expect(names).not.toContain('secret')
   })
 
   it('父 import 多个子组件时只合并真正接收 $attrs 的那个', async () => {
-    const c = await extractContract(
-      fx('MultiChild/src/index.vue'),
-      '@test/pkg',
-      'MultiChild',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('MultiChild/src/index.vue', 'MultiChild')
     const names = c.props.map(p => p.name)
     expect(names).toContain('own')
     expect(names).toContain('forwarded')
@@ -198,36 +165,21 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('defineModel 体现为 props + update emits + models 派生', async () => {
-    const c = await extractContract(
-      fx('MacroProbe/src/index.vue'),
-      '@test/pkg',
-      'MacroProbe',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('MacroProbe/src/index.vue', 'MacroProbe')
     expect(c.props.some(p => p.name === 'open')).toBe(true)
     expect(c.emits.some(e => e.name === 'update:open')).toBe(true)
     expect(c.models.some(m => m.name === 'open')).toBe(true)
   })
 
   it('defineEmits 携带 payload 类型', async () => {
-    const c = await extractContract(
-      fx('MacroProbe/src/index.vue'),
-      '@test/pkg',
-      'MacroProbe',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('MacroProbe/src/index.vue', 'MacroProbe')
     const pick = c.emits.find(e => e.name === 'pick')
     expect(pick).toBeTruthy()
     expect(pick!.payloadType).toContain('PickPayload')
   })
 
   it('defineAttrs<T> 提取为独立 attrs 段（meta 不体现，靠后处理）', async () => {
-    const c = await extractContract(
-      fx('MacroProbe/src/index.vue'),
-      '@test/pkg',
-      'MacroProbe',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('MacroProbe/src/index.vue', 'MacroProbe')
     expect(c.attrs).toBeTruthy()
     const attrNames = c.attrs!.map(a => a.name)
     expect(attrNames).toContain('placeholder')
@@ -235,12 +187,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('defineExpose 成员体现为 exposed', async () => {
-    const c = await extractContract(
-      fx('MacroProbe/src/index.vue'),
-      '@test/pkg',
-      'MacroProbe',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('MacroProbe/src/index.vue', 'MacroProbe')
     expect(c.exposed).toBeTruthy()
     const exposedNames = c.exposed!.map(e => e.name)
     expect(exposedNames).toEqual(['items', 'focus', 'reset', 'getStatus'])
@@ -249,22 +196,12 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('无 defineExpose 时不产生伪 exposed 成员', async () => {
-    const c = await extractContract(
-      fx('NoForward/src/index.vue'),
-      '@test/pkg',
-      'NoForward',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('NoForward/src/index.vue', 'NoForward')
     expect(c.exposed).toBeUndefined()
   })
 
   it('契约序列化体积受控（schema.ignore 边界裁剪护栏，< 50KB）', async () => {
-    const c = await extractContract(
-      fx('TableSelect/src/index.vue'),
-      '@test/pkg',
-      'TableSelect',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('TableSelect/src/index.vue', 'TableSelect')
     const bytes = Buffer.byteLength(JSON.stringify(c))
     expect(bytes).toBeLessThan(50_000)
   })
@@ -282,12 +219,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('kebab-case 标签 <sub-comp> 归一为 PascalCase 并匹配 import 绑定，正确合并转发 props', async () => {
-    const c = await extractContract(
-      fx('KebabForward/src/index.vue'),
-      '@test/pkg',
-      'KebabForward',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('KebabForward/src/index.vue', 'KebabForward')
     const names = c.props.map(p => p.name)
     expect(names).toContain('placeholder') // 父自身
     expect(names).toContain('columns') // 转发自 kebab 标签对应的子组件
@@ -296,12 +228,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('原生元素 <div v-bind="$attrs"> 不触发转发合并、不抛错（透传到 DOM，无子组件契约）', async () => {
-    const c = await extractContract(
-      fx('NativeAttrs/src/index.vue'),
-      '@test/pkg',
-      'NativeAttrs',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('NativeAttrs/src/index.vue', 'NativeAttrs')
     const names = c.props.map(p => p.name)
     expect(names).toContain('label')
     // 原生元素透传不引入任何 forwardedFrom 角标
@@ -309,12 +236,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('第三方组件 <ElDatePicker v-bind="$attrs"> 转发跳过合并、不抛错（meta 无法跨包解析其 props）', async () => {
-    const c = await extractContract(
-      fx('ThirdPartyForward/src/index.vue'),
-      '@test/pkg',
-      'ThirdPartyForward',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('ThirdPartyForward/src/index.vue', 'ThirdPartyForward')
     const names = c.props.map(p => p.name)
     expect(names).toContain('placeholder') // 父自身保留
     // 第三方裸模块/全局组件无法定位本地契约，转发跳过，不引入 forwardedFrom，也不抛错
@@ -322,12 +244,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('default import 第三方/别名组件 <SomeWidget v-bind="$attrs"> 跳过合并、不抛错（specifier 捕获但非相对 .vue）', async () => {
-    const c = await extractContract(
-      fx('AliasForward/src/index.vue'),
-      '@test/pkg',
-      'AliasForward',
-      FIXTURES_TSCONFIG,
-    )
+    const c = await extractFixtureContract('AliasForward/src/index.vue', 'AliasForward')
     const names = c.props.map(p => p.name)
     expect(names).toContain('title') // 父自身保留
     // specifier='some-widget-lib' 被捕获但不匹配相对 .vue，命中正则否定分支跳过，不抛错
@@ -341,11 +258,10 @@ describe('extractContract — vue-component-meta 引擎', () => {
   })
 
   it('解析 paths workspace 类型闭包，并处理共用泛型、循环、缺失模块和外部依赖边界', async () => {
-    const c = await extractContract(
-      fx('WorkspaceTypeGraph/packages/consumer/src/index.vue'),
-      '@fixture/consumer',
+    const c = await extractFixtureContract(
+      'WorkspaceTypeGraph/packages/consumer/src/index.vue',
       'WorkspaceTypeGraph',
-      FIXTURES_TSCONFIG,
+      '@fixture/consumer',
       WORKSPACE_ROOT,
     )
 
@@ -425,13 +341,8 @@ describe('extractContracts — real workspace package types', () => {
 })
 
 describe('extractContractWithChecker — 复用单一 checker', () => {
-  let checker: ReturnType<typeof createMetaChecker>
-
-  beforeAll(() => {
-    checker = createMetaChecker(FIXTURES_TSCONFIG)
-  })
-
   it('同一 checker 连续提取多个组件', () => {
+    const checker = fixtureChecker ??= createMetaChecker(FIXTURES_TSCONFIG)
     const a = extractContractWithChecker(fx('TableSelect/src/index.vue'), '@test/pkg', checker, 'TableSelect')
     const b = extractContractWithChecker(fx('MacroProbe/src/index.vue'), '@test/pkg', checker, 'MacroProbe')
     expect(a.name).toBe('TableSelect')

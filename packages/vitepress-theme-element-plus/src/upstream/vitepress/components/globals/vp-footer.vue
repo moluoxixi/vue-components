@@ -1,8 +1,13 @@
 <script lang="ts" setup>
-import { useData } from 'vitepress'
+import { computed } from 'vue'
+import { useData, withBase } from 'vitepress'
 
 defineProps<{ isHome?: boolean }>()
 const { theme } = useData()
+const sitemapHref = computed(() => {
+  const sitemap = theme.value.sitemap
+  return sitemap ? withBase(String(sitemap)) : ''
+})
 </script>
 
 <template>
@@ -31,7 +36,8 @@ const { theme } = useData()
         Issues
       </a>
       <a
-        href="/sitemap.xml"
+        v-if="sitemapHref"
+        :href="sitemapHref"
         class="footer-main-link"
         target="_blank"
       >

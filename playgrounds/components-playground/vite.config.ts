@@ -1,4 +1,5 @@
 import { dirname, resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { autoComponent, autoImport } from '@moluoxixi/components/auto-loaders'
 import Vue from '@vitejs/plugin-vue'
@@ -13,6 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const playgroundSource = /[\\/]playgrounds[\\/]components-playground[\\/]src[\\/].*(?:\.[jt]sx?|\.vue(?:\?vue.*)?)$/
 
 export default defineConfig({
+  base: process.env.COMPONENTS_PLAYGROUND_BASE ?? '/',
   plugins: [
     Vue(),
     VueJsx(),

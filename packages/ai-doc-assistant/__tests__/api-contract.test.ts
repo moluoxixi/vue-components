@@ -53,4 +53,24 @@ describe('normalizeComponentApiContract', () => {
 
     expect(result.props[0]).toMatchObject({ default: '\u0027ready\u0027', description: 'Not documented' })
   })
+
+  it('normalizes omitted exposes and empty surface descriptions', () => {
+    const contract = createContract()
+    contract.exposed = undefined
+    contract.slots[0]!.description = ''
+
+    const resultWithoutExpose = normalizeComponentApiContract(contract)
+
+    expect(resultWithoutExpose.expose).toEqual([])
+    expect(resultWithoutExpose.slots[0]?.description).toBe('—')
+
+    contract.exposed = [{
+      description: '',
+      name: 'copy',
+      type: '() => Promise<void>',
+      typeRefs: [],
+    }]
+
+    expect(normalizeComponentApiContract(contract).expose[0]?.description).toBe('—')
+  })
 })

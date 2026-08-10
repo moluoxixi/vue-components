@@ -1,5 +1,6 @@
 import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './docs-site'
+import process from 'node:process'
 import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
 import { elementPlusDocsDemoPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
@@ -111,6 +112,8 @@ const vitepressLocales = Object.fromEntries(
 type VitePressPlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
 
 const componentAutoLoadPlugins = createComponentAutoLoadPlugins() as VitePressPlugins
+const docsBase = process.env.DOCS_BASE ?? '/'
+const docsLogoHref = `${docsBase === '/' ? '' : docsBase.replace(/\/$/, '')}${docsSite.logo.src}`
 
 export default defineElementPlusDocs({
   site: {
@@ -118,7 +121,7 @@ export default defineElementPlusDocs({
     siteTitle: docsSite.siteTitle,
     description: getDocsMessages(defaultDocsLocale).siteDescription,
     logo: docsSite.logo.src,
-    base: '/',
+    base: docsBase,
     locales: vitepressLocales,
     defaultLocale: defaultDocsLocale,
   },
@@ -137,7 +140,7 @@ export default defineElementPlusDocs({
   search: 'local',
   vitepress: {
     head: [
-      ['link', { rel: 'icon', type: 'image/svg+xml', href: docsSite.logo.src }],
+      ['link', { rel: 'icon', type: 'image/svg+xml', href: docsLogoHref }],
     ],
     markdown: {
       theme: {

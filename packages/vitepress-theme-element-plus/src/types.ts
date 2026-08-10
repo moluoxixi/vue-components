@@ -58,6 +58,7 @@ export interface ElementPlusDocsOptions {
 
 export interface ElementPlusDocsThemeConfig {
   logo: string
+  sitemap?: string
   siteTitle: string
   version: string
   repository: string
