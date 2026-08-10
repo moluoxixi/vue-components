@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   findPackagesNeedingChangesets,
+  isReleaseOnlyChangeSet,
   normalizeManifestForChangeDetection,
   renderPatchChangeset,
 } from '../auto-changesets.mjs'
@@ -60,6 +61,44 @@ describe('findPackagesNeedingChangesets', () => {
     })
 
     expect(selected.map(pkg => pkg.name)).toEqual(['@moluoxixi/beta'])
+  })
+})
+
+describe('isReleaseOnlyChangeSet', () => {
+  const workspacePackages = [
+    ...packages,
+    { name: '@moluoxixi/docs', private: true, relativeDirectory: 'docs/vitepress' },
+  ]
+
+  it('recognizes version PR artifacts across public and private packages', () => {
+    expect(isReleaseOnlyChangeSet({
+      packages: workspacePackages,
+      changedFiles: [
+        'packages/alpha/package.json',
+        'packages/alpha/CHANGELOG.md',
+        'docs/vitepress/package.json',
+        'pnpm-lock.yaml',
+      ],
+      hasManifestChange: () => false,
+    })).toBe(true)
+  })
+
+  it('does not classify documentation or source changes as a release merge', () => {
+    expect(isReleaseOnlyChangeSet({
+      packages: workspacePackages,
+      changedFiles: ['docs/vitepress/utils/index.md'],
+      hasManifestChange: () => false,
+    })).toBe(false)
+    expect(isReleaseOnlyChangeSet({
+      packages: workspacePackages,
+      changedFiles: ['packages/alpha/src/index.ts'],
+      hasManifestChange: () => false,
+    })).toBe(false)
+    expect(isReleaseOnlyChangeSet({
+      packages: workspacePackages,
+      changedFiles: ['.changeset/alpha.md'],
+      hasManifestChange: () => false,
+    })).toBe(false)
   })
 })
 

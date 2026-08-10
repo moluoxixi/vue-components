@@ -5,6 +5,7 @@ import process from 'node:process'
 
 const repositoryRoot = resolve(import.meta.dirname, '..')
 const changesetDirectory = resolve(repositoryRoot, '.changeset')
+const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 const dependencyFields = [
   'dependencies',
   'devDependencies',
@@ -80,10 +81,12 @@ function collectWorkspacePackages() {
   const workspacePackages = JSON.parse(runPnpm(['list', '-r', '--depth', '-1', '--json']))
 
   return workspacePackages
-    .filter(pkg => !pkg.private && pkg.name && pkg.version)
+    .filter(pkg => pkg.name)
     .map(pkg => ({
       name: pkg.name,
+      private: Boolean(pkg.private),
       relativeDirectory: normalizePath(relative(repositoryRoot, pkg.path)),
+      version: pkg.version,
     }))
     .sort((left, right) => left.relativeDirectory.localeCompare(right.relativeDirectory))
 }
@@ -152,6 +155,15 @@ function readManifestAtRef(ref, manifestPath) {
   }
 }
 
+function readTextAtRef(ref, path) {
+  try {
+    return runGit(['show', `${ref}:${path}`], { allowFailure: true })
+  }
+  catch {
+    return undefined
+  }
+}
+
 function hasMeaningfulManifestChange(packageInfo, base, head, workspacePackageNames) {
   const manifestPath = `${packageInfo.relativeDirectory}/package.json`
   const before = readManifestAtRef(base, manifestPath)
@@ -188,6 +200,152 @@ export function findPackagesNeedingChangesets({
   })
 }
 
+function findWorkspacePackage(packages, file) {
+  return packages
+    .filter(pkg => file.startsWith(`${pkg.relativeDirectory}/`))
+    .sort((left, right) => right.relativeDirectory.length - left.relativeDirectory.length)[0]
+}
+
+export function isReleaseOnlyChangeSet({
+  packages,
+  changedFiles,
+  hasManifestChange,
+}) {
+  let hasReleaseArtifact = false
+
+  for (const file of changedFiles) {
+    if (/^\.changeset\/[^/]+\.md$/.test(file))
+      return false
+
+    if (file === 'pnpm-lock.yaml') {
+      continue
+    }
+
+    const packageInfo = findWorkspacePackage(packages, file)
+    if (!packageInfo)
+      return false
+
+    const relativePackagePath = file.slice(packageInfo.relativeDirectory.length + 1)
+    if (relativePackagePath === 'CHANGELOG.md') {
+      hasReleaseArtifact = true
+      continue
+    }
+    if (relativePackagePath === 'package.json' && !hasManifestChange(packageInfo)) {
+      hasReleaseArtifact = true
+      continue
+    }
+
+    return false
+  }
+
+  return hasReleaseArtifact
+}
+
+function refExists(ref) {
+  try {
+    runGit(['rev-parse', '--verify', `${ref}^{commit}`], { allowFailure: true })
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+function getLatestPackageTag(packageName) {
+  return runGit([
+    'tag',
+    '--list',
+    '--sort=-version:refname',
+    `${packageName}@*`,
+  ]).split(/\r?\n/).find(Boolean)
+}
+
+function changelogContainsVersion(packageInfo, head) {
+  const changelog = readTextAtRef(head, `${packageInfo.relativeDirectory}/CHANGELOG.md`)
+  if (!changelog)
+    return false
+
+  return changelog.split(/\r?\n/).some(line => line.trim() === `## ${packageInfo.version}`)
+}
+
+function resolvePackageBase(packageInfo, fallbackBase) {
+  const currentTag = `${packageInfo.name}@${packageInfo.version}`
+  if (refExists(currentTag))
+    return currentTag
+
+  const latestTag = getLatestPackageTag(packageInfo.name)
+  if (latestTag)
+    return latestTag
+
+  const manifestPath = `${packageInfo.relativeDirectory}/package.json`
+  const addedInCommit = runGit([
+    'log',
+    '-1',
+    '--diff-filter=A',
+    '--format=%H',
+    '--',
+    manifestPath,
+  ], { allowFailure: true })
+
+  if (!addedInCommit)
+    return fallbackBase
+
+  return refExists(`${addedInCommit}^`) ? `${addedInCommit}^` : emptyTree
+}
+
+function collectChangedFiles(base, head, pathspec) {
+  const args = [
+    'diff',
+    '--name-only',
+    '--diff-filter=ACMRT',
+    base,
+    head,
+    '--',
+  ]
+  if (pathspec)
+    args.push(pathspec)
+
+  return runGit(args).split(/\r?\n/).filter(Boolean).map(normalizePath)
+}
+
+function collectPackagesNeedingChangesets({
+  packages,
+  pendingPackageNames,
+  workspacePackageNames,
+  fallbackBase,
+  head,
+}) {
+  const selected = []
+
+  for (const packageInfo of packages) {
+    if (pendingPackageNames.has(packageInfo.name))
+      continue
+
+    const currentTag = `${packageInfo.name}@${packageInfo.version}`
+    if (!refExists(currentTag) && changelogContainsVersion(packageInfo, head))
+      continue
+
+    const base = resolvePackageBase(packageInfo, fallbackBase)
+    const changedFiles = collectChangedFiles(base, head, packageInfo.relativeDirectory)
+    const [changedPackage] = findPackagesNeedingChangesets({
+      packages: [packageInfo],
+      changedFiles,
+      pendingPackageNames: new Set(),
+      hasManifestChange: currentPackage => hasMeaningfulManifestChange(
+        currentPackage,
+        base,
+        head,
+        workspacePackageNames,
+      ),
+    })
+
+    if (changedPackage)
+      selected.push(changedPackage)
+  }
+
+  return selected
+}
+
 export function renderPatchChangeset(packageNames, revision) {
   const releases = [...packageNames]
     .sort((left, right) => left.localeCompare(right))
@@ -201,21 +359,14 @@ function main() {
   const options = parseArguments(process.argv.slice(2))
   const refs = resolveRefs(options)
   const resolvedHead = runGit(['rev-parse', refs.head])
-  const changedFiles = runGit([
-    'diff',
-    '--name-only',
-    '--diff-filter=ACMRT',
-    refs.base,
-    refs.head,
-    '--',
-  ]).split(/\r?\n/).filter(Boolean).map(normalizePath)
-  const packages = collectWorkspacePackages()
-  const workspacePackageNames = new Set(packages.map(pkg => pkg.name))
+  const eventChangedFiles = collectChangedFiles(refs.base, refs.head)
+  const workspacePackages = collectWorkspacePackages()
+  const packages = workspacePackages.filter(pkg => !pkg.private && pkg.version)
+  const workspacePackageNames = new Set(workspacePackages.map(pkg => pkg.name))
   const pendingPackageNames = collectPendingPackageNames()
-  const packagesNeedingChangesets = findPackagesNeedingChangesets({
-    packages,
-    changedFiles,
-    pendingPackageNames,
+  const releaseOnly = isReleaseOnlyChangeSet({
+    packages: workspacePackages,
+    changedFiles: eventChangedFiles,
     hasManifestChange: packageInfo => hasMeaningfulManifestChange(
       packageInfo,
       refs.base,
@@ -223,11 +374,21 @@ function main() {
       workspacePackageNames,
     ),
   })
+  const packagesNeedingChangesets = releaseOnly
+    ? []
+    : collectPackagesNeedingChangesets({
+        packages,
+        pendingPackageNames,
+        workspacePackageNames,
+        fallbackBase: refs.base,
+        head: refs.head,
+      })
   const packageNames = packagesNeedingChangesets.map(pkg => pkg.name)
   const result = {
     base: refs.base,
     head: resolvedHead,
     packages: packageNames,
+    releaseOnly,
   }
 
   if (options.dryRun) {
