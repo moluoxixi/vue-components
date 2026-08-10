@@ -100,6 +100,14 @@ The standalone designer must also prove that the core is UI-framework independen
 - Keep every property write on the existing `updateNodePath` / `updateForm` history path so ConfigForm integration cannot bypass undo, redo, diagnostics, or document normalization.
 - Simple setters keep a stable left label column; custom fields retain full-width content on desktop and narrow layouts.
 
+### R14. Semantic component registry and extensions
+
+- Headless owns a shared component registration contract that accepts either a Vue component or a registration with default props and value/event bindings.
+- Runtime, renderer, Element Plus, Ant Design Vue, and designer registries resolve string aliases such as `component: 'text'` without coupling core packages to a UI library.
+- Explicit field bindings override registration defaults; caller registry layers override adapter defaults.
+- Field and container nodes may carry serializable `extensions` metadata. It remains available to slot, readonly, designer, adapter, and plugin consumers but is never forwarded to real components or DOM attributes.
+- The designer property panel uses semantic aliases backed by the active adapter's registered real controls, while history and document export remain unchanged.
+
 ## Acceptance Criteria
 
 - [x] Playground opens with a 24-column root grid; the sample’s two-up sections are achieved with explicit 12-cell spans.
@@ -119,6 +127,8 @@ The standalone designer must also prove that the core is UI-framework independen
 - [x] Selection chrome does not alter geometry and disappears on focus loss while the selected node remains available in the property panel.
 - [x] Section, Card, Tabs, Collapse, Flex, and Grid use a production container language with one quiet empty drop surface, no generic nested frame, no canvas instructions, and adapter-parity browser coverage.
 - [x] The property panel is rendered by ConfigForm with adapter-native ordinary controls, custom setter support, left labels, unchanged history semantics, and Element Plus/Ant Design Vue desktop/narrow coverage.
+- [x] Headless, Runtime, Element Plus, Ant Design Vue, and the designer resolve semantic component aliases with documented override precedence and adapter-correct bindings.
+- [x] Serializable `extensions` survive parse, compile, slots, readonly contexts, history, import/export, and never leak to component props or DOM.
 
 ## Out of Scope
 

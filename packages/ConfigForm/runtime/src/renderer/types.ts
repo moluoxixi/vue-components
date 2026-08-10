@@ -9,6 +9,8 @@ import type {
   ConfigFormNode,
   ConfigFormReadonlyRender,
   ConfigFormValues,
+  ConfigFormComponentRegistration as HeadlessComponentRegistration,
+  ConfigFormComponentRegistry as HeadlessComponentRegistry,
 } from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 import type { ConfigFormResponsiveLayout } from './responsive'
@@ -17,6 +19,8 @@ export type ConfigFormRendererFormAttrs = FormHTMLAttributes
 export type ConfigFormRendererLayoutAttrs = HTMLAttributes
 export type ConfigFormRendererCellAttrs = HTMLAttributes
 export type ConfigFormRendererFieldAttrs = HTMLAttributes
+export type ConfigFormComponentRegistration = HeadlessComponentRegistration<Component>
+export type ConfigFormComponentRegistry = HeadlessComponentRegistry<Component>
 
 export type ConfigFormRendererNode<TValues extends ConfigFormValues = ConfigFormValues>
   = ConfigFormNode<
@@ -44,6 +48,8 @@ export type ConfigFormControlBindingResolver<TValues extends ConfigFormValues = 
 
 export interface ConfigFormRendererProps<TValues extends ConfigFormValues = ConfigFormValues> {
   fields: ConfigFormRendererNode<TValues>[]
+  /** 按字符串别名解析字段/容器组件；字段自身的绑定配置优先于注册默认值。 */
+  components?: ConfigFormComponentRegistry
   defaultValues?: Partial<TValues>
   readonly?: ConfigFormCondition<TValues>
   readonlyRender?: ConfigFormReadonlyRender<

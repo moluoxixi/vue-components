@@ -12,7 +12,7 @@ export type DesignerDropTarget
     | { parentId: string, slot: string, index?: number }
 
 export type DesignerNodeChanges = Partial<
-  Pick<DesignerNodeBase, 'material' | 'props' | 'span' | 'conditions'>
+  Pick<DesignerNodeBase, 'material' | 'props' | 'extensions' | 'span' | 'conditions'>
   & Pick<DesignerFieldNode, 'field' | 'label' | 'defaultValue' | 'validation' | 'validateOn'>
 >
 

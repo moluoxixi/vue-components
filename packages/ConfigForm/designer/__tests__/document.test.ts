@@ -2,6 +2,8 @@ import type { DesignerDocument } from '../index'
 import { describe, expect, it } from 'vitest'
 import {
   DESIGNER_DOCUMENT_VERSION,
+  isDesignerJsonObject,
+  isDesignerJsonValue,
   parseDesignerDocument,
 } from '../index'
 
@@ -17,6 +19,9 @@ function createDocument(): DesignerDocument {
         field: 'name',
         label: 'Name',
         props: { clearable: true },
+        extensions: {
+          'designer.setter': { path: ['label'], inherited: false },
+        },
         conditions: {
           visible: {
             kind: 'compare',
@@ -67,6 +72,10 @@ describe('designer document', () => {
     const withDate = createDocument()
     withDate.nodes[0]!.props = { date: new Date() as never }
     expect(parseDesignerDocument(withDate).success).toBe(false)
+
+    const withExtensionDate = createDocument()
+    withExtensionDate.nodes[0]!.extensions = { date: new Date() as never }
+    expect(parseDesignerDocument(withExtensionDate).success).toBe(false)
 
     expect(parseDesignerDocument({
       ...createDocument(),
@@ -205,5 +214,15 @@ describe('designer document', () => {
       success: false,
       diagnostics: [{ code: 'DESIGNER_DOCUMENT_CYCLE' }],
     })
+  })
+
+  it('validates programmatic JSON values without accepting instances or cycles', () => {
+    const cyclic: Record<string, unknown> = {}
+    cyclic.self = cyclic
+
+    expect(isDesignerJsonObject({ nested: [1, 'two', true, null] })).toBe(true)
+    expect(isDesignerJsonValue([1, { valid: true }])).toBe(true)
+    expect(isDesignerJsonObject(new Date())).toBe(false)
+    expect(isDesignerJsonObject(cyclic)).toBe(false)
   })
 })

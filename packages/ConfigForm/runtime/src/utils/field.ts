@@ -44,6 +44,7 @@ interface ComponentFieldPart<C, TValues extends object = FormValues> {
 }
 
 interface ComponentNodeConfigCore<C, TValues extends object = FormValues> extends ComponentFieldPart<C, TValues> {
+  extensions?: ComponentNodeConfig['extensions']
   span?: number
   visible?: FieldCondition<TValues>
   slots?: Record<string, SlotContent>
@@ -89,6 +90,7 @@ interface FieldConfigBase<
   TField extends FieldKey<TValues> = FieldKey<TValues>,
 > {
   field: TField
+  extensions?: ComponentNodeConfig['extensions']
   label?: RuntimeText
   span?: number
   valueProp?: string

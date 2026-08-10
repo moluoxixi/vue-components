@@ -121,6 +121,7 @@ function compileNodeBase(node: DesignerNode, component: ConfigFormRendererNode['
   return {
     component,
     ...(node.props ? { props: cloneDesignerJsonValue(node.props) } : {}),
+    ...(node.extensions ? { extensions: cloneDesignerJsonValue(node.extensions) } : {}),
     ...(node.span === undefined ? {} : { span: node.span }),
     ...(node.conditions?.visible ? { visible: compileDesignerCondition(node.conditions.visible) } : {}),
     ...(node.conditions?.hidden ? { hidden: compileDesignerCondition(node.conditions.hidden) } : {}),
@@ -217,8 +218,13 @@ function compileNode(
     : compileContainer(node, path, registry, diagnostics)
 }
 
-function rendererConfig(document: DesignerDocument, fields: ConfigFormRendererNode[]): DesignerRendererConfig {
+function rendererConfig(
+  document: DesignerDocument,
+  fields: ConfigFormRendererNode[],
+  registry: DesignerRegistry,
+): DesignerRendererConfig {
   return {
+    components: registry.components,
     fields,
     ...(document.form.readonly === undefined ? {} : { readonly: document.form.readonly }),
     ...(document.form.inline === undefined ? {} : { inline: document.form.inline }),
@@ -262,7 +268,7 @@ export function compileDesignerDocument(
     success: true,
     document: parsed.data,
     fields,
-    renderer: rendererConfig(parsed.data, fields),
+    renderer: rendererConfig(parsed.data, fields, registry),
     diagnostics,
   }
 }

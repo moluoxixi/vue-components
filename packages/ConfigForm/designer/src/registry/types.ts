@@ -1,3 +1,4 @@
+import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
 import type {
@@ -52,7 +53,7 @@ export interface DesignerPropertySetterDefinition {
   min?: number
   max?: number
   step?: number
-  component?: Component
+  component?: Component | string
   componentProps?: Record<string, unknown>
 }
 
@@ -128,6 +129,8 @@ export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | Desig
 
 export interface DesignerRegistryLayer {
   name: string
+  /** ConfigForm 字符串组件别名；靠前 layer 的同名注册优先。 */
+  components?: ConfigFormComponentRegistry
   materials?: Iterable<DesignerMaterialDefinition>
   propertyControls?: DesignerPropertyControlRegistry
   validators?: Record<string, RuleCustomValidator>
@@ -139,6 +142,7 @@ export interface DesignerRegistryOptions {
 
 export interface DesignerRegistry {
   rendererNamespace: string
+  components: ConfigFormComponentRegistry
   propertyControls: DesignerPropertyControlRegistry
   getMaterial: (key: string) => DesignerMaterialDefinition | undefined
   getValidator: (key: string) => RuleCustomValidator | undefined

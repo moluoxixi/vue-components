@@ -2,9 +2,11 @@ import type { Component } from 'vue'
 import type { AntdConfigFormExpose } from '../src/types'
 import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
+import { Input, InputNumber, Segmented, Select, Switch } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { z } from 'zod'
+import { ANTD_CONFIG_FORM_COMPONENTS } from '../src/components'
 import AntdConfigFormSource from '../src/index.vue'
 
 const AntdConfigForm = AntdConfigFormSource as Component
@@ -16,6 +18,11 @@ interface UserForm {
 
 interface SwitchForm {
   enabled: boolean
+}
+
+interface SemanticForm {
+  enabled: boolean
+  name: string
 }
 
 const InputStub = defineComponent({
@@ -123,6 +130,52 @@ describe('antd config form', () => {
     expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: true })
   })
 
+  it('resolves semantic text aliases and lets consumers override adapter defaults', async () => {
+    const wrapper = mount(AntdConfigForm, {
+      props: {
+        components: { text: InputStub },
+        fields: [defineField<UserForm>({ component: 'text', field: 'name', label: '姓名' })],
+        modelValue: { name: '', status: 'draft' },
+      },
+    })
+
+    await wrapper.get<HTMLInputElement>('[data-testid="antd-input-stub"]').setValue('Ada')
+    expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'name', value: 'Ada' })
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ name: 'Ada', status: 'draft' }])
+  })
+
+  it('renders adapter defaults for every semantic alias and applies native bindings', async () => {
+    expect(ANTD_CONFIG_FORM_COMPONENTS).toMatchObject({
+      text: { component: Input, valueProp: 'value', trigger: 'update:value' },
+      textarea: { component: Input.TextArea, valueProp: 'value', trigger: 'update:value' },
+      number: { component: InputNumber, valueProp: 'value', trigger: 'change' },
+      boolean: { component: Switch, valueProp: 'checked', trigger: 'change' },
+      select: { component: Select, valueProp: 'value', trigger: 'change' },
+      segmented: { component: Segmented, valueProp: 'value', trigger: 'change' },
+    })
+
+    const wrapper = mount(AntdConfigForm, {
+      props: {
+        fields: [
+          defineField<SemanticForm>({ component: 'text', field: 'name' }),
+          defineField<SemanticForm>({ component: 'boolean', field: 'enabled' }),
+        ],
+        modelValue: { enabled: false, name: '' },
+      },
+    })
+
+    wrapper.getComponent(Input).vm.$emit('update:value', 'Ada')
+    await wrapper.vm.$nextTick()
+    wrapper.getComponent(Switch).vm.$emit('change', true)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('fieldChange')).toEqual([
+      [expect.objectContaining({ field: 'name', value: 'Ada' })],
+      [expect.objectContaining({ field: 'enabled', value: true })],
+    ])
+    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([{ enabled: true, name: 'Ada' }])
+  })
+
   it('同页同名字段生成唯一 control/error id 并关联本字段错误', async () => {
     const fields = [defineField<UserForm>({
       component: InputStub,
@@ -181,6 +234,26 @@ describe('antd config form', () => {
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true }])
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
     expect(wrapper.find('.ant-form').exists()).toBe(false)
+  })
+
+  it('uses registered boolean binding defaults for string aliases', async () => {
+    const wrapper = mount(AntdConfigForm, {
+      props: {
+        components: {
+          boolean: {
+            component: SwitchStub,
+            valueProp: 'checked',
+            trigger: 'update:checked',
+          },
+        },
+        fields: [defineField<SwitchForm>({ component: 'boolean', field: 'enabled' })],
+        modelValue: { enabled: false },
+      },
+    })
+
+    await wrapper.get('[data-testid="antd-switch-stub"]').trigger('click')
+    expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true }])
   })
 
   it('递归渲染 slot，并支持表单级 readonlyRender fallback', async () => {

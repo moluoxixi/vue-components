@@ -4,6 +4,7 @@ import type {
   DesignerPropertySetterDefinition,
 } from '../index'
 import { describe, expect, it } from 'vitest'
+import { defineComponent } from 'vue'
 import {
   analyzeDesignerDocument,
   createDesignerRegistry,
@@ -58,14 +59,19 @@ function containerMaterial(min?: number): DesignerMaterialDefinition {
 
 describe('designer registry', () => {
   it('uses the first layer as the highest precedence and validates factories', () => {
+    const localControl = defineComponent({ name: 'LocalControl' })
+    const adapterControl = defineComponent({ name: 'AdapterControl' })
+    const numberControl = defineComponent({ name: 'NumberControl' })
     const registry = createDesignerRegistry([
       {
         name: 'local',
+        components: { text: { component: localControl, trigger: 'update:modelValue' } },
         materials: [fieldMaterial('Local input')],
         propertyControls: { text: { component: 'textarea', trigger: 'change' } },
       },
       {
         name: 'adapter',
+        components: { text: adapterControl, number: numberControl },
         materials: [fieldMaterial('Adapter input')],
         propertyControls: {
           text: { component: 'input' },
@@ -76,6 +82,11 @@ describe('designer registry', () => {
 
     expect(registry.getMaterial('element.input')?.title).toBe('Local input')
     expect(registry.rendererNamespace).toBe('mx-config-form')
+    expect(registry.components.text).toMatchObject({
+      component: localControl,
+      trigger: 'update:modelValue',
+    })
+    expect(registry.components.number).toBe(numberControl)
     expect(registry.propertyControls).toMatchObject({
       text: { component: 'textarea', trigger: 'change' },
       number: { component: 'input', valueProp: 'value' },
@@ -93,6 +104,14 @@ describe('designer registry', () => {
       name: 'adapter',
       materials: [fieldMaterial('One'), fieldMaterial('Two')],
     }])).toThrowError(DesignerRegistryError)
+    expect(() => createDesignerRegistry([{
+      name: 'adapter',
+      components: { '': defineComponent({ name: 'InvalidControl' }) },
+    }])).toThrowError(DesignerRegistryError)
+    expect(() => createDesignerRegistry([{
+      name: 'adapter',
+      components: Object.fromEntries([['__proto__', defineComponent({ name: 'UnsafeControl' })]]),
+    }])).toThrow(/component key is unsafe: __proto__/i)
   })
 
   it('reports unknown materials and illegal slot children', () => {

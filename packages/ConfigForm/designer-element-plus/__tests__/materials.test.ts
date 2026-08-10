@@ -3,7 +3,9 @@ import type {
   DesignerJsonObject,
   DesignerMaterialDefinition,
 } from '@moluoxixi/config-form-designer'
-import { compileDesignerDocument } from '@moluoxixi/config-form-designer'
+import { compileDesignerDocument, DesignerPropertyPanel } from '@moluoxixi/config-form-designer'
+import { mount } from '@vue/test-utils'
+import { ElInput } from 'element-plus'
 import { describe, expect, it } from 'vitest'
 import {
   createElementPlusDesignerRegistry,
@@ -51,11 +53,43 @@ describe('element plus designer materials', () => {
   })
 
   it('registers native ConfigForm property controls', () => {
-    const controls = createElementPlusDesignerRegistry().propertyControls
+    const registry = createElementPlusDesignerRegistry()
+    const controls = registry.propertyControls
     expect(Object.keys(controls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
-    expect(controls.text).toMatchObject({ trigger: 'update:modelValue' })
-    expect(controls.select).toMatchObject({ trigger: 'change', props: { block: true } })
-    expect(controls.boolean?.valueProp).toBeUndefined()
+    expect(controls).toMatchObject({
+      text: { component: 'text' },
+      textarea: { component: 'textarea' },
+      number: { component: 'number' },
+      boolean: { component: 'boolean' },
+      select: { component: 'segmented' },
+    })
+    expect(registry.components.text).toMatchObject({ trigger: 'update:modelValue' })
+    expect(registry.components.segmented).toMatchObject({ trigger: 'change', props: { block: true } })
+  })
+
+  it('renders and commits a real Element Plus property control through ConfigForm', async () => {
+    const registry = createElementPlusDesignerRegistry()
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        components: registry.components,
+        diagnostics: [],
+        document: {
+          version: 1,
+          form: { columns: 24, fieldSpan: 24, gap: '16px', inline: false, labelPosition: 'left', readonly: false },
+          nodes: [],
+        },
+        propertyControls: registry.propertyControls,
+      },
+    })
+    const gap = wrapper.findAllComponents(ElInput)
+      .find(control => control.props('modelValue') === '16px')!
+
+    gap.vm.$emit('update:modelValue', '20px')
+    await wrapper.vm.$nextTick()
+    gap.vm.$emit('blur', new FocusEvent('blur'))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('updateForm')?.at(-1)).toEqual([{ gap: '20px' }])
   })
 
   it('provides typed visual default-value setters and readonly preview bindings', () => {

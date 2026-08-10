@@ -102,6 +102,7 @@ function createDocument(): DesignerDocument {
               material: 'element.input',
               field: 'email',
               label: 'Email',
+              extensions: { 'designer.setter': { path: ['label'], source: 'adapter' } },
               conditions: {
                 visible: {
                   kind: 'compare',
@@ -163,6 +164,7 @@ describe('designer compiler', () => {
     const field = Array.isArray(sectionSlots?.default) ? sectionSlots.default[0] : undefined
     expect(field).toMatchObject({
       component: 'input',
+      extensions: { 'designer.setter': { path: ['label'], source: 'adapter' } },
       field: 'email',
       requiredMessage: 'Email is required',
       valueProp: 'modelValue',
@@ -170,6 +172,10 @@ describe('designer compiler', () => {
     })
     if (!field || !('field' in field))
       return
+    const sourceField = document.nodes[0]?.kind === 'container'
+      ? document.nodes[0].slots.default?.[0]
+      : undefined
+    expect(field.extensions).not.toBe(sourceField?.extensions)
     expect(typeof field.visible).toBe('function')
     expect(typeof field.required).toBe('function')
     expect((field.visible as (values: Record<string, unknown>) => boolean)({ enabled: true })).toBe(true)

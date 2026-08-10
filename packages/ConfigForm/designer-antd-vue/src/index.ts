@@ -1,3 +1,4 @@
+export * from './components'
 export * from './materials'
 export * from './options'
 export * from './propertyControls'

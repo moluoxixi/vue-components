@@ -7,6 +7,7 @@ import type {
 } from './types'
 import FormLayout from '@/components/FormLayout'
 import { ConfigFormError } from '@/errors'
+import { assertSafeRecordKey } from '@/utils/object'
 import { createFieldPipeline } from './transform'
 
 /** 内置组件注册表；用户 components 可以覆盖内置 key，插件不能覆盖用户 key。 */
@@ -17,8 +18,17 @@ const BUILT_IN_COMPONENTS: ComponentRegistry = {
 /** 创建表单运行时实例，合并组件注册和字段生命周期插件。 */
 export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormRuntime {
   const plugins: FormRuntimePlugin[] = [...(runtimeConfig.plugins ?? [])]
-  const components: ComponentRegistry = { ...BUILT_IN_COMPONENTS, ...(runtimeConfig.components ?? {}) }
-  const readonlyAdapters: ReadonlyAdapterRegistry = { ...(runtimeConfig.readonlyAdapters ?? {}) }
+  const components: ComponentRegistry = { ...BUILT_IN_COMPONENTS }
+  const readonlyAdapters: ReadonlyAdapterRegistry = {}
+
+  for (const [key, component] of Object.entries(runtimeConfig.components ?? {})) {
+    assertSafeRecordKey(key, 'runtime components')
+    components[key] = component
+  }
+  for (const [key, adapter] of Object.entries(runtimeConfig.readonlyAdapters ?? {})) {
+    assertSafeRecordKey(key, 'runtime readonly adapters')
+    readonlyAdapters[key] = adapter
+  }
 
   const seenPluginNames = new Set<string>()
   for (const plugin of plugins) {
@@ -34,6 +44,7 @@ export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormR
 
     /** 运行时启动阶段先把插件组件并入注册表；这里专门拦截重复 key，避免后续解析时出现来源不明的覆盖关系。 */
     for (const [key, component] of Object.entries(plugin.components ?? {})) {
+      assertSafeRecordKey(key, `Plugin ${plugin.name} components`)
       if (Object.hasOwn(components, key)) {
         throw new ConfigFormError(
           'CONFIG_FORM_COMPONENT_KEY_CONFLICT',
@@ -45,6 +56,7 @@ export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormR
     }
 
     for (const [key, adapter] of Object.entries(plugin.readonlyAdapters ?? {})) {
+      assertSafeRecordKey(key, `Plugin ${plugin.name} readonly adapters`)
       if (Object.hasOwn(readonlyAdapters, key)) {
         throw new ConfigFormError(
           'CONFIG_FORM_READONLY_ADAPTER_KEY_CONFLICT',

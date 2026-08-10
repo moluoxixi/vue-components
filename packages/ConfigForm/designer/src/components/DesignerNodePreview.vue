@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { DesignerFormSettings, DesignerNode } from '../document'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
+import type { ConfigFormComponentRegistration } from '@moluoxixi/config-form-headless'
 import type { PropType, VNodeChild } from 'vue'
-import { computed, defineComponent } from 'vue'
-import { formatConfigFormReadonlyValue } from '@moluoxixi/config-form-headless'
+import { computed, defineComponent, markRaw, toRaw } from 'vue'
+import { formatConfigFormReadonlyValue, isConfigFormComponentRegistration } from '@moluoxixi/config-form-headless'
 import { resolveConfigFormFieldLayout } from '@moluoxixi/config-form/renderer'
 import { evaluateDesignerCondition } from '../condition'
 
@@ -38,9 +39,27 @@ const material = computed<DesignerMaterialDefinition | undefined>(() => (
 const materialSlots = computed(() => (
   material.value?.kind === 'container' ? material.value.slots : []
 ))
-const runtimeComponent = computed(() => (
+const runtimeComponentReference = computed(() => (
   material.value?.runtime.designerComponent ?? material.value?.runtime.component
 ))
+const runtimeRegistration = computed<ConfigFormComponentRegistration | undefined>(() => {
+  const component = runtimeComponentReference.value
+  if (typeof component !== 'string')
+    return undefined
+  if (!Object.hasOwn(props.registry.components, component))
+    return undefined
+  const registered = props.registry.components[component]
+  return isConfigFormComponentRegistration(registered) ? registered : undefined
+})
+const runtimeComponent = computed(() => {
+  const component = runtimeComponentReference.value
+  if (typeof component !== 'string')
+    return rawComponent(component)
+  const registered = Object.hasOwn(props.registry.components, component)
+    ? props.registry.components[component]
+    : undefined
+  return rawComponent(runtimeRegistration.value?.component ?? registered ?? component)
+})
 const rendererNamespace = computed(() => props.registry.rendererNamespace)
 const hasLabel = computed(() => props.node.kind === 'field' && Boolean(props.node.label))
 const fieldLayout = computed(() => resolveConfigFormFieldLayout(
@@ -66,12 +85,22 @@ function eventPropName(eventName: string): string {
   return `on${eventName.slice(0, 1).toUpperCase()}${eventName.slice(1)}`
 }
 
+
+function rawComponent<T>(component: T): T {
+  return component !== null && typeof component === 'object'
+    ? markRaw(toRaw(component)) as T
+    : component
+}
+
 const componentProps = computed<Record<string, unknown>>(() => {
   const definition = material.value
   if (!definition)
     return {}
 
-  const nextProps: Record<string, unknown> = { ...(props.node.props ?? {}) }
+  const nextProps: Record<string, unknown> = {
+    ...runtimeRegistration.value?.props,
+    ...(props.node.props ?? {}),
+  }
   if (props.node.kind !== 'field') {
     if (definition.runtime.designerComponent)
       nextProps.designerNode = props.node
@@ -81,22 +110,24 @@ const componentProps = computed<Record<string, unknown>>(() => {
   if (!Object.hasOwn(nextProps, 'id'))
     nextProps.id = controlId.value
 
-  const valueProp = definition.runtime.valueProp ?? 'modelValue'
+  const valueProp = definition.runtime.valueProp ?? runtimeRegistration.value?.valueProp ?? 'modelValue'
   if (props.model && Object.hasOwn(props.model, props.node.field))
     nextProps[valueProp] = props.model[props.node.field]
   else if (!Object.hasOwn(nextProps, valueProp) && props.node.defaultValue !== undefined)
     nextProps[valueProp] = props.node.defaultValue
 
-  const trigger = definition.runtime.trigger ?? `update:${valueProp}`
+  const trigger = definition.runtime.trigger ?? runtimeRegistration.value?.trigger ?? `update:${valueProp}`
   nextProps[eventPropName(trigger)] = (...args: unknown[]) => {
     if (!props.interactive)
       return
-    emit('updateField', props.node.kind === 'field' ? props.node.field : '', definition.runtime.getValueFromEvent
-      ? definition.runtime.getValueFromEvent(...args)
+    const getValueFromEvent = definition.runtime.getValueFromEvent ?? runtimeRegistration.value?.getValueFromEvent
+    emit('updateField', props.node.kind === 'field' ? props.node.field : '', getValueFromEvent
+      ? getValueFromEvent(...args)
       : args[0])
   }
-  if (definition.runtime.blurTrigger)
-    nextProps[eventPropName(definition.runtime.blurTrigger)] = () => undefined
+  const blurTrigger = definition.runtime.blurTrigger ?? runtimeRegistration.value?.blurTrigger
+  if (blurTrigger)
+    nextProps[eventPropName(blurTrigger)] = () => undefined
   if (fieldReadonly.value)
     nextProps[definition.runtime.readonlyProp ?? 'readonly'] = true
   if (disabled.value)
@@ -111,7 +142,7 @@ const readonlyContent = computed(() => {
     return ''
 
   const definition = material.value
-  const valueProp = definition?.runtime.valueProp ?? 'modelValue'
+  const valueProp = definition?.runtime.valueProp ?? runtimeRegistration.value?.valueProp ?? 'modelValue'
   const value = componentProps.value[valueProp]
   return definition?.runtime.readonlyRender?.({
     componentProps: props.node.props ?? {},

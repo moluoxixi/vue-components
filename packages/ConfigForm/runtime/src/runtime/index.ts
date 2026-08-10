@@ -6,6 +6,7 @@ export {
 } from './transform'
 export type {
   ComponentRegistry,
+  ConfigFormComponentRegistration,
   FormFieldDefault,
   FormFieldDefaultConfig,
   FormFieldTransform,

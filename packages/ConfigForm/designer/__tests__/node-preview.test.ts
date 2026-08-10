@@ -1,7 +1,7 @@
 import type { DesignerMaterialDefinition } from '../index'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { createDesignerRegistry } from '../index'
 import DesignerNodePreview from '../src/components/DesignerNodePreview.vue'
 
@@ -40,6 +40,21 @@ const DesignerContainerStub = defineComponent({
 })
 
 const materials: DesignerMaterialDefinition[] = [
+  {
+    key: 'test.alias',
+    version: 1,
+    kind: 'field',
+    title: 'Alias input',
+    category: 'Fields',
+    runtime: { component: 'text' },
+    setters: [],
+    createNode: ({ id, field = 'alias' }) => ({
+      id,
+      kind: 'field',
+      material: 'test.alias',
+      field,
+    }),
+  },
   {
     key: 'test.input',
     version: 1,
@@ -113,9 +128,44 @@ const materials: DesignerMaterialDefinition[] = [
   },
 ]
 
-const registry = createDesignerRegistry([{ name: 'test', materials }])
+const registry = createDesignerRegistry([{
+  name: 'test',
+  components: {
+    text: {
+      component: InputStub,
+      props: { placeholder: 'Registered placeholder' },
+      trigger: 'update:modelValue',
+      valueProp: 'modelValue',
+    },
+  },
+  materials,
+}])
 
 describe('designer node preview', () => {
+  it('resolves semantic aliases with registered props and bindings', async () => {
+    const wrapper = mount(DesignerNodePreview, {
+      props: {
+        interactive: true,
+        model: { alias: 'Ada' },
+        registry,
+        node: {
+          id: 'alias',
+          kind: 'field',
+          material: 'test.alias',
+          field: 'alias',
+          extensions: { source: 'designer' },
+        },
+      },
+    })
+
+    const input = wrapper.get<HTMLInputElement>('input')
+    expect(input.attributes('placeholder')).toBe('Registered placeholder')
+    expect(input.attributes('extensions')).toBeUndefined()
+    wrapper.getComponent(InputStub).vm.$emit('update:modelValue', 'Grace')
+    await nextTick()
+    expect(wrapper.emitted('updateField')?.at(-1)).toEqual(['alias', 'Grace'])
+  })
+
   it('renders visible left-positioned labels and inert controls with a preview value', () => {
     const wrapper = mount(DesignerNodePreview, {
       props: {

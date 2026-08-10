@@ -10,9 +10,18 @@ import AntdSelectField from '../src/components/AntdSelectField.vue'
 import {
   ANTD_VUE_OPTION_RESOLVER_KEY,
   createAntdVueOptionResolverContext,
+  readAntdVueOptionSource,
 } from '../src/options'
 
 describe('ant design vue designer fields', () => {
+  it('rejects non-JSON and circular provider params without recursive overflow', () => {
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+
+    expect(readAntdVueOptionSource({ kind: 'provider', key: 'projects', params: circular })).toBeUndefined()
+    expect(readAntdVueOptionSource({ kind: 'provider', key: 'projects', params: new Date() })).toBeUndefined()
+  })
+
   it('renders normalized options and forwards the native value event', async () => {
     const wrapper = mount(AntdSelectField, {
       props: {

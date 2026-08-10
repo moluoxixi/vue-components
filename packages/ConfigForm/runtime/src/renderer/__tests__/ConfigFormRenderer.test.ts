@@ -1,8 +1,9 @@
+import type { ConfigFormComponentSlotContext } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
 import type { ConfigFormRendererExpose, ConfigFormRendererField } from '../types'
 import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import ConfigFormRendererSource from '../ConfigFormRenderer.vue'
 
@@ -444,10 +445,12 @@ describe('config form renderer', () => {
       defineField<TestValues>({ component: CheckedStub, field: 'enabled', label: 'Enabled' }),
       defineField<TestValues>({
         component: InputStub,
+        extensions: { 'test.source': 'readonly' },
         field: 'status',
         label: 'Status',
         readonly: true,
-        readonlyRender: ({ componentProps, model, value }) => h('strong', {
+        readonlyRender: ({ componentProps, field, model, value }) => h('strong', {
+          'data-extension': field.extensions?.['test.source'],
           'data-model-name': model.name,
           'data-placeholder': componentProps.placeholder,
           'data-testid': 'readonly-value',
@@ -471,10 +474,84 @@ describe('config form renderer', () => {
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true, name: 'Ada', status: 'active' }])
     expect(wrapper.findAll('[data-testid="renderer-input"]')).toHaveLength(0)
     expect(wrapper.get('[data-testid="readonly-value"]').attributes()).toMatchObject({
+      'data-extension': 'readonly',
       'data-model-name': 'Ada',
       'data-placeholder': 'Status placeholder',
     })
     expect(wrapper.get('[data-testid="readonly-value"]').text()).toBe('Status: active')
+  })
+
+  it('resolves registered field and container aliases with binding defaults and direct registrations', async () => {
+    const registeredChange = vi.fn()
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        components: {
+          RegistryChecked: {
+            component: CheckedStub,
+            props: { onChange: [registeredChange] },
+            trigger: 'change',
+            valueProp: 'checked',
+          },
+          RegistryLeaf: {
+            component: SlotLeaf,
+            props: { text: 'Registry default' },
+          },
+          DirectLeaf: SlotLeaf,
+        },
+        fields: [
+          defineField<TestValues>({
+            component: 'RegistryChecked',
+            extensions: { designer: { locked: true } },
+            field: 'enabled',
+          }),
+          { component: 'RegistryLeaf', extensions: { designer: { source: 'palette' } }, props: { text: 'Field override' } },
+          { component: 'DirectLeaf', props: { text: 'Direct component' } },
+        ],
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="renderer-checked"]').text()).toBe('false')
+    expect(wrapper.findAll('[data-testid="slot-leaf"]').map(node => node.text())).toEqual([
+      'Field override',
+      'Direct component',
+    ])
+    expect(wrapper.find('[extensions]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="renderer-checked"]').trigger('click')
+    expect(registeredChange).toHaveBeenCalledWith(true)
+    expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true, name: 'Ada', status: 'draft' }])
+  })
+
+  it('exposes extensions to configured field and container slot contexts without forwarding them', () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        components: { RegistryHost: SlotHost },
+        fields: [
+          defineField<TestValues>({
+            component: 'RegistryHost',
+            extensions: { source: 'field' },
+            field: 'status',
+            slots: {
+              default: ({ field }) => h('span', { 'data-testid': 'field-extension' }, String(field.extensions?.source)),
+            },
+          }),
+          {
+            component: 'RegistryHost',
+            extensions: { source: 'container' },
+            slots: {
+              default: ({ node }: ConfigFormComponentSlotContext<TestValues>) => h('span', { 'data-testid': 'container-extension' }, String(node.extensions?.source)),
+            },
+          },
+        ],
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="field-extension"]').text()).toBe('field')
+    expect(wrapper.get('[data-testid="container-extension"]').text()).toBe('container')
+    expect(wrapper.find('[extensions]').exists()).toBe(false)
   })
 
   it('动态进入 readonly 后不再展示编辑态旧错误', async () => {

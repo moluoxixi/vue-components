@@ -15,6 +15,7 @@ import type {
   ConfigFormSlotConfig,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
+import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form/renderer'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
 export type AntdConfigFormFormAttrs = FormHTMLAttributes
@@ -104,4 +105,6 @@ export interface AntdConfigFormProps<TValues extends ConfigFormValues = ConfigFo
   columns?: number
   /** 原生 Grid/Flex 的间距。 */
   gap?: string
+  /** 语义组件别名注册表；与 Ant Design Vue 默认别名合并。 */
+  components?: ConfigFormComponentRegistry
 }

@@ -50,7 +50,8 @@ describe('designer structured setters', () => {
           { setter: simpleSetter, value: 'Name' },
           { setter: customSetter, value: 'custom' },
         ],
-        controls: { text: { component: textControl, trigger: 'update:modelValue' } },
+        components: { text: { component: textControl, trigger: 'update:modelValue' } },
+        controls: { text: { component: 'text' } },
       },
     })
 

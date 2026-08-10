@@ -4,6 +4,20 @@ import { ConfigFormError } from '@/errors'
 /** ConfigForm 内部可安全当作普通配置对象读取的记录类型。 */
 export type PlainRecord = Record<string, unknown>
 
+const UNSAFE_RECORD_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
+/** Reject keys that can mutate or traverse an object prototype during dynamic writes. */
+export function assertSafeRecordKey(key: string, path: string): void {
+  if (!UNSAFE_RECORD_KEYS.has(key))
+    return
+
+  throw new ConfigFormError(
+    'CONFIG_FORM_UNSAFE_OBJECT_KEY',
+    `${path} contains an unsafe object key: ${key}`,
+    { key, path },
+  )
+}
+
 /** 判断未知值是否是普通对象；数组、null 和 class 实例不会通过。 */
 export function isPlainRecord(value: unknown): value is PlainRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -125,6 +139,7 @@ function mergeRecordsInternal(
     seen.add(record)
     try {
       for (const [key, value] of Object.entries(record)) {
+        assertSafeRecordKey(key, path)
         const previous = result[key]
         if (canMergeValue(key, previous, value)) {
           result[key] = mergeRecordsInternal(seen, `${path}.${key}`, previous, value as PlainRecord)

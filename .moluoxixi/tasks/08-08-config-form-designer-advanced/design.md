@@ -75,3 +75,11 @@ The property panel projects core `DesignerPropertySetterDefinition` metadata int
 `DesignerRegistryLayer.propertyControls` is the UI-framework boundary. A layer may provide a component, value prop, update trigger, blur trigger, static props, and event normalizer for each simple setter kind. First-layer precedence matches material and validator overrides. Element Plus and Ant Design Vue publish complete control maps, while the core falls back to `DesignerSetter` for missing mappings and never imports either framework.
 
 ConfigForm `fieldChange` is mapped back to the originating setter and then to the existing `updatePath` or `updateForm` event. Empty text and number values are normalized at that boundary, but document writes, history, diagnostics, and schema finalization remain unchanged. Direct fields use a stable label track and flexible control track; custom fields have no ConfigForm label and keep their own full-width label/editor structure.
+
+## Semantic Components and Extensions
+
+`@moluoxixi/config-form-headless` owns the generic component registration shape. Renderer and legacy Runtime narrow its component type for their own render contracts instead of importing each other's internal modules. A registration normalizes to a real component plus optional props, value prop, change trigger, blur trigger, and event-value extractor. Merge order is built-in defaults, registration defaults, then explicit field configuration.
+
+Element Plus and Ant Design Vue publish semantic alias maps. Their ConfigForm wrappers merge adapter defaults before caller registrations, while designer registry layers use the existing first-layer-wins policy. The property-control schema references aliases (`text`, `textarea`, `number`, `boolean`, `segmented`) and passes the active registry to the shared ConfigFormRenderer.
+
+`extensions` is a node-level metadata object, separate from render `props`. Designer documents restrict it to JSON data, history clones it with the rest of the document, and compilation projects it onto headless renderer nodes. Renderer slot and readonly contexts therefore retain access, while component and DOM prop construction reads only registration props and node props.

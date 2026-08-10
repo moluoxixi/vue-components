@@ -21,6 +21,8 @@ export interface DesignerNodeBase {
   id: string
   material: string
   props?: DesignerJsonObject
+  /** 不透传给真实组件的可序列化扩展元数据。 */
+  extensions?: DesignerJsonObject
   span?: number
   conditions?: Partial<Record<DesignerConditionTarget, DesignerConditionExpression>>
 }

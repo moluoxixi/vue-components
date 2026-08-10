@@ -17,6 +17,7 @@ import type {
   SlotContent,
 } from '@/types'
 import type { PlainRecord } from '@/utils/object'
+import { isConfigFormComponentRegistration } from '@moluoxixi/config-form-headless'
 import { ConfigFormError } from '@/errors'
 import { applyFieldDefaults, BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '@/plugins/builtInFieldDefaults'
 import { isFormNodeConfig } from '@/utils/node'
@@ -33,9 +34,10 @@ type PluginField = DefinedFormNodeConfig | NormalizedNodeConfig
 interface ResolvedComponentReference {
   component: NormalizedNodeConfig['component']
   key?: string
+  registration?: import('./types').ConfigFormComponentRegistration
 }
 const FORBIDDEN_DEFAULT_FIELD_KEYS = new Set(['component', 'field', 'slots'])
-const PLUGIN_CLONE_CHILD_KEYS = ['props', 'slots']
+const PLUGIN_CLONE_CHILD_KEYS = ['extensions', 'props', 'slots']
 const HTML_TAG_NAME_RE = /^[a-z][a-z0-9-]*$/
 
 /** 创建字段配置管线，负责默认值、插件、用户优先级、组件解析和 slot 递归编排。 */
@@ -56,8 +58,17 @@ export function createFieldPipeline(
     if (typeof component !== 'string')
       return { component }
 
-    if (Object.hasOwn(components, component))
-      return { component: components[component], key: component }
+    if (Object.hasOwn(components, component)) {
+      const registered = components[component]
+      if (isConfigFormComponentRegistration(registered)) {
+        return {
+          component: registered.component,
+          key: component,
+          registration: registered,
+        }
+      }
+      return { component: registered, key: component }
+    }
 
     if (HTML_TAG_NAME_RE.test(component))
       return { component }
@@ -101,8 +112,21 @@ export function createFieldPipeline(
 
   /** 对单个字段执行完整转换管线。 */
   function transformField(field: FormNodeConfig): ResolvedFormNode {
+    const registration = resolveComponent(field.component).registration
     let current = applyFieldDefaults(
-      mergeRecords(getFieldDefaults(field), field) as unknown as FormNodeConfig,
+      mergeRecords(
+        getFieldDefaults(field),
+        registration
+          ? {
+              props: registration.props,
+              valueProp: registration.valueProp,
+              trigger: registration.trigger,
+              blurTrigger: registration.blurTrigger,
+              getValueFromEvent: registration.getValueFromEvent,
+            }
+          : undefined,
+        field,
+      ) as unknown as FormNodeConfig,
     ) as PipelineNode
 
     for (const hook of transformHooks)
@@ -234,7 +258,6 @@ function assertDefaultFieldKeys(pluginName: string, defaults: PlainRecord): void
     }
   }
 }
-
 /** 为转换插件提供浅复制字段，避免插件直接修改当前管线状态。 */
 function cloneFieldForPlugin(field: PipelineNode): PipelineNode {
   return cloneRecordWithChildren(field, PLUGIN_CLONE_CHILD_KEYS)

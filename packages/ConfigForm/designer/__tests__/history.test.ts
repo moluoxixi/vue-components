@@ -415,6 +415,26 @@ describe('designer history', () => {
     expect(redoDesignerHistory(branched.history).changed).toBe(false)
   })
 
+  it('preserves extension metadata through path updates, undo, and redo', () => {
+    const initial = createDesignerHistory(createDocument())
+    const changed = applyDesignerCommand(initial, {
+      type: 'updateNodePath',
+      nodeId: 'first',
+      path: ['extensions', 'designer.setter'],
+      value: { path: ['label'], source: 'local' },
+    }, registry)
+
+    expect(findDesignerNode(changed.history.present, 'first')?.node).toMatchObject({
+      extensions: { 'designer.setter': { path: ['label'], source: 'local' } },
+    })
+    const undone = undoDesignerHistory(changed.history)
+    expect(findDesignerNode(undone.history.present, 'first')?.node).not.toHaveProperty('extensions')
+    const redone = redoDesignerHistory(undone.history)
+    expect(findDesignerNode(redone.history.present, 'first')?.node).toMatchObject({
+      extensions: { 'designer.setter': { path: ['label'], source: 'local' } },
+    })
+  })
+
   it('bounds snapshots and resets external document replacements as a new baseline', () => {
     let history = createDesignerHistory(createDocument(), 2)
     for (const label of ['One', 'Two', 'Three']) {

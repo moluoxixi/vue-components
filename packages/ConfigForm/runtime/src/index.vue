@@ -27,7 +27,13 @@ const { b } = useBem(namespaceRef)
 
 const rawFields = computed(() => props.fields)
 const defaultValues = computed(() => props.defaultValues)
-const runtimeRef = computed(() => normalizeFormRuntime(props.runtime))
+const runtimeRef = computed(() => normalizeFormRuntime({
+  ...props.runtime,
+  components: {
+    ...(props.runtime?.components ?? {}),
+    ...(props.components ?? {}),
+  },
+}))
 provideRuntime(runtimeRef)
 const resolvedFields = computed(() => rawFields.value.map(field => runtimeRef.value.transformField(field)))
 

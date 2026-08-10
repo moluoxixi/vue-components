@@ -1,6 +1,7 @@
 import { withConfigFormInstall } from '@moluoxixi/config-form/renderer'
 import ElementConfigFormSource from './src/index.vue'
 
+export { ELEMENT_CONFIG_FORM_COMPONENTS } from './src/components'
 export type * from './src/types'
 
 export const ElementConfigForm = withConfigFormInstall(ElementConfigFormSource)

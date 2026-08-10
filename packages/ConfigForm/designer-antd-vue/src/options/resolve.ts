@@ -1,10 +1,10 @@
-import type { DesignerJsonObject, DesignerJsonValue } from '@moluoxixi/config-form-designer'
 import type { MaybeRefOrGetter, Ref } from 'vue'
 import type {
   AntdVueDesignerOption,
   AntdVueOptionSource,
   AntdVueResolvedOptionState,
 } from './types'
+import { isDesignerJsonObject } from '@moluoxixi/config-form-designer'
 import { ref, toValue, watch } from 'vue'
 import { useAntdVueOptionResolverContext } from './context'
 
@@ -77,11 +77,14 @@ export function readAntdVueOptionSource(value: unknown): AntdVueOptionSource | u
     return undefined
   if (value.kind === 'static')
     return { kind: 'static' }
-  if ((value.kind === 'dictionary' || value.kind === 'provider') && typeof value.key === 'string' && value.key.length > 0) {
-    return value.kind === 'provider' && isDesignerJsonObject(value.params)
-      ? { kind: value.kind, key: value.key, params: value.params }
-      : { kind: value.kind, key: value.key }
-  }
+  if ((value.kind !== 'dictionary' && value.kind !== 'provider') || typeof value.key !== 'string' || value.key.length === 0)
+    return undefined
+  if (value.kind === 'dictionary')
+    return { kind: value.kind, key: value.key }
+  if (value.params === undefined)
+    return { kind: value.kind, key: value.key }
+  if (isDesignerJsonObject(value.params))
+    return { kind: value.kind, key: value.key, params: value.params }
   return undefined
 }
 
@@ -119,18 +122,4 @@ function isOptionValue(value: unknown): value is string | number | boolean {
   return typeof value === 'string'
     || typeof value === 'boolean'
     || (typeof value === 'number' && Number.isFinite(value))
-}
-
-function isDesignerJsonObject(value: unknown): value is DesignerJsonObject {
-  return isRecord(value) && Object.values(value).every(isDesignerJsonValue)
-}
-
-function isDesignerJsonValue(value: unknown): value is DesignerJsonValue {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean')
-    return true
-  if (typeof value === 'number')
-    return Number.isFinite(value)
-  if (Array.isArray(value))
-    return value.every(isDesignerJsonValue)
-  return isDesignerJsonObject(value)
 }

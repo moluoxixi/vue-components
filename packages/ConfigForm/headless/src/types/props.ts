@@ -7,6 +7,33 @@ export type ConfigFormFieldKey<TValues extends ConfigFormValues = ConfigFormValu
 export type ConfigFormCondition<TValues extends ConfigFormValues = ConfigFormValues> = boolean | ((values: TValues) => boolean)
 export type ConfigFormColumnSpan = number
 export type ConfigFormAttrs = Record<string, unknown>
+/**
+ * 字符串组件别名的注册项。
+ *
+ * 注册项除了真实组件，还可以声明默认 props 和值绑定协议。字段自身显式声明的
+ * 绑定配置拥有更高优先级；extensions 等非渲染元数据不会进入这里。
+ */
+export interface ConfigFormComponentRegistration<TComponent = Component> {
+  component: TComponent
+  props?: ConfigFormAttrs
+  valueProp?: string
+  trigger?: string
+  blurTrigger?: string
+  getValueFromEvent?: (...args: unknown[]) => unknown
+}
+
+/** 按字符串别名解析真实组件或带默认绑定协议的注册项。 */
+export type ConfigFormComponentRegistry<TComponent = Component> = Record<
+  string,
+  TComponent | ConfigFormComponentRegistration<TComponent>
+>
+/**
+ * 供设计器、适配器和业务插件消费的非渲染元数据。
+ *
+ * extensions 不会自动传给真实组件或 DOM；需要持久化的内容应保持 JSON 可序列化，
+ * 并使用命名空间避免不同扩展之间发生 key 冲突。
+ */
+export type ConfigFormExtensions = Record<string, unknown>
 export type ConfigFormValidateTrigger = 'submit' | 'blur' | 'change'
 export type ConfigFormFieldValidatorResult = string | string[] | void | null | undefined
 
@@ -159,6 +186,8 @@ export interface ConfigFormNodeBase<
   component: TComponent
   /** 透传给真实字段组件的 props。 */
   props?: ConfigFormAttrs
+  /** 不参与渲染的扩展元数据；由 designer/adapter/plugin 按命名空间消费。 */
+  extensions?: ConfigFormExtensions
   /** 透传给 renderer grid cell 的 attributes；inline 布局不消费。 */
   cellAttrs?: TCellAttrs
   /** grid 布局下的栅格跨度，默认使用 ConfigForm.fieldSpan。 */

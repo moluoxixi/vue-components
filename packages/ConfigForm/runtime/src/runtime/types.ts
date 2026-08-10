@@ -1,3 +1,4 @@
+import type { ConfigFormComponentRegistration as HeadlessComponentRegistration, ConfigFormComponentRegistry as HeadlessComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { VNodeChild } from 'vue'
 import type {
   DefinedFormNodeConfig,
@@ -10,8 +11,16 @@ import type {
   ResolvedFormNode,
 } from '@/types'
 
+/**
+ * 字符串组件别名的注册项。
+ *
+ * 除了真实 Vue 组件，还可以声明该组件的默认值绑定协议；字段自身显式配置的
+ * valueProp/trigger/blurTrigger/getValueFromEvent 始终拥有更高优先级。
+ */
+export type ConfigFormComponentRegistration = HeadlessComponentRegistration<Exclude<FieldConfig['component'], string>>
+
 /** 运行时可按字符串 key 解析的组件注册表。 */
-export type ComponentRegistry = Record<string, FieldConfig['component']>
+export type ComponentRegistry = HeadlessComponentRegistry<Exclude<FieldConfig['component'], string>>
 
 /** 运行时可按组件 key 解析的只读展示适配器注册表。 */
 export type ReadonlyAdapterRegistry = Record<string, ReadonlyAdapter>

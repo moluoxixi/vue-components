@@ -5,6 +5,7 @@ import type {
   DesignerFormSettings,
   DesignerNode,
 } from '../document'
+import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type {
   DesignerMaterialDefinition,
@@ -27,6 +28,7 @@ const props = defineProps<{
   diagnostics: DesignerDiagnostic[]
   breakpoint?: ConfigFormBreakpoint
   validatorOptions?: string[]
+  components?: ConfigFormComponentRegistry
   propertyControls?: DesignerPropertyControlRegistry
   readonly?: boolean
 }>()
@@ -237,6 +239,7 @@ const formEntries = computed(() => formSetters.value.map(setter => ({
       <div class="mx-config-form-designer__property-fields">
         <DesignerPropertyForm
           :entries="propertyEntries"
+          :components="components"
           :controls="propertyControls"
           :readonly="readonly"
           :node="node"
@@ -254,6 +257,7 @@ const formEntries = computed(() => formSetters.value.map(setter => ({
       <div class="mx-config-form-designer__property-fields">
         <DesignerPropertyForm
           :entries="formEntries"
+          :components="components"
           :controls="propertyControls"
           :readonly="readonly"
           @commit="commitForm"

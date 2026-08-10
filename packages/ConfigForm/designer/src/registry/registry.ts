@@ -1,4 +1,8 @@
 import type {
+  ConfigFormComponentRegistration,
+  ConfigFormComponentRegistry,
+} from '@moluoxixi/config-form-headless'
+import type {
   DesignerMaterialDefinition,
   DesignerPropertyControlDefinition,
   DesignerRegistry,
@@ -7,6 +11,8 @@ import type {
   DesignerSimpleSetterControl,
 } from './types'
 import { DesignerRegistryError } from '../document'
+
+const UNSAFE_COMPONENT_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function assertMaterialDefinition(definition: DesignerMaterialDefinition, layerName: string): void {
   if (!definition.key.trim()) {
@@ -30,10 +36,33 @@ export function createDesignerRegistry(
   options: DesignerRegistryOptions = {},
 ): DesignerRegistry {
   const materials = new Map<string, DesignerMaterialDefinition>()
+  const components = new Map<string, ConfigFormComponentRegistry[string]>()
   const propertyControls = new Map<DesignerSimpleSetterControl, DesignerPropertyControlDefinition>()
   const validators = new Map<string, NonNullable<DesignerRegistryLayer['validators']>[string]>()
 
   for (const layer of layers) {
+    for (const [key, registration] of Object.entries(layer.components ?? {}) as Array<[
+      string,
+      ConfigFormComponentRegistration['component'] | ConfigFormComponentRegistration,
+    ]>) {
+      if (!key.trim()) {
+        throw new DesignerRegistryError(
+          'DESIGNER_COMPONENT_KEY_REQUIRED',
+          'Designer component keys cannot be empty',
+          { layerName: layer.name },
+        )
+      }
+      if (UNSAFE_COMPONENT_KEYS.has(key)) {
+        throw new DesignerRegistryError(
+          'DESIGNER_COMPONENT_KEY_UNSAFE',
+          `Designer component key is unsafe: ${key}`,
+          { key, layerName: layer.name },
+        )
+      }
+      if (!components.has(key))
+        components.set(key, registration)
+    }
+
     const layerMaterialKeys = new Set<string>()
     for (const material of layer.materials ?? []) {
       assertMaterialDefinition(material, layer.name)
@@ -72,6 +101,7 @@ export function createDesignerRegistry(
 
   return {
     rendererNamespace: options.rendererNamespace?.trim() || 'mx-config-form',
+    components: Object.fromEntries(components),
     propertyControls: Object.fromEntries(propertyControls),
     getMaterial: key => materials.get(key),
     getValidator: key => validators.get(key),

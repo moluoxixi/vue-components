@@ -3,8 +3,9 @@ import type {
   DesignerJsonObject,
   DesignerMaterialDefinition,
 } from '@moluoxixi/config-form-designer'
-import { compileDesignerDocument } from '@moluoxixi/config-form-designer'
+import { compileDesignerDocument, DesignerPropertyPanel } from '@moluoxixi/config-form-designer'
 import { flushPromises, mount } from '@vue/test-utils'
+import { Input } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import {
@@ -80,11 +81,44 @@ describe('ant design vue designer materials', () => {
   })
 
   it('registers native ConfigForm property controls', () => {
-    const controls = createAntdVueDesignerRegistry().propertyControls
+    const registry = createAntdVueDesignerRegistry()
+    const controls = registry.propertyControls
     expect(Object.keys(controls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
-    expect(controls.text).toMatchObject({ valueProp: 'value', trigger: 'update:value' })
-    expect(controls.boolean).toMatchObject({ valueProp: 'checked', trigger: 'change' })
-    expect(controls.select).toMatchObject({ valueProp: 'value', trigger: 'change', props: { block: true } })
+    expect(controls).toMatchObject({
+      text: { component: 'text' },
+      textarea: { component: 'textarea' },
+      number: { component: 'number' },
+      boolean: { component: 'boolean' },
+      select: { component: 'segmented' },
+    })
+    expect(registry.components.text).toMatchObject({ valueProp: 'value', trigger: 'update:value' })
+    expect(registry.components.boolean).toMatchObject({ valueProp: 'checked', trigger: 'change' })
+    expect(registry.components.segmented).toMatchObject({ valueProp: 'value', trigger: 'change', props: { block: true } })
+  })
+
+  it('renders and commits a real Ant Design Vue property control through ConfigForm', async () => {
+    const registry = createAntdVueDesignerRegistry()
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        components: registry.components,
+        diagnostics: [],
+        document: {
+          version: 1,
+          form: { columns: 24, fieldSpan: 24, gap: '16px', inline: false, labelPosition: 'left', readonly: false },
+          nodes: [],
+        },
+        propertyControls: registry.propertyControls,
+      },
+    })
+    const gap = wrapper.findAllComponents(Input)
+      .find(control => control.props('value') === '16px')!
+
+    gap.vm.$emit('update:value', '20px')
+    await wrapper.vm.$nextTick()
+    gap.vm.$emit('blur', new FocusEvent('blur'))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('updateForm')?.at(-1)).toEqual([{ gap: '20px' }])
   })
 
   it('renders semantic readonly choice and switch labels', async () => {

@@ -103,6 +103,7 @@ function onSubmit(values: LoginForm) {
 | `labelWidth` | `string \| number` | - | 标签宽度，number 自动转 px |
 | `defaultValues` | `Partial<Record<string, unknown>>` | - | 表单初始值快照；传泛型后为对应表单类型 |
 | `runtime` | `FormRuntimeOptions` | - | 可选运行时配置，用于组件注册、readonly adapter 和字段转换 adapter；省略时使用内置 runtime |
+| `components` | `ComponentRegistry` | - | 组件别名快捷注册；与 `runtime.components` 合并且当前 prop 优先 |
 
 ## Events
 
@@ -182,6 +183,7 @@ const fields = [
 | `span` | `number` | `24` | 非 inline 模式下的 24 栅格跨度 |
 | `component` | `Component \| Function \| string` | - | 实际渲染组件 |
 | `props` | `Record<string, unknown>` | - | 传给组件的 props |
+| `extensions` | `Record<string, unknown>` | - | 供 designer/adapter/plugin 消费的非渲染元数据，不透传给组件或 DOM |
 | `defaultValue` | `unknown` | `undefined` | 默认值；会参与 `defineField` 字段值推导 |
 | `valueProp` | `string` | `'modelValue'` | 注入组件的值 prop |
 | `trigger` | `string` | `'update:modelValue'` | 接收组件值变化的事件名 |
@@ -261,7 +263,13 @@ const { t } = useI18n()
 
 const runtimeOptions = {
   components: {
-    MyInput,
+    MyInput: {
+      component: MyInput,
+      props: { clearable: true },
+      valueProp: 'value',
+      trigger: 'update:value',
+      blurTrigger: 'blur',
+    },
   },
   plugins: [
     {
@@ -301,6 +309,8 @@ const fields = computed(() => [
 
 `runtime` 和 `runtime.plugins` 都是可选的。无外部 adapter 时仍支持直接传入 Vue 组件、原生标签、校验、递归 slot、提交和 raw readonly fallback；这不是另一个“无插件版”包。
 
+组件注册既可写成 `MyInput` 直接组件，也可写成包含 `component`、`props`、`valueProp`、`trigger`、`blurTrigger` 和 `getValueFromEvent` 的完整注册项。注册项提供默认值，字段自身的显式配置始终优先。
+
 普通函数保留为 ConfigForm render function，它的第一个参数是 `RenderContext`。Vue 函数组件必须显式包装，避免两种函数协议在运行时无法区分：
 
 ```ts
@@ -329,7 +339,7 @@ const FunctionalInput = asVueFunctionalComponent(FunctionalInputComponent)
 
 扩展点：
 
-- `components`：注册字符串组件 key，字段中可直接写 `component: 'MyInput'`；大写 key 未注册会抛错，原生标签如 `'input'` 可直接使用。
+- `components`：注册字符串组件 key 和默认绑定协议，字段中可直接写 `component: 'MyInput'`；大写 key 未注册会抛错，原生标签如 `'input'` 可直接使用。
 - `plugins`：按用户注册顺序收集组件、`getDefaultField(field)`、`transformField(field)` 和 readonly adapter；hook 不接收 values/errors/slot scope。
 - `readonlyAdapters`：注册字符串组件 key 对应的只读展示适配器；与插件注册 key 冲突时显式报错，未注册时回退为 raw value 文本。需要覆盖某个官方 adapter 时，把 override 传给对应 adapter 工厂。
 - 字段转换：runtime adapter 可返回新的字段配置或 `undefined`；返回非法值、修改字段 key、重复 adapter 名或重复组件 key 都会直接抛错。

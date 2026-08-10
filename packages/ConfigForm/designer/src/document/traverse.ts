@@ -1,4 +1,4 @@
-import type { DesignerDocument, DesignerJsonValue, DesignerNode } from './types'
+import type { DesignerDocument, DesignerJsonObject, DesignerJsonValue, DesignerNode } from './types'
 
 export interface DesignerNodeVisit {
   node: DesignerNode
@@ -6,6 +6,43 @@ export interface DesignerNodeVisit {
   parent?: DesignerNode
   slot?: string
   index: number
+}
+
+/** Validate a JSON object without accepting class instances or circular references. */
+export function isDesignerJsonObject(value: unknown): value is DesignerJsonObject {
+  return isDesignerJsonValueInternal(value, new WeakSet<object>())
+    && !Array.isArray(value)
+    && typeof value === 'object'
+    && value !== null
+}
+
+/** Validate a JSON value supplied directly through an adapter API. */
+export function isDesignerJsonValue(value: unknown): value is DesignerJsonValue {
+  return isDesignerJsonValueInternal(value, new WeakSet<object>())
+}
+
+function isDesignerJsonValueInternal(value: unknown, ancestors: WeakSet<object>): boolean {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean')
+    return true
+  if (typeof value === 'number')
+    return Number.isFinite(value)
+  if (typeof value !== 'object')
+    return false
+
+  if (ancestors.has(value))
+    return false
+
+  if (!Array.isArray(value)) {
+    const prototype = Object.getPrototypeOf(value)
+    if (prototype !== Object.prototype && prototype !== null)
+      return false
+  }
+
+  ancestors.add(value)
+  const valid = (Array.isArray(value) ? value : Object.values(value))
+    .every(child => isDesignerJsonValueInternal(child, ancestors))
+  ancestors.delete(value)
+  return valid
 }
 
 export function walkDesignerNodes(

@@ -264,6 +264,50 @@ describe('form runtime', () => {
     }))).toThrow(/Unknown component key: runtimeInput/)
   })
 
+  it('applies registration defaults below explicit field bindings and props', () => {
+    const getValueFromEvent = (...args: unknown[]) => args.at(-1)
+    const runtime = createFormRuntime({
+      components: {
+        RuntimeAlias: {
+          component: RuntimeInput,
+          props: {
+            class: 'registered',
+            nested: { preserved: true, source: 'registration' },
+          },
+          valueProp: 'current',
+          trigger: 'commit',
+          blurTrigger: 'focusout',
+          getValueFromEvent,
+        },
+      },
+    })
+
+    const resolved = expectResolvedField(runtime.transformField(defineField({
+      component: 'RuntimeAlias',
+      extensions: { 'test.source': { kind: 'runtime' } },
+      field: 'status',
+      props: {
+        nested: { source: 'field' },
+        placeholder: 'Status',
+      },
+      valueProp: 'selected',
+      trigger: 'select',
+    })))
+
+    expect(resolved.component).toBe(RuntimeInput)
+    expect(resolved.resolvedComponentKey).toBe('RuntimeAlias')
+    expect(resolved.extensions).toEqual({ 'test.source': { kind: 'runtime' } })
+    expect(resolved.props).toEqual({
+      class: 'registered',
+      nested: { preserved: true, source: 'field' },
+      placeholder: 'Status',
+    })
+    expect(resolved.valueProp).toBe('selected')
+    expect(resolved.trigger).toBe('select')
+    expect(resolved.blurTrigger).toBe('focusout')
+    expect(resolved.getValueFromEvent).toBe(getValueFromEvent)
+  })
+
   it('recursively transforms raw slot configs and preserves render slot functions', () => {
     const runtime = createFormRuntime()
     const renderSlot = () => ({ component: 'input', field: 'late' })
@@ -315,6 +359,14 @@ describe('form runtime', () => {
     expect(() => createFormRuntime({
       plugins: [{ components: { FormLayout: AlternateInput }, name: 'built-in-conflict' }],
     })).toThrow(/Component key conflict: FormLayout/)
+
+    const unsafeComponents = Object.fromEntries([['__proto__', RuntimeInput]])
+    expect(() => createFormRuntime({ components: unsafeComponents }))
+      .toThrow(/runtime components contains an unsafe object key: __proto__/)
+
+    expect(() => createFormRuntime({
+      plugins: [{ components: unsafeComponents, name: 'unsafe' }],
+    })).toThrow(/Plugin unsafe components contains an unsafe object key: __proto__/)
   })
 
   it('merges readonly adapters from runtime config and keeps key conflicts explicit', () => {

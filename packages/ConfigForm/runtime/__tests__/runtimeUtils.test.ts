@@ -164,6 +164,13 @@ describe('runtime utilities', () => {
       .toThrow(/cloneRecordWithChildren\(props\)\[0\] contains a circular array reference/)
   })
 
+  it('rejects unsafe keys before merging dynamic configuration records', () => {
+    const unsafe = JSON.parse('{"__proto__":{"polluted":true}}') as Record<string, unknown>
+
+    expect(() => mergeRecords({}, unsafe)).toThrow(/unsafe object key: __proto__/)
+    expect(({} as { polluted?: boolean }).polluted).toBeUndefined()
+  })
+
   it('classifies runtime nodes by binding and label presence', () => {
     const labelled = { component: 'input', field: 'name', label: '姓名' }
     const unlabelled = { component: 'input', field: 'status' }

@@ -1,3 +1,4 @@
+import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererNode,
   ConfigFormResponsiveLayout,
@@ -5,6 +6,7 @@ import type {
 import type { DesignerDiagnostic, DesignerDocument } from '../document'
 
 export interface DesignerRendererConfig {
+  components?: ConfigFormComponentRegistry
   fields: ConfigFormRendererNode[]
   readonly?: boolean
   inline?: boolean

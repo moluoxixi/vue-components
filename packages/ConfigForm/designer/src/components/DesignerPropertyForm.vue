@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ConfigFormFieldChangePayload } from '@moluoxixi/config-form-headless'
+import type { ConfigFormComponentRegistry, ConfigFormFieldChangePayload } from '@moluoxixi/config-form-headless'
 import type { ConfigFormRendererField } from '@moluoxixi/config-form/renderer'
 import type { DesignerNode } from '../document'
 import type {
@@ -22,6 +22,7 @@ export interface DesignerPropertyFormEntry {
 
 const props = defineProps<{
   entries: DesignerPropertyFormEntry[]
+  components?: ConfigFormComponentRegistry
   controls?: DesignerPropertyControlRegistry
   readonly?: boolean
   node?: DesignerNode
@@ -214,6 +215,7 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
 <template>
   <ConfigFormRenderer
     v-model="model"
+    :components="components"
     :fields="fields"
     :columns="1"
     :field-span="1"

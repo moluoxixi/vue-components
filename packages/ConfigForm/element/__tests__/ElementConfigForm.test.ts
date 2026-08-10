@@ -2,10 +2,11 @@ import type { Component } from 'vue'
 import type { ElementConfigFormExpose } from '../src/types'
 import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
-import { ElCheckbox } from 'element-plus'
+import { ElCheckbox, ElInput, ElInputNumber, ElSelectV2, ElSwitch } from 'element-plus'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 import { z } from 'zod'
+import { ELEMENT_CONFIG_FORM_COMPONENTS } from '../src/components'
 import ElementConfigFormSource from '../src/index.vue'
 
 const ElementConfigForm = ElementConfigFormSource as Component
@@ -17,6 +18,11 @@ interface UserForm {
 
 interface CheckboxForm {
   enabled: boolean
+}
+
+interface SemanticForm {
+  enabled: boolean
+  name: string
 }
 
 const InputStub = defineComponent({
@@ -116,6 +122,51 @@ describe('element config form', () => {
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'name', value: 'Ada' })
     expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: true })
     expect(wrapper.find('.mx-element-config-form__error').exists()).toBe(false)
+  })
+
+  it('resolves semantic component aliases and lets consumers override adapter defaults', async () => {
+    const wrapper = mount(ElementConfigForm, {
+      props: {
+        components: { text: InputStub },
+        fields: [defineField<UserForm>({ component: 'text', field: 'name', label: '姓名' })],
+        modelValue: { name: '', status: 'draft' },
+      },
+    })
+
+    await wrapper.get<HTMLInputElement>('[data-testid="input-stub"]').setValue('Ada')
+    expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'name', value: 'Ada' })
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ name: 'Ada', status: 'draft' }])
+  })
+
+  it('renders adapter defaults for every semantic alias and applies native bindings', async () => {
+    expect(ELEMENT_CONFIG_FORM_COMPONENTS).toMatchObject({
+      text: { component: ElInput },
+      textarea: { component: ElInput, props: { type: 'textarea' } },
+      number: { component: ElInputNumber },
+      boolean: { component: ElSwitch },
+      select: { component: ElSelectV2 },
+    })
+
+    const wrapper = mount(ElementConfigForm, {
+      props: {
+        fields: [
+          defineField<SemanticForm>({ component: 'text', field: 'name' }),
+          defineField<SemanticForm>({ component: 'boolean', field: 'enabled' }),
+        ],
+        modelValue: { enabled: false, name: '' },
+      },
+    })
+
+    wrapper.getComponent(ElInput).vm.$emit('update:modelValue', 'Ada')
+    await wrapper.vm.$nextTick()
+    wrapper.getComponent(ElSwitch).vm.$emit('update:modelValue', true)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('fieldChange')).toEqual([
+      [expect.objectContaining({ field: 'name', value: 'Ada' })],
+      [expect.objectContaining({ field: 'enabled', value: true })],
+    ])
+    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([{ enabled: true, name: 'Ada' }])
   })
 
   it('同页同名字段生成唯一 control/error id 并关联本字段错误', async () => {

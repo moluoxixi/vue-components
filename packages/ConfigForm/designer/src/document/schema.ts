@@ -47,6 +47,7 @@ const nodeBaseShape = {
   id: z.string().min(1),
   material: z.string().min(1),
   props: z.record(z.string(), designerJsonValueSchema).optional(),
+  extensions: z.record(z.string(), designerJsonValueSchema).optional(),
   // Keep legacy numeric documents importable; the renderer clamps to the 24-cell grid.
   span: z.number().int().positive().optional(),
   conditions: conditionsSchema.optional(),

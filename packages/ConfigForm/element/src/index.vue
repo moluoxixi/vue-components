@@ -9,8 +9,9 @@ import type {
   ElementConfigFormProps,
   ElementConfigFormSlots,
 } from './types'
-import { useTemplateRef } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
+import { ELEMENT_CONFIG_FORM_COMPONENTS } from './components'
 import './styles.scss'
 
 defineOptions({
@@ -32,6 +33,10 @@ defineSlots<ElementConfigFormSlots<TValues>>()
 const model = defineModel<TValues>({ required: true })
 const rendererRef = useTemplateRef<ConfigFormRendererExpose<TValues>>('rendererRef')
 const expose: ElementConfigFormExpose<TValues> = createConfigFormRendererExpose(rendererRef)
+const components = computed(() => ({
+  ...ELEMENT_CONFIG_FORM_COMPONENTS,
+  ...(props.components ?? {}),
+}))
 
 defineExpose(expose)
 </script>
@@ -41,6 +46,7 @@ defineExpose(expose)
     ref="rendererRef"
     v-model="model"
     v-bind="{ ...$attrs, ...props }"
+    :components="components"
     namespace="mx-element-config-form"
     @change="emit('change', $event)"
     @error="emit('error', $event)"

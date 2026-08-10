@@ -9,9 +9,18 @@ import ElementSelectField from '../src/components/ElementSelectField.vue'
 import {
   createElementPlusOptionResolverContext,
   ELEMENT_PLUS_OPTION_RESOLVER_KEY,
+  readElementPlusOptionSource,
 } from '../src/options'
 
 describe('element plus designer fields', () => {
+  it('rejects non-JSON and circular provider params without recursive overflow', () => {
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+
+    expect(readElementPlusOptionSource({ kind: 'provider', key: 'projects', params: circular })).toBeUndefined()
+    expect(readElementPlusOptionSource({ kind: 'provider', key: 'projects', params: new Date() })).toBeUndefined()
+  })
+
   it('renders JSON options and forwards the Element Plus value event', async () => {
     const wrapper = mount(ElementSelectField, {
       props: {

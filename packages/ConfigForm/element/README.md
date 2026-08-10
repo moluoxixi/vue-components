@@ -51,6 +51,16 @@ const fields = [
 </template>
 ```
 
+## 语义组件注册
+
+适配器内置 `text`、`textarea`、`number`、`boolean` 和 `select` 别名，因此 schema 可以直接写 `component: 'text'`。`components` prop 可注册业务别名或覆盖同名默认项；完整注册项还可提供默认 props 和绑定协议，字段上的显式配置优先。
+
+```ts
+const fields = [defineField({ component: 'text', field: 'name', label: '姓名' })]
+```
+
+节点的 `extensions` 供设计器和业务插件读取，不会透传给 Element Plus 组件或 DOM。
+
 ## 节点与布局
 
 包含 `field` 的节点绑定模型并参与 Headless 生命周期；没有 `field` 的节点是纯容器。配置化 slots 会递归处理，render-function slot 只负责自定义渲染。

@@ -1,3 +1,4 @@
+import type { ConfigFormComponentRegistry as HeadlessComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { Component, VNodeChild } from 'vue'
 import type { ZodType, ZodTypeAny, ZodTypeDef } from 'zod'
 import type { FormRuntimeOptions } from '@/runtime/types'
@@ -89,6 +90,8 @@ export interface ComponentNodeConfig {
   hidden?: FieldCondition<FormValues>
   /** 传给渲染组件的 props。 */
   props?: Record<string, unknown>
+  /** 不参与渲染的扩展元数据；由 designer/adapter/plugin 按命名空间消费。 */
+  extensions?: Record<string, unknown>
   /** 子级 slots；其中的表单节点配置或 render 函数可以来自 defineField(...) 或普通 config。 */
   slots?: Record<string, SlotContent>
 }
@@ -225,6 +228,8 @@ export interface ConfigFormProps<T extends object = FormValues> {
   defaultValues?: Partial<T>
   /** 表单运行时配置，用于组件注册和字段 runtime adapter 生命周期。 */
   runtime?: FormRuntimeOptions
+  /** 便捷组件注册入口；与 runtime.components 合并，当前项优先。 */
+  components?: HeadlessComponentRegistry<Exclude<FieldConfig['component'], string>>
 }
 
 /** ConfigForm 对外发出的事件。 */

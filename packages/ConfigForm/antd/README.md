@@ -32,4 +32,17 @@ const fields = [
 ]
 ```
 
+## 语义组件注册
+
+适配器内置 `text`、`textarea`、`number`、`boolean`、`select` 和 `segmented` 别名，并为 Ant Design Vue 提供对应的 `value` / `checked` 绑定协议。调用方可通过 `components` 注册业务组件或覆盖同名默认项。
+
+```ts
+const fields = [
+  defineField({ component: 'text', field: 'name' }),
+  defineField({ component: 'boolean', field: 'published' }),
+]
+```
+
+节点的 `extensions` 会保留给 slot、readonly 和业务扩展消费，但不会作为组件 props 或 DOM attributes 输出。
+
 配置化 slots 会递归处理字段与容器节点。inline 布局不消费 `span` / `cellAttrs`；grid 布局将 `span` 映射到 CSS Grid，并把 `cellAttrs` 作为原生 div attributes。

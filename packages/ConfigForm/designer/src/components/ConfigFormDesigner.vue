@@ -351,6 +351,7 @@ defineExpose<ConfigFormDesignerExpose>({
           :material="controller.selectedMaterial.value"
           :diagnostics="controller.diagnostics.value"
           :breakpoint="activeBreakpoint"
+          :components="registry.components"
           :validator-options="registry.listValidators()"
           :property-controls="registry.propertyControls"
           :readonly="readonly"

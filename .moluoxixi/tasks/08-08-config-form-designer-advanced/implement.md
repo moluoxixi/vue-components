@@ -24,6 +24,10 @@
 22. [x] Project ordinary and custom setters through one ConfigFormRenderer while preserving update-path/history behavior.
 23. [x] Register real Element Plus and Ant Design Vue property controls with their native value bindings.
 24. [x] Add core, adapter, E2E, desktop, narrow-screen, and clean-build verification for the ConfigForm-backed property panel.
+25. [x] Move the generic component registration contract to headless and support direct components plus binding-aware registration objects in Renderer and legacy Runtime.
+26. [x] Add Element Plus and Ant Design Vue semantic aliases and route designer property controls through the active registry.
+27. [x] Add serializable node extensions across headless, legacy Runtime, designer parsing, compilation, history, slots, and readonly contexts without prop leakage.
+28. [x] Run package tests, typechecks, builds, export-boundary checks, full quality gates, and browser verification for both designer adapters.
 
 ## Validation Commands
 

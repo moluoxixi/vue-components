@@ -10,6 +10,7 @@ import type {
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
 import type {
+  ConfigFormComponentRegistration,
   ConfigFormControlBinding,
   ConfigFormRendererCellAttrs,
   ConfigFormRendererEmits,
@@ -27,6 +28,7 @@ import {
   markRaw,
   shallowRef,
   toHandlerKey,
+  toRaw,
   useAttrs,
   useId,
   useTemplateRef,
@@ -35,6 +37,7 @@ import {
 import {
   createConfigFormController,
   formatConfigFormReadonlyValue,
+  isConfigFormComponentRegistration,
   isConfigFormField,
   isConfigFormFieldReadonly,
   isConfigFormNodeVisible,
@@ -236,7 +239,12 @@ function renderBoundNode(
   path: string,
   ancestors: ReadonlySet<object>,
 ): VNodeChild {
-  const configuredId = field.props?.id
+  const registration = resolveRegistration(field.component)
+  const staticProps = {
+    ...registration?.props,
+    ...field.props,
+  }
+  const configuredId = staticProps.id
   const controlId = typeof configuredId === 'string' && configuredId
     ? configuredId
     : `${formId}-${toDomId(path)}-control`
@@ -269,7 +277,7 @@ function renderBoundNode(
     h('div', {
       class: bem('control'),
       style: layout.control,
-    }, [renderControl(field, path, controlId, errorId, readonly, ancestors)]),
+    }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration)]),
     ...fieldErrors.map((message, index) => h('p', {
       class: bem('error'),
       id: index === 0 ? errorId : undefined,
@@ -286,6 +294,7 @@ function renderControl(
   errorId?: string,
   readonly = false,
   ancestors: ReadonlySet<object> = new Set(),
+  registration?: ConfigFormComponentRegistration,
 ): VNodeChild {
   if (readonly) {
     const readonlyRender = resolveConfigFormReadonlyRender(
@@ -295,7 +304,10 @@ function renderControl(
     const value = model.value[field.field]
     const content = readonlyRender
       ? readonlyRender({
-          componentProps: field.props ?? {},
+          componentProps: {
+            ...registration?.props,
+            ...field.props,
+          },
           field,
           model: model.value,
           value,
@@ -310,8 +322,9 @@ function renderControl(
     }, [content])
   }
 
-  const binding = resolveBinding(field)
+  const binding = resolveBinding(field, registration)
   const componentProps: Record<string, unknown> = {
+    ...registration?.props,
     ...field.props,
     [binding.valueProp]: model.value[field.field],
   }
@@ -334,15 +347,19 @@ function renderControl(
   addListener(componentProps, binding.trigger, (...args: unknown[]) => {
     applyFieldChange({
       field: field.field,
-      value: field.getValueFromEvent ? field.getValueFromEvent(...args) : args[0],
+      value: field.getValueFromEvent
+        ? field.getValueFromEvent(...args)
+        : registration?.getValueFromEvent
+          ? registration.getValueFromEvent(...args)
+          : args[0],
     })
   })
-  addListener(componentProps, field.blurTrigger ?? 'blur', () => {
+  addListener(componentProps, field.blurTrigger ?? registration?.blurTrigger ?? 'blur', () => {
     setTouched(field.field)
     void validateField(field.field, 'blur')
   })
 
-  return h(resolveComponent(field.component), {
+  return h(resolveComponent(registration?.component ?? field.component), {
     ...componentProps,
     key: getNodeKey(field, `${path}.control`),
   }, createNodeSlots(field, path, ancestors))
@@ -359,18 +376,24 @@ function renderComponentNode(
   ancestors: ReadonlySet<object>,
 ): VNodeChild {
   const slots = createNodeSlots(node, path, ancestors)
-  const configuredKey = node.props?.key
+  const registration = resolveRegistration(node.component)
+  const component = registration?.component ?? node.component
+  const componentProps = {
+    ...registration?.props,
+    ...node.props,
+  }
+  const configuredKey = componentProps.key
   const vnodeKey = isVNodeKey(configuredKey) ? configuredKey : `${path}.component`
 
-  if (typeof node.component === 'string') {
-    return h(node.component, {
-      ...node.props,
+  if (typeof component === 'string') {
+    return h(component, {
+      ...componentProps,
       key: vnodeKey,
     }, slots?.default?.() ?? [])
   }
 
-  return h(resolveComponent(node.component), {
-    ...node.props,
+  return h(resolveComponent(component), {
+    ...componentProps,
     key: vnodeKey,
   }, slots)
 }
@@ -497,17 +520,35 @@ function renderComponentSlotContent(
   return renderNode(slot, false, path, ancestors)
 }
 
-function resolveBinding(field: ConfigFormRendererField<TValues>): ConfigFormControlBinding {
+function resolveBinding(
+  field: ConfigFormRendererField<TValues>,
+  registration?: ConfigFormComponentRegistration,
+): ConfigFormControlBinding {
   const adapterBinding = props.resolveBinding?.(field)
   return {
-    trigger: field.trigger ?? adapterBinding?.trigger ?? props.defaultTrigger,
-    valueProp: field.valueProp ?? adapterBinding?.valueProp ?? props.defaultValueProp,
+    trigger: field.trigger ?? registration?.trigger ?? adapterBinding?.trigger ?? props.defaultTrigger,
+    valueProp: field.valueProp ?? registration?.valueProp ?? adapterBinding?.valueProp ?? props.defaultValueProp,
   }
+}
+
+function resolveRegistration(component: Component | string): ConfigFormComponentRegistration | undefined {
+  if (typeof component !== 'string')
+    return undefined
+
+  if (!props.components || !Object.hasOwn(props.components, component))
+    return undefined
+
+  const registered = props.components[component]
+  if (registered === undefined)
+    return undefined
+  return isConfigFormComponentRegistration(registered)
+    ? registered
+    : { component: registered }
 }
 
 function resolveComponent<TComponent extends Component | string>(component: TComponent): TComponent {
   if (isObject(component))
-    return markRaw(component)
+    return markRaw(toRaw(component)) as TComponent
   return component
 }
 
@@ -522,9 +563,13 @@ function addListener(
 ): void {
   const key = toHandlerKey(camelize(event))
   const existing = target[key]
-  target[key] = typeof existing === 'function'
+  const existingListeners = Array.isArray(existing)
+    ? existing.filter((value): value is (...args: unknown[]) => unknown => typeof value === 'function')
+    : typeof existing === 'function' ? [existing] : []
+  target[key] = existingListeners.length
     ? (...args: unknown[]) => {
-        existing(...args)
+        for (const existingListener of existingListeners)
+          existingListener(...args)
         listener(...args)
       }
     : listener

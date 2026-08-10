@@ -10,9 +10,10 @@ import type {
   AntdConfigFormProps,
   AntdConfigFormSlots,
 } from './types'
-import { useTemplateRef } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
 import { resolveAntdConfigFormFieldBinding } from './bindings'
+import { ANTD_CONFIG_FORM_COMPONENTS } from './components'
 import './styles.scss'
 
 defineOptions({
@@ -34,6 +35,10 @@ defineSlots<AntdConfigFormSlots<TValues>>()
 const model = defineModel<TValues>({ required: true })
 const rendererRef = useTemplateRef<ConfigFormRendererExpose<TValues>>('rendererRef')
 const expose: AntdConfigFormExpose<TValues> = createConfigFormRendererExpose(rendererRef)
+const components = computed(() => ({
+  ...ANTD_CONFIG_FORM_COMPONENTS,
+  ...(props.components ?? {}),
+}))
 
 function resolveBinding(field: ConfigFormRendererField<TValues>) {
   return resolveAntdConfigFormFieldBinding(field)
@@ -47,6 +52,7 @@ defineExpose(expose)
     ref="rendererRef"
     v-model="model"
     v-bind="{ ...$attrs, ...props }"
+    :components="components"
     default-trigger="update:value"
     default-value-prop="value"
     namespace="mx-antd-config-form"

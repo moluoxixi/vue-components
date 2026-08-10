@@ -9,6 +9,7 @@ const adapters = [
   {
     directory: 'designer-antd-vue',
     exports: [
+      'ANTD_VUE_DESIGNER_COMPONENTS',
       'ANTD_VUE_DESIGNER_MATERIALS',
       'ANTD_VUE_DESIGNER_PROPERTY_CONTROLS',
       'ANTD_VUE_DESIGNER_ZH_CN',
@@ -38,6 +39,7 @@ const adapters = [
   {
     directory: 'designer-element-plus',
     exports: [
+      'ELEMENT_PLUS_DESIGNER_COMPONENTS',
       'ELEMENT_PLUS_DESIGNER_MATERIALS',
       'ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS',
       'ELEMENT_PLUS_DESIGNER_ZH_CN',
@@ -63,6 +65,37 @@ const adapters = [
       'ElementPlusOptionSource',
       'ElementPlusOptionStatus',
       'ElementPlusResolvedOptionState',
+    ],
+  },
+  {
+    defaultExport: true,
+    directory: 'antd',
+    exports: [
+      'ANTD_CONFIG_FORM_COMPONENTS',
+      'AntdConfigForm',
+      'antdConfigForm',
+      'default',
+    ],
+    name: '@moluoxixi/config-form-antd-vue',
+    types: [
+      'AntdConfigFormExpose',
+      'AntdConfigFormNode',
+      'AntdConfigFormProps',
+    ],
+  },
+  {
+    defaultExport: true,
+    directory: 'element',
+    exports: [
+      'ELEMENT_CONFIG_FORM_COMPONENTS',
+      'ElementConfigForm',
+      'default',
+    ],
+    name: '@moluoxixi/config-form-element',
+    types: [
+      'ElementConfigFormExpose',
+      'ElementConfigFormNode',
+      'ElementConfigFormProps',
     ],
   },
   {
@@ -131,6 +164,8 @@ function verifyRendererPackage() {
       } from '@moluoxixi/config-form/renderer'
       import type {
         ConfigFormBreakpoint,
+        ConfigFormComponentRegistration,
+        ConfigFormComponentRegistry,
         ConfigFormFieldLayout,
         ConfigFormLabelPosition,
         ConfigFormResolvedLayout,
@@ -144,6 +179,8 @@ function verifyRendererPackage() {
       } from '@moluoxixi/config-form/renderer'
 
       const responsive: ConfigFormResponsiveLayout = { tablet: { columns: 12 } }
+      const registration: ConfigFormComponentRegistration = { component: ConfigFormRenderer }
+      const components: ConfigFormComponentRegistry = { renderer: registration }
       const breakpoint: ConfigFormBreakpoint = 'tablet'
       const labelPosition: ConfigFormLabelPosition = 'left'
       const layout: ConfigFormResolvedLayout = resolveConfigFormLayout(24, 24, responsive, breakpoint)
@@ -151,6 +188,7 @@ function verifyRendererPackage() {
       const nodeSpan = resolveConfigFormNodeSpan(12, layout)
       void [
         ConfigFormRenderer,
+        components,
         createConfigFormRendererExpose,
         fieldLayout,
         layout,
@@ -164,6 +202,8 @@ function verifyRendererPackage() {
         ConfigFormRendererComponentProps,
         ConfigFormRendererExpose,
         ConfigFormRendererProps,
+        ConfigFormComponentRegistration,
+        ConfigFormComponentRegistry,
         InstallableConfigFormComponent<never>,
       ]
       const rendererTypes: RendererTypes | undefined = undefined
@@ -242,7 +282,7 @@ for (const adapter of adapters) {
     const loaded = await import(${JSON.stringify(adapter.name)})
     const expected = ${JSON.stringify(adapter.exports)}.sort()
     const actual = Object.keys(loaded).sort()
-    if ('default' in loaded || JSON.stringify(actual) !== JSON.stringify(expected)) {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       throw new Error('Unexpected exports: ' + actual.join(','))
     }
   `
@@ -257,11 +297,16 @@ for (const adapter of adapters) {
   try {
     const consumerPath = resolve(consumerDir, 'consumer.ts')
     const tsconfigPath = resolve(consumerDir, 'tsconfig.json')
+    const namedExports = adapter.exports.filter(name => name !== 'default')
+    const defaultImport = adapter.defaultExport
+      ? `import AdapterDefault from ${JSON.stringify(adapter.name)}`
+      : ''
     writeFileSync(consumerPath, `
-      import { ${adapter.exports.join(', ')} } from ${JSON.stringify(adapter.name)}
+      ${defaultImport}
+      import { ${namedExports.join(', ')} } from ${JSON.stringify(adapter.name)}
       import type { ${adapter.types.join(', ')} } from ${JSON.stringify(adapter.name)}
 
-      void [${adapter.exports.join(', ')}]
+      void [${adapter.defaultExport ? 'AdapterDefault, ' : ''}${namedExports.join(', ')}]
       type PublicTypes = [${adapter.types.join(', ')}]
       const publicTypes: PublicTypes | undefined = undefined
       void publicTypes

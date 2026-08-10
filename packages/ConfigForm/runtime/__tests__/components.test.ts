@@ -851,6 +851,38 @@ describe('config form component', () => {
     expect(wrapper.text()).not.toContain('昵称')
   })
 
+  it('merges the direct components prop over runtime registrations', async () => {
+    const wrapper = mount(ConfigForm, {
+      props: {
+        components: {
+          StatusControl: {
+            component: CustomControl,
+            props: { 'data-testid': 'direct-status-control' },
+            valueProp: 'current',
+            trigger: 'commit',
+          },
+        },
+        defaultValues: { status: 'ready' },
+        fields: [defineField({
+          component: 'StatusControl',
+          extensions: { 'test.source': 'legacy' },
+          field: 'status',
+        })],
+        runtime: {
+          components: { StatusControl: TextInput },
+        },
+      },
+    })
+    const api = wrapper.vm as unknown as ConfigFormExpose<Record<string, unknown>>
+
+    expect(wrapper.get('[data-testid="direct-status-control"]').text()).toBe('ready')
+    expect(wrapper.get('[data-testid="direct-status-control"]').attributes('extensions')).toBeUndefined()
+    expect(wrapper.find('input').exists()).toBe(false)
+    await wrapper.get('[data-testid="direct-status-control"]').trigger('click')
+    await nextTick()
+    expect(api.getValue('status')).toBe('next')
+  })
+
   it('provides the normalized runtime to rendered field components', () => {
     const fields = [
       defineField({
