@@ -24,6 +24,7 @@ export interface ElementPlusDocsDemoMessages {
   foldedLine: string
   foldedLines: string
   loading: string
+  openElementPlusPlayground: string
   openPlayground: string
   playgroundUnavailable: string
   sourceLanguage: string
@@ -45,6 +46,7 @@ export interface ElementPlusDocsDemoProps {
   jsCode?: string
   jsHighlighted?: string
   messages: ElementPlusDocsDemoMessages
+  openElementPlusPlayground?: (source: string, demoId: string) => void | Promise<void>
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
   sourceHref?: string
   title?: string

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch } from '@lucide/vue'
-import { useLocalStorage } from '@vueuse/core'
+import { Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal } from '@lucide/vue'
 import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
 import {
@@ -27,11 +26,7 @@ const isLoading = ref(true)
 const sourceToggle = ref<HTMLButtonElement | null>(null)
 const sourceId = `demo-source-${useId()}`
 const sourceLanguages: ElementPlusDocsDemoSourceLanguage[] = ['TS', 'JS']
-const sourceLanguage = useLocalStorage<ElementPlusDocsDemoSourceLanguage>(
-  'elementPlusDocsDemoLanguage',
-  'TS',
-  { initOnMounted: true },
-)
+const sourceLanguage = ref<ElementPlusDocsDemoSourceLanguage>('TS')
 let disposeStyles: (() => void) | null = null
 let runId = 0
 let copyTimer = 0
@@ -119,12 +114,14 @@ onUnmounted(() => {
     window.clearTimeout(copyTimer)
 })
 
-async function handleOpenPlayground(): Promise<void> {
-  if (!props.openPlayground)
+async function handleOpenPlayground(
+  open: ElementPlusDocsDemoProps['openPlayground'],
+): Promise<void> {
+  if (!open)
     return
   try {
     actionError.value = null
-    await props.openPlayground(displayedSourceCode.value, props.demoId)
+    await open(displayedSourceCode.value, props.demoId)
   }
   catch (sessionError) {
     actionError.value = formatError(sessionError)
@@ -193,7 +190,19 @@ async function collapseSource(): Promise<void> {
             type="button"
             :title="messages.openPlayground"
             :aria-label="messages.openPlayground"
-            @click="handleOpenPlayground"
+            data-testid="demo-lightweight-playground"
+            @click="handleOpenPlayground(openPlayground)"
+          >
+            <SquareTerminal :size="16" aria-hidden="true" />
+          </button>
+          <button
+            v-if="openElementPlusPlayground"
+            class="demo-action-btn"
+            type="button"
+            :title="messages.openElementPlusPlayground"
+            :aria-label="messages.openElementPlusPlayground"
+            data-testid="demo-element-plus-playground"
+            @click="handleOpenPlayground(openElementPlusPlayground)"
           >
             <ExternalLink :size="16" aria-hidden="true" />
           </button>

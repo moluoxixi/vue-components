@@ -114,6 +114,7 @@ input {
 export const docsContent = createElementPlusDocsContent({
   playground: {
     compile: compileLocalSfc,
+    elementPlus: {},
     path: docsRoutePath('playground'),
     starterSource: playgroundStarterSource,
   },

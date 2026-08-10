@@ -20,6 +20,7 @@ const messages: ElementPlusDocsDemoMessages = {
   foldedLine: '{lines} line folded',
   foldedLines: '{lines} lines folded',
   loading: 'Loading',
+  openElementPlusPlayground: 'Open official Element Plus playground',
   openPlayground: 'Open playground',
   playgroundUnavailable: 'Playground unavailable',
   sourceLanguage: 'Example source language',
@@ -33,6 +34,8 @@ function encode(value: string): string {
 
 function mountDemo(options: {
   copy?: (source: string) => Promise<void>
+  demoId?: string
+  openElementPlusPlayground?: (source: string, demoId: string) => void | Promise<void>
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
 } = {}) {
   const tsSource = '<script setup lang="ts">const value: number = 1</script><template>{{ value }}</template>'
@@ -46,11 +49,12 @@ function mountDemo(options: {
       code: encode(tsSource),
       compile,
       copy: options.copy,
-      demoId: 'demo-test',
+      demoId: options.demoId ?? 'demo-test',
       highlighted: encode('<pre>TS source</pre>'),
       jsCode: encode(jsSource),
       jsHighlighted: encode('<pre>JS source</pre>'),
       messages,
+      openElementPlusPlayground: options.openElementPlusPlayground,
       openPlayground: options.openPlayground,
       sourceHref: 'https://github.com/example/repo/blob/main/demo.md#L2-L8',
     },
@@ -72,7 +76,8 @@ describe('elementPlusDocsDemo', () => {
   it('keeps the TS preview runtime while copy and playground follow the selected source', async () => {
     const copy = vi.fn().mockResolvedValue(undefined)
     const openPlayground = vi.fn()
-    const { compile, jsSource, tsSource, wrapper } = mountDemo({ copy, openPlayground })
+    const openElementPlusPlayground = vi.fn()
+    const { compile, jsSource, tsSource, wrapper } = mountDemo({ copy, openElementPlusPlayground, openPlayground })
     await flushPromises()
 
     expect(compile).toHaveBeenCalledWith(tsSource, expect.objectContaining({ id: 'demo-test' }))
@@ -83,12 +88,34 @@ describe('elementPlusDocsDemo', () => {
 
     await wrapper.get('button[aria-label="Copy code"]').trigger('click')
     await wrapper.get('button[aria-label="Open playground"]').trigger('click')
+    await wrapper.get('button[aria-label="Open official Element Plus playground"]').trigger('click')
     await flushPromises()
 
     expect(copy).toHaveBeenCalledWith(jsSource)
     expect(openPlayground).toHaveBeenCalledWith(jsSource, 'demo-test')
+    expect(openElementPlusPlayground).toHaveBeenCalledWith(jsSource, 'demo-test')
     expect(compile).toHaveBeenCalledOnce()
     wrapper.unmount()
+  })
+
+  it('keeps the selected source language isolated to the current demo', async () => {
+    const firstCopy = vi.fn().mockResolvedValue(undefined)
+    const secondCopy = vi.fn().mockResolvedValue(undefined)
+    const first = mountDemo({ copy: firstCopy, demoId: 'same-demo' })
+    const second = mountDemo({ copy: secondCopy, demoId: 'same-demo' })
+    await flushPromises()
+
+    const firstOptions = first.wrapper.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
+    await firstOptions.find(option => option.text() === 'JS')!.trigger('click')
+    await first.wrapper.get('button[aria-label="Copy code"]').trigger('click')
+    await second.wrapper.get('button[aria-label="Copy code"]').trigger('click')
+    await flushPromises()
+
+    expect(firstCopy).toHaveBeenCalledWith(first.jsSource)
+    expect(secondCopy).toHaveBeenCalledWith(second.tsSource)
+    expect(window.localStorage.length).toBe(0)
+    first.wrapper.unmount()
+    second.wrapper.unmount()
   })
 
   it('renders the source link and collapses source from the bottom control', async () => {

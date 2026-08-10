@@ -11,6 +11,7 @@ import ElementPlusDocsOverviewHome from '../catalog/ElementPlusDocsOverviewHome.
 import ElementPlusDocsDemo from '../demo/ElementPlusDocsDemo.vue'
 import ElementPlusDocsComponentMeta from '../meta/ElementPlusDocsComponentMeta.vue'
 import ElementPlusDocsContributors from '../meta/ElementPlusDocsContributors.vue'
+import { createElementPlusPlaygroundUrl } from '../playground/element-plus-playground'
 import ElementPlusDocsPlayground from '../playground/ElementPlusDocsPlayground.vue'
 import {
   createElementPlusDocsPlaygroundSession,
@@ -60,13 +61,25 @@ export function createElementPlusDocsContent(
     },
     setup(props) {
       const runtime = integration.useLocale()
-      const openPlayground = (source: string, demoId: string): void => {
+      const openPlaygroundAt = (path: string, source: string, demoId: string): void => {
         const token = createElementPlusDocsPlaygroundSession(source, demoId)
         const query = new URLSearchParams({
           [elementPlusDocsPlaygroundSessionQuery]: token,
         })
-        window.location.assign(`${runtime.link(integration.playground.path)}?${query.toString()}`)
+        window.location.assign(`${runtime.link(path)}?${query.toString()}`)
       }
+      const openPlayground = (source: string, demoId: string): void => {
+        openPlaygroundAt(integration.playground.path, source, demoId)
+      }
+      const openElementPlusPlayground = integration.playground.elementPlus
+        ? (source: string): void => {
+            const href = createElementPlusPlaygroundUrl(source, {
+              dark: document.documentElement.classList.contains('dark'),
+              url: integration.playground.elementPlus?.url,
+            })
+            window.open(href, '_blank', 'noopener,noreferrer')
+          }
+        : undefined
 
       return () => h(ElementPlusDocsDemo, {
         code: props.code,
@@ -77,6 +90,7 @@ export function createElementPlusDocsContent(
         jsCode: props.jsCode,
         jsHighlighted: props.jsHighlighted,
         messages: runtime.messages.value.demo,
+        openElementPlusPlayground,
         openPlayground,
         sourceHref: props.sourceHref,
         title: props.title,

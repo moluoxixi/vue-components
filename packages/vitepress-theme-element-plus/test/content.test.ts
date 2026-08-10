@@ -60,6 +60,7 @@ const contentMessages: ElementPlusDocsContentMessages = {
     foldedLine: '{lines} line folded',
     foldedLines: '{lines} lines folded',
     loading: 'Loading',
+    openElementPlusPlayground: 'Open official Element Plus playground',
     openPlayground: 'Open playground',
     playgroundUnavailable: 'Playground unavailable',
     sourceLanguage: 'Source language',

@@ -46,6 +46,8 @@ export type {
   ElementPlusDocsContributor,
 } from './src/content/meta/types'
 export { createElementPlusDocsSfcCompiler } from './src/content/playground/create-sfc-compiler'
+export { createElementPlusPlaygroundUrl } from './src/content/playground/element-plus-playground'
+export type { ElementPlusPlaygroundUrlOptions } from './src/content/playground/element-plus-playground'
 export { default as ElementPlusDocsPlayground } from './src/content/playground/ElementPlusDocsPlayground.vue'
 export {
   consumeElementPlusDocsPlaygroundSession,

@@ -33,6 +33,9 @@ export interface ElementPlusDocsContentIntegration {
     compile: ElementPlusDocsSfcCompiler
     copy?: (source: string) => Promise<void>
     path: string
+    elementPlus?: {
+      url?: string
+    }
     starterSource: string
   }
   overview: {

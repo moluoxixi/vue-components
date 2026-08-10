@@ -38,8 +38,8 @@ const showVersion = computed(() => String(theme.value.version ?? ''))
         </el-tag>
       </div>
       <div class="content">
-        <VPNavbarSearch class="search" />
         <VPNavbarMenu class="menu" />
+        <VPNavbarSearch class="search" />
         <VPNavbarThemeToggler class="theme-toggler" />
         <VPNavbarTranslation class="translation" />
         <VPNavbarSocialLinks class="social-links" />

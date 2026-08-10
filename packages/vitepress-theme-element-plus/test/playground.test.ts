@@ -3,7 +3,7 @@ import type { ElementPlusDocsSfcCompiler } from '../index'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, onMounted } from 'vue'
-import { ElementPlusDocsPlayground } from '../index'
+import { createElementPlusPlaygroundUrl, ElementPlusDocsPlayground } from '../index'
 
 const starterSource = '<template><p>Hello, fixture!</p></template>'
 const messages = {
@@ -121,5 +121,23 @@ describe('elementPlusDocsPlayground', () => {
     expect(writeText).toHaveBeenCalledWith('<template><p>copied source</p></template>')
     expect(wrapper.get('[data-testid="playground-copy"]').text()).toContain('Copied')
     wrapper.unmount()
+  })
+})
+
+describe('createElementPlusPlaygroundUrl', () => {
+  it('uses the official Element Plus App.vue hash protocol', () => {
+    const source = '<template><ElButton>Demo</ElButton></template>'
+    const url = new URL(createElementPlusPlaygroundUrl(source, { dark: true }))
+    const state = JSON.parse(decodeURIComponent(escape(atob(url.hash.slice(1)))))
+
+    expect(url.origin).toBe('https://element-plus.run')
+    expect(url.searchParams.get('theme')).toBe('dark')
+    expect(state).toEqual({ 'App.vue': source })
+  })
+
+  it('matches the official VueUse extra package behavior', () => {
+    const url = new URL(createElementPlusPlaygroundUrl('import { useDark } from \'@vueuse/core\''))
+
+    expect(url.searchParams.get('extra_packages')).toBe('@vueuse/core')
   })
 })
