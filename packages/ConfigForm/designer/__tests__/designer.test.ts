@@ -492,7 +492,10 @@ describe('config form designer', () => {
     await labelInput!.setValue('Display name')
     expect(wrapper.emitted('update:document')).toHaveLength(updateCount!)
     await labelInput!.trigger('blur')
+    expect(wrapper.emitted('update:document')).toHaveLength(updateCount! + 1)
     expect(lastDocument(wrapper).nodes[0]).toMatchObject({ label: 'Display name' })
+    await labelInput!.trigger('blur')
+    expect(wrapper.emitted('update:document')).toHaveLength(updateCount! + 1)
 
     await wrapper.get('button[aria-label="Undo"]').trigger('click')
     expect(lastDocument(wrapper).nodes[0]).not.toHaveProperty('label')

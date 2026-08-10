@@ -79,6 +79,14 @@ describe('ant design vue designer materials', () => {
     })
   })
 
+  it('registers native ConfigForm property controls', () => {
+    const controls = createAntdVueDesignerRegistry().propertyControls
+    expect(Object.keys(controls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
+    expect(controls.text).toMatchObject({ valueProp: 'value', trigger: 'update:value' })
+    expect(controls.boolean).toMatchObject({ valueProp: 'checked', trigger: 'change' })
+    expect(controls.select).toMatchObject({ valueProp: 'value', trigger: 'change', props: { block: true } })
+  })
+
   it('renders semantic readonly choice and switch labels', async () => {
     const registry = createAntdVueDesignerRegistry()
     const select = registry.createNode('antd.select', { id: 'select', field: 'environment' })

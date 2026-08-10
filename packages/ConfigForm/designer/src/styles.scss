@@ -599,15 +599,99 @@
   gap: 13px;
 }
 
+.mx-config-form-designer-property-form,
+.mx-config-form-designer-property-form__row {
+  width: 100%;
+}
+
+.mx-config-form-designer-property-form__cell,
+.mx-config-form-designer-property-form__field,
+.mx-config-form-designer-property-form__control {
+  min-width: 0;
+}
+
+.mx-config-form-designer-property-form__label {
+  max-width: 100%;
+  min-height: 34px;
+  padding: 7px 0;
+  color: #394657;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+  overflow-wrap: anywhere;
+}
+
+.mx-config-form-designer-property-form__field[data-inherited-label] > .mx-config-form-designer-property-form__label::after {
+  display: block;
+  color: var(--mx-designer-muted);
+  content: attr(data-inherited-label);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.mx-config-form-designer-property-form__field.is-simple > .mx-config-form-designer-property-form__control {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+}
+
+.mx-config-form-designer__property-control:not(.is-boolean) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.mx-config-form-designer-property-form__field.is-custom .mx-config-form-designer__setter {
+  width: 100%;
+}
+
+.mx-config-form-designer-property-form__field.is-custom .mx-config-form-designer__setter.is-horizontal {
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 10px;
+  row-gap: 0;
+}
+
+.mx-config-form-designer-property-form__field.is-custom .mx-config-form-designer__setter.is-horizontal > .mx-config-form-designer__setter-label-row {
+  min-height: 34px;
+  padding: 7px 0;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
 .mx-config-form-designer__setter {
   display: grid;
   gap: 6px;
 }
 
+.mx-config-form-designer__property-fields > .mx-config-form-designer__setter.is-horizontal {
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 10px;
+  row-gap: 0;
+}
+
+.mx-config-form-designer__property-fields > .mx-config-form-designer__setter.is-horizontal > .mx-config-form-designer__setter-label-row {
+  min-height: 34px;
+  padding: 7px 0;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.mx-config-form-designer__property-fields > .mx-config-form-designer__setter.is-horizontal > :not(.mx-config-form-designer__setter-label-row) {
+  min-width: 0;
+}
+
 .mx-config-form-designer__setter-label {
+  max-width: 100%;
   color: #394657;
   font-size: 12px;
   font-weight: 600;
+  line-height: 17px;
+  overflow-wrap: anywhere;
 }
 
 .mx-config-form-designer__setter-label-row {

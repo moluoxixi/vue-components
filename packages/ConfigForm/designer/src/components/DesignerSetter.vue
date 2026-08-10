@@ -27,6 +27,7 @@ const locale = useDesignerLocale()
 const textDraft = ref('')
 const draftDirty = ref(false)
 const compound = computed(() => ['defaultValue', 'options', 'condition', 'validation'].includes(props.setter.control))
+const horizontal = computed(() => ['text', 'textarea', 'number', 'boolean', 'select'].includes(props.setter.control))
 const inherited = computed(() => props.value === undefined && props.inheritedValue !== undefined)
 
 function displayText(value: unknown): string {
@@ -104,7 +105,7 @@ function commitCustom(value: unknown): void {
 </script>
 
 <template>
-  <div class="mx-config-form-designer__setter" :class="{ 'is-compound': compound }">
+  <div class="mx-config-form-designer__setter" :class="{ 'is-compound': compound, 'is-horizontal': horizontal }">
     <span class="mx-config-form-designer__setter-label-row">
       <span class="mx-config-form-designer__setter-label">{{ setter.label }}</span>
       <span v-if="inherited" class="mx-config-form-designer__setter-hint">{{ locale.t('setter.inherited', 'Inherited') }}</span>

@@ -352,6 +352,7 @@ defineExpose<ConfigFormDesignerExpose>({
           :diagnostics="controller.diagnostics.value"
           :breakpoint="activeBreakpoint"
           :validator-options="registry.listValidators()"
+          :property-controls="registry.propertyControls"
           :readonly="readonly"
           @update-path="handleUpdatePath"
           @update-form="handleUpdateForm"

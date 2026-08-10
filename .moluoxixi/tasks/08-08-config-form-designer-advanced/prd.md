@@ -92,6 +92,14 @@ The standalone designer must also prove that the core is UI-framework independen
 - Flex and Grid empty states communicate their layout structure with subtle guides rather than canvas instructions or permanent labels.
 - Element Plus and Ant Design Vue provide the same container semantics, and selecting a container continues to use the single focus-bound node frame.
 
+### R13. ConfigForm-backed property panel
+
+- Project `DesignerPropertySetterDefinition` metadata into one shared `ConfigFormRenderer` instead of maintaining a second handwritten form renderer for ordinary property controls.
+- Let registry layers inject text, textarea, number, boolean, and select components plus their native value/update bindings; the core designer must not import Element Plus or Ant Design Vue.
+- Render default, options, condition, validation, responsive, and adapter-provided editors as ConfigForm custom fields while preserving their full-width composition.
+- Keep every property write on the existing `updateNodePath` / `updateForm` history path so ConfigForm integration cannot bypass undo, redo, diagnostics, or document normalization.
+- Simple setters keep a stable left label column; custom fields retain full-width content on desktop and narrow layouts.
+
 ## Acceptance Criteria
 
 - [x] Playground opens with a 24-column root grid; the sample’s two-up sections are achieved with explicit 12-cell spans.
@@ -110,6 +118,7 @@ The standalone designer must also prove that the core is UI-framework independen
 - [x] Runtime and designer use the same field layout and adapter Runtime namespace; a 24-span Switch occupies a full-row cell while the Switch remains intrinsic-width.
 - [x] Selection chrome does not alter geometry and disappears on focus loss while the selected node remains available in the property panel.
 - [x] Section, Card, Tabs, Collapse, Flex, and Grid use a production container language with one quiet empty drop surface, no generic nested frame, no canvas instructions, and adapter-parity browser coverage.
+- [x] The property panel is rendered by ConfigForm with adapter-native ordinary controls, custom setter support, left labels, unchanged history semantics, and Element Plus/Ant Design Vue desktop/narrow coverage.
 
 ## Out of Scope
 

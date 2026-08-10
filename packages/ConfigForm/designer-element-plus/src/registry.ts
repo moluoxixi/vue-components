@@ -6,10 +6,12 @@ import type { ElementPlusOptionResolverContext } from './options'
 import { createDesignerRegistry } from '@moluoxixi/config-form-designer'
 import { ELEMENT_PLUS_DESIGNER_MATERIALS } from './materials'
 import { createElementPlusOptionDiagnostics } from './options'
+import { ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS } from './propertyControls'
 
 export const elementPlusDesignerRegistryLayer: DesignerRegistryLayer = {
   name: 'element-plus',
   materials: ELEMENT_PLUS_DESIGNER_MATERIALS,
+  propertyControls: ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS,
 }
 
 export function createElementPlusDesignerRegistry(

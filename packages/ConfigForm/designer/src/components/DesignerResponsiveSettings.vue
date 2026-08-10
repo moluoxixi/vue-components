@@ -8,19 +8,32 @@ import type { DesignerFormSettings } from '../document'
 import type { DesignerPropertySetterDefinition } from '../registry'
 import { Smartphone, Tablet } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
+import { computed } from 'vue'
 import { useDesignerLocale } from '../locale'
 import DesignerSetter from './DesignerSetter.vue'
 
-const props = defineProps<{
-  form: DesignerFormSettings
+const props = withDefaults(defineProps<{
+  modelValue?: ConfigFormResponsiveLayout
+  columns?: number
+  fieldSpan?: number
+  disabled?: boolean
+  showHeading?: boolean
+  form?: DesignerFormSettings
   readonly?: boolean
-}>()
+}>(), {
+  showHeading: true,
+})
 
 const emit = defineEmits<{
+  'update:modelValue': [value: ConfigFormResponsiveLayout | undefined]
   commit: [value: ConfigFormResponsiveLayout | undefined]
 }>()
 
 const locale = useDesignerLocale()
+const responsive = computed(() => props.modelValue ?? props.form?.responsive)
+const baseColumns = computed(() => props.columns ?? props.form?.columns)
+const baseFieldSpan = computed(() => props.fieldSpan ?? props.form?.fieldSpan)
+const isReadonly = computed(() => props.disabled || props.readonly)
 const breakpoints: Array<{ key: Exclude<ConfigFormBreakpoint, 'desktop'>, icon: typeof Tablet }> = [
   { key: 'tablet', icon: Tablet },
   { key: 'mobile', icon: Smartphone },
@@ -33,7 +46,7 @@ function title(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): string {
 }
 
 function isEnabled(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): boolean {
-  return props.form.responsive?.[breakpoint] !== undefined
+  return responsive.value?.[breakpoint] !== undefined
 }
 
 function setter(
@@ -61,9 +74,9 @@ function toggle(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): void {
   }
   else {
     const resolved = resolveConfigFormLayout(
-      props.form.columns,
-      props.form.fieldSpan,
-      props.form.responsive,
+      baseColumns.value,
+      baseFieldSpan.value,
+      responsive.value,
       breakpoint,
     )
     next[breakpoint] = {
@@ -71,7 +84,7 @@ function toggle(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): void {
       fieldSpan: Math.min(24, resolved.fieldSpan),
     }
   }
-  emit('commit', Object.keys(next).length > 0 ? next : undefined)
+  commit(Object.keys(next).length > 0 ? next : undefined)
 }
 
 function commitValue(
@@ -86,20 +99,25 @@ function commitValue(
     ...next[breakpoint],
     [key]: value,
   }
-  emit('commit', next)
+  commit(next)
 }
 
 function cloneResponsive(): ConfigFormResponsiveLayout {
   return {
-    ...(props.form.responsive?.tablet ? { tablet: { ...props.form.responsive.tablet } } : {}),
-    ...(props.form.responsive?.mobile ? { mobile: { ...props.form.responsive.mobile } } : {}),
+    ...(responsive.value?.tablet ? { tablet: { ...responsive.value.tablet } } : {}),
+    ...(responsive.value?.mobile ? { mobile: { ...responsive.value.mobile } } : {}),
   }
+}
+
+function commit(value: ConfigFormResponsiveLayout | undefined): void {
+  emit('update:modelValue', value)
+  emit('commit', value)
 }
 </script>
 
 <template>
   <section class="mx-config-form-designer__responsive-settings" :aria-label="locale.t('property.responsive', 'Responsive layout')">
-    <div class="mx-config-form-designer__responsive-heading">
+    <div v-if="showHeading" class="mx-config-form-designer__responsive-heading">
       <strong>{{ locale.t('property.responsive', 'Responsive layout') }}</strong>
     </div>
     <div v-for="breakpoint in breakpoints" :key="breakpoint.key" class="mx-config-form-designer__responsive-breakpoint">
@@ -109,7 +127,7 @@ function cloneResponsive(): ConfigFormResponsiveLayout {
         role="switch"
         :aria-label="locale.t('property.breakpointLayout', '{breakpoint} layout', { breakpoint: title(breakpoint.key) })"
         :aria-checked="isEnabled(breakpoint.key)"
-        :disabled="readonly"
+        :disabled="isReadonly"
         @click="toggle(breakpoint.key)"
       >
         <span class="mx-config-form-designer__responsive-label">
@@ -122,14 +140,14 @@ function cloneResponsive(): ConfigFormResponsiveLayout {
       <div v-if="isEnabled(breakpoint.key)" class="mx-config-form-designer__responsive-fields">
         <DesignerSetter
           :setter="setter(breakpoint.key, 'columns')"
-          :value="form.responsive?.[breakpoint.key]?.columns"
-          :readonly="readonly"
+          :value="responsive?.[breakpoint.key]?.columns"
+          :readonly="isReadonly"
           @commit="commitValue(breakpoint.key, 'columns', $event)"
         />
         <DesignerSetter
           :setter="setter(breakpoint.key, 'fieldSpan')"
-          :value="form.responsive?.[breakpoint.key]?.fieldSpan"
-          :readonly="readonly"
+          :value="responsive?.[breakpoint.key]?.fieldSpan"
+          :readonly="isReadonly"
           @commit="commitValue(breakpoint.key, 'fieldSpan', $event)"
         />
       </div>

@@ -18,6 +18,12 @@
 16. [x] Replace the dual measured-component/span chrome with one focus-bound full-node frame, attach actions to its top-right edge, and verify focus-loss behavior.
 17. [x] Replace generic nested container framing with one icon-only empty drop surface, native non-empty flow, and adapter-specific Section/Flex/Grid visual guides.
 18. [x] Add DOM, computed-style, drag-state, Element Plus/Ant Design Vue, desktop/mobile, and browser screenshot verification for the container canvas language.
+19. [x] Move simple top-level property setters to a left-label grid while keeping structured/custom setters full width.
+20. [x] Add unit, computed-layout, desktop, English/Chinese, and narrow-screen verification for property-panel label placement.
+21. [x] Add a layered property-control registry contract without introducing concrete UI imports in designer core.
+22. [x] Project ordinary and custom setters through one ConfigFormRenderer while preserving update-path/history behavior.
+23. [x] Register real Element Plus and Ant Design Vue property controls with their native value bindings.
+24. [x] Add core, adapter, E2E, desktop, narrow-screen, and clean-build verification for the ConfigForm-backed property panel.
 
 ## Validation Commands
 

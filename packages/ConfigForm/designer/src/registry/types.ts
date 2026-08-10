@@ -21,6 +21,11 @@ export type DesignerSetterControl
     | 'validation'
     | 'custom'
 
+export type DesignerSimpleSetterControl = Extract<
+  DesignerSetterControl,
+  'text' | 'textarea' | 'number' | 'boolean' | 'select'
+>
+
 export type DesignerDefaultValueKind
   = | 'text'
     | 'number'
@@ -50,6 +55,19 @@ export interface DesignerPropertySetterDefinition {
   component?: Component
   componentProps?: Record<string, unknown>
 }
+
+export interface DesignerPropertyControlDefinition {
+  component: Component | string
+  valueProp?: string
+  trigger?: string
+  blurTrigger?: string
+  props?: Record<string, unknown>
+  getValueFromEvent?: (...args: unknown[]) => unknown
+}
+
+export type DesignerPropertyControlRegistry = Partial<
+  Record<DesignerSimpleSetterControl, DesignerPropertyControlDefinition>
+>
 
 export interface DesignerMaterialSlotDefinition {
   name: string
@@ -111,6 +129,7 @@ export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | Desig
 export interface DesignerRegistryLayer {
   name: string
   materials?: Iterable<DesignerMaterialDefinition>
+  propertyControls?: DesignerPropertyControlRegistry
   validators?: Record<string, RuleCustomValidator>
 }
 
@@ -120,6 +139,7 @@ export interface DesignerRegistryOptions {
 
 export interface DesignerRegistry {
   rendererNamespace: string
+  propertyControls: DesignerPropertyControlRegistry
   getMaterial: (key: string) => DesignerMaterialDefinition | undefined
   getValidator: (key: string) => RuleCustomValidator | undefined
   listMaterials: () => DesignerMaterialDefinition[]

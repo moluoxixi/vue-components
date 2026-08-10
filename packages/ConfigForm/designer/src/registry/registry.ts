@@ -1,4 +1,11 @@
-import type { DesignerMaterialDefinition, DesignerRegistry, DesignerRegistryLayer, DesignerRegistryOptions } from './types'
+import type {
+  DesignerMaterialDefinition,
+  DesignerPropertyControlDefinition,
+  DesignerRegistry,
+  DesignerRegistryLayer,
+  DesignerRegistryOptions,
+  DesignerSimpleSetterControl,
+} from './types'
 import { DesignerRegistryError } from '../document'
 
 function assertMaterialDefinition(definition: DesignerMaterialDefinition, layerName: string): void {
@@ -23,6 +30,7 @@ export function createDesignerRegistry(
   options: DesignerRegistryOptions = {},
 ): DesignerRegistry {
   const materials = new Map<string, DesignerMaterialDefinition>()
+  const propertyControls = new Map<DesignerSimpleSetterControl, DesignerPropertyControlDefinition>()
   const validators = new Map<string, NonNullable<DesignerRegistryLayer['validators']>[string]>()
 
   for (const layer of layers) {
@@ -52,10 +60,19 @@ export function createDesignerRegistry(
       if (!validators.has(key))
         validators.set(key, validator)
     }
+
+    for (const [control, definition] of Object.entries(layer.propertyControls ?? {}) as Array<[
+      DesignerSimpleSetterControl,
+      DesignerPropertyControlDefinition,
+    ]>) {
+      if (!propertyControls.has(control))
+        propertyControls.set(control, definition)
+    }
   }
 
   return {
     rendererNamespace: options.rendererNamespace?.trim() || 'mx-config-form',
+    propertyControls: Object.fromEntries(propertyControls),
     getMaterial: key => materials.get(key),
     getValidator: key => validators.get(key),
     listMaterials: () => [...materials.values()],

@@ -10,6 +10,7 @@ const adapters = [
     directory: 'designer-antd-vue',
     exports: [
       'ANTD_VUE_DESIGNER_MATERIALS',
+      'ANTD_VUE_DESIGNER_PROPERTY_CONTROLS',
       'ANTD_VUE_DESIGNER_ZH_CN',
       'ANTD_VUE_OPTION_RESOLVER_KEY',
       'antdVueDesignerRegistryLayer',
@@ -38,6 +39,7 @@ const adapters = [
     directory: 'designer-element-plus',
     exports: [
       'ELEMENT_PLUS_DESIGNER_MATERIALS',
+      'ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS',
       'ELEMENT_PLUS_DESIGNER_ZH_CN',
       'ELEMENT_PLUS_OPTION_RESOLVER_KEY',
       'createElementPlusDesignerRegistry',

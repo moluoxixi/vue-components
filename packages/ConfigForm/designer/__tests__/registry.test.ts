@@ -59,12 +59,27 @@ function containerMaterial(min?: number): DesignerMaterialDefinition {
 describe('designer registry', () => {
   it('uses the first layer as the highest precedence and validates factories', () => {
     const registry = createDesignerRegistry([
-      { name: 'local', materials: [fieldMaterial('Local input')] },
-      { name: 'adapter', materials: [fieldMaterial('Adapter input')] },
+      {
+        name: 'local',
+        materials: [fieldMaterial('Local input')],
+        propertyControls: { text: { component: 'textarea', trigger: 'change' } },
+      },
+      {
+        name: 'adapter',
+        materials: [fieldMaterial('Adapter input')],
+        propertyControls: {
+          text: { component: 'input' },
+          number: { component: 'input', valueProp: 'value' },
+        },
+      },
     ])
 
     expect(registry.getMaterial('element.input')?.title).toBe('Local input')
     expect(registry.rendererNamespace).toBe('mx-config-form')
+    expect(registry.propertyControls).toMatchObject({
+      text: { component: 'textarea', trigger: 'change' },
+      number: { component: 'input', valueProp: 'value' },
+    })
     expect(registry.createNode('element.input', { id: 'name', field: 'name' })).toEqual({
       id: 'name',
       kind: 'field',

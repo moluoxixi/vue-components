@@ -735,7 +735,21 @@ test.describe('ConfigForm visual designer', () => {
     }))).toEqual({ columns: 24, display: 'grid', gap: '16px' })
 
     const formFields = properties.locator('.mx-config-form-designer__property-fields')
-    const formSetters = formFields.locator(':scope > .mx-config-form-designer__setter')
+    const formSetters = formFields.locator('.mx-config-form-designer-property-form__field.is-simple')
+    const horizontalSetter = formSetters.filter({ hasText: 'Columns' })
+    expect(await horizontalSetter.evaluate((element) => {
+      const label = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer-property-form__label')!
+      const control = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer-property-form__control')!
+      const labelBox = label.getBoundingClientRect()
+      const controlBox = control.getBoundingClientRect()
+      return {
+        columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+        controlWidth: controlBox.width,
+        labelBeforeControl: labelBox.right <= controlBox.left,
+      }
+    })).toMatchObject({ columns: 2, labelBeforeControl: true })
+    await expect(horizontalSetter.locator('.el-input-number')).toBeVisible()
+    expect(await horizontalSetter.locator('.mx-config-form-designer-property-form__control').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(150)
     const responsiveSettings = properties.getByLabel('Responsive layout')
     const tabletSettings = responsiveSettings.locator('.mx-config-form-designer__responsive-breakpoint').filter({ hasText: 'Tablet' })
     await expect(tabletSettings.getByRole('switch', { name: 'Tablet layout', exact: true })).toHaveAttribute('aria-checked', 'true')
@@ -750,41 +764,55 @@ test.describe('ConfigForm visual designer', () => {
     await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(24)
 
     const columnsSetter = formSetters.filter({ hasText: 'Columns' })
-    await columnsSetter.getByRole('button', { name: 'Decrease Columns', exact: true }).click()
-    await expect(columnsSetter.getByRole('spinbutton', { name: 'Columns' })).toHaveValue('23')
+    const columnsInput = columnsSetter.getByRole('spinbutton', { name: 'Columns', exact: true })
+    await columnsInput.fill('23')
+    await columnsInput.blur()
+    await expect(columnsInput).toHaveValue('23')
     await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(23)
-    await columnsSetter.getByRole('button', { name: 'Increase Columns', exact: true }).click()
-    await expect(columnsSetter.getByRole('spinbutton', { name: 'Columns' })).toHaveValue('24')
+    await columnsInput.fill('24')
+    await columnsInput.blur()
+    await expect(columnsInput).toHaveValue('24')
 
     const gapSetter = formSetters.filter({ hasText: 'Gap' })
     await gapSetter.getByRole('textbox', { name: 'Gap' }).fill('20px')
     await gapSetter.getByRole('textbox', { name: 'Gap' }).blur()
     await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gap)).toBe('20px')
+    await toolbar.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gap)).toBe('16px')
+    await toolbar.getByRole('button', { name: 'Redo', exact: true }).click()
+    await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gap)).toBe('20px')
 
     const fieldSpanSetter = formSetters.filter({ hasText: 'Field span' })
-    await fieldSpanSetter.getByRole('button', { name: 'Decrease Field span', exact: true }).click()
+    const fieldSpanInput = fieldSpanSetter.getByRole('spinbutton', { name: 'Field span', exact: true })
+    await fieldSpanInput.fill('23')
+    await fieldSpanInput.blur()
     await expect.poll(() => canvas.locator('[data-node-id="designer-enabled"]').evaluate(element => getComputedStyle(element).gridColumnEnd)).toBe('span 23')
-    await fieldSpanSetter.getByRole('button', { name: 'Increase Field span', exact: true }).click()
+    await fieldSpanInput.fill('24')
+    await fieldSpanInput.blur()
     await expect.poll(() => canvas.locator('[data-node-id="designer-enabled"]').evaluate(element => getComputedStyle(element).gridColumnEnd)).toBe('span 24')
 
     const inlineSetter = formSetters.filter({ hasText: 'Inline' })
     const inlineSwitch = inlineSetter.getByRole('switch')
-    await inlineSwitch.click()
+    const inlineSwitchControl = inlineSetter.locator('.el-switch')
+    await expect(inlineSwitchControl).toBeVisible()
+    await inlineSwitchControl.click()
     await expect(inlineSwitch).toHaveAttribute('aria-checked', 'true')
     await expect.poll(() => rootList.evaluate(element => ({
       display: getComputedStyle(element).display,
       flexWrap: getComputedStyle(element).flexWrap,
     }))).toEqual({ display: 'flex', flexWrap: 'wrap' })
-    await inlineSwitch.click()
+    await inlineSwitchControl.click()
 
     const labelPositionSetter = formSetters.filter({ hasText: 'Label position' })
-    await labelPositionSetter.getByRole('button', { name: 'Top', exact: true }).click()
+    await expect(labelPositionSetter.locator('.el-segmented')).toBeVisible()
+    await labelPositionSetter.locator('.el-segmented__item').filter({ hasText: 'Top' }).click()
     await expect(canvas.locator('.mx-config-form-designer__node-preview.is-label-top')).toHaveCount(3)
-    await labelPositionSetter.getByRole('button', { name: 'Left', exact: true }).click()
+    await labelPositionSetter.locator('.el-segmented__item').filter({ hasText: 'Left' }).click()
     await expect(canvas.locator('.mx-config-form-designer__node-preview.is-label-left')).toHaveCount(3)
 
     const readonlySetter = formSetters.filter({ hasText: 'Readonly' })
-    await readonlySetter.getByRole('switch').click()
+    const readonlySwitchControl = readonlySetter.locator('.el-switch')
+    await readonlySwitchControl.click()
     await expect(canvas.locator('.mx-config-form-designer__node-preview-readonly')).toHaveCount(3)
     await expect(canvas.locator('input[placeholder="Your name"]')).toHaveCount(0)
     await expect(canvas.locator('[data-node-id="designer-choice"] [role="combobox"]')).toHaveCount(0)
@@ -801,7 +829,7 @@ test.describe('ConfigForm visual designer', () => {
     })
     expect(Math.abs(readonlyNameAlignment.labelTop - readonlyNameAlignment.valueTop)).toBeLessThanOrEqual(1)
     expect(readonlyNameAlignment.valueHeight).toBeCloseTo(readonlyNameAlignment.labelHeight, 1)
-    await readonlySetter.getByRole('switch').click()
+    await readonlySwitchControl.click()
 
     const linkagePreview = canvas.getByRole('button', { name: 'Linkage preview', exact: true })
     await linkagePreview.click()
@@ -817,9 +845,9 @@ test.describe('ConfigForm visual designer', () => {
     const unselectedBox = await enabledInitialNode.boundingBox()
     await expect(enabledInitialNode.locator(':scope > .mx-config-form-designer__node-actions')).toHaveCount(0)
     await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
-    const inheritedSpan = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Span' })
+    const inheritedSpan = properties.locator('.mx-config-form-designer-property-form__field.is-simple').filter({ hasText: 'Span' })
     await expect(inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true })).toHaveValue('24')
-    await expect(inheritedSpan).toContainText('Inherited')
+    await expect(inheritedSpan).toHaveAttribute('data-inherited-label', 'Inherited')
     await inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true }).blur()
     const selectedBox = await enabledInitialNode.boundingBox()
     expect(selectedBox?.width).toBeCloseTo(unselectedBox!.width, 1)
@@ -877,6 +905,10 @@ test.describe('ConfigForm visual designer', () => {
     await expect(defaultValueSetter.getByRole('button', { name: 'Playground', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await defaultValueSetter.getByRole('button', { name: 'Production', exact: true }).click()
     await expect(choiceNode).toContainText('Production')
+    await toolbar.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect(choiceNode).toContainText('Playground')
+    await toolbar.getByRole('button', { name: 'Redo', exact: true }).click()
+    await expect(choiceNode).toContainText('Production')
     const optionsSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Options' })
     await expect(optionsSetter.locator('.mx-config-form-designer__collection-row')).toHaveCount(2)
     await expect(optionsSetter.locator('textarea')).toHaveCount(0)
@@ -892,9 +924,13 @@ test.describe('ConfigForm visual designer', () => {
 
     const selectedNode = canvas.locator('.mx-config-form-designer__node.is-selected')
     await expect(selectedNode).toHaveCount(1)
-    const labelInput = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Label' }).locator('input').first()
+    const labelInput = properties.getByRole('textbox', { name: 'Label', exact: true })
     await labelInput.fill('Email')
     await labelInput.blur()
+    await expect(selectedNode.locator('.mx-config-form-designer__node-preview-label')).toHaveText('Email')
+    await toolbar.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect(selectedNode.locator('.mx-config-form-designer__node-preview-label')).not.toHaveText('Email')
+    await toolbar.getByRole('button', { name: 'Redo', exact: true }).click()
     await expect(selectedNode.locator('.mx-config-form-designer__node-preview-label')).toHaveText('Email')
 
     await properties.getByRole('tab', { name: 'Validation', exact: true }).click()
@@ -1051,10 +1087,11 @@ test('standalone designer entry exposes localized controls on narrow screens', a
   await page.setViewportSize({ width: 390, height: 844 })
   await framework.getByRole('button', { name: 'Ant Design Vue', exact: true }).click()
   await expect(designer.locator('.mx-config-form-designer')).toHaveAttribute('data-adapter', 'antd-vue')
-  await expect(designer.locator('.ant-input')).toBeVisible()
-  await expect(designer.locator('.ant-select')).toBeVisible()
-  await expect(designer.locator('.ant-switch')).toBeVisible()
-  await expect(designer.locator('.el-input')).toHaveCount(0)
+  const mobileCanvas = designer.locator('.mx-config-form-designer__canvas')
+  await expect(mobileCanvas.locator('[data-node-id="designer-name"] .ant-input')).toBeVisible()
+  await expect(mobileCanvas.locator('[data-node-id="designer-choice"] .ant-select')).toBeVisible()
+  await expect(mobileCanvas.locator('[data-node-id="designer-enabled"] .ant-switch')).toBeVisible()
+  await expect(mobileCanvas.locator('.el-input')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await expect(designer.getByRole('button', { name: '导出文档', exact: true })).toBeVisible()
   await expect(designer.getByRole('button', { name: '手机', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -1092,22 +1129,43 @@ test('standalone designer keeps independent Element Plus and Ant Design Vue docu
   await expect.poll(() => designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first().evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(24)
 
   const antCanvas = designer.locator('.mx-config-form-designer__canvas')
+  const antFormFields = designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer-property-form__field.is-simple')
   await antCanvas.click({ position: { x: 5, y: 5 } })
-  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '标签位置' }).getByRole('button', { name: '顶部', exact: true }).click()
+  const antLabelPosition = antFormFields.filter({ hasText: '标签位置' })
+  const antReadonly = antFormFields.filter({ hasText: '表单只读' })
+  await expect(antFormFields.filter({ hasText: '列数' }).locator('.ant-input-number')).toBeVisible()
+  await expect(antFormFields.filter({ hasText: '间距' }).locator('.ant-input')).toBeVisible()
+  await expect(antReadonly.locator('.ant-switch')).toBeVisible()
+  await expect(antLabelPosition.locator('.ant-segmented')).toBeVisible()
+  await antLabelPosition.locator('.ant-segmented-item').filter({ hasText: '顶部' }).click()
   const antNameNode = designer.locator('[data-node-id="designer-name"]')
   await antNameNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
   await expect(antNameNode.locator('.mx-config-form-designer__node-preview.is-label-top')).toBeVisible()
   await expectSingleSelectionFrameMatchesNode(antNameNode)
 
+  const antProperties = designer.locator('.mx-config-form-designer__properties')
+  const antLabelInput = antProperties.getByRole('textbox', { name: '标签', exact: true })
+  const antToolbar = designer.getByRole('toolbar', { name: '设计器操作', exact: true })
+  await antLabelInput.fill('AntD name')
+  await expect(antNameNode).toContainText('Name')
+  await antLabelInput.blur()
+  await expect(antNameNode).toContainText('AntD name')
+  await antToolbar.getByRole('button', { name: '撤销', exact: true }).click()
+  await expect(antNameNode).toContainText('Name')
+  await antToolbar.getByRole('button', { name: '重做', exact: true }).click()
+  await expect(antNameNode).toContainText('AntD name')
+  await antToolbar.getByRole('button', { name: '撤销', exact: true }).click()
+  await expect(antNameNode).toContainText('Name')
+
   await antCanvas.click({ position: { x: 5, y: 5 } })
-  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '标签位置' }).getByRole('button', { name: '左侧', exact: true }).click()
-  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '表单只读' }).getByRole('switch').click()
+  await antLabelPosition.locator('.ant-segmented-item').filter({ hasText: '左侧' }).click()
+  await antReadonly.getByRole('switch').click()
   await antNameNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
   await expect(antNameNode.locator('.mx-config-form-designer__node-preview-readonly')).toBeVisible()
   await expectSingleSelectionFrameMatchesNode(antNameNode)
 
   await antCanvas.click({ position: { x: 5, y: 5 } })
-  await designer.locator('.mx-config-form-designer__property-fields .mx-config-form-designer__setter').filter({ hasText: '表单只读' }).getByRole('switch').click()
+  await antReadonly.getByRole('switch').click()
 
   for (const field of [
     { nodeId: 'designer-name', selector: '.ant-input' },
@@ -1142,16 +1200,19 @@ test('standalone designer keeps independent Element Plus and Ant Design Vue docu
     await expectSingleSelectionFrameMatchesNode(selectedMaterial)
   }
 
-  const antInputCount = await designer.locator('.ant-input').count()
   await designer.getByRole('button', { name: '输入框', exact: true }).click()
-  await expect(designer.locator('.ant-input')).toHaveCount(antInputCount + 1)
+  const addedAntInputNode = antCanvas.locator('.mx-config-form-designer__node.is-selected[data-material="antd.input"]')
+  await expect(addedAntInputNode).toHaveCount(1)
+  await expect(addedAntInputNode.locator('.ant-input')).toBeVisible()
+  const addedAntInputId = await addedAntInputNode.getAttribute('data-node-id')
+  expect(addedAntInputId).not.toBeNull()
 
   await framework.getByRole('button', { name: 'Element Plus', exact: true }).click()
   await expect(designer.locator('.mx-element-designer-section')).toBeVisible()
-  await expect(designer.locator('.ant-input')).toHaveCount(0)
+  await expect(antCanvas.locator('.ant-input')).toHaveCount(0)
 
   await framework.getByRole('button', { name: 'Ant Design Vue', exact: true }).click()
-  await expect(designer.locator('.ant-input')).toHaveCount(antInputCount + 1)
+  await expect(antCanvas.locator(`[data-node-id="${addedAntInputId}"] .ant-input`)).toBeVisible()
 })
 
 test('keeps root span placement aligned between runtime preview and designer canvas', async ({ page }) => {
@@ -1431,7 +1492,13 @@ for (const adapter of [
     expect(await flexList.locator(':scope > .mx-config-form-designer__empty-slot').evaluate(element => getComputedStyle(element).backgroundImage)).not.toBe('none')
     const flexProperties = designer.locator('.mx-config-form-designer__properties')
     await expect(flexProperties).toContainText('换行')
-    await expect(flexProperties.locator('.mx-config-form-designer__switch-row')).toHaveCount(1)
+    const wrapField = flexProperties.locator('.mx-config-form-designer-property-form__field.is-simple').filter({ hasText: '换行' })
+    const wrapSwitch = wrapField.locator(adapter.framework === 'Ant Design Vue' ? '.ant-switch' : '.el-switch')
+    await expect(wrapSwitch).toBeVisible()
+    await wrapSwitch.click()
+    await expect.poll(() => flexList.evaluate(element => getComputedStyle(element).flexWrap)).toBe('nowrap')
+    await wrapSwitch.click()
+    await expect.poll(() => flexList.evaluate(element => getComputedStyle(element).flexWrap)).toBe('wrap')
     await inspectSortableDrag(
       page,
       designer.getByRole('button', { name: '输入框', exact: true }),
@@ -1510,9 +1577,10 @@ for (const adapter of [
 
     await designerCanvas.click({ position: { x: 5, y: 5 } })
     const formProperties = designer.locator('.mx-config-form-designer__properties')
-    const formReadonly = formProperties.getByRole('switch', { name: '表单只读', exact: true })
-    await expect(formReadonly).toBeVisible()
-    await formReadonly.click()
+    const formReadonlyField = formProperties.locator('.mx-config-form-designer-property-form__field.is-simple').filter({ hasText: '表单只读' })
+    const formReadonlyControl = formReadonlyField.locator(adapter.framework === 'Ant Design Vue' ? '.ant-switch' : '.el-switch')
+    await expect(formReadonlyControl).toBeVisible()
+    await formReadonlyControl.click()
 
     await designer.getByRole('button', { name: '预览表单', exact: true }).click()
     const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })

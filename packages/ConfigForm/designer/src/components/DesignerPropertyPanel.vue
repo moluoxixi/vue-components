@@ -8,6 +8,7 @@ import type {
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type {
   DesignerMaterialDefinition,
+  DesignerPropertyControlRegistry,
   DesignerPropertySetterDefinition,
   DesignerSetterOption,
 } from '../registry'
@@ -16,7 +17,7 @@ import { computed, ref } from 'vue'
 import { walkDesignerNodes } from '../document'
 import { findDesignerNode } from '../history'
 import { useDesignerLocale } from '../locale'
-import DesignerSetter from './DesignerSetter.vue'
+import DesignerPropertyForm from './DesignerPropertyForm.vue'
 import DesignerResponsiveSettings from './DesignerResponsiveSettings.vue'
 
 const props = defineProps<{
@@ -26,6 +27,7 @@ const props = defineProps<{
   diagnostics: DesignerDiagnostic[]
   breakpoint?: ConfigFormBreakpoint
   validatorOptions?: string[]
+  propertyControls?: DesignerPropertyControlRegistry
   readonly?: boolean
 }>()
 
@@ -174,6 +176,18 @@ const formSetters = computed(() => [
   formSetter('columns', locale.t('property.columns', 'Columns'), 'number', undefined, { min: 1, max: 24, step: 1 }),
   formSetter('gap', locale.t('property.gap', 'Gap'), 'text'),
   formSetter('fieldSpan', locale.t('property.fieldSpan', 'Field span'), 'number', undefined, { min: 1, max: 24, step: 1 }),
+  {
+    key: 'responsive',
+    label: locale.t('property.responsive', 'Responsive layout'),
+    path: ['responsive'],
+    control: 'custom' as const,
+    component: DesignerResponsiveSettings,
+    componentProps: {
+      columns: props.document.form.columns,
+      fieldSpan: props.document.form.fieldSpan,
+      showHeading: false,
+    },
+  },
 ])
 
 function readFormValue(setter: DesignerPropertySetterDefinition): unknown {
@@ -189,9 +203,22 @@ function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): v
   emit('updateForm', { [setter.key]: value })
 }
 
-function commitResponsive(value: DesignerFormSettings['responsive']): void {
-  emit('updateForm', { responsive: value })
-}
+const activePropertySetters = computed(() => activeTab.value === 'properties'
+  ? propertySetters.value
+  : activeTab.value === 'validation'
+    ? validationSetters.value
+    : conditionSetters.value)
+
+const propertyEntries = computed(() => activePropertySetters.value.map(setter => ({
+  setter,
+  value: readPath(setter.path),
+  inheritedValue: inheritedValue(setter),
+})))
+
+const formEntries = computed(() => formSetters.value.map(setter => ({
+  setter,
+  value: readFormValue(setter),
+})))
 </script>
 
 <template>
@@ -208,17 +235,14 @@ function commitResponsive(value: DesignerFormSettings['responsive']): void {
       </div>
 
       <div class="mx-config-form-designer__property-fields">
-        <DesignerSetter
-          v-for="setter in activeTab === 'properties' ? propertySetters : activeTab === 'validation' ? validationSetters : conditionSetters"
-          :key="setter.key"
-          :setter="setter"
-          :value="readPath(setter.path)"
-          :inherited-value="inheritedValue(setter)"
+        <DesignerPropertyForm
+          :entries="propertyEntries"
+          :controls="propertyControls"
           :readonly="readonly"
           :node="node"
           :field-options="fieldOptions"
           :validator-options="validatorOptions"
-          @commit="commitNodePath($event, setter)"
+          @commit="commitNodePath"
         />
       </div>
     </template>
@@ -228,18 +252,11 @@ function commitResponsive(value: DesignerFormSettings['responsive']): void {
         <strong>{{ locale.t('property.form', 'Form') }}</strong>
       </div>
       <div class="mx-config-form-designer__property-fields">
-        <DesignerSetter
-          v-for="setter in formSetters"
-          :key="setter.key"
-          :setter="setter"
-          :value="readFormValue(setter)"
+        <DesignerPropertyForm
+          :entries="formEntries"
+          :controls="propertyControls"
           :readonly="readonly"
-          @commit="commitForm($event, setter)"
-        />
-        <DesignerResponsiveSettings
-          :form="document.form"
-          :readonly="readonly"
-          @commit="commitResponsive"
+          @commit="commitForm"
         />
       </div>
     </template>

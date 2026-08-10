@@ -50,6 +50,14 @@ describe('element plus designer materials', () => {
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
   })
 
+  it('registers native ConfigForm property controls', () => {
+    const controls = createElementPlusDesignerRegistry().propertyControls
+    expect(Object.keys(controls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
+    expect(controls.text).toMatchObject({ trigger: 'update:modelValue' })
+    expect(controls.select).toMatchObject({ trigger: 'change', props: { block: true } })
+    expect(controls.boolean?.valueProp).toBeUndefined()
+  })
+
   it('provides typed visual default-value setters and readonly preview bindings', () => {
     const fields = ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')
     expect(fields.every(material => material.setters.some(setter => setter.path.join('.') === 'defaultValue'))).toBe(true)

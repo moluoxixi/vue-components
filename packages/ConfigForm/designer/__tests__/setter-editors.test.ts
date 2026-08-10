@@ -1,14 +1,149 @@
 import { parseRuleSet } from '@moluoxixi/zod3-to-rule'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import DesignerConditionSetter from '../src/components/DesignerConditionSetter.vue'
 import DesignerDefaultValueSetter from '../src/components/DesignerDefaultValueSetter.vue'
 import DesignerOptionsSetter from '../src/components/DesignerOptionsSetter.vue'
+import DesignerPropertyForm from '../src/components/DesignerPropertyForm.vue'
 import DesignerPropertyPanel from '../src/components/DesignerPropertyPanel.vue'
 import DesignerSetter from '../src/components/DesignerSetter.vue'
 import DesignerValidationSetter from '../src/components/DesignerValidationSetter.vue'
 
 describe('designer structured setters', () => {
+  it('renders simple and custom setters through ConfigForm field bindings', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const simpleSetter = { key: 'label', label: 'Label', path: ['label'], control: 'text' as const }
+    const customSetter = {
+      key: 'custom',
+      label: 'Custom',
+      path: ['props', 'custom'],
+      control: 'custom' as const,
+      component: defineComponent({
+        props: { modelValue: { type: String, default: '' } },
+        emits: ['update:modelValue'],
+        setup(props, { emit }) {
+          return () => h('button', {
+            class: 'custom-property-control',
+            type: 'button',
+            onClick: () => emit('update:modelValue', `${props.modelValue}!`),
+          }, props.modelValue)
+        },
+      }),
+    }
+    const textControl = defineComponent({
+      inheritAttrs: false,
+      props: { modelValue: { type: String, default: '' } },
+      emits: ['update:modelValue'],
+      setup(props, { attrs, emit }) {
+        return () => h('button', {
+          ...attrs,
+          class: ['test-property-control', attrs.class],
+          type: 'button',
+          onClick: () => emit('update:modelValue', `${props.modelValue}!`),
+        }, props.modelValue)
+      },
+    })
+    const wrapper = mount(DesignerPropertyForm, {
+      props: {
+        entries: [
+          { setter: simpleSetter, value: 'Name' },
+          { setter: customSetter, value: 'custom' },
+        ],
+        controls: { text: { component: textControl, trigger: 'update:modelValue' } },
+      },
+    })
+
+    expect(wrapper.get('form').classes()).toContain('mx-config-form-designer-property-form')
+    expect(wrapper.findAll('.mx-config-form-designer-property-form__field')).toHaveLength(2)
+    expect(wrapper.get('.mx-config-form-designer-property-form__label').text()).toBe('Label')
+
+    await wrapper.get('.test-property-control').trigger('click')
+    await wrapper.get('.test-property-control').trigger('blur')
+    expect(wrapper.emitted('commit')?.at(-1)).toEqual(['Name!', simpleSetter])
+
+    await wrapper.get('.custom-property-control').trigger('click')
+    expect(wrapper.emitted('commit')?.at(-1)).toEqual(['custom!', customSetter])
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('made a reactive object')
+    warn.mockRestore()
+  })
+
+  it('renders responsive settings as a ConfigForm custom field', async () => {
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        diagnostics: [],
+        document: {
+          version: 1,
+          form: { columns: 24, fieldSpan: 8 },
+          nodes: [],
+        },
+      },
+    })
+
+    const form = wrapper.get('.mx-config-form-designer-property-form')
+    const responsiveField = form.findAll('.mx-config-form-designer-property-form__field.is-custom')
+      .find(field => field.find('.mx-config-form-designer__responsive-settings').exists())!
+    expect(responsiveField.get('.mx-config-form-designer__setter-label').text()).toBe('Responsive layout')
+    expect(responsiveField.find('.mx-config-form-designer__responsive-heading').exists()).toBe(false)
+
+    await responsiveField.get('[role="switch"][aria-label="Tablet layout"]').trigger('click')
+    expect(wrapper.emitted('updateForm')?.at(-1)).toEqual([{
+      responsive: { tablet: { columns: 24, fieldSpan: 8 } },
+    }])
+  })
+
+  it('keeps text edits in the ConfigForm draft until blur', async () => {
+    const setter = { key: 'gap', label: 'Gap', path: ['gap'], control: 'text' as const }
+    const draftControl = defineComponent({
+      inheritAttrs: false,
+      props: { modelValue: { type: String, default: '' } },
+      emits: ['update:modelValue'],
+      setup(props, { attrs, emit }) {
+        return () => h('input', {
+          ...attrs,
+          value: props.modelValue,
+          onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).value),
+        })
+      },
+    })
+    const wrapper = mount(DesignerPropertyForm, {
+      props: {
+        entries: [{ setter, value: '16px' }],
+        controls: { text: { component: draftControl, trigger: 'update:modelValue' } },
+      },
+    })
+    const input = wrapper.get('input')
+
+    await input.setValue('20px')
+    expect(wrapper.emitted('commit')).toBeUndefined()
+    await input.trigger('blur')
+    expect(wrapper.emitted('commit')).toEqual([['20px', setter]])
+
+    await wrapper.setProps({ entries: [{ setter, value: '20px' }] })
+    await input.trigger('blur')
+    expect(wrapper.emitted('commit')).toHaveLength(1)
+  })
+
+  it('marks simple setters for horizontal labels and keeps structured editors full width', () => {
+    const simple = mount(DesignerSetter, {
+      props: {
+        setter: { key: 'label', label: 'Label', path: ['label'], control: 'text' },
+        value: 'Name',
+      },
+    })
+    const structured = mount(DesignerSetter, {
+      props: {
+        setter: { key: 'defaultValue', label: 'Default value', path: ['defaultValue'], control: 'defaultValue', valueKind: 'text' },
+        value: 'Ada',
+      },
+    })
+
+    expect(simple.classes()).toContain('is-horizontal')
+    expect(simple.classes()).not.toContain('is-compound')
+    expect(structured.classes()).toContain('is-compound')
+    expect(structured.classes()).not.toContain('is-horizontal')
+  })
+
   it('commits numeric values from the native change event', async () => {
     const wrapper = mount(DesignerSetter, {
       props: {

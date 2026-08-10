@@ -67,3 +67,11 @@ The single node-cell frame makes the root span visible while compact controls re
 The recursive node list projects its parent material key as designer-only DOM metadata. Core CSS owns the shared empty-slot and dragging states; adapter CSS owns the visual treatment for custom Section, Flex, and Grid runtimes. Native Card, Tabs, TabPane, Collapse, and CollapseItem components keep their framework DOM and styling.
 
 Non-empty recursive lists contribute layout flow only: no generic padding, background, or border. Empty lists render one icon-only surface, while Grid and Flex may inherit adapter layout variables to draw non-semantic structural guides. No material-name label or instructional copy is added to the canvas. Selection remains the existing node-cell pseudo-element, so container styling cannot introduce a competing selection boundary.
+
+## Property Panel Layout
+
+The property panel projects core `DesignerPropertySetterDefinition` metadata into a single `ConfigFormRenderer`. Simple setter definitions become ordinary ConfigForm fields. Structured and custom setters become custom fields whose component is the existing `DesignerSetter`, so default, options, conditions, validation, adapter editors, and responsive controls retain their specialized composition.
+
+`DesignerRegistryLayer.propertyControls` is the UI-framework boundary. A layer may provide a component, value prop, update trigger, blur trigger, static props, and event normalizer for each simple setter kind. First-layer precedence matches material and validator overrides. Element Plus and Ant Design Vue publish complete control maps, while the core falls back to `DesignerSetter` for missing mappings and never imports either framework.
+
+ConfigForm `fieldChange` is mapped back to the originating setter and then to the existing `updatePath` or `updateForm` event. Empty text and number values are normalized at that boundary, but document writes, history, diagnostics, and schema finalization remain unchanged. Direct fields use a stable label track and flexible control track; custom fields have no ConfigForm label and keep their own full-width label/editor structure.
