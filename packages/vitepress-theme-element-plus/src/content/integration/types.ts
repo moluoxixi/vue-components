@@ -2,6 +2,9 @@ import type { Component, Plugin, Ref } from 'vue'
 import type { ElementPlusDocsComponentApiContract } from '../api/types'
 import type { ElementPlusDocsCatalogGroup, ElementPlusDocsOverviewFact } from '../catalog/types'
 import type { ElementPlusDocsComponentMetaData, ElementPlusDocsContributor } from '../meta/types'
+import type { ElementPlusDocsCodeSandboxOptions } from '../playground/external/codesandbox'
+import type { ElementPlusDocsStackBlitzOptions } from '../playground/external/stackblitz'
+import type { ElementPlusDocsExternalProjectOptions } from '../playground/external/vue-project'
 import type { ElementPlusDocsSfcCompiler } from '../playground/types'
 import type { ElementPlusDocsContentMessages } from '../types'
 
@@ -35,6 +38,11 @@ export interface ElementPlusDocsContentIntegration {
     path: string
     elementPlus?: {
       url?: string
+    }
+    external?: {
+      codeSandbox?: ElementPlusDocsCodeSandboxOptions
+      project: ElementPlusDocsExternalProjectOptions
+      stackBlitz?: ElementPlusDocsStackBlitzOptions
     }
     starterSource: string
   }

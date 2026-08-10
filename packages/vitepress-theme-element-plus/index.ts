@@ -50,6 +50,29 @@ export { createElementPlusPlaygroundUrl } from './src/content/playground/element
 export type { ElementPlusPlaygroundUrlOptions } from './src/content/playground/element-plus-playground'
 export { default as ElementPlusDocsPlayground } from './src/content/playground/ElementPlusDocsPlayground.vue'
 export {
+  createElementPlusDocsCodeSandboxParameters,
+  createElementPlusDocsCodeSandboxPayload,
+  openElementPlusDocsCodeSandbox,
+} from './src/content/playground/external/codesandbox'
+export type {
+  ElementPlusDocsCodeSandboxFile,
+  ElementPlusDocsCodeSandboxOptions,
+  ElementPlusDocsCodeSandboxPayload,
+} from './src/content/playground/external/codesandbox'
+export {
+  createElementPlusDocsStackBlitzProject,
+  openElementPlusDocsStackBlitz,
+} from './src/content/playground/external/stackblitz'
+export type {
+  ElementPlusDocsStackBlitzOptions,
+  ElementPlusDocsStackBlitzProject,
+} from './src/content/playground/external/stackblitz'
+export { createElementPlusDocsExternalProject } from './src/content/playground/external/vue-project'
+export type {
+  ElementPlusDocsExternalProject,
+  ElementPlusDocsExternalProjectOptions,
+} from './src/content/playground/external/vue-project'
+export {
   consumeElementPlusDocsPlaygroundSession,
   createElementPlusDocsPlaygroundSession,
   elementPlusDocsPlaygroundSessionQuery,

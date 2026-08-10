@@ -13,6 +13,9 @@ import ElementPlusDocsComponentMeta from '../meta/ElementPlusDocsComponentMeta.v
 import ElementPlusDocsContributors from '../meta/ElementPlusDocsContributors.vue'
 import { createElementPlusPlaygroundUrl } from '../playground/element-plus-playground'
 import ElementPlusDocsPlayground from '../playground/ElementPlusDocsPlayground.vue'
+import { openElementPlusDocsCodeSandbox } from '../playground/external/codesandbox'
+import { openElementPlusDocsStackBlitz } from '../playground/external/stackblitz'
+import { createElementPlusDocsExternalProject } from '../playground/external/vue-project'
 import {
   createElementPlusDocsPlaygroundSession,
   elementPlusDocsPlaygroundSessionQuery,
@@ -80,6 +83,26 @@ export function createElementPlusDocsContent(
             window.open(href, '_blank', 'noopener,noreferrer')
           }
         : undefined
+      const createExternalProject = (source: string) => createElementPlusDocsExternalProject(
+        source,
+        integration.playground.external!.project,
+      )
+      const openStackBlitz = integration.playground.external?.stackBlitz
+        ? (source: string): void => {
+            openElementPlusDocsStackBlitz(
+              createExternalProject(source),
+              integration.playground.external?.stackBlitz,
+            )
+          }
+        : undefined
+      const openCodeSandbox = integration.playground.external?.codeSandbox
+        ? (source: string): void => {
+            openElementPlusDocsCodeSandbox(
+              createExternalProject(source),
+              integration.playground.external?.codeSandbox,
+            )
+          }
+        : undefined
 
       return () => h(ElementPlusDocsDemo, {
         code: props.code,
@@ -90,8 +113,10 @@ export function createElementPlusDocsContent(
         jsCode: props.jsCode,
         jsHighlighted: props.jsHighlighted,
         messages: runtime.messages.value.demo,
+        openCodeSandbox,
         openElementPlusPlayground,
         openPlayground,
+        openStackBlitz,
         sourceHref: props.sourceHref,
         title: props.title,
       })

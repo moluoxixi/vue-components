@@ -20,8 +20,10 @@ const messages: ElementPlusDocsDemoMessages = {
   foldedLine: '{lines} line folded',
   foldedLines: '{lines} lines folded',
   loading: 'Loading',
-  openElementPlusPlayground: 'Open official Element Plus playground',
-  openPlayground: 'Open playground',
+  openCodeSandbox: 'Edit in CodeSandbox',
+  openElementPlusPlayground: 'Edit in Vue Playground',
+  openPlayground: 'Edit in lightweight playground',
+  openStackBlitz: 'Edit in StackBlitz',
   playgroundUnavailable: 'Playground unavailable',
   sourceLanguage: 'Example source language',
   unfoldCodeRegion: 'Unfold code region',
@@ -35,8 +37,10 @@ function encode(value: string): string {
 function mountDemo(options: {
   copy?: (source: string) => Promise<void>
   demoId?: string
+  openCodeSandbox?: (source: string, demoId: string) => void | Promise<void>
   openElementPlusPlayground?: (source: string, demoId: string) => void | Promise<void>
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
+  openStackBlitz?: (source: string, demoId: string) => void | Promise<void>
 } = {}) {
   const tsSource = '<script setup lang="ts">const value: number = 1</script><template>{{ value }}</template>'
   const jsSource = '<script setup>const value = 1;</script><template>{{ value }}</template>'
@@ -54,8 +58,10 @@ function mountDemo(options: {
       jsCode: encode(jsSource),
       jsHighlighted: encode('<pre>JS source</pre>'),
       messages,
+      openCodeSandbox: options.openCodeSandbox,
       openElementPlusPlayground: options.openElementPlusPlayground,
       openPlayground: options.openPlayground,
+      openStackBlitz: options.openStackBlitz,
       sourceHref: 'https://github.com/example/repo/blob/main/demo.md#L2-L8',
     },
     global: {
@@ -77,7 +83,15 @@ describe('elementPlusDocsDemo', () => {
     const copy = vi.fn().mockResolvedValue(undefined)
     const openPlayground = vi.fn()
     const openElementPlusPlayground = vi.fn()
-    const { compile, jsSource, tsSource, wrapper } = mountDemo({ copy, openElementPlusPlayground, openPlayground })
+    const openStackBlitz = vi.fn()
+    const openCodeSandbox = vi.fn()
+    const { compile, jsSource, tsSource, wrapper } = mountDemo({
+      copy,
+      openCodeSandbox,
+      openElementPlusPlayground,
+      openPlayground,
+      openStackBlitz,
+    })
     await flushPromises()
 
     expect(compile).toHaveBeenCalledWith(tsSource, expect.objectContaining({ id: 'demo-test' }))
@@ -87,32 +101,82 @@ describe('elementPlusDocsDemo', () => {
     await jsOption!.trigger('click')
 
     await wrapper.get('button[aria-label="Copy code"]').trigger('click')
-    await wrapper.get('button[aria-label="Open playground"]').trigger('click')
-    await wrapper.get('button[aria-label="Open official Element Plus playground"]').trigger('click')
+    await wrapper.get('button[aria-label="Edit in lightweight playground"]').trigger('click')
+    await wrapper.get('button[aria-label="Edit in Vue Playground"]').trigger('click')
+    await wrapper.get('button[aria-label="Edit in StackBlitz"]').trigger('click')
+    await wrapper.get('button[aria-label="Edit in CodeSandbox"]').trigger('click')
     await flushPromises()
 
     expect(copy).toHaveBeenCalledWith(jsSource)
     expect(openPlayground).toHaveBeenCalledWith(jsSource, 'demo-test')
     expect(openElementPlusPlayground).toHaveBeenCalledWith(jsSource, 'demo-test')
+    expect(openStackBlitz).toHaveBeenCalledWith(jsSource, 'demo-test')
+    expect(openCodeSandbox).toHaveBeenCalledWith(jsSource, 'demo-test')
     expect(compile).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('uses localized titles and accessible names for every playground action', async () => {
+    const { wrapper } = mountDemo({
+      openCodeSandbox: vi.fn(),
+      openElementPlusPlayground: vi.fn(),
+      openPlayground: vi.fn(),
+      openStackBlitz: vi.fn(),
+    })
+    await flushPromises()
+
+    const actions = [
+      ['demo-lightweight-playground', 'Edit in lightweight playground'],
+      ['demo-element-plus-playground', 'Edit in Vue Playground'],
+      ['demo-stackblitz', 'Edit in StackBlitz'],
+      ['demo-codesandbox', 'Edit in CodeSandbox'],
+    ] as const
+    for (const [testId, label] of actions) {
+      const action = wrapper.get(`[data-testid="${testId}"]`)
+      expect(action.attributes('title')).toBe(label)
+      expect(action.attributes('aria-label')).toBe(label)
+    }
+
     wrapper.unmount()
   })
 
   it('keeps the selected source language isolated to the current demo', async () => {
     const firstCopy = vi.fn().mockResolvedValue(undefined)
     const secondCopy = vi.fn().mockResolvedValue(undefined)
-    const first = mountDemo({ copy: firstCopy, demoId: 'same-demo' })
-    const second = mountDemo({ copy: secondCopy, demoId: 'same-demo' })
+    const firstStackBlitz = vi.fn()
+    const secondStackBlitz = vi.fn()
+    const firstCodeSandbox = vi.fn()
+    const secondCodeSandbox = vi.fn()
+    const first = mountDemo({
+      copy: firstCopy,
+      demoId: 'same-demo',
+      openCodeSandbox: firstCodeSandbox,
+      openStackBlitz: firstStackBlitz,
+    })
+    const second = mountDemo({
+      copy: secondCopy,
+      demoId: 'same-demo',
+      openCodeSandbox: secondCodeSandbox,
+      openStackBlitz: secondStackBlitz,
+    })
     await flushPromises()
 
     const firstOptions = first.wrapper.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
     await firstOptions.find(option => option.text() === 'JS')!.trigger('click')
     await first.wrapper.get('button[aria-label="Copy code"]').trigger('click')
     await second.wrapper.get('button[aria-label="Copy code"]').trigger('click')
+    await first.wrapper.get('[data-testid="demo-stackblitz"]').trigger('click')
+    await second.wrapper.get('[data-testid="demo-stackblitz"]').trigger('click')
+    await first.wrapper.get('[data-testid="demo-codesandbox"]').trigger('click')
+    await second.wrapper.get('[data-testid="demo-codesandbox"]').trigger('click')
     await flushPromises()
 
     expect(firstCopy).toHaveBeenCalledWith(first.jsSource)
     expect(secondCopy).toHaveBeenCalledWith(second.tsSource)
+    expect(firstStackBlitz).toHaveBeenCalledWith(first.jsSource, 'same-demo')
+    expect(secondStackBlitz).toHaveBeenCalledWith(second.tsSource, 'same-demo')
+    expect(firstCodeSandbox).toHaveBeenCalledWith(first.jsSource, 'same-demo')
+    expect(secondCodeSandbox).toHaveBeenCalledWith(second.tsSource, 'same-demo')
     expect(window.localStorage.length).toBe(0)
     first.wrapper.unmount()
     second.wrapper.unmount()

@@ -2,8 +2,9 @@ import type {
   ElementPlusDocsContentMessages,
   ElementPlusDocsOverviewMessages,
 } from '../index'
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { decompressFromBase64 } from 'lz-string'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, markRaw, ref } from 'vue'
 import {
   createElementPlusDocsContent,
@@ -60,8 +61,10 @@ const contentMessages: ElementPlusDocsContentMessages = {
     foldedLine: '{lines} line folded',
     foldedLines: '{lines} lines folded',
     loading: 'Loading',
-    openElementPlusPlayground: 'Open official Element Plus playground',
-    openPlayground: 'Open playground',
+    openCodeSandbox: 'Edit in CodeSandbox',
+    openElementPlusPlayground: 'Edit in Vue Playground',
+    openPlayground: 'Edit in lightweight playground',
+    openStackBlitz: 'Edit in StackBlitz',
     playgroundUnavailable: 'Playground unavailable',
     sourceLanguage: 'Source language',
     unfoldCodeRegion: 'Unfold code region',
@@ -108,7 +111,25 @@ const groups = [{
   title: 'Forms',
 }]
 
+function formFields(form: HTMLFormElement): Record<string, string> {
+  return Object.fromEntries(
+    [...form.querySelectorAll<HTMLInputElement>('input')].map(input => [input.name, input.value]),
+  )
+}
+
+function decodeCodeSandboxParameters(parameters: string) {
+  const base64 = parameters.replaceAll('-', '+').replaceAll('_', '/')
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+  return JSON.parse(decompressFromBase64(padded)) as {
+    files: Record<string, { content: string }>
+  }
+}
+
 describe('reusable content modules', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('filters the package-owned component catalog by name and description', async () => {
     const wrapper = mount(ElementPlusDocsComponentOverview, {
       props: { groups, messages: overviewMessages },
@@ -144,10 +165,15 @@ describe('reusable content modules', () => {
     expect(wrapper.text()).not.toContain('Emits')
   })
 
-  it('registers the conventional Markdown components from one integration', () => {
+  it('registers and wires the conventional Markdown components from one integration', async () => {
     const plugin = createElementPlusDocsContent({
       playground: {
         compile: async () => ({ component: icon, dispose: () => undefined }),
+        external: {
+          codeSandbox: {},
+          project: { title: 'Fixture demo' },
+          stackBlitz: {},
+        },
         path: '/playground',
         starterSource: '<template />',
       },
@@ -203,5 +229,40 @@ describe('reusable content modules', () => {
     expect(app.component('ApiDocs')).toBe(plugin.components.ApiDocs)
     expect(app.component('ComponentDocMeta')).toBe(plugin.components.ComponentDocMeta)
     expect(app.component('OverviewHome')).toBe(plugin.components.OverviewHome)
+
+    const submittedForms: HTMLFormElement[] = []
+    vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(function (this: HTMLFormElement) {
+      submittedForms.push(this.cloneNode(true) as HTMLFormElement)
+    })
+    const tsSource = '<script setup lang="ts">const value: number = 1</script><template>{{ value }}</template>'
+    const jsSource = '<script setup>const value = 1</script><template>{{ value }}</template>'
+    const demo = mount(plugin.components.Demo, {
+      attachTo: document.body,
+      props: {
+        code: btoa(tsSource),
+        demoId: 'fixture-demo',
+        highlighted: btoa('<pre>TS</pre>'),
+        jsCode: btoa(jsSource),
+        jsHighlighted: btoa('<pre>JS</pre>'),
+      },
+      global: {
+        stubs: { ClientOnly: { template: '<slot />' } },
+      },
+    })
+    await flushPromises()
+    const languageOptions = demo.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
+    await languageOptions.find(option => option.text() === 'JS')!.trigger('click')
+    await flushPromises()
+    await demo.get('[data-testid="demo-stackblitz"]').trigger('click')
+    await demo.get('[data-testid="demo-codesandbox"]').trigger('click')
+
+    const stackBlitzForm = submittedForms.find(form => new URL(form.action).host === 'stackblitz.com')
+    const codeSandboxForm = submittedForms.find(form => new URL(form.action).host === 'codesandbox.io')
+    expect(stackBlitzForm).toBeDefined()
+    expect(codeSandboxForm).toBeDefined()
+    expect(formFields(stackBlitzForm!)['project[files][src/App.vue]']).toBe(jsSource)
+    const codeSandboxPayload = decodeCodeSandboxParameters(formFields(codeSandboxForm!).parameters!)
+    expect(codeSandboxPayload.files['src/App.vue']?.content).toBe(jsSource)
+    demo.unmount()
   })
 })

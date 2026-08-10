@@ -100,8 +100,10 @@ export interface DocsMessages {
     foldCodeRegion: string
     foldedLine: string
     foldedLines: string
+    openCodeSandbox: string
     openElementPlusPlayground: string
     openPlayground: string
+    openStackBlitz: string
     playgroundUnavailable: string
     sourceLanguage: string
     unfoldCodeRegion: string
@@ -179,7 +181,7 @@ const messages: Record<DocsLocale, DocsMessages> = {
     contributors: { aria: '{name} 组件贡献者', contribution: '为 {name} 贡献 {count} 次提交', empty: '暂无贡献记录' },
     changelog: { aria: '{name} 更新日志', empty: '暂无提交记录', commitLink: '在 GitHub 查看提交 {sha}' },
     api: { permanentLink: '{section}的永久链接', empty: '该组件没有公开的组件契约。', name: '名称', type: '类型', parameters: '参数', scope: '作用域', defaultValue: '默认值', required: '必填', description: '说明', yes: '是', typeDetails: '查看类型详情：{type}', tableAria: '{section} API', sections: { props: 'Props', emits: 'Emits', slots: 'Slots', expose: 'Expose' } },
-    demo: { compileError: '编译错误', loading: '加载中…', actions: '示例操作', copied: '已复制', copyCode: '复制代码', codeCopied: '代码已复制', collapseCode: '收起代码', expandCode: '展开代码', collapseExampleCode: '收起示例代码', expandExampleCode: '展开示例代码', foldCodeRegion: '折叠代码区域', foldedLine: '已折叠 {lines} 行', foldedLines: '已折叠 {lines} 行', openElementPlusPlayground: '在 Element Plus 官方演练场中打开', openPlayground: '在轻量演练场中打开', playgroundUnavailable: '无法打开演练场', sourceLanguage: '示例源码语言', unfoldCodeRegion: '展开代码区域', viewSource: '在 GitHub 查看示例源码' },
+    demo: { compileError: '编译错误', loading: '加载中…', actions: '示例操作', copied: '已复制', copyCode: '复制代码', codeCopied: '代码已复制', collapseCode: '收起代码', expandCode: '展开代码', collapseExampleCode: '收起示例代码', expandExampleCode: '展开示例代码', foldCodeRegion: '折叠代码区域', foldedLine: '已折叠 {lines} 行', foldedLines: '已折叠 {lines} 行', openCodeSandbox: '在 CodeSandbox 中编辑', openElementPlusPlayground: '在 Vue Playground 中编辑', openPlayground: '在轻量演练场中编辑', openStackBlitz: '在 StackBlitz 中编辑', playgroundUnavailable: '无法打开演练场', sourceLanguage: '示例源码语言', unfoldCodeRegion: '展开代码区域', viewSource: '在 GitHub 查看示例源码' },
     playground: { title: '组件演练场', editor: '单文件组件', preview: '预览', run: '运行', running: '运行中', reset: '重置', copy: '复制', copied: '已复制', editorAria: 'Vue 单文件组件源码', diagnostics: '运行错误' },
     overview: { brandKicker: 'Vue 3 组件库', intro: '基于 Element Plus 的业务组件库，覆盖高频表单、数据展示与内容编辑场景。', gettingStarted: '快速开始', browseComponents: '浏览组件', factsAria: '组件库概况', componentDocs: '组件文档', runtime: '运行基础', typedContracts: '完整契约', visualInteraction: '视觉与交互', catalogKicker: 'Component Overview', title: '组件总览', searchPlaceholder: '搜索组件', searchAria: '搜索组件', noResults: '未找到匹配的组件' },
   },
@@ -224,7 +226,7 @@ const messages: Record<DocsLocale, DocsMessages> = {
     contributors: { aria: '{name} component contributors', contribution: '{count} commits to {name}', empty: 'No contributor records yet' },
     changelog: { aria: '{name} changelog', empty: 'No commits yet', commitLink: 'View commit {sha} on GitHub' },
     api: { permanentLink: 'Permanent link to {section}', empty: 'This component has no public component contract.', name: 'Name', type: 'Type', parameters: 'Parameters', scope: 'Scope', defaultValue: 'Default', required: 'Required', description: 'Description', yes: 'Yes', typeDetails: 'View type details: {type}', tableAria: '{section} API', sections: { props: 'Props', emits: 'Emits', slots: 'Slots', expose: 'Expose' } },
-    demo: { compileError: 'Compilation error', loading: 'Loading…', actions: 'Example actions', copied: 'Copied', copyCode: 'Copy code', codeCopied: 'Code copied', collapseCode: 'Collapse code', expandCode: 'Expand code', collapseExampleCode: 'Collapse example source', expandExampleCode: 'Expand example source', foldCodeRegion: 'Fold code region', foldedLine: '{lines} line folded', foldedLines: '{lines} lines folded', openElementPlusPlayground: 'Open in the official Element Plus playground', openPlayground: 'Open in lightweight playground', playgroundUnavailable: 'Unable to open playground', sourceLanguage: 'Example source language', unfoldCodeRegion: 'Unfold code region', viewSource: 'View example source on GitHub' },
+    demo: { compileError: 'Compilation error', loading: 'Loading…', actions: 'Example actions', copied: 'Copied', copyCode: 'Copy code', codeCopied: 'Code copied', collapseCode: 'Collapse code', expandCode: 'Expand code', collapseExampleCode: 'Collapse example source', expandExampleCode: 'Expand example source', foldCodeRegion: 'Fold code region', foldedLine: '{lines} line folded', foldedLines: '{lines} lines folded', openCodeSandbox: 'Edit in CodeSandbox', openElementPlusPlayground: 'Edit in Vue Playground', openPlayground: 'Edit in lightweight playground', openStackBlitz: 'Edit in StackBlitz', playgroundUnavailable: 'Unable to open playground', sourceLanguage: 'Example source language', unfoldCodeRegion: 'Unfold code region', viewSource: 'View example source on GitHub' },
     playground: { title: 'Component Playground', editor: 'Single File Component', preview: 'Preview', run: 'Run', running: 'Running', reset: 'Reset', copy: 'Copy', copied: 'Copied', editorAria: 'Vue Single File Component source', diagnostics: 'Runtime error' },
     overview: { brandKicker: 'Vue 3 Component Library', intro: 'Business components built on Element Plus for forms, data presentation, and rich content editing.', gettingStarted: 'Getting Started', browseComponents: 'Browse Components', factsAria: 'Library overview', componentDocs: 'component docs', runtime: 'runtime', typedContracts: 'typed contracts', visualInteraction: 'visual language', catalogKicker: 'Component Overview', title: 'Components', searchPlaceholder: 'Search Components', searchAria: 'Search components', noResults: 'No matching components found' },
   },

@@ -24,8 +24,10 @@ export interface ElementPlusDocsDemoMessages {
   foldedLine: string
   foldedLines: string
   loading: string
+  openCodeSandbox: string
   openElementPlusPlayground: string
   openPlayground: string
+  openStackBlitz: string
   playgroundUnavailable: string
   sourceLanguage: string
   unfoldCodeRegion: string
@@ -46,8 +48,10 @@ export interface ElementPlusDocsDemoProps {
   jsCode?: string
   jsHighlighted?: string
   messages: ElementPlusDocsDemoMessages
+  openCodeSandbox?: (source: string, demoId: string) => void | Promise<void>
   openElementPlusPlayground?: (source: string, demoId: string) => void | Promise<void>
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
+  openStackBlitz?: (source: string, demoId: string) => void | Promise<void>
   sourceHref?: string
   title?: string
 }

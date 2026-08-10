@@ -115,6 +115,23 @@ export const docsContent = createElementPlusDocsContent({
   playground: {
     compile: compileLocalSfc,
     elementPlus: {},
+    external: {
+      codeSandbox: {},
+      project: {
+        dependencies: {
+          '@moluoxixi/components': 'latest',
+          'element-plus': '^2.9.0',
+        },
+        description: 'Editable example from the MX Components documentation',
+        packageName: 'mx-components-demo',
+        styleImports: [
+          'element-plus/dist/index.css',
+          '@moluoxixi/components/styles',
+        ],
+        title: 'MX Components Demo',
+      },
+      stackBlitz: {},
+    },
     path: docsRoutePath('playground'),
     starterSource: playgroundStarterSource,
   },

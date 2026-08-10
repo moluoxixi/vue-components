@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal } from '@lucide/vue'
+import { Box, Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal, Zap } from '@lucide/vue'
 import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
 import {
@@ -183,7 +183,7 @@ async function collapseSource(): Promise<void> {
           :options="sourceLanguages"
           size="small"
         />
-        <div class="demo-actions" :aria-label="messages.actions">
+        <div class="demo-actions" role="group" :aria-label="messages.actions">
           <button
             v-if="openPlayground"
             class="demo-action-btn"
@@ -205,6 +205,28 @@ async function collapseSource(): Promise<void> {
             @click="handleOpenPlayground(openElementPlusPlayground)"
           >
             <ExternalLink :size="16" aria-hidden="true" />
+          </button>
+          <button
+            v-if="openStackBlitz"
+            class="demo-action-btn"
+            type="button"
+            :title="messages.openStackBlitz"
+            :aria-label="messages.openStackBlitz"
+            data-testid="demo-stackblitz"
+            @click="handleOpenPlayground(openStackBlitz)"
+          >
+            <Zap :size="16" aria-hidden="true" />
+          </button>
+          <button
+            v-if="openCodeSandbox"
+            class="demo-action-btn"
+            type="button"
+            :title="messages.openCodeSandbox"
+            :aria-label="messages.openCodeSandbox"
+            data-testid="demo-codesandbox"
+            @click="handleOpenPlayground(openCodeSandbox)"
+          >
+            <Box :size="16" aria-hidden="true" />
           </button>
           <a
             v-if="sourceHref"
@@ -422,8 +444,15 @@ async function collapseSource(): Promise<void> {
   }
 
   .demo-footer {
+    flex-wrap: wrap;
     gap: 6px;
     padding-inline: 8px;
+  }
+
+  .demo-actions {
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }
 </style>
