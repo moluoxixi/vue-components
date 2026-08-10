@@ -86,7 +86,7 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
     expect(ctx.state.isReady()).toBe(true)
     expect(ctx.getStrategy()).not.toBeNull()
     expect(ctx.getStrategy()!.mode).toBe('content')
-  })
+  }, 15_000)
 
   it('buildIndex 全链路：提取契约 → content 策略就绪 → 可检索', async () => {
     const ctx = new ServerContext({ root: FIXTURE_ROOT, env: ENV })

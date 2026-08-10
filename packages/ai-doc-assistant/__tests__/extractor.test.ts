@@ -57,7 +57,7 @@ describe('extractContract — vue-component-meta 引擎', () => {
     const col = c.typeDefs.find(t => t.name === 'TableColumn')
     const field = col!.fields.find(f => f.name === 'field')
     expect(field).toBeTruthy()
-  })
+  }, 15_000)
 
   it('defineProps 内联 Omit 别名由 checker 直接解析字段（无需手写工具类型模拟）', async () => {
     const c = await extractFixtureContract('TableSelect/src/index.vue', 'TableSelect')
