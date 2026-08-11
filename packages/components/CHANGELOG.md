@@ -1,5 +1,11 @@
 # @moluoxixi/components
 
+## 0.2.1
+
+### Patch Changes
+
+- Automatically release packages changed in f3406e91d0a8.
+
 ## 0.2.0
 
 ### Minor Changes
