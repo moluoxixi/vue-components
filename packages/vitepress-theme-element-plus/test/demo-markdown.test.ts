@@ -43,20 +43,32 @@ const count: number = 1
 
   it('projects TypeScript demos into TS and generated JS source variants', () => {
     const resolveSourceHref = vi.fn(() => 'https://github.com/example/repo/blob/main/demo.md#L2-L8')
+    const resolveExternalProjectSource = vi.fn(context => ({
+      dependencies: { '@example/components': '^1.2.3' },
+      source: context.code,
+    }))
     const environment = { relativePath: 'components/example.md' }
     const md = new MarkdownIt({
       highlight: (code, language) => `<pre data-language="${language}">${code}</pre>`,
     })
-    md.use(elementPlusDocsDemoPlugin, { resolveSourceHref })
+    md.use(elementPlusDocsDemoPlugin, { resolveExternalProjectSource, resolveSourceHref })
 
     const html = md.render(source, environment)
     const tsSource = decodeAttribute(html, 'code')
     const jsSource = decodeAttribute(html, 'js-code')
+    const externalProject = JSON.parse(decodeAttribute(html, 'external-project-code'))
+    const externalJavaScriptProject = JSON.parse(decodeAttribute(html, 'external-project-js-code'))
 
     expect(tsSource).toContain('const count: number = 1')
     expect(jsSource).toContain('const count = 1;')
     expect(jsSource).not.toContain('lang="ts"')
     expect(jsSource).not.toContain(': number')
+    expect(externalProject).toEqual({
+      dependencies: { '@example/components': '^1.2.3' },
+      source: tsSource,
+    })
+    expect(externalJavaScriptProject.source).toBe(jsSource)
+    expect(resolveExternalProjectSource.mock.calls.map(([context]) => context.sourceLanguage)).toEqual(['TS', 'JS'])
     expect(html).toContain('js-highlighted=')
     expect(html).toContain('source-href="https://github.com/example/repo/blob/main/demo.md#L2-L8"')
     expect(resolveSourceHref).toHaveBeenCalledWith(expect.objectContaining({

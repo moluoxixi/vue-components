@@ -4,6 +4,7 @@ export {
   elementPlusDocsDemoPlugin,
 } from './src/markdown/demo'
 export type {
+  ElementPlusDocsDemoExternalProjectContext,
   ElementPlusDocsDemoPluginOptions,
   ElementPlusDocsDemoSource,
   ElementPlusDocsDemoSourceHrefContext,

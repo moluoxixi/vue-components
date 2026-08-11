@@ -1,5 +1,6 @@
 import type MarkdownIt from 'markdown-it'
 import type Token from 'markdown-it/lib/token.mjs'
+import type { ElementPlusDocsExternalProjectSource } from '../content/playground/external/vue-project'
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import container from 'markdown-it-container'
@@ -28,7 +29,14 @@ export interface ElementPlusDocsDemoSourceHrefContext {
   title: string
 }
 
+export interface ElementPlusDocsDemoExternalProjectContext extends ElementPlusDocsDemoSourceHrefContext {
+  sourceLanguage: 'JS' | 'TS'
+}
+
 export interface ElementPlusDocsDemoPluginOptions {
+  resolveExternalProjectSource?: (
+    context: ElementPlusDocsDemoExternalProjectContext,
+  ) => ElementPlusDocsExternalProjectSource | undefined
   resolveSourceHref?: (context: ElementPlusDocsDemoSourceHrefContext) => string | undefined
 }
 
@@ -108,21 +116,37 @@ export function elementPlusDocsDemoPlugin(
       }
 
       const demoId = createElementPlusDocsDemoId(title, code)
-      const sourceHref = options.resolveSourceHref?.({
+      const sourceContext = {
         code,
         demoId,
         endLine: sourceEndLine,
         environment,
         startLine: sourceStartLine,
         title,
-      })
+      }
+      const sourceHref = options.resolveSourceHref?.(sourceContext)
       const sourceAttribute = sourceHref
         ? ` source-href="${md.utils.escapeHtml(sourceHref)}"`
         : ''
       const jsCode = sfcTs2js(code)
+      const externalProjectSource = options.resolveExternalProjectSource?.({
+        ...sourceContext,
+        sourceLanguage: 'TS',
+      })
+      const externalJavaScriptProjectSource = options.resolveExternalProjectSource?.({
+        ...sourceContext,
+        code: jsCode,
+        sourceLanguage: 'JS',
+      })
+      const externalProjectAttribute = externalProjectSource
+        ? ` external-project-code="${encodeBase64(JSON.stringify(externalProjectSource))}"`
+        : ''
+      const externalJavaScriptProjectAttribute = externalJavaScriptProjectSource
+        ? ` external-project-js-code="${encodeBase64(JSON.stringify(externalJavaScriptProjectSource))}"`
+        : ''
       const jsHighlighted = md.options.highlight?.(jsCode, 'vue', '')
         ?? `<pre><code>${md.utils.escapeHtml(jsCode)}</code></pre>`
-      return `<Demo demo-id="${demoId}" code="${encodeBase64(code)}" highlighted="${encodeBase64(highlighted)}" js-code="${encodeBase64(jsCode)}" js-highlighted="${encodeBase64(jsHighlighted)}"${sourceAttribute} title="${md.utils.escapeHtml(title)}">\n`
+      return `<Demo demo-id="${demoId}" code="${encodeBase64(code)}" highlighted="${encodeBase64(highlighted)}" js-code="${encodeBase64(jsCode)}" js-highlighted="${encodeBase64(jsHighlighted)}"${externalProjectAttribute}${externalJavaScriptProjectAttribute}${sourceAttribute} title="${md.utils.escapeHtml(title)}">\n`
     },
   })
 }

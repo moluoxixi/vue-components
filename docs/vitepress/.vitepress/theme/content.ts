@@ -120,19 +120,8 @@ export const docsContent = createElementPlusDocsContent({
     external: {
       codeSandbox: {},
       project: {
-        dependencies: {
-          '@tanstack/vue-query': '^5.0.0',
-          '@moluoxixi/components': 'latest',
-          'ant-design-vue': '^4.2.0',
-          'element-plus': '^2.9.0',
-          'zod': '^3.23.0',
-        },
         description: 'Editable example from the MX Components documentation',
         packageName: 'mx-components-demo',
-        styleImports: [
-          'element-plus/dist/index.css',
-          '@moluoxixi/components/styles',
-        ],
         title: 'MX Components Demo',
       },
       stackBlitz: {},

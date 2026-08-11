@@ -7,6 +7,12 @@ export interface ElementPlusDocsExternalProjectOptions {
   title: string
 }
 
+export interface ElementPlusDocsExternalProjectSource {
+  dependencies?: Readonly<Record<string, string>>
+  source: string
+  styleImports?: readonly string[]
+}
+
 export interface ElementPlusDocsExternalProject {
   description?: string
   files: Readonly<Record<string, string>>
@@ -38,10 +44,25 @@ createApp(App).mount('#app')
 `
 }
 
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)]
+}
+
 export function createElementPlusDocsExternalProject(
   source: string,
   options: ElementPlusDocsExternalProjectOptions,
+  projectSource: ElementPlusDocsExternalProjectSource = { source },
 ): ElementPlusDocsExternalProject {
+  const styleImports = unique([
+    ...(options.styleImports ?? []),
+    ...(projectSource.styleImports ?? []),
+  ])
+  const dependencies: Record<string, string> = {
+    ...defaultDependencies,
+    ...projectSource.dependencies,
+    ...options.dependencies,
+  }
+
   const packageJson = {
     name: options.packageName ?? 'vue-component-demo',
     private: true,
@@ -50,10 +71,7 @@ export function createElementPlusDocsExternalProject(
     scripts: {
       dev: 'vite --host 0.0.0.0',
     },
-    dependencies: {
-      ...defaultDependencies,
-      ...options.dependencies,
-    },
+    dependencies,
     devDependencies: {
       ...defaultDevDependencies,
       ...options.devDependencies,
@@ -85,8 +103,8 @@ export default defineConfig({
   plugins: [vue()],
 })
 `,
-      'src/main.ts': createMainSource(options.styleImports ?? []),
-      'src/App.vue': source,
+      'src/main.ts': createMainSource(styleImports),
+      'src/App.vue': projectSource.source,
     },
   }
 }

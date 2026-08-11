@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { ElementPlusDocsDemoMessages } from '../index'
+import type { ElementPlusDocsDemoMessages, ElementPlusDocsExternalProjectSource } from '../index'
 import { Buffer } from 'node:buffer'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -37,10 +37,12 @@ function encode(value: string): string {
 function mountDemo(options: {
   copy?: (source: string) => Promise<void>
   demoId?: string
-  openCodeSandbox?: (source: string, demoId: string) => void | Promise<void>
+  externalProjectCode?: string
+  externalProjectJsCode?: string
+  openCodeSandbox?: (source: string, demoId: string, projectSource?: ElementPlusDocsExternalProjectSource) => void | Promise<void>
   openElementPlusPlayground?: (source: string, demoId: string) => void | Promise<void>
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
-  openStackBlitz?: (source: string, demoId: string) => void | Promise<void>
+  openStackBlitz?: (source: string, demoId: string, projectSource?: ElementPlusDocsExternalProjectSource) => void | Promise<void>
 } = {}) {
   const tsSource = '<script setup lang="ts">const value: number = 1</script><template>{{ value }}</template>'
   const jsSource = '<script setup>const value = 1;</script><template>{{ value }}</template>'
@@ -54,6 +56,8 @@ function mountDemo(options: {
       compile,
       copy: options.copy,
       demoId: options.demoId ?? 'demo-test',
+      externalProjectCode: options.externalProjectCode,
+      externalProjectJsCode: options.externalProjectJsCode,
       highlighted: encode('<pre>TS source</pre>'),
       jsCode: encode(jsSource),
       jsHighlighted: encode('<pre>JS source</pre>'),
@@ -140,6 +144,36 @@ describe('elementPlusDocsDemo', () => {
       expect(action.attributes('aria-label')).toBe(label)
     }
 
+    wrapper.unmount()
+  })
+
+  it('passes the selected build-time project descriptor to external playgrounds', async () => {
+    const openStackBlitz = vi.fn()
+    const openCodeSandbox = vi.fn()
+    const tsProjectSource = {
+      dependencies: { '@example/components': '^1.2.3' },
+      source: '<template>resolved TS</template>',
+    }
+    const jsProjectSource = {
+      dependencies: { '@example/components': '^1.2.4' },
+      source: '<template>resolved JS</template>',
+    }
+    const { jsSource, wrapper } = mountDemo({
+      externalProjectCode: encode(JSON.stringify(tsProjectSource)),
+      externalProjectJsCode: encode(JSON.stringify(jsProjectSource)),
+      openCodeSandbox,
+      openStackBlitz,
+    })
+    await flushPromises()
+
+    const languageOptions = wrapper.get('[data-testid="demo-source-language"]').findAll('.el-segmented__item')
+    await languageOptions.find(option => option.text() === 'JS')!.trigger('click')
+    await wrapper.get('[data-testid="demo-stackblitz"]').trigger('click')
+    await wrapper.get('[data-testid="demo-codesandbox"]').trigger('click')
+    await flushPromises()
+
+    expect(openStackBlitz).toHaveBeenCalledWith(jsSource, 'demo-test', jsProjectSource)
+    expect(openCodeSandbox).toHaveBeenCalledWith(jsSource, 'demo-test', jsProjectSource)
     wrapper.unmount()
   })
 

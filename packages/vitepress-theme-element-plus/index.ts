@@ -71,6 +71,7 @@ export { createElementPlusDocsExternalProject } from './src/content/playground/e
 export type {
   ElementPlusDocsExternalProject,
   ElementPlusDocsExternalProjectOptions,
+  ElementPlusDocsExternalProjectSource,
 } from './src/content/playground/external/vue-project'
 export {
   consumeElementPlusDocsPlaygroundSession,

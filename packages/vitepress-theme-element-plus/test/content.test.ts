@@ -238,11 +238,23 @@ describe('reusable content modules', () => {
     })
     const tsSource = '<script setup lang="ts">const value: number = 1</script><template>{{ value }}</template>'
     const jsSource = '<script setup>const value = 1</script><template>{{ value }}</template>'
+    const resolvedTsSource = '<script setup lang="ts">import { CopyText } from \'@moluoxixi/components/CopyText\'</script><template><CopyText /></template>'
+    const resolvedJsSource = '<script setup>import { CopyText } from \'@moluoxixi/components/CopyText\'</script><template><CopyText /></template>'
+    const encodeProjectSource = (source: string) => btoa(JSON.stringify({
+      dependencies: {
+        '@moluoxixi/components': 'latest',
+        'vue': '^3.5.0',
+      },
+      source,
+      styleImports: ['@moluoxixi/components/styles'],
+    }))
     const demo = mount(plugin.components.Demo, {
       attachTo: document.body,
       props: {
         code: btoa(tsSource),
         demoId: 'fixture-demo',
+        externalProjectCode: encodeProjectSource(resolvedTsSource),
+        externalProjectJsCode: encodeProjectSource(resolvedJsSource),
         highlighted: btoa('<pre>TS</pre>'),
         jsCode: btoa(jsSource),
         jsHighlighted: btoa('<pre>JS</pre>'),
@@ -263,12 +275,23 @@ describe('reusable content modules', () => {
     const codeSandboxForm = submittedForms.find(form => new URL(form.action).host === 'codesandbox.io')
     expect(stackBlitzForm).toBeDefined()
     expect(codeSandboxForm).toBeDefined()
-    expect(formFields(stackBlitzForm!)['project[files][src/App.vue]']).toBe(jsSource)
+    expect(formFields(stackBlitzForm!)['project[files][src/App.vue]']).toBe(resolvedJsSource)
+    expect(formFields(stackBlitzForm!)['project[files][src/main.ts]']).toContain('@moluoxixi/components/styles')
+    expect(JSON.parse(formFields(stackBlitzForm!)['project[files][package.json]']!).dependencies).toEqual({
+      '@moluoxixi/components': 'latest',
+      'vue': '^3.5.0',
+    })
     const codeSandboxPayload = decodeCodeSandboxParameters(formFields(codeSandboxForm!).parameters!)
-    expect(codeSandboxPayload.files['src/App.vue']?.content).toBe(jsSource)
+    expect(codeSandboxPayload.files['src/App.vue']?.content).toBe(resolvedJsSource)
+    expect(codeSandboxPayload.files['src/main.ts']?.content).toContain('@moluoxixi/components/styles')
+    expect(JSON.parse(codeSandboxPayload.files['package.json']!.content).dependencies).toEqual({
+      '@moluoxixi/components': 'latest',
+      'vue': '^3.5.0',
+    })
     const replUrl = new URL(String(open.mock.calls[0]?.[0]))
     expect(replUrl.pathname).toBe('/vue-playground/')
-    expect(replUrl.hash).not.toBe('')
+    const replState = JSON.parse(decodeURIComponent(escape(atob(replUrl.hash.slice(1)))))
+    expect(replState['App.vue']).toBe(jsSource)
     demo.unmount()
   })
 })

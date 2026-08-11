@@ -2,6 +2,7 @@
 import { Box, Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal, Zap } from '@lucide/vue'
 import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
+import type { ElementPlusDocsExternalProjectSource } from '../playground/external/vue-project'
 import {
   computed,
   nextTick,
@@ -48,6 +49,11 @@ const selectedSourceLanguage = computed(() => (
 ))
 const displayedSourceCode = computed(() => (
   selectedSourceLanguage.value === 'JS' ? javaScriptSourceCode.value : sourceCode.value
+))
+const externalProjectSource = computed(() => (
+  selectedSourceLanguage.value === 'JS'
+    ? decodeExternalProjectSource(props.externalProjectJsCode)
+    : decodeExternalProjectSource(props.externalProjectCode)
 ))
 const highlightedHtml = computed(() => (
   selectedSourceLanguage.value === 'JS' && props.jsHighlighted
@@ -128,6 +134,30 @@ async function handleOpenPlayground(
   }
 }
 
+function decodeExternalProjectSource(encoded: string | undefined): ElementPlusDocsExternalProjectSource | undefined {
+  if (!encoded)
+    return undefined
+  return JSON.parse(decode(encoded)) as ElementPlusDocsExternalProjectSource
+}
+
+async function handleOpenExternalPlayground(
+  open: ElementPlusDocsDemoProps['openCodeSandbox'] | ElementPlusDocsDemoProps['openStackBlitz'],
+): Promise<void> {
+  if (!open)
+    return
+  try {
+    actionError.value = null
+    const projectSource = externalProjectSource.value
+    if (projectSource)
+      await open(displayedSourceCode.value, props.demoId, projectSource)
+    else
+      await open(displayedSourceCode.value, props.demoId)
+  }
+  catch (sessionError) {
+    actionError.value = formatError(sessionError)
+  }
+}
+
 async function copyCode(): Promise<void> {
   try {
     if (props.copy)
@@ -191,7 +221,7 @@ async function collapseSource(): Promise<void> {
             :title="messages.openCodeSandbox"
             :aria-label="messages.openCodeSandbox"
             data-testid="demo-codesandbox"
-            @click="handleOpenPlayground(openCodeSandbox)"
+            @click="handleOpenExternalPlayground(openCodeSandbox)"
           >
             <Box :size="16" aria-hidden="true" />
           </button>
@@ -202,7 +232,7 @@ async function collapseSource(): Promise<void> {
             :title="messages.openStackBlitz"
             :aria-label="messages.openStackBlitz"
             data-testid="demo-stackblitz"
-            @click="handleOpenPlayground(openStackBlitz)"
+            @click="handleOpenExternalPlayground(openStackBlitz)"
           >
             <Zap :size="16" aria-hidden="true" />
           </button>

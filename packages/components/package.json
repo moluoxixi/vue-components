@@ -22,6 +22,10 @@
       "types": "./dist/auto-loaders.d.ts",
       "import": "./dist/auto-loaders.js"
     },
+    "./playground-manifest": {
+      "types": "./dist/playground-manifest.d.ts",
+      "import": "./dist/playground-manifest.js"
+    },
     "./styles": {
       "import": "./dist/components.css"
     },
@@ -119,7 +123,7 @@
   ],
   "scripts": {
     "build": "vite build",
-    "postbuild": "node scripts/finalize-declarations.mjs",
+    "postbuild": "node scripts/generate-playground-manifest.mjs && node scripts/finalize-declarations.mjs",
     "dev": "vite build --watch",
     "test": "vitest run",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
@@ -152,6 +156,7 @@
     "@vue/test-utils": "catalog:dev",
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
+    "esbuild": "catalog:dev",
     "happy-dom": "catalog:dev",
     "typescript": "catalog:dev",
     "unplugin-dts": "catalog:dev",

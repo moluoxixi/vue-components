@@ -56,6 +56,8 @@ export function createElementPlusDocsContent(
     props: {
       code: { type: String, required: true },
       demoId: { type: String, required: true },
+      externalProjectCode: { type: String, required: false },
+      externalProjectJsCode: { type: String, required: false },
       highlighted: { type: String, required: true },
       jsCode: { type: String, required: false },
       jsHighlighted: { type: String, required: false },
@@ -87,22 +89,26 @@ export function createElementPlusDocsContent(
             window.open(href, '_blank', 'noopener,noreferrer')
           }
         : undefined
-      const createExternalProject = (source: string) => createElementPlusDocsExternalProject(
+      const createExternalProject = (
+        source: string,
+        projectSource?: Parameters<typeof createElementPlusDocsExternalProject>[2],
+      ) => createElementPlusDocsExternalProject(
         source,
         integration.playground.external!.project,
+        projectSource,
       )
       const openStackBlitz = integration.playground.external?.stackBlitz
-        ? (source: string): void => {
+        ? (source: string, _demoId: string, projectSource?: Parameters<typeof createElementPlusDocsExternalProject>[2]): void => {
             openElementPlusDocsStackBlitz(
-              createExternalProject(source),
+              createExternalProject(source, projectSource),
               integration.playground.external?.stackBlitz,
             )
           }
         : undefined
       const openCodeSandbox = integration.playground.external?.codeSandbox
-        ? (source: string): void => {
+        ? (source: string, _demoId: string, projectSource?: Parameters<typeof createElementPlusDocsExternalProject>[2]): void => {
             openElementPlusDocsCodeSandbox(
-              createExternalProject(source),
+              createExternalProject(source, projectSource),
               integration.playground.external?.codeSandbox,
             )
           }
@@ -113,6 +119,8 @@ export function createElementPlusDocsContent(
         compile: integration.playground.compile,
         copy: integration.playground.copy,
         demoId: props.demoId,
+        externalProjectCode: props.externalProjectCode,
+        externalProjectJsCode: props.externalProjectJsCode,
         highlighted: props.highlighted,
         jsCode: props.jsCode,
         jsHighlighted: props.jsHighlighted,

@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { ElementPlusDocsExternalProjectSource } from '../playground/external/vue-project'
 
 export interface ElementPlusDocsDemoCompileResult {
   component: Component
@@ -44,14 +45,24 @@ export interface ElementPlusDocsDemoProps {
   ) => Promise<ElementPlusDocsDemoCompileResult>
   copy?: (source: string) => Promise<void>
   demoId: string
+  externalProjectCode?: string
+  externalProjectJsCode?: string
   highlighted: string
   jsCode?: string
   jsHighlighted?: string
   messages: ElementPlusDocsDemoMessages
-  openCodeSandbox?: (source: string, demoId: string) => void | Promise<void>
+  openCodeSandbox?: (
+    source: string,
+    demoId: string,
+    projectSource?: ElementPlusDocsExternalProjectSource,
+  ) => void | Promise<void>
   openElementPlusPlayground?: (source: string, demoId: string) => void | Promise<void>
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
-  openStackBlitz?: (source: string, demoId: string) => void | Promise<void>
+  openStackBlitz?: (
+    source: string,
+    demoId: string,
+    projectSource?: ElementPlusDocsExternalProjectSource,
+  ) => void | Promise<void>
   sourceHref?: string
   title?: string
 }

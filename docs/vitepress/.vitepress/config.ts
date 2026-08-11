@@ -13,6 +13,7 @@ import {
   docsSite,
 } from './docs-site'
 import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
+import { resolveComponentsExternalProjectSource } from './markdown/playground-external'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
   const messages = getDocsMessages(locale)
@@ -161,6 +162,7 @@ export default defineElementPlusDocs({
       },
       config(md) {
         md.use(elementPlusDocsDemoPlugin, {
+          resolveExternalProjectSource: resolveComponentsExternalProjectSource,
           resolveSourceHref: createDocsDemoSourceHrefResolver(md),
         })
       },

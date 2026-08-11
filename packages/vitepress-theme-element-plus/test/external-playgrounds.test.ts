@@ -77,6 +77,32 @@ describe('external playground projects', () => {
     })
   })
 
+  it('merges dependency metadata that was resolved at documentation build time', () => {
+    const project = createElementPlusDocsExternalProject(
+      source,
+      {
+        title: 'Resolved Demo',
+      },
+      {
+        dependencies: {
+          '@example/components': '^1.2.3',
+          'element-plus': '^2.9.0',
+        },
+        source: source.replace('const count = 1', 'import { CopyText } from \'@example/components/CopyText\''),
+        styleImports: ['@example/components/styles', 'element-plus/dist/index.css'],
+      },
+    )
+    const packageJson = JSON.parse(project.files['package.json']!)
+
+    expect(project.files['src/App.vue']).toContain('@example/components/CopyText')
+    expect(project.files['src/main.ts']).toContain('@example/components/styles')
+    expect(packageJson.dependencies).toEqual({
+      '@example/components': '^1.2.3',
+      'element-plus': '^2.9.0',
+      'vue': '^3.5.0',
+    })
+  })
+
   it('submits the official StackBlitz node project POST protocol', () => {
     const project = createProject()
     const stackBlitzProject = createElementPlusDocsStackBlitzProject(project)
