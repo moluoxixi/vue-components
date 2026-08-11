@@ -15,6 +15,7 @@ component-ideas
 .pnpm-store/
 
 # 测试产物
+.tmp*
 .snapshot
 .agent
 .playwright-mcp
