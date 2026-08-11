@@ -75,6 +75,9 @@ describe('external playground projects', () => {
       '@vitejs/plugin-vue': '^5.2.0',
       'vite': '^6.0.0',
     })
+    expect(packageJson.scripts).toEqual({
+      start: 'vite --host 0.0.0.0',
+    })
   })
 
   it('merges dependency metadata that was resolved at documentation build time', () => {
@@ -116,7 +119,7 @@ describe('external playground projects', () => {
     expect(action.origin).toBe('https://stackblitz.com')
     expect(action.pathname).toBe('/run')
     expect(action.searchParams.get('file')).toBe('src/App.vue')
-    expect(action.searchParams.get('startScript')).toBe('dev')
+    expect(action.searchParams.get('startScript')).toBe('start')
     expect(action.searchParams.get('theme')).toBe('dark')
     expect(fields['project[template]']).toBe('node')
     expect(fields['project[files][src/App.vue]']).toBe(source)
@@ -138,6 +141,9 @@ describe('external playground projects', () => {
     expect(action.pathname).toBe('/api/v1/sandboxes/define')
     expect(action.searchParams.get('query')).toBe('file=/src/App.vue')
     expect(payload.files['src/App.vue']).toEqual({ content: source, isBinary: false })
+    expect(JSON.parse(payload.files['package.json']!.content).scripts).toEqual({
+      start: 'vite --host 0.0.0.0',
+    })
     expect(decodeCodeSandboxParameters(parameters)).toEqual(payload)
     expect(fields.parameters).toBe(parameters)
     expect(capture.form.method).toBe('POST')

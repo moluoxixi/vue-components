@@ -36,7 +36,7 @@ export function openElementPlusDocsStackBlitz(
   const stackBlitzProject = createElementPlusDocsStackBlitzProject(project)
   const action = new URL(options.url ?? defaultStackBlitzUrl)
   action.searchParams.set('file', options.openFile ?? 'src/App.vue')
-  action.searchParams.set('startScript', options.startScript ?? 'dev')
+  action.searchParams.set('startScript', options.startScript ?? 'start')
   if (options.theme)
     action.searchParams.set('theme', options.theme)
   if (options.view)

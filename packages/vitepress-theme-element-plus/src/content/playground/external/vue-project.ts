@@ -69,7 +69,7 @@ export function createElementPlusDocsExternalProject(
     version: '0.0.0',
     type: 'module',
     scripts: {
-      dev: 'vite --host 0.0.0.0',
+      start: 'vite --host 0.0.0.0',
     },
     dependencies,
     devDependencies: {
