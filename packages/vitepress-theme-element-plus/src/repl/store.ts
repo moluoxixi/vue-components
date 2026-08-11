@@ -159,7 +159,9 @@ export function createElementPlusDocsReplStore(
     sfcOptions: {
       script: { propsDestructure: true },
     },
-    template: { welcomeSFC: options.starterSource },
+    // @vue/repl seeds its main file from welcomeSFC when files are preloaded.
+    // The starter belongs in App.vue; the preview entry must remain the wrapper.
+    template: { welcomeSFC: elementPlusDocsReplMainSource },
     typescriptVersion: versions.typescript,
     vueVersion: versions.vue,
   })) as Partial<StoreState>

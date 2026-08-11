@@ -5,6 +5,7 @@ import {
   createElementPlusDocsReplImportMap,
 } from '../src/repl/dependency'
 import {
+  createElementPlusDocsReplStore,
   decodeElementPlusDocsReplState,
   encodeElementPlusDocsReplState,
   initializeElementPlusDocsReplStore,
@@ -13,6 +14,14 @@ import {
   elementPlusDocsReplMainSource,
   elementPlusDocsReplSetupSource,
 } from '../src/repl/templates'
+
+vi.mock('../src/repl/dependency', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/repl/dependency')>()
+  return {
+    ...actual,
+    createElementPlusDocsCompilerUrl: () => 'data:text/javascript,export {}',
+  }
+})
 
 describe('self-hosted Vue REPL', () => {
   it('round-trips the official file-state protocol with Unicode source', () => {
@@ -74,5 +83,28 @@ describe('self-hosted Vue REPL', () => {
       'src/PlaygroundMain.vue',
       'src/element-plus.js',
     ])
+  })
+
+  it('keeps the wrapper as the preview entry when loading a shared demo state', async () => {
+    const initialized = vi.fn()
+    const starterSource = '<template><p>Starter</p></template>'
+    const source = '<template><p>CopyText demo</p></template>'
+    const store = createElementPlusDocsReplStore({
+      componentPackage: {
+        moduleUrl: 'https://example.test/components.js',
+        name: '@example/components',
+      },
+      initialized,
+      serializedState: encodeElementPlusDocsReplState({ 'App.vue': source }),
+      starterSource,
+      vueVersion: '3.5.33',
+    })
+
+    await vi.waitFor(() => expect(initialized).toHaveBeenCalledOnce())
+
+    expect(store.mainFile).toBe('src/PlaygroundMain.vue')
+    expect(store.files['src/App.vue']?.code).toBe(source)
+    expect(store.files['src/PlaygroundMain.vue']?.code).toBe(elementPlusDocsReplMainSource)
+    expect(store.files['src/PlaygroundMain.vue']?.code).not.toBe(starterSource)
   })
 })
