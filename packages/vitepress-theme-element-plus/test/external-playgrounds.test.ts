@@ -63,6 +63,7 @@ describe('external playground projects', () => {
 
     expect(project.files['src/App.vue']).toBe(source)
     expect(project.files).not.toHaveProperty('.codesandbox/tasks.json')
+    expect(project.files).not.toHaveProperty('sandbox.config.json')
     expect(project.files).toHaveProperty('index.html')
     expect(project.files).toHaveProperty('vite.config.ts')
     expect(project.files['src/main.ts']).toContain('element-plus/dist/index.css')
@@ -128,7 +129,7 @@ describe('external playground projects', () => {
     expect(capture.form.target).toBe('_blank')
   })
 
-  it('submits a CodeSandbox Define API payload that round-trips every project file', () => {
+  it('submits an Ant Design-style CodeSandbox Browser Sandbox payload', () => {
     const project = createProject()
     const payload = createElementPlusDocsCodeSandboxPayload(project)
     const parameters = createElementPlusDocsCodeSandboxParameters(project)
@@ -142,29 +143,40 @@ describe('external playground projects', () => {
     expect(action.pathname).toBe('/api/v1/sandboxes/define')
     expect(action.searchParams.get('query')).toBe('file=/src/App.vue')
     expect(payload.files['src/App.vue']).toEqual({ content: source, isBinary: false })
-    expect(JSON.parse(payload.files['.codesandbox/tasks.json']!.content)).toEqual({
-      setupTasks: [
-        {
-          name: 'Install Dependencies',
-          command: 'npm install',
-        },
-      ],
-      tasks: {
-        start: {
-          name: 'Vite Dev',
-          command: 'npm run start',
-          runAtStart: true,
-          preview: {
-            port: 5173,
-          },
-        },
+    expect(payload.files).not.toHaveProperty('vite.config.ts')
+    expect(payload.files).not.toHaveProperty('src/main.ts')
+    expect(payload.files['src/main.js']).toEqual({ content: project.files['src/main.ts'], isBinary: false })
+    expect(payload.files['index.html']!.content).toContain('id="app"')
+    expect(payload.files['index.html']!.content).not.toContain('/src/main.js')
+    expect(payload.files['index.html']!.content).not.toContain('/src/main.ts')
+    expect(JSON.parse(payload.files['sandbox.config.json']!.content)).toEqual({
+      template: 'vue-cli',
+    })
+    expect(JSON.parse(payload.files['package.json']!.content)).toEqual({
+      name: 'Example Components Demo',
+      description: 'Editable documentation example',
+      main: 'src/main.js',
+      dependencies: {
+        '@example/components': '^1.2.3',
+        'element-plus': '^2.9.0',
+        'vue': '^3.5.0',
+      },
+      devDependencies: {
+        typescript: '^5.0.2',
       },
     })
-    expect(JSON.parse(payload.files['package.json']!.content).scripts).toEqual({
+    const jsPayload = createElementPlusDocsCodeSandboxPayload(
+      createElementPlusDocsExternalProject('<script setup>const count = 1</script><template>{{ count }}</template>', {
+        title: 'JavaScript Demo',
+      }),
+    )
+    expect(JSON.parse(jsPayload.files['package.json']!.content)).not.toHaveProperty('devDependencies')
+    expect(project.files).toHaveProperty('vite.config.ts')
+    expect(JSON.parse(project.files['package.json']!).scripts).toEqual({
       start: 'vite --host 0.0.0.0',
     })
     expect(decodeCodeSandboxParameters(parameters)).toEqual(payload)
-    expect(fields.environment).toBe('server')
+    expect(fields).not.toHaveProperty('environment')
     expect(fields.parameters).toBe(parameters)
     expect(capture.form.method).toBe('POST')
     expect(capture.form.target).toBe('_blank')

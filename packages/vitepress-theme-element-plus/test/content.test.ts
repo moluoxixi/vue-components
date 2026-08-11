@@ -283,11 +283,19 @@ describe('reusable content modules', () => {
     })
     const codeSandboxPayload = decodeCodeSandboxParameters(formFields(codeSandboxForm!).parameters!)
     expect(codeSandboxPayload.files['src/App.vue']?.content).toBe(resolvedJsSource)
-    expect(codeSandboxPayload.files['src/main.ts']?.content).toContain('@moluoxixi/components/styles')
+    expect(codeSandboxPayload.files['src/main.js']?.content).toContain('@moluoxixi/components/styles')
+    expect(codeSandboxPayload.files['index.html']?.content).toContain('id="app"')
+    expect(codeSandboxPayload.files['index.html']?.content).not.toContain('<script')
+    expect(codeSandboxPayload.files).not.toHaveProperty('src/main.ts')
+    expect(codeSandboxPayload.files).not.toHaveProperty('vite.config.ts')
+    expect(JSON.parse(codeSandboxPayload.files['sandbox.config.json']!.content)).toEqual({
+      template: 'vue-cli',
+    })
     expect(JSON.parse(codeSandboxPayload.files['package.json']!.content).dependencies).toEqual({
       '@moluoxixi/components': 'latest',
       'vue': '^3.5.0',
     })
+    expect(JSON.parse(codeSandboxPayload.files['package.json']!.content)).not.toHaveProperty('devDependencies')
     const replUrl = new URL(String(open.mock.calls[0]?.[0]))
     expect(replUrl.pathname).toBe('/vue-playground/')
     const replState = JSON.parse(decodeURIComponent(escape(atob(replUrl.hash.slice(1)))))
