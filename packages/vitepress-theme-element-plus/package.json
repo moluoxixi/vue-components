@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/vitepress-theme-element-plus",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reusable Element Plus-style custom VitePress documentation theme",
   "license": "MIT",
   "repository": {
@@ -9,7 +9,10 @@
     "url": "https://github.com/moluoxixi/vue-components",
     "directory": "packages/vitepress-theme-element-plus"
   },
-  "sideEffects": ["**/*.css", "**/*.scss"],
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
+  ],
   "exports": {
     ".": {
       "source": "./index.ts",
@@ -31,7 +34,16 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["LICENSE", "THIRD_PARTY_NOTICES.md", "UPSTREAM.md", "dist", "index.ts", "markdown.ts", "repl.ts", "src"],
+  "files": [
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "UPSTREAM.md",
+    "dist",
+    "index.ts",
+    "markdown.ts",
+    "repl.ts",
+    "src"
+  ],
   "scripts": {
     "build": "vite build && pnpm test:provenance",
     "dev": "vite build --watch",
@@ -78,5 +90,7 @@
     "vue": "catalog:build",
     "vue-tsc": "catalog:dev"
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

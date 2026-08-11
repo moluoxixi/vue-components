@@ -1,4 +1,4 @@
-# @moluoxixi/config-form
+# @moluoxixi/config-form-core
 
 ## 0.2.0
 
@@ -10,9 +10,3 @@
 
 - Updated dependencies [e11fc22]
   - @moluoxixi/config-form-headless@0.2.0
-
-## 0.1.1
-
-### Patch Changes
-
-- 1035d60: Move devtools source-id DOM attribute injection into the Vite plugin adapter and add page-based field/component picking to the browser overlay.
