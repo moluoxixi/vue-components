@@ -62,6 +62,7 @@ describe('external playground projects', () => {
     const packageJson = JSON.parse(project.files['package.json']!)
 
     expect(project.files['src/App.vue']).toBe(source)
+    expect(project.files).not.toHaveProperty('.codesandbox/tasks.json')
     expect(project.files).toHaveProperty('index.html')
     expect(project.files).toHaveProperty('vite.config.ts')
     expect(project.files['src/main.ts']).toContain('element-plus/dist/index.css')
@@ -141,10 +142,29 @@ describe('external playground projects', () => {
     expect(action.pathname).toBe('/api/v1/sandboxes/define')
     expect(action.searchParams.get('query')).toBe('file=/src/App.vue')
     expect(payload.files['src/App.vue']).toEqual({ content: source, isBinary: false })
+    expect(JSON.parse(payload.files['.codesandbox/tasks.json']!.content)).toEqual({
+      setupTasks: [
+        {
+          name: 'Install Dependencies',
+          command: 'npm install',
+        },
+      ],
+      tasks: {
+        start: {
+          name: 'Vite Dev',
+          command: 'npm run start',
+          runAtStart: true,
+          preview: {
+            port: 5173,
+          },
+        },
+      },
+    })
     expect(JSON.parse(payload.files['package.json']!.content).scripts).toEqual({
       start: 'vite --host 0.0.0.0',
     })
     expect(decodeCodeSandboxParameters(parameters)).toEqual(payload)
+    expect(fields.environment).toBe('server')
     expect(fields.parameters).toBe(parameters)
     expect(capture.form.method).toBe('POST')
     expect(capture.form.target).toBe('_blank')
