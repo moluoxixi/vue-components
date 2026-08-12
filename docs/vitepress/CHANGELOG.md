@@ -1,5 +1,12 @@
 # @moluoxixi/docs
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/vitepress-theme-element-plus@0.1.7
+
 ## 0.1.6
 
 ### Patch Changes
