@@ -1,5 +1,11 @@
 # @moluoxixi/vitepress-theme-element-plus
 
+## 0.1.8
+
+### Patch Changes
+
+- Automatically release packages changed in 28f30f08cdf3.
+
 ## 0.1.7
 
 ### Patch Changes
