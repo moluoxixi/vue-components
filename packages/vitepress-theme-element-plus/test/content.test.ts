@@ -284,14 +284,21 @@ describe('reusable content modules', () => {
     const codeSandboxPayload = decodeCodeSandboxParameters(formFields(codeSandboxForm!).parameters!)
     expect(codeSandboxPayload.files['demo.js']?.content).toContain('export default `<script setup>')
     expect(codeSandboxPayload.files['demo.js']?.content).toContain(resolvedJsSource)
-    expect(codeSandboxPayload.files['main.js']?.content).toContain('@moluoxixi/components/styles')
-    expect(codeSandboxPayload.files['main.js']?.content).toContain('"@moluoxixi/components": "latest"')
-    expect(codeSandboxPayload.files['main.js']?.content).toContain('vue3-sfc-loader@0.9.5')
     expect(codeSandboxPayload.files['main.js']?.content).toContain('import demoSource from \'./demo.js\'')
+    expect(codeSandboxPayload.files['main.js']?.content).toContain('import { mountDemo } from \'./load-module.js\'')
+    expect(codeSandboxPayload.files['main.js']?.content).toContain('fetch(new URL(\'./package.json\', import.meta.url))')
+    expect(codeSandboxPayload.files['load-module.js']?.content).toContain('vue3-sfc-loader@0.9.5')
+    const codeSandboxPackageJson = JSON.parse(codeSandboxPayload.files['package.json']!.content)
+    expect(codeSandboxPackageJson.dependencies).toEqual({
+      '@moluoxixi/components': 'latest',
+      'vue': '^3.5.0',
+    })
+    expect(codeSandboxPackageJson.elementPlusDocs.styleImports).toEqual([
+      '@moluoxixi/components/styles',
+    ])
     expect(codeSandboxPayload.files['index.html']?.content).toContain('id="app"')
     expect(codeSandboxPayload.files['index.html']?.content).toContain('src="./main.js"')
     expect(codeSandboxPayload.files['sandbox.config.json']?.content).toBe('{"template":"static"}')
-    expect(codeSandboxPayload.files).not.toHaveProperty('package.json')
     expect(codeSandboxPayload.files).not.toHaveProperty('src/App.vue')
     expect(codeSandboxPayload.files).not.toHaveProperty('src/main.ts')
     expect(codeSandboxPayload.files).not.toHaveProperty('vite.config.ts')

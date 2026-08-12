@@ -192,13 +192,14 @@ describe('external playground projects', () => {
     expect(Object.keys(payload.files).sort()).toEqual([
       'demo.js',
       'index.html',
+      'load-module.js',
       'main.js',
+      'package.json',
       'sandbox.config.json',
     ])
     expect(payload.files['demo.js']!.content).toContain('export default `<script setup lang="ts">')
     expect(payload.files['demo.js']!.content).toContain('\n\n<template>')
     expect(evaluateCodeSandboxDemoSource(payload.files['demo.js']!.content)).toBe(source)
-    expect(payload.files).not.toHaveProperty('package.json')
     expect(payload.files).not.toHaveProperty('vite.config.ts')
     expect(payload.files).not.toHaveProperty('src/main.ts')
     expect(payload.files).not.toHaveProperty('src/App.vue')
@@ -209,16 +210,32 @@ describe('external playground projects', () => {
     expect(payload.files['index.html']!.content).toContain('id="app"')
     expect(payload.files['index.html']!.content).toContain('src="./main.js"')
     expect(payload.files['index.html']!.content).not.toContain('/src/main.ts')
-    expect(payload.files['main.js']!.content).toContain('vue3-sfc-loader@0.9.5')
     expect(payload.files['main.js']!.content).toContain('import demoSource from \'./demo.js\'')
-    expect(payload.files['main.js']!.content).toContain('const virtualEntryPath = "/__mx_docs_sfc__/demo.vue"')
-    expect(payload.files['main.js']!.content).toContain('loadModule(virtualEntryPath')
-    expect(payload.files['main.js']!.content).toContain('getContentData: () => demoSource')
-    expect(payload.files['main.js']!.content).not.toContain('fetch(')
-    expect(payload.files['main.js']!.content).toContain('"@example/components": "^1.2.3"')
-    expect(payload.files['main.js']!.content).toContain('"element-plus/dist/index.css"')
-    expect(payload.files['main.js']!.content).toContain('"@example/components/styles"')
-    expect(payload.files['main.js']!.content).toContain('\'/+esm\'')
+    expect(payload.files['main.js']!.content).toContain('import { mountDemo } from \'./load-module.js\'')
+    expect(payload.files['main.js']!.content).toContain('fetch(new URL(\'./package.json\', import.meta.url))')
+    expect(payload.files['main.js']!.content).toContain('await mountDemo({')
+    expect(payload.files['main.js']!.content).not.toContain('vue3-sfc-loader')
+    expect(payload.files['load-module.js']!.content).toContain('vue3-sfc-loader@0.9.5')
+    expect(payload.files['load-module.js']!.content).toContain('const virtualEntryPath = "/__mx_docs_sfc__/demo.vue"')
+    expect(payload.files['load-module.js']!.content).toContain('loadModule(virtualEntryPath')
+    expect(payload.files['load-module.js']!.content).toContain('getContentData: () => demoSource')
+    expect(payload.files['load-module.js']!.content).toContain('\'/+esm\'')
+    expect(JSON.parse(payload.files['package.json']!.content)).toEqual({
+      name: 'example-components-demo',
+      private: true,
+      description: 'Editable documentation example',
+      dependencies: {
+        '@example/components': '^1.2.3',
+        'element-plus': '^2.9.0',
+        'vue': '^3.5.0',
+      },
+      elementPlusDocs: {
+        styleImports: [
+          'element-plus/dist/index.css',
+          '@example/components/styles',
+        ],
+      },
+    })
     expect(project.files).toHaveProperty('vite.config.ts')
     expect(JSON.parse(project.files['package.json']!).scripts).toEqual({
       start: 'vite --host 0.0.0.0',

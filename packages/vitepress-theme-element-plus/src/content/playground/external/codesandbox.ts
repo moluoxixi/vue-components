@@ -5,6 +5,7 @@ import { submitElementPlusDocsProjectForm } from './submit-form'
 const defaultCodeSandboxUrl = 'https://codesandbox.io/api/v1/sandboxes/define'
 const codeSandboxEntryPath = 'main.js'
 const codeSandboxDemoPath = 'demo.js'
+const codeSandboxRuntimePath = 'load-module.js'
 const sharedEntryPath = 'src/main.ts'
 const sfcEntryPath = 'src/App.vue'
 const virtualSfcEntryPath = '/__mx_docs_sfc__/demo.vue'
@@ -45,6 +46,7 @@ export interface ElementPlusDocsCodeSandboxOptions {
 
 interface ElementPlusDocsExternalPackageJson {
   dependencies?: Record<string, string>
+  name?: string
 }
 
 function resolveProjectDependencies(
@@ -74,18 +76,57 @@ function createCodeSandboxDemoSource(source: string): string {
   return `export default \`${escapedSource}\`\n`
 }
 
-function createCodeSandboxRuntime(
+function createCodeSandboxPackageJson(
+  project: ElementPlusDocsExternalProject,
   dependencies: Readonly<Record<string, string>>,
   styleImports: readonly string[],
 ): string {
-  return `import { loadModule } from ${JSON.stringify(sfcLoaderUrl)}
-import demoSource from './${codeSandboxDemoPath}'
+  const sourcePackageJson = JSON.parse(project.files['package.json'] ?? '{}') as ElementPlusDocsExternalPackageJson
+  return `${JSON.stringify({
+    name: sourcePackageJson.name ?? 'element-plus-docs-demo',
+    private: true,
+    description: project.description ?? 'An editable component documentation demo',
+    dependencies,
+    elementPlusDocs: { styleImports },
+  }, null, 2)}\n`
+}
 
-const dependencyVersions = ${JSON.stringify(dependencies, null, 2)}
-const styleImports = ${JSON.stringify(styleImports, null, 2)}
+function createCodeSandboxEntry(): string {
+  return `import demoSource from './${codeSandboxDemoPath}'
+import { mountDemo } from './${codeSandboxRuntimePath}'
+
+async function loadProjectConfig() {
+  const response = await fetch(new URL('./package.json', import.meta.url))
+  if (!response.ok)
+    throw new Error('Unable to load package.json: ' + response.status + ' ' + response.statusText)
+  return response.json()
+}
+
+try {
+  const packageJson = await loadProjectConfig()
+  await mountDemo({
+    demoSource,
+    dependencies: packageJson.dependencies ?? {},
+    styleImports: packageJson.elementPlusDocs?.styleImports ?? [],
+    target: '#app',
+  })
+}
+catch (error) {
+  const root = document.querySelector('#app')
+  const output = document.createElement('pre')
+  output.className = 'mx-codesandbox-error'
+  output.textContent = error instanceof Error ? error.stack ?? error.message : String(error)
+  root?.replaceChildren(output)
+  console.error(error)
+}
+`
+}
+
+function createCodeSandboxRuntime(): string {
+  return `import { loadModule } from ${JSON.stringify(sfcLoaderUrl)}
+
 const virtualEntryPath = ${JSON.stringify(virtualSfcEntryPath)}
 const modulePromises = new Map()
-const injectedStyles = []
 
 function splitPackage(specifier) {
   const parts = specifier.split('/')
@@ -98,61 +139,58 @@ function normalizeVersion(version) {
   return /^(?:workspace:|file:|link:)/.test(version) ? 'latest' : version
 }
 
-function createModuleUrl(specifier) {
+function createModuleUrl(specifier, dependencies) {
   const { name, subpath } = splitPackage(specifier)
-  const version = encodeURIComponent(normalizeVersion(dependencyVersions[name] ?? 'latest'))
+  const version = encodeURIComponent(normalizeVersion(dependencies[name] ?? 'latest'))
   return 'https://cdn.jsdelivr.net/npm/' + name + '@' + version
     + (subpath ? '/' + subpath : '') + '/+esm'
 }
 
-function importPackage(specifier) {
+function importPackage(specifier, dependencies) {
   if (!modulePromises.has(specifier))
-    modulePromises.set(specifier, import(createModuleUrl(specifier)))
+    modulePromises.set(specifier, import(createModuleUrl(specifier, dependencies)))
   return modulePromises.get(specifier)
 }
 
-async function run() {
-  const Vue = await importPackage('vue')
-  await Promise.all(styleImports.map(importPackage))
-  const moduleCache = Object.assign(Object.create(null), { vue: Vue })
-  const App = await loadModule(virtualEntryPath, {
-    moduleCache,
-    async loadModule(requestedModule) {
-      const specifier = String(requestedModule)
-      if (specifier === 'vue')
-        return Vue
-      if (specifier.startsWith('.') || specifier.startsWith('/'))
-        return undefined
-      return importPackage(specifier)
-    },
-    async getFile(requestedPath) {
-      const path = String(requestedPath)
-      if (path !== virtualEntryPath)
-        throw new Error('Unsupported SFC file request: ' + path)
-      return {
-        type: '.vue',
-        getContentData: () => demoSource,
-      }
-    },
-    addStyle(css) {
-      const style = document.createElement('style')
-      style.textContent = css
-      document.head.append(style)
-      injectedStyles.push(style)
-    },
-  })
-  Vue.createApp(App).mount('#app')
+export async function mountDemo({ demoSource, dependencies, styleImports, target }) {
+  const injectedStyles = []
+  try {
+    const Vue = await importPackage('vue', dependencies)
+    await Promise.all(styleImports.map(specifier => importPackage(specifier, dependencies)))
+    const moduleCache = Object.assign(Object.create(null), { vue: Vue })
+    const App = await loadModule(virtualEntryPath, {
+      moduleCache,
+      async loadModule(requestedModule) {
+        const specifier = String(requestedModule)
+        if (specifier === 'vue')
+          return Vue
+        if (specifier.startsWith('.') || specifier.startsWith('/'))
+          return undefined
+        return importPackage(specifier, dependencies)
+      },
+      async getFile(requestedPath) {
+        const path = String(requestedPath)
+        if (path !== virtualEntryPath)
+          throw new Error('Unsupported SFC file request: ' + path)
+        return {
+          type: '.vue',
+          getContentData: () => demoSource,
+        }
+      },
+      addStyle(css) {
+        const style = document.createElement('style')
+        style.textContent = css
+        document.head.append(style)
+        injectedStyles.push(style)
+      },
+    })
+    return Vue.createApp(App).mount(target)
+  }
+  catch (error) {
+    injectedStyles.forEach(style => style.remove())
+    throw error
+  }
 }
-
-run().catch((error) => {
-  injectedStyles.forEach(style => style.remove())
-  const root = document.querySelector('#app')
-  const output = document.createElement('pre')
-  output.className = 'mx-codesandbox-error'
-  output.textContent = error instanceof Error ? error.stack ?? error.message : String(error)
-  root?.replaceChildren(output)
-  console.error(error)
-})
 `
 }
 
@@ -167,9 +205,11 @@ export function createElementPlusDocsCodeSandboxPayload(
 
   const files = {
     'sandbox.config.json': '{"template":"static"}',
+    'package.json': createCodeSandboxPackageJson(project, dependencies, styleImports),
     'index.html': codeSandboxHtml,
     [codeSandboxDemoPath]: createCodeSandboxDemoSource(source),
-    [codeSandboxEntryPath]: createCodeSandboxRuntime(dependencies, styleImports),
+    [codeSandboxEntryPath]: createCodeSandboxEntry(),
+    [codeSandboxRuntimePath]: createCodeSandboxRuntime(),
   }
 
   return {
