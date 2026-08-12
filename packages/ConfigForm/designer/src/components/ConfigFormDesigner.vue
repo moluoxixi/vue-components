@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DesignerCompileResult } from '../compiler'
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
 import type {
@@ -22,7 +23,7 @@ import {
 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch } from 'vue'
 import { useDesignerController } from '../composables'
-import { createDesignerPreviewModel } from '../document'
+import { applyDesignerDocumentReactions, createDesignerPreviewModel } from '../document'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
 import DesignerCanvas from './DesignerCanvas.vue'
 import DesignerPalette from './DesignerPalette.vue'
@@ -45,7 +46,13 @@ watch(() => props.locale, value => {
 const rootRef = ref<HTMLElement>()
 const previewResult = shallowRef<DesignerCompileResult>()
 const previewOpen = ref(false)
-const previewModel = ref<Record<string, unknown>>(createDesignerPreviewModel(props.document))
+const initialReactionProjection = applyDesignerDocumentReactions(
+  props.document,
+  createDesignerPreviewModel(props.document),
+)
+const previewModel = ref<Record<string, unknown>>(initialReactionProjection.values)
+const previewReactionProps = ref<ConfigFormReactionProjection['props']>(initialReactionProjection.props)
+const previewReactionStates = ref<ConfigFormReactionProjection['states']>(initialReactionProjection.states)
 const linkagePreview = ref(false)
 const transferMode = ref<'import' | 'export'>()
 const transferText = ref('')
@@ -89,7 +96,7 @@ const controller = useDesignerController({
   readonly: () => props.readonly,
   onDocumentChange: (document) => {
     if (!linkagePreview.value)
-      previewModel.value = createDesignerPreviewModel(document)
+      resetPreviewModel(document)
     emit('update:document', document)
   },
   onCommand: (command, document) => emit('command', command, document),
@@ -146,10 +153,14 @@ function handleAddMaterial(materialKey: string, target: DesignerDropTarget): voi
 
 function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
   const changed = dispatch({ type: 'updateNodePath', nodeId, path, value })
-  if (changed && path[0] === 'conditions' && !linkagePreview.value) {
+  if (!changed || !['conditions', 'reactions'].includes(path[0] ?? ''))
+    return
+  if (!linkagePreview.value) {
     linkagePreview.value = true
-    previewModel.value = createDesignerPreviewModel(controller.document.value)
+    resetPreviewModel(controller.document.value)
+    return
   }
+  applyPreviewProjection(controller.document.value, previewModel.value)
 }
 
 function handleUpdateForm(changes: Record<string, unknown>): void {
@@ -168,7 +179,7 @@ function handlePreview(): DesignerCompileResult {
   emit('preview', result)
   if (result.success) {
     if (!linkagePreview.value)
-      previewModel.value = createDesignerPreviewModel(result.document)
+      resetPreviewModel(result.document)
     previewOpen.value = true
   }
   return result
@@ -176,11 +187,22 @@ function handlePreview(): DesignerCompileResult {
 
 function toggleLinkagePreview(): void {
   linkagePreview.value = !linkagePreview.value
-  previewModel.value = createDesignerPreviewModel(controller.document.value)
+  resetPreviewModel(controller.document.value)
 }
 
 function updatePreviewField(field: string, value: unknown): void {
-  previewModel.value = { ...previewModel.value, [field]: value }
+  applyPreviewProjection(controller.document.value, { ...previewModel.value, [field]: value })
+}
+
+function resetPreviewModel(document = controller.document.value): void {
+  applyPreviewProjection(document, createDesignerPreviewModel(document))
+}
+
+function applyPreviewProjection(document: typeof props.document, values: Record<string, unknown>): void {
+  const projection = applyDesignerDocumentReactions(document, values)
+  previewModel.value = projection.values
+  previewReactionProps.value = projection.props
+  previewReactionStates.value = projection.states
 }
 
 function openImport(): void {
@@ -317,7 +339,9 @@ defineExpose<ConfigFormDesignerExpose>({
         :move="handleMove"
         :breakpoint="activeBreakpoint"
         :interactive="linkagePreview"
-        :model="previewModel"
+         :model="previewModel"
+         :reaction-props="previewReactionProps"
+         :reaction-states="previewReactionStates"
       >
         <DesignerCanvas
           :key="controller.renderVersion.value"
@@ -327,7 +351,9 @@ defineExpose<ConfigFormDesignerExpose>({
           :readonly="readonly"
           :breakpoint="activeBreakpoint"
           :interactive="linkagePreview"
-          :model="previewModel"
+           :model="previewModel"
+           :reaction-props="previewReactionProps"
+           :reaction-states="previewReactionStates"
           @select="controller.select($event || undefined)"
           @move="handleMove"
           @add-material="handleAddMaterial"

@@ -451,7 +451,7 @@ describe('config form designer', () => {
     const wrapper = mount(ConfigFormDesigner, { props: { document, registry } })
 
     await wrapper.get('[data-node-id="enabled"] [data-focus-node-id="enabled"]').trigger('click')
-    await wrapper.get('[role="tab"][aria-selected="false"]:last-child').trigger('click')
+    await wrapper.get('[data-property-tab="conditions"]').trigger('click')
     const disabledSetter = wrapper.findAll('.mx-config-form-designer__setter')
       .find(setter => setter.text().includes('Disabled'))!
     await disabledSetter.findAll('button').find(button => button.text() === 'Always')!.trigger('click')
@@ -461,6 +461,77 @@ describe('config form designer', () => {
     expect(lastDocument(wrapper).nodes[0]).toMatchObject({
       conditions: { disabled: { kind: 'literal', value: true } },
     })
+  })
+
+  it('adds a reaction visually and previews it without writing derived state to the document', async () => {
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [{
+        id: 'enabled',
+        kind: 'field',
+        material: 'element.input',
+        field: 'enabled',
+        label: 'Enabled',
+      }],
+    }
+    const wrapper = mount(ConfigFormDesigner, { props: { document, registry } })
+
+    await wrapper.get('[data-node-id="enabled"] [data-focus-node-id="enabled"]').trigger('click')
+    await wrapper.get('[data-property-tab="reactions"]').trigger('click')
+    await wrapper.get('.mx-config-form-designer__reaction-editor > .mx-config-form-designer__add-row').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('button[aria-label="Linkage preview"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-node-id="enabled"] input').attributes('disabled')).toBeDefined()
+    expect(lastDocument(wrapper).nodes[0]).toEqual({
+      ...document.nodes[0],
+      reactions: [{
+        id: 'reaction-1',
+        when: { kind: 'literal', value: true },
+        then: [{ kind: 'setState', target: 'enabled', state: { disabled: true } }],
+      }],
+    })
+    expect(lastDocument(wrapper).nodes[0]).not.toHaveProperty('disabled')
+  })
+
+  it('keeps reaction ids unique across nodes and rejects duplicate visual renames', async () => {
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [
+        {
+          id: 'source',
+          kind: 'field',
+          material: 'element.input',
+          field: 'source',
+          reactions: [{
+            id: 'reaction-1',
+            when: { kind: 'literal', value: true },
+            then: [{ kind: 'validate', target: 'source' }],
+          }],
+        },
+        {
+          id: 'target',
+          kind: 'field',
+          material: 'element.input',
+          field: 'target',
+        },
+      ],
+    }
+    const wrapper = mount(ConfigFormDesigner, { props: { document, registry } })
+
+    await wrapper.get('[data-node-id="target"] [data-focus-node-id="target"]').trigger('click')
+    await wrapper.get('[data-property-tab="reactions"]').trigger('click')
+    await wrapper.get('.mx-config-form-designer__reaction-editor > .mx-config-form-designer__add-row').trigger('click')
+    await flushPromises()
+
+    expect(lastDocument(wrapper).nodes[1]?.reactions?.[0]?.id).toBe('reaction-2')
+    const reactionId = wrapper.get('input[aria-label="Reaction id"]')
+    await reactionId.setValue('reaction-1')
+    await reactionId.trigger('change')
+    await flushPromises()
+    expect(lastDocument(wrapper).nodes[1]?.reactions?.[0]?.id).toBe('reaction-2')
   })
 
   it('adds materials, commits text on blur, and preserves undo/redo boundaries', async () => {

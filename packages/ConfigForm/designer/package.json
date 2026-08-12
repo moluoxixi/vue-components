@@ -44,6 +44,7 @@
   "dependencies": {
     "@lucide/vue": "catalog:ui",
     "@moluoxixi/config-form": "workspace:*",
+    "@moluoxixi/config-form-core": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/zod3-to-rule": "workspace:*",
     "sortablejs": "catalog:"

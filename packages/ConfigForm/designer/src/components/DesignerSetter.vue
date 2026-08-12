@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type { DesignerPropertySetterDefinition } from '../registry'
 import type { DesignerNode } from '../document'
 import { Minus, Plus } from '@lucide/vue'
@@ -7,6 +8,7 @@ import { useDesignerLocale } from '../locale'
 import DesignerConditionSetter from './DesignerConditionSetter.vue'
 import DesignerDefaultValueSetter from './DesignerDefaultValueSetter.vue'
 import DesignerOptionsSetter from './DesignerOptionsSetter.vue'
+import DesignerReactionSetter from './DesignerReactionSetter.vue'
 import DesignerValidationSetter from './DesignerValidationSetter.vue'
 
 const props = defineProps<{
@@ -16,6 +18,7 @@ const props = defineProps<{
   readonly?: boolean
   node?: DesignerNode
   fieldOptions?: string[]
+  reactionIds?: string[]
   validatorOptions?: string[]
 }>()
 
@@ -26,7 +29,7 @@ const locale = useDesignerLocale()
 
 const textDraft = ref('')
 const draftDirty = ref(false)
-const compound = computed(() => ['defaultValue', 'options', 'condition', 'validation'].includes(props.setter.control))
+const compound = computed(() => ['defaultValue', 'options', 'condition', 'reaction', 'validation'].includes(props.setter.control))
 const horizontal = computed(() => ['text', 'textarea', 'number', 'boolean', 'select'].includes(props.setter.control))
 const inherited = computed(() => props.value === undefined && props.inheritedValue !== undefined)
 
@@ -101,6 +104,10 @@ function commitSelect(value: unknown): void {
 
 function commitCustom(value: unknown): void {
   emit('commit', value)
+}
+
+function reactionValue(value: unknown): ConfigFormReaction[] | undefined {
+  return Array.isArray(value) ? value as ConfigFormReaction[] : undefined
 }
 </script>
 
@@ -197,7 +204,16 @@ function commitCustom(value: unknown): void {
       @update:model-value="commitCustom"
     />
     <DesignerOptionsSetter v-else-if="setter.control === 'options'" :model-value="value" :disabled="readonly" @update:model-value="commitCustom" />
-    <DesignerConditionSetter v-else-if="setter.control === 'condition'" :model-value="value" :disabled="readonly" @update:model-value="commitCustom" />
+    <DesignerConditionSetter v-else-if="setter.control === 'condition'" :model-value="value" :disabled="readonly" :field-options="fieldOptions" @update:model-value="commitCustom" />
+    <DesignerReactionSetter
+      v-else-if="setter.control === 'reaction'"
+      :model-value="reactionValue(value)"
+      :disabled="readonly"
+      :current-field="node?.kind === 'field' ? node.field : undefined"
+      :field-options="fieldOptions"
+      :reserved-ids="reactionIds"
+      @update:model-value="commitCustom"
+    />
     <DesignerValidationSetter
       v-else-if="setter.control === 'validation'"
       :model-value="value"

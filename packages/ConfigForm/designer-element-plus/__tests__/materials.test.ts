@@ -43,6 +43,8 @@ describe('element plus designer materials', () => {
   it('ships a locale map for every registered material', () => {
     expect(Object.keys(ELEMENT_PLUS_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
     expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['designer.title']).toBe('表单设计器')
+    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['property.reactions']).toBe('联动')
+    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['reaction.effect.setValue']).toBe('设置值')
     expect(ELEMENT_PLUS_DESIGNER_ZH_CN.materials?.['element.input']?.setters?.placeholder).toBe('占位文本')
   })
 

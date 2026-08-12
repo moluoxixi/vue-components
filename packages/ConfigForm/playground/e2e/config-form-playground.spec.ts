@@ -1115,6 +1115,64 @@ test('standalone designer entry exposes localized controls on narrow screens', a
     await expect(nodeActions.getByRole('button', { name, exact: true })).toBeVisible()
 })
 
+for (const adapter of [
+  {
+    framework: 'Element Plus',
+    switchSelector: '.el-switch input',
+  },
+  {
+    framework: 'Ant Design Vue',
+    switchSelector: '.ant-switch',
+  },
+] as const) {
+  test(`standalone designer visually edits and previews reactions with ${adapter.framework}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/designer.html')
+
+    const framework = page.getByRole('group', { name: '组件库', exact: true })
+    if (adapter.framework === 'Ant Design Vue')
+      await framework.getByRole('button', { name: adapter.framework, exact: true }).click()
+
+    await page.getByRole('button', { name: 'English', exact: true }).click()
+    const designer = page.getByTestId('designer-example')
+    const canvas = designer.getByLabel('Form canvas')
+    const properties = designer.getByLabel('Properties')
+    const toolbar = designer.getByRole('toolbar', { name: 'Designer commands' })
+    const enabledNode = canvas.locator('[data-node-id="designer-enabled"]')
+
+    await enabledNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await properties.locator('[data-property-tab="reactions"]').click()
+
+    const reactionEditor = properties.locator('.mx-config-form-designer__reaction-editor')
+    await reactionEditor.locator(':scope > .mx-config-form-designer__add-row').click()
+    await expect(reactionEditor.locator(':scope > .mx-config-form-designer__reaction-row')).toHaveCount(1)
+    await expect(canvas.getByRole('button', { name: 'Linkage preview', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(enabledNode.locator(adapter.switchSelector)).toBeDisabled()
+
+    await toolbar.getByRole('button', { name: 'Export document', exact: true }).click()
+    const exportDialog = designer.getByRole('dialog', { name: 'Export document' })
+    const exportedDocument = JSON.parse(await exportDialog.locator('textarea').inputValue()) as {
+      nodes: Array<Record<string, unknown>>
+    }
+    const exportedEnabled = exportedDocument.nodes.find(node => node.id === 'designer-enabled')
+    expect(exportedEnabled?.reactions).toEqual([{
+      id: 'reaction-1',
+      when: { kind: 'literal', value: true },
+      then: [{
+        kind: 'setState',
+        state: { disabled: true },
+        target: 'enabled',
+      }],
+    }])
+    expect(exportedEnabled).not.toHaveProperty('disabled')
+    await exportDialog.getByRole('button', { name: 'Close', exact: true }).click()
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(reactionEditor).toBeVisible()
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  })
+}
+
 test('standalone designer keeps independent Element Plus and Ant Design Vue documents', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/designer.html')

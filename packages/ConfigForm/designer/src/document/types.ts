@@ -1,3 +1,4 @@
+import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type { ConfigFormResponsiveLayout } from '@moluoxixi/config-form/renderer'
 import type { RuleJsonValue, RuleSet } from '@moluoxixi/zod3-to-rule'
 import type { DesignerConditionExpression, DesignerConditionTarget } from '../condition'
@@ -25,6 +26,8 @@ export interface DesignerNodeBase {
   extensions?: DesignerJsonObject
   span?: number
   conditions?: Partial<Record<DesignerConditionTarget, DesignerConditionExpression>>
+  /** Headless 与设计器共同消费的可序列化联动声明。 */
+  reactions?: ConfigFormReaction[]
 }
 
 export interface DesignerFieldNode extends DesignerNodeBase {

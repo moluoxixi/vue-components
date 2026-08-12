@@ -6,6 +6,10 @@ import type {
   ElementPlusOptionSource,
   ElementPlusResolvedOptionState,
 } from './types'
+import {
+  cloneDesignerResolvedOptionState,
+  createDesignerOptionSourceCacheKey,
+} from '@moluoxixi/config-form-designer'
 import { inject, provide, ref } from 'vue'
 
 export interface ElementPlusOptionResolverContext {
@@ -38,24 +42,13 @@ export function createElementPlusOptionResolverContext(
     revision,
     readState(source): ElementPlusResolvedOptionState | undefined {
       void revision.value
-      return states.get(optionSourceCacheKey(source))
+      return states.get(createDesignerOptionSourceCacheKey(source))
     },
     writeState(source, state): void {
-      states.set(optionSourceCacheKey(source), {
-        ...state,
-        options: state.options.map(option => ({ ...option })),
-      })
+      states.set(createDesignerOptionSourceCacheKey(source), cloneDesignerResolvedOptionState(state))
       revision.value += 1
     },
   }
-}
-
-function optionSourceCacheKey(source: ElementPlusOptionSource): string {
-  return source.kind === 'provider'
-    ? `${source.kind}:${source.key}:${JSON.stringify(source.params ?? null)}`
-    : source.kind === 'dictionary'
-      ? `${source.kind}:${source.key}`
-      : source.kind
 }
 
 export function provideElementPlusOptionResolver(

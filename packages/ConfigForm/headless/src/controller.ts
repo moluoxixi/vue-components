@@ -1,5 +1,7 @@
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { Component } from 'vue'
 import type {
+  ConfigFormAttrs,
   ConfigFormCondition,
   ConfigFormErrors,
   ConfigFormFieldChangePayload,
@@ -12,6 +14,7 @@ import type {
   ConfigFormValues,
 } from './types'
 import type { ConfigFormResolvedFieldState } from './utils/node'
+import { applyConfigFormReactions } from './reaction'
 import {
   collectAllConfigFormFields,
   resolveConfigFormFieldStates,
@@ -92,10 +95,18 @@ export interface ConfigFormController<TValues extends ConfigFormValues = ConfigF
   getFieldMeta: (field: ConfigFormFieldKey<TValues> | string) => ConfigFormFieldMeta
   /** 宿主在 controller 之外替换模型或字段树后，重新计算并通知 meta。 */
   refreshMeta: () => ConfigFormMeta
+  /** 宿主替换字段树后，按当前模型重新执行 reaction 事务并刷新派生投影。 */
+  refreshReactions: () => void
   /** 获取指定字段值。 */
   getValue: <TField extends string>(field: TField) => ConfigFormFieldValue<TValues, TField>
   /** 获取当前错误集合的防御性拷贝。 */
   getErrors: () => ConfigFormErrors
+  /** 获取 reactions 为指定字段派生的组件 props。 */
+  getReactionProps: (field: ConfigFormFieldKey<TValues> | string) => ConfigFormAttrs
+  /** 获取 reactions 为指定字段派生的状态覆盖。 */
+  getReactionState: (
+    field: ConfigFormFieldKey<TValues> | string,
+  ) => Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>
   /** 当前是否存在运行中的校验。 */
   getValidating: () => boolean
   /** 指定字段是否存在运行中的校验。 */
@@ -143,9 +154,10 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   const latestFieldRequest = new Map<string, number>()
   const touchedFields = new Set<string>()
   const initialValues = createInitialValues()
+  let reactionProjection = applyConfigFormReactions(readFields(), initialValues)
 
-  if (!shallowEqual(options.model.read(), initialValues))
-    options.model.write({ ...initialValues })
+  if (!shallowEqual(options.model.read(), reactionProjection.values))
+    options.model.write({ ...reactionProjection.values })
 
   let lastMeta = createMeta()
 
@@ -197,6 +209,19 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     return commitMeta()
   }
 
+  function refreshReactions(): void {
+    const values = options.model.read()
+    const projection = applyConfigFormReactions(readFields(), values)
+    reactionProjection = projection
+    invalidateValidation()
+    if (!shallowEqual(values, projection.values)) {
+      options.model.write(projection.values)
+      options.onChange?.(projection.values)
+    }
+    commitMeta()
+    scheduleReactionValidation(projection.validate)
+  }
+
   function getValue<TField extends string>(
     field: TField,
   ): ConfigFormFieldValue<TValues, TField> {
@@ -205,6 +230,14 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
 
   function getErrors(): ConfigFormErrors {
     return cloneErrors(errors)
+  }
+
+  function getReactionProps(field: string): ConfigFormAttrs {
+    return { ...(reactionProjection.props[field] ?? {}) }
+  }
+
+  function getReactionState(field: string) {
+    return { ...(reactionProjection.states[field] ?? {}) }
   }
 
   function getValidating(): boolean {
@@ -228,7 +261,9 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     latestFieldRequest.clear()
   }
 
-  function commitValues(values: TValues, fieldsToClear?: string[]): void {
+  function commitValues(values: TValues, fieldsToClear?: string[]): ConfigFormReactionProjection<TValues> {
+    const projection = applyConfigFormReactions(readFields(), values)
+    reactionProjection = projection
     invalidateValidation()
     if (fieldsToClear === undefined) {
       commitErrors({})
@@ -238,28 +273,32 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
       fieldsToClear.forEach(field => delete nextErrors[field])
       commitErrors(nextErrors)
     }
-    options.model.write(values)
+    options.model.write(projection.values)
     commitMeta()
-    options.onChange?.(values)
+    options.onChange?.(projection.values)
+    return projection
   }
 
   function setValue<TField extends string>(
     field: TField,
     value: ConfigFormFieldValue<TValues, NoInfer<TField>>,
   ): void {
-    commitFieldValue(field, value)
+    scheduleReactionValidation(commitFieldValue(field, value).validate)
   }
 
-  function commitFieldValue(field: string, value: unknown): void {
+  function commitFieldValue(field: string, value: unknown): ConfigFormReactionProjection<TValues> {
     const values = { ...options.model.read() }
     setConfigFormValue(values, field, value)
 
+    const projection = applyConfigFormReactions(readFields(), values)
+    reactionProjection = projection
     invalidateValidation()
     clearFieldError(field)
-    options.model.write(values)
+    options.model.write(projection.values)
     commitMeta()
-    options.onFieldChange?.({ field, value, values })
-    options.onChange?.(values)
+    options.onFieldChange?.({ field, value: projection.values[field], values: projection.values })
+    options.onChange?.(projection.values)
+    return projection
   }
 
   function setValues(values: Partial<TValues>, replace?: false): void
@@ -267,15 +306,22 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   function setValues(
     ...args: [values: Partial<TValues>, replace?: false] | [values: TValues, replace: true]
   ): void {
-    if (args[1] === true)
-      commitValues(args[0], Object.keys(args[0]))
-    else
-      commitValues({ ...options.model.read(), ...args[0] }, Object.keys(args[0]))
+    const projection = args[1] === true
+      ? commitValues(args[0], Object.keys(args[0]))
+      : commitValues({ ...options.model.read(), ...args[0] }, Object.keys(args[0]))
+    scheduleReactionValidation(projection.validate)
   }
 
   function applyFieldChange(request: ConfigFormFieldChangeRequest<TValues>): void {
-    commitFieldValue(request.field, request.value)
+    const projection = commitFieldValue(request.field, request.value)
     void validateField(request.field, 'change')
+    scheduleReactionValidation(projection.validate, request.field)
+  }
+
+  function scheduleReactionValidation(fields: string[], excludedField?: string): void {
+    fields
+      .filter(field => field !== excludedField)
+      .forEach(field => void validateField(field, 'change'))
   }
 
   function setTouched(): void
@@ -480,7 +526,13 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   }
 
   function getFieldStates(values: TValues): ControllerFieldState<TValues>[] {
-    const states = resolveConfigFormFieldStates(readFields(), values, readFormReadonly())
+    reactionProjection = applyConfigFormReactions(readFields(), values)
+    const states = resolveConfigFormFieldStates(
+      readFields(),
+      reactionProjection.values,
+      readFormReadonly(),
+      reactionProjection.states,
+    )
     assertUniqueFields(states)
     return states
   }
@@ -556,11 +608,14 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     getFieldMeta,
     getErrors,
     getMeta,
+    getReactionProps,
+    getReactionState,
     getValidating,
     getValue,
     getValues,
     isFieldValidating,
     refreshMeta,
+    refreshReactions,
     resetFields,
     setValue,
     setValues,

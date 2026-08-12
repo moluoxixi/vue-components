@@ -39,6 +39,7 @@ export default defineConfig({
       external: [
         '@lucide/vue',
         '@moluoxixi/config-form',
+        '@moluoxixi/config-form-core',
         '@moluoxixi/config-form/renderer',
         '@moluoxixi/config-form-headless',
         '@moluoxixi/zod3-to-rule',

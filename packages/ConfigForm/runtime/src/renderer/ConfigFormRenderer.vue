@@ -101,10 +101,12 @@ const {
   getFieldMeta,
   getErrors,
   getMeta,
+  getReactionProps,
+  getReactionState,
   getValidating,
   getValue,
   getValues,
-  refreshMeta,
+  refreshReactions,
   resetFields,
   setValue,
   setValues,
@@ -117,12 +119,11 @@ const {
 meta.value = getMeta()
 
 watch(controlledModel, (values) => {
-  if (values !== model.value) {
-    model.value = values
-    clearValidate()
-    refreshMeta()
-  }
+  if (values !== model.value)
+    setValues(values, true)
 })
+
+watch(() => props.fields, refreshReactions, { deep: true })
 
 function updateMeta(nextMeta: ConfigFormMeta): void {
   if (equalMeta(meta.value, nextMeta))
@@ -194,7 +195,9 @@ function renderNode(
 ): VNodeChild {
   assertAcyclicNode(node, ancestors)
   const nextAncestors = new Set(ancestors).add(node)
-  if (!isConfigFormNodeVisible(node, model.value))
+  const reactionState = isConfigFormField(node) ? getReactionState(node.field) : undefined
+  const visible = reactionState?.visible ?? isConfigFormNodeVisible(node, model.value)
+  if (!visible)
     return null
 
   const body = isConfigFormField(node)
@@ -243,13 +246,16 @@ function renderBoundNode(
   const staticProps = {
     ...registration?.props,
     ...field.props,
+    ...getReactionProps(field.field),
   }
   const configuredId = staticProps.id
   const controlId = typeof configuredId === 'string' && configuredId
     ? configuredId
     : `${formId}-${toDomId(path)}-control`
   const errorId = `${formId}-${toDomId(path)}-error`
-  const readonly = isConfigFormFieldReadonly(field, model.value, props.readonly)
+  const reactionState = getReactionState(field.field)
+  const readonly = resolveConfigFormCondition(props.readonly, model.value, false)
+    || (reactionState.readonly ?? isConfigFormFieldReadonly(field, model.value, false))
   const fieldErrors = readonly ? [] : (errors.value[field.field] ?? [])
   const fieldMeta = meta.value.fields[field.field] ?? getFieldMeta(field.field)
   const fieldAttrs = field.fieldAttrs
@@ -268,7 +274,7 @@ function renderBoundNode(
     'data-dirty': fieldMeta.dirty,
     'data-field': field.field,
     'data-label-position': props.labelPosition,
-    'data-required': resolveConfigFormCondition(field.required, model.value, false),
+    'data-required': reactionState.required ?? resolveConfigFormCondition(field.required, model.value, false),
     'data-touched': fieldMeta.touched,
     key: getNodeKey(field, path),
     style: [layout.field, fieldAttrs?.style],
@@ -307,6 +313,7 @@ function renderControl(
           componentProps: {
             ...registration?.props,
             ...field.props,
+            ...getReactionProps(field.field),
           },
           field,
           model: model.value,
@@ -326,16 +333,18 @@ function renderControl(
   const componentProps: Record<string, unknown> = {
     ...registration?.props,
     ...field.props,
+    ...getReactionProps(field.field),
     [binding.valueProp]: model.value[field.field],
   }
+  const reactionState = getReactionState(field.field)
 
   if (controlId && !isNonEmptyString(componentProps.id))
     componentProps.id = controlId
 
-  if (resolveConfigFormCondition(field.disabled, model.value, false))
+  if (reactionState.disabled ?? resolveConfigFormCondition(field.disabled, model.value, false))
     componentProps.disabled = true
 
-  if (resolveConfigFormCondition(field.required, model.value, false))
+  if (reactionState.required ?? resolveConfigFormCondition(field.required, model.value, false))
     componentProps['aria-required'] = true
 
   if ((errors.value[field.field]?.length ?? 0) > 0) {

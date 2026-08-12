@@ -122,6 +122,9 @@ function compileNodeBase(node: DesignerNode, component: ConfigFormRendererNode['
     component,
     ...(node.props ? { props: cloneDesignerJsonValue(node.props) } : {}),
     ...(node.extensions ? { extensions: cloneDesignerJsonValue(node.extensions) } : {}),
+    ...(node.reactions
+      ? { reactions: cloneDesignerJsonValue(node.reactions as never) }
+      : {}),
     ...(node.span === undefined ? {} : { span: node.span }),
     ...(node.conditions?.visible ? { visible: compileDesignerCondition(node.conditions.visible) } : {}),
     ...(node.conditions?.hidden ? { hidden: compileDesignerCondition(node.conditions.hidden) } : {}),

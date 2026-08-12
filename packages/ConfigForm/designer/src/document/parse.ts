@@ -1,3 +1,4 @@
+import type { ConfigFormReactionEffect, ConfigFormReactionOperand } from '@moluoxixi/config-form-core'
 import type { DesignerConditionExpression } from '../condition'
 import type {
   DesignerDiagnostic,
@@ -38,7 +39,10 @@ function findReferenceCycle(
 }
 
 interface DesignerFieldReference {
-  code: 'DESIGNER_CONDITION_FIELD_UNKNOWN' | 'DESIGNER_RULE_FIELD_UNKNOWN'
+  code:
+    | 'DESIGNER_CONDITION_FIELD_UNKNOWN'
+    | 'DESIGNER_REACTION_FIELD_UNKNOWN'
+    | 'DESIGNER_RULE_FIELD_UNKNOWN'
   field: string
   nodeId: string
   path: (string | number)[]
@@ -49,6 +53,7 @@ function collectConditionFieldReferences(
   path: (string | number)[],
   nodeId: string,
   references: DesignerFieldReference[],
+  code: DesignerFieldReference['code'] = 'DESIGNER_CONDITION_FIELD_UNKNOWN',
 ): void {
   switch (expression.kind) {
     case 'literal':
@@ -56,7 +61,7 @@ function collectConditionFieldReferences(
     case 'compare':
       if (expression.left.kind === 'field') {
         references.push({
-          code: 'DESIGNER_CONDITION_FIELD_UNKNOWN',
+          code,
           field: expression.left.field,
           nodeId,
           path: [...path, 'left', 'field'],
@@ -64,7 +69,7 @@ function collectConditionFieldReferences(
       }
       if (expression.right.kind === 'field') {
         references.push({
-          code: 'DESIGNER_CONDITION_FIELD_UNKNOWN',
+          code,
           field: expression.right.field,
           nodeId,
           path: [...path, 'right', 'field'],
@@ -74,11 +79,48 @@ function collectConditionFieldReferences(
     case 'and':
     case 'or':
       expression.expressions.forEach((child, index) => {
-        collectConditionFieldReferences(child, [...path, 'expressions', index], nodeId, references)
+        collectConditionFieldReferences(child, [...path, 'expressions', index], nodeId, references, code)
       })
       return
     case 'not':
-      collectConditionFieldReferences(expression.expression, [...path, 'expression'], nodeId, references)
+      collectConditionFieldReferences(expression.expression, [...path, 'expression'], nodeId, references, code)
+  }
+}
+
+function collectReactionOperandReference(
+  operand: ConfigFormReactionOperand,
+  path: (string | number)[],
+  nodeId: string,
+  references: DesignerFieldReference[],
+): void {
+  if (operand.kind === 'field') {
+    references.push({
+      code: 'DESIGNER_REACTION_FIELD_UNKNOWN',
+      field: operand.field,
+      nodeId,
+      path: [...path, 'field'],
+    })
+  }
+}
+
+function collectReactionEffectReferences(
+  effect: ConfigFormReactionEffect,
+  path: (string | number)[],
+  nodeId: string,
+  references: DesignerFieldReference[],
+): void {
+  references.push({
+    code: 'DESIGNER_REACTION_FIELD_UNKNOWN',
+    field: effect.target,
+    nodeId,
+    path: [...path, 'target'],
+  })
+  if (effect.kind === 'setValue')
+    collectReactionOperandReference(effect.value, [...path, 'value'], nodeId, references)
+  if (effect.kind === 'setProps') {
+    Object.entries(effect.props).forEach(([key, operand]) => {
+      collectReactionOperandReference(operand, [...path, 'props', key], nodeId, references)
+    })
   }
 }
 
@@ -104,6 +146,7 @@ export function validateDesignerDocument(document: DesignerDocument): DesignerDi
   const ids = new Map<string, (string | number)[]>()
   const fields = new Map<string, (string | number)[]>()
   const fieldReferences: DesignerFieldReference[] = []
+  const reactionIds = new Map<string, (string | number)[]>()
 
   walkDesignerNodes(document.nodes, ({ node, path }) => {
     const idPath = [...path, 'id']
@@ -130,6 +173,42 @@ export function validateDesignerDocument(document: DesignerDocument): DesignerDi
         )
       }
     }
+
+    node.reactions?.forEach((reaction, reactionIndex) => {
+      const reactionPath = [...path, 'reactions', reactionIndex]
+      const idPath = [...reactionPath, 'id']
+      if (reactionIds.has(reaction.id)) {
+        diagnostics.push(designerDiagnostic(
+          'DESIGNER_REACTION_ID_DUPLICATE',
+          `Duplicate designer reaction id: ${reaction.id}`,
+          idPath,
+          'error',
+          node.id,
+        ))
+      }
+      else {
+        reactionIds.set(reaction.id, idPath)
+      }
+      collectConditionFieldReferences(
+        reaction.when,
+        [...reactionPath, 'when'],
+        node.id,
+        fieldReferences,
+        'DESIGNER_REACTION_FIELD_UNKNOWN',
+      )
+      reaction.then.forEach((effect, effectIndex) => collectReactionEffectReferences(
+        effect,
+        [...reactionPath, 'then', effectIndex],
+        node.id,
+        fieldReferences,
+      ))
+      reaction.else?.forEach((effect, effectIndex) => collectReactionEffectReferences(
+        effect,
+        [...reactionPath, 'else', effectIndex],
+        node.id,
+        fieldReferences,
+      ))
+    })
 
     if (node.kind === 'field') {
       const fieldPath = [...path, 'field']

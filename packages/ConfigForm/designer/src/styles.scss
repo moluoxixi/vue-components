@@ -880,6 +880,7 @@
 }
 
 .mx-config-form-designer__condition-editor,
+.mx-config-form-designer__reaction-editor,
 .mx-config-form-designer__validation-editor,
 .mx-config-form-designer__collection-editor,
 .mx-config-form-designer__rule-list,
@@ -887,6 +888,65 @@
 .mx-config-form-designer__enum-values {
   display: grid;
   gap: 8px;
+}
+
+.mx-config-form-designer__reaction-row,
+.mx-config-form-designer__reaction-branch,
+.mx-config-form-designer__reaction-effect,
+.mx-config-form-designer__reaction-states,
+.mx-config-form-designer__reaction-props {
+  display: grid;
+  gap: 7px;
+}
+
+.mx-config-form-designer__reaction-row {
+  padding: 8px;
+  background: var(--mx-designer-subtle);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 5px;
+}
+
+.mx-config-form-designer__reaction-heading,
+.mx-config-form-designer__reaction-effect-heading,
+.mx-config-form-designer__reaction-operand,
+.mx-config-form-designer__reaction-prop {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.mx-config-form-designer__reaction-branch {
+  padding-top: 7px;
+  border-top: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__reaction-branch > strong {
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.mx-config-form-designer__reaction-effect {
+  padding: 7px;
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 4px;
+}
+
+.mx-config-form-designer__reaction-operand,
+.mx-config-form-designer__reaction-prop {
+  grid-template-columns: minmax(80px, 0.7fr) minmax(0, 1.3fr) auto;
+}
+
+.mx-config-form-designer__reaction-states label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 1fr);
+  align-items: center;
+  gap: 7px;
+  color: var(--mx-designer-muted);
+  font-size: 11px;
 }
 
 .mx-config-form-designer__collection-row,
@@ -1157,6 +1217,13 @@
 
   .mx-config-form-designer__container-slots {
     padding-left: 16px;
+  }
+
+  .mx-config-form-designer__reaction-heading,
+  .mx-config-form-designer__reaction-effect-heading,
+  .mx-config-form-designer__reaction-operand,
+  .mx-config-form-designer__reaction-prop {
+    grid-template-columns: minmax(0, 1fr);
   }
 
 }

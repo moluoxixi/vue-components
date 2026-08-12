@@ -554,6 +554,111 @@ describe('config form renderer', () => {
     expect(wrapper.find('[extensions]').exists()).toBe(false)
   })
 
+  it('applies chained reaction values, states and props without leaking declarations', async () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        fields: [
+          defineField<TestValues>({
+            component: CheckedStub,
+            field: 'enabled',
+            reactions: [{
+              id: 'enable-details',
+              when: {
+                kind: 'compare',
+                operator: 'eq',
+                left: { kind: 'field', field: 'enabled' },
+                right: { kind: 'literal', value: true },
+              },
+              then: [
+                { kind: 'setValue', target: 'summary', value: { kind: 'literal', value: 'derived' } },
+                { kind: 'setState', target: 'name', state: { disabled: true, required: true } },
+                { kind: 'setProps', target: 'name', props: { placeholder: { kind: 'literal', value: 'Reaction placeholder' } } },
+                { kind: 'setState', target: 'notes', state: { visible: false } },
+                { kind: 'setState', target: 'status', state: { readonly: true } },
+              ],
+              else: [
+                { kind: 'clearValue', target: 'summary' },
+                { kind: 'setState', target: 'name', state: { disabled: false, required: false } },
+                { kind: 'setState', target: 'notes', state: { visible: true } },
+                { kind: 'setState', target: 'status', state: { readonly: false } },
+              ],
+            }],
+          }),
+          defineField<TestValues>({ component: InputStub, field: 'name', props: { placeholder: 'Static placeholder' } }),
+          defineField<TestValues>({ component: InputStub, field: 'notes' }),
+          defineField<TestValues>({ component: InputStub, field: 'status' }),
+        ],
+        modelValue: { enabled: false, name: 'Ada', notes: 'Visible', status: 'draft' },
+        resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'
+          ? { trigger: 'change', valueProp: 'checked' }
+          : undefined,
+      },
+    })
+
+    expect(wrapper.find('[reactions]').exists()).toBe(false)
+    expect(wrapper.get('[data-field="name"] input').attributes('placeholder')).toBe('Static placeholder')
+    expect(wrapper.get('[data-field="notes"]').isVisible()).toBe(true)
+
+    await wrapper.get('[data-testid="renderer-checked"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{
+      enabled: true,
+      name: 'Ada',
+      notes: 'Visible',
+      status: 'draft',
+      summary: 'derived',
+    }])
+    const name = wrapper.get('[data-field="name"]')
+    expect(name.attributes('data-required')).toBe('true')
+    expect(name.get('input').attributes()).toMatchObject({
+      'aria-required': 'true',
+      'disabled': '',
+      'placeholder': 'Reaction placeholder',
+    })
+    expect(wrapper.find('[data-field="notes"]').exists()).toBe(false)
+    expect(wrapper.find('[data-field="status"] input').exists()).toBe(false)
+    expect(wrapper.get('[data-field="status"] .mx-config-form__readonly').text()).toBe('draft')
+    expect(wrapper.find('[reactions]').exists()).toBe(false)
+  })
+
+  it('refreshes reactions when the configured field tree changes', async () => {
+    const source = defineField<TestValues>({ component: CheckedStub, field: 'enabled' })
+    const name = defineField<TestValues>({ component: InputStub, field: 'name' })
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        fields: [source, name],
+        modelValue: { enabled: true, name: 'Ada', status: 'draft' },
+        resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'
+          ? { trigger: 'change', valueProp: 'checked' }
+          : undefined,
+      },
+    })
+
+    await wrapper.setProps({
+      fields: [{
+        ...source,
+        reactions: [{
+          id: 'dynamic-fields',
+          when: { kind: 'literal', value: true },
+          then: [
+            { kind: 'setValue', target: 'summary', value: { kind: 'literal', value: 'dynamic' } },
+            { kind: 'setProps', target: 'name', props: { placeholder: { kind: 'literal', value: 'Dynamic placeholder' } } },
+          ],
+        }],
+      }, name],
+    })
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{
+      enabled: true,
+      name: 'Ada',
+      status: 'draft',
+      summary: 'dynamic',
+    }])
+    expect(wrapper.get('[data-field="name"] input').attributes('placeholder')).toBe('Dynamic placeholder')
+  })
+
   it('动态进入 readonly 后不再展示编辑态旧错误', async () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {

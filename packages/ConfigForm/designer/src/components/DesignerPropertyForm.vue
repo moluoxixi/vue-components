@@ -27,6 +27,7 @@ const props = defineProps<{
   readonly?: boolean
   node?: DesignerNode
   fieldOptions?: string[]
+  reactionIds?: string[]
   validatorOptions?: string[]
 }>()
 
@@ -159,6 +160,7 @@ function customField(
       readonly: props.readonly,
       node: props.node,
       fieldOptions: props.fieldOptions,
+      reactionIds: props.reactionIds,
       validatorOptions: props.validatorOptions,
     },
     fieldAttrs: {

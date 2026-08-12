@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260812084946-config-form-reactions-441b60",
+  "createdAt": "2026-08-12T08:49:46.318Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-08-config-form-designer-advanced",
+  "reason": "Preserve the executable Core-owned serializable reaction contract, stable transaction and error semantics, projection boundaries, dependency order, and cross-adapter verification requirements.",
+  "target": "frontend/config-form-reactions.md",
+  "kind": "file",
+  "baseHash": null,
+  "contentFile": "content/20260812084946-config-form-reactions-441b60.md",
+  "contentHash": "67ce2abfefa7cbdda249223e65cacf038837eebc1265a33b4edd3826ec1c61c6"
+}

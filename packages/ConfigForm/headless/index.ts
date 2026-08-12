@@ -1,4 +1,5 @@
 export * from './src/controller'
+export * from './src/reaction'
 export type * from './src/types'
 export * from './src/utils'
 export * from './src/validation'

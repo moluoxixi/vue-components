@@ -83,6 +83,56 @@ describe('designer document', () => {
     }).success).toBe(false)
   })
 
+  it('round-trips reactions and diagnoses duplicate ids and every field reference', () => {
+    const document = createDocument()
+    const name = document.nodes[0]
+    const enabled = document.nodes[1]
+    if (name?.kind !== 'field' || enabled?.kind !== 'field')
+      throw new Error('Expected field fixtures')
+    name.reactions = [{
+      id: 'link-name',
+      when: {
+        kind: 'compare',
+        operator: 'eq',
+        left: { kind: 'field', field: 'enabled' },
+        right: { kind: 'literal', value: true },
+      },
+      then: [
+        { kind: 'setValue', target: 'name', value: { kind: 'field', field: 'enabled' } },
+        { kind: 'setProps', target: 'name', props: { placeholder: { kind: 'field', field: 'name' } } },
+      ],
+    }]
+    expect(parseDesignerDocument(JSON.parse(JSON.stringify(document)))).toEqual({
+      success: true,
+      data: document,
+      diagnostics: [],
+    })
+
+    enabled.reactions = [{
+      id: 'link-name',
+      when: {
+        kind: 'compare',
+        operator: 'eq',
+        left: { kind: 'field', field: 'missing-condition' },
+        right: { kind: 'literal', value: true },
+      },
+      then: [
+        { kind: 'setValue', target: 'missing-target', value: { kind: 'field', field: 'missing-value' } },
+        { kind: 'setProps', target: 'name', props: { placeholder: { kind: 'field', field: 'missing-prop' } } },
+      ],
+    }]
+    expect(parseDesignerDocument(document)).toMatchObject({
+      success: false,
+      diagnostics: [
+        { code: 'DESIGNER_REACTION_ID_DUPLICATE', path: ['nodes', 1, 'reactions', 0, 'id'], nodeId: 'field-enabled' },
+        { code: 'DESIGNER_REACTION_FIELD_UNKNOWN', path: ['nodes', 1, 'reactions', 0, 'when', 'left', 'field'], nodeId: 'field-enabled' },
+        { code: 'DESIGNER_REACTION_FIELD_UNKNOWN', path: ['nodes', 1, 'reactions', 0, 'then', 0, 'target'], nodeId: 'field-enabled' },
+        { code: 'DESIGNER_REACTION_FIELD_UNKNOWN', path: ['nodes', 1, 'reactions', 0, 'then', 0, 'value', 'field'], nodeId: 'field-enabled' },
+        { code: 'DESIGNER_REACTION_FIELD_UNKNOWN', path: ['nodes', 1, 'reactions', 0, 'then', 1, 'props', 'placeholder', 'field'], nodeId: 'field-enabled' },
+      ],
+    })
+  })
+
   it('parses responsive overrides without changing numeric form settings', () => {
     const document = createDocument()
     document.form.responsive = {

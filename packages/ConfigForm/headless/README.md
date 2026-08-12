@@ -13,6 +13,7 @@
 - 字段级或表单级 `readonlyRender`。
 - 可复用的 `ConfigFormComponentRegistry` / `ConfigFormComponentRegistration` 语义组件注册契约；
 - 字段和容器节点的 `extensions` 非渲染元数据。
+- 可序列化 `reactions` 的稳定值事务，以及字段 state、组件 props 和校验目标投影。
 
 `@moluoxixi/config-form/renderer` 的 Vue renderer 负责原生 `<form>`、Grid/Flex、字段壳、错误 DOM、ARIA 和递归节点渲染。UI 包只保留真实输入组件的值/事件绑定预设与视觉样式。
 
@@ -44,7 +45,7 @@ const fields = [
 
 `extensions` 会保留在字段、容器、slot 和 readonly context 中，但不会自动传给真实组件或 DOM。需要持久化的扩展值应保持 JSON 可序列化并使用业务命名空间。
 
-`createConfigFormController` 提供 `getValues`、`setValue(s)`、`validate`、`validateField`、`clearValidate`、`resetFields`、`submit`、`getErrors` 和 validating 状态查询，也提供 `getMeta`、`getFieldMeta` 和 `setTouched`。`dirty` 表示当前值是否偏离 reset 基准；`touched` 可按全部或指定字段显式设置，submit 会标记当前可交互字段。宿主在 controller 之外整体替换模型或字段树后，可调用 `refreshMeta` 重新计算并通知状态。两者与 `validateOn` 的 `change` / `blur` / `submit` 校验触发策略相互独立，且 submit 校验始终启用。Zod 和业务 validator 都在 Headless 执行，不再委托 UI 库 rules。
+`createConfigFormController` 提供 `getValues`、`setValue(s)`、`validate`、`validateField`、`clearValidate`、`resetFields`、`submit`、`getErrors` 和 validating 状态查询，也提供 `getMeta`、`getFieldMeta` 和 `setTouched`。`dirty` 表示当前值是否偏离 reset 基准；`touched` 可按全部或指定字段显式设置，submit 会标记当前可交互字段。宿主在 controller 之外整体替换模型后，可调用 `refreshMeta`；替换字段树后调用 `refreshReactions` 会重新执行稳定 reaction 事务并同步 meta。两者与 `validateOn` 的 `change` / `blur` / `submit` 校验触发策略相互独立，且 submit 校验始终启用。Zod 和业务 validator 都在 Headless 执行，不再委托 UI 库 rules。
 
 ## Readonly
 
@@ -52,6 +53,6 @@ const fields = [
 
 ## 本版边界
 
-本版只支持顶层对象字段，不包含嵌套路径、数组字段管理、reaction 或远程 DSL。跨字段校验通过字段 `validator(value, values)` 完成；Zod `schema` 的解析结果用于后续 validator，提交值转换需显式配置 `transform`。
+本版只支持顶层对象字段，不包含嵌套路径、数组字段管理、异步 reaction、任意脚本表达式或远程 DSL。同步 reaction 的条件、effect 和纯 reducer 由 `@moluoxixi/config-form-core` 提供；Headless 负责把它接入模型、校验和渲染投影。跨字段校验仍可通过字段 `validator(value, values)` 完成；Zod `schema` 的解析结果用于后续 validator，提交值转换需显式配置 `transform`。
 
 `withInstall` 仅保留为兼容入口并已弃用。具体 Vue 组件应使用所属组件包或 `@moluoxixi/config-form/renderer` 提供的安装工具，避免把通用组件发布能力继续放入表单内核。

@@ -10,6 +10,8 @@ Vue 3 配置化表单运行时。根入口提供面向 schema、低代码和 UI 
 
 轻量 `ConfigFormRenderer` 及其 UI adapters 同时支持 `validateOn` 的 change/blur 校验触发和独立的 dirty/touched 状态。renderer 发出 `metaChange`，在默认 slot 提供表单 `meta`、在字段 slot 提供字段 `meta`，并暴露 `getMeta`、`getFieldMeta` 和 `setTouched`；原生 form 与字段壳分别带有 `data-dirty` / `data-touched`。这些 API 属于 Headless/Renderer 路线，不会改变下文 Runtime/Plugin 根组件的 Events 与 Expose 契约。
 
+可序列化 `reactions` 也属于 Headless/Renderer 路线：Core 提供纯协议与稳定 reducer，Renderer 将值、visible/disabled/readonly/required、组件 props 和校验投影到真实 Element Plus / Ant Design Vue 组件。包根导出的旧 `ConfigForm` / `useForm` 仍是独立 Runtime/Plugin 状态机，本版本不执行这套 reaction 协议；迁移或弃用该旧入口需要单独的主版本计划。
+
 ## 特性
 
 - 配置驱动：通过 `fields` 数组声明表单字段。

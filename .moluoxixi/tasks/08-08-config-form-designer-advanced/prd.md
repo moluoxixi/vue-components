@@ -108,6 +108,25 @@ The standalone designer must also prove that the core is UI-framework independen
 - Field and container nodes may carry serializable `extensions` metadata. It remains available to slot, readonly, designer, adapter, and plugin consumers but is never forwarded to real components or DOM attributes.
 - The designer property panel uses semantic aliases backed by the active adapter's registered real controls, while history and document export remain unchanged.
 
+### R15. Serializable field reactions
+
+- Add a UI-library-independent `reactions` contract to `@moluoxixi/config-form-core`, Headless field nodes, and designer documents. Core owns the portable JSON/condition/reaction types, evaluator, and pure stable reducer; it has no Vue, Zod, Headless, Runtime, Designer, or adapter dependency.
+- The first release supports deterministic synchronous effects for setting or clearing a top-level field value, deriving field visible/disabled/readonly/required state, deriving component props, and requesting validation for a target field.
+- A value change executes reactions as one stable transaction in document order. Chained reactions are supported; no-op writes terminate naturally; cyclic or non-converging writes fail with an explicit error instead of looping.
+- Reaction-derived state and props are runtime projections. They do not mutate field definitions, designer documents, history entries, or exported JSON beyond the declared `reactions` configuration.
+- The designer provides visual reaction editing using registered ConfigForm controls, validates every field reference, previews effects against the isolated mock model, and compiles the same protocol consumed by Runtime.
+- Asynchronous effects, remote calls, arbitrary property paths, array fields, and manual `reloadOptions` are deferred until Runtime and adapter option resolvers share one cancellation/cache/refresh contract.
+- Other cross-layer pure contracts may move to Core only when they are independently reusable and do not pull controller, Vue component, schema-validation, or UI-adapter responsibilities into Core.
+
+### R16. Reusable reaction configuration primitives
+
+- Keep reaction execution and reaction configuration as separate Core modules: execution evaluates saved declarations, while configuration helpers create and immutably edit those declarations without Vue, Zod, Designer, Headless, Runtime, or adapter dependencies.
+- Core configuration helpers cover deterministic ids, default reaction/effect factories, branch/effect replacement, operand conversion, and non-empty state/prop updates. Designer UI consumes these helpers instead of owning duplicate protocol mutation logic.
+- Preserve the serialized reaction shapes and current visual editing behavior. UI-only normalization, locale text, DOM events, field-option selection, document-wide diagnostics, and Zod validation remain in Designer.
+- Keep runtime slots in Headless because their public contract contains Vue components, render functions, and VNode-oriented context. Designer container slots remain a separate JSON document tree with material constraints and history paths; they must not be forced into the same Core abstraction.
+- Extract other helpers only when at least two real consumers share the same behavior and ownership. Similar names alone are not sufficient when serialization, runtime, or framework semantics differ.
+- Move the adapter-neutral option-source types, input reader, option normalizer, cache key, and state snapshot helpers into Designer's shared public layer. Element Plus and Ant Design Vue retain adapter-named aliases and resolver lifecycle code for backward compatibility.
+
 ## Acceptance Criteria
 
 - [x] Playground opens with a 24-column root grid; the sample’s two-up sections are achieved with explicit 12-cell spans.
@@ -129,6 +148,11 @@ The standalone designer must also prove that the core is UI-framework independen
 - [x] The property panel is rendered by ConfigForm with adapter-native ordinary controls, custom setter support, left labels, unchanged history semantics, and Element Plus/Ant Design Vue desktop/narrow coverage.
 - [x] Headless, Runtime, Element Plus, Ant Design Vue, and the designer resolve semantic component aliases with documented override precedence and adapter-correct bindings.
 - [x] Serializable `extensions` survive parse, compile, slots, readonly contexts, history, import/export, and never leak to component props or DOM.
+- [x] Serializable reactions round-trip through Headless, Runtime, designer parse/compile/history/export and drive stable value, state, props, and validation effects in both Element Plus and Ant Design Vue previews.
+- [x] Chained reactions converge in declaration order, cycles fail explicitly, invalid references are diagnosed, and reaction configuration never leaks to component props or DOM.
+- [x] Designer reaction editing consumes dependency-free Core configuration helpers with unchanged exported JSON and adapter behavior.
+- [x] Slot ownership remains explicit: Headless owns Vue-aware runtime slot contracts, while Designer owns serializable layout slots without a misleading shared Core API.
+- [x] Element Plus and Ant Design Vue option resolvers consume one Designer-owned portable option contract without changing their public adapter APIs.
 
 ## Out of Scope
 

@@ -112,6 +112,11 @@ function createDocument(): DesignerDocument {
                 },
                 required: { kind: 'literal', value: true },
               },
+              reactions: [{
+                id: 'disable-email',
+                when: { kind: 'literal', value: true },
+                then: [{ kind: 'setState', target: 'email', state: { disabled: true } }],
+              }],
               validation: {
                 version: 1,
                 base: { type: 'string' },
@@ -176,6 +181,11 @@ describe('designer compiler', () => {
       ? document.nodes[0].slots.default?.[0]
       : undefined
     expect(field.extensions).not.toBe(sourceField?.extensions)
+    expect(field.reactions).toEqual(sourceField?.reactions)
+    expect(field.reactions).not.toBe(sourceField?.reactions)
+    expect(field.reactions?.[0]).not.toBe(sourceField?.reactions?.[0])
+    field.reactions![0]!.id = 'compiled-only'
+    expect(sourceField?.reactions?.[0]?.id).toBe('disable-email')
     expect(typeof field.visible).toBe('function')
     expect(typeof field.required).toBe('function')
     expect((field.visible as (values: Record<string, unknown>) => boolean)({ enabled: true })).toBe(true)

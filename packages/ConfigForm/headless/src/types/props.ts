@@ -1,3 +1,4 @@
+import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type { Component, VNodeChild } from 'vue'
 import type { ZodTypeAny } from 'zod'
 import type { ConfigFormFieldMeta, ConfigFormMeta } from './meta'
@@ -188,6 +189,8 @@ export interface ConfigFormNodeBase<
   props?: ConfigFormAttrs
   /** 不参与渲染的扩展元数据；由 designer/adapter/plugin 按命名空间消费。 */
   extensions?: ConfigFormExtensions
+  /** 可序列化联动声明；由 Headless 事务执行器统一求值。 */
+  reactions?: ConfigFormReaction[]
   /** 透传给 renderer grid cell 的 attributes；inline 布局不消费。 */
   cellAttrs?: TCellAttrs
   /** grid 布局下的栅格跨度，默认使用 ConfigForm.fieldSpan。 */

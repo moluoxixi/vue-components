@@ -28,6 +28,14 @@
 26. [x] Add Element Plus and Ant Design Vue semantic aliases and route designer property controls through the active registry.
 27. [x] Add serializable node extensions across headless, legacy Runtime, designer parsing, compilation, history, slots, and readonly contexts without prop leakage.
 28. [x] Run package tests, typechecks, builds, export-boundary checks, full quality gates, and browser verification for both designer adapters.
+29. [x] Convert ConfigForm Core into the dependency-free owner of shared JSON/condition/reaction types, pure evaluation, stable transaction execution, and cycle diagnostics; make Headless consume it without a package cycle.
+30. [x] Integrate value/state/props/validation effects with Controller and ConfigFormRenderer without mutating field definitions or leaking reaction metadata.
+31. [x] Add designer reaction document schema, reference diagnostics, compiler/history round-trip, visual setter, and isolated canvas preview.
+32. [x] Verify real Element Plus and Ant Design Vue reaction behavior, chained convergence, cycles, validation timing, export boundaries, and desktop/narrow designer interaction.
+33. [x] Add dependency-free Core reaction configuration factories and immutable editing helpers with focused public API tests.
+34. [x] Replace Designer reaction protocol mutations with Core helpers while preserving visual behavior and exported JSON.
+35. [x] Verify the reuse boundary: Reaction execution/config remain in Core, Vue-aware slots remain in Headless, and Designer JSON slots remain document-owned.
+36. [x] Consolidate Element Plus and Ant Design Vue option-source contracts and pure normalization/cache helpers in Designer while preserving adapter APIs.
 
 ## Validation Commands
 
@@ -52,6 +60,12 @@
 - [x] `pnpm --filter @config-form/playground build`
 - [x] Full Playground Playwright suite (14 passed, including root span parity and Element Plus/Ant Design Vue designer layout/readonly coverage)
 - [x] Cross-layer review of document, compiler, Designer, Element Plus/Ant Design Vue adapters, and Runtime boundaries
+- [x] Core, Headless, Runtime, Designer, Element Plus, Ant Design Vue, and both designer-adapter reaction suites (357 tests)
+- [x] `pnpm test:config-form-packages` public package-boundary verification
+- [x] Full Playground Playwright suite (16 passed, including visual reaction editing for both adapters at desktop and 390px)
+- [x] Core reducer depth guard returns `CONFIG_FORM_REACTION_DEPTH_EXCEEDED` instead of an uncontrolled recursion failure
+- [x] Core reaction configuration helper tests, cross-node reaction-id uniqueness, Designer options contract tests, and adapter compatibility tests
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, package boundary verification, and live Element Plus/Ant Design Vue standalone-designer checks
 
 ## Risk Gates
 

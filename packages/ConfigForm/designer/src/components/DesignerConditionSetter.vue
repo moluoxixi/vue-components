@@ -12,6 +12,7 @@ type LiteralType = 'text' | 'number' | 'boolean'
 const props = defineProps<{
   modelValue: unknown
   disabled?: boolean
+  fieldOptions?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -135,7 +136,11 @@ function updateNumber(event: Event): void {
     </div>
 
     <div v-if="mode === 'when'" class="mx-config-form-designer__condition-builder">
-      <input v-model="field" type="text" :aria-label="locale.t('condition.field', 'Condition field')" :placeholder="locale.t('condition.fieldPlaceholder', 'Field name')" :disabled="disabled" @blur="commit">
+      <select v-if="fieldOptions?.length" v-model="field" :aria-label="locale.t('condition.field', 'Condition field')" :disabled="disabled" @change="commit">
+        <option value="" disabled>{{ locale.t('condition.selectField', 'Select field') }}</option>
+        <option v-for="option in fieldOptions" :key="option" :value="option">{{ option }}</option>
+      </select>
+      <input v-else v-model="field" type="text" :aria-label="locale.t('condition.field', 'Condition field')" :placeholder="locale.t('condition.fieldPlaceholder', 'Field name')" :disabled="disabled" @blur="commit">
       <select v-model="operator" :aria-label="locale.t('condition.operator', 'Condition operator')" :disabled="disabled" @change="commit">
         <option v-for="item in operators" :key="item.value" :value="item.value">{{ item.label }}</option>
       </select>

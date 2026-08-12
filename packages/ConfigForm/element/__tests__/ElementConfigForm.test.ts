@@ -169,6 +169,45 @@ describe('element config form', () => {
     expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([{ enabled: true, name: 'Ada' }])
   })
 
+  it('applies reactions through real Element Plus bindings', async () => {
+    const fields = [
+      defineField<SemanticForm>({
+        component: 'boolean',
+        field: 'enabled',
+        reactions: [{
+          id: 'enable-name',
+          when: {
+            kind: 'compare',
+            operator: 'eq',
+            left: { kind: 'field', field: 'enabled' },
+            right: { kind: 'literal', value: true },
+          },
+          then: [
+            { kind: 'setValue', target: 'name', value: { kind: 'literal', value: 'linked' } },
+            { kind: 'setState', target: 'name', state: { disabled: true, required: true } },
+            { kind: 'setProps', target: 'name', props: { placeholder: { kind: 'literal', value: 'Reaction placeholder' } } },
+          ],
+        }],
+      }),
+      defineField<SemanticForm>({ component: 'text', field: 'name', props: { placeholder: 'Static placeholder' } }),
+    ]
+    const wrapper = mount(ElementConfigForm, {
+      props: { fields, modelValue: { enabled: false, name: 'initial' } },
+    })
+
+    wrapper.getComponent(ElSwitch).vm.$emit('update:modelValue', true)
+    await flushPromises()
+
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true, name: 'linked' }])
+    expect(wrapper.getComponent(ElInput).props()).toMatchObject({
+      disabled: true,
+      modelValue: 'linked',
+      placeholder: 'Reaction placeholder',
+    })
+    expect(wrapper.get('[data-field="name"]').attributes('data-required')).toBe('true')
+    expect(wrapper.find('[reactions]').exists()).toBe(false)
+  })
+
   it('同页同名字段生成唯一 control/error id 并关联本字段错误', async () => {
     const fields = [defineField<UserForm>({
       component: InputStub,

@@ -5,6 +5,7 @@ import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerNodeAction } from './types'
 import type { DesignerMaterialSlotDefinition, DesignerRegistry } from '../registry'
 import type { StyleValue } from 'vue'
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import {
   ChevronDown,
   ChevronUp,
@@ -36,6 +37,8 @@ const props = defineProps<{
   breakpoint?: ConfigFormBreakpoint
   interactive?: boolean
   model?: Record<string, unknown>
+  reactionProps?: ConfigFormReactionProjection['props']
+  reactionStates?: ConfigFormReactionProjection['states']
 }>()
 const locale = useDesignerLocale()
 
@@ -93,6 +96,8 @@ function nodeSpan(node: DesignerNode): number | undefined {
 }
 
 function isNodeVisible(node: DesignerNode): boolean {
+  if (node.kind === 'field' && props.reactionStates?.[node.field]?.visible !== undefined)
+    return props.reactionStates[node.field]!.visible!
   const values = props.model ?? {}
   const visible = node.conditions?.visible
     ? evaluateDesignerCondition(node.conditions.visible, values)
@@ -295,6 +300,8 @@ onBeforeUnmount(destroySortable)
           :readonly="form?.readonly"
           :interactive="interactive"
           :model="model"
+          :reaction-props="reactionProps"
+          :reaction-states="reactionStates"
           @update-field="forwardUpdateField"
         >
           <template v-for="slot in materialSlots(node)" #[slot.name]>
@@ -310,6 +317,8 @@ onBeforeUnmount(destroySortable)
               :breakpoint="breakpoint"
               :interactive="interactive"
               :model="model"
+              :reaction-props="reactionProps"
+              :reaction-states="reactionStates"
               @select="emit('select', $event)"
               @move="forwardMove"
               @add-material="forwardAddMaterial"

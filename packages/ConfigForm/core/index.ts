@@ -1,3 +1,3 @@
-/** @deprecated 请直接使用 @moluoxixi/config-form-headless。 */
-export * from '@moluoxixi/config-form-headless'
-export type * from '@moluoxixi/config-form-headless'
+export * from './src/reaction'
+export * from './src/reaction-config'
+export type * from './src/types'

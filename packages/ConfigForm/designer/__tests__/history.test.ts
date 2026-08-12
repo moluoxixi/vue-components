@@ -1,3 +1,4 @@
+import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type {
   DesignerDocument,
   DesignerMaterialDefinition,
@@ -432,6 +433,32 @@ describe('designer history', () => {
     const redone = redoDesignerHistory(undone.history)
     expect(findDesignerNode(redone.history.present, 'first')?.node).toMatchObject({
       extensions: { 'designer.setter': { path: ['label'], source: 'local' } },
+    })
+  })
+
+  it('preserves cloned reaction configuration through undo and redo', () => {
+    const initial = createDesignerHistory(createDocument())
+    const reactions: ConfigFormReaction[] = [{
+      id: 'copy-first',
+      when: { kind: 'literal', value: true },
+      then: [{ kind: 'setValue', target: 'last', value: { kind: 'field', field: 'first' } }],
+    }]
+    const changed = applyDesignerCommand(initial, {
+      type: 'updateNodePath',
+      nodeId: 'first',
+      path: ['reactions'],
+      value: reactions,
+    }, registry)
+    reactions[0]!.id = 'mutated-outside-history'
+
+    expect(findDesignerNode(changed.history.present, 'first')?.node).toMatchObject({
+      reactions: [{ id: 'copy-first' }],
+    })
+    const undone = undoDesignerHistory(changed.history)
+    expect(findDesignerNode(undone.history.present, 'first')?.node).not.toHaveProperty('reactions')
+    const redone = redoDesignerHistory(undone.history)
+    expect(findDesignerNode(redone.history.present, 'first')?.node).toMatchObject({
+      reactions: [{ id: 'copy-first' }],
     })
   })
 

@@ -11,7 +11,7 @@
 | [`@moluoxixi/components`](./packages/components/) | 组件集合入口，内置 Element/Antd ConfigForm、常用组件及 `/auto-loaders` 自动导入预设 |
 | [`@moluoxixi/config-form`](./packages/ConfigForm/runtime/) | Runtime/Plugin 配置表单，并通过 `/renderer` 提供轻量 Vue DOM renderer |
 | [`@moluoxixi/config-form-headless`](./packages/ConfigForm/headless/) | Vue headless 字段协议、Zod 校验、readonly 与表单 controller |
-| [`@moluoxixi/config-form-core`](./packages/ConfigForm/core/) | headless 公共 API 的兼容入口 |
+| [`@moluoxixi/config-form-core`](./packages/ConfigForm/core/) | 可独立复用的 JSON、条件与 reaction 纯协议/执行器 |
 | [`@moluoxixi/config-form-element`](./packages/ConfigForm/element/) | Element Plus 轻量 ConfigForm |
 | [`@moluoxixi/config-form-antd-vue`](./packages/ConfigForm/antd/) | Ant Design Vue 轻量 ConfigForm |
 | [`@moluoxixi/config-form-devtools-vite-plugin`](./packages/ConfigForm/devtools-vite-plugin/) | 开发态源码定位 Vite 插件 |

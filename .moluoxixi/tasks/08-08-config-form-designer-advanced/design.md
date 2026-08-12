@@ -83,3 +83,27 @@ ConfigForm `fieldChange` is mapped back to the originating setter and then to th
 Element Plus and Ant Design Vue publish semantic alias maps. Their ConfigForm wrappers merge adapter defaults before caller registrations, while designer registry layers use the existing first-layer-wins policy. The property-control schema references aliases (`text`, `textarea`, `number`, `boolean`, `segmented`) and passes the active registry to the shared ConfigFormRenderer.
 
 `extensions` is a node-level metadata object, separate from render `props`. Designer documents restrict it to JSON data, history clones it with the rest of the document, and compilation projects it onto headless renderer nodes. Renderer slot and readonly contexts therefore retain access, while component and DOM prop construction reads only registration props and node props.
+
+## Serializable Reactions
+
+`@moluoxixi/config-form-core` owns the executable reaction contract and a framework-neutral synchronous reducer. A reaction has a stable id, a serializable `when` predicate, optional `then` effects, and optional `else` effects. Predicates use one shared condition AST: literal, field/literal operands, compare, and/or/not. Effects are a closed discriminated union: `setValue`, `clearValue`, `setState`, `setProps`, and `validate`.
+
+The dependency direction is `Core -> Headless -> Runtime/Designer/adapters`. Core does not re-export Headless and has no Vue peer dependency. Headless attaches the portable reaction list to node contracts and integrates the pure reducer with controller transactions. Designer imports the same AST/evaluator from Core, adds Zod document validation and visual editing, then emits the unchanged Core contract to Runtime.
+
+All field references are top-level string keys. Effect values are either JSON literals or references to another field; no expression strings, functions, URLs, component instances, or arbitrary object paths are accepted. Runtime executes enabled reactions in node/document order after a model write. Each pass receives the latest model, records only effective changes, and continues until stable. A fixed pass ceiling plus repeated-state detection produces `CONFIG_FORM_REACTION_CYCLE` for non-converging graphs.
+
+Value effects are committed as one transaction so `change`, metadata, validation revision, and rendering observe the final stable model rather than intermediate states. State and props effects are stored as controller-owned derived projections and never mutate the field array. Explicit field state/props form the base; reactions apply ordered overlays, with later matching reactions overriding earlier reaction keys. The renderer reads effective state and props from the controller and never forwards the `reactions` declaration itself.
+
+The designer document uses the same serializable contract. Parsing validates source, target, predicate, and value references against declared field names. Compilation copies the contract without functions or shared references. The property panel uses one custom ConfigForm field for visual reaction rows; condition editing reuses the existing safe predicate editor. Canvas interaction applies the shared pure reaction reducer to its isolated preview model, keeping document bytes and history unchanged.
+
+Option reload is intentionally not an initial reaction effect. Current provider resolution is adapter-owned and designer-only; it has cancellation but no Runtime resolver, shared cache, invalidation, or refresh semantics. A later addition must first establish that cross-adapter contract so exported forms and designer previews behave identically.
+
+## Reusable Protocol Modules
+
+Core separates saved reaction execution from saved reaction construction. `reaction.ts` remains the stable synchronous evaluator/reducer. `reaction-config.ts` owns dependency-free factories and immutable edits for the same `ConfigFormReaction` data contract. The Designer reaction setter supplies UI context such as the current/default field, then delegates protocol construction and updates to Core.
+
+Core helpers preserve the Designer document's non-empty `then`, `setState.state`, and `setProps.props` invariants. An edit that would remove the last required item returns the original value; clearing the last `else` effect removes the optional branch. Property renames reject blank or conflicting keys so a visual edit cannot silently overwrite another property.
+
+Slots do not share this ownership boundary. Headless runtime slots accept Vue components, render functions, and runtime contexts, so Headless remains their reusable public owner. Designer slots are serializable child arrays with material acceptance, path, history, and diagnostic semantics. A common Core slot abstraction would either import Vue or erase the contracts that make each slot system useful, so no such module is introduced.
+
+The two designer adapters do share one option-source protocol. Designer owns the serializable option/source/state types plus pure parsing, normalization, cache-key, and snapshot helpers. Adapter packages expose their existing Element/AntD names as type aliases and thin function wrappers, while Vue watchers, cancellation, injection keys, providers, and framework rendering remain adapter-owned.

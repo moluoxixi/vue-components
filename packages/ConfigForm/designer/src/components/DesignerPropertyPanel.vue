@@ -38,7 +38,7 @@ const emit = defineEmits<{
   updateForm: [changes: Record<string, unknown>]
 }>()
 
-type PropertyTab = 'properties' | 'validation' | 'conditions'
+type PropertyTab = 'properties' | 'validation' | 'conditions' | 'reactions'
 const activeTab = ref<PropertyTab>('properties')
 const locale = useDesignerLocale()
 const resolvedLayout = computed(() => resolveConfigFormLayout(
@@ -54,6 +54,13 @@ const fieldOptions = computed(() => {
       fields.push(node.field)
   })
   return fields
+})
+const reactionIds = computed(() => {
+  const ids: string[] = []
+  walkDesignerNodes(props.document.nodes, ({ node }) => {
+    node.reactions?.forEach(reaction => ids.push(reaction.id))
+  })
+  return ids
 })
 const isRootNode = computed(() => {
   if (!props.node)
@@ -111,6 +118,10 @@ const conditionSetters = computed<DesignerPropertySetterDefinition[]>(() => {
 
 const validationSetters = computed<DesignerPropertySetterDefinition[]>(() => props.node?.kind === 'field'
   ? [{ key: 'validation', label: locale.t('property.rules', 'Rules'), path: ['validation'], control: 'validation' }]
+  : [])
+
+const reactionSetters = computed<DesignerPropertySetterDefinition[]>(() => props.node
+  ? [{ key: 'reactions', label: locale.t('property.reactions', 'Reactions'), path: ['reactions'], control: 'reaction' }]
   : [])
 
 const selectedDiagnostics = computed(() => props.node
@@ -209,7 +220,9 @@ const activePropertySetters = computed(() => activeTab.value === 'properties'
   ? propertySetters.value
   : activeTab.value === 'validation'
     ? validationSetters.value
-    : conditionSetters.value)
+    : activeTab.value === 'conditions'
+      ? conditionSetters.value
+      : reactionSetters.value)
 
 const propertyEntries = computed(() => activePropertySetters.value.map(setter => ({
   setter,
@@ -231,9 +244,10 @@ const formEntries = computed(() => formSetters.value.map(setter => ({
         <code>{{ node.material }}</code>
       </div>
       <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
-        <button type="button" role="tab" :aria-selected="activeTab === 'properties'" @click="activeTab = 'properties'">{{ locale.t('property.properties', 'Properties') }}</button>
-        <button v-if="node.kind === 'field'" type="button" role="tab" :aria-selected="activeTab === 'validation'" @click="activeTab = 'validation'">{{ locale.t('property.validation', 'Validation') }}</button>
-        <button type="button" role="tab" :aria-selected="activeTab === 'conditions'" @click="activeTab = 'conditions'">{{ locale.t('property.conditions', 'Conditions') }}</button>
+        <button type="button" role="tab" data-property-tab="properties" :aria-selected="activeTab === 'properties'" @click="activeTab = 'properties'">{{ locale.t('property.properties', 'Properties') }}</button>
+        <button v-if="node.kind === 'field'" type="button" role="tab" data-property-tab="validation" :aria-selected="activeTab === 'validation'" @click="activeTab = 'validation'">{{ locale.t('property.validation', 'Validation') }}</button>
+        <button type="button" role="tab" data-property-tab="conditions" :aria-selected="activeTab === 'conditions'" @click="activeTab = 'conditions'">{{ locale.t('property.conditions', 'Conditions') }}</button>
+        <button type="button" role="tab" data-property-tab="reactions" :aria-selected="activeTab === 'reactions'" @click="activeTab = 'reactions'">{{ locale.t('property.reactions', 'Reactions') }}</button>
       </div>
 
       <div class="mx-config-form-designer__property-fields">
@@ -244,6 +258,7 @@ const formEntries = computed(() => formSetters.value.map(setter => ({
           :readonly="readonly"
           :node="node"
           :field-options="fieldOptions"
+          :reaction-ids="reactionIds"
           :validator-options="validatorOptions"
           @commit="commitNodePath"
         />

@@ -461,10 +461,6 @@ importers:
         version: 3.25.76
 
   packages/ConfigForm/core:
-    dependencies:
-      '@moluoxixi/config-form-headless':
-        specifier: workspace:*
-        version: link:../headless
     devDependencies:
       unplugin-dts:
         specifier: catalog:dev
@@ -475,9 +471,6 @@ importers:
       vitest:
         specifier: catalog:dev
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
-      vue:
-        specifier: catalog:build
-        version: 3.5.33(typescript@5.9.3)
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
@@ -490,6 +483,9 @@ importers:
       '@moluoxixi/config-form':
         specifier: workspace:*
         version: link:../runtime
+      '@moluoxixi/config-form-core':
+        specifier: workspace:*
+        version: link:../core
       '@moluoxixi/config-form-headless':
         specifier: workspace:*
         version: link:../headless
@@ -697,6 +693,10 @@ importers:
         version: 3.25.76
 
   packages/ConfigForm/headless:
+    dependencies:
+      '@moluoxixi/config-form-core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       unplugin-dts:
         specifier: catalog:dev

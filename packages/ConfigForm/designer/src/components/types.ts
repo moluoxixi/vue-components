@@ -1,3 +1,4 @@
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCompileResult } from '../compiler'
 import type { DesignerDiagnostic, DesignerDocument, DesignerNode } from '../document'
@@ -50,6 +51,8 @@ export interface DesignerCanvasScope {
   breakpoint: ConfigFormBreakpoint
   interactive: boolean
   model: Record<string, unknown>
+  reactionProps: ConfigFormReactionProjection['props']
+  reactionStates: ConfigFormReactionProjection['states']
 }
 
 export interface DesignerPropertiesScope {

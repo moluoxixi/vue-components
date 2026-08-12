@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260812084946-index-d818ed",
+  "createdAt": "2026-08-12T08:49:46.544Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-08-config-form-designer-advanced",
+  "reason": "Index the proposed reusable ConfigForm reaction contract without modifying approved frontend guidance directly.",
+  "target": "frontend/index.md",
+  "kind": "file",
+  "baseHash": "adc1694bfef9c77bc01cec36589d9f05a97178cc5d5d965bdf324a555048ceb7",
+  "contentFile": "content/20260812084946-index-d818ed.md",
+  "contentHash": "580eb7d9574d0307b1a39b118e68247d345620fc54df24e9601681085ac7a37e"
+}

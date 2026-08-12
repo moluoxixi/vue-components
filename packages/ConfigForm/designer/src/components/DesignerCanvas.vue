@@ -4,6 +4,7 @@ import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerDropTarget } from '../history'
 import type { DesignerRegistry } from '../registry'
 import type { DesignerNodeAction } from './types'
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import { Monitor, Smartphone, Tablet, Workflow } from '@lucide/vue'
 import { useDesignerLocale } from '../locale'
 import DesignerNodeList from './DesignerNodeList.vue'
@@ -16,6 +17,8 @@ defineProps<{
   breakpoint?: ConfigFormBreakpoint
   interactive?: boolean
   model?: Record<string, unknown>
+  reactionProps?: ConfigFormReactionProjection['props']
+  reactionStates?: ConfigFormReactionProjection['states']
 }>()
 
 const emit = defineEmits<{
@@ -96,6 +99,8 @@ function forwardUpdateField(field: string, value: unknown): void {
         :breakpoint="breakpoint"
         :interactive="interactive"
         :model="model"
+        :reaction-props="reactionProps"
+        :reaction-states="reactionStates"
         @select="emit('select', $event)"
         @move="forwardMove"
         @add-material="forwardAddMaterial"

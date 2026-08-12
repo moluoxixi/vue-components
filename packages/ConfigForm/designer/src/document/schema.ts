@@ -1,3 +1,4 @@
+import type { ConfigFormReaction, ConfigFormReactionEffect } from '@moluoxixi/config-form-core'
 import type { RuleJsonValue } from '@moluoxixi/zod3-to-rule'
 import type { DesignerConditionExpression, DesignerConditionOperand } from '../condition'
 import type { DesignerDocument, DesignerNode } from './types'
@@ -12,7 +13,7 @@ export const designerJsonValueSchema: z.ZodType<RuleJsonValue> = z.lazy(() => z.
   z.record(z.string(), designerJsonValueSchema),
 ]))
 
-const conditionOperandSchema: z.ZodType<DesignerConditionOperand> = z.discriminatedUnion('kind', [
+export const designerConditionOperandSchema: z.ZodType<DesignerConditionOperand> = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('field'), field: z.string().min(1) }).strict(),
   z.object({ kind: z.literal('literal'), value: designerJsonValueSchema }).strict(),
 ])
@@ -22,8 +23,8 @@ export const designerConditionSchema: z.ZodType<DesignerConditionExpression> = z
   z.object({
     kind: z.literal('compare'),
     operator: z.enum(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'contains']),
-    left: conditionOperandSchema,
-    right: conditionOperandSchema,
+    left: designerConditionOperandSchema,
+    right: designerConditionOperandSchema,
   }).strict(),
   z.object({ kind: z.literal('and'), expressions: z.array(designerConditionSchema).min(1) }).strict(),
   z.object({ kind: z.literal('or'), expressions: z.array(designerConditionSchema).min(1) }).strict(),
@@ -36,6 +37,40 @@ const conditionsSchema = z.object({
   required: designerConditionSchema.optional(),
   disabled: designerConditionSchema.optional(),
   readonly: designerConditionSchema.optional(),
+}).strict()
+
+const reactionEffectSchema: z.ZodType<ConfigFormReactionEffect> = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('setValue'),
+    target: z.string().min(1),
+    value: designerConditionOperandSchema,
+  }).strict(),
+  z.object({ kind: z.literal('clearValue'), target: z.string().min(1) }).strict(),
+  z.object({
+    kind: z.literal('setState'),
+    target: z.string().min(1),
+    state: z.object({
+      visible: z.boolean().optional(),
+      disabled: z.boolean().optional(),
+      readonly: z.boolean().optional(),
+      required: z.boolean().optional(),
+    }).strict().refine(value => Object.keys(value).length > 0, 'Reaction state cannot be empty'),
+  }).strict(),
+  z.object({
+    kind: z.literal('setProps'),
+    target: z.string().min(1),
+    props: z.record(z.string(), designerConditionOperandSchema)
+      .refine(value => Object.keys(value).length > 0, 'Reaction props cannot be empty'),
+  }).strict(),
+  z.object({ kind: z.literal('validate'), target: z.string().min(1) }).strict(),
+])
+
+export const designerReactionSchema: z.ZodType<ConfigFormReaction> = z.object({
+  id: z.string().min(1),
+  enabled: z.boolean().optional(),
+  when: designerConditionSchema,
+  then: z.array(reactionEffectSchema).min(1),
+  else: z.array(reactionEffectSchema).min(1).optional(),
 }).strict()
 
 const responsiveLayoutOverrideSchema = z.object({
@@ -51,6 +86,7 @@ const nodeBaseShape = {
   // Keep legacy numeric documents importable; the renderer clamps to the 24-cell grid.
   span: z.number().int().positive().optional(),
   conditions: conditionsSchema.optional(),
+  reactions: z.array(designerReactionSchema).optional(),
 }
 
 export const designerNodeSchema: z.ZodType<DesignerNode> = z.lazy(() => z.discriminatedUnion('kind', [

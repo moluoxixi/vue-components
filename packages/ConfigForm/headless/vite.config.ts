@@ -27,7 +27,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['vue', 'zod'],
+      external: ['@moluoxixi/config-form-core', 'vue', 'zod'],
     },
   },
 })

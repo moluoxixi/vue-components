@@ -19,6 +19,7 @@ export type DesignerSetterControl
     | 'defaultValue'
     | 'options'
     | 'condition'
+    | 'reaction'
     | 'validation'
     | 'custom'
 

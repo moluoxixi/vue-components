@@ -4,7 +4,11 @@ import type {
   AntdVueOptionSource,
   AntdVueResolvedOptionState,
 } from './types'
-import { isDesignerJsonObject } from '@moluoxixi/config-form-designer'
+import {
+  createMissingDesignerOptionSourceState,
+  normalizeDesignerOptions,
+  readDesignerOptionSource,
+} from '@moluoxixi/config-form-designer'
 import { ref, toValue, watch } from 'vue'
 import { useAntdVueOptionResolverContext } from './context'
 
@@ -73,33 +77,11 @@ export function useAntdVueResolvedOptions(
 }
 
 export function readAntdVueOptionSource(value: unknown): AntdVueOptionSource | undefined {
-  if (!isRecord(value) || typeof value.kind !== 'string')
-    return undefined
-  if (value.kind === 'static')
-    return { kind: 'static' }
-  if ((value.kind !== 'dictionary' && value.kind !== 'provider') || typeof value.key !== 'string' || value.key.length === 0)
-    return undefined
-  if (value.kind === 'dictionary')
-    return { kind: value.kind, key: value.key }
-  if (value.params === undefined)
-    return { kind: value.kind, key: value.key }
-  if (isDesignerJsonObject(value.params))
-    return { kind: value.kind, key: value.key, params: value.params }
-  return undefined
+  return readDesignerOptionSource(value)
 }
 
 export function normalizeAntdVueOptions(options: readonly unknown[] | undefined): AntdVueDesignerOption[] {
-  if (!options)
-    return []
-  return options.flatMap((option) => {
-    if (!isRecord(option) || typeof option.label !== 'string' || !isOptionValue(option.value))
-      return []
-    return [{
-      label: option.label,
-      value: option.value,
-      ...(typeof option.disabled === 'boolean' ? { disabled: option.disabled } : {}),
-    }]
-  })
+  return normalizeDesignerOptions(options)
 }
 
 function missingSourceState(
@@ -107,19 +89,5 @@ function missingSourceState(
   key: string,
   fallback: AntdVueDesignerOption[],
 ): AntdVueResolvedOptionState {
-  return {
-    status: 'error',
-    options: fallback,
-    error: `Unknown option ${kind}: ${key}`,
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isOptionValue(value: unknown): value is string | number | boolean {
-  return typeof value === 'string'
-    || typeof value === 'boolean'
-    || (typeof value === 'number' && Number.isFinite(value))
+  return createMissingDesignerOptionSourceState(kind, key, fallback)
 }

@@ -3,6 +3,7 @@ import type { DesignerFormSettings, DesignerNode } from '../document'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import type { ConfigFormComponentRegistration } from '@moluoxixi/config-form-headless'
 import type { PropType, VNodeChild } from 'vue'
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import { computed, defineComponent, markRaw, toRaw } from 'vue'
 import { formatConfigFormReadonlyValue, isConfigFormComponentRegistration } from '@moluoxixi/config-form-headless'
 import { resolveConfigFormFieldLayout } from '@moluoxixi/config-form/renderer'
@@ -26,6 +27,8 @@ const props = defineProps<{
   readonly?: boolean
   interactive?: boolean
   model?: Record<string, unknown>
+  reactionProps?: ConfigFormReactionProjection['props']
+  reactionStates?: ConfigFormReactionProjection['states']
 }>()
 
 const emit = defineEmits<{
@@ -71,6 +74,11 @@ const controlId = computed(() => props.node.kind === 'field'
   : undefined)
 
 function condition(target: 'required' | 'disabled' | 'readonly', fallback = false): boolean {
+  if (props.node.kind === 'field') {
+    const reactionValue = props.reactionStates?.[props.node.field]?.[target]
+    if (reactionValue !== undefined)
+      return reactionValue
+  }
   const expression = props.node.conditions?.[target]
   return expression
     ? evaluateDesignerCondition(expression, props.model ?? {})
@@ -100,6 +108,7 @@ const componentProps = computed<Record<string, unknown>>(() => {
   const nextProps: Record<string, unknown> = {
     ...runtimeRegistration.value?.props,
     ...(props.node.props ?? {}),
+    ...(props.node.kind === 'field' ? props.reactionProps?.[props.node.field] : undefined),
   }
   if (props.node.kind !== 'field') {
     if (definition.runtime.designerComponent)

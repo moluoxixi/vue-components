@@ -51,6 +51,8 @@ describe('ant design vue designer materials', () => {
   it('registers the complete material set with localized metadata', () => {
     expect(ANTD_VUE_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
     expect(Object.keys(ANTD_VUE_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
+    expect(ANTD_VUE_DESIGNER_ZH_CN.messages?.['property.reactions']).toBe('联动')
+    expect(ANTD_VUE_DESIGNER_ZH_CN.messages?.['reaction.effect.setValue']).toBe('设置值')
     expect(ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'field')).toHaveLength(14)
     expect(ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
   })

@@ -61,6 +61,50 @@ export function collectAllConfigFormFields<
   return nodes.flatMap(node => collectAllConfigFormFieldsFromNode(node, new Set()))
 }
 
+/** 收集全部静态声明节点；供 reaction、诊断等配置投影统一遍历。 */
+export function collectAllConfigFormNodes<
+  TValues extends ConfigFormValues,
+  TFieldAttrs = ConfigFormAttrs,
+  TCellAttrs = ConfigFormAttrs,
+  TComponent = Component | string,
+>(
+  nodes: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>[],
+): ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>[] {
+  return nodes.flatMap(node => collectAllConfigFormNodesFromNode(node, new Set()))
+}
+
+function collectAllConfigFormNodesFromNode<
+  TValues extends ConfigFormValues,
+  TFieldAttrs,
+  TCellAttrs,
+  TComponent,
+>(
+  node: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  ancestors: ReadonlySet<object>,
+): ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>[] {
+  assertAcyclicConfigFormNode(node, ancestors)
+  const nextAncestors = new Set(ancestors).add(node)
+  const nested = Object.values(node.slots ?? {}).flatMap(slot =>
+    collectAllConfigFormNodesFromSlot<TValues, TFieldAttrs, TCellAttrs, TComponent>(slot, nextAncestors),
+  )
+  return [node, ...nested]
+}
+
+function collectAllConfigFormNodesFromSlot<
+  TValues extends ConfigFormValues,
+  TFieldAttrs,
+  TCellAttrs,
+  TComponent,
+>(
+  slot: ConfigFormSlotConfig<TValues, TComponent, TFieldAttrs, TCellAttrs> | ((...args: unknown[]) => unknown),
+  ancestors: ReadonlySet<object>,
+): ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>[] {
+  if (typeof slot === 'function')
+    return []
+  const nodes = Array.isArray(slot) ? slot : [slot]
+  return nodes.flatMap(node => collectAllConfigFormNodesFromNode(node, ancestors))
+}
+
 function collectAllConfigFormFieldsFromNode<
   TValues extends ConfigFormValues,
   TFieldAttrs,
@@ -113,9 +157,17 @@ export function resolveConfigFormFieldStates<
   nodes: ConfigFormNode<TValues, TComponent, TFieldAttrs, TCellAttrs>[],
   values: TValues,
   formReadonly?: ConfigFormCondition<TValues>,
+  reactionStates: Record<string, Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>> = {},
 ): ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs, TComponent>[] {
   const readonly = resolveConfigFormCondition(formReadonly, values, false)
-  return nodes.flatMap(node => resolveConfigFormFieldStatesFromNode(node, values, true, readonly, new Set()))
+  return nodes.flatMap(node => resolveConfigFormFieldStatesFromNode(
+    node,
+    values,
+    true,
+    readonly,
+    reactionStates,
+    new Set(),
+  ))
 }
 
 function resolveConfigFormFieldStatesFromNode<
@@ -128,13 +180,15 @@ function resolveConfigFormFieldStatesFromNode<
   values: TValues,
   parentVisible: boolean,
   formReadonly: boolean,
+  reactionStates: Record<string, Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>>,
   ancestors: ReadonlySet<object>,
 ): ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs, TComponent>[] {
   assertAcyclicConfigFormNode(node, ancestors)
   const nextAncestors = new Set(ancestors).add(node)
-  const visible = parentVisible && isConfigFormNodeVisible(node, values)
+  const ownVisible = isConfigFormNodeVisible(node, values)
+  const visible = parentVisible && ownVisible
   const current = isConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>(node)
-    ? [resolveConfigFormFieldState(node, values, visible, formReadonly)]
+    ? [resolveConfigFormFieldState(node, values, parentVisible, ownVisible, formReadonly, reactionStates[node.field])]
     : []
   const slots = Object.values(node.slots ?? {})
   const nested: ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs, TComponent>[] = slots.flatMap((slot) => {
@@ -146,6 +200,7 @@ function resolveConfigFormFieldStatesFromNode<
       values,
       visible,
       formReadonly,
+      reactionStates,
       nextAncestors,
     ))
   })
@@ -166,20 +221,23 @@ function resolveConfigFormFieldState<
 >(
   field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>,
   values: TValues,
-  visible: boolean,
+  parentVisible: boolean,
+  ownVisible: boolean,
   formReadonly: boolean,
+  reactionState?: Partial<Record<'disabled' | 'readonly' | 'required' | 'visible', boolean>>,
 ): ConfigFormResolvedFieldState<TValues, TFieldAttrs, TCellAttrs, TComponent> {
-  const disabled = resolveConfigFormCondition(field.disabled, values, false)
-  const readonly = formReadonly || resolveConfigFormCondition(field.readonly, values, false)
-  const required = resolveConfigFormCondition(field.required, values, false)
+  const effectiveVisible = parentVisible && (reactionState?.visible ?? ownVisible)
+  const disabled = reactionState?.disabled ?? resolveConfigFormCondition(field.disabled, values, false)
+  const readonly = formReadonly || (reactionState?.readonly ?? resolveConfigFormCondition(field.readonly, values, false))
+  const required = reactionState?.required ?? resolveConfigFormCondition(field.required, values, false)
 
   return {
     disabled,
     field,
     readonly,
     required,
-    validatable: visible && !disabled && !readonly,
-    visible,
+    validatable: effectiveVisible && !disabled && !readonly,
+    visible: effectiveVisible,
   }
 }
 

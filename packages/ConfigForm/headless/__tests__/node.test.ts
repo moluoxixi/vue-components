@@ -1,5 +1,6 @@
+import type { ConfigFormNode } from '../index'
 import { describe, expect, it } from 'vitest'
-import { collectAllConfigFormFields, collectConfigFormFields, defineFields } from '../index'
+import { collectAllConfigFormFields, collectConfigFormFields, defineFields, resolveConfigFormFieldStates } from '../index'
 
 interface AccountForm {
   age: number
@@ -36,5 +37,25 @@ describe('collectConfigFormFields', () => {
     expect(() => collectAllConfigFormFields([node as never])).toThrow(
       'ConfigForm node slots must not contain circular references.',
     )
+  })
+
+  it('never lets a field reaction make a hidden parent subtree visible', () => {
+    const nodes: ConfigFormNode<AccountForm, string>[] = [{
+      component: 'section',
+      hidden: true,
+      slots: {
+        default: [{ component: 'input', field: 'name', hidden: true }],
+      },
+    }]
+    const values = { age: 18, name: 'Ada' }
+
+    expect(resolveConfigFormFieldStates(nodes, values, false, {
+      name: { visible: true },
+    })[0]?.visible).toBe(false)
+
+    const visibleParent = [{ ...nodes[0]!, hidden: false }]
+    expect(resolveConfigFormFieldStates(visibleParent, values, false, {
+      name: { visible: true },
+    })[0]?.visible).toBe(true)
   })
 })
