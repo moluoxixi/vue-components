@@ -14,8 +14,10 @@ export interface ElementPlusDocsExternalProjectSource {
 }
 
 export interface ElementPlusDocsExternalProject {
+  dependencies?: Readonly<Record<string, string>>
   description?: string
   files: Readonly<Record<string, string>>
+  styleImports?: readonly string[]
   title: string
 }
 
@@ -79,7 +81,9 @@ export function createElementPlusDocsExternalProject(
   }
 
   return {
+    dependencies,
     description: options.description,
+    styleImports,
     title: options.title,
     files: {
       'package.json': `${JSON.stringify(packageJson, null, 2)}\n`,

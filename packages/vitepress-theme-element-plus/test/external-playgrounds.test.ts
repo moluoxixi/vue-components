@@ -10,7 +10,14 @@ import {
   openElementPlusDocsStackBlitz,
 } from '../index'
 
-const source = '<script setup lang="ts">const count = 1</script><template>{{ count }}</template>'
+const source = `<script setup lang="ts">
+const count = 1
+const label = \`value: \${count}\\docs\`
+</script>
+
+<template>
+  <p>{{ label }}</p>
+</template>`
 
 function createProject() {
   return createElementPlusDocsExternalProject(source, {
@@ -29,6 +36,37 @@ function decodeCodeSandboxParameters(parameters: string): unknown {
   const base64 = parameters.replaceAll('-', '+').replaceAll('_', '/')
   const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
   return JSON.parse(decompressFromBase64(padded))
+}
+
+function evaluateCodeSandboxDemoSource(moduleSource: string): string {
+  const prefix = 'export default `'
+  const suffix = '`\n'
+  if (!moduleSource.startsWith(prefix) || !moduleSource.endsWith(suffix))
+    throw new Error('Unexpected CodeSandbox demo module shape')
+
+  const templateSource = moduleSource.slice(prefix.length, -suffix.length)
+  let source = ''
+  for (let index = 0; index < templateSource.length; index += 1) {
+    const character = templateSource[index]!
+    if (character !== '\\') {
+      source += character
+      continue
+    }
+
+    const escaped = templateSource[index + 1]
+    if (escaped === '\\' || escaped === '`') {
+      source += escaped
+      index += 1
+      continue
+    }
+    if (escaped === '$' && templateSource[index + 2] === '{') {
+      source += '${'
+      index += 2
+      continue
+    }
+    throw new Error(`Unexpected CodeSandbox demo escape at index ${index}`)
+  }
+  return source
 }
 
 function captureSubmittedForm() {
@@ -62,6 +100,15 @@ describe('external playground projects', () => {
     const packageJson = JSON.parse(project.files['package.json']!)
 
     expect(project.files['src/App.vue']).toBe(source)
+    expect(project.dependencies).toEqual({
+      '@example/components': '^1.2.3',
+      'element-plus': '^2.9.0',
+      'vue': '^3.5.0',
+    })
+    expect(project.styleImports).toEqual([
+      'element-plus/dist/index.css',
+      '@example/components/styles',
+    ])
     expect(project.files).not.toHaveProperty('.codesandbox/tasks.json')
     expect(project.files).not.toHaveProperty('sandbox.config.json')
     expect(project.files).toHaveProperty('index.html')
@@ -129,7 +176,7 @@ describe('external playground projects', () => {
     expect(capture.form.target).toBe('_blank')
   })
 
-  it('submits an Ant Design-style CodeSandbox Browser Sandbox payload', () => {
+  it('submits a pure static CodeSandbox payload with a browser SFC runtime', () => {
     const project = createProject()
     const payload = createElementPlusDocsCodeSandboxPayload(project)
     const parameters = createElementPlusDocsCodeSandboxParameters(project)
@@ -141,36 +188,37 @@ describe('external playground projects', () => {
     const fields = formFields(capture.form)
     expect(action.origin).toBe('https://codesandbox.io')
     expect(action.pathname).toBe('/api/v1/sandboxes/define')
-    expect(action.searchParams.get('query')).toBe('file=/src/App.vue')
-    expect(payload.files['src/App.vue']).toEqual({ content: source, isBinary: false })
+    expect(action.searchParams.get('query')).toBe('file=/demo.js')
+    expect(Object.keys(payload.files).sort()).toEqual([
+      'demo.js',
+      'index.html',
+      'main.js',
+      'sandbox.config.json',
+    ])
+    expect(payload.files['demo.js']!.content).toContain('export default `<script setup lang="ts">')
+    expect(payload.files['demo.js']!.content).toContain('\n\n<template>')
+    expect(evaluateCodeSandboxDemoSource(payload.files['demo.js']!.content)).toBe(source)
+    expect(payload.files).not.toHaveProperty('package.json')
     expect(payload.files).not.toHaveProperty('vite.config.ts')
     expect(payload.files).not.toHaveProperty('src/main.ts')
-    expect(payload.files['src/main.js']).toEqual({ content: project.files['src/main.ts'], isBinary: false })
+    expect(payload.files).not.toHaveProperty('src/App.vue')
+    expect(payload.files['sandbox.config.json']).toEqual({
+      content: '{"template":"static"}',
+      isBinary: false,
+    })
     expect(payload.files['index.html']!.content).toContain('id="app"')
-    expect(payload.files['index.html']!.content).not.toContain('/src/main.js')
+    expect(payload.files['index.html']!.content).toContain('src="./main.js"')
     expect(payload.files['index.html']!.content).not.toContain('/src/main.ts')
-    expect(JSON.parse(payload.files['sandbox.config.json']!.content)).toEqual({
-      template: 'vue-cli',
-    })
-    expect(JSON.parse(payload.files['package.json']!.content)).toEqual({
-      name: 'Example Components Demo',
-      description: 'Editable documentation example',
-      main: 'src/main.js',
-      dependencies: {
-        '@example/components': '^1.2.3',
-        'element-plus': '^2.9.0',
-        'vue': '^3.5.0',
-      },
-      devDependencies: {
-        typescript: '^5.0.2',
-      },
-    })
-    const jsPayload = createElementPlusDocsCodeSandboxPayload(
-      createElementPlusDocsExternalProject('<script setup>const count = 1</script><template>{{ count }}</template>', {
-        title: 'JavaScript Demo',
-      }),
-    )
-    expect(JSON.parse(jsPayload.files['package.json']!.content)).not.toHaveProperty('devDependencies')
+    expect(payload.files['main.js']!.content).toContain('vue3-sfc-loader@0.9.5')
+    expect(payload.files['main.js']!.content).toContain('import demoSource from \'./demo.js\'')
+    expect(payload.files['main.js']!.content).toContain('const virtualEntryPath = "/__mx_docs_sfc__/demo.vue"')
+    expect(payload.files['main.js']!.content).toContain('loadModule(virtualEntryPath')
+    expect(payload.files['main.js']!.content).toContain('getContentData: () => demoSource')
+    expect(payload.files['main.js']!.content).not.toContain('fetch(')
+    expect(payload.files['main.js']!.content).toContain('"@example/components": "^1.2.3"')
+    expect(payload.files['main.js']!.content).toContain('"element-plus/dist/index.css"')
+    expect(payload.files['main.js']!.content).toContain('"@example/components/styles"')
+    expect(payload.files['main.js']!.content).toContain('\'/+esm\'')
     expect(project.files).toHaveProperty('vite.config.ts')
     expect(JSON.parse(project.files['package.json']!).scripts).toEqual({
       start: 'vite --host 0.0.0.0',

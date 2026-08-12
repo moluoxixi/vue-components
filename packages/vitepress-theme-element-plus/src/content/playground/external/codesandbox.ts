@@ -3,14 +3,31 @@ import { compressToBase64 } from 'lz-string'
 import { submitElementPlusDocsProjectForm } from './submit-form'
 
 const defaultCodeSandboxUrl = 'https://codesandbox.io/api/v1/sandboxes/define'
-const codeSandboxConfigPath = 'sandbox.config.json'
-const codeSandboxEntryPath = 'src/main.js'
+const codeSandboxEntryPath = 'main.js'
+const codeSandboxDemoPath = 'demo.js'
 const sharedEntryPath = 'src/main.ts'
-const viteOnlyDependencies = new Set(['@vitejs/plugin-vue', 'vite'])
-const typeScriptVersion = '^5.0.2'
+const sfcEntryPath = 'src/App.vue'
+const virtualSfcEntryPath = '/__mx_docs_sfc__/demo.vue'
+const sfcLoaderUrl = 'https://cdn.jsdelivr.net/npm/vue3-sfc-loader@0.9.5/dist/vue3-sfc-loader.esm.js'
 
-const codeSandboxConfig = `${JSON.stringify({ template: 'vue-cli' }, null, 2)}\n`
-const codeSandboxHtml = '<div style="margin: 16px;" id="app"></div>\n'
+const codeSandboxHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue component demo</title>
+    <style>
+      body { margin: 0; padding: 24px; font-family: Inter, system-ui, sans-serif; }
+      #app { min-height: 40px; }
+      .mx-codesandbox-error { margin: 0; color: #c45656; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div id="app">Loading demo...</div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
+`
 
 export interface ElementPlusDocsCodeSandboxFile {
   content: string
@@ -26,40 +43,133 @@ export interface ElementPlusDocsCodeSandboxOptions {
   url?: string
 }
 
+interface ElementPlusDocsExternalPackageJson {
+  dependencies?: Record<string, string>
+}
+
+function resolveProjectDependencies(
+  project: ElementPlusDocsExternalProject,
+): Readonly<Record<string, string>> {
+  if (project.dependencies)
+    return project.dependencies
+
+  const packageJson = JSON.parse(project.files['package.json'] ?? '{}') as ElementPlusDocsExternalPackageJson
+  return packageJson.dependencies ?? {}
+}
+
+function resolveProjectStyleImports(project: ElementPlusDocsExternalProject): readonly string[] {
+  if (project.styleImports)
+    return project.styleImports
+
+  return [...(project.files[sharedEntryPath] ?? '').matchAll(/^import (['"])([^'"]+)\1;?$/gm)]
+    .map(match => match[2]!)
+}
+
+function createCodeSandboxDemoSource(source: string): string {
+  const escapedSource = source
+    .replaceAll('\\', '\\\\')
+    .replaceAll('`', '\\`')
+    .replaceAll('${', '\\${')
+
+  return `export default \`${escapedSource}\`\n`
+}
+
+function createCodeSandboxRuntime(
+  dependencies: Readonly<Record<string, string>>,
+  styleImports: readonly string[],
+): string {
+  return `import { loadModule } from ${JSON.stringify(sfcLoaderUrl)}
+import demoSource from './${codeSandboxDemoPath}'
+
+const dependencyVersions = ${JSON.stringify(dependencies, null, 2)}
+const styleImports = ${JSON.stringify(styleImports, null, 2)}
+const virtualEntryPath = ${JSON.stringify(virtualSfcEntryPath)}
+const modulePromises = new Map()
+const injectedStyles = []
+
+function splitPackage(specifier) {
+  const parts = specifier.split('/')
+  return specifier.startsWith('@')
+    ? { name: parts.slice(0, 2).join('/'), subpath: parts.slice(2).join('/') }
+    : { name: parts[0], subpath: parts.slice(1).join('/') }
+}
+
+function normalizeVersion(version) {
+  return /^(?:workspace:|file:|link:)/.test(version) ? 'latest' : version
+}
+
+function createModuleUrl(specifier) {
+  const { name, subpath } = splitPackage(specifier)
+  const version = encodeURIComponent(normalizeVersion(dependencyVersions[name] ?? 'latest'))
+  return 'https://cdn.jsdelivr.net/npm/' + name + '@' + version
+    + (subpath ? '/' + subpath : '') + '/+esm'
+}
+
+function importPackage(specifier) {
+  if (!modulePromises.has(specifier))
+    modulePromises.set(specifier, import(createModuleUrl(specifier)))
+  return modulePromises.get(specifier)
+}
+
+async function run() {
+  const Vue = await importPackage('vue')
+  await Promise.all(styleImports.map(importPackage))
+  const moduleCache = Object.assign(Object.create(null), { vue: Vue })
+  const App = await loadModule(virtualEntryPath, {
+    moduleCache,
+    async loadModule(requestedModule) {
+      const specifier = String(requestedModule)
+      if (specifier === 'vue')
+        return Vue
+      if (specifier.startsWith('.') || specifier.startsWith('/'))
+        return undefined
+      return importPackage(specifier)
+    },
+    async getFile(requestedPath) {
+      const path = String(requestedPath)
+      if (path !== virtualEntryPath)
+        throw new Error('Unsupported SFC file request: ' + path)
+      return {
+        type: '.vue',
+        getContentData: () => demoSource,
+      }
+    },
+    addStyle(css) {
+      const style = document.createElement('style')
+      style.textContent = css
+      document.head.append(style)
+      injectedStyles.push(style)
+    },
+  })
+  Vue.createApp(App).mount('#app')
+}
+
+run().catch((error) => {
+  injectedStyles.forEach(style => style.remove())
+  const root = document.querySelector('#app')
+  const output = document.createElement('pre')
+  output.className = 'mx-codesandbox-error'
+  output.textContent = error instanceof Error ? error.stack ?? error.message : String(error)
+  root?.replaceChildren(output)
+  console.error(error)
+})
+`
+}
+
 export function createElementPlusDocsCodeSandboxPayload(
   project: ElementPlusDocsExternalProject,
 ): ElementPlusDocsCodeSandboxPayload {
-  // This follows Ant Design's dumi adapter: submit a compressed file map to the
-  // Define API and select a browser template instead of creating a Devbox.
-  const sourcePackageJson = JSON.parse(project.files['package.json']!) as {
-    dependencies?: Record<string, string>
-    devDependencies?: Record<string, string>
-  }
-  const devDependencies = Object.fromEntries(
-    Object.entries(sourcePackageJson.devDependencies ?? {})
-      .filter(([name]) => !viteOnlyDependencies.has(name)),
-  )
-  if (/\blang\s*=\s*["']tsx?["']/.test(project.files['src/App.vue'] ?? ''))
-    devDependencies.typescript ??= typeScriptVersion
-
-  const packageJson = {
-    name: project.title,
-    description: project.description ?? 'An auto-generated demo by the documentation theme',
-    main: codeSandboxEntryPath,
-    dependencies: sourcePackageJson.dependencies ?? {},
-    ...(Object.keys(devDependencies).length > 0 ? { devDependencies } : {}),
-  }
+  const dependencies = resolveProjectDependencies(project)
+  const styleImports = resolveProjectStyleImports(project)
+  const source = project.files[sfcEntryPath]
+  if (source === undefined)
+    throw new Error(`CodeSandbox project is missing ${sfcEntryPath}`)
 
   const files = {
-    ...Object.fromEntries(
-      Object.entries(project.files).filter(([path]) => (
-        path !== 'index.html' && path !== 'vite.config.ts' && path !== sharedEntryPath
-      )),
-    ),
+    'sandbox.config.json': '{"template":"static"}',
     'index.html': codeSandboxHtml,
-    'package.json': `${JSON.stringify(packageJson, null, 2)}\n`,
-    [codeSandboxConfigPath]: codeSandboxConfig,
-    [codeSandboxEntryPath]: project.files[sharedEntryPath],
+    [codeSandboxDemoPath]: createCodeSandboxDemoSource(source),
+    [codeSandboxEntryPath]: createCodeSandboxRuntime(dependencies, styleImports),
   }
 
   return {
@@ -87,7 +197,7 @@ export function openElementPlusDocsCodeSandbox(
   options: ElementPlusDocsCodeSandboxOptions = {},
 ): void {
   const action = new URL(options.url ?? defaultCodeSandboxUrl)
-  action.searchParams.set('query', options.query ?? 'file=/src/App.vue')
+  action.searchParams.set('query', options.query ?? `file=/${codeSandboxDemoPath}`)
   submitElementPlusDocsProjectForm(action.toString(), {
     parameters: createElementPlusDocsCodeSandboxParameters(project),
   })

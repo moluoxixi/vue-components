@@ -282,20 +282,19 @@ describe('reusable content modules', () => {
       'vue': '^3.5.0',
     })
     const codeSandboxPayload = decodeCodeSandboxParameters(formFields(codeSandboxForm!).parameters!)
-    expect(codeSandboxPayload.files['src/App.vue']?.content).toBe(resolvedJsSource)
-    expect(codeSandboxPayload.files['src/main.js']?.content).toContain('@moluoxixi/components/styles')
+    expect(codeSandboxPayload.files['demo.js']?.content).toContain('export default `<script setup>')
+    expect(codeSandboxPayload.files['demo.js']?.content).toContain(resolvedJsSource)
+    expect(codeSandboxPayload.files['main.js']?.content).toContain('@moluoxixi/components/styles')
+    expect(codeSandboxPayload.files['main.js']?.content).toContain('"@moluoxixi/components": "latest"')
+    expect(codeSandboxPayload.files['main.js']?.content).toContain('vue3-sfc-loader@0.9.5')
+    expect(codeSandboxPayload.files['main.js']?.content).toContain('import demoSource from \'./demo.js\'')
     expect(codeSandboxPayload.files['index.html']?.content).toContain('id="app"')
-    expect(codeSandboxPayload.files['index.html']?.content).not.toContain('<script')
+    expect(codeSandboxPayload.files['index.html']?.content).toContain('src="./main.js"')
+    expect(codeSandboxPayload.files['sandbox.config.json']?.content).toBe('{"template":"static"}')
+    expect(codeSandboxPayload.files).not.toHaveProperty('package.json')
+    expect(codeSandboxPayload.files).not.toHaveProperty('src/App.vue')
     expect(codeSandboxPayload.files).not.toHaveProperty('src/main.ts')
     expect(codeSandboxPayload.files).not.toHaveProperty('vite.config.ts')
-    expect(JSON.parse(codeSandboxPayload.files['sandbox.config.json']!.content)).toEqual({
-      template: 'vue-cli',
-    })
-    expect(JSON.parse(codeSandboxPayload.files['package.json']!.content).dependencies).toEqual({
-      '@moluoxixi/components': 'latest',
-      'vue': '^3.5.0',
-    })
-    expect(JSON.parse(codeSandboxPayload.files['package.json']!.content)).not.toHaveProperty('devDependencies')
     const replUrl = new URL(String(open.mock.calls[0]?.[0]))
     expect(replUrl.pathname).toBe('/vue-playground/')
     const replState = JSON.parse(decodeURIComponent(escape(atob(replUrl.hash.slice(1)))))
