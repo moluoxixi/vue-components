@@ -1,5 +1,12 @@
 # @moluoxixi/docs
 
+## 0.1.9
+
+### Patch Changes
+
+- @moluoxixi/components@0.2.2
+- @moluoxixi/ai-doc-assistant@0.1.1
+
 ## 0.1.8
 
 ### Patch Changes
