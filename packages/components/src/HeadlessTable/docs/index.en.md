@@ -63,6 +63,64 @@ const columns = [
 ```
 :::
 
+## Editing Modes
+
+The `mode` prop controls the whole table only and defaults to `default`. The component instance API can also target the table, a stable row ID, or one cell. Effective precedence is: cell, row, table API, `mode` prop, then `default`.
+
+```ts
+tableRef.value?.setMode('edit')
+tableRef.value?.setRowMode('W-001', 'edit')
+tableRef.value?.setCellMode('W-001', 'name', 'edit')
+
+tableRef.value?.clearCellMode('W-001', 'name')
+tableRef.value?.clearRowMode('W-001')
+tableRef.value?.clearMode()
+```
+
+Row and cell APIs require a stable ID from `getRowId`. A column uses `column.id` as its stable ID and falls back to `field`. The default slot scope also exposes `setMode`, `setRowMode`, `setCellMode`, their matching `clear*` methods, `getRowMode`, and `getCellMode`.
+
+`columns[].slots.edit` accepts either an inline render function or a named slot. A cell in `edit` mode tries its edit slot first. If none is available, rendering continues through the existing default slot, renderer, `formatter`, and raw-value chain. Both edit and default slot scopes include `mode`, `rowId`, row and column context, and scoped row/cell mode actions.
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { HeadlessTable } from '@moluoxixi/components'
+import { ElInput, ElTable, ElTableColumn } from 'element-plus'
+
+const tableRef = ref()
+const rows = ref([
+  { id: 'W-001', name: 'East Warehouse' },
+  { id: 'W-002', name: 'South Warehouse' },
+])
+const columns = [
+  { field: 'name', title: 'Warehouse', slots: { edit: 'editName' } },
+]
+</script>
+
+<template>
+  <HeadlessTable ref="tableRef" :columns="columns" :data="rows" :get-row-id="row => row.id">
+    <template #default="{ Cell, columns: resolvedColumns, data }">
+      <ElTable :data="data">
+        <ElTableColumn
+          v-for="(column, columnIndex) in resolvedColumns"
+          :key="column.id ?? column.field"
+          :label="column.title"
+        >
+          <template #default="{ row, $index }">
+            <Cell :row="row" :column="column" :row-index="$index" :column-index="columnIndex" />
+          </template>
+        </ElTableColumn>
+      </ElTable>
+    </template>
+    <template #editName="{ row }">
+      <ElInput v-model="row.name" />
+    </template>
+  </HeadlessTable>
+</template>
+```
+
+Consumers own the triggers, save/cancel workflow, validation, and row-data updates.
+
 ## Sorting and Filtering with useHeadlessTable
 
 :::demo `useHeadlessTable` provides client-side sorting, filtering, and pagination independently of any table UI.

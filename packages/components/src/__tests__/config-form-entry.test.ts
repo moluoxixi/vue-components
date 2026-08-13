@@ -1,9 +1,9 @@
 import * as HeadlessEntry from '@moluoxixi/config-form-headless'
 import { describe, expect, it } from 'vitest'
-import AntdConfigFormDefault, { AntdConfigForm, antdConfigForm } from '../../antd'
-import ElementConfigFormDefault, { ElementConfigForm } from '../../element'
 import { AntdConfigForm as LocalAntdConfigForm } from '../AntdConfigForm'
 import { ElementConfigForm as LocalElementConfigForm } from '../ElementConfigForm'
+import AntdConfigFormDefault, { AntdConfigForm, antdConfigForm } from '../entries/antd'
+import ElementConfigFormDefault, { ElementConfigForm } from '../entries/element'
 import * as ComponentsRoot from '../index'
 
 describe('pure ConfigForm entry points', () => {

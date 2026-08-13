@@ -69,7 +69,7 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, 'index.ts'),
         markdown: resolve(__dirname, 'markdown.ts'),
-        repl: resolve(__dirname, 'repl.ts'),
+        repl: resolve(__dirname, 'src/repl-entry.ts'),
       },
       name: 'MoluoxixiElementPlusDocs',
       fileName: (_, entryName) => `${entryName}.js`,

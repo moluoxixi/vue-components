@@ -10,17 +10,17 @@ import type {
   ConfigFormRendererEmits,
   ConfigFormRendererExpose,
   ConfigFormRendererProps,
-} from './src/renderer/types'
-import ConfigFormRendererSource from './src/renderer/ConfigFormRenderer.vue'
+} from './renderer/types'
+import ConfigFormRendererSource from './renderer/ConfigFormRenderer.vue'
 
-export { createConfigFormRendererExpose } from './src/renderer/expose'
-export { withConfigFormInstall } from './src/renderer/install'
-export type { InstallableConfigFormComponent } from './src/renderer/install'
-export { resolveConfigFormFieldLayout } from './src/renderer/layout'
-export type * from './src/renderer/layout'
-export { resolveConfigFormLayout, resolveConfigFormNodeSpan } from './src/renderer/responsive'
-export type * from './src/renderer/responsive'
-export type * from './src/renderer/types'
+export { createConfigFormRendererExpose } from './renderer/expose'
+export { withConfigFormInstall } from './renderer/install'
+export type { InstallableConfigFormComponent } from './renderer/install'
+export { resolveConfigFormFieldLayout } from './renderer/layout'
+export type * from './renderer/layout'
+export { resolveConfigFormLayout, resolveConfigFormNodeSpan } from './renderer/responsive'
+export type * from './renderer/responsive'
+export type * from './renderer/types'
 
 export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = ConfigFormValues>
   = ConfigFormRendererProps<TValues> & {

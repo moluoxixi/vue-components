@@ -4,5 +4,5 @@
     "types": ["vite/client", "vitest"],
     "noEmit": true
   },
-  "include": ["src", "index.ts", "renderer.ts", "__tests__"]
+  "include": ["src", "index.ts", "__tests__"]
 }

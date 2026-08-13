@@ -109,7 +109,7 @@ const secondaryColumns = columns.map(column => ({ ...column, slots: undefined })
 ```
 :::
 
-列内容的优先级为：列内联渲染函数或具名 Slot、命名 renderer、`formatter`、原始字段值。`column.id` 是列设置使用的稳定标识，未提供时使用 `field`。
+列内容的默认优先级为：列内联渲染函数或具名 Slot、命名 renderer、`formatter`、原始字段值。edit 模式会先尝试 `slots.edit`，未命中时回退到这条默认渲染链。`column.id` 是列设置和单元格模式使用的稳定标识，未提供时使用 `field`。
 
 ## 远程请求 + 分页
 
@@ -146,6 +146,46 @@ async function queryUsers({ currentPage, pageSize }) {
 </template>
 ```
 :::
+
+## 编辑模式
+
+`mode` prop 只控制整个表格，默认值为 `default`。组件实例 API 支持 `setMode`、`setRowMode`、`setCellMode`，以及对应的 `clearMode`、`clearRowMode`、`clearCellMode`；`getRowMode` 和 `getCellMode` 可读取有效模式。模式优先级为：单元格、行、整表 API、`mode` prop、`default`。
+
+行和单元格 API 必须使用稳定行标识，可传入 `getRowId`，或配置显式 `rowKey`。`columns[].slots.edit` 支持内联渲染函数和具名插槽名称。插槽作用域包含 `mode`、`rowId`、行列上下文和当前行/单元格的模式操作。
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { ConfigTable } from '@moluoxixi/components'
+import { ElInput } from 'element-plus'
+
+const tableRef = ref()
+const rows = ref([
+  { id: 'U-001', name: '张三', status: '启用' },
+  { id: 'U-002', name: '李四', status: '停用' },
+])
+const columns = [
+  { field: 'name', title: '姓名', slots: { edit: 'editName' } },
+  { field: 'status', title: '状态' },
+]
+</script>
+
+<template>
+  <ConfigTable ref="tableRef" :columns="columns" :data="rows" row-key="id">
+    <template #editName="{ row, clearCellMode }">
+      <ElInput v-model="row.name" @keyup.enter="clearCellMode" />
+    </template>
+  </ConfigTable>
+</template>
+```
+
+```ts
+tableRef.value?.setMode('edit')
+tableRef.value?.setRowMode('U-001', 'edit')
+tableRef.value?.setCellMode('U-002', 'name', 'edit')
+```
+
+组件不提供内置编辑触发器，也不处理保存/取消、校验或行数据更新，这些行为由使用方实现。缺少 edit 插槽时，单元格保持原有渲染结果。
 
 ## 自定义单元格插槽
 

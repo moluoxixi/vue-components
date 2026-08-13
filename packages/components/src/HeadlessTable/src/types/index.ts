@@ -1,3 +1,4 @@
+export type * from './mode'
 export type * from './props'
 export type * from './renderer'
 export type * from './slots'

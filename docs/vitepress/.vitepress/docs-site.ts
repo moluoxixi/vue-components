@@ -32,6 +32,10 @@ export const docsSite = {
   },
   packageName: '@moluoxixi/components',
   componentEntry: 'packages/components/index.ts',
+  apiComponentEntries: [
+    'packages/components/index.ts',
+    'packages/rich-text-editor/index.ts',
+  ],
   packageStylesImport: '@moluoxixi/components/styles',
   repository: {
     owner: 'moluoxixi',

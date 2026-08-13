@@ -1,8 +1,4 @@
-import { withInstall } from '../utils'
-import RichTextEditorSource from './src/index.vue'
+import '@moluoxixi/rich-text-editor/styles'
 
-export type * from './src/types'
-
-export const RichTextEditor = withInstall(RichTextEditorSource)
-
-export default RichTextEditor
+export { default, RichTextEditor } from '@moluoxixi/rich-text-editor'
+export type * from '@moluoxixi/rich-text-editor'

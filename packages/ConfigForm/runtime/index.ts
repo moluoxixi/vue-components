@@ -1,7 +1,12 @@
+export { FormLayout } from './src/components/FormLayout'
+export { useForm } from './src/composables/useForm'
+export type { UseFormOptions } from './src/composables/useForm'
+export { ConfigFormError } from './src/errors'
+export { default as ConfigForm } from './src/index.vue'
 export {
   ConfigFormRenderer,
   createConfigFormRendererExpose,
-} from './renderer'
+} from './src/renderer-entry'
 export type {
   ConfigFormControlBinding,
   ConfigFormControlBindingResolver,
@@ -14,12 +19,7 @@ export type {
   ConfigFormRendererLayoutAttrs,
   ConfigFormRendererNode,
   ConfigFormRendererProps,
-} from './renderer'
-export { FormLayout } from './src/components/FormLayout'
-export { useForm } from './src/composables/useForm'
-export type { UseFormOptions } from './src/composables/useForm'
-export { ConfigFormError } from './src/errors'
-export { default as ConfigForm } from './src/index.vue'
+} from './src/renderer-entry'
 export type {
   ComponentRegistry,
   ConfigFormComponentRegistration,

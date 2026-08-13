@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RichTextEditor } from '@moluoxixi/components'
+import { RichTextEditor } from '@moluoxixi/rich-text-editor'
 import { shallowRef } from 'vue'
 
 const content = shallowRef([

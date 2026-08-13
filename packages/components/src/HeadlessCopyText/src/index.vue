@@ -6,8 +6,8 @@ import type {
   HeadlessCopyTextProps,
   HeadlessCopyTextSlots,
 } from './types'
-import { computed, onUnmounted, shallowRef } from 'vue'
-import { copyText } from '../../utils/clipboard'
+import { computed } from 'vue'
+import { useClipboardCopy } from '../../composables'
 
 defineOptions({ name: 'HeadlessCopyText' })
 
@@ -19,51 +19,13 @@ const props = withDefaults(defineProps<HeadlessCopyTextProps>(), {
 const emit = defineEmits<HeadlessCopyTextEmits>()
 defineSlots<HeadlessCopyTextSlots>()
 
-const copied = shallowRef(false)
-const copying = shallowRef(false)
-const error = shallowRef<Error | null>(null)
-let resetTimer: ReturnType<typeof setTimeout> | undefined
-
-function clearResetTimer(): void {
-  if (resetTimer !== undefined) {
-    clearTimeout(resetTimer)
-    resetTimer = undefined
-  }
-}
-
-function reset(): void {
-  clearResetTimer()
-  copied.value = false
-  error.value = null
-}
-
-async function copy(text = props.text): Promise<void> {
-  if (props.disabled || copying.value)
-    return
-
-  clearResetTimer()
-  copying.value = true
-  copied.value = false
-  error.value = null
-
-  try {
-    await copyText(text)
-    copied.value = true
-    emit('copy', text)
-
-    if (props.resetDelay > 0)
-      resetTimer = setTimeout(reset, props.resetDelay)
-  }
-  catch (reason) {
-    const copyError = reason instanceof Error ? reason : new Error(String(reason))
-    error.value = copyError
-    emit('error', copyError)
-    throw copyError
-  }
-  finally {
-    copying.value = false
-  }
-}
+const { copied, copying, copy, error, reset } = useClipboardCopy({
+  disabled: () => props.disabled,
+  onCopy: text => emit('copy', text),
+  onError: copyError => emit('error', copyError),
+  resetDelay: () => props.resetDelay,
+  text: () => props.text,
+})
 
 const scope = computed<HeadlessCopyTextDefaultScope>(() => ({
   copied: copied.value,
@@ -76,8 +38,6 @@ const scope = computed<HeadlessCopyTextDefaultScope>(() => ({
 }))
 
 defineExpose<HeadlessCopyTextExpose>({ copy, reset })
-
-onUnmounted(clearResetTimer)
 </script>
 
 <template>

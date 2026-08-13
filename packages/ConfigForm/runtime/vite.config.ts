@@ -58,7 +58,7 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, 'index.ts'),
         plugins: resolve(__dirname, 'src/plugins/index.ts'),
-        renderer: resolve(__dirname, 'renderer.ts'),
+        renderer: resolve(__dirname, 'src/renderer-entry.ts'),
       },
       name: 'ConfigForm',
       /**

@@ -16,7 +16,7 @@ export default defineConfig({
     // vue 插件供 vitest 编译 .vue 单测（lib 入口均为 .ts，不受影响）
     vue(),
     dts({
-      exclude: ['**/*.test.ts', '**/*.spec.ts', 'tests/**'],
+      exclude: ['**/*.test.ts', '**/*.spec.ts', 'src/ui/**', 'tests/**'],
       compilerOptions: {
         composite: false,
         incremental: false,

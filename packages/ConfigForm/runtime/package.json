@@ -23,8 +23,8 @@
       "import": "./dist/plugins.js"
     },
     "./renderer": {
-      "source": "./renderer.ts",
-      "types": "./dist/renderer.d.ts",
+      "source": "./src/renderer-entry.ts",
+      "types": "./dist/src/renderer-entry.d.ts",
       "import": "./dist/renderer.js"
     },
     "./styles": {
@@ -45,13 +45,13 @@
     "!src/**/__tests__",
     "dist",
     "index.ts",
-    "renderer.ts",
     "src",
     "src/styles",
     "styles"
   ],
   "scripts": {
     "build": "vite build",
+    "postbuild": "node ../../../scripts/finalize-published-declarations.mjs",
     "dev": "vite build --watch",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

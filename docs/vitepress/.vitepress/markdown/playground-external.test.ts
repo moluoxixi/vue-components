@@ -111,7 +111,7 @@ import { MissingRuntime } from '@moluoxixi/components'
       collectVueExamples(readFileSync(file, 'utf8')).map(source => ({ file, source }))
     ))
 
-    expect(examples).toHaveLength(50)
+    expect(examples).toHaveLength(46)
     for (const { file, source } of examples) {
       for (const [sourceLanguage, projectedSource] of [
         ['TS', source],

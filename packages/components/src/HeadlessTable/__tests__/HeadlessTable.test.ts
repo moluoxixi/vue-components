@@ -210,6 +210,45 @@ describe('headless table', () => {
     expect(defaultWrapper.text()).toBe('没有记录')
   })
 
+  it('按表格、行、单元格优先级选择 edit 插槽，并支持 API 清除回退', async () => {
+    const columns: HeadlessTableColumn<InventoryRow>[] = [
+      { field: 'name', slots: { edit: 'editName' } },
+      { field: 'status', slots: { edit: 'editStatus' } },
+    ]
+    const data: InventoryRow[] = [
+      { code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' },
+      { code: 'C-002', name: '华南仓', owner: { name: '李四' }, quantity: 8, status: '停用' },
+    ]
+    const wrapper = mount(HeadlessTable as any, {
+      props: { columns, data, getRowId: (row: InventoryRow) => row.code },
+      slots: {
+        default: renderTable as any,
+        editName: ({ row, mode }: any) => h('span', { 'data-testid': `edit-name-${row.code}` }, `edit:${row.code}:${mode}`),
+        editStatus: ({ row }: any) => h('span', { 'data-testid': `edit-status-${row.code}` }, `edit-status:${row.code}`),
+      },
+    })
+
+    expect(wrapper.find('[data-testid="edit-name-C-001"]').exists()).toBe(false)
+    ;(wrapper.vm as any).setRowMode('C-001', 'edit')
+    await nextTick()
+    expect(wrapper.get('[data-testid="edit-name-C-001"]').text()).toBe('edit:C-001:edit')
+    expect(wrapper.get('[data-testid="edit-status-C-001"]').text()).toBe('edit-status:C-001')
+    expect(wrapper.find('[data-testid="edit-name-C-002"]').exists()).toBe(false)
+
+    ;(wrapper.vm as any).setMode('edit')
+    await nextTick()
+    expect(wrapper.get('[data-testid="edit-name-C-002"]').text()).toBe('edit:C-002:edit')
+    ;(wrapper.vm as any).setCellMode('C-002', 'name', 'default')
+    await nextTick()
+    expect(wrapper.get('[data-testid="row-1"]').text()).toContain('华南仓')
+    ;(wrapper.vm as any).clearCellMode('C-002', 'name')
+    ;(wrapper.vm as any).clearMode()
+    ;(wrapper.vm as any).clearRowMode('C-001')
+    await nextTick()
+    expect(wrapper.find('[data-testid="edit-name-C-001"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="edit-name-C-002"]').exists()).toBe(false)
+  })
+
   it('只在 slot 和 renderer 均未命中时执行 formatter，并向 renderer 暴露原值', () => {
     const formatter = vi.fn(({ value }) => `formatted:${value}`)
     const columns: HeadlessTableColumn<InventoryRow>[] = [

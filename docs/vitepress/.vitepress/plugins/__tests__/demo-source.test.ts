@@ -69,6 +69,19 @@ function findComponentTags(template: string): string[] {
     .filter(tag => tag && !vueBuiltIns.has(tag))
 }
 
+function findTemplateScopeBindings(template: string): Set<string> {
+  const bindings = new Set<string>()
+  const scopePattern = /(?:#[-\w]+|v-slot(?::[-\w]+)?)\s*=\s*["'][^{}]*\{([^}]*)\}[^"']*["']/g
+  for (const match of template.matchAll(scopePattern)) {
+    for (const binding of match[1]?.split(',') ?? []) {
+      const localName = binding.trim().split(':').at(-1)?.trim()
+      if (localName)
+        bindings.add(localName)
+    }
+  }
+  return bindings
+}
+
 interface RuntimeImports {
   bindings: Map<string, string>
   modules: Set<string>
@@ -169,7 +182,10 @@ import { CopyText } from '@moluoxixi/components/CopyText'
           const imports = descriptor.scriptSetup || descriptor.script
             ? collectRuntimeImports(compileScript(descriptor, { id: filename }))
             : { bindings: new Map<string, string>(), modules: new Set<string>() }
-          const missing = [...new Set(findComponentTags(descriptor.template?.content ?? ''))]
+          const template = descriptor.template?.content ?? ''
+          const scopeBindings = findTemplateScopeBindings(template)
+          const missing = [...new Set(findComponentTags(template))]
+            .filter(tag => !scopeBindings.has(tag))
             .filter(tag => !demoRuntimeModules.has(imports.bindings.get(tag) ?? ''))
           const unsupportedModules = [...imports.modules]
             .filter(module => !demoRuntimeModules.has(module))

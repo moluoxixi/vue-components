@@ -32,6 +32,7 @@
   ],
   "scripts": {
     "build": "vite build",
+    "postbuild": "node ../../../scripts/finalize-published-declarations.mjs",
     "dev": "vite build --watch",
     "test": "vitest run",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
