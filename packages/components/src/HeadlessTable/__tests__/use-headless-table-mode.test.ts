@@ -79,4 +79,53 @@ describe('useHeadlessTableMode', () => {
     api.clearAllModes()
     expect(onModeChange).toHaveBeenCalledOnce()
   })
+
+  it('applies selector matches once and stores them by stable row and column ids', () => {
+    const rows = [
+      { id: 'R-1', status: 'draft' },
+      { id: undefined, status: 'draft' },
+      { id: 'R-3', status: 'ready' },
+    ]
+    const columns = [{ field: 'name' }, { field: 'status' }]
+    const onModeChange = vi.fn<(change: HeadlessTableModeChange) => void>()
+    const api = useHeadlessTableMode({
+      columns: () => columns,
+      data: () => rows,
+      getColumnId: column => column.field,
+      getRowId: row => row.id,
+      onModeChange,
+    })
+
+    api.setRowMode(({ row, rowIndex, rowId }) => (
+      row.status === 'draft' && rowIndex < 2 && rowId === 'R-1'
+    ), 'edit')
+    api.setCellMode(({ row, column, rowId, columnId, columnIndex }) => (
+      row.status === 'ready'
+      && rowId === 'R-3'
+      && column.field === 'status'
+      && columnId === 'status'
+      && columnIndex === 1
+    ), 'edit')
+
+    expect(api.getRowMode('R-1')).toBe('edit')
+    expect(api.getRowMode('R-3')).toBe('default')
+    expect(api.getCellMode('R-3', 'status')).toBe('edit')
+    expect(onModeChange.mock.calls.map(([change]) => change)).toEqual([
+      { scope: 'row', action: 'set', rowId: 'R-1', mode: 'edit', previousMode: 'default' },
+      { scope: 'cell', action: 'set', rowId: 'R-3', columnId: 'status', mode: 'edit', previousMode: 'default' },
+    ])
+
+    api.setRowMode(({ row }) => row.status === 'draft', 'edit')
+    api.setCellMode(({ columnId }) => columnId === 'status', 'edit')
+
+    expect(onModeChange).toHaveBeenCalledTimes(3)
+    expect(onModeChange).toHaveBeenLastCalledWith({
+      scope: 'cell',
+      action: 'set',
+      rowId: 'R-1',
+      columnId: 'status',
+      mode: 'edit',
+      previousMode: 'edit',
+    })
+  })
 })

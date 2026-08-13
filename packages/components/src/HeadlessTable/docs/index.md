@@ -65,50 +65,65 @@ const baseColumns = [
 
 `mode` prop 只控制整个表格，默认值为 `default`。组件实例 API 还可以通过稳定行标识切换整表、单行或单元格；解析优先级为：单元格、行、整表 API、`mode` prop、`default`。
 
-```ts
-tableRef.value?.setMode('edit')
-tableRef.value?.setRowMode('W-001', 'edit')
-tableRef.value?.setCellMode('W-001', 'name', 'edit')
-
-tableRef.value?.clearCellMode('W-001', 'name')
-tableRef.value?.clearRowMode('W-001')
-tableRef.value?.clearMode()
-
-tableRef.value?.clearAllCellModes()
-tableRef.value?.clearAllRowModes()
-tableRef.value?.clearAllModes()
-```
-
 行和单元格 API 需要 `getRowId` 提供稳定行标识，列标识使用 `column.id`，未提供时回退到 `field`。`setMode`、`setRowMode`、`setCellMode`、单项/批量 `clear*`、`getRowMode`、`getCellMode` 方法也会暴露在默认插槽作用域中。`clearAllCellModes` 仅清除单元格 override，`clearAllRowModes` 仅清除行 override，`clearAllModes` 清除整表 API、行和单元格的全部 override。
+
+`setRowMode` 和 `setCellMode` 既可传稳定 ID，也可传 selector。行 selector 接收 `{ row, rowIndex, rowId }`，单元格 selector 还会收到 `{ column, columnIndex, columnId }`；所有匹配项都会切换为指定模式。selector 仅在调用 API 时扫描一次当前 `data`，命中结果仍按稳定的行列 ID 保存，因此后续数据重排不会导致模式漂移。
 
 每次有效的 API 变更都会触发 `modeChange` 事件。单项变更包含操作范围、动作及变更前后的有效模式；批量清理包含范围、`clearAll` 动作和清理数量。重复设置同一 override 或清理不存在的 override 不触发事件。该事件仅用于观察状态，不会触发 `update:mode`。
 
 列的 `slots.edit` 可以是内联渲染函数或具名插槽名称。有效模式为 `edit` 时优先使用 edit 插槽；edit 插槽不存在时继续使用原有的 default 插槽、renderer、`formatter` 和原始值。edit/default 插槽作用域都包含 `mode`、`rowId`、行列上下文及当前行/单元格的模式操作。
 
+下面的示例把三种 API 范围放在同一张表里：表格按钮调用 `setMode`，行按钮调用 `setRowMode`，单元格按钮调用 `setCellMode`。`mode` prop 的开关只改变整张表，点击“清除 API 模式”后即可看到它的效果。
+
+:::demo 使用 `edit` 插槽提供编辑控件，并分别演示表格、行、单元格三种模式范围。
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
 import { HeadlessTable } from '@moluoxixi/components'
-import { ElInput, ElTable, ElTableColumn } from 'element-plus'
+import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTable, ElTableColumn, ElTag } from 'element-plus'
 
-const tableRef = ref()
+const propMode = ref<'default' | 'edit'>('default')
+const lastChange = ref('等待模式 API 操作')
 const rows = ref([
-  { id: 'W-001', name: '华东仓' },
-  { id: 'W-002', name: '华南仓' },
+  { id: 'W-001', name: '华东仓', status: '启用', manager: '张三' },
+  { id: 'W-002', name: '华南仓', status: '维护', manager: '李四' },
+  { id: 'W-003', name: '西南仓', status: '启用', manager: '王五' },
 ])
 const columns = [
-  { field: 'name', title: '仓库名称', slots: { edit: 'editName' } },
+  { field: 'name', title: '仓库名称', minWidth: 160, slots: { edit: 'editName' } },
+  { field: 'status', title: '状态', width: 120, slots: { edit: 'editStatus' } },
+  { field: 'manager', title: '负责人', minWidth: 120 },
 ]
+
+function handleModeChange(change) {
+  lastChange.value = `${change.scope} scope: ${change.action}`
+}
 </script>
 
 <template>
-  <HeadlessTable ref="tableRef" :columns="columns" :data="rows" :get-row-id="row => row.id">
-    <template #default="{ Cell, columns: resolvedColumns, data }">
+  <HeadlessTable :columns="columns" :data="rows" :get-row-id="row => row.id" :mode="propMode" @mode-change="handleModeChange">
+    <template #default="{ Cell, columns: resolvedColumns, data, setMode, setRowMode, setCellMode, clearAllModes }">
+      <ElSpace wrap style="margin-bottom: 12px">
+        <ElButton type="primary" size="small" @click="setMode('edit')">整表进入 edit</ElButton>
+        <ElButton size="small" @click="setRowMode('W-001', 'edit')">W-001 行进入 edit</ElButton>
+        <ElButton size="small" @click="setCellMode('W-002', 'status', 'edit')">W-002 / 状态单元格进入 edit</ElButton>
+        <ElButton size="small" @click="setRowMode(({ row }) => row.status === '启用', 'edit')">所有启用行进入 edit</ElButton>
+        <ElButton size="small" @click="setCellMode(({ columnId }) => columnId === 'name', 'edit')">所有名称单元格进入 edit</ElButton>
+        <ElButton size="small" @click="clearAllModes">清除 API 模式</ElButton>
+        <span>mode prop：</span>
+        <ElSelect v-model="propMode" size="small" style="width: 110px">
+          <ElOption label="default" value="default" />
+          <ElOption label="edit" value="edit" />
+        </ElSelect>
+        <ElTag size="small" type="info">{{ lastChange }}</ElTag>
+      </ElSpace>
       <ElTable :data="data">
         <ElTableColumn
           v-for="(column, columnIndex) in resolvedColumns"
           :key="column.id ?? column.field"
           :label="column.title"
+          :width="column.width"
+          :min-width="column.minWidth"
         >
           <template #default="{ row, $index }">
             <Cell :row="row" :column="column" :row-index="$index" :column-index="columnIndex" />
@@ -116,12 +131,19 @@ const columns = [
         </ElTableColumn>
       </ElTable>
     </template>
-    <template #editName="{ row }">
-      <ElInput v-model="row.name" />
+    <template #editName="{ row, clearCellMode }">
+      <ElInput v-model="row.name" size="small" @keyup.enter="clearCellMode" />
+    </template>
+    <template #editStatus="{ row, clearCellMode }">
+      <ElSelect v-model="row.status" size="small" @change="clearCellMode">
+        <ElOption label="启用" value="启用" />
+        <ElOption label="维护" value="维护" />
+      </ElSelect>
     </template>
   </HeadlessTable>
 </template>
 ```
+:::
 
 进入编辑模式的触发控件、保存/取消、校验和行数据更新均由使用方实现。
 

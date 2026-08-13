@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  ConfigTableColumn,
   ConfigTableRow,
   ConfigTableEmits,
   ConfigTableProps,
@@ -45,10 +46,6 @@ const emit = defineEmits<ConfigTableEmits>()
 const slots = defineSlots<ConfigTableSlots>()
 const currentPage = defineModel<number>('currentPage', { default: 1 })
 const pageSize = defineModel<number>('pageSize', { default: 10 })
-const modeApi = useHeadlessTableMode({
-  mode: () => props.mode,
-  onModeChange: change => emit('modeChange', change),
-})
 
 function getRowId(row: ConfigTableRow, rowIndex: number): HeadlessTableRowKey | undefined {
   if (props.getRowId)
@@ -86,6 +83,15 @@ const {
   visibleColumns,
 } = useConfigTableColumns(props, tableData, emit)
 
+const modeApi = useHeadlessTableMode<ConfigTableRow, ConfigTableColumn>({
+  columns: () => orderedColumns.value,
+  data: () => tableData.value,
+  getColumnId: column => column.id ?? column.field,
+  getRowId,
+  mode: () => props.mode,
+  onModeChange: change => emit('modeChange', change),
+})
+
 const {
   handleVirtualCellClick,
   handleVirtualCellDblClick,
@@ -106,7 +112,7 @@ const {
   modeApi,
 })
 
-defineExpose<HeadlessTableModeApi>({ ...modeApi })
+defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>>({ ...modeApi })
 </script>
 
 <template>

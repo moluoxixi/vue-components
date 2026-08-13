@@ -8,7 +8,10 @@ import type {
 } from './table'
 
 export interface HeadlessTableDefaultScope<TRow extends HeadlessTableRow = HeadlessTableRow>
-  extends HeadlessTableBaseScope<TRow>, Omit<HeadlessTableModeApi, 'mode'> {
+  extends HeadlessTableBaseScope<TRow>, Omit<
+    HeadlessTableModeApi<TRow, HeadlessTableColumn<TRow>>,
+    'mode'
+  > {
   Cell: HeadlessTableCellComponent<TRow>
   Header: HeadlessTableHeaderComponent<TRow>
   Empty: HeadlessTableEmptyComponent

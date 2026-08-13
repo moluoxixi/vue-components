@@ -126,38 +126,95 @@ The `mode` prop controls the whole table only and defaults to `default`. The com
 
 Row and cell APIs require a stable row ID from `getRowId` or an explicit `rowKey`. `columns[].slots.edit` accepts either an inline render function or a named slot. Its scope includes `mode`, `rowId`, row and column context, and scoped row/cell mode actions.
 
+`setRowMode` and `setCellMode` accept either stable IDs or a selector. A row selector receives `{ row, rowIndex, rowId }`; a cell selector also receives `{ column, columnIndex, columnId }`. All matches switch to the requested mode. A selector scans the currently loaded data once when the API is called, which means the current page for remote pagination. Matches are still stored by stable row and column IDs, so later data reordering does not move their modes.
+
+The interactive example below keeps all three API scopes together: the table button calls `setMode`, the row button calls `setRowMode`, and the cell button calls `setCellMode`. The `mode` prop switch affects the whole table; use “Clear API modes” to reveal the prop-controlled state again.
+
+:::demo Use an `edit` slot for form controls and compare table-, row-, and cell-level mode changes.
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ConfigTable } from '@moluoxixi/components'
-import { ElInput } from 'element-plus'
+import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTag } from 'element-plus'
 
 const tableRef = ref()
+const propMode = ref<'default' | 'edit'>('default')
+const lastChange = ref('Waiting for a mode API operation')
 const rows = ref([
-  { id: 'U-001', name: 'Avery', status: 'Active' },
-  { id: 'U-002', name: 'Blake', status: 'Disabled' },
+  { id: 'U-001', name: 'Avery', status: 'Active', department: 'Engineering' },
+  { id: 'U-002', name: 'Blake', status: 'Disabled', department: 'Product' },
+  { id: 'U-003', name: 'Casey', status: 'Active', department: 'Operations' },
 ])
 const columns = [
-  { field: 'name', title: 'Name', slots: { edit: 'editName' } },
-  { field: 'status', title: 'Status' },
+  { field: 'name', title: 'Name', minWidth: 150, slots: { edit: 'editName' } },
+  { field: 'status', title: 'Status', width: 120, slots: { edit: 'editStatus' } },
+  { field: 'department', title: 'Department', minWidth: 140 },
 ]
+
+function applyTableMode() {
+  tableRef.value?.setMode('edit')
+}
+
+function applyRowMode() {
+  tableRef.value?.setRowMode('U-001', 'edit')
+}
+
+function applyCellMode() {
+  tableRef.value?.setCellMode('U-002', 'status', 'edit')
+}
+
+function applyActiveRowsMode() {
+  tableRef.value?.setRowMode(({ row }) => row.status === 'Active', 'edit')
+}
+
+function applyNameCellsMode() {
+  tableRef.value?.setCellMode(({ columnId }) => columnId === 'name', 'edit')
+}
+
+function handleModeChange(change) {
+  lastChange.value = `${change.scope} scope: ${change.action}`
+}
 </script>
 
 <template>
-  <ConfigTable ref="tableRef" :columns="columns" :data="rows" row-key="id">
+  <ElSpace wrap style="margin-bottom: 12px">
+    <ElButton type="primary" size="small" @click="applyTableMode">Edit whole table</ElButton>
+    <ElButton size="small" @click="applyRowMode">Edit U-001 row</ElButton>
+    <ElButton size="small" @click="applyCellMode">Edit U-002 / Status cell</ElButton>
+    <ElButton size="small" @click="applyActiveRowsMode">Edit all active rows</ElButton>
+    <ElButton size="small" @click="applyNameCellsMode">Edit all Name cells</ElButton>
+    <ElButton size="small" @click="tableRef?.clearAllModes()">Clear API modes</ElButton>
+    <span>mode prop:</span>
+    <ElSelect v-model="propMode" size="small" style="width: 110px">
+      <ElOption label="default" value="default" />
+      <ElOption label="edit" value="edit" />
+    </ElSelect>
+    <ElTag size="small" type="info">{{ lastChange }}</ElTag>
+  </ElSpace>
+
+  <ConfigTable
+    ref="tableRef"
+    :columns="columns"
+    :data="rows"
+    :mode="propMode"
+    row-key="id"
+    :width="720"
+    :height="220"
+    @mode-change="handleModeChange"
+  >
     <template #editName="{ row, clearCellMode }">
-      <ElInput v-model="row.name" @keyup.enter="clearCellMode" />
+      <ElInput v-model="row.name" size="small" @keyup.enter="clearCellMode" />
+    </template>
+    <template #editStatus="{ row, clearCellMode }">
+      <ElSelect v-model="row.status" size="small" @change="clearCellMode">
+        <ElOption label="Active" value="Active" />
+        <ElOption label="Disabled" value="Disabled" />
+      </ElSelect>
     </template>
   </ConfigTable>
 </template>
 ```
-
-```ts
-tableRef.value?.setMode('edit')
-tableRef.value?.setRowMode('U-001', 'edit')
-tableRef.value?.setCellMode('U-002', 'name', 'edit')
-tableRef.value?.clearAllModes()
-```
+:::
 
 Effective mode API mutations emit `modeChange`; single-scope events include previous/next effective modes and bulk events include the cleared count. The event is observational and does not write back to the `mode` prop. The component does not provide edit triggers, save/cancel behavior, validation, or row-data updates. Consumers own those workflows. A missing edit slot leaves the existing cell rendering unchanged.
 

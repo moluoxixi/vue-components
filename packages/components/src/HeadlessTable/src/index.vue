@@ -45,7 +45,11 @@ const emit = defineEmits<HeadlessTableEmits>()
 const slotsVersion = shallowRef(0)
 const warnedDiagnostics = new Set<string>()
 const injectedRendererRegistry = inject(headlessTableRendererKey, null)
-const modeApi = useHeadlessTableMode({
+const modeApi = useHeadlessTableMode<TRow, HeadlessTableColumn<TRow>>({
+  columns: () => props.columns,
+  data: () => props.data,
+  getColumnId: (column, columnIndex) => getHeadlessTableColumnId(column, columnIndex),
+  getRowId: (row, rowIndex) => props.getRowId?.(row, rowIndex),
   mode: () => props.mode,
   onModeChange: change => emit('modeChange', change),
 })

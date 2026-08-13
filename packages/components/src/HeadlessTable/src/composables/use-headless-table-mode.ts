@@ -1,20 +1,32 @@
 import type {
+  HeadlessTableCellModeSelector,
   HeadlessTableMode,
   HeadlessTableModeApi,
   HeadlessTableModeChange,
   HeadlessTableRowKey,
+  HeadlessTableRowModeSelector,
 } from '../types'
 import { computed, shallowRef, triggerRef } from 'vue'
 
-export interface UseHeadlessTableModeOptions {
+export interface UseHeadlessTableModeOptions<
+  TRow = Record<string, any>,
+  TColumn = unknown,
+> {
   mode?: () => HeadlessTableMode | undefined
   onModeChange?: (change: HeadlessTableModeChange) => void
+  data?: () => readonly TRow[]
+  columns?: () => readonly TColumn[]
+  getRowId?: (row: TRow, rowIndex: number) => HeadlessTableRowKey | undefined
+  getColumnId?: (column: TColumn, columnIndex: number) => string
 }
 
 /** Creates ephemeral table, row, and cell rendering-mode overrides. */
-export function useHeadlessTableMode(
-  options: UseHeadlessTableModeOptions = {},
-): HeadlessTableModeApi {
+export function useHeadlessTableMode<
+  TRow = Record<string, any>,
+  TColumn = unknown,
+>(
+  options: UseHeadlessTableModeOptions<TRow, TColumn> = {},
+): HeadlessTableModeApi<TRow, TColumn> {
   const globalOverride = shallowRef<HeadlessTableMode>()
   const rowOverrides = shallowRef(new Map<HeadlessTableRowKey, HeadlessTableMode>())
   const cellOverrides = shallowRef(new Map<HeadlessTableRowKey, Map<string, HeadlessTableMode>>())
@@ -36,7 +48,7 @@ export function useHeadlessTableMode(
     options.onModeChange?.({ scope: 'table', action: 'clear', mode: mode.value, previousMode })
   }
 
-  function setRowMode(rowId: HeadlessTableRowKey, value: HeadlessTableMode): void {
+  function setRowModeById(rowId: HeadlessTableRowKey, value: HeadlessTableMode): void {
     if (rowOverrides.value.get(rowId) === value)
       return
     const previousMode = getRowMode(rowId)
@@ -48,6 +60,26 @@ export function useHeadlessTableMode(
       rowId,
       mode: getRowMode(rowId),
       previousMode,
+    })
+  }
+
+  function setRowMode(rowId: HeadlessTableRowKey, value: HeadlessTableMode): void
+  function setRowMode(selector: HeadlessTableRowModeSelector<TRow>, value: HeadlessTableMode): void
+  function setRowMode(
+    rowIdOrSelector: HeadlessTableRowKey | HeadlessTableRowModeSelector<TRow>,
+    value: HeadlessTableMode,
+  ): void {
+    if (typeof rowIdOrSelector !== 'function') {
+      setRowModeById(rowIdOrSelector, value)
+      return
+    }
+
+    options.data?.().forEach((row, rowIndex) => {
+      const rowId = options.getRowId?.(row, rowIndex)
+      if (rowId == null)
+        return
+      if (rowIdOrSelector({ row, rowIndex, rowId }))
+        setRowModeById(rowId, value)
     })
   }
 
@@ -66,7 +98,7 @@ export function useHeadlessTableMode(
     })
   }
 
-  function setCellMode(
+  function setCellModeById(
     rowId: HeadlessTableRowKey,
     columnId: string,
     value: HeadlessTableMode,
@@ -88,6 +120,41 @@ export function useHeadlessTableMode(
       columnId,
       mode: getCellMode(rowId, columnId),
       previousMode,
+    })
+  }
+
+  function setCellMode(
+    rowId: HeadlessTableRowKey,
+    columnId: string,
+    value: HeadlessTableMode,
+  ): void
+  function setCellMode(
+    selector: HeadlessTableCellModeSelector<TRow, TColumn>,
+    value: HeadlessTableMode,
+  ): void
+  function setCellMode(
+    rowIdOrSelector: HeadlessTableRowKey | HeadlessTableCellModeSelector<TRow, TColumn>,
+    columnIdOrMode: string | HeadlessTableMode,
+    mode?: HeadlessTableMode,
+  ): void {
+    if (typeof rowIdOrSelector !== 'function') {
+      setCellModeById(rowIdOrSelector, columnIdOrMode as string, mode!)
+      return
+    }
+
+    const columns = options.columns?.() ?? []
+    options.data?.().forEach((row, rowIndex) => {
+      const rowId = options.getRowId?.(row, rowIndex)
+      if (rowId == null)
+        return
+
+      columns.forEach((column, columnIndex) => {
+        const columnId = options.getColumnId?.(column, columnIndex)
+        if (columnId == null)
+          return
+        if (rowIdOrSelector({ row, rowIndex, rowId, column, columnIndex, columnId }))
+          setCellModeById(rowId, columnId, columnIdOrMode as HeadlessTableMode)
+      })
     })
   }
 

@@ -44,7 +44,7 @@ interface UseConfigTableRendererOptions {
     columnIndex: number,
   ) => number
   getRowId: (row: ConfigTableRow, rowIndex: number) => HeadlessTableRowKey | undefined
-  modeApi: HeadlessTableModeApi
+  modeApi: HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>
 }
 
 export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {

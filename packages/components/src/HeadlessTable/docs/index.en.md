@@ -67,50 +67,65 @@ const columns = [
 
 The `mode` prop controls the whole table only and defaults to `default`. The component instance API can also target the table, a stable row ID, or one cell. Effective precedence is: cell, row, table API, `mode` prop, then `default`.
 
-```ts
-tableRef.value?.setMode('edit')
-tableRef.value?.setRowMode('W-001', 'edit')
-tableRef.value?.setCellMode('W-001', 'name', 'edit')
-
-tableRef.value?.clearCellMode('W-001', 'name')
-tableRef.value?.clearRowMode('W-001')
-tableRef.value?.clearMode()
-
-tableRef.value?.clearAllCellModes()
-tableRef.value?.clearAllRowModes()
-tableRef.value?.clearAllModes()
-```
-
 Row and cell APIs require a stable ID from `getRowId`. A column uses `column.id` as its stable ID and falls back to `field`. The default slot scope also exposes `setMode`, `setRowMode`, `setCellMode`, single and bulk `clear*` methods, `getRowMode`, and `getCellMode`. `clearAllCellModes` removes cell overrides only, `clearAllRowModes` removes row overrides only, and `clearAllModes` removes table API, row, and cell overrides together.
+
+`setRowMode` and `setCellMode` accept either stable IDs or a selector. A row selector receives `{ row, rowIndex, rowId }`; a cell selector also receives `{ column, columnIndex, columnId }`. All matches switch to the requested mode. A selector scans the current `data` once when the API is called. Matches are still stored by stable row and column IDs, so later data reordering does not move their modes.
 
 Every effective API mutation emits `modeChange`. Single-scope changes include the scope, action, and previous/next effective modes; bulk clears include the scope, `clearAll` action, and cleared override count. Repeating the same override or clearing a missing override does not emit. This event is observational and never emits `update:mode`.
 
 `columns[].slots.edit` accepts either an inline render function or a named slot. A cell in `edit` mode tries its edit slot first. If none is available, rendering continues through the existing default slot, renderer, `formatter`, and raw-value chain. Both edit and default slot scopes include `mode`, `rowId`, row and column context, and scoped row/cell mode actions.
 
+The interactive example below keeps all three API scopes together: the table button calls `setMode`, the row button calls `setRowMode`, and the cell button calls `setCellMode`. The `mode` prop switch affects the whole table; use “Clear API modes” to reveal the prop-controlled state again.
+
+:::demo Use an `edit` slot for form controls and compare table-, row-, and cell-level mode changes.
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
 import { HeadlessTable } from '@moluoxixi/components'
-import { ElInput, ElTable, ElTableColumn } from 'element-plus'
+import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTable, ElTableColumn, ElTag } from 'element-plus'
 
-const tableRef = ref()
+const propMode = ref<'default' | 'edit'>('default')
+const lastChange = ref('Waiting for a mode API operation')
 const rows = ref([
-  { id: 'W-001', name: 'East Warehouse' },
-  { id: 'W-002', name: 'South Warehouse' },
+  { id: 'W-001', name: 'East Warehouse', status: 'Active', manager: 'Avery' },
+  { id: 'W-002', name: 'South Warehouse', status: 'Maintenance', manager: 'Blake' },
+  { id: 'W-003', name: 'West Warehouse', status: 'Active', manager: 'Casey' },
 ])
 const columns = [
-  { field: 'name', title: 'Warehouse', slots: { edit: 'editName' } },
+  { field: 'name', title: 'Warehouse', minWidth: 160, slots: { edit: 'editName' } },
+  { field: 'status', title: 'Status', width: 120, slots: { edit: 'editStatus' } },
+  { field: 'manager', title: 'Manager', minWidth: 120 },
 ]
+
+function handleModeChange(change) {
+  lastChange.value = `${change.scope} scope: ${change.action}`
+}
 </script>
 
 <template>
-  <HeadlessTable ref="tableRef" :columns="columns" :data="rows" :get-row-id="row => row.id">
-    <template #default="{ Cell, columns: resolvedColumns, data }">
+  <HeadlessTable :columns="columns" :data="rows" :get-row-id="row => row.id" :mode="propMode" @mode-change="handleModeChange">
+    <template #default="{ Cell, columns: resolvedColumns, data, setMode, setRowMode, setCellMode, clearAllModes }">
+      <ElSpace wrap style="margin-bottom: 12px">
+        <ElButton type="primary" size="small" @click="setMode('edit')">Edit whole table</ElButton>
+        <ElButton size="small" @click="setRowMode('W-001', 'edit')">Edit W-001 row</ElButton>
+        <ElButton size="small" @click="setCellMode('W-002', 'status', 'edit')">Edit W-002 / Status cell</ElButton>
+        <ElButton size="small" @click="setRowMode(({ row }) => row.status === 'Active', 'edit')">Edit all active rows</ElButton>
+        <ElButton size="small" @click="setCellMode(({ columnId }) => columnId === 'name', 'edit')">Edit all Name cells</ElButton>
+        <ElButton size="small" @click="clearAllModes">Clear API modes</ElButton>
+        <span>mode prop:</span>
+        <ElSelect v-model="propMode" size="small" style="width: 110px">
+          <ElOption label="default" value="default" />
+          <ElOption label="edit" value="edit" />
+        </ElSelect>
+        <ElTag size="small" type="info">{{ lastChange }}</ElTag>
+      </ElSpace>
       <ElTable :data="data">
         <ElTableColumn
           v-for="(column, columnIndex) in resolvedColumns"
           :key="column.id ?? column.field"
           :label="column.title"
+          :width="column.width"
+          :min-width="column.minWidth"
         >
           <template #default="{ row, $index }">
             <Cell :row="row" :column="column" :row-index="$index" :column-index="columnIndex" />
@@ -118,12 +133,19 @@ const columns = [
         </ElTableColumn>
       </ElTable>
     </template>
-    <template #editName="{ row }">
-      <ElInput v-model="row.name" />
+    <template #editName="{ row, clearCellMode }">
+      <ElInput v-model="row.name" size="small" @keyup.enter="clearCellMode" />
+    </template>
+    <template #editStatus="{ row, clearCellMode }">
+      <ElSelect v-model="row.status" size="small" @change="clearCellMode">
+        <ElOption label="Active" value="Active" />
+        <ElOption label="Maintenance" value="Maintenance" />
+      </ElSelect>
     </template>
   </HeadlessTable>
 </template>
 ```
+:::
 
 Consumers own the triggers, save/cancel workflow, validation, and row-data updates.
 

@@ -498,6 +498,34 @@ describe('config table', () => {
     expect(wrapper.get('[data-testid="prop-edit-cell"]').text()).toBe('edit')
   })
 
+  it('selector API 扫描当前数据并以稳定 id 保持匹配状态', async () => {
+    const columns = [
+      { field: 'name', slots: { edit: ({ row }: any) => h('strong', { 'data-testid': `selector-name-${row.code}` }, row.code) } },
+      { field: 'status', slots: { edit: ({ row }: any) => h('strong', { 'data-testid': `selector-status-${row.code}` }, row.code) } },
+    ]
+    const first = { code: 'C-001', name: '华南仓', status: '启用' }
+    const second = { code: 'C-002', name: '华北仓', status: '停用' }
+    const wrapper = mount(ConfigTable, {
+      props: { columns, data: [first, second], rowKey: 'code' },
+      global: { stubs: elementStubs },
+    })
+
+    ;(wrapper.vm as any).setRowMode(({ row }: any) => row.status === '启用', 'edit')
+    ;(wrapper.vm as any).setCellMode(({ rowId, columnId }: any) => (
+      rowId === 'C-002' && columnId === 'status'
+    ), 'edit')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="selector-name-C-001"]').text()).toBe('C-001')
+    expect(wrapper.get('[data-testid="selector-status-C-001"]').text()).toBe('C-001')
+    expect(wrapper.find('[data-testid="selector-name-C-002"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="selector-status-C-002"]').text()).toBe('C-002')
+
+    await wrapper.setProps({ data: [second, first] })
+    expect(wrapper.get('[data-testid="selector-status-C-002"]').text()).toBe('C-002')
+    expect(wrapper.get('[data-testid="selector-name-C-001"]').text()).toBe('C-001')
+  })
+
   it('显式 rowKey 在重排、过滤和分页数据替换后保持 mode 稳定', async () => {
     const columns = [
       { field: 'name', slots: { edit: ({ row }: any) => h('strong', { 'data-testid': `row-key-name-${row.code}` }, `edit:${row.code}`) } },

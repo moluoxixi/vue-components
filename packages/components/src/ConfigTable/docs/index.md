@@ -151,40 +151,95 @@ async function queryUsers({ currentPage, pageSize }) {
 
 `mode` prop 只控制整个表格，默认值为 `default`。组件实例 API 支持 `setMode`、`setRowMode`、`setCellMode`，以及对应的单项清理；`clearAllCellModes`、`clearAllRowModes`、`clearAllModes` 分别清理单元格、行、全部 override。`getRowMode` 和 `getCellMode` 可读取有效模式。模式优先级为：单元格、行、整表 API、`mode` prop、`default`。
 
-行和单元格 API 必须使用稳定行标识，可传入 `getRowId`，或配置显式 `rowKey`。`columns[].slots.edit` 支持内联渲染函数和具名插槽名称。插槽作用域包含 `mode`、`rowId`、行列上下文和当前行/单元格的模式操作。
+`setRowMode` 和 `setCellMode` 既可传稳定 ID，也可传 selector。行 selector 接收 `{ row, rowIndex, rowId }`，单元格 selector 还会收到 `{ column, columnIndex, columnId }`；所有匹配项都会切换为指定模式。selector 仅在调用 API 时扫描一次当前已加载数据，远程分页时即当前页；命中结果仍按稳定的行列 ID 保存，因此后续数据重排不会导致模式漂移。
 
+下面的示例把三种 API 范围放在同一张表里：表格按钮调用 `setMode`，行按钮调用 `setRowMode`，单元格按钮调用 `setCellMode`。`mode` prop 的开关只改变整张表，点击“清除 API 模式”后即可看到它的效果。
+
+:::demo 使用 `edit` 插槽提供编辑控件，并分别演示表格、行、单元格三种模式范围。
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ConfigTable } from '@moluoxixi/components'
-import { ElInput } from 'element-plus'
+import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTag } from 'element-plus'
 
 const tableRef = ref()
+const propMode = ref<'default' | 'edit'>('default')
+const lastChange = ref('等待模式 API 操作')
 const rows = ref([
-  { id: 'U-001', name: '张三', status: '启用' },
-  { id: 'U-002', name: '李四', status: '停用' },
+  { id: 'U-001', name: '张三', status: '启用', department: '技术部' },
+  { id: 'U-002', name: '李四', status: '停用', department: '产品部' },
+  { id: 'U-003', name: '王五', status: '启用', department: '运营部' },
 ])
 const columns = [
-  { field: 'name', title: '姓名', slots: { edit: 'editName' } },
-  { field: 'status', title: '状态' },
+  { field: 'name', title: '姓名', minWidth: 150, slots: { edit: 'editName' } },
+  { field: 'status', title: '状态', width: 120, slots: { edit: 'editStatus' } },
+  { field: 'department', title: '部门', minWidth: 140 },
 ]
+
+function applyTableMode() {
+  tableRef.value?.setMode('edit')
+}
+
+function applyRowMode() {
+  tableRef.value?.setRowMode('U-001', 'edit')
+}
+
+function applyCellMode() {
+  tableRef.value?.setCellMode('U-002', 'status', 'edit')
+}
+
+function applyActiveRowsMode() {
+  tableRef.value?.setRowMode(({ row }) => row.status === '启用', 'edit')
+}
+
+function applyNameCellsMode() {
+  tableRef.value?.setCellMode(({ columnId }) => columnId === 'name', 'edit')
+}
+
+function handleModeChange(change) {
+  lastChange.value = `${change.scope} scope: ${change.action}`
+}
 </script>
 
 <template>
-  <ConfigTable ref="tableRef" :columns="columns" :data="rows" row-key="id">
+  <ElSpace wrap style="margin-bottom: 12px">
+    <ElButton type="primary" size="small" @click="applyTableMode">整表进入 edit</ElButton>
+    <ElButton size="small" @click="applyRowMode">U-001 行进入 edit</ElButton>
+    <ElButton size="small" @click="applyCellMode">U-002 / 状态单元格进入 edit</ElButton>
+    <ElButton size="small" @click="applyActiveRowsMode">所有启用行进入 edit</ElButton>
+    <ElButton size="small" @click="applyNameCellsMode">所有姓名单元格进入 edit</ElButton>
+    <ElButton size="small" @click="tableRef?.clearAllModes()">清除 API 模式</ElButton>
+    <span>mode prop：</span>
+    <ElSelect v-model="propMode" size="small" style="width: 110px">
+      <ElOption label="default" value="default" />
+      <ElOption label="edit" value="edit" />
+    </ElSelect>
+    <ElTag size="small" type="info">{{ lastChange }}</ElTag>
+  </ElSpace>
+
+  <ConfigTable
+    ref="tableRef"
+    :columns="columns"
+    :data="rows"
+    :mode="propMode"
+    row-key="id"
+    :width="720"
+    :height="220"
+    @mode-change="handleModeChange"
+  >
     <template #editName="{ row, clearCellMode }">
-      <ElInput v-model="row.name" @keyup.enter="clearCellMode" />
+      <ElInput v-model="row.name" size="small" @keyup.enter="clearCellMode" />
+    </template>
+    <template #editStatus="{ row, clearCellMode }">
+      <ElSelect v-model="row.status" size="small" @change="clearCellMode">
+        <ElOption label="启用" value="启用" />
+        <ElOption label="停用" value="停用" />
+      </ElSelect>
     </template>
   </ConfigTable>
 </template>
 ```
-
-```ts
-tableRef.value?.setMode('edit')
-tableRef.value?.setRowMode('U-001', 'edit')
-tableRef.value?.setCellMode('U-002', 'name', 'edit')
-tableRef.value?.clearAllModes()
-```
+:::
 
 有效的模式 API 变更会触发 `modeChange`；单项事件包含变更前后有效模式，批量事件包含清理数量。事件只用于状态观察，不会写回 `mode` prop。组件不提供内置编辑触发器，也不处理保存/取消、校验或行数据更新，这些行为由使用方实现。缺少 edit 插槽时，单元格保持原有渲染结果。
 

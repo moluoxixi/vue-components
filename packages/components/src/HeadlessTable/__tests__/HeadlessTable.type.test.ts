@@ -1,4 +1,4 @@
-import type { HeadlessTableColumn, HeadlessTableProps } from '../../../index'
+import type { HeadlessTableColumn, HeadlessTableModeApi, HeadlessTableProps } from '../../../index'
 import { describe, expect, it } from 'vitest'
 import { defineHeadlessTableRenderer, useHeadlessTable } from '../../../index'
 
@@ -42,9 +42,37 @@ const table = useHeadlessTable({
 })
 const inferredRow: TypedRow | undefined = table.rows.value[0]
 
+function verifyModeSelectorTypes(
+  api: HeadlessTableModeApi<TypedRow, HeadlessTableColumn<TypedRow>>,
+): void {
+  api.setRowMode(({ row, rowId, rowIndex }) => {
+    const typedRow: TypedRow = row
+    const typedRowId: string | number = rowId
+    const typedRowIndex: number = rowIndex
+    return typedRow.score > 0 && typedRowId === typedRow.id && typedRowIndex >= 0
+  }, 'edit')
+  api.setCellMode(({ row, column, rowId, columnId, rowIndex, columnIndex }) => {
+    const typedRow: TypedRow = row
+    const typedColumn: HeadlessTableColumn<TypedRow> = column
+    const typedRowId: string | number = rowId
+    const typedColumnId: string = columnId
+    const typedRowIndex: number = rowIndex
+    const typedColumnIndex: number = columnIndex
+    return Boolean(
+      typedRow.score
+      && typedColumn
+      && typedRowId
+      && typedColumnId
+      && typedRowIndex >= 0
+      && typedColumnIndex >= 0,
+    )
+  }, 'edit')
+}
+
 void inferredRow
 void invalidColumn
 void scoreRenderer
+void verifyModeSelectorTypes
 
 describe('headless table public types', () => {
   it('保留 column、renderer 和 composable 的行类型', () => {

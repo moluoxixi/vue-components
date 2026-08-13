@@ -258,6 +258,36 @@ describe('headless table', () => {
     expect(wrapper.emitted('update:mode')).toBeUndefined()
   })
 
+  it('通过 selector API 批量切换匹配的行和单元格', async () => {
+    const columns: HeadlessTableColumn<InventoryRow>[] = [
+      { field: 'name', slots: { edit: 'editName' } },
+      { field: 'status', slots: { edit: 'editStatus' } },
+    ]
+    const data: InventoryRow[] = [
+      { code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' },
+      { code: 'C-002', name: '华南仓', owner: { name: '李四' }, quantity: 8, status: '停用' },
+    ]
+    const wrapper = mount(HeadlessTable as any, {
+      props: { columns, data, getRowId: (row: InventoryRow) => row.code },
+      slots: {
+        default: renderTable as any,
+        editName: ({ row }: any) => h('span', { 'data-testid': `selector-name-${row.code}` }, row.code),
+        editStatus: ({ row }: any) => h('span', { 'data-testid': `selector-status-${row.code}` }, row.code),
+      },
+    })
+
+    ;(wrapper.vm as any).setRowMode(({ row }: any) => row.status === '启用', 'edit')
+    ;(wrapper.vm as any).setCellMode(({ rowId, columnId }: any) => (
+      rowId === 'C-002' && columnId === 'status'
+    ), 'edit')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="selector-name-C-001"]').text()).toBe('C-001')
+    expect(wrapper.get('[data-testid="selector-status-C-001"]').text()).toBe('C-001')
+    expect(wrapper.find('[data-testid="selector-name-C-002"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="selector-status-C-002"]').text()).toBe('C-002')
+  })
+
   it('通过组件 API 独立批量清理 row、cell 和全部 mode override', () => {
     const columns: HeadlessTableColumn<InventoryRow>[] = [{ field: 'name' }]
     const data: InventoryRow[] = [
