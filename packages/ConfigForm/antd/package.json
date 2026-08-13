@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "vite build",
-    "postbuild": "node ../../../scripts/finalize-published-declarations.mjs",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
     "dev": "vite build --watch",
     "test": "vitest run",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"

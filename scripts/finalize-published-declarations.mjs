@@ -3,7 +3,13 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import ts from 'typescript'
 
-const packageRoot = resolve(process.cwd())
+const manifestFlagIndex = process.argv.indexOf('--manifest')
+const packageManifest = manifestFlagIndex === -1 ? undefined : process.argv[manifestFlagIndex + 1]
+if (!packageManifest)
+  throw new Error('Usage: pnpm -w finalize:declarations --manifest <package.json>')
+
+const packageManifestPath = resolve(packageManifest)
+const packageRoot = dirname(packageManifestPath)
 const declarationRoot = resolve(packageRoot, 'dist')
 
 async function collectDeclarationFiles(directory) {
@@ -97,7 +103,7 @@ async function finalizeDeclarationSpecifiers() {
 }
 
 async function verifyNodeNextConsumers() {
-  const packageJson = JSON.parse(await readFile(resolve(packageRoot, 'package.json'), 'utf8'))
+  const packageJson = JSON.parse(await readFile(packageManifestPath, 'utf8'))
   const publicEntries = Object.entries(packageJson.exports ?? {})
     .filter(([, conditions]) => conditions && typeof conditions === 'object' && 'types' in conditions)
     .map(([subpath]) => subpath === '.' ? packageJson.name : `${packageJson.name}/${subpath.slice(2)}`)

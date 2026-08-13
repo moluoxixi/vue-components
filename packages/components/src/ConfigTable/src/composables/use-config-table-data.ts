@@ -6,7 +6,7 @@ import type {
   ConfigTableRow,
 } from '../types'
 import { computed } from 'vue'
-import { useRequestTableComponent } from '../../../request/composables'
+import { useRequestTableComponent } from '#components/request/composables'
 
 const INTERNAL_ROW_KEY = '__mx_config_table_row_key'
 

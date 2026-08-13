@@ -74,6 +74,8 @@ Create `@moluoxixi/rich-text-editor` as an independent Vite library. Move the im
 - Add a Node-based publishable-package verifier that discovers non-private versioned workspace packages, packs them, runs `publint` and `@arethetypeswrong/cli`, and performs root ESM/type consumer smoke checks.
 - Split manifest entry discovery and smoke-source generation into importable pure helpers with fast unit tests. Add an explicit browser-capable allowlist for a Vite consumer build so Node-only entries are not misclassified, and load the built consumer in Chromium to verify runtime evaluation and CSS application.
 - Add semantic workflow validation via a pinned actionlint distribution while retaining the existing workflow topology tests.
+- Route declaration postbuilds through one root `finalize:declarations` command. Each package passes its lifecycle `npm_package_json` explicitly so the finalizer remains package-scoped without encoding directory depth.
+- Define `#components/*` as a package-owned private import map with `source` and `types` conditions. Use it for cross-component and shared request/util imports in ordinary implementation code so consumer aliases cannot change resolution; retain relative imports for local module neighbors, tests that intentionally target the package root, and `types/` contracts that Vue's SFC macro resolver must expand.
 
 ## Compatibility
 

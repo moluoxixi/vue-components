@@ -6,7 +6,7 @@ import type {
   PopoverTableSelectRuntimeProps,
 } from '../types'
 import { computed } from 'vue'
-import { useRequestTableComponent } from '../../../request/composables'
+import { useRequestTableComponent } from '#components/request/composables'
 
 interface PopoverTableSelectPaginationModels {
   currentPage: Ref<number>

@@ -11,6 +11,13 @@
     "**/*.scss",
     "**/*.css"
   ],
+  "imports": {
+    "#components/*": {
+      "source": "./src/*/index.ts",
+      "types": "./dist/src/*/index.d.ts",
+      "default": "./src/*/index.ts"
+    }
+  },
   "exports": {
     ".": {
       "source": "./index.ts",
@@ -121,7 +128,7 @@
   ],
   "scripts": {
     "build": "vite build",
-    "postbuild": "node scripts/generate-playground-manifest.mjs && node ../../scripts/finalize-published-declarations.mjs",
+    "postbuild": "node scripts/generate-playground-manifest.mjs && pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
     "dev": "vite build --watch",
     "test": "vitest run",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HeadlessTableColumn } from '../../../HeadlessTable'
+import type { HeadlessTableColumn } from '#components/HeadlessTable'
 import type {
   ConfigTableColumn,
   ConfigTableColumnConfig,
@@ -14,7 +14,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import {
   getHeadlessTableColumnLabel,
   projectHeadlessTableColumns,
-} from '../../../HeadlessTable'
+} from '#components/HeadlessTable'
 import {
   getConfigTableColumnId,
   getConfigTableColumnWidth,

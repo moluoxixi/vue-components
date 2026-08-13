@@ -6,7 +6,7 @@ import type {
   HeadlessTableHeaderScope,
   HeadlessTableModeApi,
   HeadlessTableRowKey,
-} from '../../../HeadlessTable'
+} from '#components/HeadlessTable'
 import type {
   ConfigTableCellParams,
   ConfigTableColumn,
@@ -20,7 +20,7 @@ import {
   headlessTableRenderer,
   headlessTableRendererKey,
   resolveHeadlessTableRenderer,
-} from '../../../HeadlessTable'
+} from '#components/HeadlessTable'
 import { getConfigTableColumnLabel } from './use-config-table-columns'
 
 interface UseConfigTableRendererOptions {

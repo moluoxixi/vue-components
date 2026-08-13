@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260813024528-quality-guidelines-bfcef2",
+  "createdAt": "2026-08-13T02:45:28.579Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-12-p0-p1-editable-table-modes",
+  "reason": "Extend the corrected quality proposal with package-owned private import maps and explicit-manifest lifecycle tooling contracts discovered during path cleanup.",
+  "target": "frontend/quality-guidelines.md",
+  "kind": "file",
+  "baseHash": "ac5a4da858d93492cbb4c721b164850b625f38696905e463e8feb5968eae78bc",
+  "contentFile": "content/20260813024528-quality-guidelines-bfcef2.md",
+  "contentHash": "3f848aefb980ee5c3029457c7645f6bbcc28ba16eb873323ec35705e34bd2aa3"
+}

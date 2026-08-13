@@ -1,7 +1,7 @@
-import type { ScheduledHandler } from '../../../utils'
+import type { ScheduledHandler } from '#components/utils'
 import type { PopoverTableSelectRuntimeProps, ThrottleOrDebounceOptions } from '../types'
 import { computed, onUnmounted, shallowRef, watch } from 'vue'
-import { debounce, throttle } from '../../../utils'
+import { debounce, throttle } from '#components/utils'
 
 function noopScheduledAction(): void {
   return undefined

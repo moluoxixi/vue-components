@@ -60,6 +60,7 @@ The outcome should reduce duplicated request and adapter logic, strengthen build
 - R23. Stabilize the existing EnterNextContainer browser test against Element Plus overlay transitions using observable ARIA state.
 - R24. Add fast behavior tests for publish-package entry discovery and a Vite browser-consumer smoke for browser-capable public subpaths and stylesheet entries.
 - R25. Capture the reusable editable-table component and regression contracts as reviewable frontend spec proposals.
+- R26. Replace package-depth-dependent declaration postbuild paths and high-value cross-module component imports with explicit, tool-supported root aliases while preserving build and declaration behavior.
 
 ## Constraints
 
@@ -88,6 +89,7 @@ The outcome should reduce duplicated request and adapter logic, strengthen build
 - [ ] AC14. The request-table bridge has direct query/static/error/pagination tests, and the EnterNextContainer browser test waits on its ARIA contract rather than overlay timing.
 - [ ] AC15. Publish-package entry discovery has fast unit coverage, while a Vite consumer build and Chromium smoke exercise explicitly browser-capable packed subpaths and styles.
 - [ ] AC16. Editable-table API and quality contracts are submitted as pending proposals without directly changing approved specs.
+- [ ] AC17. Packages that finalize declarations use one root command with an explicit package manifest, and components source aliases resolve consistently in TypeScript, Vite, tests, and emitted declarations.
 
 ## Out of Scope
 

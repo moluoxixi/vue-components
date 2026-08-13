@@ -41,7 +41,7 @@
   ],
   "scripts": {
     "build": "vite build && node scripts/build-ui.mjs",
-    "postbuild": "node ../../scripts/finalize-published-declarations.mjs",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
     "build:lib": "vite build",
     "build:ui": "node scripts/build-ui.mjs",
     "dev": "vite build --watch",

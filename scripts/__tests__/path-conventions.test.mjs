@@ -1,0 +1,185 @@
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { extname, join, relative, resolve } from 'node:path'
+import { parse } from '@vue/compiler-sfc'
+import ts from 'typescript'
+import { describe, expect, it } from 'vitest'
+
+const repositoryRoot = resolve(import.meta.dirname, '../..')
+const packagesRoot = resolve(repositoryRoot, 'packages')
+const declarationFinalizer = resolve(repositoryRoot, 'scripts/finalize-published-declarations.mjs')
+const declarationFinalizerPackages = [
+  '@moluoxixi/ai-doc-assistant',
+  '@moluoxixi/components',
+  '@moluoxixi/config-form',
+  '@moluoxixi/config-form-antd-vue',
+  '@moluoxixi/config-form-core',
+  '@moluoxixi/config-form-designer',
+  '@moluoxixi/config-form-designer-antd-vue',
+  '@moluoxixi/config-form-designer-element-plus',
+  '@moluoxixi/config-form-devtools-vite-plugin',
+  '@moluoxixi/config-form-element',
+  '@moluoxixi/config-form-headless',
+  '@moluoxixi/config-form-plugin-antd-vue',
+  '@moluoxixi/config-form-plugin-element-plus',
+  '@moluoxixi/hooks',
+  '@moluoxixi/rich-text-editor',
+  '@moluoxixi/vitepress-theme-element-plus',
+  '@moluoxixi/zod3-to-rule',
+]
+const componentsDeepImportExceptions = [
+  ['ConfigTable/src/types/emits.ts', '../../../HeadlessTable/src/types'],
+  ['ConfigTable/src/types/props.ts', '../../../HeadlessTable/src/types'],
+  ['ConfigTable/src/types/table.ts', '../../../HeadlessTable/src/types'],
+  ['CopyText/src/types/props.ts', '../../../HeadlessCopyText'],
+  ['CopyText/src/types/slots.ts', '../../../HeadlessCopyText'],
+  ['HeadlessTable/__tests__/HeadlessTable.type.test.ts', '../../../index'],
+  ['PopoverTableSelect/src/types/props.ts', '../../../ConfigTable'],
+  ['PopoverTableSelect/src/types/props.ts', '../../../utils'],
+  ['RequestCascader/src/types/emits.ts', '../../../request/types'],
+  ['RequestCascader/src/types/expose.ts', '../../../request/types'],
+  ['RequestCascader/src/types/props.ts', '../../../request/types'],
+  ['RequestSelectV2/src/types/emits.ts', '../../../request/types'],
+  ['RequestSelectV2/src/types/expose.ts', '../../../request/types'],
+  ['RequestSelectV2/src/types/props.ts', '../../../request/types'],
+  ['RequestTreeSelect/src/types/emits.ts', '../../../request/types'],
+  ['RequestTreeSelect/src/types/expose.ts', '../../../request/types'],
+  ['RequestTreeSelect/src/types/props.ts', '../../../request/types'],
+]
+
+function walkFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = resolve(directory, entry.name)
+    return entry.isDirectory() ? walkFiles(path) : [path]
+  })
+}
+
+function getScriptSource(file) {
+  const source = readFileSync(file, 'utf8')
+  if (extname(file) !== '.vue')
+    return source
+
+  const { descriptor } = parse(source, { filename: file })
+  return [descriptor.script?.content, descriptor.scriptSetup?.content].filter(Boolean).join('\n')
+}
+
+function collectModuleSpecifiers(file) {
+  const source = getScriptSource(file)
+  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const specifiers = []
+  const visit = (node) => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+      && node.moduleSpecifier
+      && ts.isStringLiteralLike(node.moduleSpecifier)
+    ) {
+      specifiers.push(node.moduleSpecifier.text)
+    }
+    else if (
+      ts.isCallExpression(node)
+      && node.expression.kind === ts.SyntaxKind.ImportKeyword
+      && ts.isStringLiteralLike(node.arguments[0])
+    ) {
+      specifiers.push(node.arguments[0].text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return specifiers
+}
+
+describe('repository path conventions', () => {
+  it('requires an explicit declaration package manifest', () => {
+    const result = spawnSync(process.execPath, [declarationFinalizer], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'Usage: pnpm -w finalize:declarations --manifest <package.json>',
+    )
+  })
+
+  it('derives the declaration package from its manifest instead of cwd', () => {
+    const fixtureRoot = mkdtempSync(join(tmpdir(), 'finalize-declarations-'))
+    const packageRoot = resolve(fixtureRoot, 'package')
+    const callerRoot = resolve(fixtureRoot, 'caller')
+    const declarationRoot = resolve(packageRoot, 'dist')
+    const manifestPath = resolve(packageRoot, 'package.json')
+    const entryPath = resolve(declarationRoot, 'index.d.ts')
+
+    try {
+      mkdirSync(declarationRoot, { recursive: true })
+      mkdirSync(callerRoot)
+      writeFileSync(manifestPath, JSON.stringify({
+        name: '@fixture/declarations',
+        exports: {},
+      }))
+      writeFileSync(resolve(declarationRoot, 'dependency.d.ts'), 'export interface Value {}\n')
+      writeFileSync(entryPath, 'export type { Value } from \'./dependency\'\n')
+
+      const result = spawnSync(
+        process.execPath,
+        [declarationFinalizer, '--manifest', manifestPath],
+        { cwd: callerRoot, encoding: 'utf8' },
+      )
+
+      expect(result.stderr).toBe('')
+      expect(result.status).toBe(0)
+      expect(result.stdout).toContain('Finalized 1 declaration specifiers')
+      expect(readFileSync(entryPath, 'utf8')).toContain('from \'./dependency.js\'')
+    }
+    finally {
+      rmSync(fixtureRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('routes declaration postbuilds through the workspace-root command', () => {
+    const manifests = walkFiles(packagesRoot)
+      .filter(file => file.endsWith('package.json'))
+      .map(file => ({ file, manifest: JSON.parse(readFileSync(file, 'utf8')) }))
+    const declarationPostbuilds = manifests.filter(({ manifest }) => (
+      manifest.scripts?.postbuild?.includes('finalize')
+    ))
+
+    expect(declarationPostbuilds.map(({ manifest }) => manifest.name).sort())
+      .toEqual([...declarationFinalizerPackages].sort())
+    for (const { manifest } of declarationPostbuilds) {
+      expect(manifest.scripts.postbuild).toContain(
+        'pnpm -w finalize:declarations --manifest "$npm_package_json"',
+      )
+      expect(manifest.scripts.postbuild).not.toContain('../scripts/')
+    }
+  })
+
+  it('uses package-owned private imports for components cross-module imports', () => {
+    const componentsManifest = JSON.parse(readFileSync(
+      resolve(packagesRoot, 'components/package.json'),
+      'utf8',
+    ))
+    expect(componentsManifest.imports).toEqual({
+      '#components/*': {
+        source: './src/*/index.ts',
+        types: './dist/src/*/index.d.ts',
+        default: './src/*/index.ts',
+      },
+    })
+
+    const componentsSource = resolve(packagesRoot, 'components/src')
+    const deepRelativeImports = walkFiles(componentsSource)
+      .filter(file => ['.ts', '.tsx', '.vue'].includes(extname(file)))
+      .flatMap((file) => {
+        const modulePath = relative(componentsSource, file).replaceAll('\\', '/')
+        return collectModuleSpecifiers(file)
+          .filter(specifier => /^(?:\.\.\/){3}/.test(specifier))
+          .map(specifier => [modulePath, specifier])
+      })
+    const uniqueDeepRelativeImports = [...new Map(
+      deepRelativeImports.map(item => [JSON.stringify(item), item]),
+    ).values()]
+
+    expect(uniqueDeepRelativeImports.sort()).toEqual([...componentsDeepImportExceptions].sort())
+  })
+})

@@ -242,7 +242,6 @@ pnpm test:path-contracts
 
 ### 6. Tests Required
 
-- Invoke the root finalizer as a real process: missing `--manifest` must fail with the usage contract, and an explicit manifest must select the same package from an unrelated cwd.
 - Maintain an explicit reviewed list of packages that require declaration finalization; assert each uses the root command and explicit manifest argument.
 - Parse TypeScript/Vue module specifiers structurally and compare remaining deep relative imports with an explicit reviewed exception list.
 - Run package build and the direct-source consumer typecheck.
