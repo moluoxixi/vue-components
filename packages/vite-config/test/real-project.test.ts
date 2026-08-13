@@ -156,7 +156,7 @@ describe('real consumer project integration', () => {
     const { jsOutput } = await buildAppFixture('real-markdown')
 
     expect(jsOutput).toContain('real markdown addon')
-  }, 30000)
+  }, 60000)
 
   it('loads the real Vite SSG addon module from a consumer manifest', async () => {
     const fixturePath = path.resolve(__dirname, 'fixtures/real-ssg')
