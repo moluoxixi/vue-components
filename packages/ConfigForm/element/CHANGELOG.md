@@ -1,5 +1,14 @@
 # @moluoxixi/config-form-element
 
+## 0.2.2
+
+### Patch Changes
+
+- Automatically release packages changed in 2c31e9a8f75f.
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.2
+  - @moluoxixi/config-form-headless@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

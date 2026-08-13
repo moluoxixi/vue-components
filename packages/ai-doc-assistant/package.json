@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/ai-doc-assistant",
   "type": "module",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "组件库 AI 文档与调试助手：AST 契约提取 + 本地知识库 + 自然语言问答 + 沙箱实时预览",
   "repository": {
     "type": "git",

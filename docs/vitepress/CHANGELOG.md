@@ -1,5 +1,15 @@
 # @moluoxixi/docs
 
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/ai-doc-assistant@0.1.2
+  - @moluoxixi/components@0.2.3
+  - @moluoxixi/rich-text-editor@0.1.1
+  - @moluoxixi/vitepress-theme-element-plus@0.1.9
+
 ## 0.1.9
 
 ### Patch Changes

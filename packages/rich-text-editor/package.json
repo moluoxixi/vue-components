@@ -1,13 +1,15 @@
 {
   "name": "@moluoxixi/rich-text-editor",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/moluoxixi/vue-components",
     "directory": "packages/rich-text-editor"
   },
-  "sideEffects": ["**/*.css"],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": {
       "source": "./index.ts",
@@ -21,7 +23,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build",
     "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
@@ -56,5 +60,7 @@
     "vue": "catalog:build",
     "vue-tsc": "catalog:dev"
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

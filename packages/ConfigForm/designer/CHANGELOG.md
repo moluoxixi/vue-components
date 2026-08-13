@@ -1,5 +1,16 @@
 # @moluoxixi/config-form-designer
 
+## 0.1.3
+
+### Patch Changes
+
+- Automatically release packages changed in 2c31e9a8f75f.
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.2
+  - @moluoxixi/config-form-core@0.2.2
+  - @moluoxixi/config-form-headless@0.2.2
+  - @moluoxixi/zod3-to-rule@0.1.2
+
 ## 0.1.2
 
 ### Patch Changes

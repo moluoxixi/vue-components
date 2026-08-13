@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/docs",
   "type": "module",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "scripts": {
     "build:workspace-components": "pnpm --filter @moluoxixi/components build",

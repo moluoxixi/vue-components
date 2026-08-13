@@ -1,5 +1,16 @@
 # @moluoxixi/components
 
+## 0.2.3
+
+### Patch Changes
+
+- Automatically release packages changed in 2c31e9a8f75f.
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.2
+  - @moluoxixi/config-form-headless@0.2.2
+  - @moluoxixi/hooks@0.2.1
+  - @moluoxixi/rich-text-editor@0.1.1
+
 ## 0.2.2
 
 ### Patch Changes
