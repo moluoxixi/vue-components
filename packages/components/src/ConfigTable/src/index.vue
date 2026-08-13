@@ -9,6 +9,7 @@ import type {
 import type { HeadlessTableModeApi, HeadlessTableRowKey } from '../../HeadlessTable'
 import { ElPagination, ElTableV2 } from 'element-plus'
 import { useHeadlessTableMode } from '../../HeadlessTable'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { ConfigTableColumnSettings, ConfigTableRenderNode } from './components'
 import {
   useConfigTableColumns,
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<ConfigTableProps>(), {
   params: () => ({}),
   enabled: true,
   pagination: undefined,
+  pane: undefined,
   resetPageOnParamsChange: true,
   renderers: () => ({}),
   width: 800,
@@ -68,7 +70,7 @@ const {
 
 const {
   applyColumnSettings,
-  columnConfigEnabled,
+  paneEnabled,
   columnOrderState,
   columnVisibilityState,
   columnWidthsState,
@@ -76,12 +78,57 @@ const {
   getConfigColumnIndex,
   getRawRow,
   getVisibleColumnIndex,
-  normalizedColumnConfig,
+  normalizedPaneConfig,
   orderedColumns,
   virtualColumns,
   virtualTableProps,
   visibleColumns,
 } = useConfigTableColumns(props, tableData, emit)
+
+const tableShellRef = useTemplateRef<HTMLElement>('tableShellRef')
+const measuredTableWidth = ref<number>()
+let tableResizeObserver: ResizeObserver | undefined
+
+function getInitialTableWidth(): number {
+  if (typeof props.width === 'number')
+    return props.width > 0 ? props.width : 800
+  const match = props.width.trim().match(/^(\d+(?:\.\d+)?)px$/i)
+  return match ? Number(match[1]) : 800
+}
+
+function measureTableWidth(): void {
+  const width = tableShellRef.value?.getBoundingClientRect().width
+  if (width && width > 0)
+    measuredTableWidth.value = width
+}
+
+const resolvedTableWidth = computed(() => (
+  typeof props.width === 'number'
+    ? (props.width > 0 ? props.width : 800)
+    : (measuredTableWidth.value ?? getInitialTableWidth())
+))
+const tableShellStyle = computed(() => ({
+  width: typeof props.width === 'number' ? undefined : props.width,
+}))
+
+onMounted(() => {
+  measureTableWidth()
+  if (typeof ResizeObserver === 'undefined' || !tableShellRef.value)
+    return
+  tableResizeObserver = new ResizeObserver(([entry]) => {
+    if (entry?.contentRect.width > 0)
+      measuredTableWidth.value = entry.contentRect.width
+  })
+  tableResizeObserver.observe(tableShellRef.value)
+})
+
+watch(() => props.width, async () => {
+  measuredTableWidth.value = undefined
+  await nextTick()
+  measureTableWidth()
+})
+
+onBeforeUnmount(() => tableResizeObserver?.disconnect())
 
 const modeApi = useHeadlessTableMode<ConfigTableRow, ConfigTableColumn>({
   columns: () => orderedColumns.value,
@@ -116,16 +163,16 @@ defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>>({ ...modeA
 </script>
 
 <template>
-  <div class="mx-config-table-shell">
+  <div ref="tableShellRef" class="mx-config-table-shell" :style="tableShellStyle">
     <ConfigTableColumnSettings
-      v-if="columnConfigEnabled"
+      v-if="paneEnabled"
       class="mx-config-table__toolbar"
       :columns="props.columns"
       :column-order="columnOrderState"
       :column-visibility="columnVisibilityState"
       :column-widths="columnWidthsState"
       :default-column-width="props.defaultColumnWidth"
-      :config="normalizedColumnConfig"
+      :pane="normalizedPaneConfig"
       @apply="applyColumnSettings"
     />
     <ElTableV2
@@ -136,7 +183,7 @@ defineExpose<HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>>({ ...modeA
       :height="props.height"
       :row-height="props.rowHeight"
       :row-key="props.rowKey"
-      :width="props.width"
+      :width="resolvedTableWidth"
     >
       <template #header-cell="{ column, columnIndex }">
         <ConfigTableRenderNode

@@ -4,7 +4,7 @@
 
 ## 基础用法
 
-:::demo 传入 `columns` 配置和静态 `data`，即可渲染虚拟列表表格。
+:::demo 传入 `columns` 配置和静态 `data`，即可渲染虚拟列表表格。`width` 支持像素数值，也支持 `100%`、`calc(...)` 等 CSS 宽度。
 ```vue
 <script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
@@ -24,23 +24,20 @@ const data = shallowRef([
 ])
 </script>
 <template>
-  <ConfigTable :columns="columns" :data="data" :width="720" :height="240" />
+  <ConfigTable :columns="columns" :data="data" width="100%" :height="240" />
 </template>
 ```
 :::
 
-## Renderer 与列设置
+## Renderer
 
-:::demo renderer 可以在应用级 registry 中注册一次，ConfigTable 和 HeadlessTable 的多个实例都能复用；开启 `columnConfig` 后，可在弹窗中拖拽排序、调整宽度或显示隐藏列。
+:::demo renderer 可以在应用级 registry 中注册一次，ConfigTable 和 HeadlessTable 的多个实例都能复用。
 ```vue
 <script setup lang="ts">
 import { ConfigTable, defineHeadlessTableRenderer, headlessTableRenderer } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
-import { h, ref, shallowRef } from 'vue'
+import { h, shallowRef } from 'vue'
 
-const columnOrder = ref([])
-const columnVisibility = ref({})
-const columnWidths = ref({})
 headlessTableRenderer.replace('docs-config-status', defineHeadlessTableRenderer({
   renderDefault: (renderOptions, { rawValue }) => h(
     ElTag,
@@ -85,14 +82,10 @@ const secondaryColumns = columns.map(column => ({ ...column, slots: undefined })
 
 <template>
   <ConfigTable
-    v-model:column-order="columnOrder"
-    v-model:column-visibility="columnVisibility"
-    v-model:column-widths="columnWidths"
     :columns="columns"
     :data="data"
-    :width="720"
+    width="100%"
     :height="200"
-    column-config
   >
     <template #nameHeader>
       <strong>姓名（Slot）</strong>
@@ -110,6 +103,49 @@ const secondaryColumns = columns.map(column => ({ ...column, slots: undefined })
 :::
 
 列内容的默认优先级为：列内联渲染函数或具名 Slot、命名 renderer、`formatter`、原始字段值。edit 模式会先尝试 `slots.edit`，未命中时回退到这条默认渲染链。`column.id` 是列设置和单元格模式使用的稳定标识，未提供时使用 `field`。
+
+## 列配置面板
+
+`pane` 开启内置列配置面板。面板支持拖拽调整顺序、切换列的显示状态和修改列宽；`pane.width` 控制面板宽度，`pane.draggable` 可关闭拖拽。默认由组件内部维护列设置；只有需要持久化或外部控制时，才传入 `columnOrder`、`columnVisibility`、`columnWidths` 或对应的 `v-model`。旧的 `columnConfig` 仍作为兼容别名保留。
+
+:::demo 使用配置化 pane 管理列顺序、显隐与宽度。
+```vue
+<script setup lang="ts">
+import { ConfigTable } from '@moluoxixi/components'
+import { shallowRef } from 'vue'
+
+const pane = {
+  buttonText: '配置列',
+  title: '列配置',
+  width: 520,
+  draggable: true,
+  minColumnWidth: 80,
+  maxColumnWidth: 360,
+}
+const columns = [
+  { id: 'name', field: 'name', title: '姓名', width: 160 },
+  { id: 'department', field: 'department', title: '部门', width: 150 },
+  { id: 'role', field: 'role', title: '角色', width: 180 },
+  { id: 'status', field: 'status', title: '状态', width: 110 },
+]
+const data = shallowRef([
+  { name: '张三', department: '技术部', role: '前端工程师', status: '启用' },
+  { name: '李四', department: '产品部', role: '产品经理', status: '停用' },
+  { name: '王五', department: '运营部', role: '运营专员', status: '启用' },
+])
+</script>
+
+<template>
+  <ConfigTable
+    :columns="columns"
+    :data="data"
+    :pane="pane"
+    width="100%"
+    :height="220"
+  />
+</template>
+```
+:::
 
 ## 远程请求 + 分页
 
@@ -223,7 +259,7 @@ function handleModeChange(change) {
     :data="rows"
     :mode="propMode"
     row-key="id"
-    :width="720"
+    width="100%"
     :height="220"
     @mode-change="handleModeChange"
   >

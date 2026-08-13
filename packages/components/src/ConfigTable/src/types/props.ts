@@ -13,6 +13,7 @@ import type {
   ConfigTableColumn,
   ConfigTableColumnConfig,
   ConfigTableColumnWidthState,
+  ConfigTablePaneConfig,
   ConfigTableRenderSlots,
   ConfigTableRow,
   ConfigTableRowClass,
@@ -42,7 +43,9 @@ export interface ConfigTableProps {
   columnVisibility?: HeadlessTableColumnVisibilityState
   /** 受控列宽，按 column.id 或 field 映射到像素值。 */
   columnWidths?: ConfigTableColumnWidthState
-  /** 是否显示内置列设置，也可传入弹窗配置。 */
+  /** 内置列配置面板，可调整列宽、顺序和显隐。 */
+  pane?: boolean | ConfigTablePaneConfig
+  /** @deprecated Use pane instead. */
   columnConfig?: boolean | ConfigTableColumnConfig
   emptyText?: string
   currentRowIndex?: number
@@ -57,7 +60,8 @@ export interface ConfigTableProps {
   resetPageOnParamsChange?: boolean
   currentPage?: number
   pageSize?: number
-  width?: number
+  /** 表格宽度。数字表示像素，字符串按 CSS 宽度解析并响应容器变化。 */
+  width?: number | string
   height?: number
   rowHeight?: number
   headerHeight?: number

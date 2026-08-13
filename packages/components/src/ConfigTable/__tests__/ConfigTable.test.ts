@@ -5,7 +5,10 @@ import { defineComponent, h, nextTick, ref } from 'vue'
 import { createHeadlessTableRendererPlugin } from '../../HeadlessTable'
 import { ConfigTable } from '../index'
 
-const sortableCreate = vi.hoisted(() => vi.fn(() => ({ destroy: vi.fn() })))
+const sortableCreate = vi.hoisted(() => vi.fn((
+  _element: HTMLElement,
+  _options: { onEnd?: (event: { oldIndex?: number, newIndex?: number }) => void },
+) => ({ destroy: vi.fn() })))
 
 vi.mock('sortablejs', () => ({
   default: { create: sortableCreate },
@@ -211,11 +214,14 @@ const ElInputNumberStub = defineComponent({
 
 const ElDialogStub = defineComponent({
   name: 'ElDialog',
-  props: { modelValue: Boolean, title: String },
+  props: { modelValue: Boolean, title: String, width: [Number, String] },
   emits: ['update:modelValue'],
   setup(props, { slots }) {
     return () => props.modelValue
-      ? h('div', { 'data-testid': 'column-settings-dialog' }, [
+      ? h('div', {
+          'data-testid': 'column-settings-dialog',
+          'data-width': String(props.width),
+        }, [
           h('h2', props.title),
           slots.default?.(),
           slots.footer?.(),
@@ -312,6 +318,49 @@ describe('config table', () => {
     })
     expect(wrapper.get('[data-testid="virtual-column-qty"]').text()).toBe('库存')
     expect(wrapper.get('[data-testid="table-row-0"]').classes()).toContain('mx-config-table__row--current')
+  })
+
+  it('字符串 width 跟随容器测量结果更新虚拟表格宽度', async () => {
+    let resizeCallback: ResizeObserverCallback | undefined
+    const observe = vi.fn()
+    const disconnect = vi.fn()
+    const OriginalResizeObserver = globalThis.ResizeObserver
+    globalThis.ResizeObserver = class ResizeObserverStub {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback
+      }
+
+      observe = observe
+      disconnect = disconnect
+      unobserve = vi.fn()
+    }
+
+    try {
+      const wrapper = mount(ConfigTable, {
+        props: {
+          columns: [{ field: 'name' }],
+          data: [{ name: '华南仓' }],
+          width: '100%',
+        },
+        global: { stubs: elementStubs },
+      })
+
+      expect(wrapper.get('.mx-config-table-shell').attributes('style')).toContain('width: 100%')
+      expect(wrapper.get('[data-testid="el-table-v2-stub"]').attributes('data-width')).toBe('800')
+      expect(observe).toHaveBeenCalledOnce()
+
+      resizeCallback?.([
+        { contentRect: { width: 672 } } as ResizeObserverEntry,
+      ], {} as ResizeObserver)
+      await nextTick()
+
+      expect(wrapper.get('[data-testid="el-table-v2-stub"]').attributes('data-width')).toBe('672')
+      wrapper.unmount()
+      expect(disconnect).toHaveBeenCalledOnce()
+    }
+    finally {
+      globalThis.ResizeObserver = OriginalResizeObserver
+    }
   })
 
   it('不在 Element Plus 表格和分页根节点上注入内部布局 class', () => {
@@ -786,6 +835,78 @@ describe('config table', () => {
     expect(wrapper.emitted('update:columnOrder')?.at(-1)).toEqual([['status', 'name', 'qty']])
     expect(wrapper.emitted('update:columnVisibility')?.at(-1)).toEqual([{ name: true, qty: true, status: false }])
     expect(sourceColumns.map(column => column.field)).toEqual(['name', 'status', 'qty'])
+  })
+
+  it('pane 配置面板支持宽度、拖拽排序和显示隐藏', async () => {
+    sortableCreate.mockClear()
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columnConfig: false,
+        columns: [
+          { field: 'name', label: '仓库', width: 40 },
+          { field: 'status', label: '状态' },
+          { field: 'qty', label: '数量' },
+        ],
+        data: [{ name: '华南仓', qty: 12, status: '启用' }],
+        pane: { buttonText: '配置列', minColumnWidth: 80, width: 560 },
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('.mx-config-table-column-settings__trigger').text()).toBe('配置列')
+    expect(wrapper.get('[data-testid="virtual-column-name"]').attributes('data-width')).toBe('80')
+    await wrapper.get('.mx-config-table-column-settings__trigger').trigger('click')
+    expect(wrapper.get('[data-testid="column-settings-dialog"]').attributes('data-width')).toBe('560')
+    expect(wrapper.get('[aria-label="仓库 宽度"]').attributes('min')).toBe('80')
+
+    const sortableOptions = sortableCreate.mock.calls[0]?.[1]
+    sortableOptions.onEnd?.({ oldIndex: 2, newIndex: 0 })
+    await nextTick()
+    await wrapper.get('[data-column-id="status"] input').setValue(false)
+    await wrapper.findAll('button').find(button => button.text() === '确定')!.trigger('click')
+
+    expect(wrapper.findAll('[data-testid^="virtual-column-"]').map(node => node.attributes('data-testid')))
+      .toEqual(['virtual-column-qty', 'virtual-column-name'])
+    expect(wrapper.emitted('update:columnOrder')?.at(-1)).toEqual([['qty', 'name', 'status']])
+    expect(wrapper.emitted('update:columnVisibility')?.at(-1)).toEqual([{ name: true, qty: true, status: false }])
+  })
+
+  it('打开面板后动态切换 draggable 会销毁并重建拖拽实例', async () => {
+    sortableCreate.mockClear()
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [
+          { field: 'name', label: '仓库' },
+          { field: 'status', label: '状态' },
+        ],
+        data: [{ name: '华南仓', status: '启用' }],
+        pane: { draggable: true },
+      },
+      global: { stubs: elementStubs },
+    })
+
+    await wrapper.get('.mx-config-table-column-settings__trigger').trigger('click')
+    expect(sortableCreate).toHaveBeenCalledTimes(1)
+    const firstSortable = sortableCreate.mock.results[0]?.value
+
+    await wrapper.setProps({ pane: { draggable: false } })
+    expect(firstSortable?.destroy).toHaveBeenCalledOnce()
+    expect(wrapper.find('.mx-config-table-column-settings__drag').exists()).toBe(false)
+    expect(wrapper.get('[data-column-id="name"]').classes())
+      .toContain('mx-config-table-column-settings__item--static')
+
+    await wrapper.setProps({ pane: { draggable: true } })
+    await nextTick()
+    expect(sortableCreate).toHaveBeenCalledTimes(2)
+    expect(wrapper
+      .get('[data-column-id="name"]')
+      .classes())
+      .not
+      .toContain('mx-config-table-column-settings__item--static')
+
+    const secondSortable = sortableCreate.mock.results[1]?.value
+    wrapper.unmount()
+    expect(secondSortable?.destroy).toHaveBeenCalledOnce()
   })
 
   it('列设置不会确认零个可见列', async () => {

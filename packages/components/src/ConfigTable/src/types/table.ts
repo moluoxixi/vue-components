@@ -60,7 +60,7 @@ export interface ConfigTableColumnSlots {
   header?: string | ConfigTableHeaderRender
 }
 
-export interface ConfigTableColumnConfig {
+export interface ConfigTablePaneConfig {
   /** 工具栏按钮文本。 */
   buttonText?: string
   /** 弹窗标题。 */
@@ -76,6 +76,9 @@ export interface ConfigTableColumnConfig {
   /** 输入框步进值。 */
   columnWidthStep?: number
 }
+
+/** @deprecated Use ConfigTablePaneConfig instead. */
+export type ConfigTableColumnConfig = ConfigTablePaneConfig
 
 export interface ConfigTableColumnSettingChange {
   columnOrder: HeadlessTableColumnOrderState

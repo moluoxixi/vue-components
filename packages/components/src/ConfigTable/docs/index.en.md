@@ -4,7 +4,7 @@ A high-performance, configuration-driven virtual table built on Element Plus `El
 
 ## Basic Usage
 
-:::demo Provide `columns` and static `data` to render a virtualized table.
+:::demo Provide `columns` and static `data` to render a virtualized table. `width` accepts either a pixel number or a CSS width such as `100%` and `calc(...)`.
 ```vue
 <script setup lang="ts">
 import { ConfigTable } from '@moluoxixi/components'
@@ -24,23 +24,19 @@ const data = shallowRef([
 ])
 </script>
 <template>
-  <ConfigTable :columns="columns" :data="data" :width="720" :height="240" />
+  <ConfigTable :columns="columns" :data="data" width="100%" :height="240" />
 </template>
 ```
 :::
 
-## Renderer and Column Settings
+## Renderer
 
-:::demo Register a named renderer once and reuse it across table instances. Enable `columnConfig` to let users reorder, resize, show, or hide columns.
+:::demo Register a named renderer once and reuse it across table instances.
 ```vue
 <script setup lang="ts">
 import { ConfigTable, defineHeadlessTableRenderer, headlessTableRenderer } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
-import { h, ref, shallowRef } from 'vue'
-
-const columnOrder = ref([])
-const columnVisibility = ref({})
-const columnWidths = ref({})
+import { h, shallowRef } from 'vue'
 
 headlessTableRenderer.replace('docs-config-status-en', defineHeadlessTableRenderer({
   renderDefault: (_, { rawValue }) => h(
@@ -70,20 +66,59 @@ const data = shallowRef([
 
 <template>
   <ConfigTable
-    v-model:column-order="columnOrder"
-    v-model:column-visibility="columnVisibility"
-    v-model:column-widths="columnWidths"
     :columns="columns"
     :data="data"
-    :width="720"
+    width="100%"
     :height="200"
-    column-config
   />
 </template>
 ```
 :::
 
 Default column content resolves in this order: an inline renderer or named slot, a named renderer, `formatter`, and finally the raw field value. Edit mode tries `slots.edit` first and falls back to that unchanged chain. `column.id` is the stable key used by column settings and cell modes; when omitted, `field` is used.
+
+## Column Configuration Pane
+
+Use `pane` to enable the built-in column configuration pane. Users can drag columns into a new order, toggle visibility, and edit widths. `pane.width` controls the pane width, while `pane.draggable` disables or enables drag sorting. Column settings are managed internally by default; pass `columnOrder`, `columnVisibility`, `columnWidths`, or their matching `v-model` bindings only when persistence or external control is needed. The previous `columnConfig` prop remains available as a compatibility alias.
+
+:::demo Manage column order, visibility, and widths with a configured pane.
+```vue
+<script setup lang="ts">
+import { ConfigTable } from '@moluoxixi/components'
+import { shallowRef } from 'vue'
+
+const pane = {
+  buttonText: 'Configure columns',
+  title: 'Column configuration',
+  width: 520,
+  draggable: true,
+  minColumnWidth: 80,
+  maxColumnWidth: 360,
+}
+const columns = [
+  { id: 'name', field: 'name', title: 'Name', width: 160 },
+  { id: 'department', field: 'department', title: 'Department', width: 150 },
+  { id: 'role', field: 'role', title: 'Role', width: 180 },
+  { id: 'status', field: 'status', title: 'Status', width: 110 },
+]
+const data = shallowRef([
+  { name: 'Avery', department: 'Engineering', role: 'Frontend Engineer', status: 'Active' },
+  { name: 'Blake', department: 'Product', role: 'Product Manager', status: 'Disabled' },
+  { name: 'Casey', department: 'Operations', role: 'Operations Specialist', status: 'Active' },
+])
+</script>
+
+<template>
+  <ConfigTable
+    :columns="columns"
+    :data="data"
+    :pane="pane"
+    width="100%"
+    :height="220"
+  />
+</template>
+```
+:::
 
 ## Remote Data and Pagination
 

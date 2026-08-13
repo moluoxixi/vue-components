@@ -3,10 +3,10 @@ import type { ComputedRef } from 'vue'
 import type { HeadlessTableColumn } from '#components/HeadlessTable'
 import type {
   ConfigTableColumn,
-  ConfigTableColumnConfig,
   ConfigTableColumnSettingChange,
   ConfigTableColumnWidthState,
   ConfigTableEmits,
+  ConfigTablePaneConfig,
   ConfigTableProps,
   ConfigTableRow,
   ConfigTableRowClass,
@@ -39,7 +39,9 @@ export function useConfigTableColumns(
   const columnVisibilityState = ref<Record<string, boolean>>({ ...(props.columnVisibility ?? {}) })
   const columnWidthsState = ref<ConfigTableColumnWidthState>({ ...(props.columnWidths ?? {}) })
 
-  const normalizedColumnConfig = computed<ConfigTableColumnConfig>(() => ({
+  const paneOption = computed(() => props.pane ?? props.columnConfig ?? false)
+
+  const normalizedPaneConfig = computed<ConfigTablePaneConfig>(() => ({
     buttonText: '列设置',
     draggable: true,
     title: '列设置',
@@ -47,10 +49,10 @@ export function useConfigTableColumns(
     minColumnWidth: props.minColumnWidth,
     maxColumnWidth: props.maxColumnWidth,
     columnWidthStep: props.columnWidthStep ?? 10,
-    ...(typeof props.columnConfig === 'object' ? props.columnConfig : {}),
+    ...(typeof paneOption.value === 'object' ? paneOption.value : {}),
   }))
 
-  const columnConfigEnabled = computed(() => props.columnConfig !== false)
+  const paneEnabled = computed(() => paneOption.value !== false)
 
   watch(() => props.columnOrder, (value) => {
     columnOrderState.value = [...(value ?? [])]
@@ -100,8 +102,8 @@ export function useConfigTableColumns(
           columnWidthsState.value,
           {
             defaultColumnWidth: props.defaultColumnWidth ?? 160,
-            minColumnWidth: props.minColumnWidth,
-            maxColumnWidth: props.maxColumnWidth,
+            minColumnWidth: normalizedPaneConfig.value.minColumnWidth,
+            maxColumnWidth: normalizedPaneConfig.value.maxColumnWidth,
           },
         ),
         visibleColumnIndex,
@@ -186,7 +188,7 @@ export function useConfigTableColumns(
 
   return {
     applyColumnSettings,
-    columnConfigEnabled,
+    paneEnabled,
     columnOrderState,
     columnVisibilityState,
     columnWidthsState,
@@ -194,7 +196,7 @@ export function useConfigTableColumns(
     getConfigColumnIndex,
     getRawRow,
     getVisibleColumnIndex,
-    normalizedColumnConfig,
+    normalizedPaneConfig,
     orderedColumns,
     virtualColumns,
     virtualTableProps,

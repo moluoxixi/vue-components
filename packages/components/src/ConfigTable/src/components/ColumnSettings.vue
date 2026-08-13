@@ -2,9 +2,9 @@
 import type { HeadlessTableColumn } from '#components/HeadlessTable'
 import type {
   ConfigTableColumn,
-  ConfigTableColumnConfig,
   ConfigTableColumnSettingChange,
   ConfigTableColumnWidthState,
+  ConfigTablePaneConfig,
   ConfigTableRow,
 } from '../types'
 import { ChevronDown, ChevronUp, GripVertical, Settings } from '@lucide/vue'
@@ -33,7 +33,7 @@ const props = defineProps<{
   columnVisibility: Record<string, boolean>
   columnWidths: ConfigTableColumnWidthState
   defaultColumnWidth: number
-  config: ConfigTableColumnConfig
+  pane: ConfigTablePaneConfig
 }>()
 
 const emit = defineEmits<{
@@ -46,6 +46,7 @@ const listRef = useTemplateRef<HTMLElement>('listRef')
 const visibleCount = computed(() => draftItems.value.filter(item => item.visible).length)
 const canApply = computed(() => draftItems.value.length === 0 || visibleCount.value > 0)
 let sortable: Sortable | null = null
+let sortableSetupVersion = 0
 
 function createDraft(): ColumnSettingItem[] {
   const projection = projectHeadlessTableColumns(
@@ -65,8 +66,8 @@ function createDraft(): ColumnSettingItem[] {
       props.columnWidths,
       {
         defaultColumnWidth: props.defaultColumnWidth,
-        minColumnWidth: props.config.minColumnWidth,
-        maxColumnWidth: props.config.maxColumnWidth,
+        minColumnWidth: props.pane.minColumnWidth,
+        maxColumnWidth: props.pane.maxColumnWidth,
       },
     ),
   }))
@@ -93,8 +94,8 @@ function createDraftFromSource(): ColumnSettingItem[] {
       {},
       {
         defaultColumnWidth: props.defaultColumnWidth,
-        minColumnWidth: props.config.minColumnWidth,
-        maxColumnWidth: props.config.maxColumnWidth,
+        minColumnWidth: props.pane.minColumnWidth,
+        maxColumnWidth: props.pane.maxColumnWidth,
       },
     ),
   }))
@@ -106,8 +107,13 @@ function openSettings(): void {
 }
 
 function destroySortable(): void {
+  sortableSetupVersion += 1
   sortable?.destroy()
   sortable = null
+}
+
+function isSortableEnabled(): boolean {
+  return props.pane.draggable !== false
 }
 
 function moveItem(from: number, to: number): void {
@@ -124,11 +130,17 @@ function moveItem(from: number, to: number): void {
 
 async function setupSortable(): Promise<void> {
   destroySortable()
-  if (props.config.draggable === false)
+  if (!isSortableEnabled())
     return
 
+  const setupVersion = sortableSetupVersion
   await nextTick()
-  if (!dialogVisible.value || !listRef.value)
+  if (
+    setupVersion !== sortableSetupVersion
+    || !isSortableEnabled()
+    || !dialogVisible.value
+    || !listRef.value
+  )
     return
 
   sortable = Sortable.create(listRef.value, {
@@ -170,7 +182,7 @@ watch(dialogVisible, (visible) => {
     destroySortable()
 })
 
-watch(() => props.config.draggable, () => {
+watch(() => props.pane.draggable, () => {
   if (dialogVisible.value)
     void setupSortable()
 })
@@ -182,14 +194,14 @@ onBeforeUnmount(destroySortable)
   <div class="mx-config-table-column-settings">
     <ElButton class="mx-config-table-column-settings__trigger" @click="openSettings">
       <Settings :size="16" aria-hidden="true" />
-      <span>{{ props.config.buttonText }}</span>
+      <span>{{ props.pane.buttonText }}</span>
     </ElButton>
 
     <ElDialog
       v-model="dialogVisible"
       class="mx-config-table-column-settings__dialog"
-      :title="props.config.title"
-      :width="props.config.width"
+      :title="props.pane.title"
+      :width="props.pane.width"
       append-to-body
       destroy-on-close
     >
@@ -198,10 +210,11 @@ onBeforeUnmount(destroySortable)
           v-for="(item, index) in draftItems"
           :key="item.id"
           class="mx-config-table-column-settings__item"
+          :class="{ 'mx-config-table-column-settings__item--static': props.pane.draggable === false }"
           :data-column-id="item.id"
         >
           <button
-            v-if="props.config.draggable !== false"
+            v-if="props.pane.draggable !== false"
             class="mx-config-table-column-settings__drag"
             type="button"
             title="拖拽调整顺序"
@@ -221,9 +234,9 @@ onBeforeUnmount(destroySortable)
             v-model="item.width"
             class="mx-config-table-column-settings__width"
             :aria-label="`${item.label} 宽度`"
-            :min="props.config.minColumnWidth"
-            :max="props.config.maxColumnWidth"
-            :step="props.config.columnWidthStep ?? 10"
+            :min="props.pane.minColumnWidth"
+            :max="props.pane.maxColumnWidth"
+            :step="props.pane.columnWidthStep ?? 10"
             controls-position="right"
           />
           <div class="mx-config-table-column-settings__moves">
@@ -306,6 +319,10 @@ onBeforeUnmount(destroySortable)
   border-color: var(--el-color-primary-light-5);
 }
 
+.mx-config-table-column-settings__item--static {
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 132px) auto;
+}
+
 .mx-config-table-column-settings__drag {
   display: inline-grid;
   width: 28px;
@@ -364,9 +381,17 @@ onBeforeUnmount(destroySortable)
     grid-template-columns: 32px minmax(0, 1fr) auto;
   }
 
+  .mx-config-table-column-settings__item--static {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .mx-config-table-column-settings__width {
     grid-column: 2 / 4;
     width: 100%;
+  }
+
+  .mx-config-table-column-settings__item--static .mx-config-table-column-settings__width {
+    grid-column: 1 / 3;
   }
 }
 </style>
