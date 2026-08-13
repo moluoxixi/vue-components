@@ -5,9 +5,12 @@ import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { basename, dirname, extname, join, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { parse } from 'yaml'
 import {
+  createBrowserBuildArgs,
   createBrowserSmokeSource,
   createNodeSmokeSource,
+  createPackedConsumerManifest,
   createTypeSmokeSource,
   getBrowserConsumerSpecifiers,
   getPublicSpecifier,
@@ -16,11 +19,15 @@ import {
 
 const workspaceRoot = resolve(import.meta.dirname, '..')
 const rootManifest = JSON.parse(await readFile(resolve(workspaceRoot, 'package.json'), 'utf8'))
+const browserMode = process.argv.includes('--browser')
+const workspaceManifest = parse(await readFile(resolve(workspaceRoot, 'pnpm-workspace.yaml'), 'utf8'))
+const browserBundlerVersion = browserMode ? workspaceManifest.catalogs?.dev?.vite : undefined
+if (browserMode && typeof browserBundlerVersion !== 'string')
+  throw new Error('pnpm-workspace.yaml must define catalogs.dev.vite for the packed browser consumer.')
 const bundledPnpmCli = resolve(dirname(process.execPath), 'node_modules/pnpm/bin/pnpm.mjs')
 const pnpmCli = process.env.npm_execpath || (existsSync(bundledPnpmCli) ? bundledPnpmCli : undefined)
 const pnpmCommand = pnpmCli ? process.execPath : 'pnpm'
 const pnpmPrefix = pnpmCli ? [pnpmCli] : []
-const browserMode = process.argv.includes('--browser')
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -101,7 +108,7 @@ async function verifyBrowserConsumer(consumerDirectory, publishable) {
     resolve(browserSourceDirectory, 'main.mjs'),
     createBrowserSmokeSource(specifiers.javaScript, specifiers.stylesheets),
   )
-  runPnpm(['exec', 'vite', 'build', browserDirectory])
+  runPnpm(createBrowserBuildArgs(consumerDirectory, browserDirectory))
 
   const { chromium } = await import('@playwright/test')
   const staticServer = await serveDirectory(resolve(browserDirectory, 'dist'))
@@ -199,12 +206,11 @@ try {
     name,
     `file:${tarball.replaceAll('\\', '/')}`,
   ]))
-  await writeFile(resolve(consumerDirectory, 'package.json'), JSON.stringify({
-    dependencies: packedDependencies,
+  await writeFile(resolve(consumerDirectory, 'package.json'), JSON.stringify(createPackedConsumerManifest({
+    browserBundlerVersion,
     packageManager: rootManifest.packageManager,
-    private: true,
-    type: 'module',
-  }))
+    packedDependencies,
+  })))
   await writeFile(resolve(consumerDirectory, 'pnpm-workspace.yaml'), JSON.stringify({
     overrides: packedDependencies,
   }))

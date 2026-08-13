@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   browserJavaScriptEntrypointAllowlist,
   browserJavaScriptEntrypointExclusions,
+  createBrowserBuildArgs,
   createBrowserSmokeSource,
   createNodeSmokeSource,
+  createPackedConsumerManifest,
   createTypeSmokeSource,
   getBrowserConsumerSpecifiers,
   getPublicSpecifier,
@@ -130,5 +132,27 @@ describe('published package verifier helpers', () => {
     expect(browserSource).toContain('copyTextStyles')
     expect(browserSource).toContain('richTextStyles')
     expect(browserSource).toContain('replStyles')
+  })
+
+  it('declares the browser bundler in the isolated packed consumer', () => {
+    expect(createPackedConsumerManifest({
+      browserBundlerVersion: '^6.2.0',
+      packageManager: 'pnpm@10.29.3',
+      packedDependencies: { '@scope/example': 'file:/tmp/example.tgz' },
+    })).toEqual({
+      dependencies: { '@scope/example': 'file:/tmp/example.tgz' },
+      devDependencies: { vite: '^6.2.0' },
+      packageManager: 'pnpm@10.29.3',
+      private: true,
+      type: 'module',
+    })
+    expect(createBrowserBuildArgs('/tmp/consumer', '/tmp/consumer/browser')).toEqual([
+      '--dir',
+      '/tmp/consumer',
+      'exec',
+      'vite',
+      'build',
+      '/tmp/consumer/browser',
+    ])
   })
 })

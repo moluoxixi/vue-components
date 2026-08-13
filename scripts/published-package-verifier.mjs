@@ -146,6 +146,26 @@ export function createTypeSmokeSource(consumerEntries) {
   return consumerEntries.map(specifier => `import ${JSON.stringify(specifier)};`).join('\n')
 }
 
+export function createPackedConsumerManifest({
+  browserBundlerVersion,
+  packageManager,
+  packedDependencies,
+}) {
+  return {
+    dependencies: packedDependencies,
+    ...(browserBundlerVersion
+      ? { devDependencies: { vite: browserBundlerVersion } }
+      : {}),
+    packageManager,
+    private: true,
+    type: 'module',
+  }
+}
+
+export function createBrowserBuildArgs(consumerDirectory, browserDirectory) {
+  return ['--dir', consumerDirectory, 'exec', 'vite', 'build', browserDirectory]
+}
+
 export function createBrowserSmokeSource(javaScriptEntries, stylesheetEntries) {
   const moduleImports = javaScriptEntries.map((specifier, index) => (
     `import * as browserEntry${index} from ${JSON.stringify(specifier)};`
