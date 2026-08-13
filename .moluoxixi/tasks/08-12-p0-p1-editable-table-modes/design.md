@@ -37,6 +37,8 @@ cell override -> row override -> global API override -> mode prop -> default
 
 `clearMode()` reveals the prop value, or `default` when no prop exists. Row and cell APIs accept stable ids, never row indexes. Components resolve row ids from `getRowId`; ConfigTable can also resolve an explicitly configured string `rowKey`. Row/cell APIs fail with a clear diagnostic when no stable identity can be resolved.
 
+Bulk cleanup is explicit: `clearAllRowModes()` removes row overrides, `clearAllCellModes()` removes cell overrides, and `clearAllModes()` removes global, row, and cell overrides. Each real API mutation produces one additive `modeChange` notification. Single-scope notifications report the previous and next effective mode; bulk notifications report the cleared override count. The event is observational and never emits `update:mode` because the prop remains the table-wide base value beneath ephemeral API overrides.
+
 ### Edit slot selection
 
 Column contracts gain an optional inline `edit` slot and an optional named `slots.edit` reference. When effective cell mode is `edit`, selection order is:
@@ -70,6 +72,7 @@ Create `@moluoxixi/rich-text-editor` as an independent Vite library. Move the im
 - Keep root-only docs and ConfigForm verification steps explicit where they are not represented by package scripts.
 - Split browser suites into a CI job using Chromium, running on main and eligible pull requests with failure artifacts.
 - Add a Node-based publishable-package verifier that discovers non-private versioned workspace packages, packs them, runs `publint` and `@arethetypeswrong/cli`, and performs root ESM/type consumer smoke checks.
+- Split manifest entry discovery and smoke-source generation into importable pure helpers with fast unit tests. Add an explicit browser-capable allowlist for a Vite consumer build so Node-only entries are not misclassified, and load the built consumer in Chromium to verify runtime evaluation and CSS application.
 - Add semantic workflow validation via a pinned actionlint distribution while retaining the existing workflow topology tests.
 
 ## Compatibility

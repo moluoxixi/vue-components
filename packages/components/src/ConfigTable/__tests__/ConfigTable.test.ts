@@ -420,6 +420,60 @@ describe('config table', () => {
     ;(wrapper.vm as any).clearMode()
     await nextTick()
     expect(wrapper.find('[data-testid="config-edit-cell"]').exists()).toBe(false)
+    expect(wrapper.emitted('modeChange')?.map(args => args[0])).toEqual([
+      { scope: 'table', action: 'set', mode: 'edit', previousMode: 'default' },
+      { scope: 'table', action: 'clear', mode: 'default', previousMode: 'edit' },
+    ])
+    expect(wrapper.emitted('update:mode')).toBeUndefined()
+  })
+
+  it('通过组件 API 独立批量清理 row、cell 和全部 mode override', () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name' }],
+        data: [
+          { code: 'C-001', name: '华南仓' },
+          { code: 'C-002', name: '华北仓' },
+        ],
+        rowKey: 'code',
+      },
+      global: { stubs: elementStubs },
+    })
+
+    ;(wrapper.vm as any).setMode('edit')
+    ;(wrapper.vm as any).setRowMode('C-001', 'default')
+    ;(wrapper.vm as any).setRowMode('C-002', 'default')
+    ;(wrapper.vm as any).setCellMode('C-001', 'name', 'edit')
+    const beforeRowClear = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllRowModes()
+
+    expect((wrapper.vm as any).getRowMode('C-001')).toBe('edit')
+    expect((wrapper.vm as any).getCellMode('C-001', 'name')).toBe('edit')
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeRowClear + 1)
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'row', action: 'clearAll', cleared: 2, mode: 'edit' },
+    ])
+
+    const beforeRowNoop = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllRowModes()
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeRowNoop)
+
+    ;(wrapper.vm as any).clearAllCellModes()
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'cell', action: 'clearAll', cleared: 1, mode: 'edit' },
+    ])
+
+    ;(wrapper.vm as any).setRowMode('C-001', 'default')
+    ;(wrapper.vm as any).setCellMode('C-001', 'name', 'edit')
+    const beforeAllClear = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllModes()
+
+    expect((wrapper.vm as any).getCellMode('C-001', 'name')).toBe('default')
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeAllClear + 1)
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'all', action: 'clearAll', cleared: 3, mode: 'default' },
+    ])
+    expect(wrapper.emitted('update:mode')).toBeUndefined()
   })
 
   it('全局 API override 覆盖 mode prop，clearMode 后恢复 prop 模式', async () => {

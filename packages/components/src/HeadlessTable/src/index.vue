@@ -9,6 +9,7 @@ import type {
   HeadlessTableHeaderRender,
   HeadlessTableHeaderComponent,
   HeadlessTableHeaderScope,
+  HeadlessTableEmits,
   HeadlessTableProps,
   HeadlessTableRow,
   HeadlessTableRowKey,
@@ -40,10 +41,14 @@ const props = withDefaults(defineProps<HeadlessTableProps<TRow>>(), {
 })
 
 const slots = defineSlots<HeadlessTableSlots<TRow>>()
+const emit = defineEmits<HeadlessTableEmits>()
 const slotsVersion = shallowRef(0)
 const warnedDiagnostics = new Set<string>()
 const injectedRendererRegistry = inject(headlessTableRendererKey, null)
-const modeApi = useHeadlessTableMode({ mode: () => props.mode })
+const modeApi = useHeadlessTableMode({
+  mode: () => props.mode,
+  onModeChange: change => emit('modeChange', change),
+})
 
 function captureSlots(): Record<string, unknown> {
   return Object.fromEntries(Object.keys(slots).map(name => [name, slots[name]]))
@@ -329,6 +334,9 @@ const tableScope = computed<HeadlessTableDefaultScope<TRow>>(() => ({
   getRawCellValue,
   Header: TypedHeader,
   mode: modeApi.mode.value,
+  clearAllCellModes: modeApi.clearAllCellModes,
+  clearAllModes: modeApi.clearAllModes,
+  clearAllRowModes: modeApi.clearAllRowModes,
   clearCellMode: modeApi.clearCellMode,
   clearMode: modeApi.clearMode,
   clearRowMode: modeApi.clearRowMode,

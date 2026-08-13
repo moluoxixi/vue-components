@@ -75,9 +75,15 @@ tableRef.value?.setCellMode('W-001', 'name', 'edit')
 tableRef.value?.clearCellMode('W-001', 'name')
 tableRef.value?.clearRowMode('W-001')
 tableRef.value?.clearMode()
+
+tableRef.value?.clearAllCellModes()
+tableRef.value?.clearAllRowModes()
+tableRef.value?.clearAllModes()
 ```
 
-Row and cell APIs require a stable ID from `getRowId`. A column uses `column.id` as its stable ID and falls back to `field`. The default slot scope also exposes `setMode`, `setRowMode`, `setCellMode`, their matching `clear*` methods, `getRowMode`, and `getCellMode`.
+Row and cell APIs require a stable ID from `getRowId`. A column uses `column.id` as its stable ID and falls back to `field`. The default slot scope also exposes `setMode`, `setRowMode`, `setCellMode`, single and bulk `clear*` methods, `getRowMode`, and `getCellMode`. `clearAllCellModes` removes cell overrides only, `clearAllRowModes` removes row overrides only, and `clearAllModes` removes table API, row, and cell overrides together.
+
+Every effective API mutation emits `modeChange`. Single-scope changes include the scope, action, and previous/next effective modes; bulk clears include the scope, `clearAll` action, and cleared override count. Repeating the same override or clearing a missing override does not emit. This event is observational and never emits `update:mode`.
 
 `columns[].slots.edit` accepts either an inline render function or a named slot. A cell in `edit` mode tries its edit slot first. If none is available, rendering continues through the existing default slot, renderer, `formatter`, and raw-value chain. Both edit and default slot scopes include `mode`, `rowId`, row and column context, and scoped row/cell mode actions.
 

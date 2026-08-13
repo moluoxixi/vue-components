@@ -1,9 +1,18 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, extname, join, resolve, sep } from 'node:path'
 import process from 'node:process'
+import {
+  createBrowserSmokeSource,
+  createNodeSmokeSource,
+  createTypeSmokeSource,
+  getBrowserConsumerSpecifiers,
+  getPublicSpecifier,
+  getTypedJavaScriptEntrypoints,
+} from './published-package-verifier.mjs'
 
 const workspaceRoot = resolve(import.meta.dirname, '..')
 const rootManifest = JSON.parse(await readFile(resolve(workspaceRoot, 'package.json'), 'utf8'))
@@ -11,6 +20,7 @@ const bundledPnpmCli = resolve(dirname(process.execPath), 'node_modules/pnpm/bin
 const pnpmCli = process.env.npm_execpath || (existsSync(bundledPnpmCli) ? bundledPnpmCli : undefined)
 const pnpmCommand = pnpmCli ? process.execPath : 'pnpm'
 const pnpmPrefix = pnpmCli ? [pnpmCli] : []
+const browserMode = process.argv.includes('--browser')
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -31,23 +41,109 @@ function runPnpm(args, options) {
   return run(pnpmCommand, [...pnpmPrefix, ...args], options)
 }
 
-function importName(name) {
-  return name.replace(/[^\w$]/g, '_')
+async function serveDirectory(directory) {
+  const resolvedDirectory = resolve(directory)
+  const mimeTypes = {
+    '.css': 'text/css; charset=utf-8',
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.map': 'application/json; charset=utf-8',
+  }
+  const server = createServer(async (request, response) => {
+    try {
+      const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname)
+      const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1)
+      const filePath = resolve(resolvedDirectory, relativePath)
+      if (filePath !== resolvedDirectory && !filePath.startsWith(`${resolvedDirectory}${sep}`)) {
+        response.writeHead(403).end('Forbidden')
+        return
+      }
+      const contents = await readFile(filePath)
+      response.writeHead(200, { 'Content-Type': mimeTypes[extname(filePath)] ?? 'application/octet-stream' })
+      response.end(contents)
+    }
+    catch {
+      response.writeHead(404).end('Not found')
+    }
+  })
+
+  await new Promise((resolveListen, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolveListen)
+  })
+  const address = server.address()
+  if (!address || typeof address === 'string') {
+    server.close()
+    throw new Error('Unable to determine packed browser consumer server address.')
+  }
+
+  return {
+    close: () => new Promise((resolveClose, reject) => {
+      server.close(error => error ? reject(error) : resolveClose())
+    }),
+    url: `http://127.0.0.1:${address.port}`,
+  }
 }
 
-function getTypedJavaScriptEntrypoints(manifest) {
-  return Object.entries(manifest.exports ?? {})
-    .filter(([, conditions]) => (
-      conditions
-      && typeof conditions === 'object'
-      && typeof conditions.types === 'string'
-      && typeof conditions.import === 'string'
-    ))
-    .map(([subpath]) => subpath)
-}
+async function verifyBrowserConsumer(consumerDirectory, publishable) {
+  const browserDirectory = resolve(consumerDirectory, 'browser')
+  const browserSourceDirectory = resolve(browserDirectory, 'src')
+  const specifiers = getBrowserConsumerSpecifiers(publishable.map(({ manifest }) => manifest))
+  await mkdir(browserSourceDirectory, { recursive: true })
+  await writeFile(resolve(browserDirectory, 'index.html'), [
+    '<!doctype html>',
+    '<html>',
+    '<head><meta charset="UTF-8"><title>Packed browser consumer</title></head>',
+    '<body><script type="module" src="/src/main.mjs"></script></body>',
+    '</html>',
+  ].join('\n'))
+  await writeFile(
+    resolve(browserSourceDirectory, 'main.mjs'),
+    createBrowserSmokeSource(specifiers.javaScript, specifiers.stylesheets),
+  )
+  runPnpm(['exec', 'vite', 'build', browserDirectory])
 
-function getPublicSpecifier(packageName, subpath) {
-  return subpath === '.' ? packageName : `${packageName}/${subpath.slice(2)}`
+  const { chromium } = await import('@playwright/test')
+  const staticServer = await serveDirectory(resolve(browserDirectory, 'dist'))
+  let browser
+  try {
+    browser = await chromium.launch()
+    const page = await browser.newPage()
+    const pageErrors = []
+    page.on('pageerror', error => pageErrors.push(error.message))
+    try {
+      await page.goto(staticServer.url)
+      try {
+        await page.waitForFunction(
+          () => window.__PACKED_BROWSER_SMOKE__ !== undefined,
+          undefined,
+          { timeout: 15_000 },
+        )
+      }
+      catch (error) {
+        if (pageErrors.length > 0)
+          throw new Error(`Browser errors: ${pageErrors.join('; ')}`, { cause: error })
+        throw error
+      }
+      const result = await page.evaluate(() => window.__PACKED_BROWSER_SMOKE__)
+      const failedAssertions = Object.entries(result).filter(([, passed]) => passed !== true).map(([name]) => name)
+      if (pageErrors.length > 0 || failedAssertions.length > 0) {
+        throw new Error([
+          pageErrors.length > 0 ? `Browser errors: ${pageErrors.join('; ')}` : undefined,
+          failedAssertions.length > 0 ? `Failed assertions: ${failedAssertions.join(', ')}` : undefined,
+        ].filter(Boolean).join('\n'))
+      }
+    }
+    finally {
+      await page.close()
+    }
+  }
+  finally {
+    await browser?.close()
+    await staticServer.close()
+  }
+
+  console.log(`Verified ${specifiers.javaScript.length} browser JavaScript entries and ${specifiers.stylesheets.length} stylesheet entries from packed packages.`)
 }
 
 const workspace = JSON.parse(runPnpm(['list', '-r', '--depth', '-1', '--json'], { capture: true }))
@@ -128,22 +224,8 @@ try {
       .map(subpath => getPublicSpecifier(manifest.name, subpath))
   ))
   const runtimeEntries = publishable.map(({ manifest }) => manifest.name)
-  const runtimeImports = runtimeEntries.map((specifier, index) => (
-    `import * as ${importName(`${specifier}_${index}`)} from ${JSON.stringify(specifier)};`
-  ))
-  const runtimeAssertions = runtimeEntries.map((specifier, index) => (
-    `if (!${importName(`${specifier}_${index}`)}) throw new Error(${JSON.stringify(`Unable to import ${specifier}`)});`
-  ))
-  const resolutionAssertions = consumerEntries.map(specifier => (
-    `if (!import.meta.resolve(${JSON.stringify(specifier)})) throw new Error(${JSON.stringify(`Unable to resolve ${specifier}`)});`
-  ))
-  const typeImports = consumerEntries.map(specifier => `import ${JSON.stringify(specifier)};`)
-  await writeFile(resolve(consumerDirectory, 'smoke.mjs'), [
-    ...runtimeImports,
-    ...runtimeAssertions,
-    ...resolutionAssertions,
-  ].join('\n'))
-  await writeFile(resolve(consumerDirectory, 'smoke.mts'), typeImports.join('\n'))
+  await writeFile(resolve(consumerDirectory, 'smoke.mjs'), createNodeSmokeSource(runtimeEntries, consumerEntries))
+  await writeFile(resolve(consumerDirectory, 'smoke.mts'), createTypeSmokeSource(consumerEntries))
   await writeFile(resolve(consumerDirectory, 'tsconfig.json'), JSON.stringify({
     compilerOptions: {
       module: 'NodeNext',
@@ -155,9 +237,14 @@ try {
     files: ['smoke.mts'],
   }))
 
-  run(process.execPath, [resolve(consumerDirectory, 'smoke.mjs')])
-  runPnpm(['--dir', consumerDirectory, 'exec', 'tsc', '-p', resolve(consumerDirectory, 'tsconfig.json')])
-  console.log(`Verified ${publishable.length} packed packages and ${consumerEntries.length} public JavaScript entries.`)
+  if (browserMode) {
+    await verifyBrowserConsumer(consumerDirectory, publishable)
+  }
+  else {
+    run(process.execPath, [resolve(consumerDirectory, 'smoke.mjs')])
+    runPnpm(['--dir', consumerDirectory, 'exec', 'tsc', '-p', resolve(consumerDirectory, 'tsconfig.json')])
+    console.log(`Verified ${publishable.length} packed packages and ${consumerEntries.length} public JavaScript entries.`)
+  }
 }
 finally {
   await rm(temporaryRoot, { force: true, maxRetries: 3, recursive: true, retryDelay: 100 })

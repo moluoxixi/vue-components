@@ -90,6 +90,9 @@ jobs:
       - name: Build workspace packages
         run: pnpm build
 
+      - name: Test packed packages in Chromium
+        run: pnpm test:pack:browser
+
       - name: Test ConfigForm playground
         run: pnpm -C packages/ConfigForm/playground test:e2e
 

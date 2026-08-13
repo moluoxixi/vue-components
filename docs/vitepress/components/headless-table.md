@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="HeadlessTable" slug="headless-table" :has-source-doc="true" />
 
-<!--@include: ../../../packages/components/src/HeadlessTable/docs/index.md{4,214}-->
+<!--@include: ../../../packages/components/src/HeadlessTable/docs/index.md{4,220}-->
 
 ## API
 

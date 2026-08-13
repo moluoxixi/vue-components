@@ -14,6 +14,10 @@
 12. Add Chromium browser CI with path/main policy and failure artifacts; update workflow topology tests.
 13. Run focused tests after each slice, then full affected lint, typecheck, unit tests, build, package validation, and browser tests.
 14. Run the project `check` workflow, repair findings, audit spec proposals, and prepare a user-reviewed commit plan.
+15. Add direct request-table bridge tests and stabilize the EnterNextContainer E2E test using ARIA state synchronization.
+16. Add bulk table mode cleanup APIs plus typed mode-change events to HeadlessTable and ConfigTable; update tests and bilingual docs.
+17. Refactor packed-entry discovery into testable helpers, add release behavior tests, and add a Vite/Chromium packed browser consumer smoke.
+18. Submit editable-table component and quality contracts as pending spec proposals, rerun the full quality gate, and commit P2/P3 separately from the P0/P1 baseline.
 
 ## Validation Commands
 

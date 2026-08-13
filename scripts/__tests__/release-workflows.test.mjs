@@ -22,6 +22,7 @@ describe('release workflow topology', () => {
     expect(ciWorkflow).toMatch(/cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/)
     expect(ciWorkflow).toContain('name: Browser tests')
     expect(ciWorkflow).toContain('playwright install --with-deps chromium')
+    expect(ciWorkflow).toContain('pnpm test:pack:browser')
     expect(ciWorkflow).toContain('pnpm -C packages/ConfigForm/playground test:e2e')
     expect(ciWorkflow).toContain('pnpm -C playgrounds/components-playground test:e2e')
     expect(ciWorkflow).toContain('if: failure()')

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260813012723-quality-guidelines-6dfe5e",
+  "createdAt": "2026-08-13T01:27:23.849Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-12-p0-p1-editable-table-modes",
+  "reason": "Retain the editable-table regression matrix and packed Vite/Chromium consumer verification contract.",
+  "target": "frontend/quality-guidelines.md",
+  "kind": "file",
+  "baseHash": "ac5a4da858d93492cbb4c721b164850b625f38696905e463e8feb5968eae78bc",
+  "contentFile": "content/20260813012723-quality-guidelines-6dfe5e.md",
+  "contentHash": "ed871c254055166de8d639907b65e83fde9a72441637dad433370556217007af"
+}

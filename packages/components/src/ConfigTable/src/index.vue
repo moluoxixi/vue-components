@@ -45,7 +45,10 @@ const emit = defineEmits<ConfigTableEmits>()
 const slots = defineSlots<ConfigTableSlots>()
 const currentPage = defineModel<number>('currentPage', { default: 1 })
 const pageSize = defineModel<number>('pageSize', { default: 10 })
-const modeApi = useHeadlessTableMode({ mode: () => props.mode })
+const modeApi = useHeadlessTableMode({
+  mode: () => props.mode,
+  onModeChange: change => emit('modeChange', change),
+})
 
 function getRowId(row: ConfigTableRow, rowIndex: number): HeadlessTableRowKey | undefined {
   if (props.getRowId)

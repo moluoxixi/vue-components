@@ -55,6 +55,11 @@ The outcome should reduce duplicated request and adapter logic, strengthen build
 - R18. Add browser test coverage to CI with an intentional PR/main/nightly policy and diagnostic artifacts for failures.
 - R19. Add publishable-package validation using packed artifacts, export/declaration checks, and a consumer import/type smoke test.
 - R20. Add semantic GitHub Actions validation while retaining repository-specific release workflow tests.
+- R21. Add direct contract tests for the shared request-table bridge instead of relying only on its two component consumers.
+- R22. Add bulk mode cleanup APIs and additive mode-change notifications without turning the `mode` prop into a v-model contract.
+- R23. Stabilize the existing EnterNextContainer browser test against Element Plus overlay transitions using observable ARIA state.
+- R24. Add fast behavior tests for publish-package entry discovery and a Vite browser-consumer smoke for browser-capable public subpaths and stylesheet entries.
+- R25. Capture the reusable editable-table component and regression contracts as reviewable frontend spec proposals.
 
 ## Constraints
 
@@ -79,6 +84,10 @@ The outcome should reduce duplicated request and adapter logic, strengthen build
 - [ ] AC10. CI task caching is deterministic, browser suites are scheduled as designed, and release jobs bypass stale build caches.
 - [ ] AC11. Packed publishable packages pass manifest/export/type/consumer smoke checks; GitHub Actions pass semantic validation.
 - [ ] AC12. Affected package unit tests, typechecks, lint, build, browser tests, and release workflow tests pass.
+- [ ] AC13. `clearAllRowModes`, `clearAllCellModes`, and `clearAllModes` remove only their documented override scopes and emit one typed `modeChange` notification per effective API mutation.
+- [ ] AC14. The request-table bridge has direct query/static/error/pagination tests, and the EnterNextContainer browser test waits on its ARIA contract rather than overlay timing.
+- [ ] AC15. Publish-package entry discovery has fast unit coverage, while a Vite consumer build and Chromium smoke exercise explicitly browser-capable packed subpaths and styles.
+- [ ] AC16. Editable-table API and quality contracts are submitted as pending proposals without directly changing approved specs.
 
 ## Out of Scope
 

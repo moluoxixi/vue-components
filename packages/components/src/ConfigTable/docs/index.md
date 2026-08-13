@@ -149,7 +149,7 @@ async function queryUsers({ currentPage, pageSize }) {
 
 ## 编辑模式
 
-`mode` prop 只控制整个表格，默认值为 `default`。组件实例 API 支持 `setMode`、`setRowMode`、`setCellMode`，以及对应的 `clearMode`、`clearRowMode`、`clearCellMode`；`getRowMode` 和 `getCellMode` 可读取有效模式。模式优先级为：单元格、行、整表 API、`mode` prop、`default`。
+`mode` prop 只控制整个表格，默认值为 `default`。组件实例 API 支持 `setMode`、`setRowMode`、`setCellMode`，以及对应的单项清理；`clearAllCellModes`、`clearAllRowModes`、`clearAllModes` 分别清理单元格、行、全部 override。`getRowMode` 和 `getCellMode` 可读取有效模式。模式优先级为：单元格、行、整表 API、`mode` prop、`default`。
 
 行和单元格 API 必须使用稳定行标识，可传入 `getRowId`，或配置显式 `rowKey`。`columns[].slots.edit` 支持内联渲染函数和具名插槽名称。插槽作用域包含 `mode`、`rowId`、行列上下文和当前行/单元格的模式操作。
 
@@ -183,9 +183,10 @@ const columns = [
 tableRef.value?.setMode('edit')
 tableRef.value?.setRowMode('U-001', 'edit')
 tableRef.value?.setCellMode('U-002', 'name', 'edit')
+tableRef.value?.clearAllModes()
 ```
 
-组件不提供内置编辑触发器，也不处理保存/取消、校验或行数据更新，这些行为由使用方实现。缺少 edit 插槽时，单元格保持原有渲染结果。
+有效的模式 API 变更会触发 `modeChange`；单项事件包含变更前后有效模式，批量事件包含清理数量。事件只用于状态观察，不会写回 `mode` prop。组件不提供内置编辑触发器，也不处理保存/取消、校验或行数据更新，这些行为由使用方实现。缺少 edit 插槽时，单元格保持原有渲染结果。
 
 ## 自定义单元格插槽
 

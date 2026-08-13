@@ -73,9 +73,15 @@ tableRef.value?.setCellMode('W-001', 'name', 'edit')
 tableRef.value?.clearCellMode('W-001', 'name')
 tableRef.value?.clearRowMode('W-001')
 tableRef.value?.clearMode()
+
+tableRef.value?.clearAllCellModes()
+tableRef.value?.clearAllRowModes()
+tableRef.value?.clearAllModes()
 ```
 
-行和单元格 API 需要 `getRowId` 提供稳定行标识，列标识使用 `column.id`，未提供时回退到 `field`。`setMode`、`setRowMode`、`setCellMode` 及对应的 `clear*`、`getRowMode`、`getCellMode` 方法也会暴露在默认插槽作用域中。
+行和单元格 API 需要 `getRowId` 提供稳定行标识，列标识使用 `column.id`，未提供时回退到 `field`。`setMode`、`setRowMode`、`setCellMode`、单项/批量 `clear*`、`getRowMode`、`getCellMode` 方法也会暴露在默认插槽作用域中。`clearAllCellModes` 仅清除单元格 override，`clearAllRowModes` 仅清除行 override，`clearAllModes` 清除整表 API、行和单元格的全部 override。
+
+每次有效的 API 变更都会触发 `modeChange` 事件。单项变更包含操作范围、动作及变更前后的有效模式；批量清理包含范围、`clearAll` 动作和清理数量。重复设置同一 override 或清理不存在的 override 不触发事件。该事件仅用于观察状态，不会触发 `update:mode`。
 
 列的 `slots.edit` 可以是内联渲染函数或具名插槽名称。有效模式为 `edit` 时优先使用 edit 插槽；edit 插槽不存在时继续使用原有的 default 插槽、renderer、`formatter` 和原始值。edit/default 插槽作用域都包含 `mode`、`rowId`、行列上下文及当前行/单元格的模式操作。
 

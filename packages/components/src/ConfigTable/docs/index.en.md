@@ -122,7 +122,7 @@ async function queryUsers({ currentPage, pageSize }) {
 
 ## Editing Modes
 
-The `mode` prop controls the whole table only and defaults to `default`. The component instance API exposes `setMode`, `setRowMode`, `setCellMode`, the matching `clearMode`, `clearRowMode`, and `clearCellMode` methods, plus `getRowMode` and `getCellMode`. Effective precedence is: cell, row, table API, `mode` prop, then `default`.
+The `mode` prop controls the whole table only and defaults to `default`. The component instance API exposes `setMode`, `setRowMode`, `setCellMode`, their matching single-scope clear methods, plus `clearAllCellModes`, `clearAllRowModes`, and `clearAllModes` for cell, row, or all overrides. `getRowMode` and `getCellMode` read the effective mode. Effective precedence is: cell, row, table API, `mode` prop, then `default`.
 
 Row and cell APIs require a stable row ID from `getRowId` or an explicit `rowKey`. `columns[].slots.edit` accepts either an inline render function or a named slot. Its scope includes `mode`, `rowId`, row and column context, and scoped row/cell mode actions.
 
@@ -156,9 +156,10 @@ const columns = [
 tableRef.value?.setMode('edit')
 tableRef.value?.setRowMode('U-001', 'edit')
 tableRef.value?.setCellMode('U-002', 'name', 'edit')
+tableRef.value?.clearAllModes()
 ```
 
-The component does not provide edit triggers, save/cancel behavior, validation, or row-data updates. Consumers own those workflows. A missing edit slot leaves the existing cell rendering unchanged.
+Effective mode API mutations emit `modeChange`; single-scope events include previous/next effective modes and bulk events include the cleared count. The event is observational and does not write back to the `mode` prop. The component does not provide edit triggers, save/cancel behavior, validation, or row-data updates. Consumers own those workflows. A missing edit slot leaves the existing cell rendering unchanged.
 
 ## Custom Cell Slots
 

@@ -1,3 +1,4 @@
+export type * from './emits'
 export type * from './mode'
 export type * from './props'
 export type * from './renderer'
