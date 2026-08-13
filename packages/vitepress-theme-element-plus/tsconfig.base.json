@@ -3,6 +3,7 @@
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "baseUrl": ".",
+    "customConditions": ["source"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": { "~/*": ["src/upstream/vitepress/*"] },

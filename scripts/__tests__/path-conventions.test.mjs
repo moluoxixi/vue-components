@@ -182,4 +182,13 @@ describe('repository path conventions', () => {
 
     expect(uniqueDeepRelativeImports.sort()).toEqual([...componentsDeepImportExceptions].sort())
   })
+
+  it('aligns TypeScript with source-condition package resolution', () => {
+    const themeTsconfig = JSON.parse(readFileSync(
+      resolve(packagesRoot, 'vitepress-theme-element-plus/tsconfig.base.json'),
+      'utf8',
+    ))
+
+    expect(themeTsconfig.compilerOptions.customConditions).toEqual(['source'])
+  })
 })
