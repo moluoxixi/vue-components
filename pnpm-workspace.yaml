@@ -18,6 +18,7 @@ overrides:
   vitepress>vite: 5.4.14
 
 catalog:
+  '@arethetypeswrong/cli': 0.18.5
   '@huggingface/transformers': ^4.0.0
   '@mdit-vue/shared': ^3.0.2
   '@types/markdown-it': ^14.1.2
@@ -32,9 +33,12 @@ catalog:
   markdown-it-container: ^3.0.0
   normalize.css: ^8.0.1
   nprogress: ^0.2.0
+  publint: 0.3.23
   sortablejs: ^1.15.7
+  turbo: 2.10.9
   vitepress: ^1.6.3
   vue3-sfc-loader: 0.9.5
+  yaml: 2.9.0
 catalogs:
   build:
     '@intlify/unplugin-vue-i18n': ^11.0.7
@@ -131,7 +135,6 @@ catalogs:
     '@tiptap/core': ^3.29.2
     '@tiptap/extension-placeholder': ^3.29.2
     '@tiptap/extension-text-align': ^3.29.2
-    '@tiptap/pm': ^3.29.2
     '@tiptap/starter-kit': ^3.29.2
     '@tiptap/vue-3': ^3.29.2
     ant-design-vue: ^4.2.6

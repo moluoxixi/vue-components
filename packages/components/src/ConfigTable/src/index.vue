@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type {
+  ConfigTableRow,
   ConfigTableEmits,
   ConfigTableProps,
   ConfigTableSlots,
 } from './types'
+import type { HeadlessTableModeApi, HeadlessTableRowKey } from '../../HeadlessTable'
 import { ElPagination, ElTableV2 } from 'element-plus'
+import { useHeadlessTableMode } from '../../HeadlessTable'
 import { ConfigTableColumnSettings, ConfigTableRenderNode } from './components'
 import {
   useConfigTableColumns,
@@ -42,6 +45,18 @@ const emit = defineEmits<ConfigTableEmits>()
 const slots = defineSlots<ConfigTableSlots>()
 const currentPage = defineModel<number>('currentPage', { default: 1 })
 const pageSize = defineModel<number>('pageSize', { default: 10 })
+const modeApi = useHeadlessTableMode({
+  mode: () => props.mode,
+  onModeChange: change => emit('modeChange', change),
+})
+
+function getRowId(row: ConfigTableRow, rowIndex: number): HeadlessTableRowKey | undefined {
+  if (props.getRowId)
+    return props.getRowId(row, rowIndex)
+  if (props.rowKey && props.rowKey !== '__mx_config_table_row_key')
+    return row[props.rowKey] as HeadlessTableRowKey | undefined
+  return undefined
+}
 
 const {
   computedEmptyText,
@@ -87,7 +102,11 @@ const {
   getConfigColumn,
   getConfigColumnIndex,
   getVisibleColumnIndex,
+  getRowId,
+  modeApi,
 })
+
+defineExpose<HeadlessTableModeApi>({ ...modeApi })
 </script>
 
 <template>

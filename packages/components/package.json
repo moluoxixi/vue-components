@@ -11,6 +11,13 @@
     "**/*.scss",
     "**/*.css"
   ],
+  "imports": {
+    "#components/*": {
+      "source": "./src/*/index.ts",
+      "types": "./dist/src/*/index.d.ts",
+      "default": "./src/*/index.ts"
+    }
+  },
   "exports": {
     ".": {
       "source": "./index.ts",
@@ -100,13 +107,13 @@
       "import": "./dist/configForm.js"
     },
     "./element": {
-      "source": "./element.ts",
-      "types": "./dist/element.d.ts",
+      "source": "./src/entries/element.ts",
+      "types": "./dist/src/entries/element.d.ts",
       "import": "./dist/element.js"
     },
     "./antd": {
-      "source": "./antd.ts",
-      "types": "./dist/antd.d.ts",
+      "source": "./src/entries/antd.ts",
+      "types": "./dist/src/entries/antd.d.ts",
       "import": "./dist/antd.js"
     }
   },
@@ -114,16 +121,14 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "antd.ts",
     "auto-loaders.ts",
     "dist",
-    "element.ts",
     "index.ts",
     "src"
   ],
   "scripts": {
     "build": "vite build",
-    "postbuild": "node scripts/generate-playground-manifest.mjs && node scripts/finalize-declarations.mjs",
+    "postbuild": "node scripts/generate-playground-manifest.mjs && pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
     "dev": "vite build --watch",
     "test": "vitest run",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
@@ -140,12 +145,7 @@
     "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/hooks": "workspace:*",
-    "@tiptap/core": "catalog:ui",
-    "@tiptap/extension-placeholder": "catalog:ui",
-    "@tiptap/extension-text-align": "catalog:ui",
-    "@tiptap/pm": "catalog:ui",
-    "@tiptap/starter-kit": "catalog:ui",
-    "@tiptap/vue-3": "catalog:ui",
+    "@moluoxixi/rich-text-editor": "workspace:*",
     "dayjs": "catalog:build",
     "sortablejs": "catalog:"
   },

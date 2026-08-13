@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "lib": ["DOM", "dom.iterable", "ESNext"],
+    "baseUrl": ".",
+    "customConditions": ["source"],
+    "declaration": true
+  }
+}

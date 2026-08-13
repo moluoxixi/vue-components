@@ -219,7 +219,7 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
       options.onChange?.(projection.values)
     }
     commitMeta()
-    scheduleReactionValidation(projection.validate)
+    scheduleReactionValidation(projection.validate, undefined, projection)
   }
 
   function getValue<TField extends string>(
@@ -283,7 +283,8 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     field: TField,
     value: ConfigFormFieldValue<TValues, NoInfer<TField>>,
   ): void {
-    scheduleReactionValidation(commitFieldValue(field, value).validate)
+    const projection = commitFieldValue(field, value)
+    scheduleReactionValidation(projection.validate, undefined, projection)
   }
 
   function commitFieldValue(field: string, value: unknown): ConfigFormReactionProjection<TValues> {
@@ -309,19 +310,23 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     const projection = args[1] === true
       ? commitValues(args[0], Object.keys(args[0]))
       : commitValues({ ...options.model.read(), ...args[0] }, Object.keys(args[0]))
-    scheduleReactionValidation(projection.validate)
+    scheduleReactionValidation(projection.validate, undefined, projection)
   }
 
   function applyFieldChange(request: ConfigFormFieldChangeRequest<TValues>): void {
     const projection = commitFieldValue(request.field, request.value)
-    void validateField(request.field, 'change')
-    scheduleReactionValidation(projection.validate, request.field)
+    void validateField(request.field, 'change', projection)
+    scheduleReactionValidation(projection.validate, request.field, projection)
   }
 
-  function scheduleReactionValidation(fields: string[], excludedField?: string): void {
+  function scheduleReactionValidation(
+    fields: string[],
+    excludedField?: string,
+    projection?: ConfigFormReactionProjection<TValues>,
+  ): void {
     fields
       .filter(field => field !== excludedField)
-      .forEach(field => void validateField(field, 'change'))
+      .forEach(field => void validateField(field, 'change', projection))
   }
 
   function setTouched(): void
@@ -373,9 +378,10 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   async function validateField(
     fieldName: string,
     trigger: ConfigFormValidateTrigger = 'submit',
+    projection?: ConfigFormReactionProjection<TValues>,
   ): Promise<boolean> {
     const values = getValues()
-    const states = getFieldStates(values)
+    const states = getFieldStates(values, projection)
     const state = states.find(item => item.field.field === fieldName)
     const requestId = ++validationRequestId
     const revision = valuesRevision
@@ -525,10 +531,14 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     return true
   }
 
-  function getFieldStates(values: TValues): ControllerFieldState<TValues>[] {
-    reactionProjection = applyConfigFormReactions(readFields(), values)
+  function getFieldStates(
+    values: TValues,
+    projection?: ConfigFormReactionProjection<TValues>,
+  ): ControllerFieldState<TValues>[] {
+    const fields = readFields()
+    reactionProjection = projection ?? applyConfigFormReactions(fields, values)
     const states = resolveConfigFormFieldStates(
-      readFields(),
+      fields,
       reactionProjection.values,
       readFormReadonly(),
       reactionProjection.states,

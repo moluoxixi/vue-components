@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260813025626-quality-guidelines-b82f11",
+  "createdAt": "2026-08-13T02:56:26.743Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-12-p0-p1-editable-table-modes",
+  "reason": "Add direct declaration-finalizer manifest behavior coverage to the corrected package-owned path contract.",
+  "target": "frontend/quality-guidelines.md",
+  "kind": "file",
+  "baseHash": "ac5a4da858d93492cbb4c721b164850b625f38696905e463e8feb5968eae78bc",
+  "contentFile": "content/20260813025626-quality-guidelines-b82f11.md",
+  "contentHash": "fd9f1ae384eea227fc7d1ab04bebc36ccb093ccbf4b5035563e3e8f628b7db04"
+}

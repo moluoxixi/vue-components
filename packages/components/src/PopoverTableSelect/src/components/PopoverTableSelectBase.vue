@@ -5,10 +5,10 @@ import type {
   PopoverTableSelectSlotScope,
   PopoverTableSelectSlots,
 } from '../types'
-import type { ConfigTableCellParams } from '../../../ConfigTable'
+import type { ConfigTableCellParams } from '#components/ConfigTable'
 import { ElPopover } from 'element-plus'
 import { computed, useTemplateRef } from 'vue'
-import { ConfigTable } from '../../../ConfigTable'
+import { ConfigTable } from '#components/ConfigTable'
 import { usePopoverTableSelectBase } from '../composables'
 
 defineOptions({

@@ -2,6 +2,7 @@ import type { RequestTableResult } from '@moluoxixi/hooks'
 import type {
   HeadlessTableColumnOrderState,
   HeadlessTableColumnVisibilityState,
+  HeadlessTableModeChange,
 } from '../../../HeadlessTable/src/types'
 import type { ConfigTablePageChangeParams } from './pagination'
 import type {
@@ -17,6 +18,7 @@ export interface ConfigTableEmits {
   (event: 'loaded', result: RequestTableResult<ConfigTableRow>): void
   (event: 'error', error: Error): void
   (event: 'pageChange', params: ConfigTablePageChangeParams): void
+  (event: 'modeChange', change: HeadlessTableModeChange): void
   (event: 'update:columnOrder', value: HeadlessTableColumnOrderState): void
   (event: 'update:columnVisibility', value: HeadlessTableColumnVisibilityState): void
   (event: 'update:columnWidths', value: ConfigTableColumnWidthState): void

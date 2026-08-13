@@ -3,8 +3,10 @@ import type { TableV2Props } from 'element-plus'
 import type {
   HeadlessTableColumnOrderState,
   HeadlessTableColumnVisibilityState,
+  HeadlessTableMode,
   HeadlessTableRendererMap,
   HeadlessTableRendererRegistry,
+  HeadlessTableRowKey,
 } from '../../../HeadlessTable/src/types'
 import type { ConfigTablePaginationProps } from './pagination'
 import type {
@@ -19,6 +21,10 @@ import type {
 export interface ConfigTableProps {
   columns?: ConfigTableColumn[]
   data?: ConfigTableRow[]
+  /** Table-wide rendering mode. Row/cell modes are controlled through the exposed API. */
+  mode?: HeadlessTableMode
+  /** Stable row identity for row/cell mode overrides. */
+  getRowId?: (row: ConfigTableRow, rowIndex: number) => HeadlessTableRowKey | undefined
   tableProps?: Partial<TableV2Props> & {
     rowClassName?: ConfigTableRowClass
   }

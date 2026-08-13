@@ -1,8 +1,10 @@
 import type { Column as TableV2Column } from 'element-plus'
 import type { VNodeChild } from 'vue'
 import type {
+  HeadlessTableCellModeActions,
   HeadlessTableColumnOrderState,
   HeadlessTableColumnVisibilityState,
+  HeadlessTableMode,
   HeadlessTableRendererConfig,
 } from '../../../HeadlessTable/src/types'
 
@@ -48,11 +50,13 @@ export interface ConfigTableCellParams {
   visibleColumnIndex: number
   value: any
   rawValue: any
+  mode: HeadlessTableMode
   event?: MouseEvent
 }
 
 export interface ConfigTableColumnSlots {
   default?: string | ConfigTableCellRender
+  edit?: string | ConfigTableCellRender
   header?: string | ConfigTableHeaderRender
 }
 
@@ -96,6 +100,7 @@ export interface ConfigTableBaseScope {
   visibleColumns: ConfigTableColumn[]
   data: ConfigTableRow[]
   index?: number
+  mode: HeadlessTableMode
 }
 
 export interface ConfigTableHeaderScope extends ConfigTableBaseScope {
@@ -114,6 +119,11 @@ export interface ConfigTableCellScope extends ConfigTableBaseScope {
   rawValue: any
   sourceColumnIndex: number
   visibleColumnIndex: number
+  rowId?: string | number
+  setRowMode: HeadlessTableCellModeActions['setRowMode']
+  clearRowMode: HeadlessTableCellModeActions['clearRowMode']
+  setCellMode: HeadlessTableCellModeActions['setCellMode']
+  clearCellMode: HeadlessTableCellModeActions['clearCellMode']
 }
 
 export interface ConfigTableEmptyScope {

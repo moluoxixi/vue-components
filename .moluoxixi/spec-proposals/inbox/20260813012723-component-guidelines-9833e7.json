@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260813012723-component-guidelines-9833e7",
+  "createdAt": "2026-08-13T01:27:23.591Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-12-p0-p1-editable-table-modes",
+  "reason": "Retain the executable editable-table mode, identity, edit-slot fallback, cleanup, and event contracts.",
+  "target": "frontend/component-guidelines.md",
+  "kind": "file",
+  "baseHash": "7ca6ea4f9305a8267b7570505f9ebf6030bb5911cbe3f2a135cfb7ebd402805b",
+  "contentFile": "content/20260813012723-component-guidelines-9833e7.md",
+  "contentHash": "088c2e71cc457c27e3a5bbf09fa5ec55bf88d87064f6032b2436816990516bea"
+}

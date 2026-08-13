@@ -61,6 +61,70 @@ const baseColumns = [
 ```
 :::
 
+## 编辑模式
+
+`mode` prop 只控制整个表格，默认值为 `default`。组件实例 API 还可以通过稳定行标识切换整表、单行或单元格；解析优先级为：单元格、行、整表 API、`mode` prop、`default`。
+
+```ts
+tableRef.value?.setMode('edit')
+tableRef.value?.setRowMode('W-001', 'edit')
+tableRef.value?.setCellMode('W-001', 'name', 'edit')
+
+tableRef.value?.clearCellMode('W-001', 'name')
+tableRef.value?.clearRowMode('W-001')
+tableRef.value?.clearMode()
+
+tableRef.value?.clearAllCellModes()
+tableRef.value?.clearAllRowModes()
+tableRef.value?.clearAllModes()
+```
+
+行和单元格 API 需要 `getRowId` 提供稳定行标识，列标识使用 `column.id`，未提供时回退到 `field`。`setMode`、`setRowMode`、`setCellMode`、单项/批量 `clear*`、`getRowMode`、`getCellMode` 方法也会暴露在默认插槽作用域中。`clearAllCellModes` 仅清除单元格 override，`clearAllRowModes` 仅清除行 override，`clearAllModes` 清除整表 API、行和单元格的全部 override。
+
+每次有效的 API 变更都会触发 `modeChange` 事件。单项变更包含操作范围、动作及变更前后的有效模式；批量清理包含范围、`clearAll` 动作和清理数量。重复设置同一 override 或清理不存在的 override 不触发事件。该事件仅用于观察状态，不会触发 `update:mode`。
+
+列的 `slots.edit` 可以是内联渲染函数或具名插槽名称。有效模式为 `edit` 时优先使用 edit 插槽；edit 插槽不存在时继续使用原有的 default 插槽、renderer、`formatter` 和原始值。edit/default 插槽作用域都包含 `mode`、`rowId`、行列上下文及当前行/单元格的模式操作。
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { HeadlessTable } from '@moluoxixi/components'
+import { ElInput, ElTable, ElTableColumn } from 'element-plus'
+
+const tableRef = ref()
+const rows = ref([
+  { id: 'W-001', name: '华东仓' },
+  { id: 'W-002', name: '华南仓' },
+])
+const columns = [
+  { field: 'name', title: '仓库名称', slots: { edit: 'editName' } },
+]
+</script>
+
+<template>
+  <HeadlessTable ref="tableRef" :columns="columns" :data="rows" :get-row-id="row => row.id">
+    <template #default="{ Cell, columns: resolvedColumns, data }">
+      <ElTable :data="data">
+        <ElTableColumn
+          v-for="(column, columnIndex) in resolvedColumns"
+          :key="column.id ?? column.field"
+          :label="column.title"
+        >
+          <template #default="{ row, $index }">
+            <Cell :row="row" :column="column" :row-index="$index" :column-index="columnIndex" />
+          </template>
+        </ElTableColumn>
+      </ElTable>
+    </template>
+    <template #editName="{ row }">
+      <ElInput v-model="row.name" />
+    </template>
+  </HeadlessTable>
+</template>
+```
+
+进入编辑模式的触发控件、保存/取消、校验和行数据更新均由使用方实现。
+
 ## useHeadlessTable 排序与筛选
 
 :::demo `useHeadlessTable` 提供客户端排序、筛选和分页，与任意表格 UI 解耦。

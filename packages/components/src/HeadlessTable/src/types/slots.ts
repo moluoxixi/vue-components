@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { HeadlessTableModeApi } from './mode'
 import type {
   HeadlessTableBaseScope,
   HeadlessTableColumn,
@@ -7,7 +8,7 @@ import type {
 } from './table'
 
 export interface HeadlessTableDefaultScope<TRow extends HeadlessTableRow = HeadlessTableRow>
-  extends HeadlessTableBaseScope<TRow> {
+  extends HeadlessTableBaseScope<TRow>, Omit<HeadlessTableModeApi, 'mode'> {
   Cell: HeadlessTableCellComponent<TRow>
   Header: HeadlessTableHeaderComponent<TRow>
   Empty: HeadlessTableEmptyComponent

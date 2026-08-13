@@ -1,7 +1,7 @@
 import { withInstall } from '../utils'
 import HeadlessTableSource from './src/index.vue'
 
-export { useHeadlessTable } from './src/composables'
+export { useHeadlessTable, useHeadlessTableMode } from './src/composables'
 export {
   createHeadlessTableRenderer,
   createHeadlessTableRendererPlugin,

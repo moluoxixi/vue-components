@@ -3,13 +3,13 @@ export {
   createElementPlusDocsCompilerUrl,
   createElementPlusDocsReplImportMap,
   fetchElementPlusDocsPackageVersions,
-} from './src/repl/dependency'
-export { default as ElementPlusDocsRepl } from './src/repl/ElementPlusDocsRepl.vue'
+} from './repl/dependency'
+export { default as ElementPlusDocsRepl } from './repl/ElementPlusDocsRepl.vue'
 export {
   createElementPlusDocsReplStore,
   decodeElementPlusDocsReplState,
   encodeElementPlusDocsReplState,
-} from './src/repl/store'
+} from './repl/store'
 export type {
   ElementPlusDocsReplCdn,
   ElementPlusDocsReplPackage,
@@ -18,4 +18,4 @@ export type {
   ElementPlusDocsReplStore,
   ElementPlusDocsReplStoreOptions,
   ElementPlusDocsReplVersionKey,
-} from './src/repl/types'
+} from './repl/types'

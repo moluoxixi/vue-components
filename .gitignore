@@ -70,3 +70,6 @@ lerna-debug.log*
 *.sln
 *.sw?
 
+# Task graph cache
+/.turbo/
+

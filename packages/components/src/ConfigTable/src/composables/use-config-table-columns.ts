@@ -1,6 +1,6 @@
 import type { Column as TableV2Column } from 'element-plus'
 import type { ComputedRef } from 'vue'
-import type { HeadlessTableColumn } from '../../../HeadlessTable'
+import type { HeadlessTableColumn } from '#components/HeadlessTable'
 import type {
   ConfigTableColumn,
   ConfigTableColumnConfig,
@@ -13,7 +13,7 @@ import type {
   ConfigTableRowClassParams,
 } from '../types'
 import { computed, ref, watch } from 'vue'
-import { projectHeadlessTableColumns } from '../../../HeadlessTable'
+import { projectHeadlessTableColumns } from '#components/HeadlessTable'
 import {
   getConfigTableColumnMinWidth,
   getConfigTableColumnWidth,

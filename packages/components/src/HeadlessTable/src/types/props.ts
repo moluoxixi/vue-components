@@ -1,9 +1,14 @@
+import type { HeadlessTableMode } from './mode'
 import type { HeadlessTableRendererMap, HeadlessTableRendererRegistry } from './renderer'
-import type { HeadlessTableColumn, HeadlessTableEmptyRender, HeadlessTableRow } from './table'
+import type { HeadlessTableColumn, HeadlessTableEmptyRender, HeadlessTableRow, HeadlessTableRowKey } from './table'
 
 export interface HeadlessTableProps<TRow extends HeadlessTableRow = HeadlessTableRow> {
   columns?: HeadlessTableColumn<TRow>[]
   data?: TRow[]
+  /** Table-wide rendering mode. Row and cell modes are controlled through the exposed API. */
+  mode?: HeadlessTableMode
+  /** Stable row identity used to resolve row and cell mode overrides. */
+  getRowId?: (row: TRow, rowIndex: number) => HeadlessTableRowKey
   emptyText?: string
   /** Emit development warnings for invalid renderer and slot configuration. */
   diagnostics?: boolean

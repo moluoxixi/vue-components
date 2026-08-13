@@ -9,8 +9,10 @@ import type {
   HeadlessTableHeaderRender,
   HeadlessTableHeaderComponent,
   HeadlessTableHeaderScope,
+  HeadlessTableEmits,
   HeadlessTableProps,
   HeadlessTableRow,
+  HeadlessTableRowKey,
   HeadlessTableSlots,
   HeadlessTableEmptyComponent,
 } from './types'
@@ -25,6 +27,7 @@ import {
   headlessTableRendererKey,
   resolveHeadlessTableRenderer,
 } from './core'
+import { useHeadlessTableMode } from './composables'
 
 defineOptions({ name: 'HeadlessTable' })
 
@@ -38,9 +41,14 @@ const props = withDefaults(defineProps<HeadlessTableProps<TRow>>(), {
 })
 
 const slots = defineSlots<HeadlessTableSlots<TRow>>()
+const emit = defineEmits<HeadlessTableEmits>()
 const slotsVersion = shallowRef(0)
 const warnedDiagnostics = new Set<string>()
 const injectedRendererRegistry = inject(headlessTableRendererKey, null)
+const modeApi = useHeadlessTableMode({
+  mode: () => props.mode,
+  onModeChange: change => emit('modeChange', change),
+})
 
 function captureSlots(): Record<string, unknown> {
   return Object.fromEntries(Object.keys(slots).map(name => [name, slots[name]]))
@@ -79,6 +87,21 @@ function getColumnLabel(column: HeadlessTableColumn<TRow>, columnIndex?: number)
   return getHeadlessTableColumnLabel(column, columnIndex)
 }
 
+function resolveRowId(row: TRow, rowIndex: number): HeadlessTableRowKey | undefined {
+  return props.getRowId?.(row, rowIndex)
+}
+
+function requireRowId(row: TRow, rowIndex: number): HeadlessTableRowKey | undefined {
+  const rowId = resolveRowId(row, rowIndex)
+  if (rowId == null) {
+    warnOnce(
+      'mode-row-id',
+      'getRowId is required before row or cell mode actions can be used',
+    )
+  }
+  return rowId
+}
+
 function getRawCellValue(
   row: TRow,
   column: HeadlessTableColumn<TRow>,
@@ -98,6 +121,7 @@ function createHeaderScope(
     columns: visibleColumns.value,
     data: props.data,
     index: columnIndex,
+    mode: modeApi.mode.value,
   }
 }
 
@@ -118,6 +142,11 @@ function createCellScope(
   columnIndex: number,
 ): HeadlessTableCellScope<TRow> {
   const rawValue = getRawCellValue(row, column, rowIndex)
+  const rowId = resolveRowId(row, rowIndex)
+  const columnId = getColumnId(column, columnIndex)
+  const mode = rowId == null
+    ? modeApi.mode.value
+    : modeApi.getCellMode(rowId, columnId)
   const scope: HeadlessTableCellScope<TRow> = {
     allColumns: props.columns,
     row,
@@ -127,7 +156,29 @@ function createCellScope(
     columns: visibleColumns.value,
     data: props.data,
     index: rowIndex,
+    mode,
     rawValue,
+    rowId,
+    clearCellMode: () => {
+      const resolvedRowId = requireRowId(row, rowIndex)
+      if (resolvedRowId != null)
+        modeApi.clearCellMode(resolvedRowId, columnId)
+    },
+    clearRowMode: () => {
+      const resolvedRowId = requireRowId(row, rowIndex)
+      if (resolvedRowId != null)
+        modeApi.clearRowMode(resolvedRowId)
+    },
+    setCellMode: (nextMode) => {
+      const resolvedRowId = requireRowId(row, rowIndex)
+      if (resolvedRowId != null)
+        modeApi.setCellMode(resolvedRowId, columnId, nextMode)
+    },
+    setRowMode: (nextMode) => {
+      const resolvedRowId = requireRowId(row, rowIndex)
+      if (resolvedRowId != null)
+        modeApi.setRowMode(resolvedRowId, nextMode)
+    },
     value: rawValue,
   }
 
@@ -174,6 +225,19 @@ function renderCell(
 ): any {
   void slotsVersion.value
   const scope = createCellScope(row, column, rowIndex, columnIndex)
+  const configuredEditSlot = scope.mode === 'edit' ? column.slots?.edit : undefined
+
+  if (typeof configuredEditSlot === 'function')
+    return (configuredEditSlot as HeadlessTableCellRender<TRow>)(scope)
+
+  if (typeof configuredEditSlot === 'string') {
+    const configuredEditSlotRender = slots[configuredEditSlot]
+    if (configuredEditSlotRender)
+      return configuredEditSlotRender(scope)
+
+    warnOnce(`edit-cell-slot:${configuredEditSlot}`, `edit cell slot "${configuredEditSlot}" was not found`)
+  }
+
   const configuredSlot = column.slots?.default
 
   if (typeof configuredSlot === 'function')
@@ -244,6 +308,7 @@ const Empty = markRaw(defineComponent({
         allColumns: props.columns,
         columns: visibleColumns.value,
         data: props.data,
+        mode: modeApi.mode.value,
       }
 
       if (props.slots.empty)
@@ -268,6 +333,18 @@ const tableScope = computed<HeadlessTableDefaultScope<TRow>>(() => ({
   getColumnLabel,
   getRawCellValue,
   Header: TypedHeader,
+  mode: modeApi.mode.value,
+  clearAllCellModes: modeApi.clearAllCellModes,
+  clearAllModes: modeApi.clearAllModes,
+  clearAllRowModes: modeApi.clearAllRowModes,
+  clearCellMode: modeApi.clearCellMode,
+  clearMode: modeApi.clearMode,
+  clearRowMode: modeApi.clearRowMode,
+  getCellMode: modeApi.getCellMode,
+  getRowMode: modeApi.getRowMode,
+  setCellMode: modeApi.setCellMode,
+  setMode: modeApi.setMode,
+  setRowMode: modeApi.setRowMode,
 }))
 
 defineExpose({
@@ -276,6 +353,7 @@ defineExpose({
   getColumnId,
   getColumnLabel,
   getRawCellValue,
+  ...modeApi,
 })
 </script>
 

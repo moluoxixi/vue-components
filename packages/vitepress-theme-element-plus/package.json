@@ -25,8 +25,8 @@
       "import": "./dist/markdown.js"
     },
     "./repl": {
-      "source": "./repl.ts",
-      "types": "./dist/repl.d.ts",
+      "source": "./src/repl-entry.ts",
+      "types": "./dist/src/repl-entry.d.ts",
       "import": "./dist/repl.js"
     },
     "./repl.css": "./src/repl/styles.css"
@@ -41,11 +41,11 @@
     "dist",
     "index.ts",
     "markdown.ts",
-    "repl.ts",
     "src"
   ],
   "scripts": {
     "build": "vite build && pnpm test:provenance",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
     "dev": "vite build --watch",
     "prepack": "pnpm build",
     "test": "vitest run",

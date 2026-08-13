@@ -83,7 +83,7 @@ const data = shallowRef([
 ```
 :::
 
-Column content resolves in this order: an inline renderer or named slot, a named renderer, `formatter`, and finally the raw field value. `column.id` is the stable key used by column settings; when omitted, `field` is used.
+Default column content resolves in this order: an inline renderer or named slot, a named renderer, `formatter`, and finally the raw field value. Edit mode tries `slots.edit` first and falls back to that unchanged chain. `column.id` is the stable key used by column settings and cell modes; when omitted, `field` is used.
 
 ## Remote Data and Pagination
 
@@ -119,6 +119,47 @@ async function queryUsers({ currentPage, pageSize }) {
 </template>
 ```
 :::
+
+## Editing Modes
+
+The `mode` prop controls the whole table only and defaults to `default`. The component instance API exposes `setMode`, `setRowMode`, `setCellMode`, their matching single-scope clear methods, plus `clearAllCellModes`, `clearAllRowModes`, and `clearAllModes` for cell, row, or all overrides. `getRowMode` and `getCellMode` read the effective mode. Effective precedence is: cell, row, table API, `mode` prop, then `default`.
+
+Row and cell APIs require a stable row ID from `getRowId` or an explicit `rowKey`. `columns[].slots.edit` accepts either an inline render function or a named slot. Its scope includes `mode`, `rowId`, row and column context, and scoped row/cell mode actions.
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { ConfigTable } from '@moluoxixi/components'
+import { ElInput } from 'element-plus'
+
+const tableRef = ref()
+const rows = ref([
+  { id: 'U-001', name: 'Avery', status: 'Active' },
+  { id: 'U-002', name: 'Blake', status: 'Disabled' },
+])
+const columns = [
+  { field: 'name', title: 'Name', slots: { edit: 'editName' } },
+  { field: 'status', title: 'Status' },
+]
+</script>
+
+<template>
+  <ConfigTable ref="tableRef" :columns="columns" :data="rows" row-key="id">
+    <template #editName="{ row, clearCellMode }">
+      <ElInput v-model="row.name" @keyup.enter="clearCellMode" />
+    </template>
+  </ConfigTable>
+</template>
+```
+
+```ts
+tableRef.value?.setMode('edit')
+tableRef.value?.setRowMode('U-001', 'edit')
+tableRef.value?.setCellMode('U-002', 'name', 'edit')
+tableRef.value?.clearAllModes()
+```
+
+Effective mode API mutations emit `modeChange`; single-scope events include previous/next effective modes and bulk events include the cleared count. The event is observational and does not write back to the `mode` prop. The component does not provide edit triggers, save/cancel behavior, validation, or row-data updates. Consumers own those workflows. A missing edit slot leaves the existing cell rendering unchanged.
 
 ## Custom Cell Slots
 

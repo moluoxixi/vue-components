@@ -143,6 +143,16 @@ const ElPaginationStub = defineComponent({
         'onClick': () => emit('update:pageSize', 50),
         'type': 'button',
       }, 'size'),
+      h('button', {
+        'data-testid': 'invalid-page',
+        'onClick': () => emit('update:currentPage', 0),
+        'type': 'button',
+      }, 'invalid page'),
+      h('button', {
+        'data-testid': 'invalid-page-size',
+        'onClick': () => emit('update:pageSize', Number.NaN),
+        'type': 'button',
+      }, 'invalid size'),
     ])
   },
 })
@@ -389,6 +399,226 @@ describe('config table', () => {
 
     expect(wrapper.get('[data-testid="header-render"]').text()).toBe('name:0:0:1:1')
     expect(wrapper.get('[data-testid="cell-render"]').text()).toBe('C-001:华南仓:0:0:0:1:1')
+  })
+
+  it('全局 mode API 选择 edit 插槽，缺少 row id 时仍支持全局切换', async () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', slots: { edit: 'editName' } }],
+        data: [{ code: 'C-001', name: '华南仓' }],
+      },
+      slots: {
+        editName: ({ row, mode }: any) => h('strong', { 'data-testid': 'config-edit-cell' }, `${row.code}:${mode}`),
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.find('[data-testid="config-edit-cell"]').exists()).toBe(false)
+    ;(wrapper.vm as any).setMode('edit')
+    await nextTick()
+    expect(wrapper.get('[data-testid="config-edit-cell"]').text()).toBe('C-001:edit')
+    ;(wrapper.vm as any).clearMode()
+    await nextTick()
+    expect(wrapper.find('[data-testid="config-edit-cell"]').exists()).toBe(false)
+    expect(wrapper.emitted('modeChange')?.map(args => args[0])).toEqual([
+      { scope: 'table', action: 'set', mode: 'edit', previousMode: 'default' },
+      { scope: 'table', action: 'clear', mode: 'default', previousMode: 'edit' },
+    ])
+    expect(wrapper.emitted('update:mode')).toBeUndefined()
+  })
+
+  it('通过组件 API 独立批量清理 row、cell 和全部 mode override', () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name' }],
+        data: [
+          { code: 'C-001', name: '华南仓' },
+          { code: 'C-002', name: '华北仓' },
+        ],
+        rowKey: 'code',
+      },
+      global: { stubs: elementStubs },
+    })
+
+    ;(wrapper.vm as any).setMode('edit')
+    ;(wrapper.vm as any).setRowMode('C-001', 'default')
+    ;(wrapper.vm as any).setRowMode('C-002', 'default')
+    ;(wrapper.vm as any).setCellMode('C-001', 'name', 'edit')
+    const beforeRowClear = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllRowModes()
+
+    expect((wrapper.vm as any).getRowMode('C-001')).toBe('edit')
+    expect((wrapper.vm as any).getCellMode('C-001', 'name')).toBe('edit')
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeRowClear + 1)
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'row', action: 'clearAll', cleared: 2, mode: 'edit' },
+    ])
+
+    const beforeRowNoop = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllRowModes()
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeRowNoop)
+
+    ;(wrapper.vm as any).clearAllCellModes()
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'cell', action: 'clearAll', cleared: 1, mode: 'edit' },
+    ])
+
+    ;(wrapper.vm as any).setRowMode('C-001', 'default')
+    ;(wrapper.vm as any).setCellMode('C-001', 'name', 'edit')
+    const beforeAllClear = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllModes()
+
+    expect((wrapper.vm as any).getCellMode('C-001', 'name')).toBe('default')
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeAllClear + 1)
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'all', action: 'clearAll', cleared: 3, mode: 'default' },
+    ])
+    expect(wrapper.emitted('update:mode')).toBeUndefined()
+  })
+
+  it('全局 API override 覆盖 mode prop，clearMode 后恢复 prop 模式', async () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', slots: { edit: 'editName' } }],
+        data: [{ code: 'C-001', name: '华南仓' }],
+        mode: 'edit',
+      },
+      slots: {
+        editName: ({ mode }: any) => h('strong', { 'data-testid': 'prop-edit-cell' }, mode),
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('[data-testid="prop-edit-cell"]').text()).toBe('edit')
+    ;(wrapper.vm as any).setMode('default')
+    await nextTick()
+    expect(wrapper.find('[data-testid="prop-edit-cell"]').exists()).toBe(false)
+    ;(wrapper.vm as any).clearMode()
+    await nextTick()
+    expect(wrapper.get('[data-testid="prop-edit-cell"]').text()).toBe('edit')
+  })
+
+  it('显式 rowKey 在重排、过滤和分页数据替换后保持 mode 稳定', async () => {
+    const columns = [
+      { field: 'name', slots: { edit: ({ row }: any) => h('strong', { 'data-testid': `row-key-name-${row.code}` }, `edit:${row.code}`) } },
+      { field: 'status', slots: { edit: ({ row }: any) => h('strong', { 'data-testid': `row-key-status-${row.code}` }, `edit:${row.code}`) } },
+    ]
+    const first = { code: 'C-001', name: '华南仓', status: '启用' }
+    const second = { code: 'C-002', name: '华北仓', status: '停用' }
+    const wrapper = mount(ConfigTable, {
+      props: { columns, data: [first, second], pagination: true, rowKey: 'code', total: 2 },
+      global: { stubs: elementStubs },
+    })
+
+    ;(wrapper.vm as any).setRowMode('C-001', 'edit')
+    ;(wrapper.vm as any).setCellMode('C-002', 'name', 'edit')
+    await nextTick()
+    expect(wrapper.get('[data-testid="row-key-name-C-001"]').text()).toBe('edit:C-001')
+    expect(wrapper.get('[data-testid="row-key-status-C-001"]').text()).toBe('edit:C-001')
+    expect(wrapper.get('[data-testid="row-key-name-C-002"]').text()).toBe('edit:C-002')
+    expect(wrapper.find('[data-testid="row-key-status-C-002"]').exists()).toBe(false)
+
+    await wrapper.setProps({ data: [second, first] })
+    expect(wrapper.get('[data-testid="row-key-name-C-001"]').text()).toBe('edit:C-001')
+    expect(wrapper.get('[data-testid="row-key-name-C-002"]').text()).toBe('edit:C-002')
+    expect(wrapper.get('[data-testid="config-table-cell-status-0"]').text()).toBe('停用')
+    expect(wrapper.get('[data-testid="config-table-cell-status-1"]').text()).toBe('edit:C-001')
+
+    await wrapper.setProps({ data: [second] })
+    expect(wrapper.get('[data-testid="row-key-name-C-002"]').text()).toBe('edit:C-002')
+    expect(wrapper.get('[data-testid="config-table-cell-status-0"]').text()).toBe('停用')
+
+    await wrapper.setProps({ data: [first] })
+    expect(wrapper.get('[data-testid="row-key-name-C-001"]').text()).toBe('edit:C-001')
+    expect(wrapper.get('[data-testid="row-key-status-C-001"]').text()).toBe('edit:C-001')
+
+    await wrapper.get('[data-testid="next-page"]').trigger('click')
+    await wrapper.setProps({ data: [second] })
+    expect(wrapper.get('[data-testid="row-key-name-C-002"]').text()).toBe('edit:C-002')
+    expect(wrapper.get('[data-testid="config-table-cell-status-0"]').text()).toBe('停用')
+  })
+
+  it('getRowId 优先于 rowKey 作为 mode 的稳定行标识', async () => {
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', slots: { edit: ({ rowId }: any) => h('strong', { 'data-testid': 'get-row-id-edit' }, String(rowId)) } }],
+        data: [{ code: 'C-001', stableId: 'ROW-001', name: '华南仓' }],
+        getRowId: row => row.stableId,
+        rowKey: 'code',
+      },
+      global: { stubs: elementStubs },
+    })
+
+    ;(wrapper.vm as any).setRowMode('ROW-001', 'edit')
+    await nextTick()
+    expect(wrapper.get('[data-testid="get-row-id-edit"]').text()).toBe('ROW-001')
+    expect((wrapper.vm as any).getRowMode('C-001')).toBe('default')
+  })
+
+  it('edit slot 缺失时回退 renderer 和 formatter，且不提前执行 formatter', () => {
+    const rendererFormatter = vi.fn(({ value }: any) => `不应执行:${value}`)
+    const fallbackFormatter = vi.fn(({ value }: any) => `格式化:${value}`)
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [
+          {
+            cellRender: 'status',
+            field: 'status',
+            formatter: rendererFormatter,
+            slots: { edit: 'missingStatusEdit' },
+          },
+          {
+            field: 'name',
+            formatter: fallbackFormatter,
+            slots: { edit: 'missingNameEdit' },
+          },
+        ],
+        data: [{ code: 'C-001', name: '华南仓', status: '启用' }],
+        diagnostics: false,
+        mode: 'edit',
+        renderers: {
+          status: {
+            renderDefault: (_, { mode, rawValue }) => h(
+              'strong',
+              { 'data-testid': 'edit-fallback-renderer' },
+              `${mode}:${rawValue}`,
+            ),
+          },
+        },
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('[data-testid="edit-fallback-renderer"]').text()).toBe('edit:启用')
+    expect(wrapper.get('[data-testid="config-table-cell-name-0"]').text()).toBe('格式化:华南仓')
+    expect(rendererFormatter).not.toHaveBeenCalled()
+    expect(fallbackFormatter).toHaveBeenCalledTimes(1)
+  })
+
+  it('命中 edit slot 时不执行 formatter', () => {
+    const formatter = vi.fn(({ value }: any) => `格式化:${value}`)
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{
+          field: 'name',
+          formatter,
+          slots: {
+            edit: ({ rawValue, mode }: any) => h(
+              'strong',
+              { 'data-testid': 'inline-edit-cell' },
+              `${mode}:${rawValue}`,
+            ),
+          },
+        }],
+        data: [{ code: 'C-001', name: '华南仓' }],
+        mode: 'edit',
+        rowKey: 'code',
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(wrapper.get('[data-testid="inline-edit-cell"]').text()).toBe('edit:华南仓')
+    expect(formatter).not.toHaveBeenCalled()
   })
 
   it('父组件动态移除命名 slot 后回退到格式化值', async () => {
@@ -806,6 +1036,40 @@ describe('config table', () => {
     expect(wrapper.emitted('update:pageSize')?.at(-1)).toEqual([50])
     expect(wrapper.emitted('update:currentPage')?.at(-1)).toEqual([1])
     expect(pageChange).toHaveBeenLastCalledWith({ currentPage: 1, pageSize: 50 })
+  })
+
+  it('query 分页事件复用请求 hook 的正整数归一化', async () => {
+    const query = vi.fn(async (params: { currentPage: number, pageSize: number }) => ({
+      data: [{ code: 'Q-003-N', name: `第${params.currentPage}页`, qty: params.pageSize }],
+      total: 99,
+    }))
+    const pageChange = vi.fn()
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [{ field: 'name', label: '仓库' }],
+        currentPage: 2,
+        pageSize: 25,
+        query,
+        onPageChange: pageChange,
+      },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient: createQueryClient() }]],
+        stubs: elementStubs,
+      },
+    })
+
+    await waitFor(() => wrapper.get('[data-testid="pagination-state"]').text() === '2/25/99')
+    await wrapper.get('[data-testid="invalid-page"]').trigger('click')
+    await waitFor(() => query.mock.calls.at(-1)?.[0].currentPage === 1)
+
+    expect(wrapper.emitted('update:currentPage')?.at(-1)).toEqual([1])
+    expect(pageChange).toHaveBeenLastCalledWith({ currentPage: 1, pageSize: 25 })
+
+    await wrapper.get('[data-testid="invalid-page-size"]').trigger('click')
+    await waitFor(() => query.mock.calls.at(-1)?.[0].pageSize === 10)
+
+    expect(wrapper.emitted('update:pageSize')?.at(-1)).toEqual([10])
+    expect(pageChange).toHaveBeenLastCalledWith({ currentPage: 1, pageSize: 10 })
   })
 
   it('params 变化时默认重置到第一页', async () => {

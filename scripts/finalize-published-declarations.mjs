@@ -1,8 +1,15 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import process from 'node:process'
 import ts from 'typescript'
 
-const packageRoot = resolve(import.meta.dirname, '..')
+const manifestFlagIndex = process.argv.indexOf('--manifest')
+const packageManifest = manifestFlagIndex === -1 ? undefined : process.argv[manifestFlagIndex + 1]
+if (!packageManifest)
+  throw new Error('Usage: pnpm -w finalize:declarations --manifest <package.json>')
+
+const packageManifestPath = resolve(packageManifest)
+const packageRoot = dirname(packageManifestPath)
 const declarationRoot = resolve(packageRoot, 'dist')
 
 async function collectDeclarationFiles(directory) {
@@ -21,6 +28,10 @@ function hasExplicitExtension(specifier) {
   return Boolean(basename && basename !== '.' && basename !== '..' && basename.includes('.'))
 }
 
+function requiresPublishedExtension(specifier) {
+  return !hasExplicitExtension(specifier) || specifier.endsWith('.vue')
+}
+
 function collectRelativeSpecifiers(sourceFile) {
   const specifiers = []
   const addSpecifier = (literal) => {
@@ -28,7 +39,7 @@ function collectRelativeSpecifiers(sourceFile) {
       literal
       && ts.isStringLiteralLike(literal)
       && literal.text.startsWith('.')
-      && !hasExplicitExtension(literal.text)
+      && requiresPublishedExtension(literal.text)
     ) {
       specifiers.push({
         end: literal.getEnd() - 1,
@@ -92,8 +103,8 @@ async function finalizeDeclarationSpecifiers() {
 }
 
 async function verifyNodeNextConsumers() {
-  const packageJson = JSON.parse(await readFile(resolve(packageRoot, 'package.json'), 'utf8'))
-  const publicEntries = Object.entries(packageJson.exports)
+  const packageJson = JSON.parse(await readFile(packageManifestPath, 'utf8'))
+  const publicEntries = Object.entries(packageJson.exports ?? {})
     .filter(([, conditions]) => conditions && typeof conditions === 'object' && 'types' in conditions)
     .map(([subpath]) => subpath === '.' ? packageJson.name : `${packageJson.name}/${subpath.slice(2)}`)
   const consumerFile = resolve(packageRoot, '__published-types-consumer__.mts')
@@ -107,7 +118,8 @@ async function verifyNodeNextConsumers() {
     const resolved = ts.resolveModuleName(entry, consumerFile, options, ts.sys).resolvedModule
     if (!resolved)
       throw new Error(`NodeNext cannot resolve public type entry ${entry}`)
-    if (!resolve(resolved.resolvedFileName).toLowerCase().startsWith(declarationRoot.toLowerCase())) {
+    const declarationPath = relative(declarationRoot, resolve(resolved.resolvedFileName))
+    if (declarationPath.startsWith('..') || isAbsolute(declarationPath)) {
       throw new Error(
         `NodeNext resolved ${entry} outside the published declarations: ${resolved.resolvedFileName}`,
       )

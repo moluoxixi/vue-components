@@ -1,0 +1,38 @@
+{
+  "id": "p0-p1-editable-table-modes",
+  "name": "p0-p1-editable-table-modes",
+  "title": "P0 P1 architecture and editable table modes",
+  "description": "",
+  "status": "completed",
+  "complexity": {
+    "level": "complex",
+    "signals": [],
+    "reason": ""
+  },
+  "executionApproval": {
+    "mode": "auto",
+    "granted": true,
+    "source": "explicit_user",
+    "grantedAt": "2026-08-12T15:48:39.736313Z",
+    "reason": "User explicitly requested implementation and then confirmed edit-slot fallback"
+  },
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-12",
+  "completedAt": "2026-08-13",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

@@ -85,9 +85,12 @@ test.describe('components playground 交互', () => {
     await expect(levelInput).toBeFocused()
 
     await levelInput.press('Enter')
+    await expect(levelInput).toHaveAttribute('aria-expanded', 'true')
+    await expect(levelInput).not.toHaveAttribute('aria-activedescendant', /.+/)
     await expect(page.getByTestId('enter-next-event')).toContainText('下拉控件未确认选项')
 
     await page.keyboard.press('Escape')
+    await expect(levelInput).toHaveAttribute('aria-expanded', 'false')
     await levelInput.press('Enter')
     await remarkTextarea.click()
     await expect(remarkTextarea).toBeFocused()

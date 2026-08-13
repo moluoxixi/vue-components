@@ -1,4 +1,5 @@
 import type { VNodeChild } from 'vue'
+import type { HeadlessTableCellModeActions, HeadlessTableMode } from './mode'
 
 export type HeadlessTableRow = Record<string, any>
 export type HeadlessTableRowKey = string | number
@@ -36,6 +37,7 @@ interface HeadlessTableColumnBase<
   /** Named Vue slots or inline render functions. */
   slots?: {
     default?: string | HeadlessTableCellRender<TRow, TValue>
+    edit?: string | HeadlessTableCellRender<TRow, TValue>
     header?: string | HeadlessTableHeaderRender<TRow>
   }
   /** Renderer registry entries, following the vxe-table render-option pattern. */
@@ -65,6 +67,8 @@ export interface HeadlessTableBaseScope<TRow extends HeadlessTableRow = Headless
   allColumns: HeadlessTableColumn<TRow>[]
   columns: HeadlessTableColumn<TRow>[]
   data: TRow[]
+  /** Effective table-wide mode. Cell scopes override this with their effective cell mode. */
+  mode: HeadlessTableMode
 }
 
 export interface HeadlessTableHeaderScope<TRow extends HeadlessTableRow = HeadlessTableRow>
@@ -82,12 +86,17 @@ export interface HeadlessTableCellScope<
   row: TRow
   column: HeadlessTableColumn<TRow, TValue>
   rowIndex: number
+  rowId?: HeadlessTableRowKey
   columnIndex: number
   /** @deprecated Use rowIndex instead. */
   index: number
   /** Raw accessor value. Formatter output is only used as the fallback display value. */
   value: TValue
   rawValue: TValue
+  setRowMode: HeadlessTableCellModeActions['setRowMode']
+  clearRowMode: HeadlessTableCellModeActions['clearRowMode']
+  setCellMode: HeadlessTableCellModeActions['setCellMode']
+  clearCellMode: HeadlessTableCellModeActions['clearCellMode']
 }
 
 export interface HeadlessTableEmptyScope<TRow extends HeadlessTableRow = HeadlessTableRow>

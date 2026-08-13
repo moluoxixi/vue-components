@@ -5,8 +5,8 @@ import type {
   ConfigTableProps,
   ConfigTableRow,
 } from '../types'
-import { useRequestTable } from '@moluoxixi/hooks'
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
+import { useRequestTableComponent } from '#components/request/composables'
 
 const INTERNAL_ROW_KEY = '__mx_config_table_row_key'
 
@@ -16,21 +16,19 @@ export function useConfigTableData(
   pageSize: Ref<number>,
   emit: ConfigTableEmits,
 ) {
-  const requestTable = props.query
-    ? useRequestTable<ConfigTableRow>({
-        queryKey: props.cacheKey ?? 'ConfigTable',
-        query: props.query,
-        params: computed(() => props.params ?? {}),
-        currentPage,
-        pageSize,
-        enabled: computed(() => props.enabled ?? true),
-        staleTime: props.staleTime,
-        resetPageOnParamsChange: props.resetPageOnParamsChange ?? true,
-      })
-    : null
-
-  const tableData = computed<ConfigTableRow[]>(() => {
-    return requestTable?.data.value ?? props.data ?? []
+  const {
+    handleCurrentPageUpdate,
+    handlePageSizeUpdate,
+    requestLoading,
+    requestTable,
+    tableData,
+  } = useRequestTableComponent<ConfigTableRow>({
+    fallbackCacheKey: 'ConfigTable',
+    models: { currentPage, pageSize },
+    onError: error => emit('error', error),
+    onLoaded: result => emit('loaded', result),
+    onPageChange: params => emit('pageChange', params),
+    props,
   })
 
   const virtualRows = computed<ConfigTableRow[]>(() => {
@@ -48,7 +46,7 @@ export function useConfigTableData(
   ))
 
   const computedEmptyText = computed<string>(() => {
-    if (requestTable && (requestTable.isLoading.value || requestTable.isFetching.value))
+    if (requestLoading.value)
       return '加载中...'
     if (requestTable?.isError.value)
       return '加载失败'
@@ -78,42 +76,6 @@ export function useConfigTableData(
 
     return { ...defaults, ...passthrough }
   })
-
-  if (requestTable) {
-    watch(
-      () => requestTable.query.data.value,
-      (result) => {
-        if (result)
-          emit('loaded', result)
-      },
-    )
-
-    watch(
-      () => requestTable.error.value,
-      (error) => {
-        if (error)
-          emit('error', error)
-      },
-    )
-  }
-
-  function emitPageChange(): void {
-    emit('pageChange', {
-      currentPage: currentPage.value,
-      pageSize: pageSize.value,
-    })
-  }
-
-  function handleCurrentPageUpdate(page: number): void {
-    currentPage.value = page
-    emitPageChange()
-  }
-
-  function handlePageSizeUpdate(size: number): void {
-    pageSize.value = size
-    currentPage.value = 1
-    emitPageChange()
-  }
 
   return {
     computedEmptyText,

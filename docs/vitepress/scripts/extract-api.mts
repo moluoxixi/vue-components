@@ -19,7 +19,7 @@ const outDir = resolve(scriptDir, '../.vitepress/api')
 async function main(): Promise<void> {
   const context = new ServerContext({
     root,
-    componentEntries: [docsSite.componentEntry],
+    componentEntries: [...docsSite.apiComponentEntries],
     mode: 'content',
   })
 

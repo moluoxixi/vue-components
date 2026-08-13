@@ -5,8 +5,9 @@
   "private": true,
   "scripts": {
     "build:workspace-components": "pnpm --filter @moluoxixi/components build",
+    "build:workspace-rich-text-editor": "pnpm --filter @moluoxixi/rich-text-editor build",
     "build:workspace-theme": "pnpm --filter @moluoxixi/vitepress-theme-element-plus build",
-    "build:workspace-packages": "pnpm build:workspace-components && pnpm build:workspace-theme",
+    "build:workspace-packages": "pnpm build:workspace-rich-text-editor && pnpm build:workspace-components && pnpm build:workspace-theme",
     "predev": "pnpm build:workspace-packages && pnpm generate-component-routes && pnpm generate-utility-routes && pnpm extract-api && pnpm validate-github-metadata",
     "dev": "vitepress dev",
     "prebuild": "pnpm build:workspace-packages && pnpm generate-component-routes && pnpm generate-utility-routes && pnpm extract-api && pnpm validate-github-metadata",
@@ -27,6 +28,7 @@
     "@lucide/vue": "catalog:ui",
     "@moluoxixi/ai-doc-assistant": "workspace:*",
     "@moluoxixi/components": "workspace:*",
+    "@moluoxixi/rich-text-editor": "workspace:*",
     "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
     "@tanstack/vue-query": "catalog:data",
     "element-plus": "catalog:ui",

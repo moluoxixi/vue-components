@@ -139,3 +139,38 @@ Applied all form settings to the real designer canvas, added typed visual defaul
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Editable table P0-P3 and package path cleanup
+
+**Date**: 2026-08-13
+**Task**: Editable table P0-P3 and package path cleanup
+**Branch**: `codex/editable-table-p0-p3`
+
+### Summary
+
+Implemented editable-table mode/slot APIs, P0-P3 reuse and release tooling, package-owned internal imports, and explicit declaration finalization paths; verified and prepared 17 publishable packages for release.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `835b630` | (see git log) |
+| `088a243` | (see git log) |
+| `0637124` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

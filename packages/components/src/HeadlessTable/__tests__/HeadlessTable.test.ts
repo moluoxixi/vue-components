@@ -210,6 +210,101 @@ describe('headless table', () => {
     expect(defaultWrapper.text()).toBe('没有记录')
   })
 
+  it('按表格、行、单元格优先级选择 edit 插槽，并支持 API 清除回退', async () => {
+    const columns: HeadlessTableColumn<InventoryRow>[] = [
+      { field: 'name', slots: { edit: 'editName' } },
+      { field: 'status', slots: { edit: 'editStatus' } },
+    ]
+    const data: InventoryRow[] = [
+      { code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' },
+      { code: 'C-002', name: '华南仓', owner: { name: '李四' }, quantity: 8, status: '停用' },
+    ]
+    const wrapper = mount(HeadlessTable as any, {
+      props: { columns, data, getRowId: (row: InventoryRow) => row.code },
+      slots: {
+        default: renderTable as any,
+        editName: ({ row, mode }: any) => h('span', { 'data-testid': `edit-name-${row.code}` }, `edit:${row.code}:${mode}`),
+        editStatus: ({ row }: any) => h('span', { 'data-testid': `edit-status-${row.code}` }, `edit-status:${row.code}`),
+      },
+    })
+
+    expect(wrapper.find('[data-testid="edit-name-C-001"]').exists()).toBe(false)
+    ;(wrapper.vm as any).setRowMode('C-001', 'edit')
+    await nextTick()
+    expect(wrapper.get('[data-testid="edit-name-C-001"]').text()).toBe('edit:C-001:edit')
+    expect(wrapper.get('[data-testid="edit-status-C-001"]').text()).toBe('edit-status:C-001')
+    expect(wrapper.find('[data-testid="edit-name-C-002"]').exists()).toBe(false)
+
+    ;(wrapper.vm as any).setMode('edit')
+    await nextTick()
+    expect(wrapper.get('[data-testid="edit-name-C-002"]').text()).toBe('edit:C-002:edit')
+    ;(wrapper.vm as any).setCellMode('C-002', 'name', 'default')
+    await nextTick()
+    expect(wrapper.get('[data-testid="row-1"]').text()).toContain('华南仓')
+    ;(wrapper.vm as any).clearCellMode('C-002', 'name')
+    ;(wrapper.vm as any).clearMode()
+    ;(wrapper.vm as any).clearRowMode('C-001')
+    await nextTick()
+    expect(wrapper.find('[data-testid="edit-name-C-001"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="edit-name-C-002"]').exists()).toBe(false)
+    expect(wrapper.emitted('modeChange')?.map(args => args[0])).toEqual([
+      { scope: 'row', action: 'set', rowId: 'C-001', mode: 'edit', previousMode: 'default' },
+      { scope: 'table', action: 'set', mode: 'edit', previousMode: 'default' },
+      { scope: 'cell', action: 'set', rowId: 'C-002', columnId: 'name', mode: 'default', previousMode: 'edit' },
+      { scope: 'cell', action: 'clear', rowId: 'C-002', columnId: 'name', mode: 'edit', previousMode: 'default' },
+      { scope: 'table', action: 'clear', mode: 'default', previousMode: 'edit' },
+      { scope: 'row', action: 'clear', rowId: 'C-001', mode: 'default', previousMode: 'edit' },
+    ])
+    expect(wrapper.emitted('update:mode')).toBeUndefined()
+  })
+
+  it('通过组件 API 独立批量清理 row、cell 和全部 mode override', () => {
+    const columns: HeadlessTableColumn<InventoryRow>[] = [{ field: 'name' }]
+    const data: InventoryRow[] = [
+      { code: 'C-001', name: '华东仓', owner: { name: '张三' }, quantity: 12, status: '启用' },
+      { code: 'C-002', name: '华南仓', owner: { name: '李四' }, quantity: 8, status: '停用' },
+    ]
+    const wrapper = mount(HeadlessTable as any, {
+      props: { columns, data, getRowId: (row: InventoryRow) => row.code },
+      slots: { default: renderTable as any },
+    })
+
+    ;(wrapper.vm as any).setMode('edit')
+    ;(wrapper.vm as any).setRowMode('C-001', 'default')
+    ;(wrapper.vm as any).setRowMode('C-002', 'default')
+    ;(wrapper.vm as any).setCellMode('C-001', 'name', 'edit')
+    const beforeRowClear = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllRowModes()
+
+    expect((wrapper.vm as any).getRowMode('C-001')).toBe('edit')
+    expect((wrapper.vm as any).getCellMode('C-001', 'name')).toBe('edit')
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeRowClear + 1)
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'row', action: 'clearAll', cleared: 2, mode: 'edit' },
+    ])
+
+    const beforeRowNoop = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllRowModes()
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeRowNoop)
+
+    ;(wrapper.vm as any).clearAllCellModes()
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'cell', action: 'clearAll', cleared: 1, mode: 'edit' },
+    ])
+
+    ;(wrapper.vm as any).setRowMode('C-001', 'default')
+    ;(wrapper.vm as any).setCellMode('C-001', 'name', 'edit')
+    const beforeAllClear = wrapper.emitted('modeChange')?.length ?? 0
+    ;(wrapper.vm as any).clearAllModes()
+
+    expect((wrapper.vm as any).getCellMode('C-001', 'name')).toBe('default')
+    expect(wrapper.emitted('modeChange')).toHaveLength(beforeAllClear + 1)
+    expect(wrapper.emitted('modeChange')?.at(-1)).toEqual([
+      { scope: 'all', action: 'clearAll', cleared: 3, mode: 'default' },
+    ])
+    expect(wrapper.emitted('update:mode')).toBeUndefined()
+  })
+
   it('只在 slot 和 renderer 均未命中时执行 formatter，并向 renderer 暴露原值', () => {
     const formatter = vi.fn(({ value }) => `formatted:${value}`)
     const columns: HeadlessTableColumn<InventoryRow>[] = [

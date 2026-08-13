@@ -1,0 +1,3 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .moluoxixi/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".moluoxixi/spec/frontend/index.md", "reason": "Frontend quality and type contract entrypoint"}
+{"file": ".moluoxixi/tasks/08-12-p0-p1-editable-table-modes/research/repository-audit.md", "reason": "Review expected package, mode, and tooling boundaries"}

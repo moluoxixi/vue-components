@@ -7,7 +7,7 @@
 :::demo v-model 双向绑定 HTML 字符串；工具栏包含加粗、斜体、下划线、链接、列表等常用操作。
 ```vue
 <script setup lang="ts">
-import { RichTextEditor } from '@moluoxixi/components'
+import { RichTextEditor } from '@moluoxixi/rich-text-editor'
 import { ref } from 'vue'
 
 const content = ref('<p>在这里输入内容……</p>')
@@ -26,7 +26,7 @@ const content = ref('<p>在这里输入内容……</p>')
 :::demo 通过 `disabled` 和 `readonly` 控制可编辑状态。
 ```vue
 <script setup lang="ts">
-import { RichTextEditor } from '@moluoxixi/components'
+import { RichTextEditor } from '@moluoxixi/rich-text-editor'
 import { ElSwitch } from 'element-plus'
 import { ref } from 'vue'
 
