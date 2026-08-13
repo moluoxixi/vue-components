@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="ConfigTable" slug="config-table" :has-source-doc="true" />
 
-<!--@include: ../../../../packages/components/src/ConfigTable/docs/index.en.md{4,287}-->
+<!--@include: ../../../../packages/components/src/ConfigTable/docs/index.en.md{4,348}-->
 
 ## API
 

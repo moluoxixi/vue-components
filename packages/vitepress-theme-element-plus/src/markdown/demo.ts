@@ -4,7 +4,7 @@ import type { ElementPlusDocsExternalProjectSource } from '../content/playground
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import container from 'markdown-it-container'
-import { sfcTs2js } from './sfc-ts-to-js'
+import { formatSfcTypeScript, sfcTs2js } from './sfc-ts-to-js'
 
 const compatibleContainer = container as unknown as Parameters<MarkdownIt['use']>[0]
 
@@ -94,7 +94,7 @@ export function elementPlusDocsDemoPlugin(
 
       const title = token.info.trim().replace(/^demo\s*/, '')
       let code = ''
-      let highlighted = ''
+      let language = 'vue'
       let sourceStartLine = 0
       let sourceEndLine = 0
       for (let cursor = index + 1; cursor < tokens.length; cursor++) {
@@ -107,15 +107,16 @@ export function elementPlusDocsDemoPlugin(
         code = candidate.content
         sourceStartLine = candidate.map ? candidate.map[0] + 1 : 0
         sourceEndLine = candidate.map ? candidate.map[1] : 0
-        const language = candidate.info.trim() || 'vue'
-        highlighted = md.options.highlight?.(code, language, '')
-          ?? `<pre><code>${md.utils.escapeHtml(code)}</code></pre>`
+        language = candidate.info.trim() || 'vue'
         candidate.type = 'html_block'
         candidate.content = ''
         break
       }
 
       const demoId = createElementPlusDocsDemoId(title, code)
+      code = formatSfcTypeScript(code)
+      const highlighted = md.options.highlight?.(code, language, '')
+        ?? `<pre><code>${md.utils.escapeHtml(code)}</code></pre>`
       const sourceContext = {
         code,
         demoId,

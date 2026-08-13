@@ -7,16 +7,24 @@ A high-performance, configuration-driven virtual table built on Element Plus `El
 :::demo Provide `columns` and static `data` to render a virtualized table. `width` accepts either a pixel number or a CSS width such as `100%` and `calc(...)`.
 ```vue
 <script setup lang="ts">
+import type { ConfigTableColumn } from '@moluoxixi/components'
 import { ConfigTable } from '@moluoxixi/components'
 import { shallowRef } from 'vue'
 
-const columns = [
+interface EmployeeRow {
+  id: number
+  name: string
+  department: string
+  role: string
+}
+
+const columns: ConfigTableColumn[] = [
   { field: 'id', title: 'ID', width: 80 },
   { field: 'name', title: 'Name', minWidth: 140 },
   { field: 'department', title: 'Department', minWidth: 140 },
   { field: 'role', title: 'Role', minWidth: 150 },
 ]
-const data = shallowRef([
+const data = shallowRef<EmployeeRow[]>([
   { id: 1, name: 'Avery', department: 'Engineering', role: 'Frontend Engineer' },
   { id: 2, name: 'Blake', department: 'Product', role: 'Product Manager' },
   { id: 3, name: 'Casey', department: 'Operations', role: 'Operations Specialist' },
@@ -34,11 +42,18 @@ const data = shallowRef([
 :::demo Register a named renderer once and reuse it across table instances.
 ```vue
 <script setup lang="ts">
+import type { ConfigTableColumn } from '@moluoxixi/components'
 import { ConfigTable, defineHeadlessTableRenderer, headlessTableRenderer } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { h, shallowRef } from 'vue'
 
-headlessTableRenderer.replace('docs-config-status-en', defineHeadlessTableRenderer({
+interface AccountRow {
+  name: string
+  score: number
+  status: string
+}
+
+headlessTableRenderer.replace('docs-config-status-en', defineHeadlessTableRenderer<AccountRow>({
   renderDefault: (_, { rawValue }) => h(
     ElTag,
     { size: 'small', type: rawValue === 'Active' ? 'success' : 'warning' },
@@ -46,7 +61,7 @@ headlessTableRenderer.replace('docs-config-status-en', defineHeadlessTableRender
   ),
 }))
 
-const columns = [
+const columns: ConfigTableColumn[] = [
   { field: 'name', title: 'Name', minWidth: 140 },
   {
     field: 'status',
@@ -57,7 +72,7 @@ const columns = [
   },
   { field: 'score', title: 'Score', width: 100, align: 'right' },
 ]
-const data = shallowRef([
+const data = shallowRef<AccountRow[]>([
   { name: 'Avery', status: 'Active', score: 92 },
   { name: 'Blake', status: 'Maintenance', score: 78 },
   { name: 'Casey', status: 'Active', score: 85 },
@@ -84,10 +99,18 @@ Use `pane` to enable the built-in column configuration pane. Users can drag colu
 :::demo Manage column order, visibility, and widths with a configured pane.
 ```vue
 <script setup lang="ts">
+import type { ConfigTableColumn, ConfigTablePaneConfig } from '@moluoxixi/components'
 import { ConfigTable } from '@moluoxixi/components'
 import { shallowRef } from 'vue'
 
-const pane = {
+interface EmployeeRow {
+  name: string
+  department: string
+  role: string
+  status: string
+}
+
+const pane: ConfigTablePaneConfig = {
   buttonText: 'Configure columns',
   title: 'Column configuration',
   width: 520,
@@ -95,13 +118,13 @@ const pane = {
   minColumnWidth: 80,
   maxColumnWidth: 360,
 }
-const columns = [
+const columns: ConfigTableColumn[] = [
   { id: 'name', field: 'name', title: 'Name', width: 160 },
   { id: 'department', field: 'department', title: 'Department', width: 150 },
   { id: 'role', field: 'role', title: 'Role', width: 180 },
   { id: 'status', field: 'status', title: 'Status', width: 110 },
 ]
-const data = shallowRef([
+const data = shallowRef<EmployeeRow[]>([
   { name: 'Avery', department: 'Engineering', role: 'Frontend Engineer', status: 'Active' },
   { name: 'Blake', department: 'Product', role: 'Product Manager', status: 'Disabled' },
   { name: 'Casey', department: 'Operations', role: 'Operations Specialist', status: 'Active' },
@@ -125,16 +148,33 @@ const data = shallowRef([
 :::demo Provide a `query` function to load data and display the pagination controls automatically.
 ```vue
 <script setup lang="ts">
+import type { ConfigTableColumn } from '@moluoxixi/components'
 import { ConfigTable } from '@moluoxixi/components'
 
-const columns = [
+interface UserRow {
+  id: number
+  name: string
+  status: string
+}
+
+interface UserQueryParams {
+  currentPage: number
+  pageSize: number
+}
+
+interface UserQueryResult {
+  data: UserRow[]
+  total: number
+}
+
+const columns: ConfigTableColumn[] = [
   { field: 'id', title: 'ID', width: 80 },
   { field: 'name', title: 'Name', minWidth: 140 },
   { field: 'status', title: 'Status', width: 100, align: 'center' },
 ]
 
-async function queryUsers({ currentPage, pageSize }) {
-  await new Promise(resolve => setTimeout(resolve, 200))
+async function queryUsers({ currentPage, pageSize }: UserQueryParams): Promise<UserQueryResult> {
+  await new Promise<void>(resolve => setTimeout(resolve, 200))
   const total = 45
   const data = Array.from({ length: pageSize }, (_, index) => {
     const id = (currentPage - 1) * pageSize + index + 1
@@ -168,19 +208,33 @@ The interactive example below keeps all three API scopes together: the table but
 :::demo Use an `edit` slot for form controls and compare table-, row-, and cell-level mode changes.
 ```vue
 <script setup lang="ts">
+import type {
+  ConfigTableColumn,
+  HeadlessTableModeApi,
+  HeadlessTableModeChange,
+} from '@moluoxixi/components'
 import { ref } from 'vue'
 import { ConfigTable } from '@moluoxixi/components'
 import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTag } from 'element-plus'
 
-const tableRef = ref()
+interface UserRow {
+  id: string
+  name: string
+  status: string
+  department: string
+}
+
+type ConfigTableInstance = HeadlessTableModeApi<UserRow, ConfigTableColumn>
+
+const tableRef = ref<ConfigTableInstance>()
 const propMode = ref<'default' | 'edit'>('default')
 const lastChange = ref('Waiting for a mode API operation')
-const rows = ref([
+const rows = ref<UserRow[]>([
   { id: 'U-001', name: 'Avery', status: 'Active', department: 'Engineering' },
   { id: 'U-002', name: 'Blake', status: 'Disabled', department: 'Product' },
   { id: 'U-003', name: 'Casey', status: 'Active', department: 'Operations' },
 ])
-const columns = [
+const columns: ConfigTableColumn[] = [
   { field: 'name', title: 'Name', minWidth: 150, slots: { edit: 'editName' } },
   { field: 'status', title: 'Status', width: 120, slots: { edit: 'editStatus' } },
   { field: 'department', title: 'Department', minWidth: 140 },
@@ -206,7 +260,7 @@ function applyNameCellsMode() {
   tableRef.value?.setCellMode(({ columnId }) => columnId === 'name', 'edit')
 }
 
-function handleModeChange(change) {
+function handleModeChange(change: HeadlessTableModeChange) {
   lastChange.value = `${change.scope} scope: ${change.action}`
 }
 </script>
@@ -258,16 +312,23 @@ Effective mode API mutations emit `modeChange`; single-scope events include prev
 :::demo Set `column.slots.default` to a slot name and provide the matching named slot in the template.
 ```vue
 <script setup lang="ts">
+import type { ConfigTableColumn } from '@moluoxixi/components'
 import { ConfigTable } from '@moluoxixi/components'
 import { ElTag } from 'element-plus'
 import { shallowRef } from 'vue'
 
-const columns = [
+interface ScoreRow {
+  name: string
+  status: string
+  score: number
+}
+
+const columns: ConfigTableColumn[] = [
   { field: 'name', title: 'Name', minWidth: 140 },
   { field: 'status', title: 'Status', width: 100, align: 'center', slots: { default: 'status' } },
   { field: 'score', title: 'Score', width: 100, align: 'right', slots: { default: 'score' } },
 ]
-const data = shallowRef([
+const data = shallowRef<ScoreRow[]>([
   { name: 'Avery', status: 'Active', score: 92 },
   { name: 'Blake', status: 'Disabled', score: 67 },
   { name: 'Casey', status: 'Active', score: 85 },

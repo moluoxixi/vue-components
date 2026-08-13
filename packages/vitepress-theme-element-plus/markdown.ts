@@ -9,4 +9,4 @@ export type {
   ElementPlusDocsDemoSource,
   ElementPlusDocsDemoSourceHrefContext,
 } from './src/markdown/demo'
-export { sfcTs2js } from './src/markdown/sfc-ts-to-js'
+export { formatSfcTypeScript, sfcTs2js } from './src/markdown/sfc-ts-to-js'

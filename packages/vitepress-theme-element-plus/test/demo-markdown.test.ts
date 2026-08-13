@@ -5,6 +5,7 @@ import {
   collectElementPlusDocsDemos,
   createElementPlusDocsDemoId,
   elementPlusDocsDemoPlugin,
+  formatSfcTypeScript,
   sfcTs2js,
 } from '../markdown'
 
@@ -59,10 +60,13 @@ const count: number = 1
     const externalProject = JSON.parse(decodeAttribute(html, 'external-project-code'))
     const externalJavaScriptProject = JSON.parse(decodeAttribute(html, 'external-project-js-code'))
 
-    expect(tsSource).toContain('const count: number = 1')
+    expect(tsSource).toContain('const count: number = 1;')
     expect(jsSource).toContain('const count = 1;')
     expect(jsSource).not.toContain('lang="ts"')
     expect(jsSource).not.toContain(': number')
+    expect(jsSource).toBe(tsSource
+      .replace(' lang="ts"', '')
+      .replace(': number', ''))
     expect(externalProject).toEqual({
       dependencies: { '@example/components': '^1.2.3' },
       source: tsSource,
@@ -94,6 +98,68 @@ const count: number = 1
 })
 
 describe('sfcTs2js', () => {
+  it('formats TypeScript and JavaScript variants with the same printer style', () => {
+    const source = `<script setup lang="ts">
+import type { Ref } from 'vue'
+import { ref } from 'vue'
+
+interface Row {
+  id: number
+}
+
+const rows: Ref<Row[]> = ref([{ id: 1 }])
+</script>
+
+<template>
+  <p>{{ rows[0]?.id }}</p>
+</template>`
+
+    const typeScript = formatSfcTypeScript(source)
+    const javaScript = sfcTs2js(typeScript)
+
+    expect(typeScript).toContain('const rows: Ref<Row[]> = ref([{ id: 1 }]);')
+    expect(javaScript).toContain('const rows = ref([{ id: 1 }]);')
+    expect(javaScript).not.toContain('interface Row')
+    expect(typeScript.slice(typeScript.indexOf('<template>')))
+      .toBe(javaScript.slice(javaScript.indexOf('<template>')))
+  })
+
+  it('transforms every TypeScript script block and accepts spaced lang attributes', () => {
+    const source = `<script lang = 'ts'>
+export const load = (): number => 1
+</script>
+
+<script setup lang="ts">
+interface Row { id: number }
+const row: Row = { id: load() }
+</script>
+
+<template>{{ row.id }}</template>`
+
+    const typeScript = formatSfcTypeScript(source)
+    const javaScript = sfcTs2js(typeScript)
+
+    expect(typeScript).toContain('<script lang = \'ts\'>\nexport const load = (): number => 1;')
+    expect(typeScript).toContain('const row: Row = { id: load() };')
+    expect(javaScript).toContain('<script>\nexport const load = () => 1;')
+    expect(javaScript).toContain('<script setup>\nconst row = { id: load() };')
+    expect(javaScript).not.toMatch(/\blang\s*=\s*['"]ts['"]|interface Row|: Row|: number/)
+  })
+
+  it('preserves TSX script attributes while changing the language to JSX', () => {
+    const source = '<script generic="T" lang=\'tsx\'>const value: number = 1</script>'
+
+    expect(sfcTs2js(formatSfcTypeScript(source)))
+      .toBe('<script generic="T" lang="jsx">\nconst value = 1;\n</script>')
+  })
+
+  it('does not treat similarly named attributes as the script language', () => {
+    const source = '<script data-lang="ts">const value = 1</script>'
+
+    expect(formatSfcTypeScript(source)).toBe(source)
+    expect(sfcTs2js(source)).toBe(source)
+  })
+
   it('leaves JavaScript-only SFCs unchanged', () => {
     const source = '<script setup>const value = 1</script>\n<template>{{ value }}</template>'
     expect(sfcTs2js(source)).toBe(source)
