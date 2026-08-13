@@ -8,6 +8,10 @@ const pagesWorkflow = readFileSync(resolve(workflowDirectory, 'pages.yml'), 'utf
 const releaseWorkflow = readFileSync(resolve(workflowDirectory, 'release.yml'), 'utf8')
 const workflowValidator = readFileSync(resolve(import.meta.dirname, '../validate-workflows.mjs'), 'utf8')
 const rootManifest = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../package.json'), 'utf8'))
+const aiDocAssistantManifest = JSON.parse(readFileSync(
+  resolve(import.meta.dirname, '../../packages/ai-doc-assistant/package.json'),
+  'utf8',
+))
 const viteConfigManifest = JSON.parse(readFileSync(
   resolve(import.meta.dirname, '../../packages/vite-config/package.json'),
   'utf8',
@@ -36,11 +40,15 @@ describe('release workflow topology', () => {
     expect(ciWorkflow).toContain('playgrounds/components-playground/dist/test-results/components-playground')
   })
 
-  it('isolates the real vite-config builds from the parallel workspace test graph', () => {
+  it('limits concurrency around resource-heavy integration tests', () => {
+    expect(rootManifest.scripts.test).toContain('--concurrency=2')
     expect(rootManifest.scripts.test).toContain('--filter=!@moluoxixi/vite-config')
     expect(rootManifest.scripts.test).toContain('turbo run test --filter=@moluoxixi/vite-config --concurrency=1')
+    expect(aiDocAssistantManifest.scripts.test).toContain('--no-file-parallelism --maxWorkers=1')
     expect(viteConfigManifest.scripts.test).toContain('--no-file-parallelism --maxWorkers=1')
+    expect(rootManifest.scripts['test:coverage']).toContain('--concurrency=2')
     expect(rootManifest.scripts['test:coverage']).toContain('turbo run test:coverage --filter=@moluoxixi/vite-config --concurrency=1')
+    expect(aiDocAssistantManifest.scripts['test:coverage']).toContain('--no-file-parallelism --maxWorkers=1')
     expect(viteConfigManifest.scripts['test:coverage']).toContain('--no-file-parallelism --maxWorkers=1')
   })
 

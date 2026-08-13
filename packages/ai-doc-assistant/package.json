@@ -45,8 +45,8 @@
     "build:lib": "vite build",
     "build:ui": "node scripts/build-ui.mjs",
     "dev": "vite build --watch",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage --testTimeout 30000 --hookTimeout 30000",
+    "test": "vitest run --no-file-parallelism --maxWorkers=1",
+    "test:coverage": "vitest run --coverage --testTimeout 30000 --hookTimeout 30000 --no-file-parallelism --maxWorkers=1",
     "e2e": "playwright test",
     "typecheck": "vue-tsc -p tsconfig.test.json --noEmit"
   },
