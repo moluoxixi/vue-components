@@ -7,6 +7,11 @@ const ciWorkflow = readFileSync(resolve(workflowDirectory, 'ci.yml'), 'utf8')
 const pagesWorkflow = readFileSync(resolve(workflowDirectory, 'pages.yml'), 'utf8')
 const releaseWorkflow = readFileSync(resolve(workflowDirectory, 'release.yml'), 'utf8')
 const workflowValidator = readFileSync(resolve(import.meta.dirname, '../validate-workflows.mjs'), 'utf8')
+const rootManifest = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../package.json'), 'utf8'))
+const viteConfigManifest = JSON.parse(readFileSync(
+  resolve(import.meta.dirname, '../../packages/vite-config/package.json'),
+  'utf8',
+))
 
 describe('release workflow topology', () => {
   it('keeps CI, Pages, and package publishing in separate workflows', () => {
@@ -29,6 +34,14 @@ describe('release workflow topology', () => {
     expect(ciWorkflow).toContain('actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02')
     expect(ciWorkflow).toContain('packages/ConfigForm/playground/dist/playwright-report/config-form-playground')
     expect(ciWorkflow).toContain('playgrounds/components-playground/dist/test-results/components-playground')
+  })
+
+  it('isolates the real vite-config builds from the parallel workspace test graph', () => {
+    expect(rootManifest.scripts.test).toContain('--filter=!@moluoxixi/vite-config')
+    expect(rootManifest.scripts.test).toContain('turbo run test --filter=@moluoxixi/vite-config --concurrency=1')
+    expect(viteConfigManifest.scripts.test).toContain('--no-file-parallelism --maxWorkers=1')
+    expect(rootManifest.scripts['test:coverage']).toContain('turbo run test:coverage --filter=@moluoxixi/vite-config --concurrency=1')
+    expect(viteConfigManifest.scripts['test:coverage']).toContain('--no-file-parallelism --maxWorkers=1')
   })
 
   it('runs a pinned official actionlint binary after checksum verification', () => {
