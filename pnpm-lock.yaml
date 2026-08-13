@@ -128,6 +128,9 @@ catalogs:
       specifier: 3.1.8
       version: 3.1.8
   default:
+    '@arethetypeswrong/cli':
+      specifier: 0.18.5
+      version: 0.18.5
     '@huggingface/transformers':
       specifier: ^4.0.0
       version: 4.2.0
@@ -164,15 +167,24 @@ catalogs:
     nprogress:
       specifier: ^0.2.0
       version: 0.2.0
+    publint:
+      specifier: 0.3.23
+      version: 0.3.23
     sortablejs:
       specifier: ^1.15.7
       version: 1.15.7
+    turbo:
+      specifier: 2.10.9
+      version: 2.10.9
     vitepress:
       specifier: ^1.6.3
       version: 1.6.4
     vue3-sfc-loader:
       specifier: 0.9.5
       version: 0.9.5
+    yaml:
+      specifier: 2.9.0
+      version: 2.9.0
   dev:
     '@antfu/eslint-config':
       specifier: ^8.2.0
@@ -312,7 +324,7 @@ importers:
         specifier: catalog:dev
         version: 8.2.0(@typescript-eslint/rule-tester@8.59.0(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.59.0(typescript@5.9.3))(@typescript-eslint/utils@8.59.0(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(@vue/compiler-sfc@3.5.33)(eslint-plugin-format@2.0.1(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
       '@arethetypeswrong/cli':
-        specifier: 0.18.5
+        specifier: 'catalog:'
         version: 0.18.5
       '@changesets/cli':
         specifier: catalog:dev
@@ -348,10 +360,10 @@ importers:
         specifier: catalog:dev
         version: 17.0.5
       publint:
-        specifier: 0.3.23
+        specifier: 'catalog:'
         version: 0.3.23
       turbo:
-        specifier: 2.10.9
+        specifier: 'catalog:'
         version: 2.10.9
       typescript:
         specifier: catalog:dev
@@ -360,7 +372,7 @@ importers:
         specifier: catalog:dev
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
       yaml:
-        specifier: 2.9.0
+        specifier: 'catalog:'
         version: 2.9.0
 
   docs/vitepress:
