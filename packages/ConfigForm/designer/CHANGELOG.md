@@ -1,5 +1,14 @@
 # @moluoxixi/config-form-designer
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.3
+  - @moluoxixi/config-form-core@0.2.3
+  - @moluoxixi/config-form-headless@0.2.3
+
 ## 0.1.3
 
 ### Patch Changes

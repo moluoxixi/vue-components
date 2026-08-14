@@ -1,5 +1,19 @@
 # @moluoxixi/components
 
+## 0.3.0
+
+### Minor Changes
+
+- 1d741fb: Add responsive CSS widths and a configurable column pane with drag ordering, visibility toggles, and width controls to ConfigTable.
+- dedd859: Add selector overloads for row and cell table mode APIs, and wait for documentation styles before mounting the VitePress app.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.3
+  - @moluoxixi/rich-text-editor@0.1.2
+  - @moluoxixi/config-form-headless@0.2.3
+
 ## 0.2.3
 
 ### Patch Changes

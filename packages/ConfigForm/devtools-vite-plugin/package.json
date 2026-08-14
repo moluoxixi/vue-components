@@ -30,7 +30,7 @@
     "typecheck": "vue-tsc -p tsconfig.test.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form": "^0.2.2",
+    "@moluoxixi/config-form": "^0.2.3",
     "vite": "^6.2.0",
     "vue": "^3.5.0"
   },

@@ -1,5 +1,13 @@
 # @moluoxixi/config-form-plugin-antd-vue
 
+## 0.1.3
+
+### Patch Changes
+
+- Automatically release packages changed in 673d9e24983b.
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.3
+
 ## 0.1.2
 
 ### Patch Changes

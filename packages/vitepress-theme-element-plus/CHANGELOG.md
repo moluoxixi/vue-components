@@ -1,5 +1,13 @@
 # @moluoxixi/vitepress-theme-element-plus
 
+## 0.1.10
+
+### Patch Changes
+
+- 5561c94: Format TypeScript and generated JavaScript demo sources consistently.
+- dedd859: Add selector overloads for row and cell table mode APIs, and wait for documentation styles before mounting the VitePress app.
+  - @moluoxixi/ai-doc-assistant@0.1.2
+
 ## 0.1.9
 
 ### Patch Changes
