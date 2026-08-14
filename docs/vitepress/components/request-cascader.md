@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="RequestCascader" slug="request-cascader" :has-source-doc="true" />
 
-<!--@include: ../../../packages/components/src/RequestCascader/docs/index.md{4,41}-->
+<!--@include: ../../../packages/components/src/RequestCascader/docs/index.md{4,61}-->
 
 ## API
 

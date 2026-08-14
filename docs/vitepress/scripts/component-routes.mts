@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { getDocsMessages } from '../.vitepress/docs-i18n.ts'
 import {
-  componentSourcePath,
+  componentDocsSourcePath,
   defaultDocsLocale,
   getDocsLocaleConfig,
 } from '../.vitepress/docs-site.ts'
@@ -74,7 +74,7 @@ function sourceDocInclude(
   endLine: number,
   locale: ComponentRouteLocaleOptions,
 ): string {
-  return `<!--@include: ${locale.sourceDocIncludePrefix}${componentSourcePath(component.name)}/${locale.sourceDocFile}{${startLine},${endLine}}-->`
+  return `<!--@include: ${locale.sourceDocIncludePrefix}${componentDocsSourcePath(component.name)}/${locale.sourceDocFile}{${startLine},${endLine}}-->`
 }
 
 function analyzeSourceDoc(content: string, component: ComponentRoute): SourceDocLayout {
@@ -205,7 +205,7 @@ export function createComponentRoutePaths(
 
   const apiOnly: string[] = []
   const paths = components.map((component) => {
-    const sourceDocPath = resolve(root, componentSourcePath(component.name), locale.sourceDocFile)
+    const sourceDocPath = resolve(root, componentDocsSourcePath(component.name), locale.sourceDocFile)
     const hasSourceDoc = existsSync(sourceDocPath)
     const sourceDocContent = hasSourceDoc ? readFileSync(sourceDocPath, 'utf8') : undefined
     if (sourceDocContent && API_DOCS_TAG_PATTERN.test(sourceDocContent))

@@ -5,38 +5,47 @@
 ## 基础用法
 
 :::demo 配置 `columns` 和 `data`，点击输入框弹出表格，点击行触发 `select` 事件。
+
 ```vue
 <script setup lang="ts">
+import type { ConfigTableColumn } from '@moluoxixi/components'
 import { PopoverTableSelect } from '@moluoxixi/components'
 import { ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus'
 import { computed, ref } from 'vue'
 
-const inputValue = ref('C-001 华东仓')
-const selectedRow = ref({ code: 'C-001', name: '华东仓', owner: '运营一部', status: '启用' })
+interface WarehouseRow {
+  code: string
+  name: string
+  owner: string
+  status: string
+}
 
-const allRows = [
+const inputValue = ref<string>('C-001 华东仓')
+const selectedRow = ref<WarehouseRow>({ code: 'C-001', name: '华东仓', owner: '运营一部', status: '启用' })
+
+const allRows: WarehouseRow[] = [
   { code: 'C-001', name: '华东仓', owner: '运营一部', status: '启用' },
   { code: 'C-002', name: '华南仓', owner: '运营二部', status: '启用' },
   { code: 'C-003', name: '西南仓', owner: '运营三部', status: '维护' },
   { code: 'C-004', name: '华北仓', owner: '运营四部', status: '启用' },
 ]
 
-const columns = [
-  { field: 'code',   title: '编码', width: 120 },
-  { field: 'name',   title: '名称', minWidth: 150 },
-  { field: 'owner',  title: '负责人', minWidth: 130 },
-  { field: 'status', title: '状态',  width: 90, align: 'center', slots: { default: 'status' } },
+const columns: ConfigTableColumn[] = [
+  { field: 'code', title: '编码', width: 120 },
+  { field: 'name', title: '名称', minWidth: 150 },
+  { field: 'owner', title: '负责人', minWidth: 130 },
+  { field: 'status', title: '状态', width: 90, align: 'center', slots: { default: 'status' } },
 ]
 
-const filteredRows = computed(() =>
-  allRows.filter((row) => {
+const filteredRows = computed<WarehouseRow[]>(() =>
+  allRows.filter(row => {
     const keyword = inputValue.value.replace(/\s+/g, '').toLowerCase()
     const searchable = `${row.code}${row.name}${row.owner}${row.status}`.toLowerCase()
     return searchable.includes(keyword)
-  })
+  }),
 )
 
-function handleSelect(row) {
+function handleSelect(row: WarehouseRow): void {
   selectedRow.value = row
   inputValue.value = `${row.code} ${row.name}`
 }
@@ -65,4 +74,5 @@ function handleSelect(row) {
   </ElDescriptions>
 </template>
 ```
+
 :::

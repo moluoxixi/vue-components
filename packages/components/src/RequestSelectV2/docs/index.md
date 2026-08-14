@@ -5,15 +5,22 @@
 ## 基础用法
 
 :::demo 传入 `query` 异步函数，组件自动发起请求并填充选项。
+
 ```vue
 <script setup lang="ts">
 import { RequestSelectV2 } from '@moluoxixi/components'
 import { ref } from 'vue'
-const value = ref(null)
 
-async function queryUsers() {
+interface UserOption {
+  value: number
+  label: string
+}
+
+const value = ref<number | null>(null)
+
+async function queryUsers(): Promise<UserOption[]> {
   // 模拟远程请求
-  await new Promise(r => setTimeout(r, 300))
+  await new Promise<void>(resolve => setTimeout(resolve, 300))
   return [
     { value: 1, label: '张三' },
     { value: 2, label: '李四' },
@@ -32,21 +39,29 @@ async function queryUsers() {
   />
 </template>
 ```
+
 :::
 
 ## 条件加载
 
 :::demo `enabled` 为 `false` 时不发起请求，可用于条件渲染场景。
+
 ```vue
 <script setup lang="ts">
 import { RequestSelectV2 } from '@moluoxixi/components'
 import { ElSwitch } from 'element-plus'
 import { ref } from 'vue'
-const value = ref(null)
-const enabled = ref(false)
 
-async function queryItems() {
-  await new Promise(r => setTimeout(r, 200))
+interface ItemOption {
+  value: number
+  label: string
+}
+
+const value = ref<number | null>(null)
+const enabled = ref<boolean>(false)
+
+async function queryItems(): Promise<ItemOption[]> {
+  await new Promise<void>(resolve => setTimeout(resolve, 200))
   return Array.from({ length: 5 }, (_, i) => ({ value: i, label: `选项 ${i + 1}` }))
 }
 </script>
@@ -64,4 +79,5 @@ async function queryItems() {
   </div>
 </template>
 ```
+
 :::

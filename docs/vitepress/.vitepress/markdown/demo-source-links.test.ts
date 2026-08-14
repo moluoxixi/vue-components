@@ -46,4 +46,22 @@ describe('docs demo source links', () => {
       environment: { relativePath: 'components/config-table.md' },
     })).toBeUndefined()
   })
+
+  it('resolves RichTextEditor demos from its package-level documentation', () => {
+    const root = resolve(import.meta.dirname, '../../../..')
+    const sourcePath = resolve(root, 'packages/rich-text-editor/docs/index.md')
+    const markdown = readFileSync(sourcePath, 'utf8')
+    const md = new MarkdownIt()
+    md.use(elementPlusDocsDemoPlugin)
+    const demo = collectElementPlusDocsDemos(md, markdown)[0]
+    expect(demo).toBeDefined()
+
+    const resolveSourceHref = createDocsDemoSourceHrefResolver(md, root)
+    const href = resolveSourceHref({
+      ...demo!,
+      environment: { relativePath: 'components/rich-text-editor.md' },
+    })
+
+    expect(href).toContain('/packages/rich-text-editor/docs/index.md?plain=1#L')
+  })
 })

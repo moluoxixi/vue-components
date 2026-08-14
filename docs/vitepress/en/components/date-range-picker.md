@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="DateRangePicker" slug="date-range-picker" :has-source-doc="true" />
 
-<!--@include: ../../../../packages/components/src/DateRangePicker/docs/index.en.md{4,99}-->
+<!--@include: ../../../../packages/components/src/DateRangePicker/docs/index.en.md{4,104}-->
 
 ## API
 

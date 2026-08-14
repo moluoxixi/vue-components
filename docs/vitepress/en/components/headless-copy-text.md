@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="HeadlessCopyText" slug="headless-copy-text" :has-source-doc="true" />
 
-<!--@include: ../../../../packages/components/src/HeadlessCopyText/docs/index.en.md{4,60}-->
+<!--@include: ../../../../packages/components/src/HeadlessCopyText/docs/index.en.md{4,64}-->
 
 ## API
 

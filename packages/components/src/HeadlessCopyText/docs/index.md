@@ -5,6 +5,7 @@
 ## 基础用法
 
 :::demo 通过默认插槽接收状态，完全自主控制渲染。
+
 ```vue
 <script setup lang="ts">
 import { HeadlessCopyText } from '@moluoxixi/components'
@@ -32,11 +33,13 @@ import { ElButton } from 'element-plus'
   </HeadlessCopyText>
 </template>
 ```
+
 :::
 
 ## 带动画反馈
 
 :::demo 利用 `copied` 状态实现自定义过渡动画。
+
 ```vue
 <script setup lang="ts">
 import { HeadlessCopyText } from '@moluoxixi/components'
@@ -57,4 +60,5 @@ import { ElButton, ElTag } from 'element-plus'
   </HeadlessCopyText>
 </template>
 ```
+
 :::

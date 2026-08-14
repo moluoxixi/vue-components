@@ -5,32 +5,44 @@
 ## 基础用法
 
 :::demo 传入返回树形数据的 `query` 函数，组件自动填充树节点。
+
 ```vue
 <script setup lang="ts">
 import { RequestTreeSelect } from '@moluoxixi/components'
 import { ref } from 'vue'
-const value = ref(null)
 
-async function queryDeptTree() {
-  await new Promise(r => setTimeout(r, 200))
+interface DepartmentNode {
+  value: number
+  label: string
+  children?: DepartmentNode[]
+}
+
+const value = ref<number | null>(null)
+
+async function queryDeptTree(): Promise<DepartmentNode[]> {
+  await new Promise<void>(resolve => setTimeout(resolve, 200))
   return [
-    { value: 1, label: '总公司', children: [
-      { value: 2, label: '技术部', children: [
-        { value: 4, label: '前端组' },
-        { value: 5, label: '后端组' },
-      ]},
-      { value: 3, label: '产品部' },
-    ]},
+    {
+      value: 1,
+      label: '总公司',
+      children: [
+        {
+          value: 2,
+          label: '技术部',
+          children: [
+            { value: 4, label: '前端组' },
+            { value: 5, label: '后端组' },
+          ],
+        },
+        { value: 3, label: '产品部' },
+      ],
+    },
   ]
 }
 </script>
 <template>
-  <RequestTreeSelect
-    v-model="value"
-    :query="queryDeptTree"
-    placeholder="请选择部门"
-    style="width:240px;"
-  />
+  <RequestTreeSelect v-model="value" :query="queryDeptTree" placeholder="请选择部门" style="width:240px;" />
 </template>
 ```
+
 :::

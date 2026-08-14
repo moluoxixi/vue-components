@@ -23,6 +23,7 @@ import {
 } from '@moluoxixi/vitepress-theme-element-plus'
 import { getLocalizedComponentGroups } from '../docs-i18n'
 import {
+  componentDocsSourcePath,
   componentSourcePath,
   docsRoutePath,
   docsSite,
@@ -60,21 +61,24 @@ export const supportedLocalSfcModules = Object.freeze([
   'element-plus',
   'element-plus/dist/index.css',
   docsSite.packageName,
+  docsSite.richTextEditorPackageName,
   docsSite.packageStylesImport,
 ])
 
 const compileLocalSfc = createElementPlusDocsSfcCompiler({
   async createModuleCache() {
-    const [VueRuntime, ElementPlusRuntime, Components] = await Promise.all([
+    const [VueRuntime, ElementPlusRuntime, Components, RichTextEditor] = await Promise.all([
       import('vue'),
       import('element-plus'),
       import('@docs-components'),
+      import('@moluoxixi/rich-text-editor'),
     ])
     return {
       'vue': VueRuntime,
       'element-plus': ElementPlusRuntime,
       'element-plus/dist/index.css': {},
       [docsSite.packageName]: Components,
+      [docsSite.richTextEditorPackageName]: RichTextEditor,
       [docsSite.packageStylesImport]: {},
     }
   },
@@ -164,6 +168,7 @@ export const docsContent = createElementPlusDocsContent({
   resolveComponentMeta({ hasSourceDoc, link, locale, name, slug }) {
     const metadata = getComponentGithubMetadata(name)
     const sourcePath = componentSourcePath(name)
+    const docsSourcePath = componentDocsSourcePath(name)
     const repositoryUrl = docsSite.repository.url
     const branch = githubMetadata.repository.defaultBranch
     const sourceHref = `${repositoryUrl}/tree/${branch}/${sourcePath}`
@@ -172,7 +177,7 @@ export const docsContent = createElementPlusDocsContent({
     return {
       commits: metadata.commits,
       editHref: hasSourceDoc
-        ? `${repositoryUrl}/edit/${branch}/${sourcePath}/${getDocsLocaleConfig(locale as DocsLocale).sourceDoc}`
+        ? `${repositoryUrl}/edit/${branch}/${docsSourcePath}/${getDocsLocaleConfig(locale as DocsLocale).sourceDoc}`
         : sourceHref,
       hasSourceDoc,
       importStatement: `import { ${name} } from '${docsSite.packageName}';`,

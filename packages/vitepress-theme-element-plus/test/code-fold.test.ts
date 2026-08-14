@@ -6,7 +6,7 @@ import ElementPlusDocsDemoSource from '../src/content/demo/ElementPlusDocsDemoSo
 
 describe('element Plus Demo code folding', () => {
   it('copies the upstream indentation folding rules, including tab stops', () => {
-    expect(getIndent('\t  value')).toBe(6)
+    expect(getIndent('\t  value')).toBe(4)
     expect(computeFoldRegions([
       '<template>',
       '  <section>',

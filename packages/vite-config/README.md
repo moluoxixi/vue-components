@@ -22,7 +22,6 @@
 - `auto-import`、`components`、`vue-router` 的默认 `dts` 输出路径都会基于 `viteConfig.root` 解析到 `src/typings/` 目录。
 - 调用方未显式覆盖时，不依赖当前 shell 的工作目录。
 
-
 - `createLibConfig()` 默认把 `dependencies`、`optionalDependencies` 与 `peerDependencies` external 化。
 - `devDependencies` 不会自动 external，避免把仅用于开发或测试的包错误带入发布契约。
 - `createLibConfig({ entry })` 可直接声明库入口；相对路径会基于 `viteConfig.root` 解析，默认仍为 `src/index.ts`。
@@ -59,13 +58,16 @@ Tailwind CSS 只会在安装 `@tailwindcss/vite` 或 `@tailwindcss/postcss` 时�
 仅安装裸 `tailwindcss` 包不会被当成 Vite/PostCSS 插件入口。
 
 ## 1. 自动化的依赖侦测（Read Package）
+
 - **实践方法**：放弃手动配置每个特性开关，利用读取并解析当前工作目录的 `package.json`，自动侦测项目中是否使用 `vue`、`react`、`@tailwindcss/vite`、`@tailwindcss/postcss`、`unocss` 等常用前端技术栈。
 - **优势**：减少模板化项目初始化的心智负担，开发者一旦安装对应依赖该功能自动就绪。
 
 ## 2. 动态按需加载配置模块
+
 - **实践方法**：根据上一步依赖检测的结果，利用动态 `import()` 加载相关的 Vite 插件。如果不包含某个依赖，则完全不要去进行该环境配置的解析和插件实例化。
 - **优势**：大幅提升 Vite Server 的启动速度，并防止未安装依赖抛出不必要的错误。
 
 ## 3. 模块化与配置合并（Merge Config）
+
 - **实践方法**：不要编写一个庞大的、成百上千行的单文件 `vite.config.ts`。应把基础配置（如别名、打包产出、服务器端口等）提取出来，与各个插件模块生成的配置独立化。最后利用 Vite 提供的 `mergeConfig` API 将最终侦测启用的多个配置块安全合并。
 - **优势**：保证了底层能力的可维护与高内聚，使得这个公共能力包可以横跨多个不同技术栈的子项目无缝使用。

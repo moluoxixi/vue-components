@@ -34,4 +34,25 @@ describe('createEslintConfig', () => {
     }])
     expect(rules['vue/block-order']).toBe('off')
   })
+
+  it('formats embedded Markdown code with the shared Prettier options', async () => {
+    const configs = await createEslintConfig()
+    const markdownConfig = configs.filter(config => (
+      config.files?.includes('**/*.md') && config.rules?.['format/prettier']
+    )).at(-1)
+    const formatRule = markdownConfig?.rules?.['format/prettier']
+
+    expect(formatRule).toEqual(['error', expect.objectContaining({
+      arrowParens: 'avoid',
+      endOfLine: 'auto',
+      embeddedLanguageFormatting: 'auto',
+      parser: 'markdown',
+      printWidth: 120,
+      semi: false,
+      singleQuote: true,
+      tabWidth: 2,
+      trailingComma: 'all',
+      useTabs: false,
+    })])
+  })
 })

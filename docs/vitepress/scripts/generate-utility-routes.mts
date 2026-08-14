@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { stringify } from 'yaml'
 import { getLocalizedUtilities } from '../.vitepress/docs-i18n.ts'
 import { docsLocales } from '../.vitepress/docs-site.ts'
 
@@ -30,11 +31,18 @@ for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>
     }
 
     const includePath = `${configured.sourceDocIncludePrefix}${utility.sourcePath}`
+    const frontmatter = stringify({
+      title: utility.packageName,
+      description: utility.description,
+      outline: [2, 4],
+    }, {
+      defaultKeyType: 'PLAIN',
+      defaultStringType: 'QUOTE_SINGLE',
+      lineWidth: 0,
+    }).trimEnd()
     const content = [
       '---',
-      `title: ${JSON.stringify(utility.packageName)}`,
-      `description: ${JSON.stringify(utility.description)}`,
-      'outline: [2, 4]',
+      frontmatter,
       '---',
       '',
       GENERATED_UTILITY_ROUTE_MARKER,

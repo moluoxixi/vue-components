@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="EnterNextContainer" slug="enter-next-container" :has-source-doc="true" />
 
-<!--@include: ../../../../packages/components/src/EnterNextContainer/docs/index.en.md{4,46}-->
+<!--@include: ../../../../packages/components/src/EnterNextContainer/docs/index.en.md{4,50}-->
 
 ## API
 

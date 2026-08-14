@@ -5,6 +5,7 @@ A high-performance, configuration-driven virtual table built on Element Plus `El
 ## Basic Usage
 
 :::demo Provide `columns` and static `data` to render a virtualized table. `width` accepts either a pixel number or a CSS width such as `100%` and `calc(...)`.
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -35,11 +36,13 @@ const data = shallowRef<EmployeeRow[]>([
   <ConfigTable :columns="columns" :data="data" width="100%" :height="240" />
 </template>
 ```
+
 :::
 
 ## Renderer
 
 :::demo Register a named renderer once and reuse it across table instances.
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -53,13 +56,13 @@ interface AccountRow {
   status: string
 }
 
-headlessTableRenderer.replace('docs-config-status-en', defineHeadlessTableRenderer<AccountRow>({
-  renderDefault: (_, { rawValue }) => h(
-    ElTag,
-    { size: 'small', type: rawValue === 'Active' ? 'success' : 'warning' },
-    () => rawValue,
-  ),
-}))
+headlessTableRenderer.replace(
+  'docs-config-status-en',
+  defineHeadlessTableRenderer<AccountRow>({
+    renderDefault: (_, { rawValue }) =>
+      h(ElTag, { size: 'small', type: rawValue === 'Active' ? 'success' : 'warning' }, () => rawValue),
+  }),
+)
 
 const columns: ConfigTableColumn[] = [
   { field: 'name', title: 'Name', minWidth: 140 },
@@ -80,14 +83,10 @@ const data = shallowRef<AccountRow[]>([
 </script>
 
 <template>
-  <ConfigTable
-    :columns="columns"
-    :data="data"
-    width="100%"
-    :height="200"
-  />
+  <ConfigTable :columns="columns" :data="data" width="100%" :height="200" />
 </template>
 ```
+
 :::
 
 Default column content resolves in this order: an inline renderer or named slot, a named renderer, `formatter`, and finally the raw field value. Edit mode tries `slots.edit` first and falls back to that unchanged chain. `column.id` is the stable key used by column settings and cell modes; when omitted, `field` is used.
@@ -97,6 +96,7 @@ Default column content resolves in this order: an inline renderer or named slot,
 Use `pane` to enable the built-in column configuration pane. Users can drag columns into a new order, toggle visibility, and edit widths. `pane.width` controls the pane width, while `pane.draggable` disables or enables drag sorting. Column settings are managed internally by default; pass `columnOrder`, `columnVisibility`, `columnWidths`, or their matching `v-model` bindings only when persistence or external control is needed. The previous `columnConfig` prop remains available as a compatibility alias.
 
 :::demo Manage column order, visibility, and widths with a configured pane.
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn, ConfigTablePaneConfig } from '@moluoxixi/components'
@@ -132,20 +132,16 @@ const data = shallowRef<EmployeeRow[]>([
 </script>
 
 <template>
-  <ConfigTable
-    :columns="columns"
-    :data="data"
-    :pane="pane"
-    width="100%"
-    :height="220"
-  />
+  <ConfigTable :columns="columns" :data="data" :pane="pane" width="100%" :height="220" />
 </template>
 ```
+
 :::
 
 ## Remote Data and Pagination
 
 :::demo Provide a `query` function to load data and display the pagination controls automatically.
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -193,6 +189,7 @@ async function queryUsers({ currentPage, pageSize }: UserQueryParams): Promise<U
   />
 </template>
 ```
+
 :::
 
 ## Editing Modes
@@ -206,13 +203,10 @@ Row and cell APIs require a stable row ID from `getRowId` or an explicit `rowKey
 The interactive example below keeps all three API scopes together: the table button calls `setMode`, the row button calls `setRowMode`, and the cell button calls `setCellMode`. The `mode` prop switch affects the whole table; use “Clear API modes” to reveal the prop-controlled state again.
 
 :::demo Use an `edit` slot for form controls and compare table-, row-, and cell-level mode changes.
+
 ```vue
 <script setup lang="ts">
-import type {
-  ConfigTableColumn,
-  HeadlessTableModeApi,
-  HeadlessTableModeChange,
-} from '@moluoxixi/components'
+import type { ConfigTableColumn, HeadlessTableModeApi, HeadlessTableModeChange } from '@moluoxixi/components'
 import { ref } from 'vue'
 import { ConfigTable } from '@moluoxixi/components'
 import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTag } from 'element-plus'
@@ -240,27 +234,27 @@ const columns: ConfigTableColumn[] = [
   { field: 'department', title: 'Department', minWidth: 140 },
 ]
 
-function applyTableMode() {
+function applyTableMode(): void {
   tableRef.value?.setMode('edit')
 }
 
-function applyRowMode() {
+function applyRowMode(): void {
   tableRef.value?.setRowMode('U-001', 'edit')
 }
 
-function applyCellMode() {
+function applyCellMode(): void {
   tableRef.value?.setCellMode('U-002', 'status', 'edit')
 }
 
-function applyActiveRowsMode() {
+function applyActiveRowsMode(): void {
   tableRef.value?.setRowMode(({ row }) => row.status === 'Active', 'edit')
 }
 
-function applyNameCellsMode() {
+function applyNameCellsMode(): void {
   tableRef.value?.setCellMode(({ columnId }) => columnId === 'name', 'edit')
 }
 
-function handleModeChange(change: HeadlessTableModeChange) {
+function handleModeChange(change: HeadlessTableModeChange): void {
   lastChange.value = `${change.scope} scope: ${change.action}`
 }
 </script>
@@ -303,6 +297,7 @@ function handleModeChange(change: HeadlessTableModeChange) {
   </ConfigTable>
 </template>
 ```
+
 :::
 
 Effective mode API mutations emit `modeChange`; single-scope events include previous/next effective modes and bulk events include the cleared count. The event is observational and does not write back to the `mode` prop. The component does not provide edit triggers, save/cancel behavior, validation, or row-data updates. Consumers own those workflows. A missing edit slot leaves the existing cell rendering unchanged.
@@ -310,6 +305,7 @@ Effective mode API mutations emit `modeChange`; single-scope events include prev
 ## Custom Cell Slots
 
 :::demo Set `column.slots.default` to a slot name and provide the matching named slot in the template.
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -345,4 +341,5 @@ const data = shallowRef<ScoreRow[]>([
   </ConfigTable>
 </template>
 ```
+
 :::

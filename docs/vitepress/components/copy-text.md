@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="CopyText" slug="copy-text" :has-source-doc="true" />
 
-<!--@include: ../../../packages/components/src/CopyText/docs/index.md{4,85}-->
+<!--@include: ../../../packages/components/src/CopyText/docs/index.md{4,93}-->
 
 ## API
 

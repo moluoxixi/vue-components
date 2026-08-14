@@ -14,4 +14,3 @@ Internal node renderer for ConfigForm.
 - Render-function components are called with a `RenderContext`
 - Slot render functions receive `(context, ...slotArgs)`
 - Nested slot nodes continue through `RecursiveField`
-

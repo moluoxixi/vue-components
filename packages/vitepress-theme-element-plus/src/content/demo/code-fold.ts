@@ -6,7 +6,7 @@ export interface FoldRegion {
   end: number
 }
 
-const TAB_SIZE = 4
+const TAB_SIZE = 2
 
 export function getIndent(line: string): number {
   let indent = 0

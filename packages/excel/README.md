@@ -32,9 +32,7 @@ const blob = createExcelBlob({
       formatter: (_row, _column, rowIndex) => rowIndex + 1,
     },
   ],
-  tableData: [
-    { name: '张三', profile: { age: 18 } },
-  ],
+  tableData: [{ name: '张三', profile: { age: 18 } }],
 })
 ```
 

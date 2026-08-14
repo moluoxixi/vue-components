@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectElementPlusDocsDemos } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { getLocalizedComponents } from '../docs-i18n'
-import { componentSourcePath, docsLocales, docsSite } from '../docs-site'
+import { componentDocsSourcePath, docsLocales, docsSite } from '../docs-site'
 
 interface MarkdownEnvironment {
   relativePath?: string
@@ -36,7 +36,7 @@ export function createDocsDemoSourceHrefResolver(
     for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>) {
       const configured = docsLocales[locale]
       for (const component of getLocalizedComponents(locale)) {
-        const sourceRelativePath = slash(`${componentSourcePath(component.name)}/${configured.sourceDoc}`)
+        const sourceRelativePath = slash(`${componentDocsSourcePath(component.name)}/${configured.sourceDoc}`)
         const sourcePath = resolve(root, sourceRelativePath)
         if (!existsSync(sourcePath))
           continue

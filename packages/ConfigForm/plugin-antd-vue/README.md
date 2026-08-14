@@ -13,9 +13,7 @@ import Input from 'ant-design-vue/es/input'
 import Switch from 'ant-design-vue/es/switch'
 
 const runtime = {
-  plugins: [
-    createAntdVuePlugin(),
-  ],
+  plugins: [createAntdVuePlugin()],
 } satisfies FormRuntimeOptions
 
 const fields = [

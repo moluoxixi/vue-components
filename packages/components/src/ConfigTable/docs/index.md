@@ -5,6 +5,7 @@
 ## 基础用法
 
 :::demo 传入 `columns` 配置和静态 `data`，即可渲染虚拟列表表格。`width` 支持像素数值，也支持 `100%`、`calc(...)` 等 CSS 宽度。
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -19,7 +20,7 @@ interface EmployeeRow {
 }
 
 const columns: ConfigTableColumn[] = [
-  { field: 'id',   title: 'ID',   width: 80 },
+  { field: 'id', title: 'ID', width: 80 },
   { field: 'name', title: '姓名', minWidth: 140 },
   { field: 'dept', title: '部门', minWidth: 140 },
   { field: 'role', title: '角色', minWidth: 120 },
@@ -35,11 +36,13 @@ const data = shallowRef<EmployeeRow[]>([
   <ConfigTable :columns="columns" :data="data" width="100%" :height="240" />
 </template>
 ```
+
 :::
 
 ## Renderer
 
 :::demo renderer 可以在应用级 registry 中注册一次，ConfigTable 和 HeadlessTable 的多个实例都能复用。
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -57,19 +60,26 @@ interface StatusRendererProps {
   prefix?: string
 }
 
-headlessTableRenderer.replace('docs-config-status', defineHeadlessTableRenderer<AccountRow, StatusRendererProps>({
-  renderDefault: (renderOptions, { rawValue }) => h(
-    ElTag,
-    {
-      size: 'small',
-      type: rawValue === '启用' ? 'success' : 'warning',
-    },
-    () => `${renderOptions.props?.prefix ?? ''}${rawValue}`,
-  ),
-}))
-headlessTableRenderer.replace('docs-config-score-header', defineHeadlessTableRenderer<AccountRow>({
-  renderHeader: (_, { column }) => h('strong', { style: 'color:#409eff' }, column.title),
-}))
+headlessTableRenderer.replace(
+  'docs-config-status',
+  defineHeadlessTableRenderer<AccountRow, StatusRendererProps>({
+    renderDefault: (renderOptions, { rawValue }) =>
+      h(
+        ElTag,
+        {
+          size: 'small',
+          type: rawValue === '启用' ? 'success' : 'warning',
+        },
+        () => `${renderOptions.props?.prefix ?? ''}${rawValue}`,
+      ),
+  }),
+)
+headlessTableRenderer.replace(
+  'docs-config-score-header',
+  defineHeadlessTableRenderer<AccountRow>({
+    renderHeader: (_, { column }) => h('strong', { style: 'color:#409eff' }, column.title),
+  }),
+)
 const columns: ConfigTableColumn[] = [
   { field: 'name', title: '姓名', minWidth: 140, slots: { header: 'nameHeader' } },
   {
@@ -93,19 +103,12 @@ const data = shallowRef<AccountRow[]>([
   { name: '李四', status: '维护', score: 78 },
   { name: '王五', status: '启用', score: 85 },
 ])
-const secondData = shallowRef<AccountRow[]>([
-  { name: '赵六', status: '启用', score: 88 },
-])
+const secondData = shallowRef<AccountRow[]>([{ name: '赵六', status: '启用', score: 88 }])
 const secondaryColumns = columns.map(column => ({ ...column, slots: undefined }))
 </script>
 
 <template>
-  <ConfigTable
-    :columns="columns"
-    :data="data"
-    width="100%"
-    :height="200"
-  >
+  <ConfigTable :columns="columns" :data="data" width="100%" :height="200">
     <template #nameHeader>
       <strong>姓名（Slot）</strong>
     </template>
@@ -119,6 +122,7 @@ const secondaryColumns = columns.map(column => ({ ...column, slots: undefined })
   />
 </template>
 ```
+
 :::
 
 列内容的默认优先级为：列内联渲染函数或具名 Slot、命名 renderer、`formatter`、原始字段值。edit 模式会先尝试 `slots.edit`，未命中时回退到这条默认渲染链。`column.id` 是列设置和单元格模式使用的稳定标识，未提供时使用 `field`。
@@ -128,6 +132,7 @@ const secondaryColumns = columns.map(column => ({ ...column, slots: undefined })
 `pane` 开启内置列配置面板。面板支持拖拽调整顺序、切换列的显示状态和修改列宽；`pane.width` 控制面板宽度，`pane.draggable` 可关闭拖拽。默认由组件内部维护列设置；只有需要持久化或外部控制时，才传入 `columnOrder`、`columnVisibility`、`columnWidths` 或对应的 `v-model`。旧的 `columnConfig` 仍作为兼容别名保留。
 
 :::demo 使用配置化 pane 管理列顺序、显隐与宽度。
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn, ConfigTablePaneConfig } from '@moluoxixi/components'
@@ -163,20 +168,16 @@ const data = shallowRef<EmployeeRow[]>([
 </script>
 
 <template>
-  <ConfigTable
-    :columns="columns"
-    :data="data"
-    :pane="pane"
-    width="100%"
-    :height="220"
-  />
+  <ConfigTable :columns="columns" :data="data" :pane="pane" width="100%" :height="220" />
 </template>
 ```
+
 :::
 
 ## 远程请求 + 分页
 
 :::demo 传入 `query` 函数，组件自动发请求并展示分页栏。
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -199,8 +200,8 @@ interface UserQueryResult {
 }
 
 const columns: ConfigTableColumn[] = [
-  { field: 'id',     title: 'ID',   width: 80 },
-  { field: 'name',   title: '姓名', minWidth: 140 },
+  { field: 'id', title: 'ID', width: 80 },
+  { field: 'name', title: '姓名', minWidth: 140 },
   { field: 'status', title: '状态', width: 100, align: 'center' },
 ]
 
@@ -225,6 +226,7 @@ async function queryUsers({ currentPage, pageSize }: UserQueryParams): Promise<U
   />
 </template>
 ```
+
 :::
 
 ## 编辑模式
@@ -236,13 +238,10 @@ async function queryUsers({ currentPage, pageSize }: UserQueryParams): Promise<U
 下面的示例把三种 API 范围放在同一张表里：表格按钮调用 `setMode`，行按钮调用 `setRowMode`，单元格按钮调用 `setCellMode`。`mode` prop 的开关只改变整张表，点击“清除 API 模式”后即可看到它的效果。
 
 :::demo 使用 `edit` 插槽提供编辑控件，并分别演示表格、行、单元格三种模式范围。
+
 ```vue
 <script setup lang="ts">
-import type {
-  ConfigTableColumn,
-  HeadlessTableModeApi,
-  HeadlessTableModeChange,
-} from '@moluoxixi/components'
+import type { ConfigTableColumn, HeadlessTableModeApi, HeadlessTableModeChange } from '@moluoxixi/components'
 import { ref } from 'vue'
 import { ConfigTable } from '@moluoxixi/components'
 import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTag } from 'element-plus'
@@ -270,27 +269,27 @@ const columns: ConfigTableColumn[] = [
   { field: 'department', title: '部门', minWidth: 140 },
 ]
 
-function applyTableMode() {
+function applyTableMode(): void {
   tableRef.value?.setMode('edit')
 }
 
-function applyRowMode() {
+function applyRowMode(): void {
   tableRef.value?.setRowMode('U-001', 'edit')
 }
 
-function applyCellMode() {
+function applyCellMode(): void {
   tableRef.value?.setCellMode('U-002', 'status', 'edit')
 }
 
-function applyActiveRowsMode() {
+function applyActiveRowsMode(): void {
   tableRef.value?.setRowMode(({ row }) => row.status === '启用', 'edit')
 }
 
-function applyNameCellsMode() {
+function applyNameCellsMode(): void {
   tableRef.value?.setCellMode(({ columnId }) => columnId === 'name', 'edit')
 }
 
-function handleModeChange(change: HeadlessTableModeChange) {
+function handleModeChange(change: HeadlessTableModeChange): void {
   lastChange.value = `${change.scope} scope: ${change.action}`
 }
 </script>
@@ -333,6 +332,7 @@ function handleModeChange(change: HeadlessTableModeChange) {
   </ConfigTable>
 </template>
 ```
+
 :::
 
 有效的模式 API 变更会触发 `modeChange`；单项事件包含变更前后有效模式，批量事件包含清理数量。事件只用于状态观察，不会写回 `mode` prop。组件不提供内置编辑触发器，也不处理保存/取消、校验或行数据更新，这些行为由使用方实现。缺少 edit 插槽时，单元格保持原有渲染结果。
@@ -340,6 +340,7 @@ function handleModeChange(change: HeadlessTableModeChange) {
 ## 自定义单元格插槽
 
 :::demo `column.slots.default` 可以是插槽名字符串，在模板中声明对应具名插槽进行自定义渲染。
+
 ```vue
 <script setup lang="ts">
 import type { ConfigTableColumn } from '@moluoxixi/components'
@@ -354,9 +355,9 @@ interface ScoreRow {
 }
 
 const columns: ConfigTableColumn[] = [
-  { field: 'name',   title: '姓名', minWidth: 140 },
+  { field: 'name', title: '姓名', minWidth: 140 },
   { field: 'status', title: '状态', width: 100, align: 'center', slots: { default: 'status' } },
-  { field: 'score',  title: '分数', width: 100, align: 'right',  slots: { default: 'score'  } },
+  { field: 'score', title: '分数', width: 100, align: 'right', slots: { default: 'score' } },
 ]
 const data = shallowRef<ScoreRow[]>([
   { name: '张三', status: '启用', score: 92 },
@@ -377,4 +378,5 @@ const data = shallowRef<ScoreRow[]>([
   </ConfigTable>
 </template>
 ```
+
 :::

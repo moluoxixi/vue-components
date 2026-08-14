@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="RequestSelectV2" slug="request-select-v2" :has-source-doc="true" />
 
-<!--@include: ../../../packages/components/src/RequestSelectV2/docs/index.md{4,67}-->
+<!--@include: ../../../packages/components/src/RequestSelectV2/docs/index.md{4,83}-->
 
 ## API
 

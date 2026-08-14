@@ -5,18 +5,28 @@ A renderless table core that exposes column, row, and rendering contexts through
 ## Integrating with Element Plus
 
 :::demo Use `HeadlessTable` for column configuration and render the result with `ElTable` inside the default slot.
+
 ```vue
 <script setup lang="ts">
+import type { HeadlessTableColumn } from '@moluoxixi/components'
 import { HeadlessTable } from '@moluoxixi/components'
 import { ElTable, ElTableColumn, ElTag } from 'element-plus'
 
-const rows = [
+interface WarehouseRow {
+  id: number
+  code: string
+  name: string
+  status: string
+  utilization: number
+}
+
+const rows: WarehouseRow[] = [
   { id: 1, code: 'W-001', name: 'East Warehouse', status: 'Active', utilization: 87 },
   { id: 2, code: 'W-002', name: 'South Warehouse', status: 'Active', utilization: 63 },
   { id: 3, code: 'W-003', name: 'West Warehouse', status: 'Maintenance', utilization: 12 },
 ]
 
-const columns = [
+const columns: HeadlessTableColumn<WarehouseRow>[] = [
   { field: 'code', title: 'Code', width: 120 },
   { field: 'name', title: 'Name', minWidth: 170 },
   {
@@ -61,6 +71,7 @@ const columns = [
   </HeadlessTable>
 </template>
 ```
+
 :::
 
 ## Editing Modes
@@ -78,39 +89,58 @@ Every effective API mutation emits `modeChange`. Single-scope changes include th
 The interactive example below keeps all three API scopes together: the table button calls `setMode`, the row button calls `setRowMode`, and the cell button calls `setCellMode`. The `mode` prop switch affects the whole table; use “Clear API modes” to reveal the prop-controlled state again.
 
 :::demo Use an `edit` slot for form controls and compare table-, row-, and cell-level mode changes.
+
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { HeadlessTableColumn, HeadlessTableModeChange } from '@moluoxixi/components'
 import { HeadlessTable } from '@moluoxixi/components'
 import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTable, ElTableColumn, ElTag } from 'element-plus'
 
 const propMode = ref<'default' | 'edit'>('default')
 const lastChange = ref('Waiting for a mode API operation')
-const rows = ref([
+interface WarehouseRow {
+  id: string
+  name: string
+  status: string
+  manager: string
+}
+
+const rows = ref<WarehouseRow[]>([
   { id: 'W-001', name: 'East Warehouse', status: 'Active', manager: 'Avery' },
   { id: 'W-002', name: 'South Warehouse', status: 'Maintenance', manager: 'Blake' },
   { id: 'W-003', name: 'West Warehouse', status: 'Active', manager: 'Casey' },
 ])
-const columns = [
+const columns: HeadlessTableColumn<WarehouseRow>[] = [
   { field: 'name', title: 'Warehouse', minWidth: 160, slots: { edit: 'editName' } },
   { field: 'status', title: 'Status', width: 120, slots: { edit: 'editStatus' } },
   { field: 'manager', title: 'Manager', minWidth: 120 },
 ]
 
-function handleModeChange(change) {
+function handleModeChange(change: HeadlessTableModeChange): void {
   lastChange.value = `${change.scope} scope: ${change.action}`
 }
 </script>
 
 <template>
-  <HeadlessTable :columns="columns" :data="rows" :get-row-id="row => row.id" :mode="propMode" @mode-change="handleModeChange">
+  <HeadlessTable
+    :columns="columns"
+    :data="rows"
+    :get-row-id="row => row.id"
+    :mode="propMode"
+    @mode-change="handleModeChange"
+  >
     <template #default="{ Cell, columns: resolvedColumns, data, setMode, setRowMode, setCellMode, clearAllModes }">
       <ElSpace wrap style="margin-bottom: 12px">
         <ElButton type="primary" size="small" @click="setMode('edit')">Edit whole table</ElButton>
         <ElButton size="small" @click="setRowMode('W-001', 'edit')">Edit W-001 row</ElButton>
         <ElButton size="small" @click="setCellMode('W-002', 'status', 'edit')">Edit W-002 / Status cell</ElButton>
-        <ElButton size="small" @click="setRowMode(({ row }) => row.status === 'Active', 'edit')">Edit all active rows</ElButton>
-        <ElButton size="small" @click="setCellMode(({ columnId }) => columnId === 'name', 'edit')">Edit all Name cells</ElButton>
+        <ElButton size="small" @click="setRowMode(({ row }) => row.status === 'Active', 'edit')"
+          >Edit all active rows</ElButton
+        >
+        <ElButton size="small" @click="setCellMode(({ columnId }) => columnId === 'name', 'edit')"
+          >Edit all Name cells</ElButton
+        >
         <ElButton size="small" @click="clearAllModes">Clear API modes</ElButton>
         <span>mode prop:</span>
         <ElSelect v-model="propMode" size="small" style="width: 110px">
@@ -145,6 +175,7 @@ function handleModeChange(change) {
   </HeadlessTable>
 </template>
 ```
+
 :::
 
 Consumers own the triggers, save/cancel workflow, validation, and row-data updates.
@@ -152,20 +183,29 @@ Consumers own the triggers, save/cancel workflow, validation, and row-data updat
 ## Sorting and Filtering with useHeadlessTable
 
 :::demo `useHeadlessTable` provides client-side sorting, filtering, and pagination independently of any table UI.
+
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { HeadlessTableColumn } from '@moluoxixi/components'
 import { useHeadlessTable } from '@moluoxixi/components'
 import { ElInput, ElPagination, ElTable, ElTableColumn } from 'element-plus'
 
-const rawRows = Array.from({ length: 20 }, (_, i) => ({
+interface ProductRow {
+  id: number
+  name: string
+  price: number
+  stock: number
+}
+
+const rawRows: ProductRow[] = Array.from({ length: 20 }, (_, i) => ({
   id: i + 1,
   name: `Product ${String(i + 1).padStart(3, '0')}`,
   price: Math.round(Math.random() * 900 + 100),
   stock: Math.round(Math.random() * 200),
 }))
 
-const columns = [
+const columns: HeadlessTableColumn<ProductRow>[] = [
   { field: 'id', title: 'ID', width: 60 },
   {
     field: 'name',
@@ -190,7 +230,7 @@ const columns = [
   },
 ]
 
-const table = useHeadlessTable({
+const table = useHeadlessTable<ProductRow>({
   data: rawRows,
   columns,
   getRowId: row => row.id,
@@ -198,18 +238,14 @@ const table = useHeadlessTable({
 })
 
 const filterValue = ref('')
-function applyFilter(value) {
+function applyFilter(value: string): void {
   filterValue.value = value
   table.setFilter('name', value || undefined)
   table.setPage(1)
 }
 
-function applySorting({ prop, order }) {
-  table.setSorting(
-    order
-      ? [{ id: prop, direction: order === 'ascending' ? 'asc' : 'desc' }]
-      : [],
-  )
+function applySorting({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }): void {
+  table.setSorting(order ? [{ id: prop, direction: order === 'ascending' ? 'asc' : 'desc' }] : [])
 }
 </script>
 
@@ -223,18 +259,10 @@ function applySorting({ prop, order }) {
       @input="applyFilter"
       @clear="applyFilter('')"
     />
-    <span style="line-height:32px;font-size:13px;color:#909399;">
-      {{ table.total.value }} results
-    </span>
+    <span style="line-height:32px;font-size:13px;color:#909399;"> {{ table.total.value }} results </span>
   </div>
 
-  <ElTable
-    :data="table.rows.value"
-    border
-    size="small"
-    style="width:100%"
-    @sort-change="applySorting"
-  >
+  <ElTable :data="table.rows.value" border size="small" style="width:100%" @sort-change="applySorting">
     <ElTableColumn prop="id" label="ID" width="60" />
     <ElTableColumn prop="name" label="Product" min-width="160" />
     <ElTableColumn prop="price" label="Price" width="100" align="right" sortable="custom">
@@ -253,4 +281,5 @@ function applySorting({ prop, order }) {
   />
 </template>
 ```
+
 :::

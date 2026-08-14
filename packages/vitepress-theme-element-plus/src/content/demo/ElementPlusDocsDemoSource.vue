@@ -105,6 +105,7 @@ watch(() => props.source, async () => {
 
 :deep(.shiki) {
   padding: 18px 28px;
+  tab-size: 2;
 }
 
 :deep(.code-line) {

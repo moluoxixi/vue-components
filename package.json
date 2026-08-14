@@ -64,6 +64,6 @@
     "yaml": "catalog:"
   },
   "lint-staged": {
-    "*.{js,cjs,mjs,ts,tsx,vue}": "eslint --fix"
+    "*.{js,cjs,mjs,md,ts,tsx,vue}": "eslint --fix"
   }
 }

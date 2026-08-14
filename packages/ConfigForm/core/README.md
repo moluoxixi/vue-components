@@ -9,29 +9,34 @@ Reaction 配置与执行分成两个独立模块：`reaction-config` 提供默�
 ```ts
 import { applyConfigFormReactionList } from '@moluoxixi/config-form-core'
 
-const result = applyConfigFormReactionList([{
-  id: 'enable-detail',
-  when: {
-    kind: 'compare',
-    operator: 'eq',
-    left: { kind: 'field', field: 'enabled' },
-    right: { kind: 'literal', value: true },
-  },
-  then: [{
-    kind: 'setValue',
-    target: 'status',
-    value: { kind: 'literal', value: 'ready' },
-  }],
-}], { enabled: true })
+const result = applyConfigFormReactionList(
+  [
+    {
+      id: 'enable-detail',
+      when: {
+        kind: 'compare',
+        operator: 'eq',
+        left: { kind: 'field', field: 'enabled' },
+        right: { kind: 'literal', value: true },
+      },
+      then: [
+        {
+          kind: 'setValue',
+          target: 'status',
+          value: { kind: 'literal', value: 'ready' },
+        },
+      ],
+    },
+  ],
+  { enabled: true },
+)
 ```
 
 ```ts
-import {
-  createConfigFormReaction,
-  createConfigFormReactionId,
-} from '@moluoxixi/config-form-core'
+import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
+import { createConfigFormReaction, createConfigFormReactionId } from '@moluoxixi/config-form-core'
 
-const reactions = []
+const reactions: ConfigFormReaction[] = []
 const reaction = createConfigFormReaction({
   id: createConfigFormReactionId(reactions),
   target: 'detail',

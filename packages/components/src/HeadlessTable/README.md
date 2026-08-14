@@ -54,7 +54,15 @@
 字段列可以继续只配置 `field`。计算列和展示列使用稳定的 `id`：
 
 ```ts
-const columns = [
+import type { HeadlessTableColumn } from '@moluoxixi/components'
+
+interface OrderRow {
+  user: { name: string }
+  price: number
+  quantity: number
+}
+
+const columns: HeadlessTableColumn<OrderRow>[] = [
   { field: 'user.name', title: '姓名' },
   {
     id: 'total',
@@ -90,28 +98,28 @@ slot 和 renderer scope 中的 `value`、`rawValue` 都是 accessor 原值。for
 renderer API 采用与 vxe-table 类似的“注册名称 + 列配置”模式：
 
 ```ts
-const statusRenderer = defineHeadlessTableRenderer<
-  UserRow,
-  { type: 'success' | 'warning' },
-  { prefix: string }
->({
+interface UserRow {
+  status: string
+}
+
+const statusRenderer = defineHeadlessTableRenderer<UserRow, { type: 'success' | 'warning' }, { prefix: string }>({
   renderDefault(renderOptions, { value }) {
-    return h(ElTag, renderOptions.props, () => (
-      `${renderOptions.options?.prefix ?? ''}${value}`
-    ))
+    return h(ElTag, renderOptions.props, () => `${renderOptions.options?.prefix ?? ''}${value}`)
   },
 })
 
 headlessTableRenderer.add('statusTag', statusRenderer)
 
-const columns = [{
-  field: 'status',
-  cellRender: {
-    name: 'statusTag',
-    props: { type: 'success' },
-    options: { prefix: '状态：' },
+const columns = [
+  {
+    field: 'status',
+    cellRender: {
+      name: 'statusTag',
+      props: { type: 'success' },
+      options: { prefix: '状态：' },
+    },
   },
-}]
+]
 ```
 
 `add` 拒绝重复名称；需要热替换时使用 `replace`。registry 还提供 `mixin`、`get`、`has`、
@@ -128,10 +136,12 @@ SSR 或多应用场景应使用隔离 registry：
 
 ```ts
 const registry = createHeadlessTableRenderer()
-app.use(createHeadlessTableRendererPlugin({
-  registry,
-  renderers: { statusTag: statusRenderer },
-}))
+app.use(
+  createHeadlessTableRendererPlugin({
+    registry,
+    renderers: { statusTag: statusRenderer },
+  }),
+)
 ```
 
 插件会把同一个 registry 提供给当前 Vue 应用中的所有 `HeadlessTable` 和 `ConfigTable`。

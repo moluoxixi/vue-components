@@ -31,6 +31,7 @@ export const docsSite = {
     alt: 'MX Components',
   },
   packageName: '@moluoxixi/components',
+  richTextEditorPackageName: '@moluoxixi/rich-text-editor',
   componentEntry: 'packages/components/index.ts',
   apiComponentEntries: [
     'packages/components/index.ts',
@@ -75,4 +76,11 @@ export function localePath(locale: DocsLocale, path: string): string {
 
 export function componentSourcePath(componentName: string): string {
   return `${docsSite.source.componentRoot}/${componentName}`
+}
+
+/** Returns the package path containing a component's authoring documentation. */
+export function componentDocsSourcePath(componentName: string): string {
+  if (componentName === 'RichTextEditor')
+    return 'packages/rich-text-editor'
+  return componentSourcePath(componentName)
 }

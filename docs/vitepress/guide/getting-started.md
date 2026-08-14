@@ -64,10 +64,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 
 export default {
-  plugins: [
-    AutoImport({ imports: [autoImport] }),
-    Components({ resolvers: [autoComponent] }),
-  ],
+  plugins: [AutoImport({ imports: [autoImport] }), Components({ resolvers: [autoComponent] })],
 }
 ```
 
@@ -75,9 +72,9 @@ export default {
 
 ## 版本要求
 
-| 依赖 | 最低版本 |
-|------|---------|
-| Vue | `^3.5.0` |
-| Element Plus | `^2.9.0` |
-| TanStack Vue Query | `^5.0.0` |
-| Node | `>=22.0.0` |
+| 依赖               | 最低版本   |
+| ------------------ | ---------- |
+| Vue                | `^3.5.0`   |
+| Element Plus       | `^2.9.0`   |
+| TanStack Vue Query | `^5.0.0`   |
+| Node               | `>=22.0.0` |

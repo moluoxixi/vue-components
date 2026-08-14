@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="RequestTreeSelect" slug="request-tree-select" :has-source-doc="true" />
 
-<!--@include: ../../../../packages/components/src/RequestTreeSelect/docs/index.en.md{4,36}-->
+<!--@include: ../../../../packages/components/src/RequestTreeSelect/docs/index.en.md{4,53}-->
 
 ## API
 

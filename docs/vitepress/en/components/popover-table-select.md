@@ -8,7 +8,7 @@ lastUpdated: false
 
 <ComponentDocMeta name="PopoverTableSelect" slug="popover-table-select" :has-source-doc="true" />
 
-<!--@include: ../../../../packages/components/src/PopoverTableSelect/docs/index.en.md{4,52}-->
+<!--@include: ../../../../packages/components/src/PopoverTableSelect/docs/index.en.md{4,62}-->
 
 ## API
 

@@ -5,6 +5,7 @@ A keyboard navigation container that moves focus to the next input when Enter or
 ## Basic Usage
 
 :::demo Place input controls inside the container and press Enter to move to the next control.
+
 ```vue
 <script setup lang="ts">
 import { EnterNextContainer } from '@moluoxixi/components'
@@ -22,11 +23,13 @@ import { ElInput } from 'element-plus'
   </EnterNextContainer>
 </template>
 ```
+
 :::
 
 ## Initial Focus
 
 :::demo Use `focusNum` to select the control that receives focus after mounting. The index starts at 1.
+
 ```vue
 <script setup lang="ts">
 import { EnterNextContainer } from '@moluoxixi/components'
@@ -43,4 +46,5 @@ import { ElInput } from 'element-plus'
   </EnterNextContainer>
 </template>
 ```
+
 :::

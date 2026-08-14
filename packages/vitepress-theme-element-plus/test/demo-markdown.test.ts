@@ -60,8 +60,8 @@ const count: number = 1
     const externalProject = JSON.parse(decodeAttribute(html, 'external-project-code'))
     const externalJavaScriptProject = JSON.parse(decodeAttribute(html, 'external-project-js-code'))
 
-    expect(tsSource).toContain('const count: number = 1;')
-    expect(jsSource).toContain('const count = 1;')
+    expect(tsSource).toContain('const count: number = 1')
+    expect(jsSource).toContain('const count = 1')
     expect(jsSource).not.toContain('lang="ts"')
     expect(jsSource).not.toContain(': number')
     expect(jsSource).toBe(tsSource
@@ -98,7 +98,7 @@ const count: number = 1
 })
 
 describe('sfcTs2js', () => {
-  it('formats TypeScript and JavaScript variants with the same printer style', () => {
+  it('formats TypeScript and JavaScript variants with the same style', () => {
     const source = `<script setup lang="ts">
 import type { Ref } from 'vue'
 import { ref } from 'vue'
@@ -117,8 +117,8 @@ const rows: Ref<Row[]> = ref([{ id: 1 }])
     const typeScript = formatSfcTypeScript(source)
     const javaScript = sfcTs2js(typeScript)
 
-    expect(typeScript).toContain('const rows: Ref<Row[]> = ref([{ id: 1 }]);')
-    expect(javaScript).toContain('const rows = ref([{ id: 1 }]);')
+    expect(typeScript).toContain('const rows: Ref<Row[]> = ref([{ id: 1 }])')
+    expect(javaScript).toContain('const rows = ref([{ id: 1 }])')
     expect(javaScript).not.toContain('interface Row')
     expect(typeScript.slice(typeScript.indexOf('<template>')))
       .toBe(javaScript.slice(javaScript.indexOf('<template>')))
@@ -139,10 +139,10 @@ const row: Row = { id: load() }
     const typeScript = formatSfcTypeScript(source)
     const javaScript = sfcTs2js(typeScript)
 
-    expect(typeScript).toContain('<script lang = \'ts\'>\nexport const load = (): number => 1;')
-    expect(typeScript).toContain('const row: Row = { id: load() };')
-    expect(javaScript).toContain('<script>\nexport const load = () => 1;')
-    expect(javaScript).toContain('<script setup>\nconst row = { id: load() };')
+    expect(typeScript).toContain('<script lang="ts">\nexport const load = (): number => 1')
+    expect(typeScript).toContain('const row: Row = { id: load() }')
+    expect(javaScript).toContain('<script>\nexport const load = () => 1')
+    expect(javaScript).toContain('<script setup>\nconst row = { id: load() }')
     expect(javaScript).not.toMatch(/\blang\s*=\s*['"]ts['"]|interface Row|: Row|: number/)
   })
 
@@ -150,13 +150,68 @@ const row: Row = { id: load() }
     const source = '<script generic="T" lang=\'tsx\'>const value: number = 1</script>'
 
     expect(sfcTs2js(formatSfcTypeScript(source)))
-      .toBe('<script generic="T" lang="jsx">\nconst value = 1;\n</script>')
+      .toBe('<script generic="T" lang="jsx">\nconst value = 1\n</script>')
+  })
+
+  it('formats nested demo data consistently in TypeScript and JavaScript', () => {
+    const source = `<script setup lang="ts">
+interface RegionOption {
+  value: string
+  label: string
+  children?: RegionOption[]
+}
+
+async function queryRegions(): Promise<RegionOption[]> {
+    await new Promise<void>(resolve => setTimeout(resolve, 200));
+    return [
+        { value: '110000', label: '北京市', children: [
+                { value: '110100', label: '北京市', children: [
+                        { value: '110101', label: '东城区' },
+                        { value: '110102', label: '西城区' },
+                    ] },
+            ] },
+    ];
+}
+</script>
+
+<template>
+  <div>{{ queryRegions }}</div>
+</template>`
+
+    const typeScript = formatSfcTypeScript(source)
+    const javaScript = sfcTs2js(typeScript)
+    const nestedOptions = `return [
+    {
+      value: '110000',
+      label: '北京市',
+      children: [
+        {
+          value: '110100',
+          label: '北京市',
+          children: [
+            { value: '110101', label: '东城区' },
+            { value: '110102', label: '西城区' },
+          ],
+        },
+      ],
+    },
+  ]`
+
+    expect(typeScript).toContain(nestedOptions)
+    expect(javaScript).toContain(nestedOptions)
+    expect(typeScript).toContain('async function queryRegions(): Promise<RegionOption[]>')
+    expect(javaScript).toContain('async function queryRegions()')
+    expect(javaScript).not.toMatch(/RegionOption|Promise<void>/)
+    expect(typeScript.slice(typeScript.indexOf('<template>')))
+      .toBe(javaScript.slice(javaScript.indexOf('<template>')))
   })
 
   it('does not treat similarly named attributes as the script language', () => {
     const source = '<script data-lang="ts">const value = 1</script>'
 
-    expect(formatSfcTypeScript(source)).toBe(source)
+    expect(formatSfcTypeScript(source)).toBe(`<script data-lang="ts">
+const value = 1
+</script>`)
     expect(sfcTs2js(source)).toBe(source)
   })
 

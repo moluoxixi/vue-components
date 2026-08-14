@@ -66,6 +66,8 @@
     "@moluoxixi/ai-doc-assistant": "workspace:*",
     "@vue/repl": "catalog:",
     "@vueuse/core": "catalog:",
+    "eslint": "catalog:dev",
+    "eslint-plugin-format": "catalog:dev",
     "lz-string": "catalog:",
     "markdown-it": "catalog:",
     "markdown-it-container": "catalog:",

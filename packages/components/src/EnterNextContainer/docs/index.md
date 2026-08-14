@@ -5,6 +5,7 @@
 ## 基础用法
 
 :::demo 将输入控件放入容器，按 Enter 键自动跳到下一个。
+
 ```vue
 <script setup lang="ts">
 import { EnterNextContainer } from '@moluoxixi/components'
@@ -22,11 +23,13 @@ import { ElInput } from 'element-plus'
   </EnterNextContainer>
 </template>
 ```
+
 :::
 
 ## 初始聚焦
 
 :::demo 通过 `focusNum` 指定挂载后默认聚焦的控件序号（从 1 开始）。
+
 ```vue
 <script setup lang="ts">
 import { EnterNextContainer } from '@moluoxixi/components'
@@ -43,4 +46,5 @@ import { ElInput } from 'element-plus'
   </EnterNextContainer>
 </template>
 ```
+
 :::

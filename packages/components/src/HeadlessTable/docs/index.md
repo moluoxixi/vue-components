@@ -5,27 +5,34 @@
 ## 与 Element Plus 集成
 
 :::demo 用 `HeadlessTable` 提供列配置，在默认插槽内接入 `ElTable`，无需改动 `useHeadlessTable` 逻辑。
+
 ```vue
 <script setup lang="ts">
+import type { HeadlessTableColumn } from '@moluoxixi/components'
 import { HeadlessTable } from '@moluoxixi/components'
 import { ElTable, ElTableColumn, ElTag } from 'element-plus'
 
-const rows = [
-  { id: 1, code: 'W-001', name: '华东仓', status: '启用',  utilization: 87 },
-  { id: 2, code: 'W-002', name: '华南仓', status: '启用',  utilization: 63 },
-  { id: 3, code: 'W-003', name: '西南仓', status: '维护',  utilization: 12 },
-  { id: 4, code: 'W-004', name: '华北仓', status: '启用',  utilization: 91 },
+interface WarehouseRow {
+  id: number
+  code: string
+  name: string
+  status: string
+  utilization: number
+}
+
+const rows: WarehouseRow[] = [
+  { id: 1, code: 'W-001', name: '华东仓', status: '启用', utilization: 87 },
+  { id: 2, code: 'W-002', name: '华南仓', status: '启用', utilization: 63 },
+  { id: 3, code: 'W-003', name: '西南仓', status: '维护', utilization: 12 },
+  { id: 4, code: 'W-004', name: '华北仓', status: '启用', utilization: 91 },
 ]
 
-const baseColumns = [
-  { field: 'code',        title: '仓库编码', width: 120 },
-  { field: 'name',        title: '仓库名称', minWidth: 150 },
-  { field: 'utilization', title: '利用率',   width: 120, align: 'right',
-    formatter: ({ value }) => `${value}%` },
-  { field: 'status',      title: '状态',     width: 90,  align: 'center',
-    slots: { default: 'status' } },
+const baseColumns: HeadlessTableColumn<WarehouseRow>[] = [
+  { field: 'code', title: '仓库编码', width: 120 },
+  { field: 'name', title: '仓库名称', minWidth: 150 },
+  { field: 'utilization', title: '利用率', width: 120, align: 'right', formatter: ({ value }) => `${value}%` },
+  { field: 'status', title: '状态', width: 90, align: 'center', slots: { default: 'status' } },
 ]
-
 </script>
 
 <template>
@@ -59,6 +66,7 @@ const baseColumns = [
   </HeadlessTable>
 </template>
 ```
+
 :::
 
 ## 编辑模式
@@ -76,39 +84,58 @@ const baseColumns = [
 下面的示例把三种 API 范围放在同一张表里：表格按钮调用 `setMode`，行按钮调用 `setRowMode`，单元格按钮调用 `setCellMode`。`mode` prop 的开关只改变整张表，点击“清除 API 模式”后即可看到它的效果。
 
 :::demo 使用 `edit` 插槽提供编辑控件，并分别演示表格、行、单元格三种模式范围。
+
 ```vue
 <script setup lang="ts">
+import type { HeadlessTableColumn, HeadlessTableModeChange } from '@moluoxixi/components'
 import { ref } from 'vue'
 import { HeadlessTable } from '@moluoxixi/components'
 import { ElButton, ElInput, ElOption, ElSelect, ElSpace, ElTable, ElTableColumn, ElTag } from 'element-plus'
 
 const propMode = ref<'default' | 'edit'>('default')
 const lastChange = ref('等待模式 API 操作')
-const rows = ref([
+interface WarehouseRow {
+  id: string
+  name: string
+  status: string
+  manager: string
+}
+
+const rows = ref<WarehouseRow[]>([
   { id: 'W-001', name: '华东仓', status: '启用', manager: '张三' },
   { id: 'W-002', name: '华南仓', status: '维护', manager: '李四' },
   { id: 'W-003', name: '西南仓', status: '启用', manager: '王五' },
 ])
-const columns = [
+const columns: HeadlessTableColumn<WarehouseRow>[] = [
   { field: 'name', title: '仓库名称', minWidth: 160, slots: { edit: 'editName' } },
   { field: 'status', title: '状态', width: 120, slots: { edit: 'editStatus' } },
   { field: 'manager', title: '负责人', minWidth: 120 },
 ]
 
-function handleModeChange(change) {
+function handleModeChange(change: HeadlessTableModeChange): void {
   lastChange.value = `${change.scope} scope: ${change.action}`
 }
 </script>
 
 <template>
-  <HeadlessTable :columns="columns" :data="rows" :get-row-id="row => row.id" :mode="propMode" @mode-change="handleModeChange">
+  <HeadlessTable
+    :columns="columns"
+    :data="rows"
+    :get-row-id="row => row.id"
+    :mode="propMode"
+    @mode-change="handleModeChange"
+  >
     <template #default="{ Cell, columns: resolvedColumns, data, setMode, setRowMode, setCellMode, clearAllModes }">
       <ElSpace wrap style="margin-bottom: 12px">
         <ElButton type="primary" size="small" @click="setMode('edit')">整表进入 edit</ElButton>
         <ElButton size="small" @click="setRowMode('W-001', 'edit')">W-001 行进入 edit</ElButton>
         <ElButton size="small" @click="setCellMode('W-002', 'status', 'edit')">W-002 / 状态单元格进入 edit</ElButton>
-        <ElButton size="small" @click="setRowMode(({ row }) => row.status === '启用', 'edit')">所有启用行进入 edit</ElButton>
-        <ElButton size="small" @click="setCellMode(({ columnId }) => columnId === 'name', 'edit')">所有名称单元格进入 edit</ElButton>
+        <ElButton size="small" @click="setRowMode(({ row }) => row.status === '启用', 'edit')"
+          >所有启用行进入 edit</ElButton
+        >
+        <ElButton size="small" @click="setCellMode(({ columnId }) => columnId === 'name', 'edit')"
+          >所有名称单元格进入 edit</ElButton
+        >
         <ElButton size="small" @click="clearAllModes">清除 API 模式</ElButton>
         <span>mode prop：</span>
         <ElSelect v-model="propMode" size="small" style="width: 110px">
@@ -143,6 +170,7 @@ function handleModeChange(change) {
   </HeadlessTable>
 </template>
 ```
+
 :::
 
 进入编辑模式的触发控件、保存/取消、校验和行数据更新均由使用方实现。
@@ -150,31 +178,43 @@ function handleModeChange(change) {
 ## useHeadlessTable 排序与筛选
 
 :::demo `useHeadlessTable` 提供客户端排序、筛选和分页，与任意表格 UI 解耦。
+
 ```vue
 <script setup lang="ts">
+import type { HeadlessTableColumn } from '@moluoxixi/components'
 import { ref } from 'vue'
 import { useHeadlessTable } from '@moluoxixi/components'
 import { ElInput, ElPagination, ElTable, ElTableColumn } from 'element-plus'
 
-const rawRows = Array.from({ length: 20 }, (_, i) => ({
+interface ProductRow {
+  id: number
+  name: string
+  price: number
+  stock: number
+}
+
+const rawRows: ProductRow[] = Array.from({ length: 20 }, (_, i) => ({
   id: i + 1,
   name: `商品 ${String(i + 1).padStart(3, '0')}`,
   price: Math.round(Math.random() * 900 + 100),
   stock: Math.round(Math.random() * 200),
 }))
 
-const columns = [
-  { field: 'id',    title: 'ID',   width: 60 },
-  { field: 'name',  title: '商品', minWidth: 160,
-    filter: (_, query, row) => row.name.includes(String(query)) },
-  { field: 'price', title: '价格', width: 100, align: 'right',
+const columns: HeadlessTableColumn<ProductRow>[] = [
+  { field: 'id', title: 'ID', width: 60 },
+  { field: 'name', title: '商品', minWidth: 160, filter: (_, query, row) => row.name.includes(String(query)) },
+  {
+    field: 'price',
+    title: '价格',
+    width: 100,
+    align: 'right',
     formatter: ({ value }) => `¥${value}`,
-    sorter: (a, b) => a.price - b.price },
-  { field: 'stock', title: '库存', width: 80,  align: 'right',
-    sorter: (a, b) => a.stock - b.stock },
+    sorter: (a, b) => a.price - b.price,
+  },
+  { field: 'stock', title: '库存', width: 80, align: 'right', sorter: (a, b) => a.stock - b.stock },
 ]
 
-const table = useHeadlessTable({
+const table = useHeadlessTable<ProductRow>({
   data: rawRows,
   columns,
   getRowId: r => r.id,
@@ -182,16 +222,14 @@ const table = useHeadlessTable({
 })
 
 const filterValue = ref('')
-function applyFilter(v) {
+function applyFilter(v: string): void {
   filterValue.value = v
   table.setFilter('name', v || undefined)
   table.setPage(1)
 }
 
-function applySorting({ prop, order }) {
-  table.setSorting(order
-    ? [{ id: prop, direction: order === 'ascending' ? 'asc' : 'desc' }]
-    : [])
+function applySorting({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }): void {
+  table.setSorting(order ? [{ id: prop, direction: order === 'ascending' ? 'asc' : 'desc' }] : [])
 }
 </script>
 
@@ -205,20 +243,12 @@ function applySorting({ prop, order }) {
       @input="applyFilter"
       @clear="applyFilter('')"
     />
-    <span style="line-height:32px;font-size:13px;color:#909399;">
-      共 {{ table.total.value }} 条
-    </span>
+    <span style="line-height:32px;font-size:13px;color:#909399;"> 共 {{ table.total.value }} 条 </span>
   </div>
 
-  <ElTable
-    :data="table.rows.value"
-    border
-    size="small"
-    style="width:100%"
-    @sort-change="applySorting"
-  >
-    <ElTableColumn prop="id"    label="ID"   width="60" />
-    <ElTableColumn prop="name"  label="商品" min-width="160" />
+  <ElTable :data="table.rows.value" border size="small" style="width:100%" @sort-change="applySorting">
+    <ElTableColumn prop="id" label="ID" width="60" />
+    <ElTableColumn prop="name" label="商品" min-width="160" />
     <ElTableColumn prop="price" label="价格" width="100" align="right" sortable="custom">
       <template #default="{ row }">¥{{ row.price }}</template>
     </ElTableColumn>
@@ -235,6 +265,7 @@ function applySorting({ prop, order }) {
   />
 </template>
 ```
+
 :::
 
 ## useHeadlessTable

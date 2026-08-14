@@ -5,6 +5,7 @@ A headless copy primitive that provides state and clipboard logic while leaving 
 ## Basic Usage
 
 :::demo Receive the copy state from the default slot and fully control the rendered interface.
+
 ```vue
 <script setup lang="ts">
 import { HeadlessCopyText } from '@moluoxixi/components'
@@ -32,11 +33,13 @@ import { ElButton } from 'element-plus'
   </HeadlessCopyText>
 </template>
 ```
+
 :::
 
 ## Animated Feedback
 
 :::demo Use the `copied` state to implement custom feedback and transitions.
+
 ```vue
 <script setup lang="ts">
 import { HeadlessCopyText } from '@moluoxixi/components'
@@ -57,4 +60,5 @@ import { ElButton, ElTag } from 'element-plus'
   </HeadlessCopyText>
 </template>
 ```
+
 :::

@@ -41,13 +41,7 @@ const fields = [
 </script>
 
 <template>
-  <ElementConfigForm
-    v-model="model"
-    :fields="fields"
-    :form-attrs="{ autocomplete: 'off' }"
-    :columns="12"
-    gap="16px"
-  />
+  <ElementConfigForm v-model="model" :fields="fields" :form-attrs="{ autocomplete: 'off' }" :columns="12" gap="16px" />
 </template>
 ```
 

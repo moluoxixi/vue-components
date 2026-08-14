@@ -5,11 +5,12 @@ A business-oriented wrapper around Element Plus `ElDatePicker` with normalized o
 ## Basic Usage
 
 :::demo For a single date, `v-model` contains a date string.
+
 ```vue
 <script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
-const date = ref('')
+const date = ref<string>('')
 </script>
 <template>
   <div>
@@ -18,16 +19,18 @@ const date = ref('')
   </div>
 </template>
 ```
+
 :::
 
 ## Date Range
 
 :::demo Set `type="daterange"` to bind an array containing the start and end date strings.
+
 ```vue
 <script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
-const range = ref([])
+const range = ref<string[]>([])
 </script>
 <template>
   <div>
@@ -38,31 +41,34 @@ const range = ref([])
   </div>
 </template>
 ```
+
 :::
 
 ## Date-Time Range
 
 :::demo Set `type="datetimerange"` for second-level precision and provide `shortcuts` for common ranges.
+
 ```vue
 <script setup lang="ts">
+import type { DateRangePickerShortcut } from '@moluoxixi/components'
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
-const range = ref([])
+const range = ref<string[]>([])
 
-function addDays(days) {
+function addDays(days: number): Date {
   const value = new Date()
   value.setDate(value.getDate() + days)
   return value
 }
 
-function monthBoundary(end) {
+function monthBoundary(end: boolean): Date {
   const value = new Date()
   value.setMonth(value.getMonth() + (end ? 1 : 0), end ? 0 : 1)
   value.setHours(end ? 23 : 0, end ? 59 : 0, end ? 59 : 0, 0)
   return value
 }
 
-const shortcuts = [
+const shortcuts: DateRangePickerShortcut[] = [
   { text: 'Last 7 days', value: () => [addDays(-6), new Date()] },
   { text: 'Last 30 days', value: () => [addDays(-29), new Date()] },
   { text: 'This month', value: () => [monthBoundary(false), monthBoundary(true)] },
@@ -77,23 +83,22 @@ const shortcuts = [
   </div>
 </template>
 ```
+
 :::
 
 ## Initial Offset Range
 
 :::demo Use `dateRange` to set an initial range as day offsets relative to today.
+
 ```vue
 <script setup lang="ts">
 import { DateRangePicker } from '@moluoxixi/components'
 import { ref } from 'vue'
-const range = ref([])
+const range = ref<string[]>([])
 </script>
 <template>
-  <DateRangePicker
-    v-model="range"
-    type="daterange"
-    :date-range="[-6, 0]"
-  />
+  <DateRangePicker v-model="range" type="daterange" :date-range="[-6, 0]" />
 </template>
 ```
+
 :::

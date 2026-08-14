@@ -72,8 +72,7 @@ const fields = [
     label: '确认密码',
     component: MyInput,
     span: 12,
-    validator: (value, values) =>
-      value === values.password ? undefined : '两次密码不一致',
+    validator: (value, values) => (value === values.password ? undefined : '两次密码不一致'),
   }),
 ]
 
@@ -83,50 +82,44 @@ function onSubmit(values: LoginForm) {
 </script>
 
 <template>
-  <ConfigForm
-    ref="formRef"
-    :default-values="defaultValues"
-    :fields="fields"
-    label-width="80px"
-    @submit="onSubmit"
-  />
+  <ConfigForm ref="formRef" :default-values="defaultValues" :fields="fields" label-width="80px" @submit="onSubmit" />
 </template>
 ```
 
 ## ConfigForm Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `namespace` | `string` | `'cf'` | 运行时 CSS 类名前缀 |
-| `inline` | `boolean` | `false` | 行内布局模式 |
-| `columns` | `number` | `24` | 非 inline 模式下的 grid 列数 |
-| `gap` | `string` | `'8px 8px'` | 布局行列间距 |
-| `fields` | `FormNodeConfig[]` | - | 字段/容器配置数组；`defineField` 返回纯配置 |
-| `labelWidth` | `string \| number` | - | 标签宽度，number 自动转 px |
-| `defaultValues` | `Partial<Record<string, unknown>>` | - | 表单初始值快照；传泛型后为对应表单类型 |
-| `runtime` | `FormRuntimeOptions` | - | 可选运行时配置，用于组件注册、readonly adapter 和字段转换 adapter；省略时使用内置 runtime |
-| `components` | `ComponentRegistry` | - | 组件别名快捷注册；与 `runtime.components` 合并且当前 prop 优先 |
+| Prop            | Type                               | Default     | Description                                                                               |
+| --------------- | ---------------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
+| `namespace`     | `string`                           | `'cf'`      | 运行时 CSS 类名前缀                                                                       |
+| `inline`        | `boolean`                          | `false`     | 行内布局模式                                                                              |
+| `columns`       | `number`                           | `24`        | 非 inline 模式下的 grid 列数                                                              |
+| `gap`           | `string`                           | `'8px 8px'` | 布局行列间距                                                                              |
+| `fields`        | `FormNodeConfig[]`                 | -           | 字段/容器配置数组；`defineField` 返回纯配置                                               |
+| `labelWidth`    | `string \| number`                 | -           | 标签宽度，number 自动转 px                                                                |
+| `defaultValues` | `Partial<Record<string, unknown>>` | -           | 表单初始值快照；传泛型后为对应表单类型                                                    |
+| `runtime`       | `FormRuntimeOptions`               | -           | 可选运行时配置，用于组件注册、readonly adapter 和字段转换 adapter；省略时使用内置 runtime |
+| `components`    | `ComponentRegistry`                | -           | 组件别名快捷注册；与 `runtime.components` 合并且当前 prop 优先                            |
 
 ## Events
 
-| Event | Payload | Description |
-|-------|---------|-------------|
+| Event    | Payload                   | Description                                    |
+| -------- | ------------------------- | ---------------------------------------------- |
 | `submit` | `Record<string, unknown>` | 校验通过后提交的字段值；传泛型后为对应表单类型 |
-| `error` | `FormErrors` | 校验失败时的错误信息 |
+| `error`  | `FormErrors`              | 校验失败时的错误信息                           |
 
 ## Expose
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `submit()` | `Promise<boolean>` | 校验通过后触发 `submit` |
-| `validate()` | `Promise<boolean>` | 校验整个表单 |
-| `validateField(field, trigger?)` | `Promise<boolean>` | 校验指定字段 |
-| `reset()` | `void` | 重置为 `defaultValues` 初始快照和字段默认值并清空错误 |
-| `setValue(field, value)` | `void` | 设置单个字段值 |
-| `setValues(values, replace?)` | `void` | 批量设置字段值 |
-| `getValue(field)` | `unknown` | 获取单个字段值；传泛型后可按字段 key 推导 |
-| `getValues()` | `Record<string, unknown>` | 获取浅拷贝快照；传泛型后为对应表单类型 |
-| `clearValidate(field?)` | `void` | 清除指定字段错误；不传则清除全部 |
+| Method                           | Returns                   | Description                                           |
+| -------------------------------- | ------------------------- | ----------------------------------------------------- |
+| `submit()`                       | `Promise<boolean>`        | 校验通过后触发 `submit`                               |
+| `validate()`                     | `Promise<boolean>`        | 校验整个表单                                          |
+| `validateField(field, trigger?)` | `Promise<boolean>`        | 校验指定字段                                          |
+| `reset()`                        | `void`                    | 重置为 `defaultValues` 初始快照和字段默认值并清空错误 |
+| `setValue(field, value)`         | `void`                    | 设置单个字段值                                        |
+| `setValues(values, replace?)`    | `void`                    | 批量设置字段值                                        |
+| `getValue(field)`                | `unknown`                 | 获取单个字段值；传泛型后可按字段 key 推导             |
+| `getValues()`                    | `Record<string, unknown>` | 获取浅拷贝快照；传泛型后为对应表单类型                |
+| `clearValidate(field?)`          | `void`                    | 清除指定字段错误；不传则清除全部                      |
 
 ## Field 配置
 
@@ -145,8 +138,7 @@ const fields = [
     field: 'username',
     component: MyInput,
     defaultValue: '',
-    validator: (value, values) =>
-      values.remember && value.length === 0 ? '请输入用户名' : undefined,
+    validator: (value, values) => (values.remember && value.length === 0 ? '请输入用户名' : undefined),
   }),
 ]
 ```
@@ -161,8 +153,7 @@ const fields = [
     field: 'username',
     component: MyInput,
     defaultValue: '',
-    validator: (value, values) =>
-      values.remember && value.length === 0 ? '请输入用户名' : undefined,
+    validator: (value, values) => (values.remember && value.length === 0 ? '请输入用户名' : undefined),
   }),
   defineLoginField({
     field: 'remember',
@@ -174,31 +165,31 @@ const fields = [
 
 同一个表单内所有真实字段的 `field` 必须唯一；重复字段名会直接抛错，避免值、校验错误、显隐和禁用状态被覆盖。
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `field` | `string` | - | 字段名，作为 values 的 key |
-| `label` | `RuntimeText` | - | 字段标签字符串 |
-| `required` | `boolean \| (values) => boolean` | `false` | 是否显示必填标识并执行空值校验 |
-| `requiredMessage` | `RuntimeText` | `必填` | 必填校验失败时展示的错误文案 |
-| `schema` | `ZodTypeAny` | - | 字段 Zod 校验 |
-| `validator` | `(value, values) => string \| string[] \| void \| Promise` | - | 自定义校验，可访问全量 values |
-| `span` | `number` | `24` | 非 inline 模式下的 24 栅格跨度 |
-| `component` | `Component \| Function \| string` | - | 实际渲染组件 |
-| `props` | `Record<string, unknown>` | - | 传给组件的 props |
-| `extensions` | `Record<string, unknown>` | - | 供 designer/adapter/plugin 消费的非渲染元数据，不透传给组件或 DOM |
-| `defaultValue` | `unknown` | `undefined` | 默认值；会参与 `defineField` 字段值推导 |
-| `valueProp` | `string` | `'modelValue'` | 注入组件的值 prop |
-| `trigger` | `string` | `'update:modelValue'` | 接收组件值变化的事件名 |
-| `getValueFromEvent` | `(...args) => unknown` | 第一个事件参数 | 从组件事件参数中提取字段值；原生 `input` 可从 `event.target.value` 取值 |
-| `blurTrigger` | `string` | `'blur'` | blur 校验事件名 |
-| `validateOn` | `'submit' \| 'blur' \| 'change' \| array` | `'submit'` | 校验触发时机，始终包含 submit |
-| `visible` | `boolean \| (values) => boolean` | - | 动态显隐 |
-| `disabled` | `boolean \| (values) => boolean` | - | 动态禁用 |
-| `readonly` | `boolean \| (values) => boolean` | - | 动态只读；只读字段跳过校验但仍参与提交 |
-| `transform` | `(value, values) => unknown` | - | submit 前转换值 |
-| `submitWhenHidden` | `boolean` | `false` | 隐藏字段是否仍提交 |
-| `submitWhenDisabled` | `boolean` | `false` | 禁用字段是否仍提交 |
-| `slots` | `Record<string, SlotContent>` | - | 传给组件的插槽；仅支持普通对象配置、由 `defineField` 创建的容器组件节点或真实字段节点数组 |
+| Key                  | Type                                                       | Default               | Description                                                                               |
+| -------------------- | ---------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------- |
+| `field`              | `string`                                                   | -                     | 字段名，作为 values 的 key                                                                |
+| `label`              | `RuntimeText`                                              | -                     | 字段标签字符串                                                                            |
+| `required`           | `boolean \| (values) => boolean`                           | `false`               | 是否显示必填标识并执行空值校验                                                            |
+| `requiredMessage`    | `RuntimeText`                                              | `必填`                | 必填校验失败时展示的错误文案                                                              |
+| `schema`             | `ZodTypeAny`                                               | -                     | 字段 Zod 校验                                                                             |
+| `validator`          | `(value, values) => string \| string[] \| void \| Promise` | -                     | 自定义校验，可访问全量 values                                                             |
+| `span`               | `number`                                                   | `24`                  | 非 inline 模式下的 24 栅格跨度                                                            |
+| `component`          | `Component \| Function \| string`                          | -                     | 实际渲染组件                                                                              |
+| `props`              | `Record<string, unknown>`                                  | -                     | 传给组件的 props                                                                          |
+| `extensions`         | `Record<string, unknown>`                                  | -                     | 供 designer/adapter/plugin 消费的非渲染元数据，不透传给组件或 DOM                         |
+| `defaultValue`       | `unknown`                                                  | `undefined`           | 默认值；会参与 `defineField` 字段值推导                                                   |
+| `valueProp`          | `string`                                                   | `'modelValue'`        | 注入组件的值 prop                                                                         |
+| `trigger`            | `string`                                                   | `'update:modelValue'` | 接收组件值变化的事件名                                                                    |
+| `getValueFromEvent`  | `(...args) => unknown`                                     | 第一个事件参数        | 从组件事件参数中提取字段值；原生 `input` 可从 `event.target.value` 取值                   |
+| `blurTrigger`        | `string`                                                   | `'blur'`              | blur 校验事件名                                                                           |
+| `validateOn`         | `'submit' \| 'blur' \| 'change' \| array`                  | `'submit'`            | 校验触发时机，始终包含 submit                                                             |
+| `visible`            | `boolean \| (values) => boolean`                           | -                     | 动态显隐                                                                                  |
+| `disabled`           | `boolean \| (values) => boolean`                           | -                     | 动态禁用                                                                                  |
+| `readonly`           | `boolean \| (values) => boolean`                           | -                     | 动态只读；只读字段跳过校验但仍参与提交                                                    |
+| `transform`          | `(value, values) => unknown`                               | -                     | submit 前转换值                                                                           |
+| `submitWhenHidden`   | `boolean`                                                  | `false`               | 隐藏字段是否仍提交                                                                        |
+| `submitWhenDisabled` | `boolean`                                                  | `false`               | 禁用字段是否仍提交                                                                        |
+| `slots`              | `Record<string, SlotContent>`                              | -                     | 传给组件的插槽；仅支持普通对象配置、由 `defineField` 创建的容器组件节点或真实字段节点数组 |
 
 `slots` 中的对象配置可以是普通 config，也可以通过 `defineField(...)` 创建。`ConfigForm` 会统一递归处理这些配置，并按是否存在 `field` 区分语义：没有 `field` 的节点是容器/子组件，只渲染组件本体和插槽；存在 `field` 的节点是真实表单字段，会绑定表单值、校验、label 和错误展示。Radio / Checkbox 这类子组件通常不需要 `field`：
 
@@ -276,15 +267,16 @@ const runtimeOptions = {
   plugins: [
     {
       name: 'audit',
-      transformField: field => 'field' in field
-        ? {
-            ...field,
-            props: {
-              ...field.props,
-              'data-field': field.field,
-            },
-          }
-        : undefined,
+      transformField: field =>
+        'field' in field
+          ? {
+              ...field,
+              props: {
+                ...field.props,
+                'data-field': field.field,
+              },
+            }
+          : undefined,
     },
   ],
 } satisfies FormRuntimeOptions
@@ -329,10 +321,7 @@ type FunctionalInputEmits = Record<'update:modelValue', [value: string]>
 const FunctionalInputComponent: FunctionalComponent<FunctionalInputProps, FunctionalInputEmits> = (props, { emit }) => {
   return h('input', {
     value: props.modelValue,
-    onInput: (event: Event) => emit(
-      'update:modelValue',
-      (event.target as HTMLInputElement).value,
-    ),
+    onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).value),
   })
 }
 

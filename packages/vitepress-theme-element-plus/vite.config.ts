@@ -89,6 +89,8 @@ export default defineConfig({
         'nprogress',
         'normalize.css',
         'markdown-it-container',
+        'eslint',
+        'eslint-plugin-format',
         'typescript',
         'virtual:moluoxixi-element-plus-docs-consumer-styles',
         /^node:/,

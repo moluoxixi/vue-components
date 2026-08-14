@@ -121,6 +121,21 @@ describe('component documentation routes', () => {
       .toContain('<ApiDocs name="RequestSelectV2" />\n\n## 组件贡献者\n\n<DocContributors name="RequestSelectV2" />')
   })
 
+  it('resolves package-level source documentation for RichTextEditor', () => {
+    const root = createFixtureRoot()
+    const sourceDir = resolve(root, 'packages/rich-text-editor/docs')
+    mkdirSync(sourceDir, { recursive: true })
+    writeFileSync(resolve(sourceDir, 'index.md'), '# RichTextEditor\n\n富文本编辑器。\n', 'utf8')
+
+    const result = createComponentRoutePaths({
+      root,
+      components: [{ name: 'RichTextEditor', slug: 'rich-text-editor', description: '富文本编辑器' }],
+    })
+
+    expect(result.apiOnly).toEqual([])
+    expect(result.paths[0]?.content).toContain('../../../packages/rich-text-editor/docs/index.md{1,3}')
+  })
+
   it('inserts metadata after the first source-document paragraph', () => {
     const root = createFixtureRoot()
     const sourceDir = resolve(root, 'packages/components/src/CopyText/docs')

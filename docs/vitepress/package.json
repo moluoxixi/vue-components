@@ -47,6 +47,7 @@
     "vite": "catalog:dev",
     "vitepress": "catalog:",
     "vitest": "catalog:dev",
-    "vue-tsc": "catalog:dev"
+    "vue-tsc": "catalog:dev",
+    "yaml": "catalog:"
   }
 }
