@@ -1,0 +1,38 @@
+{
+  "id": "vite-config-extension-boundaries",
+  "name": "vite-config-extension-boundaries",
+  "title": "Refactor vite-config extension and config boundaries",
+  "description": "",
+  "status": "in_progress",
+  "complexity": {
+    "level": "complex",
+    "signals": [],
+    "reason": ""
+  },
+  "executionApproval": {
+    "mode": "auto",
+    "granted": true,
+    "source": "explicit_user",
+    "grantedAt": "2026-08-15T07:37:30.987494Z",
+    "reason": "User explicitly requested: 开始改造吧"
+  },
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-15",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

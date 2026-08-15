@@ -1,6 +1,6 @@
 import type { UserConfig } from 'vite'
 import type { VitestAddonOptions } from '../../../addons/vitest'
-import type { AddonName, ViteConfigOptions } from '../../../types'
+import type { AddonName, BaseViteConfigOptions } from '../../../types'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import process from 'node:process'
@@ -29,7 +29,7 @@ export interface AddonUserConfig extends UserConfig {
 
 export interface ViteFeature<TOptions = unknown, TState = unknown> {
   name: AddonName
-  order: number
+  dependsOn?: AddonName[]
   triggers: string[]
   requires?: string[]
   createState?: (ctx: AddonContext, options?: TOptions) => TState
@@ -44,6 +44,7 @@ export type ViteFeatureEnableReason
 
 export interface ViteFeatureInspection {
   name: AddonName
+  dependsOn: AddonName[]
   enabled: boolean
   reason: ViteFeatureEnableReason
   triggers: string[]
@@ -104,6 +105,7 @@ export function inspectFeature(
 
   if (option === false) {
     return {
+      dependsOn: feature.dependsOn || [],
       enabled: false,
       matchedTriggers,
       missingRequires: [],
@@ -116,6 +118,7 @@ export function inspectFeature(
 
   if (option === true || isAddonPayload(option)) {
     return {
+      dependsOn: feature.dependsOn || [],
       enabled: true,
       matchedTriggers,
       missingRequires,
@@ -128,6 +131,7 @@ export function inspectFeature(
 
   if (matchedTriggers.length > 0) {
     return {
+      dependsOn: feature.dependsOn || [],
       enabled: true,
       matchedTriggers,
       missingRequires,
@@ -139,6 +143,7 @@ export function inspectFeature(
   }
 
   return {
+    dependsOn: feature.dependsOn || [],
     enabled: false,
     matchedTriggers,
     missingRequires: [],
@@ -150,9 +155,54 @@ export function inspectFeature(
 }
 
 /**
+ * Resolve addon execution order from explicit addon dependencies while keeping
+ * the registry declaration order for independent features.
+ */
+export function resolveFeatureOrder(features: readonly ViteFeature<any, any>[]): ViteFeature<any, any>[] {
+  const featureByName = new Map<AddonName, ViteFeature<any, any>>()
+  for (const feature of features) {
+    if (featureByName.has(feature.name)) {
+      throw new Error(`[ViteConfig] duplicate addon feature: ${feature.name}`)
+    }
+    featureByName.set(feature.name, feature)
+  }
+
+  const visiting = new Set<AddonName>()
+  const visited = new Set<AddonName>()
+  const ordered: ViteFeature<any, any>[] = []
+
+  const visit = (feature: ViteFeature<any, any>): void => {
+    if (visited.has(feature.name)) {
+      return
+    }
+    if (visiting.has(feature.name)) {
+      throw new Error(`[ViteConfig] circular addon dependency involving ${feature.name}`)
+    }
+
+    visiting.add(feature.name)
+    for (const dependencyName of feature.dependsOn || []) {
+      const dependency = featureByName.get(dependencyName)
+      if (!dependency) {
+        throw new Error(`[ViteConfig] addon ${feature.name} depends on unknown addon ${dependencyName}`)
+      }
+      visit(dependency)
+    }
+    visiting.delete(feature.name)
+    visited.add(feature.name)
+    ordered.push(feature)
+  }
+
+  for (const feature of features) {
+    visit(feature)
+  }
+
+  return ordered
+}
+
+/**
  * 根据 root 解析依赖上下文，并提供严格导入、路径解析和依赖断言能力。
  */
-export function createAddonContext(options: ViteConfigOptions = {}): AddonContext {
+export function createAddonContext(options: BaseViteConfigOptions = {}): AddonContext {
   const rootValue = options.viteConfig?.root
   const root = path.resolve(typeof rootValue === 'string' ? rootValue : process.cwd())
   const { addonDeps, deps, runtimeDeps } = detectDependencies(root)

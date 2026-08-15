@@ -29,7 +29,6 @@ async function applyElementPlusResolver(ctx: AddonContext, state: ComponentsStat
 
 export const componentsFeature = defineFeature<ComponentsAddonOptions, ComponentsState>({
   name: 'components',
-  order: 55,
   requires: ['unplugin-vue-components'],
   triggers: ['unplugin-vue-components'],
   createState(ctx) {

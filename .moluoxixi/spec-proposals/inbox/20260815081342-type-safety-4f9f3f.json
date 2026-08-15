@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260815081342-type-safety-4f9f3f",
+  "createdAt": "2026-08-15T08:13:42.507Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-15-vite-config-extension-boundaries",
+  "reason": "Revised contract superseding 20260815074917-type-safety-53b8f8: library externalization is invariant and appName/appCode are application-only identity fields",
+  "target": "frontend/type-safety.md",
+  "kind": "file",
+  "baseHash": "1ced8d3ea4f5e6e63599a5a606db52fa86b3973046db57d550ed2964a8d4c40f",
+  "contentFile": "content/20260815081342-type-safety-4f9f3f.md",
+  "contentHash": "149faaaecc6efef2adeabeea09afcf5814994494b1782e5b82ea0b5481a2fb74"
+}

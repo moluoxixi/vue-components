@@ -8,6 +8,7 @@ import {
   getPackageName,
   isObjectOption,
   resolveFeatureConfig,
+  resolveFeatureOrder,
 } from '@moluoxixi/vite-config/config/base/addons/runtime'
 import { callDefaultFactory, mergeAddonOptions } from '@moluoxixi/vite-config/config/base/addons/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -141,7 +142,6 @@ describe('addon runtime helpers', () => {
     const ctx = createAddonContext({ viteConfig: { root } })
     const feature = defineFeature({
       name: 'vue',
-      order: 0,
       triggers: [],
       setup() {
         throw new Error('setup failed')
@@ -151,6 +151,46 @@ describe('addon runtime helpers', () => {
     await expect(resolveFeatureConfig(ctx, feature, {})).rejects.toThrow(
       /\[ViteConfig\] failed to resolve addon vue/,
     )
+  })
+
+  it('orders dependent addons after their dependencies and rejects cycles', () => {
+    const dependency = defineFeature({
+      name: 'react',
+      triggers: [],
+      setup: () => ({}),
+    })
+    const dependent = defineFeature({
+      dependsOn: ['react'],
+      name: 'vue',
+      triggers: [],
+      setup: () => ({}),
+    })
+
+    expect(resolveFeatureOrder([dependent, dependency]).map(feature => feature.name)).toEqual(['react', 'vue'])
+
+    const cycleA = defineFeature({
+      dependsOn: ['vue'],
+      name: 'react',
+      triggers: [],
+      setup: () => ({}),
+    })
+    const cycleB = defineFeature({
+      dependsOn: ['react'],
+      name: 'vue',
+      triggers: [],
+      setup: () => ({}),
+    })
+
+    expect(() => resolveFeatureOrder([cycleA, cycleB])).toThrow(/circular addon dependency/)
+
+    const missingDependency = defineFeature({
+      dependsOn: ['pages'],
+      name: 'react',
+      triggers: [],
+      setup: () => ({}),
+    })
+
+    expect(() => resolveFeatureOrder([missingDependency])).toThrow(/unknown addon pages/)
   })
 
   it('fails when a plugin module has no default factory', async () => {

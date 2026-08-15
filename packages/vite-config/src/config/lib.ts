@@ -1,5 +1,5 @@
-import type { LibraryOptions, UserConfig, UserConfigExport } from 'vite'
-import type { ViteConfigExport } from '../types'
+import type { LibraryOptions, Rollup, UserConfig, UserConfigExport } from 'vite'
+import type { LibViteConfigExport } from '../types'
 import path from 'node:path'
 import process from 'node:process'
 import { detectDependencies } from '@moluoxixi/utils/node'
@@ -7,13 +7,55 @@ import { defineConfig, mergeConfig } from 'vite'
 import { getBaseConfig } from './base'
 import { mergeConfigWithUserPlugins } from './merge'
 
+type ExternalOption = NonNullable<Rollup.RollupOptions['external']>
+type ExternalPredicate = Extract<ExternalOption, (...args: any[]) => any>
+
 /**
  * 构造库模式 external 判断器；依赖包本身和其子路径导入都必须排除出产物。
  */
-function createDependencyExternal(dependencies: string[]): (id: string) => boolean {
+function createDependencyExternal(dependencies: string[]): ExternalPredicate {
   const uniqueDeps = Array.from(new Set(dependencies))
 
   return id => uniqueDeps.some(dep => id === dep || id.startsWith(`${dep}/`))
+}
+
+function matchesExternalPattern(pattern: string | RegExp, id: string): boolean {
+  if (typeof pattern === 'string') {
+    return pattern === id
+  }
+
+  const lastIndex = pattern.lastIndex
+  const matches = pattern.test(id)
+  pattern.lastIndex = lastIndex
+  return matches
+}
+
+function matchesExternalOption(
+  external: ExternalOption,
+  id: string,
+  importer: string | undefined,
+  isResolved: boolean,
+): boolean {
+  if (typeof external === 'function') {
+    return Boolean(external(id, importer, isResolved))
+  }
+
+  const patterns = Array.isArray(external) ? external : [external]
+  return patterns.some(pattern => matchesExternalPattern(pattern, id))
+}
+
+function combineExternalOptions(
+  dependencyExternal: ExternalPredicate,
+  userExternal: ExternalOption | undefined,
+): ExternalPredicate {
+  if (!userExternal) {
+    return dependencyExternal
+  }
+
+  return (id, importer, isResolved) => (
+    dependencyExternal(id, importer, isResolved)
+    || matchesExternalOption(userExternal, id, importer, isResolved)
+  )
 }
 
 /**
@@ -50,7 +92,7 @@ function resolveLibEntry(root: string, entry: LibraryOptions['entry']): LibraryO
  *   }
  * }))
  */
-export function createLibConfig(config: ViteConfigExport = {}): UserConfigExport {
+export function createLibConfig(config: LibViteConfigExport = {}): UserConfigExport {
   return defineConfig(async (env) => {
     const userOptions = typeof config === 'function' ? await config(env) : config
     const viteConfigExt = userOptions.viteConfig || {}
@@ -80,12 +122,18 @@ export function createLibConfig(config: ViteConfigExport = {}): UserConfigExport
           formats: ['es', 'cjs'],
           fileName: 'index',
         },
-        rollupOptions: {
-          external,
-        },
       },
     }
 
-    return mergeConfigWithUserPlugins(mergeConfig(baseConfig, libConfig), viteConfigExt)
+    const mergedConfig = await mergeConfigWithUserPlugins(mergeConfig(baseConfig, libConfig), viteConfigExt)
+    mergedConfig.build = {
+      ...mergedConfig.build,
+      rollupOptions: {
+        ...mergedConfig.build?.rollupOptions,
+        external: combineExternalOptions(external, viteConfigExt.build?.rollupOptions?.external),
+      },
+    }
+
+    return mergedConfig
   })
 }

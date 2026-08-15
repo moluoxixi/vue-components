@@ -13,7 +13,6 @@ const defaultPwaOptions = {
 
 export const pwaFeature = defineFeature<PwaAddonOptions>({
   name: 'pwa',
-  order: 80,
   requires: ['vite-plugin-pwa'],
   triggers: ['vite-plugin-pwa'],
   async setup(ctx, options) {

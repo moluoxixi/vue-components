@@ -1,5 +1,5 @@
 import type { UserConfig } from 'vite'
-import type { ViteConfigOptions } from '../../types'
+import type { BaseViteConfigOptions } from '../../types'
 import path from 'node:path'
 import process from 'node:process'
 import { mergeConfig } from 'vite'
@@ -11,7 +11,7 @@ export type { ViteFeatureInspection, ViteFeatureInspectionResult } from './addon
 /**
  * 获取全局通用基础配置
  */
-export async function getBaseConfig(options: ViteConfigOptions = {}): Promise<UserConfig> {
+export async function getBaseConfig(options: BaseViteConfigOptions = {}): Promise<UserConfig> {
   const root = typeof options.viteConfig?.root === 'string' ? options.viteConfig.root : process.cwd()
   // 基于插件目录(Addons)动态合并后的配置，将 options 字典透明下移
   const addonsConfig = await getAddonsConfig(options)

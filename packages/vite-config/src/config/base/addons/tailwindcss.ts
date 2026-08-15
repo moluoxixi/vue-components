@@ -14,7 +14,6 @@ interface TailwindPostcssModule {
 
 export const tailwindcssFeature = defineFeature<TailwindCssAddonOptions>({
   name: 'tailwindcss',
-  order: 35,
   triggers: ['@tailwindcss/vite', '@tailwindcss/postcss'],
   async setup(ctx, options) {
     if (ctx.hasAddonDep('@tailwindcss/vite')) {

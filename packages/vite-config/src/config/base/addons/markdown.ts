@@ -12,7 +12,6 @@ type MarkdownItSetup = NonNullable<MarkdownAddonOptions['markdownItSetup']>
 
 export const markdownFeature = defineFeature<MarkdownAddonOptions>({
   name: 'markdown',
-  order: 90,
   requires: ['unplugin-vue-markdown', '@shikijs/markdown-it', 'markdown-it-link-attributes'],
   triggers: ['unplugin-vue-markdown', 'vite-plugin-vue-markdown', 'vite-plugin-md'],
   async setup(ctx, options) {

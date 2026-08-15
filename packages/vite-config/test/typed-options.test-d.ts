@@ -1,6 +1,9 @@
 import type {
+  AppViteConfigOptions,
   AutoImportAddonOptions,
   ComponentsAddonOptions,
+  LibViteConfigOptions,
+  PagesAddonOptions,
   PwaAddonOptions,
   ReactAddonOptions,
   TailwindCssAddonOptions,
@@ -10,15 +13,24 @@ import type {
 } from '@moluoxixi/vite-config'
 import {
   createAppConfig,
+  createLibConfig,
   defineAutoImportAddonOptions,
   defineComponentsAddonOptions,
+  definePagesAddonOptions,
   definePwaAddonOptions,
   defineReactAddonOptions,
   defineTailwindCssAddonOptions,
   defineVitestAddonOptions,
   defineVueAddonOptions,
+  getBaseConfig,
 } from '@moluoxixi/vite-config'
 import { expectTypeOf } from 'vitest'
+
+declare module '@moluoxixi/vite-config' {
+  interface ViteConfigOptions {
+    legacyExtension?: boolean
+  }
+}
 
 const autoImportOptions = defineAutoImportAddonOptions({
   dts: 'src/typings/auto-imports.d.ts',
@@ -29,6 +41,12 @@ const autoImportOptions = defineAutoImportAddonOptions({
 const componentsOptions = defineComponentsAddonOptions({
   dts: 'src/typings/components.d.ts',
   extensions: ['vue', 'md'],
+})
+
+const pagesOptions = definePagesAddonOptions({
+  dirs: 'src/pages',
+  exclude: ['**/components/**'],
+  extensions: ['vue'],
 })
 
 const vueOptions = defineVueAddonOptions({
@@ -65,6 +83,7 @@ createAppConfig({
   autoImport: autoImportOptions,
   components: componentsOptions,
   pwa: pwaOptions,
+  pages: pagesOptions,
   react: reactOptions,
   tailwindcss: tailwindOptions,
   unocss: 'uno.config.ts',
@@ -80,6 +99,7 @@ const appOptions = {
   components: {
     extensions: ['vue'],
   },
+  pages: pagesOptions,
   pwa: {
     manifest: {
       name: 'Demo App',
@@ -104,9 +124,28 @@ const appOptions = {
       propsDestructure: true,
     },
   },
-} satisfies ViteConfigOptions
+} satisfies AppViteConfigOptions
 
 createAppConfig(appOptions)
+
+const libOptions = {
+  entry: 'src/index.ts',
+  vue: false,
+} satisfies LibViteConfigOptions
+
+createLibConfig(libOptions)
+
+const legacyLibOptions: ViteConfigOptions = {
+  ...libOptions,
+  legacyExtension: true,
+}
+createLibConfig(legacyLibOptions)
+
+// @ts-expect-error Library entries are not valid application options.
+createAppConfig({ entry: 'src/index.ts' })
+
+// @ts-expect-error Base addon resolution does not accept library entries.
+getBaseConfig({ entry: 'src/index.ts' })
 
 // @ts-expect-error auto-import 配置必须使用 unplugin-auto-import 的真实类型。
 createAppConfig({ autoImport: { vueTemplate: 'yes' } })
@@ -126,8 +165,12 @@ createAppConfig({ vitest: { environment: 1 } })
 // @ts-expect-error Vue 配置必须使用 @vitejs/plugin-vue 的真实类型。
 createAppConfig({ vue: { script: { propsDestructure: 'yes' } } })
 
+// @ts-expect-error pages 配置必须使用 vite-plugin-pages 的真实类型。
+createAppConfig({ pages: { extensions: [1] } })
+
 expectTypeOf(appOptions.autoImport).toMatchTypeOf<AutoImportAddonOptions | boolean | undefined>()
 expectTypeOf(appOptions.components).toMatchTypeOf<ComponentsAddonOptions | boolean | undefined>()
+expectTypeOf(appOptions.pages).toMatchTypeOf<PagesAddonOptions | boolean | undefined>()
 expectTypeOf(appOptions.pwa).toMatchTypeOf<PwaAddonOptions | boolean | undefined>()
 expectTypeOf(appOptions.react).toMatchTypeOf<ReactAddonOptions | boolean | undefined>()
 expectTypeOf(appOptions.tailwindcss).toMatchTypeOf<TailwindCssAddonOptions | boolean | undefined>()
@@ -140,3 +183,4 @@ expectTypeOf(reactOptions.jsxRuntime).toEqualTypeOf<'classic' | 'automatic' | un
 expectTypeOf(pwaOptions.registerType).toEqualTypeOf<'autoUpdate'>()
 expectTypeOf(tailwindOptions.optimize).toEqualTypeOf<boolean | { minify?: boolean } | undefined>()
 expectTypeOf(vitestOptions.environment).toExtend<string | undefined>()
+expectTypeOf(pagesOptions.extensions).toEqualTypeOf<string[] | undefined>()

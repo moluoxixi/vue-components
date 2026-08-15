@@ -15,7 +15,6 @@ type ViteSsgResolvedConfig = ViteSsgAddonOptions & {
 
 export const viteSsgFeature = defineFeature<ViteSsgAddonOptions>({
   name: 'viteSsg',
-  order: 110,
   requires: ['vite-ssg'],
   triggers: ['vite-ssg'],
   async setup(ctx, options) {

@@ -7,7 +7,6 @@ type VueLayoutsModule = typeof import('vite-plugin-vue-layouts')
 
 export const vueLayoutsFeature: ViteFeature<VueLayoutsAddonOptions> = defineFeature<VueLayoutsAddonOptions>({
   name: 'vueLayouts',
-  order: 45,
   requires: ['vite-plugin-vue-layouts'],
   triggers: ['vite-plugin-vue-layouts'],
   async setup(ctx, options) {

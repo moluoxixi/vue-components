@@ -1,6 +1,7 @@
 {
   "name": "@moluoxixi/vite-config",
   "type": "module",
+  "sideEffects": false,
   "version": "0.0.40",
   "repository": {
     "type": "git",
@@ -56,6 +57,7 @@
     "unplugin-vue-markdown": "catalog:build",
     "unplugin-vue-router": "catalog:build",
     "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-plugin-pages": "catalog:build",
     "vite-plugin-pwa": "catalog:build",
     "vite-plugin-vue-devtools": "catalog:build",
     "vite-plugin-vue-layouts": "catalog:build",
@@ -117,6 +119,9 @@
     "unplugin-vue-router": {
       "optional": true
     },
+    "vite-plugin-pages": {
+      "optional": true
+    },
     "vite-plugin-pwa": {
       "optional": true
     },
@@ -171,6 +176,7 @@
     "unplugin-vue-markdown": "catalog:build",
     "unplugin-vue-router": "catalog:build",
     "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-plugin-pages": "catalog:build",
     "vite-plugin-pwa": "catalog:build",
     "vite-plugin-vue-devtools": "catalog:build",
     "vite-plugin-vue-layouts": "catalog:build",

@@ -23,6 +23,7 @@
   `peerDependencies` 和 `optionalDependencies` 都算作“项目已声明该构建能力”。
 - 库模式 external 使用发布语义：只 external `dependencies`、`peerDependencies`
   和 `optionalDependencies`，避免把纯开发工具误写进库的运行时契约。
+- 调用方 Rollup external 规则与默认依赖规则取并集，不能关闭库模式的依赖 external。
 - `runtimeDeps` 只表达真实运行时依赖，不用于 Vite 插件自动启用判断。
 
 ## 可观测性
@@ -38,12 +39,21 @@
 
 ## 类型边界
 
-主入口 `ViteConfigOptions` 和 addon helper 都必须使用对应插件的真实配置类型，
+主入口 `BaseViteConfigOptions` 和 addon helper 都必须使用对应插件的真实配置类型，
 不得把配置压成宽 `object` 或手写镜像类型。`@moluoxixi/vite-config` 是常规唯一导入入口，
 必须导出所有 addon helper/type；`@moluoxixi/vite-config/addons` 和
 `@moluoxixi/vite-config/addons/*` 只作为按 addon 拆分导入的辅助入口保留。
 这样调用方直接在 `createAppConfig` 中传入 addon 配置，或从根入口导入 helper 时，
 都能感知当前依赖版本支持的参数。
+
+`AppViteConfigOptions` 与通用配置保持一致；`LibViteConfigOptions` 只增加 `entry`。
+两个工厂使用各自的配置导出类型，避免在类型层接受
+运行时会被忽略的场景专属字段。旧的 `ViteConfigOptions` / `ViteConfigExport` 名称只作为
+Library 兼容别名保留。
+
+`pages` 使用插件公开的原生 options 类型。默认扫描目录为
+`src/pages`，并排除 `**/components/**` 与 `**/__tests__/**`；检测到纯 React 工具链时默认使用
+`resolver: 'react'` 和 `.tsx` 扩展，Vue 工具链默认使用 `.vue` 扩展。
 
 这意味着启用或配置某个 addon 的项目必须安装对应 optional peer；缺失依赖时，
 TypeScript 解析或运行时动态导入都会暴露失败，不提供静默 fallback。`pwa` 的源码类型
@@ -58,10 +68,19 @@ Tailwind CSS 的自动启用只绑定官方集成入口 `@tailwindcss/vite` 或
 ## 场景边界
 
 - `getBaseConfig`：只提供路径别名和 addon 合并能力，不改变运行时代码语义。
-- `createAppConfig`：面向 Web App，本身不注入业务语义默认值，应用层策略由调用方通过 `viteConfig` 覆盖。
-- `createLibConfig`：面向库构建，默认 external 掉依赖包和依赖子路径，避免打包业务依赖；库入口可通过顶层 `entry` 覆盖，默认值仍为 `src/index.ts`。
+- `createAppConfig`：面向 Web App；Vite 原生配置通过 `viteConfig` 传入，应用身份和部署策略由调用方或具体 addon 负责。
+- `createLibConfig`：面向库构建，始终 external 掉依赖包和依赖子路径，避免打包业务依赖；库入口可通过顶层 `entry` 覆盖，默认值仍为 `src/index.ts`。
 - `pwa`：只提供中性的注册策略默认值，不内置应用名、图标、静态资源路径等业务语义配置。
 - `viteSsg`：`vite-ssg` 本身即可启用 SSG 基础配置；`vite-ssg-sitemap` 仅作为存在时追加的增强能力，不应反向阻塞 SSG。
+- `pages`：文件系统路由插件由 `vite-plugin-pages` 提供；默认值只复用脚手架的页面目录、扩展名和排除规则，调用方仍可传入完整原生 options。
+- Sentry 等业务观测插件：由消费项目安装并通过 `viteConfig.plugins` 注入；本包不声明相关 addon、依赖、环境变量、release 或 source-map 策略。
+
+## Addon 执行顺序
+
+Addon feature 不使用全局数值 `order`。registry 声明顺序是无依赖 addon 的稳定顺序；
+需要先加载其他 addon 时使用 `dependsOn` 声明，运行时对 feature 做稳定拓扑排序。
+未知依赖、重复 feature 名称和循环依赖都必须直接失败。`requires` 只表示 npm 包依赖，
+不承担 addon 之间的执行顺序。
 
 ## 失败语义
 

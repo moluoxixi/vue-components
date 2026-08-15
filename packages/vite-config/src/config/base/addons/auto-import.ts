@@ -92,7 +92,6 @@ async function applyElementPlusResolver(ctx: AddonContext, state: AutoImportStat
 
 export const autoImportFeature = defineFeature<AutoImportAddonOptions, AutoImportState>({
   name: 'autoImport',
-  order: 50,
   requires: ['unplugin-auto-import'],
   triggers: ['unplugin-auto-import'],
   createState(ctx) {

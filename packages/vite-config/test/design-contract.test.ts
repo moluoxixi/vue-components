@@ -39,6 +39,7 @@ describe('vite-config design contract', () => {
       'unplugin-vue-components',
       'unplugin-vue-markdown',
       'unplugin-vue-router',
+      'vite-plugin-pages',
       'vite-plugin-vue-devtools',
       'vite-ssg',
       'vitest/node',
@@ -144,6 +145,25 @@ describe('vite-config design contract', () => {
       missingRequires: [],
       reason: 'dependency-detected',
       requires: ['vite-ssg'],
+    })
+  })
+
+  it('detects the pages addon from declared build dependencies', () => {
+    const root = createTempDir('moluoxixi-design-pages-')
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      devDependencies: {
+        'vite-plugin-pages': '^0.33.3',
+      },
+    }))
+
+    const inspection = inspectViteFeatures({ viteConfig: { root } })
+    const pages = inspection.features.find(feature => feature.name === 'pages')
+
+    expect(pages).toMatchObject({
+      enabled: true,
+      matchedTriggers: ['vite-plugin-pages'],
+      missingRequires: [],
+      reason: 'dependency-detected',
     })
   })
 })

@@ -4,8 +4,10 @@ import { componentsFeature } from './components'
 import { devtoolsFeature } from './devtools'
 import { i18nFeature } from './i18n'
 import { markdownFeature } from './markdown'
+import { pagesFeature } from './pages'
 import { pwaFeature } from './pwa'
 import { reactFeature } from './react'
+import { resolveFeatureOrder } from './runtime'
 import { tailwindcssFeature } from './tailwindcss'
 import { unocssFeature } from './unocss'
 import { viteSsgFeature } from './vite-ssg'
@@ -23,6 +25,7 @@ const features = [
   vueLayoutsFeature,
   autoImportFeature,
   componentsFeature,
+  pagesFeature,
   i18nFeature,
   devtoolsFeature,
   pwaFeature,
@@ -31,4 +34,4 @@ const features = [
   viteSsgFeature,
 ]
 
-export const viteFeatures = features.sort((a, b) => a.order - b.order) as ViteFeature<any, any>[]
+export const viteFeatures = resolveFeatureOrder(features) as ViteFeature<any, any>[]

@@ -1,0 +1,11 @@
+{
+  "name": "real-pages-consumer-app",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@vitejs/plugin-vue": "catalog:conflicts_dev_h6_0_4",
+    "vite": "catalog:conflicts_dev_h7_3_1",
+    "vite-plugin-pages": "catalog:build",
+    "vue": "catalog:build"
+  }
+}

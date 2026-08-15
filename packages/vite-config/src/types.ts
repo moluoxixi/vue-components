@@ -5,6 +5,7 @@ import type {
   DevtoolsAddonOptions,
   I18nAddonOptions,
   MarkdownAddonOptions,
+  PagesAddonOptions,
   PwaAddonOptions,
   ReactAddonOptions,
   TailwindCssAddonOptions,
@@ -17,7 +18,7 @@ import type {
 } from './addons'
 
 /**
- * All supported addon identifiers (camelCase, matches ViteConfigOptions keys)
+ * All supported addon identifiers (camelCase, matches BaseViteConfigOptions keys)
  */
 export type AddonName
   = | 'vue'
@@ -34,6 +35,7 @@ export type AddonName
     | 'markdown'
     | 'vitest'
     | 'viteSsg'
+    | 'pages'
 
 type AddonConfig<TOptions> = TOptions | boolean
 
@@ -41,9 +43,7 @@ type AddonConfig<TOptions> = TOptions | boolean
  * Addon 配置映射。
  * 对象使用对应 addon 的真实配置类型，`true` 表示显式启用，`false` 表示显式关闭。
  */
-export interface ViteConfigOptions {
-  /** Library mode entry used by createLibConfig; relative paths resolve from viteConfig.root. */
-  entry?: LibraryOptions['entry']
+export interface BaseViteConfigOptions {
   viteConfig?: UserConfig
   vue?: AddonConfig<VueAddonOptions>
   react?: AddonConfig<ReactAddonOptions>
@@ -62,13 +62,26 @@ export interface ViteConfigOptions {
   markdown?: AddonConfig<MarkdownAddonOptions>
   vitest?: AddonConfig<VitestAddonOptions>
   viteSsg?: AddonConfig<ViteSsgAddonOptions>
+  /** File-system route generation through vite-plugin-pages. */
+  pages?: AddonConfig<PagesAddonOptions>
 }
 
-/**
- * 与 defineConfig 对齐的配置导出类型
- * - 对象形式：直接传入 ViteConfigOptions
- * - 函数形式：接收 Vite 的 ConfigEnv，返回 ViteConfigOptions
- */
-export type ViteConfigExport
-  = | ViteConfigOptions
-    | ((env: ConfigEnv) => ViteConfigOptions | Promise<ViteConfigOptions>)
+/** Application preset options. */
+export interface AppViteConfigOptions extends BaseViteConfigOptions {}
+
+/** Library preset options. */
+export interface LibViteConfigOptions extends BaseViteConfigOptions {
+  /** Library entry; relative paths resolve from viteConfig.root. */
+  entry?: LibraryOptions['entry']
+}
+
+type ConfigFactoryExport<TOptions> = TOptions | ((env: ConfigEnv) => TOptions | Promise<TOptions>)
+
+export type AppViteConfigExport = ConfigFactoryExport<AppViteConfigOptions>
+export type LibViteConfigExport = ConfigFactoryExport<LibViteConfigOptions>
+
+/** @deprecated Use AppViteConfigOptions or LibViteConfigOptions. */
+export interface ViteConfigOptions extends LibViteConfigOptions {}
+
+/** @deprecated Use AppViteConfigExport or LibViteConfigExport. */
+export type ViteConfigExport = LibViteConfigExport

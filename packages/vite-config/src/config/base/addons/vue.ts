@@ -14,7 +14,6 @@ interface VueMacrosModule {
 
 export const vueFeature = defineFeature<VueAddonOptions>({
   name: 'vue',
-  order: 10,
   requires: ['@vitejs/plugin-vue'],
   triggers: ['vue', '@vitejs/plugin-vue'],
   async setup(ctx, options) {

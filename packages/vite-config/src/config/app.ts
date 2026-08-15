@@ -1,5 +1,5 @@
 import type { UserConfigExport } from 'vite'
-import type { ViteConfigExport } from '../types'
+import type { AppViteConfigExport } from '../types'
 import { defineConfig } from 'vite'
 import { getBaseConfig } from './base'
 import { mergeConfigWithUserPlugins } from './merge'
@@ -18,7 +18,7 @@ import { mergeConfigWithUserPlugins } from './merge'
  *   }
  * }))
  */
-export function createAppConfig(config: ViteConfigExport = {}): UserConfigExport {
+export function createAppConfig(config: AppViteConfigExport = {}): UserConfigExport {
   return defineConfig(async (env) => {
     const userOptions = typeof config === 'function' ? await config(env) : config
     const baseConfig = await getBaseConfig(userOptions)

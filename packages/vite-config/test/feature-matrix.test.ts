@@ -54,6 +54,7 @@ const mocks = vi.hoisted(() => {
     linkAttributes: vi.fn((...args: unknown[]) => ({ name: 'link-attributes', args })),
     markdown: pluginFactory('markdown'),
     pwa: vi.fn((options?: CapturedPluginOptions) => ({ name: 'pwa', options })),
+    pages: pluginFactory('pages'),
     react: pluginFactory('react'),
     shiki: vi.fn((options?: CapturedPluginOptions) => ({ name: 'shiki', options })),
     sitemap: vi.fn(() => ({ name: 'vite-ssg-sitemap' })),
@@ -124,6 +125,7 @@ vi.mock('unplugin-auto-import/vite', () => ({ default: mocks.autoImport }))
 vi.mock('@unhead/vue', () => ({ unheadVueComposablesImports: mocks.unheadImports }))
 vi.mock('@intlify/unplugin-vue-i18n/vite', () => ({ default: mocks.i18n }))
 vi.mock('vite-plugin-vue-devtools', () => ({ default: mocks.devtools }))
+vi.mock('vite-plugin-pages', () => ({ default: mocks.pages }))
 vi.mock('unplugin-vue-markdown/vite', () => ({ default: mocks.markdown }))
 vi.mock('@shikijs/markdown-it', () => ({ default: mocks.shiki }))
 vi.mock('markdown-it-link-attributes', () => ({ default: mocks.linkAttributes }))
@@ -177,6 +179,44 @@ describe('vite addon matrix', () => {
       '/\\.vue\\?vue/',
     ])
     expect(componentsPlugin?.options?.resolvers).toEqual([])
+  })
+
+  it('applies Vue page route defaults from the scaffold contract', async () => {
+    const root = path.resolve(os.tmpdir(), 'moluoxixi-feature-pages-vue')
+    mockRuntimeDeps = {
+      '@vitejs/plugin-vue': '^6.0.0',
+      'vite-plugin-pages': '^0.33.3',
+      'vue': '^3.5.0',
+    }
+
+    const config = await getAddonsConfig({ viteConfig: { root }, pages: true })
+    const pagesPlugin = flattenPlugins(config).find(plugin => plugin.name === 'pages')
+
+    expect(pagesPlugin?.options).toMatchObject({
+      dirs: 'src/pages',
+      extensions: ['vue'],
+      exclude: ['**/components/**', '**/__tests__/**'],
+    })
+    expect(pagesPlugin?.options?.resolver).toBeUndefined()
+  })
+
+  it('applies React page route defaults from the scaffold contract', async () => {
+    const root = path.resolve(os.tmpdir(), 'moluoxixi-feature-pages-react')
+    mockRuntimeDeps = {
+      '@vitejs/plugin-react': '^4.0.0',
+      'react': '^19.0.0',
+      'vite-plugin-pages': '^0.33.3',
+    }
+
+    const config = await getAddonsConfig({ viteConfig: { root }, pages: true })
+    const pagesPlugin = flattenPlugins(config).find(plugin => plugin.name === 'pages')
+
+    expect(pagesPlugin?.options).toMatchObject({
+      dirs: 'src/pages',
+      extensions: ['tsx'],
+      resolver: 'react',
+      exclude: ['**/components/**', '**/__tests__/**'],
+    })
   })
 
   it('keeps user plugins and removes generated plugins with the same name', async () => {

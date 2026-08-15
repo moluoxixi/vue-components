@@ -230,6 +230,25 @@ describe('real consumer project integration', () => {
     expect(plugins.some(plugin => plugin.name?.includes('layouts'))).toBe(true)
   }, 30000)
 
+  it('loads the real pages addon from a consumer manifest', async () => {
+    const fixturePath = path.resolve(__dirname, 'fixtures/real-pages')
+    const inspection = inspectViteFeatures({ viteConfig: { root: fixturePath } })
+    const enabledFeatures = inspection.features
+      .filter(feature => feature.enabled)
+      .map(feature => feature.name)
+
+    expect(enabledFeatures).toEqual(['vue', 'pages'])
+
+    const config = await resolveConfig(createAppConfig({
+      viteConfig: {
+        root: fixturePath,
+      },
+    }))
+    const plugins = (Array.isArray(config.plugins) ? config.plugins.flat(10) : []).filter(Boolean) as Array<{ name?: string }>
+
+    expect(plugins.some(plugin => plugin.name === 'vite-plugin-pages')).toBe(true)
+  }, 30000)
+
   it('builds a library fixture while keeping consumer dependencies external', async () => {
     const fixturePath = path.resolve(__dirname, 'fixtures/real-lib')
     const outDir = path.resolve(fixturePath, 'dist')

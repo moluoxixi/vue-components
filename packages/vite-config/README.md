@@ -10,6 +10,9 @@
 - `getBaseConfig()`：只解析基础别名与自动装配的 addon 配置。
 - `inspectViteFeatures()`：只做 feature 决策分析，不加载任何插件模块。
 
+`createAppConfig` 使用 `AppViteConfigOptions`，`createLibConfig` 使用
+`LibViteConfigOptions`。库入口只属于 Library 配置，避免不同场景静默接收无效字段。
+
 ## 依赖检测约定
 
 - 自动启用依据目标项目 `package.json` 中真实声明的 addon 依赖图。
@@ -25,10 +28,65 @@
 - `createLibConfig()` 默认把 `dependencies`、`optionalDependencies` 与 `peerDependencies` external 化。
 - `devDependencies` 不会自动 external，避免把仅用于开发或测试的包错误带入发布契约。
 - `createLibConfig({ entry })` 可直接声明库入口；相对路径会基于 `viteConfig.root` 解析，默认仍为 `src/index.ts`。
+- 调用方的 `build.rollupOptions.external` 会与默认依赖 external 规则取并集，不会覆盖默认规则。
+
+## 业务插件边界
+
+依赖图自动装配只用于跨项目稳定且高确定性的 addon。Sentry 等涉及鉴权、组织、项目、release
+和 source map 策略的业务插件不进入本包的 addon registry、peerDependencies 或环境变量约定，
+由消费项目安装并通过原生 `viteConfig.plugins` 注入：
+
+```ts
+import { createAppConfig } from '@moluoxixi/vite-config'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
+
+export default createAppConfig(({ mode }) => ({
+  viteConfig: {
+    plugins:
+      mode === 'production'
+        ? [
+            sentryVitePlugin({
+              authToken: process.env.SENTRY_AUTH_TOKEN,
+              org: process.env.SENTRY_ORG,
+              project: process.env.SENTRY_PROJECT,
+            }),
+          ]
+        : [],
+  },
+}))
+```
+
+调用方插件排在自动 addon 之后；当插件 `name` 与自动插件相同时，调用方插件按既有合并契约
+覆盖自动插件。
+
+## 页面路由
+
+`vite-plugin-pages` 属于可选 addon。目标项目声明依赖后会自动启用，
+也可以用 `pages: true` 显式启用；启用时仍会严格校验依赖是否可加载。
+配置字段直接使用插件原生类型：
+
+```ts
+export default createAppConfig({
+  pages: {
+    dirs: 'src/pages',
+    extensions: ['vue'],
+    exclude: ['**/components/**', '**/__tests__/**'],
+  },
+})
+```
+
+未覆盖时，`pages` 会按已安装的 Vue/React 工具链选择 `.vue` 或 `.tsx`，React 项目同时设置
+`resolver: 'react'`，并沿用脚手架的 `src/pages`、组件目录和测试目录默认规则。
+
+## Addon 执行顺序
+
+Addon registry 不使用全局数值优先级。没有依赖关系的 addon 按 registry 声明顺序合并；
+确实需要先后关系时，在 feature 中声明 `dependsOn`，系统会做稳定拓扑排序，并对未知依赖和
+循环依赖直接报错。Addon 依赖不是 npm 包依赖，后者仍由 `requires` 负责校验。
 
 ## typed addon options
 
-`ViteConfigOptions` 的每个 addon 字段都绑定对应插件的真实配置类型；直接在
+`BaseViteConfigOptions` 的每个 addon 字段都绑定对应插件的真实配置类型；直接在
 `createAppConfig` 里写配置，也能获得和依赖版本一致的参数提示。所有 addon helper/type
 都从唯一入口导出，常规使用直接从 `@moluoxixi/vite-config` 导入：
 
@@ -47,7 +105,7 @@ export default createAppConfig({
 当前提供 `addons/vue`、`addons/react`、`addons/auto-import`、`addons/components`、
 `addons/vue-router`、`addons/markdown`、`addons/i18n`、`addons/devtools`、
 `addons/layouts`、`addons/pwa`、`addons/tailwindcss`、`addons/unocss` 与
-`addons/vite-ssg`。这些子入口继续保留给需要按 addon 拆分导入的场景；也可以从
+`addons/vite-ssg` 与 `addons/pages`。这些子入口继续保留给需要按 addon 拆分导入的场景；也可以从
 `@moluoxixi/vite-config/addons` 一次性导入所有 addon helper/type。
 
 主入口和 `addons/pwa` 的 PWA 类型都来自 `vite-plugin-pwa` 官方导出。本仓库只把它作为
@@ -59,7 +117,7 @@ Tailwind CSS 只会在安装 `@tailwindcss/vite` 或 `@tailwindcss/postcss` 时�
 
 ## 1. 自动化的依赖侦测（Read Package）
 
-- **实践方法**：放弃手动配置每个特性开关，利用读取并解析当前工作目录的 `package.json`，自动侦测项目中是否使用 `vue`、`react`、`@tailwindcss/vite`、`@tailwindcss/postcss`、`unocss` 等常用前端技术栈。
+- **实践方法**：放弃手动配置每个特性开关，利用读取并解析 `viteConfig.root` 下的 `package.json`，自动侦测项目中是否使用 `vue`、`react`、`@tailwindcss/vite`、`@tailwindcss/postcss`、`unocss` 等常用前端技术栈。
 - **优势**：减少模板化项目初始化的心智负担，开发者一旦安装对应依赖该功能自动就绪。
 
 ## 2. 动态按需加载配置模块

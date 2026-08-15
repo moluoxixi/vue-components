@@ -6,7 +6,6 @@ type I18nModule = typeof import('@intlify/unplugin-vue-i18n/vite')
 
 export const i18nFeature = defineFeature<I18nAddonOptions>({
   name: 'i18n',
-  order: 60,
   requires: ['@intlify/unplugin-vue-i18n'],
   triggers: ['@intlify/unplugin-vue-i18n'],
   async setup(ctx, options) {

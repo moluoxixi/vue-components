@@ -6,7 +6,6 @@ type DevtoolsModule = typeof import('vite-plugin-vue-devtools')
 
 export const devtoolsFeature = defineFeature<DevtoolsAddonOptions>({
   name: 'devtools',
-  order: 70,
   requires: ['vite-plugin-vue-devtools'],
   triggers: ['vite-plugin-vue-devtools'],
   async setup(ctx, options) {

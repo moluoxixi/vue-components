@@ -34,7 +34,6 @@ type UnoCssModule = typeof import('unocss/vite')
 
 export const unocssFeature = defineFeature<UnoCssAddonOptions>({
   name: 'unocss',
-  order: 30,
   requires: ['unocss'],
   triggers: ['unocss'],
   async setup(ctx, options) {

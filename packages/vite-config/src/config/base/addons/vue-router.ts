@@ -6,7 +6,6 @@ type VueRouterModule = typeof import('unplugin-vue-router/vite')
 
 export const vueRouterFeature = defineFeature<VueRouterAddonOptions>({
   name: 'vueRouter',
-  order: 40,
   requires: ['unplugin-vue-router'],
   triggers: ['unplugin-vue-router'],
   async setup(ctx, options) {
