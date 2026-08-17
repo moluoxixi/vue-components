@@ -1,13 +1,13 @@
 {
   "name": "@moluoxixi/vite-config",
   "type": "module",
-  "sideEffects": false,
   "version": "0.0.40",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/moluoxixi/vue-components.git",
     "directory": "packages/vite-config"
   },
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
