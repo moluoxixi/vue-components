@@ -1,5 +1,11 @@
 # @moluoxixi/eslint-config
 
+## 0.0.18
+
+### Patch Changes
+
+- Automatically release packages changed in 9d60af8d37f8.
+
 ## 0.0.17
 
 ### Patch Changes
