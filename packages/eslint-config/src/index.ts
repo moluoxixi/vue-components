@@ -19,6 +19,9 @@ const DEFAULT_RULES: NonNullable<EslintConfigOptions['rules']> = {
       ],
     },
   }],
+}
+
+const DEFAULT_VUE_RULES: NonNullable<EslintConfigOptions['rules']> = {
   // Vue SFC 块顺序属于跨项目通用约束，不携带具体业务语义。
   'vue/block-order': ['error', {
     order: ['template', 'script', 'style'],
@@ -47,7 +50,7 @@ export function createEslintConfig(
   options: EslintConfigOptions = {},
   ...userConfigs: EslintUserConfig[]
 ): EslintConfigResult {
-  const { ignores, rules, ...restOptions } = options
+  const { ignores, rules, vue, ...restOptions } = options
 
   return antfu(
     {
@@ -65,12 +68,14 @@ export function createEslintConfig(
         },
       },
       ...restOptions,
+      vue,
       ignores: [
         ...DEFAULT_IGNORES,
         ...(ignores ?? []),
       ],
       rules: {
         ...DEFAULT_RULES,
+        ...(vue === false ? {} : DEFAULT_VUE_RULES),
         ...rules,
       },
     },

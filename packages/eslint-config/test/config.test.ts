@@ -35,6 +35,14 @@ describe('createEslintConfig', () => {
     expect(rules['vue/block-order']).toBe('off')
   })
 
+  it('does not emit Vue rules when Vue support is disabled', async () => {
+    const configs = await createEslintConfig({ vue: false })
+    const rules = Object.assign({}, ...configs.map(config => config.rules ?? {}))
+
+    expect(rules['style/spaced-comment']).toBeDefined()
+    expect(rules).not.toHaveProperty('vue/block-order')
+  })
+
   it('formats embedded Markdown code with the shared Prettier options', async () => {
     const configs = await createEslintConfig()
     const markdownConfig = configs.filter(config => (
