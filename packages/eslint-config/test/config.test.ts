@@ -43,6 +43,17 @@ describe('createEslintConfig', () => {
     expect(rules).not.toHaveProperty('vue/block-order')
   })
 
+  it('scopes auto-detected Vue rules to Vue files', async () => {
+    const configs = await createEslintConfig()
+    const vueConfig = configs.find(config => (
+      config.files?.includes('**/*.vue') && config.rules?.['vue/block-order']
+    ))
+    const nonVueConfigs = configs.filter(config => !config.files?.includes('**/*.vue'))
+
+    expect(vueConfig?.rules?.['vue/block-order']).toBeDefined()
+    expect(nonVueConfigs.every(config => !config.rules?.['vue/block-order'])).toBe(true)
+  })
+
   it('formats embedded Markdown code with the shared Prettier options', async () => {
     const configs = await createEslintConfig()
     const markdownConfig = configs.filter(config => (

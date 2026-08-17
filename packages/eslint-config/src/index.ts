@@ -28,6 +28,8 @@ const DEFAULT_VUE_RULES: NonNullable<EslintConfigOptions['rules']> = {
   }],
 }
 
+const DEFAULT_VUE_FILES = ['**/*.vue']
+
 const MARKDOWN_FORMATTER = {
   files: ['**/*.md'],
   rules: {
@@ -51,6 +53,15 @@ export function createEslintConfig(
   ...userConfigs: EslintUserConfig[]
 ): EslintConfigResult {
   const { ignores, rules, vue, ...restOptions } = options
+  const vueConfigs: EslintUserConfig[] = vue === false
+    ? []
+    : [{
+        files: DEFAULT_VUE_FILES,
+        rules: {
+          ...DEFAULT_VUE_RULES,
+          ...rules,
+        },
+      }]
 
   return antfu(
     {
@@ -75,10 +86,10 @@ export function createEslintConfig(
       ],
       rules: {
         ...DEFAULT_RULES,
-        ...(vue === false ? {} : DEFAULT_VUE_RULES),
         ...rules,
       },
     },
+    ...vueConfigs,
     MARKDOWN_FORMATTER,
     ...userConfigs,
   )
