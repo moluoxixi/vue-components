@@ -23,7 +23,8 @@ export default createEslintConfig({ vue: false, react: true })
 ```
 
 启用 React 配置时，项目需要安装 `@antfu/eslint-config` 声明的可选 peer dependencies：
-`@eslint-react/eslint-plugin` 和 `eslint-plugin-react-refresh`。
+`@eslint-react/eslint-plugin` 和 `eslint-plugin-react-refresh`。其中 `@eslint-react/eslint-plugin@3`
+要求 ESLint 10；Vue 项目仍可使用 ESLint 9。
 
 ## 设计边界
 
