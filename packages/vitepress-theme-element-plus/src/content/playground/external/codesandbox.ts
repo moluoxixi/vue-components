@@ -1,6 +1,8 @@
-import type { ElementPlusDocsExternalProject } from './vue-project'
+import type { ElementPlusDocsPlaygroundAdapter } from '../types'
+import type { ElementPlusDocsExternalProject, ElementPlusDocsExternalProjectOptions, ElementPlusDocsExternalProjectSource } from './vue-project'
 import { compressToBase64 } from 'lz-string'
 import { submitElementPlusDocsProjectForm } from './submit-form'
+import { createElementPlusDocsExternalProject } from './vue-project'
 
 const defaultCodeSandboxUrl = 'https://codesandbox.io/api/v1/sandboxes/define'
 const codeSandboxEntryPath = 'main.js'
@@ -241,4 +243,22 @@ export function openElementPlusDocsCodeSandbox(
   submitElementPlusDocsProjectForm(action.toString(), {
     parameters: createElementPlusDocsCodeSandboxParameters(project),
   })
+}
+
+export function createElementPlusDocsCodeSandboxAdapter(
+  options: ElementPlusDocsCodeSandboxOptions,
+  projectOptions: ElementPlusDocsExternalProjectOptions,
+): ElementPlusDocsPlaygroundAdapter {
+  return {
+    kind: 'codesandbox',
+    createAction: () => ({
+      kind: 'codesandbox',
+      open: ({ projectSource, source }: { projectSource?: ElementPlusDocsExternalProjectSource, source: string }) => {
+        openElementPlusDocsCodeSandbox(
+          createElementPlusDocsExternalProject(source, projectOptions, projectSource),
+          options,
+        )
+      },
+    }),
+  }
 }

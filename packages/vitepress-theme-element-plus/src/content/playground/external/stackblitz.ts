@@ -1,5 +1,7 @@
-import type { ElementPlusDocsExternalProject } from './vue-project'
+import type { ElementPlusDocsPlaygroundAdapter } from '../types'
+import type { ElementPlusDocsExternalProject, ElementPlusDocsExternalProjectOptions } from './vue-project'
 import { submitElementPlusDocsProjectForm } from './submit-form'
+import { createElementPlusDocsExternalProject } from './vue-project'
 
 const defaultStackBlitzUrl = 'https://stackblitz.com/run'
 
@@ -55,4 +57,22 @@ export function openElementPlusDocsStackBlitz(
   }
 
   submitElementPlusDocsProjectForm(action.toString(), fields)
+}
+
+export function createElementPlusDocsStackBlitzAdapter(
+  options: ElementPlusDocsStackBlitzOptions,
+  projectOptions: ElementPlusDocsExternalProjectOptions,
+): ElementPlusDocsPlaygroundAdapter {
+  return {
+    kind: 'stackblitz',
+    createAction: () => ({
+      kind: 'stackblitz',
+      open: ({ projectSource, source }) => {
+        openElementPlusDocsStackBlitz(
+          createElementPlusDocsExternalProject(source, projectOptions, projectSource),
+          options,
+        )
+      },
+    }),
+  }
 }

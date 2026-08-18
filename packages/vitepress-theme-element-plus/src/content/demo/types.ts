@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import type { ElementPlusDocsExternalProjectSource } from '../playground/external/vue-project'
+import type { ElementPlusDocsPlaygroundAction } from '../playground/types'
 
 export interface ElementPlusDocsDemoCompileResult {
   component: Component
@@ -51,6 +52,7 @@ export interface ElementPlusDocsDemoProps {
   jsCode?: string
   jsHighlighted?: string
   messages: ElementPlusDocsDemoMessages
+  playgroundActions?: readonly ElementPlusDocsPlaygroundAction[]
   openCodeSandbox?: (
     source: string,
     demoId: string,

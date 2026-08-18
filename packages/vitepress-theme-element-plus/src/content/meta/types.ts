@@ -25,15 +25,15 @@ export interface ElementPlusDocsContributor {
 
 export interface ElementPlusDocsComponentMetaData {
   apiHref?: string
-  commits: readonly ElementPlusDocsCommit[]
-  editHref: string
+  commits?: readonly ElementPlusDocsCommit[]
+  editHref?: string
   hasSourceDoc: boolean
   importStatement: string
   name: string
-  newIssueHref: string
+  newIssueHref?: string
   openIssueCount?: number
   openIssuesHref?: string
   overviewHref: string
-  sourceHref: string
+  sourceHref?: string
   sourceLabel: string
 }

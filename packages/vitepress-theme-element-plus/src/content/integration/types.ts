@@ -2,10 +2,7 @@ import type { Component, Plugin, Ref } from 'vue'
 import type { ElementPlusDocsComponentApiContract } from '../api/types'
 import type { ElementPlusDocsCatalogGroup, ElementPlusDocsOverviewFact } from '../catalog/types'
 import type { ElementPlusDocsComponentMetaData, ElementPlusDocsContributor } from '../meta/types'
-import type { ElementPlusDocsCodeSandboxOptions } from '../playground/external/codesandbox'
-import type { ElementPlusDocsStackBlitzOptions } from '../playground/external/stackblitz'
-import type { ElementPlusDocsExternalProjectOptions } from '../playground/external/vue-project'
-import type { ElementPlusDocsSfcCompiler } from '../playground/types'
+import type { ElementPlusDocsPlaygroundConfig } from '../playground/types'
 import type { ElementPlusDocsContentMessages } from '../types'
 
 export interface ElementPlusDocsContentRuntime {
@@ -32,21 +29,7 @@ export interface ElementPlusDocsApiResolverInput extends ElementPlusDocsContentR
 }
 
 export interface ElementPlusDocsContentIntegration {
-  playground: {
-    compile: ElementPlusDocsSfcCompiler
-    copy?: (source: string) => Promise<void>
-    path: string
-    elementPlus?: {
-      path?: string
-      url?: string
-    }
-    external?: {
-      codeSandbox?: ElementPlusDocsCodeSandboxOptions
-      project: ElementPlusDocsExternalProjectOptions
-      stackBlitz?: ElementPlusDocsStackBlitzOptions
-    }
-    starterSource: string
-  }
+  playground: ElementPlusDocsPlaygroundConfig
   overview: {
     gettingStartedPath: string
     logo: {
@@ -66,7 +49,7 @@ export interface ElementPlusDocsContentIntegration {
   ) => ElementPlusDocsComponentMetaData
   resolveContributors: (
     input: Pick<ElementPlusDocsComponentResolverInput, 'link' | 'locale' | 'messages' | 'name'>,
-  ) => readonly ElementPlusDocsContributor[]
+  ) => readonly ElementPlusDocsContributor[] | undefined
   resolveOverviewFacts: (
     context: ElementPlusDocsContentResolverContext & {
       groups: readonly ElementPlusDocsCatalogGroup[]

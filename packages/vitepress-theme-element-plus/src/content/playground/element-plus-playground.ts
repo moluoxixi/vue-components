@@ -1,3 +1,4 @@
+import type { ElementPlusDocsPlaygroundAdapter } from './types'
 import { utoa } from '../../upstream/vitepress/utils'
 
 const defaultElementPlusPlaygroundUrl = 'https://element-plus.run/'
@@ -6,6 +7,14 @@ const mainFileName = 'App.vue'
 export interface ElementPlusPlaygroundUrlOptions {
   dark?: boolean
   url?: string
+}
+
+export interface ElementPlusPlaygroundAdapterOptions extends ElementPlusPlaygroundUrlOptions {
+  baseUrl?: () => string
+  isDark?: () => boolean
+  open: (url: string) => void
+  path?: string
+  resolvePath?: (path: string) => string
 }
 
 export function createElementPlusPlaygroundUrl(
@@ -22,4 +31,27 @@ export function createElementPlusPlaygroundUrl(
     link.hash = utoa(JSON.stringify({ [mainFileName]: source }))
 
   return link.toString()
+}
+
+export function createElementPlusPlaygroundAdapter(
+  options: ElementPlusPlaygroundAdapterOptions,
+): ElementPlusDocsPlaygroundAdapter {
+  return {
+    kind: 'element-plus',
+    createAction: () => ({
+      kind: 'element-plus',
+      open: ({ source }) => {
+        const url = options.path
+          ? new URL(
+              options.resolvePath?.(options.path) ?? options.path,
+              options.baseUrl?.() ?? defaultElementPlusPlaygroundUrl,
+            ).toString()
+          : options.url
+        options.open(createElementPlusPlaygroundUrl(source, {
+          dark: options.isDark?.(),
+          url,
+        }))
+      },
+    }),
+  }
 }

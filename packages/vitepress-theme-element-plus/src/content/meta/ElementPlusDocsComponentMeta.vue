@@ -95,15 +95,15 @@ onBeforeUnmount(() => {
             </div>
           </td>
         </tr>
-        <tr>
+        <tr v-if="data.sourceHref || data.newIssueHref || data.openIssuesHref">
           <th scope="row">{{ messages.meta.feedback }}</th>
           <td>
             <div class="component-doc-links">
-              <a :href="data.sourceHref" target="_blank" rel="noreferrer">
+              <a v-if="data.sourceHref" :href="data.sourceHref" target="_blank" rel="noreferrer">
                 <FolderGit2 :size="14" aria-hidden="true" />
                 {{ data.sourceLabel }}
               </a>
-              <a :href="data.newIssueHref" target="_blank" rel="noreferrer">
+              <a v-if="data.newIssueHref" :href="data.newIssueHref" target="_blank" rel="noreferrer">
                 <MessageSquareWarning :size="14" aria-hidden="true" />
                 {{ messages.meta.submitIssue }}
               </a>
@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
           <th scope="row">{{ messages.meta.documentation }}</th>
           <td>
             <div class="component-doc-links">
-              <a :href="data.editHref" target="_blank" rel="noreferrer">
+              <a v-if="data.editHref" :href="data.editHref" target="_blank" rel="noreferrer">
                 <FilePenLine :size="14" aria-hidden="true" />
                 {{ data.hasSourceDoc ? messages.meta.editPage : messages.meta.addDocs }}
               </a>
@@ -137,6 +137,7 @@ onBeforeUnmount(() => {
                 {{ messages.route.api }}
               </a>
               <button
+                v-if="data.commits?.length"
                 ref="changelogTrigger"
                 type="button"
                 aria-haspopup="dialog"
@@ -155,6 +156,7 @@ onBeforeUnmount(() => {
 
     <ClientOnly>
       <ElDialog
+        v-if="data.commits?.length"
         v-model="changelogVisible"
         align-center
         append-to-body

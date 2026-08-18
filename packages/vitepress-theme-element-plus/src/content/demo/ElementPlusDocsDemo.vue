@@ -3,6 +3,12 @@ import { Box, Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerm
 import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
 import type { ElementPlusDocsExternalProjectSource } from '../playground/external/vue-project'
+import { indexElementPlusDocsPlaygroundActions } from '../playground/registry'
+import type {
+  ElementPlusDocsPlaygroundAction,
+  ElementPlusDocsPlaygroundActionContext,
+  ElementPlusDocsPlaygroundKind,
+} from '../playground/types'
 import {
   computed,
   nextTick,
@@ -60,6 +66,42 @@ const highlightedHtml = computed(() => (
     ? decode(props.jsHighlighted)
     : decode(props.highlighted)
 ))
+const playgroundActions = computed<readonly ElementPlusDocsPlaygroundAction[]>(() => {
+  if (props.playgroundActions !== undefined)
+    return props.playgroundActions
+
+  const actions: ElementPlusDocsPlaygroundAction[] = []
+  if (props.openCodeSandbox) {
+    actions.push({
+      kind: 'codesandbox',
+      open: ({ demoId, projectSource, source }) => projectSource
+        ? props.openCodeSandbox!(source, demoId, projectSource)
+        : props.openCodeSandbox!(source, demoId),
+    })
+  }
+  if (props.openStackBlitz) {
+    actions.push({
+      kind: 'stackblitz',
+      open: ({ demoId, projectSource, source }) => projectSource
+        ? props.openStackBlitz!(source, demoId, projectSource)
+        : props.openStackBlitz!(source, demoId),
+    })
+  }
+  if (props.openElementPlusPlayground) {
+    actions.push({
+      kind: 'element-plus',
+      open: ({ demoId, source }) => props.openElementPlusPlayground!(source, demoId),
+    })
+  }
+  if (props.openPlayground) {
+    actions.push({
+      kind: 'lightweight',
+      open: ({ demoId, source }) => props.openPlayground!(source, demoId),
+    })
+  }
+  return actions
+})
+const playgroundActionByKind = computed(() => indexElementPlusDocsPlaygroundActions(playgroundActions.value))
 
 function formatError(value: unknown): string {
   return value instanceof Error ? value.message : String(value)
@@ -120,14 +162,20 @@ onUnmounted(() => {
     window.clearTimeout(copyTimer)
 })
 
-async function handleOpenPlayground(
-  open: ElementPlusDocsDemoProps['openPlayground'],
-): Promise<void> {
-  if (!open)
+async function handleOpenPlayground(kind: ElementPlusDocsPlaygroundKind): Promise<void> {
+  const action = playgroundActionByKind.value.get(kind)
+  if (!action)
     return
   try {
     actionError.value = null
-    await open(displayedSourceCode.value, props.demoId)
+    const context: ElementPlusDocsPlaygroundActionContext = {
+      demoId: props.demoId,
+      source: displayedSourceCode.value,
+    }
+    const projectSource = externalProjectSource.value
+    if (projectSource)
+      context.projectSource = projectSource
+    await action.open(context)
   }
   catch (sessionError) {
     actionError.value = formatError(sessionError)
@@ -138,24 +186,6 @@ function decodeExternalProjectSource(encoded: string | undefined): ElementPlusDo
   if (!encoded)
     return undefined
   return JSON.parse(decode(encoded)) as ElementPlusDocsExternalProjectSource
-}
-
-async function handleOpenExternalPlayground(
-  open: ElementPlusDocsDemoProps['openCodeSandbox'] | ElementPlusDocsDemoProps['openStackBlitz'],
-): Promise<void> {
-  if (!open)
-    return
-  try {
-    actionError.value = null
-    const projectSource = externalProjectSource.value
-    if (projectSource)
-      await open(displayedSourceCode.value, props.demoId, projectSource)
-    else
-      await open(displayedSourceCode.value, props.demoId)
-  }
-  catch (sessionError) {
-    actionError.value = formatError(sessionError)
-  }
 }
 
 async function copyCode(): Promise<void> {
@@ -215,46 +245,46 @@ async function collapseSource(): Promise<void> {
         />
         <div class="demo-actions" role="group" :aria-label="messages.actions">
           <button
-            v-if="openCodeSandbox"
+            v-if="playgroundActionByKind.has('codesandbox')"
             class="demo-action-btn"
             type="button"
             :title="messages.openCodeSandbox"
             :aria-label="messages.openCodeSandbox"
             data-testid="demo-codesandbox"
-            @click="handleOpenExternalPlayground(openCodeSandbox)"
+            @click="handleOpenPlayground('codesandbox')"
           >
             <Box :size="16" aria-hidden="true" />
           </button>
           <button
-            v-if="openStackBlitz"
+            v-if="playgroundActionByKind.has('stackblitz')"
             class="demo-action-btn"
             type="button"
             :title="messages.openStackBlitz"
             :aria-label="messages.openStackBlitz"
             data-testid="demo-stackblitz"
-            @click="handleOpenExternalPlayground(openStackBlitz)"
+            @click="handleOpenPlayground('stackblitz')"
           >
             <Zap :size="16" aria-hidden="true" />
           </button>
           <button
-            v-if="openElementPlusPlayground"
+            v-if="playgroundActionByKind.has('element-plus')"
             class="demo-action-btn"
             type="button"
             :title="messages.openElementPlusPlayground"
             :aria-label="messages.openElementPlusPlayground"
             data-testid="demo-element-plus-playground"
-            @click="handleOpenPlayground(openElementPlusPlayground)"
+            @click="handleOpenPlayground('element-plus')"
           >
             <ExternalLink :size="16" aria-hidden="true" />
           </button>
           <button
-            v-if="openPlayground"
+            v-if="playgroundActionByKind.has('lightweight')"
             class="demo-action-btn"
             type="button"
             :title="messages.openPlayground"
             :aria-label="messages.openPlayground"
             data-testid="demo-lightweight-playground"
-            @click="handleOpenPlayground(openPlayground)"
+            @click="handleOpenPlayground('lightweight')"
           >
             <SquareTerminal :size="16" aria-hidden="true" />
           </button>

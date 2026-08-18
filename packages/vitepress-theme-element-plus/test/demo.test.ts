@@ -1,5 +1,9 @@
 // @vitest-environment happy-dom
-import type { ElementPlusDocsDemoMessages, ElementPlusDocsExternalProjectSource } from '../index'
+import type {
+  ElementPlusDocsDemoMessages,
+  ElementPlusDocsExternalProjectSource,
+  ElementPlusDocsPlaygroundAction,
+} from '../index'
 import { Buffer } from 'node:buffer'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -43,6 +47,7 @@ function mountDemo(options: {
   openElementPlusPlayground?: (source: string, demoId: string) => void | Promise<void>
   openPlayground?: (source: string, demoId: string) => void | Promise<void>
   openStackBlitz?: (source: string, demoId: string, projectSource?: ElementPlusDocsExternalProjectSource) => void | Promise<void>
+  playgroundActions?: readonly ElementPlusDocsPlaygroundAction[]
 } = {}) {
   const tsSource = '<script setup lang="ts">const value: number = 1</script><template>{{ value }}</template>'
   const jsSource = '<script setup>const value = 1;</script><template>{{ value }}</template>'
@@ -66,6 +71,7 @@ function mountDemo(options: {
       openElementPlusPlayground: options.openElementPlusPlayground,
       openPlayground: options.openPlayground,
       openStackBlitz: options.openStackBlitz,
+      playgroundActions: options.playgroundActions,
       sourceHref: 'https://github.com/example/repo/blob/main/demo.md#L2-L8',
     },
     global: {
@@ -174,6 +180,34 @@ describe('elementPlusDocsDemo', () => {
 
     expect(openStackBlitz).toHaveBeenCalledWith(jsSource, 'demo-test', jsProjectSource)
     expect(openCodeSandbox).toHaveBeenCalledWith(jsSource, 'demo-test', jsProjectSource)
+    wrapper.unmount()
+  })
+
+  it('renders and invokes only the supplied unified playground actions', async () => {
+    const open = vi.fn()
+    const tsProjectSource = {
+      dependencies: { '@example/components': '^1.2.3' },
+      source: '<template>resolved TS</template>',
+    }
+    const { wrapper } = mountDemo({
+      externalProjectCode: encode(JSON.stringify(tsProjectSource)),
+      playgroundActions: [{ kind: 'codesandbox', open }],
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="demo-codesandbox"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="demo-stackblitz"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="demo-element-plus-playground"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="demo-lightweight-playground"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="demo-codesandbox"]').trigger('click')
+    await flushPromises()
+
+    expect(open).toHaveBeenCalledWith({
+      demoId: 'demo-test',
+      projectSource: tsProjectSource,
+      source: '<script setup lang="ts">const value: number = 1</script><template>{{ value }}</template>',
+    })
     wrapper.unmount()
   })
 

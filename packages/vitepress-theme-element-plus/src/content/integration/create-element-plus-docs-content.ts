@@ -11,15 +11,8 @@ import ElementPlusDocsOverviewHome from '../catalog/ElementPlusDocsOverviewHome.
 import ElementPlusDocsDemo from '../demo/ElementPlusDocsDemo.vue'
 import ElementPlusDocsComponentMeta from '../meta/ElementPlusDocsComponentMeta.vue'
 import ElementPlusDocsContributors from '../meta/ElementPlusDocsContributors.vue'
-import { createElementPlusPlaygroundUrl } from '../playground/element-plus-playground'
 import ElementPlusDocsPlayground from '../playground/ElementPlusDocsPlayground.vue'
-import { openElementPlusDocsCodeSandbox } from '../playground/external/codesandbox'
-import { openElementPlusDocsStackBlitz } from '../playground/external/stackblitz'
-import { createElementPlusDocsExternalProject } from '../playground/external/vue-project'
-import {
-  createElementPlusDocsPlaygroundSession,
-  elementPlusDocsPlaygroundSessionQuery,
-} from '../playground/session'
+import { createElementPlusDocsPlaygroundActions } from '../playground/registry'
 
 function resolverContext(runtime: ElementPlusDocsContentRuntime): ElementPlusDocsContentResolverContext {
   return {
@@ -66,53 +59,17 @@ export function createElementPlusDocsContent(
     },
     setup(props) {
       const runtime = integration.useLocale()
-      const openPlaygroundAt = (path: string, source: string, demoId: string): void => {
-        const token = createElementPlusDocsPlaygroundSession(source, demoId)
-        const query = new URLSearchParams({
-          [elementPlusDocsPlaygroundSessionQuery]: token,
-        })
-        window.location.assign(`${runtime.link(path)}?${query.toString()}`)
-      }
-      const openPlayground = (source: string, demoId: string): void => {
-        openPlaygroundAt(integration.playground.path, source, demoId)
-      }
-      const openElementPlusPlayground = integration.playground.elementPlus
-        ? (source: string): void => {
-            const configuredPlayground = integration.playground.elementPlus
-            const configuredUrl = configuredPlayground.path
-              ? new URL(runtime.asset(configuredPlayground.path), window.location.href).toString()
-              : configuredPlayground.url
-            const href = createElementPlusPlaygroundUrl(source, {
-              dark: document.documentElement.classList.contains('dark'),
-              url: configuredUrl,
-            })
-            window.open(href, '_blank', 'noopener,noreferrer')
-          }
-        : undefined
-      const createExternalProject = (
-        source: string,
-        projectSource?: Parameters<typeof createElementPlusDocsExternalProject>[2],
-      ) => createElementPlusDocsExternalProject(
-        source,
-        integration.playground.external!.project,
-        projectSource,
+      const playgroundActions = createElementPlusDocsPlaygroundActions(
+        integration.playground,
+        {
+          asset: runtime.asset,
+          assign: url => window.location.assign(url),
+          isDark: () => document.documentElement.classList.contains('dark'),
+          link: runtime.link,
+          location: () => window.location.href,
+          open: url => window.open(url, '_blank', 'noopener,noreferrer'),
+        },
       )
-      const openStackBlitz = integration.playground.external?.stackBlitz
-        ? (source: string, _demoId: string, projectSource?: Parameters<typeof createElementPlusDocsExternalProject>[2]): void => {
-            openElementPlusDocsStackBlitz(
-              createExternalProject(source, projectSource),
-              integration.playground.external?.stackBlitz,
-            )
-          }
-        : undefined
-      const openCodeSandbox = integration.playground.external?.codeSandbox
-        ? (source: string, _demoId: string, projectSource?: Parameters<typeof createElementPlusDocsExternalProject>[2]): void => {
-            openElementPlusDocsCodeSandbox(
-              createExternalProject(source, projectSource),
-              integration.playground.external?.codeSandbox,
-            )
-          }
-        : undefined
 
       return () => h(ElementPlusDocsDemo, {
         code: props.code,
@@ -125,10 +82,7 @@ export function createElementPlusDocsContent(
         jsCode: props.jsCode,
         jsHighlighted: props.jsHighlighted,
         messages: runtime.messages.value.demo,
-        openCodeSandbox,
-        openElementPlusPlayground,
-        openPlayground,
-        openStackBlitz,
+        playgroundActions,
         sourceHref: props.sourceHref,
         title: props.title,
       })
@@ -210,11 +164,13 @@ export function createElementPlusDocsContent(
         name: props.name,
       }))
 
-      return () => h(ElementPlusDocsContributors, {
-        contributors: contributors.value,
-        messages: runtime.messages.value,
-        name: props.name,
-      })
+      return () => contributors.value === undefined
+        ? null
+        : h(ElementPlusDocsContributors, {
+            contributors: contributors.value,
+            messages: runtime.messages.value,
+            name: props.name,
+          })
     },
   })
 

@@ -9,6 +9,7 @@ import { createApp, defineComponent, h, markRaw, ref } from 'vue'
 import {
   createElementPlusDocsContent,
   ElementPlusDocsApiDocs,
+  ElementPlusDocsComponentMeta,
   ElementPlusDocsComponentOverview,
   ElementPlusDocsContributors,
 } from '../index'
@@ -188,6 +189,31 @@ describe('reusable content modules', () => {
     expect(wrapper.get('.doc-contributor-link').attributes('tabindex')).toBeUndefined()
     expect(wrapper.find('.doc-contributor-link[href]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('GitHub @')
+  })
+
+  it('does not render changelog controls for an empty commit history', () => {
+    const wrapper = mount(ElementPlusDocsComponentMeta, {
+      props: {
+        data: {
+          commits: [],
+          hasSourceDoc: true,
+          importStatement: 'import { CopyText } from \'@moluoxixi/components\';',
+          name: 'CopyText',
+          overviewHref: '/components/',
+          sourceLabel: 'components/copy-text',
+        },
+        locale: 'en-US',
+        messages: contentMessages,
+      },
+      global: {
+        stubs: {
+          ClientOnly: { template: '<slot />' },
+        },
+      },
+    })
+
+    expect(wrapper.find('[aria-haspopup="dialog"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain(contentMessages.meta.changelog)
   })
 
   it('registers and wires the conventional Markdown components from one integration', async () => {

@@ -2,10 +2,17 @@
 import { decompressFromBase64 } from 'lz-string'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  consumeElementPlusDocsPlaygroundSession,
+  createElementPlusDocsCodeSandboxAdapter,
   createElementPlusDocsCodeSandboxParameters,
   createElementPlusDocsCodeSandboxPayload,
   createElementPlusDocsExternalProject,
+  createElementPlusDocsPlaygroundActions,
+  createElementPlusDocsPlaygroundRegistry,
+  createElementPlusDocsSessionPlaygroundAdapter,
+  createElementPlusDocsStackBlitzAdapter,
   createElementPlusDocsStackBlitzProject,
+  createElementPlusPlaygroundAdapter,
   openElementPlusDocsCodeSandbox,
   openElementPlusDocsStackBlitz,
 } from '../index'
@@ -91,6 +98,7 @@ function formFields(form: HTMLFormElement): Record<string, string> {
 }
 
 afterEach(() => {
+  window.sessionStorage.clear()
   vi.restoreAllMocks()
 })
 
@@ -245,5 +253,182 @@ describe('external playground projects', () => {
     expect(fields.parameters).toBe(parameters)
     expect(capture.form.method).toBe('POST')
     expect(capture.form.target).toBe('_blank')
+  })
+
+  it('dispatches all four playground adapters independently through the registry', () => {
+    const submittedForms: HTMLFormElement[] = []
+    vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(function (this: HTMLFormElement) {
+      submittedForms.push(this.cloneNode(true) as HTMLFormElement)
+    })
+    const open = vi.fn()
+    const assign = vi.fn()
+    const projectOptions = {
+      title: 'Registry Demo',
+    }
+    const registry = createElementPlusDocsPlaygroundRegistry([
+      createElementPlusDocsCodeSandboxAdapter({}, projectOptions),
+      createElementPlusDocsStackBlitzAdapter({}, projectOptions),
+      createElementPlusPlaygroundAdapter({
+        open,
+        url: 'https://playground.example.test/',
+      }),
+      createElementPlusDocsSessionPlaygroundAdapter({
+        assign,
+        link: path => `/docs${path}`,
+        path: '/playground',
+        storage: window.sessionStorage,
+      }),
+    ])
+
+    expect(registry.actions.map(action => action.kind)).toEqual([
+      'codesandbox',
+      'stackblitz',
+      'element-plus',
+      'lightweight',
+    ])
+    expect(Object.isFrozen(registry.actions)).toBe(true)
+    expect(registry.get('codesandbox')).toBe(registry.actions[0])
+
+    registry.get('codesandbox')!.open({
+      demoId: 'ts-demo',
+      projectSource: {
+        dependencies: { '@example/components': '^1.2.3' },
+        source: '<script setup lang="ts">const value: number = 1</script>',
+      },
+      source: '<script setup lang="ts">const raw: number = 1</script>',
+    })
+    expect(submittedForms).toHaveLength(1)
+    expect(new URL(submittedForms[0]!.action).host).toBe('codesandbox.io')
+    const codeSandboxPayload = decodeCodeSandboxParameters(formFields(submittedForms[0]!).parameters!) as {
+      files: Record<string, { content: string }>
+    }
+    expect(codeSandboxPayload.files['demo.js']!.content).toContain('const value: number = 1')
+    expect(JSON.parse(codeSandboxPayload.files['package.json']!.content).dependencies).toMatchObject({
+      '@example/components': '^1.2.3',
+    })
+    expect(open).not.toHaveBeenCalled()
+    expect(assign).not.toHaveBeenCalled()
+
+    registry.get('stackblitz')!.open({
+      demoId: 'js-demo',
+      projectSource: {
+        dependencies: { '@example/components': '^2.0.0' },
+        source: '<script setup>const value = 2</script>',
+      },
+      source: '<script setup>const raw = 2</script>',
+    })
+    expect(submittedForms).toHaveLength(2)
+    expect(new URL(submittedForms[1]!.action).host).toBe('stackblitz.com')
+    const stackBlitzFields = formFields(submittedForms[1]!)
+    expect(stackBlitzFields['project[files][src/App.vue]']).toContain('const value = 2')
+    expect(JSON.parse(stackBlitzFields['project[files][package.json]']!).dependencies).toMatchObject({
+      '@example/components': '^2.0.0',
+    })
+
+    registry.get('element-plus')!.open({
+      demoId: 'vue-demo',
+      source: '<template><p>Vue Playground</p></template>',
+    })
+    const officialUrl = new URL(open.mock.calls[0]![0])
+    const officialFiles = JSON.parse(decodeURIComponent(escape(atob(officialUrl.hash.slice(1)))))
+    expect(officialFiles['App.vue']).toBe('<template><p>Vue Playground</p></template>')
+    expect(assign).not.toHaveBeenCalled()
+
+    registry.get('lightweight')!.open({
+      demoId: 'lightweight-demo',
+      source: '<template><p>Lightweight</p></template>',
+    })
+    const lightweightUrl = new URL(assign.mock.calls[0]![0], 'https://docs.example.test/')
+    expect(lightweightUrl.pathname).toBe('/docs/playground')
+    expect(consumeElementPlusDocsPlaygroundSession(
+      lightweightUrl.searchParams.get('session'),
+      window.sessionStorage,
+    )).toEqual({
+      demoId: 'lightweight-demo',
+      source: '<template><p>Lightweight</p></template>',
+    })
+  })
+
+  it('rejects duplicate adapters and adapter action mismatches', () => {
+    const open = vi.fn()
+    const codeSandboxAdapter = {
+      createAction: () => ({ kind: 'codesandbox' as const, open }),
+      kind: 'codesandbox' as const,
+    }
+
+    expect(() => createElementPlusDocsPlaygroundRegistry([
+      codeSandboxAdapter,
+      codeSandboxAdapter,
+    ])).toThrow('Duplicate playground action kind.')
+    expect(() => createElementPlusDocsPlaygroundRegistry([{
+      createAction: () => ({ kind: 'stackblitz', open }),
+      kind: 'codesandbox',
+    }])).toThrow('Playground adapter "codesandbox" created action "stackblitz".')
+  })
+
+  it('keeps adapter order while omitting disabled entries', () => {
+    const open = vi.fn()
+    const registry = createElementPlusDocsPlaygroundRegistry([
+      {
+        createAction: () => ({ kind: 'stackblitz', open }),
+        kind: 'stackblitz',
+      },
+      undefined,
+      {
+        createAction: () => ({ kind: 'lightweight', open }),
+        kind: 'lightweight',
+      },
+    ])
+
+    expect(registry.actions.map(action => action.kind)).toEqual(['stackblitz', 'lightweight'])
+  })
+
+  it('uses the documented action order when every configured adapter is enabled', () => {
+    const actions = createElementPlusDocsPlaygroundActions(
+      {
+        elementPlus: { url: 'https://playground.example.test/' },
+        external: {
+          codeSandbox: {},
+          project: { title: 'Configured Demo' },
+          stackBlitz: {},
+        },
+        path: '/playground',
+      },
+      {
+        asset: path => path,
+        assign: vi.fn(),
+        isDark: () => false,
+        link: path => path,
+        open: vi.fn(),
+      },
+    )
+
+    expect(actions.map(action => action.kind)).toEqual([
+      'codesandbox',
+      'stackblitz',
+      'element-plus',
+      'lightweight',
+    ])
+  })
+
+  it('omits unconfigured playground providers without invoking their runtimes', () => {
+    const open = vi.fn()
+    const assign = vi.fn()
+    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit')
+    const actions = createElementPlusDocsPlaygroundActions(
+      { path: '/playground' },
+      {
+        asset: path => path,
+        assign,
+        isDark: () => false,
+        link: path => path,
+        open,
+      },
+    )
+
+    expect(actions.map(action => action.kind)).toEqual(['lightweight'])
+    expect(open).not.toHaveBeenCalled()
+    expect(assign).not.toHaveBeenCalled()
+    expect(submit).not.toHaveBeenCalled()
   })
 })

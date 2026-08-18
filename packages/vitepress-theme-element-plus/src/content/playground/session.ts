@@ -1,3 +1,5 @@
+import type { ElementPlusDocsPlaygroundAdapter } from './types'
+
 export const elementPlusDocsPlaygroundSessionQuery = 'session'
 
 const sessionKeyPrefix = 'mx-docs:playground:v1:'
@@ -17,6 +19,13 @@ export interface ElementPlusDocsSessionStorage {
   getItem: (key: string) => string | null
   removeItem: (key: string) => void
   setItem: (key: string, value: string) => void
+}
+
+export interface ElementPlusDocsSessionPlaygroundAdapterOptions {
+  assign: (url: string) => void
+  link: (path: string) => string
+  path: string
+  storage?: ElementPlusDocsSessionStorage
 }
 
 function getSessionStorage(): ElementPlusDocsSessionStorage {
@@ -85,5 +94,23 @@ export function consumeElementPlusDocsPlaygroundSession(
   }
   catch {
     return null
+  }
+}
+
+export function createElementPlusDocsSessionPlaygroundAdapter(
+  options: ElementPlusDocsSessionPlaygroundAdapterOptions,
+): ElementPlusDocsPlaygroundAdapter {
+  return {
+    kind: 'lightweight',
+    createAction: () => ({
+      kind: 'lightweight',
+      open: ({ demoId, source }) => {
+        const token = createElementPlusDocsPlaygroundSession(source, demoId, options.storage)
+        const query = new URLSearchParams({
+          [elementPlusDocsPlaygroundSessionQuery]: token,
+        })
+        options.assign(`${options.link(options.path)}?${query.toString()}`)
+      },
+    }),
   }
 }

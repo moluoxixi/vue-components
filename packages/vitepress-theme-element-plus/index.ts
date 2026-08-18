@@ -46,10 +46,17 @@ export type {
   ElementPlusDocsContributor,
 } from './src/content/meta/types'
 export { createElementPlusDocsSfcCompiler } from './src/content/playground/create-sfc-compiler'
-export { createElementPlusPlaygroundUrl } from './src/content/playground/element-plus-playground'
-export type { ElementPlusPlaygroundUrlOptions } from './src/content/playground/element-plus-playground'
+export {
+  createElementPlusPlaygroundAdapter,
+  createElementPlusPlaygroundUrl,
+} from './src/content/playground/element-plus-playground'
+export type {
+  ElementPlusPlaygroundAdapterOptions,
+  ElementPlusPlaygroundUrlOptions,
+} from './src/content/playground/element-plus-playground'
 export { default as ElementPlusDocsPlayground } from './src/content/playground/ElementPlusDocsPlayground.vue'
 export {
+  createElementPlusDocsCodeSandboxAdapter,
   createElementPlusDocsCodeSandboxParameters,
   createElementPlusDocsCodeSandboxPayload,
   openElementPlusDocsCodeSandbox,
@@ -60,6 +67,7 @@ export type {
   ElementPlusDocsCodeSandboxPayload,
 } from './src/content/playground/external/codesandbox'
 export {
+  createElementPlusDocsStackBlitzAdapter,
   createElementPlusDocsStackBlitzProject,
   openElementPlusDocsStackBlitz,
 } from './src/content/playground/external/stackblitz'
@@ -74,15 +82,33 @@ export type {
   ElementPlusDocsExternalProjectSource,
 } from './src/content/playground/external/vue-project'
 export {
+  createElementPlusDocsPlaygroundActions,
+  createElementPlusDocsPlaygroundRegistry,
+} from './src/content/playground/registry'
+export type {
+  ElementPlusDocsPlaygroundActionRuntime,
+  ElementPlusDocsPlaygroundConfigInput,
+  ElementPlusDocsPlaygroundRegistry,
+} from './src/content/playground/registry'
+export {
   consumeElementPlusDocsPlaygroundSession,
   createElementPlusDocsPlaygroundSession,
+  createElementPlusDocsSessionPlaygroundAdapter,
   elementPlusDocsPlaygroundSessionQuery,
 } from './src/content/playground/session'
 export type {
   ElementPlusDocsPlaygroundSession,
+  ElementPlusDocsSessionPlaygroundAdapterOptions,
   ElementPlusDocsSessionStorage,
 } from './src/content/playground/session'
+export { elementPlusDocsPlaygroundKinds } from './src/content/playground/types'
 export type {
+  ElementPlusDocsPlaygroundAction,
+  ElementPlusDocsPlaygroundActionContext,
+  ElementPlusDocsPlaygroundActionHandler,
+  ElementPlusDocsPlaygroundAdapter,
+  ElementPlusDocsPlaygroundConfig,
+  ElementPlusDocsPlaygroundKind,
   ElementPlusDocsPlaygroundMessages,
   ElementPlusDocsPlaygroundProps,
   ElementPlusDocsSfcCompiler,
