@@ -45,6 +45,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - R31: Deploy GitHub Pages from `main` only after the repository quality gate passes. Pull requests must still build and validate the complete Pages artifact without receiving deployment or release permissions.
 - R32: Publish public workspace packages through the existing Changesets flow only after verification succeeds, with npm provenance, branch restrictions, serialized publication, and job-scoped least-privilege permissions.
 - R33: Replace the external Element Plus playground handoff with a self-hosted playground adapted from the pinned official Element Plus Playground source. Publish its reusable REPL UI/store from the theme package, keep `@moluoxixi/components` on a same-origin browser runtime bundle, and retain CodeSandbox, StackBlitz, and the lightweight playground as separate demo actions.
+- R34: Support strictly selected, committed repository metadata snapshots from either GitHub or local Git. Keep `github-metadata.json` and `git-local-metadata.json` independent, never merge or fall back between them, and refresh/stage the local Git snapshot from the existing pre-commit workflow while retaining explicit CLI commands.
 
 ## Acceptance Criteria
 
@@ -85,6 +86,7 @@ Deliver a production-ready component-library documentation site whose navigation
 - [ ] Successful `main` builds deploy the Pages artifact while pull requests perform the same build validation without deployment credentials.
 - [ ] Changesets can create a version PR or publish packages from verified `main` revisions with npm provenance; no unverified or non-main workflow run can publish.
 - [x] The Vue Playground is built from the reusable theme REPL, opens under the documentation Pages base path, compiles the official wrapper entry, resolves Element Plus and `@moluoxixi/components`, and renders the starter demo without runtime or unresolved-component errors.
+- [x] The documentation config explicitly selects either `github` or `git-local`; only the selected snapshot contract is accepted, local Git history is component-scoped and deterministic, and pre-commit refreshes and stages only `git-local-metadata.json` without staging unrelated files.
 
 ## Out Of Scope
 

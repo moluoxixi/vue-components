@@ -15,11 +15,12 @@ export interface ElementPlusDocsCommit {
 }
 
 export interface ElementPlusDocsContributor {
-  avatarUrl: string
+  avatarUrl?: string
   contributions: number
-  login: string
+  id: string
+  login?: string
   name: string
-  profileUrl: string
+  profileUrl?: string
 }
 
 export interface ElementPlusDocsComponentMetaData {
@@ -30,8 +31,8 @@ export interface ElementPlusDocsComponentMetaData {
   importStatement: string
   name: string
   newIssueHref: string
-  openIssueCount: number
-  openIssuesHref: string
+  openIssueCount?: number
+  openIssuesHref?: string
   overviewHref: string
   sourceHref: string
   sourceLabel: string

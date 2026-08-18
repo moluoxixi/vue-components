@@ -107,7 +107,12 @@ onBeforeUnmount(() => {
                 <MessageSquareWarning :size="14" aria-hidden="true" />
                 {{ messages.meta.submitIssue }}
               </a>
-              <a :href="data.openIssuesHref" target="_blank" rel="noreferrer">
+              <a
+                v-if="data.openIssuesHref && data.openIssueCount !== undefined"
+                :href="data.openIssuesHref"
+                target="_blank"
+                rel="noreferrer"
+              >
                 <ListTodo :size="14" aria-hidden="true" />
                 {{ messages.meta.openIssues }}
                 <span class="component-doc-count">{{ data.openIssueCount }}</span>

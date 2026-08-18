@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "20260818022236-quality-guidelines-cde18c",
+  "createdAt": "2026-08-18T02:22:36.109Z",
+  "createdBy": "wl",
+  "sourceTask": ".moluoxixi/tasks/08-03-vitepress-component-docs",
+  "reason": "Retain the strict dual repository-metadata snapshot contract, deterministic local Git generation, and narrowly staged pre-commit refresh behavior.",
+  "target": "docs/frontend/quality-guidelines.md",
+  "kind": "file",
+  "baseHash": "ac5a4da858d93492cbb4c721b164850b625f38696905e463e8feb5968eae78bc",
+  "contentFile": "content/20260818022236-quality-guidelines-cde18c.md",
+  "contentHash": "56a3ef3008311393ccd4d564230d806e8acaa430c43f5ca6258a8eebda78a6bd"
+}

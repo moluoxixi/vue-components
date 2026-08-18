@@ -14,6 +14,7 @@ import {
 } from './docs-site'
 import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
 import { resolveComponentsExternalProjectSource } from './markdown/playground-external'
+import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './repository-metadata-alias'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
   const messages = getDocsMessages(locale)
@@ -181,6 +182,7 @@ export default defineElementPlusDocs({
         conditions: ['source'],
         alias: [
           { find: '@docs-components', replacement: docsSite.packageName },
+          { find: repositoryMetadataSnapshotId, replacement: repositoryMetadataSnapshotPath(docsSite.metadataSource) },
         ],
       },
       optimizeDeps: {

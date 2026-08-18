@@ -10,6 +10,7 @@ import {
   createElementPlusDocsContent,
   ElementPlusDocsApiDocs,
   ElementPlusDocsComponentOverview,
+  ElementPlusDocsContributors,
 } from '../index'
 
 const overviewMessages: ElementPlusDocsOverviewMessages = {
@@ -163,6 +164,30 @@ describe('reusable content modules', () => {
     expect(wrapper.text()).toContain('Text to copy')
     expect(wrapper.find('#CopyText-props').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Emits')
+  })
+
+  it('renders local Git contributors without inventing GitHub profiles', () => {
+    const wrapper = mount(ElementPlusDocsContributors, {
+      props: {
+        contributors: [{
+          contributions: 3,
+          id: 'git:local-author',
+          name: 'Local Author',
+        }],
+        messages: contentMessages,
+        name: 'CopyText',
+      },
+      global: {
+        stubs: {
+          ElTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+        },
+      },
+    })
+
+    expect(wrapper.get('.doc-contributor-initials').text()).toBe('LA')
+    expect(wrapper.get('.doc-contributor-link').attributes('tabindex')).toBeUndefined()
+    expect(wrapper.find('.doc-contributor-link[href]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('GitHub @')
   })
 
   it('registers and wires the conventional Markdown components from one integration', async () => {

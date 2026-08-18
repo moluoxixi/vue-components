@@ -29,10 +29,11 @@
 27. Add an optional consumer-resolved GitHub Markdown line link to Demo, then cover search, source variants, collapse, links, and editable Playground behavior with focused unit and browser tests.
 28. Consolidate CI and delivery into a least-privilege workflow, add a reproducible GitHub Pages artifact builder for the docs and both playgrounds, configure project-page base paths, retain Changesets npm publication with provenance, and verify the live workflows after pushing `main`.
 29. Adapt the pinned official Element Plus Playground into a reusable theme REPL, add a standalone same-origin Vue Playground and component runtime bundle, route Demo actions to it without removing the other playground providers, and verify compilation, imports, Pages base paths, desktop/mobile layout, and runtime behavior in a real browser.
+30. Add strict GitHub/local-Git metadata source selection, a validated component-scoped local scanner and committed snapshot, source-neutral theme adapters, local contributor fallbacks, explicit validation/sync CLIs, and a pre-commit refresh that stages only the local snapshot.
 
 ## Completion
 
-- Implementation steps 1-29 are complete.
+- Implementation steps 1-30 are complete.
 - Root lint, type checking, and the full workspace test suite pass.
 - The component package build verifies NodeNext declaration resolution for every public typed entry.
 - VitePress API extraction, GitHub metadata validation, unit tests, production builds for both locales, and desktop/mobile browser checks pass.

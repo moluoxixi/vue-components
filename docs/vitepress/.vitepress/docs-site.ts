@@ -23,6 +23,12 @@ export type DocsLocale = keyof typeof docsLocales
 
 export const defaultDocsLocale: DocsLocale = 'zh-CN'
 
+export type RepositoryMetadataSource = 'github' | 'git-local'
+
+function defineRepositoryMetadataSource(source: RepositoryMetadataSource): RepositoryMetadataSource {
+  return source
+}
+
 export const docsSite = {
   title: 'MoluoXixi Components',
   siteTitle: 'MX Components',
@@ -38,6 +44,7 @@ export const docsSite = {
     'packages/rich-text-editor/index.ts',
   ],
   packageStylesImport: '@moluoxixi/components/styles',
+  metadataSource: defineRepositoryMetadataSource('git-local'),
   repository: {
     owner: 'moluoxixi',
     name: 'vue-components',

@@ -5,7 +5,7 @@ import { ElTooltip } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { formatElementPlusDocsMessage } from '../format-message'
 
-defineProps<{
+const props = defineProps<{
   contributors: readonly ElementPlusDocsContributor[]
   messages: ElementPlusDocsContentMessages
   name: string
@@ -24,6 +24,21 @@ function contributionText(
 ): string {
   return formatElementPlusDocsMessage(template, { name, count })
 }
+
+function contributorInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  const initials = words.length > 1
+    ? `${words[0][0] ?? ''}${words.at(-1)?.[0] ?? ''}`
+    : Array.from(words[0] ?? '?').slice(0, 2).join('')
+  return initials.toLocaleUpperCase()
+}
+
+function contributorAriaLabel(contributor: ElementPlusDocsContributor): string {
+  const identity = contributor.login
+    ? `${contributor.name}, GitHub @${contributor.login}`
+    : contributor.name
+  return `${identity}, ${contributionText(props.messages.contributors.contribution, props.name, contributor.contributions)}`
+}
 </script>
 
 <template>
@@ -32,7 +47,7 @@ function contributionText(
     class="doc-contributors"
     :aria-label="formatElementPlusDocsMessage(messages.contributors.aria, { name })"
   >
-    <li v-for="contributor in contributors" :key="contributor.login">
+    <li v-for="contributor in contributors" :key="contributor.id">
       <ElTooltip
         :trigger="['hover', 'focus']"
         :enterable="true"
@@ -46,18 +61,20 @@ function contributionText(
         <template #content>
           <span class="doc-contributor-tooltip-content">
             <strong>{{ contributor.name }}</strong>
-            <span>GitHub @{{ contributor.login }}</span>
+            <span v-if="contributor.login">GitHub @{{ contributor.login }}</span>
             <span>{{ contributionText(messages.contributors.contribution, name, contributor.contributions) }}</span>
           </span>
         </template>
-        <a
+        <component
+          :is="contributor.profileUrl ? 'a' : 'span'"
           class="doc-contributor-link"
           :href="contributor.profileUrl"
-          target="_blank"
-          rel="noreferrer"
-          :aria-label="`${contributor.name}, GitHub @${contributor.login}, ${contributionText(messages.contributors.contribution, name, contributor.contributions)}`"
+          :target="contributor.profileUrl ? '_blank' : undefined"
+          :rel="contributor.profileUrl ? 'noreferrer' : undefined"
+          :aria-label="contributorAriaLabel(contributor)"
         >
           <img
+            v-if="contributor.avatarUrl"
             class="doc-contributor-avatar"
             :src="contributor.avatarUrl"
             width="40"
@@ -66,7 +83,10 @@ function contributionText(
             loading="lazy"
             decoding="async"
           >
-        </a>
+          <span v-else class="doc-contributor-initials" aria-hidden="true">
+            {{ contributorInitials(contributor.name) }}
+          </span>
+        </component>
       </ElTooltip>
     </li>
   </ul>

@@ -75,6 +75,12 @@ The snapshot records its schema version, repository identity, default branch, he
 
 The route shell always appends generated API documentation and the current component's contributors after optional handwritten content. Changelog history is owned by the fixed page metadata component and opens in an accessible, responsive Element Plus dialog, so long commit histories do not expand the document outline or page length.
 
+## Explicit Repository Metadata Sources
+
+Repository metadata has two independent committed sources: `github-metadata.json` and `git-local-metadata.json`. The documentation site selects exactly one with `metadataSource: 'github' | 'git-local'`; there is no `auto` mode, file-existence fallback, cross-source merge, or runtime network request. GitHub metadata retains issues, profiles, and GitHub identities. Local metadata is generated from component-scoped `git log` history, never stores author email, and represents contributors with stable hashed identities plus initials when no profile image exists.
+
+The local scanner rejects shallow repositories because they cannot prove complete component history. It resolves the configured default branch ref instead of an arbitrary checked-out `HEAD`, writes through a validated same-directory temporary file, and atomically replaces the committed snapshot only after success. The existing Husky pre-commit workflow runs the local sync and stages only `docs/vitepress/.vitepress/git-local-metadata.json`; an explicit CLI provides the same refresh without staging. Because a commit SHA does not exist until after the commit object is created, a commit made on the default branch records history through that branch's pre-commit head, and the newly created commit is incorporated by the next refresh.
+
 ## Internationalization And Reuse
 
 Repository URL, package name, source root, route prefixes, locale settings, and GitHub attribution rules live in one documentation site configuration module. Locale-neutral component identifiers remain in the component manifest; display labels and custom-theme messages live in a `zh-CN` / `en-US` catalog. English component routes prefer `docs/index.en.md` and fall back to an API-first English shell when no translated source fragment exists.

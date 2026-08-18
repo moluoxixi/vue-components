@@ -29,7 +29,7 @@ import {
   docsSite,
   getDocsLocaleConfig,
 } from '../docs-site'
-import { getComponentGithubMetadata, githubMetadata } from '../github-metadata'
+import { getComponentRepositoryMetadata, repositoryMetadata } from '../repository-metadata'
 import { useDocsLocale } from './composables/use-docs-locale'
 
 const iconByName: Record<ComponentIconName, Component> = {
@@ -166,11 +166,11 @@ export const docsContent = createElementPlusDocsContent({
     ]
   },
   resolveComponentMeta({ hasSourceDoc, link, locale, name, slug }) {
-    const metadata = getComponentGithubMetadata(name)
+    const metadata = getComponentRepositoryMetadata(name)
     const sourcePath = componentSourcePath(name)
     const docsSourcePath = componentDocsSourcePath(name)
     const repositoryUrl = docsSite.repository.url
-    const branch = githubMetadata.repository.defaultBranch
+    const branch = repositoryMetadata.repository.defaultBranch
     const sourceHref = `${repositoryUrl}/tree/${branch}/${sourcePath}`
     const issuePrefix = docsSite.github.issueTitlePrefix(name)
 
@@ -183,18 +183,19 @@ export const docsContent = createElementPlusDocsContent({
       importStatement: `import { ${name} } from '${docsSite.packageName}';`,
       name,
       newIssueHref: `${repositoryUrl}/issues/new?title=${encodeURIComponent(`${issuePrefix} `)}`,
-      openIssueCount: metadata.openIssueCount,
-      openIssuesHref: `${repositoryUrl}/issues?q=${encodeURIComponent(`is:issue is:open in:title "${issuePrefix}"`)}`,
+      ...(metadata.openIssueCount === undefined
+        ? {}
+        : {
+            openIssueCount: metadata.openIssueCount,
+            openIssuesHref: `${repositoryUrl}/issues?q=${encodeURIComponent(`is:issue is:open in:title "${issuePrefix}"`)}`,
+          }),
       overviewHref: link(docsSite.routes.components),
       sourceHref,
       sourceLabel: `components/${slug}`,
     }
   },
   resolveContributors({ name }) {
-    return getComponentGithubMetadata(name).contributors.flatMap((contribution) => {
-      const profile = githubMetadata.profiles[contribution.login]
-      return profile ? [{ ...profile, contributions: contribution.contributions }] : []
-    })
+    return getComponentRepositoryMetadata(name).contributors
   },
   useLocale: useDocsLocale,
 })
