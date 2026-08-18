@@ -1,3 +1,0 @@
-{"file":".trellis/tasks/08-07-reusable-element-plus-docs-theme/research/upstream-theme.md","reason":"Use the verified Element Plus source boundary, dependency inventory, excluded identity assets, provenance requirements, and one-time snapshot decision during implementation."}
-{"file":".trellis/tasks/08-07-reusable-element-plus-docs-theme/research/current-docs-migration.md","reason":"Preserve current docs features and follow repository package conventions while extracting the reusable theme."}
-{"file":".trellis/spec/frontend/index.md","reason":"Load the approved frontend spec index before touching Vue/theme code and follow any linked guidance selected for the implementation files."}

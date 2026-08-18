@@ -1,0 +1,2 @@
+{"file":".moluoxixi/spec/guides/cross-layer-thinking-guide.md","reason":"Quality review must trace responsive layout, option states, preview conditions, and diagnostics through every consumer."}
+{"file":".moluoxixi/spec/guides/code-reuse-thinking-guide.md","reason":"Quality review must detect duplicated breakpoint resolution and option normalization logic."}

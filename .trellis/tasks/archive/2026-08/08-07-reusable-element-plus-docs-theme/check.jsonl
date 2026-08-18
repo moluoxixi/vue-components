@@ -1,3 +1,0 @@
-{"file":".trellis/tasks/08-07-reusable-element-plus-docs-theme/research/upstream-theme.md","reason":"Audit the final package for copied-source provenance, forbidden brand/assets, undeclared upstream dependencies, and accidental monorepo coupling."}
-{"file":".trellis/tasks/08-07-reusable-element-plus-docs-theme/research/current-docs-migration.md","reason":"Verify the migration preserves existing runtime, route, API, Demo, Playground, GitHub, i18n, and DefaultTheme-provided behaviors."}
-{"file":".trellis/spec/frontend/index.md","reason":"Check the final Vue/theme changes against approved frontend guidance and its applicable linked modules."}

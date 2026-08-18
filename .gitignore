@@ -73,9 +73,9 @@ lerna-debug.log*
 # Task graph cache
 /.turbo/
 
-# Trellis spec scopes can legitimately share names with ignored build paths.
-!.trellis/spec/dist/
-!.trellis/spec/dist/**
-!.trellis/spec/node_modules/
-!.trellis/spec/node_modules/**
+# Moluoxixi spec scopes can legitimately share names with ignored build paths.
+!.moluoxixi/spec/dist/
+!.moluoxixi/spec/dist/**
+!.moluoxixi/spec/node_modules/
+!.moluoxixi/spec/node_modules/**
 
