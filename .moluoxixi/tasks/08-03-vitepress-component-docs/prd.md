@@ -40,12 +40,12 @@ Deliver a production-ready component-library documentation site whose navigation
 - R26: Publish a browser-safe `@moluoxixi/ai-doc-assistant/api-contract` entry for normalized API-document types and contract normalization. Keep Node extraction, TypeScript-based type-detail expansion, JSON discovery, route generation, and filesystem output in the consuming documentation build.
 - R27: Make every generated component route discoverable through VitePress local search. Search must match canonical component names, locale labels, and useful family aliases such as `ConfigForm`, independent of input case.
 - R28: Upgrade the reusable Demo source toolbar to match the Element Plus documentation pattern: preserve collapsible source display, provide a persisted TS/JS switch, derive JavaScript from the TypeScript Vue SFC at build time, and keep copy/playground actions synchronized with the selected source.
-- R29: Allow a consuming documentation site to attach an optional GitHub source link to each Demo. The link must target the original Markdown demo fence lines when that source information is available; repository identity, branch/ref, source path, and URL construction remain consumer-owned.
+- R29: Allow a consuming documentation site to attach an optional repository source link to each Demo. The selected repository provider owns the Markdown fence URL when its capability contract supports source links; repository identity, branch/ref, source path, and URL construction remain consumer-owned.
 - R30: Build the documentation site, components playground, and ConfigForm playground as one deterministic GitHub Pages artifact. Every application must use its deployed project-page base path instead of assuming the domain root.
 - R31: Deploy GitHub Pages from `main` only after the repository quality gate passes. Pull requests must still build and validate the complete Pages artifact without receiving deployment or release permissions.
 - R32: Publish public workspace packages through the existing Changesets flow only after verification succeeds, with npm provenance, branch restrictions, serialized publication, and job-scoped least-privilege permissions.
 - R33: Replace the external Element Plus playground handoff with a self-hosted playground adapted from the pinned official Element Plus Playground source. Publish its reusable REPL UI/store from the theme package, keep `@moluoxixi/components` on a same-origin browser runtime bundle, and retain CodeSandbox, StackBlitz, and the lightweight playground as separate demo actions.
-- R34: Support strictly selected, committed repository metadata snapshots from either GitHub or local Git. Keep `github-metadata.json` and `git-local-metadata.json` independent, never merge or fall back between them, and refresh/stage the local Git snapshot from the existing pre-commit workflow while retaining explicit CLI commands.
+- R34: Support strictly selected, committed repository metadata snapshots from either GitHub or local Git. Keep `github-metadata.json` and `local-metadata.json` independent, never merge or fall back between them, and refresh/stage the local Git snapshot from the existing pre-commit workflow while retaining explicit CLI commands.
 
 ## Acceptance Criteria
 
@@ -81,12 +81,12 @@ Deliver a production-ready component-library documentation site whose navigation
 - [x] API JSON uses the browser-safe ai-doc contract entry, the theme renders normalized contracts without importing Node extraction code, and the current consumer contains only project-specific runtime/API adapters with no empty migration directories.
 - [x] Local search returns generated component routes for canonical names and family aliases, including a case-insensitive `configForm` query.
 - [x] Demo source can be expanded/collapsed and switched between TS and generated JS; copy and playground use the selected variant, and the preference survives navigation.
-- [x] Demo source links open the corresponding GitHub Markdown fence line range without adding repository-specific configuration to the theme package.
+- [x] Demo source links open the selected provider's Markdown fence line range when supported, without adding repository-specific configuration to the theme package; the production GitHub provider preserves the existing line links.
 - [ ] GitHub Actions builds one Pages artifact containing the VitePress site plus both standalone playgrounds, with correct project-page asset URLs and all expected HTML entry points.
 - [ ] Successful `main` builds deploy the Pages artifact while pull requests perform the same build validation without deployment credentials.
 - [ ] Changesets can create a version PR or publish packages from verified `main` revisions with npm provenance; no unverified or non-main workflow run can publish.
 - [x] The Vue Playground is built from the reusable theme REPL, opens under the documentation Pages base path, compiles the official wrapper entry, resolves Element Plus and `@moluoxixi/components`, and renders the starter demo without runtime or unresolved-component errors.
-- [x] The documentation config explicitly selects either `github` or `git-local`; only the selected snapshot contract is accepted, local Git history is component-scoped and deterministic, and pre-commit refreshes and stages only `git-local-metadata.json` without staging unrelated files.
+- [x] The documentation config explicitly selects either `github` or `local`; only the selected snapshot contract is accepted, local Git history is component-scoped and deterministic, and pre-commit refreshes and stages only `local-metadata.json` without staging unrelated files.
 
 ## Out Of Scope
 

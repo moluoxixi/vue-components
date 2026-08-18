@@ -77,9 +77,9 @@ The route shell always appends generated API documentation and the current compo
 
 ## Explicit Repository Metadata Sources
 
-Repository metadata has two independent committed sources: `github-metadata.json` and `git-local-metadata.json`. The documentation site selects exactly one with `metadataSource: 'github' | 'git-local'`; there is no `auto` mode, file-existence fallback, cross-source merge, or runtime network request. GitHub metadata retains issues, profiles, and GitHub identities. Local metadata is generated from component-scoped `git log` history, never stores author email, and represents contributors with stable hashed identities plus initials when no profile image exists.
+Repository metadata has two independent committed providers: `github` backed by `github-metadata.json`, and `local` backed by `local-metadata.json`. The documentation site selects exactly one registered provider with `metadataProvider: 'github' | 'local'`; there is no `auto` mode, file-existence fallback, cross-provider merge, or runtime network request. GitHub metadata retains issues, profiles, and GitHub identities. Local metadata is generated from component-scoped `git log` history, never stores author email, and represents contributors with stable hashed identities plus initials when no profile image exists.
 
-The local scanner rejects shallow repositories because they cannot prove complete component history. It resolves the configured default branch ref instead of an arbitrary checked-out `HEAD`, writes through a validated same-directory temporary file, and atomically replaces the committed snapshot only after success. The existing Husky pre-commit workflow runs the local sync and stages only `docs/vitepress/.vitepress/git-local-metadata.json`; an explicit CLI provides the same refresh without staging. Because a commit SHA does not exist until after the commit object is created, a commit made on the default branch records history through that branch's pre-commit head, and the newly created commit is incorporated by the next refresh.
+The local scanner rejects shallow repositories because they cannot prove complete component history. It resolves the configured default branch ref instead of an arbitrary checked-out `HEAD`, writes through a validated same-directory temporary file, and atomically replaces the committed snapshot only after success. The existing Husky pre-commit workflow runs the local sync and stages only `docs/vitepress/.vitepress/local-metadata.json`; an explicit CLI provides the same refresh without staging. Because a commit SHA does not exist until after the commit object is created, a commit made on the default branch records history through that branch's pre-commit head, and the newly created commit is incorporated by the next refresh.
 
 ## Internationalization And Reuse
 
@@ -118,13 +118,19 @@ generated JSON glob + consumer module cache/messages/routes -> theme content int
 theme Demo / Playground / ApiDocs presentation and runtime
 ```
 
+## Playground Adapter Registry
+
+Playground destinations are generic editor categories, independent from repository hosting. The theme owns one ordered kind contract (`codesandbox`, `stackblitz`, `element-plus`, `lightweight`), one adapter per destination, and a registry that validates unique kinds plus adapter/action consistency. The content integration selects and configures adapters; Demo receives normalized actions and retains the former callback props only as a compatibility path.
+
+Repository providers never open playgrounds, and playground adapters never construct source, edit, or issue URLs. A future playground is added by extending the kind contract and adapter mapping, while a future repository host is added through the separate repository metadata provider registry.
+
 ## Search And Demo Source Tooling
 
 VitePress local search indexes physical Markdown pages rather than the expanded output of dynamic route paths. The documentation consumer therefore supplies a deterministic search projection for every generated component route. Each projection contains the public route, localized title/description, canonical component name, and normalized search aliases. Aliases are data owned by the consumer manifest; the theme search UI remains VitePress DefaultTheme behavior.
 
 The theme Markdown plugin owns the Element Plus-style TS/JS source projection. A TypeScript Vue SFC remains the handwritten source of truth; the plugin transpiles only its TypeScript script blocks into a JavaScript SFC at build time and passes both highlighted and raw variants to the Demo component. The selected variant is persisted in browser storage and drives source display, copy, and the existing editable Playground session. Existing single-source Demo props remain compatible.
 
-GitHub source navigation follows the existing consumer-data boundary. The reusable Markdown plugin accepts an optional resolver and exposes only a normalized `sourceHref` to the Demo runtime. The documentation consumer resolves repository URL, branch or immutable ref, original Markdown path, and the fence's one-based line range. The theme renders the external action without importing repository configuration or assuming GitHub for other consumers.
+Repository source navigation follows the existing consumer-data boundary. The reusable Markdown plugin accepts an optional resolver and exposes only a normalized `sourceHref` to the Demo runtime. The documentation consumer asks the selected metadata provider for a source-line URL when its `sourceLinks` capability is enabled. The theme renders that normalized action without importing repository configuration or assuming GitHub; production currently selects the GitHub provider.
 
 ## Rollback
 
