@@ -8,6 +8,10 @@ import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = resolve(import.meta.dirname, '../..')
 const packagesRoot = resolve(repositoryRoot, 'packages')
+const docsManifest = JSON.parse(readFileSync(
+  resolve(repositoryRoot, 'docs/vitepress/package.json'),
+  'utf8',
+))
 const declarationFinalizer = resolve(repositoryRoot, 'scripts/finalize-published-declarations.mjs')
 const declarationFinalizerPackages = [
   '@moluoxixi/ai-doc-assistant',
@@ -90,6 +94,20 @@ function collectModuleSpecifiers(file) {
 }
 
 describe('repository path conventions', () => {
+  it('builds component runtime assets before consumers that bundle them', () => {
+    const workspaceBuild = docsManifest.scripts['build:workspace-packages']
+    const componentBuild = workspaceBuild.indexOf('pnpm build:workspace-components')
+    const aiDocBuild = workspaceBuild.indexOf('pnpm build:workspace-ai-doc')
+    const extractBuild = docsManifest.scripts['preextract-api']
+    const extractComponentBuild = extractBuild.indexOf('pnpm build:workspace-components')
+    const extractAiDocBuild = extractBuild.indexOf('pnpm --filter @moluoxixi/ai-doc-assistant build')
+
+    expect(componentBuild).toBeGreaterThanOrEqual(0)
+    expect(aiDocBuild).toBeGreaterThan(componentBuild)
+    expect(extractComponentBuild).toBeGreaterThanOrEqual(0)
+    expect(extractAiDocBuild).toBeGreaterThan(extractComponentBuild)
+  })
+
   it('requires an explicit declaration package manifest', () => {
     const result = spawnSync(process.execPath, [declarationFinalizer], {
       cwd: repositoryRoot,
