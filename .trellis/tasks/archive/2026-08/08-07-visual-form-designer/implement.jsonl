@@ -1,0 +1,3 @@
+{"file":".trellis/tasks/08-07-visual-form-designer/research/repository-contracts.md","reason":"Repository evidence for ConfigForm node/runtime contracts, existing registry, SortableJS usage, Zod peer constraints and verification paths."}
+{"file":".trellis/tasks/08-07-visual-form-designer/research/technology-selection.md","reason":"Curated technical selection and rejected-engine evidence for the designer, drag/drop, state/history and rules package."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Required cross-layer ownership and payload validation guidance for DesignerDocument -> compiler -> ConfigFormRenderer."}

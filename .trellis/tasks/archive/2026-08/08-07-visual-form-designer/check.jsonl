@@ -1,0 +1,3 @@
+{"file":".trellis/tasks/08-07-visual-form-designer/research/repository-contracts.md","reason":"Check runtime compatibility, public entry preservation, registry boundaries and existing E2E/performance regressions."}
+{"file":".trellis/tasks/08-07-visual-form-designer/research/technology-selection.md","reason":"Check that implementation does not introduce a mismatched low-code engine or unnecessary duplicate state/validation/drag dependencies."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Check shared decoder/registry ownership and prevent duplicated payload parsing across designer, rules and runtime layers."}
