@@ -1,5 +1,11 @@
 # @moluoxixi/ajax-package
 
+## 0.0.61
+
+### Patch Changes
+
+- Automatically release packages changed in a4ae37bd3c07.
+
 ## 0.0.60
 
 ### Patch Changes

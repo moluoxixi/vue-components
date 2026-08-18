@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/docs",
   "type": "module",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "scripts": {
     "build:workspace-ai-doc": "pnpm --filter @moluoxixi/ai-doc-assistant build",
