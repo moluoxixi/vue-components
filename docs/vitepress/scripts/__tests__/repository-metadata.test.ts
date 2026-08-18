@@ -1,99 +1,190 @@
 // @vitest-environment node
 
+import type { RepositoryMetadataProvider } from '../../.vitepress/repository-metadata-types'
 import { describe, expect, it } from 'vitest'
-import { documentedComponents } from '../../.vitepress/component-manifest'
-import { componentSourcePath, docsSite } from '../../.vitepress/docs-site'
-import { assertGitLocalMetadataSnapshot } from '../../.vitepress/git-local-metadata-types'
-import gitLocalSnapshot from '../../.vitepress/git-local-metadata.json'
+import { docsSite } from '../../.vitepress/docs-site'
 import githubSnapshot from '../../.vitepress/github-metadata.json'
-import { repositoryMetadata as configuredRepositoryMetadata } from '../../.vitepress/repository-metadata'
+import { assertLocalMetadataSnapshot } from '../../.vitepress/local-metadata-types'
+import localSnapshot from '../../.vitepress/local-metadata.json'
+import { configuredRepositoryMetadataProvider, repositoryMetadata } from '../../.vitepress/repository-metadata'
 import { repositoryMetadataSnapshotPath } from '../../.vitepress/repository-metadata-alias'
-import { resolveRepositoryMetadata } from '../../.vitepress/repository-metadata-types'
+import { repositoryMetadataExpectation } from '../../.vitepress/repository-metadata-expectation'
+import { repositoryMetadataProviders } from '../../.vitepress/repository-metadata-providers'
+import {
+  createRepositoryMetadataProviderRegistry,
+  defineRepositoryMetadataProvider,
+  repositoryMetadataProviderSupports,
+} from '../../.vitepress/repository-metadata-types'
+import {
+  resolveDocsRepositoryComponentMeta,
+  resolveDocsRepositoryContributors,
+} from '../../.vitepress/theme/repository-content'
 
-const expectation = {
-  components: documentedComponents.map(component => ({
-    name: component.name,
-    path: componentSourcePath(component.name),
-  })),
-  defaultBranch: docsSite.repository.defaultBranch,
-  owner: docsSite.repository.owner,
-  repository: docsSite.repository.name,
-  repositoryUrl: docsSite.repository.url,
-}
-
-describe('repository metadata source selection', () => {
-  it('loads the configured source through the single-snapshot module alias', () => {
-    expect(configuredRepositoryMetadata.source).toBe(docsSite.metadataSource)
-    expect(configuredRepositoryMetadata.repository.headSha).toBe(gitLocalSnapshot.repository.headSha)
+describe('repository metadata providers', () => {
+  it('keeps GitHub as the selected production provider and loads one snapshot', () => {
+    expect(docsSite.metadataProvider).toBe('github')
+    expect(configuredRepositoryMetadataProvider.id).toBe('github')
+    expect(repositoryMetadata.provider.platform).toBe('github')
+    expect(repositoryMetadata.repository.headSha).toBe(githubSnapshot.repository.headSha)
+    expect(repositoryMetadataSnapshotPath(docsSite.metadataProvider)).toMatch(/github-metadata\.json$/)
   })
 
-  it('resolves exactly one source-specific snapshot file', () => {
-    expect(repositoryMetadataSnapshotPath('github')).toMatch(/github-metadata\.json$/)
-    expect(repositoryMetadataSnapshotPath('git-local')).toMatch(/git-local-metadata\.json$/)
-  })
+  it('normalizes GitHub capabilities and provider-owned links', () => {
+    const metadata = repositoryMetadataProviders.resolve('github', githubSnapshot, repositoryMetadataExpectation)
+    const provider = repositoryMetadataProviders.get('github')
 
-  it('normalizes only the explicitly selected GitHub snapshot', () => {
-    const metadata = resolveRepositoryMetadata({
-      expectation,
-      githubSnapshot,
-      gitLocalSnapshot: { invalid: true },
-      source: 'github',
-    })
-
-    expect(metadata.source).toBe('github')
     expect(metadata.components.CopyText?.openIssueCount).toBeTypeOf('number')
     expect(metadata.components.CopyText?.contributors[0]?.id).toMatch(/^github:/)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(true)
+    expect(provider.actions?.newIssueHref?.({
+      issueTitlePrefix: '[CopyText]',
+      repositoryUrl: docsSite.repository.url,
+    })).toContain('/issues/new?title=')
   })
 
-  it('normalizes only the explicitly selected local Git snapshot', () => {
-    const metadata = resolveRepositoryMetadata({
-      expectation,
-      githubSnapshot: { invalid: true },
-      gitLocalSnapshot,
-      source: 'git-local',
-    })
+  it('normalizes local Git with history and contributors only', () => {
+    const metadata = repositoryMetadataProviders.resolve('local', localSnapshot, repositoryMetadataExpectation)
 
-    expect(metadata.source).toBe('git-local')
+    expect(metadata.provider.platform).toBe('local')
     expect(metadata.components.CopyText?.openIssueCount).toBeUndefined()
     expect(metadata.components.CopyText?.contributors[0]?.id).toMatch(/^git:/)
     expect(metadata.components.CopyText?.contributors[0]).not.toHaveProperty('profileUrl')
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'commitHistory')).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'contributors')).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(false)
+    expect(repositoryMetadataProviders.get('local').actions).toBeUndefined()
   })
 
-  it('fails when the selected snapshot is missing even if the other source is valid', () => {
-    expect(() => resolveRepositoryMetadata({
-      expectation,
+  it('maps provider capabilities to the documentation content surface', () => {
+    const githubMetadata = repositoryMetadataProviders.resolve(
+      'github',
       githubSnapshot,
-      gitLocalSnapshot: undefined,
-      source: 'git-local',
-    })).toThrow('Invalid local Git metadata snapshot')
+      repositoryMetadataExpectation,
+    )
+    const localMetadata = repositoryMetadataProviders.resolve(
+      'local',
+      localSnapshot,
+      repositoryMetadataExpectation,
+    )
+    const input = {
+      defaultBranch: docsSite.repository.defaultBranch,
+      editPath: 'packages/components/src/CopyText/docs/index.md',
+      issueTitlePrefix: docsSite.repository.issueTitlePrefix('CopyText'),
+      repositoryUrl: docsSite.repository.url,
+      sourcePath: 'packages/components/src/CopyText',
+    }
+    const githubContent = resolveDocsRepositoryComponentMeta(
+      repositoryMetadataProviders.get('github'),
+      githubMetadata.components.CopyText!,
+      input,
+    )
+    const localContent = resolveDocsRepositoryComponentMeta(
+      repositoryMetadataProviders.get('local'),
+      localMetadata.components.CopyText!,
+      input,
+    )
+    const localContributors = resolveDocsRepositoryContributors(
+      repositoryMetadataProviders.get('local'),
+      localMetadata.components.CopyText!,
+    )
 
-    expect(() => resolveRepositoryMetadata({
-      expectation,
-      githubSnapshot: undefined,
-      gitLocalSnapshot,
-      source: 'github',
-    })).toThrow('Invalid GitHub metadata snapshot')
+    expect(githubContent.sourceHref).toContain('/tree/main/')
+    expect(githubContent.editHref).toContain('/edit/main/')
+    expect(githubContent.newIssueHref).toContain('/issues/new?title=')
+    expect(githubContent.openIssuesHref).toContain('/issues?q=')
+    expect(githubContent.openIssueCount).toBeTypeOf('number')
+    expect(localContent.commits?.length).toBeGreaterThan(0)
+    expect(localContent).not.toHaveProperty('openIssueCount')
+    expect(localContent.sourceHref).toBeUndefined()
+    expect(localContent.editHref).toBeUndefined()
+    expect(localContent.newIssueHref).toBeUndefined()
+    expect(localContent.openIssuesHref).toBeUndefined()
+    expect(localContributors?.length).toBeGreaterThan(0)
+    expect(localContributors?.[0]).not.toHaveProperty('profileUrl')
   })
 
-  it('rejects unrecognized local snapshot fields before they can enter the browser bundle', () => {
-    const leakedSnapshot = structuredClone(gitLocalSnapshot) as Record<string, any>
-    leakedSnapshot.components.CopyText.commits[0].author.emailAddress = 'private@example.test'
-
-    expect(() => assertGitLocalMetadataSnapshot(leakedSnapshot, {
-      components: expectation.components,
-      defaultBranch: expectation.defaultBranch,
-      repositoryUrl: expectation.repositoryUrl,
-    })).toThrow('commit author contains unsupported or missing fields')
+  it('fails before snapshot loading for an unsupported provider', () => {
+    expect(() => repositoryMetadataProviders.get('gitlab')).toThrow(
+      'Unsupported repository metadata provider: gitlab',
+    )
+    expect(() => repositoryMetadataSnapshotPath('gitlab')).toThrow(
+      'Unsupported repository metadata provider: gitlab',
+    )
   })
 
-  it('rejects a local snapshot for a different default branch', () => {
-    const mismatchedSnapshot = structuredClone(gitLocalSnapshot) as Record<string, any>
-    mismatchedSnapshot.repository.defaultBranch = 'feature/docs'
+  it('does not fall back to another provider snapshot', () => {
+    expect(() => repositoryMetadataProviders.resolve(
+      'github',
+      localSnapshot,
+      repositoryMetadataExpectation,
+    )).toThrow('Invalid GitHub metadata snapshot')
+    expect(() => repositoryMetadataProviders.resolve(
+      'local',
+      githubSnapshot,
+      repositoryMetadataExpectation,
+    )).toThrow('Invalid local Git metadata snapshot')
+  })
 
-    expect(() => assertGitLocalMetadataSnapshot(mismatchedSnapshot, {
-      components: expectation.components,
-      defaultBranch: expectation.defaultBranch,
-      repositoryUrl: expectation.repositoryUrl,
-    })).toThrow('repository default branch must be main')
+  it('validates provider-required configuration before parsing snapshots', () => {
+    expect(() => repositoryMetadataProviders.resolve('github', null, {
+      ...repositoryMetadataExpectation,
+      owner: undefined,
+    })).toThrow('Repository metadata provider "github" requires configuration field "owner"')
+    expect(() => repositoryMetadataProviders.resolve('github', null, {
+      ...repositoryMetadataExpectation,
+      repository: undefined,
+    })).toThrow('Repository metadata provider "github" requires configuration field "repository"')
+    expect(() => repositoryMetadataProviders.resolve('local', null, {
+      ...repositoryMetadataExpectation,
+      repositoryUrl: undefined,
+    })).toThrow('Repository metadata provider "local" requires configuration field "repositoryUrl"')
+  })
+
+  it('rejects unsupported nested fields in local Git metadata', () => {
+    const leakedSnapshot = structuredClone(localSnapshot)
+    Object.assign(leakedSnapshot.components.CopyText!.commits[0]!.author, {
+      emailAddress: 'private@example.test',
+    })
+
+    expect(() => assertLocalMetadataSnapshot(
+      leakedSnapshot,
+      repositoryMetadataExpectation,
+    )).toThrow('CopyText commit author contains unsupported or missing fields')
+  })
+
+  it('rejects local Git metadata from the wrong default branch', () => {
+    const wrongBranchSnapshot = structuredClone(localSnapshot)
+    wrongBranchSnapshot.repository.defaultBranch = 'feature/docs'
+
+    expect(() => assertLocalMetadataSnapshot(
+      wrongBranchSnapshot,
+      repositoryMetadataExpectation,
+    )).toThrow(`repository default branch must be ${docsSite.repository.defaultBranch}`)
+  })
+
+  it('allows a future provider to be registered with an explicit capability contract', () => {
+    const futureProvider = defineRepositoryMetadataProvider({
+      capabilities: {
+        commitHistory: false,
+        contributorProfiles: false,
+        contributors: false,
+        editLinks: false,
+        issueActions: false,
+        issues: false,
+        sourceLinks: false,
+      },
+      id: 'gitlab',
+      platform: 'gitlab',
+      resolveSnapshot: () => ({
+        components: {},
+        repository: { defaultBranch: 'main', headSha: 'a'.repeat(40) },
+      }),
+      snapshotFile: 'gitlab-metadata.json',
+    } satisfies RepositoryMetadataProvider)
+    const registry = createRepositoryMetadataProviderRegistry([futureProvider])
+
+    expect(registry.ids).toEqual(['gitlab'])
+    expect(registry.get('gitlab').platform).toBe('gitlab')
+    expect(registry.resolve('gitlab', {}, repositoryMetadataExpectation).components).toEqual({})
   })
 })

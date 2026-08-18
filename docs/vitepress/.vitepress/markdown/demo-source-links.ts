@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { collectElementPlusDocsDemos } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { getLocalizedComponents } from '../docs-i18n'
 import { componentDocsSourcePath, docsLocales, docsSite } from '../docs-site'
+import { repositoryMetadataProviders } from '../repository-metadata-providers'
+import { repositoryMetadataProviderSupports } from '../repository-metadata-types'
 
 interface MarkdownEnvironment {
   relativePath?: string
@@ -27,6 +29,7 @@ export function createDocsDemoSourceHrefResolver(
   root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..'),
 ): (context: ElementPlusDocsDemoSourceHrefContext) => string | undefined {
   let hrefByRouteAndDemo: ReadonlyMap<string, string> | undefined
+  const provider = repositoryMetadataProviders.get(docsSite.metadataProvider)
 
   function sourceLinks(): ReadonlyMap<string, string> {
     if (hrefByRouteAndDemo)
@@ -46,7 +49,17 @@ export function createDocsDemoSourceHrefResolver(
         for (const demo of collectElementPlusDocsDemos(md, markdown)) {
           if (demo.startLine <= 0 || demo.endLine < demo.startLine)
             continue
-          const href = `${docsSite.repository.url}/blob/${docsSite.repository.defaultBranch}/${sourceRelativePath}?plain=1#L${demo.startLine}-L${demo.endLine}`
+          if (!repositoryMetadataProviderSupports(provider, 'sourceLinks'))
+            continue
+          const href = provider.actions?.sourceLineHref?.({
+            defaultBranch: docsSite.repository.defaultBranch,
+            endLine: demo.endLine,
+            path: sourceRelativePath,
+            repositoryUrl: docsSite.repository.url,
+            startLine: demo.startLine,
+          })
+          if (!href)
+            continue
           links.set(`${routeRelativePath}\0${demo.demoId}`, href)
         }
       }

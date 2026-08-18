@@ -11,7 +11,7 @@ export default defineConfig({
     conditions: ['source'],
     alias: {
       '@docs-components': fileURLToPath(new URL('../../packages/components/index.ts', import.meta.url)),
-      [repositoryMetadataSnapshotId]: repositoryMetadataSnapshotPath(docsSite.metadataSource),
+      [repositoryMetadataSnapshotId]: repositoryMetadataSnapshotPath(docsSite.metadataProvider),
     },
   },
   test: {

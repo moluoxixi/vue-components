@@ -23,7 +23,7 @@
     "lint:fix": "eslint . --fix",
     "lint:staged": "lint-staged",
     "prepare": "husky",
-    "pre-commit": "pnpm --filter @moluoxixi/docs sync-git-local-metadata:staged && node scripts/check-element-plus-imports.mjs && pnpm lint:staged",
+    "pre-commit": "pnpm --filter @moluoxixi/docs sync-local-metadata:staged && node scripts/check-element-plus-imports.mjs && pnpm lint:staged",
     "release": "pnpm release:check && pnpm build:force && pnpm test:pack && changeset publish",
     "release:check": "node scripts/check-workspace-peer-ranges.mjs && pnpm lint:workflows",
     "release:changesets": "node scripts/auto-changesets.mjs",

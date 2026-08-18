@@ -1,9 +1,9 @@
-export interface GitLocalCommitAuthor {
+export interface LocalCommitAuthor {
   name: string
 }
 
-export interface GitLocalCommit {
-  author: GitLocalCommitAuthor
+export interface LocalCommit {
+  author: LocalCommitAuthor
   date: string
   message: string
   sha: string
@@ -11,19 +11,19 @@ export interface GitLocalCommit {
   url: string
 }
 
-export interface GitLocalContributor {
+export interface LocalContributor {
   contributions: number
   id: string
   name: string
 }
 
-export interface GitLocalComponentMetadata {
-  commits: GitLocalCommit[]
-  contributors: GitLocalContributor[]
+export interface LocalComponentMetadata {
+  commits: LocalCommit[]
+  contributors: LocalContributor[]
   path: string
 }
 
-export interface GitLocalMetadataSnapshot {
+export interface LocalMetadataSnapshot {
   schemaVersion: 1
   generatedAt: string
   repository: {
@@ -31,10 +31,10 @@ export interface GitLocalMetadataSnapshot {
     headSha: string
     url: string
   }
-  components: Record<string, GitLocalComponentMetadata>
+  components: Record<string, LocalComponentMetadata>
 }
 
-export interface GitLocalMetadataExpectation {
+export interface LocalMetadataExpectation {
   defaultBranch: string
   repositoryUrl: string
   components: Array<{
@@ -65,10 +65,10 @@ function assertExactKeys(value: Record<string, unknown>, expectedKeys: string[],
   )
 }
 
-export function assertGitLocalMetadataSnapshot(
+export function assertLocalMetadataSnapshot(
   value: unknown,
-  expected: GitLocalMetadataExpectation,
-): asserts value is GitLocalMetadataSnapshot {
+  expected: LocalMetadataExpectation,
+): asserts value is LocalMetadataSnapshot {
   assertMetadata(isRecord(value), 'root must be an object')
   assertExactKeys(value, ['schemaVersion', 'generatedAt', 'repository', 'components'], 'root')
   assertMetadata(value.schemaVersion === 1, 'unsupported schemaVersion')

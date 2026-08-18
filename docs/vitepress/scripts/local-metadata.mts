@@ -1,23 +1,24 @@
 import type { Buffer } from 'node:buffer'
 import type {
-  GitLocalCommit,
-  GitLocalContributor,
-  GitLocalMetadataExpectation,
-  GitLocalMetadataSnapshot,
-} from '../.vitepress/git-local-metadata-types.ts'
+  LocalCommit,
+  LocalContributor,
+  LocalMetadataExpectation,
+  LocalMetadataSnapshot,
+} from '../.vitepress/local-metadata-types.ts'
 import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { renameSync, rmSync, writeFileSync } from 'node:fs'
+import { relative } from 'node:path'
 import process from 'node:process'
-import { assertGitLocalMetadataSnapshot } from '../.vitepress/git-local-metadata-types.ts'
+import { assertLocalMetadataSnapshot } from '../.vitepress/local-metadata-types.ts'
 
-export interface GitLocalComponentSource {
+export interface LocalComponentSource {
   name: string
   path: string
 }
 
-export interface CreateGitLocalMetadataOptions {
-  components: GitLocalComponentSource[]
+export interface CreateLocalMetadataOptions {
+  components: LocalComponentSource[]
   defaultBranch: string
   generatedAt?: string
   repositoryRoot: string
@@ -25,13 +26,18 @@ export interface CreateGitLocalMetadataOptions {
   runGit?: (args: string[]) => string
 }
 
-export interface WriteGitLocalMetadataOptions {
-  expectation: GitLocalMetadataExpectation
+export interface WriteLocalMetadataOptions {
+  expectation: LocalMetadataExpectation
   outputPath: string
-  snapshot: GitLocalMetadataSnapshot
+  snapshot: LocalMetadataSnapshot
 }
 
-interface ParsedGitCommit extends GitLocalCommit {
+export interface StageLocalMetadataOptions {
+  outputPath: string
+  repositoryRoot: string
+}
+
+interface ParsedLocalCommit extends LocalCommit {
   authorEmail: string
 }
 
@@ -76,7 +82,7 @@ function contributorId(name: string, email: string): string {
   return `git:${createHash('sha256').update(identity, 'utf8').digest('hex').slice(0, 20)}`
 }
 
-export function parseGitLog(output: string, repositoryUrl: string): ParsedGitCommit[] {
+export function parseGitLog(output: string, repositoryUrl: string): ParsedLocalCommit[] {
   const baseUrl = normalizeRepositoryUrl(repositoryUrl)
   const records = output
     .split('\0\0')
@@ -104,8 +110,8 @@ export function parseGitLog(output: string, repositoryUrl: string): ParsedGitCom
   })
 }
 
-function createContributors(commits: ParsedGitCommit[]): GitLocalContributor[] {
-  const contributors = new Map<string, GitLocalContributor>()
+function createContributors(commits: ParsedLocalCommit[]): LocalContributor[] {
+  const contributors = new Map<string, LocalContributor>()
   for (const commit of commits) {
     const id = contributorId(commit.author.name, commit.authorEmail)
     const current = contributors.get(id)
@@ -122,12 +128,12 @@ function createContributors(commits: ParsedGitCommit[]): GitLocalContributor[] {
   ))
 }
 
-function stripPrivateCommitFields(commit: ParsedGitCommit): GitLocalCommit {
+function stripPrivateCommitFields(commit: ParsedLocalCommit): LocalCommit {
   const { authorEmail: _authorEmail, ...publicCommit } = commit
   return publicCommit
 }
 
-export function createGitLocalMetadata(options: CreateGitLocalMetadataOptions): GitLocalMetadataSnapshot {
+export function createLocalMetadata(options: CreateLocalMetadataOptions): LocalMetadataSnapshot {
   const runGit = options.runGit ?? createGitRunner(options.repositoryRoot)
   const shallow = runGit(['rev-parse', '--is-shallow-repository']).trim()
   if (shallow === 'true') {
@@ -175,8 +181,8 @@ export function createGitLocalMetadata(options: CreateGitLocalMetadataOptions): 
   }
 }
 
-export function writeGitLocalMetadata(options: WriteGitLocalMetadataOptions): void {
-  assertGitLocalMetadataSnapshot(options.snapshot, options.expectation)
+export function writeLocalMetadata(options: WriteLocalMetadataOptions): void {
+  assertLocalMetadataSnapshot(options.snapshot, options.expectation)
   const temporaryPath = `${options.outputPath}.${process.pid}.${randomUUID()}.tmp`
 
   try {
@@ -186,4 +192,12 @@ export function writeGitLocalMetadata(options: WriteGitLocalMetadataOptions): vo
   finally {
     rmSync(temporaryPath, { force: true })
   }
+}
+
+export function stageLocalMetadata(options: StageLocalMetadataOptions): void {
+  const relativeOutputPath = normalizePath(relative(options.repositoryRoot, options.outputPath))
+  execFileSync('git', ['-C', options.repositoryRoot, 'add', '--', relativeOutputPath], {
+    stdio: 'inherit',
+    windowsHide: true,
+  })
 }

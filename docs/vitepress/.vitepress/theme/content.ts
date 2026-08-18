@@ -29,8 +29,16 @@ import {
   docsSite,
   getDocsLocaleConfig,
 } from '../docs-site'
-import { getComponentRepositoryMetadata, repositoryMetadata } from '../repository-metadata'
+import {
+  configuredRepositoryMetadataProvider,
+  getComponentRepositoryMetadata,
+  repositoryMetadata,
+} from '../repository-metadata'
 import { useDocsLocale } from './composables/use-docs-locale'
+import {
+  resolveDocsRepositoryComponentMeta,
+  resolveDocsRepositoryContributors,
+} from './repository-content'
 
 const iconByName: Record<ComponentIconName, Component> = {
   'blocks': Blocks,
@@ -171,31 +179,34 @@ export const docsContent = createElementPlusDocsContent({
     const docsSourcePath = componentDocsSourcePath(name)
     const repositoryUrl = docsSite.repository.url
     const branch = repositoryMetadata.repository.defaultBranch
-    const sourceHref = `${repositoryUrl}/tree/${branch}/${sourcePath}`
-    const issuePrefix = docsSite.github.issueTitlePrefix(name)
+    const repositoryContent = resolveDocsRepositoryComponentMeta(
+      configuredRepositoryMetadataProvider,
+      metadata,
+      {
+        defaultBranch: branch,
+        editPath: hasSourceDoc
+          ? `${docsSourcePath}/${getDocsLocaleConfig(locale as DocsLocale).sourceDoc}`
+          : sourcePath,
+        issueTitlePrefix: docsSite.repository.issueTitlePrefix(name),
+        repositoryUrl,
+        sourcePath,
+      },
+    )
 
     return {
-      commits: metadata.commits,
-      editHref: hasSourceDoc
-        ? `${repositoryUrl}/edit/${branch}/${docsSourcePath}/${getDocsLocaleConfig(locale as DocsLocale).sourceDoc}`
-        : sourceHref,
       hasSourceDoc,
       importStatement: `import { ${name} } from '${docsSite.packageName}';`,
       name,
-      newIssueHref: `${repositoryUrl}/issues/new?title=${encodeURIComponent(`${issuePrefix} `)}`,
-      ...(metadata.openIssueCount === undefined
-        ? {}
-        : {
-            openIssueCount: metadata.openIssueCount,
-            openIssuesHref: `${repositoryUrl}/issues?q=${encodeURIComponent(`is:issue is:open in:title "${issuePrefix}"`)}`,
-          }),
       overviewHref: link(docsSite.routes.components),
-      sourceHref,
+      ...repositoryContent,
       sourceLabel: `components/${slug}`,
     }
   },
   resolveContributors({ name }) {
-    return getComponentRepositoryMetadata(name).contributors
+    return resolveDocsRepositoryContributors(
+      configuredRepositoryMetadataProvider,
+      getComponentRepositoryMetadata(name),
+    )
   },
   useLocale: useDocsLocale,
 })

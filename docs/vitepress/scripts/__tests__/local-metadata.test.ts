@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import type { GitLocalMetadataSnapshot } from '../../.vitepress/git-local-metadata-types'
+import type { LocalMetadataSnapshot } from '../../.vitepress/local-metadata-types'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createGitLocalMetadata, writeGitLocalMetadata } from '../git-local-metadata.mts'
+import { createLocalMetadata, stageLocalMetadata, writeLocalMetadata } from '../local-metadata.mts'
 
 const temporaryDirectories: string[] = []
 
@@ -90,7 +90,7 @@ afterEach(() => {
 describe('local Git documentation metadata', () => {
   it('scopes commits by component and aggregates contributors without exposing email', () => {
     const repositoryRoot = createFixtureRepository()
-    const snapshot = createGitLocalMetadata({
+    const snapshot = createLocalMetadata({
       components: [
         { name: 'CopyText', path: 'packages/components/src/CopyText' },
         { name: 'Other', path: 'packages/components/src/Other' },
@@ -122,7 +122,7 @@ describe('local Git documentation metadata', () => {
     const cloneRoot = createTemporaryDirectory('moluoxixi-local-metadata-shallow-')
     git(cloneRoot, ['clone', '--depth=1', '--no-local', pathToFileURL(sourceRoot).href, '.'])
 
-    expect(() => createGitLocalMetadata({
+    expect(() => createLocalMetadata({
       components: [{ name: 'CopyText', path: 'packages/components/src/CopyText' }],
       defaultBranch: 'main',
       repositoryRoot: cloneRoot,
@@ -144,7 +144,7 @@ describe('local Git documentation metadata', () => {
       repositoryRoot,
     })
 
-    const snapshot = createGitLocalMetadata({
+    const snapshot = createLocalMetadata({
       components: [{ name: 'CopyText', path: 'packages/components/src/CopyText' }],
       defaultBranch: 'main',
       repositoryRoot,
@@ -157,7 +157,7 @@ describe('local Git documentation metadata', () => {
 
   it('preserves an existing snapshot when validation fails', () => {
     const outputDirectory = createTemporaryDirectory('moluoxixi-local-metadata-write-')
-    const outputPath = join(outputDirectory, 'git-local-metadata.json')
+    const outputPath = join(outputDirectory, 'local-metadata.json')
     writeFileSync(outputPath, '{"preserved":true}\n', 'utf8')
 
     const invalidSnapshot = {
@@ -165,9 +165,9 @@ describe('local Git documentation metadata', () => {
       generatedAt: 'invalid',
       repository: { defaultBranch: 'main', headSha: 'invalid', url: 'https://github.test/example/repository' },
       components: {},
-    } as unknown as GitLocalMetadataSnapshot
+    } as unknown as LocalMetadataSnapshot
 
-    expect(() => writeGitLocalMetadata({
+    expect(() => writeLocalMetadata({
       expectation: {
         components: [{ name: 'CopyText', path: 'packages/components/src/CopyText' }],
         defaultBranch: 'main',
@@ -177,17 +177,17 @@ describe('local Git documentation metadata', () => {
       snapshot: invalidSnapshot,
     })).toThrow('Invalid local Git metadata snapshot')
     expect(readFileSync(outputPath, 'utf8')).toBe('{"preserved":true}\n')
-    expect(readdirSync(outputDirectory)).toEqual(['git-local-metadata.json'])
+    expect(readdirSync(outputDirectory)).toEqual(['local-metadata.json'])
   })
 
   it('atomically replaces an existing valid snapshot', () => {
     const repositoryRoot = createFixtureRepository()
     const outputDirectory = createTemporaryDirectory('moluoxixi-local-metadata-replace-')
-    const outputPath = join(outputDirectory, 'git-local-metadata.json')
+    const outputPath = join(outputDirectory, 'local-metadata.json')
     writeFileSync(outputPath, '{"stale":true}\n', 'utf8')
 
     const components = [{ name: 'CopyText', path: 'packages/components/src/CopyText' }]
-    const snapshot = createGitLocalMetadata({
+    const snapshot = createLocalMetadata({
       components,
       defaultBranch: 'main',
       generatedAt: '2026-08-04T00:00:00.000Z',
@@ -195,7 +195,7 @@ describe('local Git documentation metadata', () => {
       repositoryUrl: 'https://github.test/example/repository',
     })
 
-    writeGitLocalMetadata({
+    writeLocalMetadata({
       expectation: {
         components,
         defaultBranch: 'main',
@@ -206,6 +206,26 @@ describe('local Git documentation metadata', () => {
     })
 
     expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toEqual(snapshot)
-    expect(readdirSync(outputDirectory)).toEqual(['git-local-metadata.json'])
+    expect(readdirSync(outputDirectory)).toEqual(['local-metadata.json'])
+  })
+
+  it('stages only the local metadata snapshot without disturbing the existing index', () => {
+    const repositoryRoot = createFixtureRepository()
+    const outputPath = join(repositoryRoot, 'docs/vitepress/.vitepress/local-metadata.json')
+    const unrelatedPath = join(repositoryRoot, 'unrelated.txt')
+    const existingStagedPath = 'packages/components/src/Other/index.ts'
+    mkdirSync(dirname(outputPath), { recursive: true })
+    writeFileSync(outputPath, '{"snapshot":true}\n', 'utf8')
+    writeFileSync(unrelatedPath, 'leave unstaged\n', 'utf8')
+    writeFileSync(join(repositoryRoot, existingStagedPath), 'already staged\n', 'utf8')
+    git(repositoryRoot, ['add', '--', existingStagedPath])
+
+    stageLocalMetadata({ outputPath, repositoryRoot })
+
+    expect(git(repositoryRoot, ['diff', '--cached', '--name-only']).trim().split(/\r?\n/).sort()).toEqual([
+      'docs/vitepress/.vitepress/local-metadata.json',
+      existingStagedPath,
+    ].sort())
+    expect(git(repositoryRoot, ['status', '--short', '--', 'unrelated.txt'])).toBe('?? unrelated.txt\n')
   })
 })

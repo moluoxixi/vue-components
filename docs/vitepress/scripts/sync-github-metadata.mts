@@ -5,8 +5,9 @@ import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { documentedComponents } from '../.vitepress/component-manifest.ts'
-import { componentSourcePath, docsSite } from '../.vitepress/docs-site.ts'
+import { docsSite } from '../.vitepress/docs-site.ts'
 import { assertGithubMetadataSnapshot } from '../.vitepress/github-metadata-types.ts'
+import { repositoryMetadataExpectation } from '../.vitepress/repository-metadata-expectation.ts'
 import { createGithubMetadata } from './github-metadata.mts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -15,28 +16,17 @@ const temporaryPath = `${outputPath}.tmp`
 
 async function main(): Promise<void> {
   const snapshot = await createGithubMetadata({
-    owner: docsSite.repository.owner,
-    repository: docsSite.repository.name,
-    defaultBranch: docsSite.repository.defaultBranch,
-    components: documentedComponents.map(component => ({
-      name: component.name,
-      path: componentSourcePath(component.name),
-    })),
-    issueTitlePrefix: docsSite.github.issueTitlePrefix,
+    owner: repositoryMetadataExpectation.owner,
+    repository: repositoryMetadataExpectation.repository,
+    defaultBranch: repositoryMetadataExpectation.defaultBranch,
+    components: repositoryMetadataExpectation.components,
+    issueTitlePrefix: docsSite.repository.issueTitlePrefix,
     excludeBotsFromContributors: docsSite.github.excludeBotsFromContributors,
     userAgent: docsSite.github.userAgent,
     token: process.env.GITHUB_TOKEN,
   })
 
-  assertGithubMetadataSnapshot(snapshot, {
-    owner: docsSite.repository.owner,
-    repository: docsSite.repository.name,
-    defaultBranch: docsSite.repository.defaultBranch,
-    components: documentedComponents.map(component => ({
-      name: component.name,
-      path: componentSourcePath(component.name),
-    })),
-  })
+  assertGithubMetadataSnapshot(snapshot, repositoryMetadataExpectation)
 
   writeFileSync(temporaryPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8')
   renameSync(temporaryPath, outputPath)

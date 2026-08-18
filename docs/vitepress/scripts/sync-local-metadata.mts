@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 
-import { execFileSync } from 'node:child_process'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { documentedComponents } from '../.vitepress/component-manifest.ts'
 import { componentSourcePath, docsSite } from '../.vitepress/docs-site.ts'
-import { createGitLocalMetadata, writeGitLocalMetadata } from './git-local-metadata.mts'
+import { createLocalMetadata, stageLocalMetadata, writeLocalMetadata } from './local-metadata.mts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(scriptDir, '../../..')
-const outputPath = resolve(scriptDir, '../.vitepress/git-local-metadata.json')
+const outputPath = resolve(scriptDir, '../.vitepress/local-metadata.json')
 const shouldStage = process.argv.slice(2).includes('--stage')
 const unknownArguments = process.argv.slice(2).filter(argument => argument !== '--stage')
 
@@ -23,14 +22,14 @@ const components = documentedComponents.map(component => ({
 }))
 
 try {
-  const snapshot = createGitLocalMetadata({
+  const snapshot = createLocalMetadata({
     components,
     defaultBranch: docsSite.repository.defaultBranch,
     repositoryRoot,
     repositoryUrl: docsSite.repository.url,
   })
 
-  writeGitLocalMetadata({
+  writeLocalMetadata({
     expectation: {
       components,
       defaultBranch: docsSite.repository.defaultBranch,
@@ -40,13 +39,8 @@ try {
     snapshot,
   })
 
-  if (shouldStage) {
-    const relativeOutputPath = relative(repositoryRoot, outputPath).replaceAll('\\', '/')
-    execFileSync('git', ['-C', repositoryRoot, 'add', '--', relativeOutputPath], {
-      stdio: 'inherit',
-      windowsHide: true,
-    })
-  }
+  if (shouldStage)
+    stageLocalMetadata({ outputPath, repositoryRoot })
 
   console.log(`Synced local Git metadata for ${documentedComponents.length} components at ${snapshot.repository.headSha.slice(0, 7)}${shouldStage ? ' and staged the snapshot' : ''}.`)
 }

@@ -1,12 +1,9 @@
-import type { RepositoryMetadataSource } from './docs-site'
 import { fileURLToPath } from 'node:url'
+import { repositoryMetadataProviders } from './repository-metadata-providers.ts'
 
 export const repositoryMetadataSnapshotId = 'virtual:moluoxixi-repository-metadata-snapshot'
 
-export function repositoryMetadataSnapshotPath(source: RepositoryMetadataSource): string {
-  if (source === 'github')
-    return fileURLToPath(new URL('./github-metadata.json', import.meta.url))
-  if (source === 'git-local')
-    return fileURLToPath(new URL('./git-local-metadata.json', import.meta.url))
-  throw new TypeError(`Unsupported repository metadata source: ${String(source)}`)
+export function repositoryMetadataSnapshotPath(providerId: string): string {
+  const provider = repositoryMetadataProviders.get(providerId)
+  return fileURLToPath(new URL(`./${provider.snapshotFile}`, import.meta.url))
 }

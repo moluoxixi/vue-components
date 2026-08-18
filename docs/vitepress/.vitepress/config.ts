@@ -182,7 +182,7 @@ export default defineElementPlusDocs({
         conditions: ['source'],
         alias: [
           { find: '@docs-components', replacement: docsSite.packageName },
-          { find: repositoryMetadataSnapshotId, replacement: repositoryMetadataSnapshotPath(docsSite.metadataSource) },
+          { find: repositoryMetadataSnapshotId, replacement: repositoryMetadataSnapshotPath(docsSite.metadataProvider) },
         ],
       },
       optimizeDeps: {
