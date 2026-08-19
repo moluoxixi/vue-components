@@ -31,13 +31,16 @@ async function main(): Promise<void> {
   const token = process.env.GITLAB_TOKEN
   const snapshot = await createGitlabMetadata({
     apiBaseUrl: config.apiBaseUrl,
+    authentication: config.authentication,
     components: expectation.components,
+    contributorProfiles: config.contributorProfiles,
     defaultBranch: expectation.defaultBranch,
     issueTitlePrefix: config.issueTitlePrefix,
     projectPath: expectation.projectPath,
     repositoryUrl: expectation.repositoryUrl,
     token,
     userAgent: config.userAgent,
+    webBaseUrl: config.webBaseUrl,
   })
   assertGitlabMetadataSnapshot(snapshot, expectation)
 

@@ -6,6 +6,11 @@ import type {
   GitlabMetadataSnapshot,
 } from '../.vitepress/gitlab-metadata-types.ts'
 import { createHash } from 'node:crypto'
+import {
+  isExactGitlabProfileUrl,
+  isTrustedGitlabWebUrl,
+  resolveGitlabWebBaseUrl,
+} from '../.vitepress/gitlab-metadata-types.ts'
 import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface GitlabProjectResponse {
@@ -38,6 +43,15 @@ interface GitlabCommitResponse {
   web_url: string
 }
 
+interface GitlabContributorProfile {
+  avatarUrl: string
+  login: string
+  name: string
+  profileUrl: string
+}
+
+export type GitlabAuthenticationMode = 'bearer' | 'private-token'
+
 export interface GitlabComponentSource {
   name: string
   path: string
@@ -45,7 +59,9 @@ export interface GitlabComponentSource {
 
 export interface CreateGitlabMetadataOptions {
   apiBaseUrl: string
+  authentication: GitlabAuthenticationMode
   components: GitlabComponentSource[]
+  contributorProfiles?: Readonly<Record<string, string>>
   defaultBranch: string
   fetchImpl?: typeof fetch
   generatedAt?: string
@@ -55,6 +71,7 @@ export interface CreateGitlabMetadataOptions {
   sleep?: (milliseconds: number) => Promise<void>
   token?: string
   userAgent: string
+  webBaseUrl: string
 }
 
 const MAX_RETRIES = 3
@@ -65,6 +82,10 @@ function defaultSleep(milliseconds: number): Promise<void> {
 
 function firstLine(value: string): string {
   return value.split(/\r?\n/, 1)[0]?.trim() || '(no commit message)'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function nextLink(linkHeader: string | null): string | undefined {
@@ -112,8 +133,14 @@ class GitlabClient {
       'Accept': 'application/json',
       'User-Agent': options.userAgent,
     }
-    if (options.token)
-      this.headers['PRIVATE-TOKEN'] = options.token
+    if (options.token) {
+      if (options.authentication === 'private-token')
+        this.headers['PRIVATE-TOKEN'] = options.token
+      else if (options.authentication === 'bearer')
+        this.headers.Authorization = `Bearer ${options.token}`
+      else
+        throw new TypeError(`Unsupported GitLab authentication mode: ${String(options.authentication)}`)
+    }
   }
 
   async get<T>(pathOrUrl: string): Promise<{ data: T, response: Response, url: string }> {
@@ -208,20 +235,93 @@ function contributorId(name: string, email: string): string {
   return `gitlab:${createHash('sha256').update(identity).digest('hex')}`
 }
 
+function validateContributorProfileMappings(
+  mappings: Readonly<Record<string, string>> | undefined,
+): ReadonlyMap<string, string> {
+  const normalized = new Map<string, string>()
+  for (const [id, configuredUsername] of Object.entries(mappings ?? {})) {
+    if (!/^gitlab:[a-f0-9]{64}$/.test(id))
+      throw new TypeError(`Invalid GitLab contributor profile id: ${id}`)
+    const username = configuredUsername.trim()
+    if (!username)
+      throw new TypeError(`GitLab contributor profile username is required for ${id}`)
+    normalized.set(id, username)
+  }
+  return normalized
+}
+
+function normalizeContributorProfile(
+  value: unknown,
+  username: string,
+  webBaseUrl: string,
+): GitlabContributorProfile | undefined {
+  if (!Array.isArray(value) || value.length !== 1)
+    return undefined
+  const user = value[0]
+  if (!isRecord(user)
+    || user.username !== username
+    || typeof user.name !== 'string'
+    || !user.name.trim()
+    || typeof user.avatar_url !== 'string'
+    || typeof user.web_url !== 'string'
+    || !isTrustedGitlabWebUrl(user.avatar_url, webBaseUrl)
+    || !isExactGitlabProfileUrl(user.web_url, webBaseUrl, username)) {
+    return undefined
+  }
+  return {
+    avatarUrl: user.avatar_url,
+    login: username,
+    name: user.name.trim(),
+    profileUrl: user.web_url,
+  }
+}
+
+async function resolveContributorProfiles(
+  client: GitlabClient,
+  mappings: ReadonlyMap<string, string>,
+  contributorIds: ReadonlySet<string>,
+  webBaseUrl: string,
+): Promise<ReadonlyMap<string, GitlabContributorProfile>> {
+  const relevantMappings = [...mappings].filter(([id]) => contributorIds.has(id))
+  const profileByUsername = new Map<string, GitlabContributorProfile | undefined>()
+
+  await Promise.all([...new Set(relevantMappings.map(([, username]) => username))].map(async (username) => {
+    try {
+      const { data } = await client.get<unknown>(`/users?username=${encodeURIComponent(username)}`)
+      profileByUsername.set(username, normalizeContributorProfile(data, username, webBaseUrl))
+    }
+    catch (error) {
+      if (error instanceof GitlabRequestError && (error.status === 403 || error.status === 404)) {
+        profileByUsername.set(username, undefined)
+        return
+      }
+      throw error
+    }
+  }))
+
+  return new Map(relevantMappings.flatMap(([id, username]) => {
+    const profile = profileByUsername.get(username)
+    return profile ? [[id, profile] as const] : []
+  }))
+}
+
 function createComponentMetadata(
   source: GitlabComponentSource,
   rawCommits: GitlabCommitResponse[],
   issuesEnabled: boolean,
   issues: GitlabIssueSummary[],
+  contributorProfiles: ReadonlyMap<string, GitlabContributorProfile>,
 ): GitlabComponentMetadata {
   const contributionCounts = new Map<string, GitlabContributor>()
   const commits: GitlabCommit[] = rawCommits.map((rawCommit) => {
     const id = contributorId(rawCommit.author_name, rawCommit.author_email)
     const existing = contributionCounts.get(id)
+    const profile = contributorProfiles.get(id)
     contributionCounts.set(id, {
+      ...(profile ?? {}),
       contributions: (existing?.contributions ?? 0) + 1,
       id,
-      name: rawCommit.author_name.trim() || 'Unknown contributor',
+      name: profile?.name ?? (rawCommit.author_name.trim() || 'Unknown contributor'),
     })
     return {
       author: { name: rawCommit.author_name.trim() || 'Unknown contributor' },
@@ -244,7 +344,13 @@ function createComponentMetadata(
 }
 
 export async function createGitlabMetadata(options: CreateGitlabMetadataOptions): Promise<GitlabMetadataSnapshot> {
+  const expectedWebBaseUrl = resolveGitlabWebBaseUrl(options.repositoryUrl, options.projectPath).replace(/\/+$/, '')
+  const configuredWebBaseUrl = new URL(options.webBaseUrl).toString().replace(/\/+$/, '')
+  if (configuredWebBaseUrl !== expectedWebBaseUrl)
+    throw new TypeError(`GitLab web base URL mismatch: expected ${expectedWebBaseUrl}`)
+
   const client = new GitlabClient(options)
+  const configuredContributorProfiles = validateContributorProfileMappings(options.contributorProfiles)
   const encodedProject = encodeURIComponent(options.projectPath)
   const projectPath = `/projects/${encodedProject}`
   const { data: project } = await client.get<GitlabProjectResponse>(projectPath)
@@ -277,18 +383,34 @@ export async function createGitlabMetadata(options: CreateGitlabMetadataOptions)
   }
   const groupedIssues = groupGitlabComponentIssues(rawIssues, options.components, options.issueTitlePrefix)
 
-  const components = Object.fromEntries(await Promise.all(options.components.map(async (component) => {
+  const componentCommits = await Promise.all(options.components.map(async (component) => {
     const query = new URLSearchParams({
       path: component.path,
       per_page: '100',
       ref_name: headSha,
     })
     const commits = await client.paginate<GitlabCommitResponse>(`${projectPath}/repository/commits?${query}`)
-    return [
-      component.name,
-      createComponentMetadata(component, commits, issuesEnabled, groupedIssues[component.name] ?? []),
-    ] as const
-  })))
+    return { component, commits }
+  }))
+  const contributorIds = new Set(componentCommits.flatMap(({ commits }) => (
+    commits.map(commit => contributorId(commit.author_name, commit.author_email))
+  )))
+  const contributorProfiles = await resolveContributorProfiles(
+    client,
+    configuredContributorProfiles,
+    contributorIds,
+    options.webBaseUrl,
+  )
+  const components = Object.fromEntries(componentCommits.map(({ component, commits }) => [
+    component.name,
+    createComponentMetadata(
+      component,
+      commits,
+      issuesEnabled,
+      groupedIssues[component.name] ?? [],
+      contributorProfiles,
+    ),
+  ]))
 
   return {
     schemaVersion: 1,

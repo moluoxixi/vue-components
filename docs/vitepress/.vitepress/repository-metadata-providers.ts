@@ -216,7 +216,7 @@ export const gitlabMetadataProvider = defineRepositoryMetadataProvider({
   actions: createGitlabRepositoryMetadataActions(),
   capabilities: {
     commitHistory: true,
-    contributorProfiles: false,
+    contributorProfiles: true,
     contributors: true,
     editLinks: true,
     issueActions: true,

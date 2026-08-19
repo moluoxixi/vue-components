@@ -27,3 +27,7 @@ const count = ref(0)
 ## API
 
 <ApiDocs name="FixtureButton" />
+
+## Contributors
+
+<DocContributors name="FixtureButton" />

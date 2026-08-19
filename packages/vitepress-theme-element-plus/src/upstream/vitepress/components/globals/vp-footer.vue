@@ -8,6 +8,7 @@ const sitemapHref = computed(() => {
   const sitemap = theme.value.sitemap
   return sitemap ? withBase(String(sitemap)) : ''
 })
+const repositoryLabel = computed(() => String(theme.value.repositoryLabel || 'Repository'))
 </script>
 
 <template>
@@ -52,7 +53,7 @@ const sitemapHref = computed(() => {
         class="footer-main-link"
         target="_blank"
       >
-        GitHub
+        {{ repositoryLabel }}
       </a>
       <a
         :href="String(theme.repository || '/')"

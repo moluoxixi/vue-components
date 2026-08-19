@@ -1,0 +1,36 @@
+{
+  "id": "repository-provider-gitlab-self-managed",
+  "name": "repository-provider-gitlab-self-managed",
+  "title": "GitLab self-managed and contributor profiles",
+  "description": "Complete GitLab self-managed compatibility and enrich GitLab contributors with verified account profiles and avatars.",
+  "status": "in_progress",
+  "complexity": {
+    "level": "complex",
+    "signals": [
+      "cross-package contract",
+      "external API compatibility",
+      "credentials and privacy",
+      "snapshot migration"
+    ],
+    "reason": "The task spans theme capability policy, docs-site API collection, strict snapshots, live platform validation, and self-managed compatibility."
+  },
+  "dev_type": null,
+  "scope": null,
+  "package": "docs",
+  "priority": "P1",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-19",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "08-19-repository-provider-platforms",
+  "relatedFiles": [],
+  "notes": "Live anonymous JiHu synchronization mapped the stable contributor ID to moluoxixi and the updated avatar rendered on Chinese and English CopyText pages. Deterministic self-managed coverage includes /gitlab relative installs, subgroup/private auth, strict pagination, exact profile lookup, profile URL trust, capability downgrade, and a VitePress SSR fixture. Focused tests, full tests, lint, typecheck, offline validators, docs build, theme fixture, and package install verification passed. Push/CI/archive remain pending.",
+  "meta": {}
+}

@@ -10,9 +10,12 @@ export interface GitlabCommit {
 }
 
 export interface GitlabContributor {
+  avatarUrl?: string
   contributions: number
   id: string
+  login?: string
   name: string
+  profileUrl?: string
 }
 
 export interface GitlabIssueSummary {
@@ -84,6 +87,68 @@ function assertHttpUrl(value: unknown, label: string): asserts value is string {
   assertMetadata(url.protocol === 'https:' || url.protocol === 'http:', `${label} must use HTTP or HTTPS`)
 }
 
+function normalizedUrlPath(value: URL): string {
+  return value.pathname.replace(/\/+$/, '')
+}
+
+export function isTrustedGitlabWebUrl(value: string, webBaseUrl: string): boolean {
+  let candidate: URL
+  let base: URL
+  try {
+    candidate = new URL(value)
+    base = new URL(webBaseUrl)
+  }
+  catch {
+    return false
+  }
+
+  const basePath = normalizedUrlPath(base)
+  const candidatePath = normalizedUrlPath(candidate)
+  return candidate.origin === base.origin
+    && candidate.username === ''
+    && candidate.password === ''
+    && candidate.search === ''
+    && candidate.hash === ''
+    && (basePath === '' || candidatePath === basePath || candidatePath.startsWith(`${basePath}/`))
+}
+
+export function isExactGitlabProfileUrl(value: string, webBaseUrl: string, login: string): boolean {
+  if (!isTrustedGitlabWebUrl(value, webBaseUrl))
+    return false
+  const base = new URL(webBaseUrl)
+  const profile = new URL(value)
+  const expectedPath = `${normalizedUrlPath(base)}/${encodeURIComponent(login)}`
+  return normalizedUrlPath(profile) === expectedPath && profile.search === ''
+}
+
+export function resolveGitlabWebBaseUrl(repositoryUrl: string, projectPath: string): string {
+  const repository = new URL(repositoryUrl)
+  const repositorySegments = repository.pathname.split('/').filter(Boolean)
+  const projectSegments = projectPath.split('/').filter(Boolean)
+  if (repositorySegments.length < projectSegments.length)
+    throw new TypeError('GitLab repository URL must include the configured projectPath')
+
+  const projectOffset = repositorySegments.length - projectSegments.length
+  for (let index = 0; index < projectSegments.length; index += 1) {
+    let repositorySegment = repositorySegments[projectOffset + index] ?? ''
+    try {
+      repositorySegment = decodeURIComponent(repositorySegment)
+    }
+    catch {
+      // The exact segment comparison below rejects malformed encoding.
+    }
+    if (repositorySegment !== projectSegments[index])
+      throw new TypeError('GitLab repository URL must include the configured projectPath')
+  }
+
+  repository.pathname = projectOffset === 0
+    ? '/'
+    : `/${repositorySegments.slice(0, projectOffset).join('/')}`
+  repository.search = ''
+  repository.hash = ''
+  return repository.toString()
+}
+
 function assertIssueDetailUrl(issueUrl: string, repositoryUrl: string, iid: number, label: string): void {
   const issue = new URL(issueUrl)
   const repository = new URL(repositoryUrl)
@@ -139,6 +204,13 @@ export function assertGitlabMetadataSnapshot(
   assertMetadata(typeof repository.headSha === 'string' && /^[a-f0-9]{40}$/.test(repository.headSha), 'headSha must be a full commit SHA')
   assertMetadata(typeof repository.issuesEnabled === 'boolean', 'issuesEnabled must be a boolean')
   assertHttpUrl(repository.webUrl, 'repository webUrl')
+  let webBaseUrl: string
+  try {
+    webBaseUrl = resolveGitlabWebBaseUrl(repository.webUrl as string, expected.projectPath)
+  }
+  catch {
+    throw new TypeError('Invalid GitLab metadata snapshot: repository webUrl must include projectPath')
+  }
   assertMetadata(isRecord(value.components), 'components must be an object')
 
   const expectedNames = expected.components.map(component => component.name).sort()
@@ -183,12 +255,38 @@ export function assertGitlabMetadataSnapshot(
     const contributorIds = new Set<string>()
     for (const rawContributor of rawComponent.contributors) {
       assertMetadata(isRecord(rawContributor), `${expectedComponent.name} contributor must be an object`)
-      assertExactKeys(rawContributor, ['contributions', 'id', 'name'], `${expectedComponent.name} contributor`)
+      const profileFields = ['avatarUrl', 'login', 'profileUrl'] as const
+      const hasAnyProfileField = profileFields.some(field => field in rawContributor)
+      const hasAllProfileFields = profileFields.every(field => field in rawContributor)
+      assertMetadata(
+        hasAnyProfileField === hasAllProfileFields,
+        `${expectedComponent.name} contributor profile fields must be provided together`,
+      )
+      assertExactKeys(
+        rawContributor,
+        hasAllProfileFields
+          ? ['avatarUrl', 'contributions', 'id', 'login', 'name', 'profileUrl']
+          : ['contributions', 'id', 'name'],
+        `${expectedComponent.name} contributor`,
+      )
       assertMetadata(isNonEmptyString(rawContributor.id) && rawContributor.id.startsWith('gitlab:'), `${expectedComponent.name} contributor id is invalid`)
       assertMetadata(!contributorIds.has(rawContributor.id), `${expectedComponent.name} contains duplicate contributor ${rawContributor.id}`)
       contributorIds.add(rawContributor.id)
       assertMetadata(isNonEmptyString(rawContributor.name), `${expectedComponent.name} contributor name is required`)
       assertMetadata(Number.isInteger(rawContributor.contributions) && Number(rawContributor.contributions) > 0, `${expectedComponent.name} contribution count is invalid`)
+      if (hasAllProfileFields) {
+        assertMetadata(isNonEmptyString(rawContributor.login), `${expectedComponent.name} contributor login is required`)
+        assertHttpUrl(rawContributor.avatarUrl, `${expectedComponent.name} contributor avatar URL`)
+        assertHttpUrl(rawContributor.profileUrl, `${expectedComponent.name} contributor profile URL`)
+        assertMetadata(
+          isTrustedGitlabWebUrl(rawContributor.avatarUrl, webBaseUrl),
+          `${expectedComponent.name} contributor avatar URL must belong to the configured GitLab instance`,
+        )
+        assertMetadata(
+          isExactGitlabProfileUrl(rawContributor.profileUrl, webBaseUrl, rawContributor.login),
+          `${expectedComponent.name} contributor profile URL must match its GitLab login`,
+        )
+      }
     }
 
     const commitShas = new Set<string>()

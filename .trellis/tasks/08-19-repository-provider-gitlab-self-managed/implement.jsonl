@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/docs/frontend/index.md", "reason": "Applies to GitLab docs-site configuration, collectors, snapshots, validation, and documentation integration."}
+{"file": ".trellis/spec/docs/frontend/quality-guidelines.md", "reason": "Defines repository provider isolation, URL trust, credential handling, tests, and CI requirements."}
+{"file": ".trellis/spec/vitepress-theme-element-plus/frontend/index.md", "reason": "Applies to reusable repository contracts, contributor capability policy, actions, and package exports."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Provides shared cross-layer and reuse guidance for provider changes."}

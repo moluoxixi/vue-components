@@ -67,6 +67,7 @@ describe('repository metadata providers', () => {
     expect(repositoryMetadata.provider.platform).toBe('github')
     expect(repositoryMetadata.repository.headSha).toBe(githubSnapshot.repository.headSha)
     expect(repositoryMetadataSnapshotPath(docsSite.metadataProvider)).toMatch(/github-metadata\.json$/)
+    expect(repositoryMetadataSelection.repositoryLabel).toBe('GitHub')
   })
 
   it('switches repository, snapshot, and action inputs as one provider-scoped selection', () => {
@@ -87,6 +88,7 @@ describe('repository metadata providers', () => {
     })
 
     expect(selection.providerId).toBe('gitlab')
+    expect(selection.repositoryLabel).toBe('GitLab')
     expect(selection.repository).toBe(docsSite.repositories.gitlab)
     expect(selection.expectation).toBe(repositoryMetadataExpectations.gitlab)
     expect(selection.snapshotFile).toBe('gitlab-metadata.json')
@@ -215,9 +217,15 @@ describe('repository metadata providers', () => {
     expect(metadata.provider.platform).toBe('gitlab')
     expect(metadata.components.CopyText?.contributors.every(contributor => contributor.id.startsWith('gitlab:'))).toBe(true)
     expect(repositoryMetadataProviderSupports(metadata.provider, 'sourceLinks')).toBe(true)
-    expect(repositoryMetadataProviderSupports(metadata.provider, 'contributorProfiles')).toBe(false)
-    for (const contributor of metadata.components.CopyText?.contributors ?? [])
-      expect(contributor).not.toHaveProperty('profileUrl')
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'contributorProfiles')).toBe(true)
+    expect(metadata.components.CopyText?.contributors.find(contributor => (
+      contributor.id === 'gitlab:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b'
+    ))).toMatchObject({
+      avatarUrl: 'https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png',
+      login: 'moluoxixi',
+      name: 'moluoxixi',
+      profileUrl: 'https://jihulab.com/moluoxixi',
+    })
   })
 
   it('registers Gitee with an isolated snapshot and project-owned links', () => {
@@ -410,6 +418,74 @@ describe('repository metadata providers', () => {
       leakedContributor,
       repositoryMetadataExpectations.gitlab,
     )).toThrow('CopyText contributor contains unsupported or missing fields')
+  })
+
+  it('requires complete trusted GitLab contributor profiles', () => {
+    const incompleteProfile = structuredClone(gitlabSnapshot)
+    Reflect.deleteProperty(incompleteProfile.components.CopyText!.contributors[0]!, 'avatarUrl')
+    Object.assign(incompleteProfile.components.CopyText!.contributors[0]!, {
+      login: 'moluoxixi',
+      profileUrl: 'https://jihulab.com/moluoxixi',
+    })
+    expect(() => assertGitlabMetadataSnapshot(
+      incompleteProfile,
+      repositoryMetadataExpectations.gitlab,
+    )).toThrow('CopyText contributor profile fields must be provided together')
+
+    for (const fields of [
+      {
+        avatarUrl: 'https://example.test/avatar.png',
+        login: 'moluoxixi',
+        profileUrl: 'https://jihulab.com/moluoxixi',
+      },
+      {
+        avatarUrl: 'https://jihulab.com/uploads/avatar.png?private_token=secret',
+        login: 'moluoxixi',
+        profileUrl: 'https://jihulab.com/moluoxixi',
+      },
+      {
+        avatarUrl: 'https://jihulab.com/uploads/avatar.png',
+        login: 'moluoxixi',
+        profileUrl: 'https://jihulab.com/another-user',
+      },
+    ]) {
+      const invalidProfile = structuredClone(gitlabSnapshot)
+      Object.assign(invalidProfile.components.CopyText!.contributors[0]!, fields)
+      expect(() => assertGitlabMetadataSnapshot(
+        invalidProfile,
+        repositoryMetadataExpectations.gitlab,
+      )).toThrow(/contributor (avatar|profile) URL/)
+    }
+  })
+
+  it('validates contributor profiles for self-managed GitLab relative paths', () => {
+    const expectation = {
+      ...repositoryMetadataExpectations.gitlab,
+      projectPath: 'group/subgroup/project',
+      repositoryUrl: 'https://gitlab.test/gitlab/group/subgroup/project',
+    }
+    const snapshot = structuredClone(gitlabSnapshot)
+    Object.assign(snapshot.repository, {
+      projectPath: expectation.projectPath,
+      webUrl: expectation.repositoryUrl,
+    })
+    for (const component of Object.values(snapshot.components)) {
+      for (const contributor of component.contributors) {
+        Object.assign(contributor, {
+          avatarUrl: 'https://gitlab.test/gitlab/uploads/avatar.png',
+          login: 'alice',
+          profileUrl: 'https://gitlab.test/gitlab/alice',
+        })
+      }
+    }
+    for (const component of Object.values(snapshot.components)) {
+      for (const commit of component.commits)
+        commit.url = `${expectation.repositoryUrl}/-/commit/${commit.sha}`
+      for (const issue of component.openIssues)
+        issue.url = `${expectation.repositoryUrl}/-/work_items/${issue.iid}`
+    }
+
+    expect(() => assertGitlabMetadataSnapshot(snapshot, expectation)).not.toThrow()
   })
 
   it('accepts exact GitLab Issue detail routes and rejects route identity drift', () => {

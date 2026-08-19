@@ -62,6 +62,7 @@ export interface ElementPlusDocsThemeConfig {
   siteTitle: string
   version: string
   repository: string
+  repositoryLabel?: string
   langs: DocsLocale[]
   locales: Record<DocsLocale, ElementPlusDocsRuntimeLocale>
   defaultLocale: DocsLocale

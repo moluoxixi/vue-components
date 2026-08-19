@@ -1,3 +1,4 @@
+import type { ElementPlusDocsThemeConfig } from '@moluoxixi/vitepress-theme-element-plus'
 import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './docs-site'
 import process from 'node:process'
@@ -17,7 +18,7 @@ import { resolveComponentsExternalProjectSource } from './markdown/playground-ex
 import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './repository-metadata-alias'
 import { repositoryMetadataSelection } from './repository-metadata-selection'
 
-function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
+function createThemeConfig(locale: DocsLocale): DefaultTheme.Config & Pick<ElementPlusDocsThemeConfig, 'repositoryLabel'> {
   const messages = getDocsMessages(locale)
   const componentGroups = getLocalizedComponentGroups(locale)
   const utilityGroups = getLocalizedUtilityGroups(locale)
@@ -71,9 +72,12 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
         ],
       })),
     },
-    socialLinks: [
-      { icon: 'github', link: repositoryMetadataSelection.repository.url },
-    ],
+    socialLinks: [{
+      ariaLabel: repositoryMetadataSelection.repositoryLabel,
+      icon: 'github',
+      link: repositoryMetadataSelection.repository.url,
+    }],
+    repositoryLabel: repositoryMetadataSelection.repositoryLabel,
     search: {
       provider: 'local',
       options: {

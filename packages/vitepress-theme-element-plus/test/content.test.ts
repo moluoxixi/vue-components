@@ -191,6 +191,38 @@ describe('reusable content modules', () => {
     expect(wrapper.text()).not.toContain('GitHub @')
   })
 
+  it('renders verified contributor profiles with their avatar and account link', () => {
+    const wrapper = mount(ElementPlusDocsContributors, {
+      props: {
+        contributors: [{
+          avatarUrl: 'https://gitlab.test/uploads/alice.png',
+          contributions: 3,
+          id: 'gitlab:alice',
+          login: 'alice',
+          name: 'Alice Account',
+          profileUrl: 'https://gitlab.test/alice',
+        }],
+        messages: contentMessages,
+        name: 'CopyText',
+      },
+      global: {
+        stubs: {
+          ElTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+        },
+      },
+    })
+
+    const link = wrapper.get('.doc-contributor-link')
+    expect(link.attributes()).toMatchObject({
+      href: 'https://gitlab.test/alice',
+      rel: 'noreferrer',
+      target: '_blank',
+    })
+    expect(link.attributes('aria-label')).toContain('@alice')
+    expect(link.get('.doc-contributor-avatar').attributes('src')).toBe('https://gitlab.test/uploads/alice.png')
+    expect(wrapper.text()).toContain('@alice')
+  })
+
   it('does not render changelog controls for an empty commit history', () => {
     const wrapper = mount(ElementPlusDocsComponentMeta, {
       props: {

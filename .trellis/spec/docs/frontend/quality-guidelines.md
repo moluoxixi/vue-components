@@ -14,6 +14,7 @@ Documentation builds consume generated API data and committed repository metadat
 
 - Do not add an `auto` repository provider, read another provider's snapshot as fallback, or merge snapshots.
 - Do not follow pagination URLs before checking both the configured API origin and normalized path prefix.
+- Do not infer a GitLab account from a commit author's display name or email. Map the privacy-safe stable contributor ID to one reviewed exact username.
 - Do not run network metadata synchronization in pre-commit hooks or required CI.
 - Do not execute the native `.mts` scripts with Node versions below `22.6.0`.
 - Do not remove `dependsOn: ["^build"]` from the Turbo docs build task; docs consumes workspace package output.
@@ -65,6 +66,10 @@ pnpm -C docs/vitepress validate-repository-metadata
 - Every provider owns one snapshot file and one exact expectation. Selection resolves the provider, repository config, expectation, snapshot, and action input as a single unit.
 - A provider capability is a maximum. Snapshot resolution may disable it but cannot enable a capability absent from the provider definition.
 - Provider-specific environment keys are runtime-only: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `GITEE_TOKEN`, and `YUNXIAO_TOKEN`. Never persist or print them.
+- GitLab contributor profiles use `Record<gitlab:<sha256>, exactUsername>`. Resolve each mapping with `GET /users?username=<exactUsername>` and enrich only when exactly one response has the same username.
+- GitLab contributor `login`, `avatarUrl`, and `profileUrl` fields are all-or-none. Unmapped, ambiguous, unavailable, or invalid profiles retain the stable contributor ID, commit count, display name, and initials fallback.
+- A configured GitLab `webBaseUrl` must exactly equal the installation base derived from the repository URL and `projectPath`, including any relative installation path such as `/gitlab`.
+- Persisted GitLab web URLs must stay under that exact installation base and contain no userinfo, query, or fragment. This prevents API-returned credential parameters from entering a public snapshot.
 - `validate-repository-metadata` validates committed GitHub, GitLab, Gitee, and local snapshots offline. Yunxiao joins only after replacing its placeholder with a real tenant snapshot.
 - Native `node scripts/*.mts` execution requires Node `>=22.6.0`.
 - Turbo's `@moluoxixi/docs#build` must depend on `^build` so dependency packages finish before docs reads their `dist` output.
@@ -81,6 +86,9 @@ pnpm -C docs/vitepress validate-repository-metadata
 | Snapshot enables an unsupported capability | Reject resolution |
 | GitLab Issue detail URL uses `/-/issues/:iid` or `/-/work_items/:iid` | Accept only when origin, project path, and IID exactly match the snapshot entry |
 | GitLab commit detail URL differs by origin, project path, full SHA, query, or hash | Reject the snapshot |
+| GitLab profile lookup returns zero, multiple, or a mismatched username | Keep the initials-only contributor fallback |
+| GitLab contributor profile fields are partial, cross-instance, outside the installation path, or contain query/fragment/userinfo | Reject enrichment or the committed snapshot |
+| GitLab `webBaseUrl` differs from the installation base derived from repository URL and `projectPath` | Fail before making API requests |
 | Pagination changes API origin or leaves the configured API path | Reject the URL |
 | Network `429` or bounded `5xx` | Retry only within the configured limit; redact tokens from errors |
 | Yunxiao placeholder identity or all-zero SHA | Reject validation |
@@ -98,6 +106,8 @@ pnpm -C docs/vitepress validate-repository-metadata
 - URL tests assert platform routes, path/ref encoding, line anchors, issue queries, and unsupported actions.
 - GitLab snapshot tests accept both server-returned Issue detail route families and reject cross-project or mismatched-IID URLs.
 - GitLab snapshot tests bind every commit detail URL to the exact repository and full commit SHA, rejecting query and hash suffixes.
+- GitLab contributor tests assert explicit stable-ID mappings, exact one-result username lookup, all fallback cases, profile-field atomicity, custom installation paths, and rejection of credential-bearing avatar URLs.
+- The reusable theme fixture renders a contributor whose profile and avatar live below a self-managed relative installation path, and its VitePress SSR build must succeed.
 - API-client tests assert trusted pagination, loop detection, bounded retries, token redaction, and atomic replacement.
 - Provider tests assert authentication headers, project identity, branch SHA, component filtering, pagination, normalization, and placeholder rejection.
 - Root path-contract tests assert Node `>=22.6.0`, offline CI validators, and Turbo docs `^build` ordering.
@@ -139,6 +149,7 @@ const next = resolveTrustedApiUrl(apiBaseUrl, nextLink, providerName)
 
 - Provider selection remains explicit and production stays on the intended provider.
 - Snapshot, expectation, repository config, and URL actions all belong to the same provider.
+- GitLab contributor mappings contain reviewed exact usernames only; snapshots never contain commit emails or credential-bearing profile/avatar URLs.
 - Capability flags match both available actions and normalized output.
 - Pagination cannot escape the configured API boundary and retry loops are bounded.
 - Tokens are optional where anonymous reads are supported, runtime-only, and redacted from failures.

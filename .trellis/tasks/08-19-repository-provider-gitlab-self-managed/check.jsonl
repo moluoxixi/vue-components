@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/docs/frontend/index.md", "reason": "Verify GitLab synchronization, snapshot validation, docs integration, and documentation behavior."}
+{"file": ".trellis/spec/docs/frontend/quality-guidelines.md", "reason": "Verify strict provider isolation, privacy, trusted URLs, capability downgrades, and offline CI."}
+{"file": ".trellis/spec/vitepress-theme-element-plus/frontend/index.md", "reason": "Verify public API compatibility and generic contributor/action rendering."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Verify cross-layer consistency and reuse."}

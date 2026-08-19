@@ -37,6 +37,10 @@ const gitlabProjectPath = 'moluoxixi/vue-components-provider-fixture'
 const gitlabWebBaseUrl = 'https://jihulab.com'
 const gitlabRepository = {
   apiBaseUrl: `${gitlabWebBaseUrl}/api/v4`,
+  authentication: 'private-token' as const,
+  contributorProfiles: {
+    'gitlab:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b': 'moluoxixi',
+  },
   defaultBranch: 'main',
   issueTitlePrefix,
   projectPath: gitlabProjectPath,

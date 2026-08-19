@@ -7,6 +7,14 @@ import { docsSite } from './docs-site.ts'
 import { repositoryMetadataExpectations } from './repository-metadata-expectation.ts'
 import { repositoryMetadataProviders } from './repository-metadata-providers.ts'
 
+const repositoryProviderLabels: Readonly<Record<string, string>> = {
+  gitee: 'Gitee',
+  github: 'GitHub',
+  gitlab: 'GitLab',
+  local: 'Local',
+  yunxiao: 'Yunxiao',
+}
+
 export interface DocsRepositoryConfiguration {
   defaultBranch: string
   issueTitlePrefix?: (componentName: string) => string
@@ -18,6 +26,7 @@ export interface DocsRepositoryMetadataSelection {
   provider: RepositoryMetadataProvider
   providerId: string
   repository: DocsRepositoryConfiguration
+  repositoryLabel: string
   snapshotFile: string
 }
 
@@ -46,6 +55,7 @@ export function selectRepositoryMetadataConfiguration(
     provider,
     providerId: provider.id,
     repository,
+    repositoryLabel: repositoryProviderLabels[provider.id] ?? provider.platform,
     snapshotFile: provider.snapshotFile,
   })
 }
