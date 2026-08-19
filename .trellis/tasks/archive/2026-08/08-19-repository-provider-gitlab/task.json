@@ -3,7 +3,7 @@
   "name": "repository-provider-gitlab",
   "title": "GitLab repository provider",
   "description": "Extract reusable repository-provider contracts, implement GitLab metadata/link support, and validate against a real GitLab project.",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [],
@@ -23,7 +23,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-19",
-  "completedAt": null,
+  "completedAt": "2026-08-19",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,

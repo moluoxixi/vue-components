@@ -27,7 +27,7 @@ Extract the reusable repository-provider contract into the theme package, implem
 - [x] Contributor counts render without unverified profiles.
 - [x] The client/sync tests cover token headers, anonymous reads, pagination, retry, component filtering, rate limits, secret redaction, and atomic replacement.
 - [x] A real public JiHu GitLab project proves anonymous source/line/commit/issue links, logged-in edit/new-Issue flows, and live metadata synchronization.
-- [ ] Focused and full repository checks pass, changes are committed/pushed, and GitHub Actions succeeds.
+- [x] Focused and full repository checks pass, changes are committed/pushed, and GitHub Actions succeeds.
 
 ## Out of Scope
 

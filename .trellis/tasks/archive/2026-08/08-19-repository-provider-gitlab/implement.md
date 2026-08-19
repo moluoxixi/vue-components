@@ -9,7 +9,7 @@
 - [x] Create/provision the real public JiHu GitLab fixture and validate UI/API behavior without storing credentials.
 - [x] Update Chinese/English provider documentation.
 - [x] Run focused tests, typechecks, all non-placeholder snapshot validators, and the complete GitHub Actions-equivalent suite.
-- [ ] Review the diff, commit/push the child changes, and confirm GitHub Actions succeeds.
+- [x] Review the diff, commit/push the child changes, and confirm GitHub Actions succeeds.
 
 Rollback gate: production selection must remain `github`; no token or browser-session data may be tracked.
 

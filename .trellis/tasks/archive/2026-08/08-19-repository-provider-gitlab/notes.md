@@ -11,5 +11,9 @@
 - Anonymous live synchronization completed at `2026-08-19T10:53:43.414Z` with HEAD `af9833f29c2afc03834714788b985f017944c640`, eight CopyText commits, one contributor, and one open Issue. The committed Issue URL preserves JiHu's REST-provided `/-/work_items/1` route.
 - JiHu returned both legacy `/-/issues/:iid` and current `/-/work_items/:iid` detail routes during acceptance. Snapshot validation accepts either route only for the exact origin, project path, and IID; commit detail URLs must likewise match the exact project and full SHA without query or hash suffixes.
 - Post-fix focused GitLab/docs tests passed `26/26`; docs TypeScript checking and the production VitePress build completed successfully.
+- Final work commit `a496ae059e4279a7c85666e70862228d7f75ada4` was pushed to `main` after rebasing onto release commit `af9833f`.
+- GitHub CI run `https://github.com/moluoxixi/vue-components/actions/runs/32261884815` succeeded, including browser package/playground tests and the full verify job.
+- Pages run `https://github.com/moluoxixi/vue-components/actions/runs/32263294180` built the documentation and playgrounds artifact and deployed GitHub Pages successfully.
+- Release run `https://github.com/moluoxixi/vue-components/actions/runs/32263294149` versioned changed packages, published them, and pushed release tags successfully.
 - Do not mark this task complete or archive it before recording fixture identity, anonymous/authenticated behavior, enabled route evidence, live synchronization, and final commit/push/CI results.
 
