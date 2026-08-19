@@ -1,2 +1,0 @@
-{"file":".moluoxixi/spec/guides/cross-layer-thinking-guide.md","reason":"Responsive layout, option resolution, condition preview, and diagnostics cross document, compiler, runtime, adapter, and UI boundaries."}
-{"file":".moluoxixi/spec/guides/code-reuse-thinking-guide.md","reason":"New breakpoint and option contracts must reuse existing registry/runtime projections instead of duplicating payload parsing."}
