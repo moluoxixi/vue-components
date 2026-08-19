@@ -174,3 +174,24 @@ Implemented editable-table mode/slot APIs, P0-P3 reuse and release tooling, pack
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: Validate GitLab provider against JiHu
+
+**Date**: 2026-08-19
+**Task**: Validate GitLab provider against JiHu
+**Branch**: `main`
+
+### Summary
+
+Validated the reusable GitLab repository provider against a retained public JiHu fixture, tightened Issue and commit URL identity checks, committed the live snapshot, and confirmed CI, Pages deployment, and npm release workflows succeeded.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a496ae0` | (see git log) |
+
+### Status
+
+[OK] **Completed**

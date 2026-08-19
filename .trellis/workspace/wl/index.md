@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 5
-- **Last Active**: 2026-08-13
+- **Total Sessions**: 6
+- **Last Active**: 2026-08-19
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~176 | Active |
+| `journal-1.md` | ~197 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 6 | 2026-08-19 | Validate GitLab provider against JiHu | `a496ae0` | `main` |
 | 5 | 2026-08-13 | Editable table P0-P3 and package path cleanup | `835b630`, `088a243`, `0637124` | `codex/editable-table-p0-p3` |
 | 4 | 2026-08-08 | Fix ConfigForm designer form settings and defaults | `be56481` | `main` |
 | 3 | 2026-08-08 | Expand standalone visual form designer | `1044bb3` | `main` |
