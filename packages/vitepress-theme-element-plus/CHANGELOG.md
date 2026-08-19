@@ -1,5 +1,11 @@
 # @moluoxixi/vitepress-theme-element-plus
 
+## 0.1.13
+
+### Patch Changes
+
+- 8ab6908: Render repository provider labels without assuming GitHub.
+
 ## 0.1.12
 
 ### Patch Changes
