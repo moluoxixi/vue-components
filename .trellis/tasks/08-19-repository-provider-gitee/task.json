@@ -1,0 +1,38 @@
+{
+  "id": "repository-provider-gitee",
+  "name": "repository-provider-gitee",
+  "title": "Gitee repository provider",
+  "description": "Implement Gitee metadata/link support on the shared provider boundary and validate against a real Gitee project.",
+  "status": "planning",
+  "complexity": {
+    "level": "complex",
+    "signals": [],
+    "reason": ""
+  },
+  "executionApproval": {
+    "mode": "manual",
+    "granted": false,
+    "source": null,
+    "grantedAt": null,
+    "reason": ""
+  },
+  "dev_type": null,
+  "scope": null,
+  "package": "components-playground",
+  "priority": "P1",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-19",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "08-19-repository-provider-platforms",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

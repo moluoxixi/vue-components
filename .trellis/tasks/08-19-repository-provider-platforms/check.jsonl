@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/docs/frontend/index.md", "reason": "Verify documentation-site provider behavior, metadata synchronization, and build integration."}
+{"file": ".trellis/spec/vitepress-theme-element-plus/frontend/index.md", "reason": "Verify theme public API compatibility, provider registry invariants, and URL action behavior."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Verify shared consistency and quality requirements across packages."}

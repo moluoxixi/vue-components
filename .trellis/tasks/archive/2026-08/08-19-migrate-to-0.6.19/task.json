@@ -1,0 +1,38 @@
+{
+  "id": "migrate-to-0.6.19",
+  "name": "migrate-to-0.6.19",
+  "title": "Migrate to v0.6.19",
+  "description": "Breaking change migration from v0.3.0 to v0.6.19",
+  "status": "completed",
+  "dev_type": null,
+  "scope": "migration",
+  "package": null,
+  "priority": "P1",
+  "creator": "moluoxixi-update",
+  "assignee": "wl",
+  "createdAt": "2026-08-18",
+  "completedAt": "2026-08-19",
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "complexity": {
+    "level": "lightweight",
+    "signals": [],
+    "reason": "Runtime upgrade with one reviewed config merge"
+  },
+  "executionApproval": {
+    "mode": "manual",
+    "granted": true,
+    "source": "explicit_user",
+    "grantedAt": "2026-08-18T16:25:34.620946Z",
+    "reason": "Final planning artifacts approved before start"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "id": "repository-provider-platforms",
+  "name": "repository-provider-platforms",
+  "title": "Multi-platform repository providers",
+  "description": "Add production-ready GitLab, Gitee, and Yunxiao repository providers with real-project browser validation and reusable provider boundaries.",
+  "status": "planning",
+  "complexity": {
+    "level": "complex",
+    "signals": [],
+    "reason": ""
+  },
+  "executionApproval": {
+    "mode": "manual",
+    "granted": false,
+    "source": null,
+    "grantedAt": null,
+    "reason": ""
+  },
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-19",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-19-repository-provider-gitlab",
+    "08-19-repository-provider-gitee",
+    "08-19-repository-provider-yunxiao"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

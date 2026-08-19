@@ -1,0 +1,38 @@
+{
+  "id": "repository-provider-gitlab",
+  "name": "repository-provider-gitlab",
+  "title": "GitLab repository provider",
+  "description": "Extract reusable repository-provider contracts, implement GitLab metadata/link support, and validate against a real GitLab project.",
+  "status": "planning",
+  "complexity": {
+    "level": "complex",
+    "signals": [],
+    "reason": ""
+  },
+  "executionApproval": {
+    "mode": "manual",
+    "granted": false,
+    "source": null,
+    "grantedAt": null,
+    "reason": ""
+  },
+  "dev_type": null,
+  "scope": null,
+  "package": "components-playground",
+  "priority": "P1",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-19",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "08-19-repository-provider-platforms",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
