@@ -195,3 +195,25 @@ Validated the reusable GitLab repository provider against a retained public JiHu
 ### Status
 
 [OK] **Completed**
+
+
+## Session 7: Complete GitLab self-managed provider support
+
+**Date**: 2026-08-20
+**Task**: Complete GitLab self-managed provider support
+**Branch**: `main`
+
+### Summary
+
+Added secure GitLab self-managed contributor profiles, provider-neutral repository labels, verified JiHu avatars and custom deployment paths, then shipped the theme release after CI, Pages, and npm workflows succeeded.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8ab6908` | (see git log) |
+| `237cb9b` | (see git log) |
+
+### Status
+
+[OK] **Completed**
