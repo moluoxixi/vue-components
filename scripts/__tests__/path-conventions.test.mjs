@@ -108,6 +108,12 @@ describe('repository path conventions', () => {
     expect(extractAiDocBuild).toBeGreaterThan(extractComponentBuild)
   })
 
+  it('waits for workspace dependencies before the documentation build', () => {
+    const turboConfig = JSON.parse(readFileSync(resolve(repositoryRoot, 'turbo.json'), 'utf8'))
+
+    expect(turboConfig.tasks['@moluoxixi/docs#build'].dependsOn).toEqual(['^build'])
+  })
+
   it('requires an explicit declaration package manifest', () => {
     const result = spawnSync(process.execPath, [declarationFinalizer], {
       cwd: repositoryRoot,

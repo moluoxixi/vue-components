@@ -10,6 +10,7 @@ import { createLocalMetadata, stageLocalMetadata, writeLocalMetadata } from './l
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(scriptDir, '../../..')
 const outputPath = resolve(scriptDir, '../.vitepress/local-metadata.json')
+const repository = docsSite.repositories.local
 const shouldStage = process.argv.slice(2).includes('--stage')
 const unknownArguments = process.argv.slice(2).filter(argument => argument !== '--stage')
 
@@ -24,16 +25,16 @@ const components = documentedComponents.map(component => ({
 try {
   const snapshot = createLocalMetadata({
     components,
-    defaultBranch: docsSite.repository.defaultBranch,
+    defaultBranch: repository.defaultBranch,
     repositoryRoot,
-    repositoryUrl: docsSite.repository.url,
+    repositoryUrl: repository.url,
   })
 
   writeLocalMetadata({
     expectation: {
       components,
-      defaultBranch: docsSite.repository.defaultBranch,
-      repositoryUrl: docsSite.repository.url,
+      defaultBranch: repository.defaultBranch,
+      repositoryUrl: repository.url,
     },
     outputPath,
     snapshot,

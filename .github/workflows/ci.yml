@@ -46,6 +46,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Validate repository metadata snapshots
+        run: pnpm -C docs/vitepress validate-repository-metadata
+
       - name: Test release automation
         run: pnpm test:release
 

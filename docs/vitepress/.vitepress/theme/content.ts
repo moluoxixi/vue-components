@@ -30,10 +30,13 @@ import {
   getDocsLocaleConfig,
 } from '../docs-site'
 import {
-  configuredRepositoryMetadataProvider,
+  configuredRepositoryMetadataContentProvider,
   getComponentRepositoryMetadata,
-  repositoryMetadata,
 } from '../repository-metadata'
+import {
+  createRepositoryMetadataActionInput,
+  repositoryMetadataSelection,
+} from '../repository-metadata-selection'
 import { useDocsLocale } from './composables/use-docs-locale'
 import {
   resolveDocsRepositoryComponentMeta,
@@ -177,18 +180,15 @@ export const docsContent = createElementPlusDocsContent({
     const metadata = getComponentRepositoryMetadata(name)
     const sourcePath = componentSourcePath(name)
     const docsSourcePath = componentDocsSourcePath(name)
-    const repositoryUrl = docsSite.repository.url
-    const branch = repositoryMetadata.repository.defaultBranch
+    const actionInput = createRepositoryMetadataActionInput(repositoryMetadataSelection, name)
     const repositoryContent = resolveDocsRepositoryComponentMeta(
-      configuredRepositoryMetadataProvider,
+      configuredRepositoryMetadataContentProvider,
       metadata,
       {
-        defaultBranch: branch,
+        ...actionInput,
         editPath: hasSourceDoc
           ? `${docsSourcePath}/${getDocsLocaleConfig(locale as DocsLocale).sourceDoc}`
           : sourcePath,
-        issueTitlePrefix: docsSite.repository.issueTitlePrefix(name),
-        repositoryUrl,
         sourcePath,
       },
     )
@@ -204,7 +204,7 @@ export const docsContent = createElementPlusDocsContent({
   },
   resolveContributors({ name }) {
     return resolveDocsRepositoryContributors(
-      configuredRepositoryMetadataProvider,
+      configuredRepositoryMetadataContentProvider,
       getComponentRepositoryMetadata(name),
     )
   },

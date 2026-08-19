@@ -114,6 +114,35 @@ export type {
   ElementPlusDocsSfcCompiler,
   ElementPlusDocsSfcCompilerOptions,
 } from './src/content/playground/types'
+export {
+  createGiteeRepositoryMetadataActions,
+  createGithubRepositoryMetadataActions,
+  createGitlabRepositoryMetadataActions,
+  createYunxiaoRepositoryMetadataActions,
+} from './src/content/repository/actions'
+export {
+  createRepositoryMetadataProviderRegistry,
+  defineRepositoryMetadataProvider,
+  repositoryMetadataProviderSupports,
+} from './src/content/repository/registry'
+export type {
+  RepositoryCommit,
+  RepositoryComponentMetadata,
+  RepositoryContributor,
+  RepositoryFileLinkInput,
+  RepositoryIssueLinkInput,
+  RepositoryMetadata,
+  RepositoryMetadataCapabilities,
+  RepositoryMetadataCapability,
+  RepositoryMetadataExpectation,
+  RepositoryMetadataPayload,
+  RepositoryMetadataProvider,
+  RepositoryMetadataProviderActions,
+  RepositoryMetadataProviderIdentity,
+  RepositoryMetadataProviderRegistry,
+  RepositoryMetadataProviderResolution,
+  RepositorySourceLineLinkInput,
+} from './src/content/repository/types'
 export type {
   ElementPlusDocsChangelogMessages,
   ElementPlusDocsContentMessages,

@@ -23,6 +23,57 @@ export type DocsLocale = keyof typeof docsLocales
 
 export const defaultDocsLocale: DocsLocale = 'zh-CN'
 
+export type DocsRepositoryMetadataProviderId = 'gitee' | 'github' | 'gitlab' | 'local' | 'yunxiao'
+
+const issueTitlePrefix = (componentName: string) => `[${componentName}]`
+const githubRepository = {
+  owner: 'moluoxixi',
+  name: 'vue-components',
+  defaultBranch: 'main',
+  url: 'https://github.com/moluoxixi/vue-components',
+  issueTitlePrefix,
+}
+const gitlabProjectPath = 'gitlab-org/cli'
+const gitlabWebBaseUrl = 'https://gitlab.com'
+const gitlabRepository = {
+  apiBaseUrl: 'https://gitlab.com/api/v4',
+  defaultBranch: 'main',
+  issueTitlePrefix,
+  projectPath: gitlabProjectPath,
+  url: `${gitlabWebBaseUrl}/${gitlabProjectPath}`,
+  userAgent: 'moluoxixi-docs-gitlab-metadata-sync',
+  webBaseUrl: gitlabWebBaseUrl,
+}
+const giteeRepository = {
+  apiBaseUrl: 'https://gitee.com/api/v5',
+  defaultBranch: 'main',
+  issueTitlePrefix,
+  name: 'vue',
+  owner: 'mirrors',
+  url: 'https://gitee.com/mirrors/vue',
+  userAgent: 'moluoxixi-docs-gitee-metadata-sync',
+  webBaseUrl: 'https://gitee.com',
+}
+const yunxiaoRepository = {
+  apiBaseUrl: 'https://openapi-rdc.aliyuncs.com',
+  apiMode: 'central' as const,
+  defaultBranch: 'main',
+  organizationId: 'configure-yunxiao-organization-id',
+  repositoryId: 'configure-yunxiao-repository-id',
+  repositoryPath: 'configure-yunxiao/repository',
+  url: 'https://codeup.aliyun.com/configure-yunxiao/repository',
+  userAgent: 'moluoxixi-docs-yunxiao-metadata-sync',
+}
+
+const metadataProvider: DocsRepositoryMetadataProviderId = 'github'
+const repositories = {
+  gitee: giteeRepository,
+  github: githubRepository,
+  gitlab: gitlabRepository,
+  local: githubRepository,
+  yunxiao: yunxiaoRepository,
+}
+
 export const docsSite = {
   title: 'MoluoXixi Components',
   siteTitle: 'MX Components',
@@ -38,14 +89,9 @@ export const docsSite = {
     'packages/rich-text-editor/index.ts',
   ],
   packageStylesImport: '@moluoxixi/components/styles',
-  metadataProvider: 'github',
-  repository: {
-    owner: 'moluoxixi',
-    name: 'vue-components',
-    defaultBranch: 'main',
-    url: 'https://github.com/moluoxixi/vue-components',
-    issueTitlePrefix: (componentName: string) => `[${componentName}]`,
-  },
+  metadataProvider,
+  repositories,
+  repository: repositories[metadataProvider],
   source: {
     componentRoot: 'packages/components/src',
   },

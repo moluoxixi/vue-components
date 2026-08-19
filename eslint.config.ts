@@ -38,6 +38,7 @@ export default antfu({
     '.agents/**',
     '.codex/**',
     '.moluoxixi/**',
+    '.trellis/**',
     'spikes/**',
   ],
   rules: {},

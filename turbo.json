@@ -12,6 +12,7 @@
       "outputs": ["dist/**", "!dist/test-results/**", "!dist/playwright-report/**"]
     },
     "@moluoxixi/docs#build": {
+      "dependsOn": ["^build"],
       "outputs": [".vitepress/dist/**"]
     },
     "typecheck": {

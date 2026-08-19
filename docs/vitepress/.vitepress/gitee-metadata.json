@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-19T06:25:57.075Z",
+  "repository": {
+    "defaultBranch": "main",
+    "fullName": "mirrors/vue",
+    "headSha": "9e88707940088cb1f4cd7dd210c9168a50dc347c",
+    "issuesEnabled": false,
+    "webUrl": "https://gitee.com/mirrors/vue"
+  },
+  "components": {
+    "CopyText": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/CopyText"
+    },
+    "HeadlessCopyText": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/HeadlessCopyText"
+    },
+    "AntdConfigForm": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/AntdConfigForm"
+    },
+    "ElementConfigForm": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/ElementConfigForm"
+    },
+    "DateRangePicker": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/DateRangePicker"
+    },
+    "EnterNextContainer": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/EnterNextContainer"
+    },
+    "RequestSelectV2": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RequestSelectV2"
+    },
+    "RequestCascader": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RequestCascader"
+    },
+    "RequestTreeSelect": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RequestTreeSelect"
+    },
+    "ConfigTable": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/ConfigTable"
+    },
+    "HeadlessTable": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/HeadlessTable"
+    },
+    "PopoverTableSelect": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/PopoverTableSelect"
+    },
+    "RichTextEditor": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RichTextEditor"
+    }
+  }
+}

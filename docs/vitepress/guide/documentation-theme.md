@@ -10,9 +10,13 @@
 4. 为每个 locale 分别声明语言标签、VitePress 站点键和 URL 前缀，例如中文使用 `zh-CN`、`root`、空前缀，英文使用 `en-US`、`en`、`/en`。主题不会从语言标签猜测路由。
 5. 运行主题包的类型检查、测试、构建和中性 fixture 构建，再运行目标文档站的测试与生产构建。
 
-仓库元数据由可注册的 provider 提供。当前注册 `github` 与 `local` 两个 provider，站点通过 `docsSite.metadataProvider` 显式选择其中一个，生产配置保持为 `github`。每个 provider 声明平台身份、独立快照文件、校验/归一化函数和能力（提交历史、贡献者、profile、issue、仓库操作）；未知 provider（例如尚未注册的 `gitlab`）会在加载快照前失败，不会生成伪造数据。两个快照仍严格独立，不能 `auto`、文件回退或跨源合并；普通 `dev` 和 `build` 只校验并消费选中的快照，也不会访问网络。`pnpm --filter @moluoxixi/docs sync-github-metadata` 使用 GitHub API 刷新 issue、profile 和提交信息；`pnpm --filter @moluoxixi/docs sync-local-metadata` 从完整本地 Git 历史中的配置默认分支刷新提交与贡献者，拒绝 shallow clone，且不把作者邮箱写入快照。GitHub-only issue/profile/仓库操作只在 `github` provider 的能力开启时显示；local Git 只提供本地历史与贡献者。
+仓库元数据由可注册的 provider 提供。当前注册 `github`、`local`、`gitlab`、`gitee` 与 `yunxiao`，站点通过 `docsSite.metadataProvider` 严格选择其中一个，生产配置保持为 `github`。主题包导出平台无关的元数据契约、registry、能力裁剪和平台 URL action；站点保留凭据、API client、同步脚本、校验器和独立 JSON 快照。不存在 `auto`、文件回退或跨源合并，未知 provider 会在读取快照前失败。普通 `dev` 和 `build` 只校验并消费所选快照，不访问平台 API。
 
-现有 Husky `pre-commit` 会刷新本地 Git 快照并只暂存 `.vitepress/local-metadata.json`，不会把其他工作区文件加入暂存区。扫描器解析配置的默认分支，而不是任意检出分支的 `HEAD`。由于待创建提交的 SHA 在 hook 结束后才存在，在默认分支上创建的提交会写入截至 hook 执行前的分支历史；新提交会在下一次刷新时进入历史。需要单独核验时可运行 `validate-github-metadata`、`validate-local-metadata` 或按配置执行的 `validate-selected-metadata`。
+各平台使用独立命令：`sync-github-metadata`、`sync-gitlab-metadata`、`sync-gitee-metadata`、`sync-yunxiao-metadata` 和 `sync-local-metadata`；对应的 `validate-*-metadata` 命令可离线校验已提交快照。`validate-repository-metadata` 是 CI 的离线聚合入口，只验证已经拥有真实快照的 GitHub、GitLab、Gitee 和 local，不调用任何网络同步。GitLab 支持显式 web/API base URL 和含 subgroup 的完整项目路径，使用可选 `GITLAB_TOKEN`。Gitee 以公共云 REST v5 为基线，web/API base URL 可配置，但企业版必须按实例核验，使用可选 `GITEE_TOKEN`。云效同时表达中央站和地域租户 API，实时同步必须提供 `YUNXIAO_TOKEN`；当前仓库尚未配置真实租户，跟踪的云效快照是明确的配置占位，`validate-yunxiao-metadata` 会拒绝它，不能视为远端验收。所有 collector 都不会把作者邮箱或 token 写入快照，分页也只能留在配置的 API origin 与路径范围内。
+
+能力以 provider 声明为上限，快照只能关闭能力，不能开启未声明能力。GitLab/Gitee 项目关闭 Issues 时会同时隐藏 Issue 数据和动作。云效没有仓库级 Issues，因此 `issues` 与 `issueActions` 恒为关闭；在真实租户证明精确源码、行锚和编辑路由前，`sourceLinks` 与 `editLinks` 也保持关闭，不会把 Projex 工作项或变更请求伪装为 Issue。
+
+现有 Husky `pre-commit` 只自动刷新并暂存 `.vitepress/local-metadata.json`；网络 provider 不进入提交 hook，避免提交受外部平台可用性、token 或限流影响。扫描器解析配置的默认分支，而不是任意检出分支的 `HEAD`。由于待创建提交的 SHA 在 hook 结束后才存在，在默认分支上创建的提交会写入截至 hook 执行前的分支历史；新提交会在下一次刷新时进入历史。GitHub Actions/Pages 和 npm 发布仍由现有 GitHub 流水线负责，源码管理 provider 不会隐式创建 GitLab CI、Gitee Go 或云效 Flow。
 
 组件 API 名称、类型和描述来自源码契约，不在 Markdown 中重复维护。主题操作文案和生成页面框架完整支持中英文；组件正文和源码 JSDoc 的翻译由 locale 源文档与组件作者逐步补齐。
 

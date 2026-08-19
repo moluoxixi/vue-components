@@ -1,15 +1,31 @@
 // @vitest-environment node
 
 import type { RepositoryMetadataProvider } from '../../.vitepress/repository-metadata-types'
+import type {
+  YunxiaoMetadataExpectation,
+  YunxiaoMetadataSnapshot,
+} from '../../.vitepress/yunxiao-metadata-types'
 import { describe, expect, it } from 'vitest'
 import { docsSite } from '../../.vitepress/docs-site'
+import { assertGiteeMetadataSnapshot } from '../../.vitepress/gitee-metadata-types'
+import giteeSnapshot from '../../.vitepress/gitee-metadata.json'
 import githubSnapshot from '../../.vitepress/github-metadata.json'
+import { assertGitlabMetadataSnapshot } from '../../.vitepress/gitlab-metadata-types'
+import gitlabSnapshot from '../../.vitepress/gitlab-metadata.json'
 import { assertLocalMetadataSnapshot } from '../../.vitepress/local-metadata-types'
 import localSnapshot from '../../.vitepress/local-metadata.json'
 import { configuredRepositoryMetadataProvider, repositoryMetadata } from '../../.vitepress/repository-metadata'
 import { repositoryMetadataSnapshotPath } from '../../.vitepress/repository-metadata-alias'
-import { repositoryMetadataExpectation } from '../../.vitepress/repository-metadata-expectation'
+import {
+  repositoryMetadataExpectation,
+  repositoryMetadataExpectations,
+} from '../../.vitepress/repository-metadata-expectation'
 import { repositoryMetadataProviders } from '../../.vitepress/repository-metadata-providers'
+import {
+  createRepositoryMetadataActionInput,
+  repositoryMetadataSelection,
+  selectRepositoryMetadataConfiguration,
+} from '../../.vitepress/repository-metadata-selection'
 import {
   createRepositoryMetadataProviderRegistry,
   defineRepositoryMetadataProvider,
@@ -19,14 +35,74 @@ import {
   resolveDocsRepositoryComponentMeta,
   resolveDocsRepositoryContributors,
 } from '../../.vitepress/theme/repository-content'
+import { assertYunxiaoMetadataSnapshot } from '../../.vitepress/yunxiao-metadata-types'
+import yunxiaoSnapshot from '../../.vitepress/yunxiao-metadata.json'
+
+const configuredYunxiaoExpectation: YunxiaoMetadataExpectation = {
+  ...repositoryMetadataExpectations.yunxiao,
+  organizationId: 'organization-1',
+  repositoryId: '1001',
+  repositoryPath: 'group/project',
+  repositoryUrl: 'https://codeup.test/group/project',
+}
+
+function createConfiguredYunxiaoSnapshot(): YunxiaoMetadataSnapshot {
+  const snapshot = structuredClone(yunxiaoSnapshot) as YunxiaoMetadataSnapshot
+  Object.assign(snapshot.repository, {
+    headSha: 'a'.repeat(40),
+    organizationId: configuredYunxiaoExpectation.organizationId,
+    repositoryId: configuredYunxiaoExpectation.repositoryId,
+    repositoryPath: configuredYunxiaoExpectation.repositoryPath,
+    webUrl: configuredYunxiaoExpectation.repositoryUrl,
+  })
+  return snapshot
+}
 
 describe('repository metadata providers', () => {
   it('keeps GitHub as the selected production provider and loads one snapshot', () => {
     expect(docsSite.metadataProvider).toBe('github')
+    expect(docsSite.repository).toBe(docsSite.repositories[docsSite.metadataProvider])
+    expect(repositoryMetadataSelection.providerId).toBe('github')
     expect(configuredRepositoryMetadataProvider.id).toBe('github')
     expect(repositoryMetadata.provider.platform).toBe('github')
     expect(repositoryMetadata.repository.headSha).toBe(githubSnapshot.repository.headSha)
     expect(repositoryMetadataSnapshotPath(docsSite.metadataProvider)).toMatch(/github-metadata\.json$/)
+  })
+
+  it('switches repository, snapshot, and action inputs as one provider-scoped selection', () => {
+    const selection = selectRepositoryMetadataConfiguration(
+      'gitlab',
+      docsSite.repositories,
+      repositoryMetadataExpectations,
+      repositoryMetadataProviders,
+    )
+    const actionInput = createRepositoryMetadataActionInput(selection, 'CopyText')
+    const sourceHref = selection.provider.actions?.sourceLineHref?.({
+      ...actionInput,
+      endLine: 8,
+      path: 'packages/components/src/CopyText/docs/index.md',
+      startLine: 3,
+    })
+
+    expect(selection.providerId).toBe('gitlab')
+    expect(selection.repository).toBe(docsSite.repositories.gitlab)
+    expect(selection.expectation).toBe(repositoryMetadataExpectations.gitlab)
+    expect(selection.snapshotFile).toBe('gitlab-metadata.json')
+    expect(actionInput).toEqual({
+      defaultBranch: 'main',
+      issueTitlePrefix: '[CopyText]',
+      repositoryUrl: 'https://gitlab.com/gitlab-org/cli',
+    })
+    expect(sourceHref).toBe(
+      'https://gitlab.com/gitlab-org/cli/-/blob/main/packages/components/src/CopyText/docs/index.md#L3-8',
+    )
+    expect(sourceHref).not.toContain('github.com')
+    expect(() => selectRepositoryMetadataConfiguration(
+      'auto',
+      docsSite.repositories,
+      repositoryMetadataExpectations,
+      repositoryMetadataProviders,
+    )).toThrow('Unsupported repository metadata provider: auto')
   })
 
   it('normalizes GitHub capabilities and provider-owned links', () => {
@@ -43,7 +119,11 @@ describe('repository metadata providers', () => {
   })
 
   it('normalizes local Git with history and contributors only', () => {
-    const metadata = repositoryMetadataProviders.resolve('local', localSnapshot, repositoryMetadataExpectation)
+    const metadata = repositoryMetadataProviders.resolve(
+      'local',
+      localSnapshot,
+      repositoryMetadataExpectations.local,
+    )
 
     expect(metadata.provider.platform).toBe('local')
     expect(metadata.components.CopyText?.openIssueCount).toBeUndefined()
@@ -64,7 +144,7 @@ describe('repository metadata providers', () => {
     const localMetadata = repositoryMetadataProviders.resolve(
       'local',
       localSnapshot,
-      repositoryMetadataExpectation,
+      repositoryMetadataExpectations.local,
     )
     const input = {
       defaultBranch: docsSite.repository.defaultBranch,
@@ -103,13 +183,68 @@ describe('repository metadata providers', () => {
     expect(localContributors?.[0]).not.toHaveProperty('profileUrl')
   })
 
-  it('fails before snapshot loading for an unsupported provider', () => {
-    expect(() => repositoryMetadataProviders.get('gitlab')).toThrow(
-      'Unsupported repository metadata provider: gitlab',
+  it('registers GitLab with an isolated snapshot and capability contract', () => {
+    const metadata = repositoryMetadataProviders.resolve(
+      'gitlab',
+      gitlabSnapshot,
+      repositoryMetadataExpectations.gitlab,
     )
-    expect(() => repositoryMetadataSnapshotPath('gitlab')).toThrow(
-      'Unsupported repository metadata provider: gitlab',
+
+    expect(repositoryMetadataProviders.ids).toEqual(['github', 'local', 'gitlab', 'gitee', 'yunxiao'])
+    expect(repositoryMetadataSnapshotPath('gitlab')).toMatch(/gitlab-metadata\.json$/)
+    expect(metadata.provider.platform).toBe('gitlab')
+    expect(metadata.components.CopyText?.contributors.every(contributor => contributor.id.startsWith('gitlab:'))).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'sourceLinks')).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'contributorProfiles')).toBe(false)
+    for (const contributor of metadata.components.CopyText?.contributors ?? [])
+      expect(contributor).not.toHaveProperty('profileUrl')
+  })
+
+  it('registers Gitee with an isolated snapshot and project-owned links', () => {
+    const metadata = repositoryMetadataProviders.resolve(
+      'gitee',
+      giteeSnapshot,
+      repositoryMetadataExpectations.gitee,
     )
+    const provider = repositoryMetadataProviders.get('gitee')
+
+    expect(repositoryMetadataSnapshotPath('gitee')).toMatch(/gitee-metadata\.json$/)
+    expect(metadata.provider.platform).toBe('gitee')
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(false)
+    expect(provider.actions?.sourceLineHref?.({
+      defaultBranch: 'main',
+      endLine: 8,
+      path: 'README.md',
+      repositoryUrl: docsSite.repositories.gitee.url,
+      startLine: 3,
+    })).toBe('https://gitee.com/mirrors/vue/blob/main/README.md#L3-L8')
+  })
+
+  it('registers Yunxiao with commit-only capabilities and no repository Issues or guessed links', () => {
+    expect(() => repositoryMetadataProviders.resolve(
+      'yunxiao',
+      yunxiaoSnapshot,
+      repositoryMetadataExpectations.yunxiao,
+    )).toThrow('provider configuration is still a placeholder')
+
+    const configuredSnapshot = createConfiguredYunxiaoSnapshot()
+    const metadata = repositoryMetadataProviders.resolve(
+      'yunxiao',
+      configuredSnapshot,
+      configuredYunxiaoExpectation,
+    )
+    const provider = repositoryMetadataProviders.get('yunxiao')
+
+    expect(repositoryMetadataSnapshotPath('yunxiao')).toMatch(/yunxiao-metadata\.json$/)
+    expect(metadata.provider.platform).toBe('yunxiao')
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'commitHistory')).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'contributors')).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'sourceLinks')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'editLinks')).toBe(false)
+    expect(provider.actions).toEqual({})
   })
 
   it('does not fall back to another provider snapshot', () => {
@@ -121,8 +256,28 @@ describe('repository metadata providers', () => {
     expect(() => repositoryMetadataProviders.resolve(
       'local',
       githubSnapshot,
-      repositoryMetadataExpectation,
+      repositoryMetadataExpectations.local,
     )).toThrow('Invalid local Git metadata snapshot')
+    expect(() => repositoryMetadataProviders.resolve(
+      'gitlab',
+      githubSnapshot,
+      repositoryMetadataExpectations.gitlab,
+    )).toThrow('Invalid GitLab metadata snapshot')
+    expect(() => repositoryMetadataProviders.resolve(
+      'github',
+      gitlabSnapshot,
+      repositoryMetadataExpectations.github,
+    )).toThrow('Invalid GitHub metadata snapshot')
+    expect(() => repositoryMetadataProviders.resolve(
+      'gitee',
+      gitlabSnapshot,
+      repositoryMetadataExpectations.gitee,
+    )).toThrow('Invalid Gitee metadata snapshot')
+    expect(() => repositoryMetadataProviders.resolve(
+      'yunxiao',
+      giteeSnapshot,
+      configuredYunxiaoExpectation,
+    )).toThrow('Invalid Yunxiao metadata snapshot')
   })
 
   it('validates provider-required configuration before parsing snapshots', () => {
@@ -135,9 +290,106 @@ describe('repository metadata providers', () => {
       repository: undefined,
     })).toThrow('Repository metadata provider "github" requires configuration field "repository"')
     expect(() => repositoryMetadataProviders.resolve('local', null, {
-      ...repositoryMetadataExpectation,
+      ...repositoryMetadataExpectations.local,
       repositoryUrl: undefined,
     })).toThrow('Repository metadata provider "local" requires configuration field "repositoryUrl"')
+    expect(() => repositoryMetadataProviders.resolve('gitlab', null, {
+      ...repositoryMetadataExpectations.gitlab,
+      projectPath: undefined,
+    })).toThrow('Repository metadata provider "gitlab" requires configuration field "projectPath"')
+    expect(() => repositoryMetadataProviders.resolve('gitlab', null, {
+      ...repositoryMetadataExpectations.gitlab,
+      repositoryUrl: undefined,
+    })).toThrow('Repository metadata provider "gitlab" requires configuration field "repositoryUrl"')
+    expect(() => repositoryMetadataProviders.resolve('gitee', null, {
+      ...repositoryMetadataExpectations.gitee,
+      owner: undefined,
+    })).toThrow('Repository metadata provider "gitee" requires configuration field "owner"')
+    expect(() => repositoryMetadataProviders.resolve('yunxiao', null, {
+      ...repositoryMetadataExpectations.yunxiao,
+      organizationId: undefined,
+    })).toThrow('Repository metadata provider "yunxiao" requires configuration field "organizationId"')
+  })
+
+  it('rejects Gitee metadata from another repository and leaked email fields', () => {
+    const wrongRepository = structuredClone(giteeSnapshot)
+    wrongRepository.repository.fullName = 'other/repository'
+    expect(() => assertGiteeMetadataSnapshot(
+      wrongRepository,
+      repositoryMetadataExpectations.gitee,
+    )).toThrow('repository fullName must be mirrors/vue')
+
+    const leakedContributor = structuredClone(giteeSnapshot)
+    leakedContributor.components.CopyText!.contributors.push({
+      contributions: 1,
+      id: 'gitee:test',
+      name: 'Test',
+      email: 'private@example.test',
+    } as never)
+    expect(() => assertGiteeMetadataSnapshot(
+      leakedContributor,
+      repositoryMetadataExpectations.gitee,
+    )).toThrow('CopyText contributor contains unsupported or missing fields')
+  })
+
+  it('rejects Yunxiao cross-tenant snapshots and leaked contributor fields', () => {
+    const wrongOrganization = createConfiguredYunxiaoSnapshot()
+    wrongOrganization.repository.organizationId = 'another-organization'
+    expect(() => assertYunxiaoMetadataSnapshot(
+      wrongOrganization,
+      configuredYunxiaoExpectation,
+    )).toThrow(`organizationId must be ${configuredYunxiaoExpectation.organizationId}`)
+
+    const leakedContributor = createConfiguredYunxiaoSnapshot()
+    leakedContributor.components.CopyText!.contributors.push({
+      contributions: 1,
+      id: 'yunxiao:test',
+      name: 'Test',
+      email: 'private@example.test',
+    } as never)
+    expect(() => assertYunxiaoMetadataSnapshot(
+      leakedContributor,
+      configuredYunxiaoExpectation,
+    )).toThrow('CopyText contributor contains unsupported or missing fields')
+  })
+
+  it('downgrades GitLab Issues capabilities when the project disables Issues', () => {
+    const snapshot = structuredClone(gitlabSnapshot)
+    snapshot.repository.issuesEnabled = false
+    for (const component of Object.values(snapshot.components)) {
+      Reflect.deleteProperty(component, 'openIssueCount')
+      Reflect.deleteProperty(component, 'openIssues')
+    }
+
+    const metadata = repositoryMetadataProviders.resolve(
+      'gitlab',
+      snapshot,
+      repositoryMetadataExpectations.gitlab,
+    )
+
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(false)
+    expect(metadata.components.CopyText?.openIssueCount).toBeUndefined()
+  })
+
+  it('rejects malformed GitLab identity and leaked contributor fields', () => {
+    const wrongProject = structuredClone(gitlabSnapshot)
+    wrongProject.repository.projectPath = 'other/project'
+    expect(() => assertGitlabMetadataSnapshot(
+      wrongProject,
+      repositoryMetadataExpectations.gitlab,
+    )).toThrow(`projectPath must be ${docsSite.repositories.gitlab.projectPath}`)
+
+    const leakedContributor = structuredClone(gitlabSnapshot)
+    const contributor = leakedContributor.components.CopyText?.contributors[0]
+    if (contributor)
+      Object.assign(contributor, { email: 'private@example.test' })
+    else
+      leakedContributor.components.CopyText!.contributors.push({ contributions: 1, id: 'gitlab:test', name: 'Test', email: 'private@example.test' } as never)
+    expect(() => assertGitlabMetadataSnapshot(
+      leakedContributor,
+      repositoryMetadataExpectations.gitlab,
+    )).toThrow('CopyText contributor contains unsupported or missing fields')
   })
 
   it('rejects unsupported nested fields in local Git metadata', () => {
@@ -148,7 +400,7 @@ describe('repository metadata providers', () => {
 
     expect(() => assertLocalMetadataSnapshot(
       leakedSnapshot,
-      repositoryMetadataExpectation,
+      repositoryMetadataExpectations.local,
     )).toThrow('CopyText commit author contains unsupported or missing fields')
   })
 
@@ -158,8 +410,8 @@ describe('repository metadata providers', () => {
 
     expect(() => assertLocalMetadataSnapshot(
       wrongBranchSnapshot,
-      repositoryMetadataExpectation,
-    )).toThrow(`repository default branch must be ${docsSite.repository.defaultBranch}`)
+      repositoryMetadataExpectations.local,
+    )).toThrow(`repository default branch must be ${docsSite.repositories.local.defaultBranch}`)
   })
 
   it('allows a future provider to be registered with an explicit capability contract', () => {
@@ -173,18 +425,18 @@ describe('repository metadata providers', () => {
         issues: false,
         sourceLinks: false,
       },
-      id: 'gitlab',
-      platform: 'gitlab',
+      id: 'fixture',
+      platform: 'fixture',
       resolveSnapshot: () => ({
         components: {},
         repository: { defaultBranch: 'main', headSha: 'a'.repeat(40) },
       }),
-      snapshotFile: 'gitlab-metadata.json',
+      snapshotFile: 'fixture-metadata.json',
     } satisfies RepositoryMetadataProvider)
     const registry = createRepositoryMetadataProviderRegistry([futureProvider])
 
-    expect(registry.ids).toEqual(['gitlab'])
-    expect(registry.get('gitlab').platform).toBe('gitlab')
-    expect(registry.resolve('gitlab', {}, repositoryMetadataExpectation).components).toEqual({})
+    expect(registry.ids).toEqual(['fixture'])
+    expect(registry.get('fixture').platform).toBe('fixture')
+    expect(registry.resolve('fixture', {}, repositoryMetadataExpectation).components).toEqual({})
   })
 })

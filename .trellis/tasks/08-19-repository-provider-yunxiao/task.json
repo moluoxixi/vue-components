@@ -3,7 +3,7 @@
   "name": "repository-provider-yunxiao",
   "title": "Yunxiao Codeup repository provider",
   "description": "Implement Yunxiao Codeup metadata/link support with explicit capability limits and validate against a real Yunxiao repository.",
-  "status": "planning",
+  "status": "in_progress",
   "complexity": {
     "level": "complex",
     "signals": [],
@@ -11,14 +11,14 @@
   },
   "executionApproval": {
     "mode": "manual",
-    "granted": false,
-    "source": null,
-    "grantedAt": null,
-    "reason": ""
+    "granted": true,
+    "source": "explicit_user",
+    "grantedAt": "2026-08-19T07:37:43.2011542Z",
+    "reason": "User approved the Yunxiao implementation and push; authenticated tenant acceptance remains pending."
   },
   "dev_type": null,
   "scope": null,
-  "package": "components-playground",
+  "package": "docs",
   "priority": "P1",
   "creator": "wl",
   "assignee": "wl",
@@ -33,6 +33,6 @@
   "children": [],
   "parent": "08-19-repository-provider-platforms",
   "relatedFiles": [],
-  "notes": "",
+  "notes": "Yunxiao local implementation is in the working tree; retained authenticated-tenant route and live synchronization acceptance remain pending.",
   "meta": {}
 }

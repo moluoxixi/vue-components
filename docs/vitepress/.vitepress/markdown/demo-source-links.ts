@@ -5,8 +5,11 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectElementPlusDocsDemos } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { getLocalizedComponents } from '../docs-i18n'
-import { componentDocsSourcePath, docsLocales, docsSite } from '../docs-site'
-import { repositoryMetadataProviders } from '../repository-metadata-providers'
+import { componentDocsSourcePath, docsLocales } from '../docs-site'
+import {
+  createRepositoryMetadataActionInput,
+  repositoryMetadataSelection,
+} from '../repository-metadata-selection'
 import { repositoryMetadataProviderSupports } from '../repository-metadata-types'
 
 interface MarkdownEnvironment {
@@ -29,7 +32,7 @@ export function createDocsDemoSourceHrefResolver(
   root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..'),
 ): (context: ElementPlusDocsDemoSourceHrefContext) => string | undefined {
   let hrefByRouteAndDemo: ReadonlyMap<string, string> | undefined
-  const provider = repositoryMetadataProviders.get(docsSite.metadataProvider)
+  const provider = repositoryMetadataSelection.provider
 
   function sourceLinks(): ReadonlyMap<string, string> {
     if (hrefByRouteAndDemo)
@@ -52,10 +55,9 @@ export function createDocsDemoSourceHrefResolver(
           if (!repositoryMetadataProviderSupports(provider, 'sourceLinks'))
             continue
           const href = provider.actions?.sourceLineHref?.({
-            defaultBranch: docsSite.repository.defaultBranch,
+            ...createRepositoryMetadataActionInput(repositoryMetadataSelection, component.name),
             endLine: demo.endLine,
             path: sourceRelativePath,
-            repositoryUrl: docsSite.repository.url,
             startLine: demo.startLine,
           })
           if (!href)

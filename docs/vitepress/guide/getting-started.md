@@ -77,4 +77,4 @@ export default {
 | Vue                | `^3.5.0`   |
 | Element Plus       | `^2.9.0`   |
 | TanStack Vue Query | `^5.0.0`   |
-| Node               | `>=22.0.0` |
+| Node               | `>=22.6.0` |

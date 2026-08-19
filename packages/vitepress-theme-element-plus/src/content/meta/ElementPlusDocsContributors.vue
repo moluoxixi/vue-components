@@ -35,7 +35,7 @@ function contributorInitials(name: string): string {
 
 function contributorAriaLabel(contributor: ElementPlusDocsContributor): string {
   const identity = contributor.login
-    ? `${contributor.name}, GitHub @${contributor.login}`
+    ? `${contributor.name}, @${contributor.login}`
     : contributor.name
   return `${identity}, ${contributionText(props.messages.contributors.contribution, props.name, contributor.contributions)}`
 }
@@ -61,7 +61,7 @@ function contributorAriaLabel(contributor: ElementPlusDocsContributor): string {
         <template #content>
           <span class="doc-contributor-tooltip-content">
             <strong>{{ contributor.name }}</strong>
-            <span v-if="contributor.login">GitHub @{{ contributor.login }}</span>
+            <span v-if="contributor.login">@{{ contributor.login }}</span>
             <span>{{ contributionText(messages.contributors.contribution, name, contributor.contributions) }}</span>
           </span>
         </template>

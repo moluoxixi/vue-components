@@ -15,6 +15,7 @@ import {
 import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
 import { resolveComponentsExternalProjectSource } from './markdown/playground-external'
 import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './repository-metadata-alias'
+import { repositoryMetadataSelection } from './repository-metadata-selection'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
   const messages = getDocsMessages(locale)
@@ -71,7 +72,7 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config {
       })),
     },
     socialLinks: [
-      { icon: 'github', link: docsSite.repository.url },
+      { icon: 'github', link: repositoryMetadataSelection.repository.url },
     ],
     search: {
       provider: 'local',
@@ -140,7 +141,7 @@ export default defineElementPlusDocs({
     defaultLocale: defaultDocsLocale,
   },
   repository: {
-    ...docsSite.repository,
+    ...repositoryMetadataSelection.repository,
     editLinks: false,
   },
   components: {
@@ -182,7 +183,10 @@ export default defineElementPlusDocs({
         conditions: ['source'],
         alias: [
           { find: '@docs-components', replacement: docsSite.packageName },
-          { find: repositoryMetadataSnapshotId, replacement: repositoryMetadataSnapshotPath(docsSite.metadataProvider) },
+          {
+            find: repositoryMetadataSnapshotId,
+            replacement: repositoryMetadataSnapshotPath(repositoryMetadataSelection.providerId),
+          },
         ],
       },
       optimizeDeps: {

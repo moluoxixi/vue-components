@@ -1,17 +1,19 @@
 import selectedSnapshot from 'virtual:moluoxixi-repository-metadata-snapshot'
-import { docsSite } from './docs-site'
-import { repositoryMetadataExpectation } from './repository-metadata-expectation'
 import { repositoryMetadataProviders } from './repository-metadata-providers'
+import { repositoryMetadataSelection } from './repository-metadata-selection'
 
-export const configuredRepositoryMetadataProvider = repositoryMetadataProviders.get(
-  docsSite.metadataProvider,
-)
+export const configuredRepositoryMetadataProvider = repositoryMetadataSelection.provider
 
 export const repositoryMetadata = repositoryMetadataProviders.resolve(
   configuredRepositoryMetadataProvider.id,
   selectedSnapshot,
-  repositoryMetadataExpectation,
+  repositoryMetadataSelection.expectation,
 )
+
+export const configuredRepositoryMetadataContentProvider = {
+  actions: configuredRepositoryMetadataProvider.actions,
+  capabilities: repositoryMetadata.provider.capabilities,
+}
 
 export function getComponentRepositoryMetadata(componentName: string) {
   const metadata = repositoryMetadata.components[componentName]
