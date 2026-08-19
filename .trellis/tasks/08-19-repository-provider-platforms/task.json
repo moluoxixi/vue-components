@@ -33,7 +33,9 @@
   "children": [
     "08-19-repository-provider-gitlab",
     "08-19-repository-provider-gitee",
-    "08-19-repository-provider-yunxiao"
+    "08-19-repository-provider-yunxiao",
+    "08-19-repository-provider-tencent",
+    "08-19-repository-provider-gitlab-self-managed"
   ],
   "parent": null,
   "relatedFiles": [],

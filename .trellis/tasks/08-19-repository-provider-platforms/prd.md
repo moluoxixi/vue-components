@@ -52,8 +52,10 @@ Provide production-grade GitLab, Gitee, and Yunxiao Codeup repository integratio
 - `08-19-repository-provider-gitlab`: extract the shared package contract, implement GitLab first, and perform real GitLab validation.
 - `08-19-repository-provider-gitee`: implement Gitee on the shared contract and perform real Gitee validation.
 - `08-19-repository-provider-yunxiao`: implement Yunxiao Codeup with explicit capability limits and perform real tenant validation.
+- `08-19-repository-provider-gitlab-self-managed`: complete self-managed GitLab compatibility and verified contributor profiles before continuing the remaining platforms.
+- `08-19-repository-provider-tencent`: identify and implement the supported Tencent repository product after GitLab and Yunxiao are complete.
 
-Execution order is GitLab, then Gitee, then Yunxiao. Later children depend on the shared contract established by the GitLab child.
+Execution order is GitLab, Gitee, GitLab self-managed/profiles, Yunxiao, then Tencent. Later children depend on the shared contract established by the GitLab child.
 
 ## Acceptance Criteria
 

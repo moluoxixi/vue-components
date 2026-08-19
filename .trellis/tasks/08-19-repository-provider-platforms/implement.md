@@ -25,3 +25,9 @@ Local implementation for all three children is approved and in progress. Real-pr
 - [ ] Verify Chinese/English platform documentation and the three retained real-project records.
 - [ ] Review final commits/diffs, update approved project knowledge where warranted, and archive all child and parent tasks.
 
+## 5. Follow-up Providers
+
+- [ ] Complete `08-19-repository-provider-gitlab-self-managed` before resuming remaining provider work.
+- [ ] Finish retained-tenant validation and integration for `08-19-repository-provider-yunxiao`.
+- [ ] Research, plan, implement, and validate `08-19-repository-provider-tencent` against the selected Tencent repository product.
+
