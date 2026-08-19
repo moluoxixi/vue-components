@@ -17,6 +17,7 @@ Documentation builds consume generated API data and committed repository metadat
 - Do not run network metadata synchronization in pre-commit hooks or required CI.
 - Do not execute the native `.mts` scripts with Node versions below `22.6.0`.
 - Do not remove `dependsOn: ["^build"]` from the Turbo docs build task; docs consumes workspace package output.
+- Do not dynamically install Chromium and system packages in the browser CI job. Use a digest-pinned official Playwright image whose version matches `@playwright/test` in `pnpm-lock.yaml`.
 
 ---
 
@@ -67,6 +68,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 - `validate-repository-metadata` validates committed GitHub, GitLab, Gitee, and local snapshots offline. Yunxiao joins only after replacing its placeholder with a real tenant snapshot.
 - Native `node scripts/*.mts` execution requires Node `>=22.6.0`.
 - Turbo's `@moluoxixi/docs#build` must depend on `^build` so dependency packages finish before docs reads their `dist` output.
+- Browser CI runs in the official Playwright container pinned by version and amd64 digest; the image version must exactly match the locked `@playwright/test` version.
 
 #### 4. Validation & Error Matrix
 
@@ -80,6 +82,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 | Pagination changes API origin or leaves the configured API path | Reject the URL |
 | Network `429` or bounded `5xx` | Retry only within the configured limit; redact tokens from errors |
 | Yunxiao placeholder identity or all-zero SHA | Reject validation |
+| Playwright container version differs from the lockfile | Reject the workflow contract test |
 
 #### 5. Good / Base / Bad Cases
 
@@ -94,6 +97,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 - API-client tests assert trusted pagination, loop detection, bounded retries, token redaction, and atomic replacement.
 - Provider tests assert authentication headers, project identity, branch SHA, component filtering, pagination, normalization, and placeholder rejection.
 - Root path-contract tests assert Node `>=22.6.0`, offline CI validators, and Turbo docs `^build` ordering.
+- Release-workflow tests assert the Playwright image version, immutable digest, lockfile match, IPC option, and job timeout.
 - Before commit, run lint, typecheck, tests, snapshot validators, docs build, release checks, and package verification in proportion to the change.
 
 #### 7. Wrong vs Correct
@@ -136,3 +140,4 @@ const next = resolveTrustedApiUrl(apiBaseUrl, nextLink, providerName)
 - Tokens are optional where anonymous reads are supported, runtime-only, and redacted from failures.
 - Required CI remains offline; pre-commit refreshes only local metadata.
 - Docs builds retain dependency ordering and the documented Node minimum matches `package.json`.
+- Browser CI uses the lockfile-matched, digest-pinned Playwright image and keeps a bounded job timeout.
