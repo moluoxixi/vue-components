@@ -3,7 +3,7 @@
   "name": "repository-provider-gitlab-self-managed",
   "title": "GitLab self-managed and contributor profiles",
   "description": "Complete GitLab self-managed compatibility and enrich GitLab contributors with verified account profiles and avatars.",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [
@@ -21,7 +21,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-19",
-  "completedAt": null,
+  "completedAt": "2026-08-20",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,

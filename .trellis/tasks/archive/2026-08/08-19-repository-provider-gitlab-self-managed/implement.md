@@ -30,7 +30,7 @@
 - [x] Run focused tests, metadata validators, lint, typecheck, full tests, docs build, package build/pack verification, and browser checks.
 - [x] Review the exact diff and snapshots for credentials/private data.
 - [x] Update approved specs if the provider contract gains a reusable invariant.
-- [ ] Commit and push; wait for CI, Pages, and package-release workflows to succeed or intentionally skip.
+- [x] Commit and push; wait for CI, Pages, and package-release workflows to succeed or intentionally skip.
 - [ ] Archive this child, then resume Yunxiao followed by Tencent provider planning/implementation.
 
 ## Rollback points
