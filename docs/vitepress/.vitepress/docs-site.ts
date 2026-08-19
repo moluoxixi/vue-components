@@ -33,10 +33,10 @@ const githubRepository = {
   url: 'https://github.com/moluoxixi/vue-components',
   issueTitlePrefix,
 }
-const gitlabProjectPath = 'gitlab-org/cli'
-const gitlabWebBaseUrl = 'https://gitlab.com'
+const gitlabProjectPath = 'moluoxixi/vue-components-provider-fixture'
+const gitlabWebBaseUrl = 'https://jihulab.com'
 const gitlabRepository = {
-  apiBaseUrl: 'https://gitlab.com/api/v4',
+  apiBaseUrl: `${gitlabWebBaseUrl}/api/v4`,
   defaultBranch: 'main',
   issueTitlePrefix,
   projectPath: gitlabProjectPath,

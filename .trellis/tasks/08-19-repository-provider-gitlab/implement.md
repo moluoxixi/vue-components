@@ -6,7 +6,7 @@
 - [x] Add provider-scoped GitLab configuration, schema/assertion, normalization, snapshot, and strict registry entry.
 - [x] Add the injectable GitLab REST client plus explicit atomic sync/validation scripts and package commands.
 - [x] Add focused theme/docs tests for contracts, URLs, schema isolation, API behavior, retries, and atomic writes.
-- [ ] Create/provision the real public GitLab fixture and validate UI/API behavior without storing credentials.
+- [x] Create/provision the real public JiHu GitLab fixture and validate UI/API behavior without storing credentials.
 - [x] Update Chinese/English provider documentation.
 - [x] Run focused tests, typechecks, all non-placeholder snapshot validators, and the complete GitHub Actions-equivalent suite.
 - [ ] Review the diff, commit/push the child changes, and confirm GitHub Actions succeeds.

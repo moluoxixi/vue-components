@@ -20,5 +20,5 @@ GitLab web actions use canonical `webUrl` plus `/-/tree`, `/-/blob`, `/-/edit`, 
 
 ## Real Validation and Rollback
 
-Create a public test-only project under the authenticated namespace, add CopyText source/docs, at least two commits, and one `[CopyText]` Issue. Validate the collector and all enabled web actions. The project is retained. Production selection stays GitHub, so GitLab registration/snapshot can be reverted independently.
+Create a public test-only project on JiHu GitLab under the authenticated namespace, add CopyText source/docs, at least two commits, and one `[CopyText]` Issue. Validate the collector and all enabled web actions. The project is retained. Production selection stays GitHub, so GitLab registration/snapshot can be reverted independently.
 

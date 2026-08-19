@@ -84,6 +84,38 @@ function assertHttpUrl(value: unknown, label: string): asserts value is string {
   assertMetadata(url.protocol === 'https:' || url.protocol === 'http:', `${label} must use HTTP or HTTPS`)
 }
 
+function assertIssueDetailUrl(issueUrl: string, repositoryUrl: string, iid: number, label: string): void {
+  const issue = new URL(issueUrl)
+  const repository = new URL(repositoryUrl)
+  const repositoryPath = repository.pathname.replace(/\/+$/, '')
+  const acceptedPaths = new Set([
+    `${repositoryPath}/-/issues/${iid}`,
+    `${repositoryPath}/-/work_items/${iid}`,
+  ])
+
+  assertMetadata(
+    issue.origin === repository.origin
+    && acceptedPaths.has(issue.pathname)
+    && issue.search === ''
+    && issue.hash === '',
+    `${label} must be an Issue detail URL for the configured project and iid`,
+  )
+}
+
+function assertCommitDetailUrl(commitUrl: string, repositoryUrl: string, sha: string, label: string): void {
+  const commit = new URL(commitUrl)
+  const repository = new URL(repositoryUrl)
+  const repositoryPath = repository.pathname.replace(/\/+$/, '')
+
+  assertMetadata(
+    commit.origin === repository.origin
+    && commit.pathname === `${repositoryPath}/-/commit/${sha}`
+    && commit.search === ''
+    && commit.hash === '',
+    `${label} must be a commit detail URL for the configured project and SHA`,
+  )
+}
+
 export function assertGitlabMetadataSnapshot(
   value: unknown,
   expected: GitlabMetadataExpectation,
@@ -139,7 +171,12 @@ export function assertGitlabMetadataSnapshot(
         assertMetadata(Number.isInteger(rawIssue.iid) && Number(rawIssue.iid) > 0, `${expectedComponent.name} issue iid is invalid`)
         assertMetadata(isNonEmptyString(rawIssue.title), `${expectedComponent.name} issue title is required`)
         assertHttpUrl(rawIssue.url, `${expectedComponent.name} issue URL`)
-        assertMetadata(rawIssue.url.startsWith(`${repository.webUrl}/-/issues/`), `${expectedComponent.name} issue URL must belong to the configured project`)
+        assertIssueDetailUrl(
+          rawIssue.url,
+          repository.webUrl as string,
+          Number(rawIssue.iid),
+          `${expectedComponent.name} issue URL`,
+        )
       }
     }
 
@@ -165,7 +202,12 @@ export function assertGitlabMetadataSnapshot(
       assertMetadata(isNonEmptyString(rawCommit.message), `${expectedComponent.name} commit message is required`)
       assertMetadata(isNonEmptyString(rawCommit.date) && !Number.isNaN(Date.parse(rawCommit.date)), `${expectedComponent.name} commit date must be an ISO date`)
       assertHttpUrl(rawCommit.url, `${expectedComponent.name} commit URL`)
-      assertMetadata(rawCommit.url.startsWith(`${repository.webUrl}/-/commit/`), `${expectedComponent.name} commit URL must belong to the configured project`)
+      assertCommitDetailUrl(
+        rawCommit.url,
+        repository.webUrl as string,
+        rawCommit.sha,
+        `${expectedComponent.name} commit URL`,
+      )
       assertMetadata(isRecord(rawCommit.author), `${expectedComponent.name} commit author must be an object`)
       assertExactKeys(rawCommit.author, ['name'], `${expectedComponent.name} commit author`)
       assertMetadata(isNonEmptyString(rawCommit.author.name), `${expectedComponent.name} commit author is invalid`)

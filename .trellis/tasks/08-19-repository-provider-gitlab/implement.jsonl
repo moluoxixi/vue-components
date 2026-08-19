@@ -2,3 +2,4 @@
 {"file": ".trellis/spec/docs/frontend/index.md", "reason": "Applies to provider configuration, API clients, snapshots, scripts, and documentation integration."}
 {"file": ".trellis/spec/vitepress-theme-element-plus/frontend/index.md", "reason": "Applies to reusable provider contracts, platform action adapters, exports, and package tests."}
 {"file": ".trellis/spec/guides/index.md", "reason": "Provides shared cross-package implementation conventions."}
+{"file": ".trellis/tasks/08-19-repository-provider-gitlab/research/jihulab-acceptance.md", "reason": "Records verified JiHu GitLab REST/UI compatibility and the retained-fixture gap."}

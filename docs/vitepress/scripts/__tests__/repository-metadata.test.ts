@@ -77,10 +77,12 @@ describe('repository metadata providers', () => {
       repositoryMetadataProviders,
     )
     const actionInput = createRepositoryMetadataActionInput(selection, 'CopyText')
+    const documentationPath = 'packages/components/src/CopyText/docs/index.md'
+    const componentPath = 'packages/components/src/CopyText'
     const sourceHref = selection.provider.actions?.sourceLineHref?.({
       ...actionInput,
       endLine: 8,
-      path: 'packages/components/src/CopyText/docs/index.md',
+      path: documentationPath,
       startLine: 3,
     })
 
@@ -91,10 +93,28 @@ describe('repository metadata providers', () => {
     expect(actionInput).toEqual({
       defaultBranch: 'main',
       issueTitlePrefix: '[CopyText]',
-      repositoryUrl: 'https://gitlab.com/gitlab-org/cli',
+      repositoryUrl: 'https://jihulab.com/moluoxixi/vue-components-provider-fixture',
     })
     expect(sourceHref).toBe(
-      'https://gitlab.com/gitlab-org/cli/-/blob/main/packages/components/src/CopyText/docs/index.md#L3-8',
+      'https://jihulab.com/moluoxixi/vue-components-provider-fixture/-/blob/main/packages/components/src/CopyText/docs/index.md#L3-8',
+    )
+    expect(selection.provider.actions?.componentSourceHref?.({
+      ...actionInput,
+      path: componentPath,
+    })).toBe(
+      'https://jihulab.com/moluoxixi/vue-components-provider-fixture/-/tree/main/packages/components/src/CopyText',
+    )
+    expect(selection.provider.actions?.editDocumentationHref?.({
+      ...actionInput,
+      path: documentationPath,
+    })).toBe(
+      'https://jihulab.com/moluoxixi/vue-components-provider-fixture/-/edit/main/packages/components/src/CopyText/docs/index.md',
+    )
+    expect(selection.provider.actions?.newIssueHref?.(actionInput)).toBe(
+      'https://jihulab.com/moluoxixi/vue-components-provider-fixture/-/issues/new?issue%5Btitle%5D=%5BCopyText%5D+',
+    )
+    expect(selection.provider.actions?.openIssuesHref?.(actionInput)).toBe(
+      'https://jihulab.com/moluoxixi/vue-components-provider-fixture/-/issues?search=%5BCopyText%5D&state=opened',
     )
     expect(sourceHref).not.toContain('github.com')
     expect(() => selectRepositoryMetadataConfiguration(
@@ -390,6 +410,57 @@ describe('repository metadata providers', () => {
       leakedContributor,
       repositoryMetadataExpectations.gitlab,
     )).toThrow('CopyText contributor contains unsupported or missing fields')
+  })
+
+  it('accepts exact GitLab Issue detail routes and rejects route identity drift', () => {
+    const workItemSnapshot = structuredClone(gitlabSnapshot)
+    expect(workItemSnapshot.components.CopyText?.openIssues[0]?.url).toContain('/-/work_items/1')
+    expect(() => assertGitlabMetadataSnapshot(
+      workItemSnapshot,
+      repositoryMetadataExpectations.gitlab,
+    )).not.toThrow()
+
+    const legacyIssueSnapshot = structuredClone(gitlabSnapshot)
+    legacyIssueSnapshot.components.CopyText!.openIssues[0]!.url
+      = `${legacyIssueSnapshot.repository.webUrl}/-/issues/1`
+    expect(() => assertGitlabMetadataSnapshot(
+      legacyIssueSnapshot,
+      repositoryMetadataExpectations.gitlab,
+    )).not.toThrow()
+
+    for (const invalidUrl of [
+      'https://jihulab.com/another/project/-/work_items/1',
+      `${gitlabSnapshot.repository.webUrl}/-/work_items/2`,
+      `${gitlabSnapshot.repository.webUrl}/-/issues/new`,
+      `${gitlabSnapshot.repository.webUrl}/-/work_items/1/`,
+      `${gitlabSnapshot.repository.webUrl}/-/work_items/1?from=fixture`,
+      `${gitlabSnapshot.repository.webUrl}/-/work_items/1#notes`,
+    ]) {
+      const invalidSnapshot = structuredClone(gitlabSnapshot)
+      invalidSnapshot.components.CopyText!.openIssues[0]!.url = invalidUrl
+      expect(() => assertGitlabMetadataSnapshot(
+        invalidSnapshot,
+        repositoryMetadataExpectations.gitlab,
+      )).toThrow('CopyText issue URL must be an Issue detail URL for the configured project and iid')
+    }
+  })
+
+  it('rejects GitLab commit URLs that do not match the configured project and SHA', () => {
+    const commit = gitlabSnapshot.components.CopyText!.commits[0]!
+
+    for (const invalidUrl of [
+      `https://jihulab.com/another/project/-/commit/${commit.sha}`,
+      `${gitlabSnapshot.repository.webUrl}/-/commit/${'a'.repeat(40)}`,
+      `${commit.url}?from=fixture`,
+      `${commit.url}#diff-content`,
+    ]) {
+      const invalidSnapshot = structuredClone(gitlabSnapshot)
+      invalidSnapshot.components.CopyText!.commits[0]!.url = invalidUrl
+      expect(() => assertGitlabMetadataSnapshot(
+        invalidSnapshot,
+        repositoryMetadataExpectations.gitlab,
+      )).toThrow('CopyText commit URL must be a commit detail URL for the configured project and SHA')
+    }
   })
 
   it('rejects unsupported nested fields in local Git metadata', () => {

@@ -2,3 +2,4 @@
 {"file": ".trellis/spec/docs/frontend/index.md", "reason": "Verify provider synchronization, snapshot validation, and documentation-site integration."}
 {"file": ".trellis/spec/vitepress-theme-element-plus/frontend/index.md", "reason": "Verify public API compatibility, registry invariants, actions, and package behavior."}
 {"file": ".trellis/spec/guides/index.md", "reason": "Verify shared quality and consistency requirements."}
+{"file": ".trellis/tasks/08-19-repository-provider-gitlab/research/jihulab-acceptance.md", "reason": "Verify the implementation against the measured JiHu GitLab API and route behavior."}

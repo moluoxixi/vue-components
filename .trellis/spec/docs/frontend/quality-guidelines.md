@@ -79,6 +79,8 @@ pnpm -C docs/vitepress validate-repository-metadata
 | Repository URL or default branch mismatch | Reject selection |
 | Duplicate provider ID or invalid snapshot filename | Reject registry construction |
 | Snapshot enables an unsupported capability | Reject resolution |
+| GitLab Issue detail URL uses `/-/issues/:iid` or `/-/work_items/:iid` | Accept only when origin, project path, and IID exactly match the snapshot entry |
+| GitLab commit detail URL differs by origin, project path, full SHA, query, or hash | Reject the snapshot |
 | Pagination changes API origin or leaves the configured API path | Reject the URL |
 | Network `429` or bounded `5xx` | Retry only within the configured limit; redact tokens from errors |
 | Yunxiao placeholder identity or all-zero SHA | Reject validation |
@@ -94,6 +96,8 @@ pnpm -C docs/vitepress validate-repository-metadata
 
 - Registry tests assert unique IDs, action/capability agreement, downgrade-only behavior, and strict provider isolation.
 - URL tests assert platform routes, path/ref encoding, line anchors, issue queries, and unsupported actions.
+- GitLab snapshot tests accept both server-returned Issue detail route families and reject cross-project or mismatched-IID URLs.
+- GitLab snapshot tests bind every commit detail URL to the exact repository and full commit SHA, rejecting query and hash suffixes.
 - API-client tests assert trusted pagination, loop detection, bounded retries, token redaction, and atomic replacement.
 - Provider tests assert authentication headers, project identity, branch SHA, component filtering, pagination, normalization, and placeholder rejection.
 - Root path-contract tests assert Node `>=22.6.0`, offline CI validators, and Turbo docs `^build` ordering.

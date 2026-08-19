@@ -68,7 +68,7 @@ describe('gitLab documentation metadata', () => {
         return jsonResponse({ commit: { id: headSha } })
       if (url.includes('/issues?') && !url.includes('page=2')) {
         return jsonResponse([
-          { iid: 1, title: '[CopyText] first', web_url: 'https://gitlab.test/group/subgroup/project/-/issues/1' },
+          { iid: 1, title: '[CopyText] first', web_url: 'https://gitlab.test/group/subgroup/project/-/work_items/1' },
           { iid: 2, title: '[Other] ignored', web_url: 'https://gitlab.test/group/subgroup/project/-/issues/2' },
         ], { headers: { 'x-next-page': '2' } })
       }
@@ -115,6 +115,9 @@ describe('gitLab documentation metadata', () => {
     expect(requests.some(url => url.includes('path=packages%2Fcomponents%2Fsrc%2FCopyText'))).toBe(true)
     expect(snapshot.repository).toMatchObject({ headSha, issuesEnabled: true })
     expect(snapshot.components.CopyText?.openIssueCount).toBe(2)
+    expect(snapshot.components.CopyText?.openIssues?.[0]?.url).toBe(
+      'https://gitlab.test/group/subgroup/project/-/work_items/1',
+    )
     expect(snapshot.components.CopyText?.commits).toHaveLength(2)
     expect(snapshot.components.CopyText?.contributors).toEqual([{
       contributions: 2,
