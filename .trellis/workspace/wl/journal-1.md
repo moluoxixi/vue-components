@@ -238,3 +238,24 @@ Use the GitLab repository contributors endpoint to canonicalize display names, r
 ### Status
 
 [OK] **Completed**
+
+
+## Session 9: Repository provider debug selection
+
+**Date**: 2026-08-20
+**Task**: Repository provider debug selection
+**Branch**: `main`
+
+### Summary
+
+Added a strict VITE_DOCS_REPOSITORY_METADATA_PROVIDER startup override, deterministic environment-level tests, GitLab/default validation, documentation, and provider-specific test boundaries.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e2128c3` | (see git log) |
+
+### Status
+
+[OK] **Completed**
