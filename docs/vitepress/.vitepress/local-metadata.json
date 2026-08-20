@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20T02:54:52.647Z",
+  "generatedAt": "2026-08-20T04:20:57.429Z",
   "repository": {
     "defaultBranch": "main",
-    "headSha": "be82f7ad3dc89a696c5171426971dde2ae27d0cf",
+    "headSha": "1e6ee4d9327c9bc8c84999733823399e24ef5a01",
     "url": "https://github.com/moluoxixi/vue-components"
   },
   "components": {

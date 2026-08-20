@@ -55,6 +55,7 @@ resolveTrustedApiUrl(
 Explicit commands follow this contract:
 
 ```text
+VITE_DOCS_REPOSITORY_METADATA_PROVIDER=<provider-id> pnpm -C docs/vitepress dev
 pnpm -C docs/vitepress sync-<provider>-metadata
 pnpm -C docs/vitepress validate-<provider>-metadata
 pnpm -C docs/vitepress validate-repository-metadata
@@ -63,6 +64,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 #### 3. Contracts
 
 - Provider IDs are `github`, `local`, `gitlab`, `gitee`, and `yunxiao`; production selection is explicit and currently `github`.
+- `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` is an optional startup/build-time override for local debugging. Missing or blank values select `github`; supported values select exactly one provider; unknown values fail before snapshot loading. It is not an in-browser runtime switch.
 - Every provider owns one snapshot file and one exact expectation. Selection resolves the provider, repository config, expectation, snapshot, and action input as a single unit.
 - A provider capability is a maximum. Snapshot resolution may disable it but cannot enable a capability absent from the provider definition.
 - Provider-specific environment keys are runtime-only: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `GITEE_TOKEN`, and `YUNXIAO_TOKEN`. Never persist or print them.
@@ -80,6 +82,8 @@ pnpm -C docs/vitepress validate-repository-metadata
 
 | Condition | Required result |
 | --- | --- |
+| `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` is missing or blank | Select `github` |
+| `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` names a registered provider | Select and validate only that provider's committed snapshot |
 | Unknown provider ID | Throw before reading any snapshot |
 | Missing repository config or expectation | Throw with the selected provider ID |
 | Repository URL or default branch mismatch | Reject selection |
@@ -100,12 +104,13 @@ pnpm -C docs/vitepress validate-repository-metadata
 #### 5. Good / Base / Bad Cases
 
 - Good: select `gitlab`, validate only `gitlab-metadata.json`, then construct GitLab actions from the same repository config.
-- Base: select `local`; expose committed local history without any network token or sync call in CI.
-- Bad: select `gitee` but load GitHub metadata, reuse GitHub URL templates, or silently fall back after validation failure.
+- Base: omit the debug environment variable; production and CI select the committed GitHub snapshot.
+- Bad: treat the debug environment variable as `auto`, merge snapshots, or expose a client-side provider switch.
 
 #### 6. Tests Required
 
 - Registry tests assert unique IDs, action/capability agreement, downgrade-only behavior, and strict provider isolation.
+- Provider-selection tests spawn the real selected-snapshot validator with the environment variable missing, set to `gitlab`, and set to an invalid value; assert GitHub default, GitLab selection, and initialization failure respectively.
 - URL tests assert platform routes, path/ref encoding, line anchors, issue queries, and unsupported actions.
 - GitLab snapshot tests accept both server-returned Issue detail route families and reject cross-project or mismatched-IID URLs.
 - GitLab snapshot tests bind every commit detail URL to the exact repository and full commit SHA, rejecting query and hash suffixes.
@@ -124,6 +129,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 
 ```ts
 const snapshot = gitlabSnapshot ?? githubSnapshot
+const provider = environmentProvider || firstValidSnapshot()
 const next = await fetch(response.headers.get('link')!)
 ```
 
@@ -131,7 +137,7 @@ const next = await fetch(response.headers.get('link')!)
 
 ```ts
 const selection = selectRepositoryMetadataConfiguration(
-  providerId,
+  resolveDocsRepositoryMetadataProvider(environmentProvider),
   repositories,
   expectations,
   repositoryMetadataProviders,

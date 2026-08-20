@@ -156,18 +156,18 @@ describe('gitHub documentation metadata', () => {
     delete invalid.components.CopyText
 
     expect(() => assertGithubMetadataSnapshot(invalid, {
-      owner: docsSite.repository.owner,
-      repository: docsSite.repository.name,
-      defaultBranch: docsSite.repository.defaultBranch,
+      owner: docsSite.repositories.github.owner,
+      repository: docsSite.repositories.github.name,
+      defaultBranch: docsSite.repositories.github.defaultBranch,
       components: documentedComponentNames.map(name => ({ name, path: componentSourcePath(name) })),
     })).toThrow('component keys must exactly match the documentation manifest')
   })
 
   it('rejects snapshots from another branch or without valid commit dates', () => {
     const expectation = {
-      owner: docsSite.repository.owner,
-      repository: docsSite.repository.name,
-      defaultBranch: docsSite.repository.defaultBranch,
+      owner: docsSite.repositories.github.owner,
+      repository: docsSite.repositories.github.name,
+      defaultBranch: docsSite.repositories.github.defaultBranch,
       components: documentedComponentNames.map(name => ({ name, path: componentSourcePath(name) })),
     }
     const wrongBranch = structuredClone(snapshot) as Record<string, any>

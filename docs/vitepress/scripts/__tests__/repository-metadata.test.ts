@@ -5,8 +5,14 @@ import type {
   YunxiaoMetadataExpectation,
   YunxiaoMetadataSnapshot,
 } from '../../.vitepress/yunxiao-metadata-types'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { docsSite } from '../../.vitepress/docs-site'
+import {
+  docsRepositoryMetadataProviderIds,
+  docsSite,
+  resolveDocsRepositoryMetadataProvider,
+} from '../../.vitepress/docs-site'
 import { assertGiteeMetadataSnapshot } from '../../.vitepress/gitee-metadata-types'
 import giteeSnapshot from '../../.vitepress/gitee-metadata.json'
 import githubSnapshot from '../../.vitepress/github-metadata.json'
@@ -14,16 +20,11 @@ import { assertGitlabMetadataSnapshot } from '../../.vitepress/gitlab-metadata-t
 import gitlabSnapshot from '../../.vitepress/gitlab-metadata.json'
 import { assertLocalMetadataSnapshot } from '../../.vitepress/local-metadata-types'
 import localSnapshot from '../../.vitepress/local-metadata.json'
-import { configuredRepositoryMetadataProvider, repositoryMetadata } from '../../.vitepress/repository-metadata'
 import { repositoryMetadataSnapshotPath } from '../../.vitepress/repository-metadata-alias'
-import {
-  repositoryMetadataExpectation,
-  repositoryMetadataExpectations,
-} from '../../.vitepress/repository-metadata-expectation'
+import { repositoryMetadataExpectations } from '../../.vitepress/repository-metadata-expectation'
 import { repositoryMetadataProviders } from '../../.vitepress/repository-metadata-providers'
 import {
   createRepositoryMetadataActionInput,
-  repositoryMetadataSelection,
   selectRepositoryMetadataConfiguration,
 } from '../../.vitepress/repository-metadata-selection'
 import {
@@ -37,6 +38,8 @@ import {
 } from '../../.vitepress/theme/repository-content'
 import { assertYunxiaoMetadataSnapshot } from '../../.vitepress/yunxiao-metadata-types'
 import yunxiaoSnapshot from '../../.vitepress/yunxiao-metadata.json'
+
+const docsDirectory = fileURLToPath(new URL('../..', import.meta.url))
 
 const configuredYunxiaoExpectation: YunxiaoMetadataExpectation = {
   ...repositoryMetadataExpectations.yunxiao,
@@ -58,16 +61,49 @@ function createConfiguredYunxiaoSnapshot(): YunxiaoMetadataSnapshot {
   return snapshot
 }
 
+function validateSelectedMetadata(providerId?: string) {
+  const environment = { ...process.env }
+  if (providerId === undefined)
+    delete environment.VITE_DOCS_REPOSITORY_METADATA_PROVIDER
+  else
+    environment.VITE_DOCS_REPOSITORY_METADATA_PROVIDER = providerId
+
+  return spawnSync(process.execPath, ['scripts/validate-selected-metadata.mts'], {
+    cwd: docsDirectory,
+    encoding: 'utf8',
+    env: environment,
+  })
+}
+
 describe('repository metadata providers', () => {
-  it('keeps GitHub as the selected production provider and loads one snapshot', () => {
-    expect(docsSite.metadataProvider).toBe('github')
-    expect(docsSite.repository).toBe(docsSite.repositories[docsSite.metadataProvider])
-    expect(repositoryMetadataSelection.providerId).toBe('github')
-    expect(configuredRepositoryMetadataProvider.id).toBe('github')
-    expect(repositoryMetadata.provider.platform).toBe('github')
-    expect(repositoryMetadata.repository.headSha).toBe(githubSnapshot.repository.headSha)
-    expect(repositoryMetadataSnapshotPath(docsSite.metadataProvider)).toMatch(/github-metadata\.json$/)
-    expect(repositoryMetadataSelection.repositoryLabel).toBe('GitHub')
+  it('resolves the build-time provider override strictly', () => {
+    expect(resolveDocsRepositoryMetadataProvider(undefined)).toBe('github')
+    expect(resolveDocsRepositoryMetadataProvider('  ')).toBe('github')
+    for (const providerId of docsRepositoryMetadataProviderIds)
+      expect(resolveDocsRepositoryMetadataProvider(providerId)).toBe(providerId)
+    expect(() => resolveDocsRepositoryMetadataProvider('auto')).toThrow(
+      'Unsupported VITE_DOCS_REPOSITORY_METADATA_PROVIDER: auto',
+    )
+  })
+
+  it('applies the provider environment to the complete metadata selection', () => {
+    const defaultSelection = validateSelectedMetadata()
+    expect(defaultSelection.status).toBe(0)
+    expect(defaultSelection.stdout).toContain(
+      `Validated selected github metadata at ${githubSnapshot.repository.headSha.slice(0, 7)}`,
+    )
+
+    const gitlabSelection = validateSelectedMetadata('gitlab')
+    expect(gitlabSelection.status).toBe(0)
+    expect(gitlabSelection.stdout).toContain(
+      `Validated selected gitlab metadata at ${gitlabSnapshot.repository.headSha.slice(0, 7)}`,
+    )
+
+    const invalidSelection = validateSelectedMetadata('invalid-provider')
+    expect(invalidSelection.status).not.toBe(0)
+    expect(`${invalidSelection.stdout}\n${invalidSelection.stderr}`).toContain(
+      'Unsupported VITE_DOCS_REPOSITORY_METADATA_PROVIDER: invalid-provider',
+    )
   })
 
   it('switches repository, snapshot, and action inputs as one provider-scoped selection', () => {
@@ -128,7 +164,11 @@ describe('repository metadata providers', () => {
   })
 
   it('normalizes GitHub capabilities and provider-owned links', () => {
-    const metadata = repositoryMetadataProviders.resolve('github', githubSnapshot, repositoryMetadataExpectation)
+    const metadata = repositoryMetadataProviders.resolve(
+      'github',
+      githubSnapshot,
+      repositoryMetadataExpectations.github,
+    )
     const provider = repositoryMetadataProviders.get('github')
 
     expect(metadata.components.CopyText?.openIssueCount).toBeTypeOf('number')
@@ -136,7 +176,7 @@ describe('repository metadata providers', () => {
     expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(true)
     expect(provider.actions?.newIssueHref?.({
       issueTitlePrefix: '[CopyText]',
-      repositoryUrl: docsSite.repository.url,
+      repositoryUrl: docsSite.repositories.github.url,
     })).toContain('/issues/new?title=')
   })
 
@@ -161,7 +201,7 @@ describe('repository metadata providers', () => {
     const githubMetadata = repositoryMetadataProviders.resolve(
       'github',
       githubSnapshot,
-      repositoryMetadataExpectation,
+      repositoryMetadataExpectations.github,
     )
     const localMetadata = repositoryMetadataProviders.resolve(
       'local',
@@ -169,10 +209,10 @@ describe('repository metadata providers', () => {
       repositoryMetadataExpectations.local,
     )
     const input = {
-      defaultBranch: docsSite.repository.defaultBranch,
+      defaultBranch: docsSite.repositories.github.defaultBranch,
       editPath: 'packages/components/src/CopyText/docs/index.md',
-      issueTitlePrefix: docsSite.repository.issueTitlePrefix('CopyText'),
-      repositoryUrl: docsSite.repository.url,
+      issueTitlePrefix: docsSite.repositories.github.issueTitlePrefix('CopyText'),
+      repositoryUrl: docsSite.repositories.github.url,
       sourcePath: 'packages/components/src/CopyText',
     }
     const githubContent = resolveDocsRepositoryComponentMeta(
@@ -279,7 +319,7 @@ describe('repository metadata providers', () => {
     expect(() => repositoryMetadataProviders.resolve(
       'github',
       localSnapshot,
-      repositoryMetadataExpectation,
+      repositoryMetadataExpectations.github,
     )).toThrow('Invalid GitHub metadata snapshot')
     expect(() => repositoryMetadataProviders.resolve(
       'local',
@@ -310,11 +350,11 @@ describe('repository metadata providers', () => {
 
   it('validates provider-required configuration before parsing snapshots', () => {
     expect(() => repositoryMetadataProviders.resolve('github', null, {
-      ...repositoryMetadataExpectation,
+      ...repositoryMetadataExpectations.github,
       owner: undefined,
     })).toThrow('Repository metadata provider "github" requires configuration field "owner"')
     expect(() => repositoryMetadataProviders.resolve('github', null, {
-      ...repositoryMetadataExpectation,
+      ...repositoryMetadataExpectations.github,
       repository: undefined,
     })).toThrow('Repository metadata provider "github" requires configuration field "repository"')
     expect(() => repositoryMetadataProviders.resolve('local', null, {
@@ -584,6 +624,6 @@ describe('repository metadata providers', () => {
 
     expect(registry.ids).toEqual(['fixture'])
     expect(registry.get('fixture').platform).toBe('fixture')
-    expect(registry.resolve('fixture', {}, repositoryMetadataExpectation).components).toEqual({})
+    expect(registry.resolve('fixture', {}, repositoryMetadataExpectations.github).components).toEqual({})
   })
 })

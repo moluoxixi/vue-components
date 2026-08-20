@@ -23,7 +23,38 @@ export type DocsLocale = keyof typeof docsLocales
 
 export const defaultDocsLocale: DocsLocale = 'zh-CN'
 
-export type DocsRepositoryMetadataProviderId = 'gitee' | 'github' | 'gitlab' | 'local' | 'yunxiao'
+export const docsRepositoryMetadataProviderIds = [
+  'gitee',
+  'github',
+  'gitlab',
+  'local',
+  'yunxiao',
+] as const
+
+export type DocsRepositoryMetadataProviderId = typeof docsRepositoryMetadataProviderIds[number]
+
+export function resolveDocsRepositoryMetadataProvider(
+  value: string | undefined,
+): DocsRepositoryMetadataProviderId {
+  const providerId = value?.trim() || 'github'
+  if (!(docsRepositoryMetadataProviderIds as readonly string[]).includes(providerId)) {
+    throw new TypeError(
+      `Unsupported VITE_DOCS_REPOSITORY_METADATA_PROVIDER: ${providerId}`,
+    )
+  }
+  return providerId as DocsRepositoryMetadataProviderId
+}
+
+function readRepositoryMetadataProviderEnvironment(): string | undefined {
+  const viteEnvironment = import.meta.env?.VITE_DOCS_REPOSITORY_METADATA_PROVIDER
+  if (viteEnvironment !== undefined)
+    return viteEnvironment
+
+  const nodeProcess = Reflect.get(globalThis, 'process') as
+    | { env?: Record<string, string | undefined> }
+    | undefined
+  return nodeProcess?.env?.VITE_DOCS_REPOSITORY_METADATA_PROVIDER
+}
 
 const issueTitlePrefix = (componentName: string) => `[${componentName}]`
 const githubRepository = {
@@ -69,7 +100,9 @@ const yunxiaoRepository = {
   userAgent: 'moluoxixi-docs-yunxiao-metadata-sync',
 }
 
-const metadataProvider: DocsRepositoryMetadataProviderId = 'github'
+const metadataProvider = resolveDocsRepositoryMetadataProvider(
+  readRepositoryMetadataProviderEnvironment(),
+)
 const repositories = {
   gitee: giteeRepository,
   github: githubRepository,
