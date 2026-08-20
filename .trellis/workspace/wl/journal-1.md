@@ -217,3 +217,24 @@ Added secure GitLab self-managed contributor profiles, provider-neutral reposito
 ### Status
 
 [OK] **Completed**
+
+
+## Session 8: Complete GitLab contributor identity extraction
+
+**Date**: 2026-08-20
+**Task**: Complete GitLab contributor identity extraction
+**Branch**: `main`
+
+### Summary
+
+Use the GitLab repository contributors endpoint to canonicalize display names, retain 404/405 commit-scan fallback, verify exact account enrichment on JiHu, and pass focused tests, metadata validation, lint, typecheck, and docs build.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `85f98a5` | (see git log) |
+
+### Status
+
+[OK] **Completed**

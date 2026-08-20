@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
+- **Total Sessions**: 8
 - **Last Active**: 2026-08-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~219 | Active |
+| `journal-1.md` | ~240 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-08-20 | Complete GitLab contributor identity extraction | `85f98a5` | `main` |
 | 7 | 2026-08-20 | Complete GitLab self-managed provider support | `8ab6908`, `237cb9b` | `main` |
 | 6 | 2026-08-19 | Validate GitLab provider against JiHu | `a496ae0` | `main` |
 | 5 | 2026-08-13 | Editable table P0-P3 and package path cleanup | `835b630`, `088a243`, `0637124` | `codex/editable-table-p0-p3` |
