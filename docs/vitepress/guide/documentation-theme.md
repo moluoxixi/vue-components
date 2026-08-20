@@ -14,7 +14,7 @@
 
 各平台使用独立命令：`sync-github-metadata`、`sync-gitlab-metadata`、`sync-gitee-metadata`、`sync-yunxiao-metadata` 和 `sync-local-metadata`；对应的 `validate-*-metadata` 命令可离线校验已提交快照。`validate-repository-metadata` 是 CI 的离线聚合入口，只验证已经拥有真实快照的 GitHub、GitLab、Gitee 和 local，不调用任何网络同步。GitLab 支持显式 web/API base URL、安装子路径和含 subgroup 的完整项目路径；私有项目通过运行时 `GITLAB_TOKEN` 使用 `PRIVATE-TOKEN` 或 Bearer 认证。自签名证书与代理由运行 Node 的受信任 CA/网络环境负责，采集器不会绕过 TLS 校验。Gitee 以公共云 REST v5 为基线，web/API base URL 可配置，但企业版必须按实例核验，使用可选 `GITEE_TOKEN`。云效同时表达中央站和地域租户 API，实时同步必须提供 `YUNXIAO_TOKEN`；当前仓库尚未配置真实租户，跟踪的云效快照是明确的配置占位，`validate-yunxiao-metadata` 会拒绝它，不能视为远端验收。所有 collector 都不会把作者邮箱或 token 写入快照，分页也只能留在配置的 API origin 与路径范围内。
 
-GitLab 的 commit API 不提供可验证的账号关联，不能根据提交姓名或邮箱猜测用户。先同步一次取得隐私安全的 `gitlab:<sha256>` contributor ID，再在 `contributorProfiles` 中显式映射到经过审核的 GitLab username；下一次同步会通过精确 `GET /users?username=` 查询补充登录名、头像和主页。查询为空、歧义、用户名不一致、接口不可用或 URL 越出配置实例时，该贡献者继续显示首字母头像。映射、快照和日志均不保存邮箱。不同 GitLab 版本可能返回 `/-/issues/:iid` 或 `/-/work_items/:iid`，校验器接受二者；项目禁用或隐藏 Issues 时则关闭 Issue 数据和动作，而项目自身的认证失败仍会直接报错。
+GitLab 同步会优先请求项目的 `/repository/contributors` 在线贡献者接口，并继续按组件提交路径计算组件级贡献次数；只有实例明确返回 404/405、表示该接口不存在时，才退回提交扫描。401/403、网络错误和格式错误不会被当成“平台不支持”。该接口不提供可验证的账号关联，不能根据提交姓名或邮箱猜测用户。先同步一次取得隐私安全的 `gitlab:<sha256>` contributor ID，再在 `contributorProfiles` 中显式映射到经过审核的 GitLab username；下一次同步会通过精确 `GET /users?username=` 查询补充登录名、头像和主页。查询为空、歧义、用户名不一致、接口不可用或 URL 越出配置实例时，该贡献者继续显示首字母头像。映射、快照和日志均不保存邮箱。不同 GitLab 版本可能返回 `/-/issues/:iid` 或 `/-/work_items/:iid`，校验器接受二者；项目禁用或隐藏 Issues 时则关闭 Issue 数据和动作，而项目自身的认证失败仍会直接报错。
 
 能力以 provider 声明为上限，快照只能关闭能力，不能开启未声明能力。GitLab/Gitee 项目关闭 Issues 时会同时隐藏 Issue 数据和动作。云效没有仓库级 Issues，因此 `issues` 与 `issueActions` 恒为关闭；在真实租户证明精确源码、行锚和编辑路由前，`sourceLinks` 与 `editLinks` 也保持关闭，不会把 Projex 工作项或变更请求伪装为 Issue。
 

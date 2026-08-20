@@ -1,0 +1,2 @@
+{"file":".trellis/spec/docs/frontend/quality-guidelines.md","reason":"Quality gate for provider isolation, privacy-safe snapshots, API failures, and offline validation."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Reuse the existing GitLab commit scan and stable contributor identity instead of introducing a second snapshot fallback."}

@@ -48,6 +48,11 @@ const aliceContributorId = 'gitlab:198824072b3907f74c7cf2250bf3e2fc74f0295bdbb4d
 function contributorFixtureFetch(
   userResponse: unknown | Response,
   repositoryUrl = 'https://gitlab.test/group/subgroup/project',
+  repositoryContributorResponse: unknown | Response = [{
+    commits: 1,
+    email: 'alice@example.test',
+    name: 'Alice Example',
+  }],
 ): { fetchImpl: typeof fetch, requests: string[] } {
   const requests: string[] = []
   const fetchImpl: typeof fetch = async (input) => {
@@ -75,6 +80,8 @@ function contributorFixtureFetch(
         web_url: `${repositoryUrl}/-/commit/${'1'.repeat(40)}`,
       }])
     }
+    if (url.includes('/repository/contributors?'))
+      return repositoryContributorResponse instanceof Response ? repositoryContributorResponse : jsonResponse(repositoryContributorResponse)
     if (url.includes('/users?username=alice'))
       return userResponse instanceof Response ? userResponse : jsonResponse(userResponse)
     throw new Error(`Unexpected GitLab request: ${url}`)
@@ -144,6 +151,13 @@ describe('gitLab documentation metadata', () => {
           short_id: '2'.repeat(8),
           title: 'fix: copy state',
           web_url: `https://gitlab.test/group/subgroup/project/-/commit/${'2'.repeat(40)}`,
+        }])
+      }
+      if (url.includes('/repository/contributors?')) {
+        return jsonResponse([{
+          commits: 2,
+          email: 'alice@example.test',
+          name: 'Alice Example',
         }])
       }
       throw new Error(`Unexpected GitLab request: ${url}`)
@@ -236,6 +250,53 @@ describe('gitLab documentation metadata', () => {
     expect(snapshot.components.CopyText?.contributors[0]).not.toHaveProperty('profileUrl')
   })
 
+  it.each([404, 405])('falls back to component commit scanning when contributors endpoint returns HTTP %s', async (status) => {
+    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', jsonResponse({}, { status }))
+    const snapshot = await createGitlabMetadata(gitlabOptions(fixture.fetchImpl))
+
+    expect(snapshot.components.CopyText?.contributors).toEqual([{
+      contributions: 1,
+      id: aliceContributorId,
+      name: 'Alice Example',
+    }])
+  })
+
+  it('uses a matching online contributor record to canonicalize the display name', async () => {
+    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', [{
+      commits: 1,
+      email: 'alice@example.test',
+      name: '  ALICE EXAMPLE  ',
+    }])
+
+    const snapshot = await createGitlabMetadata(gitlabOptions(fixture.fetchImpl))
+
+    expect(snapshot.components.CopyText?.contributors).toEqual([{
+      contributions: 1,
+      id: aliceContributorId,
+      name: 'ALICE EXAMPLE',
+    }])
+  })
+
+  it.each([401, 403])('fails synchronization when contributors endpoint returns HTTP %s', async (status) => {
+    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', jsonResponse({}, { status }))
+
+    await expect(createGitlabMetadata(gitlabOptions(fixture.fetchImpl)))
+      .rejects
+      .toThrow(`GitLab request failed (${status})`)
+  })
+
+  it('rejects malformed successful contributors responses', async () => {
+    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', [{
+      commits: 1,
+      email: 'alice@example.test',
+      name: '',
+    }])
+
+    await expect(createGitlabMetadata(gitlabOptions(fixture.fetchImpl)))
+      .rejects
+      .toThrow('GitLab repository contributor 0 is invalid')
+  })
+
   it.each([401, 403])('fails project synchronization on HTTP %s instead of downgrading it', async (status) => {
     const requests: string[] = []
     const fetchImpl: typeof fetch = async (input) => {
@@ -301,6 +362,8 @@ describe('gitLab documentation metadata', () => {
         return jsonResponse({}, { status: 404 })
       if (url.includes('/repository/commits?'))
         return jsonResponse([])
+      if (url.includes('/repository/contributors?'))
+        return jsonResponse([])
       throw new Error(`Unexpected GitLab request: ${url}`)
     }
 
@@ -332,6 +395,8 @@ describe('gitLab documentation metadata', () => {
       if (url.endsWith('/repository/branches/main'))
         return jsonResponse({ commit: { id: headSha } })
       if (url.includes('/repository/commits?'))
+        return jsonResponse([])
+      if (url.includes('/repository/contributors?'))
         return jsonResponse([])
       throw new Error(`Unexpected GitLab request: ${url}`)
     }
@@ -375,6 +440,8 @@ describe('gitLab documentation metadata', () => {
         commitRequests += 1
         return jsonResponse([], { headers: { 'x-next-page': '1' } })
       }
+      if (url.includes('/repository/contributors?'))
+        return jsonResponse([])
       throw new Error(`Unexpected GitLab request: ${url}`)
     }
 

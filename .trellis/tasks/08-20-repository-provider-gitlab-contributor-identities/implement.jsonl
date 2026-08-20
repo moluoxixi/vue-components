@@ -1,0 +1,2 @@
+{"file":".trellis/spec/docs/frontend/quality-guidelines.md","reason":"Repository metadata provider contracts, GitLab fallback/error matrix, and required validation coverage."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"API-to-snapshot data-flow and boundary checks for the GitLab contributor source."}

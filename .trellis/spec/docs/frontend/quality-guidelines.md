@@ -67,6 +67,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 - A provider capability is a maximum. Snapshot resolution may disable it but cannot enable a capability absent from the provider definition.
 - Provider-specific environment keys are runtime-only: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `GITEE_TOKEN`, and `YUNXIAO_TOKEN`. Never persist or print them.
 - GitLab contributor profiles use `Record<gitlab:<sha256>, exactUsername>`. Resolve each mapping with `GET /users?username=<exactUsername>` and enrich only when exactly one response has the same username.
+- GitLab synchronization requests `GET /projects/:id/repository/contributors?per_page=100`. Matching `(trimmed lowercase name, trimmed lowercase email)` records may canonicalize the contributor display name, but component contribution counts remain derived from commits scoped to each component path. Only a 404 or 405 permits the deterministic component-commit fallback; authentication, network, pagination, and payload errors must fail synchronization.
 - GitLab contributor `login`, `avatarUrl`, and `profileUrl` fields are all-or-none. Unmapped, ambiguous, unavailable, or invalid profiles retain the stable contributor ID, commit count, display name, and initials fallback.
 - A configured GitLab `webBaseUrl` must exactly equal the installation base derived from the repository URL and `projectPath`, including any relative installation path such as `/gitlab`.
 - Persisted GitLab web URLs must stay under that exact installation base and contain no userinfo, query, or fragment. This prevents API-returned credential parameters from entering a public snapshot.
@@ -87,6 +88,8 @@ pnpm -C docs/vitepress validate-repository-metadata
 | GitLab Issue detail URL uses `/-/issues/:iid` or `/-/work_items/:iid` | Accept only when origin, project path, and IID exactly match the snapshot entry |
 | GitLab commit detail URL differs by origin, project path, full SHA, query, or hash | Reject the snapshot |
 | GitLab profile lookup returns zero, multiple, or a mismatched username | Keep the initials-only contributor fallback |
+| GitLab repository contributors endpoint returns 404 or 405 | Fall back to component commit scanning |
+| GitLab repository contributors endpoint returns 401/403, another HTTP failure, a network error, or malformed data | Fail synchronization and preserve the previous snapshot |
 | GitLab contributor profile fields are partial, cross-instance, outside the installation path, or contain query/fragment/userinfo | Reject enrichment or the committed snapshot |
 | GitLab `webBaseUrl` differs from the installation base derived from repository URL and `projectPath` | Fail before making API requests |
 | Pagination changes API origin or leaves the configured API path | Reject the URL |
@@ -107,6 +110,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 - GitLab snapshot tests accept both server-returned Issue detail route families and reject cross-project or mismatched-IID URLs.
 - GitLab snapshot tests bind every commit detail URL to the exact repository and full commit SHA, rejecting query and hash suffixes.
 - GitLab contributor tests assert explicit stable-ID mappings, exact one-result username lookup, all fallback cases, profile-field atomicity, custom installation paths, and rejection of credential-bearing avatar URLs.
+- GitLab repository contributor tests assert canonical display-name use, 404/405 commit-scan fallback, and hard failure for authentication and malformed-response cases.
 - The reusable theme fixture renders a contributor whose profile and avatar live below a self-managed relative installation path, and its VitePress SSR build must succeed.
 - API-client tests assert trusted pagination, loop detection, bounded retries, token redaction, and atomic replacement.
 - Provider tests assert authentication headers, project identity, branch SHA, component filtering, pagination, normalization, and placeholder rejection.

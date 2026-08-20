@@ -43,6 +43,12 @@ interface GitlabCommitResponse {
   web_url: string
 }
 
+interface GitlabRepositoryContributorResponse {
+  commits: number
+  email: string
+  name: string
+}
+
 interface GitlabContributorProfile {
   avatarUrl: string
   login: string
@@ -230,9 +236,47 @@ export function groupGitlabComponentIssues(
   return result
 }
 
+function contributorIdentity(name: string, email: string): string {
+  return `${name.trim().toLocaleLowerCase()}\0${email.trim().toLocaleLowerCase()}`
+}
+
 function contributorId(name: string, email: string): string {
-  const identity = `${name.trim().toLocaleLowerCase()}\0${email.trim().toLocaleLowerCase()}`
-  return `gitlab:${createHash('sha256').update(identity).digest('hex')}`
+  return `gitlab:${createHash('sha256').update(contributorIdentity(name, email)).digest('hex')}`
+}
+
+function normalizeRepositoryContributors(
+  values: GitlabRepositoryContributorResponse[],
+): ReadonlyMap<string, string> {
+  const names = new Map<string, string>()
+  for (const [index, value] of values.entries()) {
+    if (!isRecord(value)
+      || typeof value.name !== 'string'
+      || !value.name.trim()
+      || typeof value.email !== 'string'
+      || !Number.isInteger(value.commits)
+      || value.commits <= 0) {
+      throw new TypeError(`GitLab repository contributor ${index} is invalid`)
+    }
+    names.set(contributorIdentity(value.name, value.email), value.name.trim())
+  }
+  return names
+}
+
+async function resolveRepositoryContributors(
+  client: GitlabClient,
+  projectPath: string,
+): Promise<ReadonlyMap<string, string> | undefined> {
+  try {
+    const contributors = await client.paginate<GitlabRepositoryContributorResponse>(
+      `${projectPath}/repository/contributors?per_page=100`,
+    )
+    return normalizeRepositoryContributors(contributors)
+  }
+  catch (error) {
+    if (error instanceof GitlabRequestError && (error.status === 404 || error.status === 405))
+      return undefined
+    throw error
+  }
 }
 
 function validateContributorProfileMappings(
@@ -311,17 +355,23 @@ function createComponentMetadata(
   issuesEnabled: boolean,
   issues: GitlabIssueSummary[],
   contributorProfiles: ReadonlyMap<string, GitlabContributorProfile>,
+  repositoryContributors: ReadonlyMap<string, string> | undefined,
 ): GitlabComponentMetadata {
   const contributionCounts = new Map<string, GitlabContributor>()
   const commits: GitlabCommit[] = rawCommits.map((rawCommit) => {
     const id = contributorId(rawCommit.author_name, rawCommit.author_email)
     const existing = contributionCounts.get(id)
     const profile = contributorProfiles.get(id)
+    const repositoryContributorName = repositoryContributors?.get(
+      contributorIdentity(rawCommit.author_name, rawCommit.author_email),
+    )
     contributionCounts.set(id, {
       ...(profile ?? {}),
       contributions: (existing?.contributions ?? 0) + 1,
       id,
-      name: profile?.name ?? (rawCommit.author_name.trim() || 'Unknown contributor'),
+      name: profile?.name
+        ?? repositoryContributorName
+        ?? (rawCommit.author_name.trim() || 'Unknown contributor'),
     })
     return {
       author: { name: rawCommit.author_name.trim() || 'Unknown contributor' },
@@ -392,6 +442,7 @@ export async function createGitlabMetadata(options: CreateGitlabMetadataOptions)
     const commits = await client.paginate<GitlabCommitResponse>(`${projectPath}/repository/commits?${query}`)
     return { component, commits }
   }))
+  const repositoryContributors = await resolveRepositoryContributors(client, projectPath)
   const contributorIds = new Set(componentCommits.flatMap(({ commits }) => (
     commits.map(commit => contributorId(commit.author_name, commit.author_email))
   )))
@@ -409,6 +460,7 @@ export async function createGitlabMetadata(options: CreateGitlabMetadataOptions)
       issuesEnabled,
       groupedIssues[component.name] ?? [],
       contributorProfiles,
+      repositoryContributors,
     ),
   ]))
 
