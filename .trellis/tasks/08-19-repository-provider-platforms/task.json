@@ -35,7 +35,9 @@
     "08-19-repository-provider-gitee",
     "08-19-repository-provider-yunxiao",
     "08-19-repository-provider-tencent",
-    "08-19-repository-provider-gitlab-self-managed"
+    "08-19-repository-provider-gitlab-self-managed",
+    "08-20-repository-provider-gitlab-contributor-identities",
+    "08-20-repository-provider-debug-selection"
   ],
   "parent": null,
   "relatedFiles": [],
