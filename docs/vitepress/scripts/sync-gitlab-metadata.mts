@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import type { GitlabMetadataSnapshot } from '../.vitepress/gitlab-metadata-types.ts'
+import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from '../.vitepress/gitlab-metadata-types.ts'
 import type { AtomicFileSystem } from './atomic-metadata-write.mts'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
@@ -20,6 +20,17 @@ export function writeGitlabMetadataAtomically(
   writeJsonAtomically(snapshot, outputPath, fileSystem)
 }
 
+export async function syncGitlabMetadata(
+  collectSnapshot: () => Promise<GitlabMetadataSnapshot>,
+  expectation: GitlabMetadataExpectation,
+  outputPath: string,
+): Promise<GitlabMetadataSnapshot> {
+  const snapshot = await collectSnapshot()
+  assertGitlabMetadataSnapshot(snapshot, expectation)
+  writeGitlabMetadataAtomically(snapshot, outputPath)
+  return snapshot
+}
+
 export function formatGitlabSyncError(error: unknown, token?: string): string {
   const message = error instanceof Error ? (error.stack ?? error.message) : String(error)
   return token ? message.replaceAll(token, '[REDACTED]') : message
@@ -29,7 +40,9 @@ async function main(): Promise<void> {
   const expectation = repositoryMetadataExpectations.gitlab
   const config = docsSite.repositories.gitlab
   const token = process.env.GITLAB_TOKEN
-  const snapshot = await createGitlabMetadata({
+  const scriptDir = dirname(fileURLToPath(import.meta.url))
+  const outputPath = resolve(scriptDir, '../.vitepress/gitlab-metadata.json')
+  const snapshot = await syncGitlabMetadata(() => createGitlabMetadata({
     apiBaseUrl: config.apiBaseUrl,
     authentication: config.authentication,
     components: expectation.components,
@@ -41,12 +54,7 @@ async function main(): Promise<void> {
     token,
     userAgent: config.userAgent,
     webBaseUrl: config.webBaseUrl,
-  })
-  assertGitlabMetadataSnapshot(snapshot, expectation)
-
-  const scriptDir = dirname(fileURLToPath(import.meta.url))
-  const outputPath = resolve(scriptDir, '../.vitepress/gitlab-metadata.json')
-  writeGitlabMetadataAtomically(snapshot, outputPath)
+  }), expectation, outputPath)
   console.log(`Synced GitLab metadata for ${documentedComponents.length} components at ${snapshot.repository.headSha.slice(0, 7)}.`)
 }
 

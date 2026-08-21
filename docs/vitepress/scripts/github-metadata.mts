@@ -5,6 +5,11 @@ import type {
   GithubIssueSummary,
   GithubMetadataSnapshot,
 } from '../.vitepress/github-metadata-types.ts'
+import {
+  isExactGithubProfileUrl,
+  isTrustedGithubAvatarUrl,
+} from '../.vitepress/github-metadata-types.ts'
+import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface GithubRefResponse {
   object: { sha: string }
@@ -79,6 +84,40 @@ function isBot(user: GithubUserReference): boolean {
   return user.type === 'Bot' || user.login.endsWith('[bot]')
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function normalizeGithubProfile(value: unknown, expectedLogin: string): GithubContributorProfile {
+  if (!isRecord(value)
+    || value.login !== expectedLogin
+    || typeof value.name !== 'string'
+    || !value.name.trim()
+    || typeof value.avatar_url !== 'string'
+    || typeof value.html_url !== 'string') {
+    throw new TypeError(`GitHub user profile mismatch for ${expectedLogin}`)
+  }
+  let avatarUrl: string
+  try {
+    const normalizedAvatarUrl = new URL(value.avatar_url)
+    normalizedAvatarUrl.search = ''
+    avatarUrl = normalizedAvatarUrl.toString()
+  }
+  catch {
+    throw new TypeError(`GitHub user profile has an untrusted avatar for ${expectedLogin}`)
+  }
+  if (!isTrustedGithubAvatarUrl(avatarUrl))
+    throw new TypeError(`GitHub user profile has an untrusted avatar for ${expectedLogin}`)
+  if (!isExactGithubProfileUrl(value.html_url, expectedLogin))
+    throw new TypeError(`GitHub user profile URL mismatch for ${expectedLogin}`)
+  return {
+    avatarUrl,
+    login: expectedLogin,
+    name: value.name.trim(),
+    profileUrl: value.html_url,
+  }
+}
+
 export function parseNextLink(linkHeader: string | null): string | undefined {
   if (!linkHeader)
     return undefined
@@ -107,7 +146,7 @@ class GithubClient {
   }
 
   async get<T>(pathOrUrl: string): Promise<{ data: T, response: Response }> {
-    const url = pathOrUrl.startsWith('https://') ? pathOrUrl : `${API_ROOT}${pathOrUrl}`
+    const url = resolveTrustedApiUrl(API_ROOT, pathOrUrl, 'GitHub')
     let attempt = 0
 
     while (true) {
@@ -196,11 +235,14 @@ function createComponentMetadata(
   const contributionCounts = new Map<string, number>()
   const commits: GithubCommit[] = rawCommits.map((rawCommit) => {
     const githubAuthor = rawCommit.author
-    const profile = githubAuthor ? profiles[githubAuthor.login] : undefined
-    if (githubAuthor && (!excludeBotsFromContributors || !isBot(githubAuthor)))
+    if (!githubAuthor || !githubAuthor.login.trim())
+      throw new TypeError(`GitHub commit ${rawCommit.sha} has no associated GitHub account`)
+    const profile = profiles[githubAuthor.login]
+    if (!profile)
+      throw new TypeError(`GitHub commit ${rawCommit.sha} has no verified profile for ${githubAuthor.login}`)
+    if (!excludeBotsFromContributors || !isBot(githubAuthor))
       contributionCounts.set(githubAuthor.login, (contributionCounts.get(githubAuthor.login) ?? 0) + 1)
 
-    const gitAuthor = rawCommit.commit.author ?? rawCommit.commit.committer
     const commitDate = rawCommit.commit.author?.date ?? rawCommit.commit.committer?.date ?? ''
     return {
       sha: rawCommit.sha,
@@ -208,12 +250,7 @@ function createComponentMetadata(
       message: firstLine(rawCommit.commit.message),
       date: commitDate,
       url: rawCommit.html_url,
-      author: {
-        login: githubAuthor?.login,
-        name: profile?.name ?? gitAuthor?.name ?? githubAuthor?.login ?? 'Unknown contributor',
-        avatarUrl: profile?.avatarUrl ?? githubAuthor?.avatar_url,
-        profileUrl: profile?.profileUrl ?? githubAuthor?.html_url,
-      },
+      author: { ...profile },
     }
   })
 
@@ -253,20 +290,16 @@ export async function createGithubMetadata(options: CreateGithubMetadataOptions)
     const commits = await client.paginate<GithubCommitResponse>(`${repositoryPath}/commits?${query}`)
     commitsByComponent.set(component.name, commits)
     for (const commit of commits) {
-      if (commit.author)
-        githubUsers.set(commit.author.login, commit.author)
+      if (!commit.author || !commit.author.login.trim())
+        throw new TypeError(`GitHub commit ${commit.sha} has no associated GitHub account`)
+      githubUsers.set(commit.author.login, commit.author)
     }
   }
 
   const profiles: Record<string, GithubContributorProfile> = {}
   for (const login of Array.from(githubUsers.keys()).sort()) {
     const { data: user } = await client.get<GithubUserResponse>(`/users/${encodeURIComponent(login)}`)
-    profiles[login] = {
-      login,
-      name: user.name?.trim() || login,
-      avatarUrl: user.avatar_url,
-      profileUrl: user.html_url,
-    }
+    profiles[login] = normalizeGithubProfile(user, login)
   }
 
   const components = Object.fromEntries(options.components.map(component => [

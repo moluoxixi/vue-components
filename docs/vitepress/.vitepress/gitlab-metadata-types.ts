@@ -1,6 +1,9 @@
 export interface GitlabCommit {
   author: {
+    avatarUrl: string
+    login: string
     name: string
+    profileUrl: string
   }
   date: string
   message: string
@@ -10,12 +13,12 @@ export interface GitlabCommit {
 }
 
 export interface GitlabContributor {
-  avatarUrl?: string
+  avatarUrl: string
   contributions: number
   id: string
-  login?: string
+  login: string
   name: string
-  profileUrl?: string
+  profileUrl: string
 }
 
 export interface GitlabIssueSummary {
@@ -218,6 +221,8 @@ export function assertGitlabMetadataSnapshot(
     JSON.stringify(Object.keys(value.components).sort()) === JSON.stringify(expectedNames),
     'component keys must exactly match the documentation manifest',
   )
+  const contributorLoginsById = new Map<string, string>()
+  const contributorProfilesByLogin = new Map<string, Record<string, unknown>>()
 
   for (const expectedComponent of expected.components) {
     const rawComponent = value.components[expectedComponent.name]
@@ -253,40 +258,50 @@ export function assertGitlabMetadataSnapshot(
     }
 
     const contributorIds = new Set<string>()
+    const contributorsByLogin = new Map<string, Record<string, unknown>>()
     for (const rawContributor of rawComponent.contributors) {
       assertMetadata(isRecord(rawContributor), `${expectedComponent.name} contributor must be an object`)
-      const profileFields = ['avatarUrl', 'login', 'profileUrl'] as const
-      const hasAnyProfileField = profileFields.some(field => field in rawContributor)
-      const hasAllProfileFields = profileFields.every(field => field in rawContributor)
-      assertMetadata(
-        hasAnyProfileField === hasAllProfileFields,
-        `${expectedComponent.name} contributor profile fields must be provided together`,
-      )
       assertExactKeys(
         rawContributor,
-        hasAllProfileFields
-          ? ['avatarUrl', 'contributions', 'id', 'login', 'name', 'profileUrl']
-          : ['contributions', 'id', 'name'],
+        ['avatarUrl', 'contributions', 'id', 'login', 'name', 'profileUrl'],
         `${expectedComponent.name} contributor`,
       )
-      assertMetadata(isNonEmptyString(rawContributor.id) && rawContributor.id.startsWith('gitlab:'), `${expectedComponent.name} contributor id is invalid`)
+      assertMetadata(isNonEmptyString(rawContributor.id) && /^gitlab:[a-f0-9]{64}$/.test(rawContributor.id), `${expectedComponent.name} contributor id is invalid`)
       assertMetadata(!contributorIds.has(rawContributor.id), `${expectedComponent.name} contains duplicate contributor ${rawContributor.id}`)
       contributorIds.add(rawContributor.id)
       assertMetadata(isNonEmptyString(rawContributor.name), `${expectedComponent.name} contributor name is required`)
       assertMetadata(Number.isInteger(rawContributor.contributions) && Number(rawContributor.contributions) > 0, `${expectedComponent.name} contribution count is invalid`)
-      if (hasAllProfileFields) {
-        assertMetadata(isNonEmptyString(rawContributor.login), `${expectedComponent.name} contributor login is required`)
-        assertHttpUrl(rawContributor.avatarUrl, `${expectedComponent.name} contributor avatar URL`)
-        assertHttpUrl(rawContributor.profileUrl, `${expectedComponent.name} contributor profile URL`)
+      assertMetadata(isNonEmptyString(rawContributor.login), `${expectedComponent.name} contributor login is required`)
+      const existingLogin = contributorLoginsById.get(rawContributor.id)
+      assertMetadata(
+        existingLogin === undefined || existingLogin === rawContributor.login,
+        `GitLab contributor ${rawContributor.id} must remain bound to login ${existingLogin} across components`,
+      )
+      contributorLoginsById.set(rawContributor.id, rawContributor.login)
+      assertMetadata(!contributorsByLogin.has(rawContributor.login), `${expectedComponent.name} contains duplicate contributor login ${rawContributor.login}`)
+      assertHttpUrl(rawContributor.avatarUrl, `${expectedComponent.name} contributor avatar URL`)
+      assertHttpUrl(rawContributor.profileUrl, `${expectedComponent.name} contributor profile URL`)
+      assertMetadata(
+        isTrustedGitlabWebUrl(rawContributor.avatarUrl, webBaseUrl),
+        `${expectedComponent.name} contributor avatar URL must belong to the configured GitLab instance`,
+      )
+      assertMetadata(
+        isExactGitlabProfileUrl(rawContributor.profileUrl, webBaseUrl, rawContributor.login),
+        `${expectedComponent.name} contributor profile URL must match its GitLab login`,
+      )
+      const existingProfile = contributorProfilesByLogin.get(rawContributor.login)
+      if (existingProfile) {
         assertMetadata(
-          isTrustedGitlabWebUrl(rawContributor.avatarUrl, webBaseUrl),
-          `${expectedComponent.name} contributor avatar URL must belong to the configured GitLab instance`,
-        )
-        assertMetadata(
-          isExactGitlabProfileUrl(rawContributor.profileUrl, webBaseUrl, rawContributor.login),
-          `${expectedComponent.name} contributor profile URL must match its GitLab login`,
+          rawContributor.avatarUrl === existingProfile.avatarUrl
+          && rawContributor.name === existingProfile.name
+          && rawContributor.profileUrl === existingProfile.profileUrl,
+          `GitLab contributor profile must remain consistent across components for ${rawContributor.login}`,
         )
       }
+      else {
+        contributorProfilesByLogin.set(rawContributor.login, rawContributor)
+      }
+      contributorsByLogin.set(rawContributor.login, rawContributor)
     }
 
     const commitShas = new Set<string>()
@@ -307,8 +322,16 @@ export function assertGitlabMetadataSnapshot(
         `${expectedComponent.name} commit URL`,
       )
       assertMetadata(isRecord(rawCommit.author), `${expectedComponent.name} commit author must be an object`)
-      assertExactKeys(rawCommit.author, ['name'], `${expectedComponent.name} commit author`)
-      assertMetadata(isNonEmptyString(rawCommit.author.name), `${expectedComponent.name} commit author is invalid`)
+      assertExactKeys(rawCommit.author, ['avatarUrl', 'login', 'name', 'profileUrl'], `${expectedComponent.name} commit author`)
+      assertMetadata(isNonEmptyString(rawCommit.author.login), `${expectedComponent.name} commit author login is required`)
+      const contributor = contributorsByLogin.get(rawCommit.author.login)
+      assertMetadata(contributor, `${expectedComponent.name} commit author has no matching contributor`)
+      assertMetadata(
+        rawCommit.author.avatarUrl === contributor.avatarUrl
+        && rawCommit.author.name === contributor.name
+        && rawCommit.author.profileUrl === contributor.profileUrl,
+        `${expectedComponent.name} commit author must match its GitLab contributor profile`,
+      )
     }
   }
 }

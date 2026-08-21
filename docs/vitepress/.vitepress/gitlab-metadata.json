@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20T02:01:34.867Z",
+  "generatedAt": "2026-08-21T10:06:56.072Z",
   "repository": {
     "defaultBranch": "main",
     "headSha": "af9833f29c2afc03834714788b985f017944c640",
@@ -13,7 +13,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -23,7 +26,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -33,7 +39,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -43,7 +52,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -53,7 +65,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -63,7 +78,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -73,7 +91,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -83,7 +104,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T15:20:01.000+08:00",
           "message": "Update Vue component library implementation",
@@ -116,7 +140,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -126,7 +153,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T08:46:08.000+08:00",
           "message": "feat(components): add editable table modes and p0 p1 improvements",
@@ -136,7 +166,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -146,7 +179,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -156,7 +192,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -166,7 +205,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -176,7 +218,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -186,7 +231,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -196,7 +244,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T15:20:01.000+08:00",
           "message": "Update Vue component library implementation",
@@ -223,7 +274,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-09T01:17:07.000+08:00",
           "message": "feat(config-form): add advanced visual designer capabilities",
@@ -233,7 +287,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -243,7 +300,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -253,7 +313,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -263,7 +326,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T13:41:22.000+08:00",
           "message": "docs: cover all public components",
@@ -273,7 +339,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T15:20:01.000+08:00",
           "message": "Update Vue component library implementation",
@@ -283,7 +352,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T12:38:45.000+08:00",
           "message": "Refine ConfigForm renderer architecture and release checks",
@@ -293,7 +365,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T10:12:11.000+08:00",
           "message": "Refactor ConfigForm renderer expose handling",
@@ -303,7 +378,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T19:47:21.000+08:00",
           "message": "refactor: remove config form type assertions",
@@ -313,7 +391,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T19:01:14.000+08:00",
           "message": "refactor: pass config form fields directly",
@@ -323,7 +404,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T18:26:36.000+08:00",
           "message": "refactor: use native config form attr types",
@@ -333,7 +417,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T17:56:09.000+08:00",
           "message": "fix: align config form renderer attr types",
@@ -343,7 +430,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T17:37:24.000+08:00",
           "message": "refactor: rename config form DOM attrs",
@@ -353,7 +443,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T16:16:11.000+08:00",
           "message": "feat: share config form headless renderer",
@@ -363,7 +456,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T13:28:07.000+08:00",
           "message": "feat: add headless config form runtime",
@@ -373,7 +469,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-31T01:12:34.000+08:00",
           "message": "refactor: extract reusable headless components",
@@ -383,7 +482,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-30T14:35:53.000+08:00",
           "message": "feat(config-form): harden runtime and add standalone forms",
@@ -393,7 +495,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-02T14:44:11.000+08:00",
           "message": "feat(config-form): 拆分 runtime 与 UI 子包并调整工作区 (main)",
@@ -403,7 +508,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-02T13:35:34.000+08:00",
           "message": "feat(components): add ui config forms",
@@ -430,7 +538,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-09T01:17:07.000+08:00",
           "message": "feat(config-form): add advanced visual designer capabilities",
@@ -440,7 +551,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -450,7 +564,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -460,7 +577,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T13:41:22.000+08:00",
           "message": "docs: cover all public components",
@@ -470,7 +590,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T15:20:01.000+08:00",
           "message": "Update Vue component library implementation",
@@ -480,7 +603,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T12:38:45.000+08:00",
           "message": "Refine ConfigForm renderer architecture and release checks",
@@ -490,7 +616,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T10:12:11.000+08:00",
           "message": "Refactor ConfigForm renderer expose handling",
@@ -500,7 +629,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T19:47:21.000+08:00",
           "message": "refactor: remove config form type assertions",
@@ -510,7 +642,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T19:01:14.000+08:00",
           "message": "refactor: pass config form fields directly",
@@ -520,7 +655,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T18:26:36.000+08:00",
           "message": "refactor: use native config form attr types",
@@ -530,7 +668,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T17:56:09.000+08:00",
           "message": "fix: align config form renderer attr types",
@@ -540,7 +681,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T17:37:24.000+08:00",
           "message": "refactor: rename config form DOM attrs",
@@ -550,7 +694,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T16:16:11.000+08:00",
           "message": "feat: share config form headless renderer",
@@ -560,7 +707,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-01T13:28:07.000+08:00",
           "message": "feat: add headless config form runtime",
@@ -570,7 +720,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-31T01:12:34.000+08:00",
           "message": "refactor: extract reusable headless components",
@@ -580,7 +733,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-30T14:35:53.000+08:00",
           "message": "feat(config-form): harden runtime and add standalone forms",
@@ -590,7 +746,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-02T14:44:11.000+08:00",
           "message": "feat(config-form): 拆分 runtime 与 UI 子包并调整工作区 (main)",
@@ -600,7 +759,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-02T13:35:34.000+08:00",
           "message": "feat(components): add ui config forms",
@@ -627,7 +789,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -637,7 +802,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -647,7 +815,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -657,7 +828,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -667,7 +841,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -677,7 +854,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -687,7 +867,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-31T01:12:34.000+08:00",
           "message": "refactor: extract reusable headless components",
@@ -697,7 +880,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-15T03:01:33.000+08:00",
           "message": "fix(ai-doc-assistant): stabilize generated demo previews",
@@ -707,7 +893,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-03T17:20:39.000+08:00",
           "message": "fix: 修复组件与 devtools 审查问题",
@@ -717,7 +906,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-27T10:20:22.000+08:00",
           "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
@@ -727,7 +919,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-27T09:21:51.000+08:00",
           "message": "test: add components playground coverage",
@@ -737,7 +932,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-26T21:33:24.000+08:00",
           "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
@@ -764,7 +962,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -774,7 +975,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -784,7 +988,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -794,7 +1001,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -804,7 +1014,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -814,7 +1027,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -824,7 +1040,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-31T01:12:34.000+08:00",
           "message": "refactor: extract reusable headless components",
@@ -834,7 +1053,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-15T20:14:38.000+08:00",
           "message": "feat： aaa",
@@ -844,7 +1066,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-03T23:37:38.000+08:00",
           "message": "fix: 加固运行时空值边界并补充布局压测",
@@ -854,7 +1079,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-03T17:20:39.000+08:00",
           "message": "fix: 修复组件与 devtools 审查问题",
@@ -864,7 +1092,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-27T10:20:22.000+08:00",
           "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
@@ -874,7 +1105,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-26T21:33:24.000+08:00",
           "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
@@ -901,7 +1135,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -911,7 +1148,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -921,7 +1161,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -931,7 +1174,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -941,7 +1187,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -951,7 +1200,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -961,7 +1213,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -971,7 +1226,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-19T14:28:37.000+08:00",
           "message": "feat: add request cached components",
@@ -998,7 +1256,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -1008,7 +1269,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -1018,7 +1282,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -1028,7 +1295,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -1038,7 +1308,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -1048,7 +1321,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -1058,7 +1334,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -1068,7 +1347,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-19T14:28:37.000+08:00",
           "message": "feat: add request cached components",
@@ -1095,7 +1377,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -1105,7 +1390,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -1115,7 +1403,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -1125,7 +1416,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -1135,7 +1429,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -1145,7 +1442,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -1155,7 +1455,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -1165,7 +1468,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-19T14:28:37.000+08:00",
           "message": "feat: add request cached components",
@@ -1192,7 +1498,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -1202,7 +1511,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T23:31:43.000+08:00",
           "message": "fix(docs): 统一 TS 与 JS 示例格式",
@@ -1212,7 +1524,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T22:55:28.000+08:00",
           "message": "feat(config-table): 支持响应式宽度和列配置面板",
@@ -1222,7 +1537,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T17:12:58.000+08:00",
           "message": "feat(table): 支持基于 selector 的行和单元格模式批量切换",
@@ -1232,7 +1550,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T11:01:41.000+08:00",
           "message": "refactor(build): 优化声明文件构建和跨模块导入路径规范",
@@ -1242,7 +1563,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T10:01:50.000+08:00",
           "message": "feat(components): complete editable table p2 p3 improvements",
@@ -1252,7 +1576,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T08:46:08.000+08:00",
           "message": "feat(components): add editable table modes and p0 p1 improvements",
@@ -1262,7 +1589,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -1272,7 +1602,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -1282,7 +1615,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -1292,7 +1628,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T22:46:50.000+08:00",
           "message": "refactor: split component contracts and preserve element layouts",
@@ -1302,7 +1641,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T20:24:03.000+08:00",
           "message": "feat: enhance config table renderers and column settings",
@@ -1312,7 +1654,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -1322,7 +1667,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -1332,7 +1680,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -1342,7 +1693,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T17:07:58.000+08:00",
           "message": "Refactor component library structure",
@@ -1352,7 +1706,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-31T01:12:34.000+08:00",
           "message": "refactor: extract reusable headless components",
@@ -1362,7 +1719,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-24T15:31:54.000+08:00",
           "message": "feat(components): switch config table to virtual table",
@@ -1372,7 +1732,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-19T14:28:37.000+08:00",
           "message": "feat: add request cached components",
@@ -1382,7 +1745,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-18T10:44:46.000+08:00",
           "message": "feat(components): 支持表格 render 插槽并优化导出交互(main)",
@@ -1392,7 +1758,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-18T10:00:20.000+08:00",
           "message": "feat(components): add config table and pdf export safeguards",
@@ -1419,7 +1788,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -1429,7 +1801,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T17:12:58.000+08:00",
           "message": "feat(table): 支持基于 selector 的行和单元格模式批量切换",
@@ -1439,7 +1814,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T10:01:50.000+08:00",
           "message": "feat(components): complete editable table p2 p3 improvements",
@@ -1449,7 +1827,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T08:46:08.000+08:00",
           "message": "feat(components): add editable table modes and p0 p1 improvements",
@@ -1459,7 +1840,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -1469,7 +1853,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -1479,7 +1866,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -1489,7 +1879,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T20:24:03.000+08:00",
           "message": "feat: enhance config table renderers and column settings",
@@ -1499,7 +1892,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -1509,7 +1905,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -1519,7 +1918,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -1529,7 +1931,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T14:20:29.000+08:00",
           "message": "feat: expand headless table capabilities",
@@ -1539,7 +1944,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-31T01:12:34.000+08:00",
           "message": "refactor: extract reusable headless components",
@@ -1566,7 +1974,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-14T11:47:14.000+08:00",
           "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
@@ -1576,7 +1987,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T11:01:41.000+08:00",
           "message": "refactor(build): 优化声明文件构建和跨模块导入路径规范",
@@ -1586,7 +2000,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T08:46:08.000+08:00",
           "message": "feat(components): add editable table modes and p0 p1 improvements",
@@ -1596,7 +2013,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T15:32:04.000+08:00",
           "message": "fix(components): stabilize Vue template type inference",
@@ -1606,7 +2026,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -1616,7 +2039,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -1626,7 +2052,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -1636,7 +2065,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -1646,7 +2078,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -1656,7 +2091,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -1666,7 +2104,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T17:07:58.000+08:00",
           "message": "Refactor component library structure",
@@ -1676,7 +2117,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-07-31T01:12:34.000+08:00",
           "message": "refactor: extract reusable headless components",
@@ -1686,7 +2130,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-24T15:31:54.000+08:00",
           "message": "feat(components): switch config table to virtual table",
@@ -1696,7 +2143,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-19T14:28:37.000+08:00",
           "message": "feat: add request cached components",
@@ -1706,7 +2156,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-18T10:44:46.000+08:00",
           "message": "feat(components): 支持表格 render 插槽并优化导出交互(main)",
@@ -1716,7 +2169,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-18T10:00:20.000+08:00",
           "message": "feat(components): add config table and pdf export safeguards",
@@ -1726,7 +2182,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-18T09:18:24.000+08:00",
           "message": "feat(ai-doc-assistant): 补全插槽作用域与类型透传(main)",
@@ -1736,7 +2195,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-15T20:14:38.000+08:00",
           "message": "feat： aaa",
@@ -1746,7 +2208,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-15T03:01:33.000+08:00",
           "message": "fix(ai-doc-assistant): stabilize generated demo previews",
@@ -1756,7 +2221,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-03T23:37:38.000+08:00",
           "message": "fix: 加固运行时空值边界并补充布局压测",
@@ -1766,7 +2234,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-06-03T17:20:39.000+08:00",
           "message": "fix: 修复组件与 devtools 审查问题",
@@ -1776,7 +2247,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-27T10:20:22.000+08:00",
           "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
@@ -1786,7 +2260,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-27T09:21:51.000+08:00",
           "message": "test: add components playground coverage",
@@ -1796,7 +2273,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-05-26T21:33:24.000+08:00",
           "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
@@ -1823,7 +2303,10 @@
       "commits": [
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-13T08:46:08.000+08:00",
           "message": "feat(components): add editable table modes and p0 p1 improvements",
@@ -1833,7 +2316,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T15:32:04.000+08:00",
           "message": "fix(components): stabilize Vue template type inference",
@@ -1843,7 +2329,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-10T11:02:54.000+08:00",
           "message": "feat(docs): upgrade search and demo tooling",
@@ -1853,7 +2342,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-08T10:18:38.000+08:00",
           "message": "feat: complete docs theme and visual form designer foundation",
@@ -1863,7 +2355,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-07T11:23:35.000+08:00",
           "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
@@ -1873,7 +2368,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T22:46:50.000+08:00",
           "message": "refactor: split component contracts and preserve element layouts",
@@ -1883,7 +2381,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-06T18:27:27.000+08:00",
           "message": "feat(components): add configurable table rendering",
@@ -1893,7 +2394,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-04T15:22:31.000+08:00",
           "message": "docs: generate component API routes",
@@ -1903,7 +2407,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T23:26:51.000+08:00",
           "message": "docs: add Element Plus-style component documentation",
@@ -1913,7 +2420,10 @@
         },
         {
           "author": {
-            "name": "wl"
+            "avatarUrl": "https://jihulab.com/uploads/-/system/user/avatar/268527/avatar.png",
+            "login": "moluoxixi",
+            "name": "moluoxixi",
+            "profileUrl": "https://jihulab.com/moluoxixi"
           },
           "date": "2026-08-03T15:20:01.000+08:00",
           "message": "Update Vue component library implementation",

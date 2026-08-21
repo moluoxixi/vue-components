@@ -15,6 +15,8 @@ Documentation builds consume generated API data and committed repository metadat
 - Do not add an `auto` repository provider, read another provider's snapshot as fallback, or merge snapshots.
 - Do not follow pagination URLs before checking both the configured API origin and normalized path prefix.
 - Do not infer a GitLab account from a commit author's display name or email. Map the privacy-safe stable contributor ID to one reviewed exact username.
+- Do not infer a Yunxiao account from a commit author's display name or email. Map the privacy-safe commit identity to one reviewed exact Codeup username.
+- Do not import Node-only modules such as `node:crypto` from `.vitepress` snapshot validators. These validators are bundled for both SSR and the browser.
 - Do not run network metadata synchronization in pre-commit hooks or required CI.
 - Do not execute the native `.mts` scripts with Node versions below `22.6.0`.
 - Do not remove `dependsOn: ["^build"]` from the Turbo docs build task; docs consumes workspace package output.
@@ -68,13 +70,15 @@ pnpm -C docs/vitepress validate-repository-metadata
 - Every provider owns one snapshot file and one exact expectation. Selection resolves the provider, repository config, expectation, snapshot, and action input as a single unit.
 - A provider capability is a maximum. Snapshot resolution may disable it but cannot enable a capability absent from the provider definition.
 - Provider-specific environment keys are runtime-only: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `GITEE_TOKEN`, and `YUNXIAO_TOKEN`. Never persist or print them.
-- GitLab contributor profiles use `Record<gitlab:<sha256>, exactUsername>`. Resolve each mapping with `GET /users?username=<exactUsername>` and enrich only when exactly one response has the same username.
+- GitLab contributor profiles use `Record<gitlab:<sha256>, exactUsername>`. Resolve every relevant mapping with `GET /users?username=<exactUsername>` and require exactly one response with the same username and a complete provider-owned profile.
+- Gitee contributors use `gitee:<numeric-account-id>` from the commit API. Resolve the login from that same commit through the Gitee user API and require both responses to contain the exact same numeric ID and login; a different Gitee account is never an alias.
 - Gitee Markdown demo links use `/blame/<branch>/<path>#L<start>`. The `/blob` route renders Markdown without line IDs, and range-shaped anchors do not reliably scroll on direct navigation.
-- Yunxiao contributor profiles use `Record<yunxiao:<sha256>, { avatarUrl, login }>` keyed by the privacy-safe hash already derived from normalized commit name and email. Prefer a complete structured commit author profile returned by Codeup, then fall back to this reviewed mapping. Persist `avatarUrl` and `login` together or omit both; never persist the source email or invent a profile URL.
-- Yunxiao avatar URLs must be absolute HTTP(S) URLs without userinfo, query, or fragment. A verified avatar does not depend on a contributor profile link: contributor cards and commit timelines render the image in a non-link container when `profileUrl` is unavailable.
+- Yunxiao commit names and emails derive only privacy-safe `yunxiao:<sha256>` mapping keys. `contributorAccounts` maps each reviewed key to one exact Codeup username; it never supplies profile fields. The collector resolves those usernames through the same repository's `/members` API and requires exactly one active member with a stable member ID, user ID, complete `avatarUrl`, exact `username`, and `name`. The persisted contributor key is `yunxiao:<sha256(login)>`. Missing mappings, zero or duplicate matches, inactive/partial members, conflicting profiles, and unsafe avatars fail synchronization; there is no configured-profile, email-based account inference, name-only, or initials fallback. Never persist the source email or invent a profile URL.
+- A Yunxiao synchronization token needs only Codeup repository, commit, branch, and member read-only permissions. Tokens remain runtime-only and must be revoked after temporary acceptance work.
+- Yunxiao avatar URLs must use the trusted provider-owned HTTPS avatar origin and contain no userinfo, query, or fragment. A verified avatar does not depend on a contributor profile link: contributor cards and commit timelines render the image in a non-link container when `profileUrl` is unavailable.
 - Yunxiao source actions use Codeup web routes: directories use `/tree/<branch>/<path>` and files use `/blob/<branch>/<path>`. Non-README Markdown defaults to a preview without line anchors, so Markdown demo links must append Codeup's `?README.md` source-view marker before the exact `#L<start>` anchor. Do not emit a range-shaped anchor: the accepted contract is the exact demo start line. Component source paths must use the component's authoring package path; `RichTextEditor` therefore points to `packages/rich-text-editor`, not its compatibility re-export under `packages/components/src`.
-- GitLab synchronization requests `GET /projects/:id/repository/contributors?per_page=100`. Matching `(trimmed lowercase name, trimmed lowercase email)` records may canonicalize the contributor display name, but component contribution counts remain derived from commits scoped to each component path. Only a 404 or 405 permits the deterministic component-commit fallback; authentication, network, pagination, and payload errors must fail synchronization.
-- GitLab contributor `login`, `avatarUrl`, and `profileUrl` fields are all-or-none. Unmapped, ambiguous, unavailable, or invalid profiles retain the stable contributor ID, commit count, display name, and initials fallback.
+- GitLab component commits are the sole contribution source. Their privacy-safe identity maps to one reviewed exact username, and the GitLab user API supplies the complete `avatarUrl`, `login`, `name`, and `profileUrl` profile used by both contributor and commit-author records.
+- Any missing mapping, ambiguous or mismatched lookup, unavailable endpoint, partial profile, unsafe URL, authentication failure, network failure, pagination failure, or malformed payload aborts synchronization and preserves the previous snapshot byte-for-byte.
 - A configured GitLab `webBaseUrl` must exactly equal the installation base derived from the repository URL and `projectPath`, including any relative installation path such as `/gitlab`.
 - Persisted GitLab web URLs must stay under that exact installation base and contain no userinfo, query, or fragment. This prevents API-returned credential parameters from entering a public snapshot.
 - `validate-repository-metadata` validates committed GitHub, GitLab, Gitee, local, and Yunxiao snapshots offline. A provider may join this aggregate only after its placeholder has been replaced by a reviewed real snapshot.
@@ -95,12 +99,14 @@ pnpm -C docs/vitepress validate-repository-metadata
 | Snapshot enables an unsupported capability | Reject resolution |
 | GitLab Issue detail URL uses `/-/issues/:iid` or `/-/work_items/:iid` | Accept only when origin, project path, and IID exactly match the snapshot entry |
 | GitLab commit detail URL differs by origin, project path, full SHA, query, or hash | Reject the snapshot |
-| GitLab profile lookup returns zero, multiple, or a mismatched username | Keep the initials-only contributor fallback |
-| GitLab repository contributors endpoint returns 404 or 405 | Fall back to component commit scanning |
-| GitLab repository contributors endpoint returns 401/403, another HTTP failure, a network error, or malformed data | Fail synchronization and preserve the previous snapshot |
-| GitLab contributor profile fields are partial, cross-instance, outside the installation path, or contain query/fragment/userinfo | Reject enrichment or the committed snapshot |
+| GitLab profile lookup returns zero, multiple, or a mismatched username | Fail synchronization and preserve the previous snapshot |
+| GitLab user or commit endpoint returns any HTTP failure, network error, or malformed data | Fail synchronization and preserve the previous snapshot |
+| GitLab contributor profile fields are partial, cross-instance, outside the installation path, or contain query/fragment/userinfo | Fail synchronization or reject the committed snapshot |
+| Gitee commit account ID/login and user API ID/login differ | Fail synchronization; never substitute or merge another Gitee account |
 | Yunxiao contributor ID is not `yunxiao:` followed by 64 lowercase hexadecimal characters | Reject the committed snapshot |
-| Yunxiao avatar/login is partial, malformed, or the avatar URL contains userinfo/query/fragment | Reject configured enrichment or the committed snapshot |
+| A `.vitepress` snapshot validator imports a Node-only module | VitePress client build must fail; replace it with an explicit browser-compatible runtime dependency rather than weakening validation |
+| Yunxiao mapping is missing, member lookup is zero/ambiguous, or the active member's avatar/login/name/IDs are partial or conflicting | Fail synchronization and preserve the previous snapshot |
+| Yunxiao avatar URL is outside the trusted provider origin or contains userinfo/query/fragment | Fail synchronization or reject the committed snapshot |
 | Yunxiao has a verified avatar/login but no verified profile URL | Render the avatar and login without making the author container a link |
 | GitLab `webBaseUrl` differs from the installation base derived from repository URL and `projectPath` | Fail before making API requests |
 | Pagination changes API origin or leaves the configured API path | Reject the URL |
@@ -112,9 +118,11 @@ pnpm -C docs/vitepress validate-repository-metadata
 #### 5. Good / Base / Bad Cases
 
 - Good: select `gitlab`, validate only `gitlab-metadata.json`, then construct GitLab actions from the same repository config.
-- Good: select `yunxiao`, preserve one reviewed avatar/login pair in both the contributor list and changelog, and generate a Codeup blob URL anchored to the exact demo start line.
+- Good: select `yunxiao`, map an opaque commit identity to one reviewed exact username, resolve its current member profile once, reuse it in both the contributor list and changelog, and generate a Codeup blob URL anchored to the exact demo start line.
+- Good: verify `yunxiao:<sha256(login)>` with the browser-compatible synchronous `@noble/hashes` implementation shared by SSR and client bundles.
 - Base: omit the debug environment variable; production and CI select the committed GitHub snapshot.
 - Bad: treat the debug environment variable as `auto`, merge snapshots, expose a client-side provider switch, or require a guessed Yunxiao profile URL before showing a verified avatar.
+- Bad: use `node:crypto` in `.vitepress/*-metadata-types.ts`; offline validation may pass while the production client bundle fails.
 
 #### 6. Tests Required
 
@@ -123,10 +131,12 @@ pnpm -C docs/vitepress validate-repository-metadata
 - URL tests assert platform routes, path/ref encoding, line anchors, issue queries, unsupported actions, and the Yunxiao Markdown source-view marker without adding it to ordinary source files.
 - GitLab snapshot tests accept both server-returned Issue detail route families and reject cross-project or mismatched-IID URLs.
 - GitLab snapshot tests bind every commit detail URL to the exact repository and full commit SHA, rejecting query and hash suffixes.
-- GitLab contributor tests assert explicit stable-ID mappings, exact one-result username lookup, all fallback cases, profile-field atomicity, custom installation paths, and rejection of credential-bearing avatar URLs.
-- Yunxiao collector and snapshot tests assert structured-author precedence, reviewed stable-ID fallback, avatar/login atomicity, exact ID format, credential-bearing URL rejection, and absence of persisted emails/tokens.
+- GitLab contributor tests assert explicit stable-ID mappings, exact one-result username lookup, hard failure for every mapping/profile error, atomic snapshot preservation, profile-field atomicity, custom installation paths, and rejection of credential-bearing avatar URLs.
+- Gitee collector and snapshot tests assert exact numeric account ID/login agreement across commit and user APIs, rejection of cross-account substitution, provider-owned default avatars, and contributor/commit-author profile consistency.
+- Yunxiao collector and snapshot tests assert reviewed opaque-identity mappings, exact active member lookup, required provider-only profiles, `sha256(login)` IDs, profile consistency, trusted avatar origins, hard failure for missing/ambiguous/partial/mismatched results, and absence of persisted emails/tokens.
+- The production docs build must execute after snapshot-validator changes so browser-incompatible Node imports cannot hide behind Node-only unit tests or `vue-tsc`.
 - Yunxiao theme/browser tests assert avatars in both contributor and changelog views, component tree links, Markdown source-view activation plus exact demo blob line anchors, one ordinary component, and the `packages/rich-text-editor` authoring path.
-- GitLab repository contributor tests assert canonical display-name use, 404/405 commit-scan fallback, and hard failure for authentication and malformed-response cases.
+- Remote provider tests assert every HTTP, mapping, identity, profile, pagination, and validation failure is a hard failure that preserves the prior snapshot; only explicitly unsupported capabilities may be omitted.
 - The reusable theme fixture renders a contributor whose profile and avatar live below a self-managed relative installation path, and its VitePress SSR build must succeed.
 - API-client tests assert trusted pagination, loop detection, bounded retries, token redaction, and atomic replacement.
 - Provider tests assert authentication headers, project identity, branch SHA, component filtering, pagination, normalization, and placeholder rejection.
@@ -168,6 +178,19 @@ For Yunxiao commit authors, do not tie avatar visibility to an unverified profil
 </component>
 ```
 
+For Yunxiao stable contributor IDs, keep the strict hash check browser-compatible:
+
+```ts
+// Wrong: .vitepress validators are also bundled for the browser.
+import { createHash } from 'node:crypto'
+
+// Correct: synchronous in Node, SSR, and browser bundles.
+import { sha256 } from '@noble/hashes/sha2.js'
+import { bytesToHex } from '@noble/hashes/utils.js'
+
+const id = `yunxiao:${bytesToHex(sha256(new TextEncoder().encode(login)))}`
+```
+
 ---
 
 ## Testing Requirements
@@ -183,7 +206,8 @@ For Yunxiao commit authors, do not tie avatar visibility to an unverified profil
 - Provider selection remains explicit and production stays on the intended provider.
 - Snapshot, expectation, repository config, and URL actions all belong to the same provider.
 - GitLab contributor mappings contain reviewed exact usernames only; snapshots never contain commit emails or credential-bearing profile/avatar URLs.
-- Yunxiao contributor mappings contain reviewed exact avatar/login pairs keyed by stable IDs; snapshots never contain commit emails, tokens, credential-bearing avatar URLs, or guessed profile URLs.
+- Gitee snapshots bind the exact committing numeric account ID to its exact login and provider-owned profile; distinct Gitee accounts are never treated as aliases.
+- Yunxiao snapshots contain only complete Codeup member API profiles keyed by `sha256(login)`; mappings select exact usernames but never inject profiles, and snapshots never contain commit emails, tokens, untrusted avatar URLs, or guessed profile URLs.
 - Capability flags match both available actions and normalized output.
 - Pagination cannot escape the configured API boundary and retry loops are bounded.
 - Tokens are optional where anonymous reads are supported, runtime-only, and redacted from failures.

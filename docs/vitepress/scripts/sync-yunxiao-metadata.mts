@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import type { YunxiaoMetadataSnapshot } from '../.vitepress/yunxiao-metadata-types.ts'
+import type { YunxiaoMetadataExpectation, YunxiaoMetadataSnapshot } from '../.vitepress/yunxiao-metadata-types.ts'
 import type { AtomicFileSystem } from './atomic-metadata-write.mts'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
@@ -20,6 +20,17 @@ export function writeYunxiaoMetadataAtomically(
   writeJsonAtomically(snapshot, outputPath, fileSystem)
 }
 
+export async function syncYunxiaoMetadata(
+  collectSnapshot: () => Promise<YunxiaoMetadataSnapshot>,
+  expectation: YunxiaoMetadataExpectation,
+  outputPath: string,
+): Promise<YunxiaoMetadataSnapshot> {
+  const snapshot = await collectSnapshot()
+  assertYunxiaoMetadataSnapshot(snapshot, expectation)
+  writeYunxiaoMetadataAtomically(snapshot, outputPath)
+  return snapshot
+}
+
 export function formatYunxiaoSyncError(error: unknown, token?: string): string {
   const message = error instanceof Error ? (error.stack ?? error.message) : String(error)
   return token ? message.replaceAll(token, '[REDACTED]') : message
@@ -29,11 +40,13 @@ async function main(): Promise<void> {
   const expectation = repositoryMetadataExpectations.yunxiao
   const config = docsSite.repositories.yunxiao
   const token = process.env.YUNXIAO_TOKEN ?? ''
-  const snapshot = await createYunxiaoMetadata({
+  const scriptDir = dirname(fileURLToPath(import.meta.url))
+  const outputPath = resolve(scriptDir, '../.vitepress/yunxiao-metadata.json')
+  const snapshot = await syncYunxiaoMetadata(() => createYunxiaoMetadata({
     apiBaseUrl: config.apiBaseUrl,
     apiMode: expectation.apiMode,
     components: expectation.components,
-    contributorProfiles: config.contributorProfiles,
+    contributorAccounts: config.contributorAccounts,
     defaultBranch: expectation.defaultBranch,
     organizationId: expectation.organizationId,
     repositoryId: expectation.repositoryId,
@@ -41,10 +54,7 @@ async function main(): Promise<void> {
     repositoryUrl: expectation.repositoryUrl,
     token,
     userAgent: config.userAgent,
-  })
-  assertYunxiaoMetadataSnapshot(snapshot, expectation)
-  const scriptDir = dirname(fileURLToPath(import.meta.url))
-  writeYunxiaoMetadataAtomically(snapshot, resolve(scriptDir, '../.vitepress/yunxiao-metadata.json'))
+  }), expectation, outputPath)
   console.log(`Synced Yunxiao metadata for ${documentedComponents.length} components at ${snapshot.repository.headSha.slice(0, 7)}.`)
 }
 

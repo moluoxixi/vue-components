@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import type { GiteeMetadataSnapshot } from '../../.vitepress/gitee-metadata-types'
+import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from '../../.vitepress/gitee-metadata-types'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,6 +12,7 @@ import {
 } from '../gitee-metadata.mts'
 import {
   formatGiteeSyncError,
+  syncGiteeMetadata,
   writeGiteeMetadataAtomically,
 } from '../sync-gitee-metadata.mts'
 
@@ -39,6 +40,7 @@ function options(fetchImpl: typeof fetch) {
     repositoryUrl: 'https://gitee.test/group/project',
     token: 'gitee-secret-token',
     userAgent: 'gitee-metadata-test',
+    webBaseUrl: 'https://gitee.test',
   }
 }
 
@@ -74,6 +76,7 @@ describe('gitee documentation metadata', () => {
           author: {
             avatar_url: 'https://gitee.test/avatar.png',
             html_url: 'https://gitee.test/alice',
+            id: 101,
             login: 'alice',
             name: 'Alice Account',
           },
@@ -84,6 +87,15 @@ describe('gitee documentation metadata', () => {
           html_url: `https://gitee.test/group/project/commit/${'1'.repeat(40)}`,
           sha: '1'.repeat(40),
         }])
+      }
+      if (url.includes('/users/alice?')) {
+        return jsonResponse({
+          avatar_url: 'https://gitee.test/avatar.png',
+          html_url: 'https://gitee.test/alice',
+          id: 101,
+          login: 'alice',
+          name: 'Alice Account',
+        })
       }
       throw new Error(`Unexpected Gitee request: ${url}`)
     }
@@ -96,7 +108,7 @@ describe('gitee documentation metadata', () => {
     expect(snapshot.components.CopyText?.contributors).toEqual([{
       avatarUrl: 'https://gitee.test/avatar.png',
       contributions: 1,
-      id: 'gitee:alice',
+      id: 'gitee:101',
       login: 'alice',
       name: 'Alice Account',
       profileUrl: 'https://gitee.test/alice',
@@ -105,7 +117,7 @@ describe('gitee documentation metadata', () => {
     expect(JSON.stringify(snapshot)).not.toContain('gitee-secret-token')
   })
 
-  it('supports disabled Issues and anonymous Git identities', async () => {
+  it('rejects anonymous Git identities instead of falling back to local author data', async () => {
     const fetchImpl: typeof fetch = async (input) => {
       const url = String(input)
       if (url.includes('/repos/group/project?'))
@@ -123,16 +135,9 @@ describe('gitee documentation metadata', () => {
       throw new Error(`Unexpected Gitee request: ${url}`)
     }
 
-    const snapshot = await createGiteeMetadata(options(fetchImpl))
-
-    expect(snapshot.repository.issuesEnabled).toBe(false)
-    expect(snapshot.components.CopyText).not.toHaveProperty('openIssues')
-    expect(snapshot.components.CopyText?.contributors[0]).toEqual({
-      contributions: 1,
-      id: expect.stringMatching(/^gitee:git:[a-f0-9]{64}$/),
-      name: 'Local Author',
-    })
-    expect(JSON.stringify(snapshot)).not.toContain('private@example.test')
+    await expect(createGiteeMetadata(options(fetchImpl)))
+      .rejects
+      .toThrow('has no associated Gitee account')
   })
 
   it('retries transient responses and redacts token-bearing error URLs', async () => {
@@ -207,10 +212,25 @@ describe('gitee documentation metadata', () => {
         return jsonResponse({ commit: { sha: headSha } })
       if (url.includes('/commits?'))
         return jsonResponse([commit])
+      if (url.includes('/users/committer?')) {
+        return jsonResponse({
+          avatar_url: 'https://gitee.test/assets/no_portrait.png',
+          html_url: 'https://gitee.test/committer',
+          id: 303,
+          login: 'committer',
+          name: 'Committer',
+        })
+      }
       throw new Error(`Unexpected Gitee request: ${url}`)
     }
     const baseCommit = {
-      author: null,
+      author: {
+        avatar_url: 'https://gitee.test/assets/no_portrait.png',
+        html_url: 'https://gitee.test/committer',
+        id: 303,
+        login: 'committer',
+        name: 'Committer',
+      },
       html_url: `https://gitee.test/group/project/commit/${'3'.repeat(40)}`,
       sha: '3'.repeat(40),
     }
@@ -223,11 +243,77 @@ describe('gitee documentation metadata', () => {
       },
     })))
     expect(withCommitterDate.components.CopyText?.commits[0]?.date).toBe('2026-08-18T00:00:00.000Z')
+    expect(withCommitterDate.components.CopyText?.commits[0]?.author.avatarUrl)
+      .toBe('https://gitee.test/assets/no_portrait.png')
 
     await expect(createGiteeMetadata(options(responseForCommit({
       ...baseCommit,
       commit: { author: null, committer: { email: '', name: 'Committer' }, message: 'invalid' },
     })))).rejects.toThrow('is missing a valid date')
+  })
+
+  it('rejects a user lookup that resolves to a different Gitee account', async () => {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input)
+      if (url.includes('/repos/group/project?'))
+        return jsonResponse({ default_branch: 'main', full_name: 'group/project', has_issues: false })
+      if (url.includes('/branches/main?'))
+        return jsonResponse({ commit: { sha: headSha } })
+      if (url.includes('/commits?')) {
+        return jsonResponse([{
+          author: { id: 101, login: 'alice' },
+          commit: { author: { date: '2026-08-18T00:00:00.000Z' }, message: 'feat: strict account' },
+          html_url: `https://gitee.test/group/project/commit/${'4'.repeat(40)}`,
+          sha: '4'.repeat(40),
+        }])
+      }
+      if (url.includes('/users/alice?')) {
+        return jsonResponse({
+          avatar_url: 'https://gitee.test/bob.png',
+          html_url: 'https://gitee.test/bob',
+          id: 202,
+          login: 'bob',
+          name: 'Bob',
+        })
+      }
+      throw new Error(`Unexpected Gitee request: ${url}`)
+    }
+
+    await expect(createGiteeMetadata(options(fetchImpl)))
+      .rejects
+      .toThrow('Gitee user profile mismatch for alice')
+  })
+
+  it('rejects a Gitee user profile without a provider display name', async () => {
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input)
+      if (url.includes('/repos/group/project?'))
+        return jsonResponse({ default_branch: 'main', full_name: 'group/project', has_issues: false })
+      if (url.includes('/branches/main?'))
+        return jsonResponse({ commit: { sha: headSha } })
+      if (url.includes('/commits?')) {
+        return jsonResponse([{
+          author: { id: 101, login: 'alice' },
+          commit: { author: { date: '2026-08-18T00:00:00.000Z' }, message: 'feat: strict account' },
+          html_url: `https://gitee.test/group/project/commit/${'5'.repeat(40)}`,
+          sha: '5'.repeat(40),
+        }])
+      }
+      if (url.includes('/users/alice?')) {
+        return jsonResponse({
+          avatar_url: 'https://gitee.test/alice.png',
+          html_url: 'https://gitee.test/alice',
+          id: 101,
+          login: 'alice',
+          name: null,
+        })
+      }
+      throw new Error(`Unexpected Gitee request: ${url}`)
+    }
+
+    await expect(createGiteeMetadata(options(fetchImpl)))
+      .rejects
+      .toThrow('Gitee user profile mismatch for alice')
   })
 
   it('groups exact prefixes and follows the Gitee Link header', () => {
@@ -242,7 +328,7 @@ describe('gitee documentation metadata', () => {
     }))).toBe('https://gitee.test/items?page=2')
   })
 
-  it('redacts sync errors and preserves the previous snapshot on atomic failure', () => {
+  it('redacts sync errors and preserves the previous snapshot on collection, validation, or atomic failure', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'moluoxixi-gitee-metadata-'))
     temporaryDirectories.push(directory)
     const outputPath = join(directory, 'gitee-metadata.json')
@@ -256,6 +342,26 @@ describe('gitee documentation metadata', () => {
     })).toThrow('rename failed')
     expect(readFileSync(outputPath, 'utf8')).toBe('{"preserved":true}\n')
     expect(readdirSync(directory)).toEqual(['gitee-metadata.json'])
+
+    const expectation: GiteeMetadataExpectation = {
+      components: [{ name: 'CopyText', path: 'packages/components/src/CopyText' }],
+      defaultBranch: 'main',
+      owner: 'group',
+      repository: 'project',
+      repositoryUrl: 'https://gitee.test/group/project',
+    }
+    await expect(syncGiteeMetadata(
+      async () => { throw new Error('simulated Gitee API failure') },
+      expectation,
+      outputPath,
+    )).rejects.toThrow('simulated Gitee API failure')
+    expect(readFileSync(outputPath, 'utf8')).toBe('{"preserved":true}\n')
+    await expect(syncGiteeMetadata(
+      async () => ({}) as GiteeMetadataSnapshot,
+      expectation,
+      outputPath,
+    )).rejects.toThrow('root contains unsupported or missing fields')
+    expect(readFileSync(outputPath, 'utf8')).toBe('{"preserved":true}\n')
 
     expect(formatGiteeSyncError(new Error('gitee-secret-token'), 'gitee-secret-token')).toContain('[REDACTED]')
   })

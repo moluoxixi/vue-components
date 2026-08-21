@@ -219,6 +219,7 @@ describe('repository metadata providers', () => {
     expect(localContent.openIssuesHref).toBeUndefined()
     expect(localContributors?.length).toBeGreaterThan(0)
     expect(localContributors?.[0]).not.toHaveProperty('profileUrl')
+    expect(docsSite.repositories.local).not.toBe(docsSite.repositories.github)
   })
 
   it('registers GitLab with an isolated snapshot and capability contract', () => {
@@ -257,10 +258,19 @@ describe('repository metadata providers', () => {
     expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(true)
     expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(true)
     expect(metadata.components.CopyText?.commits.length).toBeGreaterThan(0)
-    expect(metadata.components.CopyText?.contributors[0]).toMatchObject({
-      avatarUrl: expect.stringMatching(/^https:\/\//),
-      login: expect.any(String),
-      profileUrl: expect.stringMatching(/^https:\/\/gitee\.com\//),
+    expect(metadata.components.CopyText?.contributors[0]).toEqual({
+      avatarUrl: 'https://gitee.com/assets/no_portrait.png',
+      contributions: 8,
+      id: 'gitee:9153520',
+      login: 'wl1983531544',
+      name: '汪伦',
+      profileUrl: 'https://gitee.com/wl1983531544',
+    })
+    expect(metadata.components.CopyText?.commits[0]?.author).toEqual({
+      avatarUrl: 'https://gitee.com/assets/no_portrait.png',
+      login: 'wl1983531544',
+      name: '汪伦',
+      profileUrl: 'https://gitee.com/wl1983531544',
     })
     expect(metadata.components.CopyText?.openIssueCount).toBe(0)
     expect(Object.values(metadata.components).every(component => (
@@ -294,7 +304,7 @@ describe('repository metadata providers', () => {
     expect(repositoryMetadataProviderSupports(metadata.provider, 'editLinks')).toBe(false)
     expect(metadata.components.CopyText?.contributors[0]).toMatchObject({
       avatarUrl: expect.stringContaining('tcs-devops.aliyuncs.com/thumbnail/'),
-      login: 'aliyun1879222502',
+      login: 'aliyun:aliyun1879222502_fD9Ql',
     })
     expect(provider.actions?.componentSourceHref?.({
       defaultBranch: 'master',
@@ -404,12 +414,9 @@ describe('repository metadata providers', () => {
     )).toThrow(`organizationId must be ${repositoryMetadataExpectations.yunxiao.organizationId}`)
 
     const leakedContributor = structuredClone(yunxiaoSnapshot)
-    leakedContributor.components.CopyText!.contributors.push({
-      contributions: 1,
-      id: 'yunxiao:test',
-      name: 'Test',
+    Object.assign(leakedContributor.components.CopyText!.contributors[0]!, {
       email: 'private@example.test',
-    } as never)
+    })
     expect(() => assertYunxiaoMetadataSnapshot(
       leakedContributor,
       repositoryMetadataExpectations.yunxiao,
@@ -427,14 +434,90 @@ describe('repository metadata providers', () => {
     expect(() => assertYunxiaoMetadataSnapshot(
       incompleteProfile,
       repositoryMetadataExpectations.yunxiao,
-    )).toThrow('CopyText contributor profile fields must be provided together')
+    )).toThrow('CopyText contributor login is required')
 
     const credentialBearingAvatar = structuredClone(yunxiaoSnapshot)
     credentialBearingAvatar.components.CopyText!.commits[0]!.author.avatarUrl += '?token=secret'
     expect(() => assertYunxiaoMetadataSnapshot(
       credentialBearingAvatar,
       repositoryMetadataExpectations.yunxiao,
-    )).toThrow('CopyText commit author avatar URL cannot contain credentials, query, or fragment')
+    )).toThrow('CopyText commit author avatar URL must belong to Yunxiao and cannot contain credentials, query, or fragment')
+  })
+
+  it('rejects provider profiles that change across components', () => {
+    const cases = [
+      {
+        label: 'GitLab',
+        snapshot: gitlabSnapshot,
+        validate: (value: unknown) => assertGitlabMetadataSnapshot(value, repositoryMetadataExpectations.gitlab),
+      },
+      {
+        label: 'Gitee',
+        snapshot: giteeSnapshot,
+        validate: (value: unknown) => assertGiteeMetadataSnapshot(value, repositoryMetadataExpectations.gitee),
+      },
+      {
+        label: 'Yunxiao',
+        snapshot: yunxiaoSnapshot,
+        validate: (value: unknown) => assertYunxiaoMetadataSnapshot(value, repositoryMetadataExpectations.yunxiao),
+      },
+    ]
+
+    for (const providerCase of cases) {
+      const invalid = structuredClone(providerCase.snapshot) as Record<string, any>
+      const sourceComponent = invalid.components.CopyText
+      const sourceContributor = sourceComponent.contributors[0]
+      const targetComponent = Object.values(invalid.components).find((component: any) => (
+        component !== sourceComponent
+        && component.contributors.some((contributor: any) => contributor.login === sourceContributor.login)
+      )) as Record<string, any> | undefined
+      expect(targetComponent, `${providerCase.label} fixture must repeat the CopyText contributor`).toBeDefined()
+
+      const targetContributor = targetComponent!.contributors.find(
+        (contributor: any) => contributor.login === sourceContributor.login,
+      )
+      targetContributor.name = `${targetContributor.name} changed`
+      for (const commit of targetComponent!.commits) {
+        if (commit.author.login === sourceContributor.login)
+          commit.author.name = targetContributor.name
+      }
+
+      expect(() => providerCase.validate(invalid)).toThrow(
+        `${providerCase.label} contributor profile must remain consistent across components`,
+      )
+    }
+  })
+
+  it('rejects a GitLab contributor ID rebound to another account across components', () => {
+    const invalid = structuredClone(gitlabSnapshot)
+    const sourceComponent = invalid.components.CopyText!
+    const sourceContributor = sourceComponent.contributors[0]!
+    const targetComponent = Object.values(invalid.components).find(component => (
+      component !== sourceComponent
+      && component.contributors.some(contributor => contributor.id === sourceContributor.id)
+    ))!
+    const targetContributor = targetComponent.contributors.find(
+      contributor => contributor.id === sourceContributor.id,
+    )!
+    const originalLogin = targetContributor.login
+    const reboundProfile = {
+      avatarUrl: 'https://jihulab.com/uploads/-/system/user/avatar/999999/avatar.png',
+      login: 'different-user',
+      name: 'Different User',
+      profileUrl: 'https://jihulab.com/different-user',
+    }
+    Object.assign(targetContributor, reboundProfile)
+    for (const commit of targetComponent.commits) {
+      if (commit.author.login === originalLogin)
+        Object.assign(commit.author, reboundProfile)
+    }
+
+    expect(() => assertGitlabMetadataSnapshot(
+      invalid,
+      repositoryMetadataExpectations.gitlab,
+    )).toThrow(
+      `GitLab contributor ${sourceContributor.id} must remain bound to login ${sourceContributor.login} across components`,
+    )
   })
 
   it('downgrades GitLab Issues capabilities when the project disables Issues', () => {
@@ -505,7 +588,7 @@ describe('repository metadata providers', () => {
     expect(() => assertGitlabMetadataSnapshot(
       incompleteProfile,
       repositoryMetadataExpectations.gitlab,
-    )).toThrow('CopyText contributor profile fields must be provided together')
+    )).toThrow('CopyText contributor contains unsupported or missing fields')
 
     for (const fields of [
       {
@@ -554,8 +637,14 @@ describe('repository metadata providers', () => {
       }
     }
     for (const component of Object.values(snapshot.components)) {
-      for (const commit of component.commits)
+      for (const commit of component.commits) {
+        Object.assign(commit.author, {
+          avatarUrl: 'https://gitlab.test/gitlab/uploads/avatar.png',
+          login: 'alice',
+          profileUrl: 'https://gitlab.test/gitlab/alice',
+        })
         commit.url = `${expectation.repositoryUrl}/-/commit/${commit.sha}`
+      }
       for (const issue of component.openIssues)
         issue.url = `${expectation.repositoryUrl}/-/work_items/${issue.iid}`
     }

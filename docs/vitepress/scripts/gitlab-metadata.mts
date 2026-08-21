@@ -43,12 +43,6 @@ interface GitlabCommitResponse {
   web_url: string
 }
 
-interface GitlabRepositoryContributorResponse {
-  commits: number
-  email: string
-  name: string
-}
-
 interface GitlabContributorProfile {
   avatarUrl: string
   login: string
@@ -244,51 +238,21 @@ function contributorId(name: string, email: string): string {
   return `gitlab:${createHash('sha256').update(contributorIdentity(name, email)).digest('hex')}`
 }
 
-function normalizeRepositoryContributors(
-  values: GitlabRepositoryContributorResponse[],
-): ReadonlyMap<string, string> {
-  const names = new Map<string, string>()
-  for (const [index, value] of values.entries()) {
-    if (!isRecord(value)
-      || typeof value.name !== 'string'
-      || !value.name.trim()
-      || typeof value.email !== 'string'
-      || !Number.isInteger(value.commits)
-      || value.commits <= 0) {
-      throw new TypeError(`GitLab repository contributor ${index} is invalid`)
-    }
-    names.set(contributorIdentity(value.name, value.email), value.name.trim())
-  }
-  return names
-}
-
-async function resolveRepositoryContributors(
-  client: GitlabClient,
-  projectPath: string,
-): Promise<ReadonlyMap<string, string> | undefined> {
-  try {
-    const contributors = await client.paginate<GitlabRepositoryContributorResponse>(
-      `${projectPath}/repository/contributors?per_page=100`,
-    )
-    return normalizeRepositoryContributors(contributors)
-  }
-  catch (error) {
-    if (error instanceof GitlabRequestError && (error.status === 404 || error.status === 405))
-      return undefined
-    throw error
-  }
-}
-
 function validateContributorProfileMappings(
   mappings: Readonly<Record<string, string>> | undefined,
 ): ReadonlyMap<string, string> {
   const normalized = new Map<string, string>()
+  const contributorIdByUsername = new Map<string, string>()
   for (const [id, configuredUsername] of Object.entries(mappings ?? {})) {
     if (!/^gitlab:[a-f0-9]{64}$/.test(id))
       throw new TypeError(`Invalid GitLab contributor profile id: ${id}`)
     const username = configuredUsername.trim()
     if (!username)
       throw new TypeError(`GitLab contributor profile username is required for ${id}`)
+    const existingId = contributorIdByUsername.get(username)
+    if (existingId && existingId !== id)
+      throw new TypeError(`GitLab contributor profile username ${username} is mapped from multiple identities`)
+    contributorIdByUsername.set(username, id)
     normalized.set(id, username)
   }
   return normalized
@@ -298,9 +262,9 @@ function normalizeContributorProfile(
   value: unknown,
   username: string,
   webBaseUrl: string,
-): GitlabContributorProfile | undefined {
+): GitlabContributorProfile {
   if (!Array.isArray(value) || value.length !== 1)
-    return undefined
+    throw new TypeError(`GitLab user lookup must return exactly one profile for ${username}`)
   const user = value[0]
   if (!isRecord(user)
     || user.username !== username
@@ -310,7 +274,7 @@ function normalizeContributorProfile(
     || typeof user.web_url !== 'string'
     || !isTrustedGitlabWebUrl(user.avatar_url, webBaseUrl)
     || !isExactGitlabProfileUrl(user.web_url, webBaseUrl, username)) {
-    return undefined
+    throw new TypeError(`GitLab user profile is invalid for ${username}`)
   }
   return {
     avatarUrl: user.avatar_url,
@@ -327,25 +291,22 @@ async function resolveContributorProfiles(
   webBaseUrl: string,
 ): Promise<ReadonlyMap<string, GitlabContributorProfile>> {
   const relevantMappings = [...mappings].filter(([id]) => contributorIds.has(id))
-  const profileByUsername = new Map<string, GitlabContributorProfile | undefined>()
+  for (const id of contributorIds) {
+    if (!mappings.has(id))
+      throw new TypeError(`GitLab contributor profile mapping is required for ${id}`)
+  }
+  const profileByUsername = new Map<string, GitlabContributorProfile>()
 
   await Promise.all([...new Set(relevantMappings.map(([, username]) => username))].map(async (username) => {
-    try {
-      const { data } = await client.get<unknown>(`/users?username=${encodeURIComponent(username)}`)
-      profileByUsername.set(username, normalizeContributorProfile(data, username, webBaseUrl))
-    }
-    catch (error) {
-      if (error instanceof GitlabRequestError && (error.status === 403 || error.status === 404)) {
-        profileByUsername.set(username, undefined)
-        return
-      }
-      throw error
-    }
+    const { data } = await client.get<unknown>(`/users?username=${encodeURIComponent(username)}`)
+    profileByUsername.set(username, normalizeContributorProfile(data, username, webBaseUrl))
   }))
 
-  return new Map(relevantMappings.flatMap(([id, username]) => {
+  return new Map(relevantMappings.map(([id, username]) => {
     const profile = profileByUsername.get(username)
-    return profile ? [[id, profile] as const] : []
+    if (!profile)
+      throw new TypeError(`GitLab contributor profile is missing for ${id}`)
+    return [id, profile] as const
   }))
 }
 
@@ -355,26 +316,21 @@ function createComponentMetadata(
   issuesEnabled: boolean,
   issues: GitlabIssueSummary[],
   contributorProfiles: ReadonlyMap<string, GitlabContributorProfile>,
-  repositoryContributors: ReadonlyMap<string, string> | undefined,
 ): GitlabComponentMetadata {
   const contributionCounts = new Map<string, GitlabContributor>()
   const commits: GitlabCommit[] = rawCommits.map((rawCommit) => {
     const id = contributorId(rawCommit.author_name, rawCommit.author_email)
     const existing = contributionCounts.get(id)
     const profile = contributorProfiles.get(id)
-    const repositoryContributorName = repositoryContributors?.get(
-      contributorIdentity(rawCommit.author_name, rawCommit.author_email),
-    )
+    if (!profile)
+      throw new TypeError(`GitLab commit ${rawCommit.id} has no verified contributor profile`)
     contributionCounts.set(id, {
-      ...(profile ?? {}),
+      ...profile,
       contributions: (existing?.contributions ?? 0) + 1,
       id,
-      name: profile?.name
-        ?? repositoryContributorName
-        ?? (rawCommit.author_name.trim() || 'Unknown contributor'),
     })
     return {
-      author: { name: rawCommit.author_name.trim() || 'Unknown contributor' },
+      author: { ...profile },
       date: rawCommit.authored_date,
       message: firstLine(rawCommit.title || rawCommit.message),
       sha: rawCommit.id,
@@ -417,20 +373,10 @@ export async function createGitlabMetadata(options: CreateGitlabMetadataOptions)
   )
   const headSha = branch.commit.id
 
-  let issuesEnabled = project.issues_enabled !== false
-  let rawIssues: GitlabIssueResponse[] = []
-  if (issuesEnabled) {
-    try {
-      rawIssues = await client.paginate<GitlabIssueResponse>(`${projectPath}/issues?state=opened&scope=all&per_page=100`)
-      issuesEnabled = true
-    }
-    catch (error) {
-      if (error instanceof GitlabRequestError && error.status === 404)
-        issuesEnabled = false
-      else
-        throw error
-    }
-  }
+  const issuesEnabled = project.issues_enabled !== false
+  const rawIssues = issuesEnabled
+    ? await client.paginate<GitlabIssueResponse>(`${projectPath}/issues?state=opened&scope=all&per_page=100`)
+    : []
   const groupedIssues = groupGitlabComponentIssues(rawIssues, options.components, options.issueTitlePrefix)
 
   const componentCommits = await Promise.all(options.components.map(async (component) => {
@@ -442,7 +388,6 @@ export async function createGitlabMetadata(options: CreateGitlabMetadataOptions)
     const commits = await client.paginate<GitlabCommitResponse>(`${projectPath}/repository/commits?${query}`)
     return { component, commits }
   }))
-  const repositoryContributors = await resolveRepositoryContributors(client, projectPath)
   const contributorIds = new Set(componentCommits.flatMap(({ commits }) => (
     commits.map(commit => contributorId(commit.author_name, commit.author_email))
   )))
@@ -460,7 +405,6 @@ export async function createGitlabMetadata(options: CreateGitlabMetadataOptions)
       issuesEnabled,
       groupedIssues[component.name] ?? [],
       contributorProfiles,
-      repositoryContributors,
     ),
   ]))
 

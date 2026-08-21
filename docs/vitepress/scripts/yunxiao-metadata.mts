@@ -3,10 +3,10 @@ import type {
   YunxiaoCommit,
   YunxiaoComponentMetadata,
   YunxiaoContributor,
-  YunxiaoContributorProfile,
   YunxiaoMetadataSnapshot,
 } from '../.vitepress/yunxiao-metadata-types.ts'
 import { createHash } from 'node:crypto'
+import { isTrustedYunxiaoAvatarUrl } from '../.vitepress/yunxiao-metadata-types.ts'
 import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface YunxiaoRepositoryResponse {
@@ -22,11 +22,6 @@ interface YunxiaoBranchResponse {
 }
 
 interface YunxiaoCommitResponse {
-  author?: {
-    avatarUrl?: string | null
-    name?: string | null
-    username?: string | null
-  } | null
   authorEmail?: string | null
   authorName?: string | null
   authoredDate?: string | null
@@ -39,6 +34,21 @@ interface YunxiaoCommitResponse {
   webUrl: string
 }
 
+interface YunxiaoMemberResponse {
+  avatarUrl?: string | null
+  id?: number | string | null
+  name?: string | null
+  state?: string | null
+  userId?: string | null
+  username?: string | null
+}
+
+interface YunxiaoContributorProfile {
+  avatarUrl: string
+  login: string
+  name: string
+}
+
 export interface YunxiaoComponentSource {
   name: string
   path: string
@@ -48,7 +58,7 @@ export interface CreateYunxiaoMetadataOptions {
   apiBaseUrl: string
   apiMode: YunxiaoApiMode
   components: YunxiaoComponentSource[]
-  contributorProfiles?: Readonly<Record<string, YunxiaoContributorProfile>>
+  contributorAccounts?: Readonly<Record<string, string>>
   defaultBranch: string
   fetchImpl?: typeof fetch
   generatedAt?: string
@@ -192,82 +202,120 @@ function branchHead(branch: YunxiaoBranchResponse): string {
   return sha
 }
 
-function contributorId(name: string, email: string): string {
-  const identity = `${name.trim().toLocaleLowerCase()}\0${email.trim().toLocaleLowerCase()}`
-  return `yunxiao:${createHash('sha256').update(identity).digest('hex')}`
+function contributorId(login: string): string {
+  return `yunxiao:${createHash('sha256').update(login).digest('hex')}`
+}
+
+function contributorIdentityId(commit: YunxiaoCommitResponse, sha: string): string {
+  const email = commit.authorEmail?.trim().toLocaleLowerCase()
+  const name = commit.authorName?.trim().toLocaleLowerCase()
+  if (!email || !name)
+    throw new TypeError(`Yunxiao commit ${sha} has no complete Codeup commit identity`)
+
+  return `yunxiao:${createHash('sha256').update(`${name}\0${email}`).digest('hex')}`
+}
+
+function validateContributorAccountMappings(
+  accounts: Readonly<Record<string, string>> | undefined,
+): ReadonlyMap<string, string> {
+  const normalized = new Map<string, string>()
+  for (const [id, configuredUsername] of Object.entries(accounts ?? {})) {
+    const username = configuredUsername.trim()
+    if (!/^yunxiao:[a-f0-9]{64}$/.test(id) || !username || username !== configuredUsername)
+      throw new TypeError(`Invalid Yunxiao contributor account mapping for ${id}`)
+    normalized.set(id, username)
+  }
+  return normalized
 }
 
 function normalizeContributorProfile(
-  value: { avatarUrl?: string | null, username?: string | null } | undefined | null,
-): YunxiaoContributorProfile | undefined {
-  const avatarUrl = value?.avatarUrl?.trim()
-  const login = value?.username?.trim()
-  if (!avatarUrl || !login)
-    return undefined
+  value: YunxiaoMemberResponse,
+  username: string,
+): YunxiaoContributorProfile {
+  const avatarUrl = value.avatarUrl?.trim()
+  const id = String(value.id ?? '').trim()
+  const login = value.username?.trim()
+  const name = value.name?.trim()
+  const userId = value.userId?.trim()
+  if (!avatarUrl || !id || login !== username || !name || value.state !== 'active' || !userId)
+    throw new TypeError(`Yunxiao Codeup member profile is invalid for ${username}`)
 
-  try {
-    const url = new URL(avatarUrl)
-    if ((url.protocol !== 'https:' && url.protocol !== 'http:')
-      || url.username
-      || url.password
-      || url.search
-      || url.hash) {
-      return undefined
-    }
-  }
-  catch {
-    return undefined
-  }
-  return { avatarUrl, login }
+  if (!isTrustedYunxiaoAvatarUrl(avatarUrl))
+    throw new TypeError(`Yunxiao Codeup member profile has an untrusted avatar URL for ${username}`)
+  return { avatarUrl, login, name }
 }
 
-function validateContributorProfiles(
-  profiles: Readonly<Record<string, YunxiaoContributorProfile>> | undefined,
-): ReadonlyMap<string, YunxiaoContributorProfile> {
-  const normalized = new Map<string, YunxiaoContributorProfile>()
-  for (const [id, profile] of Object.entries(profiles ?? {})) {
-    if (!/^yunxiao:[a-f0-9]{64}$/.test(id))
-      throw new TypeError(`Invalid Yunxiao contributor profile id: ${id}`)
-    const validProfile = normalizeContributorProfile({
-      avatarUrl: profile.avatarUrl,
-      username: profile.login,
-    })
-    if (!validProfile)
-      throw new TypeError(`Invalid Yunxiao contributor profile for ${id}`)
-    normalized.set(id, validProfile)
+async function resolveContributorProfiles(
+  client: YunxiaoClient,
+  repositoryPath: string,
+  accountMappings: ReadonlyMap<string, string>,
+  contributorIdentityIds: ReadonlySet<string>,
+): Promise<ReadonlyMap<string, YunxiaoContributorProfile>> {
+  if (contributorIdentityIds.size === 0)
+    return new Map()
+
+  for (const id of contributorIdentityIds) {
+    if (!accountMappings.has(id))
+      throw new TypeError(`Yunxiao contributor account mapping is required for ${id}`)
   }
-  return normalized
+
+  const query = new URLSearchParams({ page: '1', perPage: '100' })
+  const members = await client.paginate<YunxiaoMemberResponse>(`${repositoryPath}/members?${query}`)
+  const relevantMappings = [...accountMappings].filter(([id]) => contributorIdentityIds.has(id))
+  const profilesByUsername = new Map<string, YunxiaoContributorProfile>()
+  for (const username of new Set(relevantMappings.map(([, login]) => login))) {
+    const matches = members.filter(member => member.username?.trim() === username)
+    if (matches.length !== 1)
+      throw new TypeError(`Yunxiao Codeup member lookup must return exactly one profile for ${username}`)
+    profilesByUsername.set(username, normalizeContributorProfile(matches[0]!, username))
+  }
+
+  return new Map(relevantMappings.map(([id, username]) => {
+    const profile = profilesByUsername.get(username)
+    if (!profile)
+      throw new TypeError(`Yunxiao Codeup member profile is missing for ${id}`)
+    return [id, profile] as const
+  }))
 }
 
 function createComponentMetadata(
   source: YunxiaoComponentSource,
   rawCommits: YunxiaoCommitResponse[],
-  configuredProfiles: ReadonlyMap<string, YunxiaoContributorProfile>,
+  profilesByIdentity: ReadonlyMap<string, YunxiaoContributorProfile>,
+  profilesByLogin: Map<string, YunxiaoContributorProfile>,
 ): YunxiaoComponentMetadata {
   const contributorCounts = new Map<string, YunxiaoContributor>()
   const commits: YunxiaoCommit[] = rawCommits.map((rawCommit) => {
     const sha = commitSha(rawCommit)
-    const name = rawCommit.author?.name?.trim()
-      || rawCommit.authorName?.trim()
-      || 'Unknown contributor'
-    const id = contributorId(name, rawCommit.authorEmail ?? '')
+    const identityId = contributorIdentityId(rawCommit, sha)
+    const profile = profilesByIdentity.get(identityId)
+    if (!profile)
+      throw new TypeError(`Yunxiao commit ${sha} has no verified Codeup member profile`)
+    const id = contributorId(profile.login)
+    const existingProfile = profilesByLogin.get(profile.login)
+    if (existingProfile
+      && (existingProfile.avatarUrl !== profile.avatarUrl
+        || existingProfile.name !== profile.name)) {
+      throw new TypeError(`Yunxiao account profile changed within snapshot for ${profile.login}`)
+    }
+    profilesByLogin.set(profile.login, profile)
     const existing = contributorCounts.get(id)
-    const profile = normalizeContributorProfile(rawCommit.author)
-      ?? configuredProfiles.get(id)
-      ?? (existing?.avatarUrl && existing.login
-        ? { avatarUrl: existing.avatarUrl, login: existing.login }
-        : undefined)
+    if (existing
+      && (existing.avatarUrl !== profile.avatarUrl
+        || existing.login !== profile.login
+        || existing.name !== profile.name)) {
+      throw new TypeError(`Yunxiao account profile changed within snapshot for ${profile.login}`)
+    }
     contributorCounts.set(id, {
-      ...(profile ?? {}),
+      ...profile,
       contributions: (existing?.contributions ?? 0) + 1,
       id,
-      name,
     })
     const date = rawCommit.authoredDate ?? rawCommit.committedDate
     if (!date || Number.isNaN(Date.parse(date)))
       throw new TypeError(`Yunxiao commit ${sha} is missing a valid date`)
     return {
-      author: { ...(profile ?? {}), name },
+      author: { ...profile },
       date,
       message: firstLine(rawCommit.title || rawCommit.message || ''),
       sha,
@@ -288,7 +336,7 @@ export async function createYunxiaoMetadata(
 ): Promise<YunxiaoMetadataSnapshot> {
   if (!options.token)
     throw new TypeError('YUNXIAO_TOKEN is required to synchronize Codeup metadata')
-  const configuredProfiles = validateContributorProfiles(options.contributorProfiles)
+  const accountMappings = validateContributorAccountMappings(options.contributorAccounts)
   const client = new YunxiaoClient(options)
   const repositoryPath = yunxiaoRepositoryApiPath(options.apiMode, options.organizationId, options.repositoryId)
   const { data: repository } = await client.get<YunxiaoRepositoryResponse>(repositoryPath)
@@ -306,7 +354,7 @@ export async function createYunxiaoMetadata(
     `${repositoryPath}/branches/${encodeURIComponent(options.defaultBranch)}`,
   )
   const headSha = branchHead(branch)
-  const components = Object.fromEntries(await Promise.all(options.components.map(async (component) => {
+  const componentCommits = await Promise.all(options.components.map(async (component) => {
     const query = new URLSearchParams({
       page: '1',
       path: component.path,
@@ -314,8 +362,22 @@ export async function createYunxiaoMetadata(
       refName: headSha,
     })
     const commits = await client.paginate<YunxiaoCommitResponse>(`${repositoryPath}/commits?${query}`)
-    return [component.name, createComponentMetadata(component, commits, configuredProfiles)] as const
-  })))
+    return { commits, component }
+  }))
+  const contributorIdentityIds = new Set(componentCommits.flatMap(({ commits }) => (
+    commits.map(commit => contributorIdentityId(commit, commitSha(commit)))
+  )))
+  const profilesByIdentity = await resolveContributorProfiles(
+    client,
+    repositoryPath,
+    accountMappings,
+    contributorIdentityIds,
+  )
+  const profilesByLogin = new Map<string, YunxiaoContributorProfile>()
+  const components = Object.fromEntries(componentCommits.map(({ commits, component }) => [
+    component.name,
+    createComponentMetadata(component, commits, profilesByIdentity, profilesByLogin),
+  ]))
 
   return {
     schemaVersion: 1,

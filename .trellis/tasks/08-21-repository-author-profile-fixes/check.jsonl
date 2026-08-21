@@ -1,0 +1,3 @@
+{"file":".trellis/spec/docs/frontend/index.md","reason":"Identifies the applicable documentation quality checklist."}
+{"file":".trellis/spec/docs/frontend/quality-guidelines.md","reason":"Review collector, snapshot, privacy, URL trust, and browser acceptance requirements."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Verify the profile survives every layer without provider-specific UI logic."}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T03:44:12.488Z",
+  "generatedAt": "2026-08-21T12:04:04.631Z",
   "repository": {
     "apiMode": "central",
     "defaultBranch": "master",
@@ -16,8 +16,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -28,7 +28,7 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
+            "login": "aliyun:aliyun1879222502_fD9Ql",
             "name": "aliyun1879222502"
           },
           "date": "2026-08-20T15:36:49+08:00",
@@ -40,7 +40,7 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
+            "login": "aliyun:aliyun1879222502_fD9Ql",
             "name": "aliyun1879222502"
           },
           "date": "2026-08-20T15:36:00+08:00",
@@ -53,17 +53,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
-          "contributions": 2,
-          "id": "yunxiao:d5b8d2b82909bab605c5eb4e0761ac30e81a9da6d907c4fa4c44b38d54546036",
-          "name": "aliyun1879222502"
-        },
-        {
-          "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
-          "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
+          "contributions": 3,
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/CopyText"
@@ -73,8 +66,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -86,10 +79,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/HeadlessCopyText"
@@ -99,8 +92,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -112,10 +105,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/AntdConfigForm"
@@ -125,8 +118,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -138,10 +131,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/ElementConfigForm"
@@ -151,8 +144,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -164,10 +157,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/DateRangePicker"
@@ -177,8 +170,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -190,10 +183,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/EnterNextContainer"
@@ -203,8 +196,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -216,10 +209,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/RequestSelectV2"
@@ -229,8 +222,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -242,10 +235,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/RequestCascader"
@@ -255,8 +248,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -268,10 +261,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/RequestTreeSelect"
@@ -281,8 +274,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -294,10 +287,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/ConfigTable"
@@ -307,8 +300,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -320,10 +313,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/HeadlessTable"
@@ -333,8 +326,8 @@
         {
           "author": {
             "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-            "login": "aliyun1879222502",
-            "name": "wl"
+            "login": "aliyun:aliyun1879222502_fD9Ql",
+            "name": "aliyun1879222502"
           },
           "date": "2026-08-21T11:30:02+08:00",
           "message": "docs: mirror component authoring documentation",
@@ -346,10 +339,10 @@
       "contributors": [
         {
           "avatarUrl": "https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200",
-          "login": "aliyun1879222502",
+          "login": "aliyun:aliyun1879222502_fD9Ql",
+          "name": "aliyun1879222502",
           "contributions": 1,
-          "id": "yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b",
-          "name": "wl"
+          "id": "yunxiao:481e529219ed8e6402ad15ba83f09f8cf95132a372af7377a9aa4955180e8f1f"
         }
       ],
       "path": "packages/components/src/PopoverTableSelect"

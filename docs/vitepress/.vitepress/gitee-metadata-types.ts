@@ -1,9 +1,9 @@
 export interface GiteeCommit {
   author: {
-    avatarUrl?: string
-    login?: string
+    avatarUrl: string
+    login: string
     name: string
-    profileUrl?: string
+    profileUrl: string
   }
   date: string
   message: string
@@ -13,12 +13,12 @@ export interface GiteeCommit {
 }
 
 export interface GiteeContributor {
-  avatarUrl?: string
+  avatarUrl: string
   contributions: number
   id: string
-  login?: string
+  login: string
   name: string
-  profileUrl?: string
+  profileUrl: string
 }
 
 export interface GiteeIssueSummary {
@@ -87,6 +87,38 @@ function assertHttpUrl(value: unknown, label: string): asserts value is string {
   }
 }
 
+export function isTrustedGiteeAvatarUrl(value: string, webBaseUrl: string): boolean {
+  try {
+    const avatar = new URL(value)
+    const base = new URL(webBaseUrl)
+    return avatar.protocol === 'https:'
+      && (avatar.hostname === base.hostname || avatar.hostname.endsWith(`.${base.hostname}`))
+      && avatar.username === ''
+      && avatar.password === ''
+      && avatar.search === ''
+      && avatar.hash === ''
+  }
+  catch {
+    return false
+  }
+}
+
+export function isExactGiteeProfileUrl(value: string, webBaseUrl: string, login: string): boolean {
+  try {
+    const profile = new URL(value)
+    const base = new URL(webBaseUrl)
+    return profile.origin === base.origin
+      && profile.pathname.replace(/\/+$/, '') === `/${encodeURIComponent(login)}`
+      && profile.username === ''
+      && profile.password === ''
+      && profile.search === ''
+      && profile.hash === ''
+  }
+  catch {
+    return false
+  }
+}
+
 export function assertGiteeMetadataSnapshot(
   value: unknown,
   expected: GiteeMetadataExpectation,
@@ -107,10 +139,13 @@ export function assertGiteeMetadataSnapshot(
   assertMetadata(typeof repository.headSha === 'string' && /^[a-f0-9]{40}$/.test(repository.headSha), 'headSha must be a full commit SHA')
   assertMetadata(typeof repository.issuesEnabled === 'boolean', 'issuesEnabled must be a boolean')
   assertHttpUrl(repository.webUrl, 'repository webUrl')
+  const webBaseUrl = new URL(repository.webUrl as string).origin
   assertMetadata(isRecord(value.components), 'components must be an object')
 
   const expectedNames = expected.components.map(component => component.name).sort()
   assertMetadata(JSON.stringify(Object.keys(value.components).sort()) === JSON.stringify(expectedNames), 'component keys must exactly match the documentation manifest')
+  const contributorLoginsById = new Map<string, string>()
+  const contributorProfilesByLogin = new Map<string, Record<string, unknown>>()
 
   for (const expectedComponent of expected.components) {
     const component = value.components[expectedComponent.name]
@@ -141,26 +176,51 @@ export function assertGiteeMetadataSnapshot(
     }
 
     const contributorIds = new Set<string>()
+    const contributorsByLogin = new Map<string, Record<string, unknown>>()
     for (const contributor of component.contributors) {
       assertMetadata(isRecord(contributor), `${expectedComponent.name} contributor must be an object`)
-      const accountContributor = 'login' in contributor || 'avatarUrl' in contributor || 'profileUrl' in contributor
       assertExactKeys(
         contributor,
-        accountContributor
-          ? ['avatarUrl', 'contributions', 'id', 'login', 'name', 'profileUrl']
-          : ['contributions', 'id', 'name'],
+        ['avatarUrl', 'contributions', 'id', 'login', 'name', 'profileUrl'],
         `${expectedComponent.name} contributor`,
       )
-      assertMetadata(isNonEmptyString(contributor.id) && contributor.id.startsWith('gitee:'), `${expectedComponent.name} contributor id is invalid`)
+      assertMetadata(isNonEmptyString(contributor.id) && /^gitee:[1-9]\d*$/.test(contributor.id), `${expectedComponent.name} contributor id is invalid`)
       assertMetadata(!contributorIds.has(contributor.id), `${expectedComponent.name} contains duplicate contributor ${contributor.id}`)
       contributorIds.add(contributor.id)
       assertMetadata(isNonEmptyString(contributor.name), `${expectedComponent.name} contributor name is required`)
       assertMetadata(Number.isInteger(contributor.contributions) && Number(contributor.contributions) > 0, `${expectedComponent.name} contribution count is invalid`)
-      if (accountContributor) {
-        assertMetadata(isNonEmptyString(contributor.login), `${expectedComponent.name} contributor login is required`)
-        assertHttpUrl(contributor.avatarUrl, `${expectedComponent.name} contributor avatarUrl`)
-        assertHttpUrl(contributor.profileUrl, `${expectedComponent.name} contributor profileUrl`)
+      assertMetadata(isNonEmptyString(contributor.login), `${expectedComponent.name} contributor login is required`)
+      assertMetadata(!contributorsByLogin.has(contributor.login), `${expectedComponent.name} contains duplicate contributor login ${contributor.login}`)
+      assertHttpUrl(contributor.avatarUrl, `${expectedComponent.name} contributor avatarUrl`)
+      assertHttpUrl(contributor.profileUrl, `${expectedComponent.name} contributor profileUrl`)
+      assertMetadata(
+        isTrustedGiteeAvatarUrl(contributor.avatarUrl, webBaseUrl),
+        `${expectedComponent.name} contributor avatarUrl must belong to Gitee`,
+      )
+      assertMetadata(
+        isExactGiteeProfileUrl(contributor.profileUrl, webBaseUrl, contributor.login),
+        `${expectedComponent.name} contributor profileUrl must match its Gitee login`,
+      )
+      const existingLogin = contributorLoginsById.get(contributor.id)
+      assertMetadata(
+        existingLogin === undefined || existingLogin === contributor.login,
+        `Gitee contributor id ${contributor.id} must remain bound to one login`,
+      )
+      contributorLoginsById.set(contributor.id, contributor.login)
+      const existingProfile = contributorProfilesByLogin.get(contributor.login)
+      if (existingProfile) {
+        assertMetadata(
+          contributor.id === existingProfile.id
+          && contributor.avatarUrl === existingProfile.avatarUrl
+          && contributor.name === existingProfile.name
+          && contributor.profileUrl === existingProfile.profileUrl,
+          `Gitee contributor profile must remain consistent across components for ${contributor.login}`,
+        )
       }
+      else {
+        contributorProfilesByLogin.set(contributor.login, contributor)
+      }
+      contributorsByLogin.set(contributor.login, contributor)
     }
 
     const commitShas = new Set<string>()
@@ -176,9 +236,16 @@ export function assertGiteeMetadataSnapshot(
       assertHttpUrl(commit.url, `${expectedComponent.name} commit URL`)
       assertMetadata(commit.url.startsWith(`${repository.webUrl}/commit/`), `${expectedComponent.name} commit URL must belong to the configured repository`)
       assertMetadata(isRecord(commit.author), `${expectedComponent.name} commit author must be an object`)
-      const accountAuthor = 'login' in commit.author || 'avatarUrl' in commit.author || 'profileUrl' in commit.author
-      assertExactKeys(commit.author, accountAuthor ? ['avatarUrl', 'login', 'name', 'profileUrl'] : ['name'], `${expectedComponent.name} commit author`)
-      assertMetadata(isNonEmptyString(commit.author.name), `${expectedComponent.name} commit author is invalid`)
+      assertExactKeys(commit.author, ['avatarUrl', 'login', 'name', 'profileUrl'], `${expectedComponent.name} commit author`)
+      assertMetadata(isNonEmptyString(commit.author.login), `${expectedComponent.name} commit author login is required`)
+      const contributor = contributorsByLogin.get(commit.author.login)
+      assertMetadata(contributor, `${expectedComponent.name} commit author has no matching contributor`)
+      assertMetadata(
+        commit.author.avatarUrl === contributor.avatarUrl
+        && commit.author.name === contributor.name
+        && commit.author.profileUrl === contributor.profileUrl,
+        `${expectedComponent.name} commit author must match its Gitee contributor profile`,
+      )
     }
   }
 }

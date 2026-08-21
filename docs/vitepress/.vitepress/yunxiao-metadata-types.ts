@@ -1,3 +1,6 @@
+import { sha256 } from '@noble/hashes/sha2.js'
+import { bytesToHex } from '@noble/hashes/utils.js'
+
 export type YunxiaoApiMode = 'central' | 'region'
 
 export interface YunxiaoContributorProfile {
@@ -7,8 +10,8 @@ export interface YunxiaoContributorProfile {
 
 export interface YunxiaoCommit {
   author: {
-    avatarUrl?: string
-    login?: string
+    avatarUrl: string
+    login: string
     name: string
   }
   date: string
@@ -19,10 +22,10 @@ export interface YunxiaoCommit {
 }
 
 export interface YunxiaoContributor {
-  avatarUrl?: string
+  avatarUrl: string
   contributions: number
   id: string
-  login?: string
+  login: string
   name: string
 }
 
@@ -57,6 +60,8 @@ export interface YunxiaoMetadataExpectation {
   repositoryUrl: string
 }
 
+const YUNXIAO_AVATAR_HOSTS = new Set(['tcs-devops.aliyuncs.com'])
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -88,26 +93,51 @@ function assertHttpUrl(value: unknown, label: string): asserts value is string {
   }
 }
 
-function assertOptionalContributorProfile(
+export function isTrustedYunxiaoAvatarUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:'
+      && YUNXIAO_AVATAR_HOSTS.has(url.hostname)
+      && url.username === ''
+      && url.password === ''
+      && url.search === ''
+      && url.hash === ''
+  }
+  catch {
+    return false
+  }
+}
+
+function assertContributorProfile(
   value: Record<string, unknown>,
   label: string,
-): void {
-  const hasAvatar = Object.hasOwn(value, 'avatarUrl')
-  const hasLogin = Object.hasOwn(value, 'login')
-  assertMetadata(hasAvatar === hasLogin, `${label} profile fields must be provided together`)
-  if (!hasAvatar)
-    return
-
+): asserts value is Record<string, unknown> & { avatarUrl: string, login: string } {
   assertMetadata(isNonEmptyString(value.login), `${label} login is required`)
   assertHttpUrl(value.avatarUrl, `${label} avatar URL`)
-  const avatarUrl = new URL(value.avatarUrl)
   assertMetadata(
-    !avatarUrl.username
-    && !avatarUrl.password
-    && !avatarUrl.search
-    && !avatarUrl.hash,
-    `${label} avatar URL cannot contain credentials, query, or fragment`,
+    isTrustedYunxiaoAvatarUrl(value.avatarUrl),
+    `${label} avatar URL must belong to Yunxiao and cannot contain credentials, query, or fragment`,
   )
+}
+
+function contributorId(login: string): string {
+  return `yunxiao:${bytesToHex(sha256(new TextEncoder().encode(login)))}`
+}
+
+function isExactYunxiaoCommitUrl(value: string, repositoryUrl: string, sha: string): boolean {
+  try {
+    const commit = new URL(value)
+    const repository = new URL(repositoryUrl)
+    return commit.origin === repository.origin
+      && commit.pathname === `${repository.pathname.replace(/\/+$/, '')}/commit/${sha}`
+      && commit.username === ''
+      && commit.password === ''
+      && commit.search === ''
+      && commit.hash === ''
+  }
+  catch {
+    return false
+  }
 }
 
 export function assertYunxiaoMetadataSnapshot(
@@ -151,6 +181,7 @@ export function assertYunxiaoMetadataSnapshot(
 
   const expectedNames = expected.components.map(component => component.name).sort()
   assertMetadata(JSON.stringify(Object.keys(value.components).sort()) === JSON.stringify(expectedNames), 'component keys must exactly match the documentation manifest')
+  const contributorProfilesByLogin = new Map<string, Record<string, unknown>>()
   for (const expectedComponent of expected.components) {
     const component = value.components[expectedComponent.name]
     assertMetadata(isRecord(component), `${expectedComponent.name} must be an object`)
@@ -160,6 +191,41 @@ export function assertYunxiaoMetadataSnapshot(
     assertMetadata(Array.isArray(component.contributors), `${expectedComponent.name}.contributors must be an array`)
 
     const commitShas = new Set<string>()
+    const contributorsByLogin = new Map<string, Record<string, unknown>>()
+    for (const contributor of component.contributors) {
+      assertMetadata(isRecord(contributor), `${expectedComponent.name} contributor must be an object`)
+      assertContributorProfile(contributor, `${expectedComponent.name} contributor`)
+      assertExactKeys(
+        contributor,
+        ['avatarUrl', 'contributions', 'id', 'login', 'name'],
+        `${expectedComponent.name} contributor`,
+      )
+      assertMetadata(
+        isNonEmptyString(contributor.id) && /^yunxiao:[a-f0-9]{64}$/.test(contributor.id),
+        `${expectedComponent.name} contributor id is invalid`,
+      )
+      assertMetadata(
+        contributor.id === contributorId(contributor.login),
+        `${expectedComponent.name} contributor id must match its Codeup login`,
+      )
+      const existingProfile = contributorProfilesByLogin.get(contributor.login)
+      if (existingProfile) {
+        assertMetadata(
+          contributor.id === existingProfile.id
+          && contributor.avatarUrl === existingProfile.avatarUrl
+          && contributor.name === existingProfile.name,
+          `Yunxiao contributor profile must remain consistent across components for ${contributor.login}`,
+        )
+      }
+      else {
+        contributorProfilesByLogin.set(contributor.login, contributor)
+      }
+      assertMetadata(!contributorsByLogin.has(contributor.login), `${expectedComponent.name} contains duplicate contributor ${contributor.login}`)
+      contributorsByLogin.set(contributor.login, contributor)
+      assertMetadata(isNonEmptyString(contributor.name), `${expectedComponent.name} contributor name is required`)
+      assertMetadata(Number.isInteger(contributor.contributions) && Number(contributor.contributions) > 0, `${expectedComponent.name} contribution count is invalid`)
+    }
+
     for (const commit of component.commits) {
       assertMetadata(isRecord(commit), `${expectedComponent.name} commit must be an object`)
       assertExactKeys(commit, ['author', 'date', 'message', 'sha', 'shortSha', 'url'], `${expectedComponent.name} commit`)
@@ -170,35 +236,26 @@ export function assertYunxiaoMetadataSnapshot(
       assertMetadata(isNonEmptyString(commit.message), `${expectedComponent.name} commit message is required`)
       assertMetadata(isNonEmptyString(commit.date) && !Number.isNaN(Date.parse(commit.date)), `${expectedComponent.name} commit date must be an ISO date`)
       assertHttpUrl(commit.url, `${expectedComponent.name} commit URL`)
-      assertMetadata(isRecord(commit.author), `${expectedComponent.name} commit author must be an object`)
-      assertOptionalContributorProfile(commit.author, `${expectedComponent.name} commit author`)
-      assertExactKeys(
-        commit.author,
-        Object.hasOwn(commit.author, 'avatarUrl') ? ['avatarUrl', 'login', 'name'] : ['name'],
-        `${expectedComponent.name} commit author`,
+      assertMetadata(
+        isExactYunxiaoCommitUrl(commit.url, repository.webUrl as string, commit.sha),
+        `${expectedComponent.name} commit URL must belong to the configured Codeup repository and SHA`,
       )
-      assertMetadata(isNonEmptyString(commit.author.name), `${expectedComponent.name} commit author is invalid`)
+      assertMetadata(isRecord(commit.author), `${expectedComponent.name} commit author must be an object`)
+      assertContributorProfile(commit.author, `${expectedComponent.name} commit author`)
+      assertExactKeys(commit.author, ['avatarUrl', 'login', 'name'], `${expectedComponent.name} commit author`)
+      const contributor = contributorsByLogin.get(commit.author.login)
+      assertMetadata(contributor, `${expectedComponent.name} commit author has no matching contributor`)
+      assertMetadata(
+        commit.author.avatarUrl === contributor.avatarUrl
+        && commit.author.name === contributor.name,
+        `${expectedComponent.name} commit author must match its Yunxiao contributor profile`,
+      )
     }
 
     const contributorIds = new Set<string>()
     for (const contributor of component.contributors) {
-      assertMetadata(isRecord(contributor), `${expectedComponent.name} contributor must be an object`)
-      assertOptionalContributorProfile(contributor, `${expectedComponent.name} contributor`)
-      assertExactKeys(
-        contributor,
-        Object.hasOwn(contributor, 'avatarUrl')
-          ? ['avatarUrl', 'contributions', 'id', 'login', 'name']
-          : ['contributions', 'id', 'name'],
-        `${expectedComponent.name} contributor`,
-      )
-      assertMetadata(
-        isNonEmptyString(contributor.id) && /^yunxiao:[a-f0-9]{64}$/.test(contributor.id),
-        `${expectedComponent.name} contributor id is invalid`,
-      )
       assertMetadata(!contributorIds.has(contributor.id), `${expectedComponent.name} contains duplicate contributor ${contributor.id}`)
       contributorIds.add(contributor.id)
-      assertMetadata(isNonEmptyString(contributor.name), `${expectedComponent.name} contributor name is required`)
-      assertMetadata(Number.isInteger(contributor.contributions) && Number(contributor.contributions) > 0, `${expectedComponent.name} contribution count is invalid`)
     }
   }
 }

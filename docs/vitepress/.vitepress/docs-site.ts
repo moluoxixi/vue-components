@@ -64,6 +64,13 @@ const githubRepository = {
   url: 'https://github.com/moluoxixi/vue-components',
   issueTitlePrefix,
 }
+const localRepository = {
+  defaultBranch: 'main',
+  issueTitlePrefix,
+  name: 'vue-components',
+  owner: 'moluoxixi',
+  url: 'https://github.com/moluoxixi/vue-components',
+}
 const gitlabProjectPath = 'moluoxixi/vue-components-provider-fixture'
 const gitlabWebBaseUrl = 'https://jihulab.com'
 const gitlabRepository = {
@@ -92,15 +99,9 @@ const giteeRepository = {
 const yunxiaoRepository = {
   apiBaseUrl: 'https://openapi-rdc.aliyuncs.com',
   apiMode: 'central' as const,
-  contributorProfiles: {
-    'yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b': {
-      avatarUrl: 'https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200',
-      login: 'aliyun1879222502',
-    },
-    'yunxiao:d5b8d2b82909bab605c5eb4e0761ac30e81a9da6d907c4fa4c44b38d54546036': {
-      avatarUrl: 'https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200',
-      login: 'aliyun1879222502',
-    },
+  contributorAccounts: {
+    'yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b': 'aliyun:aliyun1879222502_fD9Ql',
+    'yunxiao:d5b8d2b82909bab605c5eb4e0761ac30e81a9da6d907c4fa4c44b38d54546036': 'aliyun:aliyun1879222502_fD9Ql',
   },
   defaultBranch: 'master',
   organizationId: '64bac376132d10ed34af0a23',
@@ -117,7 +118,7 @@ const repositories = {
   gitee: giteeRepository,
   github: githubRepository,
   gitlab: gitlabRepository,
-  local: githubRepository,
+  local: localRepository,
   yunxiao: yunxiaoRepository,
 }
 

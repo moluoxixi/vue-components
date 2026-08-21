@@ -42,6 +42,7 @@
     "@moluoxixi/components": "workspace:*",
     "@moluoxixi/rich-text-editor": "workspace:*",
     "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
+    "@noble/hashes": "catalog:",
     "@tanstack/vue-query": "catalog:data",
     "element-plus": "catalog:ui",
     "vue": "catalog:build"

@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import type { GitlabMetadataSnapshot } from '../../.vitepress/gitlab-metadata-types'
+import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from '../../.vitepress/gitlab-metadata-types'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,11 +12,13 @@ import {
 } from '../gitlab-metadata.mts'
 import {
   formatGitlabSyncError,
+  syncGitlabMetadata,
   writeGitlabMetadataAtomically,
 } from '../sync-gitlab-metadata.mts'
 
 const temporaryDirectories: string[] = []
 const headSha = 'a'.repeat(40)
+const aliceContributorId = 'gitlab:198824072b3907f74c7cf2250bf3e2fc74f0295bdbb4de5537aef58cabe31e20'
 
 function jsonResponse(data: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(data), {
@@ -31,6 +33,7 @@ function gitlabOptions(fetchImpl: typeof fetch) {
     apiBaseUrl: 'https://gitlab.test/api/v4',
     authentication: 'private-token' as const,
     components: [{ name: 'CopyText', path: 'packages/components/src/CopyText' }],
+    contributorProfiles: { [aliceContributorId]: 'alice' },
     defaultBranch: 'main',
     fetchImpl,
     generatedAt: '2026-08-19T00:00:00.000Z',
@@ -43,16 +46,9 @@ function gitlabOptions(fetchImpl: typeof fetch) {
   }
 }
 
-const aliceContributorId = 'gitlab:198824072b3907f74c7cf2250bf3e2fc74f0295bdbb4de5537aef58cabe31e20'
-
 function contributorFixtureFetch(
   userResponse: unknown | Response,
   repositoryUrl = 'https://gitlab.test/group/subgroup/project',
-  repositoryContributorResponse: unknown | Response = [{
-    commits: 1,
-    email: 'alice@example.test',
-    name: 'Alice Example',
-  }],
 ): { fetchImpl: typeof fetch, requests: string[] } {
   const requests: string[] = []
   const fetchImpl: typeof fetch = async (input) => {
@@ -80,8 +76,6 @@ function contributorFixtureFetch(
         web_url: `${repositoryUrl}/-/commit/${'1'.repeat(40)}`,
       }])
     }
-    if (url.includes('/repository/contributors?'))
-      return repositoryContributorResponse instanceof Response ? repositoryContributorResponse : jsonResponse(repositoryContributorResponse)
     if (url.includes('/users?username=alice'))
       return userResponse instanceof Response ? userResponse : jsonResponse(userResponse)
     throw new Error(`Unexpected GitLab request: ${url}`)
@@ -153,11 +147,12 @@ describe('gitLab documentation metadata', () => {
           web_url: `https://gitlab.test/group/subgroup/project/-/commit/${'2'.repeat(40)}`,
         }])
       }
-      if (url.includes('/repository/contributors?')) {
+      if (url.includes('/users?username=alice')) {
         return jsonResponse([{
-          commits: 2,
-          email: 'alice@example.test',
-          name: 'Alice Example',
+          avatar_url: 'https://gitlab.test/uploads/alice.png',
+          name: 'Alice Account',
+          username: 'alice',
+          web_url: 'https://gitlab.test/alice',
         }])
       }
       throw new Error(`Unexpected GitLab request: ${url}`)
@@ -175,10 +170,17 @@ describe('gitLab documentation metadata', () => {
     )
     expect(snapshot.components.CopyText?.commits).toHaveLength(2)
     expect(snapshot.components.CopyText?.contributors).toEqual([{
+      avatarUrl: 'https://gitlab.test/uploads/alice.png',
       contributions: 2,
-      id: expect.stringMatching(/^gitlab:[a-f0-9]{64}$/),
-      name: 'Alice Example',
+      id: aliceContributorId,
+      login: 'alice',
+      name: 'Alice Account',
+      profileUrl: 'https://gitlab.test/alice',
     }])
+    expect(snapshot.components.CopyText?.commits.every(commit => (
+      commit.author.login === 'alice'
+      && commit.author.profileUrl === 'https://gitlab.test/alice'
+    ))).toBe(true)
     expect(JSON.stringify(snapshot)).not.toContain('alice@example.test')
     expect(JSON.stringify(snapshot)).not.toContain('gitlab-secret-token')
   })
@@ -204,6 +206,12 @@ describe('gitLab documentation metadata', () => {
       name: 'Alice Account',
       profileUrl: 'https://gitlab.test/alice',
     }])
+    expect(snapshot.components.CopyText?.commits[0]?.author).toEqual({
+      avatarUrl: 'https://gitlab.test/uploads/alice.png',
+      login: 'alice',
+      name: 'Alice Account',
+      profileUrl: 'https://gitlab.test/alice',
+    })
     expect(requests.filter(url => url.includes('/users?username=alice'))).toHaveLength(1)
     expect(JSON.stringify(snapshot)).not.toContain('alice@example.test')
   })
@@ -226,75 +234,36 @@ describe('gitLab documentation metadata', () => {
     ['cross-origin profile', [
       { avatar_url: 'https://gitlab.test/uploads/alice.png', name: 'Alice', username: 'alice', web_url: 'https://example.test/alice' },
     ]],
-  ])('keeps the initials-only fallback for a %s', async (_label, userResponse) => {
+  ])('rejects synchronization for a %s', async (_label, userResponse) => {
     const { fetchImpl } = contributorFixtureFetch(userResponse)
-    const snapshot = await createGitlabMetadata({
-      ...gitlabOptions(fetchImpl),
-      contributorProfiles: { [aliceContributorId]: 'alice' },
-    })
-
-    expect(snapshot.components.CopyText?.contributors).toEqual([{
-      contributions: 1,
-      id: aliceContributorId,
-      name: 'Alice Example',
-    }])
+    await expect(createGitlabMetadata(gitlabOptions(fetchImpl))).rejects.toThrow()
   })
 
-  it('downgrades unavailable contributor lookup while preserving authenticated project metadata', async () => {
+  it('rejects unavailable contributor lookup instead of downgrading it', async () => {
     const { fetchImpl } = contributorFixtureFetch(jsonResponse({}, { status: 403 }))
-    const snapshot = await createGitlabMetadata({
+    await expect(createGitlabMetadata(gitlabOptions(fetchImpl)))
+      .rejects
+      .toThrow('GitLab request failed (403)')
+  })
+
+  it('rejects commits without an explicit reviewed identity mapping', async () => {
+    const fixture = contributorFixtureFetch([])
+    await expect(createGitlabMetadata({
+      ...gitlabOptions(fixture.fetchImpl),
+      contributorProfiles: {},
+    })).rejects.toThrow(`GitLab contributor profile mapping is required for ${aliceContributorId}`)
+  })
+
+  it('rejects two opaque commit identities mapped to one GitLab account', async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+    await expect(createGitlabMetadata({
       ...gitlabOptions(fetchImpl),
-      contributorProfiles: { [aliceContributorId]: 'alice' },
-    })
-
-    expect(snapshot.components.CopyText?.contributors[0]).not.toHaveProperty('profileUrl')
-  })
-
-  it.each([404, 405])('falls back to component commit scanning when contributors endpoint returns HTTP %s', async (status) => {
-    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', jsonResponse({}, { status }))
-    const snapshot = await createGitlabMetadata(gitlabOptions(fixture.fetchImpl))
-
-    expect(snapshot.components.CopyText?.contributors).toEqual([{
-      contributions: 1,
-      id: aliceContributorId,
-      name: 'Alice Example',
-    }])
-  })
-
-  it('uses a matching online contributor record to canonicalize the display name', async () => {
-    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', [{
-      commits: 1,
-      email: 'alice@example.test',
-      name: '  ALICE EXAMPLE  ',
-    }])
-
-    const snapshot = await createGitlabMetadata(gitlabOptions(fixture.fetchImpl))
-
-    expect(snapshot.components.CopyText?.contributors).toEqual([{
-      contributions: 1,
-      id: aliceContributorId,
-      name: 'ALICE EXAMPLE',
-    }])
-  })
-
-  it.each([401, 403])('fails synchronization when contributors endpoint returns HTTP %s', async (status) => {
-    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', jsonResponse({}, { status }))
-
-    await expect(createGitlabMetadata(gitlabOptions(fixture.fetchImpl)))
-      .rejects
-      .toThrow(`GitLab request failed (${status})`)
-  })
-
-  it('rejects malformed successful contributors responses', async () => {
-    const fixture = contributorFixtureFetch([], 'https://gitlab.test/group/subgroup/project', [{
-      commits: 1,
-      email: 'alice@example.test',
-      name: '',
-    }])
-
-    await expect(createGitlabMetadata(gitlabOptions(fixture.fetchImpl)))
-      .rejects
-      .toThrow('GitLab repository contributor 0 is invalid')
+      contributorProfiles: {
+        [aliceContributorId]: 'alice',
+        [`gitlab:${'b'.repeat(64)}`]: 'alice',
+      },
+    })).rejects.toThrow('GitLab contributor profile username alice is mapped from multiple identities')
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it.each([401, 403])('fails project synchronization on HTTP %s instead of downgrading it', async (status) => {
@@ -346,7 +315,7 @@ describe('gitLab documentation metadata', () => {
     expect(snapshot.components.CopyText?.contributors[0]?.profileUrl).toBe('https://gitlab.test/gitlab/alice')
   })
 
-  it('detects disabled Issues from a 404 probe and omits issue data', async () => {
+  it('treats an Issues API 404 as synchronization failure instead of unsupported capability', async () => {
     const fetchImpl: typeof fetch = async (input) => {
       const url = String(input)
       if (url.endsWith('/projects/group%2Fsubgroup%2Fproject')) {
@@ -367,11 +336,9 @@ describe('gitLab documentation metadata', () => {
       throw new Error(`Unexpected GitLab request: ${url}`)
     }
 
-    const snapshot = await createGitlabMetadata(gitlabOptions(fetchImpl))
-
-    expect(snapshot.repository.issuesEnabled).toBe(false)
-    expect(snapshot.components.CopyText).not.toHaveProperty('openIssueCount')
-    expect(snapshot.components.CopyText).not.toHaveProperty('openIssues')
+    await expect(createGitlabMetadata(gitlabOptions(fetchImpl)))
+      .rejects
+      .toThrow('GitLab request failed (404)')
   })
 
   it('retries 429 and 5xx responses with bounded Retry-After handling', async () => {
@@ -467,7 +434,7 @@ describe('gitLab documentation metadata', () => {
     }), currentUrl)).toBe('https://gitlab.test/api/v4/items?page=3')
   })
 
-  it('redacts tokens and preserves the previous snapshot when atomic replacement fails', () => {
+  it('redacts tokens and preserves the previous snapshot when collection, validation, or atomic replacement fails', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'moluoxixi-gitlab-metadata-'))
     temporaryDirectories.push(directory)
     const outputPath = join(directory, 'gitlab-metadata.json')
@@ -483,6 +450,25 @@ describe('gitLab documentation metadata', () => {
     })).toThrow('rename failed')
     expect(readFileSync(outputPath, 'utf8')).toBe('{"preserved":true}\n')
     expect(readdirSync(directory)).toEqual(['gitlab-metadata.json'])
+
+    const expectation: GitlabMetadataExpectation = {
+      components: [{ name: 'CopyText', path: 'packages/components/src/CopyText' }],
+      defaultBranch: 'main',
+      projectPath: 'group/subgroup/project',
+      repositoryUrl: 'https://gitlab.test/group/subgroup/project',
+    }
+    await expect(syncGitlabMetadata(
+      async () => { throw new Error('simulated GitLab API failure') },
+      expectation,
+      outputPath,
+    )).rejects.toThrow('simulated GitLab API failure')
+    expect(readFileSync(outputPath, 'utf8')).toBe('{"preserved":true}\n')
+    await expect(syncGitlabMetadata(
+      async () => ({}) as GitlabMetadataSnapshot,
+      expectation,
+      outputPath,
+    )).rejects.toThrow('root contains unsupported or missing fields')
+    expect(readFileSync(outputPath, 'utf8')).toBe('{"preserved":true}\n')
 
     const secret = 'gitlab-secret-token'
     expect(formatGitlabSyncError(new Error(`request failed: ${secret}`), secret)).not.toContain(secret)

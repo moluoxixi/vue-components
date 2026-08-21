@@ -5,10 +5,14 @@ import type {
   GiteeIssueSummary,
   GiteeMetadataSnapshot,
 } from '../.vitepress/gitee-metadata-types.ts'
-import { createHash } from 'node:crypto'
+import {
+  isExactGiteeProfileUrl,
+  isTrustedGiteeAvatarUrl,
+} from '../.vitepress/gitee-metadata-types.ts'
 import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface GiteeAccountResponse {
+  id: number
   avatar_url: string
   html_url: string
   login: string
@@ -60,6 +64,7 @@ export interface CreateGiteeMetadataOptions {
   sleep?: (milliseconds: number) => Promise<void>
   token?: string
   userAgent: string
+  webBaseUrl: string
 }
 
 const MAX_RETRIES = 3
@@ -70,6 +75,10 @@ function defaultSleep(milliseconds: number): Promise<void> {
 
 function firstLine(value: string): string {
   return value.split(/\r?\n/, 1)[0]?.trim() || '(no commit message)'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function nextLink(linkHeader: string | null): string | undefined {
@@ -202,18 +211,41 @@ export function groupGiteeComponentIssues(
   return result
 }
 
-function anonymousContributorId(name: string, email: string): string {
-  const identity = `${name.trim().toLocaleLowerCase()}\0${email.trim().toLocaleLowerCase()}`
-  return `gitee:git:${createHash('sha256').update(identity).digest('hex')}`
+function commitAccount(value: unknown, sha: string): Pick<GiteeAccountResponse, 'id' | 'login'> {
+  if (!isRecord(value)
+    || !Number.isInteger(value.id)
+    || Number(value.id) <= 0
+    || typeof value.login !== 'string'
+    || !value.login.trim()) {
+    throw new TypeError(`Gitee commit ${sha} has no associated Gitee account`)
+  }
+  return { id: Number(value.id), login: value.login }
 }
 
-function accountIdentity(account: GiteeAccountResponse, fallbackName: string) {
+function verifiedAccount(
+  value: unknown,
+  expected: Pick<GiteeAccountResponse, 'id' | 'login'>,
+  webBaseUrl: string,
+): Omit<GiteeContributor, 'contributions'> {
+  if (!isRecord(value)
+    || value.id !== expected.id
+    || value.login !== expected.login
+    || typeof value.name !== 'string'
+    || !value.name.trim()
+    || typeof value.avatar_url !== 'string'
+    || typeof value.html_url !== 'string') {
+    throw new TypeError(`Gitee user profile mismatch for ${expected.login}`)
+  }
+  if (!isTrustedGiteeAvatarUrl(value.avatar_url, webBaseUrl))
+    throw new TypeError(`Gitee user profile has an untrusted avatar for ${expected.login}`)
+  if (!isExactGiteeProfileUrl(value.html_url, webBaseUrl, expected.login))
+    throw new TypeError(`Gitee user profile URL mismatch for ${expected.login}`)
   return {
-    avatarUrl: account.avatar_url,
-    id: `gitee:${account.login.toLocaleLowerCase()}`,
-    login: account.login,
-    name: account.name?.trim() || fallbackName || account.login,
-    profileUrl: account.html_url,
+    avatarUrl: value.avatar_url,
+    id: `gitee:${expected.id}`,
+    login: expected.login,
+    name: value.name.trim(),
+    profileUrl: value.html_url,
   }
 }
 
@@ -222,34 +254,30 @@ function createComponentMetadata(
   rawCommits: GiteeCommitResponse[],
   issuesEnabled: boolean,
   issues: GiteeIssueSummary[],
+  profiles: ReadonlyMap<number, Omit<GiteeContributor, 'contributions'>>,
 ): GiteeComponentMetadata {
   const contributionCounts = new Map<string, GiteeContributor>()
   const commits: GiteeCommit[] = rawCommits.map((rawCommit) => {
+    const account = commitAccount(rawCommit.author, rawCommit.sha)
+    const profile = profiles.get(account.id)
+    if (!profile || profile.login !== account.login)
+      throw new TypeError(`Gitee commit ${rawCommit.sha} has no verified profile for ${account.login}`)
     const gitAuthor = rawCommit.commit.author ?? rawCommit.commit.committer
-    const fallbackName = gitAuthor?.name?.trim() || 'Unknown contributor'
-    const identity = rawCommit.author
-      ? accountIdentity(rawCommit.author, fallbackName)
-      : {
-          id: anonymousContributorId(fallbackName, gitAuthor?.email ?? ''),
-          name: fallbackName,
-        }
-    const existing = contributionCounts.get(identity.id)
-    contributionCounts.set(identity.id, {
-      ...identity,
+    const existing = contributionCounts.get(profile.id)
+    contributionCounts.set(profile.id, {
+      ...profile,
       contributions: (existing?.contributions ?? 0) + 1,
     })
     const date = gitAuthor?.date
     if (!date || Number.isNaN(Date.parse(date)))
       throw new TypeError(`Gitee commit ${rawCommit.sha} is missing a valid date`)
     return {
-      author: rawCommit.author
-        ? {
-            avatarUrl: rawCommit.author.avatar_url,
-            login: rawCommit.author.login,
-            name: identity.name,
-            profileUrl: rawCommit.author.html_url,
-          }
-        : { name: fallbackName },
+      author: {
+        avatarUrl: profile.avatarUrl,
+        login: profile.login,
+        name: profile.name,
+        profileUrl: profile.profileUrl,
+      },
       date,
       message: firstLine(rawCommit.commit.message),
       sha: rawCommit.sha,
@@ -287,7 +315,7 @@ export async function createGiteeMetadata(options: CreateGiteeMetadataOptions): 
     : []
   const groupedIssues = groupGiteeComponentIssues(rawIssues, options.components, options.issueTitlePrefix)
 
-  const components = Object.fromEntries(await Promise.all(options.components.map(async (component) => {
+  const componentCommits = await Promise.all(options.components.map(async (component) => {
     const query = new URLSearchParams({
       page: '1',
       path: component.path,
@@ -295,11 +323,33 @@ export async function createGiteeMetadata(options: CreateGiteeMetadataOptions): 
       sha: headSha,
     })
     const commits = await client.paginate<GiteeCommitResponse>(`${repositoryPath}/commits?${query}`)
-    return [
-      component.name,
-      createComponentMetadata(component, commits, issuesEnabled, groupedIssues[component.name] ?? []),
-    ] as const
-  })))
+    return { component, commits }
+  }))
+  const accounts = new Map<number, Pick<GiteeAccountResponse, 'id' | 'login'>>()
+  for (const { commits } of componentCommits) {
+    for (const commit of commits) {
+      const account = commitAccount(commit.author, commit.sha)
+      const existing = accounts.get(account.id)
+      if (existing && existing.login !== account.login)
+        throw new TypeError(`Gitee account ${account.id} has inconsistent logins`)
+      accounts.set(account.id, account)
+    }
+  }
+  const profiles = new Map<number, Omit<GiteeContributor, 'contributions'>>()
+  await Promise.all([...accounts.values()].map(async (account) => {
+    const { data } = await client.get<unknown>(`/users/${encodeURIComponent(account.login)}`)
+    profiles.set(account.id, verifiedAccount(data, account, options.webBaseUrl))
+  }))
+  const components = Object.fromEntries(componentCommits.map(({ component, commits }) => [
+    component.name,
+    createComponentMetadata(
+      component,
+      commits,
+      issuesEnabled,
+      groupedIssues[component.name] ?? [],
+      profiles,
+    ),
+  ]))
 
   return {
     schemaVersion: 1,

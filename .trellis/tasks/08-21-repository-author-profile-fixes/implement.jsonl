@@ -1,0 +1,4 @@
+{"file":".trellis/spec/docs/frontend/index.md","reason":"Routes documentation provider implementation to the maintained quality contract."}
+{"file":".trellis/spec/docs/frontend/quality-guidelines.md","reason":"Defines repository provider identity, snapshot, URL trust, and validation boundaries."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"The profile must survive API, collector, snapshot, normalizer, and UI boundaries."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"GitLab and Gitee must reuse their provider profile projection instead of duplicating identity parsing."}

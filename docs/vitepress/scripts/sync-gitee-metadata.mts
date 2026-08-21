@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import type { GiteeMetadataSnapshot } from '../.vitepress/gitee-metadata-types.ts'
+import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from '../.vitepress/gitee-metadata-types.ts'
 import type { AtomicFileSystem } from './atomic-metadata-write.mts'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
@@ -20,6 +20,17 @@ export function writeGiteeMetadataAtomically(
   writeJsonAtomically(snapshot, outputPath, fileSystem)
 }
 
+export async function syncGiteeMetadata(
+  collectSnapshot: () => Promise<GiteeMetadataSnapshot>,
+  expectation: GiteeMetadataExpectation,
+  outputPath: string,
+): Promise<GiteeMetadataSnapshot> {
+  const snapshot = await collectSnapshot()
+  assertGiteeMetadataSnapshot(snapshot, expectation)
+  writeGiteeMetadataAtomically(snapshot, outputPath)
+  return snapshot
+}
+
 export function formatGiteeSyncError(error: unknown, token?: string): string {
   let message = error instanceof Error ? (error.stack ?? error.message) : String(error)
   if (!token)
@@ -37,7 +48,9 @@ async function main(): Promise<void> {
   const expectation = repositoryMetadataExpectations.gitee
   const config = docsSite.repositories.gitee
   const token = process.env.GITEE_TOKEN
-  const snapshot = await createGiteeMetadata({
+  const scriptDir = dirname(fileURLToPath(import.meta.url))
+  const outputPath = resolve(scriptDir, '../.vitepress/gitee-metadata.json')
+  const snapshot = await syncGiteeMetadata(() => createGiteeMetadata({
     apiBaseUrl: config.apiBaseUrl,
     components: expectation.components,
     defaultBranch: expectation.defaultBranch,
@@ -47,10 +60,8 @@ async function main(): Promise<void> {
     repositoryUrl: expectation.repositoryUrl,
     token,
     userAgent: config.userAgent,
-  })
-  assertGiteeMetadataSnapshot(snapshot, expectation)
-  const scriptDir = dirname(fileURLToPath(import.meta.url))
-  writeGiteeMetadataAtomically(snapshot, resolve(scriptDir, '../.vitepress/gitee-metadata.json'))
+    webBaseUrl: config.webBaseUrl,
+  }), expectation, outputPath)
   console.log(`Synced Gitee metadata for ${documentedComponents.length} components at ${snapshot.repository.headSha.slice(0, 7)}.`)
 }
 
