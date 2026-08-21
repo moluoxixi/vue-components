@@ -259,3 +259,24 @@ Added a strict VITE_DOCS_REPOSITORY_METADATA_PROVIDER startup override, determin
 ### Status
 
 [OK] **Completed**
+
+
+## Session 10: Complete Yunxiao Codeup repository provider
+
+**Date**: 2026-08-21
+**Task**: Complete Yunxiao Codeup repository provider
+**Branch**: `main`
+
+### Summary
+
+Validated the Yunxiao provider against the retained private Codeup repository, synchronized commit and contributor metadata, confirmed offline and full CI checks, and verified successful GitHub Pages and npm release workflows. Archived the completed Trellis task.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `25d7d4a` | (see git log) |
+
+### Status
+
+[OK] **Completed**
