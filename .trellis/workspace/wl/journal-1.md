@@ -280,3 +280,24 @@ Validated the Yunxiao provider against the retained private Codeup repository, s
 ### Status
 
 [OK] **Completed**
+
+
+## Session 11: Provider-only repository identities
+
+**Date**: 2026-08-21
+**Task**: Provider-only repository identities
+**Branch**: `main`
+
+### Summary
+
+Enforced API-only identities for GitHub, GitLab, Gitee, and Yunxiao; added strict atomic validation and failure preservation; refreshed provider snapshots; verified 85 focused tests, metadata validation, docs typecheck, lint, and production docs build; removed four temporary Yunxiao PATs.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `33fd182a` | (see git log) |
+
+### Status
+
+[OK] **Completed**
