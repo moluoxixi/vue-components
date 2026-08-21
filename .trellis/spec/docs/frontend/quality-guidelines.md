@@ -73,7 +73,7 @@ pnpm -C docs/vitepress validate-repository-metadata
 - GitLab contributor `login`, `avatarUrl`, and `profileUrl` fields are all-or-none. Unmapped, ambiguous, unavailable, or invalid profiles retain the stable contributor ID, commit count, display name, and initials fallback.
 - A configured GitLab `webBaseUrl` must exactly equal the installation base derived from the repository URL and `projectPath`, including any relative installation path such as `/gitlab`.
 - Persisted GitLab web URLs must stay under that exact installation base and contain no userinfo, query, or fragment. This prevents API-returned credential parameters from entering a public snapshot.
-- `validate-repository-metadata` validates committed GitHub, GitLab, Gitee, and local snapshots offline. Yunxiao joins only after replacing its placeholder with a real tenant snapshot.
+- `validate-repository-metadata` validates committed GitHub, GitLab, Gitee, local, and Yunxiao snapshots offline. A provider may join this aggregate only after its placeholder has been replaced by a reviewed real snapshot.
 - Native `node scripts/*.mts` execution requires Node `>=22.6.0`.
 - Turbo's `@moluoxixi/docs#build` must depend on `^build` so dependency packages finish before docs reads their `dist` output.
 - Browser CI runs in the official Playwright container pinned by version and amd64 digest; the image version must exactly match the locked `@playwright/test` version.

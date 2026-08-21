@@ -92,11 +92,11 @@ const giteeRepository = {
 const yunxiaoRepository = {
   apiBaseUrl: 'https://openapi-rdc.aliyuncs.com',
   apiMode: 'central' as const,
-  defaultBranch: 'main',
-  organizationId: 'configure-yunxiao-organization-id',
-  repositoryId: 'configure-yunxiao-repository-id',
-  repositoryPath: 'configure-yunxiao/repository',
-  url: 'https://codeup.aliyun.com/configure-yunxiao/repository',
+  defaultBranch: 'master',
+  organizationId: '64bac376132d10ed34af0a23',
+  repositoryId: '7356176',
+  repositoryPath: '64bac376132d10ed34af0a23/vue-components-provider-fixture',
+  url: 'https://codeup.aliyun.com/64bac376132d10ed34af0a23/vue-components-provider-fixture',
   userAgent: 'moluoxixi-docs-yunxiao-metadata-sync',
 }
 

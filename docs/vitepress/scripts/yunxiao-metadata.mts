@@ -80,6 +80,9 @@ export function resolveYunxiaoNextPage(response: Response, currentUrl: string): 
   if (!nextPage)
     return undefined
   const url = new URL(currentUrl)
+  // Codeup returns the current page number in x-next-page for the final page.
+  if (nextPage === (url.searchParams.get('page') ?? '1'))
+    return undefined
   url.searchParams.set('page', nextPage)
   return url.toString()
 }

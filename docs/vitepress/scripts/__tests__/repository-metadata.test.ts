@@ -1,10 +1,6 @@
 // @vitest-environment node
 
 import type { RepositoryMetadataProvider } from '../../.vitepress/repository-metadata-types'
-import type {
-  YunxiaoMetadataExpectation,
-  YunxiaoMetadataSnapshot,
-} from '../../.vitepress/yunxiao-metadata-types'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -40,26 +36,6 @@ import { assertYunxiaoMetadataSnapshot } from '../../.vitepress/yunxiao-metadata
 import yunxiaoSnapshot from '../../.vitepress/yunxiao-metadata.json'
 
 const docsDirectory = fileURLToPath(new URL('../..', import.meta.url))
-
-const configuredYunxiaoExpectation: YunxiaoMetadataExpectation = {
-  ...repositoryMetadataExpectations.yunxiao,
-  organizationId: 'organization-1',
-  repositoryId: '1001',
-  repositoryPath: 'group/project',
-  repositoryUrl: 'https://codeup.test/group/project',
-}
-
-function createConfiguredYunxiaoSnapshot(): YunxiaoMetadataSnapshot {
-  const snapshot = structuredClone(yunxiaoSnapshot) as YunxiaoMetadataSnapshot
-  Object.assign(snapshot.repository, {
-    headSha: 'a'.repeat(40),
-    organizationId: configuredYunxiaoExpectation.organizationId,
-    repositoryId: configuredYunxiaoExpectation.repositoryId,
-    repositoryPath: configuredYunxiaoExpectation.repositoryPath,
-    webUrl: configuredYunxiaoExpectation.repositoryUrl,
-  })
-  return snapshot
-}
 
 function validateSelectedMetadata(providerId?: string) {
   const environment = { ...process.env }
@@ -290,17 +266,10 @@ describe('repository metadata providers', () => {
   })
 
   it('registers Yunxiao with commit-only capabilities and no repository Issues or guessed links', () => {
-    expect(() => repositoryMetadataProviders.resolve(
+    const metadata = repositoryMetadataProviders.resolve(
       'yunxiao',
       yunxiaoSnapshot,
       repositoryMetadataExpectations.yunxiao,
-    )).toThrow('provider configuration is still a placeholder')
-
-    const configuredSnapshot = createConfiguredYunxiaoSnapshot()
-    const metadata = repositoryMetadataProviders.resolve(
-      'yunxiao',
-      configuredSnapshot,
-      configuredYunxiaoExpectation,
     )
     const provider = repositoryMetadataProviders.get('yunxiao')
 
@@ -344,7 +313,7 @@ describe('repository metadata providers', () => {
     expect(() => repositoryMetadataProviders.resolve(
       'yunxiao',
       giteeSnapshot,
-      configuredYunxiaoExpectation,
+      repositoryMetadataExpectations.yunxiao,
     )).toThrow('Invalid Yunxiao metadata snapshot')
   })
 
@@ -401,14 +370,14 @@ describe('repository metadata providers', () => {
   })
 
   it('rejects Yunxiao cross-tenant snapshots and leaked contributor fields', () => {
-    const wrongOrganization = createConfiguredYunxiaoSnapshot()
+    const wrongOrganization = structuredClone(yunxiaoSnapshot)
     wrongOrganization.repository.organizationId = 'another-organization'
     expect(() => assertYunxiaoMetadataSnapshot(
       wrongOrganization,
-      configuredYunxiaoExpectation,
-    )).toThrow(`organizationId must be ${configuredYunxiaoExpectation.organizationId}`)
+      repositoryMetadataExpectations.yunxiao,
+    )).toThrow(`organizationId must be ${repositoryMetadataExpectations.yunxiao.organizationId}`)
 
-    const leakedContributor = createConfiguredYunxiaoSnapshot()
+    const leakedContributor = structuredClone(yunxiaoSnapshot)
     leakedContributor.components.CopyText!.contributors.push({
       contributions: 1,
       id: 'yunxiao:test',
@@ -417,7 +386,7 @@ describe('repository metadata providers', () => {
     } as never)
     expect(() => assertYunxiaoMetadataSnapshot(
       leakedContributor,
-      configuredYunxiaoExpectation,
+      repositoryMetadataExpectations.yunxiao,
     )).toThrow('CopyText contributor contains unsupported or missing fields')
   })
 

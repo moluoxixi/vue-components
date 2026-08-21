@@ -163,7 +163,9 @@ describe('yunxiao Codeup documentation metadata', () => {
         return jsonResponse({ commit: { id: headSha } })
       if (url.includes('/commits?')) {
         commitRequests += 1
-        return jsonResponse([], { headers: { 'x-next-page': '1' } })
+        return url.includes('page=2')
+          ? jsonResponse([], { headers: { 'x-next-page': '1' } })
+          : jsonResponse([], { headers: { 'x-next-page': '2' } })
       }
       throw new Error(`Unexpected Yunxiao request: ${url}`)
     }
@@ -171,7 +173,7 @@ describe('yunxiao Codeup documentation metadata', () => {
     await expect(createYunxiaoMetadata(options(fetchImpl)))
       .rejects
       .toThrow('Yunxiao pagination returned a repeated next page')
-    expect(commitRequests).toBe(1)
+    expect(commitRequests).toBe(2)
   })
 
   it('resolves x-next-page pagination without changing other query parameters', () => {
@@ -179,6 +181,10 @@ describe('yunxiao Codeup documentation metadata', () => {
       jsonResponse([], { headers: { 'x-next-page': '2' } }),
       'https://openapi-rdc.test/commits?refName=abc&page=1&perPage=100',
     )).toBe('https://openapi-rdc.test/commits?refName=abc&page=2&perPage=100')
+    expect(resolveYunxiaoNextPage(
+      jsonResponse([], { headers: { 'x-next-page': '1' } }),
+      'https://openapi-rdc.test/commits?refName=abc&page=1&perPage=100',
+    )).toBeUndefined()
     expect(resolveYunxiaoNextPage(jsonResponse([]), 'https://openapi-rdc.test/commits?page=1')).toBeUndefined()
   })
 

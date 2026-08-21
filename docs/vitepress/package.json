@@ -25,7 +25,7 @@
     "validate-gitlab-metadata": "node scripts/validate-gitlab-metadata.mts",
     "validate-local-metadata": "node scripts/validate-local-metadata.mts",
     "validate-yunxiao-metadata": "node scripts/validate-yunxiao-metadata.mts",
-    "validate-repository-metadata": "pnpm validate-github-metadata && pnpm validate-gitlab-metadata && pnpm validate-gitee-metadata && pnpm validate-local-metadata",
+    "validate-repository-metadata": "pnpm validate-github-metadata && pnpm validate-gitlab-metadata && pnpm validate-gitee-metadata && pnpm validate-local-metadata && pnpm validate-yunxiao-metadata",
     "validate-selected-metadata": "node scripts/validate-selected-metadata.mts",
     "generate-component-routes": "node scripts/generate-component-routes.mts",
     "generate-utility-routes": "node scripts/generate-utility-routes.mts",

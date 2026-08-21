@@ -17,13 +17,13 @@ Implement a production-grade Yunxiao Codeup repository provider with honest capa
 
 ## Acceptance Criteria
 
-- [ ] The registry contains `yunxiao` with its own snapshot and no fallback; production remains `github`.
-- [ ] Central/region API configuration, organization, and repository identifiers are explicit and validated.
-- [ ] Commit history and aggregated contributor counts are accurate for a real repository.
-- [ ] Repository Issues and issue actions are absent in metadata and UI.
-- [ ] Source/edit/line capabilities are enabled only with recorded real-route evidence; unsupported routes remain hidden.
-- [ ] Client/sync tests cover PAT headers/redaction, API variants, pagination, retry/rate limits, filtering, canonical URLs, aggregation, and atomic writes.
-- [ ] A real authenticated Codeup project proves all enabled links and live metadata synchronization.
+- [x] The registry contains `yunxiao` with its own snapshot and no fallback; production remains `github`.
+- [x] Central/region API configuration, organization, and repository identifiers are explicit and validated.
+- [x] Commit history and aggregated contributor counts are accurate for a real repository.
+- [x] Repository Issues and issue actions are absent in metadata and UI.
+- [x] Source/edit/line capabilities are enabled only with recorded real-route evidence; unsupported routes remain hidden.
+- [x] Client/sync tests cover PAT headers/redaction, API variants, pagination, retry/rate limits, filtering, canonical URLs, aggregation, and atomic writes.
+- [x] A real authenticated Codeup project proves all enabled links and live metadata synchronization.
 - [ ] Documentation, focused/full checks, commit/push, and GitHub Actions succeed.
 
 ## Out of Scope

@@ -1,28 +1,107 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-19T00:00:00.000Z",
+  "generatedAt": "2026-08-21T01:01:24.166Z",
   "repository": {
     "apiMode": "central",
-    "defaultBranch": "main",
-    "headSha": "0000000000000000000000000000000000000000",
-    "organizationId": "configure-yunxiao-organization-id",
-    "repositoryId": "configure-yunxiao-repository-id",
-    "repositoryPath": "configure-yunxiao/repository",
-    "webUrl": "https://codeup.aliyun.com/configure-yunxiao/repository"
+    "defaultBranch": "master",
+    "headSha": "c936b3cd4b7447daf6a94ac284aff87d07e33f40",
+    "organizationId": "64bac376132d10ed34af0a23",
+    "repositoryId": "7356176",
+    "repositoryPath": "64bac376132d10ed34af0a23/vue-components-provider-fixture",
+    "webUrl": "https://codeup.aliyun.com/64bac376132d10ed34af0a23/vue-components-provider-fixture"
   },
   "components": {
-    "CopyText": { "commits": [], "contributors": [], "path": "packages/components/src/CopyText" },
-    "HeadlessCopyText": { "commits": [], "contributors": [], "path": "packages/components/src/HeadlessCopyText" },
-    "AntdConfigForm": { "commits": [], "contributors": [], "path": "packages/components/src/AntdConfigForm" },
-    "ElementConfigForm": { "commits": [], "contributors": [], "path": "packages/components/src/ElementConfigForm" },
-    "DateRangePicker": { "commits": [], "contributors": [], "path": "packages/components/src/DateRangePicker" },
-    "EnterNextContainer": { "commits": [], "contributors": [], "path": "packages/components/src/EnterNextContainer" },
-    "RequestSelectV2": { "commits": [], "contributors": [], "path": "packages/components/src/RequestSelectV2" },
-    "RequestCascader": { "commits": [], "contributors": [], "path": "packages/components/src/RequestCascader" },
-    "RequestTreeSelect": { "commits": [], "contributors": [], "path": "packages/components/src/RequestTreeSelect" },
-    "ConfigTable": { "commits": [], "contributors": [], "path": "packages/components/src/ConfigTable" },
-    "HeadlessTable": { "commits": [], "contributors": [], "path": "packages/components/src/HeadlessTable" },
-    "PopoverTableSelect": { "commits": [], "contributors": [], "path": "packages/components/src/PopoverTableSelect" },
-    "RichTextEditor": { "commits": [], "contributors": [], "path": "packages/components/src/RichTextEditor" }
+    "CopyText": {
+      "commits": [
+        {
+          "author": {
+            "name": "aliyun1879222502"
+          },
+          "date": "2026-08-20T15:36:49+08:00",
+          "message": "docs: extend CopyText fixture",
+          "sha": "c936b3cd4b7447daf6a94ac284aff87d07e33f40",
+          "shortSha": "c936b3c",
+          "url": "https://codeup.aliyun.com/64bac376132d10ed34af0a23/vue-components-provider-fixture/commit/c936b3cd4b7447daf6a94ac284aff87d07e33f40"
+        },
+        {
+          "author": {
+            "name": "aliyun1879222502"
+          },
+          "date": "2026-08-20T15:36:00+08:00",
+          "message": "docs: add CopyText fixture",
+          "sha": "23a5b8fbafa730b1ff8f1b736ea01275255d5480",
+          "shortSha": "23a5b8f",
+          "url": "https://codeup.aliyun.com/64bac376132d10ed34af0a23/vue-components-provider-fixture/commit/23a5b8fbafa730b1ff8f1b736ea01275255d5480"
+        }
+      ],
+      "contributors": [
+        {
+          "contributions": 2,
+          "id": "yunxiao:d5b8d2b82909bab605c5eb4e0761ac30e81a9da6d907c4fa4c44b38d54546036",
+          "name": "aliyun1879222502"
+        }
+      ],
+      "path": "packages/components/src/CopyText"
+    },
+    "HeadlessCopyText": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/HeadlessCopyText"
+    },
+    "AntdConfigForm": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/AntdConfigForm"
+    },
+    "ElementConfigForm": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/ElementConfigForm"
+    },
+    "DateRangePicker": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/DateRangePicker"
+    },
+    "EnterNextContainer": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/EnterNextContainer"
+    },
+    "RequestSelectV2": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RequestSelectV2"
+    },
+    "RequestCascader": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RequestCascader"
+    },
+    "RequestTreeSelect": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RequestTreeSelect"
+    },
+    "ConfigTable": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/ConfigTable"
+    },
+    "HeadlessTable": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/HeadlessTable"
+    },
+    "PopoverTableSelect": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/PopoverTableSelect"
+    },
+    "RichTextEditor": {
+      "commits": [],
+      "contributors": [],
+      "path": "packages/components/src/RichTextEditor"
+    }
   }
 }
