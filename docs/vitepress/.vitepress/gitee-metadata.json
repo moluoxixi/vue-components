@@ -1,77 +1,2443 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-19T06:25:57.075Z",
+  "generatedAt": "2026-08-21T05:44:51.476Z",
   "repository": {
     "defaultBranch": "main",
-    "fullName": "mirrors/vue",
-    "headSha": "9e88707940088cb1f4cd7dd210c9168a50dc347c",
-    "issuesEnabled": false,
-    "webUrl": "https://gitee.com/mirrors/vue"
+    "fullName": "moluoxixi/vue-components-provider-fixture",
+    "headSha": "2c16d80fb12ca7873b06d8726b8c72aae34c8065",
+    "issuesEnabled": true,
+    "webUrl": "https://gitee.com/moluoxixi/vue-components-provider-fixture"
   },
   "components": {
     "CopyText": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T15:20:01+08:00",
+          "message": "Update Vue component library implementation",
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/134f5faf82e479c5a9de6448966dbc73004db27c"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 8
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/CopyText"
     },
     "HeadlessCopyText": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T08:46:08+08:00",
+          "message": "feat(components): add editable table modes and p0 p1 improvements",
+          "sha": "835b6300e468d7384830b7a1cf81ec33a5e37a0a",
+          "shortSha": "835b630",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/835b6300e468d7384830b7a1cf81ec33a5e37a0a"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T15:20:01+08:00",
+          "message": "Update Vue component library implementation",
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/134f5faf82e479c5a9de6448966dbc73004db27c"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 9
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/HeadlessCopyText"
     },
     "AntdConfigForm": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-09T01:17:07+08:00",
+          "message": "feat(config-form): add advanced visual designer capabilities",
+          "sha": "31d9c817a78255d791e7890d5a92068666027e6e",
+          "shortSha": "31d9c81",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/31d9c817a78255d791e7890d5a92068666027e6e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T13:41:22+08:00",
+          "message": "docs: cover all public components",
+          "sha": "cadeddfdf0e03673ccb80701e1b66e051c186a7e",
+          "shortSha": "cadeddf",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/cadeddfdf0e03673ccb80701e1b66e051c186a7e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T15:20:01+08:00",
+          "message": "Update Vue component library implementation",
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/134f5faf82e479c5a9de6448966dbc73004db27c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T12:38:45+08:00",
+          "message": "Refine ConfigForm renderer architecture and release checks",
+          "sha": "f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155",
+          "shortSha": "f9497c2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T10:12:11+08:00",
+          "message": "Refactor ConfigForm renderer expose handling",
+          "sha": "564bd335961fbea718755d7aa332e1ab86bc9c41",
+          "shortSha": "564bd33",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/564bd335961fbea718755d7aa332e1ab86bc9c41"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T19:47:21+08:00",
+          "message": "refactor: remove config form type assertions",
+          "sha": "98ba65e7e401cf686cc33fae2ae7be4f1f50bf31",
+          "shortSha": "98ba65e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/98ba65e7e401cf686cc33fae2ae7be4f1f50bf31"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T19:01:14+08:00",
+          "message": "refactor: pass config form fields directly",
+          "sha": "03d7436a02eb89f67ae2d45086b2ed016656f52c",
+          "shortSha": "03d7436",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/03d7436a02eb89f67ae2d45086b2ed016656f52c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T18:26:36+08:00",
+          "message": "refactor: use native config form attr types",
+          "sha": "95f00210cdd9f31abaf91dd0067fd192e8d10596",
+          "shortSha": "95f0021",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/95f00210cdd9f31abaf91dd0067fd192e8d10596"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T17:56:09+08:00",
+          "message": "fix: align config form renderer attr types",
+          "sha": "c087fd0b6d8e512e0303aa07370eb913e716f2fd",
+          "shortSha": "c087fd0",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/c087fd0b6d8e512e0303aa07370eb913e716f2fd"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T17:37:24+08:00",
+          "message": "refactor: rename config form DOM attrs",
+          "sha": "b0855cef617aac246f84c20d93e9ab1fc0c9c2d1",
+          "shortSha": "b0855ce",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/b0855cef617aac246f84c20d93e9ab1fc0c9c2d1"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T16:16:11+08:00",
+          "message": "feat: share config form headless renderer",
+          "sha": "c0e530f36ca8cdd99c78eb3c72747360d8997753",
+          "shortSha": "c0e530f",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/c0e530f36ca8cdd99c78eb3c72747360d8997753"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T13:28:07+08:00",
+          "message": "feat: add headless config form runtime",
+          "sha": "70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9",
+          "shortSha": "70c9054",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-31T01:12:34+08:00",
+          "message": "refactor: extract reusable headless components",
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-30T14:35:53+08:00",
+          "message": "feat(config-form): harden runtime and add standalone forms",
+          "sha": "e11fc22cd58f6e847bd5063d4f23e8605e99d33d",
+          "shortSha": "e11fc22",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/e11fc22cd58f6e847bd5063d4f23e8605e99d33d"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-02T14:44:11+08:00",
+          "message": "feat(config-form): 拆分 runtime 与 UI 子包并调整工作区 (main)",
+          "sha": "62549b4804a85e2c260d04e98cc92735228b192c",
+          "shortSha": "62549b4",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/62549b4804a85e2c260d04e98cc92735228b192c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-02T13:35:34+08:00",
+          "message": "feat(components): add ui config forms",
+          "sha": "f9af5ae708c153d4bddb136177af723c40e472c2",
+          "shortSha": "f9af5ae",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f9af5ae708c153d4bddb136177af723c40e472c2"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 19
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/AntdConfigForm"
     },
     "ElementConfigForm": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-09T01:17:07+08:00",
+          "message": "feat(config-form): add advanced visual designer capabilities",
+          "sha": "31d9c817a78255d791e7890d5a92068666027e6e",
+          "shortSha": "31d9c81",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/31d9c817a78255d791e7890d5a92068666027e6e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T13:41:22+08:00",
+          "message": "docs: cover all public components",
+          "sha": "cadeddfdf0e03673ccb80701e1b66e051c186a7e",
+          "shortSha": "cadeddf",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/cadeddfdf0e03673ccb80701e1b66e051c186a7e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T15:20:01+08:00",
+          "message": "Update Vue component library implementation",
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/134f5faf82e479c5a9de6448966dbc73004db27c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T12:38:45+08:00",
+          "message": "Refine ConfigForm renderer architecture and release checks",
+          "sha": "f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155",
+          "shortSha": "f9497c2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f9497c29cc1e5fedc0a7a6b32c2b544f7bfe7155"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T10:12:11+08:00",
+          "message": "Refactor ConfigForm renderer expose handling",
+          "sha": "564bd335961fbea718755d7aa332e1ab86bc9c41",
+          "shortSha": "564bd33",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/564bd335961fbea718755d7aa332e1ab86bc9c41"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T19:47:21+08:00",
+          "message": "refactor: remove config form type assertions",
+          "sha": "98ba65e7e401cf686cc33fae2ae7be4f1f50bf31",
+          "shortSha": "98ba65e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/98ba65e7e401cf686cc33fae2ae7be4f1f50bf31"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T19:01:14+08:00",
+          "message": "refactor: pass config form fields directly",
+          "sha": "03d7436a02eb89f67ae2d45086b2ed016656f52c",
+          "shortSha": "03d7436",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/03d7436a02eb89f67ae2d45086b2ed016656f52c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T18:26:36+08:00",
+          "message": "refactor: use native config form attr types",
+          "sha": "95f00210cdd9f31abaf91dd0067fd192e8d10596",
+          "shortSha": "95f0021",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/95f00210cdd9f31abaf91dd0067fd192e8d10596"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T17:56:09+08:00",
+          "message": "fix: align config form renderer attr types",
+          "sha": "c087fd0b6d8e512e0303aa07370eb913e716f2fd",
+          "shortSha": "c087fd0",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/c087fd0b6d8e512e0303aa07370eb913e716f2fd"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T17:37:24+08:00",
+          "message": "refactor: rename config form DOM attrs",
+          "sha": "b0855cef617aac246f84c20d93e9ab1fc0c9c2d1",
+          "shortSha": "b0855ce",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/b0855cef617aac246f84c20d93e9ab1fc0c9c2d1"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T16:16:11+08:00",
+          "message": "feat: share config form headless renderer",
+          "sha": "c0e530f36ca8cdd99c78eb3c72747360d8997753",
+          "shortSha": "c0e530f",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/c0e530f36ca8cdd99c78eb3c72747360d8997753"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-01T13:28:07+08:00",
+          "message": "feat: add headless config form runtime",
+          "sha": "70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9",
+          "shortSha": "70c9054",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/70c90544e9ae02e1ff0a4841e49b30b7cf4fd4e9"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-31T01:12:34+08:00",
+          "message": "refactor: extract reusable headless components",
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-30T14:35:53+08:00",
+          "message": "feat(config-form): harden runtime and add standalone forms",
+          "sha": "e11fc22cd58f6e847bd5063d4f23e8605e99d33d",
+          "shortSha": "e11fc22",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/e11fc22cd58f6e847bd5063d4f23e8605e99d33d"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-02T14:44:11+08:00",
+          "message": "feat(config-form): 拆分 runtime 与 UI 子包并调整工作区 (main)",
+          "sha": "62549b4804a85e2c260d04e98cc92735228b192c",
+          "shortSha": "62549b4",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/62549b4804a85e2c260d04e98cc92735228b192c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-02T13:35:34+08:00",
+          "message": "feat(components): add ui config forms",
+          "sha": "f9af5ae708c153d4bddb136177af723c40e472c2",
+          "shortSha": "f9af5ae",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f9af5ae708c153d4bddb136177af723c40e472c2"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 18
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/ElementConfigForm"
     },
     "DateRangePicker": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-31T01:12:34+08:00",
+          "message": "refactor: extract reusable headless components",
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-15T03:01:33+08:00",
+          "message": "fix(ai-doc-assistant): stabilize generated demo previews",
+          "sha": "d1ac52d7a3f365f4860f74ec4bff9ec7da26229e",
+          "shortSha": "d1ac52d",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d1ac52d7a3f365f4860f74ec4bff9ec7da26229e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-03T17:20:39+08:00",
+          "message": "fix: 修复组件与 devtools 审查问题",
+          "sha": "18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "shortSha": "18fece7",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/18fece7dbab86a57818162fb2c9b3cf35ea3bf31"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-27T10:20:22+08:00",
+          "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
+          "sha": "209ffcb4293694af9531d27e3f8541f25807f030",
+          "shortSha": "209ffcb",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/209ffcb4293694af9531d27e3f8541f25807f030"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-27T09:21:51+08:00",
+          "message": "test: add components playground coverage",
+          "sha": "5712e133338c5862fbc26ef98a78c92018198dd8",
+          "shortSha": "5712e13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/5712e133338c5862fbc26ef98a78c92018198dd8"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-26T21:33:24+08:00",
+          "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
+          "sha": "5e4604a1058139241f243d3ee8225645741c4dae",
+          "shortSha": "5e4604a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/5e4604a1058139241f243d3ee8225645741c4dae"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 12
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/DateRangePicker"
     },
     "EnterNextContainer": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-31T01:12:34+08:00",
+          "message": "refactor: extract reusable headless components",
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-15T20:14:38+08:00",
+          "message": "feat： aaa",
+          "sha": "02a71884ba229bc54681aeea3676a8ddf55e0f9f",
+          "shortSha": "02a7188",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/02a71884ba229bc54681aeea3676a8ddf55e0f9f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-03T23:37:38+08:00",
+          "message": "fix: 加固运行时空值边界并补充布局压测",
+          "sha": "23c0fa3c9328bfeb07307ecf4ca098e064015c67",
+          "shortSha": "23c0fa3",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/23c0fa3c9328bfeb07307ecf4ca098e064015c67"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-03T17:20:39+08:00",
+          "message": "fix: 修复组件与 devtools 审查问题",
+          "sha": "18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "shortSha": "18fece7",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/18fece7dbab86a57818162fb2c9b3cf35ea3bf31"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-27T10:20:22+08:00",
+          "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
+          "sha": "209ffcb4293694af9531d27e3f8541f25807f030",
+          "shortSha": "209ffcb",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/209ffcb4293694af9531d27e3f8541f25807f030"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-26T21:33:24+08:00",
+          "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
+          "sha": "5e4604a1058139241f243d3ee8225645741c4dae",
+          "shortSha": "5e4604a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/5e4604a1058139241f243d3ee8225645741c4dae"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 12
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/EnterNextContainer"
     },
     "RequestSelectV2": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-19T14:28:37+08:00",
+          "message": "feat: add request cached components",
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f70ab2d44f0414f3257d40a67e55215daa327221"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 8
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/RequestSelectV2"
     },
     "RequestCascader": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-19T14:28:37+08:00",
+          "message": "feat: add request cached components",
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f70ab2d44f0414f3257d40a67e55215daa327221"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 8
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/RequestCascader"
     },
     "RequestTreeSelect": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-19T14:28:37+08:00",
+          "message": "feat: add request cached components",
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f70ab2d44f0414f3257d40a67e55215daa327221"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 8
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/RequestTreeSelect"
     },
     "ConfigTable": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T23:31:43+08:00",
+          "message": "fix(docs): 统一 TS 与 JS 示例格式",
+          "sha": "5561c94f0420fa693de7e8d17d43c16f7109f9a4",
+          "shortSha": "5561c94",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/5561c94f0420fa693de7e8d17d43c16f7109f9a4"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T22:55:28+08:00",
+          "message": "feat(config-table): 支持响应式宽度和列配置面板",
+          "sha": "1d741fba43a904df3619005077072802b61f1c24",
+          "shortSha": "1d741fb",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/1d741fba43a904df3619005077072802b61f1c24"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T17:12:58+08:00",
+          "message": "feat(table): 支持基于 selector 的行和单元格模式批量切换",
+          "sha": "dedd859cc53af78eed027d2ad2f4502cd3661cc4",
+          "shortSha": "dedd859",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/dedd859cc53af78eed027d2ad2f4502cd3661cc4"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T11:01:41+08:00",
+          "message": "refactor(build): 优化声明文件构建和跨模块导入路径规范",
+          "sha": "0637124bbeb210979e5c6b1a8f8598c08d3ee50f",
+          "shortSha": "0637124",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/0637124bbeb210979e5c6b1a8f8598c08d3ee50f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T10:01:50+08:00",
+          "message": "feat(components): complete editable table p2 p3 improvements",
+          "sha": "088a243b115130dac68d9b2a2d3446fe4a8d2057",
+          "shortSha": "088a243",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/088a243b115130dac68d9b2a2d3446fe4a8d2057"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T08:46:08+08:00",
+          "message": "feat(components): add editable table modes and p0 p1 improvements",
+          "sha": "835b6300e468d7384830b7a1cf81ec33a5e37a0a",
+          "shortSha": "835b630",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/835b6300e468d7384830b7a1cf81ec33a5e37a0a"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T22:46:50+08:00",
+          "message": "refactor: split component contracts and preserve element layouts",
+          "sha": "df9b2004857c4ed5fbddb53a05038ee86bef62be",
+          "shortSha": "df9b200",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/df9b2004857c4ed5fbddb53a05038ee86bef62be"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T20:24:03+08:00",
+          "message": "feat: enhance config table renderers and column settings",
+          "sha": "d003b9b07ddca70591df7500afffd5e92d5032e4",
+          "shortSha": "d003b9b",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d003b9b07ddca70591df7500afffd5e92d5032e4"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T17:07:58+08:00",
+          "message": "Refactor component library structure",
+          "sha": "665435673970d5daf1e29b947cb9dcab2d4ed96c",
+          "shortSha": "6654356",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/665435673970d5daf1e29b947cb9dcab2d4ed96c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-31T01:12:34+08:00",
+          "message": "refactor: extract reusable headless components",
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-24T15:31:54+08:00",
+          "message": "feat(components): switch config table to virtual table",
+          "sha": "db691ca08086479af9189eb4a28ec1fe9fc646f5",
+          "shortSha": "db691ca",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/db691ca08086479af9189eb4a28ec1fe9fc646f5"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-19T14:28:37+08:00",
+          "message": "feat: add request cached components",
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f70ab2d44f0414f3257d40a67e55215daa327221"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-18T10:44:46+08:00",
+          "message": "feat(components): 支持表格 render 插槽并优化导出交互(main)",
+          "sha": "458683afa5924246e03733e5bda73450c9b8dcff",
+          "shortSha": "458683a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/458683afa5924246e03733e5bda73450c9b8dcff"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-18T10:00:20+08:00",
+          "message": "feat(components): add config table and pdf export safeguards",
+          "sha": "888834a54cd07e4ff8ca236792b676ad93f81bf4",
+          "shortSha": "888834a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/888834a54cd07e4ff8ca236792b676ad93f81bf4"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 21
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/ConfigTable"
     },
     "HeadlessTable": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T17:12:58+08:00",
+          "message": "feat(table): 支持基于 selector 的行和单元格模式批量切换",
+          "sha": "dedd859cc53af78eed027d2ad2f4502cd3661cc4",
+          "shortSha": "dedd859",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/dedd859cc53af78eed027d2ad2f4502cd3661cc4"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T10:01:50+08:00",
+          "message": "feat(components): complete editable table p2 p3 improvements",
+          "sha": "088a243b115130dac68d9b2a2d3446fe4a8d2057",
+          "shortSha": "088a243",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/088a243b115130dac68d9b2a2d3446fe4a8d2057"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T08:46:08+08:00",
+          "message": "feat(components): add editable table modes and p0 p1 improvements",
+          "sha": "835b6300e468d7384830b7a1cf81ec33a5e37a0a",
+          "shortSha": "835b630",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/835b6300e468d7384830b7a1cf81ec33a5e37a0a"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T20:24:03+08:00",
+          "message": "feat: enhance config table renderers and column settings",
+          "sha": "d003b9b07ddca70591df7500afffd5e92d5032e4",
+          "shortSha": "d003b9b",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d003b9b07ddca70591df7500afffd5e92d5032e4"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T14:20:29+08:00",
+          "message": "feat: expand headless table capabilities",
+          "sha": "498fd4bd67ee5449d70d7ec81d104d603b1b2db7",
+          "shortSha": "498fd4b",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/498fd4bd67ee5449d70d7ec81d104d603b1b2db7"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-31T01:12:34+08:00",
+          "message": "refactor: extract reusable headless components",
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 13
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/HeadlessTable"
     },
     "PopoverTableSelect": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-14T11:47:14+08:00",
+          "message": "feat(docs): 集成 RichTextEditor 组件文档及相关演示支持",
+          "sha": "673d9e24983b63f3690581441c00ad0fe3924068",
+          "shortSha": "673d9e2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/673d9e24983b63f3690581441c00ad0fe3924068"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T11:01:41+08:00",
+          "message": "refactor(build): 优化声明文件构建和跨模块导入路径规范",
+          "sha": "0637124bbeb210979e5c6b1a8f8598c08d3ee50f",
+          "shortSha": "0637124",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/0637124bbeb210979e5c6b1a8f8598c08d3ee50f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T08:46:08+08:00",
+          "message": "feat(components): add editable table modes and p0 p1 improvements",
+          "sha": "835b6300e468d7384830b7a1cf81ec33a5e37a0a",
+          "shortSha": "835b630",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/835b6300e468d7384830b7a1cf81ec33a5e37a0a"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T15:32:04+08:00",
+          "message": "fix(components): stabilize Vue template type inference",
+          "sha": "edadd909add79c0fe0a0cc41e76738f928a9906d",
+          "shortSha": "edadd90",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/edadd909add79c0fe0a0cc41e76738f928a9906d"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T17:07:58+08:00",
+          "message": "Refactor component library structure",
+          "sha": "665435673970d5daf1e29b947cb9dcab2d4ed96c",
+          "shortSha": "6654356",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/665435673970d5daf1e29b947cb9dcab2d4ed96c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-07-31T01:12:34+08:00",
+          "message": "refactor: extract reusable headless components",
+          "sha": "7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f",
+          "shortSha": "7ba10ef",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/7ba10efaaaf2d0e50c187ea776343dcd1e78bc1f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-24T15:31:54+08:00",
+          "message": "feat(components): switch config table to virtual table",
+          "sha": "db691ca08086479af9189eb4a28ec1fe9fc646f5",
+          "shortSha": "db691ca",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/db691ca08086479af9189eb4a28ec1fe9fc646f5"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-19T14:28:37+08:00",
+          "message": "feat: add request cached components",
+          "sha": "f70ab2d44f0414f3257d40a67e55215daa327221",
+          "shortSha": "f70ab2d",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/f70ab2d44f0414f3257d40a67e55215daa327221"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-18T10:44:46+08:00",
+          "message": "feat(components): 支持表格 render 插槽并优化导出交互(main)",
+          "sha": "458683afa5924246e03733e5bda73450c9b8dcff",
+          "shortSha": "458683a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/458683afa5924246e03733e5bda73450c9b8dcff"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-18T10:00:20+08:00",
+          "message": "feat(components): add config table and pdf export safeguards",
+          "sha": "888834a54cd07e4ff8ca236792b676ad93f81bf4",
+          "shortSha": "888834a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/888834a54cd07e4ff8ca236792b676ad93f81bf4"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-18T09:18:24+08:00",
+          "message": "feat(ai-doc-assistant): 补全插槽作用域与类型透传(main)",
+          "sha": "a5e12a2aebe4d1f3035d96da8ffbfbc57eea3a77",
+          "shortSha": "a5e12a2",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a5e12a2aebe4d1f3035d96da8ffbfbc57eea3a77"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-15T20:14:38+08:00",
+          "message": "feat： aaa",
+          "sha": "02a71884ba229bc54681aeea3676a8ddf55e0f9f",
+          "shortSha": "02a7188",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/02a71884ba229bc54681aeea3676a8ddf55e0f9f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-15T03:01:33+08:00",
+          "message": "fix(ai-doc-assistant): stabilize generated demo previews",
+          "sha": "d1ac52d7a3f365f4860f74ec4bff9ec7da26229e",
+          "shortSha": "d1ac52d",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d1ac52d7a3f365f4860f74ec4bff9ec7da26229e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-03T23:37:38+08:00",
+          "message": "fix: 加固运行时空值边界并补充布局压测",
+          "sha": "23c0fa3c9328bfeb07307ecf4ca098e064015c67",
+          "shortSha": "23c0fa3",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/23c0fa3c9328bfeb07307ecf4ca098e064015c67"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-06-03T17:20:39+08:00",
+          "message": "fix: 修复组件与 devtools 审查问题",
+          "sha": "18fece7dbab86a57818162fb2c9b3cf35ea3bf31",
+          "shortSha": "18fece7",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/18fece7dbab86a57818162fb2c9b3cf35ea3bf31"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-27T10:20:22+08:00",
+          "message": "feat(pnpm-workspace): 添加 shadcn 相关依赖",
+          "sha": "209ffcb4293694af9531d27e3f8541f25807f030",
+          "shortSha": "209ffcb",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/209ffcb4293694af9531d27e3f8541f25807f030"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-27T09:21:51+08:00",
+          "message": "test: add components playground coverage",
+          "sha": "5712e133338c5862fbc26ef98a78c92018198dd8",
+          "shortSha": "5712e13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/5712e133338c5862fbc26ef98a78c92018198dd8"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-05-26T21:33:24+08:00",
+          "message": "feat(components): 收敛入口并补齐 Element Plus 依赖 (main)",
+          "sha": "5e4604a1058139241f243d3ee8225645741c4dae",
+          "shortSha": "5e4604a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/5e4604a1058139241f243d3ee8225645741c4dae"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 24
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/PopoverTableSelect"
     },
     "RichTextEditor": {
-      "commits": [],
-      "contributors": [],
+      "commits": [
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-13T08:46:08+08:00",
+          "message": "feat(components): add editable table modes and p0 p1 improvements",
+          "sha": "835b6300e468d7384830b7a1cf81ec33a5e37a0a",
+          "shortSha": "835b630",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/835b6300e468d7384830b7a1cf81ec33a5e37a0a"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T15:32:04+08:00",
+          "message": "fix(components): stabilize Vue template type inference",
+          "sha": "edadd909add79c0fe0a0cc41e76738f928a9906d",
+          "shortSha": "edadd90",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/edadd909add79c0fe0a0cc41e76738f928a9906d"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-10T11:02:54+08:00",
+          "message": "feat(docs): upgrade search and demo tooling",
+          "sha": "4c08d08c2bef68a955e38a7e7c654d266b7b335e",
+          "shortSha": "4c08d08",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/4c08d08c2bef68a955e38a7e7c654d266b7b335e"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-08T10:18:38+08:00",
+          "message": "feat: complete docs theme and visual form designer foundation",
+          "sha": "2688a8eb4030c26c13e5e101e40813003b299b5f",
+          "shortSha": "2688a8e",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/2688a8eb4030c26c13e5e101e40813003b299b5f"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-07T11:23:35+08:00",
+          "message": "refactor(core): 重构 HeadlessTable 相关代码组织结构",
+          "sha": "d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c",
+          "shortSha": "d63110a",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/d63110ad87fcf642aa1b2fd76c5a70caffb7fa5c"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T22:46:50+08:00",
+          "message": "refactor: split component contracts and preserve element layouts",
+          "sha": "df9b2004857c4ed5fbddb53a05038ee86bef62be",
+          "shortSha": "df9b200",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/df9b2004857c4ed5fbddb53a05038ee86bef62be"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-06T18:27:27+08:00",
+          "message": "feat(components): add configurable table rendering",
+          "sha": "a7ebc13b492db1b94b76f2d945497176fe654746",
+          "shortSha": "a7ebc13",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/a7ebc13b492db1b94b76f2d945497176fe654746"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-04T15:22:31+08:00",
+          "message": "docs: generate component API routes",
+          "sha": "3a8dee11d09e1ce9b0d47e2f47d1f47444429756",
+          "shortSha": "3a8dee1",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3a8dee11d09e1ce9b0d47e2f47d1f47444429756"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T23:26:51+08:00",
+          "message": "docs: add Element Plus-style component documentation",
+          "sha": "3ac4a32a09d86510d1c7830500e13c92b36d0b66",
+          "shortSha": "3ac4a32",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/3ac4a32a09d86510d1c7830500e13c92b36d0b66"
+        },
+        {
+          "author": {
+            "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+            "login": "wl1983531544",
+            "name": "汪伦",
+            "profileUrl": "https://gitee.com/wl1983531544"
+          },
+          "date": "2026-08-03T15:20:01+08:00",
+          "message": "Update Vue component library implementation",
+          "sha": "134f5faf82e479c5a9de6448966dbc73004db27c",
+          "shortSha": "134f5fa",
+          "url": "https://gitee.com/moluoxixi/vue-components-provider-fixture/commit/134f5faf82e479c5a9de6448966dbc73004db27c"
+        }
+      ],
+      "contributors": [
+        {
+          "avatarUrl": "https://gitee.com/assets/no_portrait.png",
+          "id": "gitee:wl1983531544",
+          "login": "wl1983531544",
+          "name": "汪伦",
+          "profileUrl": "https://gitee.com/wl1983531544",
+          "contributions": 10
+        }
+      ],
+      "openIssueCount": 0,
+      "openIssues": [],
       "path": "packages/components/src/RichTextEditor"
     }
   }

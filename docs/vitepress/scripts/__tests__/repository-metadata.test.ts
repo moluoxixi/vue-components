@@ -254,18 +254,28 @@ describe('repository metadata providers', () => {
 
     expect(repositoryMetadataSnapshotPath('gitee')).toMatch(/gitee-metadata\.json$/)
     expect(metadata.provider.platform).toBe('gitee')
-    expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(false)
-    expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(true)
+    expect(metadata.components.CopyText?.commits.length).toBeGreaterThan(0)
+    expect(metadata.components.CopyText?.contributors[0]).toMatchObject({
+      avatarUrl: expect.stringMatching(/^https:\/\//),
+      login: expect.any(String),
+      profileUrl: expect.stringMatching(/^https:\/\/gitee\.com\//),
+    })
+    expect(metadata.components.CopyText?.openIssueCount).toBe(0)
+    expect(Object.values(metadata.components).every(component => (
+      component.commits.length > 0 && component.contributors.length > 0
+    ))).toBe(true)
     expect(provider.actions?.sourceLineHref?.({
       defaultBranch: 'main',
       endLine: 8,
       path: 'README.md',
       repositoryUrl: docsSite.repositories.gitee.url,
       startLine: 3,
-    })).toBe('https://gitee.com/mirrors/vue/blob/main/README.md#L3-L8')
+    })).toBe(`${docsSite.repositories.gitee.url}/blame/main/README.md#L3`)
   })
 
-  it('registers Yunxiao with commit-only capabilities and no repository Issues or guessed links', () => {
+  it('registers Yunxiao with verified contributor profiles and source links', () => {
     const metadata = repositoryMetadataProviders.resolve(
       'yunxiao',
       yunxiaoSnapshot,
@@ -276,12 +286,28 @@ describe('repository metadata providers', () => {
     expect(repositoryMetadataSnapshotPath('yunxiao')).toMatch(/yunxiao-metadata\.json$/)
     expect(metadata.provider.platform).toBe('yunxiao')
     expect(repositoryMetadataProviderSupports(metadata.provider, 'commitHistory')).toBe(true)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'contributorProfiles')).toBe(true)
     expect(repositoryMetadataProviderSupports(metadata.provider, 'contributors')).toBe(true)
     expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(false)
     expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(false)
-    expect(repositoryMetadataProviderSupports(metadata.provider, 'sourceLinks')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'sourceLinks')).toBe(true)
     expect(repositoryMetadataProviderSupports(metadata.provider, 'editLinks')).toBe(false)
-    expect(provider.actions).toEqual({})
+    expect(metadata.components.CopyText?.contributors[0]).toMatchObject({
+      avatarUrl: expect.stringContaining('tcs-devops.aliyuncs.com/thumbnail/'),
+      login: 'aliyun1879222502',
+    })
+    expect(provider.actions?.componentSourceHref?.({
+      defaultBranch: 'master',
+      path: 'packages/components/src/CopyText',
+      repositoryUrl: docsSite.repositories.yunxiao.url,
+    })).toBe(`${docsSite.repositories.yunxiao.url}/tree/master/packages/components/src/CopyText`)
+    expect(provider.actions?.sourceLineHref?.({
+      defaultBranch: 'master',
+      endLine: 21,
+      path: 'packages/components/src/CopyText/docs/index.md',
+      repositoryUrl: docsSite.repositories.yunxiao.url,
+      startLine: 9,
+    })).toBe(`${docsSite.repositories.yunxiao.url}/blob/master/packages/components/src/CopyText/docs/index.md?README.md#L9`)
   })
 
   it('does not fall back to another provider snapshot', () => {
@@ -354,7 +380,7 @@ describe('repository metadata providers', () => {
     expect(() => assertGiteeMetadataSnapshot(
       wrongRepository,
       repositoryMetadataExpectations.gitee,
-    )).toThrow('repository fullName must be mirrors/vue')
+    )).toThrow('repository fullName must be moluoxixi/vue-components-provider-fixture')
 
     const leakedContributor = structuredClone(giteeSnapshot)
     leakedContributor.components.CopyText!.contributors.push({
@@ -388,6 +414,27 @@ describe('repository metadata providers', () => {
       leakedContributor,
       repositoryMetadataExpectations.yunxiao,
     )).toThrow('CopyText contributor contains unsupported or missing fields')
+
+    const malformedContributorId = structuredClone(yunxiaoSnapshot)
+    malformedContributorId.components.CopyText!.contributors[0]!.id = 'yunxiao:not-a-stable-hash'
+    expect(() => assertYunxiaoMetadataSnapshot(
+      malformedContributorId,
+      repositoryMetadataExpectations.yunxiao,
+    )).toThrow('CopyText contributor id is invalid')
+
+    const incompleteProfile = structuredClone(yunxiaoSnapshot)
+    Reflect.deleteProperty(incompleteProfile.components.CopyText!.contributors[0]!, 'login')
+    expect(() => assertYunxiaoMetadataSnapshot(
+      incompleteProfile,
+      repositoryMetadataExpectations.yunxiao,
+    )).toThrow('CopyText contributor profile fields must be provided together')
+
+    const credentialBearingAvatar = structuredClone(yunxiaoSnapshot)
+    credentialBearingAvatar.components.CopyText!.commits[0]!.author.avatarUrl += '?token=secret'
+    expect(() => assertYunxiaoMetadataSnapshot(
+      credentialBearingAvatar,
+      repositoryMetadataExpectations.yunxiao,
+    )).toThrow('CopyText commit author avatar URL cannot contain credentials, query, or fragment')
   })
 
   it('downgrades GitLab Issues capabilities when the project disables Issues', () => {
@@ -402,6 +449,25 @@ describe('repository metadata providers', () => {
       'gitlab',
       snapshot,
       repositoryMetadataExpectations.gitlab,
+    )
+
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(false)
+    expect(repositoryMetadataProviderSupports(metadata.provider, 'issueActions')).toBe(false)
+    expect(metadata.components.CopyText?.openIssueCount).toBeUndefined()
+  })
+
+  it('downgrades Gitee Issues capabilities when the repository disables Issues', () => {
+    const snapshot = structuredClone(giteeSnapshot)
+    snapshot.repository.issuesEnabled = false
+    for (const component of Object.values(snapshot.components)) {
+      Reflect.deleteProperty(component, 'openIssueCount')
+      Reflect.deleteProperty(component, 'openIssues')
+    }
+
+    const metadata = repositoryMetadataProviders.resolve(
+      'gitee',
+      snapshot,
+      repositoryMetadataExpectations.gitee,
     )
 
     expect(repositoryMetadataProviderSupports(metadata.provider, 'issues')).toBe(false)

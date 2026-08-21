@@ -7,6 +7,10 @@ import {
 } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import MarkdownIt from 'markdown-it'
 import { describe, expect, it } from 'vitest'
+import { docsSite } from '../docs-site'
+import { repositoryMetadataExpectations } from '../repository-metadata-expectation'
+import { repositoryMetadataProviders } from '../repository-metadata-providers'
+import { selectRepositoryMetadataConfiguration } from '../repository-metadata-selection'
 import { createDocsDemoSourceHrefResolver } from './demo-source-links'
 
 describe('docs demo source links', () => {
@@ -45,6 +49,28 @@ describe('docs demo source links', () => {
       ...demo,
       environment: { relativePath: 'components/config-table.md' },
     })).toBeUndefined()
+  })
+
+  it('activates the Codeup source view before locating a Yunxiao Markdown demo', () => {
+    const root = resolve(import.meta.dirname, '../../../..')
+    const sourcePath = resolve(root, 'packages/components/src/CopyText/docs/index.md')
+    const md = new MarkdownIt()
+    md.use(elementPlusDocsDemoPlugin)
+    const demo = collectElementPlusDocsDemos(md, readFileSync(sourcePath, 'utf8'))[0]!
+    const selection = selectRepositoryMetadataConfiguration(
+      'yunxiao',
+      docsSite.repositories,
+      repositoryMetadataExpectations,
+      repositoryMetadataProviders,
+    )
+    const resolveSourceHref = createDocsDemoSourceHrefResolver(md, root, selection)
+
+    expect(resolveSourceHref({
+      ...demo,
+      environment: { relativePath: 'components/copy-text.md' },
+    })).toBe(
+      `${docsSite.repositories.yunxiao.url}/blob/master/packages/components/src/CopyText/docs/index.md?README.md#L${demo.startLine}`,
+    )
   })
 
   it('resolves RichTextEditor demos from its package-level documentation', () => {

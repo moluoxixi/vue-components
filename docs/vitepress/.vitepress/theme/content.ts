@@ -1,4 +1,5 @@
 import type { ComponentApiContract } from '@moluoxixi/ai-doc-assistant/api-contract'
+import type { ElementPlusDocsComponentResolverInput } from '@moluoxixi/vitepress-theme-element-plus'
 import type { Component } from 'vue'
 import type { ComponentIconName } from '../component-manifest'
 import type { DocsLocale } from '../docs-site'
@@ -24,7 +25,6 @@ import {
 import { getLocalizedComponentGroups } from '../docs-i18n'
 import {
   componentDocsSourcePath,
-  componentSourcePath,
   docsRoutePath,
   docsSite,
   getDocsLocaleConfig,
@@ -126,6 +126,39 @@ input {
 </style>
 `
 
+export function resolveDocsComponentMeta({
+  hasSourceDoc,
+  link,
+  locale,
+  name,
+  slug,
+}: ElementPlusDocsComponentResolverInput) {
+  const metadata = getComponentRepositoryMetadata(name)
+  const docsSourcePath = componentDocsSourcePath(name)
+  const sourcePath = docsSourcePath
+  const actionInput = createRepositoryMetadataActionInput(repositoryMetadataSelection, name)
+  const repositoryContent = resolveDocsRepositoryComponentMeta(
+    configuredRepositoryMetadataContentProvider,
+    metadata,
+    {
+      ...actionInput,
+      editPath: hasSourceDoc
+        ? `${docsSourcePath}/${getDocsLocaleConfig(locale as DocsLocale).sourceDoc}`
+        : sourcePath,
+      sourcePath,
+    },
+  )
+
+  return {
+    hasSourceDoc,
+    importStatement: `import { ${name} } from '${docsSite.packageName}';`,
+    name,
+    overviewHref: link(docsSite.routes.components),
+    ...repositoryContent,
+    sourceLabel: `components/${slug}`,
+  }
+}
+
 export const docsContent = createElementPlusDocsContent({
   playground: {
     compile: compileLocalSfc,
@@ -176,32 +209,7 @@ export const docsContent = createElementPlusDocsContent({
       { value: 'Element Plus', label: messages.overview.visualInteraction },
     ]
   },
-  resolveComponentMeta({ hasSourceDoc, link, locale, name, slug }) {
-    const metadata = getComponentRepositoryMetadata(name)
-    const sourcePath = componentSourcePath(name)
-    const docsSourcePath = componentDocsSourcePath(name)
-    const actionInput = createRepositoryMetadataActionInput(repositoryMetadataSelection, name)
-    const repositoryContent = resolveDocsRepositoryComponentMeta(
-      configuredRepositoryMetadataContentProvider,
-      metadata,
-      {
-        ...actionInput,
-        editPath: hasSourceDoc
-          ? `${docsSourcePath}/${getDocsLocaleConfig(locale as DocsLocale).sourceDoc}`
-          : sourcePath,
-        sourcePath,
-      },
-    )
-
-    return {
-      hasSourceDoc,
-      importStatement: `import { ${name} } from '${docsSite.packageName}';`,
-      name,
-      overviewHref: link(docsSite.routes.components),
-      ...repositoryContent,
-      sourceLabel: `components/${slug}`,
-    }
-  },
+  resolveComponentMeta: resolveDocsComponentMeta,
   resolveContributors({ name }) {
     return resolveDocsRepositoryContributors(
       configuredRepositoryMetadataContentProvider,

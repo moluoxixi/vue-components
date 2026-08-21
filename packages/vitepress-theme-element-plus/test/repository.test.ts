@@ -57,13 +57,32 @@ describe('repository provider public contract', () => {
       'https://example.test/group/project/edit/feature/docs%20links/packages/my%20component/demo.vue',
     )
     expect(gitee.sourceLineHref?.({ ...file, startLine: 3, endLine: 8 })).toBe(
-      'https://example.test/group/project/blob/feature/docs%20links/packages/my%20component/demo.vue#L3-L8',
+      'https://example.test/group/project/blame/feature/docs%20links/packages/my%20component/demo.vue#L3',
     )
     expect(gitee.newIssueHref?.({ issueTitlePrefix: '[CopyText]', repositoryUrl: file.repositoryUrl }))
       .toBe('https://example.test/group/project/issues/new?issue%5Btitle%5D=%5BCopyText%5D+')
     expect(gitee.openIssuesHref?.({ issueTitlePrefix: '[CopyText]', repositoryUrl: file.repositoryUrl }))
       .toBe('https://example.test/group/project/issues?q=is%3Aopen+in%3Atitle+%22%5BCopyText%5D%22')
-    expect(yunxiao).toEqual({})
+    expect(yunxiao.componentSourceHref?.(file)).toBe(
+      'https://example.test/group/project/tree/feature/docs%20links/packages/my%20component/demo.vue',
+    )
+    expect(yunxiao.sourceLineHref?.({ ...file, startLine: 3, endLine: 8 })).toBe(
+      'https://example.test/group/project/blob/feature/docs%20links/packages/my%20component/demo.vue#L3',
+    )
+    expect(yunxiao.sourceLineHref?.({ ...file, startLine: 3, endLine: 3 })).toBe(
+      'https://example.test/group/project/blob/feature/docs%20links/packages/my%20component/demo.vue#L3',
+    )
+    expect(yunxiao.sourceLineHref?.({
+      ...file,
+      path: 'packages/my component/docs/index.md',
+      startLine: 3,
+      endLine: 8,
+    })).toBe(
+      'https://example.test/group/project/blob/feature/docs%20links/packages/my%20component/docs/index.md?README.md#L3',
+    )
+    expect(yunxiao.editDocumentationHref).toBeUndefined()
+    expect(yunxiao.newIssueHref).toBeUndefined()
+    expect(yunxiao.openIssuesHref).toBeUndefined()
     expect(Object.isFrozen(yunxiao)).toBe(true)
   })
 

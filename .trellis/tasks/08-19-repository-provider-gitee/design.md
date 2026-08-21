@@ -8,7 +8,11 @@ Compose the shared theme provider contract with Gitee-specific `webBaseUrl`, `ap
 
 Use REST v5 repository, branch/commit, contributors/users, and repository Issues endpoints. Fetch open Issues and filter component title prefixes client-side when the API search contract cannot express the exact scope. Follow response pagination links and rate-limit headers without hard-coding anonymous quotas.
 
-Gitee actions use `/tree`, `/blob`, `/edit`, `/commit`, and `/issues` routes with Gitee-specific `#Lstart-Lend` range anchors. Credentials remain runtime-only and are redacted from errors/logs.
+Gitee actions use `/tree`, `/edit`, `/commit`, and `/issues` routes. Markdown
+demo links use Gitee's `/blame/<branch>/<path>#L<start>` line view because the
+normal `/blob` route renders Markdown without line anchors and range-shaped
+hashes do not scroll reliably. Credentials remain runtime-only and are redacted
+from errors/logs.
 
 ## Enterprise Boundary
 

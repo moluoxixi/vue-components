@@ -33,6 +33,7 @@ async function main(): Promise<void> {
     apiBaseUrl: config.apiBaseUrl,
     apiMode: expectation.apiMode,
     components: expectation.components,
+    contributorProfiles: config.contributorProfiles,
     defaultBranch: expectation.defaultBranch,
     organizationId: expectation.organizationId,
     repositoryId: expectation.repositoryId,

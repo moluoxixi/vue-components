@@ -83,15 +83,25 @@ const giteeRepository = {
   apiBaseUrl: 'https://gitee.com/api/v5',
   defaultBranch: 'main',
   issueTitlePrefix,
-  name: 'vue',
-  owner: 'mirrors',
-  url: 'https://gitee.com/mirrors/vue',
+  name: 'vue-components-provider-fixture',
+  owner: 'moluoxixi',
+  url: 'https://gitee.com/moluoxixi/vue-components-provider-fixture',
   userAgent: 'moluoxixi-docs-gitee-metadata-sync',
   webBaseUrl: 'https://gitee.com',
 }
 const yunxiaoRepository = {
   apiBaseUrl: 'https://openapi-rdc.aliyuncs.com',
   apiMode: 'central' as const,
+  contributorProfiles: {
+    'yunxiao:c5bd8c158c76d1ee0e04dfc5460fa34092caf55172fe6154706c94ce08ddc31b': {
+      avatarUrl: 'https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200',
+      login: 'aliyun1879222502',
+    },
+    'yunxiao:d5b8d2b82909bab605c5eb4e0761ac30e81a9da6d907c4fa4c44b38d54546036': {
+      avatarUrl: 'https://tcs-devops.aliyuncs.com/thumbnail/113xe4725d597a98a28aeb536f60ee47c986/w/200/h/200',
+      login: 'aliyun1879222502',
+    },
+  },
   defaultBranch: 'master',
   organizationId: '64bac376132d10ed34af0a23',
   repositoryId: '7356176',

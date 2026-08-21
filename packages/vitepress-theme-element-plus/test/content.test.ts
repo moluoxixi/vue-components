@@ -13,6 +13,7 @@ import {
   ElementPlusDocsComponentOverview,
   ElementPlusDocsContributors,
 } from '../index'
+import ElementPlusDocsCommitTimeline from '../src/content/meta/ElementPlusDocsCommitTimeline.vue'
 
 const overviewMessages: ElementPlusDocsOverviewMessages = {
   brandKicker: 'Library',
@@ -223,6 +224,33 @@ describe('reusable content modules', () => {
     expect(wrapper.text()).toContain('@alice')
   })
 
+  it('renders a verified contributor avatar without inventing an account link', () => {
+    const wrapper = mount(ElementPlusDocsContributors, {
+      props: {
+        contributors: [{
+          avatarUrl: 'https://codeup.test/avatar.png',
+          contributions: 3,
+          id: 'yunxiao:alice',
+          login: 'alice',
+          name: 'Alice Account',
+        }],
+        messages: contentMessages,
+        name: 'CopyText',
+      },
+      global: {
+        stubs: {
+          ElTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+        },
+      },
+    })
+
+    const contributor = wrapper.get('.doc-contributor-link')
+    expect(contributor.element.tagName).toBe('SPAN')
+    expect(contributor.attributes('href')).toBeUndefined()
+    expect(contributor.get('.doc-contributor-avatar').attributes('src')).toBe('https://codeup.test/avatar.png')
+    expect(wrapper.text()).toContain('@alice')
+  })
+
   it('does not render changelog controls for an empty commit history', () => {
     const wrapper = mount(ElementPlusDocsComponentMeta, {
       props: {
@@ -246,6 +274,33 @@ describe('reusable content modules', () => {
 
     expect(wrapper.find('[aria-haspopup="dialog"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain(contentMessages.meta.changelog)
+  })
+
+  it('renders a verified commit avatar without inventing an author profile link', () => {
+    const wrapper = mount(ElementPlusDocsCommitTimeline, {
+      props: {
+        commits: [{
+          author: {
+            avatarUrl: 'https://codeup.test/avatar.png',
+            login: 'alice',
+            name: 'Alice Account',
+          },
+          date: '2026-08-21T00:00:00.000Z',
+          message: 'docs: update example',
+          sha: 'a'.repeat(40),
+          shortSha: 'aaaaaaa',
+          url: 'https://codeup.test/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        }],
+        locale: 'en-US',
+        messages: contentMessages,
+        name: 'CopyText',
+      },
+    })
+
+    const author = wrapper.get('.component-commit-author')
+    expect(author.element.tagName).toBe('SPAN')
+    expect(author.attributes('href')).toBeUndefined()
+    expect(author.get('img').attributes('src')).toBe('https://codeup.test/avatar.png')
   })
 
   it('registers and wires the conventional Markdown components from one integration', async () => {

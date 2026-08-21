@@ -8,6 +8,11 @@ function encodePath(value: string): string {
   return value.split('/').filter(Boolean).map(encodeURIComponent).join('/')
 }
 
+function yunxiaoMarkdownSourceQuery(path: string): string {
+  // Codeup otherwise opens non-README Markdown in a preview without line anchors.
+  return /\.md$/i.test(path) ? '?README.md' : ''
+}
+
 export function createGithubRepositoryMetadataActions(): Readonly<RepositoryMetadataProviderActions> {
   return Object.freeze({
     componentSourceHref: ({ defaultBranch, path, repositoryUrl }) => `${repositoryRoot(repositoryUrl)}/tree/${encodePath(defaultBranch)}/${encodePath(path)}`,
@@ -46,10 +51,13 @@ export function createGiteeRepositoryMetadataActions(): Readonly<RepositoryMetad
       const query = new URLSearchParams({ q: `is:open in:title "${issueTitlePrefix}"` })
       return `${repositoryRoot(repositoryUrl)}/issues?${query}`
     },
-    sourceLineHref: ({ defaultBranch, endLine, path, repositoryUrl, startLine }) => `${repositoryRoot(repositoryUrl)}/blob/${encodePath(defaultBranch)}/${encodePath(path)}#L${startLine}-L${endLine}`,
+    sourceLineHref: ({ defaultBranch, path, repositoryUrl, startLine }) => `${repositoryRoot(repositoryUrl)}/blame/${encodePath(defaultBranch)}/${encodePath(path)}#L${startLine}`,
   })
 }
 
 export function createYunxiaoRepositoryMetadataActions(): Readonly<RepositoryMetadataProviderActions> {
-  return Object.freeze({})
+  return Object.freeze({
+    componentSourceHref: ({ defaultBranch, path, repositoryUrl }) => `${repositoryRoot(repositoryUrl)}/tree/${encodePath(defaultBranch)}/${encodePath(path)}`,
+    sourceLineHref: ({ defaultBranch, path, repositoryUrl, startLine }) => `${repositoryRoot(repositoryUrl)}/blob/${encodePath(defaultBranch)}/${encodePath(path)}${yunxiaoMarkdownSourceQuery(path)}#L${startLine}`,
+  })
 }

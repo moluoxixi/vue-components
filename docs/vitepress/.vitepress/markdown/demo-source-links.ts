@@ -1,5 +1,6 @@
 import type { ElementPlusDocsDemoSourceHrefContext } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import type MarkdownIt from 'markdown-it'
+import type { DocsRepositoryMetadataSelection } from '../repository-metadata-selection'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -30,9 +31,10 @@ function environmentRelativePath(environment: unknown): string | undefined {
 export function createDocsDemoSourceHrefResolver(
   md: MarkdownIt,
   root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..'),
+  selection: DocsRepositoryMetadataSelection = repositoryMetadataSelection,
 ): (context: ElementPlusDocsDemoSourceHrefContext) => string | undefined {
   let hrefByRouteAndDemo: ReadonlyMap<string, string> | undefined
-  const provider = repositoryMetadataSelection.provider
+  const provider = selection.provider
 
   function sourceLinks(): ReadonlyMap<string, string> {
     if (hrefByRouteAndDemo)
@@ -55,7 +57,7 @@ export function createDocsDemoSourceHrefResolver(
           if (!repositoryMetadataProviderSupports(provider, 'sourceLinks'))
             continue
           const href = provider.actions?.sourceLineHref?.({
-            ...createRepositoryMetadataActionInput(repositoryMetadataSelection, component.name),
+            ...createRepositoryMetadataActionInput(selection, component.name),
             endLine: demo.endLine,
             path: sourceRelativePath,
             startLine: demo.startLine,

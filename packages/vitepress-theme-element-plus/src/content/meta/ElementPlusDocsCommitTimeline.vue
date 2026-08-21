@@ -50,12 +50,12 @@ function formatDate(date: string): string {
           {{ commit.message }}
         </a>
         <div class="component-commit-meta">
-          <a
-            v-if="commit.author.profileUrl"
+          <component
+            :is="commit.author.profileUrl ? 'a' : 'span'"
             class="component-commit-author"
             :href="commit.author.profileUrl"
-            target="_blank"
-            rel="noreferrer"
+            :target="commit.author.profileUrl ? '_blank' : undefined"
+            :rel="commit.author.profileUrl ? 'noreferrer' : undefined"
           >
             <img
               v-if="commit.author.avatarUrl"
@@ -67,8 +67,7 @@ function formatDate(date: string): string {
               decoding="async"
             >
             <span>{{ commit.author.name }}</span>
-          </a>
-          <span v-else class="component-commit-author">{{ commit.author.name }}</span>
+          </component>
           <time v-if="commit.date" :datetime="commit.date">{{ formatDate(commit.date) }}</time>
           <a
             class="component-commit-sha"

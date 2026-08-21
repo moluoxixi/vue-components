@@ -3,6 +3,7 @@ import type {
   YunxiaoCommit,
   YunxiaoComponentMetadata,
   YunxiaoContributor,
+  YunxiaoContributorProfile,
   YunxiaoMetadataSnapshot,
 } from '../.vitepress/yunxiao-metadata-types.ts'
 import { createHash } from 'node:crypto'
@@ -21,6 +22,11 @@ interface YunxiaoBranchResponse {
 }
 
 interface YunxiaoCommitResponse {
+  author?: {
+    avatarUrl?: string | null
+    name?: string | null
+    username?: string | null
+  } | null
   authorEmail?: string | null
   authorName?: string | null
   authoredDate?: string | null
@@ -42,6 +48,7 @@ export interface CreateYunxiaoMetadataOptions {
   apiBaseUrl: string
   apiMode: YunxiaoApiMode
   components: YunxiaoComponentSource[]
+  contributorProfiles?: Readonly<Record<string, YunxiaoContributorProfile>>
   defaultBranch: string
   fetchImpl?: typeof fetch
   generatedAt?: string
@@ -190,17 +197,68 @@ function contributorId(name: string, email: string): string {
   return `yunxiao:${createHash('sha256').update(identity).digest('hex')}`
 }
 
+function normalizeContributorProfile(
+  value: { avatarUrl?: string | null, username?: string | null } | undefined | null,
+): YunxiaoContributorProfile | undefined {
+  const avatarUrl = value?.avatarUrl?.trim()
+  const login = value?.username?.trim()
+  if (!avatarUrl || !login)
+    return undefined
+
+  try {
+    const url = new URL(avatarUrl)
+    if ((url.protocol !== 'https:' && url.protocol !== 'http:')
+      || url.username
+      || url.password
+      || url.search
+      || url.hash) {
+      return undefined
+    }
+  }
+  catch {
+    return undefined
+  }
+  return { avatarUrl, login }
+}
+
+function validateContributorProfiles(
+  profiles: Readonly<Record<string, YunxiaoContributorProfile>> | undefined,
+): ReadonlyMap<string, YunxiaoContributorProfile> {
+  const normalized = new Map<string, YunxiaoContributorProfile>()
+  for (const [id, profile] of Object.entries(profiles ?? {})) {
+    if (!/^yunxiao:[a-f0-9]{64}$/.test(id))
+      throw new TypeError(`Invalid Yunxiao contributor profile id: ${id}`)
+    const validProfile = normalizeContributorProfile({
+      avatarUrl: profile.avatarUrl,
+      username: profile.login,
+    })
+    if (!validProfile)
+      throw new TypeError(`Invalid Yunxiao contributor profile for ${id}`)
+    normalized.set(id, validProfile)
+  }
+  return normalized
+}
+
 function createComponentMetadata(
   source: YunxiaoComponentSource,
   rawCommits: YunxiaoCommitResponse[],
+  configuredProfiles: ReadonlyMap<string, YunxiaoContributorProfile>,
 ): YunxiaoComponentMetadata {
   const contributorCounts = new Map<string, YunxiaoContributor>()
   const commits: YunxiaoCommit[] = rawCommits.map((rawCommit) => {
     const sha = commitSha(rawCommit)
-    const name = rawCommit.authorName?.trim() || 'Unknown contributor'
+    const name = rawCommit.author?.name?.trim()
+      || rawCommit.authorName?.trim()
+      || 'Unknown contributor'
     const id = contributorId(name, rawCommit.authorEmail ?? '')
     const existing = contributorCounts.get(id)
+    const profile = normalizeContributorProfile(rawCommit.author)
+      ?? configuredProfiles.get(id)
+      ?? (existing?.avatarUrl && existing.login
+        ? { avatarUrl: existing.avatarUrl, login: existing.login }
+        : undefined)
     contributorCounts.set(id, {
+      ...(profile ?? {}),
       contributions: (existing?.contributions ?? 0) + 1,
       id,
       name,
@@ -209,7 +267,7 @@ function createComponentMetadata(
     if (!date || Number.isNaN(Date.parse(date)))
       throw new TypeError(`Yunxiao commit ${sha} is missing a valid date`)
     return {
-      author: { name },
+      author: { ...(profile ?? {}), name },
       date,
       message: firstLine(rawCommit.title || rawCommit.message || ''),
       sha,
@@ -230,6 +288,7 @@ export async function createYunxiaoMetadata(
 ): Promise<YunxiaoMetadataSnapshot> {
   if (!options.token)
     throw new TypeError('YUNXIAO_TOKEN is required to synchronize Codeup metadata')
+  const configuredProfiles = validateContributorProfiles(options.contributorProfiles)
   const client = new YunxiaoClient(options)
   const repositoryPath = yunxiaoRepositoryApiPath(options.apiMode, options.organizationId, options.repositoryId)
   const { data: repository } = await client.get<YunxiaoRepositoryResponse>(repositoryPath)
@@ -255,7 +314,7 @@ export async function createYunxiaoMetadata(
       refName: headSha,
     })
     const commits = await client.paginate<YunxiaoCommitResponse>(`${repositoryPath}/commits?${query}`)
-    return [component.name, createComponentMetadata(component, commits)] as const
+    return [component.name, createComponentMetadata(component, commits, configuredProfiles)] as const
   })))
 
   return {

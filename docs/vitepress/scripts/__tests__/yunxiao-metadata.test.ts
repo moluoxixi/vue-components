@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import type { YunxiaoMetadataSnapshot } from '../../.vitepress/yunxiao-metadata-types'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -17,6 +18,11 @@ import {
 
 const temporaryDirectories: string[] = []
 const headSha = 'a'.repeat(40)
+
+function contributorId(name: string, email: string): string {
+  const identity = `${name.trim().toLocaleLowerCase()}\0${email.trim().toLocaleLowerCase()}`
+  return `yunxiao:${createHash('sha256').update(identity).digest('hex')}`
+}
 
 function jsonResponse(data: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(data), {
@@ -59,7 +65,7 @@ describe('yunxiao Codeup documentation metadata', () => {
     )
   })
 
-  it('sends the PAT header, pins HEAD, paginates commits, and aggregates contributors without email', async () => {
+  it('preserves verified author profiles while aggregating contributors without email', async () => {
     const requests: string[] = []
     const fetchImpl: typeof fetch = async (input, init) => {
       const url = String(input)
@@ -80,6 +86,11 @@ describe('yunxiao Codeup documentation metadata', () => {
         return jsonResponse({ commit: { id: headSha } })
       if (url.includes('/commits?') && !url.includes('page=2')) {
         return jsonResponse([{
+          author: {
+            avatarUrl: 'https://avatars.codeup.test/alice.png',
+            name: 'Alice Example',
+            username: 'alice',
+          },
           authorEmail: 'alice@example.test',
           authorName: 'Alice Example',
           authoredDate: '2026-08-18T00:00:00.000Z',
@@ -101,16 +112,39 @@ describe('yunxiao Codeup documentation metadata', () => {
       throw new Error(`Unexpected Yunxiao request: ${url}`)
     }
 
-    const snapshot = await createYunxiaoMetadata(options(fetchImpl))
+    const aliceId = contributorId('Alice Example', 'alice@example.test')
+    const snapshot = await createYunxiaoMetadata({
+      ...options(fetchImpl),
+      contributorProfiles: {
+        [aliceId]: {
+          avatarUrl: 'https://avatars.codeup.test/alice.png',
+          login: 'alice',
+        },
+      },
+    })
 
     expect(requests.some(url => url.includes(`refName=${headSha}`))).toBe(true)
     expect(requests.some(url => url.includes('path=packages%2Fcomponents%2Fsrc%2FCopyText'))).toBe(true)
     expect(snapshot.components.CopyText?.commits).toHaveLength(2)
     expect(snapshot.components.CopyText?.contributors).toEqual([{
+      avatarUrl: 'https://avatars.codeup.test/alice.png',
       contributions: 2,
-      id: expect.stringMatching(/^yunxiao:[a-f0-9]{64}$/),
+      id: aliceId,
+      login: 'alice',
       name: 'Alice Example',
     }])
+    expect(snapshot.components.CopyText?.commits.map(commit => commit.author)).toEqual([
+      {
+        avatarUrl: 'https://avatars.codeup.test/alice.png',
+        login: 'alice',
+        name: 'Alice Example',
+      },
+      {
+        avatarUrl: 'https://avatars.codeup.test/alice.png',
+        login: 'alice',
+        name: 'Alice Example',
+      },
+    ])
     expect(JSON.stringify(snapshot)).not.toContain('alice@example.test')
     expect(JSON.stringify(snapshot)).not.toContain('yunxiao-secret-token')
     expect(snapshot.components.CopyText).not.toHaveProperty('openIssueCount')
@@ -132,6 +166,20 @@ describe('yunxiao Codeup documentation metadata', () => {
     await expect(createYunxiaoMetadata({ ...options(fetchImpl), sleep })).rejects.not.toThrow('yunxiao-secret-token')
     expect(attempts).toBe(2)
     expect(sleep).toHaveBeenCalledWith(10)
+  })
+
+  it('rejects invalid configured contributor profiles before making requests', async () => {
+    const neverFetch = vi.fn<typeof fetch>()
+    await expect(createYunxiaoMetadata({
+      ...options(neverFetch),
+      contributorProfiles: {
+        [`yunxiao:${'a'.repeat(64)}`]: {
+          avatarUrl: 'https://avatars.codeup.test/alice.png?token=secret',
+          login: 'alice',
+        },
+      },
+    })).rejects.toThrow('Invalid Yunxiao contributor profile')
+    expect(neverFetch).not.toHaveBeenCalled()
   })
 
   it('retries network failures with a bounded exponential delay', async () => {
