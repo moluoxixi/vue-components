@@ -24,7 +24,7 @@ Implement a production-grade Yunxiao Codeup repository provider with honest capa
 - [x] Source/edit/line capabilities are enabled only with recorded real-route evidence; unsupported routes remain hidden.
 - [x] Client/sync tests cover PAT headers/redaction, API variants, pagination, retry/rate limits, filtering, canonical URLs, aggregation, and atomic writes.
 - [x] A real authenticated Codeup project proves all enabled links and live metadata synchronization.
-- [ ] Documentation, focused/full checks, commit/push, and GitHub Actions succeed.
+- [x] Documentation, focused/full checks, commit/push, and GitHub Actions succeed.
 
 ## Out of Scope
 

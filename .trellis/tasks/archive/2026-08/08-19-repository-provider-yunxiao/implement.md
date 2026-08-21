@@ -9,5 +9,5 @@
 - [x] Add deterministic tests for PAT redaction, API variants, pagination/retry, filtering, canonical URLs, aggregation, and isolation.
 - [x] Validate all enabled capabilities in the authenticated tenant and record evidence without credentials.
 - [x] Update Chinese/English documentation with explicit limitations.
-- [ ] Run focused/full checks, commit/push, and confirm GitHub Actions succeeds.
+- [x] Run focused/full checks, commit/push, and confirm GitHub Actions succeeds.
 
