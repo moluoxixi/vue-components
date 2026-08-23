@@ -157,42 +157,14 @@ channel:
 # prompt_injection:
 #   skip_keyword: "no-trellis"   # "" disables the escape hatch entirely
 
-# Migrated reviewed package map from the previous project configuration.
+# Auto-detected monorepo packages
 packages:
-  components-playground:
-    path: playgrounds/components-playground
-  playground:
-    path: packages/ConfigForm/playground
   ai-doc-assistant:
     path: packages/ai-doc-assistant
   ajax-package:
     path: packages/ajax-package
   components:
     path: packages/components
-  config-form:
-    path: packages/ConfigForm/runtime
-  config-form-antd-vue:
-    path: packages/ConfigForm/antd
-  config-form-core:
-    path: packages/ConfigForm/core
-  config-form-designer:
-    path: packages/ConfigForm/designer
-  config-form-designer-antd-vue:
-    path: packages/ConfigForm/designer-antd-vue
-  config-form-designer-element-plus:
-    path: packages/ConfigForm/designer-element-plus
-  config-form-devtools-vite-plugin:
-    path: packages/ConfigForm/devtools-vite-plugin
-  config-form-element:
-    path: packages/ConfigForm/element
-  config-form-headless:
-    path: packages/ConfigForm/headless
-  config-form-plugin-antd-vue:
-    path: packages/ConfigForm/plugin-antd-vue
-  config-form-plugin-element-plus:
-    path: packages/ConfigForm/plugin-element-plus
-  docs:
-    path: docs/vitepress
   eslint-config:
     path: packages/eslint-config
   excel:
@@ -211,16 +183,36 @@ packages:
     path: packages/vite-config
   vitepress-theme-element-plus:
     path: packages/vitepress-theme-element-plus
-  vue-playground:
-    path: playgrounds/vue-playground
   zod3-to-rule:
     path: packages/zod3-to-rule
-  ConfigForm:
-    path: packages/ConfigForm
-  dist:
-    path: packages/ConfigForm/dist
-  node_modules:
-    path: packages/ConfigForm/node_modules
-  plugin-shadcn-vue:
-    path: packages/ConfigForm/plugin-shadcn-vue
-default_package: "@config-form/components-playground"
+  config-form-antd-vue:
+    path: packages/ConfigForm/antd
+  config-form-core:
+    path: packages/ConfigForm/core
+  config-form-designer:
+    path: packages/ConfigForm/designer
+  config-form-designer-antd-vue:
+    path: packages/ConfigForm/designer-antd-vue
+  config-form-designer-element-plus:
+    path: packages/ConfigForm/designer-element-plus
+  config-form-devtools-vite-plugin:
+    path: packages/ConfigForm/devtools-vite-plugin
+  config-form-element:
+    path: packages/ConfigForm/element
+  config-form-headless:
+    path: packages/ConfigForm/headless
+  playground:
+    path: packages/ConfigForm/playground
+  config-form-plugin-antd-vue:
+    path: packages/ConfigForm/plugin-antd-vue
+  config-form-plugin-element-plus:
+    path: packages/ConfigForm/plugin-element-plus
+  config-form:
+    path: packages/ConfigForm/runtime
+  components-playground:
+    path: playgrounds/components-playground
+  vue-playground:
+    path: playgrounds/vue-playground
+  docs:
+    path: docs/vitepress
+default_package: ai-doc-assistant
