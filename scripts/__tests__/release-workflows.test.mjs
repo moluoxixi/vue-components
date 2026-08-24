@@ -59,6 +59,10 @@ describe('release workflow topology', () => {
     expect(rootManifest.scripts.release).not.toContain('build:docs')
   })
 
+  it('checks out complete history before running local Git metadata consumers', () => {
+    expect(ciWorkflow).toMatch(/verify:[\s\S]*?- name: Checkout[\s\S]*?fetch-depth: 0[\s\S]*?- name: Setup pnpm/)
+  })
+
   it('limits concurrency around resource-heavy integration tests', () => {
     expect(rootManifest.scripts.test).toContain('--concurrency=2')
     expect(rootManifest.scripts.test).toContain('--filter=!@moluoxixi/vite-config')
