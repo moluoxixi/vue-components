@@ -50,3 +50,25 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: 修复文档 CI 浅克隆
+
+**Date**: 2026-08-25
+**Task**: 修复文档 CI 浅克隆
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+CI Verify 使用完整 Git 历史运行 local provider consumer，并以 workflow topology 回归锁定 fetch-depth 契约。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `04783b6f` | (see git log) |
+
+### Status
+
+[OK] **Completed**
