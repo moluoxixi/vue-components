@@ -53,3 +53,22 @@
 - [x] 修正 headless readonly render context 的异构组件边界。
 - [x] 增加具体 Vue 组件嵌套 slot 的精确字段值类型回归。
 - [x] 运行 headless/element 检查及全仓 `pnpm typecheck`。
+
+## 9. 仓库能力开箱即用
+
+- [x] 在主题包建立 browser-safe `repository` 与 Node-only `repository/node` 公开入口，迁移五 provider schema/normalizer/collector 和 API trust policy。
+- [x] 增加发布 CLI `element-plus-docs prepare|dev|build`，迁移锁、日志、原子生成和 selected-provider orchestration。
+- [x] 定义单一项目配置 API，自动推导 repository/provider 默认值并仅校验 selected provider 的关键字段。
+- [x] 将组件 manifest 收敛为 package profiles + 最小 component items，统一驱动路由、API、metadata、import statement 和 browser compiler runtime。
+- [x] 删除消费站 `.vitepress/repository/` 和 metadata/prepare 脚本，docs package scripts 改为主题 CLI。
+- [x] 增加无复制源码的独立消费 fixture，覆盖 GitHub 最小配置、local、GitLab/Gitee/Yunxiao 配置校验和 npm packed CLI。
+- [x] 更新中英文复用文档和 package release metadata，运行 fresh-fixture、docs、theme、全仓与 pack 校验。
+
+## 10. 全量迁移最新 Markdown 契约
+
+- [x] 扩展 project documentation/package profile，校验 locale 路径、组件 route 和 playground manifest。
+- [x] 将源码行链接与多 package 外部 Playground resolver 迁入主题 `./markdown`，移除旧 callback 公共契约。
+- [x] CLI 注入 project/docs root；版本解析严格锚定消费项目，主题直接声明 SFC parser 依赖。
+- [x] 当前 docs 只注册项目 Markdown 插件，删除 `.vitepress/markdown` 实现。
+- [x] 将 `.vitepress/plugins` 契约测试和全仓 Demo 集成测试迁入 `scripts/__tests__`，删除历史目录。
+- [x] 更新 fixture、发布验证、中英文文档和 code-spec，运行全仓与 packed consumer 验收。

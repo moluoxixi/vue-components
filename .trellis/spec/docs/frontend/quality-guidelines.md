@@ -18,7 +18,7 @@ Documentation builds consume generated API data and an ignored snapshot for the 
 - Do not infer a Yunxiao account from a commit author's display name or email. Map the privacy-safe commit identity to one reviewed exact Codeup username.
 - Do not import Node-only modules such as `node:crypto` from `.vitepress` snapshot validators. These validators are bundled for both SSR and the browser.
 - Do not run metadata synchronization in pre-commit hooks, commit generated snapshots, or contact non-selected providers during required CI. The production docs build may synchronize its explicitly selected GitHub provider with the workflow token.
-- Do not execute the native `.mts` scripts with Node versions below `22.6.0`.
+- Do not run the packaged `element-plus-docs` Node lifecycle below Node `22.6.0`.
 - Do not remove `dependsOn: ["^build"]` from the Turbo docs build task; docs consumes workspace package output.
 - Do not dynamically install Chromium and system packages in the browser CI job. Use a digest-pinned official Playwright image whose version matches `@playwright/test` in `pnpm-lock.yaml`.
 
@@ -31,7 +31,7 @@ Documentation builds consume generated API data and an ignored snapshot for the 
 #### 1. Scope / Trigger
 
 - Trigger: adding or changing a source-management provider, its metadata snapshot, sync/validation commands, URL actions, or CI/build wiring.
-- Theme packages own platform-neutral types, registry policy, and URL action factories. `docs/vitepress` owns provider selection, repository identity, credentials, API clients, schemas, and snapshots.
+- The theme package owns platform-neutral types, registry policy, URL actions, provider schemas/collectors, generated snapshot validation, and the isolated Node/CLI lifecycle. `docs/vitepress` owns only project catalog/configuration, repository identity fields that cannot be derived, and runtime credential environment variables.
 
 #### 2. Signatures
 
@@ -40,12 +40,10 @@ createRepositoryMetadataProviderRegistry(
   providers: readonly RepositoryMetadataProvider[],
 ): RepositoryMetadataProviderRegistry
 
-selectRepositoryMetadataConfiguration(
-  providerId: string,
-  repositories: Readonly<Record<string, DocsRepositoryConfiguration>>,
-  expectations: Readonly<Record<string, RepositoryMetadataExpectation>>,
-  providers: RepositoryMetadataProviderRegistry,
-): DocsRepositoryMetadataSelection
+resolveElementPlusDocsProjectRepository(
+  project: ElementPlusDocsProjectInput,
+  providerOverride?: string,
+): ElementPlusDocsResolvedRepository
 
 resolveTrustedApiUrl(
   apiBaseUrl: string,
@@ -54,24 +52,35 @@ resolveTrustedApiUrl(
 ): string
 ```
 
-Explicit commands follow this contract:
+Supported lifecycle commands follow this contract:
 
 ```text
-VITE_DOCS_REPOSITORY_METADATA_PROVIDER=<provider-id> pnpm -C docs/vitepress dev
-pnpm -C docs/vitepress sync-<provider>-metadata
-pnpm -C docs/vitepress validate-<provider>-metadata
-pnpm -C docs/vitepress sync-selected-metadata
-pnpm -C docs/vitepress validate-selected-metadata
+VITE_DOCS_REPOSITORY_METADATA_PROVIDER=<provider-id> element-plus-docs dev
+element-plus-docs prepare
+element-plus-docs build
 ```
 
 #### 3. Contracts
 
 - Provider IDs are `github`, `local`, `gitlab`, `gitee`, and `yunxiao`; production selection is explicit and currently `github`.
-- `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` is an optional startup/build-time override for local debugging. Missing or blank values select `github`; supported values select exactly one provider; unknown values fail before snapshot loading. It is not an in-browser runtime switch.
+- Consumers configure one `element-plus-docs.config.ts` through `defineElementPlusDocsProject`; they do not copy repository/provider/metadata scripts or schemas.
+- GitHub/Gitee derive owner and repository from the public HTTPS repository URL. GitLab derives the project path and installation/API roots, including relative installation paths. Local derives the Git root, remote URL, and default branch where available. Yunxiao additionally requires the non-derivable `repositoryId`.
+- Component catalogs use `defineComponentPackage` profiles. A profile owns package name, API entry, component/docs/repository source functions, browser loader, and styles; normal component items contain display fields plus an optional profile ID instead of repeating paths.
+- The project config also owns `documentation.componentsRoute`, `documentation.defaultLocale`, and each locale's `sourceDirectory` / `sourceDoc`; source-link and route generation code must consume this contract instead of a second site-local locale table.
+- Project Markdown uses only `elementPlusDocsProjectMarkdownPlugin`. It composes Demo parsing, provider-owned source-line actions, and external Playground projection. Do not expose or restore consumer `resolveSourceHref` / `resolveExternalProjectSource` callbacks.
+- Package profiles that require root-import minimization provide `loadPlaygroundManifest`. The CLI loads manifests only after package build, validates them, and writes `.generated/markdown/playground-manifests.json`; VitePress never imports a not-yet-built generated manifest during config load.
+- `loadPlaygroundManifest` is the current lifecycle contract, not a compatibility hook. It may return the manifest or the ESM namespace produced by `import()`, and lifecycle normalization validates the package identity and entries before committing the snapshot.
+- The theme root and `./repository` entry remain browser-safe. Node collectors and filesystem/Git operations are reachable only through `./repository/node` and the packaged CLI.
+- Only the selected provider is loaded, configured, synchronized, and validated. Unselected providers require no configuration, token, or network access.
+- `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` is an optional startup/build-time override for local debugging. Missing or blank values select `repository.provider` from the project config; supported configured values select exactly one provider; unknown or unconfigured values fail before snapshot loading. It is not an in-browser runtime switch.
 - Every provider owns one generated snapshot file under `docs/vitepress/.generated/repository/` and one exact expectation. Selection resolves the provider, repository config, expectation, snapshot, and action input as a single unit.
-- `docs/vitepress/.generated/` is the only project-owned generated root. Its `api/`, `repository/`, and `types/` children are ignored and must be recreated by supported docs lifecycle commands.
+- `docs/vitepress/.generated/` is the only project-owned generated root. Its `api/`, `repository/`, `markdown/`, and `types/` children are ignored and must be recreated by supported docs lifecycle commands.
 - `pnpm -C docs/vitepress dev`, `pnpm -C docs/vitepress build`, root `build:docs`, and Pages builds run the preparation pipeline before VitePress. Direct `vitepress build` bypasses this contract and is unsupported.
 - The preparation pipeline emits stable `[docs:prepare] START|OK|FAIL` records with step names and durations. Metadata steps include the selected provider and generated directory; failures preserve child output, report the exit code, and stop the pipeline without printing credentials.
+- Preparation is strictly sequential. A failed command, manifest load, provider synchronization, or selected-snapshot validation releases the lock, prevents all later steps, and prevents VitePress `dev` / `build` from starting.
+- Preparation is not a global filesystem transaction across generated routes, API contracts, manifest snapshots, and provider snapshots. Earlier successful steps may remain after a later failure; the next supported prepare rebuilds them. Each JSON snapshot writer still validates in memory and replaces its own file atomically.
+- After validation, the CLI injects the selected snapshot path and resolved default branch into the same process before starting VitePress. `defineElementPlusDocs` installs the virtual snapshot resolver; consumer `.vitepress/config.ts` must not reproduce a provider-specific alias.
+- CLI path injection distinguishes `ELEMENT_PLUS_DOCS_PROJECT_ROOT` for repository source files from `ELEMENT_PLUS_DOCS_DOCS_ROOT` for resolving documentation-package dependencies under pnpm's strict layout.
 - Preparation uses an exclusive `.generated/prepare.lock`; a concurrent dev/build fails visibly at the lock step instead of reading partially generated API or route files. The lock is always released after success or child failure.
 - A provider capability is a maximum. Snapshot resolution may disable it but cannot enable a capability absent from the provider definition.
 - Provider-specific environment keys are runtime-only: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `GITEE_TOKEN`, and `YUNXIAO_TOKEN`. Never persist or print them.
@@ -81,21 +90,22 @@ pnpm -C docs/vitepress validate-selected-metadata
 - Yunxiao commit names and emails derive only privacy-safe `yunxiao:<sha256>` mapping keys. `contributorAccounts` maps each reviewed key to one exact Codeup username; it never supplies profile fields. The collector resolves those usernames through the same repository's `/members` API and requires exactly one active member with a stable member ID, user ID, complete `avatarUrl`, exact `username`, and `name`. The persisted contributor key is `yunxiao:<sha256(login)>`. Missing mappings, zero or duplicate matches, inactive/partial members, conflicting profiles, and unsafe avatars fail synchronization; there is no configured-profile, email-based account inference, name-only, or initials fallback. Never persist the source email or invent a profile URL.
 - A Yunxiao synchronization token needs only Codeup repository, commit, branch, and member read-only permissions. Tokens remain runtime-only and must be revoked after temporary acceptance work.
 - Yunxiao avatar URLs must use the trusted provider-owned HTTPS avatar origin and contain no userinfo, query, or fragment. A verified avatar does not depend on a contributor profile link: contributor cards and commit timelines render the image in a non-link container when `profileUrl` is unavailable.
-- Yunxiao source actions use Codeup web routes: directories use `/tree/<branch>/<path>` and files use `/blob/<branch>/<path>`. Non-README Markdown defaults to a preview without line anchors, so Markdown demo links must append Codeup's `?README.md` source-view marker before the exact `#L<start>` anchor. Do not emit a range-shaped anchor: the accepted contract is the exact demo start line. Component source paths must use the component's authoring package path; `RichTextEditor` therefore points to `packages/rich-text-editor`, not its compatibility re-export under `packages/components/src`.
+- Yunxiao source actions use Codeup web routes: directories use `/tree/<branch>/<path>` and files use `/blob/<branch>/<path>`. Non-README Markdown defaults to a preview without line anchors, so Markdown demo links must append Codeup's `?README.md` source-view marker before the exact `#L<start>` anchor. Do not emit a range-shaped anchor: the accepted contract is the exact demo start line. Component source paths must use the component's authoring package path; `RichTextEditor` therefore points to `packages/rich-text-editor` and must never reconstruct the removed `packages/components/src/RichTextEditor` path.
 - GitLab component commits are the sole contribution source. Their privacy-safe identity maps to one reviewed exact username, and the GitLab user API supplies the complete `avatarUrl`, `login`, `name`, and `profileUrl` profile used by both contributor and commit-author records.
 - Any missing mapping, ambiguous or mismatched lookup, unavailable endpoint, partial profile, unsafe URL, authentication failure, network failure, pagination failure, or malformed payload aborts synchronization and preserves the previous snapshot byte-for-byte.
 - A configured GitLab `webBaseUrl` must exactly equal the installation base derived from the repository URL and `projectPath`, including any relative installation path such as `/gitlab`.
 - Persisted GitLab web URLs must stay under that exact installation base and contain no userinfo, query, or fragment. This prevents API-returned credential parameters from entering a public snapshot.
 - Provider validators, normalizers, capabilities, and selection are tested offline with committed synthetic fixtures. Production snapshots are never used as fixtures or committed to Git.
-- Native `node scripts/*.mts` execution requires Node `>=22.6.0`.
+- The packaged CLI and `./repository/node` entry require Node `>=22.6.0`.
 - Turbo's `@moluoxixi/docs#build` must depend on `^build` so dependency packages finish before docs reads their `dist` output.
+- Turbo's `@moluoxixi/docs#test` and `@moluoxixi/docs#typecheck` also depend on `^build`, never on the docs `build` task. Required tests and type checks must not synchronize a production provider; the explicit docs build is the only CI phase that does so.
 - Browser CI runs in the official Playwright container pinned by version and amd64 digest; the image version must exactly match the locked `@playwright/test` version.
 
 #### 4. Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
-| `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` is missing or blank | Select `github` |
+| `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` is missing or blank | Select the project's configured `repository.provider` |
 | `VITE_DOCS_REPOSITORY_METADATA_PROVIDER` names a registered provider | Generate and validate only that provider's ignored snapshot |
 | Unknown provider ID | Throw before reading any snapshot |
 | Missing repository config or expectation | Throw with the selected provider ID |
@@ -113,6 +123,14 @@ pnpm -C docs/vitepress validate-selected-metadata
 | Yunxiao mapping is missing, member lookup is zero/ambiguous, or the active member's avatar/login/name/IDs are partial or conflicting | Fail synchronization and preserve the previous snapshot |
 | Yunxiao avatar URL is outside the trusted provider origin or contains userinfo/query/fragment | Fail synchronization or reject the generated snapshot |
 | A preparation child step exits non-zero | Emit `FAIL` with the step, duration, and same exit code; do not run later steps |
+| A configured package manifest loader is missing/invalid/mismatched | Fail the `playground manifests` preparation step before provider synchronization |
+| A Demo imports a runtime root export or subpath absent from a configured manifest | Fail Markdown compilation; do not keep the broad root import or guess dependencies |
+| A direct Demo dependency is not resolvable from the documentation package root | Fail with the Demo ID and package name; do not resolve from the theme package or repository root |
+| A Demo dependency is visible through hoisting but absent from the documentation package dependency fields | Fail as undeclared; do not accept transitive visibility |
+| A declared Demo dependency is installed with a workspace/catalog range | Read the exact installed package version from the documentation package Node resolution paths, including packages that do not export `.` or `./package.json` |
+| A declared and installed Demo import is absent from the package `exports` map | Fail with the exact import specifier and Demo ID; do not generate a project that the target bundler cannot import |
+| A package exposes its runtime entry but hides `./package.json` | Resolve the package manifest from documentation-package `node_modules` paths and still validate the runtime entry against `exports` |
+| Docs `test` or `typecheck` transitively schedules `@moluoxixi/docs#build` | Reject the Turbo contract; tests must stay provider-network-free |
 | Yunxiao has a verified avatar/login but no verified profile URL | Render the avatar and login without making the author container a link |
 | GitLab `webBaseUrl` differs from the installation base derived from repository URL and `projectPath` | Fail before making API requests |
 | Pagination changes API origin or leaves the configured API path | Reject the URL |
@@ -126,14 +144,16 @@ pnpm -C docs/vitepress validate-selected-metadata
 - Good: select `gitlab`, generate and validate only `.generated/repository/gitlab.json`, then construct GitLab actions from the same repository config.
 - Good: select `yunxiao`, map an opaque commit identity to one reviewed exact username, resolve its current member profile once, reuse it in both the contributor list and changelog, and generate a Codeup blob URL anchored to the exact demo start line.
 - Good: verify `yunxiao:<sha256(login)>` with the browser-compatible synchronous `@noble/hashes` implementation shared by SSR and client bundles.
+- Good: resolve an installed direct dependency's exact version from the docs package while separately confirming the original root/subpath import is exported.
 - Base: omit the debug environment variable; production and CI generate and select the GitHub snapshot.
 - Bad: treat the debug environment variable as `auto`, merge snapshots, expose a client-side provider switch, or require a guessed Yunxiao profile URL before showing a verified avatar.
 - Bad: use `node:crypto` in `.vitepress/*-metadata-types.ts`; offline validation may pass while the production client bundle fails.
+- Bad: accept a hoisted package, a private subpath, or a package root absent from `exports` merely because its `package.json` can be read.
 
 #### 6. Tests Required
 
 - Registry tests assert unique IDs, action/capability agreement, downgrade-only behavior, and strict provider isolation.
-- Provider-selection tests spawn the real selected-snapshot validator with the environment variable missing, set to `gitlab`, and set to an invalid value; assert GitHub default, GitLab selection, and initialization failure respectively.
+- Provider-selection tests cover the configured default, an explicitly configured override, and an invalid or unconfigured override; only the selected collector and token may be touched.
 - URL tests assert platform routes, path/ref encoding, line anchors, issue queries, unsupported actions, and the Yunxiao Markdown source-view marker without adding it to ordinary source files.
 - GitLab snapshot tests accept both server-returned Issue detail route families and reject cross-project or mismatched-IID URLs.
 - GitLab snapshot tests bind every commit detail URL to the exact repository and full commit SHA, rejecting query and hash suffixes.
@@ -146,7 +166,11 @@ pnpm -C docs/vitepress validate-selected-metadata
 - The reusable theme fixture renders a contributor whose profile and avatar live below a self-managed relative installation path, and its VitePress SSR build must succeed.
 - API-client tests assert trusted pagination, loop detection, bounded retries, token redaction, and atomic replacement.
 - Provider tests assert authentication headers, project identity, branch SHA, component filtering, pagination, normalization, and placeholder rejection.
-- Root path-contract tests assert Node `>=22.6.0`, offline CI validators, and Turbo docs `^build` ordering.
+- Project-config tests assert URL/default inference, package-profile path derivation, strict configured-provider overrides, and that only the selected provider token getter is read.
+- Project Markdown tests cover multi-package manifests, root import alias/type-only preservation, direct dependency versions from a real temporary docs root, package.json-hidden packages, private root/subpath exports, undeclared hoisted packages, profile styles, provider line-link routes, and absent manifest exports/subpaths.
+- Docs integration tests scan every real TS/JS Demo through `elementPlusDocsProjectMarkdownPlugin`; browser compiler import contracts live under `scripts/__tests__`, not a `.vitepress/plugins` pseudo-boundary.
+- Packed-package tests import `./repository/node`, execute the installed `element-plus-docs` bin in an isolated Git repository, then render a Demo through the packed public `./markdown` entry and assert the generated manifest, rewritten import, dependency, and style data.
+- Root path-contract tests assert Node `>=22.6.0`, offline CI validators, Turbo docs build ordering, and provider-network-free docs test/typecheck task graphs.
 - Release-workflow tests assert the Playwright image version, immutable digest, lockfile match, IPC option, and job timeout.
 - Before commit, run lint, typecheck, tests, snapshot validators, docs build, release checks, and package verification in proportion to the change.
 
@@ -163,13 +187,20 @@ const next = await fetch(response.headers.get('link')!)
 ##### Correct
 
 ```ts
-const selection = selectRepositoryMetadataConfiguration(
-  resolveDocsRepositoryMetadataProvider(environmentProvider),
-  repositories,
-  expectations,
-  repositoryMetadataProviders,
-)
+const repository = resolveElementPlusDocsProjectRepository(project, environmentProvider)
 const next = resolveTrustedApiUrl(apiBaseUrl, nextLink, providerName)
+```
+
+For external Playground dependencies, readable package metadata does not prove that the Demo import is public:
+
+```ts
+// Wrong: accepts transitive visibility and private package subpaths.
+const version = readPackageJson(packageName).version
+
+// Correct: require a docs-package declaration, installed exact version, and exported original specifier.
+assertDocumentationDependency(packageName)
+const version = resolveInstalledPackageVersion(packageName)
+assertPackageSpecifierExported(specifier)
 ```
 
 For Yunxiao commit authors, do not tie avatar visibility to an unverified profile route:
@@ -205,7 +236,7 @@ const id = `yunxiao:${bytesToHex(sha256(new TextEncoder().encode(login)))}`
 - Explicit maintainer synchronization for GitLab, Gitee, Yunxiao, or local writes ignored snapshots for local validation and never stages them.
 - A mocked provider test suite proves protocol behavior; a retained real-platform fixture is still required before claiming platform acceptance.
 - Preparation-pipeline tests assert successful and failing step logs, duration/provider/path visibility, exit-code propagation, ordering, early stop, and credential redaction.
-- Fixture files live under `scripts/__tests__/fixtures/repository-metadata/` and use fixed fictional identities/components; they must not import production `docsSite`, manifest, or expectation data.
+- Fixture files live under `packages/vitepress-theme-element-plus/test/repository/fixtures/` and use fixed fictional identities/components; they must not import production site config, manifest, or expectation data.
 
 ---
 

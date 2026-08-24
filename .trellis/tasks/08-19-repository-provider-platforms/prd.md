@@ -17,7 +17,7 @@ Provide production-grade GitLab, Gitee, and Yunxiao Codeup repository integratio
 ### R1. Reusable Platform Contract
 
 - Export the platform-neutral metadata contract, provider registry, capability policy, and platform URL action adapters from `@moluoxixi/vitepress-theme-element-plus`.
-- Keep site credentials, API clients, component manifests, provider selection, snapshots, and snapshot validation in `docs/vitepress`.
+- Keep site credentials and project catalog/configuration in `docs/vitepress`; ship reusable provider clients, schemas, selection, generated snapshots, validation, and CLI orchestration from the documentation theme's isolated repository Node tooling.
 - Preserve existing GitHub/local provider behavior. RichTextEditor is intentionally removed from `@moluoxixi/components` because the user confirmed there are no legacy consumers; its independent package remains authoritative.
 
 ### R2. Strict Provider Selection

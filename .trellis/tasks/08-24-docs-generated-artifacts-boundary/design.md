@@ -4,19 +4,18 @@
 
 ```text
 docs/vitepress/
+├─ element-plus-docs.config.ts            # 单一项目、package catalog 与 repository 配置
 ├─ .generated/                         # 全量忽略，可删除、可再生
 │  ├─ api/<Component>.json
 │  ├─ repository/<provider>.json
+│  ├─ markdown/playground-manifests.json
 │  └─ types/{auto-imports,components}.d.ts
 ├─ .vitepress/
 │  ├─ config.ts                        # VitePress 约定入口
 │  ├─ site/                            # 站点身份、locale、自动加载配置
 │  ├─ catalog/                         # 组件/工具 manifest 与翻译
-│  ├─ repository/                      # provider 选择、expectation、schema、运行接线
-│  ├─ markdown/                        # 当前项目的 demo 源码与外部工程解析
 │  └─ theme/                           # 站点内容集成与主题入口
-└─ scripts/
-   └─ __tests__/fixtures/repository-metadata/
+└─ scripts/                            # 当前站点的路由与 API 内容生成器
 ```
 
 `.generated/` 是唯一项目生成根。fixture 是测试源码，必须与生成物分离。
@@ -25,12 +24,12 @@ docs/vitepress/
 
 ```text
 VITE_DOCS_REPOSITORY_METADATA_PROVIDER
-  -> sync-selected-metadata
+  -> element-plus-docs prepare/dev/build
   -> 对应 provider collector
   -> schema 校验
   -> 原子写 .generated/repository/<provider>.json
-  -> validate-selected-metadata
-  -> Vite alias 绑定 selected snapshot
+  -> selected snapshot 再校验
+  -> CLI 环境注入 + 主题 Vite plugin 绑定 selected snapshot
   -> repository normalizer
   -> 主题内容
 ```
@@ -39,11 +38,11 @@ API extraction 和自动声明同样只写 `.generated/`。所有消费者通过
 
 ## 生命周期
 
-- `predev`：构建工作区依赖、生成内容路由、提取 API、同步 selected provider、校验 selected snapshot；Vite 插件随后更新自动声明。
-- `prebuild`：执行同一严格流程，保证全新 clone 可构建；VitePress build 随后更新自动声明。
+- `predev` / `prebuild`：monorepo 内只先构建主题 CLI；发布包消费者不需要该 workspace 步骤。
+- `element-plus-docs dev/build`：执行同一严格 prepare，保证全新 clone 可生成内容、同步并校验 selected snapshot；随后启动或构建 VitePress。
 - CI/Pages：默认 provider 为 GitHub，在文档构建步骤注入 `GITHUB_TOKEN: ${{ github.token }}`。
 - package release：只构建和发布 packages，不触发文档 metadata 同步。
-- 显式 `sync-<provider>-metadata` 命令保留，用于平台调试和验收，但输出统一进入 `.generated/repository/`。
+- 平台调试通过 `VITE_DOCS_REPOSITORY_METADATA_PROVIDER=<provider> element-plus-docs prepare`，不公开 provider 专用 sync/validate 命令。
 
 同步不做 provider fallback。已有快照只作为同 provider 原子写失败时的原文件保留，不作为其他 provider 的兜底。
 
@@ -51,9 +50,9 @@ API extraction 和自动声明同样只写 `.generated/`。所有消费者通过
 
 ## 测试边界
 
-provider fixture 位于 `scripts/__tests__/fixtures/repository-metadata/`，每个平台使用两个固定虚构组件、固定虚构仓库身份和最小 commit/contributor 数据；支持 issues 的 provider 包含 issue 状态，GitHub 包含 profile join 数据。fixture 不导入生产 manifest、expectation 或 site 配置，防止生产配置漂移同步掩盖 schema 回归。测试直接覆盖 validator、normalizer、capability downgrade 和 selection，并用真实 CLI 子进程覆盖默认/非法 provider 选择。
+provider fixture 位于主题包 `test/repository/fixtures/`，每个平台使用两个固定虚构组件、固定虚构仓库身份和最小 commit/contributor 数据；支持 issues 的 provider 包含 issue 状态，GitHub 包含 profile join 数据。fixture 不导入生产 manifest、expectation 或 site 配置，防止生产配置漂移同步掩盖 schema 回归。测试直接覆盖 validator、normalizer、capability downgrade、selection 和仅 selected token 读取。
 
-真实平台验收仍可通过显式 sync 命令进行，但真实输出不进入 Git，也不作为 required CI 的测试输入。
+真实平台验收通过 provider 环境覆盖运行 `element-plus-docs prepare`，真实输出不进入 Git，也不作为 required CI 的测试输入。
 
 ## 主题边界
 
@@ -64,13 +63,76 @@ provider fixture 位于 `scripts/__tests__/fixtures/repository-metadata/`，每�
 - GitHub/GitLab/Gitee/Yunxiao Web URL actions；
 - normalized metadata 到主题 component meta/contributors 的纯适配器。
 
-文档站继续拥有：
+文档站继续拥有当前仓库的品牌、组件/package catalog、repository URL、不可推导 provider 身份字段、运行时 token 环境和当前组件包 playground manifest。provider schema、normalization、collectors、selected snapshot、生成路径、同步/校验和 prepare orchestration 由主题包的 Node tooling 接管。
 
-- 当前仓库和组件清单；
-- provider API 配置、凭据读取与 collectors；
-- provider snapshot schema/normalization；
-- selected provider、生成文件路径和 Vite alias；
-- demo Markdown 扫描与当前组件包 playground manifest。
+主题包发布边界：
+
+```text
+@moluoxixi/vitepress-theme-element-plus
+├─ .                         # browser-safe theme/runtime/content
+├─ ./markdown                # Node/VitePress Markdown 项目插件与 Demo/Playground 解析
+├─ ./repository              # browser-safe types/providers/validators/actions
+├─ ./repository/node         # collectors/local Git/atomic generated files
+└─ bin/element-plus-docs.mjs # prepare/dev/build CLI
+```
+
+CLI 加载消费方单一 `element-plus-docs.config.ts`（同时支持 `.mts/.js/.mjs`），根据 selected provider 延迟加载一个 collector，只读取该 provider 的 token。CLI 直接执行 prepare 后的 VitePress dev/build，不依赖消费 package 的 `predev`/`prebuild` 复制脚本。
+
+最小消费配置：
+
+```ts
+export default defineElementPlusDocsProject({
+  repository: {
+    provider: 'github',
+    url: 'https://github.com/acme/components',
+  },
+  packages: {
+    components: defineComponentPackage({
+      name: '@acme/components',
+      root: 'packages/components',
+      componentSource: name => `packages/components/src/${name}`,
+      load: () => import('@acme/components'),
+      styles: ['@acme/components/styles'],
+    }),
+  },
+  components: componentGroups,
+})
+```
+
+普通 component item 只提供 `name/sidebarText/description/icon`；`slug`、package、API entry、source/docs/repository paths 由 package profile 推导并允许显式覆盖。
+
+## 最新 Markdown 项目契约
+
+`element-plus-docs.config.ts` 的 documentation 配置是源码布局唯一来源：
+
+```ts
+documentation: {
+  componentsRoute: 'components',
+  defaultLocale: 'zh-CN',
+  locales: {
+    'zh-CN': { sourceDirectory: '', sourceDoc: 'docs/index.md' },
+    'en-US': { sourceDirectory: 'en', sourceDoc: 'docs/index.en.md' },
+  },
+}
+```
+
+package profile 通过延迟 loader 提供组件包构建生成的 manifest：
+
+```ts
+components: defineComponentPackage({
+  name: '@acme/components',
+  root: 'packages/components',
+  componentSource: name => `packages/components/src/${name}`,
+  load: () => import('@acme/components'),
+  loadPlaygroundManifest: () => import('@acme/components/playground-manifest'),
+})
+```
+
+loader 是最新生命周期契约，不是旧格式兼容层。配置加载时 workspace package 可能尚未构建，因此 CLI 必须先完成 prepare commands，再调用 loader、校验 ESM default export，并把规范化结果原子写入 `.generated/markdown/playground-manifests.json`。VitePress 只读取 snapshot，不在配置加载阶段直接导入组件包的构建产物。
+
+`elementPlusDocsProjectMarkdownPlugin` 是公开的唯一 Demo Markdown 项目插件。它内部组合通用 Demo parser、精准源码链接和外部项目解析，不公开旧的 `resolveSourceHref` / `resolveExternalProjectSource` callback 配置。CLI 在同一进程注入 project root、documentation package root、selected snapshot 和 resolved default branch；版本解析只接受 documentation package 直接声明且从该 package Node 解析路径可安装的依赖，并读取安装产物的精确版本，不从主题包位置或仅因 workspace hoist 可见就接受依赖。
+
+纯 AST、manifest、source-link 和错误矩阵测试归主题包；扫描当前仓库全部 Markdown/SFC 的契约测试归 docs `scripts/__tests__`。`.vitepress/plugins` 和 `.vitepress/markdown` 不再作为目录边界。
 
 ## RichTextEditor 独立包边界
 

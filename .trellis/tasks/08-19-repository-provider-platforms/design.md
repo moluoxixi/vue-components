@@ -2,7 +2,7 @@
 
 ## Architecture
 
-The theme package owns normalized repository types, provider capabilities, registry enforcement, capability filtering, platform-specific web-link adapters, and the pure adapter from normalized repository metadata to theme content. The documentation site owns provider configuration, remote API clients, snapshot schemas, normalization, generated snapshots, and the selected provider.
+The theme package owns normalized repository types, provider capabilities, registry enforcement, capability filtering, platform-specific web-link adapters, provider schemas/collectors, generated snapshot tooling, CLI orchestration, and the pure adapter from normalized repository metadata to theme content. The documentation site owns only repository identity/configuration, runtime credentials, and its component/package catalog.
 
 The provider's declared capabilities are its maximum support. A snapshot may only downgrade them for a repository, for example when GitLab Issues are disabled or a Yunxiao tenant route cannot be verified. Generic rendering reads only effective capabilities and never branches on a platform ID.
 
