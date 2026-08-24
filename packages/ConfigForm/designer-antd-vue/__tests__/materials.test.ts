@@ -9,6 +9,7 @@ import { Input } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import {
+  ANTD_VUE_DESIGNER_MATERIAL_REGISTRY,
   ANTD_VUE_DESIGNER_MATERIALS,
   ANTD_VUE_DESIGNER_ZH_CN,
   ANTD_VUE_OPTION_RESOLVER_KEY,
@@ -48,6 +49,13 @@ const expectedKeys = [
 ]
 
 describe('ant design vue designer materials', () => {
+  it('registers material definitions and locale from matching named files', () => {
+    const entries = ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.modules.list()
+    expect(entries.map(entry => entry.name)).toEqual(expectedKeys.map(key => key.replace('antd.', '')))
+    expect(entries.every(entry => entry.source === `./materials/${entry.name}.ts`)).toBe(true)
+    expect(Object.keys(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.locales)).toEqual(expectedKeys)
+  })
+
   it('registers the complete material set with localized metadata', () => {
     expect(ANTD_VUE_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
     expect(Object.keys(ANTD_VUE_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)

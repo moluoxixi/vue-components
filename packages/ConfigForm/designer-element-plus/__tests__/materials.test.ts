@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createElementPlusDesignerRegistry,
   createElementPlusOptionResolverContext,
+  ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY,
   ELEMENT_PLUS_DESIGNER_MATERIALS,
   ELEMENT_PLUS_DESIGNER_ZH_CN,
 } from '../index'
@@ -40,6 +41,13 @@ const expectedKeys = [
 ]
 
 describe('element plus designer materials', () => {
+  it('registers material definitions and locale from matching named files', () => {
+    const entries = ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.modules.list()
+    expect(entries.map(entry => entry.name)).toEqual(expectedKeys.map(key => key.replace('element.', '')))
+    expect(entries.every(entry => entry.source === `./materials/${entry.name}.ts`)).toBe(true)
+    expect(Object.keys(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.locales)).toEqual(expectedKeys)
+  })
+
   it('ships a locale map for every registered material', () => {
     expect(Object.keys(ELEMENT_PLUS_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
     expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['designer.title']).toBe('表单设计器')

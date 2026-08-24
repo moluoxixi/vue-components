@@ -6,7 +6,10 @@ import { Input, InputNumber, Segmented, Select, Switch } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { z } from 'zod'
-import { ANTD_CONFIG_FORM_COMPONENTS } from '../src/components'
+import {
+  ANTD_CONFIG_FORM_COMPONENTS,
+  ANTD_CONFIG_FORM_MATERIAL_REGISTRY,
+} from '../src/components'
 import AntdConfigFormSource from '../src/index.vue'
 
 const AntdConfigForm = AntdConfigFormSource as Component
@@ -67,6 +70,17 @@ const ContainerStub = defineComponent({
 })
 
 describe('antd config form', () => {
+  it('registers default component materials from their named files', () => {
+    expect(ANTD_CONFIG_FORM_MATERIAL_REGISTRY.list().map(({ name, source }) => ({ name, source }))).toEqual([
+      { name: 'text', source: './materials/text.ts' },
+      { name: 'textarea', source: './materials/textarea.ts' },
+      { name: 'number', source: './materials/number.ts' },
+      { name: 'boolean', source: './materials/boolean.ts' },
+      { name: 'select', source: './materials/select.ts' },
+      { name: 'segmented', source: './materials/segmented.ts' },
+    ])
+  })
+
   it('透传原生 attrs，并保持 formAttrs 与 adapter namespace 优先级', () => {
     const wrapper = mount(AntdConfigForm, {
       attrs: {

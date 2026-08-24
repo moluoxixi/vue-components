@@ -36,6 +36,8 @@ const fields = [
 
 适配器内置 `text`、`textarea`、`number`、`boolean`、`select` 和 `segmented` 别名，并为 Ant Design Vue 提供对应的 `value` / `checked` 绑定协议。调用方可通过 `components` 注册业务组件或覆盖同名默认项。
 
+内置别名分别定义在 `src/materials/<name>.ts`，由构建期文件扫描生成 `ANTD_CONFIG_FORM_COMPONENTS`。`ANTD_CONFIG_FORM_MATERIAL_REGISTRY` 可用于检查物料来源与确定性顺序；业务扩展仍通过 `components` prop 注册，不依赖扫描器。
+
 ```ts
 const fields = [
   defineField({ component: 'text', field: 'name' }),

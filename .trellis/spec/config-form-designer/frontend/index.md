@@ -21,6 +21,8 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 
+Shared contract: [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md).
+
 ---
 
 ## How to Fill These Guidelines

@@ -1,3 +1,4 @@
+export * from './src/component-registry'
 export * from './src/controller'
 export * from './src/reaction'
 export type * from './src/types'

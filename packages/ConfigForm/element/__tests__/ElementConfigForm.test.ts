@@ -6,7 +6,10 @@ import { ElCheckbox, ElInput, ElInputNumber, ElSelectV2, ElSwitch } from 'elemen
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 import { z } from 'zod'
-import { ELEMENT_CONFIG_FORM_COMPONENTS } from '../src/components'
+import {
+  ELEMENT_CONFIG_FORM_COMPONENTS,
+  ELEMENT_CONFIG_FORM_MATERIAL_REGISTRY,
+} from '../src/components'
 import ElementConfigFormSource from '../src/index.vue'
 
 const ElementConfigForm = ElementConfigFormSource as Component
@@ -57,6 +60,16 @@ const ContainerStub = defineComponent({
 })
 
 describe('element config form', () => {
+  it('registers default component materials from their named files', () => {
+    expect(ELEMENT_CONFIG_FORM_MATERIAL_REGISTRY.list().map(({ name, source }) => ({ name, source }))).toEqual([
+      { name: 'text', source: './materials/text.ts' },
+      { name: 'textarea', source: './materials/textarea.ts' },
+      { name: 'number', source: './materials/number.ts' },
+      { name: 'boolean', source: './materials/boolean.ts' },
+      { name: 'select', source: './materials/select.ts' },
+    ])
+  })
+
   it('透传原生 attrs，并保持 formAttrs 与 adapter namespace 优先级', () => {
     const wrapper = mount(ElementConfigForm, {
       attrs: {

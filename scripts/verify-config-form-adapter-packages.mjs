@@ -5,12 +5,64 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const rootDir = fileURLToPath(new URL('..', import.meta.url))
+const registryPackages = [
+  {
+    directory: 'core',
+    exports: [
+      'ConfigFormModuleRegistryError',
+      'createConfigFormModuleRegistry',
+      'defineConfigFormModule',
+    ],
+    name: '@moluoxixi/config-form-core',
+    types: [
+      'ConfigFormNamedModule',
+      'ConfigFormNamedModuleMap',
+      'ConfigFormNamedModuleRegistry',
+      'ConfigFormNamedRegistryEntry',
+    ],
+    typeUsages: [
+      'ConfigFormNamedModule<unknown>',
+      'ConfigFormNamedModuleMap<unknown>',
+      'ConfigFormNamedModuleRegistry<unknown>',
+      'ConfigFormNamedRegistryEntry<unknown>',
+    ],
+  },
+  {
+    directory: 'headless',
+    exports: [
+      'createConfigFormComponentMaterialRegistry',
+      'createConfigFormComponentRegistry',
+      'defineConfigFormComponentMaterial',
+    ],
+    name: '@moluoxixi/config-form-headless',
+    types: [
+      'ConfigFormComponentMaterial',
+      'ConfigFormComponentMaterialMap',
+      'ConfigFormComponentMaterialRegistry',
+      'ConfigFormComponentRegistry',
+    ],
+  },
+  {
+    directory: 'designer',
+    exports: [
+      'createDesignerMaterialModuleRegistry',
+      'defineDesignerMaterialModule',
+    ],
+    name: '@moluoxixi/config-form-designer',
+    types: [
+      'DesignerMaterialModule',
+      'DesignerMaterialModuleMap',
+      'DesignerMaterialModuleRegistry',
+    ],
+  },
+]
 const adapters = [
   {
     directory: 'designer-antd-vue',
     exports: [
       'ANTD_VUE_DESIGNER_COMPONENTS',
       'ANTD_VUE_DESIGNER_MATERIALS',
+      'ANTD_VUE_DESIGNER_MATERIAL_REGISTRY',
       'ANTD_VUE_DESIGNER_PROPERTY_CONTROLS',
       'ANTD_VUE_DESIGNER_ZH_CN',
       'ANTD_VUE_OPTION_RESOLVER_KEY',
@@ -41,6 +93,7 @@ const adapters = [
     exports: [
       'ELEMENT_PLUS_DESIGNER_COMPONENTS',
       'ELEMENT_PLUS_DESIGNER_MATERIALS',
+      'ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY',
       'ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS',
       'ELEMENT_PLUS_DESIGNER_ZH_CN',
       'ELEMENT_PLUS_OPTION_RESOLVER_KEY',
@@ -72,6 +125,7 @@ const adapters = [
     directory: 'antd',
     exports: [
       'ANTD_CONFIG_FORM_COMPONENTS',
+      'ANTD_CONFIG_FORM_MATERIAL_REGISTRY',
       'AntdConfigForm',
       'antdConfigForm',
       'default',
@@ -88,6 +142,7 @@ const adapters = [
     directory: 'element',
     exports: [
       'ELEMENT_CONFIG_FORM_COMPONENTS',
+      'ELEMENT_CONFIG_FORM_MATERIAL_REGISTRY',
       'ElementConfigForm',
       'default',
     ],
@@ -114,6 +169,66 @@ const adapters = [
 
 function fail(message) {
   throw new Error(`[ConfigForm adapter package] ${message}`)
+}
+
+function verifyRegistryPackages() {
+  for (const registryPackage of registryPackages) {
+    const packageDir = resolve(rootDir, 'packages', 'ConfigForm', registryPackage.directory)
+    const manifest = JSON.parse(readFileSync(resolve(packageDir, 'package.json'), 'utf8'))
+    const rootExport = manifest.exports?.['.']
+    if (!rootExport?.import || !rootExport?.types)
+      fail(`${registryPackage.name} must expose import and types conditions at the package root`)
+
+    if (!existsSync(resolve(packageDir, rootExport.import)) || !existsSync(resolve(packageDir, rootExport.types)))
+      fail(`${registryPackage.name} build output or declarations are missing`)
+
+    const importCheck = `
+      const loaded = await import(${JSON.stringify(registryPackage.name)})
+      const missing = ${JSON.stringify(registryPackage.exports)}.filter(name => !(name in loaded))
+      if (missing.length > 0) throw new Error('Missing registry exports: ' + missing.join(','))
+    `
+    const importResult = spawnSync(process.execPath, ['--input-type=module', '--eval', importCheck], {
+      cwd: packageDir,
+      encoding: 'utf8',
+    })
+    if (importResult.status !== 0)
+      fail(`${registryPackage.name} registry self-reference failed: ${importResult.stderr || importResult.stdout}`)
+
+    const consumerDir = mkdtempSync(resolve(packageDir, '.config-form-registry-smoke-'))
+    try {
+      writeFileSync(resolve(consumerDir, 'consumer.ts'), `
+        import { ${registryPackage.exports.join(', ')} } from ${JSON.stringify(registryPackage.name)}
+        import type { ${registryPackage.types.join(', ')} } from ${JSON.stringify(registryPackage.name)}
+
+        void [${registryPackage.exports.join(', ')}]
+        type PublicTypes = [${(registryPackage.typeUsages ?? registryPackage.types).join(', ')}]
+        const publicTypes: PublicTypes | undefined = undefined
+        void publicTypes
+      `)
+      writeFileSync(resolve(consumerDir, 'tsconfig.json'), JSON.stringify({
+        compilerOptions: {
+          module: 'ESNext',
+          moduleResolution: 'Bundler',
+          noEmit: true,
+          skipLibCheck: false,
+          strict: true,
+          target: 'ES2022',
+        },
+        files: ['./consumer.ts'],
+      }, null, 2))
+
+      const tscPath = resolve(rootDir, 'node_modules', 'typescript', 'bin', 'tsc')
+      const typeResult = spawnSync(process.execPath, [tscPath, '--project', resolve(consumerDir, 'tsconfig.json')], {
+        cwd: consumerDir,
+        encoding: 'utf8',
+      })
+      if (typeResult.status !== 0)
+        fail(`${registryPackage.name} registry TypeScript consumer failed: ${typeResult.stderr || typeResult.stdout}`)
+    }
+    finally {
+      rmSync(consumerDir, { force: true, recursive: true })
+    }
+  }
 }
 
 function verifyRendererPackage() {
@@ -254,6 +369,7 @@ function verifyRendererPackage() {
   }
 }
 
+verifyRegistryPackages()
 verifyRendererPackage()
 
 for (const adapter of adapters) {

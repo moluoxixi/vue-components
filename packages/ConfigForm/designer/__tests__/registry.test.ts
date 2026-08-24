@@ -7,7 +7,9 @@ import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import {
   analyzeDesignerDocument,
+  createDesignerMaterialModuleRegistry,
   createDesignerRegistry,
+  defineDesignerMaterialModule,
   DesignerRegistryError,
 } from '../index'
 
@@ -58,6 +60,54 @@ function containerMaterial(min?: number): DesignerMaterialDefinition {
 }
 
 describe('designer registry', () => {
+  it('collects co-located material definitions and locale from named modules', () => {
+    const material = fieldMaterial('Input')
+    const catalog = createDesignerMaterialModuleRegistry({
+      './materials/input.ts': {
+        default: defineDesignerMaterialModule({
+          name: 'input',
+          order: 10,
+          value: {
+            material,
+            locale: { title: '输入框', setters: { placeholder: '占位文本' } },
+          },
+        }),
+      },
+    })
+
+    expect(catalog.materials).toEqual([material])
+    expect(catalog.locales).toEqual({
+      'element.input': { title: '输入框', setters: { placeholder: '占位文本' } },
+    })
+    expect(catalog.modules.list()[0]).toMatchObject({
+      name: 'input',
+      source: './materials/input.ts',
+    })
+  })
+
+  it('rejects a material key whose final segment differs from its module name', () => {
+    expect(() => createDesignerMaterialModuleRegistry({
+      './materials/text.ts': defineDesignerMaterialModule({
+        name: 'text',
+        value: { material: fieldMaterial('Input') },
+      }),
+    })).toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+      code: 'DESIGNER_MATERIAL_MODULE_KEY_MISMATCH',
+    }))
+  })
+
+  it('reports malformed material module values with a stable registry error', () => {
+    expect(() => createDesignerMaterialModuleRegistry({
+      './materials/input.ts': {
+        name: 'input',
+        value: undefined,
+      } as never,
+    })).toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+      code: 'DESIGNER_MATERIAL_MODULE_INVALID',
+      context: { moduleName: 'input', source: './materials/input.ts' },
+    }))
+  })
+
   it('uses the first layer as the highest precedence and validates factories', () => {
     const localControl = defineComponent({ name: 'LocalControl' })
     const adapterControl = defineComponent({ name: 'AdapterControl' })

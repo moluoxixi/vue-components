@@ -49,6 +49,8 @@ const fields = [
 
 适配器内置 `text`、`textarea`、`number`、`boolean` 和 `select` 别名，因此 schema 可以直接写 `component: 'text'`。`components` prop 可注册业务别名或覆盖同名默认项；完整注册项还可提供默认 props 和绑定协议，字段上的显式配置优先。
 
+内置别名分别定义在 `src/materials/<name>.ts`，由构建期文件扫描生成 `ELEMENT_CONFIG_FORM_COMPONENTS`。`ELEMENT_CONFIG_FORM_MATERIAL_REGISTRY` 可用于检查物料来源与确定性顺序；业务扩展仍通过 `components` prop 注册，不依赖扫描器。
+
 ```ts
 const fields = [defineField({ component: 'text', field: 'name', label: '姓名' })]
 ```
