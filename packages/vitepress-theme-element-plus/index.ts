@@ -155,6 +155,35 @@ export type {
   ElementPlusDocsMetaMessages,
   ElementPlusDocsOverviewMessages,
 } from './src/content/types'
+export {
+  defineComponentPackage,
+  defineElementPlusDocsProject,
+  resolveElementPlusDocsPlaygroundManifest,
+  resolveElementPlusDocsProject,
+  resolveElementPlusDocsProjectRepository,
+  resolveElementPlusDocsRepository,
+  resolveElementPlusDocsRepositoryProvider,
+} from './src/project'
+export type {
+  ElementPlusDocsComponentPackage,
+  ElementPlusDocsComponentPackageInput,
+  ElementPlusDocsDocumentation,
+  ElementPlusDocsDocumentationInput,
+  ElementPlusDocsDocumentationLocale,
+  ElementPlusDocsDocumentationLocaleInput,
+  ElementPlusDocsPlaygroundManifest,
+  ElementPlusDocsPlaygroundManifestEntry,
+  ElementPlusDocsPrepareCommand,
+  ElementPlusDocsProject,
+  ElementPlusDocsProjectComponent,
+  ElementPlusDocsProjectComponentGroup,
+  ElementPlusDocsProjectComponentGroupInput,
+  ElementPlusDocsProjectComponentInput,
+  ElementPlusDocsProjectInput,
+  ElementPlusDocsRepositoryInput,
+  ElementPlusDocsRepositoryProviderId,
+  ElementPlusDocsResolvedRepository,
+} from './src/project'
 export { createComponentPaths, renderComponentPage } from './src/routes'
 export { createElementPlusDocsTheme, elementPlusDocsTheme } from './src/runtime/theme'
 export type {

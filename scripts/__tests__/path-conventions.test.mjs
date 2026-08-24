@@ -98,14 +98,17 @@ function collectModuleSpecifiers(file) {
 describe('repository path conventions', () => {
   it('builds component runtime assets before consumers that bundle them', () => {
     const workspaceBuild = docsManifest.scripts['build:workspace-packages']
-    const componentBuild = workspaceBuild.indexOf('pnpm build:workspace-components')
-    const aiDocBuild = workspaceBuild.indexOf('pnpm build:workspace-ai-doc')
+    const workspaceContentBuild = docsManifest.scripts['build:workspace-content-packages']
+    const componentBuild = workspaceContentBuild.indexOf('pnpm build:workspace-components')
+    const aiDocBuild = workspaceContentBuild.indexOf('pnpm build:workspace-ai-doc')
     const extractBuild = docsManifest.scripts['preextract-api']
     const extractComponentBuild = extractBuild.indexOf('pnpm build:workspace-components')
     const extractAiDocBuild = extractBuild.indexOf('pnpm --filter @moluoxixi/ai-doc-assistant build')
 
     expect(componentBuild).toBeGreaterThanOrEqual(0)
     expect(aiDocBuild).toBeGreaterThan(componentBuild)
+    expect(workspaceBuild).toContain('pnpm build:workspace-content-packages')
+    expect(workspaceBuild).toContain('pnpm build:workspace-theme')
     expect(extractComponentBuild).toBeGreaterThanOrEqual(0)
     expect(extractAiDocBuild).toBeGreaterThan(extractComponentBuild)
   })
@@ -114,13 +117,18 @@ describe('repository path conventions', () => {
     const turboConfig = JSON.parse(readFileSync(resolve(repositoryRoot, 'turbo.json'), 'utf8'))
 
     expect(turboConfig.tasks['@moluoxixi/docs#build'].dependsOn).toEqual(['^build'])
+    expect(turboConfig.tasks['@moluoxixi/docs#test'].dependsOn).toEqual(['^build'])
+    expect(turboConfig.tasks['@moluoxixi/docs#typecheck'].dependsOn).toEqual(['^build'])
   })
 
   it('keeps generated documentation artifacts in one ignored lifecycle directory', () => {
-    expect(gitignore).toContain('/docs/vitepress/.generated/')
+    expect(gitignore).toContain('**/.generated/')
     expect(gitignore).not.toContain('/docs/vitepress/.vitepress/api/')
-    expect(docsManifest.scripts.predev).toBe('node scripts/prepare-docs.mts')
-    expect(docsManifest.scripts.prebuild).toBe('node scripts/prepare-docs.mts')
+    expect(docsManifest.scripts.predev).toBe('pnpm build:workspace-theme')
+    expect(docsManifest.scripts.dev).toBe('element-plus-docs dev')
+    expect(docsManifest.scripts.prebuild).toBe('pnpm build:workspace-theme')
+    expect(docsManifest.scripts.build).toBe('element-plus-docs build')
+    expect(docsManifest.scripts['prepare:docs']).toBe('element-plus-docs prepare')
     expect(docsManifest.scripts).not.toHaveProperty('sync-local-metadata:staged')
     expect(rootManifest.scripts['build:docs']).toBe('pnpm -C docs/vitepress build')
     expect(rootManifest.scripts['pre-commit']).not.toContain('metadata')

@@ -9,6 +9,7 @@ import headersPlugin from '../upstream/plugins/headers'
 
 const consumerStylesModuleId = 'virtual:moluoxixi-element-plus-docs-consumer-styles'
 const resolvedConsumerStylesModuleId = `\0${consumerStylesModuleId}`
+const repositorySnapshotModuleId = 'virtual:moluoxixi-repository-metadata-snapshot'
 
 function validate(options: ElementPlusDocsOptions): void {
   const missing: string[] = []
@@ -17,6 +18,8 @@ function validate(options: ElementPlusDocsOptions): void {
   if (options.site.defaultLocale && options.site.locales && !options.site.locales[options.site.defaultLocale]) {
     missing.push(`site.locales.${options.site.defaultLocale}`)
   }
+  if (options.repository?.editLinks && !options.repository.defaultBranch)
+    missing.push('repository.defaultBranch')
   if (missing.length) {
     throw new Error(`[vitepress-theme-element-plus] Missing required configuration: ${missing.join(', ')}`)
   }
@@ -81,7 +84,7 @@ function localeThemeConfig(
     repository: options.repository?.url ?? '',
     repo: options.repository?.url ?? '',
     docsRepo: options.repository?.url ?? '',
-    docsBranch: options.repository?.defaultBranch ?? 'main',
+    docsBranch: options.repository?.defaultBranch,
     editLinks: options.repository?.editLinks ?? false,
     langs: Object.keys(runtimeLocales),
     locales: runtimeLocales,
@@ -123,6 +126,20 @@ function createConsumerStylesPlugin(styles: string | string[] | undefined) {
       return imports.length
         ? `${imports.map(style => `import ${JSON.stringify(style)}`).join('\n')}\n`
         : 'export {}\n'
+    },
+  }
+}
+
+function createRepositorySnapshotPlugin() {
+  const nodeProcess = Reflect.get(globalThis, 'process') as
+    | { env?: Record<string, string | undefined> }
+    | undefined
+  const snapshotPath = nodeProcess?.env?.ELEMENT_PLUS_DOCS_REPOSITORY_SNAPSHOT_PATH
+  return {
+    name: 'moluoxixi-element-plus-docs-repository-snapshot',
+    enforce: 'pre' as const,
+    resolveId(id: string) {
+      return id === repositorySnapshotModuleId && snapshotPath ? snapshotPath : undefined
     },
   }
 }
@@ -184,6 +201,7 @@ export function defineElementPlusDocs(options: ElementPlusDocsOptions): UserConf
       ...vite,
       plugins: [
         createConsumerStylesPlugin(options.components?.styles),
+        createRepositorySnapshotPlugin(),
         ...(vite.plugins ?? []),
       ] as NonNullable<UserConfig['vite']>['plugins'],
     },

@@ -3,8 +3,8 @@
   "compilerOptions": {
     "composite": false,
     "tsBuildInfoFile": "./.tsbuildinfo/tsconfig.app.tsbuildinfo",
-    "types": ["vite/client"]
+    "types": ["node", "vite/client"]
   },
-  "include": ["index.ts", "markdown.ts", "src/**/*.ts", "src/**/*.vue", "src/**/*.json"],
+  "include": ["index.ts", "markdown.ts", "repository.ts", "src/**/*.ts", "src/**/*.vue", "src/**/*.json"],
   "exclude": ["vite.config.ts", "test", "fixtures"]
 }

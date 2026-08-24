@@ -3,13 +3,10 @@ import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './site/docs-site'
 import process from 'node:process'
 import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
-import { elementPlusDocsDemoPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
+import { elementPlusDocsProjectMarkdownPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
+import projectConfig from '../element-plus-docs.config.ts'
 import { getDocsMessages, getLocalizedComponentGroups, getLocalizedUtilityGroups, localePath } from './catalog/docs-i18n'
-import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
-import { resolveComponentsExternalProjectSource } from './markdown/playground-external'
-import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './repository/generated-snapshot'
-import { repositoryMetadataSelection } from './repository/selection'
 import { createComponentAutoLoadPlugins } from './site/auto-loaders'
 import {
   defaultDocsLocale,
@@ -17,6 +14,11 @@ import {
   docsRoutePath,
   docsSite,
 } from './site/docs-site'
+import {
+  docsRepository,
+  docsRepositoryLabel,
+  resolveDocsRepositoryDefaultBranch,
+} from './site/repository-config'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config & Pick<ElementPlusDocsThemeConfig, 'repositoryLabel'> {
   const messages = getDocsMessages(locale)
@@ -73,11 +75,11 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config & Pick<Eleme
       })),
     },
     socialLinks: [{
-      ariaLabel: repositoryMetadataSelection.repositoryLabel,
+      ariaLabel: docsRepositoryLabel,
       icon: 'github',
-      link: repositoryMetadataSelection.repository.url,
+      link: docsRepository.url!,
     }],
-    repositoryLabel: repositoryMetadataSelection.repositoryLabel,
+    repositoryLabel: docsRepositoryLabel,
     search: {
       provider: 'local',
       options: {
@@ -145,7 +147,8 @@ export default defineElementPlusDocs({
     defaultLocale: defaultDocsLocale,
   },
   repository: {
-    ...repositoryMetadataSelection.repository,
+    defaultBranch: resolveDocsRepositoryDefaultBranch(),
+    url: docsRepository.url!,
     editLinks: false,
   },
   components: {
@@ -167,10 +170,7 @@ export default defineElementPlusDocs({
         dark: 'github-dark',
       },
       config(md) {
-        md.use(elementPlusDocsDemoPlugin, {
-          resolveExternalProjectSource: resolveComponentsExternalProjectSource,
-          resolveSourceHref: createDocsDemoSourceHrefResolver(md),
-        })
+        md.use(elementPlusDocsProjectMarkdownPlugin, { project: projectConfig })
       },
     },
     vite: {
@@ -185,13 +185,6 @@ export default defineElementPlusDocs({
       ] as VitePressPlugins,
       resolve: {
         conditions: ['source'],
-        alias: [
-          { find: '@docs-components', replacement: docsSite.packageName },
-          {
-            find: repositoryMetadataSnapshotId,
-            replacement: repositoryMetadataSnapshotPath(repositoryMetadataSelection.providerId),
-          },
-        ],
       },
       optimizeDeps: {
         include: ['@lucide/vue', 'element-plus'],

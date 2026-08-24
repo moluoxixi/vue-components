@@ -58,6 +58,7 @@ describe('self-hosted Vue REPL', () => {
     expect(elementPlusDocsReplMainSource).toContain('import { setupElementPlus } from \'./element-plus.js\'')
     expect(elementPlusDocsReplSetupSource).toContain('import { install as installElementPlus } from \'element-plus\'')
     expect(elementPlusDocsReplSetupSource).toContain('app.use({ install: installElementPlus })')
+    expect(elementPlusDocsReplSetupSource).not.toContain('elementPlusExports')
   })
 
   it('compiles the active file and hidden wrapper during initialization', () => {

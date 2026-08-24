@@ -1,5 +1,7 @@
+import { fileURLToPath } from 'node:url'
 import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
-import { elementPlusDocsDemoPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
+import { elementPlusDocsProjectMarkdownPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
+import project from '../element-plus-docs.config'
 
 export default defineElementPlusDocs({
   site: {
@@ -12,7 +14,10 @@ export default defineElementPlusDocs({
   vitepress: {
     markdown: {
       config(md) {
-        md.use(elementPlusDocsDemoPlugin)
+        md.use(elementPlusDocsProjectMarkdownPlugin, {
+          project,
+          projectRoot: fileURLToPath(new URL('../../../..', import.meta.url)),
+        })
       },
     },
     vite: {

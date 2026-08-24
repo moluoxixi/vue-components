@@ -34,12 +34,8 @@ describe('repository provider labels', () => {
     wrapper.unmount()
   })
 
-  it('retains the GitHub fallback for existing consumers', () => {
-    expect(resolveSocialLinks({ repository: 'https://github.com/group/project' })).toEqual([{
-      icon: undefined,
-      link: 'https://github.com/group/project',
-      text: 'GitHub',
-    }])
+  it('does not invent a provider-specific social link', () => {
+    expect(resolveSocialLinks({})).toEqual([])
 
     mocks.theme.value = { repository: 'https://github.com/group/project' }
     const wrapper = mount(VPFooter)

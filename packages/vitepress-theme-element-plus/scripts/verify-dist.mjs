@@ -22,20 +22,45 @@ const files = await collectFiles(distRoot)
 const jsFiles = files.filter(file => file.endsWith('.js'))
 const cssFiles = files.filter(file => file.endsWith('.css'))
 const js = (await Promise.all(jsFiles.map(file => readFile(file, 'utf8')))).join('\n')
-const browserJsFiles = jsFiles.filter(file => !file.endsWith('/markdown.js'))
+const browserJsFiles = jsFiles.filter(file => (
+  !file.endsWith('/markdown.js')
+  && !file.endsWith('/element-plus-docs.js')
+  && !file.endsWith('/repository-node.js')
+  && !file.includes('/node-')
+))
 const browserArtifacts = (await Promise.all(
   [...browserJsFiles, ...cssFiles].map(file => readFile(file, 'utf8')),
 )).join('\n')
 const nodeModuleSpecifier = /(?:\bfrom\s*|\bimport\s*\(\s*)["']node:/
 
-if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify(['.', './markdown', './repl', './repl.css'])) {
-  failures.push('package exports must expose the browser root, markdown, and REPL entries')
+if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify([
+  '.',
+  './markdown',
+  './repository',
+  './repository/node',
+  './repl',
+  './repl.css',
+])) {
+  failures.push('package exports must expose the browser root, markdown, repository, Node repository, and REPL entries')
 }
 if (!jsFiles.some(file => file.endsWith('/markdown.js'))) {
   failures.push('markdown entry is missing')
 }
 if (!jsFiles.some(file => file.endsWith('/repl.js'))) {
   failures.push('REPL entry is missing')
+}
+if (!jsFiles.some(file => file.endsWith('/repository.js'))) {
+  failures.push('browser repository entry is missing')
+}
+if (!jsFiles.some(file => file.endsWith('/repository-node.js'))) {
+  failures.push('Node repository entry is missing')
+}
+const cliPath = `${distRoot}/element-plus-docs.js`
+if (!jsFiles.includes(cliPath)) {
+  failures.push('element-plus-docs CLI entry is missing')
+}
+else if (!(await readFile(cliPath, 'utf8')).startsWith('#!/usr/bin/env node')) {
+  failures.push('element-plus-docs CLI entry is missing its executable shebang')
 }
 if (!cssFiles.some(file => file.endsWith('/vitepress-theme-element-plus.css'))) {
   failures.push('theme CSS asset is missing')

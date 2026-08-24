@@ -2,6 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { docsProject } from '../../.vitepress/catalog/component-manifest.ts'
 import { getLocalizedComponents } from '../../.vitepress/catalog/docs-i18n.ts'
 import { docsLocales } from '../../.vitepress/site/docs-site.ts'
 import { GENERATED_COMPONENT_ROUTE_MARKER } from '../component-routes.mts'
@@ -12,7 +13,11 @@ describe('generated searchable component routes', () => {
 
     for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>) {
       const configured = docsLocales[locale]
-      const directory = resolve(docsRoot, configured.sourceDirectory, 'components')
+      const directory = resolve(
+        docsRoot,
+        configured.sourceDirectory,
+        docsProject.documentation.componentsRoute,
+      )
       const expected = getLocalizedComponents(locale).map(component => `${component.slug}.md`).sort()
       const actual = readdirSync(directory)
         .filter(fileName => fileName !== 'index.md' && fileName.endsWith('.md'))

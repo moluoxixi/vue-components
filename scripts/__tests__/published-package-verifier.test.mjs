@@ -8,6 +8,7 @@ import {
   createPackedConsumerManifest,
   createTypeSmokeSource,
   getBrowserConsumerSpecifiers,
+  getNodeRuntimeSpecifiers,
   getPublicSpecifier,
   getStylesheetEntrypoints,
   getTypedJavaScriptEntrypoints,
@@ -88,7 +89,16 @@ describe('published package verifier helpers', () => {
       './antd',
     ])
     expect(browserJavaScriptEntrypointExclusions['@moluoxixi/vitepress-theme-element-plus'])
-      .toEqual(['.', './markdown'])
+      .toEqual(['.', './markdown', './repository/node'])
+    expect(getNodeRuntimeSpecifiers([{
+      name: '@moluoxixi/vitepress-theme-element-plus',
+      exports: {
+        './repository/node': {
+          import: './dist/repository-node.js',
+          types: './dist/src/node/repository/index.d.ts',
+        },
+      },
+    }])).toEqual(['@moluoxixi/vitepress-theme-element-plus/repository/node'])
   })
 
   it('fails when the browser allowlist drifts from public exports', () => {

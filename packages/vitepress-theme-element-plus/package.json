@@ -24,6 +24,16 @@
       "types": "./dist/markdown.d.ts",
       "import": "./dist/markdown.js"
     },
+    "./repository": {
+      "source": "./repository.ts",
+      "types": "./dist/repository.d.ts",
+      "import": "./dist/repository.js"
+    },
+    "./repository/node": {
+      "source": "./src/node/repository/index.ts",
+      "types": "./dist/src/node/repository/index.d.ts",
+      "import": "./dist/repository-node.js"
+    },
     "./repl": {
       "source": "./src/repl-entry.ts",
       "types": "./dist/src/repl-entry.d.ts",
@@ -34,6 +44,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "element-plus-docs": "./dist/element-plus-docs.js"
+  },
   "files": [
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
@@ -41,16 +54,21 @@
     "dist",
     "index.ts",
     "markdown.ts",
+    "repository.ts",
     "src"
   ],
+  "engines": {
+    "node": ">=22.6.0"
+  },
   "scripts": {
     "build": "vite build && pnpm test:provenance",
     "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
     "dev": "vite build --watch",
     "prepack": "pnpm build",
-    "test": "vitest run",
+    "test": "vitest run && pnpm test:consumer",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit",
     "test:provenance": "node scripts/verify-dist.mjs",
+    "test:consumer": "node dist/element-plus-docs.js build --config fixtures/consumer/element-plus-docs.config.ts",
     "build:fixture": "pnpm build && vitepress build fixtures/basic",
     "pretest:e2e": "pnpm build",
     "test:e2e": "playwright test --config playwright.config.ts"
@@ -64,10 +82,13 @@
     "@lucide/vue": "catalog:ui",
     "@mdit-vue/shared": "catalog:",
     "@moluoxixi/ai-doc-assistant": "workspace:*",
+    "@noble/hashes": "catalog:",
+    "@vue/compiler-sfc": "catalog:dev",
     "@vue/repl": "catalog:",
     "@vueuse/core": "catalog:",
     "eslint": "catalog:dev",
     "eslint-plugin-format": "catalog:dev",
+    "jiti": "catalog:dev",
     "lz-string": "catalog:",
     "markdown-it": "catalog:",
     "markdown-it-container": "catalog:",
@@ -80,6 +101,7 @@
     "@playwright/test": "catalog:dev",
     "@types/markdown-it": "catalog:",
     "@types/markdown-it-container": "catalog:",
+    "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "element-plus": "catalog:ui",

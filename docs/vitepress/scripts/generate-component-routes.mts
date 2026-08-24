@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { docsProject } from '../.vitepress/catalog/component-manifest.ts'
 import { getLocalizedComponents } from '../.vitepress/catalog/docs-i18n.ts'
 import { docsLocales } from '../.vitepress/site/docs-site.ts'
 import {
@@ -16,11 +17,16 @@ let generatedCount = 0
 
 for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>) {
   const configured = docsLocales[locale]
-  const outputDirectory = resolve(docsRoot, configured.sourceDirectory, 'components')
+  const outputDirectory = resolve(
+    docsRoot,
+    configured.sourceDirectory,
+    docsProject.documentation.componentsRoute,
+  )
+  const sourceDocIncludePrefix = `${relative(outputDirectory, root).replaceAll('\\', '/')}/`
   const result = createComponentRoutePaths({
     root,
     components: getLocalizedComponents(locale),
-    locale: createComponentRouteLocaleOptions(locale),
+    locale: createComponentRouteLocaleOptions(locale, sourceDocIncludePrefix),
   })
   const generatedNames = new Set(result.paths.map(route => `${route.params.slug}.md`))
 

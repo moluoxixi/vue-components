@@ -4,10 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   collectElementPlusDocsDemos,
   createElementPlusDocsDemoId,
-  elementPlusDocsDemoPlugin,
   formatSfcTypeScript,
   sfcTs2js,
 } from '../markdown'
+import { elementPlusDocsDemoPlugin } from '../src/markdown/demo'
 
 function decodeAttribute(html: string, name: string): string {
   const value = new RegExp(`${name}="([^"]+)"`).exec(html)?.[1]

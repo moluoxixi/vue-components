@@ -1,17 +1,18 @@
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
-import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './.vitepress/repository/generated-snapshot'
 import { createComponentAutoLoadPlugins } from './.vitepress/site/auto-loaders'
-import { docsSite } from './.vitepress/site/docs-site'
+import { elementPlusDocsRepositorySnapshotId } from './.vitepress/site/repository-config'
 
 export default defineConfig({
   plugins: [vue(), ...createComponentAutoLoadPlugins()],
   resolve: {
     conditions: ['source'],
     alias: {
-      '@docs-components': fileURLToPath(new URL('../../packages/components/index.ts', import.meta.url)),
-      [repositoryMetadataSnapshotId]: repositoryMetadataSnapshotPath(docsSite.metadataProvider),
+      [elementPlusDocsRepositorySnapshotId]: resolve(
+        import.meta.dirname,
+        'scripts/__tests__/repository-snapshot.fixture.ts',
+      ),
     },
   },
   test: {

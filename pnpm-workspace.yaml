@@ -8,6 +8,7 @@ trustPolicyExclude:
 packages:
   - packages/*
   - packages/ConfigForm/*
+  - packages/vitepress-theme-element-plus/fixtures/consumer
   - playgrounds/*
   - docs/vitepress
 

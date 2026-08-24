@@ -13,6 +13,7 @@ import {
   createPackedConsumerManifest,
   createTypeSmokeSource,
   getBrowserConsumerSpecifiers,
+  getNodeRuntimeSpecifiers,
   getPublicSpecifier,
   getTypedJavaScriptEntrypoints,
 } from './published-package-verifier.mjs'
@@ -206,11 +207,22 @@ try {
     name,
     `file:${tarball.replaceAll('\\', '/')}`,
   ]))
-  await writeFile(resolve(consumerDirectory, 'package.json'), JSON.stringify(createPackedConsumerManifest({
+  const themeManifest = publishable.find(({ manifest }) => (
+    manifest.name === '@moluoxixi/vitepress-theme-element-plus'
+  ))?.manifest
+  const vitepressPeerVersion = themeManifest?.peerDependencies?.vitepress
+  if (typeof vitepressPeerVersion !== 'string')
+    throw new Error('The documentation theme package must declare its VitePress peer dependency.')
+  const consumerManifest = createPackedConsumerManifest({
     browserBundlerVersion,
     packageManager: rootManifest.packageManager,
     packedDependencies,
-  })))
+  })
+  consumerManifest.devDependencies = {
+    ...consumerManifest.devDependencies,
+    vitepress: vitepressPeerVersion,
+  }
+  await writeFile(resolve(consumerDirectory, 'package.json'), JSON.stringify(consumerManifest))
   await writeFile(resolve(consumerDirectory, 'pnpm-workspace.yaml'), JSON.stringify({
     overrides: packedDependencies,
   }))
@@ -229,7 +241,10 @@ try {
       .filter(subpath => !subpath.includes('*'))
       .map(subpath => getPublicSpecifier(manifest.name, subpath))
   ))
-  const runtimeEntries = publishable.map(({ manifest }) => manifest.name)
+  const runtimeEntries = [
+    ...publishable.map(({ manifest }) => manifest.name),
+    ...getNodeRuntimeSpecifiers(publishable.map(({ manifest }) => manifest)),
+  ]
   await writeFile(resolve(consumerDirectory, 'smoke.mjs'), createNodeSmokeSource(runtimeEntries, consumerEntries))
   await writeFile(resolve(consumerDirectory, 'smoke.mts'), createTypeSmokeSource(consumerEntries))
   await writeFile(resolve(consumerDirectory, 'tsconfig.json'), JSON.stringify({
@@ -248,6 +263,106 @@ try {
   }
   else {
     run(process.execPath, [resolve(consumerDirectory, 'smoke.mjs')])
+    runPnpm(['--dir', consumerDirectory, 'exec', 'element-plus-docs', '--help'])
+    await writeFile(resolve(consumerDirectory, 'fixture.txt'), 'packed CLI fixture\n')
+    await writeFile(resolve(consumerDirectory, 'element-plus-docs.config.mjs'), `
+import {
+  defineComponentPackage,
+  defineElementPlusDocsProject,
+} from '@moluoxixi/vitepress-theme-element-plus'
+
+export default defineElementPlusDocsProject({
+  documentation: {
+    componentsRoute: 'components',
+    defaultLocale: 'en-US',
+    locales: {
+      'en-US': {
+        label: 'English',
+        sourceDirectory: '',
+        sourceDoc: 'docs/index.md',
+      },
+    },
+  },
+  repository: { provider: 'local' },
+  packages: {
+    components: defineComponentPackage({
+      name: '@fixture/components',
+      root: 'packages/components',
+      componentSource: name => \`packages/components/src/\${name}\`,
+      load: async () => ({}),
+      loadPlaygroundManifest: async () => ({
+        imports: {
+          '@fixture/components/FixtureComponent': {
+            dependencies: { '@fixture/components': 'latest' },
+            exports: ['FixtureComponent'],
+            styleImports: ['@fixture/components/styles'],
+          },
+        },
+        packageName: '@fixture/components',
+      }),
+    }),
+  },
+  components: [],
+})
+`)
+    run('git', ['init', '-b', 'main'], { capture: true, cwd: consumerDirectory })
+    run('git', ['config', 'user.name', 'Packed Fixture'], { capture: true, cwd: consumerDirectory })
+    run('git', ['config', 'user.email', 'packed-fixture@example.test'], { capture: true, cwd: consumerDirectory })
+    run('git', ['remote', 'add', 'origin', 'https://example.test/packed-fixture'], { capture: true, cwd: consumerDirectory })
+    run('git', ['add', 'fixture.txt', 'element-plus-docs.config.mjs'], { capture: true, cwd: consumerDirectory })
+    run('git', ['commit', '-m', 'fixture'], { capture: true, cwd: consumerDirectory })
+    runPnpm(['--dir', consumerDirectory, 'exec', 'element-plus-docs', 'prepare'])
+    if (!existsSync(resolve(consumerDirectory, '.generated/repository/local.json')))
+      throw new Error('Packed element-plus-docs CLI did not generate the local provider snapshot.')
+    if (!existsSync(resolve(consumerDirectory, '.generated/markdown/playground-manifests.json')))
+      throw new Error('Packed element-plus-docs CLI did not generate the Playground manifest snapshot.')
+    await writeFile(resolve(consumerDirectory, 'markdown-smoke.mjs'), `
+import { Buffer } from 'node:buffer'
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
+import { elementPlusDocsProjectMarkdownPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
+import { createMarkdownRenderer } from 'vitepress'
+import project from './element-plus-docs.config.mjs'
+
+const manifestsPath = resolve('.generated/markdown/playground-manifests.json')
+const snapshot = JSON.parse(await readFile(manifestsPath, 'utf8'))
+const entry = snapshot.packages?.components?.imports?.['@fixture/components/FixtureComponent']
+if (snapshot.schemaVersion !== 1 || snapshot.packages?.components?.packageName !== '@fixture/components')
+  throw new Error('Packed Playground manifest snapshot has an invalid project contract.')
+if (!entry || entry.dependencies?.['@fixture/components'] !== 'latest' || !entry.exports?.includes('FixtureComponent'))
+  throw new Error('Packed Playground manifest snapshot has an invalid component entry.')
+
+const md = await createMarkdownRenderer(process.cwd())
+md.use(elementPlusDocsProjectMarkdownPlugin, {
+  dependencyRoot: process.cwd(),
+  playgroundManifestsPath: manifestsPath,
+  project,
+  projectRoot: process.cwd(),
+  providerOverride: 'local',
+})
+const html = md.render(\`:::demo Packed fixture
+\\\`\\\`\\\`vue
+<script setup>
+import { FixtureComponent } from '@fixture/components'
+</script>
+
+<template><FixtureComponent /></template>
+\\\`\\\`\\\`
+:::
+\`, { relativePath: 'components/fixture-component.md' })
+const encodedProject = /external-project-code="([^"]+)"/.exec(html)?.[1]
+const encodedJavaScriptProject = /external-project-js-code="([^"]+)"/.exec(html)?.[1]
+if (!encodedProject || !encodedJavaScriptProject)
+  throw new Error('Packed Markdown plugin did not render both external project variants.')
+const externalProject = JSON.parse(Buffer.from(encodedProject, 'base64').toString('utf8'))
+if (!externalProject.source.includes("from '@fixture/components/FixtureComponent'"))
+  throw new Error('Packed Markdown plugin did not rewrite the component root import.')
+if (externalProject.dependencies?.['@fixture/components'] !== 'latest')
+  throw new Error('Packed Markdown plugin omitted the component dependency.')
+if (!externalProject.styleImports?.includes('@fixture/components/styles'))
+  throw new Error('Packed Markdown plugin omitted the component style import.')
+`)
+    run(process.execPath, [resolve(consumerDirectory, 'markdown-smoke.mjs')], { cwd: consumerDirectory })
     runPnpm(['--dir', consumerDirectory, 'exec', 'tsc', '-p', resolve(consumerDirectory, 'tsconfig.json')])
     console.log(`Verified ${publishable.length} packed packages and ${consumerEntries.length} public JavaScript entries.`)
   }

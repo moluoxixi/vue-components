@@ -24,21 +24,14 @@ import {
   resolveRepositoryComponentMeta,
   resolveRepositoryContributors,
 } from '@moluoxixi/vitepress-theme-element-plus'
-import { getDocumentedComponent } from '../catalog/component-manifest'
+import { docsProject, getDocumentedComponent } from '../catalog/component-manifest'
 import { getLocalizedComponentGroups } from '../catalog/docs-i18n'
-import {
-  configuredRepositoryMetadataContentProvider,
-  getComponentRepositoryMetadata,
-} from '../repository/metadata'
-import {
-  createRepositoryMetadataActionInput,
-  repositoryMetadataSelection,
-} from '../repository/selection'
 import {
   docsRoutePath,
   docsSite,
   getDocsLocaleConfig,
 } from '../site/docs-site'
+import { docsRepositoryRuntime } from '../site/repository'
 import { useDocsLocale } from './composables/use-docs-locale'
 
 const iconByName: Record<ComponentIconName, Component> = {
@@ -64,32 +57,33 @@ const apiModules = import.meta.glob<ComponentApiContract>('../../.generated/api/
 const apiByName = Object.fromEntries(
   Object.values(apiModules).map(api => [api.name, api]),
 ) as Record<string, ComponentApiContract>
-const richTextEditorPackageName = getDocumentedComponent('RichTextEditor').packageName
+const componentPackages = Object.values(docsProject.packages)
 
 export const supportedLocalSfcModules = Object.freeze([
   'vue',
   'element-plus',
   'element-plus/dist/index.css',
-  docsSite.packageName,
-  richTextEditorPackageName,
-  docsSite.packageStylesImport,
+  ...componentPackages.flatMap(profile => [profile.name, ...profile.styles]),
 ])
 
 const compileLocalSfc = createElementPlusDocsSfcCompiler({
   async createModuleCache() {
-    const [VueRuntime, ElementPlusRuntime, Components, RichTextEditor] = await Promise.all([
+    const [VueRuntime, ElementPlusRuntime, ...packageModules] = await Promise.all([
       import('vue'),
       import('element-plus'),
-      import('@docs-components'),
-      import('@moluoxixi/rich-text-editor'),
+      ...componentPackages.map(profile => profile.load()),
     ])
     return {
       'vue': VueRuntime,
       'element-plus': ElementPlusRuntime,
       'element-plus/dist/index.css': {},
-      [docsSite.packageName]: Components,
-      [richTextEditorPackageName]: RichTextEditor,
-      [docsSite.packageStylesImport]: {},
+      ...Object.fromEntries(componentPackages.map((profile, index) => [
+        profile.name,
+        packageModules[index],
+      ])),
+      ...Object.fromEntries(componentPackages.flatMap(profile => (
+        profile.styles.map(style => [style, {}])
+      ))),
     }
   },
 })
@@ -132,13 +126,13 @@ export function resolveDocsComponentMeta({
   name,
   slug,
 }: ElementPlusDocsComponentResolverInput) {
-  const metadata = getComponentRepositoryMetadata(name)
+  const metadata = docsRepositoryRuntime.getComponentMetadata(name)
   const component = getDocumentedComponent(name)
   const docsSourcePath = component.docsSourcePath
   const sourcePath = docsSourcePath
-  const actionInput = createRepositoryMetadataActionInput(repositoryMetadataSelection, name)
+  const actionInput = docsRepositoryRuntime.createActionInput(name)
   const repositoryContent = resolveRepositoryComponentMeta(
-    configuredRepositoryMetadataContentProvider,
+    docsRepositoryRuntime.contentProvider,
     metadata,
     {
       ...actionInput,
@@ -212,8 +206,8 @@ export const docsContent = createElementPlusDocsContent({
   resolveComponentMeta: resolveDocsComponentMeta,
   resolveContributors({ name }) {
     return resolveRepositoryContributors(
-      configuredRepositoryMetadataContentProvider,
-      getComponentRepositoryMetadata(name),
+      docsRepositoryRuntime.contentProvider,
+      docsRepositoryRuntime.getComponentMetadata(name),
     )
   },
   useLocale: useDocsLocale,

@@ -1,0 +1,11 @@
+{
+  "name": "@fixture/element-plus-docs-consumer",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
+    "element-plus": "catalog:ui",
+    "vitepress": "catalog:",
+    "vue": "catalog:build"
+  }
+}

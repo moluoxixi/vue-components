@@ -18,7 +18,6 @@ setupElementPlus()
 `
 
 export const elementPlusDocsReplSetupSource = `import { install as installElementPlus } from 'element-plus'
-import * as elementPlusExports from 'element-plus'
 import { getCurrentInstance } from 'vue'
 
 let installed = false
@@ -30,19 +29,9 @@ export function setupElementPlus() {
   if (!instance)
     return
   const app = instance.appContext.app
-  if (typeof installElementPlus === 'function')
-    app.use({ install: installElementPlus })
-
-  // Some Element Plus browser builds expose the installer only as a named
-  // export. Register component exports as a compatibility fallback so the
-  // official playground source remains runnable across CDN build variants.
-  for (const [name, component] of Object.entries(elementPlusExports)) {
-    if (!name.startsWith('El') || !component || typeof component !== 'object')
-      continue
-    const componentName = component.name ?? component.__name
-    if (componentName)
-      app.component(name, component)
-  }
+  if (typeof installElementPlus !== 'function')
+    throw new TypeError('The configured Element Plus module does not export install().')
+  app.use({ install: installElementPlus })
   installed = true
 }
 `

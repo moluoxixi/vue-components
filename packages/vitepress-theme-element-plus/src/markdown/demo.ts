@@ -33,7 +33,7 @@ export interface ElementPlusDocsDemoExternalProjectContext extends ElementPlusDo
   sourceLanguage: 'JS' | 'TS'
 }
 
-export interface ElementPlusDocsDemoPluginOptions {
+interface ElementPlusDocsDemoPluginOptions {
   resolveExternalProjectSource?: (
     context: ElementPlusDocsDemoExternalProjectContext,
   ) => ElementPlusDocsExternalProjectSource | undefined

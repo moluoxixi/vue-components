@@ -67,9 +67,12 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, 'index.ts'),
-        markdown: resolve(__dirname, 'markdown.ts'),
-        repl: resolve(__dirname, 'src/repl-entry.ts'),
+        'element-plus-docs': resolve(__dirname, 'src/node/cli.ts'),
+        'index': resolve(__dirname, 'index.ts'),
+        'markdown': resolve(__dirname, 'markdown.ts'),
+        'repository': resolve(__dirname, 'repository.ts'),
+        'repository-node': resolve(__dirname, 'src/node/repository/index.ts'),
+        'repl': resolve(__dirname, 'src/repl-entry.ts'),
       },
       name: 'MoluoxixiElementPlusDocs',
       fileName: (_, entryName) => `${entryName}.js`,
@@ -86,16 +89,23 @@ export default defineConfig({
         '@vueuse/core',
         '@vue/repl',
         /^@vue\/repl\//,
+        '@vue/compiler-sfc',
         'nprogress',
         'normalize.css',
         'markdown-it-container',
         'eslint',
         'eslint-plugin-format',
         'typescript',
+        'jiti',
         'virtual:moluoxixi-element-plus-docs-consumer-styles',
         /^node:/,
       ],
       output: {
+        chunkFileNames: chunk => (
+          chunk.moduleIds.some(id => id.replaceAll('\\', '/').includes('/src/node/'))
+            ? 'node-[name]-[hash].js'
+            : '[name]-[hash].js'
+        ),
         inlineDynamicImports: false,
       },
     },

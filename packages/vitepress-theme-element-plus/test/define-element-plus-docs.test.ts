@@ -1,9 +1,10 @@
 import type { MarkdownRenderer } from 'vitepress'
 import type { ElementPlusDocsOptions } from '../index'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineElementPlusDocs } from '../index'
 
 describe('defineElementPlusDocs', () => {
+  afterEach(() => vi.unstubAllEnvs())
   it('creates an independent theme config from the minimal contract', () => {
     const config = defineElementPlusDocs({
       site: { title: 'Fixture' },
@@ -54,6 +55,16 @@ describe('defineElementPlusDocs', () => {
 
   it('fails with field-specific diagnostics for missing site identity', () => {
     expect(() => defineElementPlusDocs({ site: {} } as ElementPlusDocsOptions)).toThrow(/site\.title/)
+  })
+
+  it('requires an explicit resolved branch when edit links are enabled', () => {
+    expect(() => defineElementPlusDocs({
+      site: { title: 'Fixture' },
+      repository: {
+        editLinks: true,
+        url: 'https://git.example.test/acme/components',
+      },
+    })).toThrow(/repository\.defaultBranch/)
   })
 
   it('keeps locale language tags separate from VitePress route keys', () => {
@@ -129,5 +140,16 @@ describe('defineElementPlusDocs', () => {
     const resolved = plugin.resolveId('virtual:moluoxixi-element-plus-docs-consumer-styles')
 
     expect(plugin.load(resolved!)).toBe('import "@fixture/components.css"\nimport "@fixture/docs.css"\n')
+  })
+
+  it('binds the selected snapshot path injected by the docs CLI', () => {
+    vi.stubEnv('ELEMENT_PLUS_DOCS_REPOSITORY_SNAPSHOT_PATH', 'D:/fixture/.generated/repository/github.json')
+    const config = defineElementPlusDocs({ site: { title: 'Fixture' } })
+    const plugin = config.vite?.plugins?.[1] as {
+      resolveId: (id: string) => string | undefined
+    }
+
+    expect(plugin.resolveId('virtual:moluoxixi-repository-metadata-snapshot'))
+      .toBe('D:/fixture/.generated/repository/github.json')
   })
 })

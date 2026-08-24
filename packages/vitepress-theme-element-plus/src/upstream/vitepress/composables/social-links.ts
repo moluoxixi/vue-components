@@ -2,7 +2,7 @@ import type { DefaultTheme } from 'vitepress'
 import { useData } from 'vitepress'
 import { computed } from 'vue'
 
-type SocialLinksTheme = Pick<DefaultTheme.Config, 'socialLinks'> & { repository?: unknown }
+type SocialLinksTheme = Pick<DefaultTheme.Config, 'socialLinks'>
 
 export function resolveSocialLinks(theme: SocialLinksTheme) {
   const configured = Array.isArray(theme.socialLinks) ? theme.socialLinks : []
@@ -17,9 +17,7 @@ export function resolveSocialLinks(theme: SocialLinksTheme) {
           : 'Social link',
     }))
   }
-  return theme.repository
-    ? [{ link: String(theme.repository), icon: undefined, text: 'GitHub' }]
-    : []
+  return []
 }
 
 export function useSocialLinks() {

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stringify } from 'yaml'
 import { getLocalizedUtilities } from '../.vitepress/catalog/docs-i18n.ts'
@@ -30,7 +30,7 @@ for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>
         throw new Error(`refusing to overwrite unmanaged utility route: ${outputPath}`)
     }
 
-    const includePath = `${configured.sourceDocIncludePrefix}${utility.sourcePath}`
+    const includePath = relative(outputDirectory, sourcePath).replaceAll('\\', '/')
     const frontmatter = stringify({
       title: utility.packageName,
       description: utility.description,

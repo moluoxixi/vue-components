@@ -12,13 +12,13 @@ export function useEditLink() {
     const {
       repo,
       docsDir = '',
-      docsBranch = 'main',
+      docsBranch,
       docsRepo = repo,
       editLinks,
     } = theme.value
     const showEditLink = frontmatter.value.editLink ?? editLinks
     const { relativePath } = page.value
-    if (!showEditLink || !relativePath || !docsRepo)
+    if (!showEditLink || !relativePath || !docsRepo || !docsBranch)
       return null
     return createGitHubUrl(docsRepo, docsDir, docsBranch, relativePath, '', '')
   })

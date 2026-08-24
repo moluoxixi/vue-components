@@ -28,17 +28,21 @@ export const browserJavaScriptEntrypointAllowlist = Object.freeze({
     './antd',
   ],
   '@moluoxixi/rich-text-editor': ['.'],
-  '@moluoxixi/vitepress-theme-element-plus': ['./repl'],
+  '@moluoxixi/vitepress-theme-element-plus': ['./repl', './repository'],
 })
 
 export const browserJavaScriptEntrypointExclusions = Object.freeze({
-  '@moluoxixi/vitepress-theme-element-plus': ['.', './markdown'],
+  '@moluoxixi/vitepress-theme-element-plus': ['.', './markdown', './repository/node'],
 })
 
 export const browserStylesheetEntrypointAllowlist = Object.freeze({
   '@moluoxixi/components': ['./styles'],
   '@moluoxixi/rich-text-editor': ['./styles'],
   '@moluoxixi/vitepress-theme-element-plus': ['./repl.css'],
+})
+
+export const nodeJavaScriptRuntimeEntrypointAllowlist = Object.freeze({
+  '@moluoxixi/vitepress-theme-element-plus': ['./repository/node'],
 })
 
 export function importName(name) {
@@ -143,6 +147,24 @@ export function createNodeSmokeSource(runtimeEntries, consumerEntries) {
 
 export function createTypeSmokeSource(consumerEntries) {
   return consumerEntries.map(specifier => `import ${JSON.stringify(specifier)};`).join('\n')
+}
+
+export function getNodeRuntimeSpecifiers(
+  manifests,
+  allowlist = nodeJavaScriptRuntimeEntrypointAllowlist,
+) {
+  const manifestsByName = new Map(manifests.map(manifest => [manifest.name, manifest]))
+  return Object.entries(allowlist).flatMap(([packageName, subpaths]) => {
+    const manifest = manifestsByName.get(packageName)
+    if (!manifest)
+      throw new Error(`Node smoke package ${packageName} is not publishable.`)
+    const available = getTypedJavaScriptEntrypoints(manifest)
+    for (const subpath of subpaths) {
+      if (!available.includes(subpath))
+        throw new Error(`Node smoke entry ${getPublicSpecifier(packageName, subpath)} is not exported.`)
+    }
+    return subpaths.map(subpath => getPublicSpecifier(packageName, subpath))
+  })
 }
 
 export function createPackedConsumerManifest({
