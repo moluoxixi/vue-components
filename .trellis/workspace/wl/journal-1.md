@@ -28,3 +28,25 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 2: 文档运行时内容树收敛
+
+**Date**: 2026-08-24
+**Task**: 文档运行时内容树收敛
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+将中英文作者源投影到 ignored .generated/content，移除 40 个预提交路由壳，接入 srcDir/rewrite/search/dev watcher 与公开 Node 入口，补齐路径安全、发布包、Pages 和 README 文档地址验收。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc0cb804` | (see git log) |
+
+### Status
+
+[OK] **Completed**
