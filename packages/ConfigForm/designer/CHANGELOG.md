@@ -1,5 +1,16 @@
 # @moluoxixi/config-form-designer
 
+## 0.1.5
+
+### Patch Changes
+
+- Automatically release packages changed in a5b09dcff5c6.
+- Updated dependencies
+- Updated dependencies [e317c5c]
+  - @moluoxixi/config-form-core@0.2.4
+  - @moluoxixi/config-form-headless@0.2.4
+  - @moluoxixi/config-form@0.2.3
+
 ## 0.1.4
 
 ### Patch Changes

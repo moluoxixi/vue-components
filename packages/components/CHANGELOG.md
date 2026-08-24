@@ -1,5 +1,19 @@
 # @moluoxixi/components
 
+## 0.4.0
+
+### Minor Changes
+
+- e317c5c: Remove the `RichTextEditor` root export, subpath, auto-loader entry, and dependency. Import it from `@moluoxixi/rich-text-editor` instead.
+
+  Allow specifically typed fields with `readonlyRender` callbacks inside heterogeneous configured slot trees without weakening their model value type.
+
+### Patch Changes
+
+- Updated dependencies [e317c5c]
+  - @moluoxixi/config-form-headless@0.2.4
+  - @moluoxixi/config-form@0.2.3
+
 ## 0.3.0
 
 ### Minor Changes

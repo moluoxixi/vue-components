@@ -1,5 +1,11 @@
 # @moluoxixi/config-form-core
 
+## 0.2.4
+
+### Patch Changes
+
+- Automatically release packages changed in a5b09dcff5c6.
+
 ## 0.2.3
 
 ### Patch Changes

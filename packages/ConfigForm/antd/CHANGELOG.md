@@ -1,5 +1,14 @@
 # @moluoxixi/config-form-antd-vue
 
+## 0.2.3
+
+### Patch Changes
+
+- Automatically release packages changed in a5b09dcff5c6.
+- Updated dependencies [e317c5c]
+  - @moluoxixi/config-form-headless@0.2.4
+  - @moluoxixi/config-form@0.2.3
+
 ## 0.2.2
 
 ### Patch Changes

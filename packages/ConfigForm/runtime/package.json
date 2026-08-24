@@ -58,7 +58,7 @@
     "typecheck": "vue-tsc -p tsconfig.test.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form-headless": "^0.2.3",
+    "@moluoxixi/config-form-headless": "^0.2.4",
     "vue": "^3.5.0",
     "zod": "^3.23.0"
   },
