@@ -127,6 +127,15 @@ The standalone designer must also prove that the core is UI-framework independen
 - Extract other helpers only when at least two real consumers share the same behavior and ownership. Similar names alone are not sufficient when serialization, runtime, or framework semantics differ.
 - Move the adapter-neutral option-source types, input reader, option normalizer, cache key, and state snapshot helpers into Designer's shared public layer. Element Plus and Ant Design Vue retain adapter-named aliases and resolver lifecycle code for backward compatibility.
 
+### R17. 基于目录扫描的物料注册
+
+- Core 提供与 Vue、Vite 和具体 UI 库无关的确定性命名模块注册器；Headless 基于它将组件物料模块收敛为现有 `ConfigFormComponentRegistry`，Designer 基于它将设计器物料模块收敛为现有注册层。
+- Element Plus 与 Ant Design Vue 的配置化表单默认物料分别放入适配器自己的 `src/materials/<name>.ts`；两个设计器适配器使用相同的命名目录规则保存设计器物料定义和对应本地化信息。
+- 适配器聚合入口使用构建期 eager 文件扫描统一注册，不要求业务调用方维护第二份物料数组或对象清单。扫描结果按显式顺序和名称稳定排序，Windows 与 Linux 构建结果一致。
+- 文件名、模块声明名和设计器物料 key 的末段必须一致；空名称、危险名称、重复名称或不一致名称在注册阶段抛出稳定、可诊断的错误，禁止依赖对象覆盖或文件系统遍历顺序。
+- 保持现有公开常量、物料 key、组件绑定、readonly、setter、locale、用户层优先级和导出 JSON 完全兼容。文件扫描只生成适配器默认层，调用方注册仍可覆盖默认层。
+- `import.meta.glob` 只允许出现在适配器源码聚合入口；Core 与 Headless 的公共注册逻辑仅接收普通模块映射，因此不依赖 Vite，也可在 Vitest、Node 和其他构建工具中单独验证。
+
 ## Acceptance Criteria
 
 - [x] Playground opens with a 24-column root grid; the sample’s two-up sections are achieved with explicit 12-cell spans.
@@ -153,6 +162,10 @@ The standalone designer must also prove that the core is UI-framework independen
 - [x] Designer reaction editing consumes dependency-free Core configuration helpers with unchanged exported JSON and adapter behavior.
 - [x] Slot ownership remains explicit: Headless owns Vue-aware runtime slot contracts, while Designer owns serializable layout slots without a misleading shared Core API.
 - [x] Element Plus and Ant Design Vue option resolvers consume one Designer-owned portable option contract without changing their public adapter APIs.
+- [x] Element Plus 与 Ant Design Vue 的运行时组件物料由同名文件扫描生成现有默认注册表，不再维护手写聚合对象。
+- [x] 两个设计器适配器的物料定义与 locale 按物料名共置，并由同一确定性扫描注册流程生成现有公开物料数组和本地化对象。
+- [x] 注册器对名称不一致、危险名称和重复名称提供稳定诊断，并保持用户注册层覆盖适配器默认层的既有优先级。
+- [x] Core、Headless、运行时适配器和设计器适配器的单测、类型检查、构建及公开包边界验证通过。
 
 ## Out of Scope
 

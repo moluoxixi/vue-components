@@ -36,6 +36,10 @@
 34. [x] Replace Designer reaction protocol mutations with Core helpers while preserving visual behavior and exported JSON.
 35. [x] Verify the reuse boundary: Reaction execution/config remain in Core, Vue-aware slots remain in Headless, and Designer JSON slots remain document-owned.
 36. [x] Consolidate Element Plus and Ant Design Vue option-source contracts and pure normalization/cache helpers in Designer while preserving adapter APIs.
+37. [x] Add the deterministic Core named-module registry and Headless component-material specialization with focused error, ordering, and compatibility tests.
+38. [x] Move Element Plus and Ant Design Vue runtime aliases to `src/materials/<name>.ts` and generate their existing public component maps through eager file scanning.
+39. [x] Split both designer-adapter material catalogs into co-located named modules containing definition, order, and locale, then generate the existing public arrays/locales through the same registry contract.
+40. [x] Verify caller override precedence, material key/order parity, readonly/binding behavior, type declarations, builds, and published export boundaries across all affected ConfigForm packages.
 
 ## Validation Commands
 
@@ -66,6 +70,10 @@
 - [x] Core reducer depth guard returns `CONFIG_FORM_REACTION_DEPTH_EXCEEDED` instead of an uncontrolled recursion failure
 - [x] Core reaction configuration helper tests, cross-node reaction-id uniqueness, Designer options contract tests, and adapter compatibility tests
 - [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, package boundary verification, and live Element Plus/Ant Design Vue standalone-designer checks
+- [x] ConfigForm scoped ESLint, 196 affected-package tests, and all seven affected package typechecks
+- [x] `pnpm test:config-form-packages` with explicit Core build plus Core/Headless/Designer/adapter Node self-reference and declaration consumers
+- [x] Independent 17-item Element Plus and 22-item Ant Design Vue material/runtime/locale parity review
+- [ ] Full workspace lint/typecheck (blocked by unrelated in-progress docs/theme changes; ConfigForm scope is green)
 
 ## Risk Gates
 

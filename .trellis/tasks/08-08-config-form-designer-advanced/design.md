@@ -107,3 +107,15 @@ Core helpers preserve the Designer document's non-empty `then`, `setState.state`
 Slots do not share this ownership boundary. Headless runtime slots accept Vue components, render functions, and runtime contexts, so Headless remains their reusable public owner. Designer slots are serializable child arrays with material acceptance, path, history, and diagnostic semantics. A common Core slot abstraction would either import Vue or erase the contracts that make each slot system useful, so no such module is introduced.
 
 The two designer adapters do share one option-source protocol. Designer owns the serializable option/source/state types plus pure parsing, normalization, cache-key, and snapshot helpers. Adapter packages expose their existing Element/AntD names as type aliases and thin function wrappers, while Vue watchers, cancellation, injection keys, providers, and framework rendering remain adapter-owned.
+
+## Scanned Material Registries
+
+Core owns a generic named-module registry that accepts an already discovered module map. It validates safe names, verifies that a module declaration matches its source filename, rejects duplicates with source metadata, and emits entries in deterministic `order`/name/source order. It deliberately performs no filesystem access and imports neither Vue nor Vite.
+
+Headless adds the component-material specialization. A component material contains a semantic name plus the existing direct component or registration object. Converting scanned modules returns the same `ConfigFormComponentRegistry`, so Runtime, Renderer, readonly alias resolution, explicit field bindings, and caller overrides require no protocol change.
+
+Each Element Plus and Ant Design Vue runtime adapter has one `src/materials/<name>.ts` module per semantic alias. Its `components.ts` entry uses eager `import.meta.glob` and the Headless specialization to build the existing exported component map. The glob is a build-time adapter concern; published output contains ordinary static imports.
+
+Each designer adapter has one `src/materials/<name>.ts` module per namespaced material. A module co-locates its `DesignerMaterialDefinition`, order, and zh-CN material locale fragment. The adapter's `materials.ts` scans those modules, creates the existing ordered material array, and composes the existing locale object. Shared setters and component dependencies stay in a small adapter-local context module rather than being duplicated across every material file.
+
+The scanner is not an extension mechanism at application runtime. Caller-provided component maps and designer registry layers remain the supported extension surface and keep their current precedence. Scanning only removes hand-maintained default aggregation lists and makes adding a built-in material a one-file operation.
