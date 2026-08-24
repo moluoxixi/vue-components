@@ -4,13 +4,13 @@ import type {
   GitlabContributor,
   GitlabIssueSummary,
   GitlabMetadataSnapshot,
-} from '../.vitepress/gitlab-metadata-types.ts'
+} from '../.vitepress/repository/providers/gitlab.ts'
 import { createHash } from 'node:crypto'
 import {
   isExactGitlabProfileUrl,
   isTrustedGitlabWebUrl,
   resolveGitlabWebBaseUrl,
-} from '../.vitepress/gitlab-metadata-types.ts'
+} from '../.vitepress/repository/providers/gitlab.ts'
 import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface GitlabProjectResponse {

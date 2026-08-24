@@ -1,27 +1,27 @@
-import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from './gitee-metadata-types.ts'
-import type { GithubMetadataExpectation, GithubMetadataSnapshot } from './github-metadata-types.ts'
-import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from './gitlab-metadata-types.ts'
-import type { LocalMetadataExpectation, LocalMetadataSnapshot } from './local-metadata-types.ts'
 import type {
   RepositoryMetadataExpectation,
   RepositoryMetadataPayload,
-} from './repository-metadata-types.ts'
-import type { YunxiaoMetadataExpectation, YunxiaoMetadataSnapshot } from './yunxiao-metadata-types.ts'
+} from '../types.ts'
+import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from './gitee.ts'
+import type { GithubMetadataExpectation, GithubMetadataSnapshot } from './github.ts'
+import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from './gitlab.ts'
+import type { LocalMetadataExpectation, LocalMetadataSnapshot } from './local.ts'
+import type { YunxiaoMetadataExpectation, YunxiaoMetadataSnapshot } from './yunxiao.ts'
 import {
   createGiteeRepositoryMetadataActions,
   createGithubRepositoryMetadataActions,
   createGitlabRepositoryMetadataActions,
   createYunxiaoRepositoryMetadataActions,
 } from '@moluoxixi/vitepress-theme-element-plus'
-import { assertGiteeMetadataSnapshot } from './gitee-metadata-types.ts'
-import { assertGithubMetadataSnapshot } from './github-metadata-types.ts'
-import { assertGitlabMetadataSnapshot } from './gitlab-metadata-types.ts'
-import { assertLocalMetadataSnapshot } from './local-metadata-types.ts'
 import {
   createRepositoryMetadataProviderRegistry,
   defineRepositoryMetadataProvider,
-} from './repository-metadata-types.ts'
-import { assertYunxiaoMetadataSnapshot } from './yunxiao-metadata-types.ts'
+} from '../types.ts'
+import { assertGiteeMetadataSnapshot } from './gitee.ts'
+import { assertGithubMetadataSnapshot } from './github.ts'
+import { assertGitlabMetadataSnapshot } from './gitlab.ts'
+import { assertLocalMetadataSnapshot } from './local.ts'
+import { assertYunxiaoMetadataSnapshot } from './yunxiao.ts'
 
 function requireExpectationValue(
   providerId: string,
@@ -183,7 +183,7 @@ export const githubMetadataProvider = defineRepositoryMetadataProvider({
     assertGithubMetadataSnapshot(snapshot, githubExpectation(expectation))
     return normalizeGithubMetadata(snapshot)
   },
-  snapshotFile: 'github-metadata.json',
+  snapshotFile: 'github.json',
 })
 
 export const giteeMetadataProvider = defineRepositoryMetadataProvider({
@@ -209,7 +209,7 @@ export const giteeMetadataProvider = defineRepositoryMetadataProvider({
       payload: normalizeGiteeMetadata(snapshot),
     }
   },
-  snapshotFile: 'gitee-metadata.json',
+  snapshotFile: 'gitee.json',
 })
 
 export const gitlabMetadataProvider = defineRepositoryMetadataProvider({
@@ -235,7 +235,7 @@ export const gitlabMetadataProvider = defineRepositoryMetadataProvider({
       payload: normalizeGitlabMetadata(snapshot),
     }
   },
-  snapshotFile: 'gitlab-metadata.json',
+  snapshotFile: 'gitlab.json',
 })
 
 export const localMetadataProvider = defineRepositoryMetadataProvider({
@@ -254,7 +254,7 @@ export const localMetadataProvider = defineRepositoryMetadataProvider({
     assertLocalMetadataSnapshot(snapshot, localExpectation(expectation))
     return normalizeLocalMetadata(snapshot)
   },
-  snapshotFile: 'local-metadata.json',
+  snapshotFile: 'local.json',
 })
 
 export const yunxiaoMetadataProvider = defineRepositoryMetadataProvider({
@@ -274,7 +274,7 @@ export const yunxiaoMetadataProvider = defineRepositoryMetadataProvider({
     assertYunxiaoMetadataSnapshot(snapshot, yunxiaoExpectation(expectation))
     return normalizeYunxiaoMetadata(snapshot)
   },
-  snapshotFile: 'yunxiao-metadata.json',
+  snapshotFile: 'yunxiao.json',
 })
 
 export const repositoryMetadataProviders = createRepositoryMetadataProviderRegistry([

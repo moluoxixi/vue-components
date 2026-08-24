@@ -4,11 +4,11 @@ import type {
   GithubContributorProfile,
   GithubIssueSummary,
   GithubMetadataSnapshot,
-} from '../.vitepress/github-metadata-types.ts'
+} from '../.vitepress/repository/providers/github.ts'
 import {
   isExactGithubProfileUrl,
   isTrustedGithubAvatarUrl,
-} from '../.vitepress/github-metadata-types.ts'
+} from '../.vitepress/repository/providers/github.ts'
 import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface GithubRefResponse {
@@ -89,14 +89,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeGithubProfile(value: unknown, expectedLogin: string): GithubContributorProfile {
+  const isBotProfile = isRecord(value)
+    && typeof value.type === 'string'
+    && (value.type === 'Bot' || expectedLogin.endsWith('[bot]'))
   if (!isRecord(value)
     || value.login !== expectedLogin
-    || typeof value.name !== 'string'
-    || !value.name.trim()
     || typeof value.avatar_url !== 'string'
-    || typeof value.html_url !== 'string') {
+    || typeof value.html_url !== 'string'
+    || (value.name === null && !isBotProfile)
+    || (value.name !== null && (typeof value.name !== 'string' || !value.name.trim()))) {
     throw new TypeError(`GitHub user profile mismatch for ${expectedLogin}`)
   }
+  const name = typeof value.name === 'string' && value.name.trim()
+    ? value.name.trim()
+    : expectedLogin
   let avatarUrl: string
   try {
     const normalizedAvatarUrl = new URL(value.avatar_url)
@@ -113,7 +119,7 @@ function normalizeGithubProfile(value: unknown, expectedLogin: string): GithubCo
   return {
     avatarUrl,
     login: expectedLogin,
-    name: value.name.trim(),
+    name,
     profileUrl: value.html_url,
   }
 }

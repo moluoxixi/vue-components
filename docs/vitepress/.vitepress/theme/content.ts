@@ -1,8 +1,8 @@
 import type { ComponentApiContract } from '@moluoxixi/ai-doc-assistant/api-contract'
 import type { ElementPlusDocsComponentResolverInput } from '@moluoxixi/vitepress-theme-element-plus'
 import type { Component } from 'vue'
-import type { ComponentIconName } from '../component-manifest'
-import type { DocsLocale } from '../docs-site'
+import type { ComponentIconName } from '../catalog/component-manifest'
+import type { DocsLocale } from '../site/docs-site'
 import {
   Blocks,
   CalendarRange,
@@ -21,27 +21,25 @@ import {
 import {
   createElementPlusDocsContent,
   createElementPlusDocsSfcCompiler,
+  resolveRepositoryComponentMeta,
+  resolveRepositoryContributors,
 } from '@moluoxixi/vitepress-theme-element-plus'
-import { getLocalizedComponentGroups } from '../docs-i18n'
-import {
-  componentDocsSourcePath,
-  docsRoutePath,
-  docsSite,
-  getDocsLocaleConfig,
-} from '../docs-site'
+import { getDocumentedComponent } from '../catalog/component-manifest'
+import { getLocalizedComponentGroups } from '../catalog/docs-i18n'
 import {
   configuredRepositoryMetadataContentProvider,
   getComponentRepositoryMetadata,
-} from '../repository-metadata'
+} from '../repository/metadata'
 import {
   createRepositoryMetadataActionInput,
   repositoryMetadataSelection,
-} from '../repository-metadata-selection'
-import { useDocsLocale } from './composables/use-docs-locale'
+} from '../repository/selection'
 import {
-  resolveDocsRepositoryComponentMeta,
-  resolveDocsRepositoryContributors,
-} from './repository-content'
+  docsRoutePath,
+  docsSite,
+  getDocsLocaleConfig,
+} from '../site/docs-site'
+import { useDocsLocale } from './composables/use-docs-locale'
 
 const iconByName: Record<ComponentIconName, Component> = {
   'blocks': Blocks,
@@ -59,20 +57,21 @@ const iconByName: Record<ComponentIconName, Component> = {
   'tree-pine': TreePine,
 }
 
-const apiModules = import.meta.glob<ComponentApiContract>('../api/*.json', {
+const apiModules = import.meta.glob<ComponentApiContract>('../../.generated/api/*.json', {
   eager: true,
   import: 'default',
 })
 const apiByName = Object.fromEntries(
   Object.values(apiModules).map(api => [api.name, api]),
 ) as Record<string, ComponentApiContract>
+const richTextEditorPackageName = getDocumentedComponent('RichTextEditor').packageName
 
 export const supportedLocalSfcModules = Object.freeze([
   'vue',
   'element-plus',
   'element-plus/dist/index.css',
   docsSite.packageName,
-  docsSite.richTextEditorPackageName,
+  richTextEditorPackageName,
   docsSite.packageStylesImport,
 ])
 
@@ -89,7 +88,7 @@ const compileLocalSfc = createElementPlusDocsSfcCompiler({
       'element-plus': ElementPlusRuntime,
       'element-plus/dist/index.css': {},
       [docsSite.packageName]: Components,
-      [docsSite.richTextEditorPackageName]: RichTextEditor,
+      [richTextEditorPackageName]: RichTextEditor,
       [docsSite.packageStylesImport]: {},
     }
   },
@@ -134,10 +133,11 @@ export function resolveDocsComponentMeta({
   slug,
 }: ElementPlusDocsComponentResolverInput) {
   const metadata = getComponentRepositoryMetadata(name)
-  const docsSourcePath = componentDocsSourcePath(name)
+  const component = getDocumentedComponent(name)
+  const docsSourcePath = component.docsSourcePath
   const sourcePath = docsSourcePath
   const actionInput = createRepositoryMetadataActionInput(repositoryMetadataSelection, name)
-  const repositoryContent = resolveDocsRepositoryComponentMeta(
+  const repositoryContent = resolveRepositoryComponentMeta(
     configuredRepositoryMetadataContentProvider,
     metadata,
     {
@@ -151,7 +151,7 @@ export function resolveDocsComponentMeta({
 
   return {
     hasSourceDoc,
-    importStatement: `import { ${name} } from '${docsSite.packageName}';`,
+    importStatement: `import { ${name} } from '${component.packageName}';`,
     name,
     overviewHref: link(docsSite.routes.components),
     ...repositoryContent,
@@ -211,7 +211,7 @@ export const docsContent = createElementPlusDocsContent({
   },
   resolveComponentMeta: resolveDocsComponentMeta,
   resolveContributors({ name }) {
-    return resolveDocsRepositoryContributors(
+    return resolveRepositoryContributors(
       configuredRepositoryMetadataContentProvider,
       getComponentRepositoryMetadata(name),
     )

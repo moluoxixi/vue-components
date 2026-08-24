@@ -18,12 +18,12 @@ Provide production-grade GitLab, Gitee, and Yunxiao Codeup repository integratio
 
 - Export the platform-neutral metadata contract, provider registry, capability policy, and platform URL action adapters from `@moluoxixi/vitepress-theme-element-plus`.
 - Keep site credentials, API clients, component manifests, provider selection, snapshots, and snapshot validation in `docs/vitepress`.
-- Preserve existing GitHub/local behavior and package API compatibility.
+- Preserve existing GitHub/local provider behavior. RichTextEditor is intentionally removed from `@moluoxixi/components` because the user confirmed there are no legacy consumers; its independent package remains authoritative.
 
 ### R2. Strict Provider Selection
 
 - Register independent `gitlab`, `gitee`, and `yunxiao` providers in addition to `github` and `local`.
-- Use separate provider-scoped configuration and snapshot files. Do not provide `auto` selection or cross-provider fallback.
+- Use separate provider-scoped configuration and generated snapshot files. Do not provide `auto` selection or cross-provider fallback.
 - Allow repository-level capability downgrades so disabled or unavailable platform features are not rendered.
 
 ### R3. Platform Deliverables
@@ -31,7 +31,7 @@ Provide production-grade GitLab, Gitee, and Yunxiao Codeup repository integratio
 - GitLab: implement GitLab.com and self-managed support, including subgroup project paths and repository-level Issues state.
 - Gitee: implement public-cloud support and configurable enterprise base URLs without assuming enterprise API compatibility.
 - Yunxiao: implement Codeup repository metadata and links using canonical API data; expose no repository Issue actions and do not map Projex work items to Issues.
-- Each platform must have its own schema, collector, sync command, validation command, deterministic tests, and tracked offline snapshot.
+- Each platform must have its own schema, collector, sync command, validation command, and deterministic fixture tests. Real synchronized snapshots are generated under `docs/vitepress/.generated/` and are not tracked by Git.
 
 ### R4. Real Project Verification
 
@@ -44,7 +44,7 @@ Provide production-grade GitLab, Gitee, and Yunxiao Codeup repository integratio
 
 - Keep `docsSite.metadataProvider` set to `github` for production.
 - Run deterministic provider fixtures, mocked clients, snapshot validators, typechecks, and docs/theme builds in existing GitHub Actions CI.
-- Do not require live external tokens or live platform availability in required CI.
+- Generate only the selected production GitHub snapshot before the docs build using the workflow's GitHub token. Do not require GitLab, Gitee, or Yunxiao tokens or availability in required CI.
 - Do not add GitLab/Gitee/Yunxiao deployment pipelines unless separately requested.
 
 ## Task Map
@@ -61,7 +61,7 @@ Execution order is GitLab, Gitee, GitLab self-managed/profiles, Yunxiao, then Te
 
 - [ ] The theme package publicly exports reusable provider contracts and GitHub/GitLab/Gitee/Yunxiao action adapters.
 - [ ] The site registry contains `github`, `local`, `gitlab`, `gitee`, and `yunxiao`, while production selection remains `github`.
-- [ ] Every provider uses an independent schema and snapshot with no automatic fallback.
+- [ ] Every provider uses an independent schema and generated snapshot with no automatic fallback; runtime snapshots are absent from Git.
 - [ ] Repository-level capabilities match actual platform/project behavior; unsupported data and actions are absent from the UI.
 - [ ] GitLab, Gitee, and Yunxiao collectors pass deterministic authentication, pagination, retry, filtering, validation, and atomic-write tests.
 - [ ] Real projects prove the enabled links and metadata for all three platforms, with credentials absent from tracked files, snapshots, build output, and logs.

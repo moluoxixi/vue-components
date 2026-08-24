@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { getDocsMessages } from '../docs-i18n'
-import { docsSite } from '../docs-site'
+import { getDocsMessages } from '../catalog/docs-i18n'
+import { docsSite } from '../site/docs-site'
 import { resolveDocsComponentMeta } from './content'
 
 describe('docs component metadata', () => {
@@ -19,6 +19,9 @@ describe('docs component metadata', () => {
     )
     expect(metadata.editHref).toBe(
       `${docsSite.repositories.github.url}/edit/main/packages/rich-text-editor/docs/index.en.md`,
+    )
+    expect(metadata.importStatement).toBe(
+      'import { RichTextEditor } from \'@moluoxixi/rich-text-editor\';',
     )
   })
 })

@@ -1,17 +1,17 @@
 import type { ElementPlusDocsDemoSourceHrefContext } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import type MarkdownIt from 'markdown-it'
-import type { DocsRepositoryMetadataSelection } from '../repository-metadata-selection'
+import type { DocsRepositoryMetadataSelection } from '../repository/selection'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectElementPlusDocsDemos } from '@moluoxixi/vitepress-theme-element-plus/markdown'
-import { getLocalizedComponents } from '../docs-i18n'
-import { componentDocsSourcePath, docsLocales } from '../docs-site'
+import { getLocalizedComponents } from '../catalog/docs-i18n'
 import {
   createRepositoryMetadataActionInput,
   repositoryMetadataSelection,
-} from '../repository-metadata-selection'
-import { repositoryMetadataProviderSupports } from '../repository-metadata-types'
+} from '../repository/selection'
+import { repositoryMetadataProviderSupports } from '../repository/types'
+import { docsLocales } from '../site/docs-site'
 
 interface MarkdownEnvironment {
   relativePath?: string
@@ -44,7 +44,7 @@ export function createDocsDemoSourceHrefResolver(
     for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>) {
       const configured = docsLocales[locale]
       for (const component of getLocalizedComponents(locale)) {
-        const sourceRelativePath = slash(`${componentDocsSourcePath(component.name)}/${configured.sourceDoc}`)
+        const sourceRelativePath = slash(`${component.docsSourcePath}/${configured.sourceDoc}`)
         const sourcePath = resolve(root, sourceRelativePath)
         if (!existsSync(sourcePath))
           continue

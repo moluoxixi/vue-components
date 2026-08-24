@@ -1,6 +1,6 @@
 import selectedSnapshot from 'virtual:moluoxixi-repository-metadata-snapshot'
-import { repositoryMetadataProviders } from './repository-metadata-providers'
-import { repositoryMetadataSelection } from './repository-metadata-selection'
+import { repositoryMetadataProviders } from './providers'
+import { repositoryMetadataSelection } from './selection'
 
 export const configuredRepositoryMetadataProvider = repositoryMetadataSelection.provider
 

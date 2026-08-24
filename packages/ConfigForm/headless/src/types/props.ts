@@ -88,13 +88,13 @@ export interface ConfigFormFieldSlotContext<
 
 export interface ConfigFormReadonlyRenderContext<
   TValues extends ConfigFormValues = ConfigFormValues,
-  TComponent = Component | string,
+  _TComponent = Component | string,
   TFieldAttrs = ConfigFormAttrs,
   TCellAttrs = ConfigFormAttrs,
   TValue = unknown,
 > {
-  /** 当前字段配置。 */
-  field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  /** 当前字段配置；异构 slot 树只承诺共享的组件边界。 */
+  field: ConfigFormField<TValues, Component | string, TFieldAttrs, TCellAttrs>
   /** 当前表单值快照。 */
   model: TValues
   /** 当前字段值。 */

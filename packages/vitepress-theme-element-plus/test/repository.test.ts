@@ -7,6 +7,8 @@ import {
   createRepositoryMetadataProviderRegistry,
   createYunxiaoRepositoryMetadataActions,
   defineRepositoryMetadataProvider,
+  resolveRepositoryComponentMeta,
+  resolveRepositoryContributors,
 } from '../index'
 
 const noCapabilities = {
@@ -20,6 +22,54 @@ const noCapabilities = {
 } as const
 
 describe('repository provider public contract', () => {
+  it('maps normalized provider capabilities to documentation content', () => {
+    const metadata = {
+      commits: [{
+        author: { name: 'Fixture User' },
+        date: '2026-08-24T00:00:00.000Z',
+        message: 'docs: fixture',
+        sha: 'a'.repeat(40),
+        shortSha: 'a'.repeat(7),
+        url: 'https://example.test/commit/a',
+      }],
+      contributors: [{ contributions: 1, id: 'fixture:1', name: 'Fixture User' }],
+      openIssueCount: 1,
+      path: 'src/Fixture',
+    }
+    const input = {
+      defaultBranch: 'main',
+      editPath: 'src/Fixture/docs/index.md',
+      issueTitlePrefix: '[Fixture]',
+      repositoryUrl: 'https://github.com/example/project',
+      sourcePath: 'src/Fixture',
+    }
+    const githubProvider = {
+      actions: createGithubRepositoryMetadataActions(),
+      capabilities: Object.fromEntries(
+        Object.keys(noCapabilities).map(capability => [capability, true]),
+      ) as Record<keyof typeof noCapabilities, true>,
+    }
+    const localProvider = {
+      capabilities: {
+        ...noCapabilities,
+        commitHistory: true,
+        contributors: true,
+      },
+    }
+
+    const githubContent = resolveRepositoryComponentMeta(githubProvider, metadata, input)
+    const localContent = resolveRepositoryComponentMeta(localProvider, metadata, input)
+
+    expect(githubContent.sourceHref).toContain('/tree/main/src/Fixture')
+    expect(githubContent.editHref).toContain('/edit/main/src/Fixture/docs/index.md')
+    expect(githubContent.newIssueHref).toContain('/issues/new?title=')
+    expect(githubContent.openIssueCount).toBe(1)
+    expect(localContent.commits).toEqual(metadata.commits)
+    expect(localContent).not.toHaveProperty('openIssueCount')
+    expect(localContent.sourceHref).toBeUndefined()
+    expect(resolveRepositoryContributors(localProvider, metadata)).toEqual(metadata.contributors)
+  })
+
   it('creates exact GitHub and GitLab actions with segment-safe paths', () => {
     const github = createGithubRepositoryMetadataActions()
     const gitlab = createGitlabRepositoryMetadataActions()

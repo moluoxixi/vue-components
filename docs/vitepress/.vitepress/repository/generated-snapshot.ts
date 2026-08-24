@@ -1,9 +1,9 @@
-import { fileURLToPath } from 'node:url'
-import { repositoryMetadataProviders } from './repository-metadata-providers.ts'
+import { repositoryMetadataSnapshotPath as resolveSnapshotPath } from '../site/generated-paths.ts'
+import { repositoryMetadataProviders } from './providers/index.ts'
 
 export const repositoryMetadataSnapshotId = 'virtual:moluoxixi-repository-metadata-snapshot'
 
 export function repositoryMetadataSnapshotPath(providerId: string): string {
   const provider = repositoryMetadataProviders.get(providerId)
-  return fileURLToPath(new URL(`./${provider.snapshotFile}`, import.meta.url))
+  return resolveSnapshotPath(provider.snapshotFile)
 }

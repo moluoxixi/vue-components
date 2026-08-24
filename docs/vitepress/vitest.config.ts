@@ -1,9 +1,9 @@
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
-import { createComponentAutoLoadPlugins } from './.vitepress/auto-loaders'
-import { docsSite } from './.vitepress/docs-site'
-import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './.vitepress/repository-metadata-alias'
+import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './.vitepress/repository/generated-snapshot'
+import { createComponentAutoLoadPlugins } from './.vitepress/site/auto-loaders'
+import { docsSite } from './.vitepress/site/docs-site'
 
 export default defineConfig({
   plugins: [vue(), ...createComponentAutoLoadPlugins()],

@@ -4,13 +4,13 @@ import type {
   LocalContributor,
   LocalMetadataExpectation,
   LocalMetadataSnapshot,
-} from '../.vitepress/local-metadata-types.ts'
+} from '../.vitepress/repository/providers/local.ts'
 import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { renameSync, rmSync, writeFileSync } from 'node:fs'
-import { relative } from 'node:path'
+import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import process from 'node:process'
-import { assertLocalMetadataSnapshot } from '../.vitepress/local-metadata-types.ts'
+import { assertLocalMetadataSnapshot } from '../.vitepress/repository/providers/local.ts'
 
 export interface LocalComponentSource {
   name: string
@@ -30,11 +30,6 @@ export interface WriteLocalMetadataOptions {
   expectation: LocalMetadataExpectation
   outputPath: string
   snapshot: LocalMetadataSnapshot
-}
-
-export interface StageLocalMetadataOptions {
-  outputPath: string
-  repositoryRoot: string
 }
 
 interface ParsedLocalCommit extends LocalCommit {
@@ -183,6 +178,7 @@ export function createLocalMetadata(options: CreateLocalMetadataOptions): LocalM
 
 export function writeLocalMetadata(options: WriteLocalMetadataOptions): void {
   assertLocalMetadataSnapshot(options.snapshot, options.expectation)
+  mkdirSync(dirname(options.outputPath), { recursive: true })
   const temporaryPath = `${options.outputPath}.${process.pid}.${randomUUID()}.tmp`
 
   try {
@@ -192,12 +188,4 @@ export function writeLocalMetadata(options: WriteLocalMetadataOptions): void {
   finally {
     rmSync(temporaryPath, { force: true })
   }
-}
-
-export function stageLocalMetadata(options: StageLocalMetadataOptions): void {
-  const relativeOutputPath = normalizePath(relative(options.repositoryRoot, options.outputPath))
-  execFileSync('git', ['-C', options.repositoryRoot, 'add', '--', relativeOutputPath], {
-    stdio: 'inherit',
-    windowsHide: true,
-  })
 }

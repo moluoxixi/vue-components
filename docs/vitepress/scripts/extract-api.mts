@@ -6,20 +6,24 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { ServerContext } from '@moluoxixi/ai-doc-assistant'
 import { normalizeComponentApiContract } from '@moluoxixi/ai-doc-assistant/api-contract'
-import { documentedComponentNames, documentedComponents } from '../.vitepress/component-manifest.ts'
-import { docsSite } from '../.vitepress/docs-site.ts'
+import {
+  documentedApiComponentEntries,
+  documentedComponentNames,
+  documentedComponents,
+} from '../.vitepress/catalog/component-manifest.ts'
+import { docsGeneratedApiDirectory } from '../.vitepress/site/generated-paths.ts'
 import { syncApiOutputDirectory } from './api-output.mts'
 import { createTypeDetail } from './api-type-detail.mts'
 import { createComponentRoutePaths } from './component-routes.mts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(scriptDir, '../../..')
-const outDir = resolve(scriptDir, '../.vitepress/api')
+const outDir = docsGeneratedApiDirectory
 
 async function main(): Promise<void> {
   const context = new ServerContext({
     root,
-    componentEntries: [...docsSite.apiComponentEntries],
+    componentEntries: [...documentedApiComponentEntries],
     mode: 'content',
   })
 

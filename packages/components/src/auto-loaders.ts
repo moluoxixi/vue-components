@@ -23,7 +23,6 @@ export const componentNames = [
   'RequestCascader',
   'RequestSelectV2',
   'RequestTreeSelect',
-  'RichTextEditor',
 ] as const
 
 const componentNameSet = new Set<string>(componentNames)

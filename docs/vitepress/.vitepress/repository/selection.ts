@@ -2,10 +2,10 @@ import type {
   RepositoryMetadataExpectation,
   RepositoryMetadataProvider,
   RepositoryMetadataProviderRegistry,
-} from './repository-metadata-types.ts'
-import { docsSite } from './docs-site.ts'
-import { repositoryMetadataExpectations } from './repository-metadata-expectation.ts'
-import { repositoryMetadataProviders } from './repository-metadata-providers.ts'
+} from './types.ts'
+import { docsSite } from '../site/docs-site.ts'
+import { repositoryMetadataExpectations } from './expectation.ts'
+import { repositoryMetadataProviders } from './providers/index.ts'
 
 const repositoryProviderLabels: Readonly<Record<string, string>> = {
   gitee: 'Gitee',

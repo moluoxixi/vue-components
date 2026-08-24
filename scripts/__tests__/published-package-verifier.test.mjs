@@ -83,7 +83,6 @@ describe('published package verifier helpers', () => {
       './RequestCascader',
       './RequestSelectV2',
       './RequestTreeSelect',
-      './RichTextEditor',
       './configForm',
       './element',
       './antd',

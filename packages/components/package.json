@@ -96,11 +96,6 @@
       "types": "./dist/src/RequestTreeSelect/index.d.ts",
       "import": "./dist/RequestTreeSelect.js"
     },
-    "./RichTextEditor": {
-      "source": "./src/RichTextEditor/index.ts",
-      "types": "./dist/src/RichTextEditor/index.d.ts",
-      "import": "./dist/RichTextEditor.js"
-    },
     "./configForm": {
       "source": "./src/configForm.ts",
       "types": "./dist/src/configForm.d.ts",
@@ -145,7 +140,6 @@
     "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/hooks": "workspace:*",
-    "@moluoxixi/rich-text-editor": "workspace:*",
     "dayjs": "catalog:build",
     "sortablejs": "catalog:"
   },

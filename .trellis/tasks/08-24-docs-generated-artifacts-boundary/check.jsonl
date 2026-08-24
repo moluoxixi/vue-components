@@ -1,0 +1,7 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/docs/frontend/quality-guidelines.md", "reason": "Verify generated outputs stay ignored, selected-provider sync is strict and observable, and CI/build lifecycle matches the contract."}
+{"file": ".trellis/spec/components/frontend/index.md", "reason": "Verify no RichTextEditor compatibility surface remains in the components package or published artifacts."}
+{"file": ".trellis/spec/rich-text-editor/frontend/index.md", "reason": "Verify docs and playground consumers continue to use the independent package."}
+{"file": ".trellis/spec/vitepress-theme-element-plus/frontend/index.md", "reason": "Verify the repository content adapter is exported, tested, and project-neutral in the theme package."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Verify cross-layer path, lifecycle, and generated-output consistency."}
+{"file": ".trellis/spec/config-form-headless/frontend/index.md", "reason": "Verify the readonly render context preserves precise field values while remaining assignable in heterogeneous slot trees."}

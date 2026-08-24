@@ -21,6 +21,7 @@ Local implementation for all three children is approved and in progress. Real-pr
 
 - [x] Confirm all five provider IDs are registered and production remains `github`.
 - [x] Validate all non-placeholder provider snapshots independently and prove cross-provider fallback is impossible.
+- [ ] Complete `08-24-docs-generated-artifacts-boundary`: move runtime snapshots to the ignored generated directory and replace committed production snapshots with deterministic fixtures.
 - [x] Run the complete GitHub Actions-equivalent quality suite and inspect the published theme package exports.
 - [ ] Verify Chinese/English platform documentation and the three retained real-project records.
 - [ ] Review final commits/diffs, update approved project knowledge where warranted, and archive all child and parent tasks.

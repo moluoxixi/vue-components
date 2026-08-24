@@ -1,11 +1,11 @@
+import type { DocsLocale } from '../site/docs-site.ts'
 import type { DocComponent, DocComponentGroup } from './component-manifest.ts'
-import type { DocsLocale } from './docs-site.ts'
 import type { DocUtility, DocUtilityGroup } from './utility-manifest.ts'
+import { localePath as createLocalePath, defaultDocsLocale, docsLocales } from '../site/docs-site.ts'
 import { componentGroups } from './component-manifest.ts'
-import { localePath as createLocalePath, defaultDocsLocale, docsLocales } from './docs-site.ts'
 import { utilityGroups } from './utility-manifest.ts'
 
-export type { DocsLocale } from './docs-site.ts'
+export type { DocsLocale } from '../site/docs-site.ts'
 
 export interface DocsMessages {
   siteDescription: string

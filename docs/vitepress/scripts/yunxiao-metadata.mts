@@ -4,9 +4,9 @@ import type {
   YunxiaoComponentMetadata,
   YunxiaoContributor,
   YunxiaoMetadataSnapshot,
-} from '../.vitepress/yunxiao-metadata-types.ts'
+} from '../.vitepress/repository/providers/yunxiao.ts'
 import { createHash } from 'node:crypto'
-import { isTrustedYunxiaoAvatarUrl } from '../.vitepress/yunxiao-metadata-types.ts'
+import { isTrustedYunxiaoAvatarUrl } from '../.vitepress/repository/providers/yunxiao.ts'
 import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface YunxiaoRepositoryResponse {

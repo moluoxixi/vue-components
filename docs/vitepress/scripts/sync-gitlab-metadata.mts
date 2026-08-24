@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 
-import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from '../.vitepress/gitlab-metadata-types.ts'
+import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from '../.vitepress/repository/providers/gitlab.ts'
 import type { AtomicFileSystem } from './atomic-metadata-write.mts'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { documentedComponents } from '../.vitepress/component-manifest.ts'
-import { docsSite } from '../.vitepress/docs-site.ts'
-import { assertGitlabMetadataSnapshot } from '../.vitepress/gitlab-metadata-types.ts'
-import { repositoryMetadataExpectations } from '../.vitepress/repository-metadata-expectation.ts'
+import { documentedComponents } from '../.vitepress/catalog/component-manifest.ts'
+import { repositoryMetadataExpectations } from '../.vitepress/repository/expectation.ts'
+import { repositoryMetadataSnapshotPath } from '../.vitepress/repository/generated-snapshot.ts'
+import { assertGitlabMetadataSnapshot } from '../.vitepress/repository/providers/gitlab.ts'
+import { docsSite } from '../.vitepress/site/docs-site.ts'
 import { defaultAtomicFileSystem, writeJsonAtomically } from './atomic-metadata-write.mts'
 import { createGitlabMetadata } from './gitlab-metadata.mts'
 
@@ -40,8 +41,7 @@ async function main(): Promise<void> {
   const expectation = repositoryMetadataExpectations.gitlab
   const config = docsSite.repositories.gitlab
   const token = process.env.GITLAB_TOKEN
-  const scriptDir = dirname(fileURLToPath(import.meta.url))
-  const outputPath = resolve(scriptDir, '../.vitepress/gitlab-metadata.json')
+  const outputPath = repositoryMetadataSnapshotPath('gitlab')
   const snapshot = await syncGitlabMetadata(() => createGitlabMetadata({
     apiBaseUrl: config.apiBaseUrl,
     authentication: config.authentication,

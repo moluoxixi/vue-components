@@ -2,8 +2,8 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { getLocalizedComponents } from '../../.vitepress/docs-i18n.ts'
-import { docsLocales } from '../../.vitepress/docs-site.ts'
+import { getLocalizedComponents } from '../../.vitepress/catalog/docs-i18n.ts'
+import { docsLocales } from '../../.vitepress/site/docs-site.ts'
 import { GENERATED_COMPONENT_ROUTE_MARKER } from '../component-routes.mts'
 
 describe('generated searchable component routes', () => {

@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 
-import type { YunxiaoMetadataExpectation, YunxiaoMetadataSnapshot } from '../.vitepress/yunxiao-metadata-types.ts'
+import type { YunxiaoMetadataExpectation, YunxiaoMetadataSnapshot } from '../.vitepress/repository/providers/yunxiao.ts'
 import type { AtomicFileSystem } from './atomic-metadata-write.mts'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { documentedComponents } from '../.vitepress/component-manifest.ts'
-import { docsSite } from '../.vitepress/docs-site.ts'
-import { repositoryMetadataExpectations } from '../.vitepress/repository-metadata-expectation.ts'
-import { assertYunxiaoMetadataSnapshot } from '../.vitepress/yunxiao-metadata-types.ts'
+import { documentedComponents } from '../.vitepress/catalog/component-manifest.ts'
+import { repositoryMetadataExpectations } from '../.vitepress/repository/expectation.ts'
+import { repositoryMetadataSnapshotPath } from '../.vitepress/repository/generated-snapshot.ts'
+import { assertYunxiaoMetadataSnapshot } from '../.vitepress/repository/providers/yunxiao.ts'
+import { docsSite } from '../.vitepress/site/docs-site.ts'
 import { defaultAtomicFileSystem, writeJsonAtomically } from './atomic-metadata-write.mts'
 import { createYunxiaoMetadata } from './yunxiao-metadata.mts'
 
@@ -40,8 +41,7 @@ async function main(): Promise<void> {
   const expectation = repositoryMetadataExpectations.yunxiao
   const config = docsSite.repositories.yunxiao
   const token = process.env.YUNXIAO_TOKEN ?? ''
-  const scriptDir = dirname(fileURLToPath(import.meta.url))
-  const outputPath = resolve(scriptDir, '../.vitepress/yunxiao-metadata.json')
+  const outputPath = repositoryMetadataSnapshotPath('yunxiao')
   const snapshot = await syncYunxiaoMetadata(() => createYunxiaoMetadata({
     apiBaseUrl: config.apiBaseUrl,
     apiMode: expectation.apiMode,

@@ -20,6 +20,6 @@
     "isolatedModules": true,
     "skipLibCheck": true
   },
-  "include": ["env.d.ts", "vitest.config.ts", ".vitepress/**/*.ts", ".vitepress/**/*.vue", "scripts/**/*.mts", "scripts/**/*.ts"],
-  "exclude": [".vitepress/cache", ".vitepress/dist", "api", "dist"]
+  "include": ["env.d.ts", "vitest.config.ts", ".vitepress/**/*.ts", ".vitepress/**/*.d.ts", ".vitepress/**/*.vue", ".generated/types/**/*.d.ts", "scripts/**/*.mts", "scripts/**/*.ts"],
+  "exclude": [".vitepress/cache", ".vitepress/dist", ".generated/api", ".generated/repository", "dist"]
 }

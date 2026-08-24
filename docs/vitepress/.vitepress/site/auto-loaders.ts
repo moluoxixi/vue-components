@@ -4,9 +4,14 @@ import { autoComponent, autoImport } from '@moluoxixi/components/auto-loaders'
 import AutoImport from 'unplugin-auto-import/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
+import {
+  docsGeneratedAutoImportsDeclaration,
+  docsGeneratedComponentsDeclaration,
+  ensureDocsGeneratedTypeDeclarations,
+} from './generated-paths'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const docsSourceRootPattern = resolve(__dirname, '..')
+const docsSourceRootPattern = resolve(__dirname, '../..')
   .split(/[\\/]+/)
   .map(segment => segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   .join('[\\\\/]')
@@ -15,14 +20,15 @@ const autoImportIncludes = [new RegExp(`${docsSourceRootPattern}[\\\\/].*(?:\\.[
 const componentIncludes = [new RegExp(`${docsSourceRootPattern}[\\\\/].*(?:\\.vue(?:\\?vue.*)?|\\.md(?:\\?.*)?)$`)]
 
 export function createComponentAutoLoadPlugins() {
+  ensureDocsGeneratedTypeDeclarations()
   return [
     AutoImport({
-      dts: resolve(__dirname, 'auto-imports.d.ts'),
+      dts: docsGeneratedAutoImportsDeclaration,
       imports: [autoImport],
       include: autoImportIncludes,
     }),
     Components({
-      dts: resolve(__dirname, 'components.d.ts'),
+      dts: docsGeneratedComponentsDeclaration,
       include: componentIncludes,
       resolvers: [autoComponent, ElementPlusResolver()],
     }),

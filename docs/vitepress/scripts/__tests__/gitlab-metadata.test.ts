@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from '../../.vitepress/gitlab-metadata-types'
+import type { GitlabMetadataExpectation, GitlabMetadataSnapshot } from '../../.vitepress/repository/providers/gitlab'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

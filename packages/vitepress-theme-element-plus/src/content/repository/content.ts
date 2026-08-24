@@ -2,12 +2,12 @@ import type {
   RepositoryComponentMetadata,
   RepositoryContributor,
   RepositoryMetadataProvider,
-} from '../repository-metadata-types'
-import { repositoryMetadataProviderSupports } from '../repository-metadata-types'
+} from './types'
+import { repositoryMetadataProviderSupports } from './registry'
 
-type ContentProvider = Pick<RepositoryMetadataProvider, 'actions' | 'capabilities'>
+type RepositoryContentProvider = Pick<RepositoryMetadataProvider, 'actions' | 'capabilities'>
 
-export interface DocsRepositoryComponentMetaInput {
+export interface RepositoryComponentMetaInput {
   defaultBranch: string
   editPath: string
   issueTitlePrefix: string
@@ -15,10 +15,10 @@ export interface DocsRepositoryComponentMetaInput {
   sourcePath: string
 }
 
-export function resolveDocsRepositoryComponentMeta(
-  provider: ContentProvider,
+export function resolveRepositoryComponentMeta(
+  provider: RepositoryContentProvider,
   metadata: RepositoryComponentMetadata,
-  input: DocsRepositoryComponentMetaInput,
+  input: RepositoryComponentMetaInput,
 ) {
   const { actions } = provider
   const sourceHref = repositoryMetadataProviderSupports(provider, 'sourceLinks')
@@ -64,8 +64,8 @@ export function resolveDocsRepositoryComponentMeta(
   }
 }
 
-export function resolveDocsRepositoryContributors(
-  provider: ContentProvider,
+export function resolveRepositoryContributors(
+  provider: RepositoryContentProvider,
   metadata: RepositoryComponentMetadata,
 ): readonly RepositoryContributor[] | undefined {
   return repositoryMetadataProviderSupports(provider, 'contributors')

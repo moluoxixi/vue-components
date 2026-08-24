@@ -1,18 +1,25 @@
 // @vitest-environment node
 
-import type { GithubMetadataExpectation, GithubMetadataSnapshot } from '../../.vitepress/github-metadata-types'
+import type { GithubMetadataExpectation, GithubMetadataSnapshot } from '../../.vitepress/repository/providers/github'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { documentedComponentNames } from '../../.vitepress/component-manifest'
-import { componentSourcePath, docsSite } from '../../.vitepress/docs-site'
-import { assertGithubMetadataSnapshot } from '../../.vitepress/github-metadata-types'
-import snapshot from '../../.vitepress/github-metadata.json'
+import { documentedComponents } from '../../.vitepress/catalog/component-manifest'
+import { assertGithubMetadataSnapshot } from '../../.vitepress/repository/providers/github'
+import { docsSite } from '../../.vitepress/site/docs-site'
 import { createGithubMetadata, groupComponentIssues, parseNextLink } from '../github-metadata.mts'
 import { formatGithubSyncError, syncGithubMetadata, writeGithubMetadataAtomically } from '../sync-github-metadata.mts'
+import { createGithubMetadataFixture, fixtureExpectations } from './fixtures/repository-metadata'
 
 const headSha = 'a'.repeat(40)
+const snapshot = createGithubMetadataFixture()
+const componentPathByName = Object.fromEntries(
+  documentedComponents.map(component => [component.name, component.repositorySourcePath]),
+)
+const fixtureComponentPathByName = Object.fromEntries(
+  fixtureExpectations.github.components.map(component => [component.name, component.path]),
+)
 const temporaryDirectories: string[] = []
 
 function githubResponse(data: unknown, headers?: Record<string, string>): Response {
@@ -77,7 +84,7 @@ function createGithubFetch(
     if (url.endsWith('/users/alice'))
       return githubResponse({ login: 'alice', name: aliceProfileName, avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4', html_url: 'https://github.com/alice', type: 'User' })
     if (url.endsWith('/users/release%5Bbot%5D'))
-      return githubResponse({ login: 'release[bot]', name: 'Release Bot', avatar_url: 'https://avatars.githubusercontent.com/u/2?v=4', html_url: 'https://github.com/release%5Bbot%5D', type: 'Bot' })
+      return githubResponse({ login: 'release[bot]', name: null, avatar_url: 'https://avatars.githubusercontent.com/u/2?v=4', html_url: 'https://github.com/apps/release', type: 'Bot' })
 
     throw new Error(`Unexpected GitHub request: ${url}`)
   }
@@ -94,10 +101,10 @@ describe('gitHub documentation metadata', () => {
     const profiles = snapshot.profiles as GithubMetadataSnapshot['profiles']
     expect(snapshot.schemaVersion).toBe(1)
     expect(snapshot.repository.headSha).toMatch(/^[a-f0-9]{40}$/)
-    expect(Object.keys(snapshot.components).sort()).toEqual([...documentedComponentNames].sort())
+    expect(Object.keys(snapshot.components).sort()).toEqual(fixtureExpectations.github.components.map(component => component.name).sort())
 
     for (const [name, component] of Object.entries(snapshot.components)) {
-      expect(component.path).toBe(componentSourcePath(name))
+      expect(component.path).toBe(fixtureComponentPathByName[name])
       expect(component.commits.length, name).toBeGreaterThan(0)
       expect(new Set(component.commits.map(commit => commit.sha)).size).toBe(component.commits.length)
       expect(component.contributors.length, name).toBeGreaterThan(0)
@@ -121,7 +128,7 @@ describe('gitHub documentation metadata', () => {
 
     for (const component of Object.values(snapshot.components)) {
       component.commits.forEach((commit) => {
-        expect(commit.url).toMatch(/^https:\/\/github\.com\/moluoxixi\/vue-components\/commit\//)
+        expect(commit.url).toMatch(/^https:\/\/github\.com\/fixture-owner\/fixture-repository\/commit\//)
         expect(commit.shortSha).toBe(commit.sha.slice(0, 7))
         expect(commit.message.trim()).not.toBe('')
       })
@@ -155,7 +162,7 @@ describe('gitHub documentation metadata', () => {
       owner: 'owner',
       repository: 'repository',
       defaultBranch: 'main',
-      components: [{ name: 'CopyText', path: componentSourcePath('CopyText') }],
+      components: [{ name: 'CopyText', path: componentPathByName.CopyText! }],
       issueTitlePrefix: name => `[${name}]`,
       excludeBotsFromContributors: true,
       userAgent: 'docs-metadata-test',
@@ -165,7 +172,7 @@ describe('gitHub documentation metadata', () => {
 
     expect(metadata.repository).toMatchObject({ defaultBranch: 'main', headSha, openIssueCount: 2 })
     expect(metadata.components.CopyText?.openIssueCount).toBe(2)
-    expect(metadata.components.CopyText?.commits.map(commit => commit.author.name)).toEqual(['Alice', 'Release Bot'])
+    expect(metadata.components.CopyText?.commits.map(commit => commit.author.name)).toEqual(['Alice', 'release[bot]'])
     expect(metadata.profiles.alice?.avatarUrl).toBe('https://avatars.githubusercontent.com/u/1')
     expect(metadata.components.CopyText?.commits[0]?.author.avatarUrl).toBe('https://avatars.githubusercontent.com/u/1')
     expect(metadata.components.CopyText?.commits[0]?.date).toBe('2026-08-01T00:00:00Z')
@@ -180,7 +187,7 @@ describe('gitHub documentation metadata', () => {
       owner: 'owner',
       repository: 'repository',
       defaultBranch: 'main',
-      components: [{ name: 'CopyText', path: componentSourcePath('CopyText') }],
+      components: [{ name: 'CopyText', path: componentPathByName.CopyText! }],
       issueTitlePrefix: name => `[${name}]`,
       excludeBotsFromContributors: true,
       userAgent: 'docs-metadata-test',
@@ -194,7 +201,7 @@ describe('gitHub documentation metadata', () => {
       owner: 'owner',
       repository: 'repository',
       defaultBranch: 'main',
-      components: [{ name: 'CopyText', path: componentSourcePath('CopyText') }],
+      components: [{ name: 'CopyText', path: componentPathByName.CopyText! }],
       issueTitlePrefix: name => `[${name}]`,
       excludeBotsFromContributors: true,
       userAgent: 'docs-metadata-test',
@@ -207,20 +214,15 @@ describe('gitHub documentation metadata', () => {
     delete invalid.components.CopyText
 
     expect(() => assertGithubMetadataSnapshot(invalid, {
-      owner: docsSite.repositories.github.owner,
-      repository: docsSite.repositories.github.name,
-      defaultBranch: docsSite.repositories.github.defaultBranch,
-      components: documentedComponentNames.map(name => ({ name, path: componentSourcePath(name) })),
+      owner: fixtureExpectations.github.owner,
+      repository: fixtureExpectations.github.repository,
+      defaultBranch: fixtureExpectations.github.defaultBranch,
+      components: fixtureExpectations.github.components,
     })).toThrow('component keys must exactly match the documentation manifest')
   })
 
   it('rejects snapshots from another branch or without valid commit dates', () => {
-    const expectation = {
-      owner: docsSite.repositories.github.owner,
-      repository: docsSite.repositories.github.name,
-      defaultBranch: docsSite.repositories.github.defaultBranch,
-      components: documentedComponentNames.map(name => ({ name, path: componentSourcePath(name) })),
-    }
+    const expectation = fixtureExpectations.github
     const wrongBranch = structuredClone(snapshot) as Record<string, any>
     wrongBranch.repository.defaultBranch = 'release'
     expect(() => assertGithubMetadataSnapshot(wrongBranch, expectation)).toThrow('defaultBranch must be main')
@@ -259,7 +261,10 @@ describe('gitHub documentation metadata', () => {
     expect(readdirSync(directory)).toEqual(['github-metadata.json'])
 
     const expectation: GithubMetadataExpectation = {
-      components: documentedComponentNames.map(name => ({ name, path: componentSourcePath(name) })),
+      components: documentedComponents.map(component => ({
+        name: component.name,
+        path: component.repositorySourcePath,
+      })),
       defaultBranch: docsSite.repositories.github.defaultBranch,
       owner: docsSite.repositories.github.owner,
       repository: docsSite.repositories.github.name,

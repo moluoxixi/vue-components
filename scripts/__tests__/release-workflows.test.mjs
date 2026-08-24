@@ -9,6 +9,7 @@ const releaseWorkflow = readFileSync(resolve(workflowDirectory, 'release.yml'), 
 const pnpmLockfile = readFileSync(resolve(import.meta.dirname, '../../pnpm-lock.yaml'), 'utf8')
 const workflowValidator = readFileSync(resolve(import.meta.dirname, '../validate-workflows.mjs'), 'utf8')
 const rootManifest = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../package.json'), 'utf8'))
+const githubTokenEnvironment = ['GITHUB_TOKEN: $', '{{ github.token }}'].join('')
 const aiDocAssistantManifest = JSON.parse(readFileSync(
   resolve(import.meta.dirname, '../../packages/ai-doc-assistant/package.json'),
   'utf8',
@@ -45,6 +46,17 @@ describe('release workflow topology', () => {
     expect(ciWorkflow).toContain('actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02')
     expect(ciWorkflow).toContain('packages/ConfigForm/playground/dist/playwright-report/config-form-playground')
     expect(ciWorkflow).toContain('playgrounds/components-playground/dist/test-results/components-playground')
+  })
+
+  it('synchronizes only production GitHub metadata during documentation builds', () => {
+    expect(ciWorkflow).not.toContain('validate-repository-metadata')
+    expect(ciWorkflow).toContain(githubTokenEnvironment)
+    expect(ciWorkflow).toContain('issues: read')
+    expect(pagesWorkflow).toContain(githubTokenEnvironment)
+    expect(pagesWorkflow).toContain('issues: read')
+    expect(releaseWorkflow).not.toContain('sync-github-metadata')
+    expect(releaseWorkflow).not.toContain('build:docs')
+    expect(rootManifest.scripts.release).not.toContain('build:docs')
   })
 
   it('limits concurrency around resource-heavy integration tests', () => {

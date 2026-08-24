@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import type { YunxiaoMetadataExpectation, YunxiaoMetadataSnapshot } from '../../.vitepress/yunxiao-metadata-types'
+import type { YunxiaoMetadataExpectation, YunxiaoMetadataSnapshot } from '../../.vitepress/repository/providers/yunxiao'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'

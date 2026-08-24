@@ -1,0 +1,7 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/docs/frontend/quality-guidelines.md", "reason": "Defines generated artifact ownership, selected-provider synchronization, pipeline logging, strict failure, CI, and validation contracts."}
+{"file": ".trellis/spec/components/frontend/index.md", "reason": "Applies to removing the RichTextEditor compatibility exports, build entry, auto-loader, dependency, and tests from the components package."}
+{"file": ".trellis/spec/rich-text-editor/frontend/index.md", "reason": "Applies to retaining RichTextEditor as the sole independent authoring and publishing package."}
+{"file": ".trellis/spec/vitepress-theme-element-plus/frontend/index.md", "reason": "Applies to moving the repository content adapter and its public contract into the reusable theme package."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Applies cross-layer and reuse checks across generated paths, scripts, docs runtime, theme, components, and CI."}
+{"file": ".trellis/spec/config-form-headless/frontend/index.md", "reason": "Applies to the heterogeneous slot and readonly render public type boundary used to clear the full-workspace typecheck blocker."}

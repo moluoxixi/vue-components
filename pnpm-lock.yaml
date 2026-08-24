@@ -1016,9 +1016,6 @@ importers:
       '@moluoxixi/hooks':
         specifier: workspace:*
         version: link:../hooks
-      '@moluoxixi/rich-text-editor':
-        specifier: workspace:*
-        version: link:../rich-text-editor
       dayjs:
         specifier: catalog:build
         version: 1.11.20

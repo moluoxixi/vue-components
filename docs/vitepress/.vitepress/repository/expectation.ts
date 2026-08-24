@@ -1,10 +1,10 @@
-import type { RepositoryMetadataExpectation } from './repository-metadata-types.ts'
-import { documentedComponents } from './component-manifest.ts'
-import { componentSourcePath, docsSite } from './docs-site.ts'
+import type { RepositoryMetadataExpectation } from './types.ts'
+import { documentedComponents } from '../catalog/component-manifest.ts'
+import { docsSite } from '../site/docs-site.ts'
 
 const components = documentedComponents.map(component => ({
   name: component.name,
-  path: componentSourcePath(component.name),
+  path: component.repositorySourcePath,
 }))
 
 export const repositoryMetadataExpectations = {

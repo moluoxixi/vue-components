@@ -1,5 +1,6 @@
 import type { ConfigFormNode } from '../index'
 import { describe, expect, it } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { collectAllConfigFormFields, collectConfigFormFields, defineFields, resolveConfigFormFieldStates } from '../index'
 
 interface AccountForm {
@@ -57,5 +58,29 @@ describe('collectConfigFormFields', () => {
     expect(resolveConfigFormFieldStates(visibleParent, values, false, {
       name: { visible: true },
     })[0]?.visible).toBe(true)
+  })
+
+  it('accepts specifically typed readonly fields inside heterogeneous component slots', () => {
+    const Container = defineComponent(() => () => h('section'))
+    const Input = defineComponent({
+      props: { modelValue: { default: '', type: String } },
+      setup: () => () => h('input'),
+    })
+    const { defineField } = defineFields<AccountForm>()
+    const nodes = [defineField({
+      component: Container,
+      slots: {
+        default: [defineField({
+          component: Input,
+          field: 'name',
+          readonlyRender: ({ value }) => {
+            const exactValue: string = value
+            return exactValue
+          },
+        })],
+      },
+    })]
+
+    expect(collectAllConfigFormFields(nodes).map(field => field.field)).toEqual(['name'])
   })
 })

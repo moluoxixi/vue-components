@@ -2,7 +2,7 @@
 
 ## Architecture
 
-The theme package owns normalized repository types, provider capabilities, registry enforcement, capability filtering, and platform-specific web-link adapters. The documentation site owns provider configuration, remote API clients, snapshot schemas, normalization, generated snapshots, and the selected provider.
+The theme package owns normalized repository types, provider capabilities, registry enforcement, capability filtering, platform-specific web-link adapters, and the pure adapter from normalized repository metadata to theme content. The documentation site owns provider configuration, remote API clients, snapshot schemas, normalization, generated snapshots, and the selected provider.
 
 The provider's declared capabilities are its maximum support. A snapshot may only downgrade them for a repository, for example when GitLab Issues are disabled or a Yunxiao tenant route cannot be verified. Generic rendering reads only effective capabilities and never branches on a platform ID.
 
@@ -42,13 +42,13 @@ Each child task owns the exact schema, routes, API semantics, tests, and real ev
 1. An explicit platform collector reads provider-scoped configuration and an optional environment token.
 2. It calls the platform API with bounded pagination/retry behavior.
 3. It builds and validates a provider-specific versioned snapshot.
-4. An atomic sync replaces only that provider's JSON file.
+4. An atomic sync replaces only that provider's ignored JSON file under `docs/vitepress/.generated/repository/`.
 5. The selected snapshot is resolved by the strict registry into normalized metadata and effective capabilities.
 6. Generic theme consumers render only supported data/actions.
 
 ## CI, Deployment, and Real Validation
 
-Required CI is offline and deterministic: mocked API clients, snapshot fixtures, validators, typechecks, tests, and builds. Live-platform validation is a manual acceptance gate because it depends on credentials, quotas, tenant state, and external uptime.
+Required provider tests are offline and deterministic: mocked API clients, synthetic snapshot fixtures, validators, and typechecks. The production docs build generates only the selected GitHub snapshot using the workflow token; it never contacts GitLab, Gitee, or Yunxiao. Live validation of those platforms remains a manual acceptance gate because it depends on credentials, quotas, tenant state, and external uptime.
 
 GitHub Actions remains responsible for CI, GitHub Pages, and npm publishing. Supporting another repository host does not imply deploying from that host.
 

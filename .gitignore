@@ -48,7 +48,7 @@ stats.html
 
 # VitePress generated files
 **/.vitepress/cache/
-/docs/vitepress/.vitepress/api/
+/docs/vitepress/.generated/
 /docs/vitepress/--force/
 
 # 日志

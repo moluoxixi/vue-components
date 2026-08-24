@@ -23,7 +23,6 @@ export const browserJavaScriptEntrypointAllowlist = Object.freeze({
     './RequestCascader',
     './RequestSelectV2',
     './RequestTreeSelect',
-    './RichTextEditor',
     './configForm',
     './element',
     './antd',

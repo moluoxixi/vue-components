@@ -1,22 +1,22 @@
 import type { ElementPlusDocsThemeConfig } from '@moluoxixi/vitepress-theme-element-plus'
 import type { DefaultTheme, UserConfig } from 'vitepress'
-import type { DocsLocale } from './docs-site'
+import type { DocsLocale } from './site/docs-site'
 import process from 'node:process'
 import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
 import { elementPlusDocsDemoPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
-import { createComponentAutoLoadPlugins } from './auto-loaders'
-import { getDocsMessages, getLocalizedComponentGroups, getLocalizedUtilityGroups, localePath } from './docs-i18n'
+import { getDocsMessages, getLocalizedComponentGroups, getLocalizedUtilityGroups, localePath } from './catalog/docs-i18n'
+import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
+import { resolveComponentsExternalProjectSource } from './markdown/playground-external'
+import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './repository/generated-snapshot'
+import { repositoryMetadataSelection } from './repository/selection'
+import { createComponentAutoLoadPlugins } from './site/auto-loaders'
 import {
   defaultDocsLocale,
   docsLocales,
   docsRoutePath,
   docsSite,
-} from './docs-site'
-import { createDocsDemoSourceHrefResolver } from './markdown/demo-source-links'
-import { resolveComponentsExternalProjectSource } from './markdown/playground-external'
-import { repositoryMetadataSnapshotId, repositoryMetadataSnapshotPath } from './repository-metadata-alias'
-import { repositoryMetadataSelection } from './repository-metadata-selection'
+} from './site/docs-site'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config & Pick<ElementPlusDocsThemeConfig, 'repositoryLabel'> {
   const messages = getDocsMessages(locale)

@@ -3,24 +3,17 @@
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { documentedComponents } from '../.vitepress/component-manifest.ts'
-import { componentSourcePath, docsSite } from '../.vitepress/docs-site.ts'
-import { createLocalMetadata, stageLocalMetadata, writeLocalMetadata } from './local-metadata.mts'
+import { documentedComponents } from '../.vitepress/catalog/component-manifest.ts'
+import { repositoryMetadataExpectations } from '../.vitepress/repository/expectation.ts'
+import { repositoryMetadataSnapshotPath } from '../.vitepress/repository/generated-snapshot.ts'
+import { docsSite } from '../.vitepress/site/docs-site.ts'
+import { createLocalMetadata, writeLocalMetadata } from './local-metadata.mts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(scriptDir, '../../..')
-const outputPath = resolve(scriptDir, '../.vitepress/local-metadata.json')
+const outputPath = repositoryMetadataSnapshotPath('local')
 const repository = docsSite.repositories.local
-const shouldStage = process.argv.slice(2).includes('--stage')
-const unknownArguments = process.argv.slice(2).filter(argument => argument !== '--stage')
-
-if (unknownArguments.length)
-  throw new Error(`Unknown local Git metadata option: ${unknownArguments.join(', ')}`)
-
-const components = documentedComponents.map(component => ({
-  name: component.name,
-  path: componentSourcePath(component.name),
-}))
+const components = repositoryMetadataExpectations.local.components
 
 try {
   const snapshot = createLocalMetadata({
@@ -40,10 +33,7 @@ try {
     snapshot,
   })
 
-  if (shouldStage)
-    stageLocalMetadata({ outputPath, repositoryRoot })
-
-  console.log(`Synced local Git metadata for ${documentedComponents.length} components at ${snapshot.repository.headSha.slice(0, 7)}${shouldStage ? ' and staged the snapshot' : ''}.`)
+  console.log(`Synced local Git metadata for ${documentedComponents.length} components at ${snapshot.repository.headSha.slice(0, 7)}.`)
 }
 catch (error) {
   console.error('Local Git metadata sync failed; the previous snapshot was preserved.')

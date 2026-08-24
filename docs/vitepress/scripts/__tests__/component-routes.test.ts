@@ -129,7 +129,12 @@ describe('component documentation routes', () => {
 
     const result = createComponentRoutePaths({
       root,
-      components: [{ name: 'RichTextEditor', slug: 'rich-text-editor', description: '富文本编辑器' }],
+      components: [{
+        docsSourcePath: 'packages/rich-text-editor',
+        name: 'RichTextEditor',
+        slug: 'rich-text-editor',
+        description: '富文本编辑器',
+      }],
     })
 
     expect(result.apiOnly).toEqual([])

@@ -121,6 +121,11 @@ export {
   createYunxiaoRepositoryMetadataActions,
 } from './src/content/repository/actions'
 export {
+  resolveRepositoryComponentMeta,
+  resolveRepositoryContributors,
+} from './src/content/repository/content'
+export type { RepositoryComponentMetaInput } from './src/content/repository/content'
+export {
   createRepositoryMetadataProviderRegistry,
   defineRepositoryMetadataProvider,
   repositoryMetadataProviderSupports,

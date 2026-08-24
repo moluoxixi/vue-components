@@ -102,8 +102,12 @@ export function isTrustedGithubAvatarUrl(value: string): boolean {
 export function isExactGithubProfileUrl(value: string, login: string): boolean {
   try {
     const url = new URL(value)
+    const botSlug = login.endsWith('[bot]') ? login.slice(0, -'[bot]'.length) : undefined
+    const expectedPaths = new Set([`/${encodeURIComponent(login)}`])
+    if (botSlug)
+      expectedPaths.add(`/apps/${encodeURIComponent(botSlug)}`)
     return url.origin === 'https://github.com'
-      && url.pathname.replace(/\/+$/, '') === `/${encodeURIComponent(login)}`
+      && expectedPaths.has(url.pathname.replace(/\/+$/, ''))
       && url.username === ''
       && url.password === ''
       && url.search === ''

@@ -4,11 +4,11 @@ import type {
   GiteeContributor,
   GiteeIssueSummary,
   GiteeMetadataSnapshot,
-} from '../.vitepress/gitee-metadata-types.ts'
+} from '../.vitepress/repository/providers/gitee.ts'
 import {
   isExactGiteeProfileUrl,
   isTrustedGiteeAvatarUrl,
-} from '../.vitepress/gitee-metadata-types.ts'
+} from '../.vitepress/repository/providers/gitee.ts'
 import { resolveTrustedApiUrl } from './repository-api-client.mts'
 
 interface GiteeAccountResponse {

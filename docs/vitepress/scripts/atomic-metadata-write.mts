@@ -1,6 +1,7 @@
 import type { renameSync, rmSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
-import { renameSync as rename, rmSync as rm, writeFileSync as writeFile } from 'node:fs'
+import { mkdirSync, renameSync as rename, rmSync as rm, writeFileSync as writeFile } from 'node:fs'
+import { dirname } from 'node:path'
 import process from 'node:process'
 
 export interface AtomicFileSystem {
@@ -20,6 +21,7 @@ export function writeJsonAtomically(
   outputPath: string,
   fileSystem: AtomicFileSystem = defaultAtomicFileSystem,
 ): void {
+  mkdirSync(dirname(outputPath), { recursive: true })
   const temporaryPath = `${outputPath}.${process.pid}.${randomUUID()}.tmp`
   try {
     fileSystem.writeFileSync(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8')

@@ -39,6 +39,7 @@ describe('component auto loaders', () => {
   it('does not claim components outside the public entry', async () => {
     expect(await autoComponent('ElButton')).toBeUndefined()
     expect(await autoComponent('InternalComponent')).toBeUndefined()
+    expect(await autoComponent('RichTextEditor')).toBeUndefined()
   })
 
   it('groups runtime values by their smallest public subpath', () => {

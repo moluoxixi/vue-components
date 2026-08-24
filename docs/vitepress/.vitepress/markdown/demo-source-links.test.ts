@@ -7,10 +7,10 @@ import {
 } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import MarkdownIt from 'markdown-it'
 import { describe, expect, it } from 'vitest'
-import { docsSite } from '../docs-site'
-import { repositoryMetadataExpectations } from '../repository-metadata-expectation'
-import { repositoryMetadataProviders } from '../repository-metadata-providers'
-import { selectRepositoryMetadataConfiguration } from '../repository-metadata-selection'
+import { repositoryMetadataExpectations } from '../repository/expectation'
+import { repositoryMetadataProviders } from '../repository/providers'
+import { selectRepositoryMetadataConfiguration } from '../repository/selection'
+import { docsSite } from '../site/docs-site'
 import { createDocsDemoSourceHrefResolver } from './demo-source-links'
 
 describe('docs demo source links', () => {

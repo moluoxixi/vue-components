@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from '../../.vitepress/gitee-metadata-types'
+import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from '../../.vitepress/repository/providers/gitee'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

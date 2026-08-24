@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { describe, expect, it } from 'vitest'
-import { documentedComponentNames } from '../../.vitepress/component-manifest'
+import { documentedComponentNames } from '../../.vitepress/catalog/component-manifest'
 import {
   formatDocsMessage,
   getDocsMessages,
@@ -9,8 +9,8 @@ import {
   getLocalizedUtilities,
   localePath,
   resolveDocsLocale,
-} from '../../.vitepress/docs-i18n'
-import { documentedUtilityPackageNames } from '../../.vitepress/utility-manifest'
+} from '../../.vitepress/catalog/docs-i18n'
+import { documentedUtilityPackageNames } from '../../.vitepress/catalog/utility-manifest'
 
 describe('documentation internationalization', () => {
   it('keeps component identities stable across locales', () => {

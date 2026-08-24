@@ -3,11 +3,11 @@ import { readdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { describe, expect, it } from 'vitest'
-import { docsLocales, docsSite } from '../../docs-site'
+import { documentedComponents } from '../../catalog/component-manifest'
+import { docsLocales } from '../../site/docs-site'
 import { supportedLocalSfcModules } from '../../theme/content'
 
 const workspaceRoot = resolve(process.cwd(), '../..')
-const componentSourceRoot = resolve(workspaceRoot, docsSite.source.componentRoot)
 const componentSourceDocs = [...new Set(Object.values(docsLocales).map(locale => locale.sourceDoc))]
 const vueBuiltIns = new Set(['Component', 'KeepAlive', 'Suspense', 'Teleport', 'Transition', 'TransitionGroup'])
 const demoRuntimeModules = new Set<string>(supportedLocalSfcModules)
@@ -156,12 +156,11 @@ import { CopyText } from '@moluoxixi/components/CopyText'
   })
 
   it('explicitly bind every component used by a Vue demo', async () => {
-    const componentDirectories = await readdir(componentSourceRoot, { withFileTypes: true })
     const failures: string[] = []
 
-    for (const directory of componentDirectories.filter(entry => entry.isDirectory())) {
+    for (const component of documentedComponents) {
       for (const sourceDoc of componentSourceDocs) {
-        const docsPath = resolve(componentSourceRoot, directory.name, sourceDoc)
+        const docsPath = resolve(workspaceRoot, component.docsSourcePath, sourceDoc)
         let markdown: string
         try {
           markdown = await readFile(docsPath, 'utf8')
@@ -172,7 +171,7 @@ import { CopyText } from '@moluoxixi/components/CopyText'
 
         for (const [demoIndex, source] of extractVueDemos(markdown).entries()) {
           const localeSuffix = sourceDoc.replace(/[^a-z]+/gi, '-')
-          const filename = `${directory.name}-${localeSuffix}-demo-${demoIndex + 1}.vue`
+          const filename = `${component.name}-${localeSuffix}-demo-${demoIndex + 1}.vue`
           const { descriptor, errors } = parse(source, { filename })
           if (errors.length > 0) {
             failures.push(`${filename}: ${errors.map(String).join('; ')}`)
@@ -204,40 +203,43 @@ import { CopyText } from '@moluoxixi/components/CopyText'
   it('explicitly imports Element Plus components used by package SFCs', async () => {
     const failures: string[] = []
 
-    for (const filename of await collectVueFiles(componentSourceRoot)) {
-      const source = await readFile(filename, 'utf8')
-      const { descriptor, errors } = parse(source, { filename })
-      if (errors.length > 0) {
-        failures.push(`${filename}: ${errors.map(String).join('; ')}`)
-        continue
-      }
+    for (const component of documentedComponents) {
+      const componentSourceRoot = resolve(workspaceRoot, component.repositorySourcePath)
+      for (const filename of await collectVueFiles(componentSourceRoot)) {
+        const source = await readFile(filename, 'utf8')
+        const { descriptor, errors } = parse(source, { filename })
+        if (errors.length > 0) {
+          failures.push(`${filename}: ${errors.map(String).join('; ')}`)
+          continue
+        }
 
-      const elementTags = [...new Set(findComponentTags(descriptor.template?.content ?? ''))]
-        .filter(tag => tag.startsWith('El'))
-      if (elementTags.length === 0)
-        continue
+        const elementTags = [...new Set(findComponentTags(descriptor.template?.content ?? ''))]
+          .filter(tag => tag.startsWith('El'))
+        if (elementTags.length === 0)
+          continue
 
-      const imports = descriptor.scriptSetup || descriptor.script
-        ? collectRuntimeImports(compileScript(descriptor, {
-            id: filename,
-            fs: {
-              fileExists: (file) => {
-                try {
-                  return statSync(file).isFile()
-                }
-                catch {
-                  return false
-                }
+        const imports = descriptor.scriptSetup || descriptor.script
+          ? collectRuntimeImports(compileScript(descriptor, {
+              id: filename,
+              fs: {
+                fileExists: (file) => {
+                  try {
+                    return statSync(file).isFile()
+                  }
+                  catch {
+                    return false
+                  }
+                },
+                readFile: file => readFileSync(file, 'utf8'),
+                realpath: realpathSync,
               },
-              readFile: file => readFileSync(file, 'utf8'),
-              realpath: realpathSync,
-            },
-          }))
-        : { bindings: new Map<string, string>(), modules: new Set<string>() }
-      const missing = elementTags.filter(tag => imports.bindings.get(tag) !== 'element-plus')
+            }))
+          : { bindings: new Map<string, string>(), modules: new Set<string>() }
+        const missing = elementTags.filter(tag => imports.bindings.get(tag) !== 'element-plus')
 
-      if (missing.length > 0)
-        failures.push(`${filename}: missing ${missing.join(', ')}`)
+        if (missing.length > 0)
+          failures.push(`${filename}: missing ${missing.join(', ')}`)
+      }
     }
 
     expect(failures, failures.join('\n')).toEqual([])

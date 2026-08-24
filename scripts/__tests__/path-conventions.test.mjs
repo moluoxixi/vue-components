@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { extname, join, relative, resolve } from 'node:path'
 import { parse } from '@vue/compiler-sfc'
@@ -12,6 +12,8 @@ const docsManifest = JSON.parse(readFileSync(
   resolve(repositoryRoot, 'docs/vitepress/package.json'),
   'utf8',
 ))
+const rootManifest = JSON.parse(readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'))
+const gitignore = readFileSync(resolve(repositoryRoot, '.gitignore'), 'utf8')
 const declarationFinalizer = resolve(repositoryRoot, 'scripts/finalize-published-declarations.mjs')
 const declarationFinalizerPackages = [
   '@moluoxixi/ai-doc-assistant',
@@ -112,6 +114,29 @@ describe('repository path conventions', () => {
     const turboConfig = JSON.parse(readFileSync(resolve(repositoryRoot, 'turbo.json'), 'utf8'))
 
     expect(turboConfig.tasks['@moluoxixi/docs#build'].dependsOn).toEqual(['^build'])
+  })
+
+  it('keeps generated documentation artifacts in one ignored lifecycle directory', () => {
+    expect(gitignore).toContain('/docs/vitepress/.generated/')
+    expect(gitignore).not.toContain('/docs/vitepress/.vitepress/api/')
+    expect(docsManifest.scripts.predev).toBe('node scripts/prepare-docs.mts')
+    expect(docsManifest.scripts.prebuild).toBe('node scripts/prepare-docs.mts')
+    expect(docsManifest.scripts).not.toHaveProperty('sync-local-metadata:staged')
+    expect(rootManifest.scripts['build:docs']).toBe('pnpm -C docs/vitepress build')
+    expect(rootManifest.scripts['pre-commit']).not.toContain('metadata')
+
+    for (const oldPath of [
+      'docs/vitepress/.vitepress/api',
+      'docs/vitepress/.vitepress/auto-imports.d.ts',
+      'docs/vitepress/.vitepress/components.d.ts',
+      'docs/vitepress/.vitepress/github-metadata.json',
+      'docs/vitepress/.vitepress/gitlab-metadata.json',
+      'docs/vitepress/.vitepress/gitee-metadata.json',
+      'docs/vitepress/.vitepress/local-metadata.json',
+      'docs/vitepress/.vitepress/yunxiao-metadata.json',
+    ]) {
+      expect(existsSync(resolve(repositoryRoot, oldPath)), oldPath).toBe(false)
+    }
   })
 
   it('requires an explicit declaration package manifest', () => {

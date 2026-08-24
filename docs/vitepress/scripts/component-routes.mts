@@ -1,14 +1,14 @@
-import type { DocsLocale } from '../.vitepress/docs-site.ts'
+import type { DocsLocale } from '../.vitepress/site/docs-site.ts'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { getDocsMessages } from '../.vitepress/docs-i18n.ts'
+import { getDocsMessages } from '../.vitepress/catalog/docs-i18n.ts'
 import {
-  componentDocsSourcePath,
   defaultDocsLocale,
   getDocsLocaleConfig,
-} from '../.vitepress/docs-site.ts'
+} from '../.vitepress/site/docs-site.ts'
 
 export interface ComponentRoute {
+  docsSourcePath?: string
   name: string
   slug: string
   description: string
@@ -68,13 +68,17 @@ export function createComponentRouteLocaleOptions(locale: DocsLocale): Component
 
 const DEFAULT_LOCALE_OPTIONS = createComponentRouteLocaleOptions(defaultDocsLocale)
 
+function componentDocsSourcePath(component: ComponentRoute): string {
+  return component.docsSourcePath ?? `packages/components/src/${component.name}`
+}
+
 function sourceDocInclude(
   component: ComponentRoute,
   startLine: number,
   endLine: number,
   locale: ComponentRouteLocaleOptions,
 ): string {
-  return `<!--@include: ${locale.sourceDocIncludePrefix}${componentDocsSourcePath(component.name)}/${locale.sourceDocFile}{${startLine},${endLine}}-->`
+  return `<!--@include: ${locale.sourceDocIncludePrefix}${componentDocsSourcePath(component)}/${locale.sourceDocFile}{${startLine},${endLine}}-->`
 }
 
 function analyzeSourceDoc(content: string, component: ComponentRoute): SourceDocLayout {
@@ -205,7 +209,7 @@ export function createComponentRoutePaths(
 
   const apiOnly: string[] = []
   const paths = components.map((component) => {
-    const sourceDocPath = resolve(root, componentDocsSourcePath(component.name), locale.sourceDocFile)
+    const sourceDocPath = resolve(root, componentDocsSourcePath(component), locale.sourceDocFile)
     const hasSourceDoc = existsSync(sourceDocPath)
     const sourceDocContent = hasSourceDoc ? readFileSync(sourceDocPath, 'utf8') : undefined
     if (sourceDocContent && API_DOCS_TAG_PATTERN.test(sourceDocContent))

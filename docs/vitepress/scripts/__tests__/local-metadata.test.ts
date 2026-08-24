@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import type { LocalMetadataSnapshot } from '../../.vitepress/local-metadata-types'
+import type { LocalMetadataSnapshot } from '../../.vitepress/repository/providers/local'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createLocalMetadata, stageLocalMetadata, writeLocalMetadata } from '../local-metadata.mts'
+import { createLocalMetadata, writeLocalMetadata } from '../local-metadata.mts'
 
 const temporaryDirectories: string[] = []
 
@@ -207,25 +207,5 @@ describe('local Git documentation metadata', () => {
 
     expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toEqual(snapshot)
     expect(readdirSync(outputDirectory)).toEqual(['local-metadata.json'])
-  })
-
-  it('stages only the local metadata snapshot without disturbing the existing index', () => {
-    const repositoryRoot = createFixtureRepository()
-    const outputPath = join(repositoryRoot, 'docs/vitepress/.vitepress/local-metadata.json')
-    const unrelatedPath = join(repositoryRoot, 'unrelated.txt')
-    const existingStagedPath = 'packages/components/src/Other/index.ts'
-    mkdirSync(dirname(outputPath), { recursive: true })
-    writeFileSync(outputPath, '{"snapshot":true}\n', 'utf8')
-    writeFileSync(unrelatedPath, 'leave unstaged\n', 'utf8')
-    writeFileSync(join(repositoryRoot, existingStagedPath), 'already staged\n', 'utf8')
-    git(repositoryRoot, ['add', '--', existingStagedPath])
-
-    stageLocalMetadata({ outputPath, repositoryRoot })
-
-    expect(git(repositoryRoot, ['diff', '--cached', '--name-only']).trim().split(/\r?\n/).sort()).toEqual([
-      'docs/vitepress/.vitepress/local-metadata.json',
-      existingStagedPath,
-    ].sort())
-    expect(git(repositoryRoot, ['status', '--short', '--', 'unrelated.txt'])).toBe('?? unrelated.txt\n')
   })
 })

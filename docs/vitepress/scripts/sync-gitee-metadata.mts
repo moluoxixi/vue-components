@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 
-import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from '../.vitepress/gitee-metadata-types.ts'
+import type { GiteeMetadataExpectation, GiteeMetadataSnapshot } from '../.vitepress/repository/providers/gitee.ts'
 import type { AtomicFileSystem } from './atomic-metadata-write.mts'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { documentedComponents } from '../.vitepress/component-manifest.ts'
-import { docsSite } from '../.vitepress/docs-site.ts'
-import { assertGiteeMetadataSnapshot } from '../.vitepress/gitee-metadata-types.ts'
-import { repositoryMetadataExpectations } from '../.vitepress/repository-metadata-expectation.ts'
+import { documentedComponents } from '../.vitepress/catalog/component-manifest.ts'
+import { repositoryMetadataExpectations } from '../.vitepress/repository/expectation.ts'
+import { repositoryMetadataSnapshotPath } from '../.vitepress/repository/generated-snapshot.ts'
+import { assertGiteeMetadataSnapshot } from '../.vitepress/repository/providers/gitee.ts'
+import { docsSite } from '../.vitepress/site/docs-site.ts'
 import { defaultAtomicFileSystem, writeJsonAtomically } from './atomic-metadata-write.mts'
 import { createGiteeMetadata } from './gitee-metadata.mts'
 
@@ -48,8 +49,7 @@ async function main(): Promise<void> {
   const expectation = repositoryMetadataExpectations.gitee
   const config = docsSite.repositories.gitee
   const token = process.env.GITEE_TOKEN
-  const scriptDir = dirname(fileURLToPath(import.meta.url))
-  const outputPath = resolve(scriptDir, '../.vitepress/gitee-metadata.json')
+  const outputPath = repositoryMetadataSnapshotPath('gitee')
   const snapshot = await syncGiteeMetadata(() => createGiteeMetadata({
     apiBaseUrl: config.apiBaseUrl,
     components: expectation.components,
