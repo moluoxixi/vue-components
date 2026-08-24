@@ -72,3 +72,25 @@ CI Verify 使用完整 Git 历史运行 local provider consumer，并以 workflo
 ### Status
 
 [OK] **Completed**
+
+
+## Session 4: 修复 fresh checkout 文档 CLI
+
+**Date**: 2026-08-25
+**Task**: 修复 fresh checkout 文档 CLI
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+私有 docs workspace 在构建主题后直接执行 dist/element-plus-docs.js，避免 fresh install 阶段缺少 workspace bin shim；prepare:docs 同步补齐主题 prebuild。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3dff9741` | (see git log) |
+
+### Status
+
+[OK] **Completed**

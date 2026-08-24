@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 3
+- **Total Sessions**: 4
 - **Last Active**: 2026-08-25
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~74 | Active |
+| `journal-1.md` | ~96 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 4 | 2026-08-25 | 修复 fresh checkout 文档 CLI | `3dff9741` | `main` |
 | 3 | 2026-08-25 | 修复文档 CI 浅克隆 | `04783b6f` | `main` |
 | 2 | 2026-08-24 | 文档运行时内容树收敛 | `cc0cb804` | `main` |
 | 1 | 2026-08-24 | 文档主题最新契约与生命周期 | `27750ebd`, `b4c28758` | `main` |
