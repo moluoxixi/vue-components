@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  createElementPlusDocsContentRewrites,
   defineComponentPackage,
   defineElementPlusDocsProject,
   resolveElementPlusDocsPlaygroundManifest,
@@ -32,7 +33,8 @@ function project(repository: Parameters<typeof defineElementPlusDocsProject>[0][
       locales: {
         'en-US': {
           label: 'English',
-          sourceDirectory: '',
+          pathPrefix: '',
+          sourceDirectory: 'content',
           sourceDoc: 'docs/index.md',
         },
       },
@@ -79,10 +81,49 @@ describe('element plus docs project configuration', () => {
           lang: 'en-US',
           pathPrefix: '',
           siteKey: 'root',
-          sourceDirectory: '',
+          sourceDirectory: 'content',
         },
       },
     })
+  })
+
+  it('derives runtime content rewrites and requires explicit locale source directories', () => {
+    const input = project({ provider: 'local' })
+    expect(createElementPlusDocsContentRewrites(input)).toEqual({
+      'content/:path*': ':path*',
+    })
+    input.documentation.locales['en-US']!.sourceDirectory = ''
+    expect(() => resolveElementPlusDocsProject(input))
+      .toThrow('documentation.locales.en-US.sourceDirectory must be a documentation-relative directory')
+  })
+
+  it('rejects locale source directories that overlap staging projections', () => {
+    const reserved = project({ provider: 'local' })
+    reserved.documentation.locales['en-US']!.sourceDirectory = 'public/assets'
+    expect(() => resolveElementPlusDocsProject(reserved))
+      .toThrow('Documentation locale sourceDirectory values must not overlap the reserved public directory')
+
+    const nested = project({ provider: 'local' })
+    nested.documentation.locales['zh-CN'] = {
+      label: '简体中文',
+      pathPrefix: '/zh',
+      sourceDirectory: 'content/zh',
+      sourceDoc: 'docs/index.zh.md',
+    }
+    expect(() => resolveElementPlusDocsProject(nested))
+      .toThrow('Documentation locale sourceDirectory values must not overlap')
+  })
+
+  it('rejects generated content roots that can overwrite author sources', () => {
+    const rootGenerated = project({ provider: 'local' })
+    rootGenerated.generatedDirectory = '.'
+    expect(() => resolveElementPlusDocsProject(rootGenerated))
+      .toThrow('generatedDirectory must be a non-root documentation-relative directory')
+
+    const overlapping = project({ provider: 'local' })
+    overlapping.generatedDirectory = 'content/runtime'
+    expect(() => resolveElementPlusDocsProject(overlapping))
+      .toThrow('generatedDirectory content root must not overlap documentation source directories')
   })
 
   it('keeps generated Playground manifests lazy and validates them at the lifecycle boundary', () => {

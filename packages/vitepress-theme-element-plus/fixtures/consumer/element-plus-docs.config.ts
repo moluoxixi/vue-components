@@ -10,7 +10,8 @@ export default defineElementPlusDocsProject({
     locales: {
       'en-US': {
         label: 'English',
-        sourceDirectory: '',
+        pathPrefix: '',
+        sourceDirectory: 'content',
         sourceDoc: 'docs/index.md',
       },
     },

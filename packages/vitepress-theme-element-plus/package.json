@@ -24,6 +24,11 @@
       "types": "./dist/markdown.d.ts",
       "import": "./dist/markdown.js"
     },
+    "./node": {
+      "source": "./node.ts",
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
     "./repository": {
       "source": "./repository.ts",
       "types": "./dist/repository.d.ts",
@@ -54,6 +59,7 @@
     "dist",
     "index.ts",
     "markdown.ts",
+    "node.ts",
     "repository.ts",
     "src"
   ],
@@ -69,7 +75,7 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit",
     "test:provenance": "node scripts/verify-dist.mjs",
     "test:consumer": "node dist/element-plus-docs.js build --config fixtures/consumer/element-plus-docs.config.ts",
-    "build:fixture": "pnpm build && vitepress build fixtures/basic",
+    "build:fixture": "pnpm build && node dist/element-plus-docs.js build --config fixtures/basic/element-plus-docs.config.ts",
     "pretest:e2e": "pnpm build",
     "test:e2e": "playwright test --config playwright.config.ts"
   },
@@ -88,6 +94,7 @@
     "@vueuse/core": "catalog:",
     "eslint": "catalog:dev",
     "eslint-plugin-format": "catalog:dev",
+    "gray-matter": "catalog:",
     "jiti": "catalog:dev",
     "lz-string": "catalog:",
     "markdown-it": "catalog:",

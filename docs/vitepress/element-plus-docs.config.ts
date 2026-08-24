@@ -65,7 +65,7 @@ export default defineElementPlusDocsProject({
         lang: 'zh-CN',
         pathPrefix: '',
         siteKey: 'root',
-        sourceDirectory: '',
+        sourceDirectory: 'zh',
         sourceDoc: 'docs/index.md',
       },
       'en-US': {

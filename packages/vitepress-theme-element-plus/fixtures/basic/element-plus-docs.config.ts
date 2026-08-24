@@ -11,7 +11,8 @@ export default defineElementPlusDocsProject({
     locales: {
       'en-US': {
         label: 'English',
-        sourceDirectory: '',
+        pathPrefix: '',
+        sourceDirectory: 'content',
         sourceDoc: 'content.md',
       },
     },

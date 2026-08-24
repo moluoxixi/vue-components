@@ -89,16 +89,23 @@ describe('published package verifier helpers', () => {
       './antd',
     ])
     expect(browserJavaScriptEntrypointExclusions['@moluoxixi/vitepress-theme-element-plus'])
-      .toEqual(['.', './markdown', './repository/node'])
+      .toEqual(['.', './markdown', './node', './repository/node'])
     expect(getNodeRuntimeSpecifiers([{
       name: '@moluoxixi/vitepress-theme-element-plus',
       exports: {
+        './node': {
+          import: './dist/node.js',
+          types: './dist/node.d.ts',
+        },
         './repository/node': {
           import: './dist/repository-node.js',
           types: './dist/src/node/repository/index.d.ts',
         },
       },
-    }])).toEqual(['@moluoxixi/vitepress-theme-element-plus/repository/node'])
+    }])).toEqual([
+      '@moluoxixi/vitepress-theme-element-plus/node',
+      '@moluoxixi/vitepress-theme-element-plus/repository/node',
+    ])
   })
 
   it('fails when the browser allowlist drifts from public exports', () => {

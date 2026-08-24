@@ -10,7 +10,9 @@
 4. 将文档脚本接到 `element-plus-docs dev`、`element-plus-docs build` 和 `element-plus-docs prepare`。CLI 会加载同一项目配置、生成 selected provider 快照、严格校验后再启动或构建 VitePress。
 5. 在项目配置的 `documentation.locales` 中声明语言标签、VitePress 站点键、URL 前缀、内容目录和源码文档文件。需要最小子路径 Playground 的 package profile 通过 `loadPlaygroundManifest: () => import('<package>/playground-manifest')` 延迟加载组件包构建生成的 manifest。CLI 会先构建 workspace 依赖再调用 loader，因此不要在配置顶层静态导入尚未生成的 manifest。
 
-仓库元数据由主题包内置的 `github`、`local`、`gitlab`、`gitee` 与 `yunxiao` provider 提供。消费项目通常只配置 `repository: { provider, url }`；GitHub/Gitee 从 URL 推导 owner 和 repository，GitLab 推导项目路径与实例地址，local 推导 Git 根、remote 和默认分支，云效只额外要求无法从 URL 得到的 `repositoryId`。需要在一个项目中调试多平台时才配置 `repositoryProviders`，环境变量只能切换到已显式配置的平台。不存在 `auto`、本地兜底、文件回退或跨源合并。API、provider snapshot、Playground manifest snapshot 与自动声明统一生成到 Git 忽略的 `.generated/{api,repository,markdown,types}`。
+文档作者只维护 locale 源目录，例如中文 `zh/` 与英文 `en/`。`element-plus-docs prepare/dev/build` 会把它们投影到 Git 忽略的 `.generated/content/{zh,en}`，再在每个 locale 的 `components/`、`utils/` 中生成可搜索路由页。VitePress 只消费这棵 runtime content tree；生成页、投影副本和 public 副本都不提交 Git。中文物理页通过 `zh/:path* -> :path*` 发布到根 URL，英文保持 `/en/...`。
+
+仓库元数据由主题包内置的 `github`、`local`、`gitlab`、`gitee` 与 `yunxiao` provider 提供。消费项目通常只配置 `repository: { provider, url }`；GitHub/Gitee 从 URL 推导 owner 和 repository，GitLab 推导项目路径与实例地址，local 推导 Git 根、remote 和默认分支，云效只额外要求无法从 URL 得到的 `repositoryId`。需要在一个项目中调试多平台时才配置 `repositoryProviders`，环境变量只能切换到已显式配置的平台。不存在 `auto`、本地兜底、文件回退或跨源合并。Runtime content、API、provider snapshot、Playground manifest snapshot 与自动声明统一生成到 Git 忽略的 `.generated/{content,api,repository,markdown,types}`。
 
 本地调试可在启动时设置 `VITE_DOCS_REPOSITORY_METADATA_PROVIDER`，无需修改源码。例如 PowerShell 使用 `$env:VITE_DOCS_REPOSITORY_METADATA_PROVIDER='gitlab'; pnpm -C docs/vitepress dev`，POSIX shell 使用 `VITE_DOCS_REPOSITORY_METADATA_PROVIDER=gitlab pnpm -C docs/vitepress dev`。变量为空时选择 `element-plus-docs.config.ts` 中的 `repository.provider`，本项目配置为 `github`；非法值会直接失败，不会回退到其他快照。该变量是构建时选择，不是浏览器内的运行时切换。
 

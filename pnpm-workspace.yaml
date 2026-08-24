@@ -30,6 +30,7 @@ catalog:
   # Keep the catalog: range for legacy consumers; Vite Config uses the v12 conflict catalog.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- legacy catalog range is intentionally retained
   '@vueuse/core': ^14.3.0
+  gray-matter: ^4.0.3
   lz-string: ^1.5.0
   markdown-it: ^14.1.0
   markdown-it-container: ^3.0.0

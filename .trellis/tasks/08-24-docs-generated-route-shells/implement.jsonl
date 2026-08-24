@@ -1,0 +1,3 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/docs/frontend/quality-guidelines.md", "reason": "文档生成物、prepare 生命周期、local search 与 provider 构建契约"}
+{"file": ".trellis/spec/docs/frontend/directory-structure.md", "reason": "VitePress 内容树与生成目录边界"}

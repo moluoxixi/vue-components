@@ -158,6 +158,9 @@ catalogs:
     '@vueuse/core':
       specifier: ^14.3.0
       version: 14.3.0
+    gray-matter:
+      specifier: ^4.0.3
+      version: 4.0.3
     lz-string:
       specifier: ^1.5.0
       version: 1.5.0
@@ -1391,6 +1394,9 @@ importers:
       eslint-plugin-format:
         specifier: catalog:dev
         version: 2.0.1(eslint@9.39.4(jiti@2.7.0))
+      gray-matter:
+        specifier: 'catalog:'
+        version: 4.0.3
       jiti:
         specifier: catalog:dev
         version: 2.7.0

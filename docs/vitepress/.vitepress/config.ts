@@ -2,7 +2,10 @@ import type { ElementPlusDocsThemeConfig } from '@moluoxixi/vitepress-theme-elem
 import type { DefaultTheme, UserConfig } from 'vitepress'
 import type { DocsLocale } from './site/docs-site'
 import process from 'node:process'
-import { defineElementPlusDocs } from '@moluoxixi/vitepress-theme-element-plus'
+import {
+  createElementPlusDocsContentRewrites,
+  defineElementPlusDocs,
+} from '@moluoxixi/vitepress-theme-element-plus'
 import { elementPlusDocsProjectMarkdownPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
 import projectConfig from '../element-plus-docs.config.ts'
@@ -161,6 +164,8 @@ export default defineElementPlusDocs({
   },
   search: 'local',
   vitepress: {
+    rewrites: createElementPlusDocsContentRewrites(projectConfig),
+    srcDir: '.generated/content',
     head: [
       ['link', { rel: 'icon', type: 'image/svg+xml', href: docsLogoHref }],
     ],

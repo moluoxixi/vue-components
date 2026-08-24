@@ -152,4 +152,20 @@ describe('defineElementPlusDocs', () => {
     expect(plugin.resolveId('virtual:moluoxixi-repository-metadata-snapshot'))
       .toBe('D:/fixture/.generated/repository/github.json')
   })
+
+  it('passes the runtime content root and page data transform to VitePress', () => {
+    const transformPageData = vi.fn()
+    const config = defineElementPlusDocs({
+      site: { title: 'Fixture' },
+      vitepress: {
+        rewrites: { 'content/:path*': ':path*' },
+        srcDir: '.generated/content',
+        transformPageData,
+      },
+    })
+
+    expect(config.srcDir).toBe('.generated/content')
+    expect(config.rewrites).toEqual({ 'content/:path*': ':path*' })
+    expect(config.transformPageData).toBe(transformPageData)
+  })
 })

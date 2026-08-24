@@ -12,6 +12,8 @@ const temporaryDirectories: string[] = []
 function loadedProject() {
   const docsRoot = mkdtempSync(resolve(tmpdir(), 'element-plus-docs-prepare-'))
   temporaryDirectories.push(docsRoot)
+  mkdirSync(resolve(docsRoot, 'content'), { recursive: true })
+  writeFileSync(resolve(docsRoot, 'content/index.md'), '# Fixture\n')
   const project = resolveElementPlusDocsProject(defineElementPlusDocsProject({
     documentation: {
       componentsRoute: 'components',
@@ -19,7 +21,8 @@ function loadedProject() {
       locales: {
         'en-US': {
           label: 'English',
-          sourceDirectory: '',
+          pathPrefix: '',
+          sourceDirectory: 'content',
           sourceDoc: 'docs/index.md',
         },
       },
@@ -123,6 +126,9 @@ describe('element-plus-docs prepare', () => {
     expect(synchronizePlaygroundManifests).toHaveBeenCalledOnce()
     expect(validateRepository).toHaveBeenCalledOnce()
     expect(messages.join('\n')).toContain('[docs:prepare] START component routes')
+    expect(messages.join('\n')).toContain('[docs:prepare] START runtime content path=.generated/content')
+    expect(messages.join('\n').indexOf('runtime content'))
+      .toBeLessThan(messages.join('\n').indexOf('component routes'))
     expect(messages.join('\n')).toContain('playground manifests')
     expect(messages.join('\n').indexOf('playground manifests'))
       .toBeLessThan(messages.join('\n').indexOf('selected provider sync'))

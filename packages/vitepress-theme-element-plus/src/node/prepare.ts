@@ -7,6 +7,7 @@ import { closeSync, existsSync, mkdirSync, openSync, unlinkSync, writeFileSync }
 import { dirname, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { resolveElementPlusDocsProjectRepository } from '../project'
+import { synchronizeElementPlusDocsContent } from './content'
 import { synchronizeElementPlusDocsPlaygroundManifests } from './playground-manifests'
 import { synchronizeElementPlusDocsRepository, validateElementPlusDocsRepository } from './repository/project'
 
@@ -30,6 +31,7 @@ export interface ElementPlusDocsPrepareOptions {
   providerOverride?: string
   runCommand?: (command: ElementPlusDocsPrepareCommand, docsRoot: string) => number
   synchronizeRepository?: typeof synchronizeElementPlusDocsRepository
+  synchronizeContent?: typeof synchronizeElementPlusDocsContent
   synchronizePlaygroundManifests?: typeof synchronizeElementPlusDocsPlaygroundManifests
   validateRepository?: typeof validateElementPlusDocsRepository
 }
@@ -108,6 +110,7 @@ function acquirePrepareLock(
   fileSystem: PrepareLockFileSystem,
 ): () => void {
   fileSystem.makeDirectory(resolve(generatedRoot, 'api'))
+  fileSystem.makeDirectory(resolve(generatedRoot, 'content'))
   fileSystem.makeDirectory(resolve(generatedRoot, 'markdown'))
   fileSystem.makeDirectory(resolve(generatedRoot, 'repository'))
   fileSystem.makeDirectory(resolve(generatedRoot, 'types'))
@@ -176,6 +179,15 @@ export async function prepareElementPlusDocs(
   }
 
   try {
+    await runStep('runtime content', () => {
+      environment.ELEMENT_PLUS_DOCS_CONTENT_ROOT
+        = (options.synchronizeContent ?? synchronizeElementPlusDocsContent)({
+          docsRoot: loaded.docsRoot,
+          generatedRoot: loaded.generatedRoot,
+          project: loaded.project,
+          projectRoot: loaded.projectRoot,
+        })
+    }, `path=${relative(loaded.docsRoot, resolve(loaded.generatedRoot, 'content')).replaceAll('\\', '/')}`)
     for (const command of loaded.project.prepare?.commands ?? []) {
       await runStep(command.name, () => {
         const exitCode = (options.runCommand ?? defaultRunCommand)(command, loaded.docsRoot)

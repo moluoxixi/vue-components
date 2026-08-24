@@ -156,6 +156,7 @@ export type {
   ElementPlusDocsOverviewMessages,
 } from './src/content/types'
 export {
+  createElementPlusDocsContentRewrites,
   defineComponentPackage,
   defineElementPlusDocsProject,
   resolveElementPlusDocsPlaygroundManifest,

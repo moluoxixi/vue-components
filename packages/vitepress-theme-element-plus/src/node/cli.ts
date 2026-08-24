@@ -2,6 +2,7 @@
 
 import process from 'node:process'
 import { build, createServer } from 'vitepress'
+import { watchElementPlusDocsContent } from './content'
 import { prepareElementPlusDocs } from './prepare'
 import { loadElementPlusDocsProject } from './project/load-config'
 
@@ -121,6 +122,13 @@ async function main(): Promise<void> {
       open: args.open,
       port: args.port,
     })
+    const stopWatchingContent = watchElementPlusDocsContent(server, {
+      docsRoot: loaded.docsRoot,
+      generatedRoot: loaded.generatedRoot,
+      project: loaded.project,
+      projectRoot: loaded.projectRoot,
+    })
+    server.httpServer?.once('close', stopWatchingContent)
     await server.listen()
     server.printUrls()
   }

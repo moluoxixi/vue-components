@@ -30,7 +30,9 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [],
+  "children": [
+    "08-24-docs-generated-route-shells"
+  ],
   "parent": null,
   "relatedFiles": [],
   "notes": "",

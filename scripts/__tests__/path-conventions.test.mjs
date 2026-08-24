@@ -14,6 +14,10 @@ const docsManifest = JSON.parse(readFileSync(
 ))
 const rootManifest = JSON.parse(readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'))
 const gitignore = readFileSync(resolve(repositoryRoot, '.gitignore'), 'utf8')
+const docsVitepressConfig = readFileSync(
+  resolve(repositoryRoot, 'docs/vitepress/.vitepress/config.ts'),
+  'utf8',
+)
 const declarationFinalizer = resolve(repositoryRoot, 'scripts/finalize-published-declarations.mjs')
 const declarationFinalizerPackages = [
   '@moluoxixi/ai-doc-assistant',
@@ -132,6 +136,26 @@ describe('repository path conventions', () => {
     expect(docsManifest.scripts).not.toHaveProperty('sync-local-metadata:staged')
     expect(rootManifest.scripts['build:docs']).toBe('pnpm -C docs/vitepress build')
     expect(rootManifest.scripts['pre-commit']).not.toContain('metadata')
+    expect(docsVitepressConfig).toContain(`srcDir: '.generated/content'`)
+    expect(docsVitepressConfig).toContain('createElementPlusDocsContentRewrites(projectConfig)')
+
+    for (const directory of [
+      'docs/vitepress/zh/components',
+      'docs/vitepress/zh/utils',
+      'docs/vitepress/en/components',
+      'docs/vitepress/en/utils',
+    ]) {
+      expect(readdirSync(resolve(repositoryRoot, directory))).toEqual(['index.md'])
+    }
+
+    for (const obsoleteRoute of [
+      'docs/vitepress/components/copy-text.md',
+      'docs/vitepress/utils/utils.md',
+      'docs/vitepress/en/components/copy-text.md',
+      'docs/vitepress/en/utils/utils.md',
+    ]) {
+      expect(existsSync(resolve(repositoryRoot, obsoleteRoute)), obsoleteRoute).toBe(false)
+    }
 
     for (const oldPath of [
       'docs/vitepress/.vitepress/api',

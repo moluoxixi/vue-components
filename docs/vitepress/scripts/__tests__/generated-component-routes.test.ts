@@ -1,20 +1,44 @@
 // @vitest-environment node
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { synchronizeElementPlusDocsContent } from '@moluoxixi/vitepress-theme-element-plus/node'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { docsProject } from '../../.vitepress/catalog/component-manifest.ts'
 import { getLocalizedComponents } from '../../.vitepress/catalog/docs-i18n.ts'
 import { docsLocales } from '../../.vitepress/site/docs-site.ts'
 import { GENERATED_COMPONENT_ROUTE_MARKER } from '../component-routes.mts'
+import { generateComponentRoutes } from '../generate-component-routes.mts'
+import {
+  GENERATED_UTILITY_ROUTE_MARKER,
+  generateUtilityRoutes,
+} from '../generate-utility-routes.mts'
+
+const projectRoot = resolve(import.meta.dirname, '../../../..')
+const docsRoot = resolve(projectRoot, 'docs/vitepress')
+const generatedRoot = resolve(docsRoot, '.generated')
+const contentRoot = resolve(generatedRoot, 'content')
+
+beforeAll(async () => {
+  synchronizeElementPlusDocsContent({
+    docsRoot,
+    generatedRoot,
+    project: docsProject,
+    projectRoot,
+  })
+  generateComponentRoutes(contentRoot)
+  generateUtilityRoutes(contentRoot)
+})
+
+afterAll(() => {
+  rmSync(contentRoot, { force: true, recursive: true })
+})
 
 describe('generated searchable component routes', () => {
   it('materializes every localized component as a VitePress Markdown page', () => {
-    const docsRoot = resolve(import.meta.dirname, '../..')
-
     for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>) {
       const configured = docsLocales[locale]
       const directory = resolve(
-        docsRoot,
+        contentRoot,
         configured.sourceDirectory,
         docsProject.documentation.componentsRoute,
       )
@@ -32,15 +56,28 @@ describe('generated searchable component routes', () => {
   })
 
   it('includes the ConfigForm family alias in both adapter routes', () => {
-    const docsRoot = resolve(import.meta.dirname, '../..')
     for (const relativePath of [
-      'components/antd-config-form.md',
-      'components/element-config-form.md',
+      'zh/components/antd-config-form.md',
+      'zh/components/element-config-form.md',
       'en/components/antd-config-form.md',
       'en/components/element-config-form.md',
     ]) {
-      expect(readFileSync(resolve(docsRoot, relativePath), 'utf8'))
+      expect(readFileSync(resolve(contentRoot, relativePath), 'utf8'))
         .toContain('<span hidden data-doc-search-aliases>ConfigForm config form config-form</span>')
+    }
+  })
+
+  it('materializes every localized utility inside the runtime content tree', () => {
+    for (const configured of Object.values(docsLocales)) {
+      const directory = resolve(contentRoot, configured.sourceDirectory, 'utils')
+      const generated = readdirSync(directory)
+        .filter(fileName => fileName !== 'index.md' && fileName.endsWith('.md'))
+      expect(generated).toHaveLength(7)
+      for (const fileName of generated) {
+        const source = readFileSync(resolve(directory, fileName), 'utf8')
+        expect(source).toContain(GENERATED_UTILITY_ROUTE_MARKER)
+        expect(source).toContain('lastUpdated: false')
+      }
     }
   })
 })

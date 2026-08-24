@@ -188,8 +188,10 @@ export function defineElementPlusDocs(options: ElementPlusDocsOptions): UserConf
     lastUpdated: true,
     locales: localeConfigs,
     rewrites: options.vitepress?.rewrites,
+    srcDir: options.vitepress?.srcDir,
     markdown: createMarkdownConfig(options.vitepress?.markdown),
     head: options.vitepress?.head ?? [],
+    transformPageData: options.vitepress?.transformPageData,
     themeConfig: localeThemeConfig(
       options,
       defaultLocale,

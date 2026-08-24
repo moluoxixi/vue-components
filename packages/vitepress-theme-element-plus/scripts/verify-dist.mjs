@@ -20,10 +20,12 @@ async function collectFiles(directory) {
 const failures = []
 const files = await collectFiles(distRoot)
 const jsFiles = files.filter(file => file.endsWith('.js'))
+const declarationFiles = files.filter(file => file.endsWith('.d.ts'))
 const cssFiles = files.filter(file => file.endsWith('.css'))
 const js = (await Promise.all(jsFiles.map(file => readFile(file, 'utf8')))).join('\n')
 const browserJsFiles = jsFiles.filter(file => (
   !file.endsWith('/markdown.js')
+  && !file.endsWith('/node.js')
   && !file.endsWith('/element-plus-docs.js')
   && !file.endsWith('/repository-node.js')
   && !file.includes('/node-')
@@ -36,15 +38,22 @@ const nodeModuleSpecifier = /(?:\bfrom\s*|\bimport\s*\(\s*)["']node:/
 if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify([
   '.',
   './markdown',
+  './node',
   './repository',
   './repository/node',
   './repl',
   './repl.css',
 ])) {
-  failures.push('package exports must expose the browser root, markdown, repository, Node repository, and REPL entries')
+  failures.push('package exports must expose the browser root, markdown, Node lifecycle, repository, Node repository, and REPL entries')
 }
 if (!jsFiles.some(file => file.endsWith('/markdown.js'))) {
   failures.push('markdown entry is missing')
+}
+if (!jsFiles.some(file => file.endsWith('/node.js'))) {
+  failures.push('Node lifecycle entry is missing')
+}
+if (!declarationFiles.some(file => file.endsWith('/node.d.ts'))) {
+  failures.push('Node lifecycle declaration entry is missing')
 }
 if (!jsFiles.some(file => file.endsWith('/repl.js'))) {
   failures.push('REPL entry is missing')

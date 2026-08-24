@@ -53,7 +53,7 @@ export interface ElementPlusDocsOptions {
     components?: string
   }
   search?: UserConfig['themeConfig'] extends infer _ ? 'local' | { provider: 'algolia', options: Record<string, unknown> } : never
-  vitepress?: Pick<UserConfig, 'head' | 'markdown' | 'rewrites' | 'themeConfig' | 'vite'>
+  vitepress?: Pick<UserConfig, 'head' | 'markdown' | 'rewrites' | 'srcDir' | 'themeConfig' | 'transformPageData' | 'vite'>
 }
 
 export interface ElementPlusDocsThemeConfig {

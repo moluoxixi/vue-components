@@ -2,6 +2,8 @@
 
 基于 Vue 3 的组件集合，Monorepo 结构。
 
+在线文档：[https://moluoxixi.github.io/vue-components/](https://moluoxixi.github.io/vue-components/)
+
 仓库保留两条配置表单路径：`@moluoxixi/config-form` 根入口是面向 schema、低代码和 UI plugin 的 Runtime/Plugin 实现；Element 与 Antd 两个轻量 UI 包共享 Vue headless 内核，并通过 `@moluoxixi/config-form/renderer` 生成 DOM。Headless 统一处理字段协议、required/Zod/validator、readonly、submit/reset 和校验状态，轻量 UI 包只保留真实组件绑定与样式。
 
 ## 包

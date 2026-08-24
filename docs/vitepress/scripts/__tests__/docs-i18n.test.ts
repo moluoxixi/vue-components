@@ -11,6 +11,7 @@ import {
   resolveDocsLocale,
 } from '../../.vitepress/catalog/docs-i18n'
 import { documentedUtilityPackageNames } from '../../.vitepress/catalog/utility-manifest'
+import { docsLocales } from '../../.vitepress/site/docs-site'
 
 describe('documentation internationalization', () => {
   it('keeps component identities stable across locales', () => {
@@ -35,6 +36,17 @@ describe('documentation internationalization', () => {
     expect(localePath('en-US', '/components/')).toBe('/en/components/')
     expect(localePath('zh-CN', '/utils/')).toBe('/utils/')
     expect(localePath('en-US', '/utils/')).toBe('/en/utils/')
+  })
+
+  it('keeps authoring directories separate from public locale paths', () => {
+    expect(docsLocales['zh-CN']).toMatchObject({
+      pathPrefix: '',
+      sourceDirectory: 'zh',
+    })
+    expect(docsLocales['en-US']).toMatchObject({
+      pathPrefix: '/en',
+      sourceDirectory: 'en',
+    })
   })
 
   it('formats generated UI messages for both locales', () => {

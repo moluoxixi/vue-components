@@ -62,7 +62,8 @@ function createProject() {
       locales: {
         'en-US': {
           label: 'English',
-          sourceDirectory: '',
+          pathPrefix: '',
+          sourceDirectory: 'content',
           sourceDoc: 'docs/index.md',
         },
       },

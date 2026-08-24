@@ -48,7 +48,7 @@ export function createElementPlusDocsDemoSourceHrefResolver(
           continue
 
         const routeRelativePath = slash([
-          configured.sourceDirectory,
+          configured.pathPrefix.replace(/^\//, ''),
           options.project.documentation.componentsRoute,
           `${component.slug}.md`,
         ].filter(Boolean).join('/'))

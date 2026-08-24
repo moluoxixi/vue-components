@@ -265,6 +265,8 @@ try {
     run(process.execPath, [resolve(consumerDirectory, 'smoke.mjs')])
     runPnpm(['--dir', consumerDirectory, 'exec', 'element-plus-docs', '--help'])
     await writeFile(resolve(consumerDirectory, 'fixture.txt'), 'packed CLI fixture\n')
+    await mkdir(resolve(consumerDirectory, 'content'), { recursive: true })
+    await writeFile(resolve(consumerDirectory, 'content/index.md'), '# Packed documentation\n')
     await writeFile(resolve(consumerDirectory, 'element-plus-docs.config.mjs'), `
 import {
   defineComponentPackage,
@@ -278,7 +280,8 @@ export default defineElementPlusDocsProject({
     locales: {
       'en-US': {
         label: 'English',
-        sourceDirectory: '',
+        pathPrefix: '',
+        sourceDirectory: 'content',
         sourceDoc: 'docs/index.md',
       },
     },
@@ -309,13 +312,15 @@ export default defineElementPlusDocsProject({
     run('git', ['config', 'user.name', 'Packed Fixture'], { capture: true, cwd: consumerDirectory })
     run('git', ['config', 'user.email', 'packed-fixture@example.test'], { capture: true, cwd: consumerDirectory })
     run('git', ['remote', 'add', 'origin', 'https://example.test/packed-fixture'], { capture: true, cwd: consumerDirectory })
-    run('git', ['add', 'fixture.txt', 'element-plus-docs.config.mjs'], { capture: true, cwd: consumerDirectory })
+    run('git', ['add', 'fixture.txt', 'content/index.md', 'element-plus-docs.config.mjs'], { capture: true, cwd: consumerDirectory })
     run('git', ['commit', '-m', 'fixture'], { capture: true, cwd: consumerDirectory })
     runPnpm(['--dir', consumerDirectory, 'exec', 'element-plus-docs', 'prepare'])
     if (!existsSync(resolve(consumerDirectory, '.generated/repository/local.json')))
       throw new Error('Packed element-plus-docs CLI did not generate the local provider snapshot.')
     if (!existsSync(resolve(consumerDirectory, '.generated/markdown/playground-manifests.json')))
       throw new Error('Packed element-plus-docs CLI did not generate the Playground manifest snapshot.')
+    if (!existsSync(resolve(consumerDirectory, '.generated/content/content/index.md')))
+      throw new Error('Packed element-plus-docs CLI did not project the documentation runtime content.')
     await writeFile(resolve(consumerDirectory, 'markdown-smoke.mjs'), `
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'

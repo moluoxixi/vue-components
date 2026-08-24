@@ -61,7 +61,7 @@ describe('documentation Demo projects', () => {
         try {
           const rendered = md.render(markdown, {
             relativePath: [
-              configured.sourceDirectory,
+              configured.pathPrefix.replace(/^\//, ''),
               project.documentation.componentsRoute,
               `${component.slug}.md`,
             ].filter(Boolean).join('/'),

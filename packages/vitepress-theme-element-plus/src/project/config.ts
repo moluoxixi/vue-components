@@ -17,9 +17,9 @@ import { elementPlusDocsRepositoryProviderIds } from './types'
 
 const SAFE_PATH_SEGMENT = /^[\w.@-]+$/
 
-function normalizeOptionalDirectory(value: string, field: string): string {
+function normalizeDirectory(value: string, field: string): string {
   const normalized = value.trim().replaceAll('\\', '/').replace(/^\.\//, '').replace(/^\/+|\/+$/g, '')
-  if (normalized.split('/').includes('..'))
+  if (!normalized || normalized.split('/').includes('..'))
     throw new TypeError(`${field} must be a documentation-relative directory`)
   return normalized
 }
@@ -29,6 +29,29 @@ function normalizePathPrefix(value: string | undefined, sourceDirectory: string)
     .trim()
     .replace(/^\/+|\/+$/g, '')
   return normalized ? `/${normalized}` : ''
+}
+
+function directoriesOverlap(left: string, right: string): boolean {
+  return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`)
+}
+
+function normalizeGeneratedDirectory(value: string | undefined): string {
+  const normalized = (value ?? '.generated')
+    .trim()
+    .replaceAll('\\', '/')
+    .replace(/^\.\//, '')
+    .replace(/\/+$/, '')
+  const segments = normalized.split('/')
+  if (
+    !normalized
+    || normalized === '.'
+    || normalized.startsWith('/')
+    || /^[A-Z]:\//i.test(normalized)
+    || segments.some(segment => !segment || segment === '.' || segment === '..')
+  ) {
+    throw new TypeError('generatedDirectory must be a non-root documentation-relative directory')
+  }
+  return normalized
 }
 
 function normalizeDocumentation(input: ElementPlusDocsDocumentationInput): ElementPlusDocsDocumentation {
@@ -41,7 +64,7 @@ function normalizeDocumentation(input: ElementPlusDocsDocumentationInput): Eleme
   const locales = Object.freeze(Object.fromEntries(localeEntries.map(([locale, configured]) => {
     if (!configured.label.trim())
       throw new TypeError(`Documentation locale "${locale}" requires a label`)
-    const sourceDirectory = normalizeOptionalDirectory(
+    const sourceDirectory = normalizeDirectory(
       configured.sourceDirectory,
       `documentation.locales.${locale}.sourceDirectory`,
     )
@@ -64,6 +87,12 @@ function normalizeDocumentation(input: ElementPlusDocsDocumentationInput): Eleme
     throw new TypeError('Documentation locale pathPrefix values must be unique')
   if (new Set(sourceDirectories).size !== sourceDirectories.length)
     throw new TypeError('Documentation locale sourceDirectory values must be unique')
+  if (sourceDirectories.some(directory => directoriesOverlap(directory, 'public')))
+    throw new TypeError('Documentation locale sourceDirectory values must not overlap the reserved public directory')
+  for (const [index, sourceDirectory] of sourceDirectories.entries()) {
+    if (sourceDirectories.slice(index + 1).some(candidate => directoriesOverlap(sourceDirectory, candidate)))
+      throw new TypeError('Documentation locale sourceDirectory values must not overlap')
+  }
   return Object.freeze({ componentsRoute, defaultLocale: input.defaultLocale, locales })
 }
 
@@ -210,15 +239,40 @@ export function resolveElementPlusDocsProject(input: ElementPlusDocsProjectInput
       return normalized
     })),
   }))
+  const documentation = normalizeDocumentation(input.documentation)
+  const generatedDirectory = normalizeGeneratedDirectory(input.generatedDirectory)
+  const generatedContentDirectory = `${generatedDirectory}/content`
+  const contentSources = [
+    ...Object.values(documentation.locales).map(locale => locale.sourceDirectory),
+    'public',
+  ]
+  if (contentSources.some(source => directoriesOverlap(source, generatedContentDirectory))) {
+    throw new TypeError('generatedDirectory content root must not overlap documentation source directories')
+  }
 
   return Object.freeze({
     ...input,
     components: Object.freeze(components),
     defaultPackage,
-    documentation: normalizeDocumentation(input.documentation),
-    generatedDirectory: input.generatedDirectory ?? '.generated',
+    documentation,
+    generatedDirectory,
     packages,
   })
+}
+
+export function createElementPlusDocsContentRewrites(
+  input: ElementPlusDocsProjectInput,
+): Readonly<Record<string, string>> {
+  const documentation = normalizeDocumentation(input.documentation)
+  return Object.freeze(Object.fromEntries(Object.values(documentation.locales).flatMap((locale) => {
+    const routeDirectory = locale.pathPrefix.replace(/^\//, '')
+    if (routeDirectory === locale.sourceDirectory)
+      return []
+    return [[
+      `${locale.sourceDirectory}/:path*`,
+      routeDirectory ? `${routeDirectory}/:path*` : ':path*',
+    ]]
+  })))
 }
 
 export function resolveElementPlusDocsRepositoryProvider(

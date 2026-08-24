@@ -32,7 +32,7 @@ export const browserJavaScriptEntrypointAllowlist = Object.freeze({
 })
 
 export const browserJavaScriptEntrypointExclusions = Object.freeze({
-  '@moluoxixi/vitepress-theme-element-plus': ['.', './markdown', './repository/node'],
+  '@moluoxixi/vitepress-theme-element-plus': ['.', './markdown', './node', './repository/node'],
 })
 
 export const browserStylesheetEntrypointAllowlist = Object.freeze({
@@ -42,7 +42,7 @@ export const browserStylesheetEntrypointAllowlist = Object.freeze({
 })
 
 export const nodeJavaScriptRuntimeEntrypointAllowlist = Object.freeze({
-  '@moluoxixi/vitepress-theme-element-plus': ['./repository/node'],
+  '@moluoxixi/vitepress-theme-element-plus': ['./node', './repository/node'],
 })
 
 export function importName(name) {
