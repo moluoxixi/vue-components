@@ -136,6 +136,13 @@ The standalone designer must also prove that the core is UI-framework independen
 - 保持现有公开常量、物料 key、组件绑定、readonly、setter、locale、用户层优先级和导出 JSON 完全兼容。文件扫描只生成适配器默认层，调用方注册仍可覆盖默认层。
 - `import.meta.glob` 只允许出现在适配器源码聚合入口；Core 与 Headless 的公共注册逻辑仅接收普通模块映射，因此不依赖 Vite，也可在 Vitest、Node 和其他构建工具中单独验证。
 
+### R18. ConfigForm 主架构文档
+
+- `packages/ConfigForm/README.md` 是 ConfigForm 当前架构事实入口，持续维护包职责、实际依赖方向、两条运行路径、关键数据流、注册器分层和扩展边界。
+- 明确 `define*MaterialModule` 是领域类型声明 helper，真正注册由 `create*Registry` 执行，避免把声明位置误解为注册逻辑所有权。
+- 根 README 必须链接主架构文档并列出 Designer 主包；子包 README 维护具体 API，不重复承担跨包架构事实。
+- 新增包、依赖反转、公共协议、注册优先级或 Core/Headless/Runtime/Designer 职责变化时，主架构 README 必须与代码在同一批改动中更新。
+
 ## Acceptance Criteria
 
 - [x] Playground opens with a 24-column root grid; the sample’s two-up sections are achieved with explicit 12-cell spans.
@@ -166,6 +173,7 @@ The standalone designer must also prove that the core is UI-framework independen
 - [x] 两个设计器适配器的物料定义与 locale 按物料名共置，并由同一确定性扫描注册流程生成现有公开物料数组和本地化对象。
 - [x] 注册器对名称不一致、危险名称和重复名称提供稳定诊断，并保持用户注册层覆盖适配器默认层的既有优先级。
 - [x] Core、Headless、运行时适配器和设计器适配器的单测、类型检查、构建及公开包边界验证通过。
+- [x] ConfigForm 主 README 记录当前包分层、依赖方向、数据流、注册器/reaction/slot/option source 边界与维护规则，根 README 可发现该入口。
 
 ## Out of Scope
 

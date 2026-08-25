@@ -7,7 +7,7 @@
 - [组件文档](https://moluoxixi.github.io/vue-components/)
 - [ConfigForm 可视化设计器](https://moluoxixi.github.io/vue-components/config-form-playground/designer.html)
 
-仓库保留两条配置表单路径：`@moluoxixi/config-form` 根入口是面向 schema、低代码和 UI plugin 的 Runtime/Plugin 实现；Element 与 Antd 两个轻量 UI 包共享 Vue headless 内核，并通过 `@moluoxixi/config-form/renderer` 生成 DOM。Headless 统一处理字段协议、required/Zod/validator、readonly、submit/reset 和校验状态，轻量 UI 包只保留真实组件绑定与样式。
+仓库保留两条配置表单路径：`@moluoxixi/config-form` 根入口是面向 schema、低代码和 UI plugin 的 Runtime/Plugin 实现；Element 与 Antd 两个轻量 UI 包共享 Vue headless 内核，并通过 `@moluoxixi/config-form/renderer` 生成 DOM。Headless 统一处理字段协议、required/Zod/validator、readonly、submit/reset 和校验状态，轻量 UI 包只保留真实组件绑定与样式。包职责、依赖方向和扩展边界以 [ConfigForm 架构文档](./packages/ConfigForm/README.md) 为准。
 
 ## 包
 
@@ -20,6 +20,7 @@
 | [`@moluoxixi/config-form-element`](./packages/ConfigForm/element/)                             | Element Plus 轻量 ConfigForm                                                        |
 | [`@moluoxixi/config-form-antd-vue`](./packages/ConfigForm/antd/)                               | Ant Design Vue 轻量 ConfigForm                                                      |
 | [`@moluoxixi/config-form-devtools-vite-plugin`](./packages/ConfigForm/devtools-vite-plugin/)   | 开发态源码定位 Vite 插件                                                            |
+| [`@moluoxixi/config-form-designer`](./packages/ConfigForm/designer/)                           | UI 框架无关的可视化设计器文档、注册器、诊断、编译器与界面                           |
 | [`@moluoxixi/config-form-designer-element-plus`](./packages/ConfigForm/designer-element-plus/) | Element Plus 可视化设计器适配                                                       |
 | [`@moluoxixi/config-form-designer-antd-vue`](./packages/ConfigForm/designer-antd-vue/)         | Ant Design Vue 可视化设计器适配                                                     |
 | [`@moluoxixi/config-form-plugin-antd-vue`](./packages/ConfigForm/plugin-antd-vue/)             | Ant Design Vue runtime adapter                                                      |

@@ -23,6 +23,8 @@ This directory contains guidelines for frontend development. Fill in each file w
 
 Shared contract: [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md).
 
+Architecture rule: [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md).
+
 ---
 
 ## How to Fill These Guidelines

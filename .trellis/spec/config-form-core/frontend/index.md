@@ -21,6 +21,7 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 | [Material Registry](./material-registry.md) | Deterministic runtime/designer material discovery and validation | Active |
+| [Architecture Documentation](./architecture-documentation.md) | Same-change maintenance rules for the ConfigForm architecture README | Active |
 
 ---
 

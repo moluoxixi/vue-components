@@ -40,6 +40,7 @@
 38. [x] Move Element Plus and Ant Design Vue runtime aliases to `src/materials/<name>.ts` and generate their existing public component maps through eager file scanning.
 39. [x] Split both designer-adapter material catalogs into co-located named modules containing definition, order, and locale, then generate the existing public arrays/locales through the same registry contract.
 40. [x] Verify caller override precedence, material key/order parity, readonly/binding behavior, type declarations, builds, and published export boundaries across all affected ConfigForm packages.
+41. [x] Add a maintained ConfigForm architecture README, link it from the repository root, document declaration-versus-registration ownership, and define same-change documentation rules for future boundary changes.
 
 ## Validation Commands
 

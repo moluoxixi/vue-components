@@ -119,3 +119,9 @@ Each Element Plus and Ant Design Vue runtime adapter has one `src/materials/<nam
 Each designer adapter has one `src/materials/<name>.ts` module per namespaced material. A module co-locates its `DesignerMaterialDefinition`, order, and zh-CN material locale fragment. The adapter's `materials.ts` scans those modules, creates the existing ordered material array, and composes the existing locale object. Shared setters and component dependencies stay in a small adapter-local context module rather than being duplicated across every material file.
 
 The scanner is not an extension mechanism at application runtime. Caller-provided component maps and designer registry layers remain the supported extension surface and keep their current precedence. Scanning only removes hand-maintained default aggregation lists and makes adding a built-in material a one-file operation.
+
+## Architecture Documentation Ownership
+
+`packages/ConfigForm/README.md` is the maintained current-state architecture document. It records package ownership, actual dependency direction, the Headless/Renderer and Runtime/Plugin paths, cross-package data flows, extension choices, and the boundaries for material registries, reactions, slots, and option sources.
+
+Task design documents preserve implementation history and trade-offs; package READMEs preserve concrete APIs. Neither replaces the root ConfigForm architecture document. Any change to a package boundary, shared protocol, registry precedence, or public subpath must update the architecture document in the same change set.
