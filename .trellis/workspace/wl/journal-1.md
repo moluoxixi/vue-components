@@ -94,3 +94,25 @@ CI Verify 使用完整 Git 历史运行 local provider consumer，并以 workflo
 ### Status
 
 [OK] **Completed**
+
+
+## Session 5: 补充 ConfigForm 设计器在线入口
+
+**Date**: 2026-08-25
+**Task**: 补充 ConfigForm 设计器在线入口
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设计器直达链接，并验证线上 designer.html 返回 200。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ab8a4fb1` | (see git log) |
+
+### Status
+
+[OK] **Completed**
