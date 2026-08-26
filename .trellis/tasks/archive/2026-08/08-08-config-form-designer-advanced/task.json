@@ -3,7 +3,7 @@
   "name": "config-form-designer-advanced",
   "title": "ConfigForm designer advanced capabilities",
   "description": "",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [],
@@ -23,7 +23,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-08",
-  "completedAt": null,
+  "completedAt": "2026-08-27",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,
