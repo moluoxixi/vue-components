@@ -5,10 +5,14 @@
  * v-model 表格与展开的关联自定义类型（typeDefs）。props 的 typeRefs 高亮，
  * 指引用户到下方类型定义区查字段结构（方案 A 成果的可视化呈现）。
  */
-import { computed, ref, watch } from 'vue'
+import { ArrowLeft, Download, MessageSquare } from '@lucide/vue'
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { ComponentDetailResponse } from '../../shared/protocol'
 import { fetchComponentDetail } from '../api'
 import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat } from '../export'
+import TypeReference from '../components/TypeReference.vue'
+import { restoreFocusIfLost } from '../focus'
 
 const props = defineProps<{ name: string }>()
 const emit = defineEmits<{ (e: 'back'): void, (e: 'ask', name: string): void }>()
@@ -20,10 +24,8 @@ const errorMsg = ref('')
 /** 加载中标志。 */
 const loading = ref(false)
 const exportingFormat = ref<KnowledgeExportFormat | ''>('')
-const exportMenuOpen = ref(false)
+const exportTrigger = useTemplateRef<HTMLButtonElement>('exportTrigger')
 let loadRequestId = 0
-/** Tooltip 内容样式：保留字段换行，避免复杂类型挤成一行。 */
-const typeTooltipStyle = { whiteSpace: 'pre-line', maxWidth: '520px' } as const
 
 /** 按类型名索引展开后的类型定义，供 prop type tooltip 快速查找。 */
 const typeDefByName = computed(() => new Map((detail.value?.typeDefs ?? []).map(t => [t.name, t] as const)))
@@ -33,6 +35,21 @@ const typeDefMatchers = computed(() => (detail.value?.typeDefs ?? []).map((typeD
   const escaped = typeDef.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return { name: typeDef.name, pattern: new RegExp(`\\b${escaped}\\b`) }
 }))
+
+const detailSections = computed(() => {
+  const value = detail.value
+  if (!value)
+    return []
+  return [
+    { id: 'detail-props-section', label: 'Props', visible: value.props.length > 0 },
+    { id: 'detail-emits-section', label: 'Emits', visible: value.emits.length > 0 },
+    { id: 'detail-models-section', label: 'v-model', visible: value.models.length > 0 },
+    { id: 'detail-slots-section', label: 'Slots', visible: value.slots.length > 0 },
+    { id: 'detail-attrs-section', label: '$attrs', visible: Boolean(value.attrs?.length) },
+    { id: 'detail-exposed-section', label: 'Exposed', visible: Boolean(value.exposed?.length) },
+    { id: 'detail-typedefs-section', label: '类型定义', visible: value.typeDefs.length > 0 },
+  ].filter(section => section.visible)
+})
 
 /** 把 prop 引用的类型定义格式化为 tooltip 文案。 */
 function typeTooltipContent(typeRefs: string[]): string {
@@ -98,7 +115,6 @@ async function load(name: string): Promise<void> {
 function exportCurrentDetail(format: KnowledgeExportFormat): void {
   if (!detail.value)
     return
-  exportMenuOpen.value = false
   exportingFormat.value = format
   try {
     exportComponentDetail(detail.value, format)
@@ -111,48 +127,56 @@ function exportCurrentDetail(format: KnowledgeExportFormat): void {
   }
 }
 
+function onExportCommand(format: KnowledgeExportFormat): void {
+  exportCurrentDetail(format)
+}
+
+function onExportVisibleChange(visible: boolean): void {
+  if (!visible)
+    restoreFocusIfLost(exportTrigger.value)
+}
+
+function scrollToSection(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 watch(() => props.name, load, { immediate: true })
 </script>
 
 <template>
   <div class="detail" data-testid="detail-view">
     <div class="detail-head">
-      <button class="link-btn" data-testid="detail-back" @click="emit('back')">
-        ← 返回总览
+      <button class="link-btn" type="button" data-testid="detail-back" @click="emit('back')">
+        <ArrowLeft :size="15" />
+        返回总览
       </button>
       <div v-if="detail" class="detail-actions">
-        <div class="export-buttons" aria-label="导出组件契约">
-          <button
-            class="export-button"
-            type="button"
-            aria-haspopup="menu"
-            :aria-expanded="exportMenuOpen"
-            data-testid="detail-export-trigger"
-            @click="exportMenuOpen = !exportMenuOpen"
-          >
-            <span class="export-button-icon" aria-hidden="true">⬇️</span>
+        <ElDropdown trigger="click" :teleported="false" @command="onExportCommand" @visible-change="onExportVisibleChange">
+          <button ref="exportTrigger" class="export-button" type="button" data-testid="detail-export-trigger">
+            <Download :size="15" />
             导出
           </button>
-          <div v-if="exportMenuOpen" class="detail-export-menu" role="menu" data-testid="detail-export-menu">
-            <button
+          <template #dropdown>
+            <ElDropdownMenu data-testid="detail-export-menu">
+              <ElDropdownItem
               v-for="format in KNOWLEDGE_EXPORT_FORMATS"
               :key="format.id"
-              class="detail-export-option"
-              type="button"
-              role="menuitem"
+              :command="format.id"
               :disabled="exportingFormat === format.id"
               data-testid="detail-export-option"
-              @click="exportCurrentDetail(format.id)"
             >
-              {{ format.icon }} {{ format.label }}
-            </button>
-          </div>
-        </div>
+                {{ format.label }}
+              </ElDropdownItem>
+            </ElDropdownMenu>
+          </template>
+        </ElDropdown>
         <button
           class="link-btn ask"
+          type="button"
           data-testid="detail-ask"
           @click="emit('ask', detail.name)"
         >
+          <MessageSquare :size="15" />
           问 AI 这个组件
         </button>
       </div>
@@ -178,7 +202,19 @@ watch(() => props.name, load, { immediate: true })
         {{ detail.description }}
       </p>
 
-      <section v-if="detail.props.length" data-testid="detail-props">
+      <div class="detail-layout">
+        <nav class="section-nav" aria-label="组件契约区块" data-testid="detail-nav">
+          <button
+            v-for="section in detailSections"
+            :key="section.id"
+            type="button"
+            @click="scrollToSection(section.id)"
+          >
+            {{ section.label }}
+          </button>
+        </nav>
+        <div class="detail-sections">
+      <section id="detail-props-section" v-if="detail.props.length" data-testid="detail-props">
         <h3>Props</h3>
         <table class="contract-table">
           <thead>
@@ -196,14 +232,11 @@ watch(() => props.name, load, { immediate: true })
                 >透传自 {{ p.forwardedFrom }}</span>
               </td>
               <td>
-                <ElTooltip
+                <TypeReference
                   v-if="hasTypeTooltip(p.type, p.typeRefs)"
+                  :text="p.type"
                   :content="typeTooltipContent(typeRefsForDisplay(p.type, p.typeRefs))"
-                  :popper-style="typeTooltipStyle"
-                  placement="top"
-                >
-                  <code class="ref">{{ p.type }}</code>
-                </ElTooltip>
+                />
                 <code v-else>{{ p.type }}</code>
               </td>
               <td>{{ p.required ? '是' : '否' }}</td>
@@ -214,7 +247,7 @@ watch(() => props.name, load, { immediate: true })
         </table>
       </section>
 
-      <section v-if="detail.emits.length" data-testid="detail-emits">
+      <section id="detail-emits-section" v-if="detail.emits.length" data-testid="detail-emits">
         <h3>Emits</h3>
         <table class="contract-table">
           <thead><tr><th>事件</th><th>载荷类型</th><th>说明</th></tr></thead>
@@ -222,14 +255,11 @@ watch(() => props.name, load, { immediate: true })
             <tr v-for="e in detail.emits" :key="e.name">
               <td><code>{{ e.name }}</code></td>
               <td>
-                <ElTooltip
+                <TypeReference
                   v-if="hasTypeTooltip(e.payloadType, e.typeRefs)"
+                  :text="e.payloadType"
                   :content="typeTooltipContent(typeRefsForDisplay(e.payloadType, e.typeRefs))"
-                  :popper-style="typeTooltipStyle"
-                  placement="top"
-                >
-                  <code class="type-ref">{{ e.payloadType }}</code>
-                </ElTooltip>
+                />
                 <code v-else>{{ e.payloadType }}</code>
               </td>
               <td>{{ e.description || '—' }}</td>
@@ -238,7 +268,7 @@ watch(() => props.name, load, { immediate: true })
         </table>
       </section>
 
-      <section v-if="detail.models.length" data-testid="detail-models">
+      <section id="detail-models-section" v-if="detail.models.length" data-testid="detail-models">
         <h3>v-model</h3>
         <table class="contract-table">
           <thead><tr><th>名称</th><th>类型</th></tr></thead>
@@ -246,14 +276,11 @@ watch(() => props.name, load, { immediate: true })
             <tr v-for="m in detail.models" :key="m.name">
               <td><code>{{ m.name }}</code></td>
               <td>
-                <ElTooltip
+                <TypeReference
                   v-if="hasTypeTooltip(m.type)"
+                  :text="m.type"
                   :content="typeTooltipContent(typeRefsForDisplay(m.type))"
-                  :popper-style="typeTooltipStyle"
-                  placement="top"
-                >
-                  <code class="type-ref">{{ m.type }}</code>
-                </ElTooltip>
+                />
                 <code v-else>{{ m.type }}</code>
               </td>
             </tr>
@@ -261,7 +288,7 @@ watch(() => props.name, load, { immediate: true })
         </table>
       </section>
 
-      <section v-if="detail.slots.length" data-testid="detail-slots">
+      <section id="detail-slots-section" v-if="detail.slots.length" data-testid="detail-slots">
         <h3>Slots</h3>
         <table class="contract-table">
           <thead><tr><th>名称</th><th>作用域类型</th><th>说明</th></tr></thead>
@@ -269,14 +296,11 @@ watch(() => props.name, load, { immediate: true })
             <tr v-for="s in detail.slots" :key="s.name">
               <td><code>{{ s.name }}</code></td>
               <td>
-                <ElTooltip
+                <TypeReference
                   v-if="hasTypeTooltip(s.scopeType, s.typeRefs)"
+                  :text="s.scopeType"
                   :content="typeTooltipContent(typeRefsForDisplay(s.scopeType, s.typeRefs))"
-                  :popper-style="typeTooltipStyle"
-                  placement="top"
-                >
-                  <code class="type-ref">{{ s.scopeType }}</code>
-                </ElTooltip>
+                />
                 <code v-else>{{ s.scopeType }}</code>
               </td>
               <td>{{ s.description || '—' }}</td>
@@ -285,7 +309,7 @@ watch(() => props.name, load, { immediate: true })
         </table>
       </section>
 
-      <section v-if="detail.attrs && detail.attrs.length" data-testid="detail-attrs">
+      <section id="detail-attrs-section" v-if="detail.attrs && detail.attrs.length" data-testid="detail-attrs">
         <h3>透传属性（$attrs）</h3>
         <table class="contract-table">
           <thead><tr><th>名称</th><th>类型</th><th>可选</th><th>说明</th></tr></thead>
@@ -293,14 +317,11 @@ watch(() => props.name, load, { immediate: true })
             <tr v-for="a in detail.attrs" :key="a.name" data-testid="attr-row">
               <td><code>{{ a.name }}</code></td>
               <td>
-                <ElTooltip
+                <TypeReference
                   v-if="hasTypeTooltip(a.type)"
+                  :text="a.type"
                   :content="typeTooltipContent(typeRefsForDisplay(a.type))"
-                  :popper-style="typeTooltipStyle"
-                  placement="top"
-                >
-                  <code class="type-ref">{{ a.type }}</code>
-                </ElTooltip>
+                />
                 <code v-else>{{ a.type }}</code>
               </td>
               <td>{{ a.optional ? '是' : '否' }}</td>
@@ -310,7 +331,7 @@ watch(() => props.name, load, { immediate: true })
         </table>
       </section>
 
-      <section v-if="detail.exposed && detail.exposed.length" data-testid="detail-exposed">
+      <section id="detail-exposed-section" v-if="detail.exposed && detail.exposed.length" data-testid="detail-exposed">
         <h3>对外暴露（defineExpose）</h3>
         <table class="contract-table">
           <thead><tr><th>名称</th><th>类型</th><th>说明</th></tr></thead>
@@ -318,14 +339,11 @@ watch(() => props.name, load, { immediate: true })
             <tr v-for="e in detail.exposed" :key="e.name" data-testid="expose-row">
               <td><code>{{ e.name }}</code></td>
               <td>
-                <ElTooltip
+                <TypeReference
                   v-if="hasTypeTooltip(e.type, e.typeRefs)"
+                  :text="e.type"
                   :content="typeTooltipContent(typeRefsForDisplay(e.type, e.typeRefs))"
-                  :popper-style="typeTooltipStyle"
-                  placement="top"
-                >
-                  <code class="type-ref">{{ e.type }}</code>
-                </ElTooltip>
+                />
                 <code v-else>{{ e.type }}</code>
               </td>
               <td>{{ e.description || '—' }}</td>
@@ -334,7 +352,7 @@ watch(() => props.name, load, { immediate: true })
         </table>
       </section>
 
-      <section v-if="detail.typeDefs.length" data-testid="detail-typedefs">
+      <section id="detail-typedefs-section" v-if="detail.typeDefs.length" data-testid="detail-typedefs">
         <h3>关联类型定义</h3>
         <div v-for="t in detail.typeDefs" :key="t.name" class="typedef" data-testid="typedef-block">
           <div class="typedef-name">
@@ -346,14 +364,11 @@ watch(() => props.name, load, { immediate: true })
               <tr v-for="f in t.fields" :key="f.name">
                 <td><code>{{ f.name }}</code></td>
                 <td>
-                  <ElTooltip
+                  <TypeReference
                     v-if="hasTypeTooltip(f.type)"
+                    :text="f.type"
                     :content="typeTooltipContent(typeRefsForDisplay(f.type))"
-                    :popper-style="typeTooltipStyle"
-                    placement="top"
-                  >
-                    <code class="type-ref">{{ f.type }}</code>
-                  </ElTooltip>
+                  />
                   <code v-else>{{ f.type }}</code>
                 </td>
                 <td>{{ f.optional ? '是' : '否' }}</td>
@@ -363,15 +378,16 @@ watch(() => props.name, load, { immediate: true })
           </table>
         </div>
       </section>
+        </div>
+      </div>
     </template>
   </div>
 </template>
 
 <style scoped>
-.detail { padding: 20px; overflow-x: hidden; }
+.detail { box-sizing: border-box; width: min(100%, 1240px); min-height: 100%; margin: 0 auto; padding: 24px; overflow-x: hidden; }
 .detail-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .detail-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
-.export-buttons { position: relative; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .export-button {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 10px; border: 1px solid #d0d7de; border-radius: 6px;
@@ -379,18 +395,8 @@ watch(() => props.name, load, { immediate: true })
 }
 .export-button:hover { border-color: #1f6feb; background: #ddf4ff; }
 .export-button:disabled { opacity: .5; cursor: wait; }
-.export-button-icon { line-height: 1; }
-.detail-export-menu {
-  position: absolute; top: 32px; right: 0; z-index: 2;
-  min-width: 128px; padding: 6px; border: 1px solid #d0d7de; border-radius: 8px;
-  background: #fff; box-shadow: 0 8px 24px rgba(140,149,159,.2);
-}
-.detail-export-option {
-  display: block; width: 100%; padding: 7px 8px; border: 0; border-radius: 6px;
-  background: transparent; cursor: pointer; text-align: left; white-space: nowrap;
-}
-.detail-export-option:hover { background: #f6f8fa; }
 .link-btn {
+  display: inline-flex; align-items: center; gap: 6px;
   background: none; border: none; color: #1f6feb; cursor: pointer;
   font-size: 13px; padding: 4px 0;
 }
@@ -405,7 +411,20 @@ watch(() => props.name, load, { immediate: true })
   padding: 2px 8px; border-radius: 999px; vertical-align: middle;
 }
 .desc { color: #57606a; margin: 0 0 18px; }
-section { margin-bottom: 24px; overflow-x: auto; }
+.detail-layout { display: grid; grid-template-columns: 148px minmax(0, 1fr); align-items: start; gap: 24px; }
+.section-nav {
+  position: sticky; top: 16px;
+  display: grid; gap: 3px; padding: 6px;
+  border: 1px solid #dfe3e8; border-radius: 7px; background: #fff;
+}
+.section-nav button {
+  padding: 7px 9px; border: 0; border-radius: 5px; background: transparent;
+  color: #59636e; cursor: pointer; font-size: 12px; text-align: left;
+}
+.section-nav button:hover,
+.section-nav button:focus-visible { background: #eef4fb; color: #0969da; outline: none; }
+.detail-sections { min-width: 0; }
+section { scroll-margin-top: 16px; margin-bottom: 24px; overflow-x: auto; }
 section h3 { font-size: 14px; color: #1f2328; margin: 0 0 10px; }
 .contract-table {
   width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px;
@@ -430,4 +449,21 @@ code.type-ref { background: #ddf4ff; color: #0969da; }
 .typedef { margin-bottom: 16px; }
 .typedef-name { margin-bottom: 6px; }
 .typedef-name small { color: #8b949e; margin-left: 8px; font-size: 11px; }
+
+@media (max-width: 760px) {
+  .detail { padding: 16px 12px; }
+  .detail-head { align-items: flex-start; flex-direction: column; }
+  .detail-actions { width: 100%; justify-content: flex-start; }
+  .comp-title { font-size: 19px; }
+  .comp-title small,
+  .source-badge { display: block; width: fit-content; margin: 5px 0 0; }
+  .detail-layout { display: block; }
+  .section-nav {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; margin-bottom: 16px; overflow-x: auto;
+    border-right: 0; border-left: 0; border-radius: 0;
+    white-space: nowrap;
+  }
+  .section-nav button { flex: 0 0 auto; }
+}
 </style>

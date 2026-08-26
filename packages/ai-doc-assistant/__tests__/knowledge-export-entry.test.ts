@@ -1,7 +1,51 @@
 import type { ComponentDetailResponse, ComponentListItem } from '../src/shared/protocol'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, inject, provide, ref } from 'vue'
+
+const dropdownCommandKey = Symbol('dropdown-command')
+const dropdownStubs = {
+  ElDropdown: defineComponent({
+    name: 'ElDropdown',
+    emits: ['command'],
+    setup(_, { emit, slots }) {
+      const open = ref(false)
+      provide(dropdownCommandKey, (command: unknown) => emit('command', command))
+      return () => h('div', [
+        h('span', { onClickCapture: () => { open.value = !open.value } }, slots.default?.()),
+        open.value ? slots.dropdown?.() : null,
+      ])
+    },
+  }),
+  ElDropdownMenu: defineComponent({
+    name: 'ElDropdownMenu',
+    setup(_, { attrs, slots }) {
+      return () => h('div', { ...attrs, role: 'menu' }, slots.default?.())
+    },
+  }),
+  ElDropdownItem: defineComponent({
+    name: 'ElDropdownItem',
+    inheritAttrs: false,
+    props: { command: [String, Number, Object], disabled: Boolean },
+    setup(props, { attrs, slots }) {
+      const send = inject<(command: unknown) => void>(dropdownCommandKey)
+      const invoke = (event: Event) => {
+        event.stopPropagation()
+        if (!props.disabled)
+          send?.(props.command)
+      }
+      return () => h('button', {
+        ...attrs,
+        disabled: props.disabled,
+        onClick: invoke,
+        onKeydown: (event: KeyboardEvent) => {
+          if (event.key === 'Enter' || event.key === ' ')
+            invoke(event)
+        },
+      }, slots.default?.())
+    },
+  }),
+}
 
 const detail: ComponentDetailResponse = {
   name: 'DemoButton',
@@ -43,7 +87,7 @@ describe('knowledge export entry points', () => {
 
   it('总览卡片主体使用独立按钮打开详情', async () => {
     const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
-    const wrapper = mount(OverviewView, { props: { components } })
+    const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
     const openButton = wrapper.find('[data-testid="component-open"]')
 
     expect(openButton.element.tagName).toBe('BUTTON')
@@ -55,7 +99,7 @@ describe('knowledge export entry points', () => {
 
   it('总览卡片只显示一个导出按钮，点击后下拉选择普通 JSON 且不打开详情', async () => {
     const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
-    const wrapper = mount(OverviewView, { props: { components } })
+    const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
 
     expect(wrapper.findAll('[data-testid="card-export-trigger"]')).toHaveLength(1)
     expect(wrapper.findAll('[data-testid="card-export-option"]')).toHaveLength(0)
@@ -63,7 +107,7 @@ describe('knowledge export entry points', () => {
     await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
     const exportOptions = wrapper.findAll('[data-testid="card-export-option"]')
     expect(exportOptions).toHaveLength(1)
-    expect(exportOptions.map(button => button.text())).toEqual(['🧩 JSON'])
+    expect(exportOptions.map(button => button.text())).toEqual(['JSON'])
     expect(fetchComponentDetail).not.toHaveBeenCalled()
 
     await exportOptions[0].trigger('click')
@@ -77,7 +121,7 @@ describe('knowledge export entry points', () => {
   it('总览卡片 JSON 导出详情加载失败时展示错误条', async () => {
     fetchComponentDetail.mockRejectedValueOnce(new Error('详情加载失败'))
     const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
-    const wrapper = mount(OverviewView, { props: { components } })
+    const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
 
     await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
     const jsonButton = wrapper.find('[data-testid="card-export-option"]')
@@ -90,7 +134,7 @@ describe('knowledge export entry points', () => {
 
   it('总览卡片导出下拉选项键盘触发不会冒泡打开详情', async () => {
     const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
-    const wrapper = mount(OverviewView, { props: { components } })
+    const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
 
     await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
     const exportOption = wrapper.find('[data-testid="card-export-option"]')
@@ -105,12 +149,7 @@ describe('knowledge export entry points', () => {
       props: { name: 'DemoButton' },
       global: {
         stubs: {
-          ElTooltip: defineComponent({
-            name: 'ElTooltip',
-            setup(_, { slots }) {
-              return () => h('span', slots.default?.())
-            },
-          }),
+          ...dropdownStubs,
         },
       },
     })
@@ -122,7 +161,7 @@ describe('knowledge export entry points', () => {
     await wrapper.find('[data-testid="detail-export-trigger"]').trigger('click')
     const exportOptions = wrapper.findAll('[data-testid="detail-export-option"]')
     expect(exportOptions).toHaveLength(1)
-    expect(exportOptions.map(button => button.text())).toEqual(['🧩 JSON'])
+    expect(exportOptions.map(button => button.text())).toEqual(['JSON'])
 
     await exportOptions[0].trigger('click')
     expect(exportComponentDetail).toHaveBeenCalledWith(detail, 'json')

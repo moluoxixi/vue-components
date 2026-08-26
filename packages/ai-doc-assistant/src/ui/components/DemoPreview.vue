@@ -12,6 +12,7 @@
  */
 import { computed, nextTick, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import type { Component } from 'vue'
+import { Code2, Copy } from '@lucide/vue'
 import { compileSfc } from '../preview'
 
 const props = withDefaults(defineProps<{
@@ -239,42 +240,50 @@ async function copy(which: CopyLang): Promise<void> {
     <div class="dp-actions" data-testid="demo-actions">
       <button
         class="dp-action"
+        type="button"
         data-testid="view-ts"
         :class="{ active: showCode && lang === 'ts' }"
         :aria-expanded="showCode && lang === 'ts'"
         title="查看 TS 源码"
         @click="viewCode('ts')"
       >
+        <Code2 :size="14" />
         {{ showCode && lang === 'ts' ? '收起 TS' : '查看 TS' }}
       </button>
       <button
         class="dp-action"
+        type="button"
         data-testid="copy-ts"
         :class="{ error: copied === 'error' }"
         title="复制 TS 源码"
         @click="copy('ts')"
       >
+        <Copy :size="14" />
         {{ copied === 'ts' ? '已复制' : copied === 'selected' && failedCopy === 'ts' ? '已选中' : copied === 'error' && failedCopy === 'ts' ? '复制失败' : '复制 TS' }}
       </button>
       <button
         v-if="hasJs"
         class="dp-action"
+        type="button"
         data-testid="view-js"
         :class="{ active: showCode && lang === 'js' }"
         :aria-expanded="showCode && lang === 'js'"
         title="查看 JS 源码"
         @click="viewCode('js')"
       >
+        <Code2 :size="14" />
         {{ showCode && lang === 'js' ? '收起 JS' : '查看 JS' }}
       </button>
       <button
         v-if="hasJs"
         class="dp-action"
+        type="button"
         data-testid="copy-js"
         :class="{ error: copied === 'error' }"
         title="复制 JS 源码"
         @click="copy('js')"
       >
+        <Copy :size="14" />
         {{ copied === 'js' ? '已复制' : copied === 'selected' && failedCopy === 'js' ? '已选中' : copied === 'error' && failedCopy === 'js' ? '复制失败' : '复制 JS' }}
       </button>
     </div>
@@ -288,6 +297,7 @@ async function copy(which: CopyLang): Promise<void> {
         <span class="dp-code-lang" data-testid="code-lang">{{ lang === 'js' ? 'JavaScript' : 'TypeScript' }}</span>
         <button
           class="dp-copy"
+          type="button"
           :class="{ error: copied === 'error' }"
           data-testid="copy-current"
           @click="copy(lang)"
@@ -311,11 +321,11 @@ async function copy(which: CopyLang): Promise<void> {
 .dp-hint.warn { color: #9a6700; white-space: pre-wrap; }
 /* 操作栏：右下角直接放 查看/复制 TS/JS 按钮（对齐用户诉求：无需展开后再复制） */
 .dp-actions {
-  display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  display: flex; min-height: 42px; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px;
   padding: 6px 10px; background: #f6f8fa; border-top: 1px dashed #d0d7de;
 }
 .dp-action {
-  display: inline-flex; align-items: center;
+  display: inline-flex; min-height: 30px; align-items: center; gap: 5px;
   padding: 4px 12px; border: 1px solid transparent; border-radius: 6px;
   background: transparent; color: #57606a; cursor: pointer; font-size: 13px;
 }
@@ -339,5 +349,12 @@ async function copy(which: CopyLang): Promise<void> {
 .dp-code pre {
   background: #0d1117; color: #c9d1d9; padding: 14px;
   border-radius: 0; overflow-x: auto; margin: 0;
+}
+
+@media (max-width: 520px) {
+  .dp-live { padding: 16px 12px; }
+  .dp-actions { justify-content: flex-start; padding: 7px 8px; }
+  .dp-action { min-height: 38px; flex: 1 1 calc(50% - 4px); justify-content: center; padding-right: 7px; padding-left: 7px; }
+  .dp-code pre { padding: 12px; }
 }
 </style>

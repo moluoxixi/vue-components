@@ -28,6 +28,7 @@ export function usePopoverTableSelectBase(
   let virtualElement: HTMLElement
   let virtualListenersInstalled = false
   let outsideClickListenerInstalled = false
+  let lifecycleActive = false
   let bottomBoundaryReached = false
 
   const popoverRefStyle = computed<CSSProperties>(() => {
@@ -78,7 +79,8 @@ export function usePopoverTableSelectBase(
       return
 
     nextTick(() => {
-      refs.elPopover.value.popperRef.popperInstanceRef.update()
+      if (lifecycleActive && models.visible.value)
+        refs.elPopover.value?.popperRef?.popperInstanceRef?.update()
     })
   }
 
@@ -201,13 +203,14 @@ export function usePopoverTableSelectBase(
   }
 
   function cleanupEventListeners(): void {
+    cleanupOutsideClickListener()
+
     if (!virtualListenersInstalled)
       return
 
     virtualElement.removeEventListener('keydown', handleKeydown)
     virtualElement.removeEventListener('focus', handleFocus)
     virtualElement.removeEventListener('click', handleClick)
-    cleanupOutsideClickListener()
     virtualListenersInstalled = false
   }
 
@@ -228,6 +231,19 @@ export function usePopoverTableSelectBase(
 
     document.addEventListener('mousedown', handleOutsideClick)
     outsideClickListenerInstalled = true
+  }
+
+  function scheduleOutsideClickListener(): void {
+    // Let the opening event finish before listening, then re-check lifecycle state.
+    nextTick(() => {
+      if (lifecycleActive && models.visible.value)
+        setupOutsideClickListener()
+    })
+  }
+
+  function deactivateEventListeners(): void {
+    lifecycleActive = false
+    cleanupEventListeners()
   }
 
   function handleTableScroll(event: Event): void {
@@ -254,7 +270,11 @@ export function usePopoverTableSelectBase(
     () => props.virtualRef,
     () => {
       cleanupEventListeners()
-      setupEventListeners()
+      if (lifecycleActive) {
+        setupEventListeners()
+        if (models.visible.value)
+          setupOutsideClickListener()
+      }
     },
   )
 
@@ -278,7 +298,7 @@ export function usePopoverTableSelectBase(
     (visible) => {
       if (visible) {
         updatePopoverPosition()
-        nextTick(setupOutsideClickListener)
+        scheduleOutsideClickListener()
       }
       else {
         cleanupOutsideClickListener()
@@ -287,16 +307,20 @@ export function usePopoverTableSelectBase(
     { immediate: true },
   )
 
-  onMounted(setupEventListeners)
+  onMounted(() => {
+    lifecycleActive = true
+    setupEventListeners()
+  })
 
   onActivated(() => {
+    lifecycleActive = true
     setupEventListeners()
     if (models.visible.value)
       setupOutsideClickListener()
   })
 
-  onDeactivated(cleanupEventListeners)
-  onUnmounted(cleanupEventListeners)
+  onDeactivated(deactivateEventListeners)
+  onUnmounted(deactivateEventListeners)
 
   return {
     computedPopoverProps,

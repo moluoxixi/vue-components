@@ -56,15 +56,18 @@
   },
   "dependencies": {
     "@huggingface/transformers": "catalog:",
+    "@lucide/vue": "catalog:ui",
     "@orama/orama": "catalog:data",
     "@orama/plugin-data-persistence": "catalog:data",
     "element-plus": "catalog:ui",
+    "markdown-it": "catalog:",
     "vue-component-meta": "catalog:data",
     "vue3-sfc-loader": "catalog:",
     "zod": "catalog:dev"
   },
   "devDependencies": {
     "@moluoxixi/components": "workspace:*",
+    "@types/markdown-it": "catalog:",
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vitest/coverage-v8": "catalog:dev",

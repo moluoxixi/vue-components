@@ -130,6 +130,7 @@ describe('chat view', () => {
       expect.any(AbortSignal),
     )
     expect((wrapper.get('[data-testid="question-input"]').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.findAll('[role="status"]').some(status => status.text().includes('回答已完成'))).toBe(true)
   })
 
   it('保留多轮回答，并把已完成轮次作为下一问历史', async () => {
@@ -225,6 +226,137 @@ describe('chat view', () => {
     await wrapper.get('[data-testid="source-button"]').trigger('click')
 
     expect(onOpenSource).toHaveBeenCalledWith('external:%40moluoxixi%2Fcomponents:CopyText')
+    expect(wrapper.get('[data-testid="source-button"]').text()).toContain('copy-text.vue')
+    expect(wrapper.get('[data-testid="source-button"]').text()).toContain('外部')
+    expect(wrapper.get('[data-testid="source-button"]').text()).toContain('0.910')
+  })
+
+  it('来源可选字段缺失时按组件名打开且不显示来源类型', async () => {
+    const onOpenSource = vi.fn()
+    streamQuery.mockImplementationOnce(answerOnce('回答', [], [{
+      component: 'CopyText',
+      packageName: '@moluoxixi/components',
+      docPath: 'copy-text.vue',
+      score: 0.7,
+    }]))
+    const wrapper = await mountChat('CopyText', onOpenSource)
+
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await flushPromises()
+    await wrapper.get('[data-testid="source-button"]').trigger('click')
+
+    expect(onOpenSource).toHaveBeenCalledWith('CopyText')
+    expect(wrapper.get('[data-testid="source-button"]').text()).not.toContain('项目')
+    expect(wrapper.get('[data-testid="source-button"]').text()).not.toContain('外部')
+  })
+
+  it('清空会话会中止生成并让下一问不携带旧历史', async () => {
+    let signal: AbortSignal | undefined
+    streamQuery.mockImplementationOnce(async (
+      _question: string,
+      _topK: number,
+      _history: ChatHistoryMessage[],
+      onEvent: (event: SseEvent) => void,
+      activeSignal: AbortSignal,
+    ) => {
+      signal = activeSignal
+      onEvent({ type: 'token', text: '部分回答' })
+      await new Promise<void>((_resolve, reject) => {
+        activeSignal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
+      })
+    })
+    const wrapper = await mountChat('第一问')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await flushPromises()
+
+    await wrapper.get('[data-testid="clear-chat"]').trigger('click')
+    await flushPromises()
+
+    expect(signal?.aborted).toBe(true)
+    expect(wrapper.findAll('[data-testid="chat-turn"]')).toHaveLength(0)
+
+    streamQuery.mockImplementationOnce(answerOnce('新回答'))
+    await wrapper.get('[data-testid="question-input"]').setValue('新问题')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await flushPromises()
+    expect(streamQuery.mock.calls[1][2]).toEqual([])
+  })
+
+  it('流读取失败时保留部分回答并标记错误', async () => {
+    streamQuery.mockImplementationOnce(async (
+      _question: string,
+      _topK: number,
+      _history: ChatHistoryMessage[],
+      onEvent: (event: SseEvent) => void,
+    ) => {
+      onEvent({ type: 'token', text: '残缺回答' })
+      throw new Error('query stream ended before a terminal event')
+    })
+    const wrapper = await mountChat('会断流的问题')
+
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('残缺回答')
+    expect(wrapper.get('[data-testid="chat-error"]').text()).toContain('terminal event')
+  })
+
+  it('markdown 正文与原位 Vue Demo 同时渲染', async () => {
+    const source = '<template><button>演示</button></template>'
+    streamQuery.mockImplementationOnce(answerOnce(
+      `## 用法\n\n- 先配置\n\n\`inline\`\n\n\`\`\`vue\n${source}\n\`\`\``,
+      [{ ts: source, renderable: true }],
+    ))
+    const wrapper = await mountChat('怎么用')
+
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="answer-text"] h2').text()).toBe('用法')
+    expect(wrapper.get('[data-testid="answer-text"] li').text()).toBe('先配置')
+    expect(wrapper.findAll('[data-testid="answer-demo"]')).toHaveLength(1)
+  })
+
+  it('用户离开底部后不被 token 拉回，并可手动回到最新', async () => {
+    let push!: (event: SseEvent) => void
+    let finish!: () => void
+    streamQuery.mockImplementationOnce(async (
+      _question: string,
+      _topK: number,
+      _history: ChatHistoryMessage[],
+      onEvent: (event: SseEvent) => void,
+    ) => {
+      push = onEvent
+      await new Promise<void>((resolve) => {
+        finish = resolve
+      })
+    })
+    const wrapper = await mountChat('长回答')
+    const body = wrapper.get('.chat-body').element as HTMLElement
+    Object.defineProperties(body, {
+      scrollHeight: { configurable: true, value: 1000 },
+      clientHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, value: 100, writable: true },
+    })
+
+    await wrapper.get('.chat-body').trigger('scroll')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await flushPromises()
+    body.scrollTop = 100
+    await wrapper.get('.chat-body').trigger('scroll')
+    push({ type: 'token', text: '继续生成' })
+    await flushPromises()
+
+    expect(body.scrollTop).toBe(100)
+    expect(wrapper.find('[data-testid="jump-latest"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="jump-latest"]').trigger('click')
+    await flushPromises()
+    expect(body.scrollTop).toBe(1000)
+
+    push({ type: 'done' })
+    finish()
+    await flushPromises()
   })
 
   it('按归一化后的源码匹配后端双码块', async () => {

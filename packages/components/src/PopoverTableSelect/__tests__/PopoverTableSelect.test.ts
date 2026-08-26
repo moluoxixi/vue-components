@@ -1,10 +1,12 @@
+import type { Ref } from 'vue'
 import type { PopoverTableRow } from '../index'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
 import { PopoverTableSelect } from '../index'
 import { PopoverTableSelectBase } from '../src/components'
+import { usePopoverTableSelectBase } from '../src/composables'
 
 const selectedRow: PopoverTableRow = {
   code: 'C-009',
@@ -251,6 +253,24 @@ function createEmptyElPopoverStub(update: () => void) {
       })
 
       return () => h('div', { 'data-testid': 'empty-el-popover-stub' })
+    },
+  })
+}
+
+function createPopoverLifecycleHarness(visible: Ref<boolean>, virtualRef: HTMLInputElement) {
+  return defineComponent({
+    setup() {
+      const popover = ref<HTMLElement | null>(null)
+      usePopoverTableSelectBase(
+        { virtualRef },
+        vi.fn(),
+        { currentRowIndex: ref(0), visible },
+        {
+          elPopover: ref({ popperRef: { popperInstanceRef: { update: vi.fn() } } }),
+          popover,
+        },
+      )
+      return () => h('div', { ref: popover })
     },
   })
 }
@@ -571,6 +591,111 @@ describe('popover table select', () => {
     await nextTick()
 
     expect(update).toHaveBeenCalledTimes(1)
+  })
+
+  it('挂载后立即卸载不会在 nextTick 遗留外部点击监听', async () => {
+    const addEventListener = vi.spyOn(document, 'addEventListener')
+
+    try {
+      const wrapper = mount(PopoverTableSelectBase, {
+        props: {
+          columns: [{ field: 'name' }],
+          data: [{ name: '初始仓库' }],
+          modelValue: true,
+          virtualRef: createVirtualInput(),
+        },
+        global: {
+          stubs: {
+            ElPopover: createElPopoverStub(vi.fn()),
+            ElPagination: ElPaginationStub,
+            ElTableV2: ElTableV2Stub,
+          },
+        },
+      })
+
+      wrapper.unmount()
+      await nextTick()
+      await nextTick()
+
+      expect(addEventListener.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(0)
+    }
+    finally {
+      addEventListener.mockRestore()
+    }
+  })
+
+  it('可见状态在延迟注册前关闭时不会短暂安装外部点击监听', async () => {
+    const addEventListener = vi.spyOn(document, 'addEventListener')
+    const visible = ref(true)
+    const Harness = createPopoverLifecycleHarness(visible, createVirtualInput())
+
+    try {
+      const wrapper = mount(Harness)
+      visible.value = false
+      await nextTick()
+      await nextTick()
+
+      expect(addEventListener.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(0)
+      wrapper.unmount()
+    }
+    finally {
+      addEventListener.mockRestore()
+    }
+  })
+
+  it('keep-alive 停用会使待执行注册失效并在重新激活后恢复监听', async () => {
+    const addEventListener = vi.spyOn(document, 'addEventListener')
+    const removeEventListener = vi.spyOn(document, 'removeEventListener')
+    const active = ref(true)
+    const visible = ref(false)
+    const input = createVirtualInput()
+    const LifecycleHarness = createPopoverLifecycleHarness(visible, input)
+    const Host = defineComponent({
+      setup() {
+        return () => h(KeepAlive, null, {
+          default: () => active.value
+            ? h(LifecycleHarness)
+            : null,
+        })
+      },
+    })
+
+    try {
+      const wrapper = mount(Host, {
+        global: {
+          stubs: {
+            ElPopover: createElPopoverStub(vi.fn()),
+            ElPagination: ElPaginationStub,
+            ElTableV2: ElTableV2Stub,
+          },
+        },
+      })
+
+      await nextTick()
+      await nextTick()
+      expect(addEventListener.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(0)
+
+      visible.value = true
+      active.value = false
+      await nextTick()
+      await nextTick()
+      expect(addEventListener.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(0)
+      expect(removeEventListener.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(0)
+
+      active.value = true
+      await nextTick()
+      await nextTick()
+      expect(addEventListener.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(1)
+
+      active.value = false
+      await nextTick()
+      expect(removeEventListener.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(1)
+      wrapper.unmount()
+    }
+    finally {
+      addEventListener.mockRestore()
+      removeEventListener.mockRestore()
+    }
   })
 
   it('动态表头和单元格插槽收到明确的行列作用域参数', async () => {

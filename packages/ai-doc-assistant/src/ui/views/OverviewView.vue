@@ -4,19 +4,25 @@
  * 顶部搜索框按名称/包名实时过滤，下方卡片网格展示每个组件的 props 数量。
  * 点击卡片 emit('open', name) 由父级切到详情视图；卡片右上角导出图标按格式导出当前组件契约。
  */
-import {computed, ref} from 'vue'
+import { Download } from '@lucide/vue'
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
+import { computed, ref, shallowRef } from 'vue'
 import type {ComponentListItem} from '../../shared/protocol'
 import {fetchComponentDetail} from '../api'
 import {exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat} from '../export'
+import { restoreFocusIfLost } from '../focus'
 
-const props = defineProps<{ components: ComponentListItem[] }>()
-const emit = defineEmits<{ (e: 'open', name: string): void }>()
+const props = withDefaults(defineProps<{ components: ComponentListItem[], loading?: boolean, error?: string }>(), {
+  loading: false,
+  error: '',
+})
+const emit = defineEmits<{ (e: 'open', name: string): void, (e: 'retry'): void }>()
 
 /** 搜索关键字（名称/包名子串，不区分大小写）。 */
 const keyword = ref('')
 const exportingKey = ref('')
-const openExportKey = ref('')
 const errorMsg = ref('')
+const lastExportTrigger = shallowRef<HTMLElement | null>(null)
 
 /** 过滤后的组件列表。 */
 const filtered = computed(() => {
@@ -32,7 +38,6 @@ async function exportComponent(name: string, format: KnowledgeExportFormat): Pro
   exportingKey.value = `${name}:${format}`
   errorMsg.value = ''
   try {
-    openExportKey.value = ''
     const detail = await fetchComponentDetail(name)
     exportComponentDetail(detail, format)
   }
@@ -44,8 +49,17 @@ async function exportComponent(name: string, format: KnowledgeExportFormat): Pro
   }
 }
 
-function toggleExportMenu(key: string): void {
-  openExportKey.value = openExportKey.value === key ? '' : key
+function onExportCommand(name: string, format: KnowledgeExportFormat): void {
+  void exportComponent(name, format)
+}
+
+function rememberExportTrigger(event: Event): void {
+  lastExportTrigger.value = event.currentTarget as HTMLElement
+}
+
+function onExportVisibleChange(visible: boolean): void {
+  if (!visible)
+    restoreFocusIfLost(lastExportTrigger.value)
 }
 </script>
 
@@ -63,15 +77,22 @@ function toggleExportMenu(key: string): void {
       <span class="count" data-testid="overview-count">{{ filtered.length }} / {{ components.length }}</span>
     </div>
 
-    <div v-if="errorMsg" class="overview-error" data-testid="overview-export-error">
+    <div v-if="errorMsg" class="overview-error" role="alert" data-testid="overview-export-error">
       {{ errorMsg }}
     </div>
 
-    <div v-if="!filtered.length" class="empty" data-testid="overview-empty">
+    <div v-if="loading" class="empty" role="status" data-testid="overview-loading">
+      正在加载组件契约…
+    </div>
+    <div v-else-if="error" class="empty error" role="alert" data-testid="overview-error">
+      <span>{{ error }}</span>
+      <button type="button" data-testid="overview-retry" @click="emit('retry')">重试</button>
+    </div>
+    <div v-else-if="!filtered.length" class="empty" data-testid="overview-empty">
       {{ components.length ? '没有匹配的组件' : '知识库中还没有组件' }}
     </div>
 
-    <div class="card-grid">
+    <div v-else class="card-grid">
       <article
         v-for="c in filtered"
         :key="c.knowledgeKey ?? c.packageName + c.name"
@@ -91,34 +112,37 @@ function toggleExportMenu(key: string): void {
           <span v-if="c.source === 'external'" class="source-badge">外部</span>
         </button>
         <span class="card-export-actions" aria-label="导出组件契约" @click.stop>
-          <button
-            class="export-icon"
-            type="button"
-            title="导出组件契约"
-            aria-haspopup="menu"
-            :aria-expanded="openExportKey === (c.knowledgeKey ?? c.name)"
-            :aria-label="`导出 ${c.name}`"
-            data-testid="card-export-trigger"
-            @click.stop="toggleExportMenu(c.knowledgeKey ?? c.name)"
+          <ElDropdown
+            trigger="click"
+            :teleported="false"
+            @command="onExportCommand(c.knowledgeKey ?? c.name, $event)"
+            @visible-change="onExportVisibleChange"
           >
-            ⬇️
-          </button>
-          <span v-if="openExportKey === (c.knowledgeKey ?? c.name)" class="export-menu" role="menu" data-testid="card-export-menu">
             <button
+              class="export-icon"
+              type="button"
+              title="导出组件契约"
+              :aria-label="`导出 ${c.name}`"
+              data-testid="card-export-trigger"
+              @focus="rememberExportTrigger"
+              @click.stop="rememberExportTrigger"
+            >
+              <Download :size="15" />
+            </button>
+            <template #dropdown>
+              <ElDropdownMenu data-testid="card-export-menu">
+                <ElDropdownItem
               v-for="format in KNOWLEDGE_EXPORT_FORMATS"
               :key="format.id"
-              class="export-option"
-              type="button"
-              role="menuitem"
+              :command="format.id"
               :disabled="exportingKey === `${c.knowledgeKey ?? c.name}:${format.id}`"
               data-testid="card-export-option"
-              @click.stop="exportComponent(c.knowledgeKey ?? c.name, format.id)"
-              @keydown.enter.stop.prevent="exportComponent(c.knowledgeKey ?? c.name, format.id)"
-              @keydown.space.stop.prevent="exportComponent(c.knowledgeKey ?? c.name, format.id)"
             >
-              {{ format.icon }} {{ format.label }}
-            </button>
-          </span>
+                  {{ format.label }}
+                </ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
         </span>
       </article>
     </div>
@@ -126,20 +150,22 @@ function toggleExportMenu(key: string): void {
 </template>
 
 <style scoped>
-.overview { padding: 20px; }
+.overview { box-sizing: border-box; width: min(100%, 1240px); min-height: 100%; margin: 0 auto; padding: 24px; }
 .search-row { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 .search-input {
   flex: 1; padding: 10px 14px; border: 1px solid #d0d7de;
   border-radius: 8px; font-size: 14px;
 }
 .count { font-size: 13px; color: #57606a; white-space: nowrap; }
-.empty { color: #57606a; font-size: 14px; padding: 40px 0; text-align: center; }
+.empty { display: grid; min-height: 220px; place-content: center; justify-items: center; gap: 10px; color: #57606a; font-size: 14px; text-align: center; }
+.empty.error { color: #cf222e; }
+.empty button { padding: 6px 10px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
 .overview-error {
   margin-bottom: 12px; padding: 8px 10px; border: 1px solid #ffccc7; border-radius: 6px;
   background: #ffebe9; color: #cf222e; font-size: 13px;
 }
 .card-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
   gap: 14px;
 }
 .card {
@@ -160,21 +186,12 @@ function toggleExportMenu(key: string): void {
   display: flex; gap: 4px;
 }
 .export-icon {
-  width: 26px; height: 26px; border: 1px solid transparent; border-radius: 6px;
-  background: #f6f8fa; cursor: pointer; line-height: 1; font-size: 14px;
+  display: grid; width: 30px; height: 30px; padding: 0; place-items: center;
+  border: 1px solid transparent; border-radius: 6px;
+  background: #f6f8fa; color: #59636e; cursor: pointer; line-height: 1;
 }
 .export-icon:hover { border-color: #1f6feb; background: #ddf4ff; }
 .export-icon:disabled { opacity: .5; cursor: wait; }
-.export-menu {
-  position: absolute; top: 32px; right: 0; z-index: 2;
-  min-width: 128px; padding: 6px; border: 1px solid #d0d7de; border-radius: 8px;
-  background: #fff; box-shadow: 0 8px 24px rgba(140,149,159,.2);
-}
-.export-option {
-  display: block; width: 100%; padding: 7px 8px; border: 0; border-radius: 6px;
-  background: transparent; cursor: pointer; text-align: left; white-space: nowrap;
-}
-.export-option:hover { background: #f6f8fa; }
 .card-name { padding-right: 90px; font-size: 15px; color: #1f2328; }
 .card-pkg { font-size: 11px; color: #8b949e; }
 .card-props {
@@ -183,5 +200,13 @@ function toggleExportMenu(key: string): void {
 }
 .source-badge {
   font-size: 11px; color: #8250df; background: #fbefff; padding: 2px 8px; border-radius: 999px;
+}
+
+@media (max-width: 640px) {
+  .overview { padding: 16px 12px; }
+  .search-row { align-items: stretch; flex-direction: column; gap: 8px; }
+  .count { align-self: flex-end; }
+  .card-name { padding-right: 42px; }
+  .export-icon { width: 36px; height: 36px; }
 }
 </style>

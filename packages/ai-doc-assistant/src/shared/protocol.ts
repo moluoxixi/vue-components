@@ -9,6 +9,10 @@ export const NO_MATCH_SCORE_THRESHOLD = 0.3
 /** BFF 统一 API 前缀。 */
 export const API_PREFIX = '/__ai-doc/api'
 
+/** 对话历史上限：客户端裁剪与服务端边界校验共用，避免两端漂移。 */
+export const MAX_HISTORY_MESSAGES = 20
+export const MAX_HISTORY_CHARACTERS = 20_000
+
 /** 索引状态机的四个状态。 */
 export type IndexState = 'not_built' | 'building' | 'ready' | 'stale'
 

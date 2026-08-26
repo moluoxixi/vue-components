@@ -9,11 +9,17 @@ export default defineConfig({
   testMatch: '**/*.e2e.test.ts',
   fullyParallel: false,
   timeout: 60_000,
-  reporter: [['list']],
+  outputDir: './dist/test-results/ai-doc-assistant',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: './dist/playwright-report/ai-doc-assistant', open: 'never' }],
+  ],
   use: {
     headless: true,
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'chromium', use: { browserName: 'chromium', hasTouch: true } },
   ],
 })

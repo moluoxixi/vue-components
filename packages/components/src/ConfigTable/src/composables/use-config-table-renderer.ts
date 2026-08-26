@@ -1,9 +1,11 @@
 import type { Column as TableV2Column } from 'element-plus'
 import type { ComputedRef } from 'vue'
 import type {
+  HeadlessTableCellModeActions,
   HeadlessTableCellScope,
   HeadlessTableColumn,
   HeadlessTableHeaderScope,
+  HeadlessTableMode,
   HeadlessTableModeApi,
   HeadlessTableRowKey,
 } from '#components/HeadlessTable'
@@ -45,6 +47,15 @@ interface UseConfigTableRendererOptions {
   ) => number
   getRowId: (row: ConfigTableRow, rowIndex: number) => HeadlessTableRowKey | undefined
   modeApi: HeadlessTableModeApi<ConfigTableRow, ConfigTableColumn>
+}
+
+interface ConfigTableCellModeState extends HeadlessTableCellModeActions {
+  mode: HeadlessTableMode
+  rawValue: any
+  row: ConfigTableRow
+  rowId?: HeadlessTableRowKey
+  rowIndex: number
+  value: any
 }
 
 export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
@@ -113,6 +124,33 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
       : value
   }
 
+  function createCellModeState(
+    row: ConfigTableRow,
+    column: ConfigTableColumn,
+    rowIndex: number,
+  ): ConfigTableCellModeState {
+    const rawValue = getRawCellValue(row, column)
+    const rowId = getRowId(row, rowIndex)
+    const columnId = column.id ?? column.field
+    const requireRowId = (): HeadlessTableRowKey => {
+      if (rowId == null)
+        throw new Error('[ConfigTable] getRowId or a stable rowKey is required for row/cell mode APIs')
+      return rowId
+    }
+    return {
+      row,
+      rowIndex,
+      rowId,
+      mode: rowId == null ? modeApi.mode.value : modeApi.getCellMode(rowId, columnId),
+      rawValue,
+      value: rawValue,
+      clearCellMode: () => modeApi.clearCellMode(requireRowId(), columnId),
+      clearRowMode: () => modeApi.clearRowMode(requireRowId()),
+      setCellMode: nextMode => modeApi.setCellMode(requireRowId(), columnId, nextMode),
+      setRowMode: nextMode => modeApi.setRowMode(requireRowId(), nextMode),
+    }
+  }
+
   function createHeaderParams(
     column: ConfigTableColumn,
     columnIndex: number,
@@ -141,33 +179,15 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
     visibleColumnIndex: number,
   ) {
     const columns = props.columns ?? []
-    const rawValue = getRawCellValue(row, column)
-    const rowId = getRowId(row, rowIndex)
-    const columnId = column.id ?? column.field
-    const mode = rowId == null ? modeApi.mode.value : modeApi.getCellMode(rowId, columnId)
-    const requireRowId = (): HeadlessTableRowKey => {
-      if (rowId == null)
-        throw new Error('[ConfigTable] getRowId or a stable rowKey is required for row/cell mode APIs')
-      return rowId
-    }
     return {
       allColumns: columns,
-      row,
       column,
-      rowIndex,
       columnIndex,
       columns,
       data: tableData.value,
       index: rowIndex,
-      mode,
-      rawValue,
-      rowId,
-      clearCellMode: () => modeApi.clearCellMode(requireRowId(), columnId),
-      clearRowMode: () => modeApi.clearRowMode(requireRowId()),
-      setCellMode: (nextMode: any) => modeApi.setCellMode(requireRowId(), columnId, nextMode),
-      setRowMode: (nextMode: any) => modeApi.setRowMode(requireRowId(), nextMode),
+      ...createCellModeState(row, column, rowIndex),
       sourceColumnIndex: columnIndex,
-      value: rawValue,
       visibleColumnIndex,
       visibleColumns: visibleColumns.value,
     }
@@ -204,17 +224,7 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
     columnIndex: number,
     event: MouseEvent,
   ): void {
-    const row = getRawRow(rowData, rowIndex)
-    const configColumn = getConfigColumn(column, columnIndex)
-    const configColumnIndex = getConfigColumnIndex(column, columnIndex)
-    emit('cellClick', createCellParams(
-      row,
-      configColumn,
-      rowIndex,
-      configColumnIndex,
-      getVisibleColumnIndex(column, columnIndex),
-      event,
-    ))
+    emit('cellClick', createVirtualCellParams(rowData, column, rowIndex, columnIndex, event))
   }
 
   function handleVirtualCellDblClick(
@@ -224,17 +234,27 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
     columnIndex: number,
     event: MouseEvent,
   ): void {
+    emit('cellDblClick', createVirtualCellParams(rowData, column, rowIndex, columnIndex, event))
+  }
+
+  function createVirtualCellParams(
+    rowData: ConfigTableRow,
+    column: TableV2Column<ConfigTableRow>,
+    rowIndex: number,
+    columnIndex: number,
+    event: MouseEvent,
+  ): ConfigTableCellParams {
     const row = getRawRow(rowData, rowIndex)
     const configColumn = getConfigColumn(column, columnIndex)
     const configColumnIndex = getConfigColumnIndex(column, columnIndex)
-    emit('cellDblClick', createCellParams(
+    return createCellParams(
       row,
       configColumn,
       rowIndex,
       configColumnIndex,
       getVisibleColumnIndex(column, columnIndex),
       event,
-    ))
+    )
   }
 
   function warnOnce(key: string, message: string): void {
@@ -270,14 +290,6 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
     sourceColumnIndex: number,
     visibleColumnIndex: number,
   ): HeadlessTableCellScope<ConfigTableRow> {
-    const rawValue = getRawCellValue(row, column)
-    const rowId = getRowId(row, rowIndex)
-    const columnId = column.id ?? column.field
-    const requireRowId = (): HeadlessTableRowKey => {
-      if (rowId == null)
-        throw new Error('[ConfigTable] getRowId or a stable rowKey is required for row/cell mode APIs')
-      return rowId
-    }
     return {
       allColumns: orderedColumns.value as HeadlessTableColumn<ConfigTableRow>[],
       column: column as HeadlessTableColumn<ConfigTableRow>,
@@ -285,19 +297,15 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
       columns: visibleColumns.value as HeadlessTableColumn<ConfigTableRow>[],
       data: tableData.value,
       index: rowIndex,
-      mode: rowId == null ? modeApi.mode.value : modeApi.getCellMode(rowId, columnId),
-      rawValue,
-      row,
-      rowIndex,
-      rowId,
-      clearCellMode: () => modeApi.clearCellMode(requireRowId(), columnId),
-      clearRowMode: () => modeApi.clearRowMode(requireRowId()),
-      setCellMode: (nextMode: any) => modeApi.setCellMode(requireRowId(), columnId, nextMode),
-      setRowMode: (nextMode: any) => modeApi.setRowMode(requireRowId(), nextMode),
+      ...createCellModeState(row, column, rowIndex),
       sourceColumnIndex,
-      value: rawValue,
       visibleColumnIndex,
     } as HeadlessTableCellScope<ConfigTableRow>
+  }
+
+  function trackDynamicSlots(): void {
+    // Virtual render functions need an explicit dependency on captured slot identity changes.
+    void slotsVersion.value
   }
 
   function resolveRenderer(
@@ -314,7 +322,7 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
     column: TableV2Column<ConfigTableRow>
     columnIndex: number
   }): any {
-    void slotsVersion.value
+    trackDynamicSlots()
     const configColumn = getConfigColumn(params.column, params.columnIndex)
     const sourceColumnIndex = getConfigColumnIndex(params.column, params.columnIndex)
     const visibleColumnIndex = getVisibleColumnIndex(params.column, params.columnIndex)
@@ -355,7 +363,7 @@ export function useConfigTableRenderer(options: UseConfigTableRendererOptions) {
     column: TableV2Column<ConfigTableRow>
     columnIndex: number
   }): any {
-    void slotsVersion.value
+    trackDynamicSlots()
     const row = getRawRow(params.rowData, params.rowIndex)
     const configColumn = getConfigColumn(params.column, params.columnIndex)
     const sourceColumnIndex = getConfigColumnIndex(params.column, params.columnIndex)

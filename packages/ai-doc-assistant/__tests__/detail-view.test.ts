@@ -125,22 +125,13 @@ describe('detail view', () => {
       props: { name: 'PopoverTableSelect' },
       global: {
         stubs: {
-          ElTooltip: defineComponent({
-            name: 'ElTooltip',
-            props: { content: String, placement: String },
-            setup(props, { slots }) {
-              return () => h('span', {
-                'data-testid': 'type-tooltip',
-                'data-content': props.content,
-              }, slots.default?.())
-            },
-          }),
+          ElDropdown: defineComponent({ setup(_, { slots }) { return () => h('div', slots.default?.()) } }),
         },
       },
     })
     await flushPromises()
 
-    const tooltips = wrapper.findAll('[data-testid="type-tooltip"]')
+    const tooltips = wrapper.findAll('[data-testid="type-reference"]')
     const contents = tooltips.map(t => t.attributes('data-content') ?? '')
 
     expect(tooltips.some(t => t.text().includes('PopoverTableColumn[]'))).toBe(true)
@@ -168,7 +159,7 @@ describe('detail view', () => {
     const { default: DetailView } = await import('../src/ui/views/DetailView.vue')
     const wrapper = mount(DetailView, {
       props: { name: 'PopoverTableSelect' },
-      global: { stubs: { ElTooltip: true } },
+      global: { stubs: { ElDropdown: true } },
     })
 
     await wrapper.setProps({ name: 'CopyText' })

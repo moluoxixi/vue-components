@@ -99,6 +99,9 @@ jobs:
       - name: Test packed packages in Chromium
         run: pnpm test:pack:browser
 
+      - name: Test AI doc assistant
+        run: pnpm --filter @moluoxixi/ai-doc-assistant e2e
+
       - name: Test ConfigForm playground
         run: pnpm -C packages/ConfigForm/playground test:e2e
 
@@ -117,3 +120,5 @@ jobs:
             packages/ConfigForm/playground/dist/test-results/config-form-playground
             playgrounds/components-playground/dist/playwright-report/components-playground
             playgrounds/components-playground/dist/test-results/components-playground
+            packages/ai-doc-assistant/dist/playwright-report/ai-doc-assistant
+            packages/ai-doc-assistant/dist/test-results/ai-doc-assistant

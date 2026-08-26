@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import type { ChatHistoryMessage, ExampleBlock, IndexState, SourceRef } from '../../shared/protocol'
+import type { ExampleBlock, IndexState, SourceRef } from '../../shared/protocol'
+import { ArrowDown, MessageSquarePlus, Square } from '@lucide/vue'
+import { ElTooltip } from 'element-plus'
 import { computed, defineAsyncComponent, nextTick, onUnmounted, reactive, ref, shallowRef, useTemplateRef } from 'vue'
 import { splitAnswerSegments } from '../../core'
 import { streamQuery } from '../api'
+import { buildChatHistory } from '../chat-history'
+import MarkdownContent from '../components/MarkdownContent.vue'
 
 const DemoPreview = defineAsyncComponent(() =>
   import('../components/DemoPreview.vue').then(module => module.default),
@@ -31,7 +35,10 @@ const chatBody = useTemplateRef<HTMLElement>('chatBody')
 const turns = ref<ChatTurn[]>([])
 const activeController = shallowRef<AbortController | null>(null)
 const activeTurnId = ref<number | null>(null)
+const autoFollow = ref(true)
 let nextTurnId = 1
+
+const AUTO_FOLLOW_THRESHOLD = 96
 
 const streaming = computed(() => activeController.value !== null)
 const canAsk = computed(() =>
@@ -84,20 +91,29 @@ function fallbackExampleBlocksFor(turn: ChatTurn): ExampleBlock[] {
   return turn.exampleBlocks.filter(block => !inlineSources.has(normalizeSource(block.ts)))
 }
 
-function historyForRequest(): ChatHistoryMessage[] {
-  return turns.value
-    .filter(turn => turn.status === 'done' && turn.answer.trim().length > 0)
-    .flatMap(turn => [
-      { role: 'user' as const, content: turn.question },
-      { role: 'assistant' as const, content: turn.answer },
-    ])
+function historyForRequest() {
+  return buildChatHistory(turns.value)
 }
 
-async function scrollToLatest(): Promise<void> {
-  await nextTick()
+function isNearLatest(body: HTMLElement): boolean {
+  return body.scrollHeight - body.scrollTop - body.clientHeight <= AUTO_FOLLOW_THRESHOLD
+}
+
+function onChatScroll(): void {
   const body = chatBody.value
   if (body)
+    autoFollow.value = isNearLatest(body)
+}
+
+async function scrollToLatest(force = false): Promise<void> {
+  if (!force && !autoFollow.value)
+    return
+  await nextTick()
+  const body = chatBody.value
+  if (body) {
     body.scrollTop = body.scrollHeight
+    autoFollow.value = true
+  }
 }
 
 function openSource(source: SourceRef): void {
@@ -117,6 +133,17 @@ function stopGeneration(): void {
   activeController.value = null
   activeTurnId.value = null
   controller.abort()
+  void nextTick(focusQuestion)
+}
+
+function clearConversation(): void {
+  const controller = activeController.value
+  activeController.value = null
+  activeTurnId.value = null
+  controller?.abort()
+  turns.value = []
+  question.value = ''
+  autoFollow.value = true
   void nextTick(focusQuestion)
 }
 
@@ -141,7 +168,7 @@ async function onAsk(): Promise<void> {
   question.value = ''
   activeController.value = controller
   activeTurnId.value = turn.id
-  void scrollToLatest()
+  void scrollToLatest(true)
 
   try {
     await streamQuery(askedQuestion, 5, history, (event) => {
@@ -169,8 +196,6 @@ async function onAsk(): Promise<void> {
       void scrollToLatest()
     }, controller.signal)
 
-    if (!controller.signal.aborted && turn.status === 'streaming')
-      turn.status = 'done'
   }
   catch (error) {
     if (!controller.signal.aborted) {
@@ -198,8 +223,21 @@ onUnmounted(() => {
 
 <template>
   <div class="chat" data-testid="chat-view">
-    <div ref="chatBody" class="chat-body">
+    <div ref="chatBody" class="chat-body" @scroll.passive="onChatScroll">
       <div class="conversation">
+        <div v-if="turns.length" class="conversation-tools">
+          <ElTooltip content="新对话" placement="bottom">
+            <button
+              class="icon-button"
+              type="button"
+              aria-label="清空当前对话"
+              data-testid="clear-chat"
+              @click="clearConversation"
+            >
+              <MessageSquarePlus :size="17" />
+            </button>
+          </ElTooltip>
+        </div>
         <div v-if="turns.length === 0" class="empty-answer" data-testid="answer">
           <span class="empty-mark">AI</span>
           <strong>开始一段组件问答</strong>
@@ -212,12 +250,13 @@ onUnmounted(() => {
             <p>{{ turn.question }}</p>
           </section>
 
-          <section class="assistant-message" aria-live="polite" data-testid="answer">
+          <section class="assistant-message" data-testid="answer">
             <div class="assistant-heading">
               <span class="assistant-avatar">AI</span>
               <span>文档助手</span>
-              <span v-if="turn.status === 'streaming'" class="turn-status">生成中</span>
-              <span v-else-if="turn.status === 'stopped'" class="turn-status">已停止</span>
+              <span v-if="turn.status === 'streaming'" class="turn-status" role="status" aria-live="polite">生成中</span>
+              <span v-else-if="turn.status === 'stopped'" class="turn-status" role="status">已停止</span>
+              <span v-else-if="turn.status === 'done'" class="visually-hidden" role="status" aria-live="polite">回答已完成</span>
             </div>
 
             <div v-if="turn.errorMsg" class="hint error" role="alert" data-testid="chat-error">
@@ -231,20 +270,20 @@ onUnmounted(() => {
                 type="button"
                 class="source-button"
                 data-testid="source-button"
-                :title="`打开 ${source.component} 组件详情`"
+                :title="`打开 ${source.component} 组件详情：${source.docPath}`"
                 @click="openSource(source)"
               >
                 <strong>{{ source.component }}</strong>
-                <span>{{ source.packageName }} · {{ source.score.toFixed(3) }}</span>
+                <span class="source-summary">{{ source.packageName }} · {{ source.score.toFixed(3) }}</span>
+                <small class="source-path">{{ source.docPath }}</small>
+                <small v-if="source.source" class="source-kind">{{ source.source === 'external' ? '外部' : '项目' }}</small>
               </button>
             </div>
 
             <div class="answer-content">
               <template v-if="segmentsFor(turn).length || fallbackExampleBlocksFor(turn).length">
                 <template v-for="(segment, index) in segmentsFor(turn)" :key="index">
-                  <p v-if="segment.kind === 'text'" class="answer-text" data-testid="answer-text">
-                    {{ segment.text }}
-                  </p>
+                  <MarkdownContent v-if="segment.kind === 'text'" class="answer-text" :source="segment.text" />
                   <DemoPreview
                     v-else
                     :ts="segment.source"
@@ -271,6 +310,17 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <button
+      v-if="turns.length && !autoFollow"
+      class="jump-latest"
+      type="button"
+      data-testid="jump-latest"
+      @click="scrollToLatest(true)"
+    >
+      <ArrowDown :size="15" />
+      回到最新
+    </button>
+
     <form class="ask-panel" data-testid="ask-panel" @submit.prevent="onAsk">
       <div v-if="!indexReady" class="hint" data-testid="chat-need-index">
         {{ indexHint }}
@@ -293,6 +343,7 @@ onUnmounted(() => {
           data-testid="stop-btn"
           @click="stopGeneration"
         >
+          <Square :size="14" fill="currentColor" />
           停止
         </button>
         <button
@@ -311,6 +362,7 @@ onUnmounted(() => {
 
 <style scoped>
 .chat {
+  position: relative;
   display: flex;
   height: 100%;
   min-height: 0;
@@ -329,6 +381,26 @@ onUnmounted(() => {
   margin-right: auto;
   margin-left: auto;
 }
+.conversation-tools {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 32px;
+  margin-bottom: 8px;
+}
+.icon-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #fff;
+  color: #59636e;
+  cursor: pointer;
+}
+.icon-button:hover,
+.icon-button:focus-visible { border-color: #409eff; color: #0969da; outline: none; }
 .empty-answer {
   display: grid;
   min-height: 260px;
@@ -407,11 +479,14 @@ onUnmounted(() => {
   margin-bottom: 14px;
 }
 .source-button {
-  display: inline-flex;
+  position: relative;
+  display: grid;
   min-width: 0;
-  align-items: baseline;
-  gap: 6px;
-  padding: 6px 9px;
+  max-width: min(100%, 360px);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 8px;
+  padding: 8px 10px;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   background: #f5f7fa;
@@ -422,7 +497,23 @@ onUnmounted(() => {
 .source-button:hover,
 .source-button:focus-visible { border-color: #409eff; color: #409eff; outline: none; }
 .source-button strong { color: inherit; font-weight: 600; }
-.source-button span { overflow: hidden; max-width: 280px; color: #909399; text-overflow: ellipsis; white-space: nowrap; }
+.source-summary { overflow: hidden; color: #7a828c; text-overflow: ellipsis; white-space: nowrap; }
+.source-path {
+  overflow: hidden;
+  grid-column: 1 / 3;
+  color: #8b949e;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source-kind {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  padding: 2px 5px;
+  border: 1px solid #d8dee6;
+  border-radius: 4px;
+  color: #59636e;
+}
 .answer-content { color: #303133; }
 .answer-text { margin: 0 0 12px; white-space: pre-wrap; font-size: 14px; line-height: 1.7; }
 .answer-text:last-child { margin-bottom: 0; }
@@ -466,12 +557,41 @@ onUnmounted(() => {
 .btn.stop:hover { background: #fef0f0; }
 .hint { margin-bottom: 12px; color: #606266; font-size: 13px; }
 .hint.error { color: #f56c6c; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.jump-latest {
+  position: absolute;
+  right: 24px;
+  bottom: 84px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #b8c2ce;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(31, 35, 40, .12);
+  color: #30363d;
+  cursor: pointer;
+  font-size: 12px;
+}
+.jump-latest:hover,
+.jump-latest:focus-visible { border-color: #409eff; color: #0969da; outline: none; }
 
 @media (max-width: 640px) {
   .chat-body { padding: 18px 12px 16px; }
   .ask-panel { padding: 12px; }
   .assistant-message { padding: 14px; }
   .user-message p { max-width: calc(100% - 42px); }
-  .source-button span { max-width: 150px; }
+  .source-button { max-width: 100%; }
+  .jump-latest { right: 12px; bottom: 76px; }
 }
 </style>

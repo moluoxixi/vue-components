@@ -205,6 +205,47 @@ describe('dispatch 路由分发', () => {
     expect(res.json().error).toBe('INVALID_REQUEST')
   })
 
+  it('pOST /query 接受 20 条且总计 20,000 字符的完整历史', async () => {
+    const history = Array.from({ length: 10 }, (_, index) => [
+      { role: 'user' as const, content: index === 0 ? 'u'.repeat(19_981) : 'u' },
+      { role: 'assistant' as const, content: 'a' },
+    ]).flat()
+    const res = makeRes()
+
+    await dispatch(makeCtx(), makeReq('POST', '/__ai-doc/api/query', { question: 'hi', history }), res)
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toContain('event: done')
+  })
+
+  it('pOST /query 拒绝 21 条历史消息', async () => {
+    const history = Array.from({ length: 21 }, (_, index) => ({
+      role: index % 2 === 0 ? 'user' : 'assistant',
+      content: 'x',
+    }))
+    const res = makeRes()
+
+    await dispatch(makeCtx(), makeReq('POST', '/__ai-doc/api/query', { question: 'hi', history }), res)
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toContain('20 messages')
+  })
+
+  it('pOST /query 拒绝超过 20,000 字符的历史', async () => {
+    const res = makeRes()
+
+    await dispatch(makeCtx(), makeReq('POST', '/__ai-doc/api/query', {
+      question: 'hi',
+      history: [
+        { role: 'user', content: 'u'.repeat(20_000) },
+        { role: 'assistant', content: 'a' },
+      ],
+    }), res)
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toContain('20000 characters')
+  })
+
   it('pOST /knowledge/import 非法 JSON → INVALID_REQUEST 且不进入导入逻辑', async () => {
     const importKnowledge = vi.fn()
     const ctx = makeCtx({ importKnowledge })

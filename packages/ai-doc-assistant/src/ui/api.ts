@@ -16,11 +16,17 @@ import type {
  */
 import { API_PREFIX, parseSseFrame } from '../shared/protocol'
 
+async function apiError(res: Response, fallback: string): Promise<Error> {
+  const body = await res.json().catch(() => null) as { message?: unknown } | null
+  const message = body && typeof body.message === 'string' ? body.message : `${fallback}: ${res.status}`
+  return new Error(message)
+}
+
 /** GET /health。 */
 export async function fetchHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_PREFIX}/health`)
   if (!res.ok)
-    throw new Error(`health failed: ${res.status}`)
+    throw await apiError(res, 'health failed')
   return res.json() as Promise<HealthResponse>
 }
 
@@ -28,7 +34,7 @@ export async function fetchHealth(): Promise<HealthResponse> {
 export async function fetchStatus(): Promise<IndexStatusResponse> {
   const res = await fetch(`${API_PREFIX}/index/status`)
   if (!res.ok)
-    throw new Error(`status failed: ${res.status}`)
+    throw await apiError(res, 'status failed')
   return res.json() as Promise<IndexStatusResponse>
 }
 
@@ -36,7 +42,7 @@ export async function fetchStatus(): Promise<IndexStatusResponse> {
 export async function buildIndex(): Promise<IndexStatusResponse> {
   const res = await fetch(`${API_PREFIX}/index/build`, { method: 'POST' })
   if (!res.ok)
-    throw new Error(`build failed: ${res.status}`)
+    throw await apiError(res, 'build failed')
   return res.json() as Promise<IndexStatusResponse>
 }
 
@@ -44,7 +50,7 @@ export async function buildIndex(): Promise<IndexStatusResponse> {
 export async function fetchComponents(): Promise<ComponentListItem[]> {
   const res = await fetch(`${API_PREFIX}/components`)
   if (!res.ok)
-    throw new Error(`components failed: ${res.status}`)
+    throw await apiError(res, 'components failed')
   return res.json() as Promise<ComponentListItem[]>
 }
 
@@ -52,7 +58,7 @@ export async function fetchComponents(): Promise<ComponentListItem[]> {
 export async function fetchComponentDetail(name: string): Promise<ComponentDetailResponse> {
   const res = await fetch(`${API_PREFIX}/components/${encodeURIComponent(name)}`)
   if (!res.ok)
-    throw new Error(`component detail failed: ${res.status}`)
+    throw await apiError(res, 'component detail failed')
   return res.json() as Promise<ComponentDetailResponse>
 }
 
@@ -97,6 +103,20 @@ export async function streamQuery(
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let terminalEventSeen = false
+
+  const consumeFrame = (frame: string): void => {
+    if (!frame.trim())
+      return
+    const event = parseSseFrame(frame)
+    if (!event)
+      return
+    if (terminalEventSeen)
+      throw new Error('query stream received data after terminal event')
+    onEvent(event)
+    if (event.type === 'done' || event.type === 'error')
+      terminalEventSeen = true
+  }
 
   try {
     // 同时兼容 LF 与 CRLF 帧边界，剩余不完整帧留在 buffer 等下一块。
@@ -107,21 +127,14 @@ export async function streamQuery(
       buffer += decoder.decode(value, { stream: true })
       const frames = buffer.split(/\r?\n\r?\n/)
       buffer = frames.pop() ?? ''
-      for (const frame of frames) {
-        if (!frame.trim())
-          continue
-        const event = parseSseFrame(frame)
-        if (event)
-          onEvent(event)
-      }
+      for (const frame of frames)
+        consumeFrame(frame)
     }
     buffer += decoder.decode()
     // flush 末帧（若服务端最后一帧未带空行结尾）
-    if (buffer.trim()) {
-      const event = parseSseFrame(buffer)
-      if (event)
-        onEvent(event)
-    }
+    consumeFrame(buffer)
+    if (!terminalEventSeen)
+      throw new Error('query stream ended before a terminal event')
   }
   finally {
     reader.releaseLock()

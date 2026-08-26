@@ -22,11 +22,14 @@ const components: ComponentListItem[] = [
 let health: HealthResponse = readyHealth
 let status: IndexStatusResponse = readyStatus
 const buildIndexMock = vi.fn(async () => status)
+const fetchHealthMock = vi.fn(async () => health)
+const fetchStatusMock = vi.fn(async () => status)
+const fetchComponentsMock = vi.fn(async () => components)
 
 vi.mock('../src/ui/api', () => ({
-  fetchHealth: vi.fn(async () => health),
-  fetchStatus: vi.fn(async () => status),
-  fetchComponents: vi.fn(async () => components),
+  fetchHealth: () => fetchHealthMock(),
+  fetchStatus: () => fetchStatusMock(),
+  fetchComponents: () => fetchComponentsMock(),
   buildIndex: () => buildIndexMock(),
 }))
 
@@ -64,37 +67,29 @@ describe('app shell', () => {
     status = readyStatus
     buildIndexMock.mockClear()
     buildIndexMock.mockImplementation(async () => status)
+    fetchHealthMock.mockReset()
+    fetchHealthMock.mockImplementation(async () => health)
+    fetchStatusMock.mockReset()
+    fetchStatusMock.mockImplementation(async () => status)
+    fetchComponentsMock.mockReset()
+    fetchComponentsMock.mockImplementation(async () => components)
   })
 
-  it('默认展示 AI 对话，知识库总览放在知识库弹框内', async () => {
+  it('默认展示 AI 对话，并将知识库作为保留 Chat 挂载的一级视图', async () => {
     const { default: App } = await import('../src/ui/App.vue')
-    const wrapper = mount(App, {
-      global: {
-        stubs: {
-          ElDialog: defineComponent({
-            name: 'ElDialog',
-            props: { modelValue: Boolean },
-            emits: ['update:modelValue'],
-            setup(props, { slots }) {
-              return () => props.modelValue
-                ? h('section', { 'data-testid': 'kb-debug-dialog' }, slots.default?.())
-                : null
-            },
-          }),
-        },
-      },
-    })
+    const wrapper = mount(App)
     await flushPromises()
 
     expect(wrapper.find('[data-testid="chat-view"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="overview-view"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="build-btn"]').exists()).toBe(false)
-    expect(wrapper.get('[data-testid="kb-debug-btn"]').text()).toBe('知识库')
 
-    await wrapper.get('[data-testid="kb-debug-btn"]').trigger('click')
+    await wrapper.get('[data-testid="workspace-knowledge-tab"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[data-testid="kb-debug-dialog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="chat-view"]').exists()).toBe(true)
+    expect((wrapper.get('[data-testid="chat-view"]').element.parentElement as HTMLElement).style.display).toBe('none')
+    expect(wrapper.find('[data-testid="knowledge-workspace"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="overview-view"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="component-card"]').text()).toContain('PopoverTableSelect')
   })
@@ -112,13 +107,7 @@ describe('app shell', () => {
     }))
 
     const { default: App } = await import('../src/ui/App.vue')
-    const wrapper = mount(App, {
-      global: {
-        stubs: {
-          ElDialog: true,
-        },
-      },
-    })
+    const wrapper = mount(App)
     await flushPromises()
 
     expect(buildIndexMock).toHaveBeenCalledTimes(1)
@@ -132,18 +121,7 @@ describe('app shell', () => {
 
   it('点击 AI 来源后直接打开对应知识库详情', async () => {
     const { default: App } = await import('../src/ui/App.vue')
-    const wrapper = mount(App, {
-      global: {
-        stubs: {
-          ElDialog: defineComponent({
-            props: { modelValue: Boolean },
-            setup(props, { slots }) {
-              return () => props.modelValue ? h('section', slots.default?.()) : null
-            },
-          }),
-        },
-      },
-    })
+    const wrapper = mount(App)
     await flushPromises()
 
     await wrapper.get('[data-testid="chat-source"]').trigger('click')
@@ -151,5 +129,37 @@ describe('app shell', () => {
 
     expect(wrapper.get('[data-testid="detail-view"]').text())
       .toBe('internal:%40moluoxixi%2Fcomponents:PopoverTableSelect')
+  })
+
+  it('首次请求未返回时显示连接中，而不是未构建空态', async () => {
+    let resolveHealth!: (value: HealthResponse) => void
+    fetchHealthMock.mockImplementationOnce(() => new Promise<HealthResponse>((resolve) => {
+      resolveHealth = resolve
+    }))
+    const { default: App } = await import('../src/ui/App.vue')
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="index-chip"]').text()).toContain('正在连接')
+
+    resolveHealth(readyHealth)
+    await flushPromises()
+    expect(wrapper.get('[data-testid="index-chip"]').text()).toContain('知识库可用')
+  })
+
+  it('组件列表失败时在知识库内显示错误并可重试', async () => {
+    fetchComponentsMock.mockRejectedValueOnce(new Error('组件列表离线'))
+    const { default: App } = await import('../src/ui/App.vue')
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="error-bar"]').attributes('role')).toBe('alert')
+    await wrapper.get('[data-testid="workspace-knowledge-tab"]').trigger('click')
+    expect(wrapper.get('[data-testid="overview-error"]').text()).toContain('组件列表离线')
+
+    await wrapper.get('[data-testid="overview-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="overview-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="component-card"]').exists()).toBe(true)
   })
 })

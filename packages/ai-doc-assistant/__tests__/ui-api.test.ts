@@ -34,4 +34,54 @@ describe('streamQuery', () => {
     expect(JSON.parse(String(init.body))).toEqual({ question: 'follow-up', topK: 5, history })
     expect(events).toEqual(['token', 'done'])
   })
+
+  it('接受 error 终态', async () => {
+    const body = new Response('event: error\ndata: {"type":"error","error":"UPSTREAM_ERROR","message":"boom"}\n\n').body
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(body, { status: 200 })))
+    const events: string[] = []
+
+    await streamQuery('question', 5, [], event => events.push(event.type))
+
+    expect(events).toEqual(['error'])
+  })
+
+  it('拒绝没有 done/error 的意外断流', async () => {
+    const body = new Response('event: token\ndata: {"type":"token","text":"partial"}\n\n').body
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(body, { status: 200 })))
+
+    await expect(
+      streamQuery('question', 5, [], vi.fn()),
+    )
+      .rejects
+      .toThrow('query stream ended before a terminal event')
+  })
+
+  it('拒绝终态后的额外事件', async () => {
+    const body = new Response('event: done\ndata: {"type":"done"}\n\nevent: token\ndata: {"type":"token","text":"late"}\n\n').body
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(body, { status: 200 })))
+
+    await expect(
+      streamQuery('question', 5, [], vi.fn()),
+    )
+      .rejects
+      .toThrow('query stream received data after terminal event')
+  })
+
+  it('abort 时透传 AbortError 并释放 reader 锁', async () => {
+    const controller = new AbortController()
+    const body = new ReadableStream<Uint8Array>({
+      start(stream) {
+        controller.signal.addEventListener('abort', () => {
+          stream.error(new DOMException('aborted', 'AbortError'))
+        }, { once: true })
+      },
+    })
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(body, { status: 200 })))
+
+    const pending = streamQuery('question', 5, [], vi.fn(), controller.signal)
+    controller.abort()
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(body.locked).toBe(false)
+  })
 })

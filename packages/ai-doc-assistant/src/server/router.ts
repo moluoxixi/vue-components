@@ -21,14 +21,14 @@ import {
   API_PREFIX,
   encodeSseEvent,
   ERROR_STATUS,
+  MAX_HISTORY_CHARACTERS,
+  MAX_HISTORY_MESSAGES,
 } from '../shared/protocol'
 import { streamChat } from './ai-client'
 import { providerStatusOf } from './ai-provider'
 import { runQuery } from './query-handler'
 
 const MAX_QUESTION_CHARACTERS = 4_000
-const MAX_HISTORY_MESSAGES = 20
-const MAX_HISTORY_CHARACTERS = 20_000
 const MAX_TOP_K = 20
 
 /** 读取并解析 JSON 请求体（边界输入，解析失败抛 INVALID_REQUEST 语义）。 */

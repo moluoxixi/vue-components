@@ -476,6 +476,115 @@ describe('config table', () => {
     expect(wrapper.emitted('update:mode')).toBeUndefined()
   })
 
+  it('slot 与 renderer scope 共享惰性的 cell mode actions 且保留各自列语义', () => {
+    let slotScope: any
+    let rendererScope: any
+    const columns = [
+      {
+        field: 'name',
+        slots: {
+          default: (scope: any) => {
+            slotScope = scope
+            return h('span', scope.value)
+          },
+        },
+      },
+      { cellRender: 'status', field: 'status' },
+    ]
+    mount(ConfigTable, {
+      props: {
+        columns,
+        data: [{ name: '华南仓', status: '启用' }],
+        renderers: {
+          status: {
+            renderDefault: (_, scope) => {
+              rendererScope = scope
+              return h('span', scope.value)
+            },
+          },
+        },
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(slotScope).toMatchObject({
+      mode: 'default',
+      rawValue: '华南仓',
+      row: { name: '华南仓', status: '启用' },
+      rowId: undefined,
+      rowIndex: 0,
+      value: '华南仓',
+    })
+    expect(rendererScope).toMatchObject({
+      mode: 'default',
+      rawValue: '启用',
+      row: { name: '华南仓', status: '启用' },
+      rowId: undefined,
+      rowIndex: 0,
+      value: '启用',
+    })
+    expect(slotScope.allColumns).toEqual(columns)
+    expect(slotScope.columns).toEqual(columns)
+    expect(slotScope.visibleColumns.map((column: any) => column.field)).toEqual(['name', 'status'])
+    expect(rendererScope.allColumns.map((column: any) => column.field)).toEqual(['name', 'status'])
+    expect(rendererScope.columns.map((column: any) => column.field)).toEqual(['name', 'status'])
+    expect(rendererScope.visibleColumns).toBeUndefined()
+
+    const missingRowId = '[ConfigTable] getRowId or a stable rowKey is required for row/cell mode APIs'
+    for (const scope of [slotScope, rendererScope]) {
+      expect(() => scope.clearCellMode()).toThrow(missingRowId)
+      expect(() => scope.clearRowMode()).toThrow(missingRowId)
+      expect(() => scope.setCellMode('edit')).toThrow(missingRowId)
+      expect(() => scope.setRowMode('edit')).toThrow(missingRowId)
+    }
+  })
+
+  it('slot 与 renderer scope 的 mode actions 使用各自 cell id 和共同 row id', () => {
+    let slotScope: any
+    let rendererScope: any
+    const wrapper = mount(ConfigTable, {
+      props: {
+        columns: [
+          {
+            field: 'name',
+            slots: {
+              default: (scope: any) => {
+                slotScope = scope
+                return h('span', scope.value)
+              },
+            },
+          },
+          { cellRender: 'status', field: 'status' },
+        ],
+        data: [{ id: 'ROW-001', name: '华南仓', status: '启用' }],
+        renderers: {
+          status: {
+            renderDefault: (_, scope) => {
+              rendererScope = scope
+              return h('span', scope.value)
+            },
+          },
+        },
+        rowKey: 'id',
+      },
+      global: { stubs: elementStubs },
+    })
+
+    expect(slotScope.rowId).toBe('ROW-001')
+    expect(rendererScope.rowId).toBe('ROW-001')
+    for (const [scope, columnId] of [[slotScope, 'name'], [rendererScope, 'status']] as const) {
+      scope.setRowMode('edit')
+      expect((wrapper.vm as any).getRowMode('ROW-001')).toBe('edit')
+      scope.clearRowMode()
+      expect((wrapper.vm as any).getRowMode('ROW-001')).toBe('default')
+
+      scope.setCellMode('edit')
+      expect((wrapper.vm as any).getCellMode('ROW-001', columnId)).toBe('edit')
+      scope.clearCellMode()
+      expect((wrapper.vm as any).getCellMode('ROW-001', columnId)).toBe('default')
+    }
+  })
+
   it('通过组件 API 独立批量清理 row、cell 和全部 mode override', () => {
     const wrapper = mount(ConfigTable, {
       props: {
@@ -1009,7 +1118,7 @@ describe('config table', () => {
   it('单元格点击和双击事件返回行列配置与索引', async () => {
     const wrapper = mount(ConfigTable, {
       props: {
-        columns: [{ field: 'name', label: '仓库' }],
+        columns: [{ field: 'name', label: '仓库', formatter: ({ value }) => `${value}!` }],
         data: [{ code: 'C-001', name: '华南仓' }],
       },
       global: { stubs: elementStubs },
@@ -1018,20 +1127,32 @@ describe('config table', () => {
     await wrapper.get('[data-testid="config-table-cell-name-0"]').trigger('click')
     await wrapper.get('[data-testid="config-table-cell-name-0"]').trigger('dblclick')
 
-    expect(wrapper.emitted('cellClick')![0][0]).toMatchObject({
+    const clickParams = wrapper.emitted('cellClick')![0][0] as any
+    const dblClickParams = wrapper.emitted('cellDblClick')![0][0] as any
+    expect(clickParams).toMatchObject({
       row: { code: 'C-001', name: '华南仓' },
       column: { field: 'name', label: '仓库' },
       rowIndex: 0,
       columnIndex: 0,
-      value: '华南仓',
+      sourceColumnIndex: 0,
+      visibleColumnIndex: 0,
+      rawValue: '华南仓',
+      value: '华南仓!',
+      mode: 'default',
     })
-    expect(wrapper.emitted('cellDblClick')![0][0]).toMatchObject({
+    expect(dblClickParams).toMatchObject({
       row: { code: 'C-001', name: '华南仓' },
       column: { field: 'name', label: '仓库' },
       rowIndex: 0,
       columnIndex: 0,
-      value: '华南仓',
+      sourceColumnIndex: 0,
+      visibleColumnIndex: 0,
+      rawValue: '华南仓',
+      value: '华南仓!',
+      mode: 'default',
     })
+    expect(clickParams.event.type).toBe('click')
+    expect(dblClickParams.event.type).toBe('dblclick')
   })
 
   it('query 模式使用请求数据并默认渲染分页', async () => {

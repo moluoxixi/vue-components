@@ -2,23 +2,22 @@
 /**
  * AI 文档助手可视化面板（外壳）。
  *
- * 固定头部：标题 + /health 状态徽章（模式 / chat 配置态，不含密钥）+ 知识库状态 +
- * 知识库入口。默认 content 模式在面板打开后自动准备知识库；vector 模式或未就绪时
- * 保留手动构建/更新入口。主区域默认且始终展示 Chat；组件总览/详情放进知识库弹框。
+ * 双视图工作区外壳：Chat 始终挂载，知识库作为同级视图承载总览与详情。
  */
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import type { ComponentListItem, HealthResponse, IndexState } from '../shared/protocol'
 import { buildIndex, fetchComponents, fetchHealth, fetchStatus, importKnowledge } from './api'
 import { readKnowledgeImportFile } from './export'
+import WorkspaceTopbar, { type WorkspaceView } from './components/WorkspaceTopbar.vue'
 import ChatView from './views/ChatView.vue'
 import DetailView from './views/DetailView.vue'
 import OverviewView from './views/OverviewView.vue'
 
-/** 知识库弹框内的视图。 */
 type KnowledgeView = 'overview' | 'detail'
+type RequestStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
+
+const workspaceView = ref<WorkspaceView>('chat')
 const knowledgeView = ref<KnowledgeView>('overview')
-/** 是否打开知识库弹框。 */
-const showKnowledgeDialog = ref(false)
 /** 详情视图当前组件名。 */
 const activeComponent = ref('')
 /** Chat 视图预填问题（详情页「问 AI」带入）。 */
@@ -33,11 +32,12 @@ const indexState = ref<IndexState>('not_built')
 const componentCount = ref(0)
 /** 错误信息（非空即展示红条）。 */
 const errorMsg = ref('')
+const healthStatus = ref<RequestStatus>('loading')
+const componentsStatus = ref<RequestStatus>('idle')
+const componentsError = ref('')
 /** 知识库构建中标志。 */
 const building = ref(false)
 const importing = ref(false)
-const importMenuOpen = ref(false)
-const importInputRef = useTemplateRef<HTMLInputElement>('importInputRef')
 const chatViewRef = useTemplateRef<InstanceType<typeof ChatView>>('chatViewRef')
 
 /** 默认 content 模式不把构建动作暴露为常驻主按钮；vector 或未就绪时保留手动入口。 */
@@ -51,12 +51,67 @@ const knowledgeActionLabel = computed(() => {
   return indexState.value === 'ready' ? '更新知识库' : '构建知识库'
 })
 
+const statusLabel = computed(() => {
+  if (healthStatus.value === 'loading')
+    return '正在连接'
+  if (healthStatus.value === 'error')
+    return '连接失败'
+  if (building.value || indexState.value === 'building')
+    return '知识库更新中'
+  if (componentsStatus.value === 'loading')
+    return '正在加载组件'
+  if (componentsStatus.value === 'error')
+    return '组件加载失败'
+  if (indexState.value === 'ready')
+    return `知识库可用 · ${componentCount.value}`
+  if (indexState.value === 'stale')
+    return '知识库需更新'
+  return '知识库未就绪'
+})
+
+const statusTone = computed<'neutral' | 'working' | 'success' | 'error'>(() => {
+  if (healthStatus.value === 'error' || componentsStatus.value === 'error')
+    return 'error'
+  if (healthStatus.value === 'loading' || building.value || componentsStatus.value === 'loading')
+    return 'working'
+  return indexState.value === 'ready' ? 'success' : 'neutral'
+})
+
+const statusDetail = computed(() => {
+  if (!health.value)
+    return statusLabel.value
+  const chat = health.value.providers.chat === 'configured' ? 'Chat 已配置' : 'Chat 未配置'
+  return `${statusLabel.value} · 检索模式 ${health.value.mode} · ${chat}`
+})
+
 /** 拉取健康态与索引状态。 */
 async function refreshHealth(): Promise<void> {
-  health.value = await fetchHealth()
-  const status = await fetchStatus()
-  indexState.value = status.state
-  componentCount.value = status.componentCount
+  healthStatus.value = 'loading'
+  try {
+    const [nextHealth, status] = await Promise.all([fetchHealth(), fetchStatus()])
+    health.value = nextHealth
+    indexState.value = status.state
+    componentCount.value = status.componentCount
+    healthStatus.value = 'ready'
+  }
+  catch (error) {
+    healthStatus.value = 'error'
+    throw error
+  }
+}
+
+async function refreshComponents(): Promise<void> {
+  componentsStatus.value = 'loading'
+  componentsError.value = ''
+  try {
+    components.value = await fetchComponents()
+    componentsStatus.value = components.value.length ? 'ready' : 'empty'
+  }
+  catch (error) {
+    componentsStatus.value = 'error'
+    componentsError.value = error instanceof Error ? error.message : String(error)
+    throw error
+  }
 }
 
 /** 触发知识库构建，完成后刷新状态与组件清单。 */
@@ -82,7 +137,7 @@ async function onBuild(): Promise<void> {
   }
 
   try {
-    components.value = await fetchComponents()
+    await refreshComponents()
   }
   catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -94,37 +149,27 @@ async function onBuild(): Promise<void> {
 function openDetail(name: string): void {
   activeComponent.value = name
   knowledgeView.value = 'detail'
-  showKnowledgeDialog.value = true
+  workspaceView.value = 'knowledge'
 }
 
 /** 从详情跳到 Chat 并预填该组件的问题。 */
 function askAbout(name: string): void {
   question.value = `${name} 怎么用？给个示例`
-  showKnowledgeDialog.value = false
+  workspaceView.value = 'chat'
   void nextTick(() => focusChat())
 }
 
-/** 打开知识库弹框，用于检查当前知识库里有哪些组件契约。 */
 function openKnowledge(): void {
   knowledgeView.value = 'overview'
-  showKnowledgeDialog.value = true
+  workspaceView.value = 'knowledge'
 }
 
 function focusChat(): void {
-  chatViewRef.value?.focusQuestion()
+  workspaceView.value = 'chat'
+  void nextTick(() => chatViewRef.value?.focusQuestion())
 }
 
-function chooseImportFile(): void {
-  importMenuOpen.value = false
-  importInputRef.value?.click()
-}
-
-async function onImportFile(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file)
-    return
+async function onImportFile(file: File): Promise<void> {
   importing.value = true
   errorMsg.value = ''
   try {
@@ -137,7 +182,7 @@ async function onImportFile(event: Event): Promise<void> {
       : first
     if (result.status !== 'conflict') {
       await refreshHealth()
-      components.value = await fetchComponents()
+      await refreshComponents()
     }
   }
   catch (err) {
@@ -148,115 +193,86 @@ async function onImportFile(event: Event): Promise<void> {
   }
 }
 
-onMounted(async () => {
+async function initialize(): Promise<void> {
+  errorMsg.value = ''
   try {
     await refreshHealth()
     if (health.value?.mode === 'content' && indexState.value !== 'ready')
       await onBuild()
     else
-      components.value = await fetchComponents()
+      await refreshComponents()
   }
   catch (err) {
     errorMsg.value = err instanceof Error ? err.message : String(err)
   }
-})
+}
+
+onMounted(initialize)
 </script>
 
 <template>
   <div class="ai-doc-app">
-    <header class="topbar">
-      <h1 data-testid="app-title">
-        AI 文档助手
-      </h1>
-      <div class="status-chips">
-        <span class="chip" :class="health?.mode ? `mode-${health.mode}` : ''" data-testid="mode-chip">
-          模式: {{ health?.mode ?? '...' }}
-        </span>
-        <span class="chip" data-testid="chat-chip">
-          Chat: {{ health?.providers.chat ?? '...' }}
-        </span>
-        <span class="chip" :class="`index-${indexState}`" data-testid="index-chip">
-          知识库: {{ indexState }} ({{ componentCount }})
-        </span>
-        <button v-if="showKnowledgeAction" class="btn" data-testid="build-btn" :disabled="building" @click="onBuild">
-          {{ knowledgeActionLabel }}
-        </button>
-        <button class="btn" data-testid="kb-debug-btn" @click="openKnowledge">
-          知识库
-        </button>
-        <span class="import-dropdown">
-          <button
-            class="btn"
-            type="button"
-            aria-haspopup="menu"
-            :aria-expanded="importMenuOpen"
-            data-testid="import-trigger"
-            :disabled="importing"
-            @click="importMenuOpen = !importMenuOpen"
-            @keydown.esc="importMenuOpen = false"
-          >
-            {{ importing ? '导入中...' : '导入' }} ▾
-          </button>
-          <span v-if="importMenuOpen" class="import-menu" role="menu" data-testid="import-menu" @keydown.esc="importMenuOpen = false">
-            <button class="import-option" type="button" role="menuitem" data-testid="import-external-json" @click="chooseImportFile">
-              外部知识库 JSON
-            </button>
-          </span>
-          <input
-            ref="importInputRef"
-            class="visually-hidden"
-            type="file"
-            accept="application/json,.json"
-            data-testid="import-file-input"
-            @change="onImportFile"
-          >
-        </span>
-        <button
-          class="ai-icon active"
-          type="button"
-          title="问 AI"
-          aria-label="聚焦 AI 提问输入框"
-          data-testid="ai-icon"
-          @click="focusChat"
-        >
-          AI
-        </button>
-      </div>
-    </header>
+    <WorkspaceTopbar
+      :view="workspaceView"
+      :status-label="statusLabel"
+      :status-tone="statusTone"
+      :status-detail="statusDetail"
+      :chat-missing="health?.providers.chat === 'missing'"
+      :building="building"
+      :importing="importing"
+      :show-build-action="showKnowledgeAction"
+      :build-label="knowledgeActionLabel"
+      @select-view="workspaceView = $event"
+      @build="onBuild"
+      @import-file="onImportFile"
+    />
 
-    <div v-if="errorMsg" class="error-bar" data-testid="error-bar">
-      {{ errorMsg }}
+    <div v-if="errorMsg" class="error-bar" role="alert" data-testid="error-bar">
+      <span>{{ errorMsg }}</span>
+      <button type="button" @click="initialize">重试</button>
+      <button type="button" aria-label="关闭错误提示" @click="errorMsg = ''">关闭</button>
     </div>
 
-    <main class="content">
-      <ChatView
-        ref="chatViewRef"
-        v-model:question="question"
-        :index-ready="indexState === 'ready'"
-        :index-state="indexState"
-        @open-source="openDetail"
-      />
+    <main class="workspace-content">
+      <section
+        id="workspace-chat-panel"
+        v-show="workspaceView === 'chat'"
+        class="workspace-pane chat-pane"
+        role="tabpanel"
+        aria-labelledby="workspace-chat-tab"
+      >
+        <ChatView
+          ref="chatViewRef"
+          v-model:question="question"
+          :index-ready="indexState === 'ready'"
+          :index-state="indexState"
+          @open-source="openDetail"
+        />
+      </section>
+      <section
+        id="workspace-knowledge-panel"
+        v-if="workspaceView === 'knowledge'"
+        class="workspace-pane knowledge-pane"
+        role="tabpanel"
+        aria-labelledby="workspace-knowledge-tab"
+        data-testid="knowledge-workspace"
+      >
+        <OverviewView
+          v-if="knowledgeView === 'overview'"
+          :components="components"
+          :loading="componentsStatus === 'loading'"
+          :error="componentsError"
+          @retry="refreshComponents"
+          @open="openDetail"
+        />
+        <DetailView
+          v-else
+          :name="activeComponent"
+          @back="openKnowledge"
+          @ask="askAbout"
+        />
+      </section>
     </main>
-
-    <ElDialog
-      v-model="showKnowledgeDialog"
-      title="知识库"
-      width="86vw"
-      class="kb-debug-dialog"
-      data-testid="kb-debug-dialog"
-    >
-      <OverviewView
-        v-if="knowledgeView === 'overview'"
-        :components="components"
-        @open="openDetail"
-      />
-      <DetailView
-        v-else
-        :name="activeComponent"
-        @back="knowledgeView = 'overview'"
-        @ask="askAbout"
-      />
-    </ElDialog>
   </div>
 </template>
 
@@ -276,70 +292,18 @@ onMounted(async () => {
   color: #303133;
   font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  min-height: 64px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 20px;
-  border-bottom: 1px solid #e4e7ed;
-  background: #fff;
-}
-.topbar h1 { margin: 0; color: #303133; font-size: 18px; font-weight: 650; }
-.topbar h1::before { content: ''; display: inline-block; width: 4px; height: 18px; margin-right: 10px; border-radius: 2px; background: #409eff; vertical-align: -3px; }
-.status-chips { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.chip {
-  padding: 4px 9px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background: #f5f7fa;
-  color: #606266;
-  font-size: 12px;
-}
-.chip.mode-vector { border-color: #b3d8ff; background: #ecf5ff; color: #337ecc; }
-.chip.index-ready { border-color: #b3e19d; background: #f0f9eb; color: #529b2e; }
-.chip.index-not_built { color: #909399; }
-.btn {
-  padding: 7px 12px; border: 1px solid #dcdfe6; border-radius: 4px;
-  background: #fff; color: #606266; cursor: pointer; font-size: 13px;
-}
-.btn:hover { border-color: #409eff; color: #409eff; }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
-.import-dropdown { position: relative; display: inline-flex; }
-.import-menu {
-  position: absolute; top: 36px; right: 0; z-index: 20;
-  min-width: 150px; padding: 6px; border: 1px solid #d0d7de; border-radius: 8px;
-  background: #fff; box-shadow: 0 8px 24px rgba(140,149,159,.28);
-}
-.import-option {
-  display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px;
-  background: transparent; color: #1f2328; cursor: pointer; text-align: left; white-space: nowrap;
-}
-.import-option:hover { background: #f6f8fa; }
-.visually-hidden { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.ai-icon {
-  display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center;
-  border: 1px solid #409eff; background: #fff; border-radius: 4px; color: #409eff;
-  cursor: pointer; font-size: 11px; font-weight: 700; line-height: 1;
-}
-.ai-icon.active { background: #409eff; color: #fff; }
 .error-bar {
-  background: #ffebe9; color: #cf222e; padding: 8px 20px;
+  display: flex; align-items: center; gap: 12px;
+  background: #ffebe9; color: #cf222e; padding: 8px 18px;
   font-size: 13px; border-bottom: 1px solid #ffccc7;
 }
-.content { flex: 1; overflow-y: auto; min-height: 0; background: #fff; }
-.kb-debug-dialog :deep(.el-dialog__body) {
-  max-height: min(72vh, 760px);
-  overflow: auto;
-  padding: 0;
-}
+.error-bar span { min-width: 0; flex: 1; }
+.error-bar button { padding: 3px 7px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 12px; text-decoration: underline; }
+.workspace-content { flex: 1; min-width: 0; min-height: 0; background: #fff; }
+.workspace-pane { width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.knowledge-pane { overflow-y: auto; background: #f6f8fa; }
 
-@media (max-width: 900px) {
-  .topbar { align-items: flex-start; flex-direction: column; }
-  .status-chips { width: 100%; justify-content: flex-start; }
+@media (max-width: 640px) {
+  .error-bar { align-items: flex-start; gap: 8px; padding: 7px 10px; }
 }
 </style>
