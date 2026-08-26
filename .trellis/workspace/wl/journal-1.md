@@ -116,3 +116,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 6: 修复组件监听生命周期并收敛表格渲染逻辑
+
+**Date**: 2026-08-27
+**Task**: 修复组件监听生命周期并收敛表格渲染逻辑
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+修复 PopoverTableSelect 延迟全局监听的隐藏、停用和卸载竞态；收敛 ConfigTable cell mode actions 与事件参数构造；补充 126 条包级测试验证并更新 components hook 生命周期规范。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2924b746` | (see git log) |
+
+### Status
+
+[OK] **Completed**
