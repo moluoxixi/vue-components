@@ -138,3 +138,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 7: AI 文档助手界面与功能优化
+
+**Date**: 2026-08-27
+**Task**: AI 文档助手界面与功能优化
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+重构 AI 文档助手为问答与知识库双视图工作区，补齐安全 Markdown、长对话裁剪、SSE 终态、响应式与可访问交互；完成 238 条单测、覆盖率、桌面/移动 E2E 和真实浏览器视觉验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2924b746` | (see git log) |
+
+### Status
+
+[OK] **Completed**
