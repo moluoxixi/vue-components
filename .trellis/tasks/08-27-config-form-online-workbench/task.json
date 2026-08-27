@@ -1,0 +1,31 @@
+{
+  "id": "config-form-online-workbench",
+  "name": "config-form-online-workbench",
+  "title": "配置化在线网站工作台",
+  "description": "构建支持 Config、拖拽设计器、真实 Source 与实时 Page Preview 的在线 Vue 3 + Vite 网站工作台。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "playground",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-27-config-form-workbench-three-mode",
+    "08-27-config-form-workbench-project-core",
+    "08-27-config-form-workbench-live-preview",
+    "08-27-config-form-workbench-product-shell"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

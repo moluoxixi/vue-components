@@ -14,12 +14,18 @@ const storage = createIndexDBStorage({
 
 await storage.setItem('profile', { name: 'Ada' })
 const profile = await storage.getItem('profile')
+
+const nextProfile = await storage.updateItem('profile', current => ({
+  ...current,
+  visits: (current?.visits ?? 0) + 1,
+}))
 ```
 
 ## API
 
 - `setItem(key, value)`
 - `getItem(key)`
+- `updateItem(key, updater)`：在一个 `readwrite` transaction 内读取并写回；`updater` 必须同步，返回 `null` 时删除记录。
 - `removeItem(key)`
 - `clear()`
 - `keys()`

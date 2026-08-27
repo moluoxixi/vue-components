@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"检查 Designer 范围、共享协议引用与包级约束。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"验证没有意外改变包职责、依赖方向或需要遗漏架构文档更新。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"复核两套 adapter locale、registry 优先级与公开包边界测试。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查工作区状态、文档写入、adapter 与 E2E 的完整跨层链路。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查是否复用了仓库既有响应式、tabs、焦点与测试模式。"}

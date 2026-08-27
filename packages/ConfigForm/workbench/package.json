@@ -1,0 +1,40 @@
+{
+  "name": "@config-form/workbench",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit",
+    "verify:templates": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@babel/parser": "catalog:dev",
+    "@lucide/vue": "catalog:ui",
+    "@moluoxixi/config-form": "workspace:*",
+    "@moluoxixi/config-form-antd-vue": "workspace:*",
+    "@moluoxixi/config-form-designer": "workspace:*",
+    "@moluoxixi/config-form-designer-antd-vue": "workspace:*",
+    "@moluoxixi/config-form-designer-element-plus": "workspace:*",
+    "@moluoxixi/config-form-element": "workspace:*",
+    "@moluoxixi/indexed-db": "workspace:*",
+    "@vue/compiler-sfc": "catalog:dev",
+    "@vue/repl": "catalog:",
+    "ant-design-vue": "catalog:ui",
+    "element-plus": "catalog:ui",
+    "fflate": "catalog:",
+    "monaco-editor": "catalog:",
+    "vue": "catalog:build",
+    "zod": "catalog:dev"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:type",
+    "@vitejs/plugin-vue": "catalog:dev",
+    "fake-indexeddb": "catalog:dev",
+    "sass": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue-tsc": "catalog:dev"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "config-form-workbench-product-shell",
+  "name": "config-form-workbench-product-shell",
+  "title": "在线工作台产品界面与集成",
+  "description": "构建在线工作台网站界面，集成项目、三种编辑形态、页面预览、模板与导出工作流。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "playground",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-27-config-form-designer-ux"
+  ],
+  "parent": "08-27-config-form-online-workbench",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

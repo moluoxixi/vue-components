@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"复核包边界、依赖方向、README 和公开包验证没有漂移。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 project revision 从编辑器到 Preview、存储和导出的端到端一致性。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查是否重复实现仓库已有 REPL、IndexedDB、下载和构建验证机制。"}
+{"file":".trellis/tasks/08-27-config-form-designer-ux/research/online-website-workbench.md","reason":"按已确认产品边界检查首版范围与延期项。"}
+{"file":".trellis/tasks/08-27-config-form-designer-ux/research/code-roundtrip-feasibility.md","reason":"复核源码往返不越过安全静态子集。"}

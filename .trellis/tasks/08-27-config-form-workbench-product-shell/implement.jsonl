@@ -1,0 +1,4 @@
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"保持 Workbench、Designer、Renderer 与 adapter 依赖边界。"}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"嵌入受控 Designer 时保持组件契约。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核对 project revision、三 provider 与 Preview 数据流。"}
+{"file":".trellis/tasks/08-27-config-form-designer-ux/research/online-website-workbench.md","reason":"在线工作台产品与单一真源研究。"}

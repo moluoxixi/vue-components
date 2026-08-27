@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"确认 Designer 前端包范围及 ConfigForm 共享协议入口。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"保持 ConfigForm 包职责、依赖方向和架构文档更新边界。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"修改 adapter locale 与 Playground registry 时保持 material 注册、优先级和测试合同。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"复用现有 ResizeObserver、tabs 与焦点模式，避免重复实现相同机制。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核对 Designer、adapter、Playground 与浏览器测试的跨层数据流。"}

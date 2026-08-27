@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"保持 ConfigForm 包职责、private app 边界和架构文档维护合同。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"统筹虚拟项目、三模式、Preview、持久化和产品 UI 的跨层数据流。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"复用现有 Vue REPL、IndexedDB、下载与验证模式。"}
+{"file":".trellis/tasks/08-27-config-form-designer-ux/research/online-website-workbench.md","reason":"在线网站工作台的已确认产品与状态模型研究。"}
+{"file":".trellis/tasks/08-27-config-form-designer-ux/research/code-roundtrip-feasibility.md","reason":"Config、Source 与 DesignerDocument 的可逆边界和安全语法子集。"}

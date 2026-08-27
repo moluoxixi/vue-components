@@ -1,18 +1,22 @@
-import type { IndexedDBManagerOptions, IndexedDBManagerStats, StorageItem, StorageRecord } from './types'
+import type { IndexedDBManagerOptions, IndexedDBManagerStats, StorageItem, StorageItemUpdater, StorageRecord } from './types'
 import { assertNonEmptyString } from './validation'
 
 function createRequestPromise<T>(request: IDBRequest<T>, errorMessage: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(new Error(request.error?.message || errorMessage))
+    request.onerror = () => reject(createIndexedDBError(errorMessage, request.error))
   })
+}
+
+function createIndexedDBError(message: string, cause?: DOMException | null): Error {
+  return new Error(cause?.message || message, cause ? { cause } : undefined)
 }
 
 function createTransactionPromise(transaction: IDBTransaction, errorMessage: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(new Error(transaction.error?.message || errorMessage))
-    transaction.onabort = () => reject(new Error(transaction.error?.message || errorMessage))
+    transaction.onerror = () => reject(createIndexedDBError(errorMessage, transaction.error))
+    transaction.onabort = () => reject(createIndexedDBError(errorMessage, transaction.error))
   })
 }
 
@@ -114,6 +118,42 @@ export class IndexedDBManager {
     )
 
     return record?.value ?? null
+  }
+
+  async updateItem<T>(key: string, updater: StorageItemUpdater<T>): Promise<T | null> {
+    assertNonEmptyString(key, 'key')
+    if (typeof updater !== 'function')
+      throw new TypeError('[indexed-db] updater must be a function')
+
+    const { store, transaction } = await this.getStore('readwrite')
+    return await new Promise<T | null>((resolve, reject) => {
+      let nextValue: T | null = null
+      let updaterError: unknown
+      const request = store.get(key) as IDBRequest<StorageRecord<T> | undefined>
+
+      request.onsuccess = () => {
+        try {
+          const next = updater(request.result?.value ?? null)
+          if (next && typeof (next as { then?: unknown }).then === 'function')
+            throw new TypeError('[indexed-db] updater must be synchronous')
+
+          nextValue = next
+          if (next === null)
+            store.delete(key)
+          else
+            store.put({ key, value: next } satisfies StorageRecord<T>)
+        }
+        catch (error) {
+          updaterError = error
+          transaction.abort()
+        }
+      }
+
+      request.onerror = () => reject(createIndexedDBError(`[indexed-db] failed to update item: ${key}`, request.error))
+      transaction.oncomplete = () => resolve(nextValue)
+      transaction.onerror = () => reject(updaterError ?? createIndexedDBError(`[indexed-db] failed to update item: ${key}`, transaction.error))
+      transaction.onabort = () => reject(updaterError ?? createIndexedDBError(`[indexed-db] failed to update item: ${key}`, transaction.error))
+    })
   }
 
   async removeItem(key: string): Promise<void> {

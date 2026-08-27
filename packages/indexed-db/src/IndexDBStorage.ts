@@ -1,4 +1,4 @@
-import type { IndexedDBStorageOptions } from './types'
+import type { IndexedDBStorageOptions, StorageItemUpdater } from './types'
 import type { StorageItemsInput } from './validation'
 import { IndexedDBManager } from './IndexedDBManager'
 import { assertStorageItems } from './validation'
@@ -16,6 +16,10 @@ export class IndexDBStorage {
 
   async getItem<T = unknown>(key: string): Promise<T | null> {
     return await this.manager.getItem<T>(key)
+  }
+
+  async updateItem<T>(key: string, updater: StorageItemUpdater<T>): Promise<T | null> {
+    return await this.manager.updateItem(key, updater)
   }
 
   async removeItem(key: string): Promise<void> {

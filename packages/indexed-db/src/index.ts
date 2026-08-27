@@ -6,5 +6,6 @@ export type {
   IndexedDBManagerStats,
   IndexedDBStorageOptions,
   StorageItem,
+  StorageItemUpdater,
   StorageRecord,
 } from './types'

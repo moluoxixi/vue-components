@@ -62,6 +62,46 @@ describe('indexDBStorage', () => {
     await expect(storage.setItem('', 1)).rejects.toThrow('[indexed-db] key must be a non-empty string')
     await expect(storage.setItems([{ key: '', value: 1 }])).rejects.toThrow('[indexed-db] item.key must be a non-empty string')
   })
+
+  it('updates or deletes one item atomically', async () => {
+    const storage = createStorage('storage-update')
+    await storage.setItem('counter', 1)
+
+    await expect(storage.updateItem<number>('counter', current => (current ?? 0) + 1)).resolves.toBe(2)
+    await expect(storage.getItem('counter')).resolves.toBe(2)
+    await expect(storage.updateItem<number>('counter', () => null)).resolves.toBeNull()
+    await expect(storage.getItem('counter')).resolves.toBeNull()
+  })
+
+  it('aborts an update when the synchronous updater rejects the change', async () => {
+    const storage = createStorage('storage-update-abort')
+    await storage.setItem('project', { revision: 1 })
+
+    await expect(storage.updateItem('project', () => {
+      throw new Error('revision conflict')
+    })).rejects.toThrow('revision conflict')
+    await expect(storage.getItem('project')).resolves.toEqual({ revision: 1 })
+    // @ts-expect-error Promise-returning updaters are rejected by both the type and runtime contracts.
+    await expect(storage.updateItem<{ revision: number }>('project', async current => current)).rejects.toThrow('updater must be synchronous')
+    await expect(storage.getItem('project')).resolves.toEqual({ revision: 1 })
+  })
+
+  it('serializes compare-and-swap updates across database connections', async () => {
+    const first = createStorage('storage-update-cas')
+    const second = createStorage('storage-update-cas')
+    await first.setItem('project', { revision: 1 })
+
+    const commit = (storage: IndexDBStorage) => storage.updateItem<{ revision: number }>('project', (current) => {
+      if (current?.revision !== 1)
+        throw new Error('revision conflict')
+      return { revision: 2 }
+    })
+    const results = await Promise.allSettled([commit(first), commit(second)])
+
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.filter(result => result.status === 'rejected')).toHaveLength(1)
+    await expect(first.getItem('project')).resolves.toEqual({ revision: 2 })
+  })
 })
 
 describe('indexedDBManager', () => {

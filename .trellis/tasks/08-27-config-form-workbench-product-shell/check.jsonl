@@ -1,0 +1,4 @@
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查 UI 集成没有把项目职责泄漏进 Runtime/Designer。"}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"检查 Designer props/emits/registry 与 adapter 对等。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Source/Config/Designer/Preview revision 一致性。"}
+{"file":".trellis/tasks/08-27-config-form-designer-ux/research/online-website-workbench.md","reason":"复核界面符合已确认的网站工作台模型。"}

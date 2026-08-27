@@ -13,6 +13,8 @@ export interface StorageItem<T = unknown> {
 
 export interface StorageRecord<T = unknown> extends StorageItem<T> {}
 
+export type StorageItemUpdater<T> = (current: T | null) => T | null
+
 export interface IndexedDBManagerStats {
   dbName: string
   isConnected: boolean

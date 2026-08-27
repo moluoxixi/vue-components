@@ -158,6 +158,9 @@ catalogs:
     '@vueuse/core':
       specifier: ^14.3.0
       version: 14.3.0
+    fflate:
+      specifier: ^0.8.2
+      version: 0.8.3
     gray-matter:
       specifier: ^4.0.3
       version: 4.0.3
@@ -170,6 +173,9 @@ catalogs:
     markdown-it-container:
       specifier: ^3.0.0
       version: 3.0.0
+    monaco-editor:
+      specifier: ^0.52.2
+      version: 0.52.2
     normalize.css:
       specifier: ^8.0.1
       version: 8.0.1
@@ -918,6 +924,82 @@ importers:
       zod:
         specifier: catalog:dev
         version: 3.25.76
+
+  packages/ConfigForm/workbench:
+    dependencies:
+      '@babel/parser':
+        specifier: catalog:dev
+        version: 7.29.2
+      '@lucide/vue':
+        specifier: catalog:ui
+        version: 1.28.0(vue@3.5.33(typescript@5.9.3))
+      '@moluoxixi/config-form':
+        specifier: workspace:*
+        version: link:../runtime
+      '@moluoxixi/config-form-antd-vue':
+        specifier: workspace:*
+        version: link:../antd
+      '@moluoxixi/config-form-designer':
+        specifier: workspace:*
+        version: link:../designer
+      '@moluoxixi/config-form-designer-antd-vue':
+        specifier: workspace:*
+        version: link:../designer-antd-vue
+      '@moluoxixi/config-form-designer-element-plus':
+        specifier: workspace:*
+        version: link:../designer-element-plus
+      '@moluoxixi/config-form-element':
+        specifier: workspace:*
+        version: link:../element
+      '@moluoxixi/indexed-db':
+        specifier: workspace:*
+        version: link:../../indexed-db
+      '@vue/compiler-sfc':
+        specifier: 3.5.33
+        version: 3.5.33
+      '@vue/repl':
+        specifier: 'catalog:'
+        version: 4.7.2
+      ant-design-vue:
+        specifier: catalog:ui
+        version: 4.2.6(vue@3.5.33(typescript@5.9.3))
+      element-plus:
+        specifier: catalog:ui
+        version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
+      fflate:
+        specifier: 'catalog:'
+        version: 0.8.3
+      monaco-editor:
+        specifier: 'catalog:'
+        version: 0.52.2
+      vue:
+        specifier: catalog:build
+        version: 3.5.33(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: catalog:type
+        version: 25.6.0
+      '@vitejs/plugin-vue':
+        specifier: catalog:dev
+        version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
+      fake-indexeddb:
+        specifier: catalog:dev
+        version: 6.2.5
+      sass:
+        specifier: catalog:dev
+        version: 1.99.0
+      vite:
+        specifier: catalog:dev
+        version: 6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
+      vitest:
+        specifier: catalog:dev
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
+      vue-tsc:
+        specifier: catalog:dev
+        version: 2.2.12(typescript@5.9.3)
 
   packages/ai-doc-assistant:
     dependencies:
@@ -8068,6 +8150,9 @@ packages:
 
   module-replacements@2.11.0:
     resolution: {integrity: sha512-j5sNQm3VCpQQ7nTqGeOZtoJtV3uKERgCBm9QRhmGRiXiqkf7iRFOkfxdJRZWLkqYY8PNf4cDQF/WfXUYLENrRA==}
+
+  monaco-editor@0.52.2:
+    resolution: {integrity: sha512-GEQWEZmfkOGLdd3XK8ryrfWz3AIP8YymVXiPHEdewrUq7mh0qrKrfHLNCXcbB6sTnMLnOZ3ztSiKcciFUkIJwQ==}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -16998,6 +17083,8 @@ snapshots:
       ufo: 1.6.3
 
   module-replacements@2.11.0: {}
+
+  monaco-editor@0.52.2: {}
 
   mri@1.2.0: {}
 
