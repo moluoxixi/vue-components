@@ -10,15 +10,6 @@ import type {
   WorkspaceProjectRepository,
   WorkspaceProjectSummary,
 } from './project'
-import { ConfigFormRenderer } from '@moluoxixi/config-form/renderer'
-import {
-  compileDesignerDocument,
-  ConfigFormDesigner,
-  parseDesignerDocument,
-} from '@moluoxixi/config-form-designer'
-import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'
-import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
-import { parse as parseSfc } from '@vue/compiler-sfc'
 import {
   Blocks,
   Braces,
@@ -27,11 +18,24 @@ import {
   FileCode2,
   Maximize2,
   Minimize2,
+  Monitor,
   PanelRightClose,
   PanelRightOpen,
   Plus,
+  RefreshCw,
   Save,
+  Smartphone,
+  Tablet,
 } from '@lucide/vue'
+import {
+  compileDesignerDocument,
+  ConfigFormDesigner,
+  parseDesignerDocument,
+} from '@moluoxixi/config-form-designer'
+import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'
+import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
+import { ConfigFormRenderer } from '@moluoxixi/config-form/renderer'
+import { parse as parseSfc } from '@vue/compiler-sfc'
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
 import {
   BUILT_IN_WORKSPACE_TEMPLATES,
@@ -50,6 +54,18 @@ const WorkspaceSourcePreview = defineAsyncComponent(() => import('./components/W
 
 type Provider = 'config' | 'designer' | 'source'
 type MobileSurface = 'edit' | 'preview'
+type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
+type SourcePreviewPhase = 'error' | 'loading' | 'ready'
+
+interface SourcePreviewRun {
+  id: number
+  project: WorkspaceProject
+}
+
+interface SourcePreviewStatus {
+  message?: string
+  phase: SourcePreviewPhase
+}
 
 const SOURCE_PATH = normalizeProjectPath('src/App.vue')
 const CONFIG_PATH = WORKSPACE_CONFIG_MODULE_PATH
@@ -57,6 +73,11 @@ const providers = [
   { icon: Code2, id: 'source' as const, label: 'Source' },
   { icon: Braces, id: 'config' as const, label: 'Config' },
   { icon: Blocks, id: 'designer' as const, label: 'Designer' },
+]
+const previewViewports = [
+  { icon: Monitor, id: 'desktop' as const, label: 'Desktop preview' },
+  { icon: Tablet, id: 'tablet' as const, label: 'Tablet preview' },
+  { icon: Smartphone, id: 'mobile' as const, label: 'Mobile preview' },
 ]
 const registries: Record<WorkspaceProject['manifest']['adapter'], DesignerRegistry> = {
   'antd-vue': createAntdVueDesignerRegistry(),
@@ -74,16 +95,26 @@ const activeProvider = ref<Provider>('source')
 const mobileSurface = ref<MobileSurface>('edit')
 const previewOpen = ref(true)
 const previewExpanded = ref(false)
+const previewViewport = ref<PreviewViewport>('desktop')
 const previewModel = ref<Record<string, unknown>>({})
+const rendererPreviewVersion = ref(0)
 const dirty = ref(false)
 const templatePickerOpen = ref(false)
 const busy = ref(false)
 const message = ref('')
-const sourcePreviewVersion = ref(0)
-const sourcePreviewProject = shallowRef<WorkspaceProject>()
+const sourcePreviewRuns = shallowRef<SourcePreviewRun[]>([])
+const activeSourcePreviewRunId = ref<number>()
+const pendingSourcePreviewRunId = ref<number>()
+const sourcePreviewScheduled = ref(false)
+const sourcePreviewError = ref('')
 const newPageButtonRef = useTemplateRef<HTMLButtonElement>('newPageButton')
 const templateDialogRef = useTemplateRef<HTMLElement>('templateDialog')
+const providerTabsRef = useTemplateRef<HTMLElement>('providerTabs')
+const mobileSurfaceTabsRef = useTemplateRef<HTMLElement>('mobileSurfaceTabs')
 let sourcePreviewTimer: number | undefined
+let sourcePreviewSequence = 0
+let openProjectRequestId = 0
+let disposed = false
 
 const registry = computed(() => currentProject.value
   ? registries[currentProject.value.manifest.adapter]
@@ -92,7 +123,22 @@ const sourceCode = computed(() => readTextFile(currentProject.value, SOURCE_PATH
 const compiledPreview = computed(() => designerDocument.value
   ? compileDesignerDocument(designerDocument.value, registry.value)
   : undefined)
-const hasUnsavedChanges = computed(() => dirty.value || !!configError.value || !!sourceError.value)
+const sourcePreviewUpdating = computed(() => sourcePreviewScheduled.value || pendingSourcePreviewRunId.value !== undefined)
+const previewState = computed(() => {
+  if (activeProvider.value === 'source') {
+    if (sourceError.value || sourcePreviewError.value)
+      return { label: 'Last valid', tone: 'error' as const }
+    if (sourcePreviewUpdating.value)
+      return { label: 'Updating', tone: 'busy' as const }
+    return { label: dirty.value ? 'Live draft' : 'Live', tone: 'live' as const }
+  }
+  if (configError.value)
+    return { label: 'Last valid', tone: 'error' as const }
+  if (!compiledPreview.value?.success)
+    return { label: 'Blocked', tone: 'error' as const }
+  return { label: dirty.value ? 'Live draft' : 'Live', tone: 'live' as const }
+})
+const hasUnsavedChanges = computed(() => dirty.value || !!configError.value || !!sourceError.value || !!sourcePreviewError.value)
 const statusLabel = computed(() => {
   if (!repository.value)
     return 'Loading'
@@ -135,16 +181,74 @@ function createPreviewModel(document: DesignerDocument): Record<string, unknown>
   return values
 }
 
-function refreshSourcePreview(): void {
-  if (!currentProject.value)
+function mergePreviewModel(
+  document: DesignerDocument,
+  defaults: Record<string, unknown>,
+): Record<string, unknown> {
+  const fields = new Set<string>()
+  const visit = (nodes: DesignerNode[]): void => {
+    nodes.forEach((node) => {
+      if (node.kind === 'field')
+        fields.add(node.field)
+      else
+        Object.values(node.slots).forEach(visit)
+    })
+  }
+  visit(document.nodes)
+
+  const next: Record<string, unknown> = {}
+  fields.forEach((field) => {
+    if (Object.hasOwn(previewModel.value, field))
+      next[field] = structuredClone(previewModel.value[field])
+    else if (Object.hasOwn(defaults, field))
+      next[field] = structuredClone(defaults[field])
+  })
+  return next
+}
+
+function refreshSourcePreview(project = currentProject.value): void {
+  if (!project)
     return
-  sourcePreviewProject.value = cloneWorkspaceProject(currentProject.value)
-  sourcePreviewVersion.value += 1
+  const run: SourcePreviewRun = {
+    id: ++sourcePreviewSequence,
+    project: cloneWorkspaceProject(project),
+  }
+  const activeRun = sourcePreviewRuns.value.find(item => item.id === activeSourcePreviewRunId.value)
+  sourcePreviewRuns.value = activeRun ? [activeRun, run] : [run]
+  pendingSourcePreviewRunId.value = run.id
+  sourcePreviewScheduled.value = false
+  sourcePreviewError.value = ''
 }
 
 function scheduleSourcePreview(): void {
   window.clearTimeout(sourcePreviewTimer)
-  sourcePreviewTimer = window.setTimeout(refreshSourcePreview, 500)
+  const projectId = currentProject.value?.id
+  sourcePreviewScheduled.value = true
+  sourcePreviewTimer = window.setTimeout(() => {
+    if (currentProject.value?.id !== projectId)
+      return
+    refreshSourcePreview()
+  }, 350)
+}
+
+function handleSourcePreviewStatus(runId: number, status: SourcePreviewStatus): void {
+  if (runId !== pendingSourcePreviewRunId.value)
+    return
+  if (status.phase === 'loading')
+    return
+  pendingSourcePreviewRunId.value = undefined
+  if (status.phase === 'ready') {
+    activeSourcePreviewRunId.value = runId
+    sourcePreviewRuns.value = sourcePreviewRuns.value.filter(run => run.id === runId)
+    sourcePreviewError.value = ''
+    return
+  }
+  sourcePreviewError.value = status.message ?? 'The page could not be compiled.'
+  if (activeSourcePreviewRunId.value !== undefined) {
+    sourcePreviewRuns.value = sourcePreviewRuns.value.filter(
+      run => run.id === activeSourcePreviewRunId.value,
+    )
+  }
 }
 
 function synchronizeDocument(
@@ -172,19 +276,39 @@ function synchronizeDocument(
   currentProject.value = next
   designerDocument.value = structuredClone(document)
   configDraft.value = configSource
-  previewModel.value = structuredClone(previewValues)
+  previewModel.value = mergePreviewModel(document, previewValues)
+  rendererPreviewVersion.value += 1
   scheduleSourcePreview()
   dirty.value = true
 }
 
 async function refreshProjects(): Promise<void> {
-  projects.value = await repository.value?.list() ?? []
+  const activeRepository = repository.value
+  if (!activeRepository)
+    return
+  const nextProjects = await activeRepository.list()
+  if (!disposed && repository.value === activeRepository)
+    projects.value = nextProjects
 }
 
 async function openProject(id: string): Promise<void> {
-  const storedProject = await repository.value?.get(id)
-  if (!storedProject)
+  const requestId = ++openProjectRequestId
+  const activeRepository = repository.value
+  const storedProject = await activeRepository?.get(id)
+  if (
+    !storedProject
+    || disposed
+    || requestId !== openProjectRequestId
+    || activeRepository !== repository.value
+  ) {
     return
+  }
+  window.clearTimeout(sourcePreviewTimer)
+  sourcePreviewScheduled.value = false
+  sourcePreviewRuns.value = []
+  activeSourcePreviewRunId.value = undefined
+  pendingSourcePreviewRunId.value = undefined
+  sourcePreviewError.value = ''
   const upgraded = upgradeWorkspaceConfigModule(storedProject)
   const artifactDocument = readDesignerDocument(upgraded.project)
   const existingConfig = readTextFile(upgraded.project, CONFIG_PATH)
@@ -197,6 +321,7 @@ async function openProject(id: string): Promise<void> {
     ? upgraded.project
     : writeTextFile(upgraded.project, CONFIG_PATH, configDraft.value, 'typescript')
   designerDocument.value = activeDocument
+  rendererPreviewVersion.value += 1
   configError.value = ''
   sourceError.value = ''
   dirty.value = upgraded.migrated || existingConfig !== configDraft.value
@@ -220,7 +345,7 @@ async function requestOpenProject(event: Event): Promise<void> {
 }
 
 async function createProject(templateId: string): Promise<void> {
-  if (!repository.value)
+  if (!repository.value || busy.value)
     return
   busy.value = true
   message.value = ''
@@ -252,12 +377,19 @@ function updateSource(value: string): void {
   dirty.value = true
   const parsed = parseSfc(value, { filename: SOURCE_PATH })
   if (parsed.errors.length > 0) {
+    window.clearTimeout(sourcePreviewTimer)
+    sourcePreviewScheduled.value = false
     const error = parsed.errors[0]
     sourceError.value = error instanceof Error ? error.message : String(error)
     return
   }
   sourceError.value = ''
   scheduleSourcePreview()
+}
+
+function retrySourcePreview(): void {
+  window.clearTimeout(sourcePreviewTimer)
+  refreshSourcePreview()
 }
 
 function updateConfig(value: string): void {
@@ -288,7 +420,7 @@ function updateDesigner(document: DesignerDocument): void {
 
 async function saveProject(): Promise<void> {
   const project = currentProject.value
-  if (!project || !repository.value || configError.value || sourceError.value)
+  if (!project || !repository.value || configError.value || sourceError.value || sourcePreviewError.value || busy.value)
     return
   busy.value = true
   message.value = ''
@@ -346,6 +478,52 @@ function showMobileSurface(surface: MobileSurface): void {
     previewOpen.value = true
 }
 
+function selectProvider(provider: Provider): void {
+  activeProvider.value = provider
+  mobileSurface.value = 'edit'
+}
+
+function resolveKeyboardTab<T extends string>(
+  event: KeyboardEvent,
+  current: T,
+  ids: readonly T[],
+): T | undefined {
+  const index = ids.indexOf(current)
+  let nextIndex = index
+  if (event.key === 'ArrowRight')
+    nextIndex = (index + 1) % ids.length
+  else if (event.key === 'ArrowLeft')
+    nextIndex = (index - 1 + ids.length) % ids.length
+  else if (event.key === 'Home')
+    nextIndex = 0
+  else if (event.key === 'End')
+    nextIndex = ids.length - 1
+  else
+    return undefined
+  event.preventDefault()
+  return ids[nextIndex]
+}
+
+function handleProviderTabKeydown(event: KeyboardEvent, provider: Provider): void {
+  const nextProvider = resolveKeyboardTab(event, provider, providers.map(item => item.id))
+  if (!nextProvider)
+    return
+  selectProvider(nextProvider)
+  void nextTick(() => providerTabsRef.value
+    ?.querySelector<HTMLButtonElement>(`[data-provider-tab="${nextProvider}"]`)
+    ?.focus())
+}
+
+function handleMobileSurfaceTabKeydown(event: KeyboardEvent, surface: MobileSurface): void {
+  const nextSurface = resolveKeyboardTab(event, surface, ['edit', 'preview'])
+  if (!nextSurface)
+    return
+  showMobileSurface(nextSurface)
+  void nextTick(() => mobileSurfaceTabsRef.value
+    ?.querySelector<HTMLButtonElement>(`[data-mobile-surface-tab="${nextSurface}"]`)
+    ?.focus())
+}
+
 function openTemplatePicker(): void {
   if (hasUnsavedChanges.value) {
     message.value = 'Save or resolve the current draft before creating another page.'
@@ -384,8 +562,15 @@ function handleTemplateDialogKeydown(event: KeyboardEvent): void {
 }
 
 onMounted(async () => {
-  repository.value = await openDefaultWorkspaceProjectRepository()
+  const openedRepository = await openDefaultWorkspaceProjectRepository()
+  if (disposed) {
+    openedRepository.close()
+    return
+  }
+  repository.value = openedRepository
   await refreshProjects()
+  if (disposed || repository.value !== openedRepository)
+    return
   const first = projects.value[0]
   if (first)
     await openProject(first.id)
@@ -394,6 +579,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  disposed = true
+  openProjectRequestId += 1
   window.clearTimeout(sourcePreviewTimer)
   repository.value?.close()
 })
@@ -419,16 +606,18 @@ onBeforeUnmount(() => {
         </option>
       </select>
 
-      <nav v-if="currentProject" class="provider-tabs" aria-label="Page provider" role="tablist">
+      <nav v-if="currentProject" ref="providerTabs" class="provider-tabs" aria-label="Page provider" role="tablist">
         <button
           v-for="provider in providers"
           :key="provider.id"
           type="button"
           role="tab"
-          :aria-pressed="activeProvider === provider.id"
           :aria-selected="activeProvider === provider.id"
           aria-controls="page-editor-panel"
-          @click="activeProvider = provider.id; mobileSurface = 'edit'"
+          :data-provider-tab="provider.id"
+          :tabindex="activeProvider === provider.id ? 0 : -1"
+          @click="selectProvider(provider.id)"
+          @keydown="handleProviderTabKeydown($event, provider.id)"
         >
           <component :is="provider.icon" :size="15" aria-hidden="true" />
           {{ provider.label }}
@@ -446,7 +635,7 @@ onBeforeUnmount(() => {
           type="button"
           title="Save"
           aria-label="Save"
-          :disabled="!dirty || !!configError || !!sourceError || busy"
+          :disabled="!dirty || !!configError || !!sourceError || !!sourcePreviewError || busy"
           @click="saveProject"
         >
           <Save :size="17" aria-hidden="true" />
@@ -473,9 +662,13 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div v-if="currentProject" class="mobile-surface-tabs" role="tablist" aria-label="Workspace surface">
-      <button id="mobile-edit-tab" type="button" role="tab" aria-controls="workspace-panel" :aria-selected="mobileSurface === 'edit'" @click="showMobileSurface('edit')">Edit</button>
-      <button id="mobile-preview-tab" type="button" role="tab" aria-controls="workspace-panel" :aria-selected="mobileSurface === 'preview'" @click="showMobileSurface('preview')">Preview</button>
+    <div v-if="currentProject" ref="mobileSurfaceTabs" class="mobile-surface-tabs" role="tablist" aria-label="Workspace surface">
+      <button id="mobile-edit-tab" type="button" role="tab" aria-controls="workspace-panel" :aria-selected="mobileSurface === 'edit'" data-mobile-surface-tab="edit" :tabindex="mobileSurface === 'edit' ? 0 : -1" @click="showMobileSurface('edit')" @keydown="handleMobileSurfaceTabKeydown($event, 'edit')">
+        Edit
+      </button>
+      <button id="mobile-preview-tab" type="button" role="tab" aria-controls="workspace-panel" :aria-selected="mobileSurface === 'preview'" data-mobile-surface-tab="preview" :tabindex="mobileSurface === 'preview' ? 0 : -1" @click="showMobileSurface('preview')" @keydown="handleMobileSurfaceTabKeydown($event, 'preview')">
+        Preview
+      </button>
     </div>
 
     <section
@@ -490,7 +683,13 @@ onBeforeUnmount(() => {
         'show-mobile-preview': mobileSurface === 'preview',
       }"
     >
-      <section id="page-editor-panel" class="editor-pane" :aria-label="`${activeProvider} editor`">
+      <section
+        id="page-editor-panel"
+        class="editor-pane"
+        :aria-hidden="previewExpanded ? 'true' : undefined"
+        :aria-label="`${activeProvider} editor`"
+        :inert="previewExpanded ? true : undefined"
+      >
         <header class="pane-header">
           <div class="editor-file-meta">
             <FileCode2 :size="14" aria-hidden="true" />
@@ -508,6 +707,7 @@ onBeforeUnmount(() => {
             v-if="activeProvider !== 'designer'"
             :filename="activeProvider === 'source' ? 'src/App.vue' : 'src/form.config.ts'"
             :language="activeProvider === 'source' ? 'vue' : 'typescript'"
+            :module-names="currentProject ? Object.keys(currentProject.manifest.dependencies) : undefined"
             :model-value="activeProvider === 'source' ? sourceCode : configDraft"
             :readonly="busy"
             @save="saveProject"
@@ -527,47 +727,101 @@ onBeforeUnmount(() => {
 
       <aside v-if="previewOpen" class="preview-pane" aria-label="Page preview">
         <header class="pane-header">
-          <div>
+          <div class="preview-heading">
             <strong>Preview</strong>
-            <span v-if="activeProvider === 'source' && sourceError">Source draft invalid</span>
-            <span v-else-if="configError">Config draft invalid</span>
-            <span v-else-if="dirty">Unsaved changes</span>
+            <span class="preview-live-state" :data-tone="previewState.tone" role="status" aria-live="polite">
+              <span aria-hidden="true" />
+              {{ previewState.label }}
+            </span>
           </div>
-          <button
-            type="button"
-            :title="previewExpanded ? 'Restore preview' : 'Expand preview'"
-            :aria-label="previewExpanded ? 'Restore preview' : 'Expand preview'"
-            @click="previewExpanded = !previewExpanded"
-          >
-            <Minimize2 v-if="previewExpanded" :size="16" aria-hidden="true" />
-            <Maximize2 v-else :size="16" aria-hidden="true" />
-          </button>
+          <div class="preview-toolbar">
+            <div class="preview-viewport-switch" role="group" aria-label="Preview viewport">
+              <button
+                v-for="viewport in previewViewports"
+                :key="viewport.id"
+                type="button"
+                :aria-label="viewport.label"
+                :aria-pressed="previewViewport === viewport.id"
+                :title="viewport.label"
+                @click="previewViewport = viewport.id"
+              >
+                <component :is="viewport.icon" :size="15" aria-hidden="true" />
+              </button>
+            </div>
+            <button
+              v-if="activeProvider === 'source'"
+              type="button"
+              title="Refresh preview"
+              aria-label="Refresh preview"
+              :disabled="sourcePreviewUpdating || !!sourceError"
+              @click="retrySourcePreview"
+            >
+              <RefreshCw :size="15" :class="{ 'is-spinning': sourcePreviewUpdating }" aria-hidden="true" />
+            </button>
+            <button
+              class="preview-expand-button"
+              type="button"
+              :title="previewExpanded ? 'Restore preview' : 'Expand preview'"
+              :aria-label="previewExpanded ? 'Restore preview' : 'Expand preview'"
+              @click="previewExpanded = !previewExpanded"
+            >
+              <Minimize2 v-if="previewExpanded" :size="16" aria-hidden="true" />
+              <Maximize2 v-else :size="16" aria-hidden="true" />
+            </button>
+          </div>
         </header>
         <div class="preview-canvas" :class="{ 'is-source': activeProvider === 'source' }">
-          <WorkspaceSourcePreview
-            v-if="activeProvider === 'source' && sourcePreviewProject"
-            :key="`${sourcePreviewProject.id}-${sourcePreviewVersion}`"
-            :project="sourcePreviewProject"
-          />
-          <ConfigFormRenderer
-            v-else-if="compiledPreview?.success"
-            v-model="previewModel"
-            class="page-preview-form"
-            :namespace="registry.rendererNamespace"
-            v-bind="compiledPreview.renderer"
-          />
-          <div v-else class="preview-errors">
-            <strong>Preview unavailable</strong>
-            <p v-for="diagnostic in compiledPreview?.diagnostics ?? []" :key="`${diagnostic.code}-${diagnostic.path.join('.')}`">
-              {{ diagnostic.message }}
-            </p>
+          <div class="preview-stage" :data-viewport="previewViewport">
+            <template v-if="activeProvider === 'source'">
+              <WorkspaceSourcePreview
+                v-for="run in sourcePreviewRuns"
+                :key="run.id"
+                class="source-preview-run"
+                :class="{
+                  'is-active': run.id === activeSourcePreviewRunId || activeSourcePreviewRunId === undefined,
+                }"
+                :project="run.project"
+                @retry="retrySourcePreview"
+                @status="handleSourcePreviewStatus(run.id, $event)"
+              />
+              <div
+                v-if="(sourceError || sourcePreviewError) && activeSourcePreviewRunId !== undefined"
+                class="source-preview-stale-notice"
+                role="alert"
+              >
+                <div>
+                  <strong>Showing the last valid page</strong>
+                  <span>{{ sourceError || sourcePreviewError }}</span>
+                </div>
+                <button type="button" :disabled="Boolean(sourceError)" @click="retrySourcePreview">
+                  <RefreshCw :size="14" aria-hidden="true" />
+                  Retry
+                </button>
+              </div>
+            </template>
+            <ConfigFormRenderer
+              v-else-if="compiledPreview?.success"
+              :key="`${currentProject.id}-${rendererPreviewVersion}`"
+              v-model="previewModel"
+              class="page-preview-form"
+              :namespace="registry.rendererNamespace"
+              v-bind="compiledPreview.renderer"
+            />
+            <div v-else class="preview-errors">
+              <strong>Preview unavailable</strong>
+              <p v-for="diagnostic in compiledPreview?.diagnostics ?? []" :key="`${diagnostic.code}-${diagnostic.path.join('.')}`">
+                {{ diagnostic.message }}
+              </p>
+            </div>
           </div>
         </div>
       </aside>
     </section>
 
     <section v-else class="empty-workbench" aria-labelledby="new-page-title">
-      <h1 id="new-page-title">New page</h1>
+      <h1 id="new-page-title">
+        New page
+      </h1>
       <div class="template-list">
         <button
           v-for="template in BUILT_IN_WORKSPACE_TEMPLATES.values()"
@@ -585,8 +839,12 @@ onBeforeUnmount(() => {
     <div v-if="templatePickerOpen && currentProject" class="template-overlay" @click.self="closeTemplatePicker">
       <section ref="templateDialog" role="dialog" aria-modal="true" aria-labelledby="template-dialog-title" @keydown="handleTemplateDialogKeydown">
         <header>
-          <h2 id="template-dialog-title">New page</h2>
-          <button type="button" @click="closeTemplatePicker">Close</button>
+          <h2 id="template-dialog-title">
+            New page
+          </h2>
+          <button type="button" @click="closeTemplatePicker">
+            Close
+          </button>
         </header>
         <div class="template-list">
           <button
@@ -603,6 +861,8 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
-    <p v-if="message" class="workbench-message" aria-live="polite">{{ message }}</p>
+    <p v-if="message" class="workbench-message" aria-live="polite">
+      {{ message }}
+    </p>
   </main>
 </template>

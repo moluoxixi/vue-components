@@ -5,6 +5,10 @@ import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import 'monaco-editor/esm/vs/basic-languages/css/css.contribution'
+import 'monaco-editor/esm/vs/basic-languages/html/html.contribution'
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution'
+import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution'
 import 'monaco-editor/esm/vs/language/html/monaco.contribution'
 import 'monaco-editor/esm/vs/language/json/monaco.contribution'
 import 'monaco-editor/esm/vs/language/typescript/monaco.contribution'
@@ -19,10 +23,23 @@ import 'monaco-editor/esm/vs/editor/contrib/parameterHints/browser/parameterHint
 import 'monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2'
 import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import {
+  createVueTypeScriptMirror,
+  findModuleSpecifierContext,
+  isOffsetInVueScript,
+  mergeWorkbenchModules,
+  resolveMonacoWorkerKind,
+  WORKBENCH_CONFIG_TYPE_DECLARATIONS,
+  WORKBENCH_CONFIG_TYPES_URI,
+  WORKBENCH_MODULES,
+  WORKBENCH_TYPE_DECLARATIONS,
+  WORKBENCH_TYPES_URI,
+} from './workspace-editor-language'
 
 interface Props {
   filename: string
   language?: string
+  moduleNames?: readonly string[]
   modelValue: string
   readonly?: boolean
 }
@@ -37,6 +54,7 @@ const emit = defineEmits<{
 }>()
 const containerRef = useTemplateRef<HTMLElement>('container')
 const models = new Map<string, editor.ITextModel>()
+const modelModuleNames = new WeakMap<editor.ITextModel, readonly string[]>()
 const cursorLine = ref(1)
 const cursorColumn = ref(1)
 let codeEditor: editor.IStandaloneCodeEditor | undefined
@@ -61,30 +79,70 @@ type MonacoWorkerEnvironment = typeof globalThis & {
 }
 
 const monacoWorkerEnvironment = globalThis as MonacoWorkerEnvironment
+const previousMonacoEnvironment = monacoWorkerEnvironment.MonacoEnvironment
 monacoWorkerEnvironment.MonacoEnvironment = {
+  ...previousMonacoEnvironment,
   getWorker(_moduleId, label) {
-    if (label === 'json')
-      return new JsonWorker()
-    if (label === 'typescript' || label === 'javascript')
-      return new TsWorker()
-    if (label === 'html' || label === 'handlebars' || label === 'razor')
-      return new HtmlWorker()
-    return new EditorWorker()
+    switch (resolveMonacoWorkerKind(label)) {
+      case 'html':
+        return new HtmlWorker()
+      case 'json':
+        return new JsonWorker()
+      case 'typescript':
+        return new TsWorker()
+      default:
+        return previousMonacoEnvironment?.getWorker?.(_moduleId, label) ?? new EditorWorker()
+    }
   },
 }
 
 let languageFeaturesConfigured = false
+const vueScriptMirrors = new WeakMap<editor.ITextModel, editor.ITextModel>()
+let typeScriptWorkerFactoryPromise: ReturnType<typeof monaco.languages.typescript.getTypeScriptWorker> | undefined
 
-const WORKBENCH_MODULES = [
-  'vue',
-  '@moluoxixi/config-form',
-  '@moluoxixi/config-form/renderer',
-  '@moluoxixi/config-form-headless',
-  '@moluoxixi/config-form-designer',
-  '@moluoxixi/config-form-element',
-  '@moluoxixi/config-form-antd-vue',
-  './form.config',
-] as const
+interface TypeScriptDisplayPart {
+  text: string
+}
+
+interface TypeScriptTextSpan {
+  length: number
+  start: number
+}
+
+interface TypeScriptCompletionEntry {
+  kind: string
+  kindModifiers?: string
+  name: string
+  replacementSpan?: TypeScriptTextSpan
+  sortText: string
+}
+
+interface TypeScriptCompletionInfo {
+  entries: TypeScriptCompletionEntry[]
+}
+
+interface TypeScriptCompletionDetails {
+  displayParts?: TypeScriptDisplayPart[]
+  documentation?: TypeScriptDisplayPart[]
+  kind: string
+  name: string
+  tags?: Array<{ name: string, text?: string | TypeScriptDisplayPart[] }>
+}
+
+interface TypeScriptQuickInfo {
+  displayParts?: TypeScriptDisplayPart[]
+  documentation?: TypeScriptDisplayPart[]
+  tags?: Array<{ name: string, text?: string | TypeScriptDisplayPart[] }>
+  textSpan: TypeScriptTextSpan
+}
+
+interface VueTypeScriptCompletionItem extends monaco.languages.CompletionItem {
+  typeScriptEntry?: {
+    mirrorUri: string
+    name: string
+    offset: number
+  }
+}
 
 function completionRange(model: editor.ITextModel, position: monaco.Position): monaco.IRange {
   const word = model.getWordUntilPosition(position)
@@ -96,34 +154,264 @@ function completionRange(model: editor.ITextModel, position: monaco.Position): m
   }
 }
 
-function linePrefix(model: editor.ITextModel, position: monaco.Position): string {
-  return model.getValueInRange({
-    endColumn: position.column,
-    endLineNumber: position.lineNumber,
-    startColumn: 1,
-    startLineNumber: position.lineNumber,
-  })
+function moduleCompletionItems(
+  model: editor.ITextModel,
+  position: monaco.Position,
+  includeDeclaredModules = true,
+): monaco.languages.CompletionItem[] {
+  const context = findModuleSpecifierContext(model.getValue(), model.getOffsetAt(position))
+  if (!context)
+    return []
+
+  const start = model.getPositionAt(context.startOffset)
+  const end = model.getPositionAt(context.endOffset)
+  const range = new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column)
+  const projectModules = modelModuleNames.get(model) ?? []
+  const modules = includeDeclaredModules
+    ? mergeWorkbenchModules(projectModules)
+    : projectModules.filter(moduleName => !WORKBENCH_MODULES.includes(moduleName as typeof WORKBENCH_MODULES[number]))
+  return modules
+    .filter(moduleName => moduleName.startsWith(context.typed))
+    .map(moduleName => ({
+      detail: 'Workbench module',
+      insertText: moduleName,
+      kind: monaco.languages.CompletionItemKind.Module,
+      label: moduleName,
+      range,
+    }))
 }
 
-function moduleCompletionItems(model: editor.ITextModel, position: monaco.Position): monaco.languages.CompletionItem[] {
-  const prefix = linePrefix(model, position)
-  const match = prefix.match(/(?:from\s+|import\s*)['"]([^'"]*)$/)
-  if (!match)
-    return []
-  const typed = match[1] ?? ''
-  const range = {
-    endColumn: position.column,
-    endLineNumber: position.lineNumber,
-    startColumn: position.column - typed.length,
-    startLineNumber: position.lineNumber,
+function vueTypeScriptMirrorUri(model: editor.ITextModel): monaco.Uri {
+  return monaco.Uri.parse(`${model.uri.toString()}.ts`)
+}
+
+function ensureVueTypeScriptMirror(sourceModel: editor.ITextModel): editor.ITextModel {
+  const current = vueScriptMirrors.get(sourceModel)
+  if (current && !current.isDisposed())
+    return current
+
+  const uri = vueTypeScriptMirrorUri(sourceModel)
+  const mirrorValue = createVueTypeScriptMirror(sourceModel.getValue())
+  const mirror = monaco.editor.getModel(uri) ?? monaco.editor.createModel(mirrorValue, 'typescript', uri)
+  if (mirror.getLanguageId() !== 'typescript')
+    monaco.editor.setModelLanguage(mirror, 'typescript')
+  if (mirror.getValue() !== mirrorValue)
+    mirror.setValue(mirrorValue)
+
+  const changeSubscription = sourceModel.onDidChangeContent(() => {
+    const value = createVueTypeScriptMirror(sourceModel.getValue())
+    if (!mirror.isDisposed() && mirror.getValue() !== value)
+      mirror.setValue(value)
+  })
+  const disposeSubscription = sourceModel.onWillDispose(() => {
+    changeSubscription.dispose()
+    disposeSubscription.dispose()
+    vueScriptMirrors.delete(sourceModel)
+    if (!mirror.isDisposed())
+      mirror.dispose()
+  })
+  vueScriptMirrors.set(sourceModel, mirror)
+  return mirror
+}
+
+function displayPartsToString(parts: TypeScriptDisplayPart[] | undefined): string {
+  return parts?.map(part => part.text).join('') ?? ''
+}
+
+function tagToString(tag: { name: string, text?: string | TypeScriptDisplayPart[] }): string {
+  const text = Array.isArray(tag.text) ? displayPartsToString(tag.text) : tag.text
+  return text ? `*@${tag.name}* ${text}` : `*@${tag.name}*`
+}
+
+function documentationToString(value: {
+  documentation?: TypeScriptDisplayPart[]
+  tags?: Array<{ name: string, text?: string | TypeScriptDisplayPart[] }>
+}): string {
+  return [
+    displayPartsToString(value.documentation),
+    ...(value.tags?.map(tagToString) ?? []),
+  ].filter(Boolean).join('\n\n')
+}
+
+function typeScriptCompletionKind(kind: string): monaco.languages.CompletionItemKind {
+  switch (kind) {
+    case 'keyword':
+    case 'primitive type':
+      return monaco.languages.CompletionItemKind.Keyword
+    case 'const':
+    case 'let':
+    case 'local var':
+    case 'var':
+      return monaco.languages.CompletionItemKind.Variable
+    case 'class':
+      return monaco.languages.CompletionItemKind.Class
+    case 'enum':
+      return monaco.languages.CompletionItemKind.Enum
+    case 'function':
+    case 'method':
+      return monaco.languages.CompletionItemKind.Function
+    case 'interface':
+      return monaco.languages.CompletionItemKind.Interface
+    case 'module':
+      return monaco.languages.CompletionItemKind.Module
+    case 'property':
+    case 'getter':
+    case 'setter':
+      return monaco.languages.CompletionItemKind.Field
+    default:
+      return monaco.languages.CompletionItemKind.Property
   }
-  return WORKBENCH_MODULES.map(moduleName => ({
-    detail: 'Workbench module',
-    insertText: moduleName,
-    kind: monaco.languages.CompletionItemKind.Module,
-    label: moduleName,
-    range,
-  }))
+}
+
+function getWorkbenchTypeScriptWorkerFactory(): ReturnType<typeof monaco.languages.typescript.getTypeScriptWorker> {
+  typeScriptWorkerFactoryPromise ??= monaco.languages.typescript.getTypeScriptWorker().catch(async (error) => {
+    if (String(error) !== 'TypeScript not registered!')
+      throw error
+
+    const { setupTypeScript } = await import('monaco-editor/esm/vs/language/typescript/tsMode')
+    setupTypeScript(monaco.languages.typescript.typescriptDefaults)
+    return monaco.languages.typescript.getTypeScriptWorker()
+  })
+  return typeScriptWorkerFactoryPromise
+}
+
+async function warmVueTypeScriptWorker(model: editor.ITextModel): Promise<void> {
+  const mirror = ensureVueTypeScriptMirror(model)
+  const getWorker = await getWorkbenchTypeScriptWorkerFactory()
+  await getWorker(mirror.uri)
+}
+
+async function warmTypeScriptWorker(model: editor.ITextModel): Promise<void> {
+  const getWorker = await getWorkbenchTypeScriptWorkerFactory()
+  await getWorker(model.uri)
+}
+
+async function provideTypeScriptCompletions(
+  model: editor.ITextModel,
+  position: monaco.Position,
+  token: monaco.CancellationToken,
+  mirror = model,
+): Promise<monaco.languages.CompletionList | undefined> {
+  const offset = model.getOffsetAt(position)
+  const getWorker = await getWorkbenchTypeScriptWorkerFactory()
+  const worker = await getWorker(mirror.uri)
+  if (token.isCancellationRequested || model.isDisposed() || mirror.isDisposed())
+    return undefined
+
+  const info = await worker.getCompletionsAtPosition(mirror.uri.toString(), offset) as TypeScriptCompletionInfo | undefined
+  if (!info || token.isCancellationRequested || model.isDisposed())
+    return undefined
+
+  const defaultRange = completionRange(model, position)
+  const entries = [...new Map(info.entries.map(entry => [entry.name, entry])).values()]
+  return {
+    suggestions: entries.map((entry): VueTypeScriptCompletionItem => {
+      let range: monaco.IRange = defaultRange
+      if (entry.replacementSpan) {
+        const start = model.getPositionAt(entry.replacementSpan.start)
+        const end = model.getPositionAt(entry.replacementSpan.start + entry.replacementSpan.length)
+        range = new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column)
+      }
+      return {
+        insertText: entry.name,
+        kind: typeScriptCompletionKind(entry.kind),
+        label: entry.name,
+        range,
+        sortText: entry.sortText,
+        tags: entry.kindModifiers?.includes('deprecated')
+          ? [monaco.languages.CompletionItemTag.Deprecated]
+          : undefined,
+        typeScriptEntry: {
+          mirrorUri: mirror.uri.toString(),
+          name: entry.name,
+          offset,
+        },
+      }
+    }),
+  }
+}
+
+async function provideVueTypeScriptCompletions(
+  model: editor.ITextModel,
+  position: monaco.Position,
+  token: monaco.CancellationToken,
+): Promise<monaco.languages.CompletionList | undefined> {
+  const offset = model.getOffsetAt(position)
+  if (!isOffsetInVueScript(model.getValue(), offset))
+    return undefined
+  return provideTypeScriptCompletions(model, position, token, ensureVueTypeScriptMirror(model))
+}
+
+async function resolveVueTypeScriptCompletion(
+  item: monaco.languages.CompletionItem,
+  token: monaco.CancellationToken,
+): Promise<monaco.languages.CompletionItem> {
+  const completion = item as VueTypeScriptCompletionItem
+  if (!completion.typeScriptEntry)
+    return item
+
+  const uri = monaco.Uri.parse(completion.typeScriptEntry.mirrorUri)
+  const getWorker = await getWorkbenchTypeScriptWorkerFactory()
+  const worker = await getWorker(uri)
+  if (token.isCancellationRequested)
+    return item
+
+  const details = await worker.getCompletionEntryDetails(
+    uri.toString(),
+    completion.typeScriptEntry.offset,
+    completion.typeScriptEntry.name,
+  ) as TypeScriptCompletionDetails | undefined
+  if (!details || token.isCancellationRequested)
+    return item
+
+  const documentation = documentationToString(details)
+  return {
+    ...item,
+    detail: displayPartsToString(details.displayParts),
+    documentation: documentation ? { value: documentation } : item.documentation,
+    kind: typeScriptCompletionKind(details.kind),
+    label: details.name,
+  }
+}
+
+async function queryTypeScriptHover(
+  model: editor.ITextModel,
+  position: monaco.Position,
+  token: monaco.CancellationToken,
+  mirror = model,
+): Promise<monaco.languages.Hover | undefined> {
+  const offset = model.getOffsetAt(position)
+  const getWorker = await getWorkbenchTypeScriptWorkerFactory()
+  const worker = await getWorker(mirror.uri)
+  if (token.isCancellationRequested || model.isDisposed() || mirror.isDisposed())
+    return undefined
+
+  const info = await worker.getQuickInfoAtPosition(mirror.uri.toString(), offset) as TypeScriptQuickInfo | undefined
+  if (!info || token.isCancellationRequested || model.isDisposed())
+    return undefined
+
+  const start = model.getPositionAt(info.textSpan.start)
+  const end = model.getPositionAt(info.textSpan.start + info.textSpan.length)
+  const type = displayPartsToString(info.displayParts)
+  const documentation = documentationToString(info)
+  return {
+    contents: [
+      { value: `\`\`\`typescript\n${type}\n\`\`\`` },
+      ...(documentation ? [{ value: documentation }] : []),
+    ],
+    range: new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column),
+  }
+}
+
+async function provideVueTypeScriptHover(
+  model: editor.ITextModel,
+  position: monaco.Position,
+  token: monaco.CancellationToken,
+): Promise<monaco.languages.Hover | undefined> {
+  const offset = model.getOffsetAt(position)
+  if (!isOffsetInVueScript(model.getValue(), offset))
+    return undefined
+  return queryTypeScriptHover(model, position, token, ensureVueTypeScriptMirror(model))
 }
 
 function configureLanguageFeatures(): void {
@@ -157,38 +445,35 @@ function configureLanguageFeatures(): void {
   monaco.languages.setMonarchTokensProvider('vue', {
     tokenizer: {
       root: [
-        [/(<script)(\s+setup)?(\s+lang=("|')ts\4)?\s*(>)/, [
+        [/(<script\b)([^>]*)(>)/i, [
           { next: '@script', token: 'tag' },
           'attribute.name',
-          'attribute.name',
-          'attribute.value',
-          'attribute.value',
           { nextEmbedded: 'typescript', token: 'tag' },
         ]],
-        [/(<style)(\s+scoped)?(\s+lang=("|')(css|scss)\4)?\s*(>)/, [
+        [/(<style\b)([^>]*)(>)/i, [
           { next: '@style', token: 'tag' },
           'attribute.name',
-          'attribute.name',
-          'attribute.value',
-          'attribute.value',
-          'attribute.value',
           { nextEmbedded: 'css', token: 'tag' },
         ]],
-        [/(<template\s*>)/, { next: '@template', nextEmbedded: 'html', token: 'tag' }],
+        [/(<template\b)([^>]*)(>)/i, [
+          { next: '@template', token: 'tag' },
+          'attribute.name',
+          { nextEmbedded: 'html', token: 'tag' },
+        ]],
         [/<!--/, 'comment', '@comment'],
         [/[^<]+/, ''],
         [/<[^>]+>/, 'tag'],
       ],
       script: [
-        [/<\/script\s*>/, { next: '@pop', nextEmbedded: '@pop', token: 'tag' }],
+        [/<\/script\s*>/i, { next: '@pop', nextEmbedded: '@pop', token: 'tag' }],
         [/./, ''],
       ],
       style: [
-        [/<\/style\s*>/, { next: '@pop', nextEmbedded: '@pop', token: 'tag' }],
+        [/<\/style\s*>/i, { next: '@pop', nextEmbedded: '@pop', token: 'tag' }],
         [/./, ''],
       ],
       template: [
-        [/<\/template\s*>/, { next: '@pop', nextEmbedded: '@pop', token: 'tag' }],
+        [/<\/template\s*>/i, { next: '@pop', nextEmbedded: '@pop', token: 'tag' }],
         [/./, ''],
       ],
       comment: [
@@ -253,106 +538,12 @@ function configureLanguageFeatures(): void {
     strict: true,
     target: monaco.languages.typescript.ScriptTarget.Latest,
   })
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(`
-declare module '@moluoxixi/config-form-designer' {
-  export interface DesignerFormSettings {
-    columns?: number
-    fieldSpan?: number
-    gap?: string
-    inline?: boolean
-    labelPosition?: 'left' | 'top'
-    readonly?: boolean
-  }
-  export interface DesignerFieldNode {
-    id: string
-    kind: 'field'
-    material: string
-    field: string
-    label?: string
-    span?: number
-    defaultValue?: unknown
-    props?: Record<string, unknown>
-  }
-  export interface DesignerContainerNode {
-    id: string
-    kind: 'container'
-    material: string
-    slots: Record<string, Array<DesignerFieldNode | DesignerContainerNode>>
-  }
-  export interface DesignerDocument {
-    version: 1
-    form: DesignerFormSettings
-    nodes: Array<DesignerFieldNode | DesignerContainerNode>
-  }
-}
-declare module 'vue' {
-  export function computed<T>(getter: () => T): { readonly value: T }
-  export function defineComponent<T>(component: T): T
-  export function nextTick(): Promise<void>
-  export function onBeforeUnmount(callback: () => void): void
-  export function onMounted(callback: () => void): void
-  export function reactive<T extends object>(value: T): T
-  export function ref<T>(value: T): { value: T }
-  export function shallowRef<T>(value?: T): { value: T | undefined }
-  export function watch<T>(source: () => T, callback: (value: T, previous: T) => void): void
-}
-declare module '@moluoxixi/config-form-element' {
-  export const ElementConfigForm: unknown
-  export type ElementConfigFormField<TValues extends Record<string, unknown> = Record<string, unknown>> = {
-    component: string
-    field: keyof TValues & string
-    label?: string
-    props?: Record<string, unknown>
-    span?: number
-  }
-}
-declare module '@moluoxixi/config-form-antd-vue' {
-  export const AntdConfigForm: unknown
-  export type AntdConfigFormField<TValues extends Record<string, unknown> = Record<string, unknown>> = {
-    component: string
-    field: keyof TValues & string
-    label?: string
-    props?: Record<string, unknown>
-    span?: number
-  }
-}
-declare module '@moluoxixi/config-form/renderer' {
-  export const ConfigFormRenderer: unknown
-}
-declare module '@moluoxixi/config-form-headless' {
-  export type ConfigFormValues = Record<string, unknown>
-  export interface ConfigFormNodeBase<TValues extends object = ConfigFormValues> {
-    component: string
-    extensions?: Record<string, unknown>
-    props?: Record<string, unknown>
-    reactions?: unknown[]
-    slots?: Record<string, ConfigFormNode<TValues>[]>
-    span?: number
-  }
-  export interface ConfigFormField<TValues extends object = ConfigFormValues> extends ConfigFormNodeBase<TValues> {
-    defaultValue?: unknown
-    field: keyof TValues & string
-    label?: string
-    validateOn?: 'submit' | 'blur' | 'change' | Array<'submit' | 'blur' | 'change'>
-  }
-  export interface ConfigFormContainer<TValues extends object = ConfigFormValues> extends ConfigFormNodeBase<TValues> {}
-  export type ConfigFormNode<TValues extends object = ConfigFormValues> = ConfigFormField<TValues> | ConfigFormContainer<TValues>
-  export interface DefineFieldFactory<TValues extends object> {
-    (field: ConfigFormField<TValues>): ConfigFormField<TValues>
-    (field: ConfigFormContainer<TValues>): ConfigFormContainer<TValues>
-  }
-  export function defineField<TValues extends object = ConfigFormValues>(field: ConfigFormNode<TValues>): ConfigFormNode<TValues>
-  export function defineFields<TValues extends object = ConfigFormValues>(): { defineField: DefineFieldFactory<TValues> }
-}
-declare module '@moluoxixi/config-form' {
-  export { defineField, defineFields } from '@moluoxixi/config-form-headless'
-}
-declare module './form.config' {
-  export const fields: Array<Record<string, unknown>>
-  export const form: Record<string, unknown>
-  export const initialValues: Record<string, unknown>
-}
-`, 'inmemory://config-form-workbench/designer.d.ts')
+  monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true)
+  monaco.languages.typescript.typescriptDefaults.addExtraLib(WORKBENCH_TYPE_DECLARATIONS, WORKBENCH_TYPES_URI)
+  monaco.languages.typescript.typescriptDefaults.addExtraLib(
+    WORKBENCH_CONFIG_TYPE_DECLARATIONS,
+    WORKBENCH_CONFIG_TYPES_URI,
+  )
   monaco.languages.html.htmlDefaults.setOptions({
     data: {
       dataProviders: {
@@ -396,28 +587,35 @@ declare module './form.config' {
   monaco.languages.registerCompletionItemProvider('typescript', {
     triggerCharacters: ['\'', '"', '{', ','],
     provideCompletionItems(model, position) {
+      const source = model.getValue()
+      const offset = model.getOffsetAt(position)
+      if (findModuleSpecifierContext(source, offset))
+        return { suggestions: moduleCompletionItems(model, position, false) }
+
       const range = completionRange(model, position)
-      return {
-        suggestions: [
-          ...moduleCompletionItems(model, position),
-          {
-            documentation: 'Create a typed ConfigForm field with the bound defineField helper.',
-            insertText: [
-              'defineField({',
-              '  component: "' + '$' + '{1:text}",',
-              '  field: "' + '$' + '{2:name}",',
-              '  label: "' + '$' + '{3:Name}",',
-              '  span: ' + '$' + '{4:24},',
-              '})',
-            ].join('\n'),
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            label: 'ConfigForm field',
-            range,
-          },
-          {
-            documentation: 'Create a complete public ConfigForm module.',
-            insertText: `import { defineFields } from '@moluoxixi/config-form-headless'
+      const beforeCursor = source.slice(0, offset)
+      const suggestions: monaco.languages.CompletionItem[] = []
+      if (/\bfields\s*=\s*\[[\s\S]*$/.test(beforeCursor)) {
+        suggestions.push({
+          documentation: 'Create a typed ConfigForm field with the bound defineField helper.',
+          insertText: [
+            'defineField({',
+            '  component: "' + '$' + '{1:text}",',
+            '  field: "' + '$' + '{2:name}",',
+            '  label: "' + '$' + '{3:Name}",',
+            '  span: ' + '$' + '{4:24},',
+            '})',
+          ].join('\n'),
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          label: 'ConfigForm field',
+          range,
+        })
+      }
+      if (source.trim() === '') {
+        suggestions.push({
+          documentation: 'Create a complete public ConfigForm module.',
+          insertText: `import { defineFields } from '@moluoxixi/config-form-headless'
 
 interface PageFormValues {
   name: string
@@ -430,40 +628,28 @@ export const initialValues: PageFormValues = { name: '' }
 export const fields = [
   defineField({ component: 'text', field: 'name', label: 'Name' }),
 ]`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            label: 'ConfigForm module',
-            range,
-          },
-        ],
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          label: 'ConfigForm module',
+          range,
+        })
+      }
+      return {
+        suggestions,
       }
     },
   })
 
   monaco.languages.registerCompletionItemProvider('vue', {
-    triggerCharacters: ['<', '\'', '"', '{', ','],
-    provideCompletionItems(model, position) {
-      const range = completionRange(model, position)
-      const modules = moduleCompletionItems(model, position)
-      if (modules.length > 0)
-        return { suggestions: modules }
-      return {
-        suggestions: [
-          ...['computed', 'defineComponent', 'nextTick', 'onBeforeUnmount', 'onMounted', 'reactive', 'ref', 'shallowRef', 'watch'].map(name => ({
-            detail: 'Vue API',
-            insertText: name,
-            kind: monaco.languages.CompletionItemKind.Function,
-            label: name,
-            range,
-          })),
-          ...['defineField', 'defineFields'].map(name => ({
-            detail: 'ConfigForm API',
-            insertText: name,
-            kind: monaco.languages.CompletionItemKind.Function,
-            label: name,
-            range,
-          })),
-          {
+    triggerCharacters: ['.', '\'', '"', '{', ','],
+    async provideCompletionItems(model, position, _context, token) {
+      const source = model.getValue()
+      const offset = model.getOffsetAt(position)
+      if (findModuleSpecifierContext(source, offset))
+        return { suggestions: moduleCompletionItems(model, position, true) }
+      if (source.trim() === '') {
+        return {
+          suggestions: [{
             documentation: 'Vue single-file component page skeleton.',
             insertText: [
               '<script setup lang="ts">',
@@ -479,27 +665,16 @@ export const fields = [
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             kind: monaco.languages.CompletionItemKind.Snippet,
             label: 'Vue SFC page',
-            range,
-          },
-          {
-            documentation: 'Element Plus ConfigForm component.',
-            insertText: '<ElementConfigForm v-model="${1:model}" :fields="${2:fields}" />',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            kind: monaco.languages.CompletionItemKind.Class,
-            label: 'ElementConfigForm',
-            range,
-          },
-          {
-            documentation: 'Ant Design Vue ConfigForm component.',
-            insertText: '<AntdConfigForm v-model="${1:model}" :fields="${2:fields}" />',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            kind: monaco.languages.CompletionItemKind.Class,
-            label: 'AntdConfigForm',
-            range,
-          },
-        ],
+            range: completionRange(model, position),
+          }],
+        }
       }
+      return provideVueTypeScriptCompletions(model, position, token)
     },
+    resolveCompletionItem: resolveVueTypeScriptCompletion,
+  })
+  monaco.languages.registerHoverProvider('vue', {
+    provideHover: provideVueTypeScriptHover,
   })
 }
 
@@ -515,6 +690,7 @@ function getModel(): editor.ITextModel {
   const existing = models.get(props.filename)
   if (existing) {
     monaco.editor.setModelLanguage(existing, editorLanguage(props.language))
+    modelModuleNames.set(existing, props.moduleNames ?? [])
     return existing
   }
   const model = monaco.editor.createModel(
@@ -523,6 +699,7 @@ function getModel(): editor.ITextModel {
     modelUri(props.filename),
   )
   models.set(props.filename, model)
+  modelModuleNames.set(model, props.moduleNames ?? [])
   return model
 }
 
@@ -533,6 +710,16 @@ function bindModel(): void {
   const model = getModel()
   if (model.getValue() !== props.modelValue)
     model.setValue(props.modelValue)
+  if (props.language === 'vue') {
+    void warmVueTypeScriptWorker(model).catch((error) => {
+      console.error('Failed to initialize the Vue TypeScript language service.', error)
+    })
+  }
+  else if (props.language === 'typescript') {
+    void warmTypeScriptWorker(model).catch((error) => {
+      console.error('Failed to initialize the TypeScript language service.', error)
+    })
+  }
   codeEditor.setModel(model)
   changeSubscription = model.onDidChangeContent(() => emit('update:modelValue', model.getValue()))
 }
@@ -617,6 +804,15 @@ watch(
     const model = models.get(props.filename)
     if (model && model.getValue() !== value)
       model.setValue(value)
+  },
+)
+
+watch(
+  () => props.moduleNames,
+  (value) => {
+    const model = models.get(props.filename)
+    if (model)
+      modelModuleNames.set(model, value ?? [])
   },
 )
 

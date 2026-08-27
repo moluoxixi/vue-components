@@ -10,10 +10,15 @@ import { normalizeProjectPath } from '../project'
 const props = defineProps<{
   project: WorkspaceProject
 }>()
+const emit = defineEmits<{
+  retry: []
+  status: [value: { message?: string, phase: 'error' | 'loading' | 'ready' }]
+}>()
 
 const appFile = 'src/App.vue'
 const mainFile = 'src/__workbench_preview.vue'
 const ready = ref(false)
+const loadError = ref('')
 const mainSource = `<script setup>
 import App from './App.vue'
 import './styles.css'
@@ -90,35 +95,59 @@ const state = toRefs(reactive({
 })) as Partial<StoreState>
 const store = useStore(state)
 const errors = computed(() => store.errors.map(error => error instanceof Error ? error.message : String(error)))
+const errorMessage = computed(() => loadError.value || errors.value[0] || '')
 
 store.init = () => {
-  store.errors = []
-  Object.values(store.files).forEach((file) => {
-    void compileFile(store, file).then((errors) => {
-      store.errors.push(...errors)
+  emit('status', { phase: 'loading' })
+  void Promise.all(Object.values(store.files).map(file => compileFile(store, file)))
+    .then((results) => {
+      store.errors = results.flat()
+      if (store.errors.length > 0) {
+        emit('status', {
+          message: store.errors.map(error => error instanceof Error ? error.message : String(error)).join('\n'),
+          phase: 'error',
+        })
+        return
+      }
+      emit('status', { phase: 'ready' })
     })
-  })
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error)
+      store.errors = [message]
+      emit('status', { message, phase: 'error' })
+    })
 }
 
 onMounted(async () => {
   const compilerUrl = 'https://cdn.jsdelivr.net/npm/@vue/compiler-sfc@3.5.33/dist/compiler-sfc.esm-browser.js'
-  store.compiler = await import(
-    /* @vite-ignore */ compilerUrl
-  )
-  store.vueVersion = '3.5.33'
-  ready.value = true
+  emit('status', { phase: 'loading' })
+  try {
+    store.compiler = await import(
+      /* @vite-ignore */ compilerUrl
+    )
+    store.vueVersion = '3.5.33'
+    ready.value = true
+  }
+  catch (error) {
+    loadError.value = error instanceof Error ? error.message : String(error)
+    emit('status', { message: loadError.value, phase: 'error' })
+  }
 })
 </script>
 
 <template>
   <div class="workspace-source-preview">
-    <div v-if="!ready" class="source-preview-loading" role="status">Compiling page...</div>
-    <div v-if="errors.length" class="source-preview-errors" role="alert">
+    <div v-if="!ready && !errorMessage" class="source-preview-loading" role="status" aria-live="polite">
+      <span class="source-preview-spinner" aria-hidden="true" />
+      <span>Compiling page...</span>
+    </div>
+    <div v-if="errorMessage" class="source-preview-errors" role="alert">
       <strong>Source preview failed</strong>
-      <p v-for="error in errors" :key="error">{{ error }}</p>
+      <p v-for="error in (loadError ? [loadError] : errors)" :key="error">{{ error }}</p>
+      <button type="button" @click="emit('retry')">Retry preview</button>
     </div>
     <Repl
-      v-else
+      v-if="ready"
       :key="`${project.id}-${project.revision}`"
       :editor="PreviewOnlyEditor"
       :store="store"
@@ -174,21 +203,56 @@ onMounted(async () => {
   padding: 16px;
   overflow: auto;
   color: #9f2d24;
-  background: #fff;
+  background: rgb(255 255 255 / 96%);
 }
 
 .source-preview-loading {
   display: grid;
   height: 100%;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
   place-items: center;
   color: #667281;
   background: #fff;
   font-size: 13px;
 }
 
+.source-preview-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #d8dee8;
+  border-top-color: #2f6feb;
+  border-radius: 50%;
+  animation: source-preview-spin 700ms linear infinite;
+}
+
+.source-preview-errors button {
+  min-height: 30px;
+  margin-top: 14px;
+  padding: 0 10px;
+  color: #fff;
+  border: 1px solid #9f2d24;
+  border-radius: 4px;
+  background: #b42318;
+  cursor: pointer;
+}
+
 .source-preview-errors p {
   margin: 8px 0 0;
   font: 12px/1.5 "Cascadia Code", Consolas, monospace;
   white-space: pre-wrap;
+}
+
+@keyframes source-preview-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source-preview-spinner {
+    animation: none;
+  }
 }
 </style>
