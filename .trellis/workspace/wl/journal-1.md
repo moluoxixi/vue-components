@@ -182,3 +182,27 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 9: 完成配置表单工作台与设计器交互优化
+
+**Date**: 2026-08-28
+**Task**: 完成配置表单工作台与设计器交互优化
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 Source、Config、Designer 三模式实时预览与 Monaco 语言能力补强；Designer 支持左右栏折叠、真实半透明拖拽预览和清晰投放边界，并通过全量单测、类型检查、构建、模板集成与浏览器验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e2c580c7` | (see git log) |
+| `20bec18b` | (see git log) |
+| `f675d627` | (see git log) |
+
+### Status
+
+[OK] **Completed**
