@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { basename, dirname, extname, join, resolve, sep } from 'node:path'
@@ -8,10 +8,14 @@ import process from 'node:process'
 import { parse } from 'yaml'
 import {
   createBrowserBuildArgs,
+  createBrowserConsumerBatches,
+  createBrowserReplContractStubSource,
   createBrowserSmokeSource,
+  createBrowserViteConfigSource,
   createNodeSmokeSource,
   createPackedConsumerManifest,
   createTypeSmokeSource,
+  getBrowserBundleForbiddenFragments,
   getBrowserConsumerSpecifiers,
   getNodeRuntimeSpecifiers,
   getPublicSpecifier,
@@ -93,65 +97,102 @@ async function serveDirectory(directory) {
   }
 }
 
-async function verifyBrowserConsumer(consumerDirectory, publishable) {
-  const browserDirectory = resolve(consumerDirectory, 'browser')
-  const browserSourceDirectory = resolve(browserDirectory, 'src')
-  const specifiers = getBrowserConsumerSpecifiers(publishable.map(({ manifest }) => manifest))
-  await mkdir(browserSourceDirectory, { recursive: true })
-  await writeFile(resolve(browserDirectory, 'index.html'), [
-    '<!doctype html>',
-    '<html>',
-    '<head><meta charset="UTF-8"><title>Packed browser consumer</title></head>',
-    '<body><script type="module" src="/src/main.mjs"></script></body>',
-    '</html>',
-  ].join('\n'))
-  await writeFile(
-    resolve(browserSourceDirectory, 'main.mjs'),
-    createBrowserSmokeSource(specifiers.javaScript, specifiers.stylesheets),
-  )
-  runPnpm(createBrowserBuildArgs(consumerDirectory, browserDirectory))
+async function readJavaScriptOutput(directory) {
+  const entries = await readdir(directory, { withFileTypes: true })
+  const contents = await Promise.all(entries.map(async (entry) => {
+    const entryPath = resolve(directory, entry.name)
+    if (entry.isDirectory())
+      return readJavaScriptOutput(entryPath)
+    return /\.(?:c|m)?js$/.test(entry.name) ? readFile(entryPath, 'utf8') : ''
+  }))
+  return contents.join('\n')
+}
 
+async function verifyBrowserConsumer(consumerDirectory, publishable) {
+  const specifiers = getBrowserConsumerSpecifiers(publishable.map(({ manifest }) => manifest))
+  const batches = createBrowserConsumerBatches(specifiers)
+  const forbiddenFragments = getBrowserBundleForbiddenFragments(
+    publishable.map(({ manifest }) => manifest),
+  )
   const { chromium } = await import('@playwright/test')
-  const staticServer = await serveDirectory(resolve(browserDirectory, 'dist'))
   let browser
   try {
     browser = await chromium.launch()
-    const page = await browser.newPage()
-    const pageErrors = []
-    page.on('pageerror', error => pageErrors.push(error.message))
-    try {
-      await page.goto(staticServer.url)
-      try {
-        await page.waitForFunction(
-          () => window.__PACKED_BROWSER_SMOKE__ !== undefined,
-          undefined,
-          { timeout: 15_000 },
+    for (const [batchIndex, batch] of batches.entries()) {
+      const browserDirectory = resolve(consumerDirectory, `browser-${batchIndex}`)
+      const browserSourceDirectory = resolve(browserDirectory, 'src')
+      await mkdir(browserSourceDirectory, { recursive: true })
+      await writeFile(resolve(browserDirectory, 'index.html'), [
+        '<!doctype html>',
+        '<html>',
+        '<head><meta charset="UTF-8"><title>Packed browser consumer</title></head>',
+        '<body><script type="module" src="/src/main.mjs"></script></body>',
+        '</html>',
+      ].join('\n'))
+      await writeFile(
+        resolve(browserSourceDirectory, 'main.mjs'),
+        createBrowserSmokeSource(batch.javaScript, batch.stylesheets),
+      )
+      await writeFile(
+        resolve(browserSourceDirectory, 'vue-repl-contract-stub.mjs'),
+        createBrowserReplContractStubSource(),
+      )
+      await writeFile(
+        resolve(browserDirectory, 'vite.config.mjs'),
+        createBrowserViteConfigSource(batch.javaScript),
+      )
+      runPnpm(createBrowserBuildArgs(consumerDirectory, browserDirectory))
+      const browserOutput = await readJavaScriptOutput(resolve(browserDirectory, 'dist'))
+      const leakedFragments = forbiddenFragments.filter(fragment => browserOutput.includes(fragment))
+      if (leakedFragments.length > 0) {
+        throw new Error(
+          `Packed browser bundle batch ${batchIndex + 1} contains server-only fragments: ${leakedFragments.join(', ')}`,
         )
       }
-      catch (error) {
-        if (pageErrors.length > 0)
-          throw new Error(`Browser errors: ${pageErrors.join('; ')}`, { cause: error })
-        throw error
+
+      const staticServer = await serveDirectory(resolve(browserDirectory, 'dist'))
+      let page
+      try {
+        page = await browser.newPage()
+        const pageErrors = []
+        page.on('pageerror', error => pageErrors.push(error.message))
+        await page.goto(staticServer.url)
+        try {
+          await page.waitForFunction(
+            () => window.__PACKED_BROWSER_SMOKE__ !== undefined,
+            undefined,
+            { timeout: 15_000 },
+          )
+        }
+        catch (error) {
+          if (pageErrors.length > 0)
+            throw new Error(`Browser errors: ${pageErrors.join('; ')}`, { cause: error })
+          throw error
+        }
+        const result = await page.evaluate(() => window.__PACKED_BROWSER_SMOKE__)
+        const failedAssertions = Object.entries(result).filter(([, passed]) => passed !== true).map(([name]) => name)
+        if (pageErrors.length > 0 || failedAssertions.length > 0) {
+          throw new Error([
+            pageErrors.length > 0 ? `Browser errors: ${pageErrors.join('; ')}` : undefined,
+            failedAssertions.length > 0 ? `Failed assertions: ${failedAssertions.join(', ')}` : undefined,
+          ].filter(Boolean).join('\n'))
+        }
       }
-      const result = await page.evaluate(() => window.__PACKED_BROWSER_SMOKE__)
-      const failedAssertions = Object.entries(result).filter(([, passed]) => passed !== true).map(([name]) => name)
-      if (pageErrors.length > 0 || failedAssertions.length > 0) {
-        throw new Error([
-          pageErrors.length > 0 ? `Browser errors: ${pageErrors.join('; ')}` : undefined,
-          failedAssertions.length > 0 ? `Failed assertions: ${failedAssertions.join(', ')}` : undefined,
-        ].filter(Boolean).join('\n'))
+      finally {
+        try {
+          await page?.close()
+        }
+        finally {
+          await staticServer.close()
+        }
       }
-    }
-    finally {
-      await page.close()
     }
   }
   finally {
     await browser?.close()
-    await staticServer.close()
   }
 
-  console.log(`Verified ${specifiers.javaScript.length} browser JavaScript entries and ${specifiers.stylesheets.length} stylesheet entries from packed packages.`)
+  console.log(`Verified ${specifiers.javaScript.length} browser JavaScript entries and ${specifiers.stylesheets.length} stylesheet entries from packed packages in ${batches.length} batches.`)
 }
 
 const workspace = JSON.parse(runPnpm(['list', '-r', '--depth', '-1', '--json'], { capture: true }))
@@ -264,6 +305,7 @@ try {
   else {
     run(process.execPath, [resolve(consumerDirectory, 'smoke.mjs')])
     runPnpm(['--dir', consumerDirectory, 'exec', 'element-plus-docs', '--help'])
+    runPnpm(['--dir', consumerDirectory, 'exec', 'i18n-tool', '--help'])
     await writeFile(resolve(consumerDirectory, 'fixture.txt'), 'packed CLI fixture\n')
     await mkdir(resolve(consumerDirectory, 'content'), { recursive: true })
     await writeFile(resolve(consumerDirectory, 'content/index.md'), '# Packed documentation\n')

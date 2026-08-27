@@ -1,0 +1,3 @@
+{"file":".trellis/tasks/08-27-i18n-tool-shared-ai-config/research/repository-findings.md","reason":"核验共享包与 AI 文档助手兼容边界"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"核验 SSE、Abort、安全与现有测试契约"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核验 shared/server/domain/UI 依赖方向"}

@@ -1,0 +1,31 @@
+{
+  "id": "i18n-tool-shared-ai-config",
+  "name": "i18n-tool-shared-ai-config",
+  "title": "国际化工具与共享 AI 配置",
+  "description": "新增本地国际化翻译服务、JSON 适配器与可视化工作台，并抽取共享 AI Provider 包供文档助手复用。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": "packages/ai-provider, packages/i18n-tool, packages/ai-doc-assistant",
+  "package": "ai-doc-assistant",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-27-shared-ai-provider-migration",
+    "08-27-i18n-json-translation-core",
+    "08-27-i18n-local-service-safe-write",
+    "08-27-i18n-workbench-e2e"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

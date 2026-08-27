@@ -1,0 +1,4 @@
+{"file":".trellis/tasks/08-27-i18n-tool-shared-ai-config/research/repository-findings.md","reason":"核验实现是否符合已确认仓库边界"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"核验 SSE、取消、安全和 UI 回归"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核验所有协议消费者和边界层一致"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"核验未复制配置、错误码和 payload 解码逻辑"}

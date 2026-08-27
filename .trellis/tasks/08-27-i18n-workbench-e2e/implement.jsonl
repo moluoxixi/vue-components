@@ -1,0 +1,4 @@
+{"file":".trellis/tasks/08-27-i18n-tool-shared-ai-config/research/repository-findings.md","reason":"现有工作台形态与 UI 技术栈证据"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/index.md","reason":"AI 工作台前端规范入口"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"请求状态、SSE、取消、可访问性与浏览器测试契约"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"UI reducer、API client 与 server protocol 一致性"}

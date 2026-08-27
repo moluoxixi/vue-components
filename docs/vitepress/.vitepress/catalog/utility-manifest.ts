@@ -56,6 +56,13 @@ export const utilityGroups: DocUtilityGroup[] = [
     description: '用于代码质量、样式处理和构建配置的工程包',
     items: [
       {
+        packageName: '@moluoxixi/i18n-tool',
+        slug: 'i18n-tool',
+        sidebarText: 'I18n Tool 国际化工作台',
+        description: '本地扫描、AI 翻译、审阅并安全写回 JSON 语言资源',
+        sourcePath: 'packages/i18n-tool/README.md',
+      },
+      {
         packageName: '@moluoxixi/eslint-config',
         slug: 'eslint-config',
         sidebarText: 'ESLint Config',

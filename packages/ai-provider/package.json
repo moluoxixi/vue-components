@@ -1,0 +1,58 @@
+{
+  "name": "@moluoxixi/ai-provider",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "共享 AI Provider 配置与 OpenAI-compatible 服务端传输层",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ai-provider"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./shared": {
+      "source": "./shared.ts",
+      "types": "./dist/shared.d.ts",
+      "import": "./dist/shared.js"
+    },
+    "./server": {
+      "source": "./server.ts",
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "index.ts",
+    "server.ts",
+    "shared.ts",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:type",
+    "@vitest/coverage-v8": "catalog:dev",
+    "typescript": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

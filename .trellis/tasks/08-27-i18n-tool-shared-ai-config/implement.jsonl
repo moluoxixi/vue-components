@@ -1,0 +1,5 @@
+{"file":".trellis/tasks/08-27-i18n-tool-shared-ai-config/research/repository-findings.md","reason":"父任务的仓库架构、AI 配置、CLI、国际化资源与文件安全证据"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/index.md","reason":"AI 文档助手前端规范入口"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"SSE、取消、脱敏状态、UI 与浏览器回归契约"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"配置、协议、服务端、文件系统与 UI 的跨层数据流"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"共享 AI 与协议常量必须保持单一事实源"}

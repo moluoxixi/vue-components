@@ -65,6 +65,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
+        /^@moluoxixi\/ai-provider(?:\/|$)/,
         '@orama/orama',
         '@orama/plugin-data-persistence',
         'vue-component-meta',

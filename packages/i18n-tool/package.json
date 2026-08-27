@@ -1,0 +1,92 @@
+{
+  "name": "@moluoxixi/i18n-tool",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "本地国际化资源扫描、AI 翻译与安全写回工具",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/i18n-tool"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "source": "./core.ts",
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js"
+    },
+    "./config": {
+      "source": "./config.ts",
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./protocol": {
+      "source": "./protocol.ts",
+      "types": "./dist/protocol.d.ts",
+      "import": "./dist/protocol.js"
+    },
+    "./server": {
+      "source": "./server.ts",
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "i18n-tool": "./dist/cli.js"
+  },
+  "files": [
+    "config.ts",
+    "core.ts",
+    "dist",
+    "index.ts",
+    "protocol.ts",
+    "server.ts",
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build && node scripts/build-ui.mjs",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
+    "build:lib": "vite build",
+    "build:ui": "node scripts/build-ui.mjs",
+    "dev": "vite build --watch",
+    "e2e": "playwright test",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "vue-tsc -p tsconfig.test.json --noEmit"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@lucide/vue": "catalog:ui",
+    "@moluoxixi/ai-provider": "workspace:*",
+    "element-plus": "catalog:ui",
+    "jiti": "catalog:dev",
+    "vue": "catalog:build",
+    "zod": "catalog:dev"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:dev",
+    "@types/node": "catalog:type",
+    "@vitejs/plugin-vue": "catalog:dev",
+    "@vitest/coverage-v8": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
+    "happy-dom": "catalog:dev",
+    "typescript": "catalog:dev",
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue-tsc": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

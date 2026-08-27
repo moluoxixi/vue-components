@@ -927,6 +927,9 @@ importers:
       '@lucide/vue':
         specifier: catalog:ui
         version: 1.28.0(vue@3.5.33(typescript@5.9.3))
+      '@moluoxixi/ai-provider':
+        specifier: workspace:*
+        version: link:../ai-provider
       '@orama/orama':
         specifier: catalog:data
         version: 3.1.18
@@ -985,6 +988,27 @@ importers:
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)
+
+  packages/ai-provider:
+    devDependencies:
+      '@types/node':
+        specifier: catalog:type
+        version: 25.6.0
+      '@vitest/coverage-v8':
+        specifier: catalog:dev
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
+      typescript:
+        specifier: catalog:dev
+        version: 5.9.3
+      unplugin-dts:
+        specifier: catalog:dev
+        version: 1.0.0(@microsoft/api-extractor@7.58.12(@types/node@25.6.0))(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.28.2)(rollup@4.62.4)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
+      vite:
+        specifier: catalog:dev
+        version: 6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
+      vitest:
+        specifier: catalog:dev
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
 
   packages/ajax-package:
     dependencies:
@@ -1154,6 +1178,61 @@ importers:
       vue:
         specifier: catalog:build
         version: 3.5.33(typescript@5.9.3)
+      vue-tsc:
+        specifier: catalog:dev
+        version: 2.2.12(typescript@5.9.3)
+
+  packages/i18n-tool:
+    dependencies:
+      '@lucide/vue':
+        specifier: catalog:ui
+        version: 1.28.0(vue@3.5.33(typescript@5.9.3))
+      '@moluoxixi/ai-provider':
+        specifier: workspace:*
+        version: link:../ai-provider
+      element-plus:
+        specifier: catalog:ui
+        version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
+      jiti:
+        specifier: catalog:dev
+        version: 2.7.0
+      vue:
+        specifier: catalog:build
+        version: 3.5.33(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
+    devDependencies:
+      '@playwright/test':
+        specifier: catalog:dev
+        version: 1.60.0
+      '@types/node':
+        specifier: catalog:type
+        version: 25.6.0
+      '@vitejs/plugin-vue':
+        specifier: catalog:dev
+        version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
+      '@vitest/coverage-v8':
+        specifier: catalog:dev
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
+      '@vue/test-utils':
+        specifier: catalog:dev
+        version: 2.4.10(@vue/compiler-dom@3.5.33)(@vue/server-renderer@3.5.33(vue@3.5.33(typescript@5.9.3)))(vue@3.5.33(typescript@5.9.3))
+      happy-dom:
+        specifier: catalog:dev
+        version: 20.9.0
+      typescript:
+        specifier: catalog:dev
+        version: 5.9.3
+      unplugin-dts:
+        specifier: catalog:dev
+        version: 1.0.0(@microsoft/api-extractor@7.58.12(@types/node@25.6.0))(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.28.2)(rollup@4.62.4)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))
+      vite:
+        specifier: catalog:dev
+        version: 6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
+      vitest:
+        specifier: catalog:dev
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.3.0))(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0)
       vue-tsc:
         specifier: catalog:dev
         version: 2.2.12(typescript@5.9.3)

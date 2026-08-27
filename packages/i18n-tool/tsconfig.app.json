@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./.tsbuildinfo/tsconfig.app.tsbuildinfo",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["node"],
+    "allowJs": false
+  },
+  "include": ["src", "index.ts", "core.ts", "config.ts", "protocol.ts", "server.ts", "cli.ts", "vite.ui.config.ts"],
+  "exclude": ["vite.config.ts", "**/*.test.ts", "**/*.spec.ts"]
+}

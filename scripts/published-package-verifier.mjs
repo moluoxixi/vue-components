@@ -7,6 +7,8 @@ function isStylesheetTarget(target) {
 }
 
 export const browserJavaScriptEntrypointAllowlist = Object.freeze({
+  '@moluoxixi/ai-provider': ['.', './shared'],
+  '@moluoxixi/i18n-tool': ['./protocol'],
   '@moluoxixi/components': [
     '.',
     './auto-loaders',
@@ -32,8 +34,14 @@ export const browserJavaScriptEntrypointAllowlist = Object.freeze({
 })
 
 export const browserJavaScriptEntrypointExclusions = Object.freeze({
+  '@moluoxixi/ai-provider': ['./server'],
+  '@moluoxixi/i18n-tool': ['.', './config', './core', './server'],
   '@moluoxixi/vitepress-theme-element-plus': ['.', './markdown', './node', './repository/node'],
 })
+
+export const isolatedBrowserJavaScriptEntries = Object.freeze([
+  '@moluoxixi/vitepress-theme-element-plus/repl',
+])
 
 export const browserStylesheetEntrypointAllowlist = Object.freeze({
   '@moluoxixi/components': ['./styles'],
@@ -42,8 +50,37 @@ export const browserStylesheetEntrypointAllowlist = Object.freeze({
 })
 
 export const nodeJavaScriptRuntimeEntrypointAllowlist = Object.freeze({
+  '@moluoxixi/ai-provider': ['./server'],
+  '@moluoxixi/i18n-tool': ['./config', './core', './server'],
   '@moluoxixi/vitepress-theme-element-plus': ['./node', './repository/node'],
 })
+
+export const browserBundleForbiddenFragments = Object.freeze({
+  '@moluoxixi/ai-provider': [
+    '/chat/completions',
+    '/embeddings',
+    'chatApiKey',
+    'embeddingApiKey',
+  ],
+  '@moluoxixi/i18n-tool': [
+    'absolutePath',
+    'apiKeyEnv',
+    'node:fs',
+    'writeTextAtomically',
+  ],
+})
+
+export function getBrowserBundleForbiddenFragments(
+  manifests,
+  rules = browserBundleForbiddenFragments,
+) {
+  const packageNames = new Set(manifests.map(manifest => manifest.name))
+  return Object.entries(rules).flatMap(([packageName, fragments]) => {
+    if (!packageNames.has(packageName))
+      throw new Error(`Browser bundle safety package ${packageName} is not publishable.`)
+    return fragments
+  })
+}
 
 export function importName(name) {
   return name.replace(/[^\w$]/g, '_')
@@ -185,6 +222,77 @@ export function createPackedConsumerManifest({
 
 export function createBrowserBuildArgs(consumerDirectory, browserDirectory) {
   return ['--dir', consumerDirectory, 'exec', 'vite', 'build', browserDirectory]
+}
+
+export function createBrowserConsumerBatches(
+  specifiers,
+  maxJavaScriptEntries = 4,
+  isolatedJavaScriptEntries = isolatedBrowserJavaScriptEntries,
+) {
+  if (!Number.isInteger(maxJavaScriptEntries) || maxJavaScriptEntries <= 0)
+    throw new Error('Browser consumer batch size must be a positive integer.')
+
+  if (specifiers.javaScript.length === 0) {
+    return specifiers.stylesheets.length > 0
+      ? [{ javaScript: [], stylesheets: [...specifiers.stylesheets] }]
+      : []
+  }
+
+  const batches = []
+  const isolatedEntries = new Set(isolatedJavaScriptEntries)
+  let pendingEntries = []
+  const flushPendingEntries = () => {
+    if (pendingEntries.length === 0)
+      return
+    batches.push({
+      javaScript: pendingEntries,
+      stylesheets: [...specifiers.stylesheets],
+    })
+    pendingEntries = []
+  }
+  for (const entry of specifiers.javaScript) {
+    if (isolatedEntries.has(entry)) {
+      flushPendingEntries()
+      batches.push({
+        javaScript: [entry],
+        stylesheets: [...specifiers.stylesheets],
+      })
+      continue
+    }
+    pendingEntries.push(entry)
+    if (pendingEntries.length === maxJavaScriptEntries)
+      flushPendingEntries()
+  }
+  flushPendingEntries()
+  return batches
+}
+
+export function createBrowserViteConfigSource(javaScriptEntries) {
+  if (!javaScriptEntries.includes('@moluoxixi/vitepress-theme-element-plus/repl'))
+    return 'export default {"resolve":{"alias":[]}}'
+
+  return [
+    `import { resolve } from 'node:path'`,
+    `const replContractStub = resolve(import.meta.dirname, 'src/vue-repl-contract-stub.mjs')`,
+    `export default {`,
+    `  resolve: {`,
+    `    alias: [`,
+    `      { find: '@vue/repl/monaco-editor', replacement: '@vue/repl/codemirror-editor' },`,
+    `      { find: '@vue/repl/core', replacement: replContractStub },`,
+    `      { find: /^@vue\\/repl$/, replacement: replContractStub },`,
+    `    ],`,
+    `  },`,
+    `}`,
+  ].join('\n')
+}
+
+export function createBrowserReplContractStubSource() {
+  return [
+    `export const Repl = Object.freeze({})`,
+    `export class File {}`,
+    `export async function compileFile() {}`,
+    `export function useStore() { return {} }`,
+  ].join('\n')
 }
 
 export function createBrowserSmokeSource(javaScriptEntries, stylesheetEntries) {

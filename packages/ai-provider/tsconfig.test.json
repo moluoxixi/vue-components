@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["node", "vitest"],
+    "noEmit": true
+  },
+  "include": ["src", "index.ts", "shared.ts", "server.ts", "test"],
+  "exclude": []
+}

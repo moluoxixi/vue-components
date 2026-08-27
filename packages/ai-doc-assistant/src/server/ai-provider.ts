@@ -12,29 +12,12 @@
  * chat 上游走 OpenAI 兼容的 /chat/completions 协议。coderelay.cn 代理下，
  * A社 claude 系列模型亦经此协议调用（实测 claude-haiku/sonnet/opus 均可）。
  */
+import type { ProviderConfig, ProviderDefaults, ProviderEnvKeys } from '@moluoxixi/ai-provider/server'
 import process from 'node:process'
+import { loadProviderConfig as loadSharedProviderConfig } from '@moluoxixi/ai-provider/server'
 
-/** Provider 运行时配置。密钥字段仅在内存中流转。 */
-export interface ProviderConfig {
-  /** chat 上游 baseURL（OpenAI 兼容）。 */
-  chatBaseUrl: string
-  /** chat 密钥。 */
-  chatApiKey: string
-  /** chat 模型名。 */
-  chatModel: string
-  /** embedding 上游 baseURL（OpenAI 兼容）；当前架构未使用，保留兼容。 */
-  embeddingBaseUrl: string
-  /** embedding 密钥；可空（缺失不影响 chat 服务）。 */
-  embeddingApiKey: string
-  /** embedding 模型名；当前架构未使用，保留兼容。 */
-  embeddingModel: string
-}
-
-/** 配置态（供 health 暴露，不含密钥值）。 */
-export interface ProviderStatus {
-  chat: 'configured' | 'missing'
-  embedding: 'configured' | 'missing'
-}
+export type { ProviderConfig, ProviderStatus } from '@moluoxixi/ai-provider/server'
+export { providerStatusOf } from '@moluoxixi/ai-provider/server'
 
 /** 环境变量名常量——集中管理，便于文档引用与测试覆盖。 */
 export const ENV_KEYS = {
@@ -44,7 +27,7 @@ export const ENV_KEYS = {
   embeddingBaseUrl: 'AI_DOC_EMBEDDING_BASE_URL',
   embeddingApiKey: 'AI_DOC_EMBEDDING_API_KEY',
   embeddingModel: 'AI_DOC_EMBEDDING_MODEL',
-} as const
+} as const satisfies ProviderEnvKeys
 
 /** 默认值（非密钥项可有默认；密钥项无默认，缺失即视为未配置）。 */
 const DEFAULTS = {
@@ -52,7 +35,7 @@ const DEFAULTS = {
   chatModel: 'gpt-4o-mini',
   embeddingBaseUrl: 'https://coderelay.cn/v1',
   embeddingModel: 'text-embedding-3-small',
-}
+} satisfies ProviderDefaults
 
 /**
  * 从环境变量构建 ProviderConfig。
@@ -61,28 +44,5 @@ const DEFAULTS = {
  * embedding 密钥可选，缺失不影响返回（当前架构不依赖）。
  */
 export function loadProviderConfig(env: NodeJS.ProcessEnv = process.env): ProviderConfig | null {
-  const chatApiKey = env[ENV_KEYS.chatApiKey]
-
-  // chat 密钥是核心边界输入，缺失即判定未配置
-  if (!chatApiKey)
-    return null
-
-  return {
-    chatBaseUrl: env[ENV_KEYS.chatBaseUrl] || DEFAULTS.chatBaseUrl,
-    chatApiKey,
-    chatModel: env[ENV_KEYS.chatModel] || DEFAULTS.chatModel,
-    embeddingBaseUrl: env[ENV_KEYS.embeddingBaseUrl] || DEFAULTS.embeddingBaseUrl,
-    embeddingApiKey: env[ENV_KEYS.embeddingApiKey] || '',
-    embeddingModel: env[ENV_KEYS.embeddingModel] || DEFAULTS.embeddingModel,
-  }
-}
-
-/** 计算配置态（不暴露密钥值，仅 configured/missing）。 */
-export function providerStatusOf(config: ProviderConfig | null): ProviderStatus {
-  if (!config)
-    return { chat: 'missing', embedding: 'missing' }
-  return {
-    chat: config.chatApiKey ? 'configured' : 'missing',
-    embedding: config.embeddingApiKey ? 'configured' : 'missing',
-  }
+  return loadSharedProviderConfig(env, { defaults: DEFAULTS, envKeys: ENV_KEYS })
 }

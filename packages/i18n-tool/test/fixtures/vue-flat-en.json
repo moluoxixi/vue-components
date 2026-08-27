@@ -1,0 +1,4 @@
+{
+  "common.hello": "Hello {name}",
+  "common.items": "No items | One item | {count} items"
+}

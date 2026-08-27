@@ -1,0 +1,6 @@
+{
+  "friend_male_one": "{{name}} has one friend",
+  "friend_male_other": "{{name}} has {{count}} friends",
+  "friend_female_one": "{{name}} has one friend",
+  "friend_female_other": "{{name}} has {{count}} friends"
+}

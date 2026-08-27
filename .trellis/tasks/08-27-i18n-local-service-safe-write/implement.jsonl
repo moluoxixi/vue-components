@@ -1,0 +1,4 @@
+{"file":".trellis/tasks/08-27-i18n-tool-shared-ai-config/research/repository-findings.md","reason":"CLI、BFF、canonical path 与 atomic write 仓库证据"}
+{"file":".trellis/spec/docs/frontend/index.md","reason":"docs 质量规范入口"}
+{"file":".trellis/spec/docs/frontend/quality-guidelines.md","reason":"最近存在祖先、junction 防护、原子替换与有限锁重试契约"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"config、API、registry、filesystem 与错误协议的跨层一致性"}

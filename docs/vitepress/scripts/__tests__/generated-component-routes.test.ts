@@ -5,6 +5,7 @@ import { synchronizeElementPlusDocsContent } from '@moluoxixi/vitepress-theme-el
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { docsProject } from '../../.vitepress/catalog/component-manifest.ts'
 import { getLocalizedComponents } from '../../.vitepress/catalog/docs-i18n.ts'
+import { documentedUtilities } from '../../.vitepress/catalog/utility-manifest.ts'
 import { docsLocales } from '../../.vitepress/site/docs-site.ts'
 import { GENERATED_COMPONENT_ROUTE_MARKER } from '../component-routes.mts'
 import { generateComponentRoutes } from '../generate-component-routes.mts'
@@ -72,7 +73,7 @@ describe('generated searchable component routes', () => {
       const directory = resolve(contentRoot, configured.sourceDirectory, 'utils')
       const generated = readdirSync(directory)
         .filter(fileName => fileName !== 'index.md' && fileName.endsWith('.md'))
-      expect(generated).toHaveLength(7)
+      expect(generated).toHaveLength(documentedUtilities.length)
       for (const fileName of generated) {
         const source = readFileSync(resolve(directory, fileName), 'utf8')
         expect(source).toContain(GENERATED_UTILITY_ROUTE_MARKER)
