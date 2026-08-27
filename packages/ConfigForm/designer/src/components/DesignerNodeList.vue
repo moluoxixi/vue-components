@@ -147,8 +147,9 @@ async function createSortable(): Promise<void> {
   if (!listRef.value || props.readonly)
     return
   sortable = Sortable.create(listRef.value, {
-    animation: 120,
+    animation: 180,
     draggable: '[data-designer-draggable]',
+    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
     forceFallback: true,
     group: {
       name: 'config-form-designer',
@@ -335,9 +336,12 @@ onBeforeUnmount(destroySortable)
         </template>
       </div>
     </li>
-    <li v-if="nodes.length === 0" class="mx-config-form-designer__empty-slot" aria-hidden="true">
+    <li v-if="nodes.length === 0" class="mx-config-form-designer__empty-slot">
       <span class="mx-config-form-designer__empty-slot-icon">
         <Plus :size="14" aria-hidden="true" />
+      </span>
+      <span class="mx-config-form-designer__empty-slot-label">
+        {{ locale.t('canvas.dropHere', 'Drop a field here') }}
       </span>
     </li>
   </ol>

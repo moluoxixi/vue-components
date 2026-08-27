@@ -6,11 +6,14 @@ import type {
 } from '../index'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { ConfigFormDesigner, createDesignerLocale, createDesignerRegistry, designerDiagnostic } from '../index'
 
 const sortableMock = vi.hoisted(() => ({
   create: vi.fn((element: HTMLElement, options: {
+    animation?: number
+    easing?: string
+    forceFallback?: boolean
     onAdd?: (event: { item: HTMLElement, newIndex?: number }) => void
     onEnd?: (event: { item: HTMLElement, newIndex?: number, to: HTMLElement }) => void
     onStart?: () => void
@@ -23,6 +26,9 @@ const sortableMock = vi.hoisted(() => ({
     destroy: ReturnType<typeof vi.fn>
     element: HTMLElement
     options: {
+      animation?: number
+      easing?: string
+      forceFallback?: boolean
       onAdd?: (event: { item: HTMLElement, newIndex?: number }) => void
       onEnd?: (event: { item: HTMLElement, newIndex?: number, to: HTMLElement }) => void
       onStart?: () => void
@@ -109,6 +115,7 @@ function lastDocument(wrapper: ReturnType<typeof mount>): DesignerDocument {
 afterEach(() => {
   sortableMock.create.mockClear()
   sortableMock.instances.splice(0)
+  vi.unstubAllGlobals()
 })
 
 describe('config form designer', () => {
@@ -366,7 +373,8 @@ describe('config form designer', () => {
     expect(emptyList.attributes('data-parent-material')).toBe('element.section')
     expect(emptyList.attributes('data-slot')).toBe('default')
     expect(emptyList.findAll(':scope > .mx-config-form-designer__empty-slot')).toHaveLength(1)
-    expect(emptyList.get(':scope > .mx-config-form-designer__empty-slot').text()).toBe('')
+    expect(emptyList.get(':scope > .mx-config-form-designer__empty-slot').text()).toBe('Drop a field here')
+    expect(emptyList.get(':scope > .mx-config-form-designer__empty-slot').attributes('aria-hidden')).toBeUndefined()
     expect(emptyList.get(':scope > .mx-config-form-designer__empty-slot svg').attributes('aria-hidden')).toBe('true')
 
     const filledSection = wrapper.get('[data-node-id="filled-section"]')
@@ -376,6 +384,80 @@ describe('config form designer', () => {
       'data-material': 'element.input',
       'data-node-kind': 'field',
     })
+  })
+
+  it('uses container width for narrow workspace views and disconnects its observer', async () => {
+    let resizeCallback: ResizeObserverCallback | undefined
+    const observe = vi.fn()
+    const disconnect = vi.fn()
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback
+      }
+
+      observe = observe
+      unobserve = vi.fn()
+      disconnect = disconnect
+    })
+
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: twoFieldDocument(), registry },
+    })
+    const root = wrapper.get('.mx-config-form-designer')
+    vi.spyOn(root.element, 'getBoundingClientRect').mockReturnValue({ width: 680 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+
+    expect(root.attributes('data-workspace-mode')).toBe('narrow')
+    expect(observe).toHaveBeenCalledWith(root.element)
+    expect(wrapper.find('button[aria-label="Hide materials"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Hide properties"]').exists()).toBe(false)
+    expect(wrapper.get('.mx-config-form-designer__workspace-tabs').attributes('role')).toBe('tablist')
+    expect(wrapper.get('.mx-config-form-designer__workspace-panel.is-canvas').attributes('hidden')).toBeUndefined()
+    expect(wrapper.get('.mx-config-form-designer__workspace-panel.is-palette').attributes('hidden')).toBe('')
+
+    await wrapper.get('[data-workspace-tab="palette"]').trigger('click')
+    expect(root.attributes('data-active-view')).toBe('palette')
+    expect(wrapper.get('.mx-config-form-designer__workspace-panel.is-palette').attributes('hidden')).toBeUndefined()
+    expect(wrapper.get('.mx-config-form-designer__workspace-panel.is-canvas').attributes('hidden')).toBe('')
+
+    await wrapper.get('[data-workspace-tab="palette"]').trigger('keydown', { key: 'ArrowRight' })
+    expect(root.attributes('data-active-view')).toBe('canvas')
+    wrapper.unmount()
+    expect(disconnect).toHaveBeenCalledOnce()
+  })
+
+  it('collapses and restores desktop sidebars without leaving hidden controls reachable', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: twoFieldDocument(), registry },
+    })
+    const root = wrapper.get('.mx-config-form-designer')
+    const palettePanel = wrapper.get('.mx-config-form-designer__workspace-panel.is-palette')
+    const propertiesPanel = wrapper.get('.mx-config-form-designer__workspace-panel.is-properties')
+
+    expect(root.attributes()).toMatchObject({
+      'data-palette-open': 'true',
+      'data-properties-open': 'true',
+    })
+    await wrapper.get('button[aria-label="Hide materials"]').trigger('click')
+    expect(root.attributes('data-palette-open')).toBe('false')
+    expect(palettePanel.attributes('hidden')).toBe('')
+    expect(palettePanel.attributes('inert')).toBe('')
+    expect(wrapper.get('button[aria-label="Show materials"]').attributes('aria-expanded')).toBe('false')
+
+    await wrapper.get('button[aria-label="Hide properties"]').trigger('click')
+    expect(root.attributes('data-properties-open')).toBe('false')
+    expect(propertiesPanel.attributes('hidden')).toBe('')
+    expect(propertiesPanel.attributes('inert')).toBe('')
+
+    await wrapper.get('button[aria-label="Show materials"]').trigger('click')
+    await wrapper.get('button[aria-label="Show properties"]').trigger('click')
+    expect(root.attributes()).toMatchObject({
+      'data-palette-open': 'true',
+      'data-properties-open': 'true',
+    })
+    expect(palettePanel.attributes('hidden')).toBeUndefined()
+    expect(propertiesPanel.attributes('hidden')).toBeUndefined()
   })
 
   it('always previews linkage against an isolated model and gates only editing', async () => {
@@ -543,12 +625,32 @@ describe('config form designer', () => {
 
     const paletteSortables = sortableMock.instances.filter(instance => instance.element.classList.contains('mx-config-form-designer__palette-items'))
     expect(paletteSortables).toHaveLength(2)
+    expect(paletteSortables.every(instance => instance.options.animation === 180
+      && instance.options.easing === 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+      && instance.options.forceFallback)).toBe(true)
     expect(paletteSortables.every(instance => [...instance.element.children]
       .every(child => (child as HTMLElement).hasAttribute('data-designer-draggable')))).toBe(true)
+    const inputMaterial = wrapper.get('[data-material-key="element.input"]')
+    expect(inputMaterial.attributes()).toMatchObject({
+      role: 'button',
+      tabindex: '0',
+    })
+    await inputMaterial.trigger('pointerdown')
+    await nextTick()
+    expect(inputMaterial.classes()).toContain('has-drag-preview')
+    const dragPreview = inputMaterial.get('.mx-config-form-designer__palette-drag-preview')
+    expect(dragPreview.attributes('aria-hidden')).toBe('true')
+    expect(dragPreview.attributes('inert')).toBe('')
+    expect(dragPreview.find('input').exists()).toBe(true)
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 40, clientY: 40 }))
+    await nextTick()
+    expect(document.body.querySelector('.mx-config-form-designer__drag-overlay input')).not.toBeNull()
     paletteSortables[0]!.options.onStart?.()
     expect(wrapper.get('.mx-config-form-designer').classes()).toContain('is-dragging')
     paletteSortables[0]!.options.onEnd?.({ item: document.createElement('button'), to: paletteSortables[0]!.element })
+    await nextTick()
     expect(wrapper.get('.mx-config-form-designer').classes()).not.toContain('is-dragging')
+    expect(document.body.querySelector('.mx-config-form-designer__drag-overlay')).toBeNull()
 
     await wrapper.get('[data-material-key="element.input"]').trigger('click')
     await flushPromises()
@@ -718,6 +820,43 @@ describe('config form designer', () => {
     await wrapper.get('button[aria-label="Preview form"]').trigger('click')
     expect(wrapper.get('[role="dialog"]').attributes('aria-label')).toBe('Form preview')
     expect(wrapper.emitted('preview')).toHaveLength(1)
+  })
+
+  it('keeps dialog focus contained and restores it after Escape', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      attachTo: document.body,
+      props: { document: twoFieldDocument(), registry },
+    })
+    const exportTrigger = wrapper.get('button[aria-label="Export document"]')
+    ;(exportTrigger.element as HTMLButtonElement).focus()
+    await exportTrigger.trigger('click')
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    const transferDialog = wrapper.get('[role="dialog"][aria-label="Export document"]')
+    expect(document.activeElement).toBe(transferDialog.get('textarea').element)
+    const transferButtons = transferDialog.findAll('button:not([disabled])')
+    const lastTransferButton = transferButtons.at(-1)!
+    ;(lastTransferButton.element as HTMLButtonElement).focus()
+    await lastTransferButton.trigger('keydown', { key: 'Tab' })
+    expect(document.activeElement).toBe(transferButtons[0]!.element)
+    await transferDialog.trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(exportTrigger.element)
+
+    const previewTrigger = wrapper.get('button[aria-label="Preview form"]')
+    ;(previewTrigger.element as HTMLButtonElement).focus()
+    await previewTrigger.trigger('click')
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const previewDialog = wrapper.get('[role="dialog"][aria-label="Form preview"]')
+    expect(document.activeElement).toBe(previewDialog.get('button[aria-label="Close preview"]').element)
+    await previewDialog.trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(previewTrigger.element)
+    wrapper.unmount()
   })
 
   it('keeps documents editable while diagnostics block export and refresh reactively', async () => {
