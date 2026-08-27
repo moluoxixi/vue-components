@@ -160,3 +160,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 8: 本地国际化 AI 翻译工具
+
+**Date**: 2026-08-27
+**Task**: 本地国际化 AI 翻译工具
+**Package**: playground
+**Branch**: `main`
+
+### Summary
+
+新增共享 AI Provider 包与本地 i18n 工作台，支持配置加载、Vue I18n/i18next/generic JSON、AI 翻译审阅、安全 preview/apply 写回，并迁移 AI 文档助手。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0d8abf88` | (see git log) |
+
+### Status
+
+[OK] **Completed**

@@ -1,0 +1,6 @@
+{"file":".trellis/spec/indexed-db/backend/index.md","reason":"扩展 IndexedDB 原子事务 API 前读取后端包约束。"}
+{"file":".trellis/spec/indexed-db/frontend/index.md","reason":"浏览器持久化与 SSR/前端消费边界。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"新 private workbench app 与 ConfigForm 包职责边界。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"复用现有 IndexedDB、Blob 下载、模板和验证工具模式。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"项目协议、存储、模板、ZIP 与 Node 验证的跨层一致性。"}
+{"file":".trellis/tasks/08-27-config-form-designer-ux/research/online-website-workbench.md","reason":"虚拟项目单一真源与本地优先产品边界。"}
