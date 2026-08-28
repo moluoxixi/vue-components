@@ -1,6 +1,12 @@
 import type { DesignerDocument } from '@moluoxixi/config-form-designer'
+import {
+  createDesignerRegistry,
+  createLowCodeComponentRegistry,
+  designerDocumentToConfigModel,
+} from '@moluoxixi/config-form-designer'
+import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
 import { describe, expect, it } from 'vitest'
-import { DESIGNER_EXTENSION_KEY, formatDesignerConfig, parseDesignerConfig } from '../config-codec'
+import { DESIGNER_EXTENSION_KEY, formatDesignerConfig, formatLowCodePageConfig, parseDesignerConfig } from '../config-codec'
 
 const document: DesignerDocument = {
   form: { columns: 24, fieldSpan: 12, gap: '16px', labelPosition: 'left' },
@@ -17,6 +23,8 @@ const document: DesignerDocument = {
       label: 'Name',
       material: 'element.input',
       props: { placeholder: 'Enter your name' },
+      events: { 'update:modelValue': [{ action: 'audit' }] },
+      bindings: { value: { source: 'profile.name' } },
       span: 12,
       validateOn: ['blur', 'submit'],
     },
@@ -58,6 +66,24 @@ describe('defineField TypeScript config codec', () => {
       initialValues: { active: true, name: 'Ada' },
       success: true,
     })
+  })
+
+  it('generates config directly from the authoritative model without dropping registered IR', () => {
+    const model = designerDocumentToConfigModel(document, { id: 'profile', name: 'Profile' })
+    const modelRegistry = createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
+    const source = formatLowCodePageConfig(model, modelRegistry)
+
+    expect(source).toContain('events:')
+    expect(source).toContain('bindings:')
+    expect(source).toBe(formatDesignerConfig(document))
+  })
+
+  it('rejects source generation for components outside the provided registry', () => {
+    const model = designerDocumentToConfigModel(document, { id: 'profile', name: 'Profile' })
+    const emptyRegistry = createLowCodeComponentRegistry(createDesignerRegistry([]))
+
+    expect(() => formatLowCodePageConfig(model, emptyRegistry))
+      .toThrow('Component "element.input" is not registered for source generation.')
   })
 
   it('projects user-authored portable fields into the selected Designer adapter', () => {

@@ -17,11 +17,13 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
 | [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
+| [State Management](./state-management.md) | Design-first Config Model, operations, history, and projection boundaries | Active |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 
 Shared contract: [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md).
+
+State contract: [Design-first Config Model State](./state-management.md).
 
 Architecture rule: [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md).
 

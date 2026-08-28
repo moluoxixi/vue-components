@@ -11,7 +11,7 @@ export interface WorkspaceProjectUpgradeResult {
   project: WorkspaceProject
 }
 
-/** Point legacy Workbench projects at the editable Config module used by Source. */
+/** Point legacy Workbench projects at the generated Config module used by Source export. */
 export function upgradeWorkspaceConfigModule(project: WorkspaceProject): WorkspaceProjectUpgradeResult {
   if (project.manifest.generatedFormModule === WORKSPACE_CONFIG_MODULE_PATH)
     return { migrated: false, project }

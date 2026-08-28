@@ -3,6 +3,7 @@ import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCompileResult } from '../compiler'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
+import type { LowCodeNode, ModelOperation } from '../model'
 import type {
   ConfigFormDesignerEmits,
   ConfigFormDesignerExpose,
@@ -12,6 +13,7 @@ import type {
 } from './types'
 import {
   Clipboard,
+  Copy,
   Download,
   Eye,
   FileDown,
@@ -21,6 +23,10 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Redo2,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Trash2,
   Undo2,
   X,
 } from '@lucide/vue'
@@ -29,6 +35,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref,
 import { useDesignerController } from '../composables'
 import { applyDesignerDocumentReactions, createDesignerPreviewModel } from '../document'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
+import { findConfigModelNode } from '../model'
 import DesignerCanvas from './DesignerCanvas.vue'
 import DesignerPalette from './DesignerPalette.vue'
 import DesignerPropertyPanel from './DesignerPropertyPanel.vue'
@@ -76,6 +83,11 @@ const workspaceViews = [
   { id: 'canvas' as const, label: 'Canvas' },
   { id: 'properties' as const, label: 'Properties' },
 ]
+const breakpoints: Array<{ key: ConfigFormBreakpoint, icon: typeof Monitor }> = [
+  { key: 'desktop', icon: Monitor },
+  { key: 'tablet', icon: Tablet },
+  { key: 'mobile', icon: Smartphone },
+]
 const workspaceMode = computed(() => {
   const width = workspaceWidth.value
   if (!width)
@@ -122,6 +134,14 @@ function syncBreakpointToViewport(): void {
 function selectBreakpoint(breakpoint: ConfigFormBreakpoint): void {
   breakpointManuallySelected = true
   activeBreakpoint.value = breakpoint
+}
+
+function breakpointTitle(breakpoint: ConfigFormBreakpoint): string {
+  if (breakpoint === 'tablet')
+    return locale.t('breakpoint.tablet', 'Tablet')
+  if (breakpoint === 'mobile')
+    return locale.t('breakpoint.mobile', 'Mobile')
+  return locale.t('breakpoint.desktop', 'Desktop')
 }
 
 function measureWorkspace(): void {
@@ -297,6 +317,8 @@ const controller = useDesignerController({
   registry: () => props.registry,
   historyLimit: () => props.historyLimit,
   readonly: () => props.readonly,
+  controlled: () => Boolean(props.commandControl),
+  onBeforeCommandCommit: (command, document) => props.commandControl?.apply(command, document) ?? true,
   onDocumentChange: (document) => {
     if (!linkagePreview.value)
       resetPreviewModel(document)
@@ -304,8 +326,26 @@ const controller = useDesignerController({
   },
   onCommand: (command, document) => emit('command', command, document),
   onDiagnostics: diagnostics => emit('diagnostics', diagnostics),
-  onSelectionChange: nodeId => emit('selectionChange', nodeId),
+  onSelectionChange: (nodeId, nodeIds) => {
+    emit('selectionChange', nodeId)
+    emit('selectionSetChange', nodeIds, nodeId)
+  },
 })
+
+const selectedModelNodes = computed<LowCodeNode[]>(() => props.model
+  ? controller.selectedIds.value
+      .map(nodeId => findConfigModelNode(props.model!, nodeId)?.node)
+      .filter((node): node is LowCodeNode => Boolean(node))
+  : [])
+const selectedComponentDefinition = computed(() => {
+  const component = selectedModelNodes.value[0]?.component
+  return component ? props.modelRegistry?.get(component) : undefined
+})
+
+function handleModelOperation(operation: ModelOperation): void {
+  if (!props.readonly)
+    emit('modelOperation', operation)
+}
 
 watch(controller.document, (document) => {
   if (!linkagePreview.value)
@@ -315,9 +355,14 @@ watch(controller.document, (document) => {
 }, { deep: true })
 
 const toolbarScope = computed(() => ({
-  canUndo: controller.canUndo.value,
-  canRedo: controller.canRedo.value,
+  breakpoint: activeBreakpoint.value,
+  canUndo: props.historyControl?.canUndo ?? controller.canUndo.value,
+  canRedo: props.historyControl?.canRedo ?? controller.canRedo.value,
+  canEditSelection: !props.readonly && controller.selectedIds.value.length > 0,
   readonly: props.readonly,
+  copySelection: () => handleSelectionAction('copy'),
+  removeSelection: () => handleSelectionAction('remove'),
+  selectBreakpoint,
   undo: handleUndo,
   redo: handleRedo,
   preview: handlePreview,
@@ -341,13 +386,13 @@ function dispatch(command: DesignerCommand): boolean {
 }
 
 function handleUndo(): boolean {
-  const changed = controller.undo()
+  const changed = props.historyControl?.undo() ?? controller.undo()
   void focusNode(controller.selectedId.value)
   return changed
 }
 
 function handleRedo(): boolean {
-  const changed = controller.redo()
+  const changed = props.historyControl?.redo() ?? controller.redo()
   void focusNode(controller.selectedId.value)
   return changed
 }
@@ -381,6 +426,17 @@ function handleSelect(nodeId?: string): void {
     mediumPanel.value = 'properties'
 }
 
+function handleCanvasSelect(nodeId?: string, mode: 'range' | 'replace' | 'toggle' = 'replace'): void {
+  controller.select(nodeId, mode)
+  if (nodeId && workspaceMode.value === 'medium')
+    mediumPanel.value = 'properties'
+}
+
+function handleResize(nodeId: string, span: number): void {
+  controller.select(nodeId)
+  dispatch({ type: 'updateNode', nodeId, changes: { span } })
+}
+
 function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
   const changed = dispatch({ type: 'updateNodePath', nodeId, path, value })
   if (!changed || !['conditions', 'reactions'].includes(path[0] ?? ''))
@@ -398,9 +454,19 @@ function handleUpdateForm(changes: Record<string, unknown>): void {
 }
 
 function handleAction(action: DesignerNodeAction, nodeId: string): void {
-  controller.select(nodeId)
+  if (!controller.selectedIds.value.includes(nodeId))
+    controller.select(nodeId)
   controller.performNodeAction(action, nodeId)
   void focusNode(controller.selectedId.value)
+}
+
+function handleSelectionAction(action: 'copy' | 'remove'): boolean {
+  const nodeId = controller.selectedId.value
+  if (!nodeId)
+    return false
+  const changed = controller.performNodeAction(action, nodeId)
+  void focusNode(controller.selectedId.value)
+  return changed
 }
 
 function handlePreview(): DesignerCompileResult {
@@ -447,6 +513,13 @@ function openImport(): void {
   transferText.value = ''
   transferError.value = ''
   void focusDialog(transferDialogRef, '[autofocus]')
+}
+
+function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
+  dispatch({
+    type: 'batch',
+    commands: nodeIds.map(nodeId => ({ type: 'updateNodePath', nodeId, path, value })),
+  })
 }
 
 function openExport(): void {
@@ -594,9 +667,11 @@ function handleRootKeydown(event: KeyboardEvent): void {
 
 defineExpose<ConfigFormDesignerExpose>({
   dispatch,
+  performNodeAction: controller.performNodeAction,
   undo: handleUndo,
   redo: handleRedo,
   select: controller.select,
+  selectBreakpoint,
   preview: handlePreview,
   importDocument,
   exportDocument: controller.exportDocument,
@@ -653,6 +728,28 @@ defineExpose<ConfigFormDesignerExpose>({
             <button type="button" class="mx-config-form-designer__icon-button" :disabled="!controller.canRedo.value" :title="locale.t('action.redo', 'Redo')" :aria-label="locale.t('action.redo', 'Redo')" @click="handleRedo">
               <Redo2 :size="17" aria-hidden="true" />
             </button>
+            <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
+            <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly || controller.selectedIds.value.length === 0" :title="locale.t('node.copySelection', 'Copy selection')" :aria-label="locale.t('node.copySelection', 'Copy selection')" @click="handleSelectionAction('copy')">
+              <Copy :size="16" aria-hidden="true" />
+            </button>
+            <button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="readonly || controller.selectedIds.value.length === 0" :title="locale.t('node.deleteSelection', 'Delete selection')" :aria-label="locale.t('node.deleteSelection', 'Delete selection')" @click="handleSelectionAction('remove')">
+              <Trash2 :size="16" aria-hidden="true" />
+            </button>
+            <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
+            <div class="mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.breakpoint', 'Preview breakpoint')">
+              <button
+                v-for="item in breakpoints"
+                :key="item.key"
+                type="button"
+                :class="{ 'is-active': activeBreakpoint === item.key }"
+                :aria-label="breakpointTitle(item.key)"
+                :title="breakpointTitle(item.key)"
+                :aria-pressed="activeBreakpoint === item.key"
+                @click="selectBreakpoint(item.key)"
+              >
+                <component :is="item.icon" :size="15" aria-hidden="true" />
+              </button>
+            </div>
             <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
             <button type="button" class="mx-config-form-designer__icon-button" :title="locale.t('action.preview', 'Preview')" :aria-label="locale.t('action.previewForm', 'Preview form')" @click="handlePreview">
               <Eye :size="17" aria-hidden="true" />
@@ -737,6 +834,7 @@ defineExpose<ConfigFormDesignerExpose>({
           name="canvas"
           :document="controller.document.value"
           :selected-id="controller.selectedId.value"
+          :selected-ids="controller.selectedIds.value"
           :select="controller.select"
           :move="handleMove"
           :breakpoint="activeBreakpoint"
@@ -750,19 +848,20 @@ defineExpose<ConfigFormDesignerExpose>({
             :document="controller.document.value"
             :registry="registry"
             :selected-id="controller.selectedId.value"
+            :selected-ids="controller.selectedIds.value"
             :readonly="readonly"
             :breakpoint="activeBreakpoint"
             :interactive="linkagePreview"
             :model="previewModel"
             :reaction-props="previewReactionProps"
             :reaction-states="previewReactionStates"
-            @select="handleSelect($event || undefined)"
+            @select="handleCanvasSelect"
             @move="handleMove"
             @add-material="handleAddMaterial"
             @action="handleAction"
-            @update-breakpoint="selectBreakpoint"
             @toggle-interactive="toggleLinkagePreview"
             @update-field="updatePreviewField"
+            @resize="handleResize"
           />
         </slot>
       </section>
@@ -787,21 +886,29 @@ defineExpose<ConfigFormDesignerExpose>({
           name="properties"
           :document="controller.document.value"
           :node="controller.selectedNode.value"
+          :nodes="controller.selectedNodes.value"
           :material="controller.selectedMaterial.value"
           :diagnostics="controller.diagnostics.value"
+          :model-nodes="selectedModelNodes"
+          :component-definition="selectedComponentDefinition"
         >
           <DesignerPropertyPanel
             :document="controller.document.value"
             :node="controller.selectedNode.value"
+            :nodes="controller.selectedNodes.value"
             :material="controller.selectedMaterial.value"
             :diagnostics="controller.diagnostics.value"
+            :model-nodes="selectedModelNodes"
+            :component-definition="selectedComponentDefinition"
             :breakpoint="activeBreakpoint"
             :components="registry.components"
             :validator-options="registry.listValidators()"
             :property-controls="registry.propertyControls"
             :readonly="readonly"
             @update-path="handleUpdatePath"
+            @update-paths="handleUpdatePaths"
             @update-form="handleUpdateForm"
+            @model-operation="handleModelOperation"
           />
         </slot>
       </section>

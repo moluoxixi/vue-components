@@ -1,7 +1,13 @@
 import type { DesignerDocument } from '@moluoxixi/config-form-designer'
 import type { ProjectPath, WorkspaceAdapter, WorkspaceFile, WorkspaceProject } from '../types'
 import type { WorkspaceTemplate, WorkspaceTemplateInput } from './types'
-import { formatDesignerConfig } from '../../workbench/config-codec'
+import {
+  createLowCodeComponentRegistry,
+  designerDocumentToConfigModel,
+} from '@moluoxixi/config-form-designer'
+import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'
+import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
+import { formatLowCodePageConfig } from '../../workbench/config-codec'
 import { WorkspaceProjectError } from '../errors'
 import { assertUniqueProjectPaths, normalizeProjectPath, safeProjectSlug } from '../path'
 import { parseWorkspaceProject } from '../schema'
@@ -21,6 +27,11 @@ const VERSIONS = Object.freeze({
   'vue-tsc': '2.2.8',
   'zod': '3.24.2',
 })
+
+const lowCodeRegistries = {
+  'antd-vue': createLowCodeComponentRegistry(createAntdVueDesignerRegistry()),
+  'element-plus': createLowCodeComponentRegistry(createElementPlusDesignerRegistry()),
+}
 
 interface TemplateDefinition {
   adapter: WorkspaceAdapter
@@ -113,11 +124,7 @@ function designerDocument(adapter: WorkspaceAdapter): DesignerDocument {
   }
 }
 
-function designerConfigModule(adapter: WorkspaceAdapter): string {
-  return formatDesignerConfig(designerDocument(adapter))
-}
-
-function appComponent(adapter: WorkspaceAdapter): string {
+export function formatWorkspaceAppComponent(adapter: WorkspaceAdapter): string {
   const component = adapter === 'element-plus' ? 'ElementConfigForm' : 'AntdConfigForm'
   const packageName = adapter === 'element-plus'
     ? '@moluoxixi/config-form-element'
@@ -229,13 +236,15 @@ h1 { margin: 0; font-size: 32px; letter-spacing: 0; }
 @media (max-width: 640px) { .page-shell { width: min(100% - 20px, 920px); padding-top: 24px; } .form-section { padding: 16px; } h1 { font-size: 26px; } }
 `
 
-function createTemplateFiles(adapter: WorkspaceAdapter, name: string): Record<ProjectPath, WorkspaceFile> {
+function createTemplateFiles(adapter: WorkspaceAdapter, id: string, name: string): Record<ProjectPath, WorkspaceFile> {
+  const document = designerDocument(adapter)
+  const model = designerDocumentToConfigModel(document, { id, name })
   const rawFiles: Record<string, WorkspaceFile> = {
     'index.html': textFile(html, 'html'),
     'package.json': textFile(packageManifest(adapter, name), 'json'),
-    'src/App.vue': textFile(appComponent(adapter), 'vue'),
-    'src/form.designer.json': textFile(`${JSON.stringify(designerDocument(adapter), null, 2)}\n`, 'json'),
-    'src/form.config.ts': textFile(designerConfigModule(adapter), 'typescript'),
+    'src/App.vue': textFile(formatWorkspaceAppComponent(adapter), 'vue'),
+    'src/form.designer.json': textFile(`${JSON.stringify(model, null, 2)}\n`, 'json'),
+    'src/form.config.ts': textFile(formatLowCodePageConfig(model, lowCodeRegistries[adapter]), 'typescript'),
     'src/main.ts': textFile(mainModule(adapter), 'typescript'),
     'src/styles.css': textFile(styles, 'css'),
     'src/vite-env.d.ts': textFile('/// <reference types="vite/client" />\n', 'typescript'),
@@ -251,7 +260,7 @@ function createTemplate(definition: TemplateDefinition): WorkspaceTemplate {
     ...definition,
     version: 1,
     create(input: WorkspaceTemplateInput): WorkspaceProject {
-      const files = createTemplateFiles(definition.adapter, input.name)
+      const files = createTemplateFiles(definition.adapter, input.id, input.name)
       const packageJson = JSON.parse((files[normalizeProjectPath('package.json')] as { content: string }).content) as {
         dependencies: Record<string, string>
       }

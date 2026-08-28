@@ -13,9 +13,10 @@ import type {
   DesignerPropertySetterDefinition,
   DesignerSetterOption,
 } from '../registry'
+import type { LowCodeComponentDefinition, LowCodeNode, ModelOperation } from '../model'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed, nextTick, ref, useId, watch } from 'vue'
-import { walkDesignerNodes } from '../document'
+import { areDesignerJsonValuesEqual, cloneDesignerJsonValue, walkDesignerNodes } from '../document'
 import { findDesignerNode } from '../history'
 import { useDesignerLocale } from '../locale'
 import DesignerPropertyForm from './DesignerPropertyForm.vue'
@@ -24,7 +25,10 @@ import DesignerResponsiveSettings from './DesignerResponsiveSettings.vue'
 const props = defineProps<{
   document: DesignerDocument
   node?: DesignerNode
+  nodes?: DesignerNode[]
   material?: DesignerMaterialDefinition
+  modelNodes?: LowCodeNode[]
+  componentDefinition?: LowCodeComponentDefinition
   diagnostics: DesignerDiagnostic[]
   breakpoint?: ConfigFormBreakpoint
   validatorOptions?: string[]
@@ -35,10 +39,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   updatePath: [nodeId: string, path: string[], value: unknown]
+  updatePaths: [nodeIds: string[], path: string[], value: unknown]
   updateForm: [changes: Record<string, unknown>]
+  modelOperation: [operation: ModelOperation]
 }>()
 
-type PropertyTab = 'properties' | 'validation' | 'conditions' | 'reactions'
+type PropertyTab = 'properties' | 'events' | 'bindings' | 'validation' | 'conditions' | 'reactions'
 const activeTab = ref<PropertyTab>('properties')
 const locale = useDesignerLocale()
 const propertyPanelRef = ref<HTMLElement>()
@@ -48,9 +54,18 @@ const propertyTabs = computed(() => [
   ...(props.node?.kind === 'field'
     ? [{ id: 'validation' as const, label: locale.t('property.validation', 'Validation') }]
     : []),
+  ...(props.componentDefinition?.events.length
+    ? [{ id: 'events' as const, label: locale.t('property.events', 'Events') }]
+    : []),
+  ...(props.componentDefinition?.bindings.length
+    ? [{ id: 'bindings' as const, label: locale.t('property.bindings', 'Bindings') }]
+    : []),
   { id: 'conditions' as const, label: locale.t('property.conditions', 'Conditions') },
   { id: 'reactions' as const, label: locale.t('property.reactions', 'Reactions') },
 ])
+const selectedNodes = computed(() => props.nodes?.length ? props.nodes : props.node ? [props.node] : [])
+const compatibleSelection = computed(() => selectedNodes.value.length <= 1
+  || selectedNodes.value.every(node => node.material === props.node?.material && node.kind === props.node?.kind))
 const resolvedLayout = computed(() => resolveConfigFormLayout(
   props.document.form.columns,
   props.document.form.fieldSpan,
@@ -73,17 +88,19 @@ const reactionIds = computed(() => {
   return ids
 })
 const isRootNode = computed(() => {
-  if (!props.node)
+  if (selectedNodes.value.length === 0)
     return false
-  const location = findDesignerNode(props.document, props.node.id)
-  return Boolean(location && location.parent === undefined)
+  return selectedNodes.value.every((node) => {
+    const location = findDesignerNode(props.document, node.id)
+    return Boolean(location && location.parent === undefined)
+  })
 })
 
 const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
   if (!props.node)
     return []
   return [
-    ...(props.node.kind === 'field'
+    ...(props.node.kind === 'field' && selectedNodes.value.length === 1
       ? [
           { key: 'field', label: locale.t('property.field', 'Field'), path: ['field'], control: 'text' as const },
           { key: 'label', label: locale.t('property.label', 'Label'), path: ['label'], control: 'text' as const },
@@ -97,7 +114,7 @@ const commonSetters = computed<DesignerPropertySetterDefinition[]>(() => {
 
 const propertySetters = computed(() => [
   ...commonSetters.value,
-  ...(props.material?.setters
+  ...(compatibleSelection.value ? props.material?.setters
     .filter(setter => !['condition', 'validation'].includes(setter.control))
     .map(setter => {
       const options = resolveSetterOptions(setter)
@@ -109,7 +126,7 @@ const propertySetters = computed(() => [
           label: locale.materialSetterOptionLabel(props.material!, setter.key, option.value, option.label),
         })),
       }
-    }) ?? []),
+    }) ?? [] : []),
 ].filter((setter, index, entries) => entries.findIndex(entry => entry.path.join('.') === setter.path.join('.')) === index))
 
 const conditionSetters = computed<DesignerPropertySetterDefinition[]>(() => {
@@ -134,18 +151,45 @@ const reactionSetters = computed<DesignerPropertySetterDefinition[]>(() => props
   ? [{ key: 'reactions', label: locale.t('property.reactions', 'Reactions'), path: ['reactions'], control: 'reaction' }]
   : [])
 
+const eventSetters = computed<DesignerPropertySetterDefinition[]>(() =>
+  compatibleSelection.value
+    ? props.componentDefinition?.events.map(event => ({
+        key: event.name,
+        label: event.displayName,
+        path: ['events', event.name],
+        control: 'text',
+      })) ?? []
+    : [])
+
+const bindingSetters = computed<DesignerPropertySetterDefinition[]>(() =>
+  compatibleSelection.value
+    ? props.componentDefinition?.bindings.map(binding => ({
+        key: binding.name,
+        label: binding.displayName,
+        path: ['bindings', binding.name],
+        control: 'text',
+      })) ?? []
+    : [])
+
 const selectedDiagnostics = computed(() => props.node
   ? props.diagnostics.filter(diagnostic => diagnostic.nodeId === props.node?.id)
   : props.diagnostics)
 
-function readPath(path: string[]): unknown {
-  let value: unknown = props.node
+function readNodePath(node: DesignerNode | undefined, path: string[]): unknown {
+  let value: unknown = node
   for (const segment of path) {
     if (typeof value !== 'object' || value === null || Array.isArray(value))
       return undefined
     value = (value as Record<string, unknown>)[segment]
   }
   return value
+}
+
+function readPath(path: string[]): unknown {
+  const values = selectedNodes.value.map(node => readNodePath(node, path))
+  return values.length > 1 && values.some(value => !areDesignerJsonValuesEqual(value, values[0]))
+    ? undefined
+    : values[0]
 }
 
 function inheritedValue(setter: DesignerPropertySetterDefinition): unknown {
@@ -218,12 +262,66 @@ function readFormValue(setter: DesignerPropertySetterDefinition): unknown {
 }
 
 function commitNodePath(value: unknown, setter: DesignerPropertySetterDefinition): void {
-  if (props.node)
-    emit('updatePath', props.node.id, setter.path, value)
+  const nodeIds = selectedNodes.value.map(node => node.id)
+  if (nodeIds.length > 1)
+    emit('updatePaths', nodeIds, setter.path, value)
+  else if (nodeIds[0])
+    emit('updatePath', nodeIds[0], setter.path, value)
 }
 
 function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): void {
   emit('updateForm', { [setter.key]: value })
+}
+
+function commonModelValue(values: unknown[]): unknown {
+  return values.length > 1 && values.some(value => !areDesignerJsonValuesEqual(value, values[0]))
+    ? undefined
+    : values[0]
+}
+
+function eventValue(name: string): unknown {
+  return commonModelValue((props.modelNodes ?? []).map(node =>
+    node.events[name]?.map(action => action.action).join(', ')))
+}
+
+function bindingValue(name: string): unknown {
+  return commonModelValue((props.modelNodes ?? []).map(node => node.bindings[name]?.source))
+}
+
+function batchModelOperations(operations: ModelOperation[]): ModelOperation | undefined {
+  if (operations.length === 0)
+    return undefined
+  return operations.length === 1 ? operations[0] : { type: 'batch', operations }
+}
+
+function commitEvent(value: unknown, setter: DesignerPropertySetterDefinition): void {
+  const actions = typeof value === 'string'
+    ? value.split(',').map(action => action.trim()).filter(Boolean).map(action => ({ action }))
+    : []
+  const operation = batchModelOperations((props.modelNodes ?? []).map((node) => {
+    const events = cloneDesignerJsonValue(node.events) as LowCodeNode['events']
+    if (actions.length > 0)
+      events[setter.key] = actions
+    else
+      delete events[setter.key]
+    return { type: 'updateEvents', nodeId: node.id, events }
+  }))
+  if (operation)
+    emit('modelOperation', operation)
+}
+
+function commitBinding(value: unknown, setter: DesignerPropertySetterDefinition): void {
+  const source = typeof value === 'string' ? value.trim() : ''
+  const operation = batchModelOperations((props.modelNodes ?? []).map((node) => {
+    const bindings = cloneDesignerJsonValue(node.bindings) as LowCodeNode['bindings']
+    if (source)
+      bindings[setter.key] = { source }
+    else
+      delete bindings[setter.key]
+    return { type: 'updateBindings', nodeId: node.id, bindings }
+  }))
+  if (operation)
+    emit('modelOperation', operation)
 }
 
 const propertyEntries = computed<Record<PropertyTab, Array<{
@@ -232,6 +330,8 @@ const propertyEntries = computed<Record<PropertyTab, Array<{
   inheritedValue: unknown
 }>>>(() => ({
   properties: propertySetters.value.map(toPropertyEntry),
+  events: eventSetters.value.map(setter => ({ setter, value: eventValue(setter.key), inheritedValue: undefined })),
+  bindings: bindingSetters.value.map(setter => ({ setter, value: bindingValue(setter.key), inheritedValue: undefined })),
   validation: validationSetters.value.map(toPropertyEntry),
   conditions: conditionSetters.value.map(toPropertyEntry),
   reactions: reactionSetters.value.map(toPropertyEntry),
@@ -297,8 +397,8 @@ function handlePropertyTabKeydown(event: KeyboardEvent, tab: PropertyTab): void 
   <aside ref="propertyPanelRef" class="mx-config-form-designer__properties" :aria-label="locale.t('property.properties', 'Properties')">
     <template v-if="node">
       <div class="mx-config-form-designer__property-heading">
-        <strong>{{ node.kind === 'field' ? (node.label || node.field) : material && locale.materialTitle(material) }}</strong>
-        <code>{{ node.material }}</code>
+        <strong>{{ selectedNodes.length > 1 ? `${selectedNodes.length} selected` : node.kind === 'field' ? (node.label || node.field) : material && locale.materialTitle(material) }}</strong>
+        <code>{{ compatibleSelection ? node.material : 'Mixed components' }}</code>
       </div>
       <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
         <button
@@ -330,6 +430,23 @@ function handlePropertyTabKeydown(event: KeyboardEvent, tab: PropertyTab): void 
         :tabindex="activeTab === tab.id ? 0 : -1"
       >
         <DesignerPropertyForm
+          v-if="tab.id === 'events'"
+          :entries="propertyEntries.events"
+          :components="components"
+          :controls="propertyControls"
+          :readonly="readonly"
+          @commit="commitEvent"
+        />
+        <DesignerPropertyForm
+          v-else-if="tab.id === 'bindings'"
+          :entries="propertyEntries.bindings"
+          :components="components"
+          :controls="propertyControls"
+          :readonly="readonly"
+          @commit="commitBinding"
+        />
+        <DesignerPropertyForm
+          v-else
           :entries="propertyEntries[tab.id]"
           :components="components"
           :controls="propertyControls"

@@ -5,6 +5,7 @@ import type {
   DesignerCommand,
   DesignerDropTarget,
   DesignerHistoryState,
+  DesignerNodeLocation,
 } from '../history'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import { computed, ref, shallowRef, watch } from 'vue'
@@ -35,17 +36,23 @@ interface UseDesignerControllerOptions {
   registry: () => DesignerRegistry
   historyLimit: () => number
   readonly: () => boolean
+  controlled: () => boolean
+  onBeforeCommandCommit: (command: DesignerCommand, document: DesignerDocument) => boolean
   onDocumentChange: (document: DesignerDocument) => void
   onCommand: (command: DesignerCommand, document: DesignerDocument) => void
   onDiagnostics: (diagnostics: DesignerDiagnostic[]) => void
-  onSelectionChange: (nodeId: string | undefined) => void
+  onSelectionChange: (nodeId: string | undefined, nodeIds: string[]) => void
 }
+
+export type DesignerSelectionMode = 'range' | 'replace' | 'toggle'
 
 export interface DesignerController {
   history: Ref<DesignerHistoryState>
   document: ComputedRef<DesignerDocument>
   selectedId: Ref<string | undefined>
+  selectedIds: Ref<string[]>
   selectedNode: ComputedRef<DesignerNode | undefined>
+  selectedNodes: ComputedRef<DesignerNode[]>
   selectedMaterial: ComputedRef<DesignerMaterialDefinition | undefined>
   diagnostics: ComputedRef<DesignerDiagnostic[]>
   compileResult: ComputedRef<DesignerCompileResult>
@@ -55,7 +62,7 @@ export interface DesignerController {
   dispatch: (command: DesignerCommand) => boolean
   undo: () => boolean
   redo: () => boolean
-  select: (nodeId?: string) => void
+  select: (nodeId?: string, mode?: DesignerSelectionMode) => void
   addMaterial: (materialKey: string, target?: DesignerDropTarget) => boolean
   performNodeAction: (action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'remove', nodeId: string) => boolean
   preview: () => DesignerCompileResult
@@ -128,6 +135,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   const initial = initialState(options.document(), options.registry())
   const history = shallowRef(createDesignerHistory(initial.document, normalizeHistoryLimit(options.historyLimit())))
   const selectedId = ref<string>()
+  const selectedIds = ref<string[]>([])
   const commandDiagnostics = ref<DesignerDiagnostic[]>(
     hasDesignerErrors(initial.diagnostics) ? initial.diagnostics : [],
   )
@@ -140,6 +148,9 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   const selectedNode = computed(() => selectedId.value
     ? findDesignerNode(document.value, selectedId.value)?.node
     : undefined)
+  const selectedNodes = computed(() => selectedIds.value
+    .map(nodeId => findDesignerNode(document.value, nodeId)?.node)
+    .filter((node): node is DesignerNode => Boolean(node)))
   const selectedMaterial = computed(() => selectedNode.value
     ? options.registry().getMaterial(selectedNode.value.material)
     : undefined)
@@ -148,15 +159,15 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
 
   watch(diagnostics, value => options.onDiagnostics(value), { deep: true, immediate: true })
   watch(options.document, (value) => {
-    if (areDesignerJsonValuesEqual(value, document.value))
+    if (areDesignerJsonValuesEqual(value, document.value)) {
       return
+    }
     const next = initialState(value, options.registry())
     commandDiagnostics.value = hasDesignerErrors(next.diagnostics) ? next.diagnostics : []
     if (hasDesignerErrors(next.diagnostics))
       return
     history.value = resetDesignerHistory(history.value, next.document)
-    if (selectedId.value && !findDesignerNode(next.document, selectedId.value))
-      select()
+    pruneSelection(next.document)
     renderVersion.value += 1
   }, { deep: true })
   watch(options.historyLimit, (limit) => {
@@ -196,9 +207,16 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     renderVersion.value += 1
     if (!result.changed)
       return false
+    const nextDocument = cloneDesignerDocument(result.history.present)
+    if (!options.onBeforeCommandCommit(command, nextDocument))
+      return false
+    if (options.controlled()) {
+      pruneSelection(nextDocument)
+      options.onCommand(command, nextDocument)
+      return true
+    }
     history.value = result.history
-    if (selectedId.value && !findDesignerNode(document.value, selectedId.value))
-      select()
+    pruneSelection(nextDocument)
     emitDocument(command)
     return true
   }
@@ -209,8 +227,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     if (!next.changed)
       return false
     history.value = next.history
-    if (selectedId.value && !findDesignerNode(document.value, selectedId.value))
-      select()
+    pruneSelection(document.value)
     emitDocument()
     return true
   }
@@ -223,12 +240,180 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     return options.readonly() ? false : applyHistory(redoDesignerHistory(history.value))
   }
 
-  function select(nodeId?: string): void {
-    const next = nodeId && findDesignerNode(document.value, nodeId) ? nodeId : undefined
-    if (selectedId.value === next)
+  function documentOrder(): string[] {
+    const ids: string[] = []
+    const visit = (nodes: DesignerNode[]): void => {
+      for (const node of nodes) {
+        ids.push(node.id)
+        if (node.kind === 'container')
+          Object.values(node.slots).forEach(visit)
+      }
+    }
+    visit(document.value.nodes)
+    return ids
+  }
+
+  function emitSelection(nextIds: string[], primary?: string): void {
+    if (selectedId.value === primary
+      && nextIds.length === selectedIds.value.length
+      && nextIds.every((id, index) => selectedIds.value[index] === id)) {
       return
-    selectedId.value = next
-    options.onSelectionChange(next)
+    }
+    selectedIds.value = nextIds
+    selectedId.value = primary
+    options.onSelectionChange(primary, [...nextIds])
+  }
+
+  function pruneSelection(nextDocument: DesignerDocument): void {
+    const nextIds = selectedIds.value.filter(nodeId => findDesignerNode(nextDocument, nodeId))
+    const primary = selectedId.value && nextIds.includes(selectedId.value)
+      ? selectedId.value
+      : nextIds.at(-1)
+    emitSelection(nextIds, primary)
+  }
+
+  function select(nodeId?: string, mode: DesignerSelectionMode = 'replace'): void {
+    const next = nodeId && findDesignerNode(document.value, nodeId) ? nodeId : undefined
+    if (!next) {
+      emitSelection([], undefined)
+      return
+    }
+    if (mode === 'toggle') {
+      const included = selectedIds.value.includes(next)
+      const nextIds = included
+        ? selectedIds.value.filter(id => id !== next)
+        : [...selectedIds.value, next]
+      emitSelection(nextIds, included ? nextIds.at(-1) : next)
+      return
+    }
+    if (mode === 'range' && selectedId.value) {
+      const order = documentOrder()
+      const start = order.indexOf(selectedId.value)
+      const end = order.indexOf(next)
+      if (start >= 0 && end >= 0) {
+        const range = order.slice(Math.min(start, end), Math.max(start, end) + 1)
+        emitSelection([...new Set([...selectedIds.value, ...range])], next)
+        return
+      }
+    }
+    emitSelection([next], next)
+  }
+
+  function topLevelSelectedIds(): string[] {
+    const selected = new Set(selectedIds.value)
+    return selectedIds.value.filter((nodeId) => {
+      let parent = findDesignerNode(document.value, nodeId)?.parent
+      while (parent) {
+        if (selected.has(parent.id))
+          return false
+        parent = findDesignerNode(document.value, parent.id)?.parent
+      }
+      return true
+    })
+  }
+
+  function actionLocations(nodeId: string): DesignerNodeLocation[] {
+    const nodeIds = selectedIds.value.includes(nodeId) ? topLevelSelectedIds() : [nodeId]
+    return nodeIds
+      .map(id => findDesignerNode(document.value, id))
+      .filter((location): location is DesignerNodeLocation => Boolean(location))
+  }
+
+  function groupLocations(locations: DesignerNodeLocation[]): DesignerNodeLocation[][] {
+    const groups: DesignerNodeLocation[][] = []
+    for (const location of locations) {
+      const group = groups.find(entries => entries[0]?.nodes === location.nodes)
+      if (group)
+        group.push(location)
+      else
+        groups.push([location])
+    }
+    groups.forEach(group => group.sort((left, right) => left.index - right.index))
+    return groups
+  }
+
+  function dispatchActionCommands(commands: DesignerCommand[]): boolean {
+    if (commands.length === 0)
+      return false
+    return dispatch(commands.length === 1 ? commands[0]! : { type: 'batch', commands })
+  }
+
+  function copySelection(nodeId: string, locations: DesignerNodeLocation[]): boolean {
+    const order = documentOrder()
+    const mutationOrder = [...locations].sort((left, right) => left.nodes === right.nodes
+      ? right.index - left.index
+      : order.indexOf(right.node.id) - order.indexOf(left.node.id))
+    const commands = mutationOrder.map(location => createDesignerCopyCommand(
+      document.value,
+      location.node.id,
+      targetForLocation(document.value, location.node.id, location.index + 1)!,
+    ))
+    const copiedIds = new Map(commands.map(command => [command.nodeId, command.newIds[command.nodeId]!]))
+    const changed = dispatchActionCommands(commands)
+    if (changed) {
+      const nextIds = locations.map(location => copiedIds.get(location.node.id)!).filter(Boolean)
+      emitSelection(nextIds, copiedIds.get(nodeId) ?? nextIds.at(-1))
+    }
+    return changed
+  }
+
+  function moveSelection(
+    action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent',
+    locations: DesignerNodeLocation[],
+  ): boolean {
+    const commands: DesignerCommand[] = []
+    for (const group of groupLocations(locations)) {
+      const first = group[0]!
+      const last = group.at(-1)!
+      if (action === 'moveBefore') {
+        if (first.index === 0)
+          return false
+        group.forEach((location, offset) => commands.push({
+          type: 'moveNode',
+          nodeId: location.node.id,
+          target: targetForLocation(document.value, location.node.id, first.index - 1 + offset)!,
+        }))
+        continue
+      }
+      if (action === 'moveAfter') {
+        if (last.index === last.nodes.length - 1) {
+          return false
+        }
+        ;[...group].reverse().forEach((location, offset) => commands.push({
+          type: 'moveNode',
+          nodeId: location.node.id,
+          target: targetForLocation(document.value, location.node.id, last.index + 1 - offset)!,
+        }))
+        continue
+      }
+      if (action === 'indent') {
+        const previous = first.nodes[first.index - 1]
+        const material = previous ? options.registry().getMaterial(previous.material) : undefined
+        const slots = material ? group.map(location => acceptsNode(material, location.node)) : []
+        const slot = slots[0]
+        if (previous?.kind !== 'container' || !slot || slots.some(candidate => candidate !== slot))
+          return false
+        group.forEach(location => commands.push({
+          type: 'moveNode',
+          nodeId: location.node.id,
+          target: { parentId: previous.id, slot },
+        }))
+        continue
+      }
+      if (!first.parent)
+        return false
+      const parentLocation = findDesignerNode(document.value, first.parent.id)
+      if (!parentLocation)
+        return false
+      group.forEach((location, offset) => commands.push({
+        type: 'moveNode',
+        nodeId: location.node.id,
+        target: parentLocation.parent && parentLocation.slot
+          ? { parentId: parentLocation.parent.id, slot: parentLocation.slot, index: parentLocation.index + 1 + offset }
+          : { parentId: null, index: parentLocation.index + 1 + offset },
+      }))
+    }
+    return dispatchActionCommands(commands)
   }
 
   function defaultTarget(node: DesignerNode): DesignerDropTarget {
@@ -269,8 +454,12 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
       return false
     }
     const changed = dispatch({ type: 'addNode', node, target: target ?? defaultTarget(node) })
-    if (changed)
-      select(id)
+    if (changed) {
+      if (options.controlled())
+        emitSelection([id], id)
+      else
+        select(id)
+    }
     return changed
   }
 
@@ -278,48 +467,16 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'remove',
     nodeId: string,
   ): boolean {
-    const location = findDesignerNode(document.value, nodeId)
+    const locations = actionLocations(nodeId)
+    const location = locations.find(candidate => candidate.node.id === nodeId) ?? locations[0]
     if (!location)
       return false
-    if (action === 'remove')
-      return dispatch({ type: 'removeNode', nodeId })
-    if (action === 'copy') {
-      const target = targetForLocation(document.value, nodeId, location.index + 1)
-      if (!target)
-        return false
-      const command = createDesignerCopyCommand(document.value, nodeId, target)
-      const changed = dispatch(command)
-      if (changed)
-        select(command.newIds[nodeId])
-      return changed
+    if (action === 'remove') {
+      return dispatchActionCommands(locations.map(({ node }) => ({ type: 'removeNode', nodeId: node.id })))
     }
-    if (action === 'moveBefore') {
-      const target = targetForLocation(document.value, nodeId, location.index - 1)
-      return location.index > 0 && target ? dispatch({ type: 'moveNode', nodeId, target }) : false
-    }
-    if (action === 'moveAfter') {
-      const target = targetForLocation(document.value, nodeId, location.index + 1)
-      return location.index < location.nodes.length - 1 && target
-        ? dispatch({ type: 'moveNode', nodeId, target })
-        : false
-    }
-    if (action === 'indent') {
-      const previous = location.nodes[location.index - 1]
-      const material = previous ? options.registry().getMaterial(previous.material) : undefined
-      const slot = previous && material ? acceptsNode(material, location.node) : undefined
-      return previous?.kind === 'container' && slot
-        ? dispatch({ type: 'moveNode', nodeId, target: { parentId: previous.id, slot } })
-        : false
-    }
-    if (!location.parent)
-      return false
-    const parentLocation = findDesignerNode(document.value, location.parent.id)
-    if (!parentLocation)
-      return false
-    const target = parentLocation.parent && parentLocation.slot
-      ? { parentId: parentLocation.parent.id, slot: parentLocation.slot, index: parentLocation.index + 1 }
-      : { parentId: null, index: parentLocation.index + 1 }
-    return dispatch({ type: 'moveNode', nodeId, target })
+    return action === 'copy'
+      ? copySelection(nodeId, locations)
+      : moveSelection(action, locations)
   }
 
   function preview(): DesignerCompileResult {
@@ -331,6 +488,14 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   function importDocument(input: unknown): boolean {
     if (rejectReadonly())
       return false
+    if (options.controlled()) {
+      commandDiagnostics.value = [designerDiagnostic(
+        'DESIGNER_CONTROLLED_IMPORT_UNSUPPORTED',
+        'Document replacement is only available through the model migration boundary',
+        [],
+      )]
+      return false
+    }
     const parsed = parseDesignerDocument(input)
     if (!parsed.success) {
       commandDiagnostics.value = parsed.diagnostics
@@ -363,7 +528,9 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     history,
     document,
     selectedId,
+    selectedIds,
     selectedNode,
+    selectedNodes,
     selectedMaterial,
     diagnostics,
     compileResult,

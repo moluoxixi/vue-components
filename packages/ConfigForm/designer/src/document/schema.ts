@@ -39,6 +39,14 @@ const conditionsSchema = z.object({
   readonly: designerConditionSchema.optional(),
 }).strict()
 
+const registeredEventActionSchema = z.object({
+  action: z.string().min(1),
+}).catchall(designerJsonValueSchema)
+
+const registeredBindingSchema = z.object({
+  source: z.string().min(1),
+}).catchall(designerJsonValueSchema)
+
 const reactionEffectSchema: z.ZodType<ConfigFormReactionEffect> = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('setValue'),
@@ -82,6 +90,8 @@ const nodeBaseShape = {
   id: z.string().min(1),
   material: z.string().min(1),
   props: z.record(z.string(), designerJsonValueSchema).optional(),
+  events: z.record(z.string(), z.array(registeredEventActionSchema)).optional(),
+  bindings: z.record(z.string(), registeredBindingSchema).optional(),
   extensions: z.record(z.string(), designerJsonValueSchema).optional(),
   // Keep legacy numeric documents importable; the renderer clamps to the 24-cell grid.
   span: z.number().int().positive().optional(),

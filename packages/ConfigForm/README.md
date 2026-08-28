@@ -72,29 +72,27 @@ field config
 ### Designer
 
 ```text
-DesignerDocument
-  -> parse / normalize / diagnostics
-  -> DesignerRegistry material resolution
-  -> canvas preview and history commands
-  -> compiler
-  -> ConfigFormRenderer fields + components
+Component Registry
+  -> versioned Config Model
+  -> model operations / inverse history
+  -> Design canvas + layers + inspector
+  -> Runtime renderer / Preview
+  -> readonly Config JSON / Generated Vue Source
 ```
 
-设计器文档是唯一持久化事实。画布 selection、诊断、option loading 和 reaction projection 都是派生状态，不写回导出的 JSON。
+`LowCodePageModel` 是设计器页面结构唯一可变事实。`DesignerDocument` 仍作为旧 artifact 的兼容投影；画布 selection、诊断、option loading 和 reaction projection 都是派生状态，不写回模型。
 
-### Workbench 三形态
+### Workbench Design-first 工作区
 
 ```text
-src/form.config.ts (defineFields / defineField)
-  <-> static Babel AST codec
-DesignerDocument
-  -> ConfigFormRenderer preview
-
-src/App.vue + src/form.config.ts
-  -> Vue REPL page preview
+Component Registry
+  -> LowCodePageModel
+  -> Design canvas (唯一编辑入口)
+  -> Runtime Renderer -> right-side Preview
+  -> Export menu -> readonly Source / Config preview dialog
 ```
 
-Workbench 的 Config provider 展示可直接导出运行的公开 ConfigForm 源码，不展示 `DesignerDocument` JSON wrapper，也不维护独立的生成字段模块。AST codec 只接受 JSON-safe 静态值和 `defineField({...})` 调用，不执行用户源码。
+Workbench 的 Source 与 Config 不再是编辑 provider，也不参与模型反向解析。Source 使用只读 Monaco 展示 Generated Vue Source；Config 提供只读 JSON / Tree View。导出菜单还可下载项目 ZIP。旧 `parseDesignerConfig` 与 Designer artifact 解析只用于一次性迁移。
 
 设计器专属 `id`、`material`、conditions 和 validation 放在 `extensions['mx.config-form-designer']`。业务扩展仍与该命名空间并列保存在 `extensions`，因此 Config、Designer 和 Source 往返时不会把业务元数据藏入设计器私有对象。
 

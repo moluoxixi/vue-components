@@ -102,6 +102,8 @@ function createDocument(): DesignerDocument {
               material: 'element.input',
               field: 'email',
               label: 'Email',
+              events: { 'update:modelValue': [{ action: 'audit' }] },
+              bindings: { value: { source: 'profile.email' } },
               extensions: { 'designer.setter': { path: ['label'], source: 'adapter' } },
               conditions: {
                 visible: {
@@ -169,7 +171,13 @@ describe('designer compiler', () => {
     const field = Array.isArray(sectionSlots?.default) ? sectionSlots.default[0] : undefined
     expect(field).toMatchObject({
       component: 'input',
-      extensions: { 'designer.setter': { path: ['label'], source: 'adapter' } },
+      extensions: {
+        'designer.setter': { path: ['label'], source: 'adapter' },
+        'mx.low-code': {
+          events: { 'update:modelValue': [{ action: 'audit' }] },
+          bindings: { value: { source: 'profile.email' } },
+        },
+      },
       field: 'email',
       requiredMessage: 'Email is required',
       valueProp: 'modelValue',

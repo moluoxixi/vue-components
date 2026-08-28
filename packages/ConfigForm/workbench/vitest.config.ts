@@ -1,6 +1,8 @@
+import Vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  plugins: [Vue()],
   test: {
     include: ['src/**/__tests__/**/*.test.ts'],
   },

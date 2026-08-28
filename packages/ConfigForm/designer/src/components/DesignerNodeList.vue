@@ -3,6 +3,7 @@ import type { DesignerDropTarget } from '../history'
 import type { DesignerFormSettings, DesignerNode } from '../document'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerNodeAction } from './types'
+import type { DesignerSelectionMode } from '../composables'
 import type { DesignerMaterialSlotDefinition, DesignerRegistry } from '../registry'
 import type { StyleValue } from 'vue'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
@@ -33,6 +34,7 @@ const props = defineProps<{
   registry: DesignerRegistry
   form?: DesignerFormSettings
   selectedId?: string
+  selectedIds?: string[]
   readonly?: boolean
   breakpoint?: ConfigFormBreakpoint
   interactive?: boolean
@@ -43,15 +45,19 @@ const props = defineProps<{
 const locale = useDesignerLocale()
 
 const emit = defineEmits<{
-  select: [nodeId: string]
+  select: [nodeId: string, mode?: DesignerSelectionMode]
   move: [nodeId: string, target: DesignerDropTarget]
   addMaterial: [materialKey: string, target: DesignerDropTarget]
   action: [action: DesignerNodeAction, nodeId: string]
   updateField: [field: string, value: unknown]
+  resize: [nodeId: string, span: number]
 }>()
 
 const listRef = ref<HTMLElement>()
+const resizeDrafts = ref<Record<string, number>>({})
 let sortable: Sortable | undefined
+let resizeCleanup: (() => void) | undefined
+let pendingPointerSelection: { nodeId: string, startedAt: number } | undefined
 
 const resolvedLayout = computed(() => resolveConfigFormLayout(
   props.form?.columns,
@@ -85,7 +91,7 @@ function nodeStyle(node: DesignerNode): StyleValue | undefined {
     return undefined
   if (props.form?.inline)
     return { flex: '0 1 auto', minWidth: 0 }
-  const span = resolveConfigFormNodeSpan(node.span, resolvedLayout.value)
+  const span = resizeDrafts.value[node.id] ?? resolveConfigFormNodeSpan(node.span, resolvedLayout.value)
   return { gridColumn: `span ${span} / span ${span}`, minWidth: 0 }
 }
 
@@ -177,7 +183,11 @@ async function createSortable(): Promise<void> {
 function handleKeydown(event: KeyboardEvent, nodeId: string): void {
   if (event.target !== event.currentTarget)
     return
-  if (event.key === 'ArrowUp') {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    emit('select', nodeId, event.shiftKey ? 'range' : (event.ctrlKey || event.metaKey) ? 'toggle' : 'replace')
+  }
+  else if (event.key === 'ArrowUp') {
     event.preventDefault()
     emit('action', 'moveBefore', nodeId)
   }
@@ -199,6 +209,61 @@ function handleKeydown(event: KeyboardEvent, nodeId: string): void {
   }
 }
 
+function handleSelect(event: MouseEvent, nodeId: string): void {
+  if (pendingPointerSelection?.nodeId === nodeId)
+    pendingPointerSelection = undefined
+  emit('select', nodeId, event.shiftKey ? 'range' : (event.ctrlKey || event.metaKey) ? 'toggle' : 'replace')
+}
+
+function preparePointerSelection(nodeId: string): void {
+  pendingPointerSelection = { nodeId, startedAt: performance.now() }
+}
+
+function handleFocus(nodeId: string): void {
+  const pointerFocus = pendingPointerSelection?.nodeId === nodeId
+    && performance.now() - pendingPointerSelection.startedAt < 500
+  if (!pointerFocus)
+    emit('select', nodeId, 'replace')
+}
+
+function beginResize(event: PointerEvent, node: DesignerNode): void {
+  if (props.readonly || !isRootGrid.value)
+    return
+  event.preventDefault()
+  event.stopPropagation()
+  resizeCleanup?.()
+  const startX = event.clientX
+  const startSpan = resolveConfigFormNodeSpan(node.span, resolvedLayout.value)
+  const width = listRef.value?.getBoundingClientRect().width ?? 1
+  const columns = formColumns.value
+  const pointerId = event.pointerId
+  const move = (moveEvent: PointerEvent): void => {
+    const delta = Math.round((moveEvent.clientX - startX) / width * columns)
+    resizeDrafts.value = { ...resizeDrafts.value, [node.id]: Math.min(columns, Math.max(1, startSpan + delta)) }
+  }
+  const finish = (finishEvent: PointerEvent): void => {
+    if (finishEvent.pointerId !== pointerId)
+      return
+    const span = resizeDrafts.value[node.id] ?? startSpan
+    resizeCleanup?.()
+    if (span !== startSpan)
+      emit('resize', node.id, span)
+  }
+  const cancel = (): void => resizeCleanup?.()
+  resizeCleanup = () => {
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', finish)
+    window.removeEventListener('pointercancel', cancel)
+    const next = { ...resizeDrafts.value }
+    delete next[node.id]
+    resizeDrafts.value = next
+    resizeCleanup = undefined
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', finish)
+  window.addEventListener('pointercancel', cancel)
+}
+
 function forwardMove(nodeId: string, target: DesignerDropTarget): void {
   emit('move', nodeId, target)
 }
@@ -215,9 +280,20 @@ function forwardUpdateField(field: string, value: unknown): void {
   emit('updateField', field, value)
 }
 
+function forwardSelect(nodeId: string, mode?: DesignerSelectionMode): void {
+  emit('select', nodeId, mode)
+}
+
+function forwardResize(nodeId: string, span: number): void {
+  emit('resize', nodeId, span)
+}
+
 watch(() => props.readonly, createSortable)
 onMounted(createSortable)
-onBeforeUnmount(destroySortable)
+onBeforeUnmount(() => {
+  destroySortable()
+  resizeCleanup?.()
+})
 </script>
 
 <template>
@@ -241,7 +317,11 @@ onBeforeUnmount(destroySortable)
       :key="node.id"
       class="mx-config-form-designer__node"
       :class="[
-        { 'is-selected': selectedId === node.id, 'is-container': node.kind === 'container' },
+        {
+          'is-selected': (selectedIds ?? (selectedId ? [selectedId] : [])).includes(node.id),
+          'is-primary': selectedId === node.id,
+          'is-container': node.kind === 'container',
+        },
         isRootGrid ? `${registry.rendererNamespace}__cell` : undefined,
       ]"
       data-designer-draggable
@@ -283,6 +363,16 @@ onBeforeUnmount(destroySortable)
           </button>
       </span>
 
+      <button
+        v-if="selectedId === node.id && isRootGrid && !readonly"
+        type="button"
+        class="mx-config-form-designer__resize-handle"
+        :aria-label="locale.t('node.resize', 'Resize node')"
+        :title="locale.t('node.resize', 'Resize node')"
+        @pointerdown="beginResize($event, node)"
+        @click.stop
+      />
+
       <div
         class="mx-config-form-designer__node-preview-shell"
         :class="{ 'is-container': node.kind === 'container' }"
@@ -290,8 +380,9 @@ onBeforeUnmount(destroySortable)
         :aria-label="locale.t('node.select', 'Select {label}', { label: node.kind === 'field' ? (node.label || node.field) : (registry.getMaterial(node.material) ? locale.materialTitle(registry.getMaterial(node.material)!) : node.material) })"
         role="group"
         tabindex="0"
-        @click.stop="emit('select', node.id)"
-        @focus="emit('select', node.id)"
+        @pointerdown.capture="preparePointerSelection(node.id)"
+        @click.stop="handleSelect($event, node.id)"
+        @focus="handleFocus(node.id)"
         @keydown="handleKeydown($event, node.id)"
       >
         <DesignerNodePreview
@@ -314,17 +405,19 @@ onBeforeUnmount(destroySortable)
               :registry="registry"
               :form="form"
               :selected-id="selectedId"
+              :selected-ids="selectedIds"
               :readonly="readonly"
               :breakpoint="breakpoint"
               :interactive="interactive"
               :model="model"
               :reaction-props="reactionProps"
               :reaction-states="reactionStates"
-              @select="emit('select', $event)"
+              @select="forwardSelect"
               @move="forwardMove"
               @add-material="forwardAddMaterial"
               @action="forwardAction"
               @update-field="forwardUpdateField"
+              @resize="forwardResize"
             />
           </template>
         </DesignerNodePreview>
@@ -340,6 +433,7 @@ onBeforeUnmount(destroySortable)
       <span class="mx-config-form-designer__empty-slot-icon">
         <Plus :size="14" aria-hidden="true" />
       </span>
+
       <span class="mx-config-form-designer__empty-slot-label">
         {{ locale.t('canvas.dropHere', 'Drop a field here') }}
       </span>

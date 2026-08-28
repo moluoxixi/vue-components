@@ -1,24 +1,49 @@
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCompileResult } from '../compiler'
+import type { DesignerSelectionMode } from '../composables'
 import type { DesignerDiagnostic, DesignerDocument, DesignerNode } from '../document'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
 import type { DesignerLocaleOptions } from '../locale'
+import type {
+  LowCodeComponentDefinition,
+  LowCodeComponentRegistry,
+  LowCodeNode,
+  LowCodePageModel,
+  ModelOperation,
+} from '../model'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 
 export interface ConfigFormDesignerProps {
   document: DesignerDocument
   registry: DesignerRegistry
+  model?: LowCodePageModel
+  modelRegistry?: LowCodeComponentRegistry
+  commandControl?: DesignerCommandControl
+  historyControl?: DesignerHistoryControl
   locale?: DesignerLocaleOptions
   historyLimit?: number
   readonly?: boolean
 }
 
+export interface DesignerCommandControl {
+  apply: (command: DesignerCommand, document: DesignerDocument) => boolean
+}
+
+export interface DesignerHistoryControl {
+  canUndo: boolean
+  canRedo: boolean
+  undo: () => boolean
+  redo: () => boolean
+}
+
 export interface ConfigFormDesignerEmits {
   (event: 'update:document', document: DesignerDocument): void
   (event: 'command', command: DesignerCommand, document: DesignerDocument): void
+  (event: 'modelOperation', operation: ModelOperation): void
   (event: 'diagnostics', diagnostics: DesignerDiagnostic[]): void
   (event: 'selectionChange', nodeId: string | undefined): void
+  (event: 'selectionSetChange', nodeIds: string[], primaryId: string | undefined): void
   (event: 'preview', result: DesignerCompileResult): void
   (event: 'import', document: DesignerDocument): void
   (event: 'export', json: string): void
@@ -27,9 +52,14 @@ export interface ConfigFormDesignerEmits {
 export type DesignerNodeAction = 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'remove'
 
 export interface DesignerToolbarScope {
+  breakpoint: ConfigFormBreakpoint
   canUndo: boolean
   canRedo: boolean
+  canEditSelection: boolean
   readonly: boolean
+  copySelection: () => void
+  removeSelection: () => void
+  selectBreakpoint: (breakpoint: ConfigFormBreakpoint) => void
   undo: () => void
   redo: () => void
   preview: () => void
@@ -46,7 +76,8 @@ export interface DesignerPaletteScope {
 export interface DesignerCanvasScope {
   document: DesignerDocument
   selectedId: string | undefined
-  select: (nodeId: string | undefined) => void
+  selectedIds: string[]
+  select: (nodeId: string | undefined, mode?: DesignerSelectionMode) => void
   move: (nodeId: string, target: DesignerDropTarget) => void
   breakpoint: ConfigFormBreakpoint
   interactive: boolean
@@ -58,8 +89,11 @@ export interface DesignerCanvasScope {
 export interface DesignerPropertiesScope {
   document: DesignerDocument
   node: DesignerNode | undefined
+  nodes: DesignerNode[]
   material: DesignerMaterialDefinition | undefined
   diagnostics: DesignerDiagnostic[]
+  modelNodes: LowCodeNode[]
+  componentDefinition: LowCodeComponentDefinition | undefined
 }
 
 export interface ConfigFormDesignerSlots {
@@ -73,9 +107,11 @@ export interface ConfigFormDesignerSlots {
 
 export interface ConfigFormDesignerExpose {
   dispatch: (command: DesignerCommand) => boolean
+  performNodeAction: (action: DesignerNodeAction, nodeId: string) => boolean
   undo: () => boolean
   redo: () => boolean
-  select: (nodeId?: string) => void
+  select: (nodeId?: string, mode?: DesignerSelectionMode) => void
+  selectBreakpoint: (breakpoint: ConfigFormBreakpoint) => void
   preview: () => DesignerCompileResult
   importDocument: (input: unknown) => boolean
   exportDocument: () => string

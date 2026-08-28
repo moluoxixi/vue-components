@@ -601,6 +601,34 @@
   box-shadow: 0 0 0 6px var(--mx-designer-surface);
 }
 
+.mx-config-form-designer__node.is-selected:not(.is-primary)::after {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--mx-designer-accent) 72%, transparent);
+}
+
+.mx-config-form-designer__resize-handle {
+  position: absolute;
+  z-index: 110;
+  top: 50%;
+  right: -9px;
+  width: 12px;
+  height: 34px;
+  padding: 0;
+  background: var(--mx-designer-surface);
+  border: 2px solid var(--mx-designer-accent);
+  border-radius: 3px;
+  cursor: ew-resize;
+  transform: translateY(-50%);
+}
+
+.mx-config-form-designer__resize-handle::after {
+  position: absolute;
+  inset: 6px 3px;
+  border-left: 1px solid var(--mx-designer-accent);
+  border-right: 1px solid var(--mx-designer-accent);
+  content: "";
+}
+
 .mx-config-form-designer__empty-slot-label {
   position: relative;
   z-index: 1;

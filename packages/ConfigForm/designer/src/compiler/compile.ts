@@ -118,10 +118,18 @@ function diagnoseDefaultRules(
 }
 
 function compileNodeBase(node: DesignerNode, component: ConfigFormRendererNode['component']) {
+  const lowCodeMetadata = {
+    ...(node.events && Object.keys(node.events).length > 0 ? { events: node.events } : {}),
+    ...(node.bindings && Object.keys(node.bindings).length > 0 ? { bindings: node.bindings } : {}),
+  }
+  const extensions = {
+    ...(node.extensions ?? {}),
+    ...(Object.keys(lowCodeMetadata).length > 0 ? { 'mx.low-code': lowCodeMetadata } : {}),
+  }
   return {
     component,
     ...(node.props ? { props: cloneDesignerJsonValue(node.props) } : {}),
-    ...(node.extensions ? { extensions: cloneDesignerJsonValue(node.extensions) } : {}),
+    ...(Object.keys(extensions).length > 0 ? { extensions: cloneDesignerJsonValue(extensions) } : {}),
     ...(node.reactions
       ? { reactions: cloneDesignerJsonValue(node.reactions as never) }
       : {}),

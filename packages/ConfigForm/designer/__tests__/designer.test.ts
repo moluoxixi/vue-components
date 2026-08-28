@@ -7,7 +7,14 @@ import type {
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
-import { ConfigFormDesigner, createDesignerLocale, createDesignerRegistry, designerDiagnostic } from '../index'
+import {
+  ConfigFormDesigner,
+  createDesignerLocale,
+  createDesignerRegistry,
+  createLowCodeComponentRegistry,
+  designerDiagnostic,
+  designerDocumentToConfigModel,
+} from '../index'
 
 const sortableMock = vi.hoisted(() => ({
   create: vi.fn((element: HTMLElement, options: {
@@ -384,6 +391,39 @@ describe('config form designer', () => {
       'data-material': 'element.input',
       'data-node-kind': 'field',
     })
+  })
+
+  it('generates registered event and binding controls that emit model operations', async () => {
+    const document = twoFieldDocument()
+    const modelRegistry = createLowCodeComponentRegistry(registry)
+    const model = designerDocumentToConfigModel(document, { id: 'page', name: 'Page' })
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document, model, modelRegistry, registry },
+    })
+
+    await wrapper.get('[data-node-id="first"] [data-focus-node-id="first"]').trigger('click')
+    await wrapper.get('[data-property-tab="events"]').trigger('click')
+    const eventInput = wrapper.get('[role="tabpanel"]:not([hidden]) input[aria-label="Value change"]')
+    await eventInput.setValue('audit, notify')
+    await eventInput.trigger('blur')
+    await flushPromises()
+
+    expect(wrapper.emitted('modelOperation')?.at(-1)).toEqual([{
+      type: 'updateEvents',
+      nodeId: 'first',
+      events: { input: [{ action: 'audit' }, { action: 'notify' }] },
+    }])
+
+    await wrapper.get('[data-property-tab="bindings"]').trigger('click')
+    const bindingInput = wrapper.get('[role="tabpanel"]:not([hidden]) input[aria-label="Value"]')
+    await bindingInput.setValue('profile.first')
+    await bindingInput.trigger('blur')
+
+    expect(wrapper.emitted('modelOperation')?.at(-1)).toEqual([{
+      type: 'updateBindings',
+      nodeId: 'first',
+      bindings: { value: { source: 'profile.first' } },
+    }])
   })
 
   it('uses container width for narrow workspace views and disconnects its observer', async () => {
@@ -970,6 +1010,120 @@ describe('config form designer', () => {
     await wrapper.get('button[aria-label="Preview form"]').trigger('click')
     expect(wrapper.get('[role="dialog"]').attributes('aria-label')).toBe('Form preview')
     expect(wrapper.emitted('preview')).toHaveLength(1)
+  })
+
+  it('preserves modifier multi-selection when pointer focus precedes click', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: twoFieldDocument(), registry },
+    })
+    await flushPromises()
+
+    const first = wrapper.get('[data-focus-node-id="first"]')
+    const second = wrapper.get('[data-focus-node-id="second"]')
+    await first.trigger('click')
+    await second.trigger('pointerdown', { ctrlKey: true })
+    await second.trigger('focus')
+    await second.trigger('click', { ctrlKey: true })
+
+    expect(wrapper.get('[data-node-id="first"]').classes()).toContain('is-selected')
+    expect(wrapper.get('[data-node-id="second"]').classes()).toContain('is-selected')
+    expect(wrapper.emitted('selectionSetChange')?.at(-1)).toEqual([['first', 'second'], 'second'])
+  })
+
+  it('commits compatible multi-selection properties as one batch command', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: twoFieldDocument(), registry },
+    })
+    const exposed = wrapper.vm as unknown as ConfigFormDesignerExpose
+    exposed.select('first')
+    exposed.select('second', 'toggle')
+    await nextTick()
+
+    expect(wrapper.get('.mx-config-form-designer__property-heading strong').text()).toBe('2 selected')
+    const placeholder = wrapper.get('input[aria-label="Placeholder"]')
+    await placeholder.setValue('Shared placeholder')
+    await placeholder.trigger('blur')
+
+    expect(wrapper.emitted('command')?.at(-1)?.[0]).toEqual({
+      type: 'batch',
+      commands: [
+        { type: 'updateNodePath', nodeId: 'first', path: ['props', 'placeholder'], value: 'Shared placeholder' },
+        { type: 'updateNodePath', nodeId: 'second', path: ['props', 'placeholder'], value: 'Shared placeholder' },
+      ],
+    })
+  })
+
+  it('copies and moves a multi-selection as atomic batch commands', async () => {
+    const document = twoFieldDocument()
+    document.nodes.push({ id: 'third', kind: 'field', material: 'element.input', field: 'third' })
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document, registry },
+    })
+    const exposed = wrapper.vm as unknown as ConfigFormDesignerExpose
+    exposed.select('first')
+    exposed.select('second', 'toggle')
+
+    expect(exposed.performNodeAction('moveAfter', 'second')).toBe(true)
+    expect(wrapper.emitted('command')?.at(-1)?.[0]).toMatchObject({
+      type: 'batch',
+      commands: [
+        { type: 'moveNode', nodeId: 'second', target: { parentId: null, index: 2 } },
+        { type: 'moveNode', nodeId: 'first', target: { parentId: null, index: 1 } },
+      ],
+    })
+    expect(lastDocument(wrapper).nodes.map(node => node.id)).toEqual(['third', 'first', 'second'])
+
+    expect(exposed.performNodeAction('copy', 'second')).toBe(true)
+    const copyCommand = wrapper.emitted('command')?.at(-1)?.[0]
+    expect(copyCommand).toMatchObject({
+      type: 'batch',
+      commands: [
+        { type: 'copyNode', nodeId: 'second' },
+        { type: 'copyNode', nodeId: 'first' },
+      ],
+    })
+  })
+
+  it('routes keyboard history through an external model history control', async () => {
+    const undo = vi.fn(() => true)
+    const redo = vi.fn(() => true)
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: twoFieldDocument(),
+        registry,
+        historyControl: { canUndo: true, canRedo: true, undo, redo },
+      },
+    })
+
+    await wrapper.get('.mx-config-form-designer').trigger('keydown', { key: 'z', ctrlKey: true })
+    await wrapper.get('.mx-config-form-designer').trigger('keydown', { key: 'z', ctrlKey: true, shiftKey: true })
+    expect(undo).toHaveBeenCalledOnce()
+    expect(redo).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the projected document unchanged when a controlled model command is rejected', () => {
+    const apply = vi.fn(() => false)
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        commandControl: { apply },
+        document: twoFieldDocument(),
+        registry,
+      },
+    })
+    const exposed = wrapper.vm as unknown as ConfigFormDesignerExpose
+
+    expect(exposed.dispatch({
+      type: 'updateNode',
+      nodeId: 'first',
+      changes: { label: 'Rejected label' },
+    })).toBe(false)
+    expect(apply).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'updateNode', nodeId: 'first' }),
+      expect.objectContaining({ nodes: [expect.objectContaining({ label: 'Rejected label' }), expect.anything()] }),
+    )
+    expect(wrapper.emitted('update:document')).toBeUndefined()
+    expect(wrapper.emitted('command')).toBeUndefined()
+    expect(JSON.parse(exposed.exportDocument()).nodes[0]).not.toHaveProperty('label')
   })
 
   it('keeps dialog focus contained and restores it after Escape', async () => {

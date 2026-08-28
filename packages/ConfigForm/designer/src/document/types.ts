@@ -6,6 +6,8 @@ import type { DESIGNER_DOCUMENT_VERSION } from '../constants'
 
 export type DesignerJsonValue = RuleJsonValue
 export interface DesignerJsonObject { [key: string]: DesignerJsonValue }
+export interface DesignerRegisteredEventAction extends DesignerJsonObject { action: string }
+export interface DesignerRegisteredBinding extends DesignerJsonObject { source: string }
 export type DesignerNodeKind = 'field' | 'container'
 
 export interface DesignerFormSettings {
@@ -22,6 +24,8 @@ export interface DesignerNodeBase {
   id: string
   material: string
   props?: DesignerJsonObject
+  events?: Record<string, DesignerRegisteredEventAction[]>
+  bindings?: Record<string, DesignerRegisteredBinding>
   /** 不透传给真实组件的可序列化扩展元数据。 */
   extensions?: DesignerJsonObject
   span?: number

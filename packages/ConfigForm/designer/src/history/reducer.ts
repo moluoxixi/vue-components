@@ -360,6 +360,26 @@ function reduceReplace(
   return finalizeCandidate(document, command.document, registry)
 }
 
+function reduceBatch(
+  document: DesignerDocument,
+  command: Extract<DesignerCommand, { type: 'batch' }>,
+  registry: DesignerRegistry,
+): DesignerReduceResult {
+  if (command.commands.length === 0)
+    return unchanged(document)
+  let candidate = document
+  for (const child of command.commands) {
+    const result = reduceDesignerCommand(candidate, child, registry)
+    if (!result.changed) {
+      return unchanged(document, result.diagnostics.length > 0
+        ? result.diagnostics
+        : [designerDiagnostic('DESIGNER_COMMAND_BATCH_NOOP', 'Every command in a batch must change the document')])
+    }
+    candidate = result.document
+  }
+  return { document: candidate, changed: true, diagnostics: [] }
+}
+
 export function reduceDesignerCommand(
   document: DesignerDocument,
   command: DesignerCommand,
@@ -374,5 +394,6 @@ export function reduceDesignerCommand(
     case 'updateNodePath': return reduceUpdatePath(document, command, registry)
     case 'updateForm': return reduceUpdateForm(document, command, registry)
     case 'replaceDocument': return reduceReplace(document, command, registry)
+    case 'batch': return reduceBatch(document, command, registry)
   }
 }

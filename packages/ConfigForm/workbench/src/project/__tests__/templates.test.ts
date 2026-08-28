@@ -30,6 +30,15 @@ describe('workspace templates', () => {
       kind: 'text',
       language: 'json',
     })
+    const elementModel = JSON.parse((element.files[normalizeProjectPath('src/form.designer.json')] as { content: string }).content)
+    expect(elementModel).toMatchObject({
+      id: 'element-profile-fixture',
+      name: 'element-profile fixture',
+      version: 1,
+    })
+    expect(elementModel.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ component: 'element.input', events: {}, bindings: {} }),
+    ]))
     const elementConfig = (element.files[normalizeProjectPath('src/form.config.ts')] as { content: string }).content
     const antdConfig = (antd.files[normalizeProjectPath('src/form.config.ts')] as { content: string }).content
     expect(element.manifest.generatedFormModule).toBe(normalizeProjectPath('src/form.config.ts'))

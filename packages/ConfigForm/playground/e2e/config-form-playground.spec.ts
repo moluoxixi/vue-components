@@ -753,14 +753,14 @@ test.describe('ConfigForm visual designer', () => {
     const responsiveSettings = properties.getByLabel('Responsive layout')
     const tabletSettings = responsiveSettings.locator('.mx-config-form-designer__responsive-breakpoint').filter({ hasText: 'Tablet' })
     await expect(tabletSettings.getByRole('switch', { name: 'Tablet layout', exact: true })).toHaveAttribute('aria-checked', 'true')
-    await canvas.getByRole('button', { name: 'Tablet', exact: true }).click()
+    await toolbar.getByRole('button', { name: 'Tablet', exact: true }).click()
     await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(12)
 
     const mobileSettings = responsiveSettings.locator('.mx-config-form-designer__responsive-breakpoint').filter({ hasText: 'Mobile' })
     await expect(mobileSettings.getByRole('switch', { name: 'Mobile layout', exact: true })).toHaveAttribute('aria-checked', 'true')
-    await canvas.getByRole('button', { name: 'Mobile', exact: true }).click()
+    await toolbar.getByRole('button', { name: 'Mobile', exact: true }).click()
     await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(1)
-    await canvas.getByRole('button', { name: 'Desktop', exact: true }).click()
+    await toolbar.getByRole('button', { name: 'Desktop', exact: true }).click()
     await expect.poll(() => rootList.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(24)
 
     const columnsSetter = formSetters.filter({ hasText: 'Columns' })
@@ -870,12 +870,13 @@ test.describe('ConfigForm visual designer', () => {
       elements.map(element => (element as HTMLElement).dataset.nodeId)
     ))
     const sectionNode = canvas.locator('[data-node-id="designer-section"]')
+    const cardNode = canvas.locator('[data-node-id="designer-card"]')
     await sectionNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
     await expectSingleSelectionFrameMatchesNode(sectionNode)
     await dragSortableItem(
       page,
       sectionNode.locator(':scope > .mx-config-form-designer__node-actions [data-drag-handle]'),
-      rootList,
+      cardNode,
       'vertical',
     )
     await expect.poll(() => rootList.locator(':scope > [data-node-id]').evaluateAll(elements => (

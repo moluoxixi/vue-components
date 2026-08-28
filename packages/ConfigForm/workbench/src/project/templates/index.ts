@@ -8,7 +8,7 @@ import {
   elementProfileTemplate,
 } from './create-template'
 
-export { createWorkspaceTemplateRegistry } from './create-template'
+export { createWorkspaceTemplateRegistry, formatWorkspaceAppComponent } from './create-template'
 export type { WorkspaceTemplate, WorkspaceTemplateInput } from './types'
 
 export const BUILT_IN_WORKSPACE_TEMPLATES = createWorkspaceTemplateRegistry([

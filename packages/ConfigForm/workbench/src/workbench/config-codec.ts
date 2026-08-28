@@ -2,10 +2,12 @@ import type {
   DesignerDiagnostic,
   DesignerDocument,
   DesignerNode,
+  LowCodeComponentRegistry,
+  LowCodePageModel,
 } from '@moluoxixi/config-form-designer'
 import type { WorkspaceAdapter } from '../project'
 import { parse } from '@babel/parser'
-import { parseDesignerDocument } from '@moluoxixi/config-form-designer'
+import { configModelToDesignerDocument, parseDesignerDocument } from '@moluoxixi/config-form-designer'
 
 export const DESIGNER_EXTENSION_KEY = 'mx.config-form-designer'
 
@@ -40,7 +42,9 @@ interface AstNode {
 }
 
 interface DesignerMetadata {
+  bindings?: unknown
   conditions?: unknown
+  events?: unknown
   hasDefaultValue?: unknown
   id?: unknown
   material?: unknown
@@ -227,10 +231,15 @@ function inferredMaterial(component: unknown, adapter: WorkspaceAdapter, kind: D
   return `${prefix}.${MATERIAL_BY_COMPONENT[component]}`
 }
 
-function initialValue(node: Extract<DesignerNode, { kind: 'field' }>): unknown {
+type RuntimeComponentResolver = (material: string, kind: DesignerNode['kind']) => string
+
+function initialValue(
+  node: Extract<DesignerNode, { kind: 'field' }>,
+  resolveRuntimeComponent: RuntimeComponentResolver,
+): unknown {
   if (node.defaultValue !== undefined)
     return node.defaultValue
-  const component = runtimeComponent(node.material, node.kind)
+  const component = resolveRuntimeComponent(node.material, node.kind)
   if (component === 'boolean')
     return false
   if (component === 'number')
@@ -244,15 +253,17 @@ function designerMetadata(node: DesignerNode): DesignerMetadata {
   return {
     id: node.id,
     material: node.material,
+    ...(node.events === undefined ? {} : { events: node.events }),
+    ...(node.bindings === undefined ? {} : { bindings: node.bindings }),
     ...('field' in node ? { hasDefaultValue: node.defaultValue !== undefined } : {}),
     ...(node.conditions === undefined ? {} : { conditions: node.conditions }),
     ...('validation' in node && node.validation !== undefined ? { validation: node.validation } : {}),
   }
 }
 
-function runtimeNode(node: DesignerNode): Record<string, unknown> {
+function runtimeNode(node: DesignerNode, resolveRuntimeComponent: RuntimeComponentResolver): Record<string, unknown> {
   const base: Record<string, unknown> = {
-    component: runtimeComponent(node.material, node.kind),
+    component: resolveRuntimeComponent(node.material, node.kind),
     ...(node.props === undefined ? {} : { props: node.props }),
     ...(node.span === undefined ? {} : { span: node.span }),
     ...(node.reactions === undefined ? {} : { reactions: node.reactions }),
@@ -265,7 +276,10 @@ function runtimeNode(node: DesignerNode): Record<string, unknown> {
     return {
       ...base,
       slots: Object.fromEntries(
-        Object.entries(node.slots).map(([name, children]) => [name, children.map(runtimeNode)]),
+        Object.entries(node.slots).map(([name, children]) => [
+          name,
+          children.map(child => runtimeNode(child, resolveRuntimeComponent)),
+        ]),
       ),
     }
   }
@@ -347,19 +361,22 @@ function formatValueModel(values: Record<string, unknown>): string {
   return `export interface PageFormValues {\n${entries.map(([key, value]) => `  ${quoteKey(key)}: ${valueType(value)}`).join('\n')}\n}`
 }
 
-export function formatDesignerConfig(document: DesignerDocument): string {
+function formatDesignerConfigWithResolver(
+  document: DesignerDocument,
+  resolveRuntimeComponent: RuntimeComponentResolver,
+): string {
   const values: Record<string, unknown> = {}
   const collectValues = (nodes: DesignerNode[]): void => {
     nodes.forEach((node) => {
       if (node.kind === 'field')
-        values[node.field] = initialValue(node)
+        values[node.field] = initialValue(node, resolveRuntimeComponent)
       else
         Object.values(node.slots).forEach(collectValues)
     })
   }
   collectValues(document.nodes)
 
-  const fields = document.nodes.map(runtimeNode)
+  const fields = document.nodes.map(node => runtimeNode(node, resolveRuntimeComponent))
   const fieldsSource = fields.length === 0
     ? '[]'
     : `[\n${fields.map(field => `  ${formatDefineField(field, 1)}`).join(',\n')}\n]`
@@ -375,6 +392,25 @@ export const initialValues: PageFormValues = ${formatStaticValue(values)}
 
 export const fields = ${fieldsSource}
 `
+}
+
+export function formatDesignerConfig(document: DesignerDocument): string {
+  return formatDesignerConfigWithResolver(document, runtimeComponent)
+}
+
+export function formatLowCodePageConfig(
+  model: LowCodePageModel,
+  registry: LowCodeComponentRegistry,
+): string {
+  return formatDesignerConfigWithResolver(
+    configModelToDesignerDocument(model),
+    (component) => {
+      const definition = registry.get(component)
+      if (!definition?.sourceComponent)
+        throw new Error(`Component "${component}" is not registered for source generation.`)
+      return definition.sourceComponent
+    },
+  )
 }
 
 function metadataFor(field: Record<string, unknown>): DesignerMetadata {
@@ -413,6 +449,8 @@ function projectRuntimeNode(field: unknown, adapter: WorkspaceAdapter, initialVa
     id: typeof metadata.id === 'string' && metadata.id ? metadata.id : generatedNodeId(field, path),
     kind,
     material,
+    ...(isRecord(metadata.events) ? { events: metadata.events } : {}),
+    ...(isRecord(metadata.bindings) ? { bindings: metadata.bindings } : {}),
     ...(isRecord(field.props) ? { props: field.props } : {}),
     ...(typeof field.span === 'number' ? { span: field.span } : {}),
     ...(Array.isArray(field.reactions) ? { reactions: field.reactions } : {}),

@@ -1,1 +1,15 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"Design-first Model、Registry、Canvas 与 Inspector 主要落在 Designer 包。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"复用 Designer 三档工作区、焦点、拖拽与面板契约。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"统一 Component Registry 必须保持 Core/Runtime material 边界。"}
+{"file":".trellis/spec/playground/frontend/index.md","reason":"Workbench IDE Shell、只读 viewer 与 Preview 属于 playground 前端层。"}
+{"file":".trellis/spec/playground/frontend/state-management.md","reason":"Config Model Store 是唯一可变页面结构状态。"}
+{"file":".trellis/spec/playground/frontend/type-safety.md","reason":"Model、Operation、Registry 与生成器必须使用严格联合类型。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"数据流跨越 codec、store、repository、preview runtime 与 Vue shell。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"需复用既有 codec、repository revision 和 preview arbitration，避免复制契约。"}
+{"file":".trellis/tasks/08-27-config-form-workbench-three-mode/research/flow-engine-library-evaluation.md","reason":"流程引擎继续延期，仅保留 events/bindings 白名单边界。"}
+{"file":"packages/ConfigForm/designer/src/model/index.ts","reason":"Config Model、Component Registry、Operation reducer、history 与 Designer 兼容投影的公共入口。"}
+{"file":"packages/ConfigForm/designer/src/components/ConfigFormDesigner.vue","reason":"受控 Model 提交、多选、Resize、响应式三栏与 Registry-driven Inspector 集成。"}
+{"file":"packages/ConfigForm/workbench/src/App.vue","reason":"Design-first IDE Shell、唯一 Config Model history、Preview 分屏和只读导出入口。"}
+{"file":"packages/ConfigForm/workbench/src/workbench/config-codec.ts","reason":"从 Config Model 与统一 Registry 确定性生成真实 defineFields TypeScript 源码。"}
+{"file":"packages/ConfigForm/workbench/src/components/PreviewRuntimeBoundary.vue","reason":"将 Preview 运行时异常投影为明确诊断，并按 Model revision 重试。"}
+{"file":"packages/ConfigForm/workbench/src/project/templates/create-template.ts","reason":"双 adapter 模板从 Config Model 与 Registry 生成可安装、可类型检查、可构建项目。"}

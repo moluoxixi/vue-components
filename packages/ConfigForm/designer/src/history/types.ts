@@ -33,6 +33,7 @@ export type DesignerCommand
     | { type: 'updateNodePath', nodeId: string, path: string[], value: unknown }
     | { type: 'updateForm', changes: DesignerFormChanges }
     | { type: 'replaceDocument', document: unknown }
+    | { type: 'batch', commands: DesignerCommand[] }
 
 export interface DesignerReduceResult {
   document: DesignerDocument

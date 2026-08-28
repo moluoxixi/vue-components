@@ -42,11 +42,13 @@ interface Props {
   moduleNames?: readonly string[]
   modelValue: string
   readonly?: boolean
+  theme?: 'dark' | 'light'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   language: 'plaintext',
   readonly: false,
+  theme: 'dark',
 })
 const emit = defineEmits<{
   save: []
@@ -780,7 +782,7 @@ onMounted(() => {
     },
     suggestOnTriggerCharacters: true,
     tabSize: 2,
-    theme: 'vs-dark',
+    theme: props.theme === 'dark' ? 'vs-dark' : 'vs',
     wordBasedSuggestions: 'currentDocument',
   })
   codeEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => emit('save'))
@@ -821,6 +823,11 @@ watch(
   value => codeEditor?.updateOptions({ readOnly: value }),
 )
 
+watch(
+  () => props.theme,
+  value => monaco.editor.setTheme(value === 'dark' ? 'vs-dark' : 'vs'),
+)
+
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   changeSubscription?.dispose()
@@ -832,7 +839,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="workspace-code-editor-shell">
+  <div class="workspace-code-editor-shell" :data-theme="theme" role="region" aria-label="Code viewer" :aria-readonly="readonly">
     <div ref="container" class="workspace-code-editor" />
     <footer class="workspace-code-editor-status" aria-label="Editor status">
       <span>Ln {{ cursorLine }}, Col {{ cursorColumn }}</span>
@@ -845,6 +852,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .workspace-code-editor-shell {
+  --editor-shell-bg: #1e1e1e;
+  --editor-status-bg: #181d23;
+  --editor-status-border: #30363d;
+  --editor-status-text: #c9d1d9;
   display: grid;
   width: 100%;
   height: 100%;
@@ -852,7 +863,14 @@ onBeforeUnmount(() => {
   min-height: 0;
   grid-template-rows: minmax(0, 1fr) 23px;
   overflow: hidden;
-  background: #1e1e1e;
+  background: var(--editor-shell-bg);
+}
+
+.workspace-code-editor-shell[data-theme="light"] {
+  --editor-shell-bg: #fff;
+  --editor-status-bg: #f6f8fa;
+  --editor-status-border: #d0d7de;
+  --editor-status-text: #57606a;
 }
 
 .workspace-code-editor {
@@ -861,7 +879,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #1e1e1e;
+  background: var(--editor-shell-bg);
 }
 
 .workspace-code-editor-status {
@@ -872,9 +890,9 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: flex-end;
   gap: 15px;
-  color: #c9d1d9;
-  border-top: 1px solid #30363d;
-  background: #181d23;
+  color: var(--editor-status-text);
+  border-top: 1px solid var(--editor-status-border);
+  background: var(--editor-status-bg);
   font-size: 11px;
   line-height: 23px;
   white-space: nowrap;

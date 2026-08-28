@@ -20,7 +20,6 @@
     "@moluoxixi/config-form-element": "workspace:*",
     "@moluoxixi/indexed-db": "workspace:*",
     "@vue/compiler-sfc": "catalog:dev",
-    "@vue/repl": "catalog:",
     "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "fflate": "catalog:",
@@ -31,7 +30,9 @@
   "devDependencies": {
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
+    "@vue/test-utils": "catalog:dev",
     "fake-indexeddb": "catalog:dev",
+    "happy-dom": "catalog:dev",
     "sass": "catalog:dev",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",

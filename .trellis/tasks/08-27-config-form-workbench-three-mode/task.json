@@ -1,9 +1,9 @@
 {
   "id": "config-form-workbench-three-mode",
   "name": "config-form-workbench-three-mode",
-  "title": "Config、设计器与 Source 同步",
-  "description": "建立 Config、拖拽设计器与完整项目 Source 之间的解析、同步、草稿和冲突模型。",
-  "status": "planning",
+  "title": "Design-first 低代码 IDE 重构",
+  "description": "以 Config Model 为唯一数据源，重构低代码 IDE 的三栏设计工作区、组件注册表、模型操作、真实运行时预览和只读源码视图。",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "playground",

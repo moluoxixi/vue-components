@@ -1,1 +1,17 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"核对 Model、Registry、Canvas、Inspector 与 Designer 交互契约。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"核对拖拽、响应式面板、焦点与双 adapter 回归。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"核对统一 Registry 没有分叉 Runtime/Inspector/Generator 元数据。"}
+{"file":".trellis/spec/playground/frontend/index.md","reason":"核对 Workbench IDE Shell、Preview 和只读 viewer 质量入口。"}
+{"file":".trellis/spec/playground/frontend/quality-guidelines.md","reason":"执行前端 lint、测试、构建与回归审查。"}
+{"file":".trellis/spec/playground/frontend/type-safety.md","reason":"核查 Model Operation、Registry、diagnostic 和 generator 分支穷尽。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核查 project 到 provider、repository、preview、UI 的往返数据流。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"核查新 Store/Provider 是否复用既有 codec、repository 与 preview 能力。"}
+{"file":".trellis/tasks/08-27-config-form-workbench-three-mode/research/flow-engine-library-evaluation.md","reason":"确认延期的流程引擎、任意源码反编译和用户函数没有进入本轮实现。"}
+{"kind":"verification","command":"pnpm --dir packages/ConfigForm/designer test","exitCode":0,"result":"11 files, 112 tests passed","covers":["AC1","AC2","AC3","AC5"]}
+{"kind":"verification","command":"pnpm --dir packages/ConfigForm/designer typecheck && pnpm --dir packages/ConfigForm/designer build","exitCode":0,"result":"typecheck and production build passed","covers":["AC1","AC2","AC3"]}
+{"kind":"verification","command":"pnpm --dir packages/ConfigForm/workbench test","exitCode":0,"result":"8 files, 59 tests passed","covers":["AC1","AC3","AC6","AC7","AC9"]}
+{"kind":"verification","command":"pnpm --dir packages/ConfigForm/workbench typecheck && pnpm --dir packages/ConfigForm/workbench build","exitCode":0,"result":"typecheck and production build passed","covers":["AC3","AC6","AC7"]}
+{"kind":"verification","command":"pnpm --dir packages/ConfigForm/workbench verify:templates","exitCode":0,"result":"Element Plus and Ant Design Vue exported projects installed, typechecked, and built","covers":["AC3","AC9"]}
+{"kind":"verification","command":"pnpm --dir packages/ConfigForm/playground typecheck && pnpm --dir packages/ConfigForm/playground test:e2e -- --grep designer|workbench","exitCode":0,"result":"typecheck passed; 8 Playwright scenarios passed","covers":["AC2","AC4","AC5","AC6","AC8"]}
+{"kind":"verification","command":"pnpm lint && git diff --check","exitCode":0,"result":"repository lint and whitespace checks passed","covers":["AC1","AC2","AC3","AC4","AC5","AC6","AC7","AC8","AC9"]}
+{"kind":"verification","command":"Browser visual QA at CSS 1440x900, 900x900, and 390x844","exitCode":0,"result":"Design/Preview surfaces, Palette/Canvas/Properties, readonly Source/Config dialogs, JSON/Tree, Light/Dark, command bars, and horizontal overflow passed; temporary viewport reset","covers":["AC4","AC5","AC6","AC7","AC8"]}
