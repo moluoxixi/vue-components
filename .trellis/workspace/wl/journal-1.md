@@ -272,3 +272,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 13: 完成 Designer 拖拽回归修复
+
+**Date**: 2026-08-28
+**Task**: 完成 Designer 拖拽回归修复
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+修复布局容器拖拽、非空列表末尾追加、日期时间控件宽度和预览默认属性；补齐 Element Plus/Ant Design Vue 全物料矩阵、Designer 单测与 10 条 Chromium E2E，并约束独立 Designer 工作区在视口内滚动。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `688b25e4` | (see git log) |
+
+### Status
+
+[OK] **Completed**

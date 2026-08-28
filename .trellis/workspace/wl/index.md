@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 12
+- **Total Sessions**: 13
 - **Last Active**: 2026-08-28
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~274 | Active |
+| `journal-1.md` | ~296 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 13 | 2026-08-28 | 完成 Designer 拖拽回归修复 | `688b25e4` | `main` |
 | 12 | 2026-08-28 | 优化低代码 IDE 暗色主题 | `09ca1cad` | `main` |
 | 11 | 2026-08-28 | 完成 Design-first 低代码 IDE 重构 | `596f441c` | `main` |
 | 10 | 2026-08-28 | 完成配置表单设计器中宽属性抽屉 | `d31cb9c7` | `main` |
