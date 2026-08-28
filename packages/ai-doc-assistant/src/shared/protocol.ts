@@ -55,7 +55,8 @@ export interface SourceRef {
   knowledgeKey?: string
 }
 
-export interface AiDocDataParts {
+// eslint-disable-next-line ts/consistent-type-definitions -- A finite object alias preserves AI SDK data-part discrimination.
+export type AiDocDataParts = {
   sources: SourceRef[]
   example: { blocks: ExampleBlock[] }
 }

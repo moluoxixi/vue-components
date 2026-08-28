@@ -45,6 +45,7 @@ Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 2
 ## 3. Contracts
 
 - Vue chat uses `@ai-sdk/vue` `useChat` with `DefaultChatTransport`. The browser sends validated `AiDocUIMessage[]`; private SSE framing and browser parsers are forbidden.
+- `AiDocDataParts` remains a finite object type alias. AI SDK v7 rejects the equivalent `interface` as `UIDataTypes`; adding a string index signature satisfies the constraint but collapses `data-sources` / `data-example` payload discrimination to `unknown`.
 - The server validates role order, text-only request history, counts, and character limits before converting UI messages to model messages. Browser data/tool parts never become prompt context.
 - Retrieval and message conversion happen before response headers. Retrieval/config/index failures return structured JSON.
 - Stream order is `data-sources` before text, then `data-example` after complete answer text, then one final `finish`.
@@ -87,6 +88,7 @@ Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 2
 
 - Router tests cover request limits/order, pre-stream JSON failures, no-match without model, disconnect abort, and sanitized stream errors.
 - UI message tests use AI SDK readers and assert sources < text < example < finish.
+- Package type-check must compile both the `UIMessage<never, AiDocDataParts>` declaration and `ChatView` tag-based payload narrowing without casts.
 - Chat tests cover submitted/streaming states, per-user done/stopped/error persistence, clear/unmount abort, partial text, and history filtering.
 - Vector tests cover dynamic dimensions, count/empty-vector errors, abort, Orama/Qdrant mismatch, persistence, restart hydrate, and stale identity.
 - Qdrant tests assert the reserved metadata point persists `schemaVersion`, `sourceHash`, and every embedding identity field; hydrate rejects missing/mismatched payloads, and search sends a `kind=document` filter.
