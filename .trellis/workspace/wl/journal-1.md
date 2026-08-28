@@ -294,3 +294,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 14: 配置化工作台嵌套设计器与导出收口
+
+**Date**: 2026-08-29
+**Task**: 配置化工作台嵌套设计器与导出收口
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+修复多层嵌套 Sortable 归属与追加落点，拖拽预览复用真实 Designer Runtime 并补半透明结构预览；完成实时 Preview latest-only gate、只读 Config defineField 查看、standalone Vue Source 文件树/ZIP 导出；补窄屏导出菜单不换行与 Config Tree 条件渲染回归，完成测试、类型检查、构建、适配器边界和浏览器冒烟验证；归档 workbench parent、project-core、live-preview、export 任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c373c743` | (see git log) |
+
+### Status
+
+[OK] **Completed**
