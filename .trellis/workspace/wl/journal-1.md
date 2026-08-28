@@ -250,3 +250,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 12: 优化低代码 IDE 暗色主题
+
+**Date**: 2026-08-28
+**Task**: 优化低代码 IDE 暗色主题
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 Workbench 与 Designer 暗色语义 token、按钮与 Inspector 状态优化；保持 Runtime/Preview 主题隔离；修复 Light 导出背景和窄 Preview 网格溢出；新增主题契约测试并完成三档浏览器验收、包级测试、类型检查与构建。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `09ca1cad` | (see git log) |
+
+### Status
+
+[OK] **Completed**

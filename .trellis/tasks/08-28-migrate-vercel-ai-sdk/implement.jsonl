@@ -1,0 +1,9 @@
+{"file":".trellis/spec/ai-provider/backend/index.md","reason":"共享 Provider 包的入口边界与开发检查索引。"}
+{"file":".trellis/spec/ai-provider/backend/provider-contracts.md","reason":"迁移配置、密钥、错误、取消、导出与发布边界时必须更新并遵守的现有契约。"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/index.md","reason":"AI 文档助手前端规范索引。"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"对话历史、流、来源、Markdown、Demo、取消和 E2E 的现有行为契约。"}
+{"file":".trellis/spec/i18n-tool/backend/index.md","reason":"i18n 工具服务端规范索引。"}
+{"file":".trellis/spec/i18n-tool/backend/local-service-safety.md","reason":"翻译输出、取消、路径、preview/apply 和密钥脱敏必须保持的安全契约。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"迁移跨 Provider、服务端协议、Vue 状态和发布边界，需要统一数据契约。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"避免在两个消费者中复制 Provider、配置和 payload 解析。"}
+{"file":".trellis/tasks/08-28-migrate-vercel-ai-sdk/research/ai-surface.md","reason":"全仓 AI 调用面、Vercel AI SDK 官方能力与迁移风险调研。"}

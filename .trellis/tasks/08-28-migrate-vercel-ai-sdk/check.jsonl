@@ -1,0 +1,5 @@
+{"file":".trellis/spec/ai-provider/backend/provider-contracts.md","reason":"核验 Provider 工厂、server/browser 导出、密钥脱敏、取消与错误契约。"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"核验 UI Message Stream 迁移后历史、停止、来源、Markdown、Demo 与 E2E 行为。"}
+{"file":".trellis/spec/i18n-tool/backend/local-service-safety.md","reason":"核验 AI 调用替换没有破坏翻译、路径、preview/apply 与断连安全边界。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核验类型、协议和状态在共享包、服务端与 UI 间一致。"}
+{"file":".trellis/tasks/08-28-migrate-vercel-ai-sdk/research/ai-surface.md","reason":"按已发现的完整迁移面执行反向检索和遗漏检查。"}
