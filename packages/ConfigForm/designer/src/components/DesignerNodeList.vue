@@ -59,6 +59,9 @@ let sortable: Sortable | undefined
 let resizeCleanup: (() => void) | undefined
 let pendingPointerSelection: { nodeId: string, startedAt: number } | undefined
 
+const designerDraggableSelector = '[data-designer-draggable]'
+const designerDropTailSelector = '[data-designer-drop-tail]'
+
 const resolvedLayout = computed(() => resolveConfigFormLayout(
   props.form?.columns,
   props.form?.fieldSpan,
@@ -120,14 +123,53 @@ function localTarget(index?: number): DesignerDropTarget {
     : { parentId: props.parentId, slot: props.slotName!, index }
 }
 
-function targetFromElement(element: HTMLElement, index?: number): DesignerDropTarget | undefined {
-  const parentId = element.dataset.parentId
+function targetListFromElement(element: HTMLElement | null | undefined): HTMLElement | undefined {
+  if (!element)
+    return undefined
+  return element.matches('[data-parent-id]')
+    ? element
+    : element.closest<HTMLElement>('[data-parent-id]') ?? undefined
+}
+
+function resolveListIndex(list: HTMLElement | null | undefined, item?: HTMLElement, fallback?: number): number | undefined {
+  if (!list)
+    return fallback
+
+  const children = [...list.children]
+  const isDraggable = (child: Element): boolean => child.matches(designerDraggableSelector)
+  const itemIndex = item ? children.indexOf(item) : -1
+  const tailIndex = children.findIndex(child => child.matches(designerDropTailSelector))
+  if (itemIndex >= 0) {
+    // Sortable's test/fallback events can report a newIndex before it has
+    // physically reordered the item. Prefer that index only while the item
+    // is still before the trailing sentinel; once it crossed the sentinel,
+    // the number of real nodes before it is the append index we need.
+    if (fallback !== undefined && (tailIndex < 0 || itemIndex < tailIndex) && fallback !== itemIndex) {
+      const maxIndex = children.filter(isDraggable).length - (item && isDraggable(item) ? 1 : 0)
+      return Math.min(Math.max(fallback, 0), maxIndex)
+    }
+    return children.slice(0, itemIndex).filter(isDraggable).length
+  }
+
+  if (tailIndex >= 0)
+    return children.slice(0, tailIndex).filter(isDraggable).length
+
+  const count = children.filter(isDraggable).length
+  return fallback === undefined ? count : Math.min(Math.max(fallback, 0), count)
+}
+
+function targetFromElement(element: HTMLElement | null | undefined, item?: HTMLElement, index?: number): DesignerDropTarget | undefined {
+  const targetList = targetListFromElement(element)
+  if (!targetList)
+    return undefined
+  const parentId = targetList.dataset.parentId
+  const resolvedIndex = resolveListIndex(targetList, item, index)
   if (parentId === undefined)
     return undefined
   if (!parentId)
-    return { parentId: null, index }
-  const slot = element.dataset.slot
-  return slot ? { parentId, slot, index } : undefined
+    return { parentId: null, index: resolvedIndex }
+  const slot = targetList.dataset.slot
+  return slot ? { parentId, slot, index: resolvedIndex } : undefined
 }
 
 function materialSlots(node: DesignerNode): DesignerMaterialSlotDefinition[] {
@@ -154,7 +196,7 @@ async function createSortable(): Promise<void> {
     return
   sortable = Sortable.create(listRef.value, {
     animation: 180,
-    draggable: '[data-designer-draggable]',
+    draggable: designerDraggableSelector,
     easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
     forceFallback: true,
     group: {
@@ -167,13 +209,15 @@ async function createSortable(): Promise<void> {
     onStart: () => setDragging(true),
     onAdd: ({ item, newIndex }) => {
       const materialKey = item.dataset.materialKey
-      if (materialKey)
-        emit('addMaterial', materialKey, localTarget(newIndex))
+      if (materialKey) {
+        const target = localTarget(resolveListIndex(listRef.value, item, newIndex))
+        emit('addMaterial', materialKey, target)
+      }
     },
     onEnd: ({ item, newIndex, to }) => {
       setDragging(false)
       const nodeId = item.dataset.nodeId
-      const target = newIndex === undefined ? undefined : targetFromElement(to, newIndex)
+      const target = targetFromElement(to, item, newIndex)
       if (nodeId && target)
         emit('move', nodeId, target)
     },
@@ -438,5 +482,12 @@ onBeforeUnmount(() => {
         {{ locale.t('canvas.dropHere', 'Drop a field here') }}
       </span>
     </li>
+    <li
+      v-else
+      class="mx-config-form-designer__drop-tail"
+      data-designer-drop-tail
+      aria-hidden="true"
+      role="presentation"
+    />
   </ol>
 </template>

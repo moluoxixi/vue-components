@@ -85,8 +85,10 @@ select {
 .designer-app {
   display: flex;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 620px;
   flex-direction: column;
+  overflow: hidden;
   background: #f3f6fa;
 }
 
@@ -200,6 +202,7 @@ select {
   display: flex;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   flex: 1 1 auto;
   padding: 16px;
 }
@@ -208,6 +211,7 @@ select {
   display: flex;
   width: 100%;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
 }
 

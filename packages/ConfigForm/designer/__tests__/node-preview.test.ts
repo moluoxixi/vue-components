@@ -46,7 +46,10 @@ const materials: DesignerMaterialDefinition[] = [
     kind: 'field',
     title: 'Alias input',
     category: 'Fields',
-    runtime: { component: 'text' },
+    runtime: {
+      component: 'text',
+      readonlyRender: ({ componentProps, value }) => `readonly:${String(value ?? '')}:${String(componentProps.placeholder ?? '')}`,
+    },
     setters: [],
     createNode: ({ id, field = 'alias' }) => ({
       id,
@@ -238,6 +241,23 @@ describe('designer node preview', () => {
     expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').classes()).toContain('mx-config-form__readonly')
     expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').text()).toBe('readonly:')
     expect(wrapper.find('input').exists()).toBe(false)
+  })
+
+  it('passes registered runtime props to readonly material renderers', () => {
+    const wrapper = mount(DesignerNodePreview, {
+      props: {
+        readonly: true,
+        registry,
+        node: {
+          id: 'alias-readonly',
+          kind: 'field',
+          material: 'test.alias',
+          field: 'alias',
+        },
+      },
+    })
+
+    expect(wrapper.get('.mx-config-form-designer__node-preview-readonly').text()).toBe('readonly::Registered placeholder')
   })
 
   it('renders custom readonly VNode content instead of stringifying it', () => {

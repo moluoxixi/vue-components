@@ -946,6 +946,57 @@ describe('config form designer', () => {
     expect(lastDocument(wrapper).nodes).toHaveLength(3)
   })
 
+  it('uses a stable trailing drop target for nested lists and append moves', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: {
+          version: 1,
+          form: {},
+          nodes: [
+            {
+              id: 'section',
+              kind: 'container',
+              material: 'element.section',
+              slots: {
+                default: [{ id: 'nested', kind: 'field', material: 'element.input', field: 'nested' }],
+              },
+            },
+            { id: 'root', kind: 'field', material: 'element.input', field: 'root' },
+          ],
+        },
+        registry,
+      },
+    })
+    await flushPromises()
+
+    const rootList = wrapper.get('.mx-config-form-designer__canvas-sheet > .mx-config-form-designer__node-list')
+    const nestedList = wrapper.get('.mx-config-form-designer__node-list[data-parent-id="section"]')
+    expect(rootList.findAll(':scope > [data-designer-drop-tail]')).toHaveLength(1)
+    expect(nestedList.findAll(':scope > [data-designer-drop-tail]')).toHaveLength(1)
+
+    const nestedSortable = sortableMock.instances.find(instance => instance.element === nestedList.element)
+    expect(nestedSortable).toBeDefined()
+    const nestedMaterial = document.createElement('button')
+    nestedMaterial.dataset.materialKey = 'element.input'
+    nestedMaterial.dataset.designerDraggable = ''
+    nestedList.element.insertBefore(nestedMaterial, nestedList.get(':scope > [data-designer-drop-tail]').element)
+    nestedSortable!.options.onAdd?.({ item: nestedMaterial, newIndex: 1 })
+    await flushPromises()
+    expect(lastDocument(wrapper).nodes[0]).toMatchObject({
+      slots: { default: [{ id: 'nested' }, { material: 'element.input', field: 'input' }] },
+    })
+
+    const refreshedRoot = [...sortableMock.instances].reverse().find(instance => instance.element.dataset.parentId === '' && instance.destroy.mock.calls.length === 0)
+    rootList.element.querySelector<HTMLElement>(':scope > [data-node-id="section"]')?.remove()
+    const sectionElement = document.createElement('li')
+    sectionElement.dataset.nodeId = 'section'
+    sectionElement.dataset.designerDraggable = ''
+    rootList.element.appendChild(sectionElement)
+    refreshedRoot!.options.onEnd?.({ item: sectionElement, newIndex: 2, to: rootList.element as HTMLElement })
+    await flushPromises()
+    expect(lastDocument(wrapper).nodes.map(node => node.id)).toEqual(['root', 'section'])
+  })
+
   it('clears palette drag state when readonly tears down Sortable instances', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       props: { document: twoFieldDocument(), registry },

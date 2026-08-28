@@ -65,6 +65,18 @@ describe('ant design vue designer materials', () => {
     expect(ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
   })
 
+  it('creates and compiles every registry material in a single regression matrix', () => {
+    const registry = createAntdVueDesignerRegistry()
+    const nodes = registry.listMaterials().map((material, index) => registry.createNode(material.key, {
+      id: `matrix-${index}`,
+      ...(material.kind === 'field' ? { field: `matrix-${index}` } : {}),
+    }))
+
+    expect(nodes).toHaveLength(registry.listMaterials().length)
+    expect(new Set(nodes.map(node => node.id)).size).toBe(nodes.length)
+    expect(compileDesignerDocument({ version: 1, form: {}, nodes }, registry)).toMatchObject({ success: true })
+  })
+
   it('uses native Ant Design Vue value and checked bindings', () => {
     const fields = ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'field')
     expect(fields.every(material => material.setters.some(setter => setter.path.join('.') === 'defaultValue'))).toBe(true)

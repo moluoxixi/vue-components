@@ -154,7 +154,7 @@ const readonlyContent = computed(() => {
   const valueProp = definition?.runtime.valueProp ?? runtimeRegistration.value?.valueProp ?? 'modelValue'
   const value = componentProps.value[valueProp]
   return definition?.runtime.readonlyRender?.({
-    componentProps: props.node.props ?? {},
+    componentProps: componentProps.value,
     model: props.model ?? {},
     node: props.node,
     value,

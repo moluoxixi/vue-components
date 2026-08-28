@@ -93,6 +93,12 @@ legacy Designer artifact (open/migrate once)
 - Source and Config are opened from the single Export menu and are read-only. Config export serializes
   `LowCodePageModel`, not the compatibility `DesignerDocument`.
 - Runtime form values belong to the Preview instance. They never update page structure.
+- Sortable DOM order is a transient projection, not a Model index. Drop target resolution must count only real
+  `[data-designer-draggable]` node elements and must ignore empty-state chrome, trailing drop sentinels, palette clones,
+  ghosts, and fallback elements. Root and nested non-empty lists keep a stable trailing drop surface so an append maps
+  to `index === siblings.length`; Model operations remain the only committed mutation.
+- Palette preview state must be cleared on pointer up, pointer cancel, Sortable end, readonly teardown, and component
+  unmount. A cancelled or rejected drag must not leave fallback DOM, a dragging class, or a selected phantom node.
 
 ## 4. Validation & Error Matrix
 
@@ -132,9 +138,14 @@ legacy Designer artifact (open/migrate once)
 - Unit: Source generation resolves every component through the supplied Registry and rejects an unregistered component.
 - Unit: DesignerDocument compatibility projection preserves supported field/container structure and default/named slot
   placement.
+- Unit: root and nested Sortable callbacks resolve append indices without counting empty-state or trailing-sentinel DOM;
+  palette cancellation clears preview/drag state without emitting a Model mutation.
 - Integration: both built-in adapter projects install, type-check, and build from generated files.
 - Browser: Components/Layers/Pages are reachable; Layers selection updates Inspector; a committed Inspector edit updates
   Canvas and the open Preview; Source/Config open only through the Export menu and remain read-only.
+- Browser: palette drops into populated Flex/Grid and other legal nested slots append to the intended parent, then the
+  Runtime Preview renders the same committed node count and order. Test helpers must bring the source and final target
+  into view before pointer movement so a viewport miss cannot masquerade as a Designer regression.
 
 ## 7. Wrong vs Correct
 

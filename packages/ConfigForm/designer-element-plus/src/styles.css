@@ -89,6 +89,10 @@
   flex: 1 1 100%;
 }
 
+.mx-element-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
+  flex: 1 1 100%;
+}
+
 .mx-config-form-designer__node-preview-shell .mx-element-flex-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
   background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
   background-repeat: repeat-x;
@@ -140,6 +144,16 @@
 
 .mx-element-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__empty-slot {
   grid-column: 1 / -1;
+}
+
+.mx-element-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
+  grid-column: 1 / -1;
+}
+
+.mx-config-form-designer__node-preview-control .el-date-editor,
+.mx-config-form-designer__node-preview-control .el-time-editor {
+  width: 100%;
+  min-width: 0;
 }
 
 .mx-config-form-designer__node-preview-shell .mx-element-grid-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {

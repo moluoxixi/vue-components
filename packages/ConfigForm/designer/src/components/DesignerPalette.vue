@@ -168,6 +168,8 @@ onBeforeUnmount(destroySortable)
             @keydown.enter.prevent="addMaterial(material.key)"
             @keydown.space.prevent="addMaterial(material.key)"
             @pointerdown="prepareMaterialPreview(material, $event)"
+            @pointerup="clearPreparedPreview"
+            @pointercancel="clearPreparedPreview"
           >
             <span class="mx-config-form-designer__palette-item-summary">
               <component :is="material.icon" v-if="material.icon" :size="17" aria-hidden="true" />

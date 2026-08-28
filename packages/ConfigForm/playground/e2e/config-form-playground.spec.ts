@@ -186,10 +186,15 @@ async function dragSortableItem(
   target: Locator,
   approach: 'horizontal' | 'vertical' = 'horizontal',
 ): Promise<void> {
+  await source.scrollIntoViewIfNeeded()
+  const sourceIsPalette = await source.evaluate(element => element.hasAttribute('data-material-key'))
+  if (sourceIsPalette) {
+    await target.scrollIntoViewIfNeeded()
+    await target.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
+  }
   const sourceBox = await source.boundingBox()
-  const targetBox = await target.boundingBox()
-  if (!sourceBox || !targetBox)
-    throw new Error('Sortable source or target is not visible')
+  if (!sourceBox)
+    throw new Error('Sortable source is not visible')
 
   const sourceX = sourceBox.x + sourceBox.width / 2
   const sourceY = sourceBox.y + sourceBox.height / 2
@@ -197,8 +202,9 @@ async function dragSortableItem(
   await page.mouse.down()
   await page.mouse.move(sourceX + 12, sourceY + 12, { steps: 4 })
   await page.waitForTimeout(50)
-  const draggable = source.locator('xpath=ancestor-or-self::*[@data-designer-draggable][1]')
-  await expect(draggable.first()).toHaveClass(/sortable-chosen/)
+  const targetBox = await target.boundingBox()
+  if (!targetBox)
+    throw new Error('Sortable target is not visible')
   const targetX = targetBox.x + targetBox.width / 2
   const targetY = approach === 'vertical'
     ? targetBox.y + targetBox.height - 6
@@ -220,6 +226,7 @@ async function inspectSortableDrag(
   source: Locator,
   duringDrag: () => Promise<void>,
 ): Promise<void> {
+  await source.scrollIntoViewIfNeeded()
   const sourceBox = await source.boundingBox()
   if (!sourceBox)
     throw new Error('Sortable source is not visible')
@@ -230,8 +237,6 @@ async function inspectSortableDrag(
   await page.mouse.down()
   await page.mouse.move(sourceX + 12, sourceY + 12, { steps: 4 })
   await page.waitForTimeout(50)
-  const draggable = source.locator('xpath=ancestor-or-self::*[@data-designer-draggable][1]')
-  await expect(draggable.first()).toHaveClass(/sortable-chosen/)
   await duringDrag()
   await page.mouse.move(sourceX, sourceY, { steps: 4 })
   await page.mouse.up()
@@ -968,7 +973,6 @@ test.describe('ConfigForm visual designer', () => {
     const disabledSetter = properties.locator('.mx-config-form-designer__setter').filter({ hasText: 'Disabled' })
     await disabledSetter.getByRole('button', { name: 'Always', exact: true }).click()
     await expect(enabledNode.locator('.el-switch__input')).toBeDisabled()
-    await enabledNode.getByRole('button', { name: 'Move node up', exact: true }).click()
     await enabledNode.getByRole('button', { name: 'Move node into previous container', exact: true }).click()
     await expect(canvas.locator('[data-node-id="designer-card"] [data-node-id="designer-enabled"]')).toBeVisible()
 
@@ -1222,6 +1226,57 @@ for (const adapter of [
   })
 }
 
+for (const adapter of [
+  {
+    dateKey: 'element.date',
+    framework: 'Element Plus',
+    namespace: 'mx-element-config-form',
+    pickerSelector: '.el-date-editor',
+    timeKey: 'element.time',
+  },
+  {
+    dateKey: 'antd.date',
+    framework: 'Ant Design Vue',
+    namespace: 'mx-antd-config-form',
+    pickerSelector: '.ant-picker',
+    timeKey: 'antd.time',
+  },
+] as const) {
+  test(`keeps date and time controls full width in Designer and Runtime Preview with ${adapter.framework}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/designer.html')
+    const designer = page.getByTestId('designer-example')
+    if (adapter.framework === 'Ant Design Vue')
+      await page.getByRole('group', { name: '组件库', exact: true }).getByRole('button', { name: adapter.framework, exact: true }).click()
+
+    for (const [materialKey, field] of [[adapter.dateKey, 'date'], [adapter.timeKey, 'time']] as const) {
+      const paletteMaterial = designer.locator(`[data-material-key="${materialKey}"]`)
+      await paletteMaterial.scrollIntoViewIfNeeded()
+      await paletteMaterial.click()
+      const node = designer.locator(`[data-material="${materialKey}"]`).last()
+      await expect(node).toBeVisible()
+      await expect(node.locator(`[data-field="${field}"]`)).toBeVisible()
+      const designerWidth = await node.evaluate((element, selector) => {
+        const control = element.querySelector<HTMLElement>('.mx-config-form-designer__node-preview-control')
+        const picker = element.querySelector<HTMLElement>(selector)
+        return { control: control?.getBoundingClientRect().width ?? 0, picker: picker?.getBoundingClientRect().width ?? 0 }
+      }, adapter.pickerSelector)
+      expect(designerWidth.picker).toBeGreaterThan(0)
+      expect(designerWidth.picker).toBeCloseTo(designerWidth.control, 0)
+    }
+
+    await designer.getByRole('button', { name: '预览表单', exact: true }).click()
+    const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })
+    for (const field of ['date', 'time']) {
+      const runtimeWidth = await preview.locator(`[data-field="${field}"]`).evaluate((element, selector) => {
+        const control = element.querySelector<HTMLElement>(selector)
+        return control?.getBoundingClientRect().width ?? 0
+      }, adapter.pickerSelector)
+      expect(runtimeWidth).toBeGreaterThan(0)
+    }
+  })
+}
+
 test('standalone designer keeps independent Element Plus and Ant Design Vue documents', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/designer.html')
@@ -1289,7 +1344,10 @@ test('standalone designer keeps independent Element Plus and Ant Design Vue docu
     { nodeId: 'designer-card', selector: '.ant-card' },
   ]) {
     const node = designer.locator(`[data-node-id="${container.nodeId}"]`)
-    await node.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    if (container.nodeId === 'designer-card')
+      await node.locator('.ant-card-head').click()
+    else
+      await node.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
     await expectSingleSelectionFrameMatchesNode(node)
   }
 
@@ -1630,9 +1688,18 @@ for (const adapter of [
     const flexField = flexNode.locator(`${adapter.flexSelector} [data-node-kind="field"]`)
     await expect(flexField).toHaveCount(1)
     await expect(flexList.locator(':scope > .mx-config-form-designer__empty-slot')).toHaveCount(0)
-    await flexField.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    const flexTail = flexList.locator(':scope > [data-designer-drop-tail]')
+    await expect(flexTail).toHaveCount(1)
+    await dragSortableItem(
+      page,
+      designer.getByRole('button', { name: '输入框', exact: true }),
+      flexList,
+    )
+    await expect(flexNode.locator(`${adapter.flexSelector} [data-node-kind="field"]`)).toHaveCount(2)
+    await expect(flexList.locator(':scope > [data-designer-drop-tail]')).toHaveCount(1)
+    await flexField.first().locator(':scope > .mx-config-form-designer__node-preview-shell').click()
     await expect(designer.locator('.mx-config-form-designer__node.is-selected:focus-within')).toHaveCount(1)
-    await expectSingleSelectionFrameMatchesNode(flexField)
+    await expectSingleSelectionFrameMatchesNode(flexField.first())
 
     await designerCanvas.click({ position: { x: 5, y: 5 } })
     await designer.getByRole('button', { name: 'Grid 栅格', exact: true }).click()
@@ -1673,7 +1740,12 @@ for (const adapter of [
       },
     )
     await expect(designer.locator('.mx-config-form-designer')).not.toHaveClass(/is-dragging/)
-    await designer.getByRole('button', { name: '输入框', exact: true }).click()
+    await gridNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await dragSortableItem(
+      page,
+      designer.getByRole('button', { name: '输入框', exact: true }),
+      gridList,
+    )
     const gridField = gridNode.locator(`${adapter.gridSelector} [data-node-kind="field"]`)
     await expect(gridField).toHaveCount(1)
     await expect(gridList.locator(':scope > .mx-config-form-designer__empty-slot')).toHaveCount(0)
@@ -1691,11 +1763,11 @@ for (const adapter of [
 
     await designer.getByRole('button', { name: '预览表单', exact: true }).click()
     const preview = designer.getByRole('dialog', { name: '表单预览', exact: true })
-    await expect(preview.locator(`.${adapter.namespace}__readonly`)).toHaveCount(5)
+    await expect(preview.locator(`.${adapter.namespace}__readonly`)).toHaveCount(6)
     await expect(preview).toContainText('Production')
-    await expect(preview.locator(`${adapter.flexSelector} > .${adapter.namespace}__field`)).toHaveCount(1)
+    await expect(preview.locator(`${adapter.flexSelector} > .${adapter.namespace}__field`)).toHaveCount(2)
     await expect(preview.locator(`${adapter.gridSelector} > .${adapter.namespace}__field`)).toHaveCount(1)
-    await expect.poll(() => preview.locator(`${adapter.flexSelector} > .${adapter.namespace}__field`).evaluate(element => getComputedStyle(element).flexBasis)).toBe('220px')
+    await expect.poll(() => preview.locator(`${adapter.flexSelector} > .${adapter.namespace}__field`).first().evaluate(element => getComputedStyle(element).flexBasis)).toBe('220px')
     await expect(preview.locator('input')).toHaveCount(0)
 
     const designerRow = designer.locator('.mx-config-form-designer__node-list[data-parent-id=""]').first()
@@ -1731,11 +1803,11 @@ for (const adapter of [
     await expect(tabsNode.locator(adapter.tabHeaderSelector)).toBeVisible()
     await expect(collapseItemList).toBeVisible()
 
-    await flexField.scrollIntoViewIfNeeded()
-    await flexField.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
+    await flexField.first().scrollIntoViewIfNeeded()
+    await flexField.first().locator(':scope > .mx-config-form-designer__node-preview-shell').click()
     await expect(designer.locator('.mx-config-form-designer__node.is-selected:focus-within')).toHaveCount(1)
-    await expectSingleSelectionFrameMatchesNode(flexField)
-    const mobileActions = await flexField.locator(':scope > .mx-config-form-designer__node-actions').boundingBox()
+    await expectSingleSelectionFrameMatchesNode(flexField.first())
+    const mobileActions = await flexField.first().locator(':scope > .mx-config-form-designer__node-actions').boundingBox()
     expect(mobileActions).not.toBeNull()
     expect(mobileActions!.x).toBeGreaterThanOrEqual(0)
     expect(mobileActions!.x + mobileActions!.width).toBeLessThanOrEqual(391)

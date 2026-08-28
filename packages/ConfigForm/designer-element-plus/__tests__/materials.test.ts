@@ -62,6 +62,18 @@ describe('element plus designer materials', () => {
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
   })
 
+  it('creates and compiles every registry material in a single regression matrix', () => {
+    const registry = createElementPlusDesignerRegistry()
+    const nodes = registry.listMaterials().map((material, index) => registry.createNode(material.key, {
+      id: `matrix-${index}`,
+      ...(material.kind === 'field' ? { field: `matrix-${index}` } : {}),
+    }))
+
+    expect(nodes).toHaveLength(registry.listMaterials().length)
+    expect(new Set(nodes.map(node => node.id)).size).toBe(nodes.length)
+    expect(compileDesignerDocument({ version: 1, form: {}, nodes }, registry)).toMatchObject({ success: true })
+  })
+
   it('registers native ConfigForm property controls', () => {
     const registry = createElementPlusDesignerRegistry()
     const controls = registry.propertyControls

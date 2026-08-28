@@ -604,6 +604,26 @@
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
+.mx-config-form-designer__drop-tail {
+  display: block;
+  min-height: 18px;
+  margin: 0;
+  border: 2px dashed transparent;
+  border-radius: 6px;
+  pointer-events: auto;
+  transition: min-height 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.mx-config-form-designer__node-list.is-root > .mx-config-form-designer__drop-tail {
+  grid-column: 1 / -1;
+}
+
+.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
+  min-height: 34px;
+  background: color-mix(in srgb, var(--mx-designer-accent-soft) 52%, transparent);
+  border-color: var(--mx-designer-accent-line);
+}
+
 .mx-config-form-designer__empty-slot::before {
   position: absolute;
   top: 50%;
