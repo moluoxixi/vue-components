@@ -228,3 +228,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 11: 完成 Design-first 低代码 IDE 重构
+
+**Date**: 2026-08-28
+**Task**: 完成 Design-first 低代码 IDE 重构
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 Config Model 单一数据源、统一 Registry、Designer Model Operation、多选与 Resize、实时 Preview、只读 Source/Config 导出、响应式与双模板验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `596f441c` | (see git log) |
+
+### Status
+
+[OK] **Completed**
