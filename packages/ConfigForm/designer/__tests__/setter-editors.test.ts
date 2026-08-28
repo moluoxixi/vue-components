@@ -1,7 +1,7 @@
 import { parseRuleSet } from '@moluoxixi/zod3-to-rule'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import DesignerConditionSetter from '../src/components/DesignerConditionSetter.vue'
 import DesignerDefaultValueSetter from '../src/components/DesignerDefaultValueSetter.vue'
 import DesignerOptionsSetter from '../src/components/DesignerOptionsSetter.vue'
@@ -58,6 +58,11 @@ describe('designer structured setters', () => {
     expect(wrapper.get('form').classes()).toContain('mx-config-form-designer-property-form')
     expect(wrapper.findAll('.mx-config-form-designer-property-form__field')).toHaveLength(2)
     expect(wrapper.get('.mx-config-form-designer-property-form__label').text()).toBe('Label')
+    expect(wrapper.get('.mx-config-form-designer-property-form__field.is-simple').attributes()).toMatchObject({
+      'data-label-position': 'top',
+      'title': 'Label',
+    })
+    expect(wrapper.get('.mx-config-form-designer-property-form__field.is-simple').attributes('style')).not.toContain('84px')
 
     await wrapper.get('.test-property-control').trigger('click')
     await wrapper.get('.test-property-control').trigger('blur')
@@ -125,7 +130,7 @@ describe('designer structured setters', () => {
     expect(wrapper.emitted('commit')).toHaveLength(1)
   })
 
-  it('marks simple setters for horizontal labels and keeps structured editors full width', () => {
+  it('keeps simple and structured setters in stable vertical rows', () => {
     const simple = mount(DesignerSetter, {
       props: {
         setter: { key: 'label', label: 'Label', path: ['label'], control: 'text' },
@@ -139,10 +144,73 @@ describe('designer structured setters', () => {
       },
     })
 
-    expect(simple.classes()).toContain('is-horizontal')
+    expect(simple.classes()).not.toContain('is-horizontal')
     expect(simple.classes()).not.toContain('is-compound')
+    expect(simple.get('.mx-config-form-designer__setter-label').attributes('title')).toBe('Label')
     expect(structured.classes()).toContain('is-compound')
     expect(structured.classes()).not.toContain('is-horizontal')
+  })
+
+  it('connects property tabs to one roving tabpanel and supports keyboard navigation', async () => {
+    const node = {
+      id: 'name',
+      kind: 'field' as const,
+      material: 'test.input',
+      field: 'name',
+      label: 'Name',
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      attachTo: window.document.body,
+      props: {
+        diagnostics: [],
+        document: { version: 1, form: {}, nodes: [node] },
+        node,
+      },
+    })
+
+    const propertiesTab = wrapper.get('[data-property-tab="properties"]')
+    const validationTab = wrapper.get('[data-property-tab="validation"]')
+    expect(propertiesTab.attributes()).toMatchObject({
+      'aria-selected': 'true',
+      'tabindex': '0',
+    })
+    expect(validationTab.attributes('tabindex')).toBe('-1')
+    const initialPanel = wrapper.get('[role="tabpanel"]:not([hidden])')
+    expect(propertiesTab.attributes('aria-controls')).toBe(initialPanel.attributes('id'))
+    expect(initialPanel.attributes('aria-labelledby')).toBe(propertiesTab.attributes('id'))
+    for (const tab of wrapper.findAll('[role="tab"]')) {
+      const panel = wrapper.get(`#${tab.attributes('aria-controls')}`)
+      expect(panel.attributes('aria-labelledby')).toBe(tab.attributes('id'))
+      if (tab.attributes('aria-selected') === 'false')
+        expect(panel.attributes()).toMatchObject({ hidden: '', inert: '' })
+    }
+
+    ;(propertiesTab.element as HTMLButtonElement).focus()
+    await propertiesTab.trigger('keydown', { key: 'ArrowRight' })
+    await nextTick()
+    expect(validationTab.attributes()).toMatchObject({
+      'aria-selected': 'true',
+      'tabindex': '0',
+    })
+    expect(document.activeElement).toBe(validationTab.element)
+
+    await validationTab.trigger('keydown', { key: 'End' })
+    await nextTick()
+    const reactionsTab = wrapper.get('[data-property-tab="reactions"]')
+    expect(reactionsTab.attributes('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(reactionsTab.element)
+
+    await reactionsTab.trigger('keydown', { key: 'Home' })
+    await nextTick()
+    expect(propertiesTab.attributes('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(propertiesTab.element)
+
+    await propertiesTab.trigger('keydown', { key: 'ArrowLeft' })
+    await nextTick()
+    expect(reactionsTab.attributes('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(reactionsTab.element)
+    expect(wrapper.emitted('updatePath')).toBeUndefined()
+    wrapper.unmount()
   })
 
   it('commits numeric values from the native change event', async () => {

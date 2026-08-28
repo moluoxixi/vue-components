@@ -68,6 +68,8 @@ const workspaceWidth = ref<number>()
 const activeWorkspaceView = ref<'canvas' | 'palette' | 'properties'>('canvas')
 const paletteOpen = ref(true)
 const propertiesOpen = ref(true)
+type DesignerSidePanel = 'palette' | 'properties'
+const mediumPanel = ref<DesignerSidePanel>()
 const workspaceId = useId()
 const workspaceViews = [
   { id: 'palette' as const, label: 'Palette' },
@@ -88,6 +90,10 @@ let breakpointManuallySelected = false
 let resizeObserver: ResizeObserver | undefined
 let transferReturnFocus: HTMLElement | undefined
 let previewReturnFocus: HTMLElement | undefined
+let focusedWorkspaceControl: {
+  kind: 'drawer' | 'panel' | 'tab' | 'trigger'
+  view: typeof activeWorkspaceView.value
+} | undefined
 
 const dialogFocusableSelector = [
   'button:not([disabled])',
@@ -128,9 +134,17 @@ function selectWorkspaceView(view: typeof activeWorkspaceView.value): void {
   activeWorkspaceView.value = view
 }
 
+function isSidePanelOpen(view: DesignerSidePanel): boolean {
+  if (workspaceMode.value === 'medium')
+    return mediumPanel.value === view
+  return view === 'palette' ? paletteOpen.value : propertiesOpen.value
+}
+
 function isWorkspacePanelHidden(view: typeof activeWorkspaceView.value): boolean {
   if (workspaceMode.value === 'narrow')
     return activeWorkspaceView.value !== view
+  if (workspaceMode.value === 'medium')
+    return view === 'canvas' ? false : mediumPanel.value !== view
   if (view === 'palette')
     return !paletteOpen.value
   if (view === 'properties')
@@ -139,10 +153,29 @@ function isWorkspacePanelHidden(view: typeof activeWorkspaceView.value): boolean
 }
 
 function toggleWorkspacePanel(view: 'palette' | 'properties'): void {
+  if (workspaceMode.value === 'medium') {
+    mediumPanel.value = mediumPanel.value === view ? undefined : view
+    return
+  }
   if (view === 'palette')
     paletteOpen.value = !paletteOpen.value
   else
     propertiesOpen.value = !propertiesOpen.value
+}
+
+function closeMediumPanel(view: DesignerSidePanel): void {
+  if (workspaceMode.value !== 'medium' || mediumPanel.value !== view)
+    return
+  const activeElement = document.activeElement
+  const panel = rootRef.value?.querySelector<HTMLElement>(`[data-workspace-panel="${view}"]`)
+  const shouldRestoreFocus = activeElement === document.body
+    || (activeElement instanceof HTMLElement && panel?.contains(activeElement))
+  mediumPanel.value = undefined
+  if (shouldRestoreFocus) {
+    void nextTick(() => rootRef.value
+      ?.querySelector<HTMLButtonElement>(`[data-sidebar-trigger="${view}"]`)
+      ?.focus())
+  }
 }
 
 function handleWorkspaceTabKeydown(event: KeyboardEvent, view: typeof activeWorkspaceView.value): void {
@@ -165,6 +198,84 @@ function handleWorkspaceTabKeydown(event: KeyboardEvent, view: typeof activeWork
     ?.querySelector<HTMLButtonElement>(`[data-workspace-tab="${nextView}"]`)
     ?.focus())
 }
+
+function workspaceViewForElement(element: HTMLElement | null): typeof activeWorkspaceView.value | undefined {
+  const view = element?.dataset.workspaceTab
+    ?? element?.dataset.sidebarTrigger
+    ?? element?.closest<HTMLElement>('[data-workspace-panel]')?.dataset.workspacePanel
+  return workspaceViews.some(item => item.id === view)
+    ? view as typeof activeWorkspaceView.value
+    : undefined
+}
+
+function handleRootFocusin(event: FocusEvent): void {
+  const element = event.target instanceof HTMLElement ? event.target : null
+  const view = workspaceViewForElement(element)
+  if (!view) {
+    focusedWorkspaceControl = undefined
+    return
+  }
+  focusedWorkspaceControl = {
+    kind: element?.dataset.drawerControl
+      ? 'drawer'
+      : element?.dataset.workspaceTab
+      ? 'tab'
+      : element?.dataset.sidebarTrigger
+        ? 'trigger'
+        : 'panel',
+    view,
+  }
+}
+
+watch(workspaceMode, (mode, previousMode) => {
+  if (mode === previousMode)
+    return
+  const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const focusedView = workspaceViewForElement(activeElement) ?? focusedWorkspaceControl?.view
+
+  if (mode === 'narrow') {
+    activeWorkspaceView.value = focusedView
+      ?? (previousMode === 'medium' ? mediumPanel.value : undefined)
+      ?? activeWorkspaceView.value
+    if (
+      activeElement?.dataset.drawerControl
+      || activeElement?.dataset.sidebarTrigger
+      || focusedWorkspaceControl?.kind === 'drawer'
+      || focusedWorkspaceControl?.kind === 'trigger'
+    ) {
+      void nextTick(() => window.setTimeout(() => rootRef.value
+        ?.querySelector<HTMLButtonElement>(`[data-workspace-tab="${activeWorkspaceView.value}"]`)
+        ?.focus(), 0))
+    }
+    return
+  }
+
+  if (previousMode === 'medium' && focusedWorkspaceControl?.kind === 'drawer') {
+    void nextTick(() => window.setTimeout(() => rootRef.value
+      ?.querySelector<HTMLButtonElement>(`[data-sidebar-trigger="${focusedView}"]`)
+      ?.focus(), 0))
+    return
+  }
+
+  if (previousMode !== 'narrow')
+    return
+  const view = activeWorkspaceView.value
+  if (mode === 'medium')
+    mediumPanel.value = view === 'canvas' ? undefined : view
+  else if (view === 'palette')
+    paletteOpen.value = true
+  else if (view === 'properties')
+    propertiesOpen.value = true
+
+  if (activeElement?.dataset.workspaceTab || focusedWorkspaceControl?.kind === 'tab') {
+    void nextTick(() => window.setTimeout(() => {
+      const target = view === 'canvas'
+        ? rootRef.value?.querySelector<HTMLElement>('[data-workspace-panel="canvas"]')
+        : rootRef.value?.querySelector<HTMLButtonElement>(`[data-sidebar-trigger="${view}"]`)
+      target?.focus()
+    }, 0))
+  }
+}, { flush: 'sync' })
 
 onMounted(() => {
   syncBreakpointToViewport()
@@ -247,15 +358,27 @@ function handleMove(nodeId: string, target: DesignerDropTarget): void {
 }
 
 function handleAddMaterial(materialKey: string, target: DesignerDropTarget): void {
-  if (controller.addMaterial(materialKey, target) && workspaceMode.value === 'narrow')
+  if (!controller.addMaterial(materialKey, target))
+    return
+  if (workspaceMode.value === 'narrow')
     activeWorkspaceView.value = 'canvas'
+  else if (workspaceMode.value === 'medium')
+    mediumPanel.value = 'properties'
 }
 
 function addMaterial(materialKey: string, target?: DesignerDropTarget): boolean {
   const changed = controller.addMaterial(materialKey, target)
   if (changed && workspaceMode.value === 'narrow')
     activeWorkspaceView.value = 'canvas'
+  else if (changed && workspaceMode.value === 'medium')
+    mediumPanel.value = 'properties'
   return changed
+}
+
+function handleSelect(nodeId?: string): void {
+  controller.select(nodeId)
+  if (nodeId && workspaceMode.value === 'medium')
+    mediumPanel.value = 'properties'
 }
 
 function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
@@ -449,6 +572,11 @@ function importDocument(input: unknown): boolean {
 }
 
 function handleRootKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && workspaceMode.value === 'medium' && mediumPanel.value) {
+    event.preventDefault()
+    closeMediumPanel(mediumPanel.value)
+    return
+  }
   if (!(event.ctrlKey || event.metaKey))
     return
   const target = event.target as HTMLElement
@@ -480,9 +608,10 @@ defineExpose<ConfigFormDesignerExpose>({
     ref="rootRef"
     class="mx-config-form-designer"
     :data-active-view="activeWorkspaceView"
-    :data-palette-open="paletteOpen"
-    :data-properties-open="propertiesOpen"
+    :data-palette-open="isSidePanelOpen('palette')"
+    :data-properties-open="isSidePanelOpen('properties')"
     :data-workspace-mode="workspaceMode"
+    @focusin="handleRootFocusin"
     @keydown="handleRootKeydown"
   >
     <header class="mx-config-form-designer__toolbar">
@@ -492,25 +621,27 @@ defineExpose<ConfigFormDesignerExpose>({
           <button
             type="button"
             class="mx-config-form-designer__icon-button"
+            data-sidebar-trigger="palette"
             :aria-controls="`${workspaceId}-palette-panel`"
-            :aria-expanded="paletteOpen"
-            :aria-label="paletteOpen ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')"
-            :title="paletteOpen ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')"
+            :aria-expanded="isSidePanelOpen('palette')"
+            :aria-label="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')"
+            :title="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')"
             @click="toggleWorkspacePanel('palette')"
           >
-            <PanelLeftClose v-if="paletteOpen" :size="17" aria-hidden="true" />
+            <PanelLeftClose v-if="isSidePanelOpen('palette')" :size="17" aria-hidden="true" />
             <PanelLeftOpen v-else :size="17" aria-hidden="true" />
           </button>
           <button
             type="button"
             class="mx-config-form-designer__icon-button"
+            data-sidebar-trigger="properties"
             :aria-controls="`${workspaceId}-properties-panel`"
-            :aria-expanded="propertiesOpen"
-            :aria-label="propertiesOpen ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')"
-            :title="propertiesOpen ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')"
+            :aria-expanded="isSidePanelOpen('properties')"
+            :aria-label="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')"
+            :title="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')"
             @click="toggleWorkspacePanel('properties')"
           >
-            <PanelRightClose v-if="propertiesOpen" :size="17" aria-hidden="true" />
+            <PanelRightClose v-if="isSidePanelOpen('properties')" :size="17" aria-hidden="true" />
             <PanelRightOpen v-else :size="17" aria-hidden="true" />
           </button>
         </div>
@@ -564,11 +695,19 @@ defineExpose<ConfigFormDesignerExpose>({
       <section
         :id="`${workspaceId}-palette-panel`"
         class="mx-config-form-designer__workspace-panel is-palette"
+        data-workspace-panel="palette"
         :aria-labelledby="workspaceMode === 'narrow' ? `${workspaceId}-palette-tab` : undefined"
+        :aria-label="workspaceMode === 'medium' ? locale.t('palette.materials', 'Materials') : undefined"
         :hidden="isWorkspacePanelHidden('palette')"
         :inert="isWorkspacePanelHidden('palette') ? true : undefined"
-        :role="workspaceMode === 'narrow' ? 'tabpanel' : undefined"
+        :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined"
       >
+        <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
+          <strong>{{ locale.t('palette.materials', 'Materials') }}</strong>
+          <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="palette" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('palette')">
+            <X :size="17" aria-hidden="true" />
+          </button>
+        </div>
         <slot
           name="palette"
           :materials="registry.listMaterials()"
@@ -587,6 +726,8 @@ defineExpose<ConfigFormDesignerExpose>({
       <section
         :id="`${workspaceId}-canvas-panel`"
         class="mx-config-form-designer__workspace-panel is-canvas"
+        data-workspace-panel="canvas"
+        tabindex="-1"
         :aria-labelledby="workspaceMode === 'narrow' ? `${workspaceId}-canvas-tab` : undefined"
         :hidden="isWorkspacePanelHidden('canvas')"
         :inert="isWorkspacePanelHidden('canvas') ? true : undefined"
@@ -615,7 +756,7 @@ defineExpose<ConfigFormDesignerExpose>({
             :model="previewModel"
             :reaction-props="previewReactionProps"
             :reaction-states="previewReactionStates"
-            @select="controller.select($event || undefined)"
+            @select="handleSelect($event || undefined)"
             @move="handleMove"
             @add-material="handleAddMaterial"
             @action="handleAction"
@@ -629,11 +770,19 @@ defineExpose<ConfigFormDesignerExpose>({
       <section
         :id="`${workspaceId}-properties-panel`"
         class="mx-config-form-designer__workspace-panel is-properties"
+        data-workspace-panel="properties"
         :aria-labelledby="workspaceMode === 'narrow' ? `${workspaceId}-properties-tab` : undefined"
+        :aria-label="workspaceMode === 'medium' ? locale.t('property.properties', 'Properties') : undefined"
         :hidden="isWorkspacePanelHidden('properties')"
         :inert="isWorkspacePanelHidden('properties') ? true : undefined"
-        :role="workspaceMode === 'narrow' ? 'tabpanel' : undefined"
+        :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined"
       >
+        <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
+          <strong>{{ locale.t('property.properties', 'Properties') }}</strong>
+          <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')">
+            <X :size="17" aria-hidden="true" />
+          </button>
+        </div>
         <slot
           name="properties"
           :document="controller.document.value"

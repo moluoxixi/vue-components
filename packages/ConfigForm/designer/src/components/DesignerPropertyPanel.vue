@@ -14,7 +14,7 @@ import type {
   DesignerSetterOption,
 } from '../registry'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { walkDesignerNodes } from '../document'
 import { findDesignerNode } from '../history'
 import { useDesignerLocale } from '../locale'
@@ -41,6 +41,16 @@ const emit = defineEmits<{
 type PropertyTab = 'properties' | 'validation' | 'conditions' | 'reactions'
 const activeTab = ref<PropertyTab>('properties')
 const locale = useDesignerLocale()
+const propertyPanelRef = ref<HTMLElement>()
+const propertyTabsId = useId()
+const propertyTabs = computed(() => [
+  { id: 'properties' as const, label: locale.t('property.properties', 'Properties') },
+  ...(props.node?.kind === 'field'
+    ? [{ id: 'validation' as const, label: locale.t('property.validation', 'Validation') }]
+    : []),
+  { id: 'conditions' as const, label: locale.t('property.conditions', 'Conditions') },
+  { id: 'reactions' as const, label: locale.t('property.reactions', 'Reactions') },
+])
 const resolvedLayout = computed(() => resolveConfigFormLayout(
   props.document.form.columns,
   props.document.form.fieldSpan,
@@ -216,43 +226,111 @@ function commitForm(value: unknown, setter: DesignerPropertySetterDefinition): v
   emit('updateForm', { [setter.key]: value })
 }
 
-const activePropertySetters = computed(() => activeTab.value === 'properties'
-  ? propertySetters.value
-  : activeTab.value === 'validation'
-    ? validationSetters.value
-    : activeTab.value === 'conditions'
-      ? conditionSetters.value
-      : reactionSetters.value)
-
-const propertyEntries = computed(() => activePropertySetters.value.map(setter => ({
-  setter,
-  value: readPath(setter.path),
-  inheritedValue: inheritedValue(setter),
-})))
+const propertyEntries = computed<Record<PropertyTab, Array<{
+  setter: DesignerPropertySetterDefinition
+  value: unknown
+  inheritedValue: unknown
+}>>>(() => ({
+  properties: propertySetters.value.map(toPropertyEntry),
+  validation: validationSetters.value.map(toPropertyEntry),
+  conditions: conditionSetters.value.map(toPropertyEntry),
+  reactions: reactionSetters.value.map(toPropertyEntry),
+}))
 
 const formEntries = computed(() => formSetters.value.map(setter => ({
   setter,
   value: readFormValue(setter),
 })))
+
+watch(() => props.node?.kind, () => {
+  if (!propertyTabs.value.some(tab => tab.id === activeTab.value))
+    activeTab.value = 'properties'
+})
+
+function propertyTabId(tab: PropertyTab): string {
+  return `${propertyTabsId}-tab-${tab}`
+}
+
+function propertyTabPanelId(tab: PropertyTab): string {
+  return `${propertyTabsId}-panel-${tab}`
+}
+
+function toPropertyEntry(setter: DesignerPropertySetterDefinition): {
+  setter: DesignerPropertySetterDefinition
+  value: unknown
+  inheritedValue: unknown
+} {
+  return {
+    setter,
+    value: readPath(setter.path),
+    inheritedValue: inheritedValue(setter),
+  }
+}
+
+function selectPropertyTab(tab: PropertyTab): void {
+  activeTab.value = tab
+}
+
+function handlePropertyTabKeydown(event: KeyboardEvent, tab: PropertyTab): void {
+  const index = propertyTabs.value.findIndex(item => item.id === tab)
+  let nextIndex = index
+  if (event.key === 'ArrowRight')
+    nextIndex = (index + 1) % propertyTabs.value.length
+  else if (event.key === 'ArrowLeft')
+    nextIndex = (index - 1 + propertyTabs.value.length) % propertyTabs.value.length
+  else if (event.key === 'Home')
+    nextIndex = 0
+  else if (event.key === 'End')
+    nextIndex = propertyTabs.value.length - 1
+  else
+    return
+  event.preventDefault()
+  const nextTab = propertyTabs.value[nextIndex]!.id
+  selectPropertyTab(nextTab)
+  void nextTick(() => propertyPanelRef.value
+    ?.querySelector<HTMLButtonElement>(`[data-property-tab="${nextTab}"]`)
+    ?.focus())
+}
 </script>
 
 <template>
-  <aside class="mx-config-form-designer__properties" :aria-label="locale.t('property.properties', 'Properties')">
+  <aside ref="propertyPanelRef" class="mx-config-form-designer__properties" :aria-label="locale.t('property.properties', 'Properties')">
     <template v-if="node">
       <div class="mx-config-form-designer__property-heading">
         <strong>{{ node.kind === 'field' ? (node.label || node.field) : material && locale.materialTitle(material) }}</strong>
         <code>{{ node.material }}</code>
       </div>
       <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
-        <button type="button" role="tab" data-property-tab="properties" :aria-selected="activeTab === 'properties'" @click="activeTab = 'properties'">{{ locale.t('property.properties', 'Properties') }}</button>
-        <button v-if="node.kind === 'field'" type="button" role="tab" data-property-tab="validation" :aria-selected="activeTab === 'validation'" @click="activeTab = 'validation'">{{ locale.t('property.validation', 'Validation') }}</button>
-        <button type="button" role="tab" data-property-tab="conditions" :aria-selected="activeTab === 'conditions'" @click="activeTab = 'conditions'">{{ locale.t('property.conditions', 'Conditions') }}</button>
-        <button type="button" role="tab" data-property-tab="reactions" :aria-selected="activeTab === 'reactions'" @click="activeTab = 'reactions'">{{ locale.t('property.reactions', 'Reactions') }}</button>
+        <button
+          v-for="tab in propertyTabs"
+          :id="propertyTabId(tab.id)"
+          :key="tab.id"
+          type="button"
+          role="tab"
+          :aria-controls="propertyTabPanelId(tab.id)"
+          :aria-selected="activeTab === tab.id"
+          :data-property-tab="tab.id"
+          :tabindex="activeTab === tab.id ? 0 : -1"
+          @click="selectPropertyTab(tab.id)"
+          @keydown="handlePropertyTabKeydown($event, tab.id)"
+        >
+          {{ tab.label }}
+        </button>
       </div>
 
-      <div class="mx-config-form-designer__property-fields">
+      <div
+        v-for="tab in propertyTabs"
+        :id="propertyTabPanelId(tab.id)"
+        :key="tab.id"
+        class="mx-config-form-designer__property-fields"
+        role="tabpanel"
+        :aria-labelledby="propertyTabId(tab.id)"
+        :hidden="activeTab !== tab.id"
+        :inert="activeTab !== tab.id ? true : undefined"
+        :tabindex="activeTab === tab.id ? 0 : -1"
+      >
         <DesignerPropertyForm
-          :entries="propertyEntries"
+          :entries="propertyEntries[tab.id]"
           :components="components"
           :controls="propertyControls"
           :readonly="readonly"

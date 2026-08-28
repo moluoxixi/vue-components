@@ -133,10 +133,7 @@ function simpleField(
         'is-simple',
         `is-control-${setter.control}`,
       ],
-      style: {
-        columnGap: '10px',
-        gridTemplateColumns: '84px minmax(0, 1fr)',
-      },
+      title: setter.label,
       ...(inheritedLabel ? { 'data-inherited-label': inheritedLabel } : {}),
     } as ConfigFormRendererField<Record<string, unknown>>['fieldAttrs'],
   }
@@ -222,7 +219,7 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
     :columns="1"
     :field-span="1"
     gap="13px"
-    label-position="left"
+    label-position="top"
     namespace="mx-config-form-designer-property-form"
     @field-change="handleFieldChange"
   />

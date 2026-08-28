@@ -44,9 +44,36 @@ compatible.
 <span v-else>{{ materialTitle }}</span>
 ```
 
-Desktop and medium side panels are independently collapsible. A hidden panel must have both `hidden` and `inert`; the
-root exposes `data-palette-open` and `data-properties-open` so layout rules and regression tests consume the same state.
-Narrow mode continues to use roving Palette / Canvas / Properties tabs instead of duplicating collapse controls.
+Workspace mode must be derived from the Designer root width observed by `ResizeObserver`, not from the browser viewport:
+
+| Root width | Workspace contract |
+| --- | --- |
+| `> 1100px` | Desktop: Materials and Properties are independently collapsible docked panels. |
+| `721..1100px` | Medium: Canvas occupies the only grid area; Materials and Properties are mutually exclusive, non-modal overlay drawers on the left and right edges. |
+| `<= 720px` | Narrow: Palette / Canvas / Properties are roving workspace tabs and only the active tabpanel is visible. |
+
+Medium drawers must not use a scrim, `aria-modal`, or make Canvas inert. Selecting a Canvas node while Properties is open
+must keep the drawer open and update the inspector. Escape and the explicit close button close the drawer. Focus returns to
+the toolbar trigger only when focus was still inside the closing drawer or on `body`; a Canvas selection keeps its focus.
+
+A hidden workspace panel must have both `hidden` and `inert`, while remaining mounted so property-tab state, drafts, and
+scroll position survive. The root exposes `data-workspace-mode`, `data-palette-open`, and `data-properties-open` so layout
+rules and regression tests consume the same state.
+
+Breakpoint changes must preserve a visible focus target:
+
+- A medium toolbar trigger or drawer-only control maps to the corresponding narrow workspace tab.
+- A narrow workspace tab maps to the equivalent desktop/medium toolbar trigger, except Canvas maps to the Canvas panel.
+- A medium drawer-only control maps to the equivalent desktop toolbar trigger.
+- A control inside a panel keeps focus when that panel remains visible in the destination mode.
+
+Controls that are unmounted at a breakpoint, such as drawer close buttons, must carry a stable `data-drawer-control` marker.
+Focus migration runs after Vue renders the destination mode; do not rely on the browser falling back to `body`.
+
+Property fields use a stable vertical layout: the label is one line with ellipsis and a complete `title`/accessible name,
+and the control occupies the next row at full available width. Properties owns vertical scrolling; setter lists must not add
+a nested scroll container. Property view tabs require stable tab/tabpanel ids, `aria-controls`, `aria-labelledby`, hidden +
+inert inactive panels, roving `tabindex`, and ArrowLeft/ArrowRight/Home/End navigation without document commands.
 
 Required regression coverage:
 
@@ -54,6 +81,13 @@ Required regression coverage:
 - Dragging a field shows a runtime control in the overlay without emitting a document update before drop.
 - Ending or cancelling the drag removes the overlay and global pointer listeners.
 - Panel controls update `aria-expanded`, `hidden`, and `inert`, and restoring a panel preserves the canvas document.
+- Medium geometry proves Canvas and the open drawer share the workspace height and opening a drawer does not change the
+  Designer height.
+- Both Element Plus and Ant Design Vue cover medium drawer selection, Escape behavior, and horizontal overflow.
+- Breakpoint tests focus a panel input, a narrow workspace tab, and a medium drawer-only control before resizing, then
+  assert the resulting `document.activeElement` is visible and semantically equivalent.
+- Property-tab tests cover both arrow directions including wraparound, Home/End, ARIA relationships, and absence of
+  document update emissions.
 
 ---
 

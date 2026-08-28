@@ -460,6 +460,156 @@ describe('config form designer', () => {
     expect(propertiesPanel.attributes('hidden')).toBeUndefined()
   })
 
+  it('uses mutually exclusive non-modal drawers in the medium workspace', async () => {
+    let resizeCallback: ResizeObserverCallback | undefined
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback
+      }
+
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    })
+
+    const formDocument = twoFieldDocument()
+    ;(formDocument.nodes[0] as DesignerFieldNode).label = 'First field'
+    ;(formDocument.nodes[1] as DesignerFieldNode).label = 'Second field'
+    const wrapper = mount(ConfigFormDesigner, {
+      attachTo: window.document.body,
+      props: { document: formDocument, registry },
+    })
+    const root = wrapper.get('.mx-config-form-designer')
+    vi.spyOn(root.element, 'getBoundingClientRect').mockReturnValue({ width: 900 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+
+    const canvasPanel = wrapper.get('.mx-config-form-designer__workspace-panel.is-canvas')
+    const palettePanel = wrapper.get('.mx-config-form-designer__workspace-panel.is-palette')
+    const propertiesPanel = wrapper.get('.mx-config-form-designer__workspace-panel.is-properties')
+    expect(root.attributes()).toMatchObject({
+      'data-workspace-mode': 'medium',
+      'data-palette-open': 'false',
+      'data-properties-open': 'false',
+    })
+    expect(canvasPanel.attributes('hidden')).toBeUndefined()
+    expect(palettePanel.attributes()).toMatchObject({ hidden: '', inert: '' })
+    expect(propertiesPanel.attributes()).toMatchObject({ hidden: '', inert: '' })
+
+    const propertiesTrigger = wrapper.get('button[aria-label="Show properties"]')
+    ;(propertiesTrigger.element as HTMLButtonElement).focus()
+    await propertiesTrigger.trigger('click')
+    expect(propertiesTrigger.attributes('aria-expanded')).toBe('true')
+    expect(propertiesPanel.attributes('hidden')).toBeUndefined()
+    expect(propertiesPanel.attributes('role')).toBe('region')
+    expect(palettePanel.attributes('hidden')).toBe('')
+
+    const paletteTrigger = wrapper.get('button[aria-label="Show materials"]')
+    await paletteTrigger.trigger('click')
+    expect(palettePanel.attributes('hidden')).toBeUndefined()
+    expect(propertiesPanel.attributes('hidden')).toBe('')
+
+    await wrapper.get('button[aria-label="Show properties"]').trigger('click')
+    const firstNode = wrapper.get('[data-focus-node-id="first"]')
+    ;(firstNode.element as HTMLElement).focus()
+    await firstNode.trigger('click')
+    expect(propertiesPanel.attributes('hidden')).toBeUndefined()
+    expect(propertiesPanel.get('.mx-config-form-designer__property-heading strong').text()).toBe('First field')
+
+    await firstNode.trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(propertiesPanel.attributes('hidden')).toBe('')
+    expect(document.activeElement).toBe(firstNode.element)
+
+    const reopenedTrigger = wrapper.get('button[aria-label="Show properties"]')
+    await reopenedTrigger.trigger('click')
+    const closeButton = propertiesPanel.get('.mx-config-form-designer__drawer-header button')
+    ;(closeButton.element as HTMLButtonElement).focus()
+    await closeButton.trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(propertiesPanel.attributes('hidden')).toBe('')
+    expect(document.activeElement).toBe(reopenedTrigger.element)
+
+    await reopenedTrigger.trigger('click')
+    await propertiesPanel.get('.mx-config-form-designer__drawer-header button').trigger('click')
+    await nextTick()
+    expect(propertiesPanel.attributes('hidden')).toBe('')
+    expect(document.activeElement).toBe(reopenedTrigger.element)
+    wrapper.unmount()
+  })
+
+  it('preserves the active view and visible focus across workspace mode changes', async () => {
+    let resizeCallback: ResizeObserverCallback | undefined
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback
+      }
+
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    })
+
+    const wrapper = mount(ConfigFormDesigner, {
+      attachTo: window.document.body,
+      props: { document: twoFieldDocument(), registry },
+    })
+    const root = wrapper.get('.mx-config-form-designer')
+    const rect = vi.spyOn(root.element, 'getBoundingClientRect')
+    rect.mockReturnValue({ width: 900 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+
+    await wrapper.get('[data-sidebar-trigger="properties"]').trigger('click')
+    const propertyInput = wrapper.get('.mx-config-form-designer__properties input')
+    ;(propertyInput.element as HTMLInputElement).focus()
+    rect.mockReturnValue({ width: 680 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+
+    expect(root.attributes()).toMatchObject({
+      'data-active-view': 'properties',
+      'data-workspace-mode': 'narrow',
+    })
+    expect(wrapper.get('[data-workspace-panel="properties"]').attributes('hidden')).toBeUndefined()
+    expect(document.activeElement).toBe(propertyInput.element)
+
+    const propertiesTab = wrapper.get('[data-workspace-tab="properties"]')
+    ;(propertiesTab.element as HTMLButtonElement).focus()
+    rect.mockReturnValue({ width: 1200 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(root.attributes('data-workspace-mode')).toBe('desktop')
+    expect(wrapper.get('[data-workspace-panel="properties"]').attributes('hidden')).toBeUndefined()
+    expect(document.activeElement).toBe(wrapper.get('[data-sidebar-trigger="properties"]').element)
+
+    rect.mockReturnValue({ width: 900 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+    const closeButton = wrapper.get('[data-workspace-panel="properties"] [data-drawer-control="properties"]')
+    ;(closeButton.element as HTMLButtonElement).focus()
+    rect.mockReturnValue({ width: 680 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(document.activeElement).toBe(wrapper.get('[data-workspace-tab="properties"]').element)
+
+    rect.mockReturnValue({ width: 900 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const reopenedCloseButton = wrapper.get('[data-workspace-panel="properties"] [data-drawer-control="properties"]')
+    ;(reopenedCloseButton.element as HTMLButtonElement).focus()
+    rect.mockReturnValue({ width: 1200 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(document.activeElement).toBe(wrapper.get('[data-sidebar-trigger="properties"]').element)
+    wrapper.unmount()
+  })
+
   it('always previews linkage against an isolated model and gates only editing', async () => {
     const document: DesignerDocument = {
       version: 1,

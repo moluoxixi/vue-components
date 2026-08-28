@@ -318,7 +318,7 @@ async function expectSingleSelectionFrameMatchesNode(node: Locator): Promise<voi
   })
 
   expect(metrics).toEqual({
-    borderStyle: 'dashed',
+    borderStyle: 'solid',
     bottom: '-5px',
     left: '-5px',
     oldFrameCount: 0,
@@ -348,10 +348,10 @@ async function expectQuietEmptySlot(list: Locator): Promise<Locator> {
     backgroundColor: 'rgba(0, 0, 0, 0)',
     borderColor: 'rgba(0, 0, 0, 0)',
     borderStyle: 'solid',
-    childCount: 1,
+    childCount: 2,
     hasIcon: true,
     iconBorderStyle: 'none',
-    text: '',
+    text: 'Drop a field here',
   })
   return emptySlot
 }
@@ -736,8 +736,8 @@ test.describe('ConfigForm visual designer', () => {
 
     const formFields = properties.locator('.mx-config-form-designer__property-fields')
     const formSetters = formFields.locator('.mx-config-form-designer-property-form__field.is-simple')
-    const horizontalSetter = formSetters.filter({ hasText: 'Columns' })
-    expect(await horizontalSetter.evaluate((element) => {
+    const verticalSetter = formSetters.filter({ hasText: 'Columns' })
+    expect(await verticalSetter.evaluate((element) => {
       const label = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer-property-form__label')!
       const control = element.querySelector<HTMLElement>(':scope > .mx-config-form-designer-property-form__control')!
       const labelBox = label.getBoundingClientRect()
@@ -745,11 +745,11 @@ test.describe('ConfigForm visual designer', () => {
       return {
         columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
         controlWidth: controlBox.width,
-        labelBeforeControl: labelBox.right <= controlBox.left,
+        controlBelowLabel: controlBox.top >= labelBox.bottom,
       }
-    })).toMatchObject({ columns: 2, labelBeforeControl: true })
-    await expect(horizontalSetter.locator('.el-input-number')).toBeVisible()
-    expect(await horizontalSetter.locator('.mx-config-form-designer-property-form__control').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(150)
+    })).toMatchObject({ columns: 1, controlBelowLabel: true })
+    await expect(verticalSetter.locator('.el-input-number')).toBeVisible()
+    expect(await verticalSetter.locator('.mx-config-form-designer-property-form__control').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(150)
     const responsiveSettings = properties.getByLabel('Responsive layout')
     const tabletSettings = responsiveSettings.locator('.mx-config-form-designer__responsive-breakpoint').filter({ hasText: 'Tablet' })
     await expect(tabletSettings.getByRole('switch', { name: 'Tablet layout', exact: true })).toHaveAttribute('aria-checked', 'true')
@@ -862,8 +862,8 @@ test.describe('ConfigForm visual designer', () => {
     await inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true }).focus()
     await expect(enabledInitialNode).toHaveClass(/is-selected/)
     await expect(inheritedSpan.getByRole('spinbutton', { name: 'Span', exact: true })).toHaveValue('24')
-    await expect(nodeToolbar).toBeHidden()
-    await expect.poll(() => enabledInitialNode.evaluate(element => getComputedStyle(element, '::after').borderStyle)).toBe('none')
+    await expect(nodeToolbar).toBeVisible()
+    await expect.poll(() => enabledInitialNode.evaluate(element => getComputedStyle(element, '::after').borderStyle)).toBe('solid')
     await enabledInitialNode.locator(':scope > .mx-config-form-designer__node-preview-shell').click()
 
     const initialRootOrder = await rootList.locator(':scope > [data-node-id]').evaluateAll(elements => (
@@ -1050,7 +1050,7 @@ test.describe('ConfigForm visual designer', () => {
   })
 })
 
-test('standalone designer entry exposes localized controls on narrow screens', async ({ page }) => {
+test('standalone designer entry exposes localized controls and responsive workspace drawers', async ({ page }) => {
   await page.goto('/designer.html')
   await expect(page.getByRole('heading', { name: '可视化表单设计器', exact: true })).toBeVisible()
   const framework = page.getByRole('group', { name: '组件库', exact: true })
@@ -1069,24 +1069,66 @@ test('standalone designer entry exposes localized controls on narrow screens', a
   await expect(designer.getByRole('toolbar', { name: '设计器操作', exact: true })).toBeVisible()
 
   await page.setViewportSize({ width: 900, height: 900 })
+  const designerRoot = designer.locator('.mx-config-form-designer')
   const workspace = designer.locator('.mx-config-form-designer__workspace')
-  const palette = designer.locator('.mx-config-form-designer__palette')
-  const properties = designer.locator('.mx-config-form-designer__properties')
-  const [workspaceBox, paletteBox, propertiesBox] = await Promise.all([
+  const canvasPanel = designer.locator('.mx-config-form-designer__workspace-panel.is-canvas')
+  const palettePanel = designer.locator('.mx-config-form-designer__workspace-panel.is-palette')
+  const propertiesPanel = designer.locator('.mx-config-form-designer__workspace-panel.is-properties')
+  await expect(designerRoot).toHaveAttribute('data-workspace-mode', 'medium')
+  await expect(canvasPanel).toBeVisible()
+  await expect(palettePanel).toBeHidden()
+  await expect(propertiesPanel).toBeHidden()
+  const rootHeightBeforeDrawer = (await designerRoot.boundingBox())!.height
+
+  const propertiesTrigger = designer.locator('[data-sidebar-trigger="properties"]')
+  await expect(propertiesTrigger).toHaveAccessibleName('Show properties')
+  await propertiesTrigger.click()
+  await expect(propertiesTrigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(propertiesPanel).toBeVisible()
+  const [workspaceBox, canvasBox, propertiesBox] = await Promise.all([
     workspace.boundingBox(),
-    palette.boundingBox(),
-    properties.boundingBox(),
+    canvasPanel.boundingBox(),
+    propertiesPanel.boundingBox(),
   ])
   expect(workspaceBox).not.toBeNull()
-  expect(paletteBox).not.toBeNull()
+  expect(canvasBox).not.toBeNull()
   expect(propertiesBox).not.toBeNull()
-  expect(propertiesBox!.y).toBeGreaterThan(paletteBox!.y)
-  expect(Math.abs(propertiesBox!.x - workspaceBox!.x)).toBeLessThanOrEqual(1)
-  expect(Math.abs(propertiesBox!.width - workspaceBox!.width)).toBeLessThanOrEqual(1)
+  expect(Math.abs(canvasBox!.y - workspaceBox!.y)).toBeLessThanOrEqual(1)
+  expect(Math.abs(canvasBox!.height - workspaceBox!.height)).toBeLessThanOrEqual(1)
+  expect(Math.abs(propertiesBox!.y - workspaceBox!.y)).toBeLessThanOrEqual(1)
+  expect(Math.abs(propertiesBox!.height - workspaceBox!.height)).toBeLessThanOrEqual(1)
+  expect(Math.abs(propertiesBox!.x + propertiesBox!.width - (workspaceBox!.x + workspaceBox!.width))).toBeLessThanOrEqual(1)
+  expect(Math.abs((await designerRoot.boundingBox())!.height - rootHeightBeforeDrawer)).toBeLessThanOrEqual(1)
+  await expect.poll(() => propertiesPanel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
 
-  await page.setViewportSize({ width: 390, height: 844 })
+  await designer.locator('[data-focus-node-id="designer-choice"]').click()
+  await expect(propertiesPanel).toBeVisible()
+  await expect(propertiesPanel.locator('.mx-config-form-designer__property-heading code')).toHaveText('element.select')
+
+  const paletteTrigger = designer.locator('[data-sidebar-trigger="palette"]')
+  await expect(paletteTrigger).toHaveAccessibleName('Show materials')
+  await paletteTrigger.click()
+  await expect(palettePanel).toBeVisible()
+  await expect(propertiesPanel).toBeHidden()
+  await palettePanel.getByRole('searchbox').press('Escape')
+  await expect(palettePanel).toBeHidden()
+  await expect(paletteTrigger).toBeFocused()
+
   await framework.getByRole('button', { name: 'Ant Design Vue', exact: true }).click()
   await expect(designer.locator('.mx-config-form-designer')).toHaveAttribute('data-adapter', 'antd-vue')
+  await expect(designerRoot).toHaveAttribute('data-workspace-mode', 'medium')
+  await propertiesTrigger.click()
+  await expect(propertiesPanel).toBeVisible()
+  const antdNameNode = designer.locator('[data-focus-node-id="designer-name"]')
+  await antdNameNode.click()
+  await expect(propertiesPanel.locator('.mx-config-form-designer__property-heading code')).toHaveText('antd.input')
+  await expect.poll(() => propertiesPanel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await antdNameNode.press('Escape')
+  await expect(propertiesPanel).toBeHidden()
+  await expect(antdNameNode).toBeFocused()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(designerRoot).toHaveAttribute('data-workspace-mode', 'narrow')
   const mobileCanvas = designer.locator('.mx-config-form-designer__canvas')
   await expect(mobileCanvas.locator('[data-node-id="designer-name"] .ant-input')).toBeVisible()
   await expect(mobileCanvas.locator('[data-node-id="designer-choice"] .ant-select')).toBeVisible()
@@ -1095,19 +1137,24 @@ test('standalone designer entry exposes localized controls on narrow screens', a
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await expect(designer.getByRole('button', { name: '导出文档', exact: true })).toBeVisible()
   await expect(designer.getByRole('button', { name: '手机', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  const [mobileWorkspaceBox, mobilePaletteBox, mobileCanvasBox, mobilePropertiesBox] = await Promise.all([
+  const [mobileWorkspaceBox, mobileCanvasBox] = await Promise.all([
     workspace.boundingBox(),
-    palette.boundingBox(),
-    designer.locator('.mx-config-form-designer__canvas').boundingBox(),
-    properties.boundingBox(),
+    canvasPanel.boundingBox(),
   ])
   expect(mobileWorkspaceBox).not.toBeNull()
-  expect(mobilePaletteBox).not.toBeNull()
   expect(mobileCanvasBox).not.toBeNull()
-  expect(mobilePropertiesBox).not.toBeNull()
   expect(Math.abs(mobileCanvasBox!.x - mobileWorkspaceBox!.x)).toBeLessThanOrEqual(1)
-  expect(mobileCanvasBox!.y).toBeGreaterThanOrEqual(mobilePaletteBox!.y + mobilePaletteBox!.height - 1)
-  expect(mobilePropertiesBox!.y).toBeGreaterThanOrEqual(mobileCanvasBox!.y + mobileCanvasBox!.height - 1)
+  await expect(palettePanel).toBeHidden()
+  await expect(propertiesPanel).toBeHidden()
+  await designer.getByRole('tab', { name: 'Palette', exact: true }).click()
+  await expect(palettePanel).toBeVisible()
+  await expect(canvasPanel).toBeHidden()
+  await designer.getByRole('tab', { name: 'Properties', exact: true }).click()
+  await expect(propertiesPanel).toBeVisible()
+  await expect(palettePanel).toBeHidden()
+  await designer.getByRole('tab', { name: 'Canvas', exact: true }).click()
+  await expect(canvasPanel).toBeVisible()
+  await expect(propertiesPanel).toBeHidden()
 
   await designer.locator('[data-focus-node-id="designer-name"]').click()
   const nodeActions = designer.locator('[data-node-id="designer-name"] > .mx-config-form-designer__node-actions')
@@ -1168,6 +1215,7 @@ for (const adapter of [
     await exportDialog.getByRole('button', { name: 'Close', exact: true }).click()
 
     await page.setViewportSize({ width: 390, height: 844 })
+    await designer.locator('[data-workspace-tab="properties"]').click()
     await expect(reactionEditor).toBeVisible()
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   })
@@ -1363,7 +1411,7 @@ test('keeps root span placement aligned between runtime preview and designer can
       oldFrameCount: element.querySelectorAll(':scope > .mx-config-form-designer__selection-overlay, :scope > [data-designer-span-footprint]').length,
     }
   })
-  expect(fullSwitchGeometry.frameBorder).toBe('dashed')
+  expect(fullSwitchGeometry.frameBorder).toBe('solid')
   expect(fullSwitchGeometry.frameInsets).toEqual(['-5px', '-5px', '-5px', '-5px'])
   expect(fullSwitchGeometry.oldFrameCount).toBe(0)
   expect(fullSwitchGeometry.controlWidth).toBeLessThan(fullSwitchGeometry.cellWidth / 2)
