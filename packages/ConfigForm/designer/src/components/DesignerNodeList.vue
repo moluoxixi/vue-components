@@ -60,6 +60,7 @@ let resizeCleanup: (() => void) | undefined
 let pendingPointerSelection: { nodeId: string, startedAt: number } | undefined
 
 const designerDraggableSelector = '[data-designer-draggable]'
+const sortableDraggableSelector = `> ${designerDraggableSelector}`
 const designerDropTailSelector = '[data-designer-drop-tail]'
 
 const resolvedLayout = computed(() => resolveConfigFormLayout(
@@ -172,6 +173,26 @@ function targetFromElement(element: HTMLElement | null | undefined, item?: HTMLE
   return slot ? { parentId, slot, index: resolvedIndex } : undefined
 }
 
+/**
+ * Nested lists are rendered inside a container node. Sortable walks up from
+ * the pointer target when resolving `draggable`, so a parent list can see a
+ * child-list item while the pointer is over a deeply nested slot. Keep each
+ * instance scoped to its direct children and reject parent-list dragovers
+ * whose original target belongs to a descendant list.
+ */
+function isNestedDragOver(list: HTMLElement, originalTarget: EventTarget | null | undefined): boolean {
+  if (!(originalTarget instanceof HTMLElement))
+    return false
+  const nestedList = originalTarget.closest<HTMLElement>('[data-parent-id]')
+  return Boolean(nestedList && nestedList !== list && list.contains(nestedList))
+}
+
+function isDirectListTarget(list: HTMLElement, related: Element | null | undefined): boolean {
+  if (!related)
+    return true
+  return related.parentElement === list || related.matches(designerDropTailSelector)
+}
+
 function materialSlots(node: DesignerNode): DesignerMaterialSlotDefinition[] {
   const material = props.registry.getMaterial(node.material)
   return material?.kind === 'container' ? material.slots : []
@@ -196,7 +217,9 @@ async function createSortable(): Promise<void> {
     return
   sortable = Sortable.create(listRef.value, {
     animation: 180,
-    draggable: designerDraggableSelector,
+    // `>` is important here: nested DesignerNodeList instances live inside
+    // the parent node's `<li>` and must not be treated as parent siblings.
+    draggable: sortableDraggableSelector,
     easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
     forceFallback: true,
     group: {
@@ -206,6 +229,15 @@ async function createSortable(): Promise<void> {
     },
     dragoverBubble: false,
     handle: '[data-drag-handle]',
+    onMove: (event) => {
+      const list = listRef.value
+      if (!list || event.to !== list)
+        return false
+      const originalEvent = (event as unknown as { originalEvent?: Event }).originalEvent
+      if (isNestedDragOver(list, originalEvent?.target))
+        return false
+      return isDirectListTarget(list, event.related)
+    },
     onStart: () => setDragging(true),
     onAdd: ({ item, newIndex }) => {
       const materialKey = item.dataset.materialKey

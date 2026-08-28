@@ -217,7 +217,20 @@ const readonlyContent = computed(() => {
         </div>
         <component v-else :is="runtimeComponent" v-bind="componentProps">
           <template v-for="slot in materialSlots" :key="slot.name" #[slot.name]>
-            <slot :name="slot.name" />
+            <!-- Palette drag previews do not have a DesignerNodeList parent.
+                 Keep the same structural slot surface instead of replacing a
+                 layout with a title-only summary. The real node list provided
+                 by DesignerNodeList wins whenever this component is mounted
+                 in the canvas. -->
+            <slot :name="slot.name">
+              <div
+                class="mx-config-form-designer__node-preview-slot-fallback"
+                :data-preview-slot="slot.name"
+                aria-hidden="true"
+              >
+                <span>{{ slot.title }}</span>
+              </div>
+            </slot>
           </template>
         </component>
       </div>

@@ -68,6 +68,7 @@ import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-design
 import { ConfigFormRenderer } from '@moluoxixi/config-form/renderer'
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import PreviewRuntimeBoundary from './components/PreviewRuntimeBoundary.vue'
+import { createPreviewRevisionGate } from './preview'
 import {
   BUILT_IN_WORKSPACE_TEMPLATES,
   cloneWorkspaceProject,
@@ -78,6 +79,7 @@ import {
   openDefaultWorkspaceProjectRepository,
   upgradeWorkspaceConfigModule,
   WORKSPACE_CONFIG_MODULE_PATH,
+  createPureSourceExport,
 } from './project'
 import { formatLowCodePageConfig } from './workbench/config-codec'
 
@@ -100,7 +102,6 @@ const designerLeftViews = [
   { icon: Layers3, id: 'layers' as const, label: 'Layers' },
   { icon: Files, id: 'pages' as const, label: 'Pages' },
 ]
-const sourcePaths = ['src/App.vue', 'src/form.config.ts'] as const
 const registries: Record<WorkspaceProject['manifest']['adapter'], DesignerRegistry> = {
   'antd-vue': createAntdVueDesignerRegistry(),
   'element-plus': createElementPlusDesignerRegistry(),
@@ -126,11 +127,11 @@ const dirty = ref(false)
 const templatePickerOpen = ref(false)
 const exportMenuOpen = ref(false)
 const exportPreviewMode = ref<'source' | 'config'>()
-const configViewMode = ref<'json' | 'tree'>('json')
+const configViewMode = ref<'source' | 'json' | 'tree'>('source')
 const exportPreviewReturnFocus = ref<HTMLElement>()
 const activeDesignerLeftView = ref<DesignerLeftView>('components')
 const selectedDesignerIds = ref<string[]>([])
-const sourceViewPath = ref<'src/App.vue' | 'src/form.config.ts'>('src/App.vue')
+const sourceViewPath = ref<ProjectPath>(SOURCE_PATH)
 const theme = ref<WorkbenchTheme>('dark')
 const busy = ref(false)
 const message = ref('')
@@ -143,6 +144,16 @@ const designerLeftTabsRef = useTemplateRef<HTMLElement>('designerLeftTabs')
 const mobileSurfaceTabsRef = useTemplateRef<HTMLElement>('mobileSurfaceTabs')
 let openProjectRequestId = 0
 let disposed = false
+const previewRevisionGate = createPreviewRevisionGate()
+
+function advancePreviewRevision(): string {
+  rendererPreviewVersion.value += 1
+  const revision = currentProject.value
+    ? `${currentProject.value.id}-${rendererPreviewVersion.value}`
+    : ''
+  previewRevisionGate.request(revision)
+  return revision
+}
 
 const lowCodeRegistry = computed(() => currentProject.value
   ? lowCodeRegistries[currentProject.value.manifest.adapter]
@@ -173,14 +184,38 @@ const designerLayers = computed<DesignerLayerEntry[]>(() => {
   visit(designerDocument.value?.nodes ?? [], 0)
   return entries
 })
-const generatedSourceFiles = computed(() => ({
-  'src/App.vue': currentProject.value
-    ? formatWorkspaceAppComponent(currentProject.value.manifest.adapter)
-    : '',
-  'src/form.config.ts': configModel.value ? formatLowCodePageConfig(configModel.value, lowCodeRegistry.value) : '',
-}))
-const sourceCode = computed(() => generatedSourceFiles.value[sourceViewPath.value])
-const sourceLanguage = computed(() => sourceViewPath.value.endsWith('.vue') ? 'vue' : 'typescript')
+const sourceExportResult = computed(() => {
+  if (!currentProject.value || !configModel.value)
+    return { export: undefined, error: '' }
+  try {
+    return { export: createPureSourceExport(currentProject.value, configModel.value, lowCodeRegistry.value), error: '' }
+  }
+  catch (error) {
+    return { export: undefined, error: error instanceof Error ? error.message : String(error) }
+  }
+})
+const sourceExport = computed(() => sourceExportResult.value.export)
+const sourceExportError = computed(() => sourceExportResult.value.error)
+const sourcePaths = computed<ProjectPath[]>(() => sourceExport.value
+  ? Object.keys(sourceExport.value.files).sort() as ProjectPath[]
+  : [])
+const sourceCode = computed(() => {
+  const file = sourceExport.value?.files[sourceViewPath.value]
+  return file?.kind === 'text' ? file.content : ''
+})
+const sourceLanguage = computed(() => {
+  const file = sourceExport.value?.files[sourceViewPath.value]
+  if (file?.kind === 'text' && file.language)
+    return file.language
+  if (sourceViewPath.value.endsWith('.vue')) return 'vue'
+  if (sourceViewPath.value.endsWith('.json')) return 'json'
+  if (sourceViewPath.value.endsWith('.css')) return 'css'
+  if (sourceViewPath.value.endsWith('.html')) return 'html'
+  return 'typescript'
+})
+const generatedConfigSource = computed(() => configModel.value
+  ? formatLowCodePageConfig(configModel.value, lowCodeRegistry.value)
+  : '')
 const generatedConfigJson = computed(() => configModel.value
   ? `${JSON.stringify(configModel.value, null, 2)}\n`
   : '')
@@ -398,7 +433,7 @@ function materializeModel(model: LowCodePageModel): void {
     currentProject.value = next
   }
   previewModel.value = mergePreviewModel(document, createPreviewModel(document))
-  rendererPreviewVersion.value += 1
+  advancePreviewRevision()
   dirty.value = true
 }
 
@@ -439,7 +474,7 @@ function updateModelOperation(operation: ModelOperation): void {
 function handlePreviewRuntimeReady(revision: string): void {
   const projectId = currentProject.value?.id
   const expectedRevision = projectId ? `${projectId}-${rendererPreviewVersion.value}` : ''
-  if (!projectId || revision !== expectedRevision || !activePreview.value)
+  if (!projectId || revision !== expectedRevision || !previewRevisionGate.isCurrent(revision) || !activePreview.value)
     return
   lastRuntimePreview.value = { projectId, result: activePreview.value }
   fallbackPreviewModel.value = structuredClone(previewModel.value)
@@ -506,7 +541,7 @@ async function openProject(id: string): Promise<void> {
   }
   currentProject.value = activeProject
   configHistory.value = createConfigModelHistory(pageModel.model, { revision: upgraded.project.revision })
-  rendererPreviewVersion.value += 1
+  advancePreviewRevision()
   configError.value = ''
   dirty.value = upgraded.migrated
     || pageModel.migrated
@@ -589,10 +624,11 @@ async function saveProject(): Promise<void> {
 }
 
 async function exportProject(): Promise<void> {
-  if (!currentProject.value)
+  if (!currentProject.value || !configModel.value)
     return
   try {
-    const filename = await downloadProjectArchive(currentProject.value)
+    const exported = createPureSourceExport(currentProject.value, configModel.value, lowCodeRegistry.value)
+    const filename = await downloadProjectArchive(exported.project)
     message.value = `Downloaded ${filename}`
   }
   catch (error) {
@@ -604,9 +640,9 @@ function openExportPreview(mode: 'source' | 'config'): void {
   exportMenuOpen.value = false
   exportPreviewMode.value = mode
   if (mode === 'config')
-    configViewMode.value = 'json'
+    configViewMode.value = 'source'
   else
-    sourceViewPath.value = 'src/App.vue'
+    sourceViewPath.value = SOURCE_PATH
   exportPreviewReturnFocus.value = exportButtonRef.value
     ?? (document.activeElement instanceof HTMLElement ? document.activeElement : undefined)
   void nextTick(() => exportDialogRef.value?.querySelector<HTMLButtonElement>('button')?.focus())
@@ -618,10 +654,16 @@ function closeExportPreview(): void {
 }
 
 function exportPreviewText(): string {
-  return exportPreviewMode.value === 'source' ? sourceCode.value : generatedConfigJson.value
+  if (exportPreviewMode.value === 'source')
+    return sourceCode.value
+  return configViewMode.value === 'source' ? generatedConfigSource.value : generatedConfigJson.value
 }
 
 async function copyExportPreview(): Promise<void> {
+  if (exportPreviewMode.value === 'source' && sourceExportError.value) {
+    message.value = sourceExportError.value
+    return
+  }
   try {
     if (!navigator.clipboard)
       throw new Error('Clipboard API is unavailable.')
@@ -635,12 +677,14 @@ async function copyExportPreview(): Promise<void> {
 
 function downloadExportPreview(): void {
   const mode = exportPreviewMode.value
-  if (!mode)
+  if (!mode || (mode === 'source' && sourceExportError.value))
     return
-  const url = URL.createObjectURL(new Blob([exportPreviewText()], { type: mode === 'source' ? 'text/plain' : 'application/json' }))
+  const url = URL.createObjectURL(new Blob([exportPreviewText()], { type: mode === 'source' || configViewMode.value === 'source' ? 'text/plain' : 'application/json' }))
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = mode === 'source' ? sourceViewPath.value.split('/').at(-1)! : 'page.config.json'
+  anchor.download = mode === 'source'
+    ? sourceViewPath.value.split('/').at(-1)!
+    : configViewMode.value === 'source' ? 'form.config.ts' : 'page.config.json'
   anchor.click()
   URL.revokeObjectURL(url)
   message.value = `Downloaded ${mode === 'source' ? 'source' : 'config'} export`
@@ -797,6 +841,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   disposed = true
   openProjectRequestId += 1
+  previewRevisionGate.invalidate()
   repository.value?.close()
 })
 </script>
@@ -1168,24 +1213,50 @@ onBeforeUnmount(() => {
         </header>
         <div class="export-preview-body">
           <div v-if="exportPreviewMode === 'source'" class="source-export-view">
-            <nav class="source-file-tabs" role="tablist" aria-label="Generated source files">
-              <button v-for="path in sourcePaths" :key="path" type="button" role="tab" :aria-selected="sourceViewPath === path" @click="sourceViewPath = path">{{ path }}</button>
-            </nav>
-            <WorkspaceCodeEditor
-              :filename="sourceViewPath"
-              :language="sourceLanguage"
-              :model-value="sourceCode"
-              :readonly="true"
-              :theme="theme"
-            />
+            <div v-if="sourceExportError" class="export-diagnostic" role="alert">
+              <strong>Source export unavailable</strong>
+              <p>{{ sourceExportError }}</p>
+            </div>
+            <div class="source-file-layout">
+              <nav class="source-file-tree" role="tree" aria-label="Generated source files">
+                <button
+                  v-for="path in sourcePaths"
+                  :key="path"
+                  type="button"
+                  role="treeitem"
+                  :aria-selected="sourceViewPath === path"
+                  :data-source-file="path"
+                  @click="sourceViewPath = path"
+                >
+                  <Files :size="14" aria-hidden="true" />
+                  <span>{{ path }}</span>
+                </button>
+              </nav>
+              <WorkspaceCodeEditor
+                :filename="sourceViewPath"
+                :language="sourceLanguage"
+                :model-value="sourceCode"
+                :readonly="true"
+                :theme="theme"
+              />
+            </div>
           </div>
           <template v-else>
             <nav class="config-view-tabs" role="tablist" aria-label="Config view">
+              <button type="button" role="tab" :aria-selected="configViewMode === 'source'" @click="configViewMode = 'source'">Source</button>
               <button type="button" role="tab" :aria-selected="configViewMode === 'json'" @click="configViewMode = 'json'">JSON</button>
               <button type="button" role="tab" :aria-selected="configViewMode === 'tree'" @click="configViewMode = 'tree'">Tree</button>
             </nav>
+            <WorkspaceCodeEditor
+              v-if="configViewMode === 'source'"
+              :filename="CONFIG_PATH"
+              language="typescript"
+              :model-value="generatedConfigSource"
+              :readonly="true"
+              :theme="theme"
+            />
             <pre v-if="configViewMode === 'json'" class="config-json-view" tabindex="0">{{ generatedConfigJson }}</pre>
-            <div v-else class="config-tree-view" role="tree" tabindex="0">
+            <div v-else-if="configViewMode === 'tree'" class="config-tree-view" role="tree" tabindex="0">
               <div
                 v-for="entry in generatedConfigTree"
                 :key="entry.path"
@@ -1201,13 +1272,13 @@ onBeforeUnmount(() => {
         <footer>
           <span>Model revision {{ modelRevision }} · Generated from Design Model</span>
           <div>
-            <button v-if="exportPreviewMode === 'source'" type="button" class="dialog-action secondary" @click="exportProject">
+            <button v-if="exportPreviewMode === 'source'" type="button" class="dialog-action secondary" :disabled="!!sourceExportError" @click="exportProject">
               <Download :size="15" aria-hidden="true" /> Project ZIP
             </button>
             <button type="button" class="dialog-action secondary" @click="copyExportPreview">
               <Clipboard :size="15" aria-hidden="true" /> Copy
             </button>
-            <button type="button" class="dialog-action" @click="downloadExportPreview">
+            <button type="button" class="dialog-action" :disabled="!!sourceExportError" @click="downloadExportPreview">
               <Download :size="15" aria-hidden="true" /> Download
             </button>
           </div>

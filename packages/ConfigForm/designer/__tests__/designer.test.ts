@@ -18,9 +18,11 @@ import {
 
 const sortableMock = vi.hoisted(() => ({
   create: vi.fn((element: HTMLElement, options: {
+    draggable?: string
     animation?: number
     easing?: string
     forceFallback?: boolean
+    onMove?: (event: { to?: Element, related?: Element | null, originalEvent?: Event }) => boolean | void
     onAdd?: (event: { item: HTMLElement, newIndex?: number }) => void
     onEnd?: (event: { item: HTMLElement, newIndex?: number, to: HTMLElement }) => void
     onStart?: () => void
@@ -33,9 +35,11 @@ const sortableMock = vi.hoisted(() => ({
     destroy: ReturnType<typeof vi.fn>
     element: HTMLElement
     options: {
+      draggable?: string
       animation?: number
       easing?: string
       forceFallback?: boolean
+      onMove?: (event: { to?: Element, related?: Element | null, originalEvent?: Event }) => boolean | void
       onAdd?: (event: { item: HTMLElement, newIndex?: number }) => void
       onEnd?: (event: { item: HTMLElement, newIndex?: number, to: HTMLElement }) => void
       onStart?: () => void
@@ -835,6 +839,10 @@ describe('config form designer', () => {
     window.dispatchEvent(new PointerEvent('pointermove', { clientX: 40, clientY: 40 }))
     await nextTick()
     expect(document.body.querySelector('.mx-config-form-designer__drag-overlay input')).not.toBeNull()
+    const sectionMaterial = wrapper.get('[data-material-key="element.section"]')
+    await sectionMaterial.trigger('pointerdown', { clientX: 80, clientY: 80, pointerId: 1 })
+    expect(sectionMaterial.find('.mx-config-form-designer__palette-drag-preview').exists()).toBe(true)
+    expect(sectionMaterial.find('[data-preview-slot="default"]').exists()).toBe(true)
     paletteSortables[0]!.options.onStart?.()
     expect(wrapper.get('.mx-config-form-designer').classes()).toContain('is-dragging')
     paletteSortables[0]!.options.onEnd?.({ item: document.createElement('button'), to: paletteSortables[0]!.element })
@@ -995,6 +1003,55 @@ describe('config form designer', () => {
     refreshedRoot!.options.onEnd?.({ item: sectionElement, newIndex: 2, to: rootList.element as HTMLElement })
     await flushPromises()
     expect(lastDocument(wrapper).nodes.map(node => node.id)).toEqual(['root', 'section'])
+  })
+
+  it('keeps deeply nested Sortable instances isolated from their parent lists', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: {
+        document: {
+          version: 1,
+          form: {},
+          nodes: [{
+            id: 'outer',
+            kind: 'container',
+            material: 'element.section',
+            slots: {
+              default: [{
+                id: 'middle',
+                kind: 'container',
+                material: 'element.section',
+                slots: {
+                  default: [{ id: 'inner', kind: 'field', material: 'element.input', field: 'inner' }],
+                },
+              }],
+            },
+          }],
+        },
+        registry,
+      },
+    })
+    await flushPromises()
+
+    const lists = wrapper.findAll('.mx-config-form-designer__node-list')
+    expect(lists).toHaveLength(3)
+    const [rootList, outerList, middleList] = lists
+    const rootSortable = sortableMock.instances.find(instance => instance.element === rootList!.element)
+    const outerSortable = sortableMock.instances.find(instance => instance.element === outerList!.element)
+    const middleSortable = sortableMock.instances.find(instance => instance.element === middleList!.element)
+    expect(rootSortable?.options.draggable).toBe('> [data-designer-draggable]')
+    expect(outerSortable?.options.draggable).toBe('> [data-designer-draggable]')
+    expect(middleSortable?.options.draggable).toBe('> [data-designer-draggable]')
+
+    const nestedList = middleList!.element
+    const nestedTarget = nestedList.querySelector('[data-node-id="inner"]') as HTMLElement
+    const childEvent = {
+      to: nestedList,
+      related: nestedTarget,
+      originalEvent: { target: nestedTarget } as unknown as Event,
+    }
+    expect(rootSortable?.options.onMove?.(childEvent)).toBe(false)
+    expect(outerSortable?.options.onMove?.(childEvent)).toBe(false)
+    expect(middleSortable?.options.onMove?.(childEvent)).toBe(true)
   })
 
   it('clears palette drag state when readonly tears down Sortable instances', async () => {

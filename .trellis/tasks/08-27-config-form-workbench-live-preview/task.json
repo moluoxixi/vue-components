@@ -3,7 +3,7 @@
   "name": "config-form-workbench-live-preview",
   "title": "浏览器实时页面运行与诊断",
   "description": "复用 Vue REPL 基础运行虚拟项目，提供实时 Page Preview、诊断与 stale revision 处理。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "playground",

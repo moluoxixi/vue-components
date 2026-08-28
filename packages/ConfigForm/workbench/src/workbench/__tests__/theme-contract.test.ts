@@ -91,6 +91,7 @@ describe('workbench theme contract', () => {
 
   it('keeps export and narrow runtime surfaces responsive to their context', () => {
     expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
+    expect(selectorBlock('.topbar-actions .export-menu-popover button')).toContain('white-space: nowrap;')
     expect(selectorBlock('.preview-canvas')).toContain('container-name: preview-canvas;')
     expect(stylesheet).toContain('@container preview-canvas (max-width: 520px) {')
     expect(stylesheet).toContain('.page-preview-form [class*="config-form__row--grid"] {\n    gap: 12px 6px !important;')

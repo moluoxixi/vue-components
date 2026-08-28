@@ -77,7 +77,7 @@ Component Registry
   -> model operations / inverse history
   -> Design canvas + layers + inspector
   -> Runtime renderer / Preview
-  -> readonly Config JSON / Generated Vue Source
+  -> readonly Config JSON / defineField Source / standalone Vue Source
 ```
 
 `LowCodePageModel` 是设计器页面结构唯一可变事实。`DesignerDocument` 仍作为旧 artifact 的兼容投影；画布 selection、诊断、option loading 和 reaction projection 都是派生状态，不写回模型。
@@ -92,7 +92,7 @@ Component Registry
   -> Export menu -> readonly Source / Config preview dialog
 ```
 
-Workbench 的 Source 与 Config 不再是编辑 provider，也不参与模型反向解析。Source 使用只读 Monaco 展示 Generated Vue Source；Config 提供只读 JSON / Tree View。导出菜单还可下载项目 ZIP。旧 `parseDesignerConfig` 与 Designer artifact 解析只用于一次性迁移。
+Workbench 的 Source 与 Config 不再是编辑 provider，也不参与模型反向解析。导出配置使用公开 `defineFields<T>()` / `defineField({...})` API；Source 使用文件树与只读 Monaco 展示不依赖 ConfigForm runtime 的 standalone Vue 工程。JSON / Tree 是配置的辅助查看投影，导出菜单还可下载完整项目 ZIP。旧 `parseDesignerConfig` 与 Designer artifact 解析只用于一次性迁移。
 
 设计器专属 `id`、`material`、conditions 和 validation 放在 `extensions['mx.config-form-designer']`。业务扩展仍与该命名空间并列保存在 `extensions`，因此 Config、Designer 和 Source 往返时不会把业务元数据藏入设计器私有对象。
 

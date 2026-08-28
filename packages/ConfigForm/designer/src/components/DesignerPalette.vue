@@ -79,13 +79,13 @@ function prepareMaterialPreview(material: DesignerMaterialDefinition, event: Poi
   window.addEventListener('pointermove', handlePreviewPointerMove)
   window.addEventListener('pointerup', clearPreparedPreview, { once: true })
   window.addEventListener('pointercancel', clearPreparedPreview, { once: true })
-  if (!props.registry || material.kind !== 'field')
+  if (!props.registry)
     return
   const suffix = material.key.replace(/[^a-z0-9_-]+/gi, '-')
   try {
     preparedPreviewNode.value = props.registry.createNode(material.key, {
       id: `palette-preview-${suffix}`,
-      field: `preview_${suffix.replace(/-/g, '_')}`,
+      ...(material.kind === 'field' ? { field: `preview_${suffix.replace(/-/g, '_')}` } : {}),
     })
   }
   catch {

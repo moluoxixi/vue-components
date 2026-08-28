@@ -566,6 +566,18 @@
   min-height: 44px;
 }
 
+.mx-config-form-designer__node-preview-slot-fallback {
+  display: grid;
+  min-height: 42px;
+  padding: 8px;
+  color: var(--mx-designer-runtime-muted);
+  border: 1px dashed var(--mx-designer-runtime-border);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--mx-designer-canvas-sheet) 88%, var(--mx-designer-runtime-border));
+  font-size: 12px;
+  place-items: center;
+}
+
 .mx-config-form-designer__node-preview-shell.is-container .mx-config-form-designer__node {
   border-radius: 6px;
 }

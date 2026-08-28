@@ -3,4 +3,4 @@
 {"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查新 app 职责、README 与公开包边界。"}
 {"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查模板、下载与验证是否复用仓库模式。"}
 {"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查虚拟文件到持久化、ZIP 和隔离 build 的完整链路。"}
-{"file":".trellis/tasks/08-27-config-form-designer-ux/research/online-website-workbench.md","reason":"检查项目内核没有吸收三模式、Preview 或服务端延期范围。"}
+{"file":".trellis/tasks/archive/2026-08/08-27-config-form-designer-ux/research/online-website-workbench.md","reason":"检查项目内核没有吸收三模式、Preview 或服务端延期范围。"}

@@ -1,3 +1,4 @@
+import type { LowCodePageModel } from '@moluoxixi/config-form-designer'
 import type { WorkspaceProject } from '../types'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -5,7 +6,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { createLowCodeComponentRegistry } from '@moluoxixi/config-form-designer'
+import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'
+import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createPureSourceExport } from '../export/source'
 import { normalizeProjectPath } from '../path'
 import { createBuiltInWorkspaceProject } from '../templates'
 
@@ -148,6 +153,38 @@ describe('exported projects', () => {
     await runPnpm(['--dir', root, 'run', 'typecheck'])
     await runPnpm(['--dir', root, 'run', 'build'])
 
+    expect(existsSync(resolve(root, 'dist/index.html'))).toBe(true)
+  })
+
+  it.each(['element-profile', 'antd-profile'])('builds standalone Source export for %s', async (templateId) => {
+    const project = createBuiltInWorkspaceProject(templateId, {
+      createdAt: '2026-08-27T08:00:00.000Z',
+      id: `${templateId}-source-build`,
+      name: `${templateId} source build`,
+    })
+    const model = JSON.parse((project.files[normalizeProjectPath('src/form.designer.json')] as { content: string }).content) as LowCodePageModel
+    const registry = project.manifest.adapter === 'element-plus'
+      ? createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
+      : createLowCodeComponentRegistry(createAntdVueDesignerRegistry())
+    const exported = createPureSourceExport(project, model, registry)
+    const root = await mkdtemp(join(tmpdir(), `config-form-${templateId}-source-`))
+    temporaryRoots.push(root)
+    await writeProject(exported.project, root)
+
+    await runPnpm([
+      '--dir',
+      root,
+      'install',
+      '--ignore-scripts',
+      '--no-lockfile',
+      '--trust-policy-ignore-after',
+      '10080',
+    ])
+    await runPnpm(['--dir', root, 'run', 'typecheck'])
+    await runPnpm(['--dir', root, 'run', 'build'])
+
+    const appSource = await readFile(resolve(root, 'src/App.vue'), 'utf8')
+    expect(appSource).not.toMatch(/ConfigForm|config-form|form\.config/)
     expect(existsSync(resolve(root, 'dist/index.html'))).toBe(true)
   })
 })
