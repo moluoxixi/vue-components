@@ -1,9 +1,10 @@
-import type { ChatTransport, TranslationCandidate } from '../core'
+import type { TranslationCandidate } from '../core'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { I18nToolError, ServerContext, writeTextAtomically } from '../server'
+import { createTranslationModel } from './model-helpers'
 import { testConfig } from './server-helpers'
 
 const temporaryDirectories: string[] = []
@@ -26,17 +27,8 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map(directory => rm(directory, { force: true, recursive: true })))
 })
 
-function translatingChat(): ChatTransport {
-  return vi.fn<ChatTransport>(async function* (_config, messages) {
-    const request = JSON.parse(messages[1].content)
-    yield JSON.stringify({
-      targetLocale: request.targetLocale,
-      translations: request.entries.map((entry: { id: string, source: string }) => ({
-        id: entry.id,
-        value: entry.source === 'Plain' ? '普通' : '你好 {name}',
-      })),
-    })
-  })
+function translatingModel() {
+  return createTranslationModel(entry => entry.source === 'Plain' ? '普通' : '你好 {name}')
 }
 
 async function translatedCandidates(context: ServerContext, scanId: string, unitIds: string[]): Promise<TranslationCandidate[]> {
@@ -52,12 +44,17 @@ describe('serverContext local workflow', () => {
   it('completes scan, translate, preview and atomic apply for a new locale file', async () => {
     const root = await localeProject()
     const context = new ServerContext({
-      chat: translatingChat(),
       config: testConfig(root),
       env: { TEST_I18N_AI_KEY: 'secret-value' },
+      model: translatingModel(),
     })
 
     expect(context.sanitizedConfig().ai.status).toBe('configured')
+    expect(context.sanitizedConfig().ai).toMatchObject({
+      baseUrl: 'https://up.example/v1',
+      model: 'test-model',
+      provider: 'openai-compatible',
+    })
     expect(JSON.stringify(context.sanitizedConfig())).not.toContain('secret-value')
     const scan = await context.scan()
     const sourceIds = scan.units.filter(unit => unit.locale === 'en-US').map(unit => unit.id)
@@ -83,9 +80,9 @@ describe('serverContext local workflow', () => {
   it('rejects stale scans before preview', async () => {
     const root = await localeProject()
     const context = new ServerContext({
-      chat: translatingChat(),
       config: testConfig(root),
       env: { TEST_I18N_AI_KEY: 'secret-value' },
+      model: translatingModel(),
     })
     const scan = await context.scan()
     const source = scan.units.filter(unit => unit.locale === 'en-US')
@@ -103,9 +100,9 @@ describe('serverContext local workflow', () => {
   it('rejects unconfigured preview locales and candidate locale mismatches', async () => {
     const root = await localeProject()
     const context = new ServerContext({
-      chat: translatingChat(),
       config: testConfig(root),
       env: { TEST_I18N_AI_KEY: 'secret-value' },
+      model: translatingModel(),
     })
     const scan = await context.scan()
     const source = scan.units.find(unit => unit.locale === 'en-US')!
@@ -128,9 +125,9 @@ describe('serverContext local workflow', () => {
   it('rejects a preview whose resulting workspace would exceed limits', async () => {
     const root = await localeProject()
     const context = new ServerContext({
-      chat: translatingChat(),
       config: testConfig(root, { limits: { keys: 2 } }),
       env: { TEST_I18N_AI_KEY: 'secret-value' },
+      model: translatingModel(),
     })
     const scan = await context.scan()
     const source = scan.units.filter(unit => unit.locale === 'en-US')
@@ -147,9 +144,9 @@ describe('serverContext local workflow', () => {
   it('requires per-unit approval before overwriting an existing translation', async () => {
     const root = await localeProject('旧译文 {name}')
     const context = new ServerContext({
-      chat: translatingChat(),
       config: testConfig(root),
       env: { TEST_I18N_AI_KEY: 'secret-value' },
+      model: translatingModel(),
     })
     const scan = await context.scan()
     const hello = scan.units.find(unit => unit.locale === 'en-US' && unit.sourceKey === 'hello')!
@@ -175,11 +172,11 @@ describe('serverContext local workflow', () => {
 
   it('preserves cancellation before an AI request starts', async () => {
     const root = await localeProject()
-    const chat = vi.fn<ChatTransport>()
+    const model = translatingModel()
     const context = new ServerContext({
-      chat,
       config: testConfig(root),
       env: { TEST_I18N_AI_KEY: 'secret-value' },
+      model,
     })
     const scan = await context.scan()
     const sourceId = scan.units.find(unit => unit.locale === 'en-US')!.id
@@ -191,7 +188,7 @@ describe('serverContext local workflow', () => {
       targetLocale: 'zh-CN',
       unitIds: [sourceId],
     }, controller.signal).next()).rejects.toMatchObject({ name: 'AbortError' })
-    expect(chat).not.toHaveBeenCalled()
+    expect(model.doGenerateCalls).toHaveLength(0)
   })
 
   it('expands a selected i18next member to its complete family before translation', async () => {
@@ -216,24 +213,17 @@ describe('serverContext local workflow', () => {
         targetLocales: ['zh-CN'],
       },
     })
-    const chat = vi.fn<ChatTransport>(async function* (_provider, messages) {
-      const request = JSON.parse(messages[1].content)
-      expect(request.entries).toHaveLength(2)
-      yield JSON.stringify({
-        targetLocale: 'zh-CN',
-        translations: request.entries.map((entry: { id: string, source: string }) => ({
-          id: entry.id,
-          value: entry.source === 'One item' ? '一个项目' : '{{count}} 个项目',
-        })),
-      })
-    })
-    const context = new ServerContext({ chat, config, env: { TEST_I18N_AI_KEY: 'secret-value' } })
+    const model = createTranslationModel(entry => entry.source === 'One item' ? '一个项目' : '{{count}} 个项目')
+    const context = new ServerContext({ config, env: { TEST_I18N_AI_KEY: 'secret-value' }, model })
     const scan = await context.scan()
     const selected = scan.units.find(unit => unit.sourceKey === 'item_one')!
     const candidates = await translatedCandidates(context, scan.scanId, [selected.id])
 
     expect(candidates).toHaveLength(2)
-    expect(chat).toHaveBeenCalledOnce()
+    expect(model.doGenerateCalls).toHaveLength(1)
+    const prompt = JSON.stringify(model.doGenerateCalls[0].prompt)
+    for (const unit of scan.units)
+      expect(prompt).toContain(unit.id)
   })
 
   it('rolls back earlier files when a later file fails and keeps the preview reusable', async () => {

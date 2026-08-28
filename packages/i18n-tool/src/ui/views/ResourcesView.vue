@@ -59,8 +59,9 @@ const totalKeys = computed(() => props.scan?.resources.reduce((total, resource) 
           <div><dt>Targets</dt><dd>{{ config.resources.targetLocales.join(', ') }}</dd></div>
           <div><dt>Layout</dt><dd>{{ config.resources.layout }}</dd></div>
           <div><dt>Pattern</dt><dd><code>{{ config.resources.localePattern }}</code></dd></div>
+          <div><dt>Provider</dt><dd>{{ config.ai.provider }}</dd></div>
           <div><dt>Model</dt><dd>{{ config.ai.model }}</dd></div>
-          <div><dt>Endpoint</dt><dd>{{ config.ai.baseUrl }}</dd></div>
+          <div v-if="config.ai.provider === 'openai-compatible'"><dt>Endpoint</dt><dd>{{ config.ai.baseUrl }}</dd></div>
         </dl>
       </section>
 

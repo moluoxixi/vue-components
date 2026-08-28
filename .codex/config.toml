@@ -35,5 +35,7 @@ project_doc_fallback_filenames = ["AGENTS.md"]
 # it here means an upstream default change, or a user's own global override,
 # can't silently reopen the recursion the #240/#241 fix closed. Project config
 # (this file) takes precedence over user-level `~/.codex/config.toml`.
+model_verbosity = "low"
+model_reasoning_summary = "concise"
 [agents]
 max_depth = 1

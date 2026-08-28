@@ -8,10 +8,10 @@ These guidelines define the reusable provider boundary shared by server-side AI 
 
 | Guide | Description | Status |
 | --- | --- | --- |
-| [Provider Contracts](./provider-contracts.md) | Public exports, environment mapping, transport, cancellation, errors, and redaction | Ready |
+| [Provider Contracts](./provider-contracts.md) | SDK model factories, target validation, public exports, secret-free status, errors, and redaction | Ready |
 
 ## Pre-Development Checklist
 
-- Read [Provider Contracts](./provider-contracts.md) before changing provider configuration, transport, errors, or package exports.
+- Read [Provider Contracts](./provider-contracts.md) before changing Provider targets, model factories, errors, or package exports.
 - Identify whether each new symbol is browser-safe or server-only before exporting it.
 - Run provider tests, type-check, build, packed Node smoke, and packed browser smoke after boundary changes.

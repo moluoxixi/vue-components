@@ -7,6 +7,7 @@ function isStylesheetTarget(target) {
 }
 
 export const browserJavaScriptEntrypointAllowlist = Object.freeze({
+  '@moluoxixi/ai-doc-assistant': ['./protocol', './api-contract'],
   '@moluoxixi/ai-provider': ['.', './shared'],
   '@moluoxixi/i18n-tool': ['./protocol'],
   '@moluoxixi/components': [
@@ -34,6 +35,7 @@ export const browserJavaScriptEntrypointAllowlist = Object.freeze({
 })
 
 export const browserJavaScriptEntrypointExclusions = Object.freeze({
+  '@moluoxixi/ai-doc-assistant': ['.', './plugin'],
   '@moluoxixi/ai-provider': ['./server'],
   '@moluoxixi/i18n-tool': ['.', './config', './core', './server'],
   '@moluoxixi/vitepress-theme-element-plus': ['.', './markdown', './node', './repository/node'],
@@ -50,17 +52,28 @@ export const browserStylesheetEntrypointAllowlist = Object.freeze({
 })
 
 export const nodeJavaScriptRuntimeEntrypointAllowlist = Object.freeze({
+  '@moluoxixi/ai-doc-assistant': ['./plugin'],
   '@moluoxixi/ai-provider': ['./server'],
   '@moluoxixi/i18n-tool': ['./config', './core', './server'],
   '@moluoxixi/vitepress-theme-element-plus': ['./node', './repository/node'],
 })
 
 export const browserBundleForbiddenFragments = Object.freeze({
+  '@moluoxixi/ai-doc-assistant': [
+    'createLanguageModel',
+    'createEmbeddingModel',
+    'loadProviderConfig',
+    'ServerContext',
+    'AI_DOC_CHAT_API_KEY',
+    'AI_DOC_EMBEDDING_API_KEY',
+    'node:crypto',
+    'apiKey',
+  ],
   '@moluoxixi/ai-provider': [
-    '/chat/completions',
-    '/embeddings',
-    'chatApiKey',
-    'embeddingApiKey',
+    'createLanguageModel',
+    'createEmbeddingModel',
+    'getAiProviderErrorCause',
+    'apiKey',
   ],
   '@moluoxixi/i18n-tool': [
     'absolutePath',
@@ -69,6 +82,31 @@ export const browserBundleForbiddenFragments = Object.freeze({
     'writeTextAtomically',
   ],
 })
+
+export const packedBrowserApplicationAllowlist = Object.freeze({
+  '@moluoxixi/ai-doc-assistant': Object.freeze({
+    directory: 'dist/ui',
+    mountPath: '/__ai-doc/',
+    readySelector: '[data-testid="app-title"]',
+  }),
+})
+
+export function getPackedBrowserApplications(
+  manifests,
+  applications = packedBrowserApplicationAllowlist,
+  forbiddenRules = browserBundleForbiddenFragments,
+) {
+  const packageNames = new Set(manifests.map(manifest => manifest.name))
+  return Object.entries(applications).map(([packageName, application]) => {
+    if (!packageNames.has(packageName))
+      throw new Error(`Packed browser application package ${packageName} is not publishable.`)
+    return {
+      packageName,
+      ...application,
+      forbiddenFragments: [...(forbiddenRules[packageName] ?? [])],
+    }
+  })
+}
 
 export function getBrowserBundleForbiddenFragments(
   manifests,
@@ -84,6 +122,10 @@ export function getBrowserBundleForbiddenFragments(
 
 export function importName(name) {
   return name.replace(/[^\w$]/g, '_')
+}
+
+export function getPnpmCommandName(platform) {
+  return platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 }
 
 export function getTypedJavaScriptEntrypoints(manifest) {

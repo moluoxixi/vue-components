@@ -55,11 +55,12 @@
     "vue": "^3.5.0"
   },
   "dependencies": {
-    "@huggingface/transformers": "catalog:",
+    "@ai-sdk/vue": "catalog:",
     "@lucide/vue": "catalog:ui",
     "@moluoxixi/ai-provider": "workspace:*",
     "@orama/orama": "catalog:data",
     "@orama/plugin-data-persistence": "catalog:data",
+    "ai": "catalog:",
     "element-plus": "catalog:ui",
     "markdown-it": "catalog:",
     "vue-component-meta": "catalog:data",

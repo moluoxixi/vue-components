@@ -1,5 +1,7 @@
+import type { EmbeddingModel } from 'ai'
 import type { KnowledgeSourceWire } from '../shared/protocol'
 import type { ExampleCode } from './generator'
+import type { EmbeddingIdentity, EmbeddingIdentitySeed, IndexMeta } from './index-state'
 import type { ComponentContract } from './types'
 import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
 /**
@@ -8,9 +10,8 @@ import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
  * 架构（ADR-0006 默认 + ADR-0007 可选增强）：
  * - content（默认）：结构化关键词检索 topK 契约，零 embedding / 零向量库，
  *   依赖最轻、结果可解释，适合组件契约这类结构化小文档。
- * - vector（可选增强）：组件数增长后，启用「本地 embedding + Orama 混合检索」做语义召回。
- *   其重依赖（@huggingface/transformers、@orama/orama）经动态 import 按需加载，
- *   默认 content 模式的产物 bundle 完全不含这些重依赖。
+ * - vector（可选增强）：组件数增长后，通过远程 embedding Provider 建立语义索引。
+ *   向量存储实现经动态 import 按需加载，默认 content 模式不加载向量后端。
  *
  * 切换入口：环境变量 AI_DOC_RETRIEVAL_MODE 或 plugin/Context options.mode，默认 content。
  */
@@ -49,6 +50,7 @@ export interface StrategyResult {
 export interface StrategyMeta {
   builtAt: string
   componentCount: number
+  embeddingIdentity?: EmbeddingIdentity
 }
 
 /**
@@ -59,10 +61,14 @@ export interface RetrievalStrategy {
   readonly mode: RetrievalMode
   /**
    * 用组件契约构建检索态。
-   * content：直接持有可检索契约文本；vector：本地 embedding 建可插拔向量索引。
+   * content：直接持有可检索契约文本；vector：远程 embedding 建可插拔向量索引。
    * @returns 构建元信息（组件数、构建时间）。
    */
-  build: (contracts: ComponentContract[]) => Promise<StrategyMeta>
+  build: (contracts: ComponentContract[], signal?: AbortSignal) => Promise<StrategyMeta>
+  /** vector strategy only: serializes the underlying store for persistence. */
+  snapshot?: () => unknown
+  /** vector strategy only: restores a persisted store after identity validation. */
+  hydrate?: (snapshot: unknown, meta: IndexMeta, signal?: AbortSignal) => Promise<void>
   /** 是否已构建就绪（未就绪时上层映射 INDEX_NOT_READY）。 */
   isReady: () => boolean
   /**
@@ -70,7 +76,7 @@ export interface RetrievalStrategy {
    * @param question 用户问题。
    * @param topK 纳入上下文的组件数上限。
    */
-  retrieve: (question: string, topK: number) => Promise<StrategyResult>
+  retrieve: (question: string, topK: number, signal?: AbortSignal) => Promise<StrategyResult>
 }
 
 /**
@@ -213,16 +219,29 @@ function normalizeTopK(topK: number): number {
  * @param vectorStore vector 模式下的向量存储后端，默认 orama；content 模式忽略。
  * @param vectorStoreConfig 外部存储连接配置（如 qdrant url/collection）；orama/content 忽略。
  */
+export interface CreateStrategyOptions {
+  embeddingIdentity?: EmbeddingIdentitySeed
+  embeddingModel?: EmbeddingModel
+  vectorStore?: VectorStoreKind
+  vectorStoreConfig?: VectorStoreConfig
+}
+
 export async function createStrategy(
   mode: RetrievalMode,
-  vectorStore: VectorStoreKind = 'orama',
-  vectorStoreConfig?: VectorStoreConfig,
+  options: CreateStrategyOptions = {},
 ): Promise<RetrievalStrategy> {
   if (mode === 'content')
     return new ContentStrategy()
   if (mode === 'vector') {
+    if (!options.embeddingModel || !options.embeddingIdentity)
+      throw new Error('vector retrieval requires an explicit embedding provider configuration')
     const { VectorStrategy } = await import('./vector-strategy')
-    return new VectorStrategy(vectorStore, vectorStoreConfig)
+    return new VectorStrategy(
+      options.embeddingModel,
+      options.embeddingIdentity,
+      options.vectorStore ?? 'orama',
+      options.vectorStoreConfig,
+    )
   }
   throw new Error(`invalid retrieval mode: ${String(mode)} (expected 'content' | 'vector')`)
 }

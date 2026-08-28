@@ -101,6 +101,38 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
   expect(browserProblems).toEqual([])
 })
 
+test('current docs include runtime API headings in the table of contents', async ({ page }) => {
+  const browserProblems = collectBrowserProblems(page)
+
+  await page.goto('/components/copy-text.html')
+  await page.locator('.sidebar').getByRole('link', {
+    name: 'ConfigTable 配置表格',
+    exact: true,
+  }).click()
+  await expect(page).toHaveURL(/\/components\/config-table\.html$/)
+  const toc = page.locator('#toc-desktop-panel')
+  const apiLinks = toc.locator([
+    'a[href="#api"]',
+    'a[href="#ConfigTable-props"]',
+    'a[href="#ConfigTable-emits"]',
+    'a[href="#ConfigTable-slots"]',
+    'a[href="#ConfigTable-expose"]',
+  ].join(', '))
+
+  await expect(apiLinks).toHaveText(['API', 'Props', 'Emits', 'Slots', 'Expose'])
+  await expect.poll(() => apiLinks.evaluateAll(links => links.map((link) => {
+    let depth = 0
+    let item = link.closest('.el-anchor__item')
+    while (item) {
+      depth += 1
+      item = item.parentElement?.closest('.el-anchor__item') ?? null
+    }
+    return depth
+  }))).toEqual([1, 2, 2, 2, 2])
+
+  expect(browserProblems).toEqual([])
+})
+
 test('component overview search and English routes stay localized', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 

@@ -4,8 +4,8 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
+  AiDocUIMessage,
   ApiErrorCode,
-  ChatHistoryMessage,
   ComponentDetailResponse,
   ComponentListItem,
   HealthResponse,
@@ -16,17 +16,16 @@ import type {
 } from '../shared/protocol'
 import type { ServerContext } from './context'
 import { Buffer } from 'node:buffer'
+import { pipeUIMessageStreamToResponse, validateUIMessages } from 'ai'
 import { contractToDetail } from '../core/knowledge-source'
 import {
   API_PREFIX,
-  encodeSseEvent,
   ERROR_STATUS,
   MAX_HISTORY_CHARACTERS,
   MAX_HISTORY_MESSAGES,
 } from '../shared/protocol'
-import { streamChat } from './ai-client'
 import { providerStatusOf } from './ai-provider'
-import { runQuery } from './query-handler'
+import { createQueryUIMessageStream, prepareQuery } from './query-handler'
 
 const MAX_QUESTION_CHARACTERS = 4_000
 const MAX_TOP_K = 20
@@ -78,50 +77,64 @@ function deriveIndexState(ctx: ServerContext): IndexState {
     return 'building'
   if (snap.status === 'ready')
     return 'ready'
+  if (snap.status === 'stale')
+    return 'stale'
   return 'not_built'
 }
 
-/** 校验不可信 query body；客户端只可回传完整的 user/assistant 对。 */
-function queryValidationError(body: QueryRequest): string | null {
-  if (typeof body.question !== 'string' || body.question.trim().length === 0)
-    return 'question is required'
-  if (body.question.length > MAX_QUESTION_CHARACTERS)
-    return `question must not exceed ${MAX_QUESTION_CHARACTERS} characters`
-  if (body.topK !== undefined && (!Number.isInteger(body.topK) || body.topK < 1 || body.topK > MAX_TOP_K))
+function messageText(message: AiDocUIMessage): string {
+  return message.parts
+    .filter(part => part.type === 'text')
+    .map(part => part.text)
+    .join('')
+}
+
+/** Validate complete historical pairs plus the current final user message. */
+function queryValidationError(messages: AiDocUIMessage[], topK: number | undefined): string | null {
+  if (topK !== undefined && (!Number.isInteger(topK) || topK < 1 || topK > MAX_TOP_K))
     return `topK must be an integer between 1 and ${MAX_TOP_K}`
-  if (body.history === undefined)
-    return null
-  if (!Array.isArray(body.history))
-    return 'history must be an array'
-  if (body.history.length > MAX_HISTORY_MESSAGES)
+  if (messages.length === 0 || messages.length % 2 === 0)
+    return 'messages must end with a user message after complete user/assistant pairs'
+
+  const history = messages.slice(0, -1)
+  if (history.length > MAX_HISTORY_MESSAGES)
     return `history must not exceed ${MAX_HISTORY_MESSAGES} messages`
-  if (body.history.length % 2 !== 0)
-    return 'history must contain complete user/assistant pairs'
 
   let totalCharacters = 0
-  for (const [index, message] of body.history.entries()) {
-    const expectedRole: ChatHistoryMessage['role'] = index % 2 === 0 ? 'user' : 'assistant'
-    if (!message || message.role !== expectedRole)
-      return `history message ${index} must have role ${expectedRole}`
-    if (typeof message.content !== 'string' || message.content.trim().length === 0)
-      return `history message ${index} content is required`
-    totalCharacters += message.content.length
+  for (const [index, message] of messages.entries()) {
+    const expectedRole = index % 2 === 0 ? 'user' : 'assistant'
+    if (message.role !== expectedRole)
+      return `message ${index} must have role ${expectedRole}`
+    if (message.parts.some(part => part.type !== 'text' && !(message.role === 'assistant' && (part.type === 'data-sources' || part.type === 'data-example'))))
+      return `message ${index} contains an unsupported part`
+    const text = messageText(message)
+    if (!text.trim())
+      return `message ${index} text is required`
+    if (index < messages.length - 1)
+      totalCharacters += text.length
   }
   if (totalCharacters > MAX_HISTORY_CHARACTERS)
     return `history must not exceed ${MAX_HISTORY_CHARACTERS} characters`
+  const question = messageText(messages[messages.length - 1])
+  if (question.length > MAX_QUESTION_CHARACTERS)
+    return `question must not exceed ${MAX_QUESTION_CHARACTERS} characters`
   return null
 }
 
 /** POST /query —— SSE 流式问答。 */
 async function handleQuery(ctx: ServerContext, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJsonBody<QueryRequest>(req)
-  const validationError = queryValidationError(body)
-  if (validationError) {
-    sendError(res, 'INVALID_REQUEST', validationError)
+  let messages: AiDocUIMessage[]
+  try {
+    messages = await validateUIMessages<AiDocUIMessage>({ messages: body.messages })
+  }
+  catch {
+    sendError(res, 'INVALID_REQUEST', 'messages are invalid')
     return
   }
-  if (!ctx.config) {
-    sendError(res, 'UPSTREAM_ERROR', 'provider not configured')
+  const validationError = queryValidationError(messages, body.topK)
+  if (validationError) {
+    sendError(res, 'INVALID_REQUEST', validationError)
     return
   }
   // 索引未构建时策略为 null，明确返回 INDEX_NOT_READY，不静默空答
@@ -156,46 +169,30 @@ async function handleQuery(ctx: ServerContext, req: IncomingMessage, res: Server
     return
   }
 
-  res.writeHead(200, {
-    'content-type': 'text/event-stream; charset=utf-8',
-    'cache-control': 'no-cache',
-    'connection': 'keep-alive',
-  })
-
-  const deps = {
-    strategy,
-    config: ctx.config,
-    chat: streamChat,
-  }
-
   try {
-    for await (const event of runQuery(
-      body.question.trim(),
+    const prepared = await prepareQuery(
+      messages,
       body.topK ?? 5,
-      deps,
-      body.history ?? [],
+      strategy,
       controller.signal,
-    )) {
-      if (!canWrite())
-        break
-      res.write(encodeSseEvent(event))
-    }
+    )
+    if (prepared.chunks.length > 0 && !ctx.languageModel)
+      throw new Error('provider not configured')
+
+    const stream = createQueryUIMessageStream(
+      prepared,
+      { model: ctx.languageModel },
+      controller.signal,
+    )
+    await pipeUIMessageStreamToResponse({ response: res, stream })
   }
   catch (err) {
-    if (canWrite()) {
-      const code = classifyError(err)
-      res.write(encodeSseEvent({
-        type: 'error',
-        error: code,
-        message: err instanceof Error ? err.message : String(err),
-      }))
-    }
+    if (canWrite() && !res.headersSent)
+      sendError(res, classifyError(err), 'query stream failed')
   }
   finally {
     req.off('aborted', abortUpstream)
     res.off('close', onResponseClose)
-    if (canWrite())
-      res.end()
   }
 }
 
@@ -207,10 +204,11 @@ function handleStatus(ctx: ServerContext, res: ServerResponse): void {
   const body: IndexStatusResponse = {
     state: deriveIndexState(ctx),
     builtAt: snap.meta?.builtAt ?? null,
-    stale: false,
+    stale: snap.status === 'stale',
     componentCount: snap.meta?.componentCount ?? 0,
     internalCount: internalContracts.length,
     externalCount: externalContracts.length,
+    embeddingIdentity: snap.meta?.embeddingIdentity ?? null,
   }
   sendJson(res, 200, body)
 }
@@ -280,7 +278,7 @@ function handleHealth(ctx: ServerContext, res: ServerResponse): void {
   const status = providerStatusOf(ctx.config)
   const body: HealthResponse = {
     ok: true,
-    providers: { chat: status.chat },
+    providers: status,
     mode: ctx.mode,
     index: deriveIndexState(ctx),
   }
@@ -303,6 +301,7 @@ export async function dispatch(
   const method = req.method ?? 'GET'
 
   try {
+    await ctx.initialize()
     if (method === 'POST' && path === '/query') {
       await handleQuery(ctx, req, res)
       return true

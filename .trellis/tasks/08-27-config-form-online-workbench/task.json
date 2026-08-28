@@ -22,7 +22,9 @@
     "08-27-config-form-workbench-three-mode",
     "08-27-config-form-workbench-project-core",
     "08-27-config-form-workbench-live-preview",
-    "08-27-config-form-workbench-product-shell"
+    "08-27-config-form-workbench-product-shell",
+    "08-28-config-form-workbench-export",
+    "08-28-config-form-designer-dnd-regression"
   ],
   "parent": null,
   "relatedFiles": [],

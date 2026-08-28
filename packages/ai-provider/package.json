@@ -2,7 +2,7 @@
   "name": "@moluoxixi/ai-provider",
   "type": "module",
   "version": "0.0.0",
-  "description": "共享 AI Provider 配置与 OpenAI-compatible 服务端传输层",
+  "description": "基于 Vercel AI SDK 的共享 AI Provider 与模型工厂",
   "repository": {
     "type": "git",
     "url": "https://github.com/moluoxixi/vue-components",
@@ -43,6 +43,13 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "catalog:",
+    "@ai-sdk/google": "catalog:",
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/openai-compatible": "catalog:",
+    "ai": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:type",

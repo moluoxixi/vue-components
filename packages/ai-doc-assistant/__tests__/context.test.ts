@@ -2,8 +2,9 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { readMeta } from '../src/core/persist'
 import { ServerContext } from '../src/server/context'
 
 // 实际抽取契约的用例必须用包内 fixture 工作区：vue-component-meta 需被分析 SFC 落在 tsconfig
@@ -43,19 +44,35 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true })
 })
 
-// chat 走 provider key；content 模式构建无需任何 key。
-const ENV = { AI_DOC_CHAT_API_KEY: 'k' }
+// Chat config is explicit; content mode construction still works without it.
+const ENV = {
+  AI_DOC_CHAT_PROVIDER: 'openai',
+  AI_DOC_CHAT_API_KEY: 'k',
+  AI_DOC_CHAT_MODEL: 'gpt-4o-mini',
+}
 
 describe('serverContext（默认 content 策略，关键词 topK）', () => {
   it('构造时加载 provider 配置（chat key 存在）', () => {
     const ctx = new ServerContext({ root, env: ENV })
-    expect(ctx.config).toBeTruthy()
-    expect(ctx.config!.chatApiKey).toBe('k')
+    expect(ctx.config.chat).toEqual({
+      provider: 'openai',
+      apiKey: 'k',
+      model: 'gpt-4o-mini',
+    })
   })
 
   it('默认 mode 为 content', () => {
     const ctx = new ServerContext({ root, env: ENV })
     expect(ctx.mode).toBe('content')
+  })
+
+  it('content 模式完全忽略 qdrant 后端与缺失的连接配置', () => {
+    const ctx = new ServerContext({
+      root,
+      env: { ...ENV, AI_DOC_VECTOR_STORE: 'qdrant' },
+    })
+    expect(ctx.mode).toBe('content')
+    expect(ctx.vectorStore).toBe('orama')
   })
 
   it('环境变量可切 vector 模式', () => {
@@ -68,9 +85,20 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
       .toThrow(/invalid AI_DOC_RETRIEVAL_MODE/)
   })
 
-  it('无 chat key 时 config 为 null（chat 是核心边界）', () => {
+  it('无 AI 配置时两个 capability 均 missing', () => {
     const ctx = new ServerContext({ root, env: {} })
-    expect(ctx.config).toBeNull()
+    expect(ctx.config).toEqual({ chat: null, embedding: null })
+  })
+
+  it('vector + qdrant 仍要求显式连接配置', () => {
+    expect(() => new ServerContext({
+      root,
+      env: {
+        ...ENV,
+        AI_DOC_RETRIEVAL_MODE: 'vector',
+        AI_DOC_VECTOR_STORE: 'qdrant',
+      },
+    })).toThrow(/AI_DOC_QDRANT_URL.*AI_DOC_QDRANT_COLLECTION/)
   })
 
   it('未构建时 getStrategy 返回 null（由上层映射 INDEX_NOT_READY）', () => {
@@ -174,4 +202,74 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
     expect(ctx.getAllContracts()).toHaveLength(internalCount + 1)
     expect(ctx.getAllContracts().map(item => item.key)).toContain('external:%40external%2Fui:ExternalOnly')
   })
+
+  it('vector index persists, hydrates without re-embedding, and becomes stale after model change', async () => {
+    const indexDir = join(root, 'persisted-vector')
+    const embeddingEnv = {
+      AI_DOC_RETRIEVAL_MODE: 'vector',
+      AI_DOC_EMBEDDING_PROVIDER: 'openai-compatible',
+      AI_DOC_EMBEDDING_API_KEY: 'embedding-secret',
+      AI_DOC_EMBEDDING_MODEL: 'embed-v1',
+      AI_DOC_EMBEDDING_BASE_URL: 'https://embedding.example/v1',
+    }
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as { input: string | string[] }
+      const values = Array.isArray(body.input) ? body.input : [body.input]
+      return new Response(JSON.stringify({
+        object: 'list',
+        data: values.map((_value, index) => ({
+          object: 'embedding',
+          index,
+          embedding: [1, 0, 0],
+        })),
+        model: 'embed-v1',
+        usage: { prompt_tokens: values.length, total_tokens: values.length },
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      const built = new ServerContext({
+        root: FIXTURE_ROOT,
+        env: embeddingEnv,
+        indexDir,
+      })
+      await built.buildIndex()
+      const buildCalls = fetchMock.mock.calls.length
+      const meta = await readMeta(indexDir)
+      expect(meta?.embeddingIdentity).toMatchObject({
+        provider: 'openai-compatible',
+        model: 'embed-v1',
+        dimension: 3,
+      })
+      expect(JSON.stringify(meta)).not.toContain('embedding-secret')
+      expect(JSON.stringify(meta)).not.toContain('embedding.example')
+
+      const restored = new ServerContext({
+        root: FIXTURE_ROOT,
+        env: embeddingEnv,
+        indexDir,
+      })
+      await restored.initialize()
+      expect(restored.state.snapshot().status).toBe('ready')
+      expect(restored.getStrategy()?.isReady()).toBe(true)
+      expect(fetchMock).toHaveBeenCalledTimes(buildCalls)
+
+      const stale = new ServerContext({
+        root: FIXTURE_ROOT,
+        env: { ...embeddingEnv, AI_DOC_EMBEDDING_MODEL: 'embed-v2' },
+        indexDir,
+      })
+      await stale.initialize()
+      expect(stale.state.snapshot().status).toBe('stale')
+      expect(stale.getStrategy()).toBeNull()
+      expect(fetchMock).toHaveBeenCalledTimes(buildCalls)
+    }
+    finally {
+      vi.unstubAllGlobals()
+    }
+  }, 20_000)
 })

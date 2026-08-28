@@ -27,6 +27,7 @@ describe('config resolution', () => {
     const root = await temporaryDirectory()
     const overrideRoot = resolve(root, 'project')
     const config = resolveI18nToolConfig({
+      ai: { apiKeyEnv: 'TEST_AI_KEY', model: 'gpt-test', provider: 'openai' },
       resources: {
         adapter: 'vue-i18n-json',
         layout: 'locale-per-file',
@@ -43,12 +44,44 @@ describe('config resolution', () => {
     expect(config.root).toBe(overrideRoot)
     expect(config.server).toEqual({ host: '0.0.0.0', open: false, port: 6_000 })
     expect(config.resources.include).toEqual(['locales/**/*.json'])
-    expect(config.ai.apiKeyEnv).toBe('I18N_TOOL_AI_API_KEY')
+    expect(config.ai).toEqual({ apiKeyEnv: 'TEST_AI_KEY', model: 'gpt-test', provider: 'openai' })
+  })
+
+  it.each([
+    { apiKeyEnv: 'OPENAI_API_KEY', model: 'gpt-5-mini', provider: 'openai' },
+    { apiKeyEnv: 'ANTHROPIC_API_KEY', model: 'claude-sonnet-4-5', provider: 'anthropic' },
+    { apiKeyEnv: 'GOOGLE_API_KEY', model: 'gemini-2.5-flash', provider: 'google' },
+    {
+      apiKeyEnv: 'COMPATIBLE_API_KEY',
+      baseUrl: 'https://gateway.example/v1',
+      model: 'compatible-model',
+      provider: 'openai-compatible',
+    },
+  ] as const)('accepts explicit $provider configuration', async (ai) => {
+    const root = await temporaryDirectory()
+    const config = resolveI18nToolConfig({
+      ai,
+      resources: {
+        adapter: 'vue-i18n-json',
+        layout: 'locale-per-file',
+        localePattern: 'locales/{locale}.json',
+        sourceLocale: 'en-US',
+        targetLocales: ['zh-CN'],
+      },
+    }, { configPath: resolve(root, 'i18n-tool.config.ts') })
+
+    expect(config.ai).toEqual(ai)
   })
 
   it('rejects traversal, duplicate targets and unsupported layouts', async () => {
     const root = await temporaryDirectory()
     const base = {
+      ai: {
+        apiKeyEnv: 'TEST_AI_KEY',
+        baseUrl: 'https://gateway.example/v1',
+        model: 'test-model',
+        provider: 'openai-compatible',
+      },
       resources: {
         adapter: 'vue-i18n-json',
         layout: 'locale-per-file',
@@ -93,8 +126,20 @@ describe('config resolution', () => {
     }, options)).toThrow(/at most once/)
     expect(() => resolveI18nToolConfig({
       ...base,
-      ai: { baseUrl: 'https://user:secret@example.test/v1?token=value' },
+      ai: { ...base.ai, baseUrl: 'https://user:secret@example.test/v1?token=value' },
     }, options)).toThrow(/credentials/)
+    expect(() => resolveI18nToolConfig({
+      ...base,
+      ai: { apiKeyEnv: 'TEST_AI_KEY', model: 'test-model', provider: 'openai', baseUrl: 'https://gateway.example/v1' },
+    }, options)).toThrow(/unrecognized/i)
+    expect(() => resolveI18nToolConfig({
+      ...base,
+      ai: { apiKeyEnv: 'TEST_AI_KEY', model: 'test-model', provider: 'openai-compatible' },
+    }, options)).toThrow()
+    expect(() => resolveI18nToolConfig({
+      ...base,
+      ai: { apiKeyEnv: 'TEST_AI_KEY', model: 'test-model' },
+    }, options)).toThrow()
   })
 
   it('discovers and loads a TypeScript config from a child directory', async () => {
@@ -103,6 +148,11 @@ describe('config resolution', () => {
     await mkdir(child, { recursive: true })
     await writeFile(resolve(root, 'i18n-tool.config.ts'), `
 const config = {
+  ai: {
+    apiKeyEnv: 'TEST_AI_KEY',
+    model: 'test-model',
+    provider: 'google',
+  },
   resources: {
     adapter: 'generic-json',
     layout: 'locale-first',

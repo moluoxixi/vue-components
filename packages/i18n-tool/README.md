@@ -1,6 +1,6 @@
 # @moluoxixi/i18n-tool
 
-本地国际化翻译工作台。工具在项目本地启动 HTTP 服务，读取配置指定的 JSON 语言资源，通过 OpenAI-compatible 模型生成译文，并在预览确认后创建或更新本地文件。
+本地国际化翻译工作台。工具在项目本地启动 HTTP 服务，读取配置指定的 JSON 语言资源，通过 Vercel AI SDK 调用 OpenAI、Anthropic、Google 或 OpenAI-compatible 模型生成译文，并在预览确认后创建或更新本地文件。
 
 ## 能力
 
@@ -35,7 +35,8 @@ export default defineConfig({
     targetLocales: ['en-US', 'ja-JP'],
   },
   ai: {
-    baseUrl: 'https://coderelay.cn/v1',
+    provider: 'openai-compatible',
+    baseUrl: 'https://gateway.example/v1',
     model: 'gpt-4o-mini',
     apiKeyEnv: 'I18N_TOOL_AI_API_KEY',
   },
@@ -47,10 +48,24 @@ export default defineConfig({
 })
 ```
 
+`provider`、`model` 和 `apiKeyEnv` 必须显式配置。原生 `openai`、`anthropic`、`google` Provider 不接受 `baseUrl`；只有 `openai-compatible` 必须提供不含凭据、query 或 fragment 的 HTTP(S) `baseUrl`：
+
+```ts
+import { defineConfig } from '@moluoxixi/i18n-tool/config'
+
+export default defineConfig({
+  ai: {
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-5',
+    apiKeyEnv: 'ANTHROPIC_API_KEY',
+  },
+})
+```
+
 配置密钥并启动：
 
 ```bash
-I18N_TOOL_AI_API_KEY=your-key pnpm exec i18n-tool
+ANTHROPIC_API_KEY=your-key pnpm exec i18n-tool
 ```
 
 也可以显式指定配置和服务参数：

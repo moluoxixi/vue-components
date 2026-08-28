@@ -80,8 +80,16 @@ const statusTone = computed<'neutral' | 'working' | 'success' | 'error'>(() => {
 const statusDetail = computed(() => {
   if (!health.value)
     return statusLabel.value
-  const chat = health.value.providers.chat === 'configured' ? 'Chat 已配置' : 'Chat 未配置'
-  return `${statusLabel.value} · 检索模式 ${health.value.mode} · ${chat}`
+  const chat = health.value.providers.chat.availability === 'configured' ? 'Chat 已配置' : 'Chat 未配置'
+  const details = [`${statusLabel.value}`, `检索模式 ${health.value.mode}`, chat]
+  if (health.value.mode === 'vector') {
+    const embedding = health.value.providers.embedding
+    const target = embedding.availability === 'configured'
+      ? `${embedding.provider}/${embedding.model}`
+      : '未配置'
+    details.push(`远程 embedding ${target}：组件契约会发送给 Provider，并可能产生费用`)
+  }
+  return details.join(' · ')
 })
 
 /** 拉取健康态与索引状态。 */
@@ -217,7 +225,7 @@ onMounted(initialize)
       :status-label="statusLabel"
       :status-tone="statusTone"
       :status-detail="statusDetail"
-      :chat-missing="health?.providers.chat === 'missing'"
+      :chat-missing="health?.providers.chat.availability === 'missing'"
       :building="building"
       :importing="importing"
       :show-build-action="showKnowledgeAction"

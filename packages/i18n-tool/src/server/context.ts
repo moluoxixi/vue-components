@@ -1,6 +1,7 @@
-import type { ProviderConfig } from '@moluoxixi/ai-provider/server'
+import type { LanguageModelTarget } from '@moluoxixi/ai-provider/server'
+import type { LanguageModel } from 'ai'
 import type { ResolvedI18nToolConfig } from '../config'
-import type { ChatTransport, LocaleAdapter, ResourceDocument, TranslationCandidate, TranslationUnit } from '../core'
+import type { LocaleAdapter, ResourceDocument, TranslationCandidate, TranslationUnit } from '../core'
 import type {
   ApplyResponse,
   PreviewFileWire,
@@ -18,7 +19,7 @@ import { randomUUID } from 'node:crypto'
 import { readFile, rm } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import process from 'node:process'
-import { loadProviderConfig, providerStatusOf } from '@moluoxixi/ai-provider/server'
+import { createLanguageModel } from '@moluoxixi/ai-provider/server'
 import {
   analyzeTranslationGaps,
   applyOperationsAndValidate,
@@ -37,15 +38,6 @@ import { hashContent, scanWorkspace } from './scanner'
 type AtomicWriter = typeof writeTextAtomically
 
 const PREVIEW_TTL_MS = 15 * 60 * 1_000
-const PROVIDER_ENV_KEYS = {
-  chatApiKey: 'I18N_TOOL_INTERNAL_CHAT_API_KEY',
-  chatBaseUrl: 'I18N_TOOL_INTERNAL_CHAT_BASE_URL',
-  chatModel: 'I18N_TOOL_INTERNAL_CHAT_MODEL',
-  embeddingApiKey: 'I18N_TOOL_INTERNAL_EMBEDDING_API_KEY',
-  embeddingBaseUrl: 'I18N_TOOL_INTERNAL_EMBEDDING_BASE_URL',
-  embeddingModel: 'I18N_TOOL_INTERNAL_EMBEDDING_MODEL',
-} as const
-
 interface PreviewInternalFile {
   absolutePath: string
   adapter: LocaleAdapter
@@ -69,33 +61,34 @@ interface PreviewEntry {
 }
 
 export interface ServerContextOptions {
-  chat?: ChatTransport
   config: ResolvedI18nToolConfig
   env?: Readonly<Record<string, string | undefined>>
+  model?: LanguageModel
   now?: () => number
   writeText?: AtomicWriter
 }
 
-function loadI18nProviderConfig(
+function loadI18nLanguageModelTarget(
   config: ResolvedI18nToolConfig,
   env: Readonly<Record<string, string | undefined>>,
-): ProviderConfig | null {
-  return loadProviderConfig({
-    [PROVIDER_ENV_KEYS.chatApiKey]: env[config.ai.apiKeyEnv],
-    [PROVIDER_ENV_KEYS.chatBaseUrl]: config.ai.baseUrl,
-    [PROVIDER_ENV_KEYS.chatModel]: config.ai.model,
-    [PROVIDER_ENV_KEYS.embeddingApiKey]: '',
-    [PROVIDER_ENV_KEYS.embeddingBaseUrl]: config.ai.baseUrl,
-    [PROVIDER_ENV_KEYS.embeddingModel]: config.ai.model,
-  }, {
-    defaults: {
-      chatBaseUrl: config.ai.baseUrl,
-      chatModel: config.ai.model,
-      embeddingBaseUrl: config.ai.baseUrl,
-      embeddingModel: config.ai.model,
-    },
-    envKeys: PROVIDER_ENV_KEYS,
-  })
+): LanguageModelTarget | null {
+  const apiKey = env[config.ai.apiKeyEnv]
+  if (!apiKey?.trim())
+    return null
+
+  if (config.ai.provider === 'openai-compatible') {
+    return {
+      apiKey,
+      baseURL: config.ai.baseUrl,
+      model: config.ai.model,
+      provider: config.ai.provider,
+    }
+  }
+  return {
+    apiKey,
+    model: config.ai.model,
+    provider: config.ai.provider,
+  }
 }
 
 function textDiff(before: string, after: string): string {
@@ -166,9 +159,8 @@ function validatePreviewLimits(
 
 export class ServerContext {
   readonly config: ResolvedI18nToolConfig
+  readonly languageModel: LanguageModel | null
   readonly pathGuard: Promise<PathGuard>
-  readonly providerConfig: ProviderConfig | null
-  private readonly chat?: ChatTransport
   private readonly now: () => number
   private readonly writeText: AtomicWriter
   private readonly scans = new Map<string, ScanSnapshot>()
@@ -179,20 +171,24 @@ export class ServerContext {
 
   constructor(options: ServerContextOptions) {
     this.config = options.config
-    this.chat = options.chat
     this.now = options.now ?? Date.now
     this.writeText = options.writeText ?? writeTextAtomically
     this.pathGuard = createPathGuard(options.config.root)
-    this.providerConfig = loadI18nProviderConfig(options.config, options.env ?? process.env)
+    const target = loadI18nLanguageModelTarget(options.config, options.env ?? process.env)
+    this.languageModel = target ? options.model ?? createLanguageModel(target) : null
   }
 
   sanitizedConfig(): SanitizedConfigResponse {
+    const ai = {
+      model: this.config.ai.model,
+      provider: this.config.ai.provider,
+      status: this.languageModel ? 'configured' as const : 'missing' as const,
+      ...(this.config.ai.provider === 'openai-compatible'
+        ? { baseUrl: this.config.ai.baseUrl }
+        : {}),
+    } as SanitizedConfigResponse['ai']
     return {
-      ai: {
-        baseUrl: this.config.ai.baseUrl,
-        model: this.config.ai.model,
-        status: providerStatusOf(this.providerConfig).chat,
-      },
+      ai,
       projectName: basename(this.config.root),
       resources: {
         adapter: this.config.resources.adapter,
@@ -244,7 +240,7 @@ export class ServerContext {
   }
 
   async* translate(request: TranslateRequest, signal?: AbortSignal): AsyncGenerator<TranslateSseEvent> {
-    if (!this.providerConfig)
+    if (!this.languageModel)
       throw new I18nToolError('AI_NOT_CONFIGURED', 'The AI provider key is not configured.', 409)
     if (!this.config.resources.targetLocales.includes(request.targetLocale))
       throw new I18nToolError('INVALID_REQUEST', 'The target locale is not configured.', 400)
@@ -278,11 +274,10 @@ export class ServerContext {
       for (const batch of plan.batches) {
         signal?.throwIfAborted()
         const result = await translateBatch(
-          this.providerConfig,
+          this.languageModel,
           batch,
           request.targetLocale,
           signal,
-          this.chat,
         )
         for (const candidate of result.candidates)
           yield { candidate, type: 'candidate' }

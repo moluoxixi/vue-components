@@ -1,5 +1,5 @@
 import type { AddressInfo, Server } from 'node:net'
-import type { VectorDoc } from '../src/core/vector-store'
+import type { VectorDoc, VectorIndexMetadata } from '../src/core/vector-store'
 import { Buffer } from 'node:buffer'
 /**
  * QdrantVectorStore 真实 HTTP 往返测试。
@@ -13,14 +13,27 @@ import { Buffer } from 'node:buffer'
  */
 import { createServer } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { EMBEDDING_DIM } from '../src/core/embedder'
 import { QdrantVectorStore } from '../src/core/qdrant-store'
+
+const TEST_VECTOR_DIMENSION = 4
 
 /** 极简内存版 Qdrant：实现适配器用到的 4 个端点 + 真实余弦相似度排序。 */
 interface StoredPoint {
-  id: number
+  id: string | number
   vector: number[]
   payload: Record<string, unknown>
+}
+
+function metadata(sourceHash = 'source-v1', model = 'embed-v1'): VectorIndexMetadata {
+  return {
+    sourceHash,
+    embeddingIdentity: {
+      provider: 'openai-compatible',
+      model,
+      endpointFingerprint: 'endpoint-v1',
+      dimension: TEST_VECTOR_DIMENSION,
+    },
+  }
 }
 
 /** 余弦相似度（与 Qdrant Cosine 距离一致的打分方向：越大越相似）。 */
@@ -38,9 +51,16 @@ function cosine(a: number[], b: number[]): number {
 }
 
 /** 起一个真实 HTTP server，模拟 Qdrant REST 行为。返回 server + base url。 */
-function startFakeQdrant(): Promise<{ server: Server, url: string, calls: string[] }> {
+function startFakeQdrant(): Promise<{
+  server: Server
+  url: string
+  calls: string[]
+  searchFilters: unknown[]
+}> {
   const collections = new Map<string, StoredPoint[]>()
+  const dimensions = new Map<string, number>()
   const calls: string[] = []
+  const searchFilters: unknown[] = []
 
   const server = createServer((req, res) => {
     const chunks: Buffer[] = []
@@ -55,7 +75,13 @@ function startFakeQdrant(): Promise<{ server: Server, url: string, calls: string
       // DELETE /collections/:name —— 幂等删除（不存在也返回 ok）
       const delMatch = url.match(/^\/collections\/([^/?]+)$/)
       if (method === 'DELETE' && delMatch) {
+        if (delMatch[1] === 'delete-fails') {
+          res.writeHead(503, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({ status: { error: 'delete unavailable' } }))
+          return
+        }
         collections.delete(delMatch[1])
+        dimensions.delete(delMatch[1])
         res.writeHead(200, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ result: true, status: 'ok' }))
         return
@@ -64,8 +90,30 @@ function startFakeQdrant(): Promise<{ server: Server, url: string, calls: string
       // PUT /collections/:name —— 建集合
       if (method === 'PUT' && delMatch) {
         collections.set(delMatch[1], [])
+        dimensions.set(delMatch[1], body.vectors.size)
         res.writeHead(200, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ result: true, status: 'ok' }))
+        return
+      }
+
+      if (method === 'GET' && delMatch && collections.has(delMatch[1])) {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({
+          result: { config: { params: { vectors: { size: dimensions.get(delMatch[1]) } } } },
+          status: 'ok',
+        }))
+        return
+      }
+
+      // POST /collections/:name/points —— 按 id 读取持久化 metadata 点
+      const pointsMatch = url.match(/^\/collections\/([^/?]+)\/points$/)
+      if (method === 'POST' && pointsMatch) {
+        const ids = new Set(body.ids as Array<string | number>)
+        const result = (collections.get(pointsMatch[1]) ?? [])
+          .filter(point => ids.has(point.id))
+          .map(point => ({ id: point.id, payload: point.payload }))
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ result, status: 'ok' }))
         return
       }
 
@@ -90,7 +138,15 @@ function startFakeQdrant(): Promise<{ server: Server, url: string, calls: string
       if (method === 'POST' && searchMatch) {
         const list = collections.get(searchMatch[1]) ?? []
         const query = body.vector as number[]
+        const filter = body.filter as {
+          must?: Array<{ key?: unknown, match?: { value?: unknown } }>
+        } | undefined
+        searchFilters.push(filter)
+        const documentOnly = filter?.must?.some(condition => (
+          condition.key === 'kind' && condition.match?.value === 'document'
+        ))
         const scored = list
+          .filter(point => !documentOnly || point.payload.kind === 'document')
           .map(p => ({ id: p.id, score: cosine(query, p.vector), payload: p.payload }))
           .sort((a, b) => b.score - a.score)
           .slice(0, body.limit ?? 10)
@@ -107,14 +163,14 @@ function startFakeQdrant(): Promise<{ server: Server, url: string, calls: string
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
       const { port } = server.address() as AddressInfo
-      resolve({ server, url: `http://127.0.0.1:${port}`, calls })
+      resolve({ server, url: `http://127.0.0.1:${port}`, calls, searchFilters })
     })
   })
 }
 
 /** 造一个指定维度、在某一维置 1 的单位向量，便于构造可预期的相似度排序。 */
 function unitVec(hot: number): number[] {
-  const v = Array.from({ length: EMBEDDING_DIM }).fill(0) as number[]
+  const v = Array.from({ length: TEST_VECTOR_DIMENSION }).fill(0) as number[]
   v[hot] = 1
   return v
 }
@@ -141,7 +197,7 @@ function vectorDoc(
 }
 
 describe('qdrantVectorStore 真实 HTTP 往返', () => {
-  let fake: { server: Server, url: string, calls: string[] }
+  let fake: { server: Server, url: string, calls: string[], searchFilters: unknown[] }
 
   beforeAll(async () => {
     fake = await startFakeQdrant()
@@ -156,7 +212,7 @@ describe('qdrantVectorStore 真实 HTTP 往返', () => {
     await store.build([
       vectorDoc('ElButton', '@moluoxixi/button', 'packages/button/src/index.vue', '按钮组件 支持类型与尺寸', '<ElButton type="primary" />', unitVec(0)),
       vectorDoc('ElTable', '@moluoxixi/table', 'packages/table/src/index.vue', '表格组件 支持分页与排序', '<ElTable :data="rows" />', unitVec(1)),
-    ])
+    ], metadata())
 
     expect(store.isReady()).toBe(true)
 
@@ -170,6 +226,9 @@ describe('qdrantVectorStore 真实 HTTP 往返', () => {
     // 真实经过了 建集合 + upsert + search 的 HTTP 往返
     expect(fake.calls).toContain('PUT /collections/docs')
     expect(fake.calls).toContain('POST /collections/docs/points/search')
+    expect(fake.searchFilters).toContainEqual({
+      must: [{ key: 'kind', match: { value: 'document' } }],
+    })
   })
 
   it('未 build 即 search 显式抛错（不静默伪装无命中）', async () => {
@@ -181,7 +240,7 @@ describe('qdrantVectorStore 真实 HTTP 往返', () => {
     const store = new QdrantVectorStore({ url: fake.url, collection: 'docs3' })
     await expect(store.build([
       vectorDoc('Bad', '@moluoxixi/bad', 'x.vue', 'b', 'e', [1, 2, 3]),
-    ])).rejects.toThrow(/dim mismatch/)
+    ], metadata())).rejects.toThrow(/dim mismatch/)
   })
 
   it('缺失连接配置在构造时显式抛错', () => {
@@ -191,17 +250,42 @@ describe('qdrantVectorStore 真实 HTTP 往返', () => {
     expect(() => new QdrantVectorStore({ url: fake?.url ?? 'http://x' })).toThrow(/collection/)
   })
 
-  it('hTTP 非 2xx 显式抛错带状态码（不静默降级）', async () => {
-    // 指向不存在的端点路径：search 一个从未建过的集合走到 404 分支前，
-    // 这里直接构造一个会触发 upsert 404 的场景：build 内部 PUT 集合成功，
-    // 故改为验证 search 对未知集合返回的命中为空但请求本身 2xx；
-    // 真正的 4xx 由请求工具的 res.ok 判定覆盖（见 qdrant-store.request）。
-    const store = new QdrantVectorStore({ url: `${fake.url}`, collection: 'docs5' })
-    await store.build([
+  it('dELETE 非 2xx 显式抛错且不继续创建集合', async () => {
+    const store = new QdrantVectorStore({ url: fake.url, collection: 'delete-fails' })
+    await expect(store.build([
       vectorDoc('Solo', '@moluoxixi/solo', 's.vue', 'b', 'e', unitVec(2)),
-    ])
-    const r = await store.search('q', unitVec(400), 1)
-    // 查询向量与库内向量正交 → 相似度 0，低于阈值 → empty
-    expect(r.empty).toBe(true)
+    ], metadata())).rejects.toThrow(/DELETE.*503.*delete unavailable/)
+    expect(fake.calls).not.toContain('PUT /collections/delete-fails')
+  })
+
+  it('hydrate 校验远端 collection 维度与持久化元数据后恢复查询能力', async () => {
+    const built = new QdrantVectorStore({ url: fake.url, collection: 'restore' })
+    await built.build([
+      vectorDoc('Restored', '@moluoxixi/restored', 'r.vue', 'b', 'e', unitVec(0)),
+    ], metadata())
+
+    const restored = new QdrantVectorStore({ url: fake.url, collection: 'restore' })
+    await restored.hydrate(null, metadata())
+    expect(restored.isReady()).toBe(true)
+    await expect(restored.hydrate(null, {
+      ...metadata(),
+      embeddingIdentity: { ...metadata().embeddingIdentity, dimension: TEST_VECTOR_DIMENSION + 1 },
+    })).rejects.toThrow(/dimension mismatch/)
+  })
+
+  it('hydrate 拒绝同维度但 identity 或 sourceHash 已漂移的远端 collection', async () => {
+    const built = new QdrantVectorStore({ url: fake.url, collection: 'drift' })
+    await built.build([
+      vectorDoc('Original', '@moluoxixi/original', 'o.vue', 'b', 'e', unitVec(0)),
+    ], metadata('source-new', 'embed-new'))
+
+    const restored = new QdrantVectorStore({ url: fake.url, collection: 'drift' })
+    await expect(restored.hydrate(null, metadata('source-old', 'embed-new')))
+      .rejects
+      .toThrow(/metadata mismatch/)
+    await expect(restored.hydrate(null, metadata('source-new', 'embed-old')))
+      .rejects
+      .toThrow(/metadata mismatch/)
+    expect(restored.isReady()).toBe(false)
   })
 })

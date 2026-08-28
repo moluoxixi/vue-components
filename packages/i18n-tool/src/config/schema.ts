@@ -44,13 +44,29 @@ const localePatternSchema = relativePatternSchema.superRefine((value, context) =
 
 const aiBaseUrlSchema = z.string().url().superRefine((value, context) => {
   const url = new URL(value)
-  if (url.username || url.password || url.search || url.hash) {
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'AI baseUrl must not contain credentials, query parameters, or fragments.',
+      message: 'AI baseUrl must be an HTTP(S) URL without credentials, query parameters, or fragments.',
     })
   }
 })
+
+const aiConfigFields = {
+  apiKeyEnv: z.string().regex(/^[A-Z_][A-Z\d_]*$/),
+  model: z.string().min(1),
+}
+
+const aiConfigSchema = z.discriminatedUnion('provider', [
+  z.object({ ...aiConfigFields, provider: z.literal('openai') }).strict(),
+  z.object({ ...aiConfigFields, provider: z.literal('anthropic') }).strict(),
+  z.object({ ...aiConfigFields, provider: z.literal('google') }).strict(),
+  z.object({
+    ...aiConfigFields,
+    baseUrl: aiBaseUrlSchema,
+    provider: z.literal('openai-compatible'),
+  }).strict(),
+])
 
 const adapterOptionsSchema = z.object({
   contexts: z.array(z.string().min(1)).optional(),
@@ -59,11 +75,7 @@ const adapterOptionsSchema = z.object({
 }).strict()
 
 export const i18nToolConfigSchema = z.object({
-  ai: z.object({
-    apiKeyEnv: z.string().regex(/^[A-Z_][A-Z\d_]*$/).default('I18N_TOOL_AI_API_KEY'),
-    baseUrl: aiBaseUrlSchema.default('https://coderelay.cn/v1'),
-    model: z.string().min(1).default('gpt-4o-mini'),
-  }).strict().default({}),
+  ai: aiConfigSchema,
   limits: z.object({
     bodyBytes: z.number().int().min(1_024).max(10_000_000).default(1_000_000),
     concurrentApplies: z.number().int().min(1).max(8).default(1),

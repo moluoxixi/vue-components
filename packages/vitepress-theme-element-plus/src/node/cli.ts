@@ -12,9 +12,10 @@ interface CliArguments {
   host?: boolean | string
   open?: boolean | string
   port?: number
+  strictPort?: boolean
 }
 
-const usage = 'Usage: element-plus-docs <prepare|dev|build> [--config <path>] [--host [host]] [--port <port>] [--open]'
+const usage = 'Usage: element-plus-docs <prepare|dev|build> [--config <path>] [--host [host]] [--port <port>] [--strictPort] [--open]'
 
 function readOption(args: string[], index: number): { nextIndex: number, value: string | undefined } {
   const current = args[index]!
@@ -53,6 +54,9 @@ function parseArguments(args: string[]): CliArguments {
         throw new TypeError('--port requires a valid TCP port')
       parsed.port = port
       index = option.nextIndex
+    }
+    else if (argument === '--strictPort') {
+      parsed.strictPort = true
     }
     else if (argument === '--open' || argument.startsWith('--open=')) {
       const option = readOption(args, index)
@@ -121,6 +125,7 @@ async function main(): Promise<void> {
       host: args.host,
       open: args.open,
       port: args.port,
+      strictPort: args.strictPort,
     })
     const stopWatchingContent = watchElementPlusDocsContent(server, {
       docsRoot: loaded.docsRoot,

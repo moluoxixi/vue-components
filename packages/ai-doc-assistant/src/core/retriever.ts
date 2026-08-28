@@ -1,8 +1,10 @@
 import type { Orama } from '@orama/orama'
 import type { KnowledgeSourceWire } from '../shared/protocol'
-import type { IndexMeta } from './indexer'
+import type { EmbeddingIdentitySeed, IndexMeta } from './index-state'
 import { create, load, search } from '@orama/orama'
-import { INDEX_SCHEMA } from './indexer'
+import { validateEmbeddingVector } from './embedding-validation'
+import { matchesEmbeddingIdentity } from './index-state'
+import { createIndexSchema } from './indexer'
 import { loadIndex } from './persist'
 
 /** 低于该相似度视为无命中，触发上层"无依据兜底"，避免拿不相关语料硬答。 */
@@ -36,7 +38,7 @@ export interface RetrieveResult {
  */
 export class Retriever {
   private constructor(
-    private readonly db: Orama<typeof INDEX_SCHEMA>,
+    private readonly db: Orama<ReturnType<typeof createIndexSchema>>,
     readonly meta: IndexMeta,
   ) {}
 
@@ -44,19 +46,28 @@ export class Retriever {
    * 从持久化目录加载索引并构造 Retriever。
    * 索引缺失时 loadIndex 抛错（上层映射为 INDEX_NOT_READY），不静默返回空检索器。
    */
-  static async fromDir(dir: string): Promise<Retriever> {
+  static async fromDir(dir: string, expectedIdentity?: EmbeddingIdentitySeed): Promise<Retriever> {
     const { snapshot, meta } = await loadIndex(dir)
-    const db = create({ schema: INDEX_SCHEMA })
-    load(db, snapshot as Parameters<typeof load>[1])
-    return new Retriever(db, meta)
+    return Retriever.fromSnapshot(snapshot, meta, expectedIdentity)
   }
 
-  /**
-   * 直接用内存中的索引快照构造 Retriever，省去落盘/读盘往返。
-   * 用于小知识库启动即用：buildIndex 产出的 snapshot 直接恢复为可检索 db。
-   */
-  static fromSnapshot(snapshot: unknown, meta: IndexMeta): Retriever {
-    const db = create({ schema: INDEX_SCHEMA })
+  private static assertIdentity(meta: IndexMeta, expectedIdentity?: EmbeddingIdentitySeed): number {
+    const identity = meta.embeddingIdentity
+    if (!identity)
+      throw new Error('vector index metadata has no embedding identity; rebuild the index')
+    if (expectedIdentity && !matchesEmbeddingIdentity(identity, expectedIdentity))
+      throw new Error('vector index embedding identity is stale; rebuild the index')
+    return identity.dimension
+  }
+
+  static fromSnapshot(
+    snapshot: unknown,
+    meta: IndexMeta,
+    expectedIdentity?: EmbeddingIdentitySeed,
+  ): Retriever {
+    const dimension = Retriever.assertIdentity(meta, expectedIdentity)
+    const schema = createIndexSchema(dimension)
+    const db = create({ schema })
     load(db, snapshot as Parameters<typeof load>[1])
     return new Retriever(db, meta)
   }
@@ -68,6 +79,10 @@ export class Retriever {
    * @param topK 返回条数上限。
    */
   async retrieve(queryText: string, queryVector: number[], topK = 5): Promise<RetrieveResult> {
+    const dimension = this.meta.embeddingIdentity?.dimension
+    if (!dimension)
+      throw new Error('vector index metadata has no embedding dimension')
+    validateEmbeddingVector(queryVector, dimension, 'query embedding')
     // hybrid 模式下 search 可能返回 Promise，统一 await
     const result = await search(this.db, {
       term: queryText,

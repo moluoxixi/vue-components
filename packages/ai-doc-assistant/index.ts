@@ -27,20 +27,27 @@ export type {
   SlotDef,
 } from './src/core/types'
 
-// ── server：AI 客户端（chat 流式）────────────────────────────────
-export { streamChat } from './src/server/ai-client'
-export type { ChatMessage } from './src/server/ai-client'
-
 // ── server：AI provider 配置 ────────────────────────────────────
-export { ENV_KEYS, loadProviderConfig, providerStatusOf } from './src/server/ai-provider'
+export {
+  embeddingIdentitySeedOf,
+  ENV_KEYS,
+  loadProviderConfig,
+  providerStatusOf,
+} from './src/server/ai-provider'
 
-export type { ProviderConfig, ProviderStatus } from './src/server/ai-provider'
+export type {
+  AiDocProviderConfig,
+  AiRuntimeStatus,
+  EmbeddingIdentitySeed,
+  EmbeddingModelTarget,
+  LanguageModelTarget,
+} from './src/server/ai-provider'
 // ── server：运行时上下文 ────────────────────────────────────────
 export { ServerContext } from './src/server/context'
 
 export type { ServerContextOptions } from './src/server/context'
 // ── server：查询编排 ────────────────────────────────────────────
-export { runQuery } from './src/server/query-handler'
+export { createQueryUIMessageStream, exampleBlocksFromAnswer } from './src/server/query-handler'
 
 export type { QueryDeps } from './src/server/query-handler'
 // ── server：路由分发 ────────────────────────────────────────────

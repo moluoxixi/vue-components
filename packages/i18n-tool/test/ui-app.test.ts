@@ -16,7 +16,12 @@ vi.mock('../src/ui/api', async importOriginal => ({
 }))
 
 const config: SanitizedConfigResponse = {
-  ai: { baseUrl: 'https://up.example/v1', model: 'model', status: 'configured' },
+  ai: {
+    baseUrl: 'https://up.example/v1',
+    model: 'model',
+    provider: 'openai-compatible',
+    status: 'configured',
+  },
   projectName: 'fixture-project',
   resources: {
     adapter: 'vue-i18n-json',

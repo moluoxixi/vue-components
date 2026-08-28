@@ -1,103 +1,136 @@
 # AI Doc Assistant Quality Contracts
 
-## Scenario: Untrusted AI answers and conversational query boundaries
+## 1. Scope / Trigger
 
-### 1. Scope / Trigger
+Apply this contract when changing `/query`, chat history, AI SDK UI Message Stream data parts, answer rendering, remote embedding, index persistence, or browser E2E coverage in `packages/ai-doc-assistant`. These paths cross server/UI and local/remote data boundaries.
 
-Apply this contract when changing AI answer rendering, chat history, `/query` validation, SSE parsing, source references, or browser E2E coverage in `packages/ai-doc-assistant`.
-
-These paths cross the server/UI boundary and consume untrusted model or network output. A local-only fallback is not sufficient: server validation, shared types, UI behavior, and tests must continue to agree.
-
-### 2. Signatures
+## 2. Signatures
 
 ```ts
-renderMarkdown(source: string): string
-buildChatHistory(turns: readonly HistoryTurn[]): ChatHistoryMessage[]
-streamQuery(
-  question: string,
+type AiDocDataParts = {
+  sources: SourceRef[]
+  example: { blocks: ExampleBlock[] }
+}
+
+type AiDocUIMessage = UIMessage<never, AiDocDataParts>
+
+prepareQuery(
+  messages: AiDocUIMessage[],
   topK: number,
-  history: ChatHistoryMessage[],
-  onEvent: (event: SseEvent) => void,
+  strategy: RetrievalStrategy,
   signal?: AbortSignal,
-): Promise<void>
+): Promise<PreparedQuery>
+
+createQueryUIMessageStream(
+  prepared: PreparedQuery,
+  deps: { model: LanguageModel | null },
+  signal?: AbortSignal,
+): ReadableStream<UIMessageChunk>
+
+buildChatRequestMessages(
+  messages: readonly AiDocUIMessage[],
+  completedAssistantIds: ReadonlySet<string>,
+): AiDocUIMessage[]
+
+type QdrantMetadataPayload = {
+  kind: 'ai-doc-index-metadata'
+  schemaVersion: 1
+  sourceHash: string
+  embeddingIdentity: EmbeddingIdentity
+}
 ```
 
-Shared limits live in `src/shared/protocol.ts`:
+Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 20_000`.
 
-```ts
-MAX_HISTORY_MESSAGES = 20
-MAX_HISTORY_CHARACTERS = 20_000
-```
+## 3. Contracts
 
-The server router and UI history builder must import these constants rather than duplicate them.
+- Vue chat uses `@ai-sdk/vue` `useChat` with `DefaultChatTransport`. The browser sends validated `AiDocUIMessage[]`; private SSE framing and browser parsers are forbidden.
+- The server validates role order, text-only request history, counts, and character limits before converting UI messages to model messages. Browser data/tool parts never become prompt context.
+- Retrieval and message conversion happen before response headers. Retrieval/config/index failures return structured JSON.
+- Stream order is `data-sources` before text, then `data-example` after complete answer text, then one final `finish`.
+- No retrieval match writes the fixed answer and never calls a chat model. Therefore chat may be unconfigured for that branch.
+- Client disconnect aborts retrieval and `streamText`. Abort does not append an error chunk.
+- Only completed assistant message IDs enter later history. Stopped/error turns retain visible partial text but are filtered from requests.
+- Markdown disables raw HTML and rejects unsafe/protocol-relative URLs. Vue fenced blocks render through `DemoPreview` only once.
+- Vector indexing uses SDK `embedMany` for documents and `embed` for questions. Component contract text is sent to the configured remote embedding Provider and may incur cost.
+- `EmbeddingIdentity = { provider, model, endpointFingerprint, dimension }` persists with the index. Identity/source mismatches make it stale; restart hydrate must not re-embed a matching snapshot.
+- Orama schemas and Qdrant collections use the returned vector dimension. Qdrant rebuild is delete-and-recreate; dimension drift never silently degrades to content mode.
+- Qdrant persists `sourceHash` and the complete `EmbeddingIdentity` in a reserved metadata point inside the remote collection. Hydration must retrieve and validate that point; local snapshot/meta files are not sufficient evidence that a remote collection matches. Search must filter to `kind=document` so the metadata point cannot enter retrieval results.
 
-### 3. Contracts
-
-- History contains complete `user`/`assistant` pairs, starts with `user`, and preserves the newest continuous suffix.
-- History has at most 20 messages and at most 20,000 JavaScript string characters. Do not split or truncate a pair. If the newest pair alone is too large, send no history.
-- Successful SSE streams end with exactly one `done`. Failed streams end with exactly one `error`. EOF without either terminal event is an error; events after a terminal event are an error.
-- Abort remains an `AbortError`/stopped state and must not be converted into an error answer or a completed answer.
-- `SourceRef.docPath` and `SourceRef.score` are required. `source` and `knowledgeKey` are optional and must degrade without local casts or invented defaults.
-- Markdown uses `markdown-it` with `html: false`. Only `http:`, `https:`, `mailto:`, relative paths, and fragments may create links. Protocol-relative and unknown-scheme URLs are rejected. HTTP(S) links use `target="_blank" rel="noopener noreferrer"`.
-- Vue fenced blocks are removed from Markdown text segments and continue through `DemoPreview`; the Markdown renderer must never render them a second time.
-
-### 4. Validation & Error Matrix
+## 4. Validation & Error Matrix
 
 | Condition | Required behavior |
 | --- | --- |
-| History has 21 messages | HTTP 400 `INVALID_REQUEST` |
-| History exceeds 20,000 characters | HTTP 400 `INVALID_REQUEST` |
-| History has an odd message count or wrong role order | HTTP 400 `INVALID_REQUEST` |
-| Stream reaches EOF without `done/error` | Reject with explicit interrupted-stream error |
-| Stream emits after `done/error` | Reject as protocol violation |
-| User aborts | Preserve partial text as stopped; exclude the turn from future history |
-| Model outputs raw HTML | Escape and display it as text |
-| Model outputs `javascript:`, `data:`, `file:`, `vbscript:`, or `//host` link | Do not emit an anchor href |
-| Optional source metadata is absent | Keep component/package/path/score display and component-name navigation fallback |
+| Invalid role/order/parts or over limit | HTTP 400 `INVALID_REQUEST` |
+| Retrieval or conversion fails before streaming | Structured JSON error |
+| No chunks found | Sources + fixed answer + finish; zero model calls |
+| Matched chunks but chat model missing | Sanitized provider-not-configured stream error |
+| User aborts | Preserve partial text as stopped; no error chunk; exclude from history |
+| Model fails after stream start | One sanitized UI stream error; raw cause stays server-side |
+| Embedding target missing in vector mode | Explicit configuration failure |
+| Embedding count/empty vector/dimension drift | Build/query failure; no partial ready state |
+| Persisted identity or source hash differs | Index status `stale`; query blocked until rebuild |
+| Qdrant metadata point is missing, malformed, or mismatched | Hydrate fails and the remote collection remains unavailable until rebuild |
+| Model emits raw HTML or unsafe URL | Escape text; do not emit unsafe href |
 
-### 5. Good / Base / Bad Cases
+## 5. Good / Base / Bad Cases
 
-- Good: 12 completed turns are reduced to the newest 10 complete pairs; the request passes server validation.
-- Base: no completed turns produces `history: []` and the query proceeds normally.
-- Bad: taking the newest 20 individual messages can start with an assistant message or split a pair, causing deterministic HTTP 400 failures.
-- Good: `done` sets the turn to completed; `error` keeps the error state; an aborted controller produces stopped.
-- Bad: treating a clean TCP/HTTP EOF as implicit `done` stores partial answers in later model context.
-- Good: Markdown text and Vue Demo blocks render once in their respective components.
-- Bad: enabling Markdown raw HTML or passing pre-rendered HTML into the component creates an XSS boundary the current sanitizer contract does not cover.
+- Good: sources render first, answer streams, example blocks arrive after the full answer, and the turn becomes completed only at finish.
+- Base: no completed turns sends only the current user message; no-match works without chat configuration.
+- Good: restart hydrates a matching Orama/Qdrant index without remote embedding calls.
+- Good: Qdrant hydrate verifies collection dimension plus its reserved metadata payload before marking the store ready.
+- Bad: treating EOF or a later user message as proof that a failed/stopped turn completed corrupts future history.
+- Bad: using a fixed embedding dimension or querying an old Qdrant collection after model change mixes incompatible vectors.
+- Bad: accepting local `meta.json` as proof that a remote Qdrant collection has the same source/model can query vectors written by another deployment.
 
-### 6. Tests Required
+## 6. Tests Required
 
-- Router tests: 20/21 messages, 20,000/20,001 characters, pair order, and non-empty content.
-- UI history tests: newest suffix, character boundary, oversized newest pair, stopped/error exclusion.
-- SSE client tests: `done`, `error`, missing terminal, post-terminal event, and abort with reader lock release.
-- Markdown tests: headings/lists/code, raw HTML, mixed-case and encoded dangerous schemes, protocol-relative URLs, external-link attributes, and incomplete streaming fences.
-- Chat tests: clear during streaming, late-callback guard, source metadata fallback, Markdown plus Demo coexistence, auto-follow opt-out, and completion live status.
-- Browser E2E: real workspace source extraction, question/source/Markdown/Demo chain, desktop and mobile overflow, dropdown focus behavior, and touch-accessible type details.
+- Router tests cover request limits/order, pre-stream JSON failures, no-match without model, disconnect abort, and sanitized stream errors.
+- UI message tests use AI SDK readers and assert sources < text < example < finish.
+- Chat tests cover submitted/streaming states, per-user done/stopped/error persistence, clear/unmount abort, partial text, and history filtering.
+- Vector tests cover dynamic dimensions, count/empty-vector errors, abort, Orama/Qdrant mismatch, persistence, restart hydrate, and stale identity.
+- Qdrant tests assert the reserved metadata point persists `schemaVersion`, `sourceHash`, and every embedding identity field; hydrate rejects missing/mismatched payloads, and search sends a `kind=document` filter.
+- Markdown/Demo tests cover raw HTML, unsafe schemes, incomplete fences, allowlisted imports, and source-only fallback.
+- Browser E2E uses an AI SDK compatible upstream stub and verifies desktop/mobile source, streamed text, demo mount, focus, and overflow behavior.
+- Build, packed Node smoke, and browser-pack checks prove server Provider objects and secrets do not enter UI output.
 
-`vue-component-meta` extraction E2E must use a source tree inside an existing TypeScript/Vue `tsconfig` program. Arbitrary OS temp directories cannot resolve the Vue type environment reliably. Prefer the repository root plus explicit `componentEntries`; use in-memory external knowledge fixtures for synthetic contract shapes.
+## 7. Wrong vs Correct
 
-### 7. Wrong vs Correct
-
-#### Wrong
-
-```ts
-const history = turns.flatMap(toMessages).slice(-20)
-await readStream()
-turn.status = 'done' // EOF is not a protocol terminal event
-```
-
-#### Correct
+### Wrong
 
 ```ts
-const history = buildChatHistory(turns)
-await streamQuery(question, 5, history, reduceEvent, signal)
-// Only the `done` event reducer sets status to completed.
+const response = await fetch('/query')
+for await (const frame of parsePrivateSse(response.body))
+  reduceLegacyEvent(frame)
 ```
 
-## UI regression rules
+### Correct
 
-- Keep `ChatView` mounted while switching to the knowledge workspace; it owns in-memory turns and the active abort controller.
+```ts
+const chat = useChat<AiDocUIMessage>({
+  transport: new DefaultChatTransport({ api: '/__ai-doc/api/query' }),
+})
+
+const prepared = await prepareQuery(messages, topK, strategy, signal)
+pipeUIMessageStreamToResponse({ response, stream: createQueryUIMessageStream(prepared, { model }, signal) })
+```
+
+### Qdrant Persistence
+
+```ts
+// Wrong: local metadata cannot prove which vectors currently live remotely.
+await qdrant.hydrate(localSnapshot, localMetadata)
+
+// Correct: retrieve the reserved point and compare sourceHash + every identity field.
+const persisted = await retrieveMetadataPoint(collection)
+assertMatchesPersistedMetadata(persisted, expectedMetadata)
+```
+
+## UI Regression Rules
+
+- Keep `ChatView` mounted while switching to the knowledge workspace; it owns in-memory turns and the active request.
 - Long contract tables scroll inside their section. The document and knowledge workspace must not gain horizontal overflow.
-- Use explicit request states for checking/loading/empty/error. An empty array before a request completes is not an empty knowledge base.
+- Use explicit checking/loading/empty/error states. An empty array before completion is not an empty knowledge base.
 - Command icons require accessible names and tooltips. View switches use tab semantics and keyboard navigation.
-- Floating UI closes with Escape and click-outside. Restore the trigger only when focus fell back to the document root; never steal focus from another control selected by the user.
+- Floating UI closes with Escape and click-outside and restores focus without stealing it from another selected control.
+- `vue-component-meta` extraction E2E uses a source tree inside an existing TypeScript/Vue `tsconfig` program.

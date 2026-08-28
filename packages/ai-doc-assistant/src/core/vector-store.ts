@@ -1,4 +1,5 @@
 import type { KnowledgeSourceWire } from '../shared/protocol'
+import type { EmbeddingIdentity } from './index-state'
 /**
  * 向量存储抽象层（ADR-0007 扩展缝）：把「向量索引与检索」从具体后端解耦。
  *
@@ -25,7 +26,7 @@ export interface VectorDoc {
   example: string
   /** JS 版示例骨架（剥离类型，stored-only，供前端切换查看/复制）。 */
   exampleJs: string
-  /** body 的 embedding 向量（维度由 embedder 决定，调用方保证一致）。 */
+  /** body 的 embedding 向量（维度由远程模型决定，调用方保证一致）。 */
   embedding: number[]
 }
 
@@ -56,6 +57,12 @@ export interface VectorStoreConfig {
   qdrant?: QdrantConfig
 }
 
+/** Metadata that must identify the same persisted vector collection across restarts. */
+export interface VectorIndexMetadata {
+  sourceHash: string
+  embeddingIdentity: EmbeddingIdentity
+}
+
 /**
  * 向量存储接口。VectorStrategy 启动时选定一种实现，build 后提供 search。
  *
@@ -67,9 +74,15 @@ export interface VectorStore {
   readonly kind: VectorStoreKind
   /**
    * 用已编码文档构建索引。
-   * @param docs 带 embedding 的文档列表（维度一致性由调用方保证）。
+   * @param docs 带 embedding 的文档列表。
+   * @param metadata 持久化索引的来源与 embedding 身份。
+   * @param signal 可选的取消信号。
    */
-  build: (docs: VectorDoc[]) => Promise<void>
+  build: (docs: VectorDoc[], metadata: VectorIndexMetadata, signal?: AbortSignal) => Promise<void>
+  /** Serializes local state; external stores may return null and persist only metadata. */
+  snapshot: () => unknown
+  /** Restores a previously built store after validating its actual dimension. */
+  hydrate: (snapshot: unknown, metadata: VectorIndexMetadata, signal?: AbortSignal) => Promise<void>
   /** 是否已构建就绪（未就绪时上层映射 INDEX_NOT_READY）。 */
   isReady: () => boolean
   /**
@@ -78,7 +91,7 @@ export interface VectorStore {
    * @param queryVector 查询文本 embedding（维度须与索引一致）。
    * @param topK 返回条数上限。
    */
-  search: (queryText: string, queryVector: number[], topK: number) => Promise<VectorSearchResult>
+  search: (queryText: string, queryVector: number[], topK: number, signal?: AbortSignal) => Promise<VectorSearchResult>
 }
 
 /**

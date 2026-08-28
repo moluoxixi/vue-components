@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState, reduceWorkbenchState } from '../src/ui/state'
 
 const config: SanitizedConfigResponse = {
-  ai: { baseUrl: 'https://up.example/v1', model: 'model', status: 'configured' },
+  ai: {
+    baseUrl: 'https://up.example/v1',
+    model: 'model',
+    provider: 'openai-compatible',
+    status: 'configured',
+  },
   projectName: 'fixture',
   resources: {
     adapter: 'vue-i18n-json',

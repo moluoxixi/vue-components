@@ -1,6 +1,6 @@
-import type { ProviderConfig } from '@moluoxixi/ai-provider/server'
-import type { ChatTransport, TranslationBatch } from '../core'
-import { describe, expect, it, vi } from 'vitest'
+import type { TranslationBatch } from '../core'
+import { MockLanguageModelV3 } from 'ai/test'
+import { describe, expect, it } from 'vitest'
 import {
   createTranslationRequest,
   i18nextJsonAdapter,
@@ -9,15 +9,7 @@ import {
   validateTranslationOutput,
   vueI18nJsonAdapter,
 } from '../core'
-
-const providerConfig: ProviderConfig = {
-  chatApiKey: 'secret',
-  chatBaseUrl: 'https://up.example/v1',
-  chatModel: 'model',
-  embeddingApiKey: '',
-  embeddingBaseUrl: 'https://up.example/v1',
-  embeddingModel: 'embedding',
-}
+import { createTranslationModel } from './model-helpers'
 
 function vueBatch(): TranslationBatch {
   const units = vueI18nJsonAdapter.parse({
@@ -125,31 +117,23 @@ describe('model output validation', () => {
 describe('translateBatch', () => {
   it('sends the structured request and validates the collected response', async () => {
     const batch = vueBatch()
-    const chat = vi.fn<ChatTransport>(async function* (_config, messages) {
-      const request = JSON.parse(messages[1].content)
-      yield JSON.stringify({
-        targetLocale: request.targetLocale,
-        translations: request.entries.map((entry: { id: string, source: string }) => ({
-          id: entry.id,
-          value: entry.source === 'Plain' ? '普通' : '你好 {name}',
-        })),
-      })
-    })
+    const model = createTranslationModel(entry => entry.source === 'Plain' ? '普通' : '你好 {name}')
 
-    const result = await translateBatch(providerConfig, batch, 'zh-CN', undefined, chat)
+    const result = await translateBatch(model, batch, 'zh-CN')
     expect(result.ok).toBe(true)
-    expect(chat).toHaveBeenCalledOnce()
-    expect(chat.mock.calls[0][1][0]).toMatchObject({ role: 'system' })
+    expect(model.doGenerateCalls).toHaveLength(1)
+    expect(model.doGenerateCalls[0].prompt[0]).toMatchObject({ role: 'system' })
+    expect(JSON.stringify(model.doGenerateCalls[0].prompt)).toContain(batch.units[0].id)
   })
 
   it('preserves AbortError before contacting the model', async () => {
     const controller = new AbortController()
     controller.abort()
-    const chat = vi.fn<ChatTransport>()
+    const model = new MockLanguageModelV3()
 
-    await expect(translateBatch(providerConfig, vueBatch(), 'zh-CN', controller.signal, chat))
+    await expect(translateBatch(model, vueBatch(), 'zh-CN', controller.signal))
       .rejects
       .toMatchObject({ name: 'AbortError' })
-    expect(chat).not.toHaveBeenCalled()
+    expect(model.doGenerateCalls).toHaveLength(0)
   })
 })

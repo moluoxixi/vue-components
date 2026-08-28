@@ -68,6 +68,7 @@
   "dependencies": {
     "@lucide/vue": "catalog:ui",
     "@moluoxixi/ai-provider": "workspace:*",
+    "ai": "catalog:",
     "element-plus": "catalog:ui",
     "jiti": "catalog:dev",
     "vue": "catalog:build",

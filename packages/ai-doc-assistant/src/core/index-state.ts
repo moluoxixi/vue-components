@@ -1,7 +1,24 @@
-/**
- * 索引元信息：契约抽取完成后的快照。
- * 注：默认 content 策略采用结构化关键词 topK，无向量索引，故无 embeddingDim。
- */
+import type { EmbeddingProviderId } from '@moluoxixi/ai-provider/shared'
+import type { ComponentContract } from './types'
+import { createHash } from 'node:crypto'
+
+export interface EmbeddingIdentity {
+  provider: EmbeddingProviderId
+  model: string
+  endpointFingerprint: string
+  dimension: number
+}
+
+export type EmbeddingIdentitySeed = Omit<EmbeddingIdentity, 'dimension'>
+
+/** Stable hash of the extracted contracts used to detect persisted source drift. */
+export function sourceHashOf(contracts: readonly ComponentContract[]): string {
+  const stableContracts = [...contracts]
+    .sort((left, right) => (left.knowledgeKey ?? left.name).localeCompare(right.knowledgeKey ?? right.name))
+  return createHash('sha256').update(JSON.stringify(stableContracts)).digest('hex')
+}
+
+/** 索引元信息；content 模式不携带 embeddingIdentity。 */
 export interface IndexMeta {
   /** 抽取完成时间（ISO 字符串）。 */
   builtAt: string
@@ -9,15 +26,17 @@ export interface IndexMeta {
   componentCount: number
   /** 组件源文件集合的哈希，用于判断契约是否陈旧（stale）。 */
   sourceHash: string
+  /** vector 索引使用的远程 Provider/model/endpoint 与实际维度。 */
+  embeddingIdentity?: EmbeddingIdentity
 }
 
-/** 索引生命周期状态机：idle → building → ready，失败落 error。 */
-export type IndexStatus = 'idle' | 'building' | 'ready' | 'error'
+/** 索引生命周期状态机：idle → building → ready；身份漂移为 stale，失败为 error。 */
+export type IndexStatus = 'idle' | 'building' | 'ready' | 'stale' | 'error'
 
 /** 对外暴露的索引状态快照，供 GET /index/status 返回。 */
 export interface IndexStatusSnapshot {
   status: IndexStatus
-  /** 已就绪索引的元信息；building/idle/error 时为 null。 */
+  /** 已构建索引的元信息；ready/stale 时可用。 */
   meta: IndexMeta | null
   /** error 状态下的失败原因；其余状态为 null。 */
   error: string | null
@@ -39,18 +58,25 @@ export class IndexStateManager {
   /** 当前进行中的构建任务；null 表示无构建在跑。 */
   private inflight: Promise<IndexMeta> | null = null
 
-  /** 初始化：从已持久化的 meta 恢复 ready 状态（进程启动时调用）。 */
-  hydrate(meta: IndexMeta | null): void {
+  /** 从持久化 meta 恢复；embedding 身份漂移时保留 meta 但拒绝查询。 */
+  hydrate(meta: IndexMeta | null, expectedEmbedding?: EmbeddingIdentitySeed): void {
     if (meta) {
-      this.status = 'ready'
       this.meta = meta
+      this.status = expectedEmbedding && !matchesEmbeddingIdentity(meta.embeddingIdentity, expectedEmbedding)
+        ? 'stale'
+        : 'ready'
     }
+  }
+
+  markStale(): void {
+    if (this.meta)
+      this.status = 'stale'
   }
 
   snapshot(): IndexStatusSnapshot {
     return {
       status: this.status,
-      meta: this.status === 'ready' ? this.meta : null,
+      meta: this.status === 'ready' || this.status === 'stale' ? this.meta : null,
       error: this.status === 'error' ? this.error : null,
       startedAt: this.status === 'building' ? this.startedAt : null,
     }
@@ -94,4 +120,13 @@ export class IndexStateManager {
 
     return this.inflight
   }
+}
+
+export function matchesEmbeddingIdentity(
+  actual: EmbeddingIdentity | undefined,
+  expected: EmbeddingIdentitySeed,
+): boolean {
+  return actual?.provider === expected.provider
+    && actual.model === expected.model
+    && actual.endpointFingerprint === expected.endpointFingerprint
 }

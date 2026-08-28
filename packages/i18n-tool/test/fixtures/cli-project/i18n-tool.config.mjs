@@ -3,6 +3,7 @@ export default {
     apiKeyEnv: 'I18N_TOOL_FIXTURE_API_KEY',
     baseUrl: 'https://up.example/v1',
     model: 'fixture-model',
+    provider: 'openai-compatible',
   },
   resources: {
     adapter: 'vue-i18n-json',

@@ -1,0 +1,3 @@
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"终审检查 target、operation、Registry 校验和 Preview 投影没有被 DOM 状态绕过。"}
+{"file":".trellis/tasks/08-28-config-form-designer-dnd-regression/design.md","reason":"按拖拽目标、宽度约束、全物料矩阵和回滚边界核验实现。"}
+{"file":".trellis/tasks/08-28-config-form-designer-dnd-regression/implement.md","reason":"按单测、双适配器构建、Playwright E2E 和 lint/diff check 验证。"}

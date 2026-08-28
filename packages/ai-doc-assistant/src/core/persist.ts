@@ -1,4 +1,4 @@
-import type { BuildResult, IndexMeta } from './indexer'
+import type { IndexMeta } from './index-state'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -12,11 +12,16 @@ export interface LoadedIndex {
   meta: IndexMeta
 }
 
+export interface PersistedIndex {
+  snapshot: unknown
+  meta: IndexMeta
+}
+
 /**
  * 原子写入索引快照与元信息：先写 .tmp 再 rename 替换，避免半成品被 retriever 读到。
  * @param dir 持久化目录（随包分发的本地目录）。
  */
-export async function persistIndex(dir: string, result: BuildResult): Promise<void> {
+export async function persistIndex(dir: string, result: PersistedIndex): Promise<void> {
   await mkdir(dir, { recursive: true })
   const snapshotPath = join(dir, SNAPSHOT_FILE)
   const metaPath = join(dir, META_FILE)

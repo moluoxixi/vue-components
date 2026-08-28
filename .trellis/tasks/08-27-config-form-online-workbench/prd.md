@@ -65,6 +65,8 @@ Source 必须是完整、可下载、可在标准 Node 环境安装依赖、类�
 2. `08-27-config-form-workbench-three-mode`：依赖项目内核，完成表单 artifact、Config、Designer 与 Source 同步。
 3. `08-27-config-form-workbench-live-preview`：依赖项目内核，并消费三模式提交的 project revision。
 4. `08-27-config-form-workbench-product-shell`：集成前述能力与网站工作流；其子任务 `08-27-config-form-designer-ux` 负责 Designer 专项体验。
+5. `08-28-config-form-workbench-export`：Config `defineField` 源码、完全脱离 ConfigForm runtime 的完整 Vue 工程、文件树/只读源码预览和 ZIP 下载。
+6. `08-28-config-form-designer-dnd-regression`：布局容器拖入、非空列表末尾追加、date/time 宽度和双适配器全物料回归测试。
 
 三模式与 Preview 可在项目内核稳定后并行，产品界面最终集成在两者之后。
 

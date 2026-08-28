@@ -87,7 +87,7 @@ test.beforeAll(async () => {
       if (!response.writableEnded)
         stubRequestAborted = true
     })
-    response.writeHead(200, { 'content-type': 'text/event-stream' })
+    response.writeHead(200, { 'content-type': 'application/json' })
     response.flushHeaders()
     if (stubMode === 'slow')
       return
@@ -104,8 +104,12 @@ test.beforeAll(async () => {
         : entry.source === 'Plain text' ? '普通文本' : '你好 {name}',
     }))
     const content = JSON.stringify({ targetLocale: translationRequest.targetLocale, translations })
-    response.write(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`)
-    response.end('data: [DONE]\n\n')
+    response.end(JSON.stringify({
+      choices: [{ finish_reason: 'stop', message: { content, role: 'assistant' } }],
+      id: 'chatcmpl-i18n-tool-e2e',
+      model: 'stub-model',
+      usage: { completion_tokens: 1, prompt_tokens: 1, total_tokens: 2 },
+    }))
   })
   const stubListening = await listen(stub)
   closeStub = stubListening.close
@@ -116,6 +120,7 @@ export default {
     apiKeyEnv: 'I18N_TOOL_E2E_API_KEY',
     baseUrl: 'http://127.0.0.1:${stubListening.port}/v1',
     model: 'stub-model',
+    provider: 'openai-compatible',
   },
   resources: {
     adapter: 'vue-i18n-json',

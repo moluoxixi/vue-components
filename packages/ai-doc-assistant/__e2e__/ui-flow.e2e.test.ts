@@ -6,8 +6,8 @@ import { existsSync, readFileSync } from 'node:fs'
  * 不 mock 浏览器、不信日志：起两个真实 HTTP server——
  *  1) BFF + UI 静态资源 server：用编译产物 dist 的 dispatch(API) 驱动真实 ServerContext
  *     （content 模式 + 临时组件库 fixture），并以静态文件服务 dist/ui。
- *  2) stub 上游：实现 OpenAI 兼容 /chat/completions 流式协议，逐 token 吐字，
- *     使 SSE 链路 sources→token→example→done 真实跑通（真实网络往返，非内存 mock）。
+ *  2) stub 上游：实现 AI SDK OpenAI-compatible Provider 的流式响应，逐 token 吐字，
+ *     使 UI Message Stream 的 sources -> text -> example 链路真实跑通（真实网络往返，非内存 mock）。
  *
  * 真实 Chromium 打开 UI → 自动准备知识库 → 输入问题 → 提交 → 断言页面真实渲染出
  * 来源卡片、流式回答文本、示例代码块；任一环节失败即测试失败。
@@ -67,6 +67,7 @@ function startUpstream(): Promise<{ server: Server, url: string }> {
       ]
       for (const t of tokens)
         res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`)
+      res.write(`data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] })}\n\n`)
       res.write('data: [DONE]\n\n')
       res.end()
       return
@@ -98,6 +99,7 @@ test.beforeAll(async () => {
       AI_DOC_CHAT_API_KEY: 'e2e-test-key',
       AI_DOC_CHAT_BASE_URL: up.url,
       AI_DOC_CHAT_MODEL: 'stub-model',
+      AI_DOC_CHAT_PROVIDER: 'openai-compatible',
     },
   })
   await ctx.buildIndex()

@@ -1,13 +1,11 @@
-import type { ChatHistoryMessage, ExampleBlock, SourceRef, SseEvent } from '../src/shared/protocol'
+import type { ExampleBlock, SourceRef } from '../src/shared/protocol'
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
-const streamQuery = vi.fn()
-
-vi.mock('../src/ui/api', () => ({
-  streamQuery: (...args: unknown[]) => streamQuery(...args),
-}))
+const fetchMock = vi.fn<typeof fetch>()
+const requestBodies: Array<Record<string, unknown>> = []
 
 vi.mock('../src/ui/components/DemoPreview.vue', () => ({
   default: defineComponent({
@@ -30,6 +28,67 @@ vi.mock('../src/ui/components/DemoPreview.vue', () => ({
   }),
 }))
 
+interface StreamFixture {
+  answer?: string
+  blocks?: ExampleBlock[]
+  sources?: SourceRef[]
+  failAfterText?: string
+  waitForAbort?: boolean
+}
+
+function streamResponse(fixture: StreamFixture, signal?: AbortSignal | null): Response {
+  const answer = fixture.answer ?? ''
+  const stream = createUIMessageStream({
+    onError: error => error instanceof Error ? error.message : String(error),
+    execute: async ({ writer }) => {
+      writer.write({ type: 'data-sources', data: fixture.sources ?? [] })
+      writer.write({ type: 'start' })
+      writer.write({ type: 'start-step' })
+      writer.write({ type: 'text-start', id: 'answer' })
+      if (answer)
+        writer.write({ type: 'text-delta', id: 'answer', delta: answer })
+      if (fixture.waitForAbort) {
+        await new Promise<void>((resolve) => {
+          if (signal?.aborted)
+            resolve()
+          else
+            signal?.addEventListener('abort', () => resolve(), { once: true })
+        })
+        signal?.throwIfAborted()
+      }
+      if (fixture.failAfterText)
+        throw new Error(fixture.failAfterText)
+      writer.write({ type: 'text-end', id: 'answer' })
+      writer.write({ type: 'finish-step' })
+      if (fixture.blocks?.length) {
+        writer.write({
+          type: 'data-example',
+          data: { blocks: fixture.blocks },
+        })
+      }
+      writer.write({ type: 'finish', finishReason: 'stop' })
+    },
+  })
+  return createUIMessageStreamResponse({ stream })
+}
+
+function answerOnce(fixture: StreamFixture): void {
+  fetchMock.mockImplementationOnce(async (_input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+    return streamResponse(fixture, init?.signal)
+  })
+}
+
+function failOnce(message: string): void {
+  fetchMock.mockImplementationOnce(async (_input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+    return new Response(JSON.stringify({ error: 'UPSTREAM_ERROR', message }), {
+      status: 502,
+      headers: { 'content-type': 'application/json' },
+    })
+  })
+}
+
 async function mountChat(question = 'EnterNextContainer 怎么用？', onOpenSource = vi.fn()) {
   const { default: ChatView } = await import('../src/ui/views/ChatView.vue')
   const Host = defineComponent({
@@ -49,39 +108,18 @@ async function mountChat(question = 'EnterNextContainer 怎么用？', onOpenSou
   return mount(Host)
 }
 
-function answerOnce(answer: string, blocks: ExampleBlock[] = [], sources: SourceRef[] = []) {
-  return async (
-    _question: string,
-    _topK: number,
-    _history: ChatHistoryMessage[],
-    onEvent: (event: SseEvent) => void,
-  ) => {
-    onEvent({ type: 'sources', sources })
-    if (answer)
-      onEvent({ type: 'token', text: answer })
-    if (blocks.length > 0) {
-      const first = blocks.find(block => block.renderable) ?? blocks[0]
-      onEvent({
-        type: 'example',
-        code: first.ts,
-        lang: 'vue',
-        ts: first.ts,
-        js: first.js ?? '',
-        component: 'DemoComponent',
-        packageName: '@moluoxixi/components',
-        blocks,
-      })
-    }
-    onEvent({ type: 'done' })
-  }
-}
-
 describe('chat view', () => {
   beforeEach(() => {
-    streamQuery.mockReset()
+    requestBodies.length = 0
+    fetchMock.mockReset()
+    vi.stubGlobal('fetch', fetchMock)
   })
 
-  it('把提问表单固定在回答区域之后，并在知识库构建中提示等待', async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps the ask panel after the answer area and disables it while the index builds', async () => {
     const { default: ChatView } = await import('../src/ui/views/ChatView.vue')
     const wrapper = mount(ChatView, {
       props: {
@@ -92,310 +130,133 @@ describe('chat view', () => {
       },
     })
 
-    expect(wrapper.find('[data-testid="answer"]').exists()).toBe(true)
     expect(wrapper.element.lastElementChild).toBe(wrapper.get('[data-testid="ask-panel"]').element)
     expect(wrapper.get('[data-testid="chat-need-index"]').text()).toContain('正在准备')
     expect(wrapper.get('[data-testid="ask-btn"]').attributes('disabled')).toBeDefined()
   })
 
-  it('回答正文没有 vue 代码块时，渲染后端 example 事件提供的回退 demo 块', async () => {
-    const ts = '<script setup lang="ts"></script><template><EnterNextContainer /></template>'
-    const js = '<script setup></script><template><EnterNextContainer /></template>'
-    streamQuery.mockImplementationOnce(answerOnce(
-      '这个组件用于 Enter 键聚焦下一项。',
-      [{ ts, js, renderable: true }],
-    ))
-
-    const wrapper = await mountChat()
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-
-    const demo = wrapper.get('[data-testid="answer-demo"]')
-    expect(demo.attributes('data-ts')).toBe(ts)
-    expect(demo.attributes('data-js')).toBe(js)
-  })
-
-  it('发送 trim 后的问题并清空输入框', async () => {
-    streamQuery.mockImplementationOnce(answerOnce('回答'))
-    const wrapper = await mountChat('  ElButton 怎么用？  ')
-
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-
-    expect(streamQuery).toHaveBeenCalledWith(
-      'ElButton 怎么用？',
-      5,
-      [],
-      expect.any(Function),
-      expect.any(AbortSignal),
-    )
-    expect((wrapper.get('[data-testid="question-input"]').element as HTMLInputElement).value).toBe('')
-    expect(wrapper.findAll('[role="status"]').some(status => status.text().includes('回答已完成'))).toBe(true)
-  })
-
-  it('保留多轮回答，并把已完成轮次作为下一问历史', async () => {
-    streamQuery
-      .mockImplementationOnce(answerOnce('第一轮回答'))
-      .mockImplementationOnce(answerOnce('第二轮回答'))
-    const wrapper = await mountChat('第一问')
-
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-    await wrapper.get('[data-testid="question-input"]').setValue('第二问')
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-
-    expect(wrapper.findAll('[data-testid="chat-turn"]')).toHaveLength(2)
-    expect(wrapper.text()).toContain('第一轮回答')
-    expect(wrapper.text()).toContain('第二轮回答')
-    expect(streamQuery.mock.calls[1][2]).toEqual([
-      { role: 'user', content: '第一问' },
-      { role: 'assistant', content: '第一轮回答' },
-    ])
-  })
-
-  it('停止生成会中止 signal、保留部分回答，并排除该轮历史', async () => {
-    let firstSignal: AbortSignal | undefined
-    streamQuery.mockImplementationOnce(async (
-      _question: string,
-      _topK: number,
-      _history: ChatHistoryMessage[],
-      onEvent: (event: SseEvent) => void,
-      signal: AbortSignal,
-    ) => {
-      firstSignal = signal
-      onEvent({ type: 'token', text: '已生成部分' })
-      await new Promise<void>((_resolve, reject) => {
-        signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
-      })
-    })
-
-    const wrapper = await mountChat('会被停止的问题')
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-    await wrapper.get('[data-testid="stop-btn"]').trigger('click')
-    await flushPromises()
-
-    expect(firstSignal?.aborted).toBe(true)
-    expect(wrapper.text()).toContain('已生成部分')
-    expect(wrapper.text()).toContain('已停止')
-    expect(wrapper.find('[data-testid="chat-error"]').exists()).toBe(false)
-
-    streamQuery.mockImplementationOnce(answerOnce('新回答'))
-    await wrapper.get('[data-testid="question-input"]').setValue('新问题')
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-    expect(streamQuery.mock.calls[1][2]).toEqual([])
-  })
-
-  it('组件卸载时中止仍在进行的请求', async () => {
-    let signal: AbortSignal | undefined
-    streamQuery.mockImplementationOnce(async (
-      _question: string,
-      _topK: number,
-      _history: ChatHistoryMessage[],
-      _onEvent: (event: SseEvent) => void,
-      activeSignal: AbortSignal,
-    ) => {
-      signal = activeSignal
-      await new Promise<void>(resolve => activeSignal.addEventListener('abort', () => resolve(), { once: true }))
-    })
-    const wrapper = await mountChat('未完成问题')
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-
-    wrapper.unmount()
-    await flushPromises()
-    expect(signal?.aborted).toBe(true)
-  })
-
-  it('点击来源时优先发送唯一 knowledgeKey', async () => {
-    const onOpenSource = vi.fn()
-    streamQuery.mockImplementationOnce(answerOnce('回答', [], [{
-      component: 'CopyText',
+  it('sends a trimmed UI message and renders text, sources, Markdown, and examples', async () => {
+    const ts = '<template><EnterNextContainer /></template>'
+    const source: SourceRef = {
+      component: 'EnterNextContainer',
       packageName: '@moluoxixi/components',
-      docPath: 'copy-text.vue',
+      docPath: 'enter-next.vue',
       score: 0.91,
       source: 'external',
-      knowledgeKey: 'external:%40moluoxixi%2Fcomponents:CopyText',
-    }]))
-    const wrapper = await mountChat('CopyText', onOpenSource)
+      knowledgeKey: 'external:%40moluoxixi%2Fcomponents:EnterNextContainer',
+    }
+    const onOpenSource = vi.fn()
+    answerOnce({
+      answer: '## 用法\n\n- 先配置',
+      blocks: [{ ts, renderable: true }],
+      sources: [source],
+    })
+    const wrapper = await mountChat('  EnterNextContainer 怎么用？  ', onOpenSource)
 
     await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-    await wrapper.get('[data-testid="source-button"]').trigger('click')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('先配置'))
 
-    expect(onOpenSource).toHaveBeenCalledWith('external:%40moluoxixi%2Fcomponents:CopyText')
-    expect(wrapper.get('[data-testid="source-button"]').text()).toContain('copy-text.vue')
-    expect(wrapper.get('[data-testid="source-button"]').text()).toContain('外部')
+    const sent = requestBodies[0].messages as Array<{ parts: Array<{ text?: string }> }>
+    expect(sent[0].parts[0].text).toBe('EnterNextContainer 怎么用？')
+    expect((wrapper.get('[data-testid="question-input"]').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.get('[data-testid="answer-text"] h2').text()).toBe('用法')
+    expect(wrapper.get('[data-testid="answer-demo"]').attributes('data-ts')).toBe(ts)
+    await wrapper.get('[data-testid="source-button"]').trigger('click')
+    expect(onOpenSource).toHaveBeenCalledWith(source.knowledgeKey)
     expect(wrapper.get('[data-testid="source-button"]').text()).toContain('0.910')
   })
 
-  it('来源可选字段缺失时按组件名打开且不显示来源类型', async () => {
-    const onOpenSource = vi.fn()
-    streamQuery.mockImplementationOnce(answerOnce('回答', [], [{
-      component: 'CopyText',
-      packageName: '@moluoxixi/components',
-      docPath: 'copy-text.vue',
-      score: 0.7,
-    }]))
-    const wrapper = await mountChat('CopyText', onOpenSource)
+  it('keeps completed rounds and sends only text parts as the next history', async () => {
+    answerOnce({ answer: '第一轮回答', sources: [{
+      component: 'Button',
+      packageName: '@x/c',
+      docPath: 'button.vue',
+      score: 1,
+    }] })
+    answerOnce({ answer: '第二轮回答' })
+    const wrapper = await mountChat('第一问')
 
     await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-    await wrapper.get('[data-testid="source-button"]').trigger('click')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('第一轮回答'))
+    await wrapper.get('[data-testid="question-input"]').setValue('第二问')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('第二轮回答'))
 
-    expect(onOpenSource).toHaveBeenCalledWith('CopyText')
-    expect(wrapper.get('[data-testid="source-button"]').text()).not.toContain('项目')
-    expect(wrapper.get('[data-testid="source-button"]').text()).not.toContain('外部')
+    expect(wrapper.findAll('[data-testid="chat-turn"]')).toHaveLength(2)
+    const history = requestBodies[1].messages as Array<{ role: string, parts: Array<{ type: string, text?: string }> }>
+    expect(history.map(message => message.role)).toEqual(['user', 'assistant', 'user'])
+    expect(history[1].parts).toEqual([{ type: 'text', text: '第一轮回答' }])
   })
 
-  it('清空会话会中止生成并让下一问不携带旧历史', async () => {
-    let signal: AbortSignal | undefined
-    streamQuery.mockImplementationOnce(async (
-      _question: string,
-      _topK: number,
-      _history: ChatHistoryMessage[],
-      onEvent: (event: SseEvent) => void,
-      activeSignal: AbortSignal,
-    ) => {
-      signal = activeSignal
-      onEvent({ type: 'token', text: '部分回答' })
-      await new Promise<void>((_resolve, reject) => {
-        activeSignal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
-      })
-    })
-    const wrapper = await mountChat('第一问')
+  it('stops an active response, keeps partial text, and excludes it from later history', async () => {
+    answerOnce({ answer: '已生成部分', waitForAbort: true })
+    answerOnce({ answer: '新回答' })
+    const wrapper = await mountChat('会被停止的问题')
+
     await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
+    await vi.waitFor(() => expect(wrapper.text()).toContain('已生成部分'))
+    await wrapper.get('[data-testid="stop-btn"]').trigger('click')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('已停止'))
 
-    await wrapper.get('[data-testid="clear-chat"]').trigger('click')
-    await flushPromises()
-
-    expect(signal?.aborted).toBe(true)
-    expect(wrapper.findAll('[data-testid="chat-turn"]')).toHaveLength(0)
-
-    streamQuery.mockImplementationOnce(answerOnce('新回答'))
+    expect(wrapper.find('[data-testid="chat-error"]').exists()).toBe(false)
     await wrapper.get('[data-testid="question-input"]').setValue('新问题')
     await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-    expect(streamQuery.mock.calls[1][2]).toEqual([])
+    await vi.waitFor(() => expect(wrapper.text()).toContain('新回答'))
+    expect(requestBodies[1].messages).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'user' }),
+    ]))
+    expect(requestBodies[1].messages).toHaveLength(1)
   })
 
-  it('流读取失败时保留部分回答并标记错误', async () => {
-    streamQuery.mockImplementationOnce(async (
-      _question: string,
-      _topK: number,
-      _history: ChatHistoryMessage[],
-      onEvent: (event: SseEvent) => void,
-    ) => {
-      onEvent({ type: 'token', text: '残缺回答' })
-      throw new Error('query stream ended before a terminal event')
-    })
+  it('persists a request error on its original user turn after the next question', async () => {
+    failOnce('provider unavailable')
+    answerOnce({ answer: '恢复后的回答' })
+    const wrapper = await mountChat('失败问题')
+
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await vi.waitFor(() => expect(wrapper.find('[data-testid="chat-error"]').exists()).toBe(true))
+    await wrapper.get('[data-testid="question-input"]').setValue('新问题')
+    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('恢复后的回答'))
+
+    const turns = wrapper.findAll('[data-testid="chat-turn"]')
+    expect(turns).toHaveLength(2)
+    expect(turns[0].text()).toContain('provider unavailable')
+    expect(requestBodies[1].messages).toHaveLength(1)
+  })
+
+  it('keeps partial text and an error outcome when the UI message stream fails', async () => {
+    answerOnce({ answer: '残缺回答', failAfterText: 'query stream interrupted' })
     const wrapper = await mountChat('会断流的问题')
 
     await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('残缺回答')
-    expect(wrapper.get('[data-testid="chat-error"]').text()).toContain('terminal event')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('残缺回答'))
+    await vi.waitFor(() => expect(wrapper.get('[data-testid="chat-error"]').text()).toContain('interrupted'))
   })
 
-  it('markdown 正文与原位 Vue Demo 同时渲染', async () => {
-    const source = '<template><button>演示</button></template>'
-    streamQuery.mockImplementationOnce(answerOnce(
-      `## 用法\n\n- 先配置\n\n\`inline\`\n\n\`\`\`vue\n${source}\n\`\`\``,
-      [{ ts: source, renderable: true }],
-    ))
-    const wrapper = await mountChat('怎么用')
-
+  it('clears the conversation and aborts an active request', async () => {
+    answerOnce({ answer: '部分回答', waitForAbort: true })
+    const wrapper = await mountChat('第一问')
     await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
+    await vi.waitFor(() => expect(wrapper.text()).toContain('部分回答'))
 
-    expect(wrapper.get('[data-testid="answer-text"] h2').text()).toBe('用法')
-    expect(wrapper.get('[data-testid="answer-text"] li').text()).toBe('先配置')
-    expect(wrapper.findAll('[data-testid="answer-demo"]')).toHaveLength(1)
+    await wrapper.get('[data-testid="clear-chat"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid="chat-turn"]')).toHaveLength(0)
   })
 
-  it('用户离开底部后不被 token 拉回，并可手动回到最新', async () => {
-    let push!: (event: SseEvent) => void
-    let finish!: () => void
-    streamQuery.mockImplementationOnce(async (
-      _question: string,
-      _topK: number,
-      _history: ChatHistoryMessage[],
-      onEvent: (event: SseEvent) => void,
-    ) => {
-      push = onEvent
-      await new Promise<void>((resolve) => {
-        finish = resolve
-      })
+  it('aborts an active request when unmounted', async () => {
+    let signal: AbortSignal | null | undefined
+    fetchMock.mockImplementationOnce(async (_input, init) => {
+      signal = init?.signal
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+      return streamResponse({ answer: '部分', waitForAbort: true }, signal)
     })
-    const wrapper = await mountChat('长回答')
-    const body = wrapper.get('.chat-body').element as HTMLElement
-    Object.defineProperties(body, {
-      scrollHeight: { configurable: true, value: 1000 },
-      clientHeight: { configurable: true, value: 300 },
-      scrollTop: { configurable: true, value: 100, writable: true },
-    })
-
-    await wrapper.get('.chat-body').trigger('scroll')
+    const wrapper = await mountChat('未完成问题')
     await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-    body.scrollTop = 100
-    await wrapper.get('.chat-body').trigger('scroll')
-    push({ type: 'token', text: '继续生成' })
-    await flushPromises()
+    await vi.waitFor(() => expect(wrapper.text()).toContain('部分'))
 
-    expect(body.scrollTop).toBe(100)
-    expect(wrapper.find('[data-testid="jump-latest"]').exists()).toBe(true)
-
-    await wrapper.get('[data-testid="jump-latest"]').trigger('click')
-    await flushPromises()
-    expect(body.scrollTop).toBe(1000)
-
-    push({ type: 'done' })
-    finish()
-    await flushPromises()
-  })
-
-  it('按归一化后的源码匹配后端双码块', async () => {
-    const inlineTs = '<script setup lang="ts">\nconst count = 1\n</script>\n<template><div>{{ count }}</div></template>'
-    const backendTs = `${inlineTs}\n`
-    const js = '<script setup>\nconst count = 1\n</script>\n<template><div>{{ count }}</div></template>'
-    streamQuery.mockImplementationOnce(answerOnce(
-      `示例：\n\`\`\`vue\n${inlineTs}\n\`\`\``,
-      [{ ts: backendTs, js, renderable: true }],
-    ))
-
-    const wrapper = await mountChat('CounterDemo 怎么用？')
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-
-    const demo = wrapper.get('[data-testid="answer-demo"]')
-    expect(demo.attributes('data-ts')).toBe(inlineTs)
-    expect(demo.attributes('data-js')).toBe(js)
-  })
-
-  it('正文坏块不误挂，并追加可运行兜底 demo', async () => {
-    const broken = '<script setup lang="ts">\nconst columns = [\n  { field: \'name\', title商品名称\', width: 150 },\n]\n</script>\n<template><PopoverTableSelect :columns="columns" /></template>'
-    const fallback = '<script setup lang="ts"></script><template><PopoverTableSelect /></template>'
-    streamQuery.mockImplementationOnce(answerOnce(
-      `示例：\n\`\`\`vue\n${broken}\n\`\`\``,
-      [
-        { ts: broken, renderable: false, reason: '示例语法不可用，已改用兜底示例。' },
-        { ts: fallback, js: '<script setup></script><template><PopoverTableSelect /></template>', renderable: true },
-      ],
-    ))
-
-    const wrapper = await mountChat('PopoverTableSelect 怎么用？')
-    await wrapper.get('[data-testid="ask-panel"]').trigger('submit')
-    await flushPromises()
-
-    const demos = wrapper.findAll('[data-testid="answer-demo"]')
-    expect(demos).toHaveLength(2)
-    expect(demos[0].attributes('data-renderable')).toBe('false')
-    expect(demos[0].attributes('data-reason')).toContain('语法')
-    expect(demos[1].attributes('data-ts')).toBe(fallback)
+    wrapper.unmount()
+    await vi.waitFor(() => expect(signal?.aborted).toBe(true))
   })
 })

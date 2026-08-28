@@ -13,6 +13,8 @@ import {
   getBrowserBundleForbiddenFragments,
   getBrowserConsumerSpecifiers,
   getNodeRuntimeSpecifiers,
+  getPackedBrowserApplications,
+  getPnpmCommandName,
   getPublicSpecifier,
   getStylesheetEntrypoints,
   getTypedJavaScriptEntrypoints,
@@ -72,6 +74,10 @@ describe('published package verifier helpers', () => {
   })
 
   it('keeps component browser entries explicit', () => {
+    expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/ai-doc-assistant'])
+      .toEqual(['./protocol', './api-contract'])
+    expect(browserJavaScriptEntrypointExclusions['@moluoxixi/ai-doc-assistant'])
+      .toEqual(['.', './plugin'])
     expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/ai-provider'])
       .toEqual(['.', './shared'])
     expect(browserJavaScriptEntrypointExclusions['@moluoxixi/ai-provider'])
@@ -104,6 +110,15 @@ describe('published package verifier helpers', () => {
       .toEqual(['.', './markdown', './node', './repository/node'])
     expect(getNodeRuntimeSpecifiers([
       {
+        name: '@moluoxixi/ai-doc-assistant',
+        exports: {
+          './plugin': {
+            import: './dist/plugin.js',
+            types: './dist/src/server/plugin.d.ts',
+          },
+        },
+      },
+      {
         name: '@moluoxixi/ai-provider',
         exports: {
           './server': {
@@ -134,6 +149,7 @@ describe('published package verifier helpers', () => {
         },
       },
     ])).toEqual([
+      '@moluoxixi/ai-doc-assistant/plugin',
       '@moluoxixi/ai-provider/server',
       '@moluoxixi/i18n-tool/config',
       '@moluoxixi/i18n-tool/core',
@@ -183,6 +199,11 @@ describe('published package verifier helpers', () => {
     expect(browserSource).toContain('copyTextStyles')
     expect(browserSource).toContain('richTextStyles')
     expect(browserSource).toContain('replStyles')
+  })
+
+  it('uses the platform executable name when pnpm is resolved from PATH', () => {
+    expect(getPnpmCommandName('win32')).toBe('pnpm.cmd')
+    expect(getPnpmCommandName('linux')).toBe('pnpm')
   })
 
   it('declares the browser bundler in the isolated packed consumer', () => {
@@ -292,16 +313,16 @@ describe('published package verifier helpers', () => {
     })).toEqual(['@moluoxixi/ai-provider/server'])
     expect(getBrowserBundleForbiddenFragments([manifest], {
       '@moluoxixi/ai-provider': [
-        '/chat/completions',
-        '/embeddings',
-        'chatApiKey',
-        'embeddingApiKey',
+        'createLanguageModel',
+        'createEmbeddingModel',
+        'getAiProviderErrorCause',
+        'apiKey',
       ],
     })).toEqual([
-      '/chat/completions',
-      '/embeddings',
-      'chatApiKey',
-      'embeddingApiKey',
+      'createLanguageModel',
+      'createEmbeddingModel',
+      'getAiProviderErrorCause',
+      'apiKey',
     ])
   })
 
@@ -330,5 +351,27 @@ describe('published package verifier helpers', () => {
       '@moluoxixi/i18n-tool/core',
       '@moluoxixi/i18n-tool/server',
     ])
+  })
+
+  it('classifies the packed ai-doc browser app and its server-only fragments', () => {
+    const applications = getPackedBrowserApplications([
+      { name: '@moluoxixi/ai-doc-assistant' },
+    ], {
+      '@moluoxixi/ai-doc-assistant': {
+        directory: 'dist/ui',
+        mountPath: '/__ai-doc/',
+        readySelector: '[data-testid="app-title"]',
+      },
+    }, {
+      '@moluoxixi/ai-doc-assistant': ['ServerContext', 'apiKey'],
+    })
+
+    expect(applications).toEqual([{
+      packageName: '@moluoxixi/ai-doc-assistant',
+      directory: 'dist/ui',
+      mountPath: '/__ai-doc/',
+      readySelector: '[data-testid="app-title"]',
+      forbiddenFragments: ['ServerContext', 'apiKey'],
+    }])
   })
 })

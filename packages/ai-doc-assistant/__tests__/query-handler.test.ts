@@ -3,14 +3,19 @@ import type {
   StrategyChunk,
   StrategyResult,
 } from '../src/core/retrieval-strategy'
-import type { ProviderConfig } from '../src/server/ai-provider'
-import type { QueryDeps } from '../src/server/query-handler'
-import type { ChatHistoryMessage, SseEvent } from '../src/shared/protocol'
+import type { AiDocUIMessage } from '../src/shared/protocol'
 // @vitest-environment node
-import { describe, expect, it } from 'vitest'
-import { runQuery } from '../src/server/query-handler'
-
-const CONFIG = {} as ProviderConfig
+import {
+  readUIMessageStream,
+  simulateReadableStream,
+} from 'ai'
+import { MockLanguageModelV3 } from 'ai/test'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  createQueryUIMessageStream,
+  exampleBlocksFromAnswer,
+  prepareQuery,
+} from '../src/server/query-handler'
 
 function chunk(name: string): StrategyChunk {
   return {
@@ -21,234 +26,205 @@ function chunk(name: string): StrategyChunk {
     knowledgeKey: `internal:%40moluoxixi%2Fcomponents:${name}`,
     body: `${name} body`,
     example: `<${name} />`,
-    // exampleCode 为 StrategyChunk 必填契约字段（双码），mock 必须满足
     exampleCode: { ts: `<${name} />`, js: `<${name} js />` },
     score: 0.9,
   }
 }
 
-/** 构造 stub 策略：retrieve 返回固定结果。 */
 function stubStrategy(result: StrategyResult): RetrievalStrategy {
   return {
     mode: 'content',
     build: async () => ({ builtAt: 'x', componentCount: result.chunks.length }),
     isReady: () => true,
-    retrieve: async () => result,
+    retrieve: vi.fn(async () => result),
   }
 }
 
-/** 收集生成器全部事件。 */
-async function collect(gen: AsyncGenerator<SseEvent>): Promise<SseEvent[]> {
-  const events: SseEvent[] = []
-  for await (const e of gen)
-    events.push(e)
-  return events
+function userMessage(id: string, text: string): AiDocUIMessage {
+  return { id, role: 'user', parts: [{ type: 'text', text }] }
 }
 
-describe('runQuery SSE 编排', () => {
-  it('命中：sources → token* → example → done', async () => {
-    const deps: QueryDeps = {
-      strategy: stubStrategy({ chunks: [chunk('MyButton')], empty: false }),
-      config: CONFIG,
-      async* chat() {
-        yield '这是'
-        yield '回答'
-      },
-    }
-    const events = await collect(runQuery('怎么用按钮', 5, deps))
-    expect(events[0]).toEqual({
-      type: 'sources',
-      sources: [{ component: 'MyButton', packageName: '@moluoxixi/components', docPath: 'packages/MyButton/src/index.vue', score: 0.9, source: 'internal', knowledgeKey: 'internal:%40moluoxixi%2Fcomponents:MyButton' }],
-    })
-    expect(events.filter(e => e.type === 'token').map(e => (e as { text: string }).text)).toEqual(['这是', '回答'])
-    const example = events.find(e => e.type === 'example')
-    // 回答无 vue 代码块 → blocks 回退首个命中组件的确定性骨架；兼容字段指向该骨架
-    expect(example).toEqual({
-      type: 'example',
-      code: '<MyButton />',
-      lang: 'vue',
-      ts: '<MyButton />',
-      js: '<MyButton js />',
-      component: 'MyButton',
-      packageName: '@moluoxixi/components',
-      blocks: [{ ts: '<MyButton />', js: '<MyButton js />', renderable: true }],
-    })
-    expect(events[events.length - 1]).toEqual({ type: 'done' })
+function assistantMessage(id: string, text: string): AiDocUIMessage {
+  return { id, role: 'assistant', parts: [{ type: 'text', text }] }
+}
+
+const USAGE = {
+  inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+  outputTokens: { total: 1, text: 1, reasoning: 0 },
+}
+
+function languageModel(answer: string): MockLanguageModelV3 {
+  return new MockLanguageModelV3({
+    doStream: {
+      stream: simulateReadableStream({
+        chunks: [
+          { type: 'stream-start' as const, warnings: [] },
+          { type: 'text-start' as const, id: 'answer' },
+          { type: 'text-delta' as const, id: 'answer', delta: answer },
+          { type: 'text-end' as const, id: 'answer' },
+          { type: 'finish' as const, finishReason: { unified: 'stop' as const, raw: undefined }, usage: USAGE },
+        ],
+        initialDelayInMs: null,
+        chunkDelayInMs: null,
+      }),
+    },
+  })
+}
+
+async function consumeStream(stream: ReturnType<typeof createQueryUIMessageStream>) {
+  const [rawStream, messageStream] = stream.tee()
+  const raw: Array<{ type: string }> = []
+  const reader = rawStream.getReader()
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done)
+      break
+    raw.push(value)
+  }
+
+  let final: AiDocUIMessage | undefined
+  for await (const message of readUIMessageStream<AiDocUIMessage>({ stream: messageStream }))
+    final = message
+  return { raw, final }
+}
+
+describe('aI SDK UI Message Stream query orchestration', () => {
+  it('emits sources before text and examples after the complete answer', async () => {
+    const messages = [userMessage('u1', '怎么用按钮')]
+    const prepared = await prepareQuery(
+      messages,
+      5,
+      stubStrategy({ chunks: [chunk('MyButton')], empty: false }),
+    )
+    const model = languageModel('这是回答')
+    const { raw, final } = await consumeStream(
+      createQueryUIMessageStream(prepared, { model }),
+    )
+
+    const sourceIndex = raw.findIndex(part => part.type === 'data-sources')
+    const textIndex = raw.findIndex(part => part.type === 'text-delta')
+    const exampleIndex = raw.findIndex(part => part.type === 'data-example')
+    const finishIndex = raw.findIndex(part => part.type === 'finish')
+    expect(sourceIndex).toBeGreaterThanOrEqual(0)
+    expect(textIndex).toBeGreaterThan(sourceIndex)
+    expect(exampleIndex).toBeGreaterThan(textIndex)
+    expect(finishIndex).toBeGreaterThan(exampleIndex)
+    expect(final?.parts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'data-sources' }),
+      expect.objectContaining({ type: 'text', text: '这是回答' }),
+      expect.objectContaining({ type: 'data-example' }),
+    ]))
   })
 
-  it('回答含 vue 块：提取为 blocks，白名单内可渲染、白名单外标记不可渲染', async () => {
-    const okBlock = '```vue\n<script setup lang="ts">\nimport { PopoverTableSelect } from \'@moluoxixi/components\'\n</script>\n<template><PopoverTableSelect /></template>\n```'
-    const elementPlusBlock = '```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton>确认</ElButton></template>\n```'
-    const badBlock = '```vue\n<script setup lang="ts">\nimport axios from \'axios\'\n</script>\n<template><div /></template>\n```'
-    const deps: QueryDeps = {
-      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
-      config: CONFIG,
-      async* chat() {
-        yield `示例如下：\n${okBlock}\nElement Plus 示例：\n${elementPlusBlock}\n另一个需要外部库：\n${badBlock}`
-      },
-    }
-    const events = await collect(runQuery('下拉表格配置', 5, deps))
-    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
-    expect(example.blocks).toHaveLength(3)
-    expect(example.blocks[0].renderable).toBe(true)
-    expect(example.blocks[0].ts).toContain('PopoverTableSelect')
-    expect(example.blocks[1].renderable).toBe(true)
-    expect(example.blocks[1].ts).toContain('ElButton')
-    expect(example.blocks[1].js).toContain('<script setup>')
-    expect(example.blocks[2].renderable).toBe(false)
-    expect(example.blocks[2].reason).toContain('axios')
-    expect(example.blocks[2].js).toContain('<script setup>')
-    expect(example.ts).toContain('PopoverTableSelect')
+  it('returns the fixed no-match answer without calling a chat model', async () => {
+    const model = new MockLanguageModelV3()
+    const prepared = await prepareQuery(
+      [userMessage('u1', '不存在的组件')],
+      5,
+      stubStrategy({ chunks: [], empty: true }),
+    )
+    const { final } = await consumeStream(
+      createQueryUIMessageStream(prepared, { model: null }),
+    )
+
+    expect(model.doStreamCalls).toHaveLength(0)
+    expect(final?.parts).toEqual(expect.arrayContaining([
+      { type: 'data-sources', data: [] },
+      expect.objectContaining({ type: 'text', text: expect.stringContaining('未找到') }),
+    ]))
   })
 
-  it('回答只有不可渲染 vue 块时，保留该块的 JS/TS 并追加可运行兜底示例', async () => {
-    const noDemoBlock = '```vue no-demo\n<script setup lang="ts">\nconst count: number = 1\n</script>\n<template><div>{{ count }}</div></template>\n```'
-    const deps: QueryDeps = {
-      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
-      config: CONFIG,
-      async* chat() {
-        yield `只能作为源码参考：\n${noDemoBlock}`
-      },
-    }
-    const events = await collect(runQuery('下拉表格配置', 5, deps))
-    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
-    expect(example.blocks).toHaveLength(2)
-    expect(example.blocks[0]).toMatchObject({ renderable: false })
-    expect(example.blocks[0].js).toContain('const count = 1')
-    expect(example.blocks[1]).toEqual({ ts: '<PopoverTableSelect />', js: '<PopoverTableSelect js />', renderable: true })
-    expect(example.ts).toBe('<PopoverTableSelect />')
-    expect(example.js).toBe('<PopoverTableSelect js />')
+  it('uses the newest two user questions for retrieval and injects context into model messages', async () => {
+    const strategy = stubStrategy({ chunks: [chunk('RequestSelectV2')], empty: false })
+    const messages = [
+      userMessage('u0', '最早的问题'),
+      assistantMessage('a0', '最早的回答'),
+      userMessage('u1', '第一问'),
+      assistantMessage('a1', '第一答'),
+      userMessage('u2', 'RequestSelectV2 怎么用？'),
+      assistantMessage('a2', '它是远程选择器。'),
+      userMessage('u3', '它支持清空吗？'),
+    ]
+    const prepared = await prepareQuery(messages, 5, strategy)
+    const model = languageModel('支持')
+    await consumeStream(createQueryUIMessageStream(prepared, { model }))
+
+    const retrieve = strategy.retrieve as ReturnType<typeof vi.fn>
+    expect(retrieve.mock.calls[0][0]).not.toContain('最早的问题')
+    expect(retrieve.mock.calls[0][0]).toContain('第一问')
+    expect(retrieve.mock.calls[0][0]).toContain('RequestSelectV2 怎么用？')
+    expect(retrieve.mock.calls[0][0]).toContain('它支持清空吗？')
+    expect(JSON.stringify(model.doStreamCalls[0].prompt)).toContain('组件契约上下文')
+    expect(JSON.stringify(model.doStreamCalls[0].prompt)).toContain('RequestSelectV2 body')
   })
 
-  it('回答里的 vue 块语法不可转译时，标记不可渲染并追加可运行兜底示例', async () => {
-    const brokenBlock = [
+  it('propagates retrieval failures before a stream is created', async () => {
+    const failing = stubStrategy({ chunks: [], empty: true })
+    failing.retrieve = async () => {
+      throw new Error('embedding upstream failed')
+    }
+
+    await expect(prepareQuery([userMessage('u1', 'q')], 5, failing))
+      .rejects
+      .toThrow('embedding upstream failed')
+  })
+})
+
+describe('exampleBlocksFromAnswer', () => {
+  it('keeps allowlisted blocks and marks non-allowlisted imports as source-only', () => {
+    const answer = [
       '```vue',
       '<script setup lang="ts">',
-      'const columns = [',
-      '  { field: \'name\', title商品名称\', width: 150 },',
-      ']',
+      'import { ElButton } from \'element-plus\'',
       '</script>',
-      '<template><PopoverTableSelect :columns="columns" /></template>',
+      '<template><ElButton>确认</ElButton></template>',
+      '```',
+      '```vue',
+      '<script setup lang="ts">',
+      'import axios from \'axios\'',
+      '</script>',
+      '<template><div /></template>',
       '```',
     ].join('\n')
-    const deps: QueryDeps = {
-      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
-      config: CONFIG,
-      async* chat() {
-        yield `示例如下：\n${brokenBlock}`
-      },
-    }
-    const events = await collect(runQuery('下拉表格配置', 5, deps))
-    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
-    expect(example.blocks).toHaveLength(2)
-    expect(example.blocks[0]).toMatchObject({ renderable: false })
-    expect(example.blocks[0].reason).toContain('语法')
-    expect(example.blocks[0].js).toBeUndefined()
-    expect(example.blocks[1]).toEqual({ ts: '<PopoverTableSelect />', js: '<PopoverTableSelect js />', renderable: true })
-    expect(example.ts).toBe('<PopoverTableSelect />')
+
+    const blocks = exampleBlocksFromAnswer(answer, chunk('MyButton'))
+    expect(blocks).toHaveLength(2)
+    expect(blocks[0]).toMatchObject({ renderable: true })
+    expect(blocks[0].js).toContain('<script setup>')
+    expect(blocks[1]).toMatchObject({ renderable: false })
+    expect(blocks[1].reason).toContain('axios')
   })
 
-  it('回答里的不可渲染 JS SFC 块也保留 JS 源，供前端展示四按钮', async () => {
-    const jsSource = '<script setup>\nconst count = 1\n</script>\n<template><div>{{ count }}</div></template>'
-    const noDemoBlock = `\`\`\`vue no-demo\n${jsSource}\n\`\`\``
-    const deps: QueryDeps = {
-      strategy: stubStrategy({ chunks: [chunk('PopoverTableSelect')], empty: false }),
-      config: CONFIG,
-      async* chat() {
-        yield `只能作为源码参考：\n${noDemoBlock}`
-      },
-    }
-    const events = await collect(runQuery('下拉表格配置', 5, deps))
-    const example = events.find(e => e.type === 'example') as Extract<SseEvent, { type: 'example' }>
-    expect(example.blocks[0]).toMatchObject({ renderable: false })
-    expect(example.blocks[0].ts).toBe(jsSource)
-    expect(example.blocks[0].js).toBe(jsSource)
-    expect(example.blocks[1]).toMatchObject({ renderable: true })
+  it('appends a runnable fallback when every extracted block is source-only', () => {
+    const answer = [
+      '```vue no-demo',
+      '<script setup lang="ts">',
+      'const count: number = 1',
+      '</script>',
+      '<template><div>{{ count }}</div></template>',
+      '```',
+    ].join('\n')
+
+    const blocks = exampleBlocksFromAnswer(answer, chunk('MyButton'))
+    expect(blocks).toHaveLength(2)
+    expect(blocks[0]).toMatchObject({ renderable: false })
+    expect(blocks[1]).toEqual({ ts: '<MyButton />', js: '<MyButton js />', renderable: true })
   })
 
-  it('无命中：兜底告知不编造，不调用 chat', async () => {
-    let chatCalled = false
-    const deps: QueryDeps = {
-      strategy: stubStrategy({ chunks: [], empty: true }),
-      config: CONFIG,
-      async* chat() {
-        chatCalled = true
-      },
-    }
-    const events = await collect(runQuery('不存在的组件', 5, deps))
-    expect(chatCalled).toBe(false)
-    expect(events[0]).toEqual({ type: 'sources', sources: [] })
-    const token = events.find(e => e.type === 'token') as { text: string }
-    expect(token.text).toContain('未找到')
-    expect(events.find(e => e.type === 'example')).toBeUndefined()
-    expect(events[events.length - 1]).toEqual({ type: 'done' })
-  })
+  it('marks TypeScript syntax failures and preserves a runnable fallback', () => {
+    const broken = [
+      '```vue',
+      '<script setup lang="ts">',
+      'const columns = [{ field: \'name\', title商品名称\', width: 150 }]',
+      '</script>',
+      '<template><MyButton /></template>',
+      '```',
+    ].join('\n')
 
-  it('按 system → 历史 → 当前问题构造消息，并用最近问题辅助检索', async () => {
-    const retrieved: string[] = []
-    const strategy = stubStrategy({ chunks: [chunk('RequestSelectV2')], empty: false })
-    strategy.retrieve = async (question) => {
-      retrieved.push(question)
-      return { chunks: [chunk('RequestSelectV2')], empty: false }
-    }
-    const history: ChatHistoryMessage[] = [
-      { role: 'user', content: 'RequestSelectV2 怎么用？' },
-      { role: 'assistant', content: '它是远程选择器。' },
-    ]
-    const controller = new AbortController()
-    let messages: Parameters<QueryDeps['chat']>[1] = []
-    let receivedSignal: AbortSignal | undefined
-    const deps: QueryDeps = {
-      strategy,
-      config: CONFIG,
-      async* chat(_config, incoming, signal) {
-        messages = incoming
-        receivedSignal = signal
-        yield '可以'
-      },
-    }
-
-    await collect(runQuery('它支持清空吗？', 5, deps, history, controller.signal))
-
-    expect(retrieved[0]).toContain('RequestSelectV2 怎么用？')
-    expect(retrieved[0]).toContain('它支持清空吗？')
-    expect(messages.map(message => message.role)).toEqual(['system', 'user', 'assistant', 'user'])
-    expect(messages[1]).toEqual(history[0])
-    expect(messages[2]).toEqual(history[1])
-    expect(messages[3].content).toContain('它支持清空吗？')
-    expect(receivedSignal).toBe(controller.signal)
-  })
-
-  it('中止后不再产出迟到 token、example 或 done', async () => {
-    const controller = new AbortController()
-    const deps: QueryDeps = {
-      strategy: stubStrategy({ chunks: [chunk('CopyText')], empty: false }),
-      config: CONFIG,
-      async* chat() {
-        yield 'partial'
-        yield 'late'
-      },
-    }
-    const generator = runQuery('CopyText', 5, deps, [], controller.signal)
-
-    expect((await generator.next()).value?.type).toBe('sources')
-    expect(await generator.next()).toMatchObject({ value: { type: 'token', text: 'partial' } })
-    controller.abort()
-    await expect(generator.next()).rejects.toMatchObject({ name: 'AbortError' })
-  })
-
-  it('策略 retrieve 抛错时向上传播（不静默吞）', async () => {
-    const failing: RetrievalStrategy = {
-      mode: 'content',
-      build: async () => ({ builtAt: 'x', componentCount: 0 }),
-      isReady: () => true,
-      retrieve: async () => { throw new Error('strategy not built') },
-    }
-    const deps: QueryDeps = {
-      strategy: failing,
-      config: CONFIG,
-      async* chat() {},
-    }
-    await expect(collect(runQuery('q', 5, deps))).rejects.toThrow(/not built/)
+    const blocks = exampleBlocksFromAnswer(broken, chunk('MyButton'))
+    expect(blocks[0]).toMatchObject({ renderable: false })
+    expect(blocks[0].js).toBeUndefined()
+    expect(blocks[0].reason).toContain('语法')
+    expect(blocks[1]).toMatchObject({ renderable: true })
   })
 })

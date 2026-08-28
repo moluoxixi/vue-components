@@ -23,13 +23,14 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'pnpm exec vitepress dev fixtures/basic --host 127.0.0.1 --port 4314 --strictPort',
+      command: 'node dist/element-plus-docs.js dev --config fixtures/basic/element-plus-docs.config.ts --host 127.0.0.1 --port 4314 --strictPort',
       url: fixtureURL,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
       command: 'pnpm --filter @moluoxixi/docs dev --host 127.0.0.1 --port 4315 --strictPort',
+      env: { VITE_DOCS_REPOSITORY_METADATA_PROVIDER: 'local' },
       url: docsURL,
       reuseExistingServer: !process.env.CI,
       timeout: 240_000,

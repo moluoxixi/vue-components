@@ -1,21 +1,25 @@
 export type {
   AiProviderErrorCode,
   AiProviderErrorOptions,
-  ChatMessage,
+  AiProviderId,
+  AiRuntimeStatus,
+  EmbeddingProviderId,
+  ModelTargetStatus,
   ProviderAvailability,
-  ProviderStatus,
 } from '../shared'
 export { AI_PROVIDER_ERROR_CODES, AiProviderError } from '../shared'
-export type {
-  LoadProviderConfigOptions,
-  ProviderConfig,
-  ProviderDefaults,
-  ProviderEnvironment,
-  ProviderEnvKeys,
-} from './config'
-export { loadProviderConfig, providerStatusOf } from './config'
+export {
+  AI_PROVIDER_IDS,
+  EMBEDDING_PROVIDER_IDS,
+  isAiProviderId,
+  isEmbeddingProviderId,
+} from '../shared'
 export type { CreateAiProviderErrorOptions } from './error'
 export { createAiProviderError, getAiProviderErrorCause } from './error'
+export type { EmbeddingModelTarget, LanguageModelTarget } from './model-factory'
+export {
+  aiRuntimeStatusOf,
+  createEmbeddingModel,
+  createLanguageModel,
+} from './model-factory'
 export { redactSensitiveText } from './redact'
-export type { FetchLike, ProviderTransportOptions } from './transport'
-export { embed, streamChat } from './transport'

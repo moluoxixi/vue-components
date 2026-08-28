@@ -1,15 +1,17 @@
+import type { LanguageModel } from 'ai'
 import type { AddressInfo } from 'node:net'
-import type { ChatTransport } from '../core'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
+import { MockLanguageModelV3 } from 'ai/test'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   I18N_TOOL_API_PREFIX,
   I18N_TOOL_PRIVATE_HEADER,
 } from '../protocol'
 import { dispatch, ServerContext } from '../server'
+import { createTranslationModel } from './model-helpers'
 import { testConfig } from './server-helpers'
 
 const cleanup: Array<() => Promise<void>> = []
@@ -18,14 +20,14 @@ afterEach(async () => {
   await Promise.all(cleanup.splice(0).map(dispose => dispose()))
 })
 
-async function startServer(chat?: ChatTransport): Promise<{ baseUrl: string }> {
+async function startServer(model?: LanguageModel): Promise<{ baseUrl: string }> {
   const root = resolve(tmpdir(), `i18n-tool-router-${crypto.randomUUID()}`)
   await mkdir(resolve(root, 'locales'), { recursive: true })
   await writeFile(resolve(root, 'locales/en-US.json'), '{"hello":"Hello"}\n')
   const context = new ServerContext({
-    chat,
     config: testConfig(root),
-    env: chat ? { TEST_I18N_AI_KEY: 'secret' } : {},
+    env: model ? { TEST_I18N_AI_KEY: 'secret' } : {},
+    model,
   })
   const server = createServer(async (request, response) => {
     if (!(await dispatch(context, request, response)))
@@ -109,14 +111,7 @@ describe('local API router', () => {
   })
 
   it('streams candidates and exactly one successful terminal event', async () => {
-    const chat: ChatTransport = async function* (_config, messages) {
-      const request = JSON.parse(messages[1].content)
-      yield JSON.stringify({
-        targetLocale: request.targetLocale,
-        translations: request.entries.map((entry: { id: string }) => ({ id: entry.id, value: '你好' })),
-      })
-    }
-    const { baseUrl } = await startServer(chat)
+    const { baseUrl } = await startServer(createTranslationModel(() => '你好'))
     const headers = mutationHeaders(baseUrl)
     const scan = await (await fetch(`${baseUrl}${I18N_TOOL_API_PREFIX}/scan`, {
       body: '{}',
@@ -142,7 +137,7 @@ describe('local API router', () => {
     expect(events).toContainEqual(expect.objectContaining({ type: 'candidate' }))
   })
 
-  it('propagates an HTTP disconnect to the AI transport signal', async () => {
+  it('propagates an HTTP disconnect to the AI SDK model signal', async () => {
     let observeAbort!: () => void
     let observeStart!: () => void
     const aborted = new Promise<void>((resolveAbort) => {
@@ -151,16 +146,19 @@ describe('local API router', () => {
     const started = new Promise<void>((resolveStart) => {
       observeStart = resolveStart
     })
-    const chat: ChatTransport = async function* (_config, _messages, signal) {
-      observeStart()
-      await new Promise<void>((_resolve, reject) => {
-        signal?.addEventListener('abort', () => {
-          observeAbort()
-          reject(signal.reason)
-        }, { once: true })
-      })
-    }
-    const { baseUrl } = await startServer(chat)
+    const model = new MockLanguageModelV3({
+      doGenerate: async ({ abortSignal }) => {
+        observeStart()
+        await new Promise<void>((_resolve, reject) => {
+          abortSignal?.addEventListener('abort', () => {
+            observeAbort()
+            reject(abortSignal.reason)
+          }, { once: true })
+        })
+        throw new Error('Unreachable')
+      },
+    })
+    const { baseUrl } = await startServer(model)
     const headers = mutationHeaders(baseUrl)
     const scan = await (await fetch(`${baseUrl}${I18N_TOOL_API_PREFIX}/scan`, {
       body: '{}',
@@ -185,10 +183,12 @@ describe('local API router', () => {
   })
 
   it('emits exactly one error terminal event when translation fails', async () => {
-    const chat: ChatTransport = async function* () {
-      throw new Error('upstream failed')
-    }
-    const { baseUrl } = await startServer(chat)
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => {
+        throw new Error('upstream failed')
+      },
+    })
+    const { baseUrl } = await startServer(model)
     const headers = mutationHeaders(baseUrl)
     const scan = await (await fetch(`${baseUrl}${I18N_TOOL_API_PREFIX}/scan`, {
       body: '{}',

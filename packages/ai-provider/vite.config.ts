@@ -44,7 +44,7 @@ export default defineConfig({
       fileName: (_, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      external: [/^node:/],
+      external: ['ai', /^@ai-sdk\//, /^node:/],
     },
   },
 })

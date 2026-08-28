@@ -18,6 +18,8 @@ import {
   getBrowserBundleForbiddenFragments,
   getBrowserConsumerSpecifiers,
   getNodeRuntimeSpecifiers,
+  getPackedBrowserApplications,
+  getPnpmCommandName,
   getPublicSpecifier,
   getTypedJavaScriptEntrypoints,
 } from './published-package-verifier.mjs'
@@ -31,7 +33,7 @@ if (browserMode && typeof browserBundlerVersion !== 'string')
   throw new Error('pnpm-workspace.yaml must define catalogs.dev.vite for the packed browser consumer.')
 const bundledPnpmCli = resolve(dirname(process.execPath), 'node_modules/pnpm/bin/pnpm.mjs')
 const pnpmCli = process.env.npm_execpath || (existsSync(bundledPnpmCli) ? bundledPnpmCli : undefined)
-const pnpmCommand = pnpmCli ? process.execPath : 'pnpm'
+const pnpmCommand = pnpmCli ? process.execPath : getPnpmCommandName(process.platform)
 const pnpmPrefix = pnpmCli ? [pnpmCli] : []
 
 function run(command, args, options = {}) {
@@ -53,8 +55,11 @@ function runPnpm(args, options) {
   return run(pnpmCommand, [...pnpmPrefix, ...args], options)
 }
 
-async function serveDirectory(directory) {
+async function serveDirectory(directory, mountPath = '/') {
   const resolvedDirectory = resolve(directory)
+  const normalizedMountPath = mountPath === '/'
+    ? '/'
+    : `/${mountPath.split('/').filter(Boolean).join('/')}/`
   const mimeTypes = {
     '.css': 'text/css; charset=utf-8',
     '.html': 'text/html; charset=utf-8',
@@ -64,7 +69,13 @@ async function serveDirectory(directory) {
   const server = createServer(async (request, response) => {
     try {
       const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname)
-      const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1)
+      if (normalizedMountPath !== '/' && !pathname.startsWith(normalizedMountPath)) {
+        response.writeHead(404).end('Not found')
+        return
+      }
+      const relativePath = pathname === normalizedMountPath
+        ? 'index.html'
+        : pathname.slice(normalizedMountPath.length)
       const filePath = resolve(resolvedDirectory, relativePath)
       if (filePath !== resolvedDirectory && !filePath.startsWith(`${resolvedDirectory}${sep}`)) {
         response.writeHead(403).end('Forbidden')
@@ -187,12 +198,57 @@ async function verifyBrowserConsumer(consumerDirectory, publishable) {
         }
       }
     }
+
+    const applications = getPackedBrowserApplications(
+      publishable.map(({ manifest }) => manifest),
+    )
+    for (const application of applications) {
+      const packageDirectory = resolve(
+        consumerDirectory,
+        'node_modules',
+        ...application.packageName.split('/'),
+        application.directory,
+      )
+      if (!existsSync(packageDirectory)) {
+        throw new Error(
+          `Packed browser application ${application.packageName}/${application.directory} is missing.`,
+        )
+      }
+      const browserOutput = await readJavaScriptOutput(packageDirectory)
+      const leakedFragments = application.forbiddenFragments
+        .filter(fragment => browserOutput.includes(fragment))
+      if (leakedFragments.length > 0) {
+        throw new Error(
+          `Packed browser application ${application.packageName} contains server-only fragments: ${leakedFragments.join(', ')}`,
+        )
+      }
+
+      const staticServer = await serveDirectory(packageDirectory, application.mountPath)
+      let page
+      try {
+        page = await browser.newPage()
+        const pageErrors = []
+        page.on('pageerror', error => pageErrors.push(error.message))
+        await page.goto(`${staticServer.url}${application.mountPath}`)
+        await page.waitForSelector(application.readySelector, { timeout: 15_000 })
+        if (pageErrors.length > 0)
+          throw new Error(`Browser errors: ${pageErrors.join('; ')}`)
+      }
+      finally {
+        try {
+          await page?.close()
+        }
+        finally {
+          await staticServer.close()
+        }
+      }
+    }
   }
   finally {
     await browser?.close()
   }
 
-  console.log(`Verified ${specifiers.javaScript.length} browser JavaScript entries and ${specifiers.stylesheets.length} stylesheet entries from packed packages in ${batches.length} batches.`)
+  console.log(`Verified ${specifiers.javaScript.length} browser JavaScript entries, ${specifiers.stylesheets.length} stylesheet entries, and packed browser applications from ${batches.length} batches.`)
 }
 
 const workspace = JSON.parse(runPnpm(['list', '-r', '--depth', '-1', '--json'], { capture: true }))

@@ -2,104 +2,92 @@
 
 ## 1. Scope / Trigger
 
-Apply this contract when changing `@moluoxixi/ai-provider`, adding an AI consumer, migrating provider configuration, or changing OpenAI-compatible chat/embedding transport. The package is infrastructure shared across products, so public DTOs, secret handling, cancellation, and error semantics must stay consumer-neutral.
+Apply this contract when changing `@moluoxixi/ai-provider`, adding an AI consumer, or changing Provider/model configuration. The package owns validated Vercel AI SDK model construction and secret-free status projection. It does not own generation, streaming, embedding orchestration, retries, or product environment variables.
 
 ## 2. Signatures
 
 ```ts
-loadProviderConfig(
-  env: Readonly<Record<string, string | undefined>>,
-  options: { defaults: ProviderDefaults, envKeys: ProviderEnvKeys },
-): ProviderConfig | null
+type LanguageModelTarget =
+  | { provider: 'openai', apiKey: string, model: string }
+  | { provider: 'anthropic', apiKey: string, model: string }
+  | { provider: 'google', apiKey: string, model: string }
+  | { provider: 'openai-compatible', apiKey: string, baseURL: string, model: string }
 
-providerStatusOf(config: ProviderConfig | null): ProviderStatus
+type EmbeddingModelTarget =
+  | { provider: 'openai', apiKey: string, model: string }
+  | { provider: 'google', apiKey: string, model: string }
+  | { provider: 'openai-compatible', apiKey: string, baseURL: string, model: string }
 
-streamChat(
-  config: ProviderConfig,
-  messages: ChatMessage[],
-  signal?: AbortSignal,
-  options?: ProviderTransportOptions,
-): AsyncGenerator<string>
-
-embed(
-  config: ProviderConfig,
-  inputs: string[],
-  signal?: AbortSignal,
-  options?: ProviderTransportOptions,
-): Promise<number[][]>
+createLanguageModel(target: LanguageModelTarget): LanguageModel
+createEmbeddingModel(target: EmbeddingModelTarget): EmbeddingModel
+aiRuntimeStatusOf(config: {
+  chat: LanguageModelTarget | null
+  embedding: EmbeddingModelTarget | null
+}): AiRuntimeStatus
 ```
 
-Package exports are split by capability:
+Package entries:
 
 ```text
-@moluoxixi/ai-provider         browser-safe DTOs and stable errors
-@moluoxixi/ai-provider/shared  browser-safe DTOs and stable errors
-@moluoxixi/ai-provider/server  secrets, env loader, transport, causes, redaction
+@moluoxixi/ai-provider         browser-safe types, IDs, status DTOs, stable errors
+@moluoxixi/ai-provider/shared  browser-safe types, IDs, status DTOs, stable errors
+@moluoxixi/ai-provider/server  secret-bearing targets, model factories, causes, redaction
 ```
 
 ## 3. Contracts
 
-- Consumers own their environment variable names and defaults. Shared code must not introduce product-specific `AI_DOC_*` or `I18N_TOOL_*` defaults.
-- A missing chat API key returns `null`; an embedding key may be empty. `providerStatusOf()` is the only browser-safe projection of secret availability.
-- `ProviderConfig`, `ProviderEnvKeys`, transport helpers, diagnostic causes, and redaction stay under `./server`.
-- Chat sends an OpenAI-compatible streaming request to `/chat/completions`; embedding sends a JSON request to `/embeddings`.
-- An `AbortSignal` is passed unchanged to `fetch`. Abort remains the original `AbortError` and is never wrapped as an upstream failure.
-- A chat stream succeeds only after `[DONE]`. EOF without `[DONE]` is `UPSTREAM_PROTOCOL_ERROR`; the reader is cancelled on early completion or failure and its lock is released.
-- Public `AiProviderError` contains only stable `code`, `message`, `retryable`, and optional `status`. Internal causes remain in a server-only `WeakMap` and are never serialized.
-- Redaction covers raw secrets and URI/form-encoded variants before diagnostic text can leave a server boundary.
+- Consumers own environment variable names and map them to independent chat and embedding targets. Shared code never reads `AI_DOC_*`, `I18N_TOOL_*`, or product defaults.
+- Provider selection and model names are explicit. Never infer Provider from a model name.
+- Chat supports OpenAI, Anthropic, Google, and OpenAI-compatible. Embedding supports OpenAI, Google, and OpenAI-compatible; Anthropic is not an embedding branch.
+- OpenAI-compatible targets require an absolute HTTP(S) `baseURL` without credentials, query, or fragment. Other providers do not accept a custom endpoint.
+- Factories return SDK-native `LanguageModel` / `EmbeddingModel`. Consumers call `streamText`, `generateText`, `embed`, or `embedMany` directly from `ai`.
+- API keys and target objects stay under `./server`. `AiRuntimeStatus` exposes only availability, provider, and model.
+- The package must not reintroduce fetch wrappers, `/chat/completions`, `/embeddings`, model SSE parsing, `streamChat`, or a private embedding function.
+- `ai` and Provider adapters are runtime dependencies and remain external in the library build.
 
 ## 4. Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
-| Chat key missing | `loadProviderConfig()` returns `null` |
-| `fetch` rejects with `AbortError` | Re-throw the same abort error |
-| Network failure | `UPSTREAM_NETWORK_ERROR`, retryable |
-| HTTP 408, 429, or 5xx | `UPSTREAM_HTTP_ERROR`, retryable with status |
-| Other non-2xx HTTP status | `UPSTREAM_HTTP_ERROR`, not retryable with status |
-| Missing/malformed SSE terminal | `UPSTREAM_PROTOCOL_ERROR` |
-| Malformed embedding JSON/vector | `UPSTREAM_PROTOCOL_ERROR` |
-| Embedding result count differs from input count | `EMBEDDING_COUNT_MISMATCH` |
-| Empty embedding input | Return `[]` without an upstream request |
+| Empty API key or model | `AiProviderError('INVALID_PROVIDER_CONFIG')` |
+| Unknown Provider at runtime | `INVALID_PROVIDER_CONFIG`; no fallback |
+| Compatible target missing/invalid `baseURL` | `INVALID_PROVIDER_CONFIG` |
+| Credentials/query/fragment in `baseURL` | `INVALID_PROVIDER_CONFIG` |
+| Anthropic requested for embedding | Rejected by the embedding target type; no fake adapter branch |
+| Missing product capability config | Consumer stores `null`; status is `missing` |
+| Configured target | Status contains provider/model only; never key or endpoint |
 
 ## 5. Good / Base / Bad Cases
 
-- Good: a consumer maps its legacy env keys into `ProviderEnvKeys`, preserving old behavior while sharing transport.
-- Base: chat is configured and embedding is not; status is `{ chat: 'configured', embedding: 'missing' }`.
-- Bad: exporting `ProviderConfig` from the package root makes secret-bearing types available to browser code.
-- Bad: treating clean SSE EOF as completion accepts truncated model output.
+- Good: ai-doc maps explicit chat and embedding env groups to separate targets and builds both SDK models.
+- Base: chat is configured while embedding is `null`; content search and chat remain available, vector indexing is unavailable.
+- Bad: selecting a Provider from the model prefix makes config behavior ambiguous and prevents reliable migrations.
+- Bad: wrapping `streamText` or `embedMany` in a repository transport recreates the removed protocol and error surface.
 
 ## 6. Tests Required
 
-- Config tests assert consumer-defined env mapping, defaults, missing chat key, and optional embedding key.
-- Chat tests assert tokens, exactly one terminal, CRLF/LF framing, malformed JSON, missing `[DONE]`, HTTP classification, abort identity, reader cancellation, and lock release.
-- Embedding tests assert schema validation, count validation, HTTP/network errors, abort, and the empty-input fast path.
-- Error/redaction tests assert that public errors contain no cause and raw/encoded secrets are removed.
-- Build and packed-package tests assert that root/shared browser bundles contain no server endpoints, secret field names, or server-only imports.
-- Every migrated consumer runs its compatibility suite to preserve its existing env keys and defaults.
+- Factory tests cover all four chat branches and all three embedding branches, including provider/model IDs.
+- Validation tests cover blank keys/models, invalid compatible URLs, credentials, and unknown runtime providers.
+- Status tests assert configured/missing projections and prove serialized output contains no secret.
+- Entry tests assert root/shared do not expose factories, causes, redaction, or removed transport APIs.
+- Build, packed Node smoke, and packed browser smoke assert adapter resolution and server-only isolation.
+- Browser bundle scanning rejects `createLanguageModel`, `createEmbeddingModel`, `getAiProviderErrorCause`, and `apiKey`.
 
 ## 7. Wrong vs Correct
 
 ### Wrong
 
 ```ts
-export type { ProviderConfig } from './server/config'
-catch (error) {
-  throw new AiProviderError('UPSTREAM_NETWORK_ERROR', String(error))
-}
+const answer = streamChat(config, messages, signal)
+const vectors = embed(config, inputs, signal)
 ```
 
 ### Correct
 
 ```ts
-export type { ProviderStatus } from './shared'
+const model = createLanguageModel(target)
+const result = streamText({ model, messages, abortSignal: signal })
 
-catch (error) {
-  if (error instanceof DOMException && error.name === 'AbortError')
-    throw error
-  throw createAiProviderError('UPSTREAM_NETWORK_ERROR', 'chat upstream request failed', {
-    cause: error,
-    retryable: true,
-  })
-}
+const embeddingModel = createEmbeddingModel(embeddingTarget)
+const result = await embedMany({ model: embeddingModel, values: inputs, abortSignal: signal })
 ```

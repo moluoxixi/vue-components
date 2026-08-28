@@ -29,7 +29,6 @@ export {
   protectedTokensEqual,
 } from './tokens'
 export type {
-  ChatTransport,
   TranslationRequest,
   TranslationRequestEntry,
 } from './translation'

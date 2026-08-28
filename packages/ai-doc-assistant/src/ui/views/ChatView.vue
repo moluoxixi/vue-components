@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import type { ExampleBlock, IndexState, SourceRef } from '../../shared/protocol'
+import type { AiDocUIMessage, ExampleBlock, IndexState, SourceRef } from '../../shared/protocol'
+import { useChat } from '@ai-sdk/vue'
 import { ArrowDown, MessageSquarePlus, Square } from '@lucide/vue'
+import { DefaultChatTransport } from 'ai'
 import { ElTooltip } from 'element-plus'
-import { computed, defineAsyncComponent, nextTick, onUnmounted, reactive, ref, shallowRef, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onUnmounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { splitAnswerSegments } from '../../core'
-import { streamQuery } from '../api'
-import { buildChatHistory } from '../chat-history'
+import { API_PREFIX } from '../../shared/protocol'
+import { buildChatRequestMessages } from '../chat-history'
 import MarkdownContent from '../components/MarkdownContent.vue'
 
 const DemoPreview = defineAsyncComponent(() =>
@@ -15,13 +17,18 @@ const DemoPreview = defineAsyncComponent(() =>
 type TurnStatus = 'streaming' | 'done' | 'stopped' | 'error'
 
 interface ChatTurn {
-  id: number
+  id: string
   question: string
   answer: string
   sources: SourceRef[]
   exampleBlocks: ExampleBlock[]
   errorMsg: string
   status: TurnStatus
+}
+
+interface TurnOutcome {
+  status: Exclude<TurnStatus, 'streaming'>
+  errorMessage?: string
 }
 
 const question = defineModel<string>('question', { required: true })
@@ -32,15 +39,63 @@ const emit = defineEmits<{
 
 const questionInput = useTemplateRef<HTMLInputElement>('questionInput')
 const chatBody = useTemplateRef<HTMLElement>('chatBody')
-const turns = ref<ChatTurn[]>([])
-const activeController = shallowRef<AbortController | null>(null)
-const activeTurnId = ref<number | null>(null)
 const autoFollow = ref(true)
-let nextTurnId = 1
+const completedAssistantIds = new Set<string>()
+const outcomes = reactive<Record<string, TurnOutcome>>({})
+let activeUserId: string | null = null
+let userMessageSequence = 0
+
+const transport = new DefaultChatTransport<AiDocUIMessage>({
+  api: `${API_PREFIX}/query`,
+  prepareSendMessagesRequest: ({ messages }) => ({
+    body: {
+      messages: buildChatRequestMessages(messages, completedAssistantIds),
+      topK: 5,
+    },
+  }),
+})
+
+const {
+  clearError,
+  error,
+  messages,
+  sendMessage,
+  status,
+  stop,
+} = useChat<AiDocUIMessage>({
+  transport,
+  onError: (requestError) => {
+    if (activeUserId) {
+      outcomes[activeUserId] = {
+        status: 'error',
+        errorMessage: requestError.message || 'AI provider request failed',
+      }
+    }
+  },
+  onFinish: ({ message, messages: finishedMessages, isAbort, isError }) => {
+    const assistantIndex = finishedMessages.findIndex(item => item.id === message.id)
+    const user = assistantIndex > 0 && finishedMessages[assistantIndex - 1]?.role === 'user'
+      ? finishedMessages[assistantIndex - 1]
+      : undefined
+    const userId = user?.id ?? activeUserId
+    if (!isAbort && !isError) {
+      completedAssistantIds.add(message.id)
+      if (userId)
+        outcomes[userId] = { status: 'done' }
+    }
+    else if (userId) {
+      outcomes[userId] = {
+        status: isAbort ? 'stopped' : 'error',
+        errorMessage: isError ? (error.value?.message ?? 'AI provider request failed') : undefined,
+      }
+    }
+    activeUserId = null
+  },
+})
 
 const AUTO_FOLLOW_THRESHOLD = 96
 
-const streaming = computed(() => activeController.value !== null)
+const streaming = computed(() => status.value === 'submitted' || status.value === 'streaming')
 const canAsk = computed(() =>
   question.value.trim().length > 0 && !streaming.value && props.indexReady,
 )
@@ -49,6 +104,57 @@ const indexHint = computed(() => {
   if (props.indexState === 'building')
     return '知识库正在准备，完成后即可提问。'
   return '知识库尚未就绪，请先构建知识库。'
+})
+
+function textOf(message: AiDocUIMessage): string {
+  return message.parts
+    .filter(part => part.type === 'text')
+    .map(part => part.text)
+    .join('')
+}
+
+function sourcesOf(message: AiDocUIMessage): SourceRef[] {
+  const part = message.parts.find(item => item.type === 'data-sources')
+  return part?.type === 'data-sources' ? part.data : []
+}
+
+function exampleBlocksOf(message: AiDocUIMessage): ExampleBlock[] {
+  const part = message.parts.find(item => item.type === 'data-example')
+  return part?.type === 'data-example' ? part.data.blocks : []
+}
+
+const turns = computed<ChatTurn[]>(() => {
+  const result: ChatTurn[] = []
+  for (let index = 0; index < messages.value.length; index += 1) {
+    const user = messages.value[index]
+    if (user.role !== 'user')
+      continue
+    const assistant = messages.value[index + 1]?.role === 'assistant'
+      ? messages.value[index + 1]
+      : undefined
+    const isLast = index >= messages.value.length - 2
+    const outcome = outcomes[user.id]
+    const turnStatus: TurnStatus = outcome?.status
+      ?? (isLast && streaming.value
+        ? 'streaming'
+        : assistant && completedAssistantIds.has(assistant.id)
+          ? 'done'
+          : isLast && status.value === 'error'
+            ? 'error'
+            : 'done')
+    result.push({
+      id: user.id,
+      question: textOf(user),
+      answer: assistant ? textOf(assistant) : '',
+      sources: assistant ? sourcesOf(assistant) : [],
+      exampleBlocks: assistant ? exampleBlocksOf(assistant) : [],
+      errorMsg: turnStatus === 'error'
+        ? (outcome?.errorMessage ?? (isLast ? error.value?.message : undefined) ?? 'AI provider request failed')
+        : '',
+      status: turnStatus,
+    })
+  }
+  return result
 })
 
 function focusQuestion(): void {
@@ -91,10 +197,6 @@ function fallbackExampleBlocksFor(turn: ChatTurn): ExampleBlock[] {
   return turn.exampleBlocks.filter(block => !inlineSources.has(normalizeSource(block.ts)))
 }
 
-function historyForRequest() {
-  return buildChatHistory(turns.value)
-}
-
 function isNearLatest(body: HTMLElement): boolean {
   return body.scrollHeight - body.scrollTop - body.clientHeight <= AUTO_FOLLOW_THRESHOLD
 }
@@ -121,27 +223,23 @@ function openSource(source: SourceRef): void {
 }
 
 function stopGeneration(): void {
-  const controller = activeController.value
-  const turnId = activeTurnId.value
-  if (!controller || turnId === null)
-    return
-
-  const turn = turns.value.find(item => item.id === turnId)
-  if (turn?.status === 'streaming')
-    turn.status = 'stopped'
-
-  activeController.value = null
-  activeTurnId.value = null
-  controller.abort()
+  const lastUser = [...messages.value].reverse().find(message => message.role === 'user')
+  if (lastUser) {
+    outcomes[lastUser.id] = { status: 'stopped' }
+    activeUserId = lastUser.id
+  }
+  void stop()
   void nextTick(focusQuestion)
 }
 
 function clearConversation(): void {
-  const controller = activeController.value
-  activeController.value = null
-  activeTurnId.value = null
-  controller?.abort()
-  turns.value = []
+  void stop()
+  messages.value = []
+  completedAssistantIds.clear()
+  activeUserId = null
+  for (const key of Object.keys(outcomes))
+    delete outcomes[key]
+  clearError()
   question.value = ''
   autoFollow.value = true
   void nextTick(focusQuestion)
@@ -152,72 +250,25 @@ async function onAsk(): Promise<void> {
     return
 
   const askedQuestion = question.value.trim()
-  const history = historyForRequest()
-  const turn = reactive<ChatTurn>({
-    id: nextTurnId++,
-    question: askedQuestion,
-    answer: '',
-    sources: [],
-    exampleBlocks: [],
-    errorMsg: '',
-    status: 'streaming',
-  })
-  const controller = new AbortController()
-
-  turns.value.push(turn)
   question.value = ''
-  activeController.value = controller
-  activeTurnId.value = turn.id
+  clearError()
   void scrollToLatest(true)
-
-  try {
-    await streamQuery(askedQuestion, 5, history, (event) => {
-      if (activeController.value !== controller || activeTurnId.value !== turn.id || controller.signal.aborted)
-        return
-
-      switch (event.type) {
-        case 'sources':
-          turn.sources = event.sources
-          break
-        case 'token':
-          turn.answer += event.text
-          break
-        case 'example':
-          turn.exampleBlocks = event.blocks
-          break
-        case 'error':
-          turn.errorMsg = `${event.error}: ${event.message}`
-          turn.status = 'error'
-          break
-        case 'done':
-          turn.status = 'done'
-          break
-      }
-      void scrollToLatest()
-    }, controller.signal)
-
-  }
-  catch (error) {
-    if (!controller.signal.aborted) {
-      turn.errorMsg = error instanceof Error ? error.message : String(error)
-      turn.status = 'error'
-    }
-  }
-  finally {
-    if (activeController.value === controller && activeTurnId.value === turn.id) {
-      activeController.value = null
-      activeTurnId.value = null
-    }
-  }
+  const userId = `user-${Date.now()}-${++userMessageSequence}`
+  activeUserId = userId
+  delete outcomes[userId]
+  await sendMessage({
+    id: userId,
+    role: 'user',
+    parts: [{ type: 'text', text: askedQuestion }],
+  })
 }
 
 onUnmounted(() => {
-  const turn = turns.value.find(item => item.id === activeTurnId.value)
-  if (turn?.status === 'streaming')
-    turn.status = 'stopped'
-  activeController.value?.abort()
-  activeController.value = null
-  activeTurnId.value = null
+  void stop()
+})
+
+watch([messages, status], () => {
+  void scrollToLatest()
 })
 </script>
 

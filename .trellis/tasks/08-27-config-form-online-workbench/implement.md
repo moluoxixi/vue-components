@@ -7,8 +7,9 @@
 3. [ ] 完成 `08-27-config-form-workbench-live-preview`：REPL projector、runtime facade、build revision、diagnostics 和 stale preview。
 4. [ ] 完成 `08-27-config-form-workbench-product-shell`：模板入口、三模式、文件树、Monaco、Preview、状态、导出和响应式网站。
 5. [ ] 完成其子任务 `08-27-config-form-designer-ux`，将 Designer 作为工作台模式时的容器响应、键盘与视觉体验收敛。
-6. [ ] 父级集成验收：模板创建 -> 三模式编辑 -> Preview -> 本地恢复 -> ZIP -> 标准 build。
-7. [ ] 更新 ConfigForm 架构 README、Pages/CI/根脚本，并完成 Chromium 全量与 Firefox/WebKit 冒烟。
+6. [ ] 完成 `08-28-config-form-designer-dnd-regression`，验证布局容器投放、末尾追加、date/time 宽度和全物料矩阵。
+7. [ ] 父级集成验收：模板创建 -> 三模式编辑 -> Preview -> 本地恢复 -> ZIP -> 标准 build。
+8. [ ] 更新 ConfigForm 架构 README、Pages/CI/根脚本，并完成 Chromium 全量与 Firefox/WebKit 冒烟。
 
 ## 父级验证门
 

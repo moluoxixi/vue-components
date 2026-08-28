@@ -120,8 +120,9 @@ committed WorkspaceProject revision N
 
 1. Project Core 固化项目、repository、模板与 ZIP 协议。
 2. Three Mode 与 Live Preview 在 Project Core 完成后并行开发。
-3. Product Shell 集成两者，并纳入 Designer UX 子任务。
-4. 父任务执行跨子任务 E2E、真实导出 build 与架构文档复核。
+3. Designer 拖拽回归子任务在 Three Mode 的 Designer 投影稳定后执行，独立验证双适配器物料和布局落点。
+4. Product Shell 集成前述能力，并纳入 Designer UX 子任务。
+5. 父任务执行跨子任务 E2E、真实导出 build 与架构文档复核。
 
 ## 风险与回滚
 

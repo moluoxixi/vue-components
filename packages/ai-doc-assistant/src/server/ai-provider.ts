@@ -1,48 +1,137 @@
-/**
- * 服务端 AI Provider：封装 chat（流式）上游调用配置。
- *
- * 架构（ADR-0006 默认 + ADR-0007 可选增强）：默认 content 只做本地结构化关键词
- * topK 检索，chat 调用仍由第三方 provider 完成；embedding 字段保留为可选兼容配置，
- * 仅 vector 增强路径会使用本地 embedding，缺失远端 embedding key 不影响服务可用。
- *
- * 安全红线（ADR-0002）：
- * - 密钥仅从环境变量读取，只存在于 server 进程内存，绝不进入任何响应体或日志。
- * - 浏览器永远不直接触达上游，所有调用经本模块代理。
- *
- * chat 上游走 OpenAI 兼容的 /chat/completions 协议。coderelay.cn 代理下，
- * A社 claude 系列模型亦经此协议调用（实测 claude-haiku/sonnet/opus 均可）。
- */
-import type { ProviderConfig, ProviderDefaults, ProviderEnvKeys } from '@moluoxixi/ai-provider/server'
+import type {
+  AiRuntimeStatus,
+  EmbeddingModelTarget,
+  LanguageModelTarget,
+} from '@moluoxixi/ai-provider/server'
+import { createHash } from 'node:crypto'
 import process from 'node:process'
-import { loadProviderConfig as loadSharedProviderConfig } from '@moluoxixi/ai-provider/server'
+import {
+  aiRuntimeStatusOf,
+  isAiProviderId,
+  isEmbeddingProviderId,
+} from '@moluoxixi/ai-provider/server'
 
-export type { ProviderConfig, ProviderStatus } from '@moluoxixi/ai-provider/server'
-export { providerStatusOf } from '@moluoxixi/ai-provider/server'
+export type { AiRuntimeStatus, EmbeddingModelTarget, LanguageModelTarget }
 
-/** 环境变量名常量——集中管理，便于文档引用与测试覆盖。 */
+export interface AiDocProviderConfig {
+  chat: LanguageModelTarget | null
+  embedding: EmbeddingModelTarget | null
+}
+
+export interface EmbeddingIdentitySeed {
+  endpointFingerprint: string
+  model: string
+  provider: EmbeddingModelTarget['provider']
+}
+
+/** Environment names are server-only and never enter public status payloads. */
 export const ENV_KEYS = {
-  chatBaseUrl: 'AI_DOC_CHAT_BASE_URL',
+  chatProvider: 'AI_DOC_CHAT_PROVIDER',
   chatApiKey: 'AI_DOC_CHAT_API_KEY',
   chatModel: 'AI_DOC_CHAT_MODEL',
-  embeddingBaseUrl: 'AI_DOC_EMBEDDING_BASE_URL',
+  chatBaseURL: 'AI_DOC_CHAT_BASE_URL',
+  embeddingProvider: 'AI_DOC_EMBEDDING_PROVIDER',
   embeddingApiKey: 'AI_DOC_EMBEDDING_API_KEY',
   embeddingModel: 'AI_DOC_EMBEDDING_MODEL',
-} as const satisfies ProviderEnvKeys
+  embeddingBaseURL: 'AI_DOC_EMBEDDING_BASE_URL',
+} as const
 
-/** 默认值（非密钥项可有默认；密钥项无默认，缺失即视为未配置）。 */
-const DEFAULTS = {
-  chatBaseUrl: 'https://coderelay.cn/v1',
-  chatModel: 'gpt-4o-mini',
-  embeddingBaseUrl: 'https://coderelay.cn/v1',
-  embeddingModel: 'text-embedding-3-small',
-} satisfies ProviderDefaults
+type Capability = 'chat' | 'embedding'
 
-/**
- * 从环境变量构建 ProviderConfig。
- * 这是系统边界（环境变量进入系统），对 chat 密钥做显式存在性校验：
- * 缺失时返回 null（chat 是核心能力，无 key 无法服务），不静默用空串伪装已配置。
- * embedding 密钥可选，缺失不影响返回（当前架构不依赖）。
- */
-export function loadProviderConfig(env: NodeJS.ProcessEnv = process.env): ProviderConfig | null {
-  return loadSharedProviderConfig(env, { defaults: DEFAULTS, envKeys: ENV_KEYS })
+function optionalText(value: string | undefined): string | undefined {
+  const normalized = value?.trim()
+  return normalized || undefined
+}
+
+function invalidConfig(capability: Capability, message: string): never {
+  throw new Error(`${capability} provider configuration is invalid: ${message}`)
+}
+
+function normalizedCompatibleBaseURL(value: string, capability: Capability): string {
+  let url: URL
+  try {
+    url = new URL(value)
+  }
+  catch {
+    return invalidConfig(capability, 'baseURL must be an absolute HTTP(S) URL')
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash)
+    return invalidConfig(capability, 'baseURL must not contain credentials, query, or fragment')
+
+  return url.href.replace(/\/+$/, '')
+}
+
+function loadLanguageTarget(env: NodeJS.ProcessEnv): LanguageModelTarget | null {
+  const provider = optionalText(env[ENV_KEYS.chatProvider])
+  const apiKey = optionalText(env[ENV_KEYS.chatApiKey])
+  const model = optionalText(env[ENV_KEYS.chatModel])
+  const baseURL = optionalText(env[ENV_KEYS.chatBaseURL])
+
+  if (!provider && !apiKey && !model && !baseURL)
+    return null
+  if (!provider || !isAiProviderId(provider))
+    return invalidConfig('chat', 'provider must explicitly select a supported provider')
+  if (!apiKey)
+    return invalidConfig('chat', 'apiKey is required')
+  if (!model)
+    return invalidConfig('chat', 'model is required')
+
+  if (provider === 'openai-compatible') {
+    if (!baseURL)
+      return invalidConfig('chat', 'openai-compatible requires baseURL')
+    return { provider, apiKey, model, baseURL: normalizedCompatibleBaseURL(baseURL, 'chat') }
+  }
+  if (baseURL)
+    return invalidConfig('chat', 'baseURL is only supported by openai-compatible')
+  return { provider, apiKey, model }
+}
+
+function loadEmbeddingTarget(env: NodeJS.ProcessEnv): EmbeddingModelTarget | null {
+  const provider = optionalText(env[ENV_KEYS.embeddingProvider])
+  const apiKey = optionalText(env[ENV_KEYS.embeddingApiKey])
+  const model = optionalText(env[ENV_KEYS.embeddingModel])
+  const baseURL = optionalText(env[ENV_KEYS.embeddingBaseURL])
+
+  if (!provider && !apiKey && !model && !baseURL)
+    return null
+  if (!provider || !isEmbeddingProviderId(provider))
+    return invalidConfig('embedding', 'provider must explicitly select OpenAI, Google, or OpenAI-compatible')
+  if (!apiKey)
+    return invalidConfig('embedding', 'apiKey is required')
+  if (!model)
+    return invalidConfig('embedding', 'model is required')
+
+  if (provider === 'openai-compatible') {
+    if (!baseURL)
+      return invalidConfig('embedding', 'openai-compatible requires baseURL')
+    return { provider, apiKey, model, baseURL: normalizedCompatibleBaseURL(baseURL, 'embedding') }
+  }
+  if (baseURL)
+    return invalidConfig('embedding', 'baseURL is only supported by openai-compatible')
+  return { provider, apiKey, model }
+}
+
+export function loadProviderConfig(env: NodeJS.ProcessEnv = process.env): AiDocProviderConfig {
+  return {
+    chat: loadLanguageTarget(env),
+    embedding: loadEmbeddingTarget(env),
+  }
+}
+
+export function providerStatusOf(config: AiDocProviderConfig): AiRuntimeStatus {
+  return aiRuntimeStatusOf(config)
+}
+
+/** Stable identity for detecting vector indexes built with another remote endpoint. */
+export function embeddingIdentitySeedOf(target: EmbeddingModelTarget): EmbeddingIdentitySeed {
+  const endpoint = target.provider === 'openai-compatible'
+    ? normalizedCompatibleBaseURL(target.baseURL, 'embedding')
+    : `${target.provider}:default`
+
+  return {
+    provider: target.provider,
+    model: target.model,
+    endpointFingerprint: createHash('sha256').update(endpoint).digest('hex'),
+  }
 }

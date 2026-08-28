@@ -52,6 +52,33 @@ test('built theme renders and searches fixture content in light and dark modes',
   expect(browserProblems).toEqual([])
 })
 
+test('renders nested table-of-content links recursively', async ({ page }) => {
+  const browserProblems = collectBrowserProblems(page)
+
+  await page.goto('/guide/')
+  await expect(page.getByRole('heading', { level: 1, name: 'Guide' })).toBeVisible()
+
+  const tocLinks = page.locator('.toc-content--desktop a[href^="#"]')
+  await expect(tocLinks).toHaveText([
+    'Heading level 2',
+    'Heading level 3',
+    'Heading level 4',
+    'Heading level 5',
+    'Heading level 6',
+  ])
+  const tocDepths = await tocLinks.evaluateAll(links => links.map((link) => {
+    let depth = 0
+    let item = link.closest('.el-anchor__item')
+    while (item) {
+      depth += 1
+      item = item.parentElement?.closest('.el-anchor__item') ?? null
+    }
+    return depth
+  }))
+  expect(tocDepths).toEqual([1, 2, 3, 4, 5])
+  expect(browserProblems).toEqual([])
+})
+
 test('fresh consumer enables Demo, Playground, and ApiDocs from public package APIs', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 

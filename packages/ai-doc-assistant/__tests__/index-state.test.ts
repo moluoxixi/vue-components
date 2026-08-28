@@ -7,7 +7,12 @@ const META: IndexMeta = {
   builtAt: '2026-01-01T00:00:00.000Z',
   componentCount: 3,
   sourceHash: 'h',
-  embeddingDim: 1536,
+  embeddingIdentity: {
+    provider: 'openai',
+    model: 'text-embedding-3-small',
+    endpointFingerprint: 'official',
+    dimension: 1536,
+  },
 }
 
 describe('indexStateManager 状态机', () => {
@@ -30,6 +35,18 @@ describe('indexStateManager 状态机', () => {
   it('hydrate(null) 保持 idle', () => {
     const m = new IndexStateManager()
     m.hydrate(null)
+    expect(m.isReady()).toBe(false)
+  })
+
+  it('embedding identity 变化时 hydrate 为 stale 且不可查询', () => {
+    const m = new IndexStateManager()
+    m.hydrate(META, {
+      provider: 'openai',
+      model: 'text-embedding-3-large',
+      endpointFingerprint: 'official',
+    })
+    expect(m.snapshot().status).toBe('stale')
+    expect(m.snapshot().meta).toEqual(META)
     expect(m.isReady()).toBe(false)
   })
 

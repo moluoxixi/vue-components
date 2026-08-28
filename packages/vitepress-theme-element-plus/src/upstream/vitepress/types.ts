@@ -4,3 +4,9 @@ export interface Link {
   promotion?: string
   activeMatch?: string
 }
+
+export interface TocLinkItem {
+  children?: TocLinkItem[]
+  link: string
+  text: string
+}

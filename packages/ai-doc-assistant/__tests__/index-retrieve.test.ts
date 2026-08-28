@@ -3,22 +3,30 @@ import type { ComponentContract } from '../src/core/types'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { MockEmbeddingModelV3 } from 'ai/test'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { buildIndex, EMBEDDING_DIM } from '../src/core/indexer'
+import { buildIndex } from '../src/core/indexer'
 import { loadIndex, persistIndex, readMeta } from '../src/core/persist'
 import { Retriever } from '../src/core/retriever'
 
 /**
  * 索引 + 持久化 + 检索集成测试。
- * embedding 用确定性 stub（按关键词置位），离线可复现，验证全链路：
+ * embedding 使用无网络依赖的确定性 AI SDK mock（按关键词置位），验证全链路：
  * buildIndex → persistIndex → Retriever.fromDir → retrieve 命中与阈值兜底。
  */
 
-/** 确定性 stub embedding：把文本里出现的关键词映射到固定维度置 1，其余为 0。 */
+const TEST_VECTOR_DIMENSION = 8
+const IDENTITY = {
+  provider: 'openai' as const,
+  model: 'text-embedding-3-small',
+  endpointFingerprint: 'official',
+}
+
+/** 确定性 embedding：把文本里出现的关键词映射到当前模型维度。 */
 const VOCAB = ['date', 'range', 'picker', 'button', 'click', 'disabled', 'table', 'select']
 function stubEmbed(texts: string[]): Promise<number[][]> {
   return Promise.resolve(texts.map((t) => {
-    const vec = Array.from({ length: EMBEDDING_DIM }).fill(0) as number[]
+    const vec = Array.from({ length: TEST_VECTOR_DIMENSION }).fill(0) as number[]
     const lower = t.toLowerCase()
     VOCAB.forEach((word, i) => {
       if (lower.includes(word))
@@ -27,6 +35,14 @@ function stubEmbed(texts: string[]): Promise<number[][]> {
     return vec
   }))
 }
+
+const embeddingModel = new MockEmbeddingModelV3({
+  doEmbed: async ({ values }) => ({
+    embeddings: await stubEmbed(values),
+    usage: { tokens: values.length },
+    warnings: [],
+  }),
+})
 
 function contract(name: string, desc: string): ComponentContract {
   return {
@@ -51,7 +67,7 @@ describe('索引与检索集成', () => {
 
   beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), 'ai-doc-idx-'))
-    const result = await buildIndex(contracts, stubEmbed, 'hash-v1')
+    const result = await buildIndex(contracts, embeddingModel, 'hash-v1', IDENTITY)
     await persistIndex(dir, result)
   })
 
@@ -63,7 +79,7 @@ describe('索引与检索集成', () => {
     const meta = await readMeta(dir)
     expect(meta).toBeTruthy()
     expect(meta!.componentCount).toBe(2)
-    expect(meta!.embeddingDim).toBe(EMBEDDING_DIM)
+    expect(meta!.embeddingIdentity).toEqual({ ...IDENTITY, dimension: TEST_VECTOR_DIMENSION })
     expect(meta!.sourceHash).toBe('hash-v1')
 
     const loaded = await loadIndex(dir)
@@ -71,7 +87,7 @@ describe('索引与检索集成', () => {
   })
 
   it('相关查询命中对应组件并回带预生成示例', async () => {
-    const retriever = await Retriever.fromDir(dir)
+    const retriever = await Retriever.fromDir(dir, IDENTITY)
     const [qv] = await stubEmbed(['date range picker'])
     const res = await retriever.retrieve('date range picker', qv, 5)
 
@@ -81,7 +97,7 @@ describe('索引与检索集成', () => {
   })
 
   it('无关查询触发阈值兜底（empty=true）', async () => {
-    const retriever = await Retriever.fromDir(dir)
+    const retriever = await Retriever.fromDir(dir, IDENTITY)
     const [qv] = await stubEmbed(['完全不相关的查询无任何词命中'])
     const res = await retriever.retrieve('zzz nothing matches', qv, 5)
 
@@ -91,5 +107,12 @@ describe('索引与检索集成', () => {
 
   it('索引目录缺失时 fromDir 抛错（不静默返回空）', async () => {
     await expect(Retriever.fromDir(join(dir, 'nonexistent'))).rejects.toThrow()
+  })
+
+  it('embedding identity 变化后拒绝恢复旧索引', async () => {
+    await expect(Retriever.fromDir(dir, {
+      ...IDENTITY,
+      model: 'text-embedding-3-large',
+    })).rejects.toThrow(/identity is stale/)
   })
 })

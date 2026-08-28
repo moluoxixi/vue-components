@@ -1,67 +1,109 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { ENV_KEYS, loadProviderConfig, providerStatusOf } from '../src/server/ai-provider'
+import {
+  embeddingIdentitySeedOf,
+  ENV_KEYS,
+  loadProviderConfig,
+  providerStatusOf,
+} from '../src/server/ai-provider'
 
-describe('loadProviderConfig（环境变量边界校验）', () => {
-  it('密钥齐全时返回完整配置', () => {
+describe('loadProviderConfig', () => {
+  it('loads independent explicit chat and embedding targets', () => {
     const config = loadProviderConfig({
+      [ENV_KEYS.chatProvider]: 'anthropic',
       [ENV_KEYS.chatApiKey]: 'sk-chat',
+      [ENV_KEYS.chatModel]: 'claude-sonnet',
+      [ENV_KEYS.embeddingProvider]: 'google',
       [ENV_KEYS.embeddingApiKey]: 'sk-embed',
+      [ENV_KEYS.embeddingModel]: 'gemini-embedding-001',
     })
-    expect(config).toBeTruthy()
-    expect(config!.chatApiKey).toBe('sk-chat')
-    expect(config!.embeddingApiKey).toBe('sk-embed')
-    // 非密钥项回落默认
-    expect(config!.chatModel).toBe('gpt-4o-mini')
-    expect(config!.embeddingModel).toBe('text-embedding-3-small')
+
+    expect(config.chat).toEqual({
+      provider: 'anthropic',
+      apiKey: 'sk-chat',
+      model: 'claude-sonnet',
+    })
+    expect(config.embedding).toEqual({
+      provider: 'google',
+      apiKey: 'sk-embed',
+      model: 'gemini-embedding-001',
+    })
   })
 
-  it('自定义非密钥项覆盖默认', () => {
+  it('requires complete capabilities without defaults or legacy fallback', () => {
+    expect(() => loadProviderConfig({
+      [ENV_KEYS.chatApiKey]: 'sk-chat',
+    })).toThrow(/provider must explicitly select/)
+    expect(() => loadProviderConfig({
+      [ENV_KEYS.embeddingProvider]: 'openai',
+      [ENV_KEYS.embeddingApiKey]: 'sk-embed',
+    })).toThrow(/model is required/)
+    expect(loadProviderConfig({})).toEqual({ chat: null, embedding: null })
+  })
+
+  it('requires and normalizes compatible baseURL', () => {
+    expect(() => loadProviderConfig({
+      [ENV_KEYS.chatProvider]: 'openai-compatible',
+      [ENV_KEYS.chatApiKey]: 'sk-chat',
+      [ENV_KEYS.chatModel]: 'relay-model',
+    })).toThrow(/requires baseURL/)
+
     const config = loadProviderConfig({
-      [ENV_KEYS.chatApiKey]: 'k1',
-      [ENV_KEYS.embeddingApiKey]: 'k2',
-      [ENV_KEYS.chatBaseUrl]: 'https://custom/v1',
-      [ENV_KEYS.chatModel]: 'claude-x',
-      [ENV_KEYS.embeddingModel]: 'embed-x',
+      [ENV_KEYS.chatProvider]: 'openai-compatible',
+      [ENV_KEYS.chatApiKey]: 'sk-chat',
+      [ENV_KEYS.chatModel]: 'relay-model',
+      [ENV_KEYS.chatBaseURL]: 'https://relay.example/v1///',
     })
-    expect(config!.chatBaseUrl).toBe('https://custom/v1')
-    expect(config!.chatModel).toBe('claude-x')
-    expect(config!.embeddingModel).toBe('embed-x')
+    expect(config.chat).toEqual({
+      provider: 'openai-compatible',
+      apiKey: 'sk-chat',
+      model: 'relay-model',
+      baseURL: 'https://relay.example/v1',
+    })
   })
 
-  it('缺 chat 密钥返回 null（不静默用空串伪装已配置）', () => {
-    expect(loadProviderConfig({ [ENV_KEYS.embeddingApiKey]: 'k' })).toBeNull()
-  })
-
-  it('缺 embedding 密钥仍返回配置（embedding 走本地模型，非核心边界）', () => {
-    // ADR-0007：embedding 由本地模型完成，无需 provider key；只有 chat key 是核心边界。
-    const config = loadProviderConfig({ [ENV_KEYS.chatApiKey]: 'k' })
-    expect(config).toBeTruthy()
-    expect(config!.chatApiKey).toBe('k')
-    expect(config!.embeddingApiKey).toBe('')
-  })
-
-  it('全空返回 null', () => {
-    expect(loadProviderConfig({})).toBeNull()
+  it('rejects custom endpoints for official providers', () => {
+    expect(() => loadProviderConfig({
+      [ENV_KEYS.embeddingProvider]: 'openai',
+      [ENV_KEYS.embeddingApiKey]: 'sk-embed',
+      [ENV_KEYS.embeddingModel]: 'text-embedding-3-small',
+      [ENV_KEYS.embeddingBaseURL]: 'https://relay.example/v1',
+    })).toThrow(/only supported by openai-compatible/)
   })
 })
 
-describe('providerStatusOf（健康态不暴露密钥值）', () => {
-  it('null 配置 → 全 missing', () => {
-    expect(providerStatusOf(null)).toEqual({ chat: 'missing', embedding: 'missing' })
-  })
-
-  it('完整配置 → 全 configured', () => {
-    const status = providerStatusOf({
-      chatBaseUrl: 'x',
-      chatApiKey: 'sk-secret',
-      chatModel: 'm',
-      embeddingBaseUrl: 'x',
-      embeddingApiKey: 'sk-secret2',
-      embeddingModel: 'm',
+describe('providerStatusOf', () => {
+  it('returns a secret-free capability projection', () => {
+    const status = providerStatusOf(loadProviderConfig({
+      [ENV_KEYS.chatProvider]: 'openai',
+      [ENV_KEYS.chatApiKey]: 'sk-secret',
+      [ENV_KEYS.chatModel]: 'gpt-4o-mini',
+    }))
+    expect(status).toEqual({
+      chat: { availability: 'configured', provider: 'openai', model: 'gpt-4o-mini' },
+      embedding: { availability: 'missing', provider: null, model: null },
     })
-    expect(status).toEqual({ chat: 'configured', embedding: 'configured' })
-    // 断言：状态对象绝不含密钥值
     expect(JSON.stringify(status)).not.toContain('sk-secret')
+    expect(JSON.stringify(status)).not.toContain(ENV_KEYS.chatApiKey)
+  })
+})
+
+describe('embeddingIdentitySeedOf', () => {
+  it('fingerprints normalized compatible endpoints without retaining the URL', () => {
+    const first = embeddingIdentitySeedOf({
+      provider: 'openai-compatible',
+      apiKey: 'first',
+      model: 'embed',
+      baseURL: 'https://relay.example/v1/',
+    })
+    const second = embeddingIdentitySeedOf({
+      provider: 'openai-compatible',
+      apiKey: 'second',
+      model: 'embed',
+      baseURL: 'https://relay.example/v1',
+    })
+    expect(first).toEqual(second)
+    expect(JSON.stringify(first)).not.toContain('relay.example')
+    expect(JSON.stringify(first)).not.toContain('first')
   })
 })

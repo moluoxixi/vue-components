@@ -2,10 +2,14 @@ import type { ComponentListItem, HealthResponse, IndexStatusResponse } from '../
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
+import WorkspaceTopbar from '../src/ui/components/WorkspaceTopbar.vue'
 
 const readyHealth: HealthResponse = {
   ok: true,
-  providers: { chat: 'configured' },
+  providers: {
+    chat: { availability: 'configured', provider: 'openai', model: 'gpt-4o-mini' },
+    embedding: { availability: 'missing', provider: null, model: null },
+  },
   mode: 'content',
   index: 'ready',
 }
@@ -14,6 +18,9 @@ const readyStatus: IndexStatusResponse = {
   builtAt: 'now',
   stale: false,
   componentCount: 1,
+  internalCount: 1,
+  externalCount: 0,
+  embeddingIdentity: null,
 }
 const components: ComponentListItem[] = [
   { name: 'PopoverTableSelect', packageName: '@moluoxixi/components', propsCount: 8, docPath: 'x', knowledgeKey: 'internal:%40moluoxixi%2Fcomponents:PopoverTableSelect' },
@@ -100,6 +107,9 @@ describe('app shell', () => {
       builtAt: null,
       stale: false,
       componentCount: 0,
+      internalCount: 0,
+      externalCount: 0,
+      embeddingIdentity: null,
     }
     let resolveBuild!: (value: IndexStatusResponse) => void
     buildIndexMock.mockImplementationOnce(() => new Promise<IndexStatusResponse>((resolve) => {
@@ -145,6 +155,28 @@ describe('app shell', () => {
     resolveHealth(readyHealth)
     await flushPromises()
     expect(wrapper.get('[data-testid="index-chip"]').text()).toContain('知识库可用')
+  })
+
+  it('vector 运行态披露远程 embedding 的数据与费用边界', async () => {
+    health = {
+      ...readyHealth,
+      mode: 'vector',
+      providers: {
+        ...readyHealth.providers,
+        embedding: {
+          availability: 'configured',
+          provider: 'google',
+          model: 'gemini-embedding-001',
+        },
+      },
+    }
+    const { default: App } = await import('../src/ui/App.vue')
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const detail = wrapper.findComponent(WorkspaceTopbar).props('statusDetail')
+    expect(detail).toContain('远程 embedding google/gemini-embedding-001')
+    expect(detail).toContain('组件契约会发送给 Provider，并可能产生费用')
   })
 
   it('组件列表失败时在知识库内显示错误并可重试', async () => {

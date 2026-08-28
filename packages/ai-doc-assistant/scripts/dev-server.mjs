@@ -9,8 +9,8 @@
  * 组件根目录默认指向本 monorepo 的 packages（可用 --root 覆盖），
  * 这样构建索引后能在面板左侧看到真实组件清单。
  *
- * chat 问答需要 AI_DOC_CHAT_API_KEY（缺失时面板照常打开、可浏览组件清单与构建索引，
- * 但提问会因 provider 未配置而失败——health 会显示 chat=missing）。
+ * chat 问答需要完整的 AI_DOC_CHAT_PROVIDER / API_KEY / MODEL 配置；
+ * openai-compatible 还需要 AI_DOC_CHAT_BASE_URL。缺失时面板仍可浏览组件与构建 content 索引。
  *
  * 用法：
  *   node scripts/dev-server.mjs [--root <dir>] [--port <n>] [--host <h>]
@@ -102,10 +102,12 @@ async function main() {
   })
 
   server.listen(port, host, () => {
-    const chatConfigured = !!process.env.AI_DOC_CHAT_API_KEY
+    const chatConfigured = ctx.languageModel !== null
+    const embeddingConfigured = ctx.embeddingModel !== null
     process.stdout.write(`\n[ai-doc] 面板已启动：http://${host}:${port}${UI_PREFIX}/\n`)
     process.stdout.write(`[ai-doc] 组件根目录：${root}\n`)
-    process.stdout.write(`[ai-doc] chat 上游：${chatConfigured ? 'configured（可问答）' : 'missing（仅可浏览/构建索引，提问会失败）'}\n\n`)
+    process.stdout.write(`[ai-doc] chat 上游：${chatConfigured ? 'configured（可问答）' : 'missing（仅可浏览/构建索引，提问会失败）'}\n`)
+    process.stdout.write(`[ai-doc] embedding 上游：${embeddingConfigured ? 'configured（可构建 vector 索引）' : 'missing（仅支持 content 索引）'}\n\n`)
   })
 }
 

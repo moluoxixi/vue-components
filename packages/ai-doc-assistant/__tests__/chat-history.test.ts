@@ -1,39 +1,82 @@
+import type { AiDocUIMessage } from '../src/shared/protocol'
 import { describe, expect, it } from 'vitest'
 import { MAX_HISTORY_CHARACTERS, MAX_HISTORY_MESSAGES } from '../src/shared/protocol'
-import { buildChatHistory } from '../src/ui/chat-history'
+import { buildChatRequestMessages } from '../src/ui/chat-history'
 
-describe('buildChatHistory', () => {
-  it('只保留最新十个完整问答对', () => {
-    const turns = Array.from({ length: 12 }, (_, index) => ({
-      question: `q${index}`,
-      answer: `a${index}`,
-      status: 'done',
-    }))
+function message(id: string, role: 'user' | 'assistant', text: string): AiDocUIMessage {
+  return { id, role, parts: [{ type: 'text', text }] }
+}
 
-    const history = buildChatHistory(turns)
+describe('buildChatRequestMessages', () => {
+  it('keeps the newest ten completed pairs and appends the current user', () => {
+    const messages: AiDocUIMessage[] = []
+    const completed = new Set<string>()
+    for (let index = 0; index < 12; index += 1) {
+      messages.push(message(`u${index}`, 'user', `q${index}`))
+      messages.push(message(`a${index}`, 'assistant', `a${index}`))
+      completed.add(`a${index}`)
+    }
+    messages.push(message('current', 'user', 'current question'))
 
-    expect(history).toHaveLength(MAX_HISTORY_MESSAGES)
-    expect(history[0]).toEqual({ role: 'user', content: 'q2' })
-    expect(history.at(-1)).toEqual({ role: 'assistant', content: 'a11' })
+    const request = buildChatRequestMessages(messages, completed)
+
+    expect(request).toHaveLength(MAX_HISTORY_MESSAGES + 1)
+    expect(request[0]).toEqual(message('u2', 'user', 'q2'))
+    expect(request.at(-2)).toEqual(message('a11', 'assistant', 'a11'))
+    expect(request.at(-1)).toEqual(message('current', 'user', 'current question'))
   })
 
-  it('按完整问答对裁剪字符数，并排除未完成轮次', () => {
-    const history = buildChatHistory([
-      { question: 'old', answer: 'x'.repeat(10), status: 'done' },
-      { question: 'latest', answer: 'y'.repeat(MAX_HISTORY_CHARACTERS - 'latest'.length), status: 'done' },
-      { question: 'ignored', answer: 'partial', status: 'stopped' },
-    ])
+  it('excludes stopped/error assistants and strips data parts from completed history', () => {
+    const completed = new Set(['a1'])
+    const withData: AiDocUIMessage = {
+      id: 'a1',
+      role: 'assistant',
+      parts: [
+        { type: 'data-sources', data: [] },
+        { type: 'text', text: 'answer' },
+      ],
+    }
+    const request = buildChatRequestMessages([
+      message('u1', 'user', 'kept'),
+      withData,
+      message('u2', 'user', 'stopped'),
+      message('a2', 'assistant', 'partial'),
+      message('current', 'user', 'next'),
+    ], completed)
 
-    expect(history).toEqual([
-      { role: 'user', content: 'latest' },
-      { role: 'assistant', content: 'y'.repeat(MAX_HISTORY_CHARACTERS - 'latest'.length) },
+    expect(request).toEqual([
+      message('u1', 'user', 'kept'),
+      message('a1', 'assistant', 'answer'),
+      message('current', 'user', 'next'),
     ])
   })
 
-  it('最新一对自身超限时不回退到更旧上下文', () => {
-    expect(buildChatHistory([
-      { question: 'old', answer: 'old answer', status: 'done' },
-      { question: 'latest', answer: 'x'.repeat(MAX_HISTORY_CHARACTERS), status: 'done' },
-    ])).toEqual([])
+  it('cuts only complete pairs at the character boundary', () => {
+    const completed = new Set(['a-old', 'a-latest'])
+    const request = buildChatRequestMessages([
+      message('u-old', 'user', 'old'),
+      message('a-old', 'assistant', 'x'.repeat(10)),
+      message('u-latest', 'user', 'latest'),
+      message('a-latest', 'assistant', 'y'.repeat(MAX_HISTORY_CHARACTERS - 'latest'.length)),
+      message('current', 'user', 'next'),
+    ], completed)
+
+    expect(request).toEqual([
+      message('u-latest', 'user', 'latest'),
+      message('a-latest', 'assistant', 'y'.repeat(MAX_HISTORY_CHARACTERS - 'latest'.length)),
+      message('current', 'user', 'next'),
+    ])
+  })
+
+  it('does not fall back to older context when the newest completed pair is oversized', () => {
+    const request = buildChatRequestMessages([
+      message('u-old', 'user', 'old'),
+      message('a-old', 'assistant', 'old answer'),
+      message('u-latest', 'user', 'latest'),
+      message('a-latest', 'assistant', 'x'.repeat(MAX_HISTORY_CHARACTERS)),
+      message('current', 'user', 'next'),
+    ], new Set(['a-old', 'a-latest']))
+
+    expect(request).toEqual([message('current', 'user', 'next')])
   })
 })

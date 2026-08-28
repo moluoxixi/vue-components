@@ -1,35 +1,54 @@
-import type { ChatHistoryMessage } from '../shared/protocol'
+import type { AiDocUIMessage } from '../shared/protocol'
 import { MAX_HISTORY_CHARACTERS, MAX_HISTORY_MESSAGES } from '../shared/protocol'
 
-export interface HistoryTurn {
-  question: string
-  answer: string
-  status: string
+function textOnly(message: AiDocUIMessage): AiDocUIMessage {
+  return {
+    id: message.id,
+    role: message.role,
+    parts: [{
+      type: 'text',
+      text: message.parts
+        .filter(part => part.type === 'text')
+        .map(part => part.text)
+        .join(''),
+    }],
+  }
 }
 
 /**
- * 保留最新的完整问答对，同时满足服务端消息数与字符数边界。
- * 最新一对自身超限时返回空历史，避免跳过近期语境后混入更旧内容。
+ * Select completed historical pairs and append the current user message.
+ * Stopped/error assistants remain visible locally but never enter model history.
  */
-export function buildChatHistory(turns: readonly HistoryTurn[]): ChatHistoryMessage[] {
-  const completed = turns.filter(turn => turn.status === 'done' && turn.answer.trim().length > 0)
-  const kept: Array<[ChatHistoryMessage, ChatHistoryMessage]> = []
+export function buildChatRequestMessages(
+  messages: readonly AiDocUIMessage[],
+  completedAssistantIds: ReadonlySet<string>,
+): AiDocUIMessage[] {
+  const current = messages.at(-1)
+  if (!current || current.role !== 'user')
+    return []
+
+  const completedPairs: Array<[AiDocUIMessage, AiDocUIMessage]> = []
+  for (let index = 0; index < messages.length - 1; index += 2) {
+    const user = messages[index]
+    const assistant = messages[index + 1]
+    if (user?.role === 'user' && assistant?.role === 'assistant' && completedAssistantIds.has(assistant.id))
+      completedPairs.push([textOnly(user), textOnly(assistant)])
+  }
+
+  const kept: Array<[AiDocUIMessage, AiDocUIMessage]> = []
   let messageCount = 0
   let characterCount = 0
-
-  for (let index = completed.length - 1; index >= 0; index -= 1) {
-    const turn = completed[index]
-    const pairCharacters = turn.question.length + turn.answer.length
+  for (let index = completedPairs.length - 1; index >= 0; index -= 1) {
+    const pair = completedPairs[index]
+    const pairCharacters = pair.flatMap(message => message.parts)
+      .filter(part => part.type === 'text')
+      .reduce((total, part) => total + part.text.length, 0)
     if (messageCount + 2 > MAX_HISTORY_MESSAGES || characterCount + pairCharacters > MAX_HISTORY_CHARACTERS)
       break
-
-    kept.push([
-      { role: 'user', content: turn.question },
-      { role: 'assistant', content: turn.answer },
-    ])
+    kept.push(pair)
     messageCount += 2
     characterCount += pairCharacters
   }
 
-  return kept.reverse().flat()
+  return [...kept.reverse().flat(), textOnly(current)]
 }

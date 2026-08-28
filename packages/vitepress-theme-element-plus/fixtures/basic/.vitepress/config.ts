@@ -6,6 +6,8 @@ import {
 import { elementPlusDocsProjectMarkdownPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import project from '../element-plus-docs.config'
 
+const projectRoot = fileURLToPath(new URL('../../../../..', import.meta.url))
+
 export default defineElementPlusDocs({
   site: {
     title: 'Basic documentation',
@@ -20,8 +22,9 @@ export default defineElementPlusDocs({
     markdown: {
       config(md) {
         md.use(elementPlusDocsProjectMarkdownPlugin, {
+          dependencyRoot: projectRoot,
           project,
-          projectRoot: fileURLToPath(new URL('../../../..', import.meta.url)),
+          projectRoot,
         })
       },
     },

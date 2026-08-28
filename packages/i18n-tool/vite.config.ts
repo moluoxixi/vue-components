@@ -52,6 +52,7 @@ export default defineConfig({
     rollupOptions: {
       external: [
         /^@moluoxixi\/ai-provider(?:\/|$)/,
+        'ai',
         'jiti',
         'vite',
         'zod',

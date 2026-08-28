@@ -1,3 +1,4 @@
+import type { AiProviderId } from '@moluoxixi/ai-provider/shared'
 import type { ChangeOperation, I18nDiagnostic, TranslationCandidate, TranslationUnit } from '../core'
 import { z } from 'zod'
 import { I18N_DIAGNOSTIC_CODES } from '../core/types'
@@ -33,7 +34,12 @@ export interface ErrorResponse {
 }
 
 export interface SanitizedConfigResponse {
-  ai: { baseUrl: string, model: string, status: 'configured' | 'missing' }
+  ai: {
+    baseUrl?: string
+    model: string
+    provider: AiProviderId
+    status: 'configured' | 'missing'
+  }
   projectName: string
   resources: {
     adapter: string
@@ -177,10 +183,26 @@ const operationSchema = z.object({
 
 export const sanitizedConfigResponseSchema: z.ZodType<SanitizedConfigResponse> = z.object({
   ai: z.object({
-    baseUrl: z.string(),
+    baseUrl: z.string().optional(),
     model: z.string(),
+    provider: z.enum(['openai', 'anthropic', 'google', 'openai-compatible']),
     status: z.enum(['configured', 'missing']),
-  }).strict(),
+  }).strict().superRefine((ai, context) => {
+    if (ai.provider === 'openai-compatible' && ai.baseUrl === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'OpenAI-compatible sanitized config requires baseUrl.',
+        path: ['baseUrl'],
+      })
+    }
+    if (ai.provider !== 'openai-compatible' && ai.baseUrl !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Only OpenAI-compatible sanitized config may expose baseUrl.',
+        path: ['baseUrl'],
+      })
+    }
+  }),
   projectName: z.string(),
   resources: z.object({
     adapter: z.string(),

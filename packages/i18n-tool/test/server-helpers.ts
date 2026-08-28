@@ -7,7 +7,12 @@ export function testConfig(
   overrides: Partial<I18nToolConfigInput> = {},
 ): ResolvedI18nToolConfig {
   return resolveI18nToolConfig({
-    ai: { apiKeyEnv: 'TEST_I18N_AI_KEY', baseUrl: 'https://up.example/v1', model: 'test-model' },
+    ai: {
+      apiKeyEnv: 'TEST_I18N_AI_KEY',
+      baseUrl: 'https://up.example/v1',
+      model: 'test-model',
+      provider: 'openai-compatible',
+    },
     limits: { bodyBytes: 1_024 },
     resources: {
       adapter: 'vue-i18n-json',

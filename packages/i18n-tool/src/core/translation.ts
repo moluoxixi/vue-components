@@ -1,5 +1,4 @@
-import type { ProviderConfig } from '@moluoxixi/ai-provider/server'
-import type { ChatMessage } from '@moluoxixi/ai-provider/shared'
+import type { LanguageModel } from 'ai'
 import type {
   I18nDiagnostic,
   TranslationBatch,
@@ -7,7 +6,7 @@ import type {
   TranslationUnit,
   TranslationValidationResult,
 } from './types'
-import { streamChat } from '@moluoxixi/ai-provider/server'
+import { generateText } from 'ai'
 import { z } from 'zod'
 import { extractProtectedTokens, protectedTokensEqual } from './tokens'
 
@@ -29,8 +28,6 @@ export interface TranslationRequest {
   entries: readonly TranslationRequestEntry[]
   targetLocale: string
 }
-
-export type ChatTransport = typeof streamChat
 
 export function createTranslationRequest(
   batch: TranslationBatch,
@@ -176,25 +173,21 @@ Each translation must preserve its opaque id and every protected token exactly.
 Do not add, omit, merge, rename, or reorder semantic variants.`
 
 export async function translateBatch(
-  config: ProviderConfig,
+  model: LanguageModel,
   batch: TranslationBatch,
   targetLocale: string,
   signal?: AbortSignal,
-  chat: ChatTransport = streamChat,
 ): Promise<TranslationValidationResult> {
   signal?.throwIfAborted()
   const request = createTranslationRequest(batch, targetLocale)
-  const messages: ChatMessage[] = [
-    { content: SYSTEM_PROMPT, role: 'system' },
-    { content: JSON.stringify(request), role: 'user' },
-  ]
-  let output = ''
-  for await (const token of chat(config, messages, signal)) {
-    signal?.throwIfAborted()
-    output += token
-  }
+  const { text } = await generateText({
+    abortSignal: signal,
+    instructions: SYSTEM_PROMPT,
+    model,
+    prompt: JSON.stringify(request),
+  })
   signal?.throwIfAborted()
-  return validateTranslationOutput(output, batch.units, targetLocale)
+  return validateTranslationOutput(text, batch.units, targetLocale)
 }
 
 export function selectRetryUnits(
