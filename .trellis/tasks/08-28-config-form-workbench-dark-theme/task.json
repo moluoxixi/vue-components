@@ -1,0 +1,29 @@
+{
+  "id": "config-form-workbench-dark-theme",
+  "name": "config-form-workbench-dark-theme",
+  "title": "优化低代码 IDE 暗色主题",
+  "description": "修复低代码 IDE 暗色主题的视觉层级、按钮可读性、Provider 控件主题与 Runtime 画布保真问题。",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "packages/ConfigForm/workbench, packages/ConfigForm/designer",
+  "package": "config-form-designer",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-28",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "08-27-config-form-online-workbench",
+  "relatedFiles": [
+    "packages/ConfigForm/workbench/src/styles.css",
+    "packages/ConfigForm/designer/src/styles.scss"
+  ],
+  "notes": "",
+  "meta": {}
+}

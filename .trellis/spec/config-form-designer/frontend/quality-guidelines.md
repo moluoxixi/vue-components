@@ -91,6 +91,43 @@ Required regression coverage:
 
 ---
 
+## Editor Theme And Runtime Isolation
+
+Workbench and Designer chrome must use semantic theme tokens. Runtime Canvas and Preview surfaces are a separate theme
+boundary: changing the IDE theme must not recolor user components or exported pages. Keep explicit runtime tokens for the
+canvas sheet, text, muted text, borders, and drag-preview surface instead of reusing dark editor surface tokens.
+
+Provider controls rendered by the Inspector may receive dark-theme variables or component-class overrides only below the
+Inspector scope. Never add global `.el-*`, `.ant-*`, `--el-*`, or provider theme rules at the Workbench root because Preview
+renders the same providers as real Runtime output.
+
+```css
+/* Correct: affects generated Inspector controls only. */
+.workbench-app[data-theme="dark"] .embedded-designer .mx-config-form-designer__properties {
+  --el-text-color-primary: var(--mx-designer-text);
+}
+
+/* Wrong: also recolors Runtime components in Preview. */
+.workbench-app[data-theme="dark"] {
+  --el-text-color-primary: var(--wb-text);
+}
+```
+
+Preview responsiveness must follow the Preview pane's inline size, not only the browser viewport. A resizable split pane can
+be narrow on a wide screen. Establish an inline-size container on the Preview canvas and use a named `@container` query for
+runtime layout adaptations. Designer-owned narrow Canvas adaptations continue to follow `data-workspace-mode="narrow"`,
+which is derived from the Designer root width.
+
+Required regression coverage:
+
+- Dark and light semantic text/control tokens meet the intended contrast thresholds.
+- Every Provider selector or variable override remains below the dark Inspector scope.
+- Light Config export uses a light editor surface and readable text; Source Monaco follows the active IDE theme.
+- At 1440px, 900px, and 390px, Workbench root width does not overflow; narrow Designer Canvas and Preview runtime grids do
+  not overflow their own containers.
+
+---
+
 ## Forbidden Patterns
 
 <!-- Patterns that should never be used and why -->

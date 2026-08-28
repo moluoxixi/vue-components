@@ -1,0 +1,2 @@
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"实现和验证 Designer 拖拽预览、面板可见性、主题隔离与响应式约束。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"修改共享主题常量前检索现有 token 与 Provider 覆盖，避免重复主题机制。"}

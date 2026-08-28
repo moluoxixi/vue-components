@@ -1,0 +1,2 @@
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"复核暗色主题、Runtime 隔离、三档响应式与所需回归覆盖。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查主题 token 和状态规则的一致性与作用域复用。"}
