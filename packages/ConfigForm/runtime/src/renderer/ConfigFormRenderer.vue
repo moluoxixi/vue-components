@@ -18,6 +18,10 @@ import type {
   ConfigFormRendererFieldAttrs,
   ConfigFormRendererNode,
   ConfigFormRendererProps,
+  ConfigFormRenderMode,
+  ConfigFormRuntimeEditorBridge,
+  ConfigFormRuntimeEventContext,
+  ConfigFormRuntimeNodeMetadata,
 } from './types'
 import type { Component, ShallowRef, StyleValue, VNodeChild } from 'vue'
 import {
@@ -26,6 +30,7 @@ import {
   defineComponent,
   h,
   markRaw,
+  onBeforeUnmount,
   shallowRef,
   toHandlerKey,
   toRaw,
@@ -61,6 +66,7 @@ const props = withDefaults(defineProps<ConfigFormRendererProps<TValues>>(), {
   formAttrs: () => ({}),
   gap: '16px',
   labelPosition: 'left',
+  mode: 'preview',
   namespace: 'mx-config-form',
   layoutAttrs: () => ({}),
 })
@@ -73,6 +79,12 @@ const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const formId = useId()
 const errors = shallowRef<ConfigFormErrors>({})
 const meta = shallowRef<ConfigFormMeta>({ dirty: false, fields: {}, touched: false })
+const registeredNodes = new Map<string, {
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>
+  cleanup?: () => void
+  element?: HTMLElement
+}>()
+let registeredEditor: ConfigFormRuntimeEditorBridge<TValues> | undefined
 
 const controller = createConfigFormController<TValues>({
   defaultValues: props.defaultValues,
@@ -125,6 +137,25 @@ watch(controlledModel, (values) => {
 
 watch(() => props.fields, refreshReactions, { deep: true })
 
+watch(() => props.reactionProjection?.validate, (fields) => {
+  for (const field of fields ?? [])
+    void validateField(field)
+}, { deep: true })
+
+function resolveReactionProps(field: string): Record<string, unknown> {
+  return {
+    ...getReactionProps(field),
+    ...props.reactionProjection?.props[field],
+  }
+}
+
+function resolveReactionState(field: string) {
+  return {
+    ...getReactionState(field),
+    ...props.reactionProjection?.states[field],
+  }
+}
+
 function updateMeta(nextMeta: ConfigFormMeta): void {
   if (equalMeta(meta.value, nextMeta))
     return
@@ -149,6 +180,201 @@ const responsiveLayouts = computed(() => ({
   tablet: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'tablet'),
   mobile: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'mobile'),
 }))
+
+function ensureEditorBridge(): ConfigFormRuntimeEditorBridge<TValues> | undefined {
+  const editor = props.editor
+  if (editor === registeredEditor)
+    return editor
+
+  for (const registration of registeredNodes.values()) {
+    if (registration.cleanup)
+      registration.cleanup()
+    else if (registeredEditor?.unregisterNode)
+      registeredEditor.unregisterNode(registration.metadata, registration.element)
+  }
+  registeredNodes.clear()
+  registeredEditor = editor
+  return editor
+}
+
+function resolveNodeId(node: ConfigFormRendererNode<TValues>, path: string): string {
+  const custom = ensureEditorBridge()?.getNodeId?.(node, path)
+  if (isNonEmptyString(custom))
+    return custom
+
+  const configured = node.id
+  if (isNonEmptyString(configured))
+    return configured
+
+  const extensions = node.extensions
+  if (extensions && typeof extensions === 'object') {
+    const extensionRecord = extensions as Record<string, unknown>
+    const extensionId = extensionRecord.nodeId
+      ?? extensionRecord['node-id']
+      ?? (isObject(extensionRecord.designer) ? (extensionRecord.designer as Record<string, unknown>).nodeId : undefined)
+    if (isNonEmptyString(extensionId))
+      return extensionId
+  }
+
+  if (isConfigFormField(node) && isNonEmptyString(node.field))
+    return node.field
+
+  return path
+}
+
+function createNodeMetadata(
+  node: ConfigFormRendererNode<TValues>,
+  path: string,
+  slot?: string,
+): ConfigFormRuntimeNodeMetadata<TValues> {
+  const nodeId = resolveNodeId(node, path)
+  const metadata: ConfigFormRuntimeNodeMetadata<TValues> = {
+    component: node.component,
+    id: nodeId,
+    kind: isConfigFormField(node) ? 'field' : 'component',
+    mode: props.mode as ConfigFormRenderMode,
+    node,
+    nodeId,
+    path,
+    slot,
+  }
+  const state = ensureEditorBridge()?.readState?.(metadata)
+  if (state !== undefined)
+    metadata.state = state
+  return metadata
+}
+
+function nodeMetadataAttrs(metadata: ConfigFormRuntimeNodeMetadata<TValues>): Record<string, unknown> {
+  const editorAttrs = props.mode === 'design'
+    ? ensureEditorBridge()?.getNodeAttrs?.(metadata) ?? {}
+    : {}
+  return {
+    ...editorAttrs,
+    'data-config-node-id': metadata.nodeId,
+    'data-config-node-kind': metadata.kind,
+    'data-config-path': metadata.path,
+    'data-config-slot': metadata.slot,
+    // Designer adapters historically query data-node-id. Keep that alias in
+    // design mode while the config-prefixed attributes remain canonical.
+    'data-node-id': props.mode === 'design' ? metadata.nodeId : undefined,
+  }
+}
+
+function registerNodeElement(metadata: ConfigFormRuntimeNodeMetadata<TValues>, element: unknown): void {
+  const editor = ensureEditorBridge()
+  if (!editor?.registerNode)
+    return
+
+  const candidate = typeof HTMLElement !== 'undefined' && element instanceof HTMLElement
+    ? element
+    : isObject(element) && '$el' in element
+      ? (element as { $el?: unknown }).$el
+      : undefined
+  const htmlElement = typeof HTMLElement !== 'undefined' && candidate instanceof HTMLElement
+    ? candidate
+    : undefined
+  const key = `${metadata.path}:${metadata.nodeId}`
+  if (!htmlElement) {
+    const registration = registeredNodes.get(key)
+    if (!registration)
+      return
+    if (registration.cleanup)
+      registration.cleanup()
+    else
+      editor.unregisterNode?.(registration.metadata, registration.element)
+    registeredNodes.delete(key)
+    return
+  }
+
+  const current = registeredNodes.get(key)
+  if (current?.element === htmlElement)
+    return
+  if (current?.cleanup)
+    current.cleanup()
+  else if (current)
+    editor.unregisterNode?.(current.metadata, current.element)
+
+  const cleanup = editor.registerNode(metadata, htmlElement)
+  registeredNodes.set(key, {
+    cleanup: typeof cleanup === 'function' ? cleanup : undefined,
+    element: htmlElement,
+    metadata,
+  })
+}
+
+function shouldInterceptEditorEvent(
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  event: string,
+  args: unknown[],
+): boolean {
+  if (props.mode !== 'design')
+    return false
+
+  const editor = ensureEditorBridge()
+  const context: ConfigFormRuntimeEventContext<TValues> = {
+    args,
+    event,
+    metadata,
+    mode: metadata.mode,
+    node: metadata.node,
+    nodeId: metadata.nodeId,
+    path: metadata.path,
+    slot: metadata.slot,
+  }
+  const decision = editor?.interceptEvent?.(context) ?? editor?.onEvent?.(context)
+  // Design mode is intentionally inert by default. An editor may explicitly
+  // return false for controls that it wants to keep interactive.
+  return decision !== false
+}
+
+function editorEventListener(
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  event: string,
+  listener: (...args: unknown[]) => void,
+): (...args: unknown[]) => void {
+  return (...args: unknown[]) => {
+    if (shouldInterceptEditorEvent(metadata, event, args))
+      return
+    listener(...args)
+  }
+}
+
+function wrapComponentListeners(
+  target: Record<string, unknown>,
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  skipKeys: ReadonlySet<string> = new Set(),
+): void {
+  if (props.mode !== 'design')
+    return
+
+  for (const key of Object.keys(target)) {
+    if (!/^on[A-Z]/.test(key))
+      continue
+    if (skipKeys.has(key))
+      continue
+    const value = target[key]
+    if (typeof value === 'function') {
+      target[key] = editorEventListener(metadata, key.slice(2), value as (...args: unknown[]) => void)
+    }
+    else if (Array.isArray(value)) {
+      const listeners = value.filter((listener): listener is (...args: unknown[]) => void => typeof listener === 'function')
+      target[key] = editorEventListener(metadata, key.slice(2), (...args: unknown[]) => {
+        for (const listener of listeners)
+          listener(...args)
+      })
+    }
+  }
+}
+
+onBeforeUnmount(() => {
+  for (const registration of registeredNodes.values()) {
+    if (registration.cleanup)
+      registration.cleanup()
+    else
+      registeredEditor?.unregisterNode?.(registration.metadata, registration.element)
+  }
+  registeredNodes.clear()
+})
 
 function bem(element: string, modifier?: string): string {
   return modifier
@@ -192,17 +418,20 @@ function renderNode(
   wrapCell: boolean,
   path: string,
   ancestors: ReadonlySet<object>,
+  slot?: string,
 ): VNodeChild {
   assertAcyclicNode(node, ancestors)
   const nextAncestors = new Set(ancestors).add(node)
-  const reactionState = isConfigFormField(node) ? getReactionState(node.field) : undefined
+  const reactionState = isConfigFormField(node) ? resolveReactionState(node.field) : undefined
   const visible = reactionState?.visible ?? isConfigFormNodeVisible(node, model.value)
   if (!visible)
     return null
 
+  const metadata = createNodeMetadata(node, path, slot)
+
   const body = isConfigFormField(node)
-    ? renderBoundNode(node, path, nextAncestors)
-    : renderComponentNode(node, path, nextAncestors)
+    ? renderBoundNode(node, path, nextAncestors, metadata, !wrapCell)
+    : renderComponentNode(node, path, nextAncestors, metadata, !wrapCell)
 
   if (!wrapCell)
     return body
@@ -226,13 +455,16 @@ function renderNode(
           minWidth: 0,
         },
   ]
+  const metadataAttrs = nodeMetadataAttrs(metadata)
 
   return h('div', {
     ...cellAttrs,
     ...nodeCellAttrs,
-    class: [bem('cell'), cellAttrs.class, nodeCellAttrs?.class],
+    ...metadataAttrs,
+    class: [bem('cell'), cellAttrs.class, nodeCellAttrs?.class, metadataAttrs.class],
     'data-config-form-responsive-cell': '',
     key: getNodeKey(node, path),
+    ref: (element: unknown) => registerNodeElement(metadata, element),
     style,
   }, [body])
 }
@@ -241,19 +473,21 @@ function renderBoundNode(
   field: ConfigFormRendererField<TValues>,
   path: string,
   ancestors: ReadonlySet<object>,
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  registerElement: boolean,
 ): VNodeChild {
   const registration = resolveRegistration(field.component)
   const staticProps = {
     ...registration?.props,
     ...field.props,
-    ...getReactionProps(field.field),
+    ...resolveReactionProps(field.field),
   }
   const configuredId = staticProps.id
   const controlId = typeof configuredId === 'string' && configuredId
     ? configuredId
     : `${formId}-${toDomId(path)}-control`
   const errorId = `${formId}-${toDomId(path)}-error`
-  const reactionState = getReactionState(field.field)
+  const reactionState = resolveReactionState(field.field)
   const readonly = resolveConfigFormCondition(props.readonly, model.value, false)
     || (reactionState.readonly ?? isConfigFormFieldReadonly(field, model.value, false))
   const fieldErrors = readonly ? [] : (errors.value[field.field] ?? [])
@@ -267,23 +501,26 @@ function renderBoundNode(
         for: controlId,
       }, field.label)
     : null
+  const metadataAttrs = registerElement ? nodeMetadataAttrs(metadata) : {}
 
   return h('div', {
     ...fieldAttrs,
-    class: [bem('field'), bem('field', `label-${props.labelPosition}`), fieldAttrs?.class],
+    ...metadataAttrs,
+    class: [bem('field'), bem('field', `label-${props.labelPosition}`), fieldAttrs?.class, metadataAttrs.class],
     'data-dirty': fieldMeta.dirty,
     'data-field': field.field,
     'data-label-position': props.labelPosition,
     'data-required': reactionState.required ?? resolveConfigFormCondition(field.required, model.value, false),
     'data-touched': fieldMeta.touched,
     key: getNodeKey(field, path),
+    ...(registerElement ? { ref: (element: unknown) => registerNodeElement(metadata, element) } : {}),
     style: [layout.field, fieldAttrs?.style],
   }, [
     label,
     h('div', {
       class: bem('control'),
       style: layout.control,
-    }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration)]),
+    }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration, metadata)]),
     ...fieldErrors.map((message, index) => h('p', {
       class: bem('error'),
       id: index === 0 ? errorId : undefined,
@@ -301,6 +538,7 @@ function renderControl(
   readonly = false,
   ancestors: ReadonlySet<object> = new Set(),
   registration?: ConfigFormComponentRegistration,
+  metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
 ): VNodeChild {
   if (readonly) {
     const readonlyRender = resolveConfigFormReadonlyRender(
@@ -313,7 +551,7 @@ function renderControl(
           componentProps: {
             ...registration?.props,
             ...field.props,
-            ...getReactionProps(field.field),
+            ...resolveReactionProps(field.field),
           },
           field,
           model: model.value,
@@ -333,10 +571,10 @@ function renderControl(
   const componentProps: Record<string, unknown> = {
     ...registration?.props,
     ...field.props,
-    ...getReactionProps(field.field),
+    ...resolveReactionProps(field.field),
     [binding.valueProp]: model.value[field.field],
   }
-  const reactionState = getReactionState(field.field)
+  const reactionState = resolveReactionState(field.field)
 
   if (controlId && !isNonEmptyString(componentProps.id))
     componentProps.id = controlId
@@ -362,11 +600,17 @@ function renderControl(
           ? registration.getValueFromEvent(...args)
           : args[0],
     })
-  })
+  }, metadata)
   addListener(componentProps, field.blurTrigger ?? registration?.blurTrigger ?? 'blur', () => {
     setTouched(field.field)
     void validateField(field.field, 'blur')
-  })
+  }, metadata)
+  if (metadata) {
+    wrapComponentListeners(componentProps, metadata, new Set([
+      toHandlerKey(camelize(binding.trigger)),
+      toHandlerKey(camelize(field.blurTrigger ?? registration?.blurTrigger ?? 'blur')),
+    ]))
+  }
 
   return h(resolveComponent(registration?.component ?? field.component), {
     ...componentProps,
@@ -383,14 +627,22 @@ function renderComponentNode(
   >,
   path: string,
   ancestors: ReadonlySet<object>,
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  registerElement: boolean,
 ): VNodeChild {
   const slots = createNodeSlots(node, path, ancestors)
   const registration = resolveRegistration(node.component)
   const component = registration?.component ?? node.component
-  const componentProps = {
+  const metadataAttrs = registerElement ? nodeMetadataAttrs(metadata) : {}
+  const componentProps: Record<string, unknown> = {
     ...registration?.props,
     ...node.props,
+    ...metadataAttrs,
+    class: [registration?.props?.class, node.props?.class, metadataAttrs.class],
   }
+  if (registerElement)
+    Object.assign(componentProps, { ref: (element: unknown) => registerNodeElement(metadata, element) })
+  wrapComponentListeners(componentProps, metadata)
   const configuredKey = componentProps.key
   const vnodeKey = isVNodeKey(configuredKey) ? configuredKey : `${path}.component`
 
@@ -429,7 +681,7 @@ function createFieldSlots(
     Object.entries(field.slots).map(([slotName, slot]) => [
       slotName,
       (slotProps: Record<string, unknown> = {}) =>
-        renderFieldSlotContent(slot, field, slotProps, `${path}.slots.${slotName}`, ancestors),
+        renderFieldSlotContent(slot, field, slotProps, `${path}.slots.${slotName}`, ancestors, slotName),
     ]),
   )
 }
@@ -451,7 +703,7 @@ function createComponentSlots(
     Object.entries(node.slots).map(([slotName, slot]) => [
       slotName,
       (slotProps: Record<string, unknown> = {}) =>
-        renderComponentSlotContent(slot, node, slotProps, `${path}.slots.${slotName}`, ancestors),
+        renderComponentSlotContent(slot, node, slotProps, `${path}.slots.${slotName}`, ancestors, slotName),
     ]),
   )
 }
@@ -467,6 +719,7 @@ function renderFieldSlotContent(
   slotProps: Record<string, unknown>,
   path: string,
   ancestors: ReadonlySet<object>,
+  slotName?: string,
 ): VNodeChild {
   if (typeof slot === 'function') {
     const context: ConfigFormFieldSlotContext<
@@ -486,9 +739,9 @@ function renderFieldSlotContent(
   }
 
   if (Array.isArray(slot))
-    return slot.map((node, index) => renderNode(node, false, `${path}.${index}`, ancestors))
+    return slot.map((node, index) => renderNode(node, false, `${path}.${index}`, ancestors, slotName))
 
-  return renderNode(slot, false, path, ancestors)
+  return renderNode(slot, false, path, ancestors, slotName)
 }
 
 function renderComponentSlotContent(
@@ -507,6 +760,7 @@ function renderComponentSlotContent(
   slotProps: Record<string, unknown>,
   path: string,
   ancestors: ReadonlySet<object>,
+  slotName?: string,
 ): VNodeChild {
   if (typeof slot === 'function') {
     const context: ConfigFormComponentSlotContext<
@@ -524,9 +778,9 @@ function renderComponentSlotContent(
   }
 
   if (Array.isArray(slot))
-    return slot.map((child, index) => renderNode(child, false, `${path}.${index}`, ancestors))
+    return slot.map((child, index) => renderNode(child, false, `${path}.${index}`, ancestors, slotName))
 
-  return renderNode(slot, false, path, ancestors)
+  return renderNode(slot, false, path, ancestors, slotName)
 }
 
 function resolveBinding(
@@ -569,19 +823,20 @@ function addListener(
   target: Record<string, unknown>,
   event: string,
   listener: (...args: unknown[]) => void,
+  metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
 ): void {
   const key = toHandlerKey(camelize(event))
   const existing = target[key]
   const existingListeners = Array.isArray(existing)
     ? existing.filter((value): value is (...args: unknown[]) => unknown => typeof value === 'function')
     : typeof existing === 'function' ? [existing] : []
-  target[key] = existingListeners.length
-    ? (...args: unknown[]) => {
-        for (const existingListener of existingListeners)
-          existingListener(...args)
-        listener(...args)
-      }
-    : listener
+  target[key] = (...args: unknown[]) => {
+    if (metadata && shouldInterceptEditorEvent(metadata, event, args))
+      return
+    for (const existingListener of existingListeners)
+      existingListener(...args)
+    listener(...args)
+  }
 }
 
 function mergeAriaTokens(current: unknown, token: string): string {

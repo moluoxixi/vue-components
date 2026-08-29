@@ -1,11 +1,14 @@
 import type { Component } from 'vue'
 import type {
+  DesignerMaterialParentDefinition,
   DesignerMaterialSlotDefinition,
   DesignerPropertySetterDefinition,
   DesignerRegistry,
+  DesignerResolvedDesignPolicy,
   DesignerRuntimeMaterialBinding,
 } from '../registry'
 import type { LowCodeNode } from './types'
+import { resolveDesignerDesignPolicy } from '../registry'
 import { designerDocumentToConfigModel } from './transform'
 
 const PORTABLE_SOURCE_COMPONENTS: Readonly<Record<string, string>> = Object.freeze({
@@ -55,7 +58,9 @@ export interface LowCodeComponentDefinition {
   bindings: LowCodeBindingSchema[]
   layout: LowCodeLayoutSchema
   slots: DesignerMaterialSlotDefinition[]
+  allowedParents: DesignerMaterialParentDefinition[]
   defaults: Omit<LowCodeNode, 'id'>
+  designPolicy: DesignerResolvedDesignPolicy
   runtime: DesignerRuntimeMaterialBinding
   sourceComponent?: string
 }
@@ -107,7 +112,9 @@ function definitionFor(
       : [],
     layout: { span: { min: 1, max: 24 } },
     slots: material.kind === 'container' ? material.slots : [],
+    allowedParents: material.allowedParents?.map(parent => ({ ...parent })) ?? [],
     defaults: nodeDefaults,
+    designPolicy: resolveDesignerDesignPolicy(material.designPolicy),
     runtime: material.runtime,
     ...(sourceComponent ? { sourceComponent } : {}),
   }

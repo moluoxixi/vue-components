@@ -236,6 +236,12 @@ select:focus-visible {
   background: var(--wb-hover);
 }
 
+.topbar-actions > button.is-active {
+  color: var(--wb-accent);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-hover);
+}
+
 .topbar-actions button:disabled {
   color: var(--wb-disabled);
   cursor: default;
@@ -590,6 +596,11 @@ select:focus-visible {
   --mx-designer-runtime-muted: #626873;
   --mx-designer-runtime-border: #d5d8de;
   --mx-designer-runtime-surface: #fff;
+  --mx-designer-overlay-border: #646872;
+  --mx-designer-overlay-muted: #a9adb7;
+  --mx-designer-overlay-surface: #222429;
+  --mx-designer-overlay-subtle: #141518;
+  --mx-designer-overlay-text: #d9dce2;
   --mx-designer-shadow: rgb(0 0 0 / 32%);
 }
 
@@ -842,6 +853,74 @@ select:focus-visible {
   background: rgb(1 4 9 / 76%);
 }
 
+.flow-workspace-overlay {
+  position: fixed;
+  z-index: 2800;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  place-items: center;
+  background: rgb(1 4 9 / 76%);
+}
+
+.flow-workspace-dialog {
+  display: grid;
+  width: min(1120px, 100%);
+  height: min(760px, 100%);
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  background: var(--wb-elevated);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+}
+
+.flow-workspace-dialog-header {
+  display: flex;
+  min-width: 0;
+  padding: 14px 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--wb-border);
+}
+
+.flow-workspace-dialog-header h2 {
+  min-width: 0;
+  margin: 0;
+  color: var(--wb-text-strong);
+  font-size: 16px;
+}
+
+.flow-workspace-dialog-header > button {
+  display: grid;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  color: var(--wb-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.flow-workspace-dialog-header > button:hover:not(:disabled) {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-control-border);
+  background: var(--wb-hover);
+}
+
+.flow-workspace-dialog-body {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--wb-surface);
+}
+
 .export-preview-dialog {
   display: grid;
   width: min(1080px, 100%);
@@ -1058,6 +1137,7 @@ select:focus-visible {
 
 .workbench-app[data-theme="light"] .export-menu-popover,
 .workbench-app[data-theme="light"] .export-preview-dialog,
+.workbench-app[data-theme="light"] .flow-workspace-dialog,
 .workbench-app[data-theme="light"] .template-overlay > section {
   color: var(--wb-text);
   border-color: var(--wb-border);
@@ -1066,6 +1146,7 @@ select:focus-visible {
 
 .workbench-app[data-theme="light"] .export-preview-dialog h2,
 .workbench-app[data-theme="light"] .empty-workbench h1,
+.workbench-app[data-theme="light"] .flow-workspace-dialog h2,
 .workbench-app[data-theme="light"] .template-overlay h2 {
   color: var(--wb-text-strong);
 }
@@ -1196,6 +1277,10 @@ select:focus-visible {
     display: none;
   }
 
+  .topbar-actions .preview-toggle-button {
+    display: none;
+  }
+
   .workbench-app {
     grid-template-rows: 48px 36px minmax(0, 1fr);
   }
@@ -1284,6 +1369,21 @@ select:focus-visible {
     padding: 0;
   }
 
+  .flow-workspace-overlay {
+    padding: 0;
+  }
+
+  .flow-workspace-dialog {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .flow-workspace-dialog-header {
+    padding: 12px;
+  }
+
   .export-preview-dialog {
     width: 100%;
     height: 100%;
@@ -1303,6 +1403,38 @@ select:focus-visible {
   .dialog-action {
     flex: 1 1 0;
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .workbench-topbar {
+    padding-inline: 6px;
+    gap: 4px;
+  }
+
+  .topbar-actions {
+    gap: 1px;
+  }
+
+  .topbar-actions button,
+  .pane-header button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .export-menu > button {
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
+  }
+
+  .export-menu > button .export-chevron {
+    display: none;
+  }
+
+  .project-select {
+    padding-right: 18px;
+    padding-left: 6px;
   }
 }
 

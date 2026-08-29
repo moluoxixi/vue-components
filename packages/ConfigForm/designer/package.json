@@ -47,11 +47,9 @@
     "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-core": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
-    "@moluoxixi/zod3-to-rule": "workspace:*",
-    "sortablejs": "catalog:"
+    "@moluoxixi/zod3-to-rule": "workspace:*"
   },
   "devDependencies": {
-    "@types/sortablejs": "catalog:",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "happy-dom": "catalog:dev",

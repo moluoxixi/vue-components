@@ -4,6 +4,7 @@ import type {
   DesignerDocument,
   DesignerCommand,
   DesignerCompileSuccess,
+  DesignerLocaleOptions,
   DesignerNode,
   DesignerRegistry,
   DesignerSelectionMode,
@@ -18,6 +19,7 @@ import type {
   WorkspaceProjectRepository,
   WorkspaceProjectSummary,
 } from './project'
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import {
   Blocks,
   Braces,
@@ -46,6 +48,7 @@ import {
   Trash2,
   Sun,
   Undo2,
+  Workflow,
   X,
 } from '@lucide/vue'
 import {
@@ -55,6 +58,7 @@ import {
   configModelToDesignerDocument,
   ConfigFormDesigner,
   createConfigModelHistory,
+  createDesignerLocale,
   createLowCodeComponentRegistry,
   DesignerPalette,
   designerCommandToModelOperation,
@@ -65,10 +69,13 @@ import {
 } from '@moluoxixi/config-form-designer'
 import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'
 import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
+import { ConfigFormFlowInterpreter } from '@moluoxixi/config-form-core'
 import { ConfigFormRenderer } from '@moluoxixi/config-form/renderer'
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import PreviewRuntimeBoundary from './components/PreviewRuntimeBoundary.vue'
-import { createPreviewRevisionGate } from './preview'
+import FlowWorkspace from './components/FlowWorkspace.vue'
+import { createPreviewRevisionGate, createWorkbenchFlowActionRegistry } from './preview'
+import { cloneWorkbenchJson } from './utils/clone'
 import {
   BUILT_IN_WORKSPACE_TEMPLATES,
   cloneWorkspaceProject,
@@ -89,6 +96,10 @@ type MobileSurface = 'edit' | 'preview'
 type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
 type DesignerLeftView = 'components' | 'layers' | 'pages'
 type WorkbenchTheme = 'dark' | 'light'
+
+const props = defineProps<{
+  locale?: DesignerLocaleOptions
+}>()
 
 const SOURCE_PATH = normalizeProjectPath('src/App.vue')
 const CONFIG_PATH = WORKSPACE_CONFIG_MODULE_PATH
@@ -122,11 +133,13 @@ const previewExpanded = ref(false)
 const previewViewport = ref<PreviewViewport>('desktop')
 const previewModel = ref<Record<string, unknown>>({})
 const fallbackPreviewModel = ref<Record<string, unknown>>({})
+const previewFlowProjections = shallowRef<Record<string, ConfigFormReactionProjection<Record<string, unknown>>>>({})
 const rendererPreviewVersion = ref(0)
 const dirty = ref(false)
 const templatePickerOpen = ref(false)
 const exportMenuOpen = ref(false)
 const exportPreviewMode = ref<'source' | 'config'>()
+const flowWorkspaceOpen = ref(false)
 const configViewMode = ref<'source' | 'json' | 'tree'>('source')
 const exportPreviewReturnFocus = ref<HTMLElement>()
 const activeDesignerLeftView = ref<DesignerLeftView>('components')
@@ -139,14 +152,25 @@ const newPageButtonRef = useTemplateRef<HTMLButtonElement>('newPageButton')
 const exportButtonRef = useTemplateRef<HTMLButtonElement>('exportButton')
 const templateDialogRef = useTemplateRef<HTMLElement>('templateDialog')
 const exportDialogRef = useTemplateRef<HTMLElement>('exportDialog')
+const flowDialogRef = useTemplateRef<HTMLElement>('flowDialog')
 const designerRef = useTemplateRef<ConfigFormDesignerExpose>('designer')
 const designerLeftTabsRef = useTemplateRef<HTMLElement>('designerLeftTabs')
 const mobileSurfaceTabsRef = useTemplateRef<HTMLElement>('mobileSurfaceTabs')
 let openProjectRequestId = 0
 let disposed = false
 const previewRevisionGate = createPreviewRevisionGate()
+let previewFlowAbortController = new AbortController()
+let previewFlowTriggerRevision = 0
+const flowActionRegistry = createWorkbenchFlowActionRegistry(
+  value => message.value = value,
+)
+const flowInterpreter = new ConfigFormFlowInterpreter(flowActionRegistry)
+const workbenchLocale = computed(() => createDesignerLocale(props.locale))
 
 function advancePreviewRevision(): string {
+  previewFlowAbortController.abort('revision-changed')
+  previewFlowAbortController = new AbortController()
+  previewFlowProjections.value = {}
   rendererPreviewVersion.value += 1
   const revision = currentProject.value
     ? `${currentProject.value.id}-${rendererPreviewVersion.value}`
@@ -164,6 +188,27 @@ const modelRevision = computed(() => configHistory.value?.revision ?? 0)
 const designerDocument = computed(() => configModel.value
   ? configModelToDesignerDocument(configModel.value)
   : undefined)
+const previewFlowProjection = computed<ConfigFormReactionProjection<Record<string, unknown>>>(() => {
+  const projection: ConfigFormReactionProjection<Record<string, unknown>> = {
+    values: cloneWorkbenchJson(previewModel.value),
+    props: {},
+    states: {},
+    validate: [],
+  }
+  const validate = new Set<string>()
+  for (const flow of configModel.value?.flows ?? []) {
+    const current = previewFlowProjections.value[flow.id]
+    if (!current)
+      continue
+    for (const [field, fieldProps] of Object.entries(current.props))
+      projection.props[field] = { ...projection.props[field], ...fieldProps }
+    for (const [field, fieldStates] of Object.entries(current.states))
+      projection.states[field] = { ...projection.states[field], ...fieldStates }
+    current.validate.forEach(field => validate.add(field))
+  }
+  projection.validate = [...validate]
+  return projection
+})
 interface DesignerLayerEntry { id: string, label: string, component: string, depth: number }
 const designerLayers = computed<DesignerLayerEntry[]>(() => {
   const entries: DesignerLayerEntry[] = []
@@ -183,6 +228,19 @@ const designerLayers = computed<DesignerLayerEntry[]>(() => {
   }
   visit(designerDocument.value?.nodes ?? [], 0)
   return entries
+})
+const designerFieldNames = computed<string[]>(() => {
+  const fields: string[] = []
+  const visit = (nodes: DesignerNode[]): void => {
+    nodes.forEach((node) => {
+      if (node.kind === 'field')
+        fields.push(node.field)
+      else
+        Object.values(node.slots).forEach(visit)
+    })
+  }
+  visit(designerDocument.value?.nodes ?? [])
+  return [...new Set(fields)]
 })
 const sourceExportResult = computed(() => {
   if (!currentProject.value || !configModel.value)
@@ -342,6 +400,7 @@ function isLowCodePageModel(value: unknown): value is LowCodePageModel {
     && isRecord(value.form)
     && Array.isArray(value.nodes)
     && value.nodes.every(isLowCodeNode)
+    && (value.flows === undefined || Array.isArray(value.flows))
 }
 
 function readPageModel(project: WorkspaceProject): { model: LowCodePageModel, migrated: boolean } {
@@ -360,6 +419,13 @@ function readPageModel(project: WorkspaceProject): { model: LowCodePageModel, mi
         throw new Error(inserted.diagnostics[0]?.message ?? 'Config Model is invalid.')
       model = inserted.model
     }
+    const flowValidation = applyModelOperation(model, {
+      type: 'updateFlows',
+      flows: input.flows,
+    }, modelRegistry, { flowActions: flowActionRegistry })
+    if (!flowValidation.success)
+      throw new Error(flowValidation.diagnostics[0]?.message ?? 'Config Model flow is invalid.')
+    model = flowValidation.model
     return { model, migrated: false }
   }
   const parsed = parseDesignerDocument(input)
@@ -403,9 +469,9 @@ function mergePreviewModel(
   const next: Record<string, unknown> = {}
   fields.forEach((field) => {
     if (Object.hasOwn(previewModel.value, field))
-      next[field] = structuredClone(previewModel.value[field])
+      next[field] = cloneWorkbenchJson(previewModel.value[field])
     else if (Object.hasOwn(defaults, field))
-      next[field] = structuredClone(defaults[field])
+      next[field] = cloneWorkbenchJson(defaults[field])
   })
   return next
 }
@@ -454,7 +520,7 @@ function updateDesigner(command: DesignerCommand, document: DesignerDocument): b
     return false
   try {
     const operation = designerCommandToModelOperation(command, document, history.present.props)
-    return commitModelHistory(applyConfigModelOperation(history, operation, lowCodeRegistry.value))
+    return commitModelHistory(applyConfigModelOperation(history, operation, lowCodeRegistry.value, { flowActions: flowActionRegistry }))
   }
   catch (error) {
     configError.value = error instanceof Error ? error.message : String(error)
@@ -468,7 +534,7 @@ const designerCommandControl = { apply: updateDesigner }
 function updateModelOperation(operation: ModelOperation): void {
   const history = configHistory.value
   if (history)
-    commitModelHistory(applyConfigModelOperation(history, operation, lowCodeRegistry.value))
+    commitModelHistory(applyConfigModelOperation(history, operation, lowCodeRegistry.value, { flowActions: flowActionRegistry }))
 }
 
 function handlePreviewRuntimeReady(revision: string): void {
@@ -477,17 +543,60 @@ function handlePreviewRuntimeReady(revision: string): void {
   if (!projectId || revision !== expectedRevision || !previewRevisionGate.isCurrent(revision) || !activePreview.value)
     return
   lastRuntimePreview.value = { projectId, result: activePreview.value }
-  fallbackPreviewModel.value = structuredClone(previewModel.value)
+  fallbackPreviewModel.value = cloneWorkbenchJson(previewModel.value)
+  runPreviewFlows('page.mount', previewModel.value)
+}
+
+function runPreviewFlows(kind: 'page.mount' | 'form.submit' | 'field.change', values: Record<string, unknown>, field?: string): void {
+  const flows = configModel.value?.flows ?? []
+  const projectId = currentProject.value?.id
+  const revision = modelRevision.value
+  const triggerRevision = ++previewFlowTriggerRevision
+  const isCurrentRun = (): boolean => projectId === currentProject.value?.id
+    && revision === modelRevision.value
+    && triggerRevision === previewFlowTriggerRevision
+  const matchingFlows = flows.filter(flow => flow.trigger.kind === kind
+    && (kind !== 'field.change' || !flow.trigger.field || flow.trigger.field === field))
+
+  // Execute matching flows in model order and feed each result into the next
+  // one. This keeps Preview semantics aligned with the standalone Source
+  // runtime and prevents concurrent flows from overwriting each other's value
+  // updates with stale snapshots.
+  void (async () => {
+    let nextValues = cloneWorkbenchJson(values)
+    const nextProjections = { ...previewFlowProjections.value }
+    for (const flow of matchingFlows) {
+      const result = await flowInterpreter.run(flow, {
+        revision,
+        values: cloneWorkbenchJson(nextValues),
+        signal: previewFlowAbortController.signal,
+        onTrace: event => {
+          if (isCurrentRun() && event.type === 'error' && event.error)
+            message.value = event.error
+        },
+      })
+      if (!isCurrentRun())
+        return
+      if (result.status === 'success' || result.status === 'end') {
+        nextValues = result.values
+        nextProjections[flow.id] = result.projection
+      }
+    }
+    if (isCurrentRun()) {
+      previewFlowProjections.value = nextProjections
+      previewModel.value = nextValues
+    }
+  })()
 }
 
 function undoDesign(): boolean {
   const history = configHistory.value
-  return history ? commitModelHistory(undoConfigModelHistory(history, lowCodeRegistry.value)) : false
+  return history ? commitModelHistory(undoConfigModelHistory(history, lowCodeRegistry.value, { flowActions: flowActionRegistry })) : false
 }
 
 function redoDesign(): boolean {
   const history = configHistory.value
-  return history ? commitModelHistory(redoConfigModelHistory(history, lowCodeRegistry.value)) : false
+  return history ? commitModelHistory(redoConfigModelHistory(history, lowCodeRegistry.value, { flowActions: flowActionRegistry })) : false
 }
 
 async function refreshProjects(): Promise<void> {
@@ -651,6 +760,17 @@ function openExportPreview(mode: 'source' | 'config'): void {
 function closeExportPreview(): void {
   exportPreviewMode.value = undefined
   void nextTick(() => exportPreviewReturnFocus.value?.focus())
+}
+
+function openFlowWorkspace(): void {
+  if (!currentProject.value)
+    return
+  flowWorkspaceOpen.value = true
+  void nextTick(() => flowDialogRef.value?.querySelector<HTMLElement>('button, input, select')?.focus())
+}
+
+function closeFlowWorkspace(): void {
+  flowWorkspaceOpen.value = false
 }
 
 function exportPreviewText(): string {
@@ -821,6 +941,10 @@ function handleExportDialogKeydown(event: KeyboardEvent): void {
   handleDialogKeydown(event, exportDialogRef.value, closeExportPreview)
 }
 
+function handleFlowDialogKeydown(event: KeyboardEvent): void {
+  handleDialogKeydown(event, flowDialogRef.value, closeFlowWorkspace)
+}
+
 onMounted(async () => {
   const openedRepository = await openDefaultWorkspaceProjectRepository()
   if (disposed) {
@@ -841,6 +965,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   disposed = true
   openProjectRequestId += 1
+  previewFlowAbortController.abort('workbench-unmounted')
   previewRevisionGate.invalidate()
   repository.value?.close()
 })
@@ -893,7 +1018,7 @@ onBeforeUnmount(() => {
             @click="exportMenuOpen = !exportMenuOpen"
           >
             <Download :size="16" aria-hidden="true" />
-            <ChevronDown :size="13" aria-hidden="true" />
+            <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
           </button>
           <div v-if="exportMenuOpen" class="export-menu-popover" role="menu">
             <button type="button" role="menuitem" @click="openExportPreview('source')">
@@ -906,6 +1031,18 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </div>
+        <button
+          v-if="currentProject"
+          type="button"
+          :class="{ 'is-active': flowWorkspaceOpen }"
+          :title="workbenchLocale.t('flow.dialog.title', 'Flow orchestration')"
+          :aria-label="workbenchLocale.t('flow.dialog.title', 'Flow orchestration')"
+          :aria-expanded="flowWorkspaceOpen"
+          data-flow-workspace-trigger
+          @click="openFlowWorkspace"
+        >
+          <Workflow :size="17" aria-hidden="true" />
+        </button>
         <button type="button" :title="theme === 'dark' ? 'Use light theme' : 'Use dark theme'" :aria-label="theme === 'dark' ? 'Use light theme' : 'Use dark theme'" @click="toggleTheme">
           <Sun v-if="theme === 'dark'" :size="17" aria-hidden="true" />
           <Moon v-else :size="17" aria-hidden="true" />
@@ -913,6 +1050,7 @@ onBeforeUnmount(() => {
         <button
           v-if="currentProject"
           type="button"
+          class="preview-toggle-button"
           :title="previewOpen ? 'Hide preview' : 'Show preview'"
           :aria-label="previewOpen ? 'Hide preview' : 'Show preview'"
           @click="togglePreview"
@@ -970,6 +1108,7 @@ onBeforeUnmount(() => {
             :model-registry="lowCodeRegistry"
             :command-control="designerCommandControl"
             :history-control="designerHistoryControl"
+            :locale="props.locale"
             :readonly="busy"
             :registry="registry"
             @selection-set-change="selectedDesignerIds = $event"
@@ -1005,7 +1144,7 @@ onBeforeUnmount(() => {
               </div>
             </template>
 
-            <template #palette="{ materials, addMaterial, readonly }">
+            <template #palette="{ materials, addMaterial, readonly, form }">
               <div class="designer-left-panel">
                 <nav ref="designerLeftTabs" class="designer-left-tabs" role="tablist" aria-label="Designer navigation">
                   <button
@@ -1028,6 +1167,7 @@ onBeforeUnmount(() => {
                 <DesignerPalette
                   v-if="activeDesignerLeftView === 'components'"
                   :materials="materials"
+                  :form="form"
                   :registry="registry"
                   :readonly="readonly"
                   @add-material="addMaterial"
@@ -1133,16 +1273,24 @@ onBeforeUnmount(() => {
                 :key="`${currentProject.id}-${rendererPreviewVersion}`"
                 v-model="previewModel"
                 class="page-preview-form"
+                mode="preview"
                 :namespace="registry.rendererNamespace"
+                :reaction-projection="previewFlowProjection"
                 v-bind="activePreview.renderer"
+                @submit="runPreviewFlows('form.submit', $event)"
+                @field-change="runPreviewFlows('field.change', $event.values, $event.field)"
               />
               <template #fallback>
                 <ConfigFormRenderer
                   v-if="runtimeFallbackPreview"
                   v-model="fallbackPreviewModel"
                   class="page-preview-form"
+                  mode="preview"
                   :namespace="registry.rendererNamespace"
+                  :reaction-projection="previewFlowProjection"
                   v-bind="runtimeFallbackPreview.renderer"
+                  @submit="runPreviewFlows('form.submit', $event)"
+                  @field-change="runPreviewFlows('field.change', $event.values, $event.field)"
                 />
               </template>
             </PreviewRuntimeBoundary>
@@ -1196,6 +1344,35 @@ onBeforeUnmount(() => {
             <strong>{{ template.title }}</strong>
             <span>{{ template.adapter }}</span>
           </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="flowWorkspaceOpen && currentProject" class="flow-workspace-overlay" @click.self="closeFlowWorkspace">
+      <section
+        ref="flowDialog"
+        class="flow-workspace-dialog"
+        data-flow-workspace-dialog
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="flow-workspace-dialog-title"
+        tabindex="-1"
+        @keydown="handleFlowDialogKeydown"
+      >
+        <header class="flow-workspace-dialog-header">
+          <h2 id="flow-workspace-dialog-title">{{ workbenchLocale.t('flow.dialog.title', 'Flow orchestration') }}</h2>
+          <button type="button" :title="workbenchLocale.t('flow.dialog.close', 'Close flow orchestration')" :aria-label="workbenchLocale.t('flow.dialog.close', 'Close flow orchestration')" @click="closeFlowWorkspace">
+            <X :size="17" aria-hidden="true" />
+          </button>
+        </header>
+        <div class="flow-workspace-dialog-body">
+          <FlowWorkspace
+            :flows="configModel?.flows ?? []"
+            :field-names="designerFieldNames"
+            :locale="props.locale"
+            :readonly="busy"
+            @update="updateModelOperation({ type: 'updateFlows', flows: $event })"
+          />
         </div>
       </section>
     </div>

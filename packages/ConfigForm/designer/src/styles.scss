@@ -3,7 +3,7 @@
 .mx-config-form-designer {
   --mx-designer-border: #d9dee7;
   --mx-designer-muted: #64748b;
-  --mx-designer-surface: #ffffff;
+  --mx-designer-surface: var(--mx-designer-overlay-surface, #fff);
   --mx-designer-surface-raised: #fbfcfe;
   --mx-designer-overlay: #ffffff;
   --mx-designer-subtle: #f6f8fb;
@@ -277,15 +277,16 @@
 
 .mx-config-form-designer__palette-items {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
   padding: 0 10px;
 }
 
 .mx-config-form-designer__palette-item {
   position: relative;
   min-width: 0;
-  min-height: 42px;
+  height: 38px;
+  min-height: 38px;
   padding: 0;
   text-align: left;
   color: var(--mx-designer-text);
@@ -293,7 +294,16 @@
   border: 1px solid var(--mx-designer-control-border);
   border-radius: 5px;
   cursor: grab;
+  user-select: none;
+  touch-action: none;
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.mx-config-form-designer__palette-item[aria-pressed="true"] {
+  color: var(--mx-designer-accent);
+  border-color: var(--mx-designer-accent);
+  background: var(--mx-designer-accent-soft);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mx-designer-accent) 18%, transparent);
 }
 
 .mx-config-form-designer__palette-item:hover:not([aria-disabled="true"]) {
@@ -309,23 +319,26 @@
 
 .mx-config-form-designer__palette-item-summary {
   display: grid;
-  min-height: 40px;
-  padding: 6px 7px;
+  height: 100%;
+  min-height: 0;
+  padding: 5px 7px;
   align-items: center;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 6px;
 }
 
-.mx-config-form-designer__palette-item-summary > span:last-child {
+.mx-config-form-designer__palette-item-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mx-config-form-designer__palette-drag-preview {
-  display: none;
-  width: 100%;
-  min-width: 0;
+.mx-config-form-designer__palette-item-summary small {
+  color: var(--mx-designer-muted);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .mx-config-form-designer__palette-icon {
@@ -367,6 +380,7 @@
 }
 
 .mx-config-form-designer__canvas-sheet {
+  position: relative;
   width: min(100%, 900px);
   min-height: 100%;
   margin: 0 auto;
@@ -384,45 +398,6 @@
 
 .mx-config-form-designer__canvas-sheet[data-sheet-breakpoint="mobile"] {
   width: min(100%, 390px);
-}
-
-.mx-config-form-designer__node-list {
-  display: flex;
-  min-height: 52px;
-  margin: 0;
-  padding: 0;
-  flex-direction: column;
-  gap: 10px;
-  list-style: none;
-}
-
-.mx-config-form-designer__node-list.is-empty {
-  min-height: 42px;
-  padding: 0;
-}
-
-.mx-config-form-designer__node {
-  position: relative;
-  min-width: 0;
-}
-
-.mx-config-form-designer__node.is-selected {
-  z-index: 50;
-}
-
-.mx-config-form-designer__node:has(.mx-config-form-designer__node.is-selected) {
-  z-index: 49;
-}
-
-.mx-config-form-designer__node.is-selected::after {
-  position: absolute;
-  z-index: 60;
-  inset: -5px;
-  box-sizing: border-box;
-  border: 2px solid var(--mx-designer-accent);
-  border-radius: 5px;
-  content: "";
-  pointer-events: none;
 }
 
 .mx-config-form-designer__node-actions {
@@ -446,10 +421,6 @@
   transform: translateY(-100%);
 }
 
-.mx-config-form-designer__node.is-selected > .mx-config-form-designer__node-actions {
-  display: flex;
-}
-
 .mx-config-form-designer__property-heading code {
   color: var(--mx-designer-muted);
   font-size: 11px;
@@ -463,30 +434,18 @@
 .mx-config-form-designer__drag-handle {
   cursor: grab;
   pointer-events: auto;
+  touch-action: none;
 }
 
-.mx-config-form-designer__container-slots {
-  display: none;
-}
-
-.mx-config-form-designer__node-preview-shell {
-  position: relative;
-  min-width: 0;
-  cursor: pointer;
-  outline: none;
-}
-
-.mx-config-form-designer .mx-config-form-designer__node-preview-shell:focus-visible {
-  outline: none;
-}
-
-.mx-config-form-designer__node-preview-shell.is-container {
-  overflow: visible;
-}
-
-.mx-config-form-designer__node-preview {
-  display: block;
-  min-width: 0;
+.mx-config-form-designer__screen-reader {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .mx-config-form-designer__toolbar-actions {
@@ -496,104 +455,91 @@
   scrollbar-width: thin;
 }
 
-.mx-config-form-designer__node-preview-real {
-  min-width: 0;
+.mx-config-form-designer__runtime-surface > form {
+  margin: 0;
 }
 
-.mx-config-form-designer__node-preview-real.is-field {
-  display: contents;
+.mx-config-form-designer__runtime-surface [data-config-node-id] {
+  box-sizing: border-box;
 }
 
-.mx-config-form-designer__node-preview-control {
-  width: 100%;
-  min-width: 0;
+.mx-config-form-designer__runtime-surface [data-config-node-state~="candidate"] {
+  opacity: 0.58;
+  outline: 2px dashed var(--mx-designer-accent-line);
+  outline-offset: 3px;
+  transition: opacity 100ms ease, outline-color 100ms ease;
+}
+
+.mx-config-form-designer__canvas-empty {
+  display: grid;
+  min-height: 104px;
+  color: var(--mx-designer-runtime-muted);
+  font-size: 12px;
+  border: 1px dashed var(--mx-designer-runtime-border);
+  border-radius: 5px;
+  place-items: center;
   pointer-events: none;
 }
 
-.mx-config-form-designer__node-preview-readonly {
-  display: inline-block;
-  min-width: 24px;
-  min-height: 24px;
-  color: var(--mx-designer-text);
-  line-height: 24px;
-  white-space: pre-wrap;
-  word-break: break-word;
+.mx-config-form-designer__editor-overlay {
+  position: absolute;
+  z-index: 90;
+  inset: 0;
+  pointer-events: none;
 }
 
-.mx-config-form-designer__node-preview.is-interactive .mx-config-form-designer__node-preview-control {
+.mx-config-form-designer__collapsed-drop-indicator {
+  position: absolute;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--mx-designer-accent-soft) 42%, transparent);
+  border: 2px dashed var(--mx-designer-accent-line);
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.mx-config-form-designer__design-policy-spot {
+  position: absolute;
+  z-index: 120;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  color: #7c4a03;
+  background: #fff7d6;
+  border: 1px solid #d49a22;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 14%);
+  place-items: center;
   pointer-events: auto;
 }
 
-.mx-config-form-designer__node-preview.is-required > .mx-config-form-designer__node-preview-label::before {
-  margin-right: 4px;
-  color: var(--mx-designer-danger);
-  content: "*";
+.mx-config-form-designer__design-policy-spot:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 2px;
 }
 
-.mx-config-form-designer__node-preview-label {
-  min-width: 0;
-  color: var(--mx-designer-text);
-  font-size: 14px;
-  letter-spacing: 0;
-  line-height: 22px;
+.mx-config-form-designer__selection-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed color-mix(in srgb, var(--mx-designer-accent) 72%, transparent);
+  border-radius: 4px;
+  pointer-events: none;
 }
 
-.mx-config-form-designer__node-preview.is-label-left .mx-config-form-designer__node-preview-label {
-  line-height: 32px;
+.mx-config-form-designer__selection-box.is-primary {
+  border-style: solid;
+  border-width: 2px;
+  border-color: var(--mx-designer-accent);
 }
 
-.mx-config-form-designer__node-preview.is-label-left .mx-config-form-designer__node-preview-readonly {
-  min-height: 32px;
-  line-height: 32px;
+.mx-config-form-designer__selection-box.is-primary > .mx-config-form-designer__node-actions {
+  display: flex;
 }
 
-.mx-config-form-designer__node-preview-shell.is-container > .mx-config-form-designer__node-preview {
-  min-width: 0;
+.mx-config-form-designer__selection-box > .mx-config-form-designer__node-actions,
+.mx-config-form-designer__selection-box > .mx-config-form-designer__resize-handle {
+  pointer-events: auto;
 }
 
-.mx-config-form-designer__node-preview-shell.is-container > .mx-config-form-designer__node-preview > .mx-config-form-designer__node-preview-real > * {
-  max-width: 100%;
-}
-
-.mx-config-form-designer__node-preview-shell.is-container .mx-config-form-designer__node-list {
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  gap: 12px;
-}
-
-.mx-config-form-designer__node-preview-shell.is-container .mx-config-form-designer__node-list.is-empty {
-  min-height: 44px;
-}
-
-.mx-config-form-designer__node-preview-slot-fallback {
-  display: grid;
-  min-height: 42px;
-  padding: 8px;
-  color: var(--mx-designer-runtime-muted);
-  border: 1px dashed var(--mx-designer-runtime-border);
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--mx-designer-canvas-sheet) 88%, var(--mx-designer-runtime-border));
-  font-size: 12px;
-  place-items: center;
-}
-
-.mx-config-form-designer__node-preview-shell.is-container .mx-config-form-designer__node {
-  border-radius: 6px;
-}
-
-.mx-config-form-designer__slot-marker {
-  display: none;
-}
-
-.mx-config-form-designer__node-preview.is-unsupported {
-  min-height: 58px;
-  border: 1px dashed #b9c4cf;
-  border-radius: 6px;
-  background: #f8fafc;
-}
-
-.mx-config-form-designer__empty-slot,
 .mx-config-form-designer__empty-state {
   display: grid;
   min-height: 40px;
@@ -601,70 +547,6 @@
   color: var(--mx-designer-muted);
   font-size: 12px;
   place-items: center;
-}
-
-.mx-config-form-designer__empty-slot {
-  position: relative;
-  min-height: 42px;
-  overflow: hidden;
-  grid-auto-flow: column;
-  justify-content: center;
-  gap: 7px;
-  background-color: transparent;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.mx-config-form-designer__drop-tail {
-  display: block;
-  min-height: 18px;
-  margin: 0;
-  border: 2px dashed transparent;
-  border-radius: 6px;
-  pointer-events: auto;
-  transition: min-height 120ms ease, background-color 120ms ease, border-color 120ms ease;
-}
-
-.mx-config-form-designer__node-list.is-root > .mx-config-form-designer__drop-tail {
-  grid-column: 1 / -1;
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
-  min-height: 34px;
-  background: color-mix(in srgb, var(--mx-designer-accent-soft) 52%, transparent);
-  border-color: var(--mx-designer-accent-line);
-}
-
-.mx-config-form-designer__empty-slot::before {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  left: 8px;
-  border-top: 2px dashed var(--mx-designer-drop-line);
-  content: "";
-  pointer-events: none;
-}
-
-.mx-config-form-designer__empty-slot-icon {
-  position: relative;
-  z-index: 1;
-  display: inline-grid;
-  width: 22px;
-  height: 22px;
-  color: #98a3b1;
-  font-size: 14px;
-  font-weight: 400;
-  place-items: center;
-  border: 0;
-  border-radius: 3px;
-  background: var(--mx-designer-surface);
-  box-shadow: 0 0 0 6px var(--mx-designer-surface);
-}
-
-.mx-config-form-designer__node.is-selected:not(.is-primary)::after {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--mx-designer-accent) 72%, transparent);
 }
 
 .mx-config-form-designer__resize-handle {
@@ -688,137 +570,6 @@
   border-left: 1px solid var(--mx-designer-accent);
   border-right: 1px solid var(--mx-designer-accent);
   content: "";
-}
-
-.mx-config-form-designer__empty-slot-label {
-  position: relative;
-  z-index: 1;
-  padding: 0 4px;
-  color: var(--mx-designer-muted);
-  background: var(--mx-designer-surface);
-  box-shadow: 0 0 0 4px var(--mx-designer-surface);
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-color: rgb(239 246 255 / 72%);
-  border-color: var(--mx-designer-accent-line);
-  border-style: dashed;
-  border-width: 2px;
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list {
-  outline: 2px dashed var(--mx-designer-accent-line);
-  outline-offset: 4px;
-  background: rgb(239 246 255 / 44%);
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot::before {
-  border-top-color: var(--mx-designer-accent-line);
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot .mx-config-form-designer__empty-slot-icon {
-  color: var(--mx-designer-accent);
-  background: var(--mx-designer-accent-soft);
-  box-shadow: 0 0 0 6px var(--mx-designer-accent-soft);
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot .mx-config-form-designer__empty-slot-label {
-  color: var(--mx-designer-accent);
-  background: var(--mx-designer-accent-soft);
-  box-shadow: 0 0 0 4px var(--mx-designer-accent-soft);
-}
-
-.mx-config-form-designer__node-list > .sortable-ghost {
-  min-height: 54px;
-  opacity: 0.62;
-  border: 2px dashed var(--mx-designer-accent-line);
-  border-radius: 7px;
-  background: var(--mx-designer-accent-soft);
-  box-shadow: 0 8px 20px rgb(37 99 235 / 12%);
-}
-
-.mx-config-form-designer__node-list > .mx-config-form-designer__palette-item.sortable-ghost,
-.mx-config-form-designer__palette-item.sortable-fallback {
-  display: block;
-  width: min(520px, calc(100vw - 32px));
-  min-height: 64px;
-  padding: 12px;
-  background: var(--mx-designer-surface);
-  border: 2px dashed var(--mx-designer-accent-line);
-  border-radius: 7px;
-  cursor: grabbing;
-}
-
-.mx-config-form-designer__node-list > .mx-config-form-designer__palette-item.has-drag-preview.sortable-ghost .mx-config-form-designer__palette-item-summary,
-.mx-config-form-designer__palette-item.has-drag-preview.sortable-fallback .mx-config-form-designer__palette-item-summary {
-  display: none;
-}
-
-.mx-config-form-designer__node-list > .mx-config-form-designer__palette-item.has-drag-preview.sortable-ghost .mx-config-form-designer__palette-drag-preview,
-.mx-config-form-designer__palette-item.has-drag-preview.sortable-fallback .mx-config-form-designer__palette-drag-preview {
-  display: block;
-}
-
-.mx-config-form-designer__node-list > .sortable-fallback {
-  z-index: 5;
-  opacity: 0.72;
-  box-shadow: 0 12px 28px rgb(15 23 42 / 18%);
-}
-
-.mx-config-form-designer__palette-item.sortable-fallback {
-  z-index: 1000;
-  opacity: 0;
-  box-shadow: 0 12px 28px rgb(15 23 42 / 18%);
-}
-
-.mx-config-form-designer__drag-overlay {
-  --mx-designer-border: #d9dee7;
-  --mx-designer-muted: #64748b;
-  --mx-designer-surface: #fff;
-  --mx-designer-subtle: #f6f8fb;
-  --mx-designer-text: #17202a;
-  --mx-designer-accent: #2563eb;
-  --mx-designer-accent-soft: #eff6ff;
-  --mx-designer-accent-line: #60a5fa;
-  position: fixed;
-  z-index: 2000;
-  width: min(420px, calc(100vw - 32px));
-  min-height: 64px;
-  padding: 12px;
-  pointer-events: none;
-  opacity: 0.74;
-  background: var(--mx-designer-surface, #fff);
-  border: 2px dashed var(--mx-designer-accent-line, #60a5fa);
-  border-radius: 7px;
-  box-shadow: 0 16px 36px rgb(15 23 42 / 22%);
-  transform: translate(14px, 14px);
-  animation: mx-designer-drag-overlay-in 120ms ease-out;
-}
-
-.mx-config-form-designer__drag-overlay-summary {
-  display: grid;
-  min-height: 40px;
-  align-items: center;
-  grid-template-columns: 24px minmax(0, 1fr);
-  color: var(--mx-designer-text, #17202a);
-  font: 13px Inter, ui-sans-serif, system-ui, sans-serif;
-}
-
-@keyframes mx-designer-drag-overlay-in {
-  from {
-    opacity: 0;
-    transform: translate(14px, 14px) scale(0.96);
-  }
-
-  to {
-    opacity: 0.74;
-    transform: translate(14px, 14px) scale(1);
-  }
-}
-
-.mx-config-form-designer .sortable-fallback,
-.mx-config-form-designer .sortable-fallback * {
-  pointer-events: none !important;
 }
 
 .mx-config-form-designer__property-heading {
@@ -1517,10 +1268,6 @@
   gap: 12px 6px !important;
 }
 
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__container-slots {
-  padding-left: 16px;
-}
-
 .mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-heading,
 .mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-effect-heading,
 .mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-operand,
@@ -1528,54 +1275,12 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.mx-config-form-designer__node-preview-readonly,
-.mx-config-form-designer__node-preview-label {
-  color: var(--mx-designer-runtime-text);
-}
-
-.mx-config-form-designer__node-preview.is-unsupported {
-  color: var(--mx-designer-runtime-text);
-  background: var(--mx-designer-canvas-sheet);
-  border-color: var(--mx-designer-runtime-border);
-}
-
-.mx-config-form-designer__canvas-sheet .mx-config-form-designer__empty-slot,
-.mx-config-form-designer__canvas-sheet .mx-config-form-designer__empty-state,
-.mx-config-form-designer__empty-slot-icon,
-.mx-config-form-designer__empty-slot-label {
+.mx-config-form-designer__canvas-sheet .mx-config-form-designer__empty-state {
   color: var(--mx-designer-runtime-muted);
-}
-
-.mx-config-form-designer__empty-slot-icon,
-.mx-config-form-designer__empty-slot-label {
-  background: var(--mx-designer-canvas-sheet);
-}
-
-.mx-config-form-designer__empty-slot-icon {
-  box-shadow: 0 0 0 6px var(--mx-designer-canvas-sheet);
-}
-
-.mx-config-form-designer__empty-slot-label {
-  box-shadow: 0 0 0 4px var(--mx-designer-canvas-sheet);
 }
 
 .mx-config-form-designer__resize-handle {
   background: var(--mx-designer-overlay);
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-color: color-mix(in srgb, var(--mx-designer-accent-soft) 72%, transparent);
-}
-
-.mx-config-form-designer.is-dragging .mx-config-form-designer__node-list {
-  background: color-mix(in srgb, var(--mx-designer-accent-soft) 44%, transparent);
-}
-
-.mx-config-form-designer__drag-overlay {
-  --mx-designer-border: var(--mx-designer-runtime-border, #d9dee7);
-  --mx-designer-muted: var(--mx-designer-runtime-muted, #64748b);
-  --mx-designer-surface: var(--mx-designer-runtime-surface, #fff);
-  --mx-designer-text: var(--mx-designer-runtime-text, #17202a);
 }
 
 .mx-config-form-designer-property-form__label,

@@ -6,6 +6,7 @@ export { default as ConfigForm } from './src/index.vue'
 export {
   ConfigFormRenderer,
   createConfigFormRendererExpose,
+  RuntimeSurface,
 } from './src/renderer-entry'
 export type {
   ConfigFormControlBinding,
@@ -19,6 +20,14 @@ export type {
   ConfigFormRendererLayoutAttrs,
   ConfigFormRendererNode,
   ConfigFormRendererProps,
+  ConfigFormRenderMode,
+  ConfigFormRuntimeEditorBridge,
+  ConfigFormRuntimeEventContext,
+  ConfigFormRuntimeNodeMetadata,
+  RuntimeEditorBridge,
+  RuntimeEditorEventContext,
+  RuntimeNodeMetadata,
+  RuntimeSurfaceProps,
 } from './src/renderer-entry'
 export type {
   ComponentRegistry,

@@ -80,6 +80,11 @@ export interface DesignerMaterialSlotDefinition {
   max?: number
 }
 
+export interface DesignerMaterialParentDefinition {
+  material: string
+  slot: string
+}
+
 export interface DesignerRuntimeMaterialBinding {
   component: Component | string
   designerComponent?: Component | string
@@ -89,6 +94,28 @@ export interface DesignerRuntimeMaterialBinding {
   readonlyProp?: string
   readonlyRender?: DesignerReadonlyRender
   getValueFromEvent?: (...args: unknown[]) => unknown
+}
+
+export interface DesignerDesignPolicy {
+  /** Use the real runtime component unless an explicit controlled adapter is required. */
+  render?: 'runtime' | 'adapter'
+  /** Preview interactions are enabled only while the Designer interaction tool is active. */
+  interaction?: 'preview' | 'blocked'
+  /** Async and side-effectful components must render through a controlled adapter. */
+  async?: 'blocked' | 'adapter'
+  sideEffects?: 'blocked' | 'adapter'
+  adapter?: Component | string
+  /** Human-readable reason shown by the editor diagnostic overlay. */
+  diagnostic?: string
+}
+
+export interface DesignerResolvedDesignPolicy {
+  render: 'runtime' | 'adapter'
+  interaction: 'preview' | 'blocked'
+  async: 'blocked' | 'adapter'
+  sideEffects: 'blocked' | 'adapter'
+  adapter?: Component | string
+  diagnostic?: string
 }
 
 export interface DesignerReadonlyRenderContext {
@@ -113,6 +140,9 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   category: string
   icon?: Component
   runtime: DesignerRuntimeMaterialBinding
+  designPolicy?: DesignerDesignPolicy
+  /** When present, the material is structural and may only exist in these parent slots. */
+  allowedParents?: DesignerMaterialParentDefinition[]
   setters: DesignerPropertySetterDefinition[]
   analyze?: (node: Extract<DesignerNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
 }

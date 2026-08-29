@@ -14,6 +14,50 @@ import { DesignerRegistryError } from '../document'
 
 const UNSAFE_COMPONENT_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
+function isControlledAdapter(value: unknown): boolean {
+  return typeof value === 'string'
+    ? value.trim().length > 0
+    : (typeof value === 'object' && value !== null) || typeof value === 'function'
+}
+
+function assertDesignPolicy(definition: DesignerMaterialDefinition, layerName: string): void {
+  const policy = definition.designPolicy
+  if (!policy)
+    return
+
+  const valid = (value: unknown, allowed: readonly string[]): boolean => value === undefined || allowed.includes(value as string)
+  if (!valid(policy.render, ['runtime', 'adapter'])
+    || !valid(policy.interaction, ['preview', 'blocked'])
+    || !valid(policy.async, ['blocked', 'adapter'])
+    || !valid(policy.sideEffects, ['blocked', 'adapter'])
+    || (policy.diagnostic !== undefined && (typeof policy.diagnostic !== 'string' || !policy.diagnostic.trim()))
+    || (policy.adapter !== undefined && !isControlledAdapter(policy.adapter))) {
+    throw new DesignerRegistryError(
+      'DESIGNER_DESIGN_POLICY_INVALID',
+      `Designer material ${definition.key} has an invalid design policy`,
+      { key: definition.key, layerName },
+    )
+  }
+
+  const adapterRequired = policy.render === 'adapter'
+    || policy.async === 'adapter'
+    || policy.sideEffects === 'adapter'
+  if (adapterRequired && !isControlledAdapter(policy.adapter)) {
+    throw new DesignerRegistryError(
+      'DESIGNER_DESIGN_POLICY_ADAPTER_REQUIRED',
+      `Designer material ${definition.key} requires a controlled design adapter`,
+      { key: definition.key, layerName },
+    )
+  }
+  if (policy.render === 'runtime' && (policy.async === 'adapter' || policy.sideEffects === 'adapter')) {
+    throw new DesignerRegistryError(
+      'DESIGNER_DESIGN_POLICY_INVALID',
+      `Designer material ${definition.key} cannot use a runtime render policy with adapter-only capabilities`,
+      { key: definition.key, layerName },
+    )
+  }
+}
+
 function assertMaterialDefinition(definition: DesignerMaterialDefinition, layerName: string): void {
   if (!definition.key.trim()) {
     throw new DesignerRegistryError(
@@ -28,6 +72,40 @@ function assertMaterialDefinition(definition: DesignerMaterialDefinition, layerN
       `Designer material ${definition.key} must have a positive integer version`,
       { key: definition.key, layerName, version: definition.version },
     )
+  }
+  assertDesignPolicy(definition, layerName)
+  const seenParents = new Set<string>()
+  for (const parent of definition.allowedParents ?? []) {
+    const key = `${parent.material}:${parent.slot}`
+    if (!parent.material.trim() || !parent.slot.trim() || seenParents.has(key)) {
+      throw new DesignerRegistryError(
+        'DESIGNER_MATERIAL_PARENT_INVALID',
+        `Designer material ${definition.key} has an invalid parent placement`,
+        { key: definition.key, layerName, parent },
+      )
+    }
+    seenParents.add(key)
+  }
+}
+
+function assertMaterialParents(
+  definition: DesignerMaterialDefinition,
+  materials: ReadonlyMap<string, DesignerMaterialDefinition>,
+): void {
+  for (const placement of definition.allowedParents ?? []) {
+    const parent = materials.get(placement.material)
+    const slot = parent?.kind === 'container'
+      ? parent.slots.find(candidate => candidate.name === placement.slot)
+      : undefined
+    const acceptsKind = !slot?.accepts || slot.accepts.includes(definition.kind)
+    const acceptsMaterial = !slot?.materials || slot.materials.includes(definition.key)
+    if (!parent || parent.kind !== 'container' || !slot || !acceptsKind || !acceptsMaterial) {
+      throw new DesignerRegistryError(
+        'DESIGNER_MATERIAL_PARENT_INVALID',
+        `Designer material ${definition.key} references an incompatible parent placement`,
+        { key: definition.key, parent: placement },
+      )
+    }
   }
 }
 
@@ -98,6 +176,9 @@ export function createDesignerRegistry(
         propertyControls.set(control, definition)
     }
   }
+
+  for (const material of materials.values())
+    assertMaterialParents(material, materials)
 
   return {
     rendererNamespace: options.rendererNamespace?.trim() || 'mx-config-form',

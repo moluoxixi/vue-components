@@ -16,6 +16,12 @@
   width: 100%;
 }
 
+.mx-element-config-form__control > .el-date-editor,
+.mx-element-config-form__control > .el-time-editor {
+  width: 100%;
+  min-width: 0;
+}
+
 .mx-element-config-form__field {
   display: grid;
   gap: 6px;

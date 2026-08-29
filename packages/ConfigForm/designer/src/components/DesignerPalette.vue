@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import type { DesignerNode } from '../document'
+import type { DesignerFormSettings } from '../document'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import { Search } from '@lucide/vue'
-import Sortable from 'sortablejs'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
-import DesignerNodePreview from './DesignerNodePreview.vue'
+import { createDesignerNodeId } from '../history'
+import { DESIGNER_DRAG_KEY } from './designer-drag'
 
 const props = defineProps<{
   materials: DesignerMaterialDefinition[]
   registry?: DesignerRegistry
+  form?: DesignerFormSettings
   readonly?: boolean
 }>()
 const locale = useDesignerLocale()
@@ -17,20 +18,18 @@ const locale = useDesignerLocale()
 const emit = defineEmits<{
   addMaterial: [materialKey: string]
 }>()
+const dragController = inject(DESIGNER_DRAG_KEY, undefined)
 
 const query = ref('')
-const listRef = ref<HTMLElement>()
-const preparedPreviewMaterialKey = ref<string>()
-const preparedPreviewMaterial = shallowRef<DesignerMaterialDefinition>()
-const preparedPreviewNode = shallowRef<DesignerNode>()
-const dragOverlayActive = ref(false)
-const dragPointer = ref({ x: 0, y: 0 })
-let sortables: Sortable[] = []
-let dragStart: { x: number, y: number } | undefined
+let activePointerId: number | undefined
+let activePointerTarget: HTMLElement | undefined
+let dragActivated = false
+let suppressClick = false
 
-function setDragging(active: boolean): void {
-  listRef.value?.closest<HTMLElement>('.mx-config-form-designer')?.classList.toggle('is-dragging', active)
-}
+const keyboardDragSession = computed(() => {
+  const session = dragController?.session.value
+  return session?.active && session.input === 'keyboard' ? session : undefined
+})
 
 const groups = computed(() => {
   const normalized = query.value.trim().toLowerCase()
@@ -47,100 +46,125 @@ const groups = computed(() => {
   return [...grouped.entries()]
 })
 
-function clearPreparedPreview(): void {
-  window.removeEventListener('pointermove', handlePreviewPointerMove)
-  window.removeEventListener('pointerup', clearPreparedPreview)
-  window.removeEventListener('pointercancel', clearPreparedPreview)
-  dragStart = undefined
-  dragOverlayActive.value = false
-  preparedPreviewMaterialKey.value = undefined
-  preparedPreviewMaterial.value = undefined
-  preparedPreviewNode.value = undefined
+function handlePointerMove(event: PointerEvent): void {
+  if (event.pointerId !== activePointerId)
+    return
+  dragActivated = dragController?.move({ x: event.clientX, y: event.clientY }) ?? false
+  if (dragActivated)
+    event.preventDefault()
 }
 
-function handlePreviewPointerMove(event: PointerEvent): void {
-  if (!dragStart)
-    return
-  const distance = Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y)
-  if (distance < 4)
-    return
-  dragPointer.value = { x: event.clientX, y: event.clientY }
-  dragOverlayActive.value = true
+function cleanupPointerDrag(): void {
+  if (activePointerId !== undefined && activePointerTarget?.hasPointerCapture?.(activePointerId))
+    activePointerTarget.releasePointerCapture(activePointerId)
+  activePointerId = undefined
+  activePointerTarget = undefined
+  window.removeEventListener('pointermove', handlePointerMove)
+  window.removeEventListener('pointerup', handlePointerUp)
+  window.removeEventListener('pointercancel', handlePointerCancel)
 }
 
-function prepareMaterialPreview(material: DesignerMaterialDefinition, event: PointerEvent): void {
-  clearPreparedPreview()
-  if (props.readonly)
+function handlePointerUp(event: PointerEvent): void {
+  if (event.pointerId !== activePointerId)
     return
-  preparedPreviewMaterialKey.value = material.key
-  preparedPreviewMaterial.value = material
-  dragStart = { x: event.clientX, y: event.clientY }
-  dragPointer.value = { x: event.clientX, y: event.clientY }
-  window.addEventListener('pointermove', handlePreviewPointerMove)
-  window.addEventListener('pointerup', clearPreparedPreview, { once: true })
-  window.addEventListener('pointercancel', clearPreparedPreview, { once: true })
-  if (!props.registry)
+  const wasActive = dragActivated
+  dragController?.finish({ x: event.clientX, y: event.clientY })
+  cleanupPointerDrag()
+  dragActivated = false
+  if (!wasActive)
     return
-  const suffix = material.key.replace(/[^a-z0-9_-]+/gi, '-')
-  try {
-    preparedPreviewNode.value = props.registry.createNode(material.key, {
-      id: `palette-preview-${suffix}`,
-      ...(material.kind === 'field' ? { field: `preview_${suffix.replace(/-/g, '_')}` } : {}),
-    })
-  }
-  catch {
-    // A broken material remains usable from the palette and reports through the real add flow.
-  }
+  suppressClick = true
+  window.setTimeout(() => {
+    suppressClick = false
+  }, 0)
+}
+
+function handlePointerCancel(event: PointerEvent): void {
+  if (event.pointerId !== activePointerId)
+    return
+  dragController?.cancel()
+  cleanupPointerDrag()
+  dragActivated = false
+}
+
+function prepareMaterialDrag(material: DesignerMaterialDefinition, event: PointerEvent): void {
+  if (props.readonly || event.button !== 0 || !dragController)
+    return
+  if (event.pointerType !== 'touch')
+    event.preventDefault()
+  dragController.cancel()
+  activePointerId = event.pointerId
+  activePointerTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
+  activePointerTarget?.setPointerCapture?.(event.pointerId)
+  dragActivated = false
+  dragController.beginMaterial(material.key, createDesignerNodeId('candidate'), {
+    x: event.clientX,
+    y: event.clientY,
+  })
+  window.addEventListener('pointermove', handlePointerMove, { passive: false })
+  window.addEventListener('pointerup', handlePointerUp)
+  window.addEventListener('pointercancel', handlePointerCancel)
 }
 
 function addMaterial(materialKey: string): void {
-  if (!props.readonly) {
-    emit('addMaterial', materialKey)
-    clearPreparedPreview()
-  }
+  if (props.readonly || suppressClick)
+    return
+  emit('addMaterial', materialKey)
 }
 
-function destroySortable(): void {
-  setDragging(false)
-  clearPreparedPreview()
-  for (const sortable of sortables)
-    sortable.destroy()
-  sortables = []
+function isMaterialKeyboardDragging(materialKey: string): boolean {
+  const source = keyboardDragSession.value?.source
+  return source?.type === 'material' && source.materialKey === materialKey
 }
 
-async function createSortable(): Promise<void> {
-  destroySortable()
+function handleMaterialKeydown(material: DesignerMaterialDefinition, event: KeyboardEvent): void {
   if (props.readonly)
     return
-  await nextTick()
-  if (!listRef.value || props.readonly)
+
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    event.stopPropagation()
+    dragController?.cancel()
+    addMaterial(material.key)
     return
-  const group = {
-    name: 'config-form-designer',
-    pull: 'clone' as const,
-    put: false as const,
   }
-  for (const list of listRef.value.querySelectorAll<HTMLElement>('.mx-config-form-designer__palette-items')) {
-    sortables.push(Sortable.create(list, {
-      animation: 180,
-      draggable: '[data-designer-draggable]',
-      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-      forceFallback: true,
-      group,
-      sort: false,
-      onStart: () => setDragging(true),
-      onEnd: () => {
-        setDragging(false)
-        clearPreparedPreview()
-      },
-    }))
+
+  const keyboardSession = keyboardDragSession.value
+  if (event.key === 'Escape' && keyboardSession) {
+    event.preventDefault()
+    event.stopPropagation()
+    dragController?.cancel()
+    return
   }
+  if (event.key.startsWith('Arrow') && keyboardSession) {
+    event.preventDefault()
+    event.stopPropagation()
+    dragController?.moveKeyboard(event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 'next' : 'previous')
+    return
+  }
+  if (event.key !== ' ' || !dragController)
+    return
+
+  event.preventDefault()
+  event.stopPropagation()
+  if (keyboardSession)
+    dragController.finishKeyboard()
+  else
+    dragController.beginMaterialKeyboard(material.key, createDesignerNodeId('candidate'))
 }
 
-watch(() => props.readonly, createSortable)
-watch(() => props.materials, createSortable)
-onMounted(createSortable)
-onBeforeUnmount(destroySortable)
+onBeforeUnmount(() => {
+  dragController?.cancel()
+  cleanupPointerDrag()
+})
+
+watch(() => props.readonly, (readonly) => {
+  if (!readonly)
+    return
+  dragController?.cancel()
+  cleanupPointerDrag()
+  dragActivated = false
+})
 </script>
 
 <template>
@@ -149,7 +173,7 @@ onBeforeUnmount(destroySortable)
       <Search :size="16" aria-hidden="true" />
       <input v-model="query" type="search" :placeholder="locale.t('palette.search', 'Search')" :aria-label="locale.t('palette.searchMaterials', 'Search materials')">
     </div>
-    <div ref="listRef" class="mx-config-form-designer__palette-list">
+    <div class="mx-config-form-designer__palette-list">
       <section v-for="[category, entries] in groups" :key="category" class="mx-config-form-designer__palette-group">
         <h2>{{ category }}</h2>
         <div class="mx-config-form-designer__palette-items">
@@ -157,37 +181,24 @@ onBeforeUnmount(destroySortable)
             v-for="material in entries"
             :key="material.key"
             class="mx-config-form-designer__palette-item"
-            :class="{ 'has-drag-preview': preparedPreviewMaterialKey === material.key && preparedPreviewNode }"
             data-designer-draggable
             :data-material-key="material.key"
             role="button"
             :aria-disabled="readonly ? 'true' : undefined"
+            :aria-pressed="isMaterialKeyboardDragging(material.key)"
             :tabindex="readonly ? -1 : 0"
             :title="locale.materialTitle(material)"
             @click="addMaterial(material.key)"
-            @keydown.enter.prevent="addMaterial(material.key)"
-            @keydown.space.prevent="addMaterial(material.key)"
-            @pointerdown="prepareMaterialPreview(material, $event)"
-            @pointerup="clearPreparedPreview"
-            @pointercancel="clearPreparedPreview"
+            @keydown="handleMaterialKeydown(material, $event)"
+            @pointerdown="prepareMaterialDrag(material, $event)"
           >
             <span class="mx-config-form-designer__palette-item-summary">
               <component :is="material.icon" v-if="material.icon" :size="17" aria-hidden="true" />
               <span class="mx-config-form-designer__palette-icon" v-else aria-hidden="true">
                 {{ material.kind === 'field' ? 'F' : 'L' }}
               </span>
-              <span>{{ locale.materialTitle(material) }}</span>
-            </span>
-            <span
-              v-if="registry && preparedPreviewMaterialKey === material.key && preparedPreviewNode"
-              class="mx-config-form-designer__palette-drag-preview"
-              aria-hidden="true"
-              inert
-            >
-              <DesignerNodePreview
-                :node="preparedPreviewNode"
-                :registry="registry"
-              />
+              <span class="mx-config-form-designer__palette-item-name">{{ locale.materialTitle(material) }}</span>
+              <small>{{ material.kind === 'field' ? locale.t('palette.field', 'Field') : locale.t('palette.layout', 'Layout') }}</small>
             </span>
           </div>
         </div>
@@ -195,27 +206,4 @@ onBeforeUnmount(destroySortable)
       <p v-if="groups.length === 0" class="mx-config-form-designer__empty-state">{{ locale.t('palette.empty', 'No materials') }}</p>
     </div>
   </aside>
-  <Teleport to="body">
-    <div
-      v-if="dragOverlayActive && preparedPreviewMaterial"
-      class="mx-config-form-designer__drag-overlay"
-      :class="{ 'has-runtime-preview': preparedPreviewNode }"
-      :style="{ left: `${dragPointer.x}px`, top: `${dragPointer.y}px` }"
-      aria-hidden="true"
-      inert
-    >
-      <DesignerNodePreview
-        v-if="registry && preparedPreviewNode"
-        :node="preparedPreviewNode"
-        :registry="registry"
-      />
-      <span v-else class="mx-config-form-designer__drag-overlay-summary">
-        <component :is="preparedPreviewMaterial.icon" v-if="preparedPreviewMaterial.icon" :size="17" aria-hidden="true" />
-        <span class="mx-config-form-designer__palette-icon" v-else aria-hidden="true">
-          {{ preparedPreviewMaterial.kind === 'field' ? 'F' : 'L' }}
-        </span>
-        <span>{{ locale.materialTitle(preparedPreviewMaterial) }}</span>
-      </span>
-    </div>
-  </Teleport>
 </template>

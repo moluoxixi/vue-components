@@ -1,11 +1,13 @@
 import type {
   DesignerDocument,
+  DesignerFieldMaterialDefinition,
   DesignerMaterialDefinition,
 } from '../index'
 import { describe, expect, it } from 'vitest'
 import {
   compileDesignerDocument,
   createDesignerRegistry,
+  createDesignerRuntimeProjection,
 } from '../index'
 
 const materials: DesignerMaterialDefinition[] = [
@@ -142,6 +144,47 @@ function createDocument(): DesignerDocument {
 }
 
 describe('designer compiler', () => {
+  it('uses controlled design adapters without activating legacy designer components', () => {
+    const controlledAdapter = { name: 'ControlledAdapter' }
+    const runtimeComponent = { name: 'RuntimeComponent' }
+    const legacyDesignerComponent = { name: 'LegacyDesignerComponent' }
+    const baseFieldMaterial = materials[0] as DesignerFieldMaterialDefinition
+    const safeMaterial: DesignerFieldMaterialDefinition = {
+      ...baseFieldMaterial,
+      key: 'element.safe',
+      runtime: { component: runtimeComponent, designerComponent: legacyDesignerComponent },
+      createNode: ({ id, field = 'safe' }) => ({ id, kind: 'field', material: 'element.safe', field }),
+    }
+    const controlledMaterial: DesignerFieldMaterialDefinition = {
+      ...baseFieldMaterial,
+      key: 'element.controlled',
+      runtime: { component: runtimeComponent },
+      designPolicy: {
+        async: 'adapter',
+        adapter: controlledAdapter,
+        diagnostic: 'Async component uses a deterministic editor adapter.',
+      },
+      createNode: ({ id, field = 'controlled' }) => ({ id, kind: 'field', material: 'element.controlled', field }),
+    }
+    const registry = createDesignerRegistry([{ name: 'adapter', materials: [safeMaterial, controlledMaterial] }])
+    const document: DesignerDocument = {
+      version: 1,
+      form: {},
+      nodes: [
+        registry.createNode('element.safe', { id: 'safe', field: 'safe' }),
+        registry.createNode('element.controlled', { id: 'controlled', field: 'controlled' }),
+      ],
+    }
+
+    const design = createDesignerRuntimeProjection(document, registry)
+    expect(design.fields.map(node => node.component)).toEqual([runtimeComponent, controlledAdapter])
+
+    const runtime = compileDesignerDocument(document, registry)
+    expect(runtime.success).toBe(true)
+    if (runtime.success)
+      expect(runtime.fields.map(node => node.component)).toEqual([runtimeComponent, runtimeComponent])
+  })
+
   it('compiles document nodes into the real renderer contract without mutating input', () => {
     const registry = createDesignerRegistry([{ name: 'adapter', materials }])
     const document = createDocument()

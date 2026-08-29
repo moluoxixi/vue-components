@@ -1,4 +1,5 @@
 import type {
+  ConfigFormFlow,
   DesignerDiagnostic,
   DesignerDocument,
   DesignerNode,
@@ -364,6 +365,7 @@ function formatValueModel(values: Record<string, unknown>): string {
 function formatDesignerConfigWithResolver(
   document: DesignerDocument,
   resolveRuntimeComponent: RuntimeComponentResolver,
+  flows: ConfigFormFlow[] = [],
 ): string {
   const values: Record<string, unknown> = {}
   const collectValues = (nodes: DesignerNode[]): void => {
@@ -380,7 +382,13 @@ function formatDesignerConfigWithResolver(
   const fieldsSource = fields.length === 0
     ? '[]'
     : `[\n${fields.map(field => `  ${formatDefineField(field, 1)}`).join(',\n')}\n]`
+  const flowSource = flows.length === 0
+    ? '[]'
+    : `[
+${flows.map(flow => `  defineFlow(${formatStaticValue(flow, 1)})`).join(',\n')}
+]`
   return `import { defineFields } from '@moluoxixi/config-form-headless'
+import { defineFlow } from '@moluoxixi/config-form-core'
 
 ${formatValueModel(values)}
 
@@ -391,6 +399,8 @@ export const form = ${formatStaticValue(document.form)}
 export const initialValues: PageFormValues = ${formatStaticValue(values)}
 
 export const fields = ${fieldsSource}
+
+export const flows = ${flowSource}
 `
 }
 
@@ -410,6 +420,7 @@ export function formatLowCodePageConfig(
         throw new Error(`Component "${component}" is not registered for source generation.`)
       return definition.sourceComponent
     },
+    model.flows ?? [],
   )
 }
 

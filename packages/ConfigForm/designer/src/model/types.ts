@@ -1,4 +1,4 @@
-import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
+import type { ConfigFormFlow, ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type { RuleSet } from '@moluoxixi/zod3-to-rule'
 import type { DesignerConditionExpression, DesignerConditionTarget } from '../condition'
 import type {
@@ -9,6 +9,8 @@ import type {
   DesignerRegisteredBinding,
   DesignerRegisteredEventAction,
 } from '../document'
+
+export type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 
 export const LOW_CODE_PAGE_MODEL_VERSION = 1 as const
 
@@ -42,6 +44,8 @@ export interface LowCodePageModel {
   props: DesignerJsonObject
   form: DesignerFormSettings
   nodes: LowCodeNode[]
+  /** Optional JSON-only event flows; model remains the single source of truth. */
+  flows?: ConfigFormFlow[]
 }
 
 export interface ModelDiagnostic {
@@ -72,6 +76,7 @@ export type ModelOperation
   = | { type: 'insert', node: LowCodeNode, target: ModelNodeTarget }
     | { type: 'move', nodeId: string, target: ModelNodeTarget }
     | { type: 'updatePage', form: DesignerFormSettings, props: DesignerJsonObject }
+    | { type: 'updateFlows', flows?: ConfigFormFlow[] }
     | { type: 'updateProps', nodeId: string, props: DesignerJsonObject }
     | { type: 'updateEvents', nodeId: string, events: Record<string, RegisteredEventAction[]> }
     | { type: 'updateBindings', nodeId: string, bindings: Record<string, RegisteredBinding> }

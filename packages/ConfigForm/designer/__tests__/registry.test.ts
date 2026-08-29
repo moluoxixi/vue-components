@@ -9,6 +9,7 @@ import {
   analyzeDesignerDocument,
   createDesignerMaterialModuleRegistry,
   createDesignerRegistry,
+  createLowCodeComponentRegistry,
   defineDesignerMaterialModule,
   DesignerRegistryError,
 } from '../index'
@@ -57,6 +58,43 @@ function containerMaterial(min?: number): DesignerMaterialDefinition {
       slots: { default: [] },
     }),
   }
+}
+
+function structuralMaterials(): DesignerMaterialDefinition[] {
+  const item: DesignerMaterialDefinition = {
+    key: 'element.item',
+    version: 1,
+    kind: 'container',
+    title: 'Item',
+    category: 'Layout',
+    runtime: { component: 'article' },
+    allowedParents: [{ material: 'element.group', slot: 'default' }],
+    setters: [],
+    slots: [{ name: 'default', title: 'Content' }],
+    createNode: ({ id }) => ({
+      id,
+      kind: 'container',
+      material: 'element.item',
+      slots: { default: [] },
+    }),
+  }
+  const group: DesignerMaterialDefinition = {
+    key: 'element.group',
+    version: 1,
+    kind: 'container',
+    title: 'Group',
+    category: 'Layout',
+    runtime: { component: 'section' },
+    setters: [],
+    slots: [{ name: 'default', title: 'Items', accepts: ['container'], materials: ['element.item'] }],
+    createNode: ({ id }) => ({
+      id,
+      kind: 'container',
+      material: 'element.group',
+      slots: { default: [] },
+    }),
+  }
+  return [group, item]
 }
 
 describe('designer registry', () => {
@@ -164,6 +202,39 @@ describe('designer registry', () => {
     }])).toThrow(/component key is unsafe: __proto__/i)
   })
 
+  it('requires controlled adapters for unsafe design policies and exposes the normalized policy', () => {
+    const invalid = fieldMaterial('Async input')
+    invalid.designPolicy = { async: 'adapter' }
+    expect(() => createDesignerRegistry([{ name: 'adapter', materials: [invalid] }]))
+      .toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+        code: 'DESIGNER_DESIGN_POLICY_ADAPTER_REQUIRED',
+      }))
+
+    const controlled = fieldMaterial('Async input')
+    controlled.designPolicy = {
+      async: 'adapter',
+      adapter: defineComponent({ name: 'ControlledAsyncInput' }),
+      diagnostic: 'Async behavior is isolated in Design mode.',
+    }
+    const registry = createDesignerRegistry([{ name: 'adapter', materials: [controlled] }])
+    expect(createLowCodeComponentRegistry(registry).get('element.input')?.designPolicy).toMatchObject({
+      render: 'adapter',
+      interaction: 'preview',
+      async: 'adapter',
+      sideEffects: 'blocked',
+      diagnostic: 'Async behavior is isolated in Design mode.',
+    })
+  })
+
+  it('rejects malformed design policy values with a stable diagnostic', () => {
+    const material = fieldMaterial('Unsafe input')
+    material.designPolicy = { interaction: 'always' } as never
+    expect(() => createDesignerRegistry([{ name: 'adapter', materials: [material] }]))
+      .toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+        code: 'DESIGNER_DESIGN_POLICY_INVALID',
+      }))
+  })
+
   it('reports unknown materials and illegal slot children', () => {
     const registry = createDesignerRegistry([{
       name: 'adapter',
@@ -224,6 +295,27 @@ describe('designer registry', () => {
         path: ['nodes', 0, 'slots', 'default'],
       }),
     ])
+  })
+
+  it('enforces structural material parent slots and validates registry references', () => {
+    const registry = createDesignerRegistry([{ name: 'adapter', materials: structuralMaterials() }])
+    const item = registry.createNode('element.item', { id: 'item' })
+    expect(analyzeDesignerDocument({ version: 1, form: {}, nodes: [item] }, registry)).toEqual([
+      expect.objectContaining({ code: 'DESIGNER_MATERIAL_PARENT_INVALID', nodeId: 'item' }),
+    ])
+
+    const group = registry.createNode('element.group', { id: 'group' })
+    if (group.kind !== 'container')
+      throw new Error('Expected group container fixture')
+    group.slots.default!.push(item)
+    expect(analyzeDesignerDocument({ version: 1, form: {}, nodes: [group] }, registry)).toEqual([])
+
+    const [, invalidItem] = structuralMaterials()
+    invalidItem!.allowedParents = [{ material: 'element.missing', slot: 'default' }]
+    expect(() => createDesignerRegistry([{ name: 'invalid', materials: [invalidItem!] }]))
+      .toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+        code: 'DESIGNER_MATERIAL_PARENT_INVALID',
+      }))
   })
 
   it('exposes an adapter runtime namespace for WYSIWYG field markup', () => {

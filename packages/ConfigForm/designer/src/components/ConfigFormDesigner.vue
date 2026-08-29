@@ -4,6 +4,7 @@ import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCompileResult } from '../compiler'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
 import type { LowCodeNode, ModelOperation } from '../model'
+import type { DesignerDragAnnouncement, DesignerDragSource } from './designer-drag'
 import type {
   ConfigFormDesignerEmits,
   ConfigFormDesignerExpose,
@@ -34,11 +35,13 @@ import { ConfigFormRenderer } from '@moluoxixi/config-form/renderer'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, useId, watch } from 'vue'
 import { useDesignerController } from '../composables'
 import { applyDesignerDocumentReactions, createDesignerPreviewModel } from '../document'
+import { findDesignerNode } from '../history'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
 import { findConfigModelNode } from '../model'
 import DesignerCanvas from './DesignerCanvas.vue'
 import DesignerPalette from './DesignerPalette.vue'
 import DesignerPropertyPanel from './DesignerPropertyPanel.vue'
+import { createDesignerDragController, createDesignerMaterialCandidate, DESIGNER_DRAG_KEY } from './designer-drag'
 import '../styles.scss'
 
 const props = withDefaults(defineProps<ConfigFormDesignerProps>(), {
@@ -330,6 +333,71 @@ const controller = useDesignerController({
     emit('selectionChange', nodeId)
     emit('selectionSetChange', nodeIds, nodeId)
   },
+})
+
+const dragController = createDesignerDragController({
+  commitMaterial: (source, target) => {
+    const node = createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
+    if (!node || !controller.dispatch({ type: 'addNode', node, target }))
+      return
+    controller.select(node.id)
+    if (workspaceMode.value === 'narrow')
+      activeWorkspaceView.value = 'canvas'
+    else if (workspaceMode.value === 'medium')
+      mediumPanel.value = 'properties'
+  },
+  commitNode: (nodeId, target) => handleMove(nodeId, target),
+})
+provide(DESIGNER_DRAG_KEY, dragController)
+onBeforeUnmount(dragController.cancel)
+
+function dragSourceLabel(source: DesignerDragSource): string {
+  if (source.type === 'material') {
+    const material = props.registry.getMaterial(source.materialKey)
+    return material ? locale.materialTitle(material) : source.materialKey
+  }
+  const node = findDesignerNode(controller.document.value, source.nodeId)?.node
+  if (!node)
+    return source.nodeId
+  if (node.kind === 'field')
+    return node.label || node.field
+  const material = props.registry.getMaterial(node.material)
+  return material ? locale.materialTitle(material) : node.material
+}
+
+function dragTargetLabel(target: DesignerDropTarget | undefined): string {
+  if (!target)
+    return locale.t('drag.targetUnavailable', 'an unavailable position')
+  const position = (target.index ?? 0) + 1
+  if (target.parentId === null)
+    return locale.t('drag.targetPage', 'at page position {position}', { position })
+  const parent = findDesignerNode(controller.document.value, target.parentId)?.node
+  const parentMaterial = parent ? props.registry.getMaterial(parent.material) : undefined
+  const parentLabel = parentMaterial ? locale.materialTitle(parentMaterial) : target.parentId
+  const slot = target.slot && parentMaterial
+    ? locale.materialSlotTitle(parentMaterial, target.slot, target.slot)
+    : target.slot ?? locale.t('drag.defaultSlot', 'default slot')
+  return locale.t('drag.targetSlot', 'in {parent}, {slot}, position {position}', { parent: parentLabel, slot, position })
+}
+
+function formatDragAnnouncement(announcement: DesignerDragAnnouncement): string {
+  const item = dragSourceLabel(announcement.source)
+  const target = dragTargetLabel(announcement.target)
+  switch (announcement.type) {
+    case 'picked-up':
+      return locale.t('drag.pickedUp', 'Picked up {item}, currently {target}. Use arrow keys to choose a destination, Space to drop, or Escape to cancel.', { item, target })
+    case 'target':
+      return locale.t('drag.targetChanged', '{item} will be placed {target}.', { item, target })
+    case 'dropped':
+      return locale.t('drag.dropped', 'Dropped {item} {target}.', { item, target })
+    case 'cancelled':
+      return locale.t('drag.cancelled', 'Cancelled dragging {item}.', { item })
+  }
+}
+
+const dragAnnouncement = computed(() => {
+  const announcement = dragController.announcement.value
+  return announcement ? formatDragAnnouncement(announcement) : ''
 })
 
 const selectedModelNodes = computed<LowCodeNode[]>(() => props.model
@@ -810,10 +878,12 @@ defineExpose<ConfigFormDesignerExpose>({
           :materials="registry.listMaterials()"
           :add-material="addMaterial"
           :readonly="readonly"
+          :form="controller.document.value.form"
         >
           <DesignerPalette
             :materials="registry.listMaterials()"
             :registry="registry"
+            :form="controller.document.value.form"
             :readonly="readonly"
             @add-material="addMaterial"
           />
@@ -844,7 +914,6 @@ defineExpose<ConfigFormDesignerExpose>({
           :reaction-states="previewReactionStates"
         >
           <DesignerCanvas
-            :key="controller.renderVersion.value"
             :document="controller.document.value"
             :registry="registry"
             :selected-id="controller.selectedId.value"
@@ -913,6 +982,8 @@ defineExpose<ConfigFormDesignerExpose>({
         </slot>
       </section>
     </div>
+
+    <span class="mx-config-form-designer__screen-reader" role="status" aria-live="polite" aria-atomic="true">{{ dragAnnouncement }}</span>
 
     <footer class="mx-config-form-designer__status" aria-live="polite">
       <slot name="diagnostics" :diagnostics="controller.diagnostics.value">

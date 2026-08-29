@@ -1,3 +1,4 @@
+import type { ConfigFormFlowActionRegistry } from '@moluoxixi/config-form-core'
 import type { DesignerJsonValue } from '../document'
 import type { LowCodeComponentRegistry } from './registry'
 import type {
@@ -9,6 +10,7 @@ import type {
   ModelOperationFailure,
   ModelOperationResult,
 } from './types'
+import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
 import { cloneDesignerJsonValue } from '../document'
 import { cloneConfigModel } from './transform'
 
@@ -21,6 +23,11 @@ interface NodeLocation {
 }
 
 type RegisteredDefinition = NonNullable<ReturnType<LowCodeComponentRegistry['get']>>
+
+/** Optional host capabilities used to validate flow action refs at commit time. */
+export interface ModelOperationOptions {
+  flowActions?: ConfigFormFlowActionRegistry
+}
 
 function cloneJson<T>(value: T): T {
   return cloneDesignerJsonValue(value as unknown as DesignerJsonValue) as unknown as T
@@ -93,12 +100,15 @@ function validateEvents(
   definition: RegisteredDefinition,
 ): ModelDiagnostic | undefined {
   const registeredEvents = new Set(definition.events.map(event => event.name))
-  const invalidEvent = Object.entries(events).find(([name, actions]) =>
-    !registeredEvents.has(name)
-    || !Array.isArray(actions)
-    || actions.some(action => typeof action.action !== 'string' || action.action.length === 0))
-  return invalidEvent
-    ? { code: 'MODEL_EVENT_UNKNOWN', message: `Event is not registered or contains an invalid action: ${invalidEvent[0]}`, nodeId }
+  const unknownEvent = Object.keys(events).find(name => !registeredEvents.has(name))
+  if (unknownEvent)
+    return { code: 'MODEL_EVENT_UNKNOWN', message: `Event is not registered: ${unknownEvent}`, nodeId }
+
+  const invalidAction = Object.entries(events).find(([, actions]) =>
+    !Array.isArray(actions)
+    || actions.some(action => !action || typeof action.action !== 'string' || action.action.trim().length === 0))
+  return invalidAction
+    ? { code: 'MODEL_EVENT_ACTION_INVALID', message: `Event actions must contain non-empty string refs: ${invalidAction[0]}`, nodeId }
     : undefined
 }
 
@@ -108,16 +118,21 @@ function validateBindings(
   definition: RegisteredDefinition,
 ): ModelDiagnostic | undefined {
   const registeredBindings = new Set(definition.bindings.map(binding => binding.name))
-  const invalidBinding = Object.entries(bindings).find(([name, binding]) =>
-    !registeredBindings.has(name) || typeof binding.source !== 'string' || binding.source.length === 0)
-  return invalidBinding
-    ? { code: 'MODEL_BINDING_UNKNOWN', message: `Binding is not registered or has an invalid source: ${invalidBinding[0]}`, nodeId }
+  const unknownBinding = Object.keys(bindings).find(name => !registeredBindings.has(name))
+  if (unknownBinding)
+    return { code: 'MODEL_BINDING_UNKNOWN', message: `Binding is not registered: ${unknownBinding}`, nodeId }
+
+  const invalidSource = Object.entries(bindings).find(([, binding]) =>
+    !binding || typeof binding.source !== 'string' || binding.source.trim().length === 0)
+  return invalidSource
+    ? { code: 'MODEL_BINDING_SOURCE_INVALID', message: `Binding sources must be non-empty strings: ${invalidSource[0]}`, nodeId }
     : undefined
 }
 
 function validateSubtree(
   nodes: LowCodeNode[],
   registry: LowCodeComponentRegistry,
+  parent?: { component: string, slot: string },
 ): ModelDiagnostic | undefined {
   for (const node of nodes) {
     const definition = registry.get(node.component)
@@ -127,6 +142,13 @@ function validateSubtree(
     const expectedKind = definition.kind === 'layout' ? 'container' : 'field'
     if (node.kind !== expectedKind) {
       return { code: 'MODEL_COMPONENT_KIND_INVALID', message: `Component ${node.component} does not match node kind ${node.kind}.`, nodeId: node.id }
+    }
+    if (
+      parent
+      && definition.allowedParents.length > 0
+      && !definition.allowedParents.some(candidate => candidate.material === parent.component && candidate.slot === parent.slot)
+    ) {
+      return { code: 'MODEL_TARGET_PARENT_INVALID', message: `Component ${node.component} is not allowed in ${parent.component}.${parent.slot}.`, nodeId: node.id }
     }
     const valueDiagnostic = validateProps(node.id, node.props, definition)
       ?? validateEvents(node.id, node.events, definition)
@@ -159,7 +181,7 @@ function validateSubtree(
           return { code: 'MODEL_TARGET_COMPONENT_INVALID', message: `Component ${child.component} is not accepted by ${slotName}.`, nodeId: child.id }
         }
       }
-      const descendantDiagnostic = validateSubtree(children, registry)
+      const descendantDiagnostic = validateSubtree(children, registry, { component: node.component, slot: slotName })
       if (descendantDiagnostic)
         return descendantDiagnostic
     }
@@ -176,6 +198,12 @@ function resolveTarget(
   if (target.parentId === null) {
     if (target.slot) {
       return { diagnostic: { code: 'MODEL_TARGET_ROOT_SLOT_INVALID', message: 'Root targets cannot name a slot.' } }
+    }
+    if (node) {
+      const definition = registry.get(node.component)
+      if (definition && definition.allowedParents.length > 0) {
+        return { diagnostic: { code: 'MODEL_TARGET_PARENT_INVALID', message: `Component ${node.component} requires a registered parent slot.`, nodeId: node.id } }
+      }
     }
     return { nodes: model.nodes }
   }
@@ -195,6 +223,14 @@ function resolveTarget(
     return { diagnostic: { code: 'MODEL_TARGET_SLOT_INVALID', message: `Target slot is not registered: ${slotName}`, nodeId: parent.id } }
   }
   if (node) {
+    const childDefinition = registry.get(node.component)
+    if (
+      childDefinition
+      && childDefinition.allowedParents.length > 0
+      && !childDefinition.allowedParents.some(candidate => candidate.material === parent.component && candidate.slot === slotName)
+    ) {
+      return { diagnostic: { code: 'MODEL_TARGET_PARENT_INVALID', message: `Component ${node.component} is not allowed in ${parent.component}.${slotName}.`, nodeId: node.id } }
+    }
     if (slot.accepts && !slot.accepts.includes(node.kind)) {
       return { diagnostic: { code: 'MODEL_TARGET_KIND_INVALID', message: `Component ${node.component} is not accepted by ${slotName}.`, nodeId: node.id } }
     }
@@ -361,6 +397,50 @@ function updatePage(
   return { success: true, model: candidate, inverse, diagnostics: [] }
 }
 
+function updateFlows(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'updateFlows' }>,
+  options: ModelOperationOptions = {},
+): ModelOperationResult {
+  if (operation.flows !== undefined && !Array.isArray(operation.flows)) {
+    return failure(model, { code: 'MODEL_FLOW_INVALID', message: 'Flow updates must provide an array of flows.' })
+  }
+  const ids = new Set<string>()
+  for (const flow of operation.flows ?? []) {
+    const result = analyzeConfigFormFlow(flow)
+    if (!result.success) {
+      const diagnostic = result.diagnostics[0]
+      return failure(model, { code: diagnostic?.code ?? 'MODEL_FLOW_INVALID', message: diagnostic?.message ?? 'Flow is invalid.' })
+    }
+    if (options.flowActions) {
+      const unknownAction = result.flow.nodes.find(node => node.type === 'action' && (!node.ref || !options.flowActions!.get(node.ref)))
+      if (unknownAction) {
+        return failure(model, {
+          code: 'MODEL_FLOW_ACTION_UNKNOWN',
+          message: `Flow action is not registered: ${unknownAction.ref ?? unknownAction.id}`,
+          nodeId: unknownAction.id,
+        })
+      }
+    }
+    if (ids.has(result.flow.id))
+      return failure(model, { code: 'MODEL_FLOW_ID_DUPLICATE', message: `Duplicate flow id: ${result.flow.id}` })
+    ids.add(result.flow.id)
+  }
+  const candidate = cloneConfigModel(model)
+  const hadFlows = Object.hasOwn(candidate, 'flows')
+  const previous = hadFlows ? cloneJson(candidate.flows ?? []) : undefined
+  if (operation.flows !== undefined)
+    candidate.flows = cloneJson(operation.flows)
+  else
+    delete candidate.flows
+  return {
+    success: true,
+    model: candidate,
+    inverse: hadFlows ? { type: 'updateFlows', flows: previous } : { type: 'updateFlows' },
+    diagnostics: [],
+  }
+}
+
 function cloneSubtree(
   node: LowCodeNode,
   idMap: Record<string, string>,
@@ -419,13 +499,14 @@ function batchOperations(
   model: LowCodePageModel,
   operations: ModelOperation[],
   registry: LowCodeComponentRegistry,
+  options: ModelOperationOptions,
 ): ModelOperationResult {
   if (operations.length === 0)
     return failure(model, { code: 'MODEL_BATCH_EMPTY', message: 'Batch operations must contain at least one operation.' })
   let current = model
   const inverses: ModelOperation[] = []
   for (const operation of operations) {
-    const result = applyModelOperation(current, operation, registry)
+    const result = applyModelOperation(current, operation, registry, options)
     if (!result.success)
       return { ...result, model }
     current = result.model
@@ -438,11 +519,13 @@ export function applyModelOperation(
   model: LowCodePageModel,
   operation: ModelOperation,
   registry: LowCodeComponentRegistry,
+  options: ModelOperationOptions = {},
 ): ModelOperationResult {
   switch (operation.type) {
     case 'insert': return insertNode(model, operation.node, operation.target, registry)
     case 'move': return moveNode(model, operation, registry)
     case 'updatePage': return updatePage(model, operation)
+    case 'updateFlows': return updateFlows(model, operation, options)
     case 'updateProps':
     case 'updateEvents':
     case 'updateBindings':
@@ -450,6 +533,6 @@ export function applyModelOperation(
     case 'resize': return updateNode(model, operation, registry)
     case 'duplicate': return duplicateNode(model, operation, registry)
     case 'remove': return removeNode(model, operation.nodeId)
-    case 'batch': return batchOperations(model, operation.operations, registry)
+    case 'batch': return batchOperations(model, operation.operations, registry, options)
   }
 }

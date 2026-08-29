@@ -1,3 +1,4 @@
+import type { ModelOperationOptions } from './operations'
 import type { LowCodeComponentRegistry } from './registry'
 import type {
   ConfigModelHistory,
@@ -28,8 +29,9 @@ export function applyConfigModelOperation(
   history: ConfigModelHistory,
   operation: ModelOperation,
   registry: LowCodeComponentRegistry,
+  options: ModelOperationOptions = {},
 ): ConfigModelHistoryResult {
-  const result = applyModelOperation(history.present, operation, registry)
+  const result = applyModelOperation(history.present, operation, registry, options)
   if (!result.success)
     return { history, changed: false, diagnostics: result.diagnostics }
   const revision = history.revision + 1
@@ -49,11 +51,12 @@ export function applyConfigModelOperation(
 export function undoConfigModelHistory(
   history: ConfigModelHistory,
   registry: LowCodeComponentRegistry,
+  options: ModelOperationOptions = {},
 ): ConfigModelHistoryResult {
   const entry = history.past.at(-1)
   if (!entry)
     return { history, changed: false, diagnostics: [] }
-  const result = applyModelOperation(history.present, entry.inverse, registry)
+  const result = applyModelOperation(history.present, entry.inverse, registry, options)
   if (!result.success)
     return { history, changed: false, diagnostics: result.diagnostics }
   return {
@@ -72,11 +75,12 @@ export function undoConfigModelHistory(
 export function redoConfigModelHistory(
   history: ConfigModelHistory,
   registry: LowCodeComponentRegistry,
+  options: ModelOperationOptions = {},
 ): ConfigModelHistoryResult {
   const [entry, ...future] = history.future
   if (!entry)
     return { history, changed: false, diagnostics: [] }
-  const result = applyModelOperation(history.present, entry.operation, registry)
+  const result = applyModelOperation(history.present, entry.operation, registry, options)
   if (!result.success)
     return { history, changed: false, diagnostics: result.diagnostics }
   return {

@@ -13,6 +13,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: shared.PanelBottom,
       runtime: { component: shared.ElCollapseItem },
+      allowedParents: [{ material: 'element.collapse', slot: 'default' }],
       setters: [shared.propSetter('title', 'Title', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
       slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
       createNode: ({ id }) => ({ id, kind: 'container', material: 'element.collapse-item', props: { title: 'Item', name: id }, slots: { default: [] } }),

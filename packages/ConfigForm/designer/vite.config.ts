@@ -43,7 +43,6 @@ export default defineConfig({
         '@moluoxixi/config-form/renderer',
         '@moluoxixi/config-form-headless',
         '@moluoxixi/zod3-to-rule',
-        'sortablejs',
         'vue',
         'zod',
       ],

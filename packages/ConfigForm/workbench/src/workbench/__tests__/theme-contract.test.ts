@@ -73,7 +73,8 @@ describe('workbench theme contract', () => {
     expect(stylesheet).toContain('--mx-designer-runtime-text: #24262b;')
     expect(stylesheet).toContain('--mx-designer-runtime-surface: #fff;')
     expect(designerStylesheet).toContain('--mx-designer-runtime-surface: #ffffff;')
-    expect(designerStylesheet).toContain('--mx-designer-surface: var(--mx-designer-runtime-surface, #fff);')
+    expect(designerStylesheet).toContain('--mx-designer-surface: var(--mx-designer-overlay-surface, #fff);')
+    expect(designerStylesheet).not.toContain('--mx-designer-surface: var(--mx-designer-runtime-surface')
   })
 
   it('keeps every provider theme rule inside the dark Inspector scope', () => {
@@ -92,6 +93,8 @@ describe('workbench theme contract', () => {
   it('keeps export and narrow runtime surfaces responsive to their context', () => {
     expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
     expect(selectorBlock('.topbar-actions .export-menu-popover button')).toContain('white-space: nowrap;')
+    expect(stylesheet).toContain('@media (max-width: 480px)')
+    expect(stylesheet).toContain('.export-menu > button .export-chevron')
     expect(selectorBlock('.preview-canvas')).toContain('container-name: preview-canvas;')
     expect(stylesheet).toContain('@container preview-canvas (max-width: 520px) {')
     expect(stylesheet).toContain('.page-preview-form [class*="config-form__row--grid"] {\n    gap: 12px 6px !important;')

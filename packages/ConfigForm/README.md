@@ -39,19 +39,19 @@ flowchart TD
 
 ## 包职责
 
-| 层               | 包                                                                                               | 主要职责                                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| 纯协议           | [`@moluoxixi/config-form-core`](./core/)                                                         | JSON 类型、reaction 条件/effect、稳定 reducer、reaction 配置 helper、通用命名模块注册算法                   |
-| 表单内核         | [`@moluoxixi/config-form-headless`](./headless/)                                                 | Vue 字段/节点协议、controller、校验、dirty/touched、readonly、runtime slots、reaction 事务、组件注册特化    |
-| Vue 渲染         | [`@moluoxixi/config-form/renderer`](./runtime/)                                                  | 原生 form、Grid/Flex、字段壳、ARIA、递归节点/slot 和 readonly 渲染；它是 Runtime 包子路径                   |
-| 旧 Runtime       | [`@moluoxixi/config-form`](./runtime/)                                                           | schema 转换、组件解析、字段 pipeline、runtime plugin 和旧 `ConfigForm` 根组件                               |
-| 轻量 UI          | [`config-form-element`](./element/)、[`config-form-antd-vue`](./antd/)                           | 真实 UI 组件、语义别名、值事件绑定和样式                                                                    |
-| Runtime plugin   | [`plugin-element-plus`](./plugin-element-plus/)、[`plugin-antd-vue`](./plugin-antd-vue/)         | 旧 Runtime 的默认字段和 readonly adapter；传给 `runtime.plugins`，不是 Vue `app.use()` 插件                 |
-| 可视化设计器     | [`config-form-designer`](./designer/)                                                            | 受控 JSON 文档、历史、诊断、编译器、画布和属性面板；不直接绑定具体 UI 库                                    |
-| Designer adapter | [`designer-element-plus`](./designer-element-plus/)、[`designer-antd-vue`](./designer-antd-vue/) | UI 物料、设计器属性控件、readonly、locale、容器预览和 option resolver 生命周期                              |
-| 开发工具         | [`devtools-vite-plugin`](./devtools-vite-plugin/)                                                | 开发态源码定位和调试信息                                                                                    |
-| 集成验证         | [`playground`](./playground/)                                                                    | 两套 UI、独立 Designer 页面和端到端交互验证                                                                 |
-| 产品工作台       | [`workbench`](./workbench/)                                                                      | 私有在线应用；版本化虚拟项目、本地 repository、模板与源码导出。它不是发布包，也不改变 Runtime/Designer 协议 |
+| 层               | 包                                                                                               | 主要职责                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| 纯协议           | [`@moluoxixi/config-form-core`](./core/)                                                         | JSON 类型、reaction 条件/effect、Flow IR/Execution Plan/Interpreter、稳定 reducer、配置 helper、通用命名模块注册算法 |
+| 表单内核         | [`@moluoxixi/config-form-headless`](./headless/)                                                 | Vue 字段/节点协议、controller、校验、dirty/touched、readonly、runtime slots、reaction 事务、组件注册特化             |
+| Vue 渲染         | [`@moluoxixi/config-form/renderer`](./runtime/)                                                  | 原生 form、Grid/Flex、字段壳、ARIA、递归节点/slot 和 readonly 渲染；它是 Runtime 包子路径                            |
+| 旧 Runtime       | [`@moluoxixi/config-form`](./runtime/)                                                           | schema 转换、组件解析、字段 pipeline、runtime plugin 和旧 `ConfigForm` 根组件                                        |
+| 轻量 UI          | [`config-form-element`](./element/)、[`config-form-antd-vue`](./antd/)                           | 真实 UI 组件、语义别名、值事件绑定和样式                                                                             |
+| Runtime plugin   | [`plugin-element-plus`](./plugin-element-plus/)、[`plugin-antd-vue`](./plugin-antd-vue/)         | 旧 Runtime 的默认字段和 readonly adapter；传给 `runtime.plugins`，不是 Vue `app.use()` 插件                          |
+| 可视化设计器     | [`config-form-designer`](./designer/)                                                            | 受控 JSON 文档、历史、诊断、编译器、画布和属性面板；不直接绑定具体 UI 库                                             |
+| Designer adapter | [`designer-element-plus`](./designer-element-plus/)、[`designer-antd-vue`](./designer-antd-vue/) | UI 物料、设计器属性控件、readonly、locale、容器预览和 option resolver 生命周期                                       |
+| 开发工具         | [`devtools-vite-plugin`](./devtools-vite-plugin/)                                                | 开发态源码定位和调试信息                                                                                             |
+| 集成验证         | [`playground`](./playground/)                                                                    | 两套 UI、独立 Designer 页面和端到端交互验证                                                                          |
+| 产品工作台       | [`workbench`](./workbench/)                                                                      | 私有在线应用；版本化虚拟项目、本地 repository、模板与源码导出。它不是发布包，也不改变 Runtime/Designer 协议          |
 
 “轻量 UI 包”“Runtime plugin”“Designer adapter”是三种不同扩展，不应统称为同一种 adapter。
 
@@ -82,6 +82,8 @@ Component Registry
 
 `LowCodePageModel` 是设计器页面结构唯一可变事实。`DesignerDocument` 仍作为旧 artifact 的兼容投影；画布 selection、诊断、option loading 和 reaction projection 都是派生状态，不写回模型。
 
+Design Canvas 和右侧 Preview 使用同一套 `RuntimeSurface` 递归渲染真实注册组件。设计态只通过 editor bridge 增加稳定节点 metadata、事件拦截和独立 overlay；selection、drop indicator、resize handle 与拖拽 candidate 不会替换或改写 Runtime 组件。拖拽期间 candidate 先应用到临时 Model 投影，drop 后再提交一次 Model Operation，因此 candidate 与落地结果共享同一 Registry 默认值、slot 和布局规则。
+
 ### Workbench Design-first 工作区
 
 ```text
@@ -93,6 +95,14 @@ Component Registry
 ```
 
 Workbench 的 Source 与 Config 不再是编辑 provider，也不参与模型反向解析。导出配置使用公开 `defineFields<T>()` / `defineField({...})` API；Source 使用文件树与只读 Monaco 展示不依赖 ConfigForm runtime 的 standalone Vue 工程。JSON / Tree 是配置的辅助查看投影，导出菜单还可下载完整项目 ZIP。旧 `parseDesignerConfig` 与 Designer artifact 解析只用于一次性迁移。
+
+页面事件流程同样从 `LowCodePageModel.flows` 投影：Core 只保存 JSON-safe 的
+`trigger -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
+`ConfigFormFlowExecutionPlan`，Workbench 再注入显式的 `ConfigFormFlowActionRegistry`。
+默认工作台只提供无网络副作用的 `notify` action；业务应用应在宿主边界注册自己的
+受控 action。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
+瞬态状态，不写回页面结构；Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
+ConfigForm DSL。
 
 设计器专属 `id`、`material`、conditions 和 validation 放在 `extensions['mx.config-form-designer']`。业务扩展仍与该命名空间并列保存在 `extensions`，因此 Config、Designer 和 Source 往返时不会把业务元数据藏入设计器私有对象。
 
@@ -141,6 +151,10 @@ Reaction 派生状态不会修改字段定义、DesignerDocument 或导出 JSON�
 ## Slot 边界
 
 Headless runtime slots 面向 Vue，允许配置节点、数组、组件和 render function。Designer slots 是可序列化的 `Record<string, DesignerNode[]>`，同时受 material 的 `accepts`、`materials`、`min`、`max` 约束。
+
+需要特定 provider 的结构物料通过 Designer Registry 声明 `allowedParents: [{ material, slot }]`。例如 `element.tab-pane` 只能位于 `element.tabs.default`，`element.collapse-item` 只能位于 `element.collapse.default`。该约束是 Registry 能力，不写入 Config Model；文档分析、Design Runtime 投影、Designer command 和 Model Operation 共用它。非法历史节点会被诊断并从 live projection 中省略，避免在 Vue Runtime 中挂载到缺少 provider 的位置。
+
+空 Flex/Grid 的真实 Runtime 高度可以为 0。设计器只在拖拽进行时用测量后的 overlay hit band 提供可命中区域和虚线提示，不向 slot 注入 trailing sentinel、假节点或永久占位，因此 Preview 与导出仍保持真实 DOM。
 
 二者名字相似但协议不同，不应为了“共用”而抽到 Core。Designer compiler 负责把文档 slot 树编译成 Renderer 可消费的节点树。
 

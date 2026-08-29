@@ -13,6 +13,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: s.PanelBottom,
       runtime: { component: s.CollapsePanel, designerComponent: s.AntdCollapseItemPreview },
+      allowedParents: [{ material: 'antd.collapse', slot: 'default' }],
       setters: [s.propSetter('header', 'Title', 'text'), s.propSetter('disabled', 'Disabled', 'boolean')],
       slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
       createNode: ({ id }) => ({

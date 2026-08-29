@@ -4,6 +4,8 @@ export type ConfigFormJsonValue
     | ConfigFormJsonValue[]
     | { [key: string]: ConfigFormJsonValue }
 
+export interface ConfigFormJsonObject { [key: string]: ConfigFormJsonValue }
+
 export type ConfigFormReactionCompareOperator
   = | 'eq'
     | 'neq'

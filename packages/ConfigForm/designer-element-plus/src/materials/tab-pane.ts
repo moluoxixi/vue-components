@@ -13,6 +13,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: shared.PanelBottom,
       runtime: { component: shared.ElTabPane },
+      allowedParents: [{ material: 'element.tabs', slot: 'default' }],
       setters: [shared.propSetter('label', 'Label', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
       slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
       createNode: ({ id }) => ({ id, kind: 'container', material: 'element.tab-pane', props: { label: 'Tab', name: id }, slots: { default: [] } }),

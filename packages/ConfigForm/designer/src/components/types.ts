@@ -71,6 +71,8 @@ export interface DesignerPaletteScope {
   materials: DesignerMaterialDefinition[]
   addMaterial: (materialKey: string) => void
   readonly: boolean
+  /** Form layout settings used to render a drag candidate through RuntimeSurface. */
+  form: DesignerDocument['form']
 }
 
 export interface DesignerCanvasScope {

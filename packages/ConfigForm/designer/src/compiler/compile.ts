@@ -17,7 +17,7 @@ import type {
   DesignerFieldNode,
   DesignerNode,
 } from '../document'
-import type { DesignerRegistry } from '../registry'
+import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import type { DesignerCompileResult, DesignerRendererConfig } from './types'
 import { compileRules, RuleCompileError } from '@moluoxixi/zod3-to-rule'
 import { compileDesignerCondition } from '../condition'
@@ -27,7 +27,21 @@ import {
   hasDesignerErrors,
   parseDesignerDocument,
 } from '../document'
-import { analyzeDesignerDocument } from '../registry'
+import { analyzeDesignerDocument, isDesignerMaterialPlacementAllowed, resolveDesignerDesignPolicy } from '../registry'
+
+type DesignerCompileMode = 'design' | 'runtime'
+
+function resolveMaterialComponent(
+  material: DesignerMaterialDefinition,
+  mode: DesignerCompileMode,
+): ConfigFormRendererNode['component'] {
+  if (mode === 'design') {
+    const policy = resolveDesignerDesignPolicy(material.designPolicy)
+    if (policy.render === 'adapter' && policy.adapter)
+      return policy.adapter
+  }
+  return material.runtime.component
+}
 
 function ruleDiagnosticToDesigner(
   diagnostic: RuleDiagnostic,
@@ -127,6 +141,7 @@ function compileNodeBase(node: DesignerNode, component: ConfigFormRendererNode['
     ...(Object.keys(lowCodeMetadata).length > 0 ? { 'mx.low-code': lowCodeMetadata } : {}),
   }
   return {
+    id: node.id,
     component,
     ...(node.props ? { props: cloneDesignerJsonValue(node.props) } : {}),
     ...(Object.keys(extensions).length > 0 ? { extensions: cloneDesignerJsonValue(extensions) } : {}),
@@ -144,6 +159,7 @@ function compileField(
   path: (string | number)[],
   registry: DesignerRegistry,
   diagnostics: DesignerDiagnostic[],
+  mode: DesignerCompileMode,
 ): ConfigFormRendererField | undefined {
   const material = registry.getMaterial(node.material)
   if (!material || material.kind !== 'field')
@@ -156,7 +172,7 @@ function compileField(
     : validation?.required
 
   return {
-    ...compileNodeBase(node, material.runtime.component),
+    ...compileNodeBase(node, resolveMaterialComponent(material, mode)),
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined ? {} : { defaultValue: cloneDesignerJsonValue(node.defaultValue) }),
@@ -193,6 +209,7 @@ function compileContainer(
   path: (string | number)[],
   registry: DesignerRegistry,
   diagnostics: DesignerDiagnostic[],
+  mode: DesignerCompileMode,
 ): ConfigFormRendererNode | undefined {
   const material = registry.getMaterial(node.material)
   if (!material || material.kind !== 'container')
@@ -207,13 +224,16 @@ function compileContainer(
           [...path, 'slots', slotName, index],
           registry,
           diagnostics,
+          mode,
+          node.material,
+          slotName,
         ))
         .filter((child): child is ConfigFormRendererNode => child !== undefined),
     ]),
   )
 
   return {
-    ...compileNodeBase(node, material.runtime.component),
+    ...compileNodeBase(node, resolveMaterialComponent(material, mode)),
     slots,
   }
 }
@@ -223,10 +243,28 @@ function compileNode(
   path: (string | number)[],
   registry: DesignerRegistry,
   diagnostics: DesignerDiagnostic[],
+  mode: DesignerCompileMode,
+  parentMaterial?: string,
+  parentSlot?: string,
 ): ConfigFormRendererNode | undefined {
+  const material = registry.getMaterial(node.material)
+  if (!material || material.kind !== node.kind)
+    return undefined
+  if (!isDesignerMaterialPlacementAllowed(material, parentMaterial, parentSlot))
+    return undefined
+
   return node.kind === 'field'
-    ? compileField(node, path, registry, diagnostics)
-    : compileContainer(node, path, registry, diagnostics)
+    ? compileField(node, path, registry, diagnostics, mode)
+    : compileContainer(node, path, registry, diagnostics, mode)
+}
+
+/** Compile one designer node through the same renderer contract used by Preview. */
+export function compileDesignerNode(
+  node: DesignerNode,
+  registry: DesignerRegistry,
+): ConfigFormRendererNode | undefined {
+  const diagnostics: DesignerDiagnostic[] = []
+  return compileNode(node, ['candidate'], registry, diagnostics, 'design')
 }
 
 function rendererConfig(
@@ -254,6 +292,22 @@ function cloneResponsiveLayout(responsive: ConfigFormResponsiveLayout): ConfigFo
   }
 }
 
+/**
+ * Build the live Design projection without turning unrelated diagnostics into
+ * a blank canvas. Invalid or unknown nodes are omitted individually; Preview
+ * and export continue to use compileDesignerDocument's strict result.
+ */
+export function createDesignerRuntimeProjection(
+  document: DesignerDocument,
+  registry: DesignerRegistry,
+): DesignerRendererConfig {
+  const diagnostics: DesignerDiagnostic[] = []
+  const fields = document.nodes
+    .map((node, index) => compileNode(node, ['nodes', index], registry, diagnostics, 'design'))
+    .filter((node): node is ConfigFormRendererNode => node !== undefined)
+  return rendererConfig(document, fields, registry)
+}
+
 export function compileDesignerDocument(
   input: unknown,
   registry: DesignerRegistry,
@@ -264,7 +318,7 @@ export function compileDesignerDocument(
 
   const diagnostics = analyzeDesignerDocument(parsed.data, registry)
   const fields = parsed.data.nodes
-    .map((node, index) => compileNode(node, ['nodes', index], registry, diagnostics))
+    .map((node, index) => compileNode(node, ['nodes', index], registry, diagnostics, 'runtime'))
     .filter((node): node is ConfigFormRendererNode => node !== undefined)
 
   if (hasDesignerErrors(diagnostics)) {

@@ -67,14 +67,16 @@ describe('ant design vue designer materials', () => {
 
   it('creates and compiles every registry material in a single regression matrix', () => {
     const registry = createAntdVueDesignerRegistry()
-    const nodes = registry.listMaterials().map((material, index) => registry.createNode(material.key, {
+    const materials = registry.listMaterials()
+    const nodes = materials.map((material, index) => registry.createNode(material.key, {
       id: `matrix-${index}`,
       ...(material.kind === 'field' ? { field: `matrix-${index}` } : {}),
     }))
+    const rootNodes = nodes.filter((_, index) => !materials[index]!.allowedParents?.length)
 
     expect(nodes).toHaveLength(registry.listMaterials().length)
     expect(new Set(nodes.map(node => node.id)).size).toBe(nodes.length)
-    expect(compileDesignerDocument({ version: 1, form: {}, nodes }, registry)).toMatchObject({ success: true })
+    expect(compileDesignerDocument({ version: 1, form: {}, nodes: rootNodes }, registry)).toMatchObject({ success: true })
   })
 
   it('uses native Ant Design Vue value and checked bindings', () => {

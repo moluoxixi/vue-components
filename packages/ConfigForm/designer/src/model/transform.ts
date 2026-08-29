@@ -57,7 +57,7 @@ export function designerNodeToConfigModelNode(node: DesignerNode): LowCodeNode {
 
 export function designerDocumentToConfigModel(
   document: DesignerDocument,
-  options: { id?: string, name?: string } = {},
+  options: { id?: string, name?: string, flows?: LowCodePageModel['flows'] } = {},
 ): LowCodePageModel {
   return {
     id: options.id ?? 'page',
@@ -66,6 +66,7 @@ export function designerDocumentToConfigModel(
     props: {},
     form: cloneJson(document.form),
     nodes: document.nodes.map(designerNodeToConfigModelNode),
+    ...(options.flows ? { flows: cloneJson(options.flows) } : {}),
   }
 }
 

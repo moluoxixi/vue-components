@@ -53,9 +53,44 @@ const sectionMaterial: DesignerContainerMaterialDefinition = {
   }),
 }
 
+const tabsMaterial: DesignerContainerMaterialDefinition = {
+  key: 'test.tabs',
+  version: 1,
+  kind: 'container',
+  title: 'Tabs',
+  category: 'Layout',
+  runtime: { component: 'TestTabs' },
+  setters: [],
+  slots: [{ name: 'default', title: 'Panes', accepts: ['container'], materials: ['test.pane'] }],
+  createNode: ({ id }) => ({
+    id,
+    kind: 'container',
+    material: 'test.tabs',
+    slots: { default: [] },
+  }),
+}
+
+const paneMaterial: DesignerContainerMaterialDefinition = {
+  key: 'test.pane',
+  version: 1,
+  kind: 'container',
+  title: 'Pane',
+  category: 'Layout',
+  runtime: { component: 'TestPane' },
+  allowedParents: [{ material: 'test.tabs', slot: 'default' }],
+  setters: [],
+  slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
+  createNode: ({ id }) => ({
+    id,
+    kind: 'container',
+    material: 'test.pane',
+    slots: { default: [] },
+  }),
+}
+
 const designerRegistry = createDesignerRegistry([{
   name: 'test',
-  materials: [inputMaterial, sectionMaterial],
+  materials: [inputMaterial, sectionMaterial, tabsMaterial, paneMaterial],
 }])
 const registry = createLowCodeComponentRegistry(designerRegistry)
 
@@ -168,6 +203,48 @@ describe('config model', () => {
     })
   })
 
+  it('rejects structural children outside their registered parent slot', () => {
+    const pane = registry.createNode('test.pane', { id: 'pane' })
+    expect(applyModelOperation(emptyModel(), {
+      type: 'insert',
+      node: pane,
+      target: { parentId: null },
+    }, registry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'MODEL_TARGET_PARENT_INVALID', nodeId: 'pane' }],
+    })
+
+    const insertedTabs = applyModelOperation(emptyModel(), {
+      type: 'insert',
+      node: registry.createNode('test.tabs', { id: 'tabs' }),
+      target: { parentId: null },
+    }, registry)
+    expect(insertedTabs.success).toBe(true)
+    if (!insertedTabs.success)
+      return
+
+    const insertedPane = applyModelOperation(insertedTabs.model, {
+      type: 'insert',
+      node: pane,
+      target: { parentId: 'tabs' },
+    }, registry)
+    expect(insertedPane.success).toBe(true)
+    if (!insertedPane.success)
+      return
+    expect(insertedPane.model.nodes[0]!.children[0]!.id).toBe('pane')
+
+    const movedToRoot = applyModelOperation(insertedPane.model, {
+      type: 'move',
+      nodeId: 'pane',
+      target: { parentId: null },
+    }, registry)
+    expect(movedToRoot).toMatchObject({
+      success: false,
+      model: insertedPane.model,
+      diagnostics: [{ code: 'MODEL_TARGET_PARENT_INVALID', nodeId: 'pane' }],
+    })
+  })
+
   it('rejects unregistered components and rolls back failed batches', () => {
     const model = emptyModel()
     const unknown = {
@@ -198,6 +275,74 @@ describe('config model', () => {
     }, registry)
     expect(batch.success).toBe(false)
     expect(batch.model).toEqual(model)
+  })
+
+  it('updates flows as validated model operations with an exact inverse', () => {
+    const model = emptyModel()
+    const flow = {
+      version: 1 as const,
+      id: 'mount-flow',
+      name: 'Mount flow',
+      trigger: { kind: 'page.mount' as const },
+      nodes: [
+        { id: 'trigger', type: 'trigger' as const },
+        { id: 'end', type: 'end' as const },
+      ],
+      edges: [{ id: 'next', source: 'trigger', target: 'end', condition: 'next' as const }],
+    }
+    const result = applyModelOperation(model, { type: 'updateFlows', flows: [flow] }, registry)
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    expect(result.model.flows).toEqual([flow])
+    expect(result.inverse).toEqual({ type: 'updateFlows' })
+    expect(applyModelOperation(result.model, result.inverse, registry).model).toEqual(model)
+  })
+
+  it('rejects flow actions that are not present in the host registry', () => {
+    const flow = {
+      version: 1 as const,
+      id: 'submit-flow',
+      name: 'Submit flow',
+      trigger: { kind: 'form.submit' as const },
+      nodes: [
+        { id: 'trigger', type: 'trigger' as const },
+        { id: 'action', type: 'action' as const, ref: 'missing', config: {} },
+        { id: 'end', type: 'end' as const },
+      ],
+      edges: [
+        { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' as const },
+        { id: 'action-end', source: 'action', target: 'end', condition: 'next' as const },
+      ],
+    }
+    const result = applyModelOperation(emptyModel(), { type: 'updateFlows', flows: [flow] }, registry, {
+      flowActions: { get: () => undefined },
+    })
+    expect(result).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'MODEL_FLOW_ACTION_UNKNOWN', nodeId: 'action' }],
+    })
+  })
+
+  it('reports malformed flow updates instead of dereferencing invalid input', () => {
+    const result = applyModelOperation(emptyModel(), {
+      type: 'updateFlows',
+      flows: [null],
+    } as never, registry)
+    expect(result).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'FLOW_INVALID' }],
+    })
+  })
+
+  it('preserves an explicitly empty flows array through undo', () => {
+    const model = { ...emptyModel(), flows: [] }
+    const result = applyModelOperation(model, { type: 'updateFlows' }, registry)
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    expect(result.model).not.toHaveProperty('flows')
+    expect(applyModelOperation(result.model, result.inverse, registry).model).toEqual(model)
   })
 
   it('rejects invalid inserted subtrees before mutating the model', () => {
@@ -376,10 +521,15 @@ describe('config model', () => {
       events: { click: [{ action: 'submit' }] },
     }, registry)).toMatchObject({ success: false, diagnostics: [{ code: 'MODEL_EVENT_UNKNOWN' }] })
     expect(applyModelOperation(inserted.model, {
+      type: 'updateEvents',
+      nodeId: 'name',
+      events: { 'update:modelValue': [{ action: '   ' }] },
+    }, registry)).toMatchObject({ success: false, diagnostics: [{ code: 'MODEL_EVENT_ACTION_INVALID' }] })
+    expect(applyModelOperation(inserted.model, {
       type: 'updateBindings',
       nodeId: 'name',
       bindings: { value: { source: '' } },
-    }, registry)).toMatchObject({ success: false, diagnostics: [{ code: 'MODEL_BINDING_UNKNOWN' }] })
+    }, registry)).toMatchObject({ success: false, diagnostics: [{ code: 'MODEL_BINDING_SOURCE_INVALID' }] })
     expect(applyModelOperation(inserted.model, {
       type: 'updateEvents',
       nodeId: 'name',

@@ -2,6 +2,7 @@ import type { DesignerDiagnostic, DesignerDocument, DesignerFieldNode, DesignerN
 import type {
   DesignerDefaultValueKind,
   DesignerFieldMaterialDefinition,
+  DesignerMaterialDefinition,
   DesignerMaterialSlotDefinition,
   DesignerPropertySetterDefinition,
   DesignerRegistry,
@@ -132,6 +133,18 @@ function validateSlotChild(
   return diagnostics
 }
 
+export function isDesignerMaterialPlacementAllowed(
+  material: DesignerMaterialDefinition,
+  parentMaterial?: string,
+  slot?: string,
+): boolean {
+  if (!material.allowedParents || material.allowedParents.length === 0)
+    return true
+  if (!parentMaterial || !slot)
+    return false
+  return material.allowedParents.some(parent => parent.material === parentMaterial && parent.slot === slot)
+}
+
 export function analyzeDesignerDocument(
   document: DesignerDocument,
   registry: DesignerRegistry,
@@ -141,7 +154,7 @@ export function analyzeDesignerDocument(
   const includeDefaultDiagnostics = options.includeDefaultDiagnostics ?? true
   const includeMaterialDiagnostics = options.includeMaterialDiagnostics ?? true
 
-  walkDesignerNodes(document.nodes, ({ node, path }) => {
+  walkDesignerNodes(document.nodes, ({ node, path, parent, slot }) => {
     const material = registry.getMaterial(node.material)
     if (!material) {
       diagnostics.push(designerDiagnostic(
@@ -157,6 +170,16 @@ export function analyzeDesignerDocument(
       diagnostics.push(designerDiagnostic(
         'DESIGNER_MATERIAL_KIND_MISMATCH',
         `Material ${node.material} cannot render a ${node.kind} node`,
+        [...path, 'material'],
+        'error',
+        node.id,
+      ))
+      return
+    }
+    if (!isDesignerMaterialPlacementAllowed(material, parent?.material, slot)) {
+      diagnostics.push(designerDiagnostic(
+        'DESIGNER_MATERIAL_PARENT_INVALID',
+        `Material ${node.material} is not allowed at this parent slot`,
         [...path, 'material'],
         'error',
         node.id,

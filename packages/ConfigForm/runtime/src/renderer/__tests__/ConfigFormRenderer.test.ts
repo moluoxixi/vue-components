@@ -1,13 +1,19 @@
 import type { ConfigFormComponentSlotContext } from '@moluoxixi/config-form-headless'
 import type { Component } from 'vue'
-import type { ConfigFormRendererExpose, ConfigFormRendererField } from '../types'
+import type {
+  ConfigFormRendererExpose,
+  ConfigFormRendererField,
+  ConfigFormRuntimeEditorBridge,
+} from '../types'
 import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
+import { RuntimeSurface as RuntimeSurfaceEntry } from '../../renderer-entry'
 import ConfigFormRendererSource from '../ConfigFormRenderer.vue'
 
 const ConfigFormRenderer = ConfigFormRendererSource as Component
+const RuntimeSurface = RuntimeSurfaceEntry as Component
 
 interface TestValues {
   enabled: boolean
@@ -77,6 +83,73 @@ const SlotLeaf = defineComponent({
 })
 
 describe('config form renderer', () => {
+  it('runtimeSurface exposes stable node metadata and editor registration hooks', () => {
+    const editor: ConfigFormRuntimeEditorBridge<TestValues> = {
+      registerNode: vi.fn(),
+    }
+    const fields = [{
+      id: 'section-node',
+      component: SlotHost,
+      slots: {
+        default: {
+          id: 'name-node',
+          component: InputStub,
+          field: 'name',
+        },
+      },
+    }]
+    const wrapper = mount(RuntimeSurface, {
+      props: {
+        editor,
+        fields,
+        mode: 'design',
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        namespace: 'surface-form',
+      },
+    })
+
+    const section = wrapper.get('[data-config-node-id="section-node"]')
+    const field = wrapper.get('[data-config-node-id="name-node"]')
+    expect(section.attributes()).toMatchObject({
+      'data-config-node-kind': 'component',
+      'data-config-path': 'fields.0',
+      'data-node-id': 'section-node',
+    })
+    expect(field.attributes()).toMatchObject({
+      'data-config-node-kind': 'field',
+      'data-config-path': 'fields.0.slots.default',
+      'data-config-slot': 'default',
+      'data-node-id': 'name-node',
+    })
+    expect(editor.registerNode).toHaveBeenCalledTimes(2)
+    expect(editor.registerNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'name-node', nodeId: 'name-node', path: 'fields.0.slots.default', slot: 'default' }),
+      expect.any(HTMLElement),
+    )
+  })
+
+  it('design mode blocks control events by default while the bridge may explicitly allow them', async () => {
+    const editor: ConfigFormRuntimeEditorBridge<TestValues> = {
+      interceptEvent: vi.fn(),
+    }
+    const wrapper = mount(RuntimeSurface, {
+      props: {
+        editor,
+        fields: [defineField<TestValues>({ component: InputStub, field: 'name' })],
+        mode: 'design',
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+      },
+    })
+
+    await wrapper.get('[data-testid="renderer-input"]').setValue('Grace')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(editor.interceptEvent).toHaveBeenCalledWith(expect.objectContaining({ event: 'update:modelValue' }))
+
+    vi.mocked(editor.interceptEvent!).mockReturnValue(false)
+    await wrapper.get('[data-testid="renderer-input"]').setValue('Lin')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ enabled: false, name: 'Lin', status: 'draft' }])
+  })
+
   it('同步写回受控模型，并统一处理 Grid、attrs、校验和 expose', async () => {
     const initial: TestValues = { enabled: false, name: 'Ada', status: 'draft' }
     const fields = [defineField<TestValues>({

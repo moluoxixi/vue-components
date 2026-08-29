@@ -3,10 +3,15 @@ import type {
   DesignerJsonObject,
   DesignerMaterialDefinition,
 } from '@moluoxixi/config-form-designer'
-import { compileDesignerDocument, DesignerPropertyPanel } from '@moluoxixi/config-form-designer'
-import { mount } from '@vue/test-utils'
+import {
+  compileDesignerDocument,
+  ConfigFormDesigner,
+  createDesignerRuntimeProjection,
+  DesignerPropertyPanel,
+} from '@moluoxixi/config-form-designer'
+import { flushPromises, mount } from '@vue/test-utils'
 import { ElInput } from 'element-plus'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createElementPlusDesignerRegistry,
   createElementPlusOptionResolverContext,
@@ -64,14 +69,16 @@ describe('element plus designer materials', () => {
 
   it('creates and compiles every registry material in a single regression matrix', () => {
     const registry = createElementPlusDesignerRegistry()
-    const nodes = registry.listMaterials().map((material, index) => registry.createNode(material.key, {
+    const materials = registry.listMaterials()
+    const nodes = materials.map((material, index) => registry.createNode(material.key, {
       id: `matrix-${index}`,
       ...(material.kind === 'field' ? { field: `matrix-${index}` } : {}),
     }))
+    const rootNodes = nodes.filter((_, index) => !materials[index]!.allowedParents?.length)
 
     expect(nodes).toHaveLength(registry.listMaterials().length)
     expect(new Set(nodes.map(node => node.id)).size).toBe(nodes.length)
-    expect(compileDesignerDocument({ version: 1, form: {}, nodes }, registry)).toMatchObject({ success: true })
+    expect(compileDesignerDocument({ version: 1, form: {}, nodes: rootNodes }, registry)).toMatchObject({ success: true })
   })
 
   it('registers native ConfigForm property controls', () => {
@@ -228,6 +235,52 @@ describe('element plus designer materials', () => {
         }],
       },
     })
+  })
+
+  it('keeps structural children inside their real Element Plus providers', async () => {
+    const registry = createElementPlusDesignerRegistry()
+    const tabs = registry.createNode('element.tabs', { id: 'tabs' })
+    const collapse = registry.createNode('element.collapse', { id: 'collapse' })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const wrapper = mount(ConfigFormDesigner, {
+        props: {
+          document: { version: 1, form: {}, nodes: [tabs, collapse] },
+          registry,
+        },
+      })
+      await flushPromises()
+
+      expect(wrapper.find('.el-tabs').exists()).toBe(true)
+      expect(wrapper.find('[data-config-node-id="tabs-pane-1"]').exists()).toBe(true)
+      expect(wrapper.find('.el-collapse').exists()).toBe(true)
+      expect(wrapper.find('[data-config-node-id="collapse-item-1"]').exists()).toBe(true)
+      const messages = [...warn.mock.calls, ...error.mock.calls].flat().map(String).join('\n')
+      expect(messages).not.toContain('[ElTabPane] usage')
+      expect(messages).not.toContain('[ElCollapseItem] usage')
+      wrapper.unmount()
+    }
+    finally {
+      warn.mockRestore()
+      error.mockRestore()
+    }
+  })
+
+  it('rejects standalone structural children and omits them from the Runtime projection', () => {
+    const registry = createElementPlusDesignerRegistry()
+    const pane = registry.createNode('element.tab-pane', { id: 'pane' })
+    const item = registry.createNode('element.collapse-item', { id: 'item' })
+    const document = { version: 1 as const, form: {}, nodes: [pane, item] }
+
+    expect(compileDesignerDocument(document, registry)).toMatchObject({
+      success: false,
+      diagnostics: [
+        { code: 'DESIGNER_MATERIAL_PARENT_INVALID', nodeId: 'pane' },
+        { code: 'DESIGNER_MATERIAL_PARENT_INVALID', nodeId: 'item' },
+      ],
+    })
+    expect(createDesignerRuntimeProjection(document, registry).fields).toEqual([])
   })
 
   it('enforces finite tabs and collapse child materials during compilation', () => {

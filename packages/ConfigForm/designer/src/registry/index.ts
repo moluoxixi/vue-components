@@ -1,4 +1,5 @@
 export * from './analyze'
 export * from './modules'
+export * from './policy'
 export * from './registry'
 export type * from './types'

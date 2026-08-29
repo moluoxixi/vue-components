@@ -13,6 +13,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: s.PanelBottom,
       runtime: { component: s.TabPane, designerComponent: s.AntdTabPanePreview },
+      allowedParents: [{ material: 'antd.tabs', slot: 'default' }],
       setters: [s.propSetter('tab', 'Label', 'text'), s.propSetter('disabled', 'Disabled', 'boolean')],
       slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
       createNode: ({ id }) => ({

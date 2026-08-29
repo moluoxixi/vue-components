@@ -20,6 +20,7 @@ interface LowCodePageModel {
   props: DesignerJsonObject
   form: DesignerFormSettings
   nodes: LowCodeNode[]
+  flows?: ConfigFormFlow[]
 }
 
 interface LowCodeNode {
@@ -41,12 +42,14 @@ interface LowCodeComponentDefinition {
   events: LowCodeEventSchema[]
   bindings: LowCodeBindingSchema[]
   slots: DesignerMaterialSlotDefinition[]
+  allowedParents: DesignerMaterialParentDefinition[]
   layout: { span?: { min: number, max: number } }
 }
 
 type ModelOperation
   = { type: 'insert', node: LowCodeNode, target: ModelNodeTarget }
   | { type: 'move', nodeId: string, target: ModelNodeTarget }
+  | { type: 'updateFlows', flows?: ConfigFormFlow[] }
   | { type: 'updateProps' | 'updateEvents' | 'updateBindings', nodeId: string, /* payload */ }
   | { type: 'updateNode', nodeId: string, patch: ModelNodePatch }
   | { type: 'resize', nodeId: string, span: number | null }
@@ -59,6 +62,20 @@ applyConfigModelOperation(history, operation, registry): ConfigModelHistoryResul
 
 interface DesignerCommandControl {
   apply(command: DesignerCommand, projectedDocument: DesignerDocument): boolean
+}
+
+interface ModelOperationOptions {
+  /** Optional host-side action registry used to reject unknown Flow refs. */
+  flowActions?: ConfigFormFlowActionRegistry
+}
+
+interface ConfigFormFlow {
+  version: 1
+  id: string
+  name: string
+  trigger: { kind: 'page.mount' | 'form.submit' | 'field.change', field?: string }
+  nodes: ConfigFormFlowNode[]
+  edges: ConfigFormFlowEdge[]
 }
 ```
 
@@ -88,17 +105,32 @@ legacy Designer artifact (open/migrate once)
 - Palette, Canvas, Preview, Inspector, and Source generation use one `LowCodeComponentRegistry`. The Designer Registry
   is reached through `lowCodeRegistry.designer`; generated portable component names come from
   `LowCodeComponentDefinition.sourceComponent`. A missing definition or source projection blocks the operation/export.
+- A structural material may declare `allowedParents: Array<{ material, slot }>` in the Component Registry. This is a
+  placement capability, not persisted page data. Document analysis, live Runtime projection, Designer commands, and
+  Config Model insert/move validation must all enforce the same contract. Invalid stored structural children are
+  diagnosed and omitted from the live projection so a missing provider cannot corrupt Vue's component tree.
 - Opening a version 1 workspace may read `form.designer.json`. Normal editing must not parse `App.vue` or
   `form.config.ts` back into model state.
 - Source and Config are opened from the single Export menu and are read-only. Config export serializes
   `LowCodePageModel`, not the compatibility `DesignerDocument`.
 - Runtime form values belong to the Preview instance. They never update page structure.
-- Sortable DOM order is a transient projection, not a Model index. Drop target resolution must count only real
-  `[data-designer-draggable]` node elements and must ignore empty-state chrome, trailing drop sentinels, palette clones,
-  ghosts, and fallback elements. Root and nested non-empty lists keep a stable trailing drop surface so an append maps
-  to `index === siblings.length`; Model operations remain the only committed mutation.
-- Palette preview state must be cleared on pointer up, pointer cancel, Sortable end, readonly teardown, and component
-  unmount. A cancelled or rejected drag must not leave fallback DOM, a dragging class, or a selected phantom node.
+- Pointer dragging never reorders business DOM. The drag controller creates one Registry-backed candidate node and
+  projects the candidate Model through the same RuntimeSurface used after commit. Pointer up submits one semantic
+  insert/move command; pointer cancel, readonly teardown, and unmount discard the candidate without advancing history.
+- Nested inside targets are sticky while the pointer still hits the same parent. This prevents the candidate's real
+  height from moving the pointer into a different before/after geometry band. A real empty Flex/Grid may have zero
+  runtime height; only during an active drag, the resolver inflates its measured geometry into a small hit band and the
+  editor overlay draws the drop indicator. It must not add a persisted child, trailing sentinel, or Runtime placeholder.
+- `LowCodePageModel.flows` is an optional JSON-only DAG projection. `analyzeConfigFormFlow` validates graph shape before
+  an operation commits; when a host provides `ModelOperationOptions.flowActions`, every action node ref must resolve in
+  that registry. Flow runtime values, outputs, trace, abort signals, and concurrency queues are transient and never
+  mutate page structure.
+- RuntimeSurface metadata (`data-config-node-id`, `data-config-path`, `data-config-slot`, and node kind) is derived from
+  the same model path in Design and Preview. Design mode may intercept control events, but must not replace registered
+  runtime components with static summaries; selection and drop visuals belong to an editor overlay.
+- `DESIGNER_LOCALE_KEY` follows Vue's descendant-only provide/inject boundary. A Workbench dialog or sibling projection
+  rendered outside `ConfigFormDesigner` must accept the same `DesignerLocaleOptions` explicitly (while it may retain an
+  injected fallback); it must not assume the Designer's internal provider is visible across sibling component trees.
 
 ## 4. Validation & Error Matrix
 
@@ -107,6 +139,7 @@ legacy Designer artifact (open/migrate once)
 | Inserted root or descendant component is absent from Registry | `MODEL_COMPONENT_UNKNOWN`; no mutation |
 | Inserted subtree contains duplicate IDs or conflicts with existing IDs | `MODEL_NODE_ID_DUPLICATE`; no mutation |
 | Target parent, slot, accepted kind, or accepted material is invalid | Matching `MODEL_TARGET_*` diagnostic; no mutation |
+| A material is outside every Registry `allowedParents` location | `DESIGNER_MATERIAL_PARENT_INVALID` or `MODEL_TARGET_PARENT_INVALID`; no mutation / live mount |
 | Move targets the moving node's own subtree | `MODEL_MOVE_CYCLE`; no mutation |
 | Resize span is not an integer in `1..24` or `null` | `MODEL_RESIZE_INVALID`; no mutation |
 | Updated property, event key, or binding key is absent from the Component Registry | Matching `MODEL_PROP_UNKNOWN`, `MODEL_EVENT_UNKNOWN`, or `MODEL_BINDING_UNKNOWN`; no mutation |
@@ -114,6 +147,8 @@ legacy Designer artifact (open/migrate once)
 | Duplicate omits an ID for any source descendant | `MODEL_DUPLICATE_MAPPING_INCOMPLETE`; no mutation |
 | Batch is empty | `MODEL_BATCH_EMPTY`; no history entry or revision change |
 | Any nested batch operation fails | Roll back the complete batch to the original model |
+| Flow graph is malformed, cyclic, unreachable, or has an incomplete branch | Flow diagnostic from `analyzeConfigFormFlow`; no model mutation |
+| Flow action ref is unknown when a host registry is supplied | `MODEL_FLOW_ACTION_UNKNOWN`; no model mutation |
 
 ## 5. Good / Base / Bad Cases
 
@@ -138,8 +173,13 @@ legacy Designer artifact (open/migrate once)
 - Unit: Source generation resolves every component through the supplied Registry and rejects an unregistered component.
 - Unit: DesignerDocument compatibility projection preserves supported field/container structure and default/named slot
   placement.
-- Unit: root and nested Sortable callbacks resolve append indices without counting empty-state or trailing-sentinel DOM;
-  palette cancellation clears preview/drag state without emitting a Model mutation.
+- Unit: root and nested candidate targets resolve append indices without DOM reordering; sticky nested and collapsed
+  geometry targets remain deterministic; palette cancellation removes candidate/overlay state without emitting a Model
+  mutation.
+- Unit: structural children with `allowedParents` are accepted only in the declared material/slot pair, rejected at the
+  root and wrong parents, and omitted from live Runtime projection when loading invalid stored documents.
+- Unit: a Workbench projection outside the Designer provider applies an explicit locale and reacts when the locale
+  options are replaced without mutating the Config Model.
 - Integration: both built-in adapter projects install, type-check, and build from generated files.
 - Browser: Components/Layers/Pages are reachable; Layers selection updates Inspector; a committed Inspector edit updates
   Canvas and the open Preview; Source/Config open only through the Export menu and remain read-only.

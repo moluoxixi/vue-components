@@ -4,6 +4,7 @@ import type {
   LowCodePageModel,
 } from '@moluoxixi/config-form-designer'
 import type { ProjectPath, WorkspaceFile, WorkspaceProject } from '../types'
+import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
 import { normalizeProjectPath } from '../path'
 import { cloneWorkspaceProject } from '../revision'
 
@@ -33,7 +34,21 @@ function materialName(component: string): string {
 }
 
 function quote(value: string): string {
-  return JSON.stringify(value)
+  return scriptJson(value)
+}
+
+/**
+ * JSON embedded in a Vue SFC's script block must not contain a literal closing
+ * tag. The SFC parser terminates the block before JavaScript parses string
+ * literals, so escaping HTML-sensitive characters keeps arbitrary JSON-safe
+ * user values (for example `</script>`) buildable in the generated project.
+ */
+function scriptJson(value: unknown, space?: number): string {
+  return (JSON.stringify(value, null, space) ?? 'undefined')
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
 }
 
 function escapeHtml(value: string): string {
@@ -89,10 +104,318 @@ function inputType(node: LowCodeNode): string {
 function collectInitialValues(nodes: LowCodeNode[], values: Record<string, unknown>): void {
   for (const node of nodes) {
     if (node.kind === 'field' && node.field)
-      values[node.field] = node.defaultValue ?? (inputType(node) === 'checkbox' ? false : '')
+      values[node.field] = node.defaultValue !== undefined ? node.defaultValue : (inputType(node) === 'checkbox' ? false : '')
     collectInitialValues(node.children, values)
     Object.values(node.slots).forEach(children => collectInitialValues(children, values))
   }
+}
+
+function flowSource(model: LowCodePageModel): string {
+  const serialized = scriptJson(model.flows ?? [], 2)
+  return `export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'field.change', field?: string }
+export type FlowValues = Record<string, unknown>
+export type FlowAction = (input: unknown, context: { flowId: string, nodeId: string, values: FlowValues, outputs: Readonly<Record<string, unknown>>, signal: AbortSignal }) => unknown | Promise<unknown>
+export type GeneratedFlowNode = { id: string, type: string, ref?: string, config?: Record<string, unknown> }
+export type GeneratedFlowEdge = { id: string, source: string, target: string, condition?: string }
+export type GeneratedFlow = { id: string, trigger: FlowTrigger, concurrency?: 'latest' | 'queue' | 'ignore', nodes: GeneratedFlowNode[], edges: GeneratedFlowEdge[], errorPolicy?: { onError: 'failure' | 'end', timeoutMs?: number } }
+export type FlowProjection = { props: Record<string, Record<string, unknown>>, states: Record<string, Record<string, boolean>>, validate: string[] }
+
+export const flows = ${serialized} as readonly GeneratedFlow[]
+const actions: Record<string, FlowAction> = Object.create(null)
+const activeRuns = new Map<string, { controller: AbortController, promise: Promise<FlowExecutionResult> }>()
+const queuedRuns = new Map<string, Array<{ flow: GeneratedFlow, input: FlowValues, resolve: (result: FlowExecutionResult) => void, reject: (error: unknown) => void }>>()
+let lastProjection: FlowProjection = emptyProjection()
+
+export function registerFlowAction(ref: string, action: FlowAction): void {
+  if (!ref || typeof action !== 'function')
+    throw new Error('Flow action refs must be non-empty and executable.')
+  actions[ref] = action
+}
+
+export function getFlowProjection(): FlowProjection {
+  return cloneProjection(lastProjection)
+}
+
+class FlowTimeoutError extends Error {
+  constructor() {
+    super('Flow action timed out.')
+    this.name = 'FlowTimeoutError'
+  }
+}
+
+interface FlowExecutionResult {
+  values: FlowValues
+  projection: FlowProjection
+}
+
+function emptyProjection(): FlowProjection {
+  return { props: Object.create(null), states: Object.create(null), validate: [] }
+}
+
+function cloneProjection(projection: FlowProjection): FlowProjection {
+  return {
+    props: Object.fromEntries(Object.entries(projection.props).map(([key, value]) => [key, { ...value }])),
+    states: Object.fromEntries(Object.entries(projection.states).map(([key, value]) => [key, { ...value }])),
+    validate: [...projection.validate],
+  }
+}
+
+function mergeProjection(target: FlowProjection, next: FlowProjection): void {
+  for (const [key, value] of Object.entries(next.props))
+    target.props[key] = { ...(target.props[key] ?? {}), ...value }
+  for (const [key, value] of Object.entries(next.states))
+    target.states[key] = { ...(target.states[key] ?? {}), ...value }
+  target.validate = [...new Set([...target.validate, ...next.validate])]
+}
+
+async function withTimeout<T>(value: T | Promise<T>, timeoutMs: number | undefined, controller: AbortController): Promise<T> {
+  if (!timeoutMs || timeoutMs <= 0)
+    return value
+  const signal = controller.signal
+  return new Promise<T>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const cleanup = (): void => {
+      if (timer !== undefined)
+        clearTimeout(timer)
+      signal.removeEventListener('abort', abort)
+    }
+    const finish = (callback: () => void): void => {
+      cleanup()
+      callback()
+    }
+    const abort = (): void => finish(() => reject(signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError')))
+    timer = setTimeout(() => finish(() => {
+      const error = new FlowTimeoutError()
+      controller.abort(error)
+      reject(error)
+    }), timeoutMs)
+    if (signal.aborted) {
+      abort()
+      return
+    }
+    signal.addEventListener('abort', abort, { once: true })
+    Promise.resolve(value).then(result => finish(() => resolve(result)), error => finish(() => reject(error)))
+  })
+}
+
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted)
+    throw signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError')
+}
+
+function equal(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right))
+    return true
+  if (Array.isArray(left) || Array.isArray(right))
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, index) => equal(value, right[index]))
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object')
+    return false
+  const leftRecord = left as Record<string, unknown>
+  const rightRecord = right as Record<string, unknown>
+  const keys = Object.keys(leftRecord)
+  return keys.length === Object.keys(rightRecord).length && keys.every(key => Object.hasOwn(rightRecord, key) && equal(leftRecord[key], rightRecord[key]))
+}
+
+function operand(value: unknown, values: FlowValues, outputs: Record<string, unknown>): unknown {
+  if (Array.isArray(value))
+    return value.map(item => operand(item, values, outputs))
+  if (!value || typeof value !== 'object')
+    return value
+  const record = value as Record<string, unknown>
+  // Keep the standalone projection compatible with the Core reaction AST,
+  // which uses { kind: 'field' | 'literal' } operands rather than the
+  // generator's internal $field/$output shorthand.
+  if (record.kind === 'field' && typeof record.field === 'string')
+    return values[record.field]
+  if (record.kind === 'literal' && Object.hasOwn(record, 'value'))
+    return operand(record.value, values, outputs)
+  if (Object.keys(record).length === 1 && typeof record.$field === 'string')
+    return values[record.$field]
+  if (Object.keys(record).length === 1 && typeof record.$output === 'string')
+    return outputs[record.$output]
+  return Object.fromEntries(Object.entries(record).map(([key, child]) => [key, operand(child, values, outputs)]))
+}
+
+function condition(value: unknown, values: FlowValues): boolean {
+  if (!value || typeof value !== 'object')
+    return Boolean(value)
+  const item = value as Record<string, unknown>
+  if (item.kind === 'literal') return Boolean(item.value)
+  if (item.kind === 'not') return !condition(item.expression, values)
+  if (item.kind === 'and') return Array.isArray(item.expressions) && item.expressions.every(expression => condition(expression, values))
+  if (item.kind === 'or') return Array.isArray(item.expressions) && item.expressions.some(expression => condition(expression, values))
+  if (item.kind === 'compare') {
+    const left = operand(item.left, values, {})
+    const right = operand(item.right, values, {})
+    switch (item.operator) {
+      case 'eq': return equal(left, right)
+      case 'neq': return !equal(left, right)
+      case 'gt': return typeof left === typeof right && (left as any) > (right as any)
+      case 'gte': return typeof left === typeof right && (left as any) >= (right as any)
+      case 'lt': return typeof left === typeof right && (left as any) < (right as any)
+      case 'lte': return typeof left === typeof right && (left as any) <= (right as any)
+      case 'in': return Array.isArray(right) && right.some(value => equal(left, value))
+      case 'contains': return typeof left === 'string' && typeof right === 'string' ? left.includes(right) : Array.isArray(left) && left.some(value => equal(value, right))
+      default: return false
+    }
+  }
+  return false
+}
+
+function reactionProjection(reactions: Array<{ when: unknown, then: Array<Record<string, unknown>>, else?: Array<Record<string, unknown>>, enabled?: boolean }>, values: FlowValues, outputs: Record<string, unknown>): FlowProjection {
+  const maxPasses = Math.max(16, reactions.length * 4)
+  const seen = new Set<string>()
+  let converged = false
+  for (let pass = 0; pass < maxPasses; pass += 1) {
+    const before = JSON.stringify(values)
+    if (before !== undefined)
+      seen.add(before)
+    for (const reaction of reactions) {
+      if (reaction.enabled === false)
+        continue
+      const effects = condition(reaction.when, values) ? reaction.then : (reaction.else ?? [])
+      for (const effect of effects) {
+        if (effect.kind === 'setValue' && typeof effect.target === 'string')
+          values[effect.target] = operand(effect.value, values, outputs)
+        else if (effect.kind === 'clearValue' && typeof effect.target === 'string')
+          delete values[effect.target]
+      }
+    }
+    const after = JSON.stringify(values)
+    if (before === after) {
+      converged = true
+      break
+    }
+    if (after !== undefined && seen.has(after))
+      throw new Error('ConfigForm reactions did not converge because their value effects form a cycle.')
+  }
+  if (!converged)
+    throw new Error('ConfigForm reactions exceeded the convergence limit.')
+
+  const projection = emptyProjection()
+  for (const reaction of reactions) {
+    if (reaction.enabled === false)
+      continue
+    const effects = condition(reaction.when, values) ? reaction.then : (reaction.else ?? [])
+    for (const effect of effects) {
+      if (typeof effect.target !== 'string')
+        continue
+      if (effect.kind === 'setProps' && effect.props && typeof effect.props === 'object')
+        projection.props[effect.target] = Object.fromEntries(Object.entries(effect.props).map(([key, value]) => [key, operand(value, values, outputs)]))
+      else if (effect.kind === 'setState' && effect.state && typeof effect.state === 'object')
+        projection.states[effect.target] = Object.fromEntries(Object.entries(effect.state).filter(([, value]) => typeof value === 'boolean')) as Record<string, boolean>
+      else if (effect.kind === 'validate')
+        projection.validate.push(effect.target)
+    }
+  }
+  return projection
+}
+
+async function executeFlow(flow: GeneratedFlow, input: FlowValues, controller: AbortController): Promise<FlowExecutionResult> {
+  const signal = controller.signal
+  const values = { ...input }
+  const outputs: Record<string, unknown> = {}
+  const projection = emptyProjection()
+  const byId = new Map(flow.nodes.map(node => [node.id, node]))
+  const outgoing = (id: string) => flow.edges.filter(edge => edge.source === id)
+  let current = flow.nodes.find(node => node.type === 'trigger')?.id
+  let guard = 0
+  while (current && guard++ < flow.nodes.length * 2) {
+    throwIfAborted(signal)
+    const node = byId.get(current)
+    if (!node)
+      break
+    if (node.type === 'condition') {
+      const matches = condition(node.config?.condition, values)
+      current = outgoing(current).find(edge => edge.condition === (matches ? 'true' : 'false'))?.target
+    }
+    else if (node.type === 'reaction') {
+      const reactions = (Array.isArray(node.config?.reactions) ? node.config.reactions : []) as Array<{ when: unknown, then: Array<Record<string, unknown>>, else?: Array<Record<string, unknown>>, enabled?: boolean }>
+      mergeProjection(projection, reactionProjection(reactions, values, outputs))
+      current = outgoing(current).find(edge => edge.condition === 'next')?.target ?? outgoing(current).find(edge => edge.condition === undefined)?.target
+    }
+    else if (node.type === 'action') {
+      try {
+        const action = node.ref ? actions[node.ref] : undefined
+        if (!action)
+          throw new Error('Missing generated flow action: ' + (node.ref ?? node.id))
+        const result = await withTimeout(action(operand(node.config?.input, values, outputs), { flowId: flow.id, nodeId: node.id, values, outputs, signal }), flow.errorPolicy?.timeoutMs, controller)
+        outputs[node.id] = result
+        current = outgoing(node.id).find(edge => edge.condition === 'next')?.target ?? outgoing(node.id).find(edge => edge.condition === undefined)?.target
+      }
+      catch (error) {
+        const timeout = error instanceof FlowTimeoutError
+        const aborted = signal.aborted || (error instanceof DOMException && error.name === 'AbortError')
+        // Superseded/externally aborted runs must never enter a configured
+        // failure branch. Timeout aborts are handled as failures below so the
+        // explicit timeout policy remains observable.
+        if (aborted && !timeout)
+          throw error
+        const failure = outgoing(node.id).find(edge => edge.condition === 'error')
+        if (failure && flow.errorPolicy?.onError === 'failure') {
+          current = failure.target
+          continue
+        }
+        if (flow.errorPolicy?.onError === 'end' && (timeout || !signal.aborted))
+          break
+        throw error
+      }
+    }
+    else if (node.type === 'success' || node.type === 'failure' || node.type === 'end') break
+    else current = outgoing(current).find(edge => edge.condition === 'next')?.target ?? outgoing(current).find(edge => edge.condition === undefined)?.target
+  }
+  return { values, projection }
+}
+
+function startFlow(flow: GeneratedFlow, input: FlowValues): Promise<FlowExecutionResult> {
+  const controller = new AbortController()
+  const promise = executeFlow(flow, input, controller).finally(() => {
+    if (activeRuns.get(flow.id)?.promise !== promise)
+      return
+    activeRuns.delete(flow.id)
+    const next = queuedRuns.get(flow.id)?.shift()
+    if (next) {
+      if (queuedRuns.get(flow.id)?.length === 0)
+        queuedRuns.delete(flow.id)
+      startFlow(next.flow, next.input).then(next.resolve, next.reject)
+    }
+  })
+  activeRuns.set(flow.id, { controller, promise })
+  return promise
+}
+
+function scheduleFlow(flow: GeneratedFlow, input: FlowValues): Promise<FlowExecutionResult> {
+  const active = activeRuns.get(flow.id)
+  if (!active)
+    return startFlow(flow, input)
+  const concurrency = flow.concurrency ?? 'latest'
+  if (concurrency === 'ignore')
+    return Promise.resolve({ values: { ...input }, projection: emptyProjection() })
+  if (concurrency === 'latest') {
+    active.controller.abort('superseded')
+    return startFlow(flow, input)
+  }
+  return new Promise((resolve, reject) => {
+    const queue = queuedRuns.get(flow.id) ?? []
+    queue.push({ flow, input: { ...input }, resolve, reject })
+    queuedRuns.set(flow.id, queue)
+  })
+}
+
+export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}): Promise<FlowValues> {
+  const values = { ...input }
+  const projection = emptyProjection()
+  for (const flow of flows) {
+    if (flow.trigger.kind !== trigger.kind || (flow.trigger.field && flow.trigger.field !== trigger.field))
+      continue
+    const result = await scheduleFlow(flow, values)
+    Object.assign(values, result.values)
+    mergeProjection(projection, result.projection)
+  }
+  lastProjection = cloneProjection(projection)
+  return values
+}
+`
 }
 
 function assertPortableNode(node: LowCodeNode, registry: LowCodeComponentRegistry): void {
@@ -106,24 +429,28 @@ function assertPortableNode(node: LowCodeNode, registry: LowCodeComponentRegistr
 }
 
 function renderField(node: LowCodeNode, columns: number): string {
-  const id = quote(node.id)
   const field = quote(node.field ?? node.id)
+  const fieldKey = quote(node.field ?? node.id)
   const type = inputType(node)
   const style = styleForNode(node, columns)
-  const attrs = ` v-bind='fieldProps[${id}]'`
+  const attrs = ` v-bind='fieldProps[${fieldKey}]'`
+  // Use a single-quoted Vue directive so the JSON-quoted field name remains
+  // valid when emitted (for example: @change='runFieldChange("email")').
+  const change = ` @change='runFieldChange(${field})'`
   const styleAttr = style ? ` style="${style}"` : ''
+  const hiddenAttr = ` :hidden='fieldStates[${fieldKey}]?.visible === false'`
   const safeId = escapeHtml(node.id)
   const label = node.label ? `\n      <label class="source-field-label" for="field-${safeId}">${escapeHtml(node.label)}</label>` : ''
   if (type === 'checkbox') {
-    return `    <div class="source-field source-field-checkbox" data-node-id="${safeId}"${styleAttr}>\n      <label>${label ? escapeHtml(node.label ?? '') : ''}<input id="field-${safeId}" type="checkbox"${attrs} v-model='model[${field}]' /></label>\n    </div>`
+    return `    <div class="source-field source-field-checkbox" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>\n      <label>${label ? escapeHtml(node.label ?? '') : ''}<input id="field-${safeId}" type="checkbox"${attrs} v-model='model[${field}]'${change} /></label>\n    </div>`
   }
   if (materialName(node.component) === 'textarea') {
-    return `    <div class="source-field" data-node-id="${safeId}"${styleAttr}>${label}\n      <textarea id="field-${safeId}"${attrs} v-model='model[${field}]'></textarea>\n    </div>`
+    return `    <div class="source-field" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>${label}\n      <textarea id="field-${safeId}"${attrs} v-model='model[${field}]'${change}></textarea>\n    </div>`
   }
   if (materialName(node.component) === 'select' || materialName(node.component) === 'radio') {
-    return `    <div class="source-field" data-node-id="${safeId}"${styleAttr}>${label}\n      <select id="field-${safeId}"${attrs} v-model='model[${field}]'>\n        <option v-for='option in fieldOptions[${id}]' :key="String(option.value)" :value="option.value">{{ option.label }}</option>\n      </select>\n    </div>`
+    return `    <div class="source-field" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>${label}\n      <select id="field-${safeId}"${attrs} v-model='model[${field}]'${change}>\n        <option v-for='option in fieldOptions[${fieldKey}]' :key="String(option.value)" :value="option.value">{{ option.label }}</option>\n      </select>\n    </div>`
   }
-  return `    <div class="source-field" data-node-id="${safeId}"${styleAttr}>${label}\n      <input id="field-${safeId}" type="${type}"${attrs} v-model='model[${field}]' />\n    </div>`
+  return `    <div class="source-field" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>${label}\n      <input id="field-${safeId}" type="${type}"${attrs} v-model='model[${field}]'${change} />\n    </div>`
 }
 
 function renderNodes(nodes: LowCodeNode[], columns: number, indent = 0): string {
@@ -149,8 +476,11 @@ function appSource(model: LowCodePageModel): string {
   const collectProps = (nodes: LowCodeNode[]): void => {
     nodes.forEach((node) => {
       if (node.kind === 'field') {
-        props[node.id] = htmlProps(node)
-        options[node.id] = fieldOptions(node)
+        // Reaction targets use the headless field key (not the designer node
+        // id), so keep generated projection maps keyed by the same contract.
+        const target = node.field ?? node.id
+        props[target] = htmlProps(node)
+        options[target] = fieldOptions(node)
       }
       collectProps(node.children)
       Object.values(node.slots).forEach(collectProps)
@@ -159,16 +489,65 @@ function appSource(model: LowCodePageModel): string {
   collectProps(model.nodes)
   const columns = model.form.columns ?? 24
   return `<script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { getFlowProjection, runFlows, type FlowTrigger } from './flows'
 
-const model = reactive<Record<string, unknown>>(${JSON.stringify(initialValues, null, 2)})
-const fieldProps = ${JSON.stringify(props, null, 2)} as Record<string, Record<string, unknown>>
-const fieldOptions = ${JSON.stringify(options, null, 2)} as Record<string, Array<{ label: string, value: unknown }>>
+const model = reactive<Record<string, unknown>>(${scriptJson(initialValues, 2)})
+const baseFieldProps = ${scriptJson(props, 2)} as Record<string, Record<string, unknown>>
+const fieldProps = reactive<Record<string, Record<string, unknown>>>({ ...baseFieldProps })
+const fieldOptions = ${scriptJson(options, 2)} as Record<string, Array<{ label: string, value: unknown }>>
+const fieldStates = reactive<Record<string, Record<string, boolean>>>({})
+const flowValidation = ref<string[]>([])
 const submitted = ref('')
+let triggerRevision = 0
+
+function applyFlowProjection(): void {
+  const projection = getFlowProjection()
+  flowValidation.value = projection.validate
+  // A projection is a snapshot, so restore registry/model props and clear
+  // transient state before applying the next flow result.
+  for (const key of Object.keys(fieldProps))
+    delete fieldProps[key]
+  for (const [key, value] of Object.entries(baseFieldProps))
+    fieldProps[key] = { ...value }
+  for (const key of Object.keys(fieldStates))
+    delete fieldStates[key]
+  for (const [target, nextProps] of Object.entries(projection.props))
+    fieldProps[target] = { ...(fieldProps[target] ?? {}), ...nextProps }
+  for (const [target, nextState] of Object.entries(projection.states))
+    fieldStates[target] = { ...(fieldStates[target] ?? {}), ...nextState }
+}
+
+async function runTrigger(trigger: { kind: FlowTrigger['kind'], field?: string }): Promise<void> {
+  const revision = ++triggerRevision
+  try {
+    const nextValues = await runFlows(trigger, model)
+    if (revision !== triggerRevision)
+      return
+    for (const key of Object.keys(model)) {
+      if (!Object.hasOwn(nextValues, key))
+        delete model[key]
+    }
+    Object.assign(model, nextValues)
+    applyFlowProjection()
+  }
+  catch (error) {
+    if (revision !== triggerRevision)
+      return
+    submitted.value = error instanceof Error ? error.message : String(error)
+  }
+}
+
+function runFieldChange(field: string): void {
+  void runTrigger({ kind: 'field.change', field })
+}
 
 function handleSubmit(): void {
   submitted.value = JSON.stringify(model, null, 2)
+  void runTrigger({ kind: 'form.submit' })
 }
+
+onMounted(() => { void runTrigger({ kind: 'page.mount' }) })
 </script>
 
 <template>
@@ -184,7 +563,8 @@ ${renderNodes(model.nodes, columns)}
       </div>
       <button class="source-submit" type="submit">Save</button>
     </form>
-    <pre v-if="submitted" class="source-result" aria-live="polite">{{ submitted }}</pre>
+      <p v-if="flowValidation.length" class="source-validation" role="status">Validation requested for: {{ flowValidation.join(', ') }}</p>
+      <pre v-if="submitted" class="source-result" aria-live="polite">{{ submitted }}</pre>
   </main>
 </template>
 `
@@ -210,6 +590,7 @@ button, input, select, textarea { font: inherit; }
 .source-layout { min-width: 0; padding: 14px; border: 1px solid #d5dce5; border-radius: 7px; background: #f8fafc; }
 .source-slot { display: grid; gap: 12px; min-width: 0; }
 .source-submit { min-height: 38px; margin-top: 20px; padding: 0 16px; color: #fff; border: 0; border-radius: 5px; background: #1d4ed8; cursor: pointer; }
+.source-validation { margin: 14px 0 0; padding: 10px 12px; color: #92400e; border: 1px solid #fbbf24; border-radius: 5px; background: #fffbeb; }
 .source-result { margin-top: 20px; padding: 16px; overflow: auto; color: #d7f9e4; border-radius: 5px; background: #17212b; }
 @media (max-width: 640px) { .source-page { width: min(100% - 20px, 920px); padding-top: 24px; } .source-form { padding: 16px; } .source-grid { grid-template-columns: 1fr !important; } .source-field { grid-column: 1 / -1 !important; } .source-header h1 { font-size: 26px; } }
 `
@@ -246,6 +627,13 @@ function sourcePackage(project: WorkspaceProject): string {
 
 export function createPureSourceExport(project: WorkspaceProject, model: LowCodePageModel, registry: LowCodeComponentRegistry): PureSourceExport {
   model.nodes.forEach(node => assertPortableNode(node, registry))
+  if (model.flows !== undefined && !Array.isArray(model.flows))
+    throw new Error('Flow export requires an array of JSON-only flows.')
+  for (const flow of model.flows ?? []) {
+    const result = analyzeConfigFormFlow(flow)
+    if (!result.success)
+      throw new Error(result.diagnostics[0]?.message ?? 'Flow is invalid and cannot be exported.')
+  }
   const next = cloneWorkspaceProject(project)
   const files: Record<ProjectPath, WorkspaceFile> = {}
   for (const [path, file] of Object.entries(next.files) as Array<[ProjectPath, WorkspaceFile]>) {
@@ -258,6 +646,7 @@ export function createPureSourceExport(project: WorkspaceProject, model: LowCode
   files[normalizeProjectPath('src/App.vue')] = textFile(appSource(model), 'vue')
   files[normalizeProjectPath('src/main.ts')] = textFile(`import { createApp } from 'vue'\nimport App from './App.vue'\nimport './styles.css'\n\ncreateApp(App).mount('#app')\n`, 'typescript')
   files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
+  files[normalizeProjectPath('src/flows.ts')] = textFile(flowSource(model), 'typescript')
   files[modelPath] = textFile(`${JSON.stringify(model, null, 2)}\n`, 'json')
   next.files = files
   next.manifest = {
