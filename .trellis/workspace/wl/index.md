@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
+- **Total Sessions**: 15
 - **Last Active**: 2026-08-29
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~318 | Active |
+| `journal-1.md` | ~340 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-08-29 | 生产级 Design-first 画布与事件编排 | `22e28eaa` | `main` |
 | 14 | 2026-08-29 | 配置化工作台嵌套设计器与导出收口 | `c373c743` | `main` |
 | 13 | 2026-08-28 | 完成 Designer 拖拽回归修复 | `688b25e4` | `main` |
 | 12 | 2026-08-28 | 优化低代码 IDE 暗色主题 | `09ca1cad` | `main` |

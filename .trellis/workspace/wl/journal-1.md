@@ -316,3 +316,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 15: 生产级 Design-first 画布与事件编排
+
+**Date**: 2026-08-29
+**Task**: 生产级 Design-first 画布与事件编排
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+统一真实 RuntimeSurface 画布与拖拽候选渲染，完成受控流程编排、Preview 运行时、独立 Source/Config 导出、暗色主题和完整质量门禁。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `22e28eaa` | (see git log) |
+
+### Status
+
+[OK] **Completed**
