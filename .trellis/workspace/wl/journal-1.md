@@ -338,3 +338,40 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 16: 低代码 IDE 页面、导出与拖拽生产化
+
+**Date**: 2026-08-29
+**Task**: 低代码 IDE 页面、导出与拖拽生产化
+**Package**: config-form-designer
+**Branch**: `main`
+
+### Summary
+
+完成 RuntimeSurface 稳定公共别名、真实拖拽 Overlay、多页面 WorkspaceApplication 与 Page Manager、不可变导出快照和 VS Code 风格文件树；通过三包全量测试、跨包发布门禁、四套导出工程构建及桌面/移动端浏览器验收。
+
+### Main Changes
+
+- Designer 使用真实 Runtime candidate 驱动半透明指针 Overlay，并统一拖拽清理。
+- Workbench 升级为多页面 Application，新增 Page Manager、层级 Source 文件树和不可变 ExportSnapshot。
+- RuntimeSurface 与 ConfigFormRenderer 共享同一公共组件签名，并纳入独立 TypeScript consumer 验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c567bd01` | (see git log) |
+| `cb131041` | (see git log) |
+| `774b7840` | (see git log) |
+| `bd04a6c6` | (see git log) |
+
+### Testing
+
+- [OK] Designer 132、Runtime 199、Workbench 108 个单测通过，三包 typecheck/build 与全仓 lint 通过。
+- [OK] test:config-form-packages 和四套导出模板 install/typecheck/build 通过。
+- [OK] 浏览器验证三层嵌套、已有节点跨层移动、暗色 Runtime 边界、移动端 Page Manager 与导出文件树。
+
+### Status
+
+[OK] **Completed**
