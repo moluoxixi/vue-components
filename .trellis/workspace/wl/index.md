@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
+- **Total Sessions**: 17
 - **Last Active**: 2026-08-29
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~377 | Active |
+| `journal-1.md` | ~399 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-08-29 | 配置化表单流程运行一致性 | `cc6d16d4` | `main` |
 | 16 | 2026-08-29 | 低代码 IDE 页面、导出与拖拽生产化 | `c567bd01`, `cb131041`, `774b7840`, `bd04a6c6` | `main` |
 | 15 | 2026-08-29 | 生产级 Design-first 画布与事件编排 | `22e28eaa` | `main` |
 | 14 | 2026-08-29 | 配置化工作台嵌套设计器与导出收口 | `c373c743` | `main` |

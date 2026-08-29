@@ -375,3 +375,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 17: 配置化表单流程运行一致性
+
+**Date**: 2026-08-29
+**Task**: 配置化表单流程运行一致性
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+统一 Flow ID 级并发、取消、值差量与投影语义；修复 Runtime v-model 回声；让 Preview 与自包含 Source 使用一致的可执行状态矩阵，并通过浏览器与四套真实导出工程验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc6d16d4` | (see git log) |
+
+### Status
+
+[OK] **Completed**
