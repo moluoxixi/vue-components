@@ -1,0 +1,28 @@
+{
+  "id": "config-form-production-ide-redesign",
+  "name": "config-form-production-ide-redesign",
+  "title": "ConfigForm 生产级 Low-Code IDE 重设计",
+  "description": "从产品心智模型、信息架构、真实 Runtime 画布、页面/流程/导出工作流与生产质量门重新设计 ConfigForm Low-Code IDE。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": "packages/ConfigForm",
+  "package": "ConfigForm",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-30",
+  "completedAt": "2026-08-30",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "package": "ConfigForm"
+  }
+}

@@ -1,0 +1,4 @@
+{"file":".trellis/spec/ConfigForm/frontend/index.md","reason":"ConfigForm 前端包的开发入口与实现前检查清单。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"本任务跨 Model、Registry、Runtime、Designer、Flow、Generator 与 Workbench，需要逐层验证数据流。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"避免在 Design、Preview、Config 和 Source 中复制 Registry、props、slot 与事件语义。"}
+{"file":".trellis/tasks/08-30-config-form-production-ide-redesign/research/current-state-audit.md","reason":"记录当前可保留内核、运行态结构缺陷、Source 语义差异和成熟库取舍。"}

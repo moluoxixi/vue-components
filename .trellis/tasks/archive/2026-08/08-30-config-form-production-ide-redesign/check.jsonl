@@ -1,0 +1,4 @@
+{"file":".trellis/spec/ConfigForm/frontend/index.md","reason":"按 ConfigForm 前端质量门检查受影响模块。"}
+{"file":".trellis/spec/ConfigForm/frontend/quality-guidelines.md","reason":"执行测试、类型、构建、可维护性和禁用模式检查。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"复核 Config Model 到 Design、Runtime、Preview、Flow 与导出的端到端一致性。"}
+{"file":".trellis/tasks/08-30-config-form-production-ide-redesign/research/current-state-audit.md","reason":"防止质量检查回退已确认的 RuntimeSurface/operation 能力或遗漏 Source 真实组件差异。"}
