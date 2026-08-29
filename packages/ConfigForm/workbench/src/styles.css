@@ -132,17 +132,35 @@ select:focus-visible {
   font-size: 14px;
 }
 
-.project-select {
-  width: 100%;
+.workspace-context {
+  display: grid;
   min-width: 0;
-  height: 30px;
-  padding: 0 28px 0 9px;
+  height: 32px;
+  padding: 3px 9px;
   overflow: hidden;
-  color: var(--wb-text);
   border: 1px solid var(--wb-control-border);
   border-radius: 4px;
   background: var(--wb-bg);
+  line-height: 1.1;
+}
+
+.workspace-context span,
+.workspace-context strong {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-context span {
+  color: var(--wb-muted);
+  font-size: 9px;
+}
+
+.workspace-context strong {
+  color: var(--wb-text-strong);
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .topbar-actions {
@@ -151,6 +169,10 @@ select:focus-visible {
   align-items: center;
   justify-content: flex-end;
   gap: 5px;
+}
+
+.topbar-actions .mobile-page-manager-button {
+  display: none;
 }
 
 .export-menu {
@@ -474,6 +496,34 @@ select:focus-visible {
   min-height: 0;
   padding: 6px;
   overflow: auto;
+}
+
+.designer-pages-panel {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.manage-pages-button {
+  display: inline-flex;
+  min-height: 34px;
+  margin: 0 6px 6px;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-control-border);
+  border-radius: 4px;
+  background: var(--wb-surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.manage-pages-button:hover {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-hover);
 }
 
 .designer-layers button,
@@ -853,6 +903,16 @@ select:focus-visible {
   background: rgb(1 4 9 / 76%);
 }
 
+.page-manager-overlay {
+  position: fixed;
+  z-index: 2700;
+  inset: 0;
+  display: grid;
+  padding: 20px;
+  place-items: center;
+  background: rgb(1 4 9 / 76%);
+}
+
 .flow-workspace-overlay {
   position: fixed;
   z-index: 2800;
@@ -1002,7 +1062,7 @@ select:focus-visible {
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-.source-export-view:not(:has(.export-diagnostic)) {
+.source-export-view:not(:has(.export-diagnostic)):not(:has(.export-stale)) {
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -1020,6 +1080,33 @@ select:focus-visible {
   margin: 4px 0 0;
 }
 
+.export-stale {
+  display: flex;
+  min-height: 38px;
+  padding: 5px 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--wb-warning);
+  border-bottom: 1px solid var(--wb-border);
+  background: color-mix(in srgb, var(--wb-warning) 9%, var(--wb-surface));
+  font-size: 11px;
+}
+
+.export-stale button {
+  display: inline-flex;
+  min-height: 28px;
+  padding: 0 8px;
+  align-items: center;
+  gap: 6px;
+  color: var(--wb-text-strong);
+  border: 1px solid var(--wb-control-border);
+  border-radius: 4px;
+  background: var(--wb-surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .source-file-layout {
   display: grid;
   width: 100%;
@@ -1027,6 +1114,35 @@ select:focus-visible {
   min-width: 0;
   min-height: 0;
   grid-template-columns: minmax(150px, 22%) minmax(0, 1fr);
+}
+
+.source-file-layout > .source-file-tabs {
+  display: none;
+}
+
+.source-code-pane {
+  min-width: 0;
+  min-height: 0;
+}
+
+.source-code-pane > .workspace-code-editor,
+.source-code-pane .monaco-editor {
+  width: 100%;
+  height: 100%;
+}
+
+.source-binary-placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: var(--wb-muted);
+}
+
+.source-binary-placeholder strong {
+  color: var(--wb-text-strong);
 }
 
 .source-file-tree {
@@ -1281,6 +1397,10 @@ select:focus-visible {
     display: none;
   }
 
+  .topbar-actions .mobile-page-manager-button {
+    display: inline-grid;
+  }
+
   .workbench-app {
     grid-template-rows: 48px 36px minmax(0, 1fr);
   }
@@ -1369,6 +1489,10 @@ select:focus-visible {
     padding: 0;
   }
 
+  .page-manager-overlay {
+    padding: 0;
+  }
+
   .flow-workspace-overlay {
     padding: 0;
   }
@@ -1398,6 +1522,25 @@ select:focus-visible {
 
   .export-preview-dialog > footer > div {
     width: 100%;
+  }
+
+  .source-file-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 34px minmax(0, 1fr);
+  }
+
+  .source-file-layout > .source-file-tabs {
+    display: flex;
+  }
+
+  .source-file-layout > .project-file-tree,
+  .source-code-pane {
+    grid-row: 2;
+    border-right: 0;
+  }
+
+  .source-file-layout .is-mobile-hidden {
+    display: none;
   }
 
   .dialog-action {
@@ -1432,9 +1575,8 @@ select:focus-visible {
     display: none;
   }
 
-  .project-select {
-    padding-right: 18px;
-    padding-left: 6px;
+  .workspace-context {
+    padding-inline: 6px;
   }
 }
 

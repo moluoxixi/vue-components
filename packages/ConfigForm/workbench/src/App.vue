@@ -9,15 +9,16 @@ import type {
   DesignerRegistry,
   DesignerSelectionMode,
   ConfigFormDesignerExpose,
-  LowCodeNode,
   LowCodePageModel,
   ModelOperation,
 } from '@moluoxixi/config-form-designer'
 import type {
   ProjectPath,
-  WorkspaceProject,
-  WorkspaceProjectRepository,
-  WorkspaceProjectSummary,
+  WorkspaceApplication,
+  WorkspaceApplicationOperation,
+  WorkspaceApplicationRepository,
+  WorkspaceApplicationSummary,
+  ExportSnapshot,
 } from './project'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import {
@@ -42,7 +43,9 @@ import {
   PanelRightOpen,
   Plus,
   Redo2,
+  RefreshCw,
   Save,
+  Settings2,
   Smartphone,
   Tablet,
   Trash2,
@@ -53,7 +56,6 @@ import {
 } from '@lucide/vue'
 import {
   applyConfigModelOperation,
-  applyModelOperation,
   compileDesignerDocument,
   configModelToDesignerDocument,
   ConfigFormDesigner,
@@ -62,8 +64,6 @@ import {
   createLowCodeComponentRegistry,
   DesignerPalette,
   designerCommandToModelOperation,
-  designerDocumentToConfigModel,
-  parseDesignerDocument,
   redoConfigModelHistory,
   undoConfigModelHistory,
 } from '@moluoxixi/config-form-designer'
@@ -74,19 +74,29 @@ import { ConfigFormRenderer } from '@moluoxixi/config-form/renderer'
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import PreviewRuntimeBoundary from './components/PreviewRuntimeBoundary.vue'
 import FlowWorkspace from './components/FlowWorkspace.vue'
+import PageManager from './components/PageManager.vue'
+import ProjectFileTree from './components/ProjectFileTree.vue'
 import { createPreviewRevisionGate, createWorkbenchFlowActionRegistry } from './preview'
 import { cloneWorkbenchJson } from './utils/clone'
 import {
   BUILT_IN_WORKSPACE_TEMPLATES,
-  cloneWorkspaceProject,
-  createBuiltInWorkspaceProject,
-  downloadProjectArchive,
-  formatWorkspaceAppComponent,
+  applyWorkspaceApplicationOperation,
+  buildProjectFileTree,
+  cloneWorkspaceApplication,
+  collectProjectTreeDirectoryIds,
+  createExportSnapshot,
+  createBuiltInWorkspaceApplication,
+  createBuiltInWorkspacePage,
+  createWorkspaceApplicationSourceExport,
+  downloadWorkspaceArchive,
+  duplicateWorkspacePage,
+  isExportSnapshotStale,
+  nextWorkspacePageId,
+  nextWorkspacePageRoute,
   normalizeProjectPath,
-  openDefaultWorkspaceProjectRepository,
-  upgradeWorkspaceConfigModule,
+  openDefaultWorkspaceApplicationRepository,
+  resolveExportSnapshotPath,
   WORKSPACE_CONFIG_MODULE_PATH,
-  createPureSourceExport,
 } from './project'
 import { formatLowCodePageConfig } from './workbench/config-codec'
 
@@ -113,7 +123,7 @@ const designerLeftViews = [
   { icon: Layers3, id: 'layers' as const, label: 'Layers' },
   { icon: Files, id: 'pages' as const, label: 'Pages' },
 ]
-const registries: Record<WorkspaceProject['manifest']['adapter'], DesignerRegistry> = {
+const registries: Record<WorkspaceApplication['manifest']['adapter'], DesignerRegistry> = {
   'antd-vue': createAntdVueDesignerRegistry(),
   'element-plus': createElementPlusDesignerRegistry(),
 }
@@ -122,9 +132,10 @@ const lowCodeRegistries = {
   'element-plus': createLowCodeComponentRegistry(registries['element-plus']),
 }
 
-const repository = shallowRef<WorkspaceProjectRepository>()
-const projects = ref<WorkspaceProjectSummary[]>([])
-const currentProject = shallowRef<WorkspaceProject>()
+const repository = shallowRef<WorkspaceApplicationRepository>()
+const applications = ref<WorkspaceApplicationSummary[]>([])
+const currentApplication = shallowRef<WorkspaceApplication>()
+const currentPageId = ref('')
 const configHistory = shallowRef<ConfigModelHistory>()
 const configError = ref('')
 const mobileSurface = ref<MobileSurface>('edit')
@@ -137,6 +148,7 @@ const previewFlowProjections = shallowRef<Record<string, ConfigFormReactionProje
 const rendererPreviewVersion = ref(0)
 const dirty = ref(false)
 const templatePickerOpen = ref(false)
+const pageManagerOpen = ref(false)
 const exportMenuOpen = ref(false)
 const exportPreviewMode = ref<'source' | 'config'>()
 const flowWorkspaceOpen = ref(false)
@@ -145,19 +157,26 @@ const exportPreviewReturnFocus = ref<HTMLElement>()
 const activeDesignerLeftView = ref<DesignerLeftView>('components')
 const selectedDesignerIds = ref<string[]>([])
 const sourceViewPath = ref<ProjectPath>(SOURCE_PATH)
+const sourceSnapshot = shallowRef<ExportSnapshot>()
+const sourceSnapshotError = ref('')
+const sourceTreeExpandedIds = ref<string[]>([])
+const sourceMobileView = ref<'tree' | 'code'>('tree')
+const sourceMutationRevision = ref(0)
 const theme = ref<WorkbenchTheme>('dark')
 const busy = ref(false)
 const message = ref('')
 const newPageButtonRef = useTemplateRef<HTMLButtonElement>('newPageButton')
 const exportButtonRef = useTemplateRef<HTMLButtonElement>('exportButton')
 const templateDialogRef = useTemplateRef<HTMLElement>('templateDialog')
+const pageManagerDialogRef = useTemplateRef<HTMLElement>('pageManagerDialog')
 const exportDialogRef = useTemplateRef<HTMLElement>('exportDialog')
 const flowDialogRef = useTemplateRef<HTMLElement>('flowDialog')
 const designerRef = useTemplateRef<ConfigFormDesignerExpose>('designer')
 const designerLeftTabsRef = useTemplateRef<HTMLElement>('designerLeftTabs')
 const mobileSurfaceTabsRef = useTemplateRef<HTMLElement>('mobileSurfaceTabs')
-let openProjectRequestId = 0
+let openApplicationRequestId = 0
 let disposed = false
+let pageManagerReturnFocus: HTMLElement | undefined
 const previewRevisionGate = createPreviewRevisionGate()
 let previewFlowAbortController = new AbortController()
 let previewFlowTriggerRevision = 0
@@ -172,15 +191,16 @@ function advancePreviewRevision(): string {
   previewFlowAbortController = new AbortController()
   previewFlowProjections.value = {}
   rendererPreviewVersion.value += 1
-  const revision = currentProject.value
-    ? `${currentProject.value.id}-${rendererPreviewVersion.value}`
+  const revision = currentApplication.value && currentPageId.value
+    ? `${currentApplication.value.id}-${currentPageId.value}-${rendererPreviewVersion.value}`
     : ''
   previewRevisionGate.request(revision)
   return revision
 }
 
-const lowCodeRegistry = computed(() => currentProject.value
-  ? lowCodeRegistries[currentProject.value.manifest.adapter]
+const currentPage = computed(() => currentApplication.value?.pages.find(page => page.id === currentPageId.value))
+const lowCodeRegistry = computed(() => currentApplication.value
+  ? lowCodeRegistries[currentApplication.value.manifest.adapter]
   : lowCodeRegistries['element-plus'])
 const registry = computed(() => lowCodeRegistry.value.designer)
 const configModel = computed(() => configHistory.value?.present)
@@ -242,27 +262,24 @@ const designerFieldNames = computed<string[]>(() => {
   visit(designerDocument.value?.nodes ?? [])
   return [...new Set(fields)]
 })
-const sourceExportResult = computed(() => {
-  if (!currentProject.value || !configModel.value)
-    return { export: undefined, error: '' }
-  try {
-    return { export: createPureSourceExport(currentProject.value, configModel.value, lowCodeRegistry.value), error: '' }
-  }
-  catch (error) {
-    return { export: undefined, error: error instanceof Error ? error.message : String(error) }
-  }
-})
-const sourceExport = computed(() => sourceExportResult.value.export)
-const sourceExportError = computed(() => sourceExportResult.value.error)
-const sourcePaths = computed<ProjectPath[]>(() => sourceExport.value
-  ? Object.keys(sourceExport.value.files).sort() as ProjectPath[]
+const currentSourceRevisionKey = computed(() => currentApplication.value
+  ? `${currentApplication.value.id}:${currentApplication.value.revision}:${currentPageId.value}:${modelRevision.value}:${sourceMutationRevision.value}`
+  : '')
+const sourceSnapshotStale = computed(() => isExportSnapshotStale(
+  sourceSnapshot.value,
+  currentApplication.value?.id,
+  currentSourceRevisionKey.value,
+))
+const sourceFileTree = computed(() => sourceSnapshot.value
+  ? buildProjectFileTree(sourceSnapshot.value.files)
   : [])
+const selectedSourceFile = computed(() => sourceSnapshot.value?.files[sourceViewPath.value])
 const sourceCode = computed(() => {
-  const file = sourceExport.value?.files[sourceViewPath.value]
+  const file = selectedSourceFile.value
   return file?.kind === 'text' ? file.content : ''
 })
 const sourceLanguage = computed(() => {
-  const file = sourceExport.value?.files[sourceViewPath.value]
+  const file = selectedSourceFile.value
   if (file?.kind === 'text' && file.language)
     return file.language
   if (sourceViewPath.value.endsWith('.vue')) return 'vue'
@@ -314,7 +331,7 @@ const lastRuntimePreview = shallowRef<{
   result: DesignerCompileSuccess
 }>()
 watch(compiledPreview, (result) => {
-  const projectId = currentProject.value?.id
+  const projectId = currentApplication.value?.id
   if (result?.success && projectId) {
     lastValidPreview.value = {
       projectId,
@@ -327,7 +344,7 @@ const activePreview = computed(() => {
   if (compiledPreview.value?.success)
     return compiledPreview.value
   const lastValid = lastValidPreview.value
-  if (lastValid && lastValid.projectId === currentProject.value?.id)
+  if (lastValid && lastValid.projectId === currentApplication.value?.id)
     return lastValid.result
   return undefined
 })
@@ -341,7 +358,7 @@ const previewState = computed(() => {
 })
 const runtimeFallbackPreview = computed(() => {
   const fallback = lastRuntimePreview.value
-  if (!fallback || fallback.projectId !== currentProject.value?.id)
+  if (!fallback || fallback.projectId !== currentApplication.value?.id)
     return undefined
   return fallback.result
 })
@@ -359,83 +376,6 @@ const statusLabel = computed(() => {
     return 'Unsaved'
   return repository.value.persistence === 'durable' ? 'Saved locally' : 'Temporary session'
 })
-
-function readTextFile(project: WorkspaceProject | undefined, path: ProjectPath): string {
-  const file = project?.files[path]
-  return file?.kind === 'text' ? file.content : ''
-}
-
-function writeTextFile(project: WorkspaceProject, path: ProjectPath, content: string, language: string): WorkspaceProject {
-  const next = cloneWorkspaceProject(project)
-  next.files[path] = { content, kind: 'text', language }
-  return next
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isLowCodeNode(value: unknown): value is LowCodeNode {
-  if (!isRecord(value)
-    || typeof value.id !== 'string'
-    || typeof value.component !== 'string'
-    || !['field', 'container'].includes(String(value.kind))
-    || !isRecord(value.props)
-    || !isRecord(value.events)
-    || !isRecord(value.bindings)
-    || !Array.isArray(value.children)
-    || !isRecord(value.slots)) {
-    return false
-  }
-  return value.children.every(isLowCodeNode)
-    && Object.values(value.slots).every(nodes => Array.isArray(nodes) && nodes.every(isLowCodeNode))
-}
-
-function isLowCodePageModel(value: unknown): value is LowCodePageModel {
-  return isRecord(value)
-    && value.version === 1
-    && typeof value.id === 'string'
-    && typeof value.name === 'string'
-    && isRecord(value.props)
-    && isRecord(value.form)
-    && Array.isArray(value.nodes)
-    && value.nodes.every(isLowCodeNode)
-    && (value.flows === undefined || Array.isArray(value.flows))
-}
-
-function readPageModel(project: WorkspaceProject): { model: LowCodePageModel, migrated: boolean } {
-  const source = readTextFile(project, project.manifest.designerArtifact)
-  const input = JSON.parse(source) as unknown
-  if (isLowCodePageModel(input)) {
-    let model: LowCodePageModel = { ...structuredClone(input), nodes: [] }
-    const modelRegistry = lowCodeRegistries[project.manifest.adapter]
-    for (const node of input.nodes) {
-      const inserted = applyModelOperation(model, {
-        type: 'insert',
-        node,
-        target: { parentId: null },
-      }, modelRegistry)
-      if (!inserted.success)
-        throw new Error(inserted.diagnostics[0]?.message ?? 'Config Model is invalid.')
-      model = inserted.model
-    }
-    const flowValidation = applyModelOperation(model, {
-      type: 'updateFlows',
-      flows: input.flows,
-    }, modelRegistry, { flowActions: flowActionRegistry })
-    if (!flowValidation.success)
-      throw new Error(flowValidation.diagnostics[0]?.message ?? 'Config Model flow is invalid.')
-    model = flowValidation.model
-    return { model, migrated: false }
-  }
-  const parsed = parseDesignerDocument(input)
-  if (!parsed.success)
-    throw new Error(parsed.diagnostics[0]?.message ?? 'Designer document is invalid.')
-  return {
-    model: designerDocumentToConfigModel(parsed.data, { id: project.id, name: project.name }),
-    migrated: true,
-  }
-}
 
 function createPreviewModel(document: DesignerDocument): Record<string, unknown> {
   const values: Record<string, unknown> = {}
@@ -477,27 +417,18 @@ function mergePreviewModel(
 }
 
 function materializeModel(model: LowCodePageModel): void {
-  const project = currentProject.value
-  if (!project)
+  const application = currentApplication.value
+  const page = currentPage.value
+  if (!application || !page)
     return
   const document = configModelToDesignerDocument(model)
-  const appSource = formatWorkspaceAppComponent(project.manifest.adapter)
-  const configSource = formatLowCodePageConfig(model, lowCodeRegistry.value)
-  const documentSource = `${JSON.stringify(model, null, 2)}\n`
-  const filesChanged = readTextFile(project, project.manifest.designerArtifact) !== documentSource
-    || readTextFile(project, SOURCE_PATH) !== appSource
-    || readTextFile(project, CONFIG_PATH) !== configSource
-  if (filesChanged) {
-    let next = writeTextFile(
-      project,
-      project.manifest.designerArtifact,
-      documentSource,
-      'json',
-    )
-    next = writeTextFile(next, SOURCE_PATH, appSource, 'vue')
-    next = writeTextFile(next, CONFIG_PATH, configSource, 'typescript')
-    currentProject.value = next
-  }
+  const next = cloneWorkspaceApplication(application)
+  const nextPage = next.pages.find(item => item.id === page.id)
+  if (!nextPage)
+    return
+  nextPage.model = structuredClone(model)
+  currentApplication.value = next
+  sourceMutationRevision.value += 1
   previewModel.value = mergePreviewModel(document, createPreviewModel(document))
   advancePreviewRevision()
   dirty.value = true
@@ -538,21 +469,25 @@ function updateModelOperation(operation: ModelOperation): void {
 }
 
 function handlePreviewRuntimeReady(revision: string): void {
-  const projectId = currentProject.value?.id
-  const expectedRevision = projectId ? `${projectId}-${rendererPreviewVersion.value}` : ''
-  if (!projectId || revision !== expectedRevision || !previewRevisionGate.isCurrent(revision) || !activePreview.value)
+  const applicationId = currentApplication.value?.id
+  const expectedRevision = applicationId && currentPageId.value
+    ? `${applicationId}-${currentPageId.value}-${rendererPreviewVersion.value}`
+    : ''
+  if (!applicationId || revision !== expectedRevision || !previewRevisionGate.isCurrent(revision) || !activePreview.value)
     return
-  lastRuntimePreview.value = { projectId, result: activePreview.value }
+  lastRuntimePreview.value = { projectId: applicationId, result: activePreview.value }
   fallbackPreviewModel.value = cloneWorkbenchJson(previewModel.value)
   runPreviewFlows('page.mount', previewModel.value)
 }
 
 function runPreviewFlows(kind: 'page.mount' | 'form.submit' | 'field.change', values: Record<string, unknown>, field?: string): void {
   const flows = configModel.value?.flows ?? []
-  const projectId = currentProject.value?.id
+  const applicationId = currentApplication.value?.id
+  const pageId = currentPageId.value
   const revision = modelRevision.value
   const triggerRevision = ++previewFlowTriggerRevision
-  const isCurrentRun = (): boolean => projectId === currentProject.value?.id
+  const isCurrentRun = (): boolean => applicationId === currentApplication.value?.id
+    && pageId === currentPageId.value
     && revision === modelRevision.value
     && triggerRevision === previewFlowTriggerRevision
   const matchingFlows = flows.filter(flow => flow.trigger.kind === kind
@@ -599,81 +534,57 @@ function redoDesign(): boolean {
   return history ? commitModelHistory(redoConfigModelHistory(history, lowCodeRegistry.value, { flowActions: flowActionRegistry })) : false
 }
 
-async function refreshProjects(): Promise<void> {
+async function refreshApplications(): Promise<void> {
   const activeRepository = repository.value
   if (!activeRepository)
     return
-  const nextProjects = await activeRepository.list()
+  const nextApplications = await activeRepository.list()
   if (!disposed && repository.value === activeRepository)
-    projects.value = nextProjects
+    applications.value = nextApplications
 }
 
-async function openProject(id: string): Promise<void> {
-  const requestId = ++openProjectRequestId
+async function openApplication(id: string, pageId?: string): Promise<void> {
+  const requestId = ++openApplicationRequestId
   const activeRepository = repository.value
-  const storedProject = await activeRepository?.get(id)
+  const application = await activeRepository?.get(id)
   if (
-    !storedProject
+    !application
     || disposed
-    || requestId !== openProjectRequestId
+    || requestId !== openApplicationRequestId
     || activeRepository !== repository.value
   ) {
     return
   }
-  const upgraded = upgradeWorkspaceConfigModule(storedProject)
-  const pageModel = readPageModel(upgraded.project)
-  const artifactDocument = configModelToDesignerDocument(pageModel.model)
-  const existingApp = readTextFile(upgraded.project, SOURCE_PATH)
-  const existingConfig = readTextFile(upgraded.project, CONFIG_PATH)
-  const generatedApp = formatWorkspaceAppComponent(upgraded.project.manifest.adapter)
-  const generatedConfig = formatLowCodePageConfig(
-    pageModel.model,
-    lowCodeRegistries[upgraded.project.manifest.adapter],
-  )
+  const page = application.pages.find(item => item.id === pageId)
+    ?? application.pages.find(item => item.id === application.homePageId)
+    ?? application.pages[0]
+  if (!page)
+    return
   lastValidPreview.value = undefined
   lastRuntimePreview.value = undefined
-  let activeProject = existingApp === generatedApp && existingConfig === generatedConfig
-    ? upgraded.project
-    : writeTextFile(
-        writeTextFile(upgraded.project, SOURCE_PATH, generatedApp, 'vue'),
-        CONFIG_PATH,
-        generatedConfig,
-        'typescript',
-      )
-  if (pageModel.migrated) {
-    activeProject = writeTextFile(
-      activeProject,
-      activeProject.manifest.designerArtifact,
-      `${JSON.stringify(pageModel.model, null, 2)}\n`,
-      'json',
-    )
-  }
-  currentProject.value = activeProject
-  configHistory.value = createConfigModelHistory(pageModel.model, { revision: upgraded.project.revision })
+  currentApplication.value = application
+  sourceMutationRevision.value += 1
+  currentPageId.value = page.id
+  configHistory.value = createConfigModelHistory(page.model, { revision: application.revision })
   advancePreviewRevision()
   configError.value = ''
-  dirty.value = upgraded.migrated
-    || pageModel.migrated
-    || existingApp !== generatedApp
-    || existingConfig !== generatedConfig
-  previewModel.value = createPreviewModel(artifactDocument)
+  dirty.value = false
+  previewModel.value = createPreviewModel(configModelToDesignerDocument(page.model))
   selectedDesignerIds.value = []
   templatePickerOpen.value = false
 }
 
-async function requestOpenProject(event: Event): Promise<void> {
-  const select = event.target as HTMLSelectElement
-  if (currentProject.value?.id === select.value)
+async function requestOpenApplication(id: string, pageId?: string): Promise<void> {
+  if (currentApplication.value?.id === id && (!pageId || currentPageId.value === pageId))
     return
   if (hasUnsavedChanges.value) {
     message.value = 'Save or resolve the current draft before switching pages.'
-    select.value = currentProject.value?.id ?? ''
     return
   }
-  await openProject(select.value)
+  await openApplication(id, pageId)
 }
 
-async function createProject(templateId: string): Promise<void> {
+async function createApplication(templateId: string): Promise<void> {
   if (!repository.value || busy.value)
     return
   busy.value = true
@@ -681,14 +592,14 @@ async function createProject(templateId: string): Promise<void> {
   try {
     const template = BUILT_IN_WORKSPACE_TEMPLATES.get(templateId)!
     const now = new Date().toISOString()
-    const project = createBuiltInWorkspaceProject(templateId, {
+    const application = createBuiltInWorkspaceApplication(templateId, {
       createdAt: now,
       id: `${templateId}-${Date.now().toString(36)}`,
       name: `${template.title} page`,
     })
-    await repository.value.create(project)
-    await refreshProjects()
-    await openProject(project.id)
+    await repository.value.create(application)
+    await refreshApplications()
+    await openApplication(application.id)
     templatePickerOpen.value = false
   }
   catch (error) {
@@ -699,27 +610,111 @@ async function createProject(templateId: string): Promise<void> {
   }
 }
 
-async function saveProject(): Promise<void> {
-  const project = currentProject.value
-  if (!project || !repository.value || configError.value || busy.value)
+async function createPage(templateId: string): Promise<void> {
+  const application = currentApplication.value
+  if (!repository.value || !application || busy.value)
     return
   busy.value = true
   message.value = ''
   try {
-    const committed = await repository.value.commit(project.id, project.revision, project)
-    if (currentProject.value === project) {
-      currentProject.value = committed
+    const now = new Date().toISOString()
+    const name = `${BUILT_IN_WORKSPACE_TEMPLATES.get(templateId)?.title ?? 'New'} page`
+    const id = nextWorkspacePageId(application, name)
+    const page = createBuiltInWorkspacePage(templateId, {
+      createdAt: now,
+      id,
+      name,
+      route: nextWorkspacePageRoute(application, name),
+    })
+    currentApplication.value = applyWorkspaceApplicationOperation(application, { type: 'add-page', page })
+    sourceMutationRevision.value += 1
+    currentPageId.value = page.id
+    configHistory.value = createConfigModelHistory(page.model, { revision: application.revision })
+    previewModel.value = createPreviewModel(configModelToDesignerDocument(page.model))
+    dirty.value = true
+    selectedDesignerIds.value = []
+    templatePickerOpen.value = false
+    advancePreviewRevision()
+  }
+  catch (error) {
+    message.value = error instanceof Error ? error.message : String(error)
+  }
+  finally {
+    busy.value = false
+  }
+}
+
+async function handleApplicationOperation(operation: WorkspaceApplicationOperation): Promise<void> {
+  const application = currentApplication.value
+  if (!application || busy.value)
+    return
+  try {
+    const previousPageId = currentPageId.value
+    const resolvedOperation = operation.type === 'duplicate-page'
+      ? (() => {
+          const source = application.pages.find(page => page.id === operation.pageId)
+          if (!source)
+            throw new Error(`Page "${operation.pageId}" does not exist.`)
+          const name = `${source.name} copy`
+          const id = nextWorkspacePageId(application, name)
+          return {
+            type: 'duplicate-page' as const,
+            pageId: source.id,
+            page: duplicateWorkspacePage(source, {
+              id,
+              name,
+              route: nextWorkspacePageRoute(application, name),
+            }),
+          }
+        })()
+      : operation
+    const next = applyWorkspaceApplicationOperation(application, resolvedOperation)
+    currentApplication.value = next
+    sourceMutationRevision.value += 1
+    const activePage = next.pages.find(page => page.id === previousPageId) ?? next.pages[0]!
+    currentPageId.value = activePage.id
+    if (activePage.id !== previousPageId) {
+      configHistory.value = createConfigModelHistory(activePage.model, { revision: next.revision })
+    }
+    else if (configHistory.value) {
+      configHistory.value = {
+        ...configHistory.value,
+        present: structuredClone(activePage.model),
+      }
+    }
+    dirty.value = true
+    if (activePage.id !== previousPageId) {
+      selectedDesignerIds.value = []
+      previewModel.value = createPreviewModel(configModelToDesignerDocument(activePage.model))
+      advancePreviewRevision()
+    }
+  }
+  catch (error) {
+    message.value = error instanceof Error ? error.message : String(error)
+  }
+}
+
+async function saveProject(): Promise<void> {
+  const application = currentApplication.value
+  if (!application || !repository.value || configError.value || busy.value)
+    return
+  busy.value = true
+  message.value = ''
+  try {
+    const committed = await repository.value.commit(application.id, application.revision, application)
+    if (currentApplication.value === application) {
+      currentApplication.value = committed
       dirty.value = false
     }
-    else if (currentProject.value?.id === project.id) {
-      currentProject.value = {
-        ...currentProject.value,
+    else if (currentApplication.value?.id === application.id) {
+      currentApplication.value = {
+        ...currentApplication.value,
         revision: committed.revision,
         updatedAt: committed.updatedAt,
       }
       dirty.value = true
     }
-    await refreshProjects()
+    await refreshApplications()
     message.value = dirty.value
       ? `Saved revision ${committed.revision}; newer edits remain unsaved`
       : `Saved revision ${committed.revision}`
@@ -733,11 +728,11 @@ async function saveProject(): Promise<void> {
 }
 
 async function exportProject(): Promise<void> {
-  if (!currentProject.value || !configModel.value)
+  const snapshot = sourceSnapshot.value
+  if (!snapshot)
     return
   try {
-    const exported = createPureSourceExport(currentProject.value, configModel.value, lowCodeRegistry.value)
-    const filename = await downloadProjectArchive(exported.project)
+    const filename = await downloadWorkspaceArchive({ name: snapshot.applicationName, files: snapshot.files })
     message.value = `Downloaded ${filename}`
   }
   catch (error) {
@@ -745,13 +740,49 @@ async function exportProject(): Promise<void> {
   }
 }
 
+function refreshSourceSnapshot(): void {
+  const application = currentApplication.value
+  if (!application)
+    return
+  try {
+    const exported = createWorkspaceApplicationSourceExport(application, lowCodeRegistry.value)
+    const next = createExportSnapshot({
+      applicationId: application.id,
+      applicationName: application.name,
+      applicationRevision: application.revision,
+      entry: SOURCE_PATH,
+      files: exported.files,
+      modelRevision: modelRevision.value,
+      revisionKey: currentSourceRevisionKey.value,
+    })
+    const selected = resolveExportSnapshotPath(next, sourceViewPath.value)
+    sourceSnapshot.value = next
+    sourceSnapshotError.value = ''
+    sourceViewPath.value = selected ?? SOURCE_PATH
+    sourceTreeExpandedIds.value = collectProjectTreeDirectoryIds(buildProjectFileTree(next.files))
+  }
+  catch (error) {
+    sourceSnapshotError.value = error instanceof Error ? error.message : String(error)
+  }
+}
+
+function selectSourcePath(path: ProjectPath): void {
+  sourceViewPath.value = path
+  sourceMobileView.value = 'code'
+}
+
 function openExportPreview(mode: 'source' | 'config'): void {
   exportMenuOpen.value = false
   exportPreviewMode.value = mode
   if (mode === 'config')
     configViewMode.value = 'source'
-  else
+  else {
     sourceViewPath.value = SOURCE_PATH
+    sourceMobileView.value = 'tree'
+    sourceSnapshot.value = undefined
+    sourceSnapshotError.value = ''
+    refreshSourceSnapshot()
+  }
   exportPreviewReturnFocus.value = exportButtonRef.value
     ?? (document.activeElement instanceof HTMLElement ? document.activeElement : undefined)
   void nextTick(() => exportDialogRef.value?.querySelector<HTMLButtonElement>('button')?.focus())
@@ -763,7 +794,7 @@ function closeExportPreview(): void {
 }
 
 function openFlowWorkspace(): void {
-  if (!currentProject.value)
+  if (!currentApplication.value)
     return
   flowWorkspaceOpen.value = true
   void nextTick(() => flowDialogRef.value?.querySelector<HTMLElement>('button, input, select')?.focus())
@@ -780,8 +811,8 @@ function exportPreviewText(): string {
 }
 
 async function copyExportPreview(): Promise<void> {
-  if (exportPreviewMode.value === 'source' && sourceExportError.value) {
-    message.value = sourceExportError.value
+  if (exportPreviewMode.value === 'source' && !sourceSnapshot.value) {
+    message.value = sourceSnapshotError.value
     return
   }
   try {
@@ -797,7 +828,7 @@ async function copyExportPreview(): Promise<void> {
 
 function downloadExportPreview(): void {
   const mode = exportPreviewMode.value
-  if (!mode || (mode === 'source' && sourceExportError.value))
+  if (!mode || (mode === 'source' && !sourceSnapshot.value))
     return
   const url = URL.createObjectURL(new Blob([exportPreviewText()], { type: mode === 'source' || configViewMode.value === 'source' ? 'text/plain' : 'application/json' }))
   const anchor = document.createElement('a')
@@ -844,13 +875,24 @@ function toggleTheme(): void {
 }
 
 async function selectPageFromDesigner(pageId: string): Promise<void> {
-  if (pageId === currentProject.value?.id)
+  const application = currentApplication.value
+  if (!application || pageId === currentPageId.value)
     return
   if (hasUnsavedChanges.value) {
     message.value = 'Save or resolve the current draft before switching pages.'
     return
   }
-  await openProject(pageId)
+  const page = application.pages.find(item => item.id === pageId)
+  if (!page)
+    return
+  currentPageId.value = page.id
+  configHistory.value = createConfigModelHistory(page.model, { revision: application.revision })
+  configError.value = ''
+  selectedDesignerIds.value = []
+  previewModel.value = createPreviewModel(configModelToDesignerDocument(page.model))
+  lastValidPreview.value = undefined
+  lastRuntimePreview.value = undefined
+  advancePreviewRevision()
 }
 
 function resolveKeyboardTab<T extends string>(
@@ -895,12 +937,28 @@ function handleDesignerLeftTabKeydown(event: KeyboardEvent, view: DesignerLeftVi
 }
 
 function openTemplatePicker(): void {
-  if (hasUnsavedChanges.value) {
-    message.value = 'Save or resolve the current draft before creating another page.'
-    return
-  }
   templatePickerOpen.value = true
   void nextTick(() => templateDialogRef.value?.querySelector<HTMLButtonElement>('.template-list button')?.focus())
+}
+
+function openPageTemplatePicker(): void {
+  pageManagerOpen.value = false
+  openTemplatePicker()
+}
+
+function openPageManager(event?: Event): void {
+  pageManagerReturnFocus = event?.currentTarget instanceof HTMLElement
+    ? event.currentTarget
+    : document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : undefined
+  pageManagerOpen.value = true
+  void nextTick(() => pageManagerDialogRef.value?.querySelector<HTMLElement>('button, input, select')?.focus())
+}
+
+function closePageManager(): void {
+  pageManagerOpen.value = false
+  void nextTick(() => pageManagerReturnFocus?.focus())
 }
 
 function closeTemplatePicker(): void {
@@ -937,6 +995,10 @@ function handleTemplateDialogKeydown(event: KeyboardEvent): void {
   handleDialogKeydown(event, templateDialogRef.value, closeTemplatePicker)
 }
 
+function handlePageManagerKeydown(event: KeyboardEvent): void {
+  handleDialogKeydown(event, pageManagerDialogRef.value, closePageManager)
+}
+
 function handleExportDialogKeydown(event: KeyboardEvent): void {
   handleDialogKeydown(event, exportDialogRef.value, closeExportPreview)
 }
@@ -946,25 +1008,25 @@ function handleFlowDialogKeydown(event: KeyboardEvent): void {
 }
 
 onMounted(async () => {
-  const openedRepository = await openDefaultWorkspaceProjectRepository()
+  const openedRepository = await openDefaultWorkspaceApplicationRepository()
   if (disposed) {
     openedRepository.close()
     return
   }
   repository.value = openedRepository
-  await refreshProjects()
+  await refreshApplications()
   if (disposed || repository.value !== openedRepository)
     return
-  const first = projects.value[0]
+  const first = applications.value[0]
   if (first)
-    await openProject(first.id)
+    await openApplication(first.id)
   else
     templatePickerOpen.value = true
 })
 
 onBeforeUnmount(() => {
   disposed = true
-  openProjectRequestId += 1
+  openApplicationRequestId += 1
   previewFlowAbortController.abort('workbench-unmounted')
   previewRevisionGate.invalidate()
   repository.value?.close()
@@ -979,21 +1041,24 @@ onBeforeUnmount(() => {
         <strong>Workbench</strong>
       </div>
 
-      <select
-        v-if="currentProject"
-        class="project-select"
-        :value="currentProject.id"
-        aria-label="Current page"
-        @change="requestOpenProject"
-      >
-        <option v-for="project in projects" :key="project.id" :value="project.id">
-          {{ project.name }}
-        </option>
-      </select>
+      <div v-if="currentApplication && currentPage" class="workspace-context" aria-label="Current application and page">
+        <span>{{ currentApplication.name }}</span>
+        <strong>{{ currentPage.name }}</strong>
+      </div>
 
       <div class="topbar-actions">
-        <span v-if="currentProject" class="revision-state" :class="{ 'is-dirty': dirty }">
-          r{{ currentProject.revision }} · {{ statusLabel }}
+        <button
+          v-if="currentApplication"
+          type="button"
+          class="mobile-page-manager-button"
+          title="Manage pages"
+          aria-label="Manage pages"
+          @click="openPageManager"
+        >
+          <Files :size="17" aria-hidden="true" />
+        </button>
+        <span v-if="currentApplication" class="revision-state" :class="{ 'is-dirty': dirty }">
+          r{{ currentApplication.revision }} · {{ statusLabel }}
         </span>
         <button ref="newPageButton" type="button" title="New page" aria-label="New page" @click="openTemplatePicker">
           <Plus :size="17" aria-hidden="true" />
@@ -1007,7 +1072,7 @@ onBeforeUnmount(() => {
         >
           <Save :size="17" aria-hidden="true" />
         </button>
-        <div v-if="currentProject" class="export-menu">
+        <div v-if="currentApplication" class="export-menu">
           <button
             ref="exportButton"
             type="button"
@@ -1032,7 +1097,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <button
-          v-if="currentProject"
+          v-if="currentApplication"
           type="button"
           :class="{ 'is-active': flowWorkspaceOpen }"
           :title="workbenchLocale.t('flow.dialog.title', 'Flow orchestration')"
@@ -1048,7 +1113,7 @@ onBeforeUnmount(() => {
           <Moon v-else :size="17" aria-hidden="true" />
         </button>
         <button
-          v-if="currentProject"
+          v-if="currentApplication"
           type="button"
           class="preview-toggle-button"
           :title="previewOpen ? 'Hide preview' : 'Show preview'"
@@ -1061,7 +1126,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div v-if="currentProject" ref="mobileSurfaceTabs" class="mobile-surface-tabs" role="tablist" aria-label="Workspace surface">
+    <div v-if="currentApplication" ref="mobileSurfaceTabs" class="mobile-surface-tabs" role="tablist" aria-label="Workspace surface">
       <button id="mobile-edit-tab" type="button" role="tab" aria-controls="workspace-panel" :aria-selected="mobileSurface === 'edit'" data-mobile-surface-tab="edit" :tabindex="mobileSurface === 'edit' ? 0 : -1" @click="showMobileSurface('edit')" @keydown="handleMobileSurfaceTabKeydown($event, 'edit')">
         Edit
       </button>
@@ -1071,7 +1136,7 @@ onBeforeUnmount(() => {
     </div>
 
     <section
-      v-if="currentProject"
+      v-if="currentApplication"
       id="workspace-panel"
       class="workbench-layout"
       role="tabpanel"
@@ -1101,7 +1166,7 @@ onBeforeUnmount(() => {
           <ConfigFormDesigner
             v-if="designerDocument"
             ref="designer"
-            :key="currentProject.manifest.adapter"
+            :key="`${currentApplication.manifest.adapter}-${currentPageId}`"
             class="embedded-designer"
             :document="designerDocument"
             :model="configModel"
@@ -1196,20 +1261,26 @@ onBeforeUnmount(() => {
                   <p v-if="designerLayers.length === 0">No layers yet</p>
                 </div>
 
-                <nav v-else class="designer-pages" aria-label="Workspace pages">
-                  <button
-                    v-for="page in projects"
-                    :key="page.id"
-                    type="button"
-                    :aria-current="page.id === currentProject.id ? 'page' : undefined"
-                    :class="{ 'is-current': page.id === currentProject.id }"
-                    @click="selectPageFromDesigner(page.id)"
-                  >
-                    <Files :size="14" aria-hidden="true" />
-                    <span>{{ page.name }}</span>
-                    <small>r{{ page.revision }}</small>
+                <div v-else class="designer-pages-panel">
+                  <nav class="designer-pages" aria-label="Application pages">
+                    <button
+                      v-for="page in currentApplication.pages"
+                      :key="page.id"
+                      type="button"
+                      :aria-current="page.id === currentPageId ? 'page' : undefined"
+                      :class="{ 'is-current': page.id === currentPageId }"
+                      @click="selectPageFromDesigner(page.id)"
+                    >
+                      <Files :size="14" aria-hidden="true" />
+                      <span>{{ page.name }}</span>
+                      <small>{{ page.route }}</small>
+                    </button>
+                  </nav>
+                  <button type="button" class="manage-pages-button" @click="openPageManager">
+                    <Settings2 :size="14" aria-hidden="true" />
+                    Manage pages
                   </button>
-                </nav>
+                </div>
               </div>
             </template>
           </ConfigFormDesigner>
@@ -1266,11 +1337,11 @@ onBeforeUnmount(() => {
             </div>
             <PreviewRuntimeBoundary
               v-if="activePreview"
-              :revision="`${currentProject.id}-${rendererPreviewVersion}`"
+              :revision="`${currentApplication.id}-${currentPageId}-${rendererPreviewVersion}`"
               @ready="handlePreviewRuntimeReady"
             >
               <ConfigFormRenderer
-                :key="`${currentProject.id}-${rendererPreviewVersion}`"
+                :key="`${currentApplication.id}-${currentPageId}-${rendererPreviewVersion}`"
                 v-model="previewModel"
                 class="page-preview-form"
                 mode="preview"
@@ -1315,7 +1386,7 @@ onBeforeUnmount(() => {
           :key="template.id"
           type="button"
           :disabled="busy"
-          @click="createProject(template.id)"
+          @click="createApplication(template.id)"
         >
           <strong>{{ template.title }}</strong>
           <span>{{ template.adapter }}</span>
@@ -1323,7 +1394,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <div v-if="templatePickerOpen && currentProject" class="template-overlay" @click.self="closeTemplatePicker">
+    <div v-if="templatePickerOpen" class="template-overlay" @click.self="closeTemplatePicker">
       <section ref="templateDialog" role="dialog" aria-modal="true" aria-labelledby="template-dialog-title" @keydown="handleTemplateDialogKeydown">
         <header>
           <h2 id="template-dialog-title">
@@ -1339,7 +1410,7 @@ onBeforeUnmount(() => {
             :key="template.id"
             type="button"
             :disabled="busy"
-            @click="createProject(template.id)"
+            @click="currentApplication ? createPage(template.id) : createApplication(template.id)"
           >
             <strong>{{ template.title }}</strong>
             <span>{{ template.adapter }}</span>
@@ -1348,7 +1419,25 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
-    <div v-if="flowWorkspaceOpen && currentProject" class="flow-workspace-overlay" @click.self="closeFlowWorkspace">
+    <div
+      v-if="pageManagerOpen && currentApplication"
+      ref="pageManagerDialog"
+      class="page-manager-overlay"
+      @click.self="closePageManager"
+      @keydown="handlePageManagerKeydown"
+    >
+      <PageManager
+        :application="currentApplication"
+        :applications="applications"
+        :busy="busy"
+        @close="closePageManager"
+        @create-page="openPageTemplatePicker"
+        @open-application="requestOpenApplication($event)"
+        @operation="handleApplicationOperation"
+      />
+    </div>
+
+    <div v-if="flowWorkspaceOpen && currentApplication" class="flow-workspace-overlay" @click.self="closeFlowWorkspace">
       <section
         ref="flowDialog"
         class="flow-workspace-dialog"
@@ -1390,32 +1479,43 @@ onBeforeUnmount(() => {
         </header>
         <div class="export-preview-body">
           <div v-if="exportPreviewMode === 'source'" class="source-export-view">
-            <div v-if="sourceExportError" class="export-diagnostic" role="alert">
+            <div v-if="sourceSnapshotError" class="export-diagnostic" role="alert">
               <strong>Source export unavailable</strong>
-              <p>{{ sourceExportError }}</p>
+              <p>{{ sourceSnapshotError }}</p>
+            </div>
+            <div v-else-if="sourceSnapshotStale" class="export-stale" role="status">
+              <span>The design changed after this export snapshot was opened.</span>
+              <button type="button" @click="refreshSourceSnapshot">
+                <RefreshCw :size="14" aria-hidden="true" /> Refresh snapshot
+              </button>
             </div>
             <div class="source-file-layout">
-              <nav class="source-file-tree" role="tree" aria-label="Generated source files">
-                <button
-                  v-for="path in sourcePaths"
-                  :key="path"
-                  type="button"
-                  role="treeitem"
-                  :aria-selected="sourceViewPath === path"
-                  :data-source-file="path"
-                  @click="sourceViewPath = path"
-                >
-                  <Files :size="14" aria-hidden="true" />
-                  <span>{{ path }}</span>
-                </button>
+              <nav class="source-file-tabs" role="tablist" aria-label="Source export view">
+                <button type="button" role="tab" :aria-selected="sourceMobileView === 'tree'" @click="sourceMobileView = 'tree'">Tree</button>
+                <button type="button" role="tab" :aria-selected="sourceMobileView === 'code'" @click="sourceMobileView = 'code'">Code</button>
               </nav>
-              <WorkspaceCodeEditor
-                :filename="sourceViewPath"
-                :language="sourceLanguage"
-                :model-value="sourceCode"
-                :readonly="true"
-                :theme="theme"
+              <ProjectFileTree
+                v-model:expanded-ids="sourceTreeExpandedIds"
+                :class="{ 'is-mobile-hidden': sourceMobileView !== 'tree' }"
+                :nodes="sourceFileTree"
+                :selected-path="sourceViewPath"
+                @select="selectSourcePath"
               />
+              <div class="source-code-pane" :class="{ 'is-mobile-hidden': sourceMobileView !== 'code' }">
+                <WorkspaceCodeEditor
+                  v-if="selectedSourceFile?.kind === 'text'"
+                  :filename="sourceViewPath"
+                  :language="sourceLanguage"
+                  :model-value="sourceCode"
+                  :readonly="true"
+                  :theme="theme"
+                />
+                <div v-else-if="selectedSourceFile" class="source-binary-placeholder" role="status">
+                  <Files :size="24" aria-hidden="true" />
+                  <strong>{{ sourceViewPath.split('/').at(-1) }}</strong>
+                  <span>{{ selectedSourceFile.content.byteLength }} byte binary file</span>
+                </div>
+              </div>
             </div>
           </div>
           <template v-else>
@@ -1447,15 +1547,16 @@ onBeforeUnmount(() => {
           </template>
         </div>
         <footer>
-          <span>Model revision {{ modelRevision }} · Generated from Design Model</span>
+          <span v-if="exportPreviewMode === 'source'">Snapshot model revision {{ sourceSnapshot?.modelRevision ?? '—' }}{{ sourceSnapshotStale ? ' · Stale' : '' }}</span>
+          <span v-else>Model revision {{ modelRevision }} · Generated from Design Model</span>
           <div>
-            <button v-if="exportPreviewMode === 'source'" type="button" class="dialog-action secondary" :disabled="!!sourceExportError" @click="exportProject">
+            <button v-if="exportPreviewMode === 'source'" type="button" class="dialog-action secondary" :disabled="!sourceSnapshot" @click="exportProject">
               <Download :size="15" aria-hidden="true" /> Project ZIP
             </button>
             <button type="button" class="dialog-action secondary" @click="copyExportPreview">
               <Clipboard :size="15" aria-hidden="true" /> Copy
             </button>
-            <button type="button" class="dialog-action" :disabled="!!sourceExportError" @click="downloadExportPreview">
+            <button type="button" class="dialog-action" :disabled="exportPreviewMode === 'source' && !sourceSnapshot" @click="downloadExportPreview">
               <Download :size="15" aria-hidden="true" /> Download
             </button>
           </div>

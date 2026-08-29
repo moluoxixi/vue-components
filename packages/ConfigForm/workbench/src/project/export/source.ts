@@ -3,9 +3,11 @@ import type {
   LowCodeNode,
   LowCodePageModel,
 } from '@moluoxixi/config-form-designer'
+import type { WorkspaceApplication } from '../application'
 import type { ProjectPath, WorkspaceFile, WorkspaceProject } from '../types'
 import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
-import { normalizeProjectPath } from '../path'
+import { cloneWorkspaceApplication, parseWorkspaceApplication } from '../application'
+import { normalizeProjectPath, safeProjectSlug } from '../path'
 import { cloneWorkspaceProject } from '../revision'
 
 /**
@@ -16,6 +18,11 @@ import { cloneWorkspaceProject } from '../revision'
  */
 export interface PureSourceExport {
   project: WorkspaceProject
+  files: Record<ProjectPath, WorkspaceFile>
+}
+
+export interface WorkspaceApplicationSourceExport {
+  application: WorkspaceApplication
   files: Record<ProjectPath, WorkspaceFile>
 }
 
@@ -468,7 +475,7 @@ function renderNodes(nodes: LowCodeNode[], columns: number, indent = 0): string 
   return rendered.join('\n')
 }
 
-function appSource(model: LowCodePageModel): string {
+function appSource(model: LowCodePageModel, flowImport = './flows'): string {
   const initialValues: Record<string, unknown> = {}
   collectInitialValues(model.nodes, initialValues)
   const props: Record<string, Record<string, unknown>> = {}
@@ -490,7 +497,7 @@ function appSource(model: LowCodePageModel): string {
   const columns = model.form.columns ?? 24
   return `<script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { getFlowProjection, runFlows, type FlowTrigger } from './flows'
+import { getFlowProjection, runFlows, type FlowTrigger } from '${flowImport}'
 
 const model = reactive<Record<string, unknown>>(${scriptJson(initialValues, 2)})
 const baseFieldProps = ${scriptJson(props, 2)} as Record<string, Record<string, unknown>>
@@ -596,7 +603,7 @@ button, input, select, textarea { font: inherit; }
 `
 }
 
-function sourcePackage(project: WorkspaceProject): string {
+function sourcePackage(project: Pick<WorkspaceProject, 'files' | 'name'>): string {
   const packageFile = project.files[normalizeProjectPath('package.json')]
   const original = packageFile?.kind === 'text' ? JSON.parse(packageFile.content) as PackageJson : {}
   const dependencies = original.dependencies ?? {}
@@ -623,6 +630,113 @@ function sourcePackage(project: WorkspaceProject): string {
   if (!manifest.packageManager)
     delete manifest.packageManager
   return `${JSON.stringify(manifest, null, 2)}\n`
+}
+
+function applicationPackage(application: WorkspaceApplication): string {
+  const manifest = JSON.parse(sourcePackage(application)) as PackageJson
+  manifest.dependencies = {
+    ...manifest.dependencies,
+    'vue-router': '4.5.1',
+  }
+  return `${JSON.stringify(manifest, null, 2)}\n`
+}
+
+function applicationAppSource(): string {
+  return `<script setup lang="ts">
+import { RouterView } from 'vue-router'
+</script>
+
+<template>
+  <RouterView />
+</template>
+`
+}
+
+function applicationRouterSource(
+  application: WorkspaceApplication,
+  pageDirectories: ReadonlyMap<string, string>,
+): string {
+  const imports = application.pages.map((page, index) => `import Page${index + 1} from './pages/${pageDirectories.get(page.id)}/Page.vue'`).join('\n')
+  const routes = application.pages.map((page, index) => `  { path: ${quote(page.route)}, name: ${quote(page.id)}, component: Page${index + 1} },`).join('\n')
+  const home = application.pages.find(page => page.id === application.homePageId)!
+  const redirect = home.route === '/'
+    ? ''
+    : `\n  { path: '/', redirect: ${quote(home.route)} },`
+  return `import { createRouter, createWebHistory } from 'vue-router'
+${imports}
+
+export const router = createRouter({
+  history: createWebHistory(),
+  routes: [${redirect}
+${routes}
+  ],
+})
+`
+}
+
+function uniquePageDirectories(application: WorkspaceApplication): ReadonlyMap<string, string> {
+  const used = new Set<string>()
+  return new Map(application.pages.map((page) => {
+    const base = safeProjectSlug(page.id)
+    let directory = base
+    let suffix = 2
+    while (used.has(directory)) {
+      directory = `${base}-${suffix}`
+      suffix += 1
+    }
+    used.add(directory)
+    return [page.id, directory]
+  }))
+}
+
+function isReplacedApplicationFile(path: ProjectPath): boolean {
+  return path === normalizeProjectPath('package.json')
+    || path === normalizeProjectPath('src/App.vue')
+    || path === normalizeProjectPath('src/main.ts')
+    || path === normalizeProjectPath('src/router.ts')
+    || path === normalizeProjectPath('src/styles.css')
+    || path === normalizeProjectPath('src/form.config.ts')
+    || path === normalizeProjectPath('src/form.designer.json')
+    || path === normalizeProjectPath('src/flows.ts')
+    || path === normalizeProjectPath('src/page.model.json')
+    || path.startsWith('src/pages/')
+}
+
+export function createWorkspaceApplicationSourceExport(
+  input: WorkspaceApplication,
+  registry: LowCodeComponentRegistry,
+): WorkspaceApplicationSourceExport {
+  const application = parseWorkspaceApplication(input)
+  const files: Record<ProjectPath, WorkspaceFile> = {}
+  for (const [path, file] of Object.entries(application.files) as Array<[ProjectPath, WorkspaceFile]>) {
+    if (!isReplacedApplicationFile(path))
+      files[path] = structuredClone(file)
+  }
+
+  const pageDirectories = uniquePageDirectories(application)
+  for (const page of application.pages) {
+    page.model.nodes.forEach(node => assertPortableNode(node, registry))
+    for (const flow of page.model.flows ?? []) {
+      const result = analyzeConfigFormFlow(flow)
+      if (!result.success)
+        throw new Error(result.diagnostics[0]?.message ?? `Flow on page "${page.name}" is invalid.`)
+    }
+    const directory = pageDirectories.get(page.id)!
+    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(appSource(page.model), 'vue')
+    files[normalizeProjectPath(`src/pages/${directory}/flows.ts`)] = textFile(flowSource(page.model), 'typescript')
+    files[normalizeProjectPath(`src/pages/${directory}/page.model.json`)] = textFile(`${JSON.stringify(page.model, null, 2)}\n`, 'json')
+  }
+
+  files[normalizeProjectPath('package.json')] = textFile(applicationPackage(application), 'json')
+  files[normalizeProjectPath('src/App.vue')] = textFile(applicationAppSource(), 'vue')
+  files[normalizeProjectPath('src/router.ts')] = textFile(applicationRouterSource(application, pageDirectories), 'typescript')
+  files[normalizeProjectPath('src/main.ts')] = textFile(`import { createApp } from 'vue'\nimport App from './App.vue'\nimport { router } from './router'\nimport './styles.css'\n\ncreateApp(App).use(router).mount('#app')\n`, 'typescript')
+  files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
+
+  return {
+    application: cloneWorkspaceApplication(application),
+    files,
+  }
 }
 
 export function createPureSourceExport(project: WorkspaceProject, model: LowCodePageModel, registry: LowCodeComponentRegistry): PureSourceExport {

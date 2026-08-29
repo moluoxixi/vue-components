@@ -1,14 +1,18 @@
-import type { WorkspaceProject } from '../types'
+import type { ProjectPath, WorkspaceFile, WorkspaceProject } from '../types'
 import { strToU8, zip } from 'fflate'
 import { assertUniqueProjectPaths, safeProjectSlug } from '../path'
 import { parseWorkspaceProject } from '../schema'
 
-export async function createProjectArchive(input: WorkspaceProject): Promise<Uint8Array> {
-  const project = parseWorkspaceProject(input)
-  const root = safeProjectSlug(project.name)
-  const paths = assertUniqueProjectPaths(Object.keys(project.files))
+export interface WorkspaceArchiveInput {
+  files: Readonly<Record<ProjectPath, Readonly<WorkspaceFile>>>
+  name: string
+}
+
+export async function createWorkspaceArchive(input: WorkspaceArchiveInput): Promise<Uint8Array> {
+  const root = safeProjectSlug(input.name)
+  const paths = assertUniqueProjectPaths(Object.keys(input.files))
   const entries = Object.fromEntries(paths.map((path) => {
-    const file = project.files[path]!
+    const file = input.files[path]!
     return [`${root}/${path}`, file.kind === 'text' ? strToU8(file.content) : file.content]
   }))
 
@@ -20,4 +24,9 @@ export async function createProjectArchive(input: WorkspaceProject): Promise<Uin
         resolve(data)
     })
   })
+}
+
+export async function createProjectArchive(input: WorkspaceProject): Promise<Uint8Array> {
+  const project = parseWorkspaceProject(input)
+  return createWorkspaceArchive(project)
 }

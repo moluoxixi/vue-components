@@ -4,12 +4,55 @@ import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-design
 import { parse as parseSfc } from '@vue/compiler-sfc'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { createProjectArchive } from '../export/archive'
-import { createPureSourceExport } from '../export/source'
+import { applyWorkspaceApplicationOperation, duplicateWorkspacePage } from '../application'
+import { createProjectArchive, createWorkspaceArchive } from '../export/archive'
+import { createPureSourceExport, createWorkspaceApplicationSourceExport } from '../export/source'
 import { normalizeProjectPath } from '../path'
-import { createBuiltInWorkspaceProject } from '../templates'
+import { createBuiltInWorkspaceApplication, createBuiltInWorkspaceProject } from '../templates'
 
 describe('standalone source export', () => {
+  it('generates a routed multi-page Vue application from one Application snapshot', async () => {
+    let application = createBuiltInWorkspaceApplication('element-profile', {
+      createdAt: '2026-08-27T08:00:00.000Z',
+      id: 'multi-page-source',
+      name: 'Multi page source',
+    })
+    const source = application.pages[0]!
+    application = applyWorkspaceApplicationOperation(application, {
+      type: 'add-page',
+      page: duplicateWorkspacePage(source, { id: 'settings', name: 'Settings', route: '/settings' }),
+    })
+    const registry = createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
+    const exported = createWorkspaceApplicationSourceExport(application, registry)
+    const paths = Object.keys(exported.files)
+
+    expect(paths).toEqual(expect.arrayContaining([
+      'package.json',
+      'src/App.vue',
+      'src/main.ts',
+      'src/router.ts',
+      'src/pages/home/Page.vue',
+      'src/pages/home/flows.ts',
+      'src/pages/settings/Page.vue',
+      'src/pages/settings/flows.ts',
+    ]))
+    const manifest = JSON.parse((exported.files[normalizeProjectPath('package.json')] as { content: string }).content)
+    expect(manifest.dependencies).toEqual({ 'vue': expect.any(String), 'vue-router': '4.5.1' })
+    expect(JSON.stringify(exported.files)).not.toMatch(/@moluoxixi\/config-form/)
+
+    const router = (exported.files[normalizeProjectPath('src/router.ts')] as { content: string }).content
+    expect(router).toContain('path: "/settings"')
+    expect(router).toContain('name: "settings"')
+    for (const path of paths.filter(path => path.endsWith('.vue'))) {
+      const file = exported.files[normalizeProjectPath(path)]
+      expect(file?.kind).toBe('text')
+      expect(parseSfc((file as { content: string }).content).errors).toEqual([])
+    }
+
+    const archive = unzipSync(await createWorkspaceArchive({ name: application.name, files: exported.files }))
+    expect(Object.keys(archive).map(path => path.split('/').slice(1).join('/')).sort()).toEqual(paths.sort())
+  })
+
   it('generates a complete Vue project without ConfigForm runtime imports', async () => {
     const project = createBuiltInWorkspaceProject('element-profile', {
       createdAt: '2026-08-27T08:00:00.000Z',
