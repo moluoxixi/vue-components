@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/config-form-designer/frontend/state-management.md", "reason": "唯一 Config Model、Model Operation、history 与 Design/Runtime/Export 投影边界"}
+{"file": ".trellis/spec/config-form-core/frontend/material-registry.md", "reason": "Registry schema、runtime 与生成器必须共享注册组件"}
+{"file": ".trellis/spec/config-form-core/frontend/architecture-documentation.md", "reason": "跨 core/designer/workbench 改动后的架构文档同步约束"}
+{"file": ".trellis/tasks/08-28-config-form-workbench-preview-i18n-flow/research/flow-engine-library-evaluation.md", "reason": "Vue Flow + XState + 自有 IR 选型与安全边界"}
+{"file": ".trellis/tasks/08-28-config-form-workbench-preview-i18n-flow/research/production-editor-patterns.md", "reason": "GrapesJS、Craft.js、Plasmic、Builder、Pragmatic DnD、Vue Flow 的生产级画布模式"}
+{"file": ".trellis/tasks/08-28-config-form-workbench-preview-i18n-flow/research/flow-runtime-evaluation.md", "reason": "重新评估 XState、BPMN、Rete 与 deterministic interpreter 的边界"}

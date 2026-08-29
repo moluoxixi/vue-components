@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/config-form-designer/frontend/state-management.md", "reason": "检查 Model 单一真源、操作原子性、revision 取消与浏览器验收"}
+{"file": ".trellis/spec/config-form-core/frontend/material-registry.md", "reason": "检查 Registry 一致性与未知组件/action 诊断"}
+{"file": ".trellis/tasks/08-28-config-form-workbench-preview-i18n-flow/research/flow-engine-library-evaluation.md", "reason": "检查流程库边界、IR 与运行时隔离"}
+{"file": ".trellis/tasks/08-28-config-form-workbench-preview-i18n-flow/research/production-editor-patterns.md", "reason": "检查 RuntimeSurface、candidate model、overlay 与拖拽一致性"}
+{"file": ".trellis/tasks/08-28-config-form-workbench-preview-i18n-flow/research/flow-runtime-evaluation.md", "reason": "检查事件引擎分层、取消、并发和可替换 adapter"}
