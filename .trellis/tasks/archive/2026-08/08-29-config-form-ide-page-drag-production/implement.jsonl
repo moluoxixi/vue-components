@@ -1,0 +1,4 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"Designer 与 Workbench 前端实现入口、状态和组件规范"}
+{"file":".trellis/spec/config-form/frontend/index.md","reason":"RuntimeSurface 公共边界与运行时组件规范"}
+{"file":".trellis/tasks/08-29-config-form-ide-page-drag-production/research/repository-evidence.md","reason":"现有页面模型、拖拽 candidate 和导出文件树的代码证据"}
+{"file":".trellis/tasks/08-29-config-form-ide-page-drag-production/research/industry-patterns.md","reason":"Drag Overlay、ARIA Tree 和多页面模型的成熟实现约束"}

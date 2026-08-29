@@ -1,0 +1,4 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"检查 Designer/Workbench 状态边界、交互与质量要求"}
+{"file":".trellis/spec/config-form/frontend/index.md","reason":"检查 Runtime 依赖方向和公共行为无回归"}
+{"file":".trellis/tasks/08-29-config-form-ide-page-drag-production/research/repository-evidence.md","reason":"按已确认调用面核验迁移和导出覆盖范围"}
+{"file":".trellis/tasks/08-29-config-form-ide-page-drag-production/research/industry-patterns.md","reason":"核验 Overlay 生命周期与 WAI-ARIA Tree 键盘契约"}

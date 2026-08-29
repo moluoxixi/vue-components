@@ -1,0 +1,30 @@
+{
+  "id": "config-form-ide-page-drag-production",
+  "name": "config-form-ide-page-drag-production",
+  "title": "低代码 IDE 页面与拖拽体验生产化",
+  "description": "生产化重构拖拽双层反馈、统一页面导航与管理，并将 Source 导出预览升级为真实层级文件树。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "config-form-designer",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-29",
+  "completedAt": "2026-08-29",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-29-config-form-designer-drag-overlay",
+    "08-29-config-form-workbench-multipage",
+    "08-29-config-form-source-file-tree"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
