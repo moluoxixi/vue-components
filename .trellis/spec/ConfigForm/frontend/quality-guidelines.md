@@ -55,6 +55,55 @@ custom candidates.
 
 ---
 
+## Dialog Focus From Ephemeral Menus
+
+Workbench dialogs capture `document.activeElement` when their `open` prop becomes true and restore that element after
+close. A menu item is not a valid return target because choosing it unmounts the menu. Before emitting an action that opens
+a dialog, the menu owner must synchronously focus its stable trigger, then emit the action. Scheduling focus for the next
+tick is too late because the dialog watcher may already capture `body` or a detached menu item.
+
+```ts
+function chooseMobileAction(action: MobileAction): void {
+  closeMobileMenu()
+  mobileMenuTrigger.value?.focus()
+  emit(action)
+}
+```
+
+Required regression coverage:
+
+- Choosing Flow, Page Manager, or another dialog workspace from the mobile action menu focuses the stable menu trigger
+  before the host event is emitted.
+- Closing the resulting dialog restores focus to that trigger, not `body` or an unmounted menu item.
+- Escape and pointer-close paths share the same restoration behavior.
+
+---
+
+## Automated Accessibility Gate
+
+Workbench production changes must run `pnpm --filter @config-form/workbench test:e2e`. The Playwright suite uses
+`@axe-core/playwright` with WCAG 2 A/AA and WCAG 2.1 A/AA tags against the initial template dialog, desktop dark and
+light themes, the 390px Inspector, Flow dialog, and Source export dialog. Do not disable a rule or exclude a component
+to make this gate pass.
+
+Theme tests run immediately after the theme control is activated. A foreground may not switch instantly while its
+background animates through an unreadable intermediate color. Theme-sensitive surfaces must either update atomically or
+remove the conflicting color transition. Filled command buttons use a dedicated foreground/background token pair whose
+contrast is asserted by the static theme contract as well as axe.
+
+Failure output must retain each target, axe failure summary, foreground/background colors, measured ratio, and expected
+ratio. This keeps a browser failure actionable without adding temporary logging.
+
+Required regression coverage:
+
+- The full axe scenario matrix reports zero violations without exclusions.
+- Provider controls remain readable immediately after light/dark switching, not only after animations settle.
+- Palette specimen containers are both `aria-hidden` and `inert`, so their real Runtime controls never enter the
+  accessibility or focus tree.
+- Primary export actions meet 4.5:1 in both themes; non-text borders and focus indicators meet 3:1.
+
+---
+
 ## Forbidden Patterns
 
 <!-- Patterns that should never be used and why -->

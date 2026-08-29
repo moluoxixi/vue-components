@@ -22,26 +22,31 @@ Questions to answer:
 
 ## Designer Drag Preview And Panel Visibility
 
-Palette drag previews must not mutate the controlled `DesignerDocument`. A field material may create a temporary node
-with `DesignerRegistry.createNode()` after `pointerdown`, then render that node through `DesignerNodePreview` in the
-teleported pointer overlay. The overlay becomes visible only after the pointer moves beyond the drag threshold and must be
-removed on `pointerup`, `pointercancel`, Sortable `onEnd`, readonly teardown, and component unmount.
+The Design canvas must project a drag candidate into a temporary `DesignerDocument`, then render it through the same
+`RuntimeSurface` and Component Registry used after commit. Candidate opacity and editor feedback belong to the editor
+bridge or overlay; do not replace the candidate with a hand-built input, card, or size approximation. Pointer up submits
+one semantic command. Pointer cancel, readonly teardown, and unmount discard the projection without changing host state.
 
-Container materials must use a lightweight title/icon summary in this overlay. Do not eagerly mount every material's
-runtime component in the palette: components such as tab panes require a runtime parent context and produce errors when
-mounted independently. Keep `DesignerPalette.registry` optional so direct consumers of the public palette component remain
-compatible.
+The pointer-following drag visual is a sanitized clone of the rendered candidate DOM. Its width, height, and pointer
+offset come from that measured candidate. Do not mount a second business component tree inside the fixed overlay. Empty
+container hit areas and append positions are geometry-only overlays; they must not add a persistent trailing cell or
+placeholder to Runtime layout.
+
+`DesignerMaterialSpecimen` may lazily mount a visible palette item through `RuntimeSurface` with events intercepted by an
+editor bridge. A material that cannot form a legal standalone projection must use its explicit unavailable/design-policy
+state. It must not silently fall back to a fabricated control that suggests different props or dimensions. The specimen
+root must carry both `aria-hidden="true"` and native `inert`; `aria-hidden` alone leaves real descendant inputs focusable
+and creates an invalid accessibility tree.
 
 ```vue
-<!-- Field material: real, lazily-created runtime preview -->
-<DesignerNodePreview
-  v-if="registry && preparedPreviewNode"
-  :node="preparedPreviewNode"
-  :registry="registry"
+<RuntimeSurface
+  v-if="projection"
+  v-model="specimenModel"
+  :fields="projection.fields"
+  :components="projection.components"
+  :editor="editorBridge"
+  mode="design"
 />
-
-<!-- Container material: context-safe drag summary -->
-<span v-else>{{ materialTitle }}</span>
 ```
 
 Workspace mode must be derived from the Designer root width observed by `ResizeObserver`, not from the browser viewport:
@@ -67,6 +72,11 @@ Breakpoint changes must preserve a visible focus target:
 - A medium drawer-only control maps to the equivalent desktop toolbar trigger.
 - A control inside a panel keeps focus when that panel remains visible in the destination mode.
 
+When `workspaceNavigation="external"`, the host navigation is authoritative for the narrow active view. A transition
+from medium to narrow must not replace the host-selected Canvas with the currently open medium drawer or its focused
+control. If the external view remains Canvas and focus was inside the drawer that becomes hidden, move focus to the
+visible Canvas panel. Internal navigation may continue to derive its narrow view from the focused panel.
+
 Controls that are unmounted at a breakpoint, such as drawer close buttons, must carry a stable `data-drawer-control` marker.
 Focus migration runs after Vue renders the destination mode; do not rely on the browser falling back to `body`.
 
@@ -86,6 +96,8 @@ Required regression coverage:
 - Both Element Plus and Ant Design Vue cover medium drawer selection, Escape behavior, and horizontal overflow.
 - Breakpoint tests focus a panel input, a narrow workspace tab, and a medium drawer-only control before resizing, then
   assert the resulting `document.activeElement` is visible and semantically equivalent.
+- An external-navigation regression opens the medium Properties drawer while the host still selects Canvas, resizes to
+  narrow, and asserts that the host tab, `data-active-view`, visible panel, and focus target all resolve to Canvas.
 - Property-tab tests cover both arrow directions including wraparound, Home/End, ARIA relationships, and absence of
   document update emissions.
 
@@ -101,6 +113,11 @@ Provider controls rendered by the Inspector may receive dark-theme variables or 
 Inspector scope. Never add global `.el-*`, `.ant-*`, `--el-*`, or provider theme rules at the Workbench root because Preview
 renders the same providers as real Runtime output.
 
+Provider components may redeclare inherited custom properties on their own root. When a token does not affect the computed
+style, override it on the provider root while retaining the Workbench theme and Inspector ancestors. Theme-switch
+transitions must not create a low-contrast intermediate frame: disable the provider label transition or the editor surface
+background transition at the narrowest owner instead of delaying axe or exempting the node.
+
 ```css
 /* Correct: affects generated Inspector controls only. */
 .workbench-app[data-theme="dark"] .embedded-designer .mx-config-form-designer__properties {
@@ -113,18 +130,46 @@ renders the same providers as real Runtime output.
 }
 ```
 
-Preview responsiveness must follow the Preview pane's inline size, not only the browser viewport. A resizable split pane can
-be narrow on a wide screen. Establish an inline-size container on the Preview canvas and use a named `@container` query for
-runtime layout adaptations. Designer-owned narrow Canvas adaptations continue to follow `data-workspace-mode="narrow"`,
-which is derived from the Designer root width.
+Preview responsiveness must follow the actual Runtime stage's inline size, not only the browser viewport or the outer
+scroll pane. A viewport selector can make `.preview-stage` narrower than `.preview-canvas`, so the stage owns the named
+inline-size container. Container rules must reuse the Runtime renderer's variables rather than inventing a second layout:
+
+```css
+.preview-stage {
+  container-name: preview-runtime;
+  container-type: inline-size;
+}
+
+@container preview-runtime (max-width: 1024px) {
+  .page-preview-form [data-config-form-responsive-layout] {
+    --mx-config-form-active-columns: var(--mx-config-form-columns-tablet);
+  }
+
+  .page-preview-form [data-config-form-responsive-cell] {
+    --mx-config-form-active-span: var(--mx-config-form-span-tablet);
+  }
+}
+```
+
+Use the same 1024px tablet and 720px mobile thresholds as Runtime. Designer-owned narrow Canvas adaptations continue to
+follow `data-workspace-mode="narrow"`, which is derived from the Designer root width.
+
+An overlay Preview must also be isolated from editor chrome. `.editor-pane` establishes a stacking context, while the
+Preview is a higher sibling layer. Raising only the Preview's `z-index` is not sufficient because Designer selection,
+resize, and drag descendants have their own high `z-index` values and can otherwise paint across the Preview.
 
 Required regression coverage:
 
 - Dark and light semantic text/control tokens meet the intended contrast thresholds.
-- Every Provider selector or variable override remains below the dark Inspector scope.
+- Every Provider selector or variable override remains below a themed Inspector scope.
+- Axe runs immediately after theme switching and reports zero WCAG 2 A/AA violations; tests must not wait for an unsafe
+  color transition to finish.
 - Light Config export uses a light editor surface and readable text; Source Monaco follows the active IDE theme.
 - At 1440px, 900px, and 390px, Workbench root width does not overflow; narrow Designer Canvas and Preview runtime grids do
   not overflow their own containers.
+- At 900px, select a Canvas node before opening Preview, then interact with a real Preview provider control. The test must
+  prove that the active columns/span equal the stage's mobile variables, all cells remain inside the stage, and Designer
+  node actions do not intercept the Preview control.
 
 ---
 

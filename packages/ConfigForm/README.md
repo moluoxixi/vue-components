@@ -111,6 +111,11 @@ Page Manager。
 Runtime。Config 导出继续面向当前页面，提供只读 defineField Source、JSON 和 Tree
 投影。
 
+响应式工作区的导航所有权也保持单一：Designer 自带导航时可根据容器焦点切换窄屏
+tabpanel；Workbench 传入 `workspace-navigation="external"` 后，移动端底部导航成为窄屏
+可见面板的唯一控制者，中屏抽屉状态不得覆盖它。由临时菜单打开 Flow、Page Manager
+或 Export 弹窗时，菜单会先把焦点交回稳定触发器，弹窗关闭后再恢复到该触发器。
+
 页面事件流程同样从 `LowCodePageModel.flows` 投影：Core 只保存 JSON-safe 的
 `trigger -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
 `ConfigFormFlowExecutionPlan`，Workbench 再注入显式的 `ConfigFormFlowActionRegistry`。
