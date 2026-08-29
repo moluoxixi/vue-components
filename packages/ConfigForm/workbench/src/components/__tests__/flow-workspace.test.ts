@@ -1,10 +1,24 @@
 // @vitest-environment happy-dom
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
+import type { ModelOperation } from '@moluoxixi/config-form-designer'
 import type { EdgeRemoveChange, NodePositionChange } from '@vue-flow/core'
 import { VueFlow } from '@vue-flow/core'
 import { mount } from '@vue/test-utils'
 import { beforeAll, describe, expect, it } from 'vitest'
 import FlowWorkspace from '../FlowWorkspace.vue'
+
+type FlowOperation = Extract<ModelOperation, {
+  type: 'addFlow'
+    | 'updateFlowSettings'
+    | 'updateFlowNode'
+    | 'updateFlowEdges'
+    | 'updateFlowGraph'
+    | 'removeFlow'
+}>
+
+function lastOperation(wrapper: ReturnType<typeof mount>): FlowOperation {
+  return wrapper.emitted('operation')?.at(-1)?.[0] as FlowOperation
+}
 
 function createFlow(id = 'existing'): ConfigFormFlow {
   return {
@@ -63,28 +77,30 @@ describe('flowWorkspace', () => {
   it('creates a valid trigger-to-end flow and projects it through controlled Vue Flow', async () => {
     const wrapper = mount(FlowWorkspace, { props: { flows: [] } })
     await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
-    const created = wrapper.emitted('update')?.at(-1)?.[0] as ConfigFormFlow[]
-    await wrapper.setProps({ flows: created })
+    const operation = lastOperation(wrapper)
+    expect(operation.type).toBe('addFlow')
+    const created = (operation as Extract<FlowOperation, { type: 'addFlow' }>).flow
+    await wrapper.setProps({ flows: [created] })
 
     const vueFlow = wrapper.getComponent(VueFlow)
     expect(vueFlow.props('applyDefault')).toBe(false)
     expect((vueFlow.props('nodes') as Array<{ id: string }>).map(node => node.id)).toEqual(['flow-1-trigger', 'flow-1-end'])
-    expect(created[0]?.edges).toEqual([{ id: 'flow-1-next', source: 'flow-1-trigger', target: 'flow-1-end', condition: 'next' }])
+    expect(created.edges).toEqual([{ id: 'flow-1-next', source: 'flow-1-trigger', target: 'flow-1-end', condition: 'next' }])
   })
 
   it('keeps condition branches explicit when adding a condition node', async () => {
     const wrapper = mount(FlowWorkspace, { props: { flows: [createFlow()] } })
     await wrapper.get('[data-testid="add-condition"]').trigger('click')
-    const updated = wrapper.emitted('update')?.at(-1)?.[0] as ConfigFormFlow[]
-    const condition = updated[0]!.nodes.find(node => node.type === 'condition')!
-    expect(updated[0]!.edges.filter(edge => edge.source === condition.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
+    const updated = lastOperation(wrapper) as Extract<FlowOperation, { type: 'updateFlowGraph' }>
+    const condition = updated.nodes.find(node => node.type === 'condition')!
+    expect(updated.edges.filter(edge => edge.source === condition.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
   })
 
   it('uses a registered field when selecting a field-change trigger', async () => {
     const wrapper = mount(FlowWorkspace, { props: { flows: [createFlow('field-flow')], fieldNames: ['email'] } })
     await wrapper.get('[aria-label="Flow trigger"]').setValue('field.change')
-    const updated = wrapper.emitted('update')?.at(-1)?.[0] as ConfigFormFlow[]
-    expect(updated[0]?.trigger).toEqual({ kind: 'field.change', field: 'email' })
+    const updated = lastOperation(wrapper) as Extract<FlowOperation, { type: 'updateFlowSettings' }>
+    expect(updated.settings.trigger).toEqual({ kind: 'field.change', field: 'email' })
   })
 
   it('keeps both condition branches when adding a node after a condition', async () => {
@@ -97,14 +113,24 @@ describe('flowWorkspace', () => {
     ]
     const wrapper = mount(FlowWorkspace, { props: { flows: [flow] } })
     await wrapper.get('[data-testid="add-action"]').trigger('click')
-    const updated = wrapper.emitted('update')?.at(-1)?.[0] as ConfigFormFlow[]
-    const action = updated[0]!.nodes.find(node => node.type === 'action')!
-    expect(updated[0]!.edges.filter(edge => edge.target === action.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
-    expect(updated[0]!.edges.filter(edge => edge.source === action.id).map(edge => edge.condition)).toEqual(['next'])
+    const updated = lastOperation(wrapper) as Extract<FlowOperation, { type: 'updateFlowGraph' }>
+    const action = updated.nodes.find(node => node.type === 'action')!
+    expect(updated.edges.filter(edge => edge.target === action.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
+    expect(updated.edges.filter(edge => edge.source === action.id).map(edge => edge.condition)).toEqual(['next'])
   })
 
   it('commits a node position only through a controlled model update', async () => {
     const wrapper = mount(FlowWorkspace, { props: { flows: [createFlow()] } })
+    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{
+      id: 'trigger',
+      type: 'position',
+      from: { x: 40, y: 80 },
+      position: { x: 80, y: 120 },
+      dragging: true,
+    } satisfies NodePositionChange])
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('operation')).toBeUndefined()
+
     const change: NodePositionChange = {
       id: 'trigger',
       type: 'position',
@@ -115,8 +141,9 @@ describe('flowWorkspace', () => {
     wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [change])
     await wrapper.vm.$nextTick()
 
-    const updated = wrapper.emitted('update')?.at(-1)?.[0] as ConfigFormFlow[]
-    expect(updated[0]!.nodes.find(node => node.id === 'trigger')?.position).toEqual({ x: 96, y: 145 })
+    expect(wrapper.emitted('operation')).toHaveLength(1)
+    const updated = lastOperation(wrapper) as Extract<FlowOperation, { type: 'updateFlowNode' }>
+    expect(updated.node.position).toEqual({ x: 96, y: 145 })
   })
 
   it('rejects an edge deletion that would leave the trigger as a dead end', async () => {
@@ -132,7 +159,13 @@ describe('flowWorkspace', () => {
     wrapper.getComponent(VueFlow).vm.$emit('edgesChange', [change])
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.emitted('update')).toBeUndefined()
+    expect(wrapper.emitted('operation')).toBeUndefined()
     expect(wrapper.get('[role="alert"]').text()).toContain('must connect to a next node')
+  })
+
+  it('emits a semantic remove operation for one flow', async () => {
+    const wrapper = mount(FlowWorkspace, { props: { flows: [createFlow()] } })
+    await wrapper.get('[aria-label="Delete flow"]').trigger('click')
+    expect(lastOperation(wrapper)).toEqual({ type: 'removeFlow', flowId: 'existing' })
   })
 })

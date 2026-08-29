@@ -7,6 +7,7 @@ import type {
   ConfigFormJsonObject,
 } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type { ModelOperation } from '@moluoxixi/config-form-designer'
 import type { Connection, Edge, EdgeChange, Node, NodeChange, XYPosition } from '@vue-flow/core'
 import {
   CircleStop,
@@ -30,6 +31,19 @@ interface FlowNodeData extends Record<string, unknown> {
   deletable: boolean
 }
 
+type FlowWorkspaceOperation = Extract<ModelOperation, {
+  type: 'addFlow'
+    | 'updateFlowSettings'
+    | 'updateFlowNode'
+    | 'updateFlowEdges'
+    | 'updateFlowGraph'
+    | 'removeFlow'
+}>
+
+type FlowEditOperation = Extract<FlowWorkspaceOperation, {
+  type: 'updateFlowSettings' | 'updateFlowNode' | 'updateFlowEdges' | 'updateFlowGraph'
+}>
+
 const props = defineProps<{
   flows: ConfigFormFlow[]
   fieldNames?: string[]
@@ -38,7 +52,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  update: [flows: ConfigFormFlow[]]
+  operation: [operation: FlowWorkspaceOperation]
 }>()
 const inheritedLocale = useDesignerLocale()
 const locale = computed(() => props.locale ? createDesignerLocale(props.locale) : inheritedLocale)
@@ -95,19 +109,7 @@ const graphEdges = computed<Edge[]>(() => (selectedFlow.value?.edges ?? []).map(
   selectable: !props.readonly,
 })))
 
-function cloneFlows(flows: ConfigFormFlow[]): ConfigFormFlow[] {
-  return cloneWorkbenchJson(flows)
-}
-
-function updateFlows(mutator: (flows: ConfigFormFlow[]) => void): void {
-  if (props.readonly)
-    return
-  const next = cloneFlows(props.flows)
-  mutator(next)
-  emit('update', next)
-}
-
-function commitSelectedFlow(candidate: ConfigFormFlow): boolean {
+function commitSelectedFlow(candidate: ConfigFormFlow, operation: FlowEditOperation): boolean {
   if (props.readonly)
     return false
   const analyzed = analyzeConfigFormFlow(candidate)
@@ -116,12 +118,17 @@ function commitSelectedFlow(candidate: ConfigFormFlow): boolean {
     return false
   }
   graphError.value = ''
-  updateFlows((flows) => {
-    const index = flows.findIndex(flow => flow.id === candidate.id)
-    if (index >= 0)
-      flows[index] = cloneWorkbenchJson(candidate)
-  })
+  emit('operation', cloneWorkbenchJson(operation))
   return true
+}
+
+function selectedFlowSettings(flow: ConfigFormFlow): Extract<FlowWorkspaceOperation, { type: 'updateFlowSettings' }>['settings'] {
+  return {
+    name: flow.name,
+    trigger: cloneWorkbenchJson(flow.trigger),
+    ...(flow.concurrency === undefined ? {} : { concurrency: flow.concurrency }),
+    ...(flow.errorPolicy === undefined ? {} : { errorPolicy: cloneWorkbenchJson(flow.errorPolicy) }),
+  }
 }
 
 function addFlow(): void {
@@ -142,23 +149,25 @@ function addFlow(): void {
     ],
     edges: [{ id: `${id}-next`, source: `${id}-trigger`, target: `${id}-end`, condition: 'next' }],
   }
-  updateFlows(flows => flows.push(flow))
+  emit('operation', { type: 'addFlow', flow })
   selectedId.value = id
 }
 
 function removeFlow(id: string): void {
-  updateFlows((flows) => {
-    const index = flows.findIndex(flow => flow.id === id)
-    if (index >= 0)
-      flows.splice(index, 1)
-  })
+  if (!props.readonly)
+    emit('operation', { type: 'removeFlow', flowId: id })
 }
 
 function patchSelected(patch: Partial<ConfigFormFlow>): void {
   const flow = selectedFlow.value
   if (!flow)
     return
-  commitSelectedFlow({ ...cloneWorkbenchJson(flow), ...patch })
+  const candidate = { ...cloneWorkbenchJson(flow), ...patch }
+  commitSelectedFlow(candidate, {
+    type: 'updateFlowSettings',
+    flowId: candidate.id,
+    settings: selectedFlowSettings(candidate),
+  })
 }
 
 function updateTrigger(kind: ConfigFormFlow['trigger']['kind']): void {
@@ -256,7 +265,12 @@ function addNode(type: Exclude<ConfigFormFlowNodeType, 'trigger' | 'success' | '
   else {
     flow.edges.push({ id: uniqueEdgeId(flow, id, 'next', terminal.id), source: id, target: terminal.id, condition: 'next' })
   }
-  if (commitSelectedFlow(flow))
+  if (commitSelectedFlow(flow, {
+    type: 'updateFlowGraph',
+    flowId: flow.id,
+    nodes: flow.nodes,
+    edges: flow.edges,
+  }))
     selectedNodeId.value = id
 }
 
@@ -287,7 +301,12 @@ function removeNode(nodeId: string): void {
     })
   }
   flow.nodes = flow.nodes.filter(node => node.id !== nodeId)
-  if (commitSelectedFlow(flow))
+  if (commitSelectedFlow(flow, {
+    type: 'updateFlowGraph',
+    flowId: flow.id,
+    nodes: flow.nodes,
+    edges: flow.edges,
+  }))
     selectedNodeId.value = undefined
 }
 
@@ -331,7 +350,7 @@ function isValidConnection(connection: Connection): boolean {
 function handleConnect(connection: Connection): void {
   const candidate = candidateConnection(connection)
   if (candidate)
-    commitSelectedFlow(candidate)
+    commitSelectedFlow(candidate, { type: 'updateFlowEdges', flowId: candidate.id, edges: candidate.edges })
 }
 
 function handleNodesChange(changes: NodeChange[]): void {
@@ -359,7 +378,12 @@ function commitNodePosition(nodeId: string, position: XYPosition): void {
   if (!node)
     return
   node.position = { x: Math.round(position.x), y: Math.round(position.y) }
-  if (commitSelectedFlow(flow)) {
+  if (commitSelectedFlow(flow, {
+    type: 'updateFlowNode',
+    flowId: flow.id,
+    nodeId,
+    node,
+  })) {
     const next = { ...draftPositions.value }
     delete next[nodeId]
     draftPositions.value = next
@@ -373,7 +397,7 @@ function handleEdgesChange(changes: EdgeChange[]): void {
     return
   const flow = cloneWorkbenchJson(current)
   flow.edges = flow.edges.filter(edge => !removedIds.includes(edge.id))
-  commitSelectedFlow(flow)
+  commitSelectedFlow(flow, { type: 'updateFlowEdges', flowId: flow.id, edges: flow.edges })
 }
 
 function patchSelectedNode(patch: Partial<ConfigFormFlowNode>): void {
@@ -385,7 +409,12 @@ function patchSelectedNode(patch: Partial<ConfigFormFlowNode>): void {
   if (!node)
     return
   Object.assign(node, patch)
-  commitSelectedFlow(flow)
+  commitSelectedFlow(flow, {
+    type: 'updateFlowNode',
+    flowId: flow.id,
+    nodeId: node.id,
+    node,
+  })
 }
 
 function commitNodeConfig(): void {
@@ -430,7 +459,7 @@ function nodeIcon(node: ConfigFormFlowNode) {
     <header class="flow-workspace-header">
       <div>
         <strong>{{ locale.t('flow.title', 'Flows') }}</strong>
-        <small v-if="selectedFlow">{{ selectedFlow.nodes.length }} nodes · {{ selectedFlow.edges.length }} edges</small>
+        <small v-if="selectedFlow">{{ locale.t('flow.summary', '{nodes} nodes · {edges} edges', { nodes: selectedFlow.nodes.length, edges: selectedFlow.edges.length }) }}</small>
       </div>
       <button type="button" :disabled="readonly" data-testid="add-flow" :title="locale.t('flow.add', 'Add flow')" @click="addFlow">
         <Plus :size="14" aria-hidden="true" />
@@ -501,7 +530,7 @@ function nodeIcon(node: ConfigFormFlowNode) {
                 <Handle v-if="data.node.type !== 'trigger'" id="input" type="target" :position="Position.Left" :connectable="!readonly" />
                 <component :is="nodeIcon(data.node)" :size="15" aria-hidden="true" />
                 <div>
-                  <span>{{ data.node.type }}</span>
+                  <span>{{ locale.t(`flow.nodeType.${data.node.type}`, data.node.type) }}</span>
                   <strong>{{ data.title }}</strong>
                 </div>
                 <button v-if="data.deletable" type="button" :disabled="readonly" :title="locale.t('flow.deleteNode', 'Delete node')" :aria-label="locale.t('flow.deleteNode', 'Delete node')" @click.stop="removeNode(data.node.id)">
@@ -549,16 +578,16 @@ function nodeIcon(node: ConfigFormFlowNode) {
           <label>
             <span>{{ locale.t('flow.concurrency', 'Concurrency') }}</span>
             <select :value="selectedFlow.concurrency ?? 'latest'" :disabled="readonly" :aria-label="locale.t('flow.concurrency', 'Concurrency')" @change="updateConcurrency(($event.target as HTMLSelectElement).value)">
-              <option value="latest">latest</option>
-              <option value="queue">queue</option>
-              <option value="ignore">ignore</option>
+              <option value="latest">{{ locale.t('flow.concurrency.latest', 'Latest') }}</option>
+              <option value="queue">{{ locale.t('flow.concurrency.queue', 'Queue') }}</option>
+              <option value="ignore">{{ locale.t('flow.concurrency.ignore', 'Ignore') }}</option>
             </select>
           </label>
           <label>
             <span>{{ locale.t('flow.onError', 'On error') }}</span>
             <select :value="selectedFlow.errorPolicy?.onError ?? 'end'" :disabled="readonly" :aria-label="locale.t('flow.onError', 'On error')" @change="updateErrorPolicy(($event.target as HTMLSelectElement).value as 'failure' | 'end')">
-              <option value="end">end</option>
-              <option value="failure">failure</option>
+              <option value="end">{{ locale.t('flow.onError.end', 'End') }}</option>
+              <option value="failure">{{ locale.t('flow.onError.failure', 'Failure branch') }}</option>
             </select>
           </label>
           <label>
@@ -573,8 +602,8 @@ function nodeIcon(node: ConfigFormFlowNode) {
             <code>{{ selectedNode.type }}</code>
           </header>
           <label>
-            <span>ID</span>
-            <input :value="selectedNode.id" aria-label="ID" readonly>
+            <span>{{ locale.t('flow.nodeId', 'Node ID') }}</span>
+            <input :value="selectedNode.id" :aria-label="locale.t('flow.nodeId', 'Node ID')" readonly>
           </label>
           <label v-if="selectedNode.type === 'action'">
             <span>{{ locale.t('flow.actionRef', 'Action ref') }}</span>

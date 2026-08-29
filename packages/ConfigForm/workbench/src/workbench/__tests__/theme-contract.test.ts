@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const stylesheet = readFileSync(new URL('../../styles.css', import.meta.url), 'utf8')
+const stylesheetEntry = readFileSync(new URL('../../styles.css', import.meta.url), 'utf8')
+const stylesheetLayers = ['shell', 'studio', 'features', 'responsive'] as const
+const stylesheet = stylesheetLayers
+  .map(layer => readFileSync(new URL(`../../styles/${layer}.css`, import.meta.url), 'utf8'))
+  .join('\n')
+const responsiveStylesheet = readFileSync(new URL('../../styles/responsive.css', import.meta.url), 'utf8')
 const designerStylesheet = readFileSync(new URL('../../../../designer/src/styles.scss', import.meta.url), 'utf8')
 
 interface CssRule {
@@ -16,12 +21,13 @@ function cssRules(source: string): CssRule[] {
   }))
 }
 
-function selectorBlock(selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = stylesheet.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
-  if (!match)
+function selectorBlock(selector: string, source = stylesheet): string {
+  const rule = cssRules(source).find(candidate => candidate.selector
+    .split(',')
+    .some(item => item.trim() === selector))
+  if (!rule)
     throw new Error(`Missing CSS selector: ${selector}`)
-  return match[1]!
+  return rule.body
 }
 
 function colorVariable(selector: string, name: string): string {
@@ -49,15 +55,37 @@ function contrast(foreground: string, background: string): number {
 }
 
 describe('workbench theme contract', () => {
+  it('composes scoped style layers in stable cascade order', () => {
+    expect(stylesheetEntry).toBe(`${stylesheetLayers
+      .map(layer => `@import url(./styles/${layer}.css);`)
+      .join('\n')}\n`)
+  })
+
+  it('loads only the active adapter implementation and styles', async () => {
+    const [entry, adapters, templates] = await Promise.all([
+      import('../../main.ts?raw').then(module => module.default),
+      import('../../adapters.ts?raw').then(module => module.default),
+      import('../../project/templates/create-template.ts?raw').then(module => module.default),
+    ])
+
+    expect(entry).not.toMatch(/designer-(?:antd-vue|element-plus)\/styles/)
+    expect(entry).not.toMatch(/(?:ant-design-vue|element-plus)\/dist/)
+    expect(adapters).toContain('import(\'@moluoxixi/config-form-designer-antd-vue\')')
+    expect(adapters).toContain('import(\'@moluoxixi/config-form-designer-element-plus\')')
+    expect(templates).not.toContain('@moluoxixi/config-form-designer-antd-vue')
+    expect(templates).not.toContain('@moluoxixi/config-form-designer-element-plus')
+  })
   it.each([
     ['.workbench-app', '--wb-text', '--wb-surface', 4.5],
     ['.workbench-app', '--wb-muted', '--wb-surface', 4.5],
     ['.workbench-app', '--wb-control-border', '--wb-surface', 3],
     ['.workbench-app', '--wb-accent', '--wb-surface', 3],
+    ['.workbench-app', '--wb-action-text', '--wb-action-bg', 4.5],
     ['.workbench-app[data-theme="light"]', '--wb-text', '--wb-surface', 4.5],
     ['.workbench-app[data-theme="light"]', '--wb-muted', '--wb-surface', 4.5],
     ['.workbench-app[data-theme="light"]', '--wb-control-border', '--wb-surface', 3],
     ['.workbench-app[data-theme="light"]', '--wb-accent', '--wb-surface', 3],
+    ['.workbench-app[data-theme="light"]', '--wb-action-text', '--wb-action-bg', 4.5],
   ] as const)('%s keeps %s readable against %s', (selector, foreground, background, minimum) => {
     expect(contrast(
       colorVariable(selector, foreground),
@@ -68,20 +96,45 @@ describe('workbench theme contract', () => {
   it('keeps interaction styling and runtime canvas tokens explicit', () => {
     expect(stylesheet).toContain('.topbar-actions button:hover:not(:disabled),')
     expect(stylesheet).toContain('.export-preview-dialog > header button:hover:not(:disabled)')
-    expect(stylesheet).toContain('--el-segmented-item-selected-bg-color: var(--mx-designer-accent);')
+    expect(selectorBlock(
+      '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
+    )).toContain('--el-segmented-item-selected-bg-color: var(--mx-designer-selection-bg);')
+    expect(selectorBlock(
+      '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented__item-selected',
+    )).toContain('transition: none;')
+    expect(selectorBlock(
+      '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented__item-label',
+    )).toContain('transition: none;')
+    expect(selectorBlock(
+      '.workbench-app[data-theme="light"] .embedded-designer.mx-config-form-designer',
+    )).toContain('--mx-designer-muted: #526176;')
+    expect(selectorBlock(
+      '.mx-config-form-designer__palette-item',
+      designerStylesheet,
+    )).toContain('transition: border-color 120ms ease, box-shadow 120ms ease;')
+    expect(contrast(
+      '#ffffff',
+      colorVariable('.workbench-app[data-theme="dark"] .embedded-designer.mx-config-form-designer', '--mx-designer-selection-bg'),
+    )).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(
+      '#ffffff',
+      colorVariable('.workbench-app[data-theme="light"] .embedded-designer.mx-config-form-designer', '--mx-designer-selection-bg'),
+    )).toBeGreaterThanOrEqual(4.5)
     expect(stylesheet).toContain('--mx-designer-canvas-sheet: #fff;')
-    expect(stylesheet).toContain('--mx-designer-runtime-text: #24262b;')
+    expect(stylesheet).toContain('--mx-designer-runtime-text: #17202a;')
+    expect(stylesheet).toContain('--mx-designer-runtime-muted: #64748b;')
+    expect(stylesheet).toContain('--mx-designer-runtime-border: #d9dee7;')
     expect(stylesheet).toContain('--mx-designer-runtime-surface: #fff;')
     expect(designerStylesheet).toContain('--mx-designer-runtime-surface: #ffffff;')
     expect(designerStylesheet).toContain('--mx-designer-surface: var(--mx-designer-overlay-surface, #fff);')
     expect(designerStylesheet).not.toContain('--mx-designer-surface: var(--mx-designer-runtime-surface')
   })
 
-  it('keeps every provider theme rule inside the dark Inspector scope', () => {
+  it('keeps every provider theme rule inside a themed Inspector scope', () => {
     const providerRules = cssRules(stylesheet).filter(({ body, selector }) =>
       body.includes('--el-') || selector.includes('.el-') || selector.includes('.ant-'),
     )
-    const scope = /^\.workbench-app\[data-theme="dark"\] \.embedded-designer \.mx-config-form-designer__properties(?:\s|$)/
+    const scope = /^\.workbench-app\[data-theme(?:="dark")?\] \.embedded-designer \.mx-config-form-designer__properties(?:\s|$)/
 
     expect(providerRules.length).toBeGreaterThan(0)
     for (const rule of providerRules) {
@@ -94,10 +147,44 @@ describe('workbench theme contract', () => {
     expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
     expect(selectorBlock('.topbar-actions .export-menu-popover button')).toContain('white-space: nowrap;')
     expect(stylesheet).toContain('@media (max-width: 480px)')
+    expect(stylesheet).toContain('.topbar-actions .export-menu-popover button,')
+    expect(stylesheet).toContain('.topbar-actions .mobile-action-popover button,')
     expect(stylesheet).toContain('.export-menu > button .export-chevron')
-    expect(selectorBlock('.preview-canvas')).toContain('container-name: preview-canvas;')
-    expect(stylesheet).toContain('@container preview-canvas (max-width: 520px) {')
+    expect(selectorBlock('.preview-stage')).toContain('container-name: preview-runtime;')
+    expect(selectorBlock('.preview-stage')).toContain('container-type: inline-size;')
+    expect(stylesheet).toContain('@container preview-runtime (max-width: 1024px) {')
+    expect(stylesheet).toContain('--mx-config-form-active-columns: var(--mx-config-form-columns-tablet);')
+    expect(stylesheet).toContain('--mx-config-form-active-span: var(--mx-config-form-span-tablet);')
+    expect(stylesheet).toContain('@container preview-runtime (max-width: 720px) {')
+    expect(stylesheet).toContain('--mx-config-form-active-columns: var(--mx-config-form-columns-mobile);')
+    expect(stylesheet).toContain('--mx-config-form-active-span: var(--mx-config-form-span-mobile);')
+    expect(stylesheet).toContain('@container preview-runtime (max-width: 520px) {')
     expect(stylesheet).toContain('.page-preview-form [class*="config-form__row--grid"] {\n    gap: 12px 6px !important;')
     expect(designerStylesheet).toContain('.mx-config-form-designer__canvas-sheet [class*="config-form__row--grid"] {\n  gap: 12px 6px !important;')
+  })
+
+  it('keeps Preview as an overlay that cannot resize the Design surface', () => {
+    const rules = cssRules(stylesheet)
+    const previewRule = rules.find(rule => rule.selector === '.preview-pane')
+    const expandedRule = rules.find(rule => rule.selector === '.workbench-layout.is-preview-expanded .preview-pane')
+
+    expect(selectorBlock('.workbench-layout')).toContain('position: relative;')
+    expect(selectorBlock('.workbench-layout')).toContain('grid-template-columns: minmax(0, 1fr);')
+    expect(rules.some(rule => rule.selector === '.editor-pane' && rule.body.includes('isolation: isolate;'))).toBe(true)
+    expect(previewRule?.body).toContain('position: absolute;')
+    expect(previewRule?.body).toContain('right: 0;')
+    expect(expandedRule?.body).toContain('width: 100%;')
+  })
+
+  it('keeps compact desktop Preview as an overlay and reserves replacement mode for mobile', () => {
+    const compactStart = responsiveStylesheet.indexOf('@media (max-width: 900px)')
+    const mobileStart = responsiveStylesheet.indexOf('@media (max-width: 700px)')
+    const narrowStart = responsiveStylesheet.indexOf('@media (max-width: 480px)')
+    const compactRules = responsiveStylesheet.slice(compactStart, mobileStart)
+    const mobileRules = responsiveStylesheet.slice(mobileStart, narrowStart)
+
+    expect(compactRules).not.toContain('show-mobile-preview')
+    expect(mobileRules).toContain('.workbench-layout.show-mobile-preview .editor-pane')
+    expect(mobileRules).toContain('.workbench-layout.show-mobile-preview .preview-pane')
   })
 })

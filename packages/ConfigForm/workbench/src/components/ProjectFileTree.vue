@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { ProjectPath } from '../project'
 import type { ProjectTreeNode } from '../project/file-tree'
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { flattenVisibleProjectTree } from '../project/file-tree'
 import ProjectFileTreeNode from './ProjectFileTreeNode.vue'
 
 const props = defineProps<{
   expandedIds: string[]
+  locale?: DesignerLocaleOptions
   nodes: ProjectTreeNode[]
   selectedPath?: ProjectPath
 }>()
@@ -17,9 +20,12 @@ const emit = defineEmits<{
 }>()
 
 const rootRef = useTemplateRef<HTMLElement>('root')
+const locale = computed(() => createDesignerLocale(props.locale))
 const focusedId = ref<string>()
 const expandedSet = computed(() => new Set(props.expandedIds))
 const visibleNodes = computed(() => flattenVisibleProjectTree(props.nodes, expandedSet.value))
+let typeaheadBuffer = ''
+let typeaheadTimer: ReturnType<typeof setTimeout> | undefined
 
 function selectedNodeId(): string | undefined {
   return props.selectedPath ? `file:${props.selectedPath}` : undefined
@@ -62,6 +68,24 @@ function activateNode(node: ProjectTreeNode): void {
     emit('select', node.path)
 }
 
+function focusTypeaheadMatch(entries: typeof visibleNodes.value, index: number, key: string): boolean {
+  typeaheadBuffer += key.toLocaleLowerCase()
+  if (typeaheadTimer)
+    clearTimeout(typeaheadTimer)
+  typeaheadTimer = setTimeout(() => typeaheadBuffer = '', 700)
+
+  const ordered = [...entries.slice(index + 1), ...entries.slice(0, index + 1)]
+  let match = ordered.find(entry => entry.node.name.toLocaleLowerCase().startsWith(typeaheadBuffer))
+  if (!match && typeaheadBuffer.length > 1) {
+    typeaheadBuffer = key.toLocaleLowerCase()
+    match = ordered.find(entry => entry.node.name.toLocaleLowerCase().startsWith(typeaheadBuffer))
+  }
+  if (!match)
+    return false
+  focusNode(match.node.id)
+  return true
+}
+
 function handleKeydown(event: KeyboardEvent): void {
   const target = event.target instanceof HTMLElement
     ? event.target.closest<HTMLElement>('[data-project-tree-id]')
@@ -97,6 +121,10 @@ function handleKeydown(event: KeyboardEvent): void {
   else if (event.key === 'Enter' || event.key === ' ') {
     activateNode(current.node)
   }
+  else if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
+    if (!focusTypeaheadMatch(entries, index, event.key))
+      return
+  }
   else {
     return
   }
@@ -105,6 +133,11 @@ function handleKeydown(event: KeyboardEvent): void {
   if (nextId)
     focusNode(nextId)
 }
+
+onBeforeUnmount(() => {
+  if (typeaheadTimer)
+    clearTimeout(typeaheadTimer)
+})
 </script>
 
 <template>
@@ -112,7 +145,7 @@ function handleKeydown(event: KeyboardEvent): void {
     ref="root"
     class="project-file-tree"
     role="tree"
-    aria-label="Generated source files"
+    :aria-label="locale.t('fileTree.generatedSource', 'Generated source files')"
     @keydown="handleKeydown"
   >
     <ProjectFileTreeNode

@@ -1,13 +1,8 @@
 import type { DesignerDocument } from '@moluoxixi/config-form-designer'
 import type { ProjectPath, WorkspaceAdapter, WorkspaceFile, WorkspaceProject } from '../types'
 import type { WorkspaceTemplate, WorkspaceTemplateInput } from './types'
-import {
-  createLowCodeComponentRegistry,
-  designerDocumentToConfigModel,
-} from '@moluoxixi/config-form-designer'
-import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'
-import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
-import { formatLowCodePageConfig } from '../../workbench/config-codec'
+import { designerDocumentToConfigModel } from '@moluoxixi/config-form-designer'
+import { formatDesignerConfig } from '../../workbench/config-codec'
 import { WorkspaceProjectError } from '../errors'
 import { assertUniqueProjectPaths, normalizeProjectPath, safeProjectSlug } from '../path'
 import { parseWorkspaceProject } from '../schema'
@@ -27,11 +22,6 @@ const VERSIONS = Object.freeze({
   'vue-tsc': '2.2.8',
   'zod': '3.24.2',
 })
-
-const lowCodeRegistries = {
-  'antd-vue': createLowCodeComponentRegistry(createAntdVueDesignerRegistry()),
-  'element-plus': createLowCodeComponentRegistry(createElementPlusDesignerRegistry()),
-}
 
 interface TemplateDefinition {
   adapter: WorkspaceAdapter
@@ -83,7 +73,16 @@ function designerDocument(adapter: WorkspaceAdapter): DesignerDocument {
   const prefix = adapter === 'element-plus' ? 'element' : 'antd'
   return {
     version: 1,
-    form: { columns: 24, fieldSpan: 24, gap: '16px', labelPosition: 'left' },
+    form: {
+      columns: 24,
+      fieldSpan: 24,
+      gap: '16px',
+      labelPosition: 'left',
+      responsive: {
+        tablet: { columns: 12, fieldSpan: 12 },
+        mobile: { columns: 1, fieldSpan: 1 },
+      },
+    },
     nodes: [
       {
         id: 'profile-name',
@@ -244,7 +243,7 @@ function createTemplateFiles(adapter: WorkspaceAdapter, id: string, name: string
     'package.json': textFile(packageManifest(adapter, name), 'json'),
     'src/App.vue': textFile(formatWorkspaceAppComponent(adapter), 'vue'),
     'src/form.designer.json': textFile(`${JSON.stringify(model, null, 2)}\n`, 'json'),
-    'src/form.config.ts': textFile(formatLowCodePageConfig(model, lowCodeRegistries[adapter]), 'typescript'),
+    'src/form.config.ts': textFile(formatDesignerConfig(document), 'typescript'),
     'src/main.ts': textFile(mainModule(adapter), 'typescript'),
     'src/styles.css': textFile(styles, 'css'),
     'src/vite-env.d.ts': textFile('/// <reference types="vite/client" />\n', 'typescript'),

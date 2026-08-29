@@ -4,6 +4,7 @@ import type {
   WorkspaceApplicationOperation,
   WorkspaceApplicationSummary,
 } from '../project'
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import {
   ArrowDown,
   ArrowUp,
@@ -14,12 +15,14 @@ import {
   Trash2,
   X,
 } from '@lucide/vue'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, watch } from 'vue'
 
 const props = defineProps<{
   application: WorkspaceApplication
   applications: WorkspaceApplicationSummary[]
   busy?: boolean
+  locale?: DesignerLocaleOptions
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +36,7 @@ const search = ref('')
 const names = ref<Record<string, string>>({})
 const routes = ref<Record<string, string>>({})
 const pendingDeleteId = ref<string>()
+const locale = computed(() => createDesignerLocale(props.locale))
 
 watch(() => props.application.pages, (pages) => {
   names.value = Object.fromEntries(pages.map(page => [page.id, page.name]))
@@ -103,39 +107,39 @@ function confirmDelete(): void {
   <section class="page-manager" role="dialog" aria-modal="true" aria-labelledby="page-manager-title">
     <header class="page-manager__header">
       <div>
-        <span>Application structure</span>
-        <h2 id="page-manager-title">Pages</h2>
+        <span>{{ locale.t('pageManager.eyebrow', 'Application structure') }}</span>
+        <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Pages') }}</h2>
       </div>
-      <button type="button" title="Close page manager" aria-label="Close page manager" @click="emit('close')">
+      <button type="button" :title="locale.t('pageManager.close', 'Close page manager')" :aria-label="locale.t('pageManager.close', 'Close page manager')" @click="emit('close')">
         <X :size="18" aria-hidden="true" />
       </button>
     </header>
 
     <div class="page-manager__toolbar">
       <label>
-        <span>Application</span>
-        <select :value="application.id" :disabled="busy" aria-label="Application" @change="selectApplication">
+        <span>{{ locale.t('pageManager.application', 'Application') }}</span>
+        <select :value="application.id" :disabled="busy" :aria-label="locale.t('pageManager.application', 'Application')" @change="selectApplication">
           <option v-for="item in applications" :key="item.id" :value="item.id">
-            {{ item.name }} · {{ item.pageCount }} pages
+            {{ item.name }} · {{ locale.t('pageManager.pageCount', '{count} pages', { count: item.pageCount }) }}
           </option>
         </select>
       </label>
       <label class="page-manager__search">
         <Search :size="15" aria-hidden="true" />
-        <span class="sr-only">Search pages</span>
-        <input v-model="search" type="search" placeholder="Search pages" aria-label="Search pages">
+        <span class="sr-only">{{ locale.t('pageManager.search', 'Search pages') }}</span>
+        <input v-model="search" type="search" :placeholder="locale.t('pageManager.search', 'Search pages')" :aria-label="locale.t('pageManager.search', 'Search pages')">
       </label>
       <button class="page-manager__create" type="button" :disabled="busy" @click="emit('createPage')">
         <FilePlus2 :size="16" aria-hidden="true" />
-        New page
+        {{ locale.t('pageManager.new', 'New page') }}
       </button>
     </div>
 
-    <div class="page-manager__table" role="table" aria-label="Application pages">
+    <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.applicationPages', 'Application pages')">
       <div class="page-manager__table-header" role="row">
-        <span role="columnheader">Page</span>
-        <span role="columnheader">Route</span>
-        <span role="columnheader">Actions</span>
+        <span role="columnheader">{{ locale.t('pageManager.page', 'Page') }}</span>
+        <span role="columnheader">{{ locale.t('pageManager.route', 'Route') }}</span>
+        <span role="columnheader">{{ locale.t('pageManager.actions', 'Actions') }}</span>
       </div>
       <div
         v-for="page in filteredPages"
@@ -144,22 +148,22 @@ function confirmDelete(): void {
         role="row"
       >
         <label role="cell">
-          <span class="sr-only">Page name</span>
+          <span class="sr-only">{{ locale.t('pageManager.pageName', 'Page name') }}</span>
           <input
             v-model="names[page.id]"
             :disabled="busy"
-            :aria-label="`Page name for ${page.name}`"
+            :aria-label="locale.t('pageManager.pageNameAria', 'Page name for {name}', { name: page.name })"
             @blur="commitName(page.id)"
             @keydown="handleTextKeydown"
           >
           <small>{{ page.id }}</small>
         </label>
         <label role="cell">
-          <span class="sr-only">Page route</span>
+          <span class="sr-only">{{ locale.t('pageManager.route', 'Page route') }}</span>
           <input
             v-model="routes[page.id]"
             :disabled="busy"
-            :aria-label="`Route for ${page.name}`"
+            :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
             @blur="commitRoute(page.id)"
             @keydown="handleTextKeydown"
           >
@@ -168,38 +172,38 @@ function confirmDelete(): void {
           <button
             type="button"
             :class="{ 'is-home': application.homePageId === page.id }"
-            :title="application.homePageId === page.id ? 'Home page' : 'Set as home page'"
-            :aria-label="application.homePageId === page.id ? `${page.name} is the home page` : `Set ${page.name} as home page`"
+            :title="application.homePageId === page.id ? locale.t('pageManager.home', 'Home page') : locale.t('pageManager.setHome', 'Set as home page')"
+            :aria-label="application.homePageId === page.id ? locale.t('pageManager.homeAria', '{name} is the home page', { name: page.name }) : locale.t('pageManager.setHomeAria', 'Set {name} as home page', { name: page.name })"
             :aria-pressed="application.homePageId === page.id"
             :disabled="busy || application.homePageId === page.id"
             @click="emit('operation', { type: 'set-home-page', pageId: page.id })"
           >
             <Home :size="15" aria-hidden="true" />
           </button>
-          <button type="button" title="Move page up" :aria-label="`Move ${page.name} up`" :disabled="busy || application.pages[0]?.id === page.id" @click="movePage(page.id, -1)">
+          <button type="button" :title="locale.t('pageManager.moveUp', 'Move page up')" :aria-label="locale.t('pageManager.moveUpAria', 'Move {name} up', { name: page.name })" :disabled="busy || application.pages[0]?.id === page.id" @click="movePage(page.id, -1)">
             <ArrowUp :size="15" aria-hidden="true" />
           </button>
-          <button type="button" title="Move page down" :aria-label="`Move ${page.name} down`" :disabled="busy || application.pages.at(-1)?.id === page.id" @click="movePage(page.id, 1)">
+          <button type="button" :title="locale.t('pageManager.moveDown', 'Move page down')" :aria-label="locale.t('pageManager.moveDownAria', 'Move {name} down', { name: page.name })" :disabled="busy || application.pages.at(-1)?.id === page.id" @click="movePage(page.id, 1)">
             <ArrowDown :size="15" aria-hidden="true" />
           </button>
-          <button type="button" title="Duplicate page" :aria-label="`Duplicate ${page.name}`" :disabled="busy" @click="emit('operation', { type: 'duplicate-page', pageId: page.id, page })">
+          <button type="button" :title="locale.t('pageManager.duplicate', 'Duplicate page')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('operation', { type: 'duplicate-page', pageId: page.id, page })">
             <Copy :size="15" aria-hidden="true" />
           </button>
-          <button type="button" class="is-danger" title="Delete page" :aria-label="`Delete ${page.name}`" :disabled="busy || application.pages.length === 1" @click="pendingDeleteId = page.id">
+          <button type="button" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || application.pages.length === 1" @click="pendingDeleteId = page.id">
             <Trash2 :size="15" aria-hidden="true" />
           </button>
         </div>
       </div>
-      <p v-if="filteredPages.length === 0" class="page-manager__empty">No pages match this search.</p>
+      <p v-if="filteredPages.length === 0" class="page-manager__empty">{{ locale.t('pageManager.noMatch', 'No pages match this search.') }}</p>
     </div>
 
     <footer v-if="pendingDeletePage" class="page-manager__confirm" role="alertdialog" aria-modal="true" aria-labelledby="delete-page-title">
       <div>
-        <strong id="delete-page-title">Delete {{ pendingDeletePage.name }}?</strong>
-        <span>This page and its design model will be removed from the application.</span>
+        <strong id="delete-page-title">{{ locale.t('pageManager.deletePrompt', 'Delete {name}?', { name: pendingDeletePage.name }) }}</strong>
+        <span>{{ locale.t('pageManager.deleteDescription', 'This page and its design model will be removed from the application.') }}</span>
       </div>
-      <button type="button" @click="pendingDeleteId = undefined">Cancel</button>
-      <button type="button" class="is-danger" @click="confirmDelete">Delete page</button>
+      <button type="button" @click="pendingDeleteId = undefined">{{ locale.t('pageManager.cancel', 'Cancel') }}</button>
+      <button type="button" class="is-danger" @click="confirmDelete">{{ locale.t('pageManager.delete', 'Delete page') }}</button>
     </footer>
   </section>
 </template>

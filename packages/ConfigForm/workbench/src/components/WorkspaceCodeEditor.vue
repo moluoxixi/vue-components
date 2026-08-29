@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { editor, IDisposable } from 'monaco-editor'
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import 'monaco-editor/esm/vs/basic-languages/css/css.contribution'
 import 'monaco-editor/esm/vs/basic-languages/html/html.contribution'
 import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution'
@@ -39,6 +41,7 @@ import {
 interface Props {
   filename: string
   language?: string
+  locale?: DesignerLocaleOptions
   moduleNames?: readonly string[]
   modelValue: string
   readonly?: boolean
@@ -59,6 +62,7 @@ const models = new Map<string, editor.ITextModel>()
 const modelModuleNames = new WeakMap<editor.ITextModel, readonly string[]>()
 const cursorLine = ref(1)
 const cursorColumn = ref(1)
+const locale = computed(() => createDesignerLocale(props.locale))
 let codeEditor: editor.IStandaloneCodeEditor | undefined
 let changeSubscription: IDisposable | undefined
 let cursorSubscription: IDisposable | undefined
@@ -839,11 +843,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="workspace-code-editor-shell" :data-theme="theme" role="region" aria-label="Code viewer" :aria-readonly="readonly">
+  <div class="workspace-code-editor-shell" :data-theme="theme" role="region" :aria-label="locale.t('editor.codeViewer', 'Code viewer')" :aria-readonly="readonly">
     <div ref="container" class="workspace-code-editor" />
-    <footer class="workspace-code-editor-status" aria-label="Editor status">
-      <span>Ln {{ cursorLine }}, Col {{ cursorColumn }}</span>
-      <span>Spaces: 2</span>
+    <footer class="workspace-code-editor-status" :aria-label="locale.t('editor.status', 'Editor status')">
+      <span>{{ locale.t('editor.lineColumn', 'Ln {line}, Col {column}', { line: cursorLine, column: cursorColumn }) }}</span>
+      <span>{{ locale.t('editor.spaces', 'Spaces: {count}', { count: 2 }) }}</span>
       <span>UTF-8</span>
       <span>{{ languageLabel }}</span>
     </footer>

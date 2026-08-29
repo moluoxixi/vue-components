@@ -32,6 +32,12 @@ describe('workspace templates', () => {
     })
     const elementModel = JSON.parse((element.files[normalizeProjectPath('src/form.designer.json')] as { content: string }).content)
     expect(elementModel).toMatchObject({
+      form: {
+        responsive: {
+          mobile: { columns: 1, fieldSpan: 1 },
+          tablet: { columns: 12, fieldSpan: 12 },
+        },
+      },
       id: 'element-profile-fixture',
       name: 'element-profile fixture',
       version: 1,

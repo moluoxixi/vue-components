@@ -1,4 +1,5 @@
 import type {
+  DesignerSourceLibraryBinding,
   LowCodeComponentRegistry,
   LowCodeNode,
   LowCodePageModel,
@@ -34,10 +35,6 @@ interface PackageJson {
 
 function textFile(content: string, language: string): WorkspaceFile {
   return { content, kind: 'text', language }
-}
-
-function materialName(component: string): string {
-  return component.split('.').at(-1) ?? component
 }
 
 function quote(value: string): string {
@@ -76,11 +73,6 @@ function styleForNode(node: LowCodeNode, columns: number): string | undefined {
   return `grid-column: span ${span} / span ${span}`
 }
 
-function htmlProps(node: LowCodeNode): Record<string, unknown> {
-  const allowed = new Set(['accept', 'autocomplete', 'disabled', 'maxlength', 'min', 'max', 'pattern', 'placeholder', 'readonly', 'rows', 'step'])
-  return Object.fromEntries(Object.entries(node.props).filter(([key]) => allowed.has(key)))
-}
-
 function fieldOptions(node: LowCodeNode): Array<{ label: string, value: unknown }> {
   const options = node.props.options
   if (!Array.isArray(options))
@@ -95,25 +87,43 @@ function fieldOptions(node: LowCodeNode): Array<{ label: string, value: unknown 
   })
 }
 
-function inputType(node: LowCodeNode): string {
-  switch (materialName(node.component)) {
-    case 'input-number': return 'number'
-    case 'date': return 'date'
-    case 'time': return 'time'
-    case 'password': return 'password'
-    case 'search': return 'search'
-    case 'checkbox':
-    case 'switch': return 'checkbox'
-    default: return 'text'
-  }
+function componentDefinition(node: LowCodeNode, registry: LowCodeComponentRegistry) {
+  const definition = registry.get(node.component)
+  if (!definition)
+    throw new Error(`Component "${node.component}" is not registered and cannot be exported.`)
+  return definition
 }
 
-function collectInitialValues(nodes: LowCodeNode[], values: Record<string, unknown>): void {
+function sourceProps(node: LowCodeNode, registry: LowCodeComponentRegistry): Record<string, unknown> {
+  const definition = componentDefinition(node, registry)
+  const props = {
+    ...(definition.source.staticProps ?? {}),
+    ...node.props,
+  }
+  delete props.options
+  delete props.optionSource
+  return props
+}
+
+function collectInitialValues(
+  nodes: LowCodeNode[],
+  values: Record<string, unknown>,
+  registry: LowCodeComponentRegistry,
+): void {
   for (const node of nodes) {
-    if (node.kind === 'field' && node.field)
-      values[node.field] = node.defaultValue !== undefined ? node.defaultValue : (inputType(node) === 'checkbox' ? false : '')
-    collectInitialValues(node.children, values)
-    Object.values(node.slots).forEach(children => collectInitialValues(children, values))
+    if (node.kind === 'field' && node.field) {
+      const definition = componentDefinition(node, registry)
+      const defaultValue = node.defaultValue !== undefined
+        ? node.defaultValue
+        : definition.defaults.defaultValue
+      values[node.field] = defaultValue !== undefined
+        ? structuredClone(defaultValue)
+        : definition.source.configComponent === 'boolean'
+          ? false
+          : definition.source.configComponent === 'number' ? 0 : ''
+    }
+    collectInitialValues(node.children, values, registry)
+    Object.values(node.slots).forEach(children => collectInitialValues(children, values, registry))
   }
 }
 
@@ -352,6 +362,34 @@ function reactionProjection(reactions: Array<{ when: unknown, then: Array<Record
   return projection
 }
 
+export function evaluateRuntimeCondition(value: unknown, values: FlowValues): boolean {
+  return condition(value, values)
+}
+
+export function projectRuntimeReactions(
+  reactions: Array<{ when: unknown, then: Array<Record<string, unknown>>, else?: Array<Record<string, unknown>>, enabled?: boolean }>,
+  values: FlowValues,
+): FlowProjection {
+  return reactionProjection(reactions, values, {})
+}
+
+export async function invokeRegisteredAction(
+  ref: string,
+  input: unknown,
+  context: { eventName?: string, nodeId: string, values: FlowValues, signal: AbortSignal },
+): Promise<unknown> {
+  const action = actions[ref]
+  if (!action)
+    throw new Error('Missing generated action: ' + ref)
+  return action(input, {
+    flowId: context.eventName ? 'event:' + context.eventName : 'manual',
+    nodeId: context.nodeId,
+    values: context.values,
+    outputs: {},
+    signal: context.signal,
+  })
+}
+
 async function executeFlow(flow: GeneratedFlow, input: FlowValues, controller: AbortController): Promise<FlowExecutionResult> {
   const signal = controller.signal
   const values = { ...input }
@@ -580,68 +618,193 @@ export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}, sig
 }
 
 function assertPortableNode(node: LowCodeNode, registry: LowCodeComponentRegistry): void {
-  if (!registry.get(node.component))
+  const definition = registry.get(node.component)
+  if (!definition)
     throw new Error(`Component "${node.component}" is not registered and cannot be exported.`)
-  if (Object.keys(node.events).length || Object.keys(node.bindings).length || node.reactions?.length || node.conditions) {
-    throw new Error(`Node "${node.id}" uses dynamic semantics that are not supported by standalone Source export.`)
+
+  const eventNames = new Set(definition.events.map(event => event.name))
+  for (const [eventName, actions] of Object.entries(node.events)) {
+    if (!eventNames.has(eventName))
+      throw new Error(`Node "${node.id}" uses unregistered event "${eventName}".`)
+    if (actions.some(action => typeof action.action !== 'string' || !action.action.trim()))
+      throw new Error(`Node "${node.id}" event "${eventName}" contains an invalid action ref.`)
+  }
+
+  const bindingNames = new Set(definition.bindings.map(binding => binding.name))
+  for (const [bindingName, binding] of Object.entries(node.bindings)) {
+    if (!bindingNames.has(bindingName))
+      throw new Error(`Node "${node.id}" uses unregistered binding "${bindingName}".`)
+    if (typeof binding.source !== 'string' || !binding.source.trim())
+      throw new Error(`Node "${node.id}" binding "${bindingName}" contains an invalid source ref.`)
   }
   node.children.forEach(child => assertPortableNode(child, registry))
   Object.values(node.slots).forEach(children => children.forEach(child => assertPortableNode(child, registry)))
 }
 
-function renderField(node: LowCodeNode, columns: number): string {
+function kebabCase(value: string): string {
+  return value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
+}
+
+function sourceEventBindings(node: LowCodeNode, updateEvent?: string): string {
+  const nodeId = quote(node.id)
+  return Object.keys(node.events)
+    .filter(eventName => kebabCase(eventName) !== updateEvent)
+    .map(eventName => ` @${escapeHtml(kebabCase(eventName))}='runNodeEvent(${nodeId}, ${quote(eventName)}, $event)'`)
+    .join('')
+}
+
+function renderField(
+  node: LowCodeNode,
+  columns: number,
+  registry: LowCodeComponentRegistry,
+): string {
+  const definition = componentDefinition(node, registry)
+  const source = definition.source
   const field = quote(node.field ?? node.id)
-  const fieldKey = quote(node.field ?? node.id)
-  const type = inputType(node)
   const style = styleForNode(node, columns)
-  const attrs = ` v-bind='fieldProps[${fieldKey}]'`
-  // Use a single-quoted Vue directive so the JSON-quoted field name remains
-  // valid when emitted (for example: @change='runFieldChange("email")').
-  const change = ` @change='runFieldChange(${field})'`
   const styleAttr = style ? ` style="${style}"` : ''
-  const hiddenAttr = ` :hidden='fieldStates[${fieldKey}]?.visible === false'`
+  const hiddenAttr = ` :hidden='fieldStates[${field}]?.visible === false'`
   const safeId = escapeHtml(node.id)
-  const label = node.label ? `\n      <label class="source-field-label" for="field-${safeId}">${escapeHtml(node.label)}</label>` : ''
-  if (type === 'checkbox') {
-    return `    <div class="source-field source-field-checkbox" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>\n      <label>${label ? escapeHtml(node.label ?? '') : ''}<input id="field-${safeId}" type="checkbox"${attrs} v-model='model[${field}]'${change} /></label>\n    </div>`
-  }
-  if (materialName(node.component) === 'textarea') {
-    return `    <div class="source-field" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>${label}\n      <textarea id="field-${safeId}"${attrs} v-model='model[${field}]'${change}></textarea>\n    </div>`
-  }
-  if (materialName(node.component) === 'select' || materialName(node.component) === 'radio') {
-    return `    <div class="source-field" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>${label}\n      <select id="field-${safeId}"${attrs} v-model='model[${field}]'${change}>\n        <option v-for='option in fieldOptions[${fieldKey}]' :key="String(option.value)" :value="option.value">{{ option.label }}</option>\n      </select>\n    </div>`
-  }
-  return `    <div class="source-field" data-node-id="${safeId}"${hiddenAttr}${styleAttr}>${label}\n      <input id="field-${safeId}" type="${type}"${attrs} v-model='model[${field}]'${change} />\n    </div>`
+  const safeTag = escapeHtml(source.tag)
+  const nodeId = quote(node.id)
+  const valueProp = definition.runtime.valueProp ?? 'modelValue'
+  const modelDirective = valueProp === 'modelValue'
+    ? 'v-model'
+    : `v-model:${kebabCase(valueProp)}`
+  const updateEvent = `update:${kebabCase(valueProp)}`
+  const label = node.label
+    ? `\n      <label class="source-field-label">${escapeHtml(node.label)}</label>`
+    : ''
+  const optionBinding = source.options?.mode === 'prop'
+    ? ` :options='fieldOptions[${field}]'`
+    : ''
+  const optionChildren = source.options?.mode === 'children' && source.options.optionTag
+    ? `\n        <${escapeHtml(source.options.optionTag)} v-for='option in fieldOptions[${field}]' :key="String(option.value)" :${escapeHtml(source.options.labelProp ?? 'label')}="option.label" :${escapeHtml(source.options.valueProp ?? 'value')}="option.value" />\n      `
+    : ''
+  const eventBindings = sourceEventBindings(node, updateEvent)
+  const updateBinding = `@${updateEvent}='handleFieldUpdate(${nodeId}, ${field}, ${quote(definition.runtime.trigger ?? `update:${valueProp}`)}, $event)'`
+  const modelBinding = `${modelDirective}='model[fieldModelKeys[${field}]]'`
+  const control = optionChildren
+    ? `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding}${eventBindings}${optionBinding}>${optionChildren}</${safeTag}>`
+    : `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding}${eventBindings}${optionBinding} />`
+  return `    <div class="source-field" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}"${hiddenAttr}${styleAttr}>${label}\n      ${control}\n    </div>`
 }
 
-function renderNodes(nodes: LowCodeNode[], columns: number, indent = 0): string {
-  const rendered = nodes.map((node) => {
-    if (node.kind === 'field')
-      return renderField(node, columns)
-    const slots = Object.entries(node.slots)
-    const defaultChildren = node.children.length > 0 ? node.children : (node.slots.default ?? [])
-    const slotMarkup = [
-      ...(defaultChildren.length > 0 ? [`      <div class="source-slot" data-slot="default">\n${renderNodes(defaultChildren, columns, indent + 2)}\n      </div>`] : []),
-      ...slots.filter(([name]) => name !== 'default').map(([name, children]) => `      <div class="source-slot" data-slot="${escapeHtml(name)}">\n${renderNodes(children, columns, indent + 2)}\n      </div>`),
-    ]
-    return `    <section class="source-layout" data-node-id="${escapeHtml(node.id)}" data-component="${escapeHtml(node.component)}">\n${slotMarkup.join('\n')}\n    </section>`
-  })
-  return rendered.join('\n')
+function defaultChildren(node: LowCodeNode): LowCodeNode[] {
+  return node.children.length > 0 ? node.children : (node.slots.default ?? [])
 }
 
-function appSource(model: LowCodePageModel, flowImport = './flows'): string {
+function renderContainer(
+  node: LowCodeNode,
+  columns: number,
+  registry: LowCodeComponentRegistry,
+): string {
+  const definition = componentDefinition(node, registry)
+  const source = definition.source
+  const safeId = escapeHtml(node.id)
+  const safeTag = escapeHtml(source.tag)
+  const nodeKey = quote(node.id)
+  const children = defaultChildren(node)
+  const defaultMarkup = renderNodes(children, columns, registry)
+  const namedSlots = Object.entries(node.slots)
+    .filter(([name]) => name !== 'default')
+    .map(([name, slotChildren]) => `      <template #${escapeHtml(name)}>\n${renderNodes(slotChildren, columns, registry)}\n      </template>`)
+    .join('\n')
+  const content = [defaultMarkup, namedSlots].filter(Boolean).join('\n')
+  const common = `class="source-layout source-layout-${source.render}" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}" v-bind='nodeProps[${nodeKey}]' :style='nodeStyles[${nodeKey}]' :hidden='nodeHidden[${nodeKey}]'${sourceEventBindings(node)}`
+  if (source.render === 'section') {
+    const title = typeof node.props.title === 'string'
+      ? node.props.title
+      : typeof node.props.header === 'string' ? node.props.header : undefined
+    return `    <section ${common}>${title ? `\n      <h2>${escapeHtml(title)}</h2>` : ''}\n${content}\n    </section>`
+  }
+  return `    <${safeTag} ${common}>\n${content}\n    </${safeTag}>`
+}
+
+function renderNodes(
+  nodes: LowCodeNode[],
+  columns: number,
+  registry: LowCodeComponentRegistry,
+): string {
+  return nodes.map(node => node.kind === 'field'
+    ? renderField(node, columns, registry)
+    : renderContainer(node, columns, registry)).join('\n')
+}
+
+function layoutStyle(node: LowCodeNode, registry: LowCodeComponentRegistry): Record<string, string> {
+  const render = componentDefinition(node, registry).source.render
+  const numericGap = typeof node.props.gap === 'number' && Number.isFinite(node.props.gap)
+    ? Math.max(0, node.props.gap)
+    : 0
+  if (render === 'layout-flex') {
+    const direction = node.props.direction === 'column' ? 'column' : 'row'
+    const justify = ['flex-start', 'center', 'flex-end', 'space-between'].includes(String(node.props.justify))
+      ? String(node.props.justify)
+      : 'flex-start'
+    const align = ['flex-start', 'center', 'flex-end', 'stretch'].includes(String(node.props.align))
+      ? String(node.props.align)
+      : 'stretch'
+    return {
+      alignItems: align,
+      display: 'flex',
+      flexDirection: direction,
+      flexWrap: node.props.wrap === false ? 'nowrap' : 'wrap',
+      gap: `${numericGap}px`,
+      justifyContent: justify,
+    }
+  }
+  if (render === 'layout-grid') {
+    const columns = typeof node.props.columns === 'number' && Number.isInteger(node.props.columns)
+      ? Math.min(12, Math.max(1, node.props.columns))
+      : 1
+    return {
+      display: 'grid',
+      gap: `${numericGap}px`,
+      gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    }
+  }
+  return {}
+}
+
+function appSource(
+  model: LowCodePageModel,
+  registry: LowCodeComponentRegistry,
+  flowImport = './flows',
+): string {
   const initialValues: Record<string, unknown> = {}
-  collectInitialValues(model.nodes, initialValues)
+  collectInitialValues(model.nodes, initialValues, registry)
   const props: Record<string, Record<string, unknown>> = {}
   const options: Record<string, Array<{ label: string, value: unknown }>> = {}
+  const nodeProps: Record<string, Record<string, unknown>> = {}
+  const nodeStyles: Record<string, Record<string, string>> = {}
+  const fieldModelKeys: Record<string, string> = {}
+  const fieldConditions: Record<string, LowCodeNode['conditions']> = {}
+  const nodeConditions: Record<string, LowCodeNode['conditions']> = {}
+  const nodeEvents: Record<string, LowCodeNode['events']> = {}
+  const runtimeReactions: NonNullable<LowCodeNode['reactions']> = []
   const collectProps = (nodes: LowCodeNode[]): void => {
     nodes.forEach((node) => {
+      nodeEvents[node.id] = node.events
+      if (node.reactions)
+        runtimeReactions.push(...node.reactions)
       if (node.kind === 'field') {
         // Reaction targets use the headless field key (not the designer node
         // id), so keep generated projection maps keyed by the same contract.
         const target = node.field ?? node.id
-        props[target] = htmlProps(node)
+        props[target] = sourceProps(node, registry)
         options[target] = fieldOptions(node)
+        const definition = componentDefinition(node, registry)
+        const valueBinding = definition.bindings.find(binding => binding.valueProp === (definition.runtime.valueProp ?? 'modelValue'))
+        const bindingSource = valueBinding ? node.bindings[valueBinding.name]?.source.trim() : undefined
+        fieldModelKeys[target] = bindingSource && Object.hasOwn(initialValues, bindingSource)
+          ? bindingSource
+          : target
+        fieldConditions[target] = node.conditions
+      }
+      else {
+        nodeProps[node.id] = sourceProps(node, registry)
+        nodeStyles[node.id] = layoutStyle(node, registry)
+        nodeConditions[node.id] = node.conditions
       }
       collectProps(node.children)
       Object.values(node.slots).forEach(collectProps)
@@ -651,32 +814,86 @@ function appSource(model: LowCodePageModel, flowImport = './flows'): string {
   const columns = model.form.columns ?? 24
   return `<script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { applyFlowValuePatch, getFlowProjection, runFlows, type FlowTrigger } from '${flowImport}'
+import { applyFlowValuePatch, evaluateRuntimeCondition, getFlowProjection, invokeRegisteredAction, projectRuntimeReactions, registerFlowAction, runFlows, type FlowTrigger } from '${flowImport}'
 
 const model = reactive<Record<string, unknown>>(${scriptJson(initialValues, 2)})
 const baseFieldProps = ${scriptJson(props, 2)} as Record<string, Record<string, unknown>>
 const fieldProps = reactive<Record<string, Record<string, unknown>>>({ ...baseFieldProps })
 const fieldOptions = ${scriptJson(options, 2)} as Record<string, Array<{ label: string, value: unknown }>>
+const fieldModelKeys = ${scriptJson(fieldModelKeys, 2)} as Record<string, string>
+const fieldConditions = ${scriptJson(fieldConditions, 2)} as Record<string, Record<string, unknown> | undefined>
+const nodeProps = ${scriptJson(nodeProps, 2)} as Record<string, Record<string, unknown>>
+const nodeStyles = ${scriptJson(nodeStyles, 2)} as Record<string, Record<string, string>>
+const nodeConditions = ${scriptJson(nodeConditions, 2)} as Record<string, Record<string, unknown> | undefined>
+const nodeEvents = ${scriptJson(nodeEvents, 2)} as Record<string, Record<string, Array<{ action: string, [key: string]: unknown }>>>
+const runtimeReactions = ${scriptJson(runtimeReactions, 2)} as Array<{ when: unknown, then: Array<Record<string, unknown>>, else?: Array<Record<string, unknown>>, enabled?: boolean }>
 const fieldStates = reactive<Record<string, Record<string, boolean>>>({})
+const nodeHidden = reactive<Record<string, boolean>>({})
 const flowValidation = ref<string[]>([])
 const submitted = ref('')
 const flowLifecycle = new AbortController()
 
-function applyFlowProjection(): void {
-  const projection = getFlowProjection()
-  flowValidation.value = projection.validate
-  // A projection is a snapshot, so restore registry/model props and clear
-  // transient state before applying the next flow result.
+registerFlowAction('notify', async (input, context) => {
+  if (context.signal.aborted)
+    throw context.signal.reason
+  const message = typeof input === 'string' ? input : JSON.stringify(input)
+  submitted.value = message ?? String(input)
+  return { notified: submitted.value }
+})
+
+function applyRuntimeProjection(): void {
+  const before = { ...model }
+  const reactionValues = { ...model }
+  const reactionProjection = projectRuntimeReactions(runtimeReactions, reactionValues)
+  applyFlowValuePatch(model, before, reactionValues)
+  const flowProjection = getFlowProjection()
+  const projections = [reactionProjection, flowProjection]
+  flowValidation.value = [...new Set(projections.flatMap(projection => projection.validate))]
+
   for (const key of Object.keys(fieldProps))
     delete fieldProps[key]
   for (const [key, value] of Object.entries(baseFieldProps))
     fieldProps[key] = { ...value }
   for (const key of Object.keys(fieldStates))
     delete fieldStates[key]
-  for (const [target, nextProps] of Object.entries(projection.props))
-    fieldProps[target] = { ...(fieldProps[target] ?? {}), ...nextProps }
-  for (const [target, nextState] of Object.entries(projection.states))
-    fieldStates[target] = { ...(fieldStates[target] ?? {}), ...nextState }
+
+  for (const [field, conditions] of Object.entries(fieldConditions)) {
+    if (!conditions)
+      continue
+    const state: Record<string, boolean> = {}
+    if (conditions.visible !== undefined)
+      state.visible = evaluateRuntimeCondition(conditions.visible, model)
+    if (conditions.hidden !== undefined)
+      state.visible = !evaluateRuntimeCondition(conditions.hidden, model)
+    for (const key of ['disabled', 'readonly', 'required'] as const) {
+      if (conditions[key] !== undefined)
+        state[key] = evaluateRuntimeCondition(conditions[key], model)
+    }
+    fieldStates[field] = state
+  }
+
+  for (const [nodeId, conditions] of Object.entries(nodeConditions)) {
+    const visible = conditions?.visible === undefined || evaluateRuntimeCondition(conditions.visible, model)
+    const hidden = conditions?.hidden !== undefined && evaluateRuntimeCondition(conditions.hidden, model)
+    nodeHidden[nodeId] = !visible || hidden
+  }
+
+  for (const projection of projections) {
+    for (const [target, nextProps] of Object.entries(projection.props))
+      fieldProps[target] = { ...(fieldProps[target] ?? {}), ...nextProps }
+    for (const [target, nextState] of Object.entries(projection.states))
+      fieldStates[target] = { ...(fieldStates[target] ?? {}), ...nextState }
+  }
+
+  for (const [field, state] of Object.entries(fieldStates)) {
+    const nextProps = fieldProps[field] ?? (fieldProps[field] = {})
+    if (state.disabled !== undefined)
+      nextProps.disabled = state.disabled
+    if (state.readonly !== undefined)
+      nextProps.readonly = state.readonly
+    if (state.required !== undefined)
+      nextProps.required = state.required
+  }
 }
 
 async function runTrigger(trigger: { kind: FlowTrigger['kind'], field?: string }): Promise<void> {
@@ -690,7 +907,7 @@ async function runTrigger(trigger: { kind: FlowTrigger['kind'], field?: string }
       return
     }
     applyFlowValuePatch(model, snapshot, result.values)
-    applyFlowProjection()
+    applyRuntimeProjection()
     if (result.error)
       submitted.value = result.error
   }
@@ -700,7 +917,32 @@ async function runTrigger(trigger: { kind: FlowTrigger['kind'], field?: string }
 }
 
 function runFieldChange(field: string): void {
+  applyRuntimeProjection()
   void runTrigger({ kind: 'field.change', field })
+}
+
+async function runNodeEvent(nodeId: string, eventName: string, payload: unknown): Promise<void> {
+  const actions = nodeEvents[nodeId]?.[eventName] ?? []
+  for (const action of actions) {
+    try {
+      const input = Object.hasOwn(action, 'input') ? action.input : payload
+      await invokeRegisteredAction(action.action, input, {
+        eventName,
+        nodeId,
+        signal: flowLifecycle.signal,
+        values: { ...model },
+      })
+    }
+    catch (error) {
+      submitted.value = error instanceof Error ? error.message : String(error)
+      return
+    }
+  }
+}
+
+function handleFieldUpdate(nodeId: string, field: string, eventName: string, payload: unknown): void {
+  runFieldChange(field)
+  void runNodeEvent(nodeId, eventName, payload)
 }
 
 function handleSubmit(): void {
@@ -708,7 +950,10 @@ function handleSubmit(): void {
   void runTrigger({ kind: 'form.submit' })
 }
 
-onMounted(() => { void runTrigger({ kind: 'page.mount' }) })
+onMounted(() => {
+  applyRuntimeProjection()
+  void runTrigger({ kind: 'page.mount' })
+})
 onBeforeUnmount(() => flowLifecycle.abort('page-unmounted'))
 </script>
 
@@ -721,7 +966,7 @@ onBeforeUnmount(() => flowLifecycle.abort('page-unmounted'))
     </header>
     <form class="source-form" @submit.prevent="handleSubmit">
       <div class="source-grid" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
-${renderNodes(model.nodes, columns)}
+${renderNodes(model.nodes, columns, registry)}
       </div>
       <button class="source-submit" type="submit">Save</button>
     </form>
@@ -746,10 +991,9 @@ button, input, select, textarea { font: inherit; }
 .source-grid { display: grid; gap: 16px; }
 .source-field { min-width: 0; }
 .source-field-label { display: block; margin-bottom: 6px; color: #3d4b59; font-size: 13px; }
-.source-field input, .source-field select, .source-field textarea { width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; }
-.source-field textarea { min-height: 84px; resize: vertical; }
-.source-field-checkbox label { display: inline-flex; gap: 8px; align-items: center; min-height: 36px; }
+.source-control { width: 100%; }
 .source-layout { min-width: 0; padding: 14px; border: 1px solid #d5dce5; border-radius: 7px; background: #f8fafc; }
+.source-layout-layout-flex, .source-layout-layout-grid { padding: 0; border: 0; background: transparent; }
 .source-slot { display: grid; gap: 12px; min-width: 0; }
 .source-submit { min-height: 38px; margin-top: 20px; padding: 0 16px; color: #fff; border: 0; border-radius: 5px; background: #1d4ed8; cursor: pointer; }
 .source-validation { margin: 14px 0 0; padding: 10px 12px; color: #92400e; border: 1px solid #fbbf24; border-radius: 5px; background: #fffbeb; }
@@ -758,11 +1002,50 @@ button, input, select, textarea { font: inherit; }
 `
 }
 
-function sourcePackage(project: Pick<WorkspaceProject, 'files' | 'name'>): string {
+function collectSourceLibraries(
+  nodes: LowCodeNode[],
+  registry: LowCodeComponentRegistry,
+  target = new Map<string, DesignerSourceLibraryBinding>(),
+): Map<string, DesignerSourceLibraryBinding> {
+  for (const node of nodes) {
+    const library = componentDefinition(node, registry).source.library
+    if (library) {
+      const existing = target.get(library.packageName)
+      if (existing && (existing.plugin !== library.plugin || existing.stylesheet !== library.stylesheet))
+        throw new Error(`Source library "${library.packageName}" has conflicting plugin bindings.`)
+      target.set(library.packageName, { ...library })
+    }
+    collectSourceLibraries(node.children, registry, target)
+    Object.values(node.slots).forEach(children => collectSourceLibraries(children, registry, target))
+  }
+  return target
+}
+
+const SOURCE_LIBRARY_FALLBACK_VERSIONS: Readonly<Record<string, string>> = Object.freeze({
+  'ant-design-vue': '4.2.6',
+  'element-plus': '2.9.1',
+})
+
+function portableDependencyVersion(packageName: string, dependencies: Record<string, string>): string {
+  const version = dependencies[packageName] ?? SOURCE_LIBRARY_FALLBACK_VERSIONS[packageName]
+  if (!version || /^(?:workspace:|catalog:)/.test(version))
+    throw new Error(`Source dependency "${packageName}" requires a portable version.`)
+  return version
+}
+
+function sourcePackage(
+  project: Pick<WorkspaceProject, 'files' | 'name'>,
+  libraries: ReadonlyMap<string, DesignerSourceLibraryBinding>,
+  declaredDependencies: Record<string, string>,
+): string {
   const packageFile = project.files[normalizeProjectPath('package.json')]
   const original = packageFile?.kind === 'text' ? JSON.parse(packageFile.content) as PackageJson : {}
-  const dependencies = original.dependencies ?? {}
+  const dependencies = { ...(original.dependencies ?? {}), ...declaredDependencies }
   const devDependencies = original.devDependencies ?? {}
+  const runtimeDependencies = Object.fromEntries([...libraries.keys()].sort().map(packageName => [
+    packageName,
+    portableDependencyVersion(packageName, dependencies),
+  ]))
   const manifest = {
     name: original.name ?? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, '-'),
     private: true,
@@ -774,7 +1057,10 @@ function sourcePackage(project: Pick<WorkspaceProject, 'files' | 'name'>): strin
       dev: 'vite',
       typecheck: 'vue-tsc -p tsconfig.json --noEmit',
     },
-    dependencies: { vue: dependencies.vue ?? '3.5.33' },
+    dependencies: {
+      vue: portableDependencyVersion('vue', { vue: dependencies.vue ?? '3.5.33' }),
+      ...runtimeDependencies,
+    },
     devDependencies: {
       '@vitejs/plugin-vue': devDependencies['@vitejs/plugin-vue'] ?? '5.2.3',
       'typescript': devDependencies.typescript ?? '5.8.2',
@@ -787,13 +1073,37 @@ function sourcePackage(project: Pick<WorkspaceProject, 'files' | 'name'>): strin
   return `${JSON.stringify(manifest, null, 2)}\n`
 }
 
-function applicationPackage(application: WorkspaceApplication): string {
-  const manifest = JSON.parse(sourcePackage(application)) as PackageJson
+function applicationPackage(
+  application: WorkspaceApplication,
+  libraries: ReadonlyMap<string, DesignerSourceLibraryBinding>,
+): string {
+  const manifest = JSON.parse(sourcePackage(application, libraries, application.manifest.dependencies)) as PackageJson
   manifest.dependencies = {
     ...manifest.dependencies,
     'vue-router': '4.5.1',
   }
   return `${JSON.stringify(manifest, null, 2)}\n`
+}
+
+function mainSource(
+  libraries: ReadonlyMap<string, DesignerSourceLibraryBinding>,
+  withRouter: boolean,
+): string {
+  const entries = [...libraries.values()].sort((left, right) => left.packageName.localeCompare(right.packageName))
+  const imports = entries.flatMap(library => [
+    `import ${library.plugin} from ${quote(library.packageName)}`,
+    ...(library.stylesheet ? [`import ${quote(library.stylesheet)}`] : []),
+  ])
+  const appUses = [
+    ...(withRouter ? ['router'] : []),
+    ...entries.map(library => library.plugin),
+  ].map(plugin => `.use(${plugin})`).join('')
+  return `import { createApp } from 'vue'
+import App from './App.vue'
+${withRouter ? `import { router } from './router'\n` : ''}${imports.join('\n')}${imports.length ? '\n' : ''}import './styles.css'
+
+createApp(App)${appUses}.mount('#app')
+`
 }
 
 function applicationAppSource(): string {
@@ -869,23 +1179,24 @@ export function createWorkspaceApplicationSourceExport(
   }
 
   const pageDirectories = uniquePageDirectories(application)
+  const libraries = new Map<string, DesignerSourceLibraryBinding>()
   for (const page of application.pages) {
     page.model.nodes.forEach(node => assertPortableNode(node, registry))
+    collectSourceLibraries(page.model.nodes, registry, libraries)
     for (const flow of page.model.flows ?? []) {
       const result = analyzeConfigFormFlow(flow)
       if (!result.success)
         throw new Error(result.diagnostics[0]?.message ?? `Flow on page "${page.name}" is invalid.`)
     }
     const directory = pageDirectories.get(page.id)!
-    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(appSource(page.model), 'vue')
+    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(appSource(page.model, registry), 'vue')
     files[normalizeProjectPath(`src/pages/${directory}/flows.ts`)] = textFile(flowSource(page.model), 'typescript')
-    files[normalizeProjectPath(`src/pages/${directory}/page.model.json`)] = textFile(`${JSON.stringify(page.model, null, 2)}\n`, 'json')
   }
 
-  files[normalizeProjectPath('package.json')] = textFile(applicationPackage(application), 'json')
+  files[normalizeProjectPath('package.json')] = textFile(applicationPackage(application, libraries), 'json')
   files[normalizeProjectPath('src/App.vue')] = textFile(applicationAppSource(), 'vue')
   files[normalizeProjectPath('src/router.ts')] = textFile(applicationRouterSource(application, pageDirectories), 'typescript')
-  files[normalizeProjectPath('src/main.ts')] = textFile(`import { createApp } from 'vue'\nimport App from './App.vue'\nimport { router } from './router'\nimport './styles.css'\n\ncreateApp(App).use(router).mount('#app')\n`, 'typescript')
+  files[normalizeProjectPath('src/main.ts')] = textFile(mainSource(libraries, true), 'typescript')
   files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
 
   return {
@@ -903,6 +1214,7 @@ export function createPureSourceExport(project: WorkspaceProject, model: LowCode
     if (!result.success)
       throw new Error(result.diagnostics[0]?.message ?? 'Flow is invalid and cannot be exported.')
   }
+  const libraries = collectSourceLibraries(model.nodes, registry)
   const next = cloneWorkspaceProject(project)
   const files: Record<ProjectPath, WorkspaceFile> = {}
   for (const [path, file] of Object.entries(next.files) as Array<[ProjectPath, WorkspaceFile]>) {
@@ -910,19 +1222,18 @@ export function createPureSourceExport(project: WorkspaceProject, model: LowCode
       continue
     files[path] = file
   }
-  const modelPath = normalizeProjectPath('src/page.model.json')
-  files[normalizeProjectPath('package.json')] = textFile(sourcePackage(project), 'json')
-  files[normalizeProjectPath('src/App.vue')] = textFile(appSource(model), 'vue')
-  files[normalizeProjectPath('src/main.ts')] = textFile(`import { createApp } from 'vue'\nimport App from './App.vue'\nimport './styles.css'\n\ncreateApp(App).mount('#app')\n`, 'typescript')
+  const appPath = normalizeProjectPath('src/App.vue')
+  files[normalizeProjectPath('package.json')] = textFile(sourcePackage(project, libraries, project.manifest.dependencies), 'json')
+  files[appPath] = textFile(appSource(model, registry), 'vue')
+  files[normalizeProjectPath('src/main.ts')] = textFile(mainSource(libraries, false), 'typescript')
   files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
   files[normalizeProjectPath('src/flows.ts')] = textFile(flowSource(model), 'typescript')
-  files[modelPath] = textFile(`${JSON.stringify(model, null, 2)}\n`, 'json')
   next.files = files
   next.manifest = {
     ...next.manifest,
     dependencies: JSON.parse((files[normalizeProjectPath('package.json')] as { content: string }).content).dependencies,
-    designerArtifact: modelPath,
-    generatedFormModule: modelPath,
+    designerArtifact: appPath,
+    generatedFormModule: appPath,
   }
   return { files, project: next }
 }

@@ -416,9 +416,9 @@ export function formatLowCodePageConfig(
     configModelToDesignerDocument(model),
     (component) => {
       const definition = registry.get(component)
-      if (!definition?.sourceComponent)
+      if (!definition?.source.configComponent)
         throw new Error(`Component "${component}" is not registered for source generation.`)
-      return definition.sourceComponent
+      return definition.source.configComponent
     },
     model.flows ?? [],
   )

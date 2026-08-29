@@ -3,7 +3,7 @@
 import type { ProjectPath, WorkspaceFile } from '../../project'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { buildProjectFileTree, normalizeProjectPath } from '../../project'
+import { buildProjectFileTree, collectProjectTreeDirectoryIds, normalizeProjectPath } from '../../project'
 import ProjectFileTree from '../ProjectFileTree.vue'
 
 function createFiles(): Record<ProjectPath, WorkspaceFile> {
@@ -54,6 +54,24 @@ describe('project file tree', () => {
     expect(document.activeElement?.getAttribute('data-project-tree-id')).toBe('file:package.json')
     await wrapper.get('[data-project-tree-id="file:package.json"]').trigger('keydown', { key: 'Enter' })
     expect(wrapper.emitted('select')?.at(-1)).toEqual([normalizeProjectPath('package.json')])
+    wrapper.unmount()
+  })
+
+  it('supports prefix typeahead across expanded folders', async () => {
+    const nodes = buildProjectFileTree(createFiles())
+    const wrapper = mount(ProjectFileTree, {
+      attachTo: document.body,
+      props: {
+        expandedIds: collectProjectTreeDirectoryIds(nodes),
+        nodes,
+        selectedPath: normalizeProjectPath('package.json'),
+      },
+    })
+
+    const packageFile = wrapper.get('[data-project-tree-id="file:package.json"]')
+    ;(packageFile.element as HTMLElement).focus()
+    await packageFile.trigger('keydown', { key: 'h' })
+    expect(document.activeElement?.getAttribute('data-project-tree-id')).toBe('file:src/pages/Home.vue')
     wrapper.unmount()
   })
 })

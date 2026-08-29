@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { nextTick, onErrorCaptured, onMounted, ref, watch } from 'vue'
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
+import { computed, nextTick, onErrorCaptured, onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
+  locale?: DesignerLocaleOptions
   revision: string
 }>()
 const emit = defineEmits<{
@@ -9,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const runtimeError = ref('')
+const locale = computed(() => createDesignerLocale(props.locale))
 
 function scheduleReady(revision: string): void {
   void nextTick(() => {
@@ -34,7 +38,7 @@ onErrorCaptured((error, _instance, info) => {
 <template>
   <div class="preview-runtime-boundary">
     <div v-if="runtimeError" class="preview-errors" role="alert">
-      <strong>Preview runtime error</strong>
+      <strong>{{ locale.t('preview.runtimeError', 'Preview runtime error') }}</strong>
       <p>{{ runtimeError }}</p>
     </div>
     <slot v-if="runtimeError" name="fallback" />

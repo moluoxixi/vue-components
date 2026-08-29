@@ -2,6 +2,7 @@ import type { ConfigFormFlow, ConfigFormFlowConcurrency } from '@moluoxixi/confi
 import type { LowCodePageModel } from '@moluoxixi/config-form-designer'
 import { Buffer } from 'node:buffer'
 import { createLowCodeComponentRegistry } from '@moluoxixi/config-form-designer'
+import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'
 import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
 import { parse as parseSfc } from '@vue/compiler-sfc'
 import { strFromU8, unzipSync } from 'fflate'
@@ -142,12 +143,25 @@ describe('standalone source export', () => {
       'src/pages/settings/flows.ts',
     ]))
     const manifest = JSON.parse((exported.files[normalizeProjectPath('package.json')] as { content: string }).content)
-    expect(manifest.dependencies).toEqual({ 'vue': expect.any(String), 'vue-router': '4.5.1' })
+    expect(manifest.dependencies).toEqual({
+      'element-plus': '2.9.1',
+      'vue': expect.any(String),
+      'vue-router': '4.5.1',
+    })
     expect(JSON.stringify(exported.files)).not.toMatch(/@moluoxixi\/config-form/)
+    expect(paths.some(path => path.endsWith('page.model.json'))).toBe(false)
 
     const router = (exported.files[normalizeProjectPath('src/router.ts')] as { content: string }).content
+    const main = (exported.files[normalizeProjectPath('src/main.ts')] as { content: string }).content
+    const pageSource = (exported.files[normalizeProjectPath('src/pages/home/Page.vue')] as { content: string }).content
     expect(router).toContain('path: "/settings"')
     expect(router).toContain('name: "settings"')
+    expect(main).toContain('import ElementPlus from "element-plus"')
+    expect(main).toContain('import "element-plus/dist/index.css"')
+    expect(main).toContain('.use(router).use(ElementPlus)')
+    expect(pageSource).toContain('<el-input')
+    expect(pageSource).toContain('<el-select')
+    expect(pageSource).not.toMatch(/<input|<select/)
     for (const path of paths.filter(path => path.endsWith('.vue'))) {
       const file = exported.files[normalizeProjectPath(path)]
       expect(file?.kind).toBe('text')
@@ -171,7 +185,7 @@ describe('standalone source export', () => {
 
     expect(paths).toContain('package.json')
     expect(paths).toContain('src/App.vue')
-    expect(paths).toContain('src/page.model.json')
+    expect(paths).not.toContain('src/page.model.json')
     expect(paths).not.toContain('src/form.config.ts')
     expect(paths).not.toContain('src/form.designer.json')
 
@@ -179,23 +193,50 @@ describe('standalone source export', () => {
     const manifest = (exported.files[normalizeProjectPath('package.json')] as { content: string }).content
     expect(app).not.toMatch(/ConfigForm|config-form|form\.config/)
     expect(manifest).not.toMatch(/ConfigForm|config-form|workspace:|catalog:/)
-    expect(JSON.parse(manifest).dependencies).toEqual({ vue: expect.any(String) })
+    expect(JSON.parse(manifest).dependencies).toEqual({
+      'element-plus': '2.9.1',
+      'vue': expect.any(String),
+    })
+    expect(app).toContain('<el-input')
+    expect(app).toContain('data-source-tag="el-select"')
 
     const archive = unzipSync(await createProjectArchive(exported.project))
     expect(Object.keys(archive).map(path => path.split('/').slice(1).join('/')).sort()).toEqual(paths.sort())
     expect(strFromU8(archive[`standalone-source/src/App.vue`]!)).toBe(app)
   })
 
-  it('rejects dynamic model semantics that cannot be represented safely', () => {
+  it('projects registered events, bindings, conditions, and reactions into standalone Vue source', () => {
     const project = createBuiltInWorkspaceProject('element-profile', {
       createdAt: '2026-08-27T08:00:00.000Z',
       id: 'standalone-dynamic',
       name: 'Standalone dynamic',
     })
     const model = JSON.parse((project.files[normalizeProjectPath('src/form.designer.json')] as { content: string }).content) as LowCodePageModel
-    model.nodes[0]!.events = { change: [{ action: 'notify', source: 'workflow' }] }
+    model.nodes[0]!.events = { 'update:modelValue': [{ action: 'notify', input: 'Name changed' }] }
+    model.nodes[0]!.bindings = { value: { source: 'role' } }
+    model.nodes[0]!.conditions = {
+      visible: { kind: 'literal', value: true },
+      disabled: { kind: 'literal', value: false },
+    }
+    model.nodes[0]!.reactions = [{
+      id: 'sync-active',
+      when: { kind: 'literal', value: true },
+      then: [{ kind: 'setProps', target: 'active', props: { disabled: { kind: 'literal', value: true } } }],
+    }]
     const registry = createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
-    expect(() => createPureSourceExport(project, model, registry)).toThrow('dynamic semantics')
+    const exported = createPureSourceExport(project, model, registry)
+    const app = (exported.files[normalizeProjectPath('src/App.vue')] as { content: string }).content
+    const flows = (exported.files[normalizeProjectPath('src/flows.ts')] as { content: string }).content
+
+    expect(app).toContain('"name": "role"')
+    expect(app).toContain('"update:modelValue"')
+    expect(app).toContain('Name changed')
+    expect(app).toContain('evaluateRuntimeCondition')
+    expect(app).toContain('projectRuntimeReactions')
+    expect(app).toContain('handleFieldUpdate("profile-name", "name", "update:modelValue", $event)')
+    expect(flows).toContain('export async function invokeRegisteredAction')
+    expect(flows).toContain('export function projectRuntimeReactions')
+    expect(app).not.toMatch(/@moluoxixi|config-form/i)
   })
 
   it('projects JSON-only flows into standalone source without ConfigForm dependencies', () => {
@@ -228,9 +269,9 @@ describe('standalone source export', () => {
     expect(flows).toContain('setProps')
     expect(flows).toContain('setState')
     expect(flows).toContain('effect.kind === \'validate\'')
-    expect(app).toContain('import { applyFlowValuePatch, getFlowProjection, runFlows, type FlowTrigger } from \'./flows\'')
+    expect(app).toContain('import { applyFlowValuePatch, evaluateRuntimeCondition, getFlowProjection, invokeRegisteredAction, projectRuntimeReactions, registerFlowAction, runFlows, type FlowTrigger } from \'./flows\'')
     expect(app).toContain('runTrigger({ kind: \'page.mount\' })')
-    expect(app).toContain('@change=\'runFieldChange(')
+    expect(app).toContain('@update:model-value=\'handleFieldUpdate(')
     expect(app).toContain('fieldProps["name"]')
     expect(app).toContain('fieldStates["name"]')
     expect(app).not.toMatch(/ConfigForm|config-form|form\.config/)
@@ -400,6 +441,29 @@ describe('standalone source export', () => {
     const app = (exported.files[normalizeProjectPath('src/App.vue')] as { content: string }).content
 
     expect(app).toContain('"name": null')
+  })
+
+  it('uses Ant Design Vue source bindings without native control fallbacks', () => {
+    const application = createBuiltInWorkspaceApplication('antd-profile', {
+      createdAt: '2026-08-27T08:00:00.000Z',
+      id: 'antd-source',
+      name: 'Ant source',
+    })
+    const registry = createLowCodeComponentRegistry(createAntdVueDesignerRegistry())
+    const exported = createWorkspaceApplicationSourceExport(application, registry)
+    const manifest = JSON.parse((exported.files[normalizeProjectPath('package.json')] as { content: string }).content)
+    const main = (exported.files[normalizeProjectPath('src/main.ts')] as { content: string }).content
+    const page = (exported.files[normalizeProjectPath('src/pages/home/Page.vue')] as { content: string }).content
+
+    expect(manifest.dependencies).toMatchObject({ 'ant-design-vue': '4.2.6' })
+    expect(main).toContain('import Antd from "ant-design-vue"')
+    expect(main).toContain('import "ant-design-vue/dist/reset.css"')
+    expect(main).toContain('.use(Antd)')
+    expect(page).toContain('<a-input')
+    expect(page).toContain('<a-select')
+    expect(page).toContain('v-model:value')
+    expect(page).not.toMatch(/<input|<select/)
+    expect(Object.keys(exported.files).some(path => path.endsWith('page.model.json'))).toBe(false)
   })
 
   it('escapes HTML-sensitive JSON values so generated Vue SFCs remain parseable', () => {

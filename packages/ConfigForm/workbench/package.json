@@ -6,6 +6,7 @@
     "build": "vite build",
     "dev": "vite",
     "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test --config playwright.config.ts",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit",
     "verify:templates": "vitest run --config vitest.integration.config.ts"
   },
@@ -30,6 +31,7 @@
     "zod": "catalog:dev"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
