@@ -1,0 +1,3 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"检查 Designer 状态、组件和质量契约"}
+{"file":".trellis/spec/config-form/frontend/index.md","reason":"检查 Runtime 视觉和依赖无回归"}
+{"file":".trellis/tasks/08-29-config-form-ide-page-drag-production/research/industry-patterns.md","reason":"核验 viewport Overlay、teardown 和副作用隔离"}
