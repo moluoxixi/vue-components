@@ -3,7 +3,7 @@
   "name": "repository-provider-gitee",
   "title": "Gitee repository provider",
   "description": "Implement Gitee metadata/link support on the shared provider boundary and validate against a real Gitee project.",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [],
@@ -23,7 +23,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-19",
-  "completedAt": null,
+  "completedAt": "2026-08-30",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,

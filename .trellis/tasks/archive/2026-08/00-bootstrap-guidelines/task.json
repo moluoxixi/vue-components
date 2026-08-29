@@ -3,7 +3,7 @@
   "name": "00-bootstrap-guidelines",
   "title": "Bootstrap Guidelines",
   "description": "Fill in project development guidelines for AI agents",
-  "status": "planning",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [
@@ -26,7 +26,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-03",
-  "completedAt": null,
+  "completedAt": "2026-08-30",
   "branch": null,
   "base_branch": null,
   "worktree_path": null,

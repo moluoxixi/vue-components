@@ -3,7 +3,7 @@
   "name": "vite-config-extension-boundaries",
   "title": "Refactor vite-config extension and config boundaries",
   "description": "",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [],
@@ -23,7 +23,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-15",
-  "completedAt": null,
+  "completedAt": "2026-08-30",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,

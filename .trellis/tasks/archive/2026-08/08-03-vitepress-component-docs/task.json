@@ -3,7 +3,7 @@
   "name": "vitepress-component-docs",
   "title": "VitePress component documentation",
   "description": "Build an Element Plus-like custom VitePress theme, generate component API contracts with ai-doc-assistant, author runnable examples, and verify the site in a browser.",
-  "status": "in_progress",
+  "status": "completed",
   "complexity": {
     "level": "complex",
     "signals": [],
@@ -23,7 +23,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-08-03",
-  "completedAt": null,
+  "completedAt": "2026-08-30",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,
