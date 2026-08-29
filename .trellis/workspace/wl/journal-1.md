@@ -397,3 +397,27 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 18: ConfigForm 生产级 Low-Code IDE 重设计
+
+**Date**: 2026-08-30
+**Task**: ConfigForm 生产级 Low-Code IDE 重设计
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 Design-first Workbench、受控 Design Surface、真实 Runtime 拖拽与 Preview、页面和流程弹窗、Config/Source 导出、主题国际化、响应式与生产质量门；修复紧凑 Preview 响应式和 Designer overlay 穿透，归档全部已完成任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c2bdab00` | (see git log) |
+| `041907fd` | (see git log) |
+| `60434288` | (see git log) |
+
+### Status
+
+[OK] **Completed**
