@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.section',
+      source: shared.elementSource('div', 'section', { native: true, render: 'section' }),
       version: 1,
       kind: 'container',
       title: 'Section',

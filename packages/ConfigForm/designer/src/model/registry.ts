@@ -6,27 +6,11 @@ import type {
   DesignerRegistry,
   DesignerResolvedDesignPolicy,
   DesignerRuntimeMaterialBinding,
+  DesignerSourceMaterialBinding,
 } from '../registry'
 import type { LowCodeNode } from './types'
 import { resolveDesignerDesignPolicy } from '../registry'
 import { designerDocumentToConfigModel } from './transform'
-
-const PORTABLE_SOURCE_COMPONENTS: Readonly<Record<string, string>> = Object.freeze({
-  'auto-complete': 'text',
-  'checkbox': 'boolean',
-  'date': 'text',
-  'input': 'text',
-  'input-number': 'number',
-  'password': 'text',
-  'radio': 'select',
-  'rate': 'number',
-  'search': 'text',
-  'select': 'select',
-  'slider': 'number',
-  'switch': 'boolean',
-  'textarea': 'textarea',
-  'time': 'text',
-})
 
 export interface LowCodeEventSchema {
   name: string
@@ -62,7 +46,7 @@ export interface LowCodeComponentDefinition {
   defaults: Omit<LowCodeNode, 'id'>
   designPolicy: DesignerResolvedDesignPolicy
   runtime: DesignerRuntimeMaterialBinding
-  sourceComponent?: string
+  source: DesignerSourceMaterialBinding
 }
 
 export interface LowCodeComponentRegistry {
@@ -79,6 +63,8 @@ function definitionFor(
   const material = registry.getMaterial(component)
   if (!material)
     throw new Error(`Unknown low-code component: ${component}`)
+  if (!material.source)
+    throw new Error(`Designer material "${component}" is missing its source binding.`)
 
   const designerNode = registry.createNode(component, {
     id: '__registry_default__',
@@ -92,11 +78,6 @@ function definitionFor(
   const { id: _defaultId, ...nodeDefaults } = defaults
   const valueProp = material.runtime.valueProp ?? 'modelValue'
   const trigger = material.runtime.trigger ?? `update:${valueProp}`
-  const materialName = material.key.split('.').at(-1) ?? material.key
-  const sourceComponent = material.kind === 'container'
-    ? 'div'
-    : PORTABLE_SOURCE_COMPONENTS[materialName]
-
   return {
     component: material.key,
     displayName: material.title,
@@ -116,7 +97,7 @@ function definitionFor(
     defaults: nodeDefaults,
     designPolicy: resolveDesignerDesignPolicy(material.designPolicy),
     runtime: material.runtime,
-    ...(sourceComponent ? { sourceComponent } : {}),
+    source: structuredClone(material.source),
   }
 }
 

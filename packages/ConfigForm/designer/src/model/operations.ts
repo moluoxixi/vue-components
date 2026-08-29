@@ -1,7 +1,8 @@
-import type { ConfigFormFlowActionRegistry } from '@moluoxixi/config-form-core'
+import type { ConfigFormFlow, ConfigFormFlowActionRegistry } from '@moluoxixi/config-form-core'
 import type { DesignerJsonValue } from '../document'
 import type { LowCodeComponentRegistry } from './registry'
 import type {
+  ConfigFormFlowSettings,
   LowCodeNode,
   LowCodePageModel,
   ModelDiagnostic,
@@ -397,16 +398,13 @@ function updatePage(
   return { success: true, model: candidate, inverse, diagnostics: [] }
 }
 
-function updateFlows(
+function validateFlows(
   model: LowCodePageModel,
-  operation: Extract<ModelOperation, { type: 'updateFlows' }>,
+  flows: ConfigFormFlow[],
   options: ModelOperationOptions = {},
-): ModelOperationResult {
-  if (operation.flows !== undefined && !Array.isArray(operation.flows)) {
-    return failure(model, { code: 'MODEL_FLOW_INVALID', message: 'Flow updates must provide an array of flows.' })
-  }
+): ModelOperationFailure | undefined {
   const ids = new Set<string>()
-  for (const flow of operation.flows ?? []) {
+  for (const flow of flows) {
     const result = analyzeConfigFormFlow(flow)
     if (!result.success) {
       const diagnostic = result.diagnostics[0]
@@ -426,6 +424,20 @@ function updateFlows(
       return failure(model, { code: 'MODEL_FLOW_ID_DUPLICATE', message: `Duplicate flow id: ${result.flow.id}` })
     ids.add(result.flow.id)
   }
+  return undefined
+}
+
+function updateFlows(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'updateFlows' }>,
+  options: ModelOperationOptions = {},
+): ModelOperationResult {
+  if (operation.flows !== undefined && !Array.isArray(operation.flows)) {
+    return failure(model, { code: 'MODEL_FLOW_INVALID', message: 'Flow updates must provide an array of flows.' })
+  }
+  const validationFailure = validateFlows(model, operation.flows ?? [], options)
+  if (validationFailure)
+    return validationFailure
   const candidate = cloneConfigModel(model)
   const hadFlows = Object.hasOwn(candidate, 'flows')
   const previous = hadFlows ? cloneJson(candidate.flows ?? []) : undefined
@@ -437,6 +449,203 @@ function updateFlows(
     success: true,
     model: candidate,
     inverse: hadFlows ? { type: 'updateFlows', flows: previous } : { type: 'updateFlows' },
+    diagnostics: [],
+  }
+}
+
+function addFlow(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'addFlow' }>,
+  options: ModelOperationOptions,
+): ModelOperationResult {
+  const flows = cloneJson(model.flows ?? [])
+  const index = operation.index ?? flows.length
+  if (!Number.isInteger(index) || index < 0 || index > flows.length)
+    return failure(model, { code: 'MODEL_FLOW_INDEX_INVALID', message: `Flow index is out of range: ${index}` })
+  flows.splice(index, 0, cloneJson(operation.flow))
+  const validationFailure = validateFlows(model, flows, options)
+  if (validationFailure)
+    return validationFailure
+
+  const candidate = cloneConfigModel(model)
+  candidate.flows = flows
+  return {
+    success: true,
+    model: candidate,
+    inverse: Object.hasOwn(model, 'flows')
+      ? { type: 'removeFlow', flowId: operation.flow.id }
+      : { type: 'updateFlows' },
+    diagnostics: [],
+  }
+}
+
+interface FlowUpdate {
+  flow: ConfigFormFlow
+  inverse: ModelOperation
+}
+
+function updateSingleFlow(
+  model: LowCodePageModel,
+  flowId: string,
+  options: ModelOperationOptions,
+  createUpdate: (previous: ConfigFormFlow) => FlowUpdate | ModelDiagnostic,
+): ModelOperationResult {
+  const flows = cloneJson(model.flows ?? [])
+  const index = flows.findIndex(flow => flow.id === flowId)
+  if (index < 0)
+    return failure(model, { code: 'MODEL_FLOW_UNKNOWN', message: `Flow not found: ${flowId}` })
+
+  const update = createUpdate(cloneJson(flows[index]!))
+  if ('code' in update)
+    return failure(model, update)
+  if (update.flow.id !== flowId) {
+    return failure(model, {
+      code: 'MODEL_FLOW_ID_IMMUTABLE',
+      message: `Flow id cannot be changed from ${flowId} to ${update.flow.id}.`,
+    })
+  }
+  flows[index] = cloneJson(update.flow)
+  const validationFailure = validateFlows(model, flows, options)
+  if (validationFailure)
+    return validationFailure
+
+  const candidate = cloneConfigModel(model)
+  candidate.flows = flows
+  return {
+    success: true,
+    model: candidate,
+    inverse: update.inverse,
+    diagnostics: [],
+  }
+}
+
+function flowSettings(flow: ConfigFormFlow): ConfigFormFlowSettings {
+  return {
+    name: flow.name,
+    trigger: cloneJson(flow.trigger),
+    ...(flow.concurrency === undefined ? {} : { concurrency: flow.concurrency }),
+    ...(flow.errorPolicy === undefined ? {} : { errorPolicy: cloneJson(flow.errorPolicy) }),
+  }
+}
+
+function updateFlowSettings(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'updateFlowSettings' }>,
+  options: ModelOperationOptions,
+): ModelOperationResult {
+  return updateSingleFlow(model, operation.flowId, options, (previous) => {
+    const next = cloneJson(previous)
+    next.name = operation.settings.name
+    next.trigger = cloneJson(operation.settings.trigger)
+    if (operation.settings.concurrency === undefined)
+      delete next.concurrency
+    else
+      next.concurrency = operation.settings.concurrency
+    if (operation.settings.errorPolicy === undefined)
+      delete next.errorPolicy
+    else
+      next.errorPolicy = cloneJson(operation.settings.errorPolicy)
+    return {
+      flow: next,
+      inverse: { type: 'updateFlowSettings', flowId: operation.flowId, settings: flowSettings(previous) },
+    }
+  })
+}
+
+function updateFlowNode(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'updateFlowNode' }>,
+  options: ModelOperationOptions,
+): ModelOperationResult {
+  return updateSingleFlow(model, operation.flowId, options, (previous) => {
+    const index = previous.nodes.findIndex(node => node.id === operation.nodeId)
+    if (index < 0) {
+      return {
+        code: 'MODEL_FLOW_NODE_UNKNOWN',
+        message: `Flow node not found: ${operation.nodeId}`,
+        nodeId: operation.nodeId,
+      }
+    }
+    if (operation.node.id !== operation.nodeId) {
+      return {
+        code: 'MODEL_FLOW_NODE_ID_IMMUTABLE',
+        message: `Flow node id cannot be changed from ${operation.nodeId} to ${operation.node.id}.`,
+        nodeId: operation.nodeId,
+      }
+    }
+    const node = cloneJson(previous.nodes[index]!)
+    const next = cloneJson(previous)
+    next.nodes[index] = cloneJson(operation.node)
+    return {
+      flow: next,
+      inverse: { type: 'updateFlowNode', flowId: operation.flowId, nodeId: operation.nodeId, node },
+    }
+  })
+}
+
+function updateFlowEdges(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'updateFlowEdges' }>,
+  options: ModelOperationOptions,
+): ModelOperationResult {
+  return updateSingleFlow(model, operation.flowId, options, previous => ({
+    flow: { ...cloneJson(previous), edges: cloneJson(operation.edges) },
+    inverse: { type: 'updateFlowEdges', flowId: operation.flowId, edges: cloneJson(previous.edges) },
+  }))
+}
+
+function updateFlowGraph(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'updateFlowGraph' }>,
+  options: ModelOperationOptions,
+): ModelOperationResult {
+  return updateSingleFlow(model, operation.flowId, options, previous => ({
+    flow: {
+      ...cloneJson(previous),
+      nodes: cloneJson(operation.nodes),
+      edges: cloneJson(operation.edges),
+    },
+    inverse: {
+      type: 'updateFlowGraph',
+      flowId: operation.flowId,
+      nodes: cloneJson(previous.nodes),
+      edges: cloneJson(previous.edges),
+    },
+  }))
+}
+
+function updateFlow(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'updateFlow' }>,
+  options: ModelOperationOptions,
+): ModelOperationResult {
+  if (operation.flow.id !== operation.flowId) {
+    return failure(model, {
+      code: 'MODEL_FLOW_ID_IMMUTABLE',
+      message: `Flow id cannot be changed from ${operation.flowId} to ${operation.flow.id}.`,
+    })
+  }
+  return updateSingleFlow(model, operation.flowId, options, previous => ({
+    flow: cloneJson(operation.flow),
+    inverse: { type: 'updateFlow', flowId: operation.flowId, flow: previous },
+  }))
+}
+
+function removeFlow(
+  model: LowCodePageModel,
+  operation: Extract<ModelOperation, { type: 'removeFlow' }>,
+): ModelOperationResult {
+  const flows = cloneJson(model.flows ?? [])
+  const index = flows.findIndex(flow => flow.id === operation.flowId)
+  if (index < 0)
+    return failure(model, { code: 'MODEL_FLOW_UNKNOWN', message: `Flow not found: ${operation.flowId}` })
+  const [removed] = flows.splice(index, 1)
+  const candidate = cloneConfigModel(model)
+  candidate.flows = flows
+  return {
+    success: true,
+    model: candidate,
+    inverse: { type: 'addFlow', flow: removed!, index },
     diagnostics: [],
   }
 }
@@ -525,6 +734,13 @@ export function applyModelOperation(
     case 'insert': return insertNode(model, operation.node, operation.target, registry)
     case 'move': return moveNode(model, operation, registry)
     case 'updatePage': return updatePage(model, operation)
+    case 'addFlow': return addFlow(model, operation, options)
+    case 'updateFlowSettings': return updateFlowSettings(model, operation, options)
+    case 'updateFlowNode': return updateFlowNode(model, operation, options)
+    case 'updateFlowEdges': return updateFlowEdges(model, operation, options)
+    case 'updateFlowGraph': return updateFlowGraph(model, operation, options)
+    case 'updateFlow': return updateFlow(model, operation, options)
+    case 'removeFlow': return removeFlow(model, operation)
     case 'updateFlows': return updateFlows(model, operation, options)
     case 'updateProps':
     case 'updateEvents':

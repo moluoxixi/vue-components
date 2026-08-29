@@ -7,6 +7,9 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.checkbox',
+      source: shared.elementSource('select', 'el-checkbox-group', {
+        options: { mode: 'children', optionTag: 'el-checkbox', labelProp: 'label', valueProp: 'value' },
+      }),
       version: 1,
       kind: 'field',
       title: 'Checkbox',

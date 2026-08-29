@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.checkbox',
+      source: s.antdSource('select', 'a-checkbox-group', { options: { mode: 'prop' } }),
       version: 1,
       kind: 'field',
       title: 'Checkbox',

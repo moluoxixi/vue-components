@@ -26,6 +26,7 @@ function fieldMaterial(
     title,
     category: 'Fields',
     runtime: { component: 'input' },
+    source: { configComponent: 'text', render: 'component', tag: 'input' },
     setters,
     createNode: ({ id, field = 'field' }) => ({
       id,
@@ -44,6 +45,7 @@ function containerMaterial(min?: number): DesignerMaterialDefinition {
     title: 'Section',
     category: 'Layout',
     runtime: { component: 'section' },
+    source: { configComponent: 'div', render: 'section', tag: 'section' },
     setters: [],
     slots: [{
       name: 'default',
@@ -68,6 +70,7 @@ function structuralMaterials(): DesignerMaterialDefinition[] {
     title: 'Item',
     category: 'Layout',
     runtime: { component: 'article' },
+    source: { configComponent: 'div', render: 'section', tag: 'article' },
     allowedParents: [{ material: 'element.group', slot: 'default' }],
     setters: [],
     slots: [{ name: 'default', title: 'Content' }],
@@ -85,6 +88,7 @@ function structuralMaterials(): DesignerMaterialDefinition[] {
     title: 'Group',
     category: 'Layout',
     runtime: { component: 'section' },
+    source: { configComponent: 'div', render: 'section', tag: 'section' },
     setters: [],
     slots: [{ name: 'default', title: 'Items', accepts: ['container'], materials: ['element.item'] }],
     createNode: ({ id }) => ({
@@ -224,6 +228,33 @@ describe('designer registry', () => {
       sideEffects: 'blocked',
       diagnostic: 'Async behavior is isolated in Design mode.',
     })
+  })
+
+  it('requires an explicit source binding for low-code registration', () => {
+    const material = fieldMaterial('Input')
+    delete material.source
+    const registry = createDesignerRegistry([{ name: 'adapter', materials: [material] }])
+
+    expect(() => createLowCodeComponentRegistry(registry)).toThrow(/missing its source binding/i)
+  })
+
+  it('validates source bindings and exposes them from the low-code registry', () => {
+    const material = fieldMaterial('Input')
+    material.source = {
+      configComponent: 'text',
+      library: { packageName: 'element-plus', plugin: 'ElementPlus', stylesheet: 'element-plus/dist/index.css' },
+      render: 'component',
+      tag: 'el-input',
+    }
+    const registry = createDesignerRegistry([{ name: 'adapter', materials: [material] }])
+
+    expect(createLowCodeComponentRegistry(registry).get('element.input')?.source).toEqual(material.source)
+
+    material.source = { configComponent: 'text', render: 'component', tag: 'ElInput' }
+    expect(() => createDesignerRegistry([{ name: 'invalid', materials: [material] }]))
+      .toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+        code: 'DESIGNER_SOURCE_BINDING_INVALID',
+      }))
   })
 
   it('rejects malformed design policy values with a stable diagnostic', () => {

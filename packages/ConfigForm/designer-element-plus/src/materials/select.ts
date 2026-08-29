@@ -7,6 +7,9 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.select',
+      source: shared.elementSource('select', 'el-select', {
+        options: { mode: 'children', optionTag: 'el-option', labelProp: 'label', valueProp: 'value' },
+      }),
       version: 1,
       kind: 'field',
       title: 'Select',

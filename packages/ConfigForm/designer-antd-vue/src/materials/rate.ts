@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.rate',
+      source: s.antdSource('number', 'a-rate'),
       version: 1,
       kind: 'field',
       title: 'Rate',

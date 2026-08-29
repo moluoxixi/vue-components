@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.input-number',
+      source: s.antdSource('number', 'a-input-number'),
       version: 1,
       kind: 'field',
       title: 'Number',

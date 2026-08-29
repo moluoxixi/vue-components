@@ -3,7 +3,7 @@ import type {
   DesignerMaterialModule,
   DesignerMaterialModuleRegistry,
 } from '@moluoxixi/config-form-designer'
-import { createDesignerMaterialModuleRegistry } from '@moluoxixi/config-form-designer'
+import { createDesignerMaterialModuleRegistry, DESIGNER_ZH_CN_MESSAGES } from '@moluoxixi/config-form-designer'
 
 const materialModules = import.meta.glob<DesignerMaterialModule>(
   './materials/*.ts',
@@ -19,6 +19,7 @@ export const ANTD_VUE_DESIGNER_MATERIALS
 export const ANTD_VUE_DESIGNER_ZH_CN: DesignerLocaleOptions = {
   locale: 'zh-CN',
   messages: {
+    ...DESIGNER_ZH_CN_MESSAGES,
     'property.reactions': '联动',
     'reaction.id': '联动标识',
     'reaction.enabled': '启用联动',

@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.tab-pane',
+      source: s.antdSource('div', 'a-tab-pane'),
       version: 1,
       kind: 'container',
       title: 'Tab pane',

@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.card',
+      source: s.antdSource('div', 'a-card'),
       version: 1,
       kind: 'container',
       title: 'Card',

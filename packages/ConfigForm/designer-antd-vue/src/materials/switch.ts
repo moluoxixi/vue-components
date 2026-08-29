@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.switch',
+      source: s.antdSource('boolean', 'a-switch'),
       version: 1,
       kind: 'field',
       title: 'Switch',

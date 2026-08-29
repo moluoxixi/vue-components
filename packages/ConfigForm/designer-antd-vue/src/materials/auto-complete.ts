@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.auto-complete',
+      source: s.antdSource('text', 'a-auto-complete', { options: { mode: 'prop' } }),
       version: 1,
       kind: 'field',
       title: 'Autocomplete',

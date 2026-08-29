@@ -551,7 +551,7 @@ describe('config form renderer', () => {
     const fields = [
       defineField<TestValues>({ component: CheckedStub, field: 'enabled', label: 'Enabled' }),
       defineField<TestValues>({
-        component: InputStub,
+        component: 'RegistryInput',
         extensions: { 'test.source': 'readonly' },
         field: 'status',
         label: 'Status',
@@ -567,8 +567,20 @@ describe('config form renderer', () => {
     ]
     const wrapper = mount(ConfigFormRenderer, {
       props: {
+        components: {
+          RegistryInput: {
+            component: InputStub,
+            props: { placeholder: 'Registry placeholder' },
+          },
+        },
         fields,
         modelValue: { enabled: false, name: 'Ada', status: 'active' },
+        reactionProjection: {
+          props: { status: { placeholder: 'Reaction placeholder' } },
+          states: {},
+          validate: [],
+          values: { enabled: false, name: 'Ada', status: 'active' },
+        },
         resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'
           ? { trigger: 'change', valueProp: 'checked' }
           : undefined,
@@ -583,7 +595,7 @@ describe('config form renderer', () => {
     expect(wrapper.get('[data-testid="readonly-value"]').attributes()).toMatchObject({
       'data-extension': 'readonly',
       'data-model-name': 'Ada',
-      'data-placeholder': 'Status placeholder',
+      'data-placeholder': 'Reaction placeholder',
     })
     expect(wrapper.get('[data-testid="readonly-value"]').text()).toBe('Status: active')
   })

@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.password',
+      source: s.antdSource('text', 'a-input-password'),
       version: 1,
       kind: 'field',
       title: 'Password',

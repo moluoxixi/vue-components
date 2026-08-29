@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.card',
+      source: shared.elementSource('div', 'el-card'),
       version: 1,
       kind: 'container',
       title: 'Card',

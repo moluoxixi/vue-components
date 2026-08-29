@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.date',
+      source: shared.elementSource('text', 'el-date-picker'),
       version: 1,
       kind: 'field',
       title: 'Date',

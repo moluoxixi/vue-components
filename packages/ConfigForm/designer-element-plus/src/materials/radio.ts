@@ -7,6 +7,9 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.radio',
+      source: shared.elementSource('select', 'el-radio-group', {
+        options: { mode: 'children', optionTag: 'el-radio', labelProp: 'label', valueProp: 'value' },
+      }),
       version: 1,
       kind: 'field',
       title: 'Radio',

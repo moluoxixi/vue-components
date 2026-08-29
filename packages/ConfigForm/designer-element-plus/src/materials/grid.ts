@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.grid',
+      source: shared.elementSource('div', 'div', { native: true, render: 'layout-grid' }),
       version: 1,
       kind: 'container',
       title: 'Grid',

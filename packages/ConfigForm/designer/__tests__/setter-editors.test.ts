@@ -2,6 +2,7 @@ import { parseRuleSet } from '@moluoxixi/zod3-to-rule'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
+import { createDesignerLocale, DESIGNER_LOCALE_KEY, DESIGNER_ZH_CN_MESSAGES } from '../index'
 import DesignerConditionSetter from '../src/components/DesignerConditionSetter.vue'
 import DesignerDefaultValueSetter from '../src/components/DesignerDefaultValueSetter.vue'
 import DesignerOptionsSetter from '../src/components/DesignerOptionsSetter.vue'
@@ -11,7 +12,7 @@ import DesignerSetter from '../src/components/DesignerSetter.vue'
 import DesignerValidationSetter from '../src/components/DesignerValidationSetter.vue'
 
 describe('designer structured setters', () => {
-  it('renders simple and custom setters through ConfigForm field bindings', async () => {
+  it('renders simple controls as full-width top-labelled ConfigForm fields', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const simpleSetter = { key: 'label', label: 'Label', path: ['label'], control: 'text' as const }
     const customSetter = {
@@ -62,6 +63,7 @@ describe('designer structured setters', () => {
       'data-label-position': 'top',
       'title': 'Label',
     })
+    expect(wrapper.find('.mx-config-form-designer-property-form__field.is-simple .mx-config-form-designer-property-form__control').exists()).toBe(true)
     expect(wrapper.get('.mx-config-form-designer-property-form__field.is-simple').attributes('style')).not.toContain('84px')
 
     await wrapper.get('.test-property-control').trigger('click')
@@ -538,6 +540,29 @@ describe('designer structured setters', () => {
     expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toMatchObject({
       base: { type: 'literal', value: 5 },
     })
+  })
+
+  it('localizes literal validation controls through the shared designer catalog', () => {
+    const wrapper = mount(DesignerValidationSetter, {
+      global: {
+        provide: {
+          [DESIGNER_LOCALE_KEY as symbol]: createDesignerLocale({
+            locale: 'zh-CN',
+            messages: DESIGNER_ZH_CN_MESSAGES,
+          }),
+        },
+      },
+      props: {
+        modelValue: {
+          version: 1,
+          base: { type: 'literal', value: true },
+          rules: [],
+        },
+      },
+    })
+
+    expect(wrapper.get('select[aria-label="字面量类型"]')).toBeTruthy()
+    expect(wrapper.get('select[aria-label="字面量值"]')).toBeTruthy()
   })
 
   it('uses known fields and validators when creating executable rules', async () => {

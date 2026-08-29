@@ -5,6 +5,7 @@ import type {
   DesignerContainerNode,
   DesignerDiagnostic,
   DesignerFieldNode,
+  DesignerJsonObject,
   DesignerJsonValue,
   DesignerNode,
   DesignerNodeKind,
@@ -96,6 +97,35 @@ export interface DesignerRuntimeMaterialBinding {
   getValueFromEvent?: (...args: unknown[]) => unknown
 }
 
+export interface DesignerSourceLibraryBinding {
+  packageName: string
+  plugin: string
+  stylesheet?: string
+}
+
+export interface DesignerSourceOptionsBinding {
+  mode: 'prop' | 'children'
+  optionTag?: string
+  labelProp?: string
+  valueProp?: string
+}
+
+export type DesignerSourceRenderKind
+  = | 'component'
+    | 'layout-flex'
+    | 'layout-grid'
+    | 'section'
+
+/** Serializable instructions used by Config and standalone Vue source projections. */
+export interface DesignerSourceMaterialBinding {
+  configComponent: string
+  tag: string
+  render: DesignerSourceRenderKind
+  library?: DesignerSourceLibraryBinding
+  options?: DesignerSourceOptionsBinding
+  staticProps?: DesignerJsonObject
+}
+
 export interface DesignerDesignPolicy {
   /** Use the real runtime component unless an explicit controlled adapter is required. */
   render?: 'runtime' | 'adapter'
@@ -140,6 +170,7 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   category: string
   icon?: Component
   runtime: DesignerRuntimeMaterialBinding
+  source?: DesignerSourceMaterialBinding
   designPolicy?: DesignerDesignPolicy
   /** When present, the material is structural and may only exist in these parent slots. */
   allowedParents?: DesignerMaterialParentDefinition[]

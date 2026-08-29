@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.slider',
+      source: s.antdSource('number', 'a-slider'),
       version: 1,
       kind: 'field',
       title: 'Slider',

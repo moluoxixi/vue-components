@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.grid',
+      source: s.antdSource('div', 'div', { native: true, render: 'layout-grid' }),
       version: 1,
       kind: 'container',
       title: 'Grid',

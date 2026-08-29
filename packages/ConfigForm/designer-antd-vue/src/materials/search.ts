@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.search',
+      source: s.antdSource('text', 'a-input-search'),
       version: 1,
       kind: 'field',
       title: 'Search',

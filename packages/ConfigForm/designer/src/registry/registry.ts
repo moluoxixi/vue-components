@@ -58,6 +58,35 @@ function assertDesignPolicy(definition: DesignerMaterialDefinition, layerName: s
   }
 }
 
+const SOURCE_TAG_RE = /^[a-z][a-z0-9-]*$/
+
+function assertSourceBinding(definition: DesignerMaterialDefinition, layerName: string): void {
+  const source = definition.source
+  if (!source)
+    return
+
+  const libraryValid = source.library === undefined
+    || (source.library.packageName.trim().length > 0
+      && source.library.plugin.trim().length > 0
+      && (source.library.stylesheet === undefined || source.library.stylesheet.trim().length > 0))
+  const optionsValid = source.options === undefined
+    || (source.options.mode === 'prop'
+      ? source.options.optionTag === undefined
+      : !!source.options.optionTag && SOURCE_TAG_RE.test(source.options.optionTag))
+
+  if (!source.configComponent.trim()
+    || !SOURCE_TAG_RE.test(source.tag)
+    || !['component', 'layout-flex', 'layout-grid', 'section'].includes(source.render)
+    || !libraryValid
+    || !optionsValid) {
+    throw new DesignerRegistryError(
+      'DESIGNER_SOURCE_BINDING_INVALID',
+      `Designer material ${definition.key} has an invalid source binding`,
+      { key: definition.key, layerName },
+    )
+  }
+}
+
 function assertMaterialDefinition(definition: DesignerMaterialDefinition, layerName: string): void {
   if (!definition.key.trim()) {
     throw new DesignerRegistryError(
@@ -74,6 +103,7 @@ function assertMaterialDefinition(definition: DesignerMaterialDefinition, layerN
     )
   }
   assertDesignPolicy(definition, layerName)
+  assertSourceBinding(definition, layerName)
   const seenParents = new Set<string>()
   for (const parent of definition.allowedParents ?? []) {
     const key = `${parent.material}:${parent.slot}`

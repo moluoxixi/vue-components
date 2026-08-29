@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.tab-pane',
+      source: shared.elementSource('div', 'el-tab-pane'),
       version: 1,
       kind: 'container',
       title: 'Tab pane',

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AntdVueOptionSource } from '../options'
 import { Select } from 'ant-design-vue'
+import { useDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import { readAntdVueOptionSource, useAntdVueOptionResolverContext } from '../options'
 
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const context = useAntdVueOptionResolverContext()
+const locale = useDesignerLocale()
 const source = computed(() => readAntdVueOptionSource(props.modelValue))
 const kind = computed(() => source.value?.kind ?? 'static')
 const keys = computed(() => kind.value === 'dictionary' ? context.dictionaryKeys : context.providerKeys)
@@ -38,17 +40,17 @@ function selectKey(key: unknown): void {
 
 <template>
   <div class="mx-antd-designer-option-source">
-    <div class="mx-config-form-designer__segmented" role="group" aria-label="Option source type">
-      <button type="button" :class="{ 'is-active': kind === 'static' }" :aria-pressed="kind === 'static'" :disabled="disabled" @click="selectKind('static')">Static</button>
-      <button type="button" :class="{ 'is-active': kind === 'dictionary' }" :aria-pressed="kind === 'dictionary'" :disabled="disabled || context.dictionaryKeys.length === 0" @click="selectKind('dictionary')">Dictionary</button>
-      <button type="button" :class="{ 'is-active': kind === 'provider' }" :aria-pressed="kind === 'provider'" :disabled="disabled || context.providerKeys.length === 0" @click="selectKind('provider')">Provider</button>
+    <div class="mx-config-form-designer__segmented" role="group" :aria-label="locale.t('optionSource.type', 'Option source type')">
+      <button type="button" :class="{ 'is-active': kind === 'static' }" :aria-pressed="kind === 'static'" :disabled="disabled" @click="selectKind('static')">{{ locale.t('optionSource.static', 'Static') }}</button>
+      <button type="button" :class="{ 'is-active': kind === 'dictionary' }" :aria-pressed="kind === 'dictionary'" :disabled="disabled || context.dictionaryKeys.length === 0" @click="selectKind('dictionary')">{{ locale.t('optionSource.dictionary', 'Dictionary') }}</button>
+      <button type="button" :class="{ 'is-active': kind === 'provider' }" :aria-pressed="kind === 'provider'" :disabled="disabled || context.providerKeys.length === 0" @click="selectKind('provider')">{{ locale.t('optionSource.provider', 'Provider') }}</button>
     </div>
     <Select
       v-if="kind !== 'static'"
       :value="source && 'key' in source ? source.key : undefined"
       :options="keyOptions"
       :disabled="disabled"
-      aria-label="Option source key"
+      :aria-label="locale.t('optionSource.key', 'Option source key')"
       @update:value="selectKey"
     />
   </div>

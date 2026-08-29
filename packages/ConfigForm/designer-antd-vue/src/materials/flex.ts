@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.flex',
+      source: s.antdSource('div', 'div', { native: true, render: 'layout-flex' }),
       version: 1,
       kind: 'container',
       title: 'Flex Wrap',

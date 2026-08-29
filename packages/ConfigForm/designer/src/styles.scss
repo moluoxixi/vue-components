@@ -285,8 +285,7 @@
 .mx-config-form-designer__palette-item {
   position: relative;
   min-width: 0;
-  height: 38px;
-  min-height: 38px;
+  min-height: 92px;
   padding: 0;
   text-align: left;
   color: var(--mx-designer-text);
@@ -296,7 +295,7 @@
   cursor: grab;
   user-select: none;
   touch-action: none;
-  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .mx-config-form-designer__palette-item[aria-pressed="true"] {
@@ -319,12 +318,60 @@
 
 .mx-config-form-designer__palette-item-summary {
   display: grid;
-  height: 100%;
+  height: 34px;
   min-height: 0;
   padding: 5px 7px;
   align-items: center;
   grid-template-columns: 22px minmax(0, 1fr) auto;
   gap: 6px;
+}
+
+.mx-config-form-designer__palette-item-preview {
+  position: relative;
+  height: 54px;
+  margin: 0 6px 6px;
+  overflow: hidden;
+  color: var(--mx-designer-runtime-text);
+  background: var(--mx-designer-runtime-surface);
+  border: 1px solid var(--mx-designer-runtime-border);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.mx-config-form-designer__palette-item-preview > form {
+  width: 100%;
+  margin: 0;
+  padding: 5px 7px;
+  transform-origin: top left;
+}
+
+.mx-config-form-designer__palette-item-preview [data-config-node-id] {
+  box-sizing: border-box;
+}
+
+.mx-config-form-designer__palette-item-preview label,
+.mx-config-form-designer__palette-item-preview [class*="form-item__label"] {
+  overflow: hidden;
+  font-size: 10px !important;
+  line-height: 14px !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__palette-item-preview input,
+.mx-config-form-designer__palette-item-preview textarea,
+.mx-config-form-designer__palette-item-preview select,
+.mx-config-form-designer__palette-item-preview [class*="input__wrapper"],
+.mx-config-form-designer__palette-item-preview [class*="picker"] {
+  min-height: 28px !important;
+}
+
+.mx-config-form-designer__palette-preview-unavailable {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--mx-designer-runtime-muted);
+  font-size: 11px;
 }
 
 .mx-config-form-designer__palette-item-name {
@@ -660,6 +707,17 @@
   min-width: 0;
 }
 
+.mx-config-form-designer-property-form__field.is-simple {
+  display: grid;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.mx-config-form-designer-property-form__field.is-custom {
+  display: block;
+}
+
 .mx-config-form-designer-property-form__label {
   display: block;
   max-width: 100%;
@@ -675,15 +733,17 @@
 }
 
 .mx-config-form-designer-property-form__field[data-inherited-label] > .mx-config-form-designer-property-form__label::after {
-  display: block;
+  display: inline;
+  margin-left: 4px;
   color: var(--mx-designer-muted);
-  content: attr(data-inherited-label);
-  font-size: 11px;
+  content: "· " attr(data-inherited-label);
+  font-size: 10px;
   font-weight: 500;
 }
 
 .mx-config-form-designer-property-form__field.is-simple > .mx-config-form-designer-property-form__control {
   display: flex;
+  width: 100%;
   min-height: 34px;
   align-items: center;
 }
@@ -1232,6 +1292,16 @@
   grid-template-rows: 38px minmax(0, 1fr);
 }
 
+.mx-config-form-designer[data-workspace-mode="narrow"][data-workspace-navigation="external"] .mx-config-form-designer__workspace {
+  grid-template-areas: "canvas";
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"][data-workspace-navigation="external"] .mx-config-form-designer__workspace-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
 .mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__workspace-tabs {
   display: grid;
   z-index: 2;
@@ -1243,6 +1313,19 @@
   gap: 3px;
   border-bottom: 1px solid var(--mx-designer-border);
   background: var(--mx-designer-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-config-form-designer__palette-item,
+  .mx-config-form-designer__runtime-surface [data-config-node-state~="candidate"],
+  .mx-config-form-designer__switch,
+  .mx-config-form-designer__switch > span {
+    transition: none;
+  }
+
+  .mx-config-form-designer__spinner {
+    animation: none;
+  }
 }
 
 .mx-config-form-designer__workspace-tabs button {

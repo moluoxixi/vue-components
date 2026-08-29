@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.tabs',
+      source: s.antdSource('div', 'a-tabs'),
       version: 1,
       kind: 'container',
       title: 'Tabs',

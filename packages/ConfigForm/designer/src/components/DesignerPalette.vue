@@ -5,6 +5,7 @@ import { Search } from '@lucide/vue'
 import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import { createDesignerNodeId } from '../history'
+import DesignerMaterialSpecimen from './DesignerMaterialSpecimen.vue'
 import { DESIGNER_DRAG_KEY } from './designer-drag'
 
 const props = defineProps<{
@@ -210,6 +211,12 @@ watch(() => props.readonly, (readonly) => {
               <span class="mx-config-form-designer__palette-item-name">{{ locale.materialTitle(material) }}</span>
               <small>{{ material.kind === 'field' ? locale.t('palette.field', 'Field') : locale.t('palette.layout', 'Layout') }}</small>
             </span>
+            <DesignerMaterialSpecimen
+              v-if="registry"
+              :form="form"
+              :material="material"
+              :registry="registry"
+            />
           </div>
         </div>
       </section>

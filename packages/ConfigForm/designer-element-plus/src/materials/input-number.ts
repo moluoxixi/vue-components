@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.input-number',
+      source: shared.elementSource('number', 'el-input-number'),
       version: 1,
       kind: 'field',
       title: 'Number',

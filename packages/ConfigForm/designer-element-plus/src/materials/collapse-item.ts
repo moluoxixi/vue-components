@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.collapse-item',
+      source: shared.elementSource('div', 'el-collapse-item'),
       version: 1,
       kind: 'container',
       title: 'Collapse item',

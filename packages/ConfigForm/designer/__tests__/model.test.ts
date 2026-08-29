@@ -1,4 +1,5 @@
 import type {
+  ConfigFormFlow,
   DesignerContainerMaterialDefinition,
   DesignerDocument,
   DesignerFieldMaterialDefinition,
@@ -25,6 +26,7 @@ const inputMaterial: DesignerFieldMaterialDefinition = {
   title: 'Input',
   category: 'Fields',
   runtime: { component: 'TestInput' },
+  source: { configComponent: 'text', render: 'component', tag: 'input' },
   setters: [{ key: 'placeholder', label: 'Placeholder', path: ['props', 'placeholder'], control: 'text' }],
   createNode: ({ id, field = id }) => ({
     id,
@@ -43,6 +45,7 @@ const sectionMaterial: DesignerContainerMaterialDefinition = {
   title: 'Section',
   category: 'Layout',
   runtime: { component: 'TestSection' },
+  source: { configComponent: 'div', render: 'section', tag: 'section' },
   setters: [],
   slots: [{ name: 'default', title: 'Content', accepts: ['field'] }],
   createNode: ({ id }) => ({
@@ -60,6 +63,7 @@ const tabsMaterial: DesignerContainerMaterialDefinition = {
   title: 'Tabs',
   category: 'Layout',
   runtime: { component: 'TestTabs' },
+  source: { configComponent: 'div', render: 'component', tag: 'div' },
   setters: [],
   slots: [{ name: 'default', title: 'Panes', accepts: ['container'], materials: ['test.pane'] }],
   createNode: ({ id }) => ({
@@ -77,6 +81,7 @@ const paneMaterial: DesignerContainerMaterialDefinition = {
   title: 'Pane',
   category: 'Layout',
   runtime: { component: 'TestPane' },
+  source: { configComponent: 'div', render: 'component', tag: 'div' },
   allowedParents: [{ material: 'test.tabs', slot: 'default' }],
   setters: [],
   slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
@@ -297,6 +302,221 @@ describe('config model', () => {
     expect(result.model.flows).toEqual([flow])
     expect(result.inverse).toEqual({ type: 'updateFlows' })
     expect(applyModelOperation(result.model, result.inverse, registry).model).toEqual(model)
+  })
+
+  it('adds, updates, and removes one flow without replacing unrelated flows', () => {
+    const first = {
+      version: 1 as const,
+      id: 'first',
+      name: 'First',
+      trigger: { kind: 'page.mount' as const },
+      nodes: [
+        { id: 'first-trigger', type: 'trigger' as const },
+        { id: 'first-end', type: 'end' as const },
+      ],
+      edges: [{ id: 'first-next', source: 'first-trigger', target: 'first-end', condition: 'next' as const }],
+    }
+    const second = {
+      ...first,
+      id: 'second',
+      name: 'Second',
+      nodes: [
+        { id: 'second-trigger', type: 'trigger' as const },
+        { id: 'second-end', type: 'end' as const },
+      ],
+      edges: [{ id: 'second-next', source: 'second-trigger', target: 'second-end', condition: 'next' as const }],
+    }
+    const model = { ...emptyModel(), flows: [first] }
+
+    const added = applyModelOperation(model, { type: 'addFlow', flow: second }, registry)
+    expect(added.success).toBe(true)
+    if (!added.success)
+      return
+    expect(added.model.flows?.map(flow => flow.id)).toEqual(['first', 'second'])
+    expect(added.inverse).toEqual({ type: 'removeFlow', flowId: 'second' })
+
+    const updatedFlow = { ...second, name: 'Updated second' }
+    const updated = applyModelOperation(added.model, {
+      type: 'updateFlow',
+      flowId: 'second',
+      flow: updatedFlow,
+    }, registry)
+    expect(updated.success).toBe(true)
+    if (!updated.success)
+      return
+    expect(updated.model.flows?.[0]).toEqual(first)
+    expect(updated.model.flows?.[1]?.name).toBe('Updated second')
+    expect(applyModelOperation(updated.model, updated.inverse, registry).model).toEqual(added.model)
+
+    const removed = applyModelOperation(updated.model, { type: 'removeFlow', flowId: 'second' }, registry)
+    expect(removed.success).toBe(true)
+    if (!removed.success)
+      return
+    expect(removed.model.flows).toEqual([first])
+    expect(removed.inverse).toEqual({ type: 'addFlow', flow: updatedFlow, index: 1 })
+    expect(applyModelOperation(removed.model, removed.inverse, registry).model).toEqual(updated.model)
+  })
+
+  it('updates flow settings, nodes, edges, and graph structure with exact inverses', () => {
+    const flow: ConfigFormFlow = {
+      version: 1,
+      id: 'editable',
+      name: 'Editable',
+      trigger: { kind: 'form.submit' },
+      nodes: [
+        { id: 'trigger', type: 'trigger', position: { x: 40, y: 80 } },
+        { id: 'end', type: 'end', position: { x: 360, y: 80 } },
+      ],
+      edges: [{ id: 'next', source: 'trigger', target: 'end', condition: 'next' }],
+    }
+    const model = { ...emptyModel(), flows: [flow] }
+
+    const settings = applyModelOperation(model, {
+      type: 'updateFlowSettings',
+      flowId: flow.id,
+      settings: {
+        name: 'Queued submit',
+        trigger: { kind: 'field.change', field: 'email' },
+        concurrency: 'queue',
+        errorPolicy: { onError: 'failure', timeoutMs: 2500 },
+      },
+    }, registry)
+    expect(settings.success).toBe(true)
+    if (!settings.success)
+      return
+    expect(settings.model.flows?.[0]).toMatchObject({
+      name: 'Queued submit',
+      trigger: { kind: 'field.change', field: 'email' },
+      concurrency: 'queue',
+      errorPolicy: { onError: 'failure', timeoutMs: 2500 },
+    })
+    expect(settings.inverse).toEqual({
+      type: 'updateFlowSettings',
+      flowId: flow.id,
+      settings: { name: 'Editable', trigger: { kind: 'form.submit' } },
+    })
+    expect(applyModelOperation(settings.model, settings.inverse, registry).model).toEqual(model)
+
+    const movedTrigger = { ...flow.nodes[0]!, position: { x: 96, y: 145 } }
+    const node = applyModelOperation(model, {
+      type: 'updateFlowNode',
+      flowId: flow.id,
+      nodeId: movedTrigger.id,
+      node: movedTrigger,
+    }, registry)
+    expect(node.success).toBe(true)
+    if (!node.success)
+      return
+    expect(node.model.flows?.[0]?.nodes[0]?.position).toEqual({ x: 96, y: 145 })
+    expect(applyModelOperation(node.model, node.inverse, registry).model).toEqual(model)
+
+    const renamedEdges = [{ ...flow.edges[0]!, id: 'renamed-next' }]
+    const edges = applyModelOperation(model, {
+      type: 'updateFlowEdges',
+      flowId: flow.id,
+      edges: renamedEdges,
+    }, registry)
+    expect(edges.success).toBe(true)
+    if (!edges.success)
+      return
+    expect(edges.model.flows?.[0]?.edges).toEqual(renamedEdges)
+    expect(applyModelOperation(edges.model, edges.inverse, registry).model).toEqual(model)
+
+    const action = { id: 'notify', type: 'action' as const, ref: 'notify', config: {} }
+    const graph = applyModelOperation(model, {
+      type: 'updateFlowGraph',
+      flowId: flow.id,
+      nodes: [flow.nodes[0]!, action, flow.nodes[1]!],
+      edges: [
+        { id: 'trigger-notify', source: 'trigger', target: 'notify', condition: 'next' },
+        { id: 'notify-end', source: 'notify', target: 'end', condition: 'next' },
+      ],
+    }, registry)
+    expect(graph.success).toBe(true)
+    if (!graph.success)
+      return
+    expect(graph.model.flows?.[0]?.nodes.map(candidate => candidate.id)).toEqual(['trigger', 'notify', 'end'])
+    expect(applyModelOperation(graph.model, graph.inverse, registry).model).toEqual(model)
+  })
+
+  it('rejects invalid fine-grained flow operations atomically', () => {
+    const flow: ConfigFormFlow = {
+      version: 1,
+      id: 'editable',
+      name: 'Editable',
+      trigger: { kind: 'form.submit' },
+      nodes: [
+        { id: 'trigger', type: 'trigger' },
+        { id: 'end', type: 'end' },
+      ],
+      edges: [{ id: 'next', source: 'trigger', target: 'end', condition: 'next' }],
+    }
+    const model = { ...emptyModel(), flows: [flow] }
+
+    expect(applyModelOperation(model, {
+      type: 'updateFlowEdges',
+      flowId: flow.id,
+      edges: [],
+    }, registry)).toMatchObject({
+      success: false,
+      model,
+      diagnostics: [{ code: 'FLOW_NODE_DEAD_END' }],
+    })
+    expect(applyModelOperation(model, {
+      type: 'updateFlowNode',
+      flowId: flow.id,
+      nodeId: 'missing',
+      node: { id: 'missing', type: 'action', ref: 'notify', config: {} },
+    }, registry)).toMatchObject({
+      success: false,
+      model,
+      diagnostics: [{ code: 'MODEL_FLOW_NODE_UNKNOWN', nodeId: 'missing' }],
+    })
+    expect(applyModelOperation(model, {
+      type: 'updateFlowNode',
+      flowId: flow.id,
+      nodeId: 'trigger',
+      node: { id: 'renamed', type: 'trigger' },
+    }, registry)).toMatchObject({
+      success: false,
+      model,
+      diagnostics: [{ code: 'MODEL_FLOW_NODE_ID_IMMUTABLE', nodeId: 'trigger' }],
+    })
+  })
+
+  it('rejects unknown flow ids, id mutation, and duplicate additions atomically', () => {
+    const flow = {
+      version: 1 as const,
+      id: 'existing',
+      name: 'Existing',
+      trigger: { kind: 'form.submit' as const },
+      nodes: [
+        { id: 'trigger', type: 'trigger' as const },
+        { id: 'end', type: 'end' as const },
+      ],
+      edges: [{ id: 'next', source: 'trigger', target: 'end', condition: 'next' as const }],
+    }
+    const model = { ...emptyModel(), flows: [flow] }
+
+    expect(applyModelOperation(model, { type: 'removeFlow', flowId: 'missing' }, registry)).toMatchObject({
+      success: false,
+      model,
+      diagnostics: [{ code: 'MODEL_FLOW_UNKNOWN' }],
+    })
+    expect(applyModelOperation(model, {
+      type: 'updateFlow',
+      flowId: 'existing',
+      flow: { ...flow, id: 'renamed' },
+    }, registry)).toMatchObject({
+      success: false,
+      model,
+      diagnostics: [{ code: 'MODEL_FLOW_ID_IMMUTABLE' }],
+    })
+    expect(applyModelOperation(model, { type: 'addFlow', flow }, registry)).toMatchObject({
+      success: false,
+      model,
+      diagnostics: [{ code: 'MODEL_FLOW_ID_DUPLICATE' }],
+    })
   })
 
   it('rejects flow actions that are not present in the host registry', () => {

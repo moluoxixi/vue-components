@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.select',
+      source: s.antdSource('select', 'a-select', { options: { mode: 'prop' } }),
       version: 1,
       kind: 'field',
       title: 'Select',

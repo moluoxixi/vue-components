@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.textarea',
+      source: s.antdSource('textarea', 'a-textarea'),
       version: 1,
       kind: 'field',
       title: 'Textarea',

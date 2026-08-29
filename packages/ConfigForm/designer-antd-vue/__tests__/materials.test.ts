@@ -3,7 +3,7 @@ import type {
   DesignerJsonObject,
   DesignerMaterialDefinition,
 } from '@moluoxixi/config-form-designer'
-import { compileDesignerDocument, DesignerPropertyPanel } from '@moluoxixi/config-form-designer'
+import { compileDesignerDocument, createLowCodeComponentRegistry, DesignerPropertyPanel } from '@moluoxixi/config-form-designer'
 import { flushPromises, mount } from '@vue/test-utils'
 import { Input } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
@@ -63,6 +63,15 @@ describe('ant design vue designer materials', () => {
     expect(ANTD_VUE_DESIGNER_ZH_CN.messages?.['reaction.effect.setValue']).toBe('设置值')
     expect(ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'field')).toHaveLength(14)
     expect(ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
+  })
+
+  it('publishes an explicit source adapter for every material', () => {
+    const definitions = createLowCodeComponentRegistry(createAntdVueDesignerRegistry()).list()
+    expect(definitions).toHaveLength(expectedKeys.length)
+    expect(definitions.every(definition => definition.source.library?.packageName === 'ant-design-vue'
+      || definition.source.render !== 'component')).toBe(true)
+    expect(definitions.find(definition => definition.component === 'antd.date')?.source.tag).toBe('a-date-picker')
+    expect(definitions.find(definition => definition.component === 'antd.checkbox')?.source.options).toEqual({ mode: 'prop' })
   })
 
   it('creates and compiles every registry material in a single regression matrix', () => {

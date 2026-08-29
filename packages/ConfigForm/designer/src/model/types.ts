@@ -1,4 +1,9 @@
-import type { ConfigFormFlow, ConfigFormReaction } from '@moluoxixi/config-form-core'
+import type {
+  ConfigFormFlow,
+  ConfigFormFlowEdge,
+  ConfigFormFlowNode,
+  ConfigFormReaction,
+} from '@moluoxixi/config-form-core'
 import type { RuleSet } from '@moluoxixi/zod3-to-rule'
 import type { DesignerConditionExpression, DesignerConditionTarget } from '../condition'
 import type {
@@ -72,10 +77,24 @@ export type ModelNodePatch = Partial<Pick<
   | 'validation'
 >>
 
+export type ConfigFormFlowSettings = Pick<
+  ConfigFormFlow,
+  'name' | 'trigger' | 'concurrency' | 'errorPolicy'
+>
+
 export type ModelOperation
   = | { type: 'insert', node: LowCodeNode, target: ModelNodeTarget }
     | { type: 'move', nodeId: string, target: ModelNodeTarget }
     | { type: 'updatePage', form: DesignerFormSettings, props: DesignerJsonObject }
+    | { type: 'addFlow', flow: ConfigFormFlow, index?: number }
+    | { type: 'updateFlowSettings', flowId: string, settings: ConfigFormFlowSettings }
+    | { type: 'updateFlowNode', flowId: string, nodeId: string, node: ConfigFormFlowNode }
+    | { type: 'updateFlowEdges', flowId: string, edges: ConfigFormFlowEdge[] }
+    | { type: 'updateFlowGraph', flowId: string, nodes: ConfigFormFlowNode[], edges: ConfigFormFlowEdge[] }
+    /** Compatibility operation for restoring an exact legacy flow snapshot. */
+    | { type: 'updateFlow', flowId: string, flow: ConfigFormFlow }
+    | { type: 'removeFlow', flowId: string }
+    /** Compatibility operation for restoring an exact legacy flows snapshot. */
     | { type: 'updateFlows', flows?: ConfigFormFlow[] }
     | { type: 'updateProps', nodeId: string, props: DesignerJsonObject }
     | { type: 'updateEvents', nodeId: string, events: Record<string, RegisteredEventAction[]> }

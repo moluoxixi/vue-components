@@ -118,3 +118,50 @@ export interface ConfigFormDesignerExpose {
   importDocument: (input: unknown) => boolean
   exportDocument: () => string
 }
+
+export interface DesignSurfaceProps {
+  commandControl: DesignerCommandControl
+  document: DesignerDocument
+  historyControl: DesignerHistoryControl
+  locale?: DesignerLocaleOptions
+  model: LowCodePageModel
+  modelRegistry: LowCodeComponentRegistry
+  readonly?: boolean
+  registry: DesignerRegistry
+  workspaceNavigation?: 'external' | 'internal'
+}
+
+export interface DesignSurfaceEmits {
+  (event: 'diagnostics', diagnostics: DesignerDiagnostic[]): void
+  (event: 'modelOperation', operation: ModelOperation): void
+  (event: 'selectionChange', nodeId: string | undefined): void
+  (event: 'selectionSetChange', nodeIds: string[], primaryId: string | undefined): void
+}
+
+export interface DesignSurfaceToolbarScope {
+  breakpoint: ConfigFormBreakpoint
+  canEditSelection: boolean
+  canRedo: boolean
+  canUndo: boolean
+  copySelection: () => void
+  readonly: boolean
+  redo: () => void
+  removeSelection: () => void
+  selectBreakpoint: (breakpoint: ConfigFormBreakpoint) => void
+  undo: () => void
+}
+
+export interface DesignSurfaceSlots {
+  toolbar?: (scope: DesignSurfaceToolbarScope) => unknown
+  palette?: (scope: DesignerPaletteScope) => unknown
+  properties?: (scope: DesignerPropertiesScope) => unknown
+}
+
+export interface DesignSurfaceExpose {
+  performNodeAction: (action: DesignerNodeAction, nodeId: string) => boolean
+  redo: () => boolean
+  select: (nodeId?: string, mode?: DesignerSelectionMode) => void
+  selectBreakpoint: (breakpoint: ConfigFormBreakpoint) => void
+  selectWorkspaceView: (view: 'canvas' | 'palette' | 'properties') => void
+  undo: () => boolean
+}

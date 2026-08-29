@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.time',
+      source: shared.elementSource('text', 'el-time-picker'),
       version: 1,
       kind: 'field',
       title: 'Time',

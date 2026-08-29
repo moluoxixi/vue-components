@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.tabs',
+      source: shared.elementSource('div', 'el-tabs'),
       version: 1,
       kind: 'container',
       title: 'Tabs',

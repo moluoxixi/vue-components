@@ -1,4 +1,8 @@
-import type { DesignerDefaultValueKind, DesignerPropertySetterDefinition } from '@moluoxixi/config-form-designer'
+import type {
+  DesignerDefaultValueKind,
+  DesignerPropertySetterDefinition,
+  DesignerSourceMaterialBinding,
+} from '@moluoxixi/config-form-designer'
 import {
   AlignLeft,
   Calendar,
@@ -109,6 +113,36 @@ export {
   TimePicker,
   ToggleLeft,
   TypeIcon,
+}
+
+interface AntdSourceOptions {
+  native?: boolean
+  options?: DesignerSourceMaterialBinding['options']
+  render?: DesignerSourceMaterialBinding['render']
+  staticProps?: DesignerSourceMaterialBinding['staticProps']
+}
+
+export function antdSource(
+  configComponent: string,
+  tag: string,
+  options: AntdSourceOptions = {},
+): DesignerSourceMaterialBinding {
+  return {
+    configComponent,
+    tag,
+    render: options.render ?? 'component',
+    ...(options.native
+      ? {}
+      : {
+          library: {
+            packageName: 'ant-design-vue',
+            plugin: 'Antd',
+            stylesheet: 'ant-design-vue/dist/reset.css',
+          },
+        }),
+    ...(options.options ? { options: options.options } : {}),
+    ...(options.staticProps ? { staticProps: options.staticProps } : {}),
+  }
 }
 
 interface NumericSetterConstraints { min?: number, max?: number, step?: number }

@@ -3,6 +3,7 @@ import type {
   DesignerDocument,
   DesignerFieldNode,
   DesignerMaterialDefinition,
+  DesignSurfaceExpose,
 } from '../index'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,6 +15,7 @@ import {
   createLowCodeComponentRegistry,
   designerDiagnostic,
   designerDocumentToConfigModel,
+  DesignSurface,
 } from '../index'
 
 const materials: DesignerMaterialDefinition[] = [
@@ -29,6 +31,7 @@ const materials: DesignerMaterialDefinition[] = [
       trigger: 'input',
       getValueFromEvent: event => (event as Event & { target: HTMLInputElement }).target.value,
     },
+    source: { configComponent: 'text', render: 'component', tag: 'input' },
     setters: [{
       key: 'placeholder',
       label: 'Placeholder',
@@ -49,6 +52,7 @@ const materials: DesignerMaterialDefinition[] = [
     title: 'Section',
     category: 'Layout',
     runtime: { component: 'section' },
+    source: { configComponent: 'div', render: 'section', tag: 'section' },
     setters: [],
     slots: [{ name: 'default', title: 'Content' }],
     createNode: ({ id }) => ({
@@ -778,8 +782,11 @@ describe('config form designer', () => {
       role: 'button',
       tabindex: '0',
     })
-    expect(inputMaterial.find('input').exists()).toBe(false)
-    expect(inputMaterial.find('.mx-config-form-designer__palette-item-preview').exists()).toBe(false)
+    expect(inputMaterial.get('.mx-config-form-designer__palette-item-preview').attributes()).toMatchObject({
+      'aria-hidden': 'true',
+      'inert': '',
+    })
+    expect(inputMaterial.find('[data-specimen-node-id]').exists()).toBe(true)
 
     await wrapper.get('[data-material-key="element.input"]').trigger('click')
     await flushPromises()
@@ -1361,6 +1368,109 @@ describe('config form designer', () => {
     expect(wrapper.emitted('update:document')).toBeUndefined()
     expect(wrapper.emitted('command')).toBeUndefined()
     expect(JSON.parse(exposed.exportDocument()).nodes[0]).not.toHaveProperty('label')
+  })
+
+  it('keeps DesignSurface controlled by the host model and external history', async () => {
+    const document = emptyDocument()
+    const modelRegistry = createLowCodeComponentRegistry(registry)
+    const undo = vi.fn(() => true)
+    const redo = vi.fn(() => true)
+    let projectedDocument: DesignerDocument | undefined
+    const apply = vi.fn((_command, projected: DesignerDocument) => {
+      projectedDocument = projected
+      return true
+    })
+    const wrapper = mount(DesignSurface, {
+      props: {
+        commandControl: { apply },
+        document,
+        historyControl: { canUndo: true, canRedo: true, undo, redo },
+        model: designerDocumentToConfigModel(document, { id: 'page', name: 'Page' }),
+        modelRegistry,
+        registry,
+      },
+    })
+
+    expect(wrapper.find('.mx-config-form-designer__palette').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-form-designer__canvas').exists()).toBe(true)
+    expect(wrapper.find('.mx-config-form-designer__properties').exists()).toBe(true)
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Preview form"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Import document"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Export document"]').exists()).toBe(false)
+
+    await wrapper.get('[data-material-key="element.input"]').trigger('click')
+    expect(apply).toHaveBeenCalledOnce()
+    expect(apply.mock.calls[0]?.[0]).toMatchObject({ type: 'addNode' })
+    expect(projectedDocument?.nodes).toHaveLength(1)
+    expect(wrapper.find('.mx-config-form-designer__canvas [data-node-id]').exists()).toBe(false)
+    expect(wrapper.emitted('update:document')).toBeUndefined()
+    expect(wrapper.emitted('command')).toBeUndefined()
+
+    const nextDocument = projectedDocument!
+    await wrapper.setProps({
+      document: nextDocument,
+      model: designerDocumentToConfigModel(nextDocument, { id: 'page', name: 'Page' }),
+    })
+    expect(wrapper.get('.mx-config-form-designer__canvas [data-node-id]').attributes('data-material')).toBe('element.input')
+
+    const exposed = wrapper.vm as unknown as DesignSurfaceExpose
+    expect(exposed.undo()).toBe(true)
+    expect(exposed.redo()).toBe(true)
+    expect(undo).toHaveBeenCalledOnce()
+    expect(redo).toHaveBeenCalledOnce()
+  })
+
+  it('keeps external workspace navigation authoritative when a medium drawer becomes narrow', async () => {
+    let resizeCallback: ResizeObserverCallback | undefined
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback
+      }
+
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    })
+
+    const designDocument = twoFieldDocument()
+    const wrapper = mount(DesignSurface, {
+      attachTo: window.document.body,
+      props: {
+        commandControl: { apply: vi.fn(() => true) },
+        document: designDocument,
+        historyControl: { canUndo: false, canRedo: false, undo: vi.fn(() => false), redo: vi.fn(() => false) },
+        model: designerDocumentToConfigModel(designDocument, { id: 'page', name: 'Page' }),
+        modelRegistry: createLowCodeComponentRegistry(registry),
+        registry,
+        workspaceNavigation: 'external',
+      },
+    })
+    const root = wrapper.get('.mx-config-form-designer')
+    const rect = vi.spyOn(root.element, 'getBoundingClientRect')
+    rect.mockReturnValue({ width: 900 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+
+    await wrapper.get('[data-sidebar-trigger="properties"]').trigger('click')
+    const drawerControl = wrapper.get('[data-drawer-control="properties"]')
+    ;(drawerControl.element as HTMLButtonElement).focus()
+    expect(wrapper.get('[data-workspace-panel="properties"]').attributes('hidden')).toBeUndefined()
+
+    rect.mockReturnValue({ width: 680 } as DOMRect)
+    resizeCallback?.([], {} as ResizeObserver)
+    await nextTick()
+
+    expect(root.attributes()).toMatchObject({
+      'data-active-view': 'canvas',
+      'data-workspace-mode': 'narrow',
+      'data-workspace-navigation': 'external',
+    })
+    expect(wrapper.find('.mx-config-form-designer__workspace-tabs').exists()).toBe(false)
+    expect(wrapper.get('[data-workspace-panel="canvas"]').attributes('hidden')).toBeUndefined()
+    expect(wrapper.get('[data-workspace-panel="properties"]').attributes('hidden')).toBe('')
+    expect(document.activeElement).toBe(wrapper.get('[data-workspace-panel="canvas"]').element)
+    wrapper.unmount()
   })
 
   it('keeps dialog focus contained and restores it after Escape', async () => {

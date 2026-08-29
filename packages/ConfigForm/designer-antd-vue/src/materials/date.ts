@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.date',
+      source: s.antdSource('text', 'a-date-picker'),
       version: 1,
       kind: 'field',
       title: 'Date',

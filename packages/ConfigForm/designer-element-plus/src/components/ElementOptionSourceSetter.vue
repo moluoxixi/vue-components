@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ElementPlusOptionSource } from '../options'
 import { ElOption, ElSelect } from 'element-plus'
+import { useDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import { readElementPlusOptionSource, useElementPlusOptionResolverContext } from '../options'
 
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const context = useElementPlusOptionResolverContext()
+const locale = useDesignerLocale()
 const source = computed(() => readElementPlusOptionSource(props.modelValue))
 const kind = computed(() => source.value?.kind ?? 'static')
 const keys = computed(() => kind.value === 'dictionary' ? context.dictionaryKeys : context.providerKeys)
@@ -37,16 +39,16 @@ function selectKey(key: string): void {
 
 <template>
   <div class="mx-element-designer-option-source">
-    <div class="mx-config-form-designer__segmented" role="group" aria-label="Option source type">
-      <button type="button" :class="{ 'is-active': kind === 'static' }" :aria-pressed="kind === 'static'" :disabled="disabled" @click="selectKind('static')">Static</button>
-      <button type="button" :class="{ 'is-active': kind === 'dictionary' }" :aria-pressed="kind === 'dictionary'" :disabled="disabled || context.dictionaryKeys.length === 0" @click="selectKind('dictionary')">Dictionary</button>
-      <button type="button" :class="{ 'is-active': kind === 'provider' }" :aria-pressed="kind === 'provider'" :disabled="disabled || context.providerKeys.length === 0" @click="selectKind('provider')">Provider</button>
+    <div class="mx-config-form-designer__segmented" role="group" :aria-label="locale.t('optionSource.type', 'Option source type')">
+      <button type="button" :class="{ 'is-active': kind === 'static' }" :aria-pressed="kind === 'static'" :disabled="disabled" @click="selectKind('static')">{{ locale.t('optionSource.static', 'Static') }}</button>
+      <button type="button" :class="{ 'is-active': kind === 'dictionary' }" :aria-pressed="kind === 'dictionary'" :disabled="disabled || context.dictionaryKeys.length === 0" @click="selectKind('dictionary')">{{ locale.t('optionSource.dictionary', 'Dictionary') }}</button>
+      <button type="button" :class="{ 'is-active': kind === 'provider' }" :aria-pressed="kind === 'provider'" :disabled="disabled || context.providerKeys.length === 0" @click="selectKind('provider')">{{ locale.t('optionSource.provider', 'Provider') }}</button>
     </div>
     <ElSelect
       v-if="kind !== 'static'"
       :model-value="source && 'key' in source ? source.key : undefined"
       :disabled="disabled"
-      aria-label="Option source key"
+      :aria-label="locale.t('optionSource.key', 'Option source key')"
       @update:model-value="selectKey"
     >
       <ElOption v-for="key in keys" :key="key" :label="key" :value="key" />

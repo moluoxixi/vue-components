@@ -7,6 +7,7 @@ import {
   compileDesignerDocument,
   ConfigFormDesigner,
   createDesignerRuntimeProjection,
+  createLowCodeComponentRegistry,
   DesignerPropertyPanel,
 } from '@moluoxixi/config-form-designer'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -65,6 +66,18 @@ describe('element plus designer materials', () => {
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')).toHaveLength(9)
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
+  })
+
+  it('publishes an explicit source adapter for every material', () => {
+    const definitions = createLowCodeComponentRegistry(createElementPlusDesignerRegistry()).list()
+    expect(definitions).toHaveLength(expectedKeys.length)
+    expect(definitions.every(definition => definition.source.library?.packageName === 'element-plus'
+      || definition.source.render !== 'component')).toBe(true)
+    expect(definitions.find(definition => definition.component === 'element.date')?.source.tag).toBe('el-date-picker')
+    expect(definitions.find(definition => definition.component === 'element.checkbox')?.source.options).toMatchObject({
+      mode: 'children',
+      optionTag: 'el-checkbox',
+    })
   })
 
   it('creates and compiles every registry material in a single regression matrix', () => {

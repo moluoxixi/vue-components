@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.collapse',
+      source: s.antdSource('div', 'a-collapse'),
       version: 1,
       kind: 'container',
       title: 'Collapse',

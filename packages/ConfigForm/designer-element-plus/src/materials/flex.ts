@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.flex',
+      source: shared.elementSource('div', 'div', { native: true, render: 'layout-flex' }),
       version: 1,
       kind: 'container',
       title: 'Flex Wrap',

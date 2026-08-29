@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.time',
+      source: s.antdSource('text', 'a-time-picker'),
       version: 1,
       kind: 'field',
       title: 'Time',

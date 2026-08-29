@@ -317,16 +317,16 @@ function validatorChoices(rule: RuleDraft): string[] {
       </div>
 
       <div v-else-if="baseType === 'literal'" class="mx-config-form-designer__typed-value">
-        <select :value="literalType" aria-label="Literal type" :disabled="disabled" @change="changeLiteralType(($event.currentTarget as HTMLSelectElement).value as PrimitiveType)">
+        <select :value="literalType" :aria-label="locale.t('validation.literalType', 'Literal type')" :disabled="disabled" @change="changeLiteralType(($event.currentTarget as HTMLSelectElement).value as PrimitiveType)">
           <option value="text">{{ locale.t('valueType.text', 'Text') }}</option>
           <option value="number">{{ locale.t('valueType.number', 'Number') }}</option>
           <option value="boolean">{{ locale.t('valueType.boolean', 'Boolean') }}</option>
         </select>
-        <select v-if="literalType === 'boolean'" v-model="literalValue" aria-label="Literal value" :disabled="disabled" @change="commit">
+        <select v-if="literalType === 'boolean'" v-model="literalValue" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @change="commit">
           <option :value="true">{{ locale.t('value.true', 'True') }}</option>
           <option :value="false">{{ locale.t('value.false', 'False') }}</option>
         </select>
-        <input v-else :value="literalValue" :type="literalType === 'number' ? 'number' : 'text'" aria-label="Literal value" :disabled="disabled" @blur="updateLiteralValue">
+        <input v-else :value="literalValue" :type="literalType === 'number' ? 'number' : 'text'" :aria-label="locale.t('validation.literalValue', 'Literal value')" :disabled="disabled" @blur="updateLiteralValue">
       </div>
 
       <div class="mx-config-form-designer__rule-list">

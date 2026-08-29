@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'antd.radio',
+      source: s.antdSource('select', 'a-radio-group', { options: { mode: 'prop' } }),
       version: 1,
       kind: 'field',
       title: 'Radio',

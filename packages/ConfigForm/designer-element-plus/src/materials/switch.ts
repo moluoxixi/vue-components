@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.switch',
+      source: shared.elementSource('boolean', 'el-switch'),
       version: 1,
       kind: 'field',
       title: 'Switch',

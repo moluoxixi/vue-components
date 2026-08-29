@@ -7,6 +7,7 @@ export default defineDesignerMaterialModule({
   value: {
     material: {
       key: 'element.textarea',
+      source: shared.elementSource('textarea', 'el-input', { staticProps: { type: 'textarea' } }),
       version: 1,
       kind: 'field',
       title: 'Textarea',
