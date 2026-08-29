@@ -20,7 +20,6 @@ export { resolveConfigFormFieldLayout } from './renderer/layout'
 export type * from './renderer/layout'
 export { resolveConfigFormLayout, resolveConfigFormNodeSpan } from './renderer/responsive'
 export type * from './renderer/responsive'
-export { default as RuntimeSurface } from './renderer/RuntimeSurface.vue'
 export type * from './renderer/types'
 
 export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = ConfigFormValues>
@@ -62,3 +61,6 @@ export interface ConfigFormRendererComponent {
 }
 
 export const ConfigFormRenderer = ConfigFormRendererSource as unknown as ConfigFormRendererComponent
+
+/** Shared Design/Preview renderer with the same stable public signature. */
+export const RuntimeSurface = ConfigFormRenderer

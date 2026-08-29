@@ -248,6 +248,7 @@ function verifyRendererPackage() {
     const loaded = await import('@moluoxixi/config-form/renderer')
     const expected = [
       'ConfigFormRenderer',
+      'RuntimeSurface',
       'createConfigFormRendererExpose',
       'resolveConfigFormFieldLayout',
       'resolveConfigFormLayout',
@@ -271,6 +272,7 @@ function verifyRendererPackage() {
     writeFileSync(resolve(consumerDir, 'consumer.ts'), `
       import {
         ConfigFormRenderer,
+        RuntimeSurface,
         createConfigFormRendererExpose,
         resolveConfigFormFieldLayout,
         resolveConfigFormLayout,
@@ -289,6 +291,8 @@ function verifyRendererPackage() {
         ConfigFormRendererComponentProps,
         ConfigFormRendererExpose,
         ConfigFormRendererProps,
+        RuntimeEditorBridge,
+        RuntimeSurfaceProps,
         ConfigFormResponsiveLayout,
         InstallableConfigFormComponent,
       } from '@moluoxixi/config-form/renderer'
@@ -303,6 +307,7 @@ function verifyRendererPackage() {
       const nodeSpan = resolveConfigFormNodeSpan(12, layout)
       void [
         ConfigFormRenderer,
+        RuntimeSurface,
         components,
         createConfigFormRendererExpose,
         fieldLayout,
@@ -311,12 +316,16 @@ function verifyRendererPackage() {
         withConfigFormInstall,
       ]
       const typedRenderer: ConfigFormRendererComponent = ConfigFormRenderer
+      const typedRuntimeSurface: ConfigFormRendererComponent = RuntimeSurface
       void typedRenderer
+      void typedRuntimeSurface
       type RendererTypes = [
         ConfigFormRendererComponentInstance,
         ConfigFormRendererComponentProps,
         ConfigFormRendererExpose,
         ConfigFormRendererProps,
+        RuntimeEditorBridge,
+        RuntimeSurfaceProps,
         ConfigFormComponentRegistration,
         ConfigFormComponentRegistry,
         InstallableConfigFormComponent<never>,

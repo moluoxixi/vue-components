@@ -9,7 +9,10 @@ import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import { RuntimeSurface as RuntimeSurfaceEntry } from '../../renderer-entry'
+import {
+  ConfigFormRenderer as ConfigFormRendererEntry,
+  RuntimeSurface as RuntimeSurfaceEntry,
+} from '../../renderer-entry'
 import ConfigFormRendererSource from '../ConfigFormRenderer.vue'
 
 const ConfigFormRenderer = ConfigFormRendererSource as Component
@@ -83,6 +86,10 @@ const SlotLeaf = defineComponent({
 })
 
 describe('config form renderer', () => {
+  it('exports RuntimeSurface as the stable ConfigFormRenderer component', () => {
+    expect(RuntimeSurfaceEntry).toBe(ConfigFormRendererEntry)
+  })
+
   it('runtimeSurface exposes stable node metadata and editor registration hooks', () => {
     const editor: ConfigFormRuntimeEditorBridge<TestValues> = {
       registerNode: vi.fn(),
