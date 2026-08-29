@@ -5,6 +5,7 @@ import {
   createDesignerMaterialCandidate,
   resolveDesignerAutoScrollDelta,
   resolveDesignerCollapsedDropTarget,
+  resolveDesignerDragOverlayPosition,
   resolveStickyDesignerDropTarget,
 } from '../src/components/designer-drag'
 import { createDesignerRegistry } from '../src/registry'
@@ -41,6 +42,7 @@ describe('designer drag controller', () => {
     expect(controller.move({ x: 30, y: 30 })).toBe(true)
     expect(controller.session.value).toMatchObject({
       active: true,
+      position: { x: 30, y: 30 },
       source: { candidateId: 'candidate-1', materialKey: 'element.input', type: 'material' },
       target,
     })
@@ -53,6 +55,30 @@ describe('designer drag controller', () => {
       type: 'material',
     }, target)
     expect(controller.session.value).toBeUndefined()
+  })
+
+  it('updates pointer position when the resolved target remains unchanged', () => {
+    const controller = createDesignerDragController({
+      commitMaterial: vi.fn(),
+      commitNode: vi.fn(),
+    })
+    controller.registerResolver(() => ({ parentId: null, index: 0 }))
+    controller.beginMaterial('element.input', 'candidate-position', { x: 0, y: 0 }, { x: 20, y: 12 })
+    controller.move({ x: 20, y: 20 })
+    controller.move({ x: 70, y: 55 })
+
+    expect(controller.session.value).toMatchObject({
+      pointerOffset: { x: 20, y: 12 },
+      position: { x: 70, y: 55 },
+    })
+  })
+
+  it('keeps the pointer inside the measured overlay bounds', () => {
+    expect(resolveDesignerDragOverlayPosition(
+      { x: 100, y: 80 },
+      { x: 500, y: -10 },
+      { width: 120, height: 40 },
+    )).toEqual({ x: -12, y: 72 })
   })
 
   it('does not commit cancelled or targetless drags', () => {

@@ -30,8 +30,10 @@ import {
   DESIGNER_DRAG_KEY,
   resolveDesignerAutoScrollDelta,
   resolveDesignerCollapsedDropTarget,
+  resolveDesignerDragOverlayPosition,
   resolveStickyDesignerDropTarget,
 } from './designer-drag'
+import { createDesignerDragVisualClone } from './designer-drag-overlay'
 
 const props = defineProps<{
   document: DesignerDocument
@@ -59,8 +61,10 @@ const emit = defineEmits<{
 const locale = useDesignerLocale()
 const dragController = inject(DESIGNER_DRAG_KEY, undefined)
 const sheetRef = ref<HTMLElement>()
+const dragOverlayRef = ref<HTMLElement>()
 const nodeElements = new Map<string, HTMLElement>()
 const elementVersion = ref(0)
+const dragOverlayStyle = ref<CSSProperties>()
 let resizeObserver: ResizeObserver | undefined
 let unregisterDropResolver: (() => void) | undefined
 let unregisterKeyboardTargets: (() => void) | undefined
@@ -68,6 +72,7 @@ let activeDragPointer: number | undefined
 let activeDragPointerTarget: HTMLElement | undefined
 let autoScrollFrame: number | undefined
 let autoScrollPoint: DesignerPointerPosition | undefined
+let dragOverlayFrame: number | undefined
 let resizeCleanup: (() => void) | undefined
 let pointerSelection: { nodeId: string, startedAt: number } | undefined
 
@@ -87,6 +92,16 @@ function nodeForDragSource(source: DesignerDragSource | undefined): DesignerNode
 
 const candidateNode = computed<DesignerNode | undefined>(() => nodeForDragSource(activeSession.value?.source))
 
+const candidateFallbackTarget = computed<DesignerDropTarget | undefined>(() => {
+  const session = activeSession.value
+  if (!session?.active || session.input !== 'pointer' || session.source.type !== 'material' || session.target)
+    return undefined
+  return keyboardDropTargets(session.source)[0]
+})
+
+const candidateProjectionTarget = computed(() => activeSession.value?.target ?? candidateFallbackTarget.value)
+const candidateUsesFallback = computed(() => !!candidateFallbackTarget.value && !activeSession.value?.target)
+
 function candidateCommandForSource(source: DesignerDragSource | undefined, target: DesignerDropTarget): DesignerCommand | undefined {
   if (!source)
     return undefined
@@ -104,9 +119,10 @@ function candidateCommand(target: DesignerDropTarget): DesignerCommand | undefin
 
 const projectedDocument = computed(() => {
   const session = activeSession.value
-  if (!session?.active || !session.target)
+  const target = candidateProjectionTarget.value
+  if (!session?.active || !target)
     return props.document
-  const command = candidateCommand(session.target)
+  const command = candidateCommand(target)
   if (!command)
     return props.document
   const result = reduceDesignerCommand(props.document, command, props.registry)
@@ -163,6 +179,7 @@ const editorBridge = computed<RuntimeEditorBridge<Record<string, unknown>>>(() =
         selection.has(metadata.nodeId) ? 'selected' : '',
         primary === metadata.nodeId ? 'primary' : '',
         dragCandidateId === metadata.nodeId ? 'candidate' : '',
+        dragCandidateId === metadata.nodeId && candidateUsesFallback.value ? 'visual-source' : '',
       ].filter(Boolean).join(' ')
       return {
         'aria-label': locale.t('node.select', 'Select {label}', { label: nodeLabel(metadata.nodeId) }),
@@ -277,6 +294,55 @@ const collapsedCandidateIndicator = computed<CSSProperties | undefined>(() => {
     width: `${rect.width}px`,
   }
 })
+
+function clearDragOverlay(): void {
+  if (dragOverlayFrame !== undefined)
+    window.cancelAnimationFrame(dragOverlayFrame)
+  dragOverlayFrame = undefined
+  dragOverlayStyle.value = undefined
+  dragOverlayRef.value?.replaceChildren()
+}
+
+function updateDragOverlay(): void {
+  dragOverlayFrame = undefined
+  const session = activeSession.value
+  const id = candidateId.value
+  const source = id ? nodeElements.get(id) : undefined
+  const host = dragOverlayRef.value
+  if (!session?.active || session.input !== 'pointer' || !source || !host) {
+    clearDragOverlay()
+    return
+  }
+
+  const rect = source.getBoundingClientRect()
+  if (rect.width <= 0) {
+    clearDragOverlay()
+    return
+  }
+  const height = Math.max(rect.height, candidateNode.value?.kind === 'container' ? 36 : 1)
+  const position = resolveDesignerDragOverlayPosition(
+    session.position,
+    session.pointerOffset,
+    { width: rect.width, height },
+  )
+  const clone = createDesignerDragVisualClone(source)
+  host.replaceChildren(clone)
+  dragOverlayStyle.value = {
+    height: `${height}px`,
+    left: `${position.x}px`,
+    top: `${position.y}px`,
+    width: `${rect.width}px`,
+  }
+}
+
+function scheduleDragOverlay(): void {
+  if (dragOverlayFrame !== undefined)
+    return
+  void nextTick(() => {
+    if (dragOverlayFrame === undefined)
+      dragOverlayFrame = window.requestAnimationFrame(updateDragOverlay)
+  })
+}
 
 function acceptedSlot(parent: DesignerNode, node: DesignerNode): DesignerMaterialSlotDefinition | undefined {
   if (parent.kind !== 'container')
@@ -581,6 +647,7 @@ function handleNodeDragMove(event: PointerEvent): void {
 }
 
 function cleanupNodeDrag(): void {
+  activeDragPointerTarget?.removeEventListener('lostpointercapture', handleNodeLostPointerCapture)
   if (activeDragPointer !== undefined && activeDragPointerTarget?.hasPointerCapture?.(activeDragPointer))
     activeDragPointerTarget.releasePointerCapture(activeDragPointer)
   activeDragPointer = undefined
@@ -589,6 +656,13 @@ function cleanupNodeDrag(): void {
   window.removeEventListener('pointermove', handleNodeDragMove)
   window.removeEventListener('pointerup', handleNodeDragEnd)
   window.removeEventListener('pointercancel', handleNodeDragCancel)
+}
+
+function handleNodeLostPointerCapture(event: PointerEvent): void {
+  if (event.pointerId !== activeDragPointer)
+    return
+  dragController?.cancel()
+  cleanupNodeDrag()
 }
 
 function handleNodeDragEnd(event: PointerEvent): void {
@@ -613,7 +687,15 @@ function beginNodeDrag(event: PointerEvent, nodeId: string): void {
   activeDragPointer = event.pointerId
   activeDragPointerTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
   activeDragPointerTarget?.setPointerCapture?.(event.pointerId)
-  dragController.beginNode(nodeId, { x: event.clientX, y: event.clientY })
+  activeDragPointerTarget?.addEventListener('lostpointercapture', handleNodeLostPointerCapture)
+  const point = { x: event.clientX, y: event.clientY }
+  const sourceRect = nodeElements.get(nodeId)?.getBoundingClientRect()
+  const pointerOffset = sourceRect
+    && point.x >= sourceRect.left && point.x <= sourceRect.right
+    && point.y >= sourceRect.top && point.y <= sourceRect.bottom
+    ? { x: point.x - sourceRect.left, y: point.y - sourceRect.top }
+    : { x: 16, y: 16 }
+  dragController.beginNode(nodeId, point, pointerOffset)
   window.addEventListener('pointermove', handleNodeDragMove, { passive: false })
   window.addEventListener('pointerup', handleNodeDragEnd)
   window.addEventListener('pointercancel', handleNodeDragCancel)
@@ -709,6 +791,21 @@ watch(() => props.breakpoint, () => {
   })
 })
 
+watch([activeSession, elementVersion], ([session]) => {
+  if (session?.active && session.input === 'pointer')
+    scheduleDragOverlay()
+  else
+    clearDragOverlay()
+}, { flush: 'post' })
+
+watch(() => props.readonly, (readonly) => {
+  if (!readonly)
+    return
+  dragController?.cancel()
+  cleanupNodeDrag()
+  clearDragOverlay()
+})
+
 onMounted(() => {
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(() => {
@@ -726,6 +823,7 @@ onBeforeUnmount(() => {
   unregisterKeyboardTargets?.()
   resizeObserver?.disconnect()
   cleanupNodeDrag()
+  clearDragOverlay()
   resizeCleanup?.()
 })
 </script>
@@ -824,5 +922,13 @@ onBeforeUnmount(() => {
         </span>
       </div>
     </div>
+    <div
+      ref="dragOverlayRef"
+      v-show="dragOverlayStyle"
+      class="mx-config-form-designer__drag-overlay"
+      :style="dragOverlayStyle"
+      aria-hidden="true"
+      data-designer-drag-overlay
+    />
   </main>
 </template>

@@ -470,6 +470,38 @@
   transition: opacity 100ms ease, outline-color 100ms ease;
 }
 
+.mx-config-form-designer__runtime-surface [data-config-node-state~="visual-source"] {
+  position: fixed !important;
+  z-index: -1 !important;
+  top: 0 !important;
+  left: -10000px !important;
+  width: min(680px, calc(100vw - 48px)) !important;
+  max-width: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.mx-config-form-designer__drag-overlay {
+  position: fixed;
+  z-index: 4000;
+  box-sizing: border-box;
+  overflow: hidden;
+  opacity: 0.64;
+  border: 1px solid color-mix(in srgb, var(--mx-designer-accent-line) 76%, transparent);
+  border-radius: 5px;
+  background: var(--mx-designer-runtime-surface);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 24%);
+  contain: layout paint style;
+  pointer-events: none;
+  user-select: none;
+  will-change: top, left, width, height;
+}
+
+.mx-config-form-designer__drag-overlay * {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 .mx-config-form-designer__canvas-empty {
   display: grid;
   min-height: 104px;

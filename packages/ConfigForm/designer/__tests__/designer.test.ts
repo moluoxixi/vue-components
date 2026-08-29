@@ -1141,6 +1141,82 @@ describe('config form designer', () => {
     }
   })
 
+  it('sizes the pointer overlay from the runtime candidate and tears it down on cancel', async () => {
+    const rect = (x: number, y: number, width: number, height: number): DOMRect => ({
+      bottom: y + height,
+      height,
+      left: x,
+      right: x + width,
+      top: y,
+      width,
+      x,
+      y,
+      toJSON: () => ({}),
+    })
+    const getRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('mx-config-form-designer__canvas-sheet'))
+        return rect(0, 0, 600, 600)
+      if (this.dataset.configNodeState?.includes('candidate'))
+        return rect(40, 60, 320, 32)
+      return rect(0, 0, 100, 32)
+    })
+    const elementsFromPoint = Object.getOwnPropertyDescriptor(document, 'elementsFromPoint')
+    Object.defineProperty(document, 'elementsFromPoint', {
+      configurable: true,
+      value: vi.fn(() => []),
+    })
+
+    try {
+      const wrapper = mount(ConfigFormDesigner, {
+        attachTo: document.body,
+        props: { document: emptyDocument(), registry },
+      })
+      await flushPromises()
+      const pointerdown = new Event('pointerdown', { bubbles: true, cancelable: true })
+      Object.defineProperties(pointerdown, {
+        button: { value: 0 },
+        clientX: { value: 20 },
+        clientY: { value: 20 },
+        pointerId: { value: 10 },
+        pointerType: { value: 'mouse' },
+      })
+      wrapper.get('[data-material-key="element.input"]').element.dispatchEvent(pointerdown)
+      const pointermove = new Event('pointermove', { bubbles: true, cancelable: true })
+      Object.defineProperties(pointermove, {
+        clientX: { value: 220 },
+        clientY: { value: 120 },
+        pointerId: { value: 10 },
+      })
+      window.dispatchEvent(pointermove)
+      await new Promise(resolve => window.setTimeout(resolve, 32))
+      await nextTick()
+
+      const overlay = wrapper.get<HTMLElement>('[data-designer-drag-overlay]')
+      expect(overlay.attributes('style')).toContain('height: 32px')
+      expect(overlay.attributes('style')).toContain('width: 320px')
+      expect(overlay.attributes('style')).toContain('left: 204px')
+      expect(overlay.attributes('style')).toContain('top: 104px')
+      expect(overlay.element.children).toHaveLength(1)
+      expect(overlay.element.querySelector('[data-config-node-id]')).toBeNull()
+      expect(wrapper.emitted('update:document')).toBeUndefined()
+
+      const pointercancel = new Event('pointercancel')
+      Object.defineProperty(pointercancel, 'pointerId', { value: 10 })
+      window.dispatchEvent(pointercancel)
+      await nextTick()
+      expect(overlay.isVisible()).toBe(false)
+      expect(overlay.element.children).toHaveLength(0)
+      wrapper.unmount()
+    }
+    finally {
+      getRect.mockRestore()
+      if (elementsFromPoint)
+        Object.defineProperty(document, 'elementsFromPoint', elementsFromPoint)
+      else
+        Reflect.deleteProperty(document, 'elementsFromPoint')
+    }
+  })
+
   it('keeps readonly public methods inert and tolerates invalid history limits', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       props: {

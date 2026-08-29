@@ -9,6 +9,11 @@ export interface DesignerPointerPosition {
   y: number
 }
 
+export interface DesignerDragOverlaySize {
+  height: number
+  width: number
+}
+
 export interface DesignerDropGeometryCandidate {
   depth: number
   rect: {
@@ -38,6 +43,8 @@ export interface DesignerDragAnnouncement {
 export interface DesignerDragSession {
   source: DesignerDragSource
   origin: DesignerPointerPosition
+  position: DesignerPointerPosition
+  pointerOffset: DesignerPointerPosition
   input: DesignerDragInput
   active: boolean
   target?: DesignerDropTarget
@@ -56,8 +63,8 @@ export type DesignerKeyboardDropTargetsResolver = (
 export interface DesignerDragController {
   session: ShallowRef<DesignerDragSession | undefined>
   announcement: ShallowRef<DesignerDragAnnouncement | undefined>
-  beginMaterial: (materialKey: string, candidateId: string, point: DesignerPointerPosition) => void
-  beginNode: (nodeId: string, point: DesignerPointerPosition) => void
+  beginMaterial: (materialKey: string, candidateId: string, point: DesignerPointerPosition, pointerOffset?: DesignerPointerPosition) => void
+  beginNode: (nodeId: string, point: DesignerPointerPosition, pointerOffset?: DesignerPointerPosition) => void
   beginMaterialKeyboard: (materialKey: string, candidateId: string) => boolean
   beginNodeKeyboard: (nodeId: string) => boolean
   move: (point: DesignerPointerPosition) => boolean
@@ -75,6 +82,22 @@ export interface CreateDesignerDragControllerOptions {
 }
 
 export const DESIGNER_DRAG_KEY: InjectionKey<DesignerDragController> = Symbol('config-form-designer-drag')
+
+export function resolveDesignerDragOverlayPosition(
+  pointer: DesignerPointerPosition,
+  pointerOffset: DesignerPointerPosition,
+  size: DesignerDragOverlaySize,
+): DesignerPointerPosition {
+  const clampOffset = (offset: number, extent: number): number => {
+    const safeExtent = Math.max(1, extent)
+    const edge = Math.min(8, safeExtent / 2)
+    return Math.min(Math.max(edge, offset), Math.max(edge, safeExtent - edge))
+  }
+  return {
+    x: pointer.x - clampOffset(pointerOffset.x, size.width),
+    y: pointer.y - clampOffset(pointerOffset.y, size.height),
+  }
+}
 
 export function resolveDesignerAutoScrollDelta(
   point: DesignerPointerPosition,
@@ -142,8 +165,13 @@ export function createDesignerDragController(
   let resolver: DesignerDropTargetResolver | undefined
   let keyboardTargetsResolver: DesignerKeyboardDropTargetsResolver | undefined
 
-  function begin(source: DesignerDragSource, point: DesignerPointerPosition, input: DesignerDragInput): void {
-    session.value = { source, origin: point, input, active: input === 'keyboard' }
+  function begin(
+    source: DesignerDragSource,
+    point: DesignerPointerPosition,
+    input: DesignerDragInput,
+    pointerOffset: DesignerPointerPosition = { x: 16, y: 16 },
+  ): void {
+    session.value = { source, origin: point, position: point, pointerOffset, input, active: input === 'keyboard' }
   }
 
   function beginKeyboard(source: DesignerDragSource): boolean {
@@ -163,14 +191,18 @@ export function createDesignerDragController(
 
     const active = current.active
       || Math.hypot(point.x - current.origin.x, point.y - current.origin.y) >= 4
-    if (!active)
+    if (!active) {
+      session.value = { ...current, position: point }
       return false
+    }
 
     const target = resolver?.(point, current.source, current.target)
-    if (current.active && sameTarget(current.target, target))
+    if (current.active && sameTarget(current.target, target)) {
+      session.value = { ...current, position: point }
       return true
+    }
 
-    session.value = { ...current, active: true, target }
+    session.value = { ...current, active: true, position: point, target }
     return true
   }
 
@@ -216,8 +248,8 @@ export function createDesignerDragController(
   return {
     session,
     announcement,
-    beginMaterial: (materialKey, candidateId, point) => begin({ type: 'material', materialKey, candidateId }, point, 'pointer'),
-    beginNode: (nodeId, point) => begin({ type: 'node', nodeId, candidateId: nodeId }, point, 'pointer'),
+    beginMaterial: (materialKey, candidateId, point, pointerOffset) => begin({ type: 'material', materialKey, candidateId }, point, 'pointer', pointerOffset),
+    beginNode: (nodeId, point, pointerOffset) => begin({ type: 'node', nodeId, candidateId: nodeId }, point, 'pointer', pointerOffset),
     beginMaterialKeyboard: (materialKey, candidateId) => beginKeyboard({ type: 'material', materialKey, candidateId }),
     beginNodeKeyboard: nodeId => beginKeyboard({ type: 'node', nodeId, candidateId: nodeId }),
     move,

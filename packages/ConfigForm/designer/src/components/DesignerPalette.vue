@@ -55,6 +55,7 @@ function handlePointerMove(event: PointerEvent): void {
 }
 
 function cleanupPointerDrag(): void {
+  activePointerTarget?.removeEventListener('lostpointercapture', handlePointerLostCapture)
   if (activePointerId !== undefined && activePointerTarget?.hasPointerCapture?.(activePointerId))
     activePointerTarget.releasePointerCapture(activePointerId)
   activePointerId = undefined
@@ -62,6 +63,14 @@ function cleanupPointerDrag(): void {
   window.removeEventListener('pointermove', handlePointerMove)
   window.removeEventListener('pointerup', handlePointerUp)
   window.removeEventListener('pointercancel', handlePointerCancel)
+}
+
+function handlePointerLostCapture(event: PointerEvent): void {
+  if (event.pointerId !== activePointerId)
+    return
+  dragController?.cancel()
+  cleanupPointerDrag()
+  dragActivated = false
 }
 
 function handlePointerUp(event: PointerEvent): void {
@@ -96,6 +105,7 @@ function prepareMaterialDrag(material: DesignerMaterialDefinition, event: Pointe
   activePointerId = event.pointerId
   activePointerTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
   activePointerTarget?.setPointerCapture?.(event.pointerId)
+  activePointerTarget?.addEventListener('lostpointercapture', handlePointerLostCapture)
   dragActivated = false
   dragController.beginMaterial(material.key, createDesignerNodeId('candidate'), {
     x: event.clientX,
