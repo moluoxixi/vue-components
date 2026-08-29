@@ -1,0 +1,28 @@
+{
+  "id": "config-form-workbench-responsive-i18n",
+  "name": "config-form-workbench-responsive-i18n",
+  "title": "ConfigForm 工作台移动端与国际化一致性",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": "packages/ConfigForm/workbench",
+  "package": "ai-doc-assistant",
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-29",
+  "completedAt": "2026-08-30",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "description": "修复内置模板移动端响应式，并统一 Workbench 的 en-US/zh-CN 国际化边界与语言交互。"
+  }
+}
