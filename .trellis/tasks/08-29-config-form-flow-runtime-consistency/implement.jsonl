@@ -1,0 +1,4 @@
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"定义 Config Model 单一真源、Flow 瞬态运行状态、Model Operation 与 Preview/Source 投影边界。"}
+{"file":".trellis/spec/config-form-core/frontend/index.md","reason":"定位 Core 前端适用规范与公开协议维护要求。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"本任务横跨 Core、Workbench Preview 与生成 Source，需要逐层核对统一语义。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"约束 Preview 与生成运行时之间的重复调度逻辑，要求用行为契约防止漂移。"}

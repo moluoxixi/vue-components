@@ -297,6 +297,22 @@ Create detailed flow docs when:
 - Data format is complex
 - Feature has caused bugs before
 
+## Parallel Runtime Implementations
+
+When one persisted model is executed by both a shared runtime and a generated,
+self-contained runtime:
+
+- [ ] Define one observable status and error matrix before changing either implementation.
+- [ ] Keep concurrency ownership at the same key boundary in both runtimes.
+- [ ] Test cancellation with an action that ignores its signal.
+- [ ] Test value commits against state that changed after execution began.
+- [ ] Execute generated code in tests; string containment is not behavioral evidence.
+- [ ] Build a real generated consumer after changing template code.
+- [ ] Link the domain code-spec that owns the detailed contract.
+
+For ConfigForm, follow
+`config-form-core/frontend/flow-runtime-consistency.md`.
+
 ---
 
 ## Event Log / Projection Boundary

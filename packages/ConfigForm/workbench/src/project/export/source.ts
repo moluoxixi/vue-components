@@ -126,12 +126,15 @@ export type GeneratedFlowNode = { id: string, type: string, ref?: string, config
 export type GeneratedFlowEdge = { id: string, source: string, target: string, condition?: string }
 export type GeneratedFlow = { id: string, trigger: FlowTrigger, concurrency?: 'latest' | 'queue' | 'ignore', nodes: GeneratedFlowNode[], edges: GeneratedFlowEdge[], errorPolicy?: { onError: 'failure' | 'end', timeoutMs?: number } }
 export type FlowProjection = { props: Record<string, Record<string, unknown>>, states: Record<string, Record<string, boolean>>, validate: string[] }
+export type FlowExecutionStatus = 'success' | 'failure' | 'end' | 'aborted' | 'timeout' | 'ignored'
+export type FlowDispatchStatus = 'committed' | 'noop' | 'ignored' | 'aborted' | 'failure' | 'timeout'
+export type FlowDispatchResult = { status: FlowDispatchStatus, values: FlowValues, error?: string }
 
 export const flows = ${serialized} as readonly GeneratedFlow[]
 const actions: Record<string, FlowAction> = Object.create(null)
 const activeRuns = new Map<string, { controller: AbortController, promise: Promise<FlowExecutionResult> }>()
-const queuedRuns = new Map<string, Array<{ flow: GeneratedFlow, input: FlowValues, resolve: (result: FlowExecutionResult) => void, reject: (error: unknown) => void }>>()
-let lastProjection: FlowProjection = emptyProjection()
+const queuedRuns = new Map<string, QueuedFlowRun[]>()
+const flowProjections = new Map<string, FlowProjection>()
 
 export function registerFlowAction(ref: string, action: FlowAction): void {
   if (!ref || typeof action !== 'function')
@@ -140,7 +143,13 @@ export function registerFlowAction(ref: string, action: FlowAction): void {
 }
 
 export function getFlowProjection(): FlowProjection {
-  return cloneProjection(lastProjection)
+  const projection = emptyProjection()
+  for (const flow of flows) {
+    const current = flowProjections.get(flow.id)
+    if (current)
+      mergeProjection(projection, current)
+  }
+  return projection
 }
 
 class FlowTimeoutError extends Error {
@@ -151,8 +160,20 @@ class FlowTimeoutError extends Error {
 }
 
 interface FlowExecutionResult {
+  status: FlowExecutionStatus
   values: FlowValues
   projection: FlowProjection
+  error?: string
+}
+
+interface QueuedFlowRun {
+  flow: GeneratedFlow
+  input: FlowValues
+  signal?: AbortSignal
+  resolve: (result: FlowExecutionResult) => void
+  reject: (error: unknown) => void
+  cleanup: () => void
+  settled: boolean
 }
 
 function emptyProjection(): FlowProjection {
@@ -176,38 +197,51 @@ function mergeProjection(target: FlowProjection, next: FlowProjection): void {
 }
 
 async function withTimeout<T>(value: T | Promise<T>, timeoutMs: number | undefined, controller: AbortController): Promise<T> {
-  if (!timeoutMs || timeoutMs <= 0)
-    return value
   const signal = controller.signal
+  if (signal.aborted)
+    throw abortReason(signal.reason)
   return new Promise<T>((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout> | undefined
+    let settled = false
     const cleanup = (): void => {
       if (timer !== undefined)
         clearTimeout(timer)
       signal.removeEventListener('abort', abort)
     }
     const finish = (callback: () => void): void => {
+      if (settled)
+        return
+      settled = true
       cleanup()
       callback()
     }
-    const abort = (): void => finish(() => reject(signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError')))
-    timer = setTimeout(() => finish(() => {
-      const error = new FlowTimeoutError()
-      controller.abort(error)
-      reject(error)
-    }), timeoutMs)
-    if (signal.aborted) {
-      abort()
-      return
-    }
+    const abort = (): void => finish(() => reject(abortReason(signal.reason)))
     signal.addEventListener('abort', abort, { once: true })
+    if (timeoutMs && timeoutMs > 0) {
+      timer = setTimeout(() => {
+        const error = new FlowTimeoutError()
+        controller.abort(error)
+        finish(() => reject(error))
+      }, timeoutMs)
+    }
     Promise.resolve(value).then(result => finish(() => resolve(result)), error => finish(() => reject(error)))
   })
 }
 
-function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted)
-    throw signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError')
+function linkAbortSignal(source: AbortSignal | undefined, target: AbortController): () => void {
+  if (!source)
+    return () => {}
+  const abort = (): void => target.abort(source.reason)
+  if (source.aborted) {
+    abort()
+    return () => {}
+  }
+  source.addEventListener('abort', abort, { once: true })
+  return () => source.removeEventListener('abort', abort)
+}
+
+function abortReason(reason: unknown): Error {
+  return reason instanceof Error ? reason : new DOMException('Aborted', 'AbortError')
 }
 
 function equal(left: unknown, right: unknown): boolean {
@@ -327,8 +361,13 @@ async function executeFlow(flow: GeneratedFlow, input: FlowValues, controller: A
   const outgoing = (id: string) => flow.edges.filter(edge => edge.source === id)
   let current = flow.nodes.find(node => node.type === 'trigger')?.id
   let guard = 0
+  let status: FlowExecutionStatus = 'end'
+  let flowError: string | undefined
   while (current && guard++ < flow.nodes.length * 2) {
-    throwIfAborted(signal)
+    if (signal.aborted) {
+      status = 'aborted'
+      break
+    }
     const node = byId.get(current)
     if (!node)
       break
@@ -346,8 +385,20 @@ async function executeFlow(flow: GeneratedFlow, input: FlowValues, controller: A
         const action = node.ref ? actions[node.ref] : undefined
         if (!action)
           throw new Error('Missing generated flow action: ' + (node.ref ?? node.id))
-        const result = await withTimeout(action(operand(node.config?.input, values, outputs), { flowId: flow.id, nodeId: node.id, values, outputs, signal }), flow.errorPolicy?.timeoutMs, controller)
+        const actionController = new AbortController()
+        const unlink = linkAbortSignal(signal, actionController)
+        let result: unknown
+        try {
+          result = await withTimeout(action(operand(node.config?.input, values, outputs), { flowId: flow.id, nodeId: node.id, values, outputs, signal: actionController.signal }), flow.errorPolicy?.timeoutMs, actionController)
+        }
+        finally {
+          unlink()
+        }
         outputs[node.id] = result
+        if (node.config?.output && typeof node.config.output === 'object') {
+          for (const [field, mapping] of Object.entries(node.config.output))
+            values[field] = operand(mapping, values, outputs)
+        }
         current = outgoing(node.id).find(edge => edge.condition === 'next')?.target ?? outgoing(node.id).find(edge => edge.condition === undefined)?.target
       }
       catch (error) {
@@ -356,71 +407,174 @@ async function executeFlow(flow: GeneratedFlow, input: FlowValues, controller: A
         // Superseded/externally aborted runs must never enter a configured
         // failure branch. Timeout aborts are handled as failures below so the
         // explicit timeout policy remains observable.
-        if (aborted && !timeout)
-          throw error
+        if (aborted && !timeout) {
+          status = 'aborted'
+          break
+        }
         const failure = outgoing(node.id).find(edge => edge.condition === 'error')
+        flowError = error instanceof Error ? error.message : String(error)
         if (failure && flow.errorPolicy?.onError === 'failure') {
           current = failure.target
           continue
         }
-        if (flow.errorPolicy?.onError === 'end' && (timeout || !signal.aborted))
+        if (flow.errorPolicy?.onError === 'end' && !timeout) {
+          status = 'end'
           break
-        throw error
+        }
+        status = timeout ? 'timeout' : 'failure'
+        break
       }
     }
-    else if (node.type === 'success' || node.type === 'failure' || node.type === 'end') break
+    else if (node.type === 'success') {
+      status = 'success'
+      break
+    }
+    else if (node.type === 'failure') {
+      status = 'failure'
+      break
+    }
+    else if (node.type === 'end') {
+      status = 'end'
+      break
+    }
     else current = outgoing(current).find(edge => edge.condition === 'next')?.target ?? outgoing(current).find(edge => edge.condition === undefined)?.target
   }
-  return { values, projection }
+  return { status, values, projection, ...(flowError ? { error: flowError } : {}) }
 }
 
-function startFlow(flow: GeneratedFlow, input: FlowValues): Promise<FlowExecutionResult> {
+function abortedExecution(input: FlowValues): FlowExecutionResult {
+  return { status: 'aborted', values: { ...input }, projection: emptyProjection() }
+}
+
+function startFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSignal): Promise<FlowExecutionResult> {
+  if (signal?.aborted)
+    return Promise.resolve(abortedExecution(input))
   const controller = new AbortController()
+  const unlink = linkAbortSignal(signal, controller)
   const promise = executeFlow(flow, input, controller).finally(() => {
+    unlink()
     if (activeRuns.get(flow.id)?.promise !== promise)
       return
     activeRuns.delete(flow.id)
-    const next = queuedRuns.get(flow.id)?.shift()
-    if (next) {
-      if (queuedRuns.get(flow.id)?.length === 0)
-        queuedRuns.delete(flow.id)
-      startFlow(next.flow, next.input).then(next.resolve, next.reject)
-    }
+    startNextQueuedRun(flow.id)
   })
   activeRuns.set(flow.id, { controller, promise })
   return promise
 }
 
-function scheduleFlow(flow: GeneratedFlow, input: FlowValues): Promise<FlowExecutionResult> {
-  const active = activeRuns.get(flow.id)
-  if (!active)
-    return startFlow(flow, input)
-  const concurrency = flow.concurrency ?? 'latest'
-  if (concurrency === 'ignore')
-    return Promise.resolve({ values: { ...input }, projection: emptyProjection() })
-  if (concurrency === 'latest') {
-    active.controller.abort('superseded')
-    return startFlow(flow, input)
+function startNextQueuedRun(flowId: string): void {
+  const queue = queuedRuns.get(flowId)
+  let next = queue?.shift()
+  while (next?.settled)
+    next = queue?.shift()
+  if (!next) {
+    queuedRuns.delete(flowId)
+    return
   }
+  if (queue?.length === 0)
+    queuedRuns.delete(flowId)
+  next.settled = true
+  next.cleanup()
+  startFlow(next.flow, next.input, next.signal).then(next.resolve, next.reject)
+}
+
+function enqueueFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSignal): Promise<FlowExecutionResult> {
   return new Promise((resolve, reject) => {
     const queue = queuedRuns.get(flow.id) ?? []
-    queue.push({ flow, input: { ...input }, resolve, reject })
+    const entry: QueuedFlowRun = {
+      cleanup: () => {},
+      flow,
+      input: { ...input },
+      signal,
+      resolve,
+      reject,
+      settled: false,
+    }
+    const abort = (): void => {
+      if (entry.settled)
+        return
+      entry.settled = true
+      entry.cleanup()
+      const index = queue.indexOf(entry)
+      if (index >= 0)
+        queue.splice(index, 1)
+      if (queue.length === 0)
+        queuedRuns.delete(flow.id)
+      resolve(abortedExecution(input))
+    }
+    if (signal) {
+      signal.addEventListener('abort', abort, { once: true })
+      entry.cleanup = () => signal.removeEventListener('abort', abort)
+    }
+    queue.push(entry)
     queuedRuns.set(flow.id, queue)
   })
 }
 
-export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}): Promise<FlowValues> {
+function scheduleFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSignal): Promise<FlowExecutionResult> {
+  if (signal?.aborted)
+    return Promise.resolve(abortedExecution(input))
+  const active = activeRuns.get(flow.id)
+  if (!active)
+    return startFlow(flow, input, signal)
+  const concurrency = flow.concurrency ?? 'latest'
+  if (concurrency === 'ignore')
+    return Promise.resolve({ status: 'ignored', values: { ...input }, projection: emptyProjection() })
+  if (concurrency === 'latest') {
+    active.controller.abort('superseded')
+    return startFlow(flow, input, signal)
+  }
+  return enqueueFlow(flow, input, signal)
+}
+
+function replaceValues(target: FlowValues, source: FlowValues): void {
+  for (const key of Object.keys(target)) {
+    if (!Object.hasOwn(source, key))
+      delete target[key]
+  }
+  Object.assign(target, source)
+}
+
+export function applyFlowValuePatch(target: FlowValues, before: FlowValues, after: FlowValues): void {
+  for (const key of Object.keys(before)) {
+    if (!Object.hasOwn(after, key))
+      delete target[key]
+  }
+  for (const [key, value] of Object.entries(after)) {
+    if (!Object.hasOwn(before, key) || !Object.is(before[key], value))
+      target[key] = value
+  }
+}
+
+export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}, signal?: AbortSignal): Promise<FlowDispatchResult> {
   const values = { ...input }
-  const projection = emptyProjection()
+  const projectionUpdates = new Map<string, FlowProjection>()
+  let matched = false
+  let committed = false
+  let flowError: string | undefined
   for (const flow of flows) {
     if (flow.trigger.kind !== trigger.kind || (flow.trigger.field && flow.trigger.field !== trigger.field))
       continue
-    const result = await scheduleFlow(flow, values)
-    Object.assign(values, result.values)
-    mergeProjection(projection, result.projection)
+    matched = true
+    const result = await scheduleFlow(flow, values, signal)
+    if (result.status === 'success' || result.status === 'end') {
+      committed = true
+      replaceValues(values, result.values)
+      projectionUpdates.set(flow.id, result.projection)
+      flowError = result.error ?? flowError
+      continue
+    }
+    if (result.status === 'ignored')
+      continue
+    return { status: result.status, values: { ...input }, ...(result.error ? { error: result.error } : {}) }
   }
-  lastProjection = cloneProjection(projection)
-  return values
+  if (!matched)
+    return { status: 'noop', values: { ...input } }
+  if (!committed)
+    return { status: 'ignored', values: { ...input } }
+  for (const [flowId, projection] of projectionUpdates)
+    flowProjections.set(flowId, cloneProjection(projection))
+  return { status: 'committed', values, ...(flowError ? { error: flowError } : {}) }
 }
 `
 }
@@ -496,8 +650,8 @@ function appSource(model: LowCodePageModel, flowImport = './flows'): string {
   collectProps(model.nodes)
   const columns = model.form.columns ?? 24
   return `<script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
-import { getFlowProjection, runFlows, type FlowTrigger } from '${flowImport}'
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { applyFlowValuePatch, getFlowProjection, runFlows, type FlowTrigger } from '${flowImport}'
 
 const model = reactive<Record<string, unknown>>(${scriptJson(initialValues, 2)})
 const baseFieldProps = ${scriptJson(props, 2)} as Record<string, Record<string, unknown>>
@@ -506,7 +660,7 @@ const fieldOptions = ${scriptJson(options, 2)} as Record<string, Array<{ label: 
 const fieldStates = reactive<Record<string, Record<string, boolean>>>({})
 const flowValidation = ref<string[]>([])
 const submitted = ref('')
-let triggerRevision = 0
+const flowLifecycle = new AbortController()
 
 function applyFlowProjection(): void {
   const projection = getFlowProjection()
@@ -526,21 +680,21 @@ function applyFlowProjection(): void {
 }
 
 async function runTrigger(trigger: { kind: FlowTrigger['kind'], field?: string }): Promise<void> {
-  const revision = ++triggerRevision
+  const snapshot = { ...model }
   try {
-    const nextValues = await runFlows(trigger, model)
-    if (revision !== triggerRevision)
+    const result = await runFlows(trigger, snapshot, flowLifecycle.signal)
+    if (result.status === 'aborted' || result.status === 'ignored' || result.status === 'noop')
       return
-    for (const key of Object.keys(model)) {
-      if (!Object.hasOwn(nextValues, key))
-        delete model[key]
+    if (result.status === 'failure' || result.status === 'timeout') {
+      submitted.value = result.error ?? 'Flow execution failed.'
+      return
     }
-    Object.assign(model, nextValues)
+    applyFlowValuePatch(model, snapshot, result.values)
     applyFlowProjection()
+    if (result.error)
+      submitted.value = result.error
   }
   catch (error) {
-    if (revision !== triggerRevision)
-      return
     submitted.value = error instanceof Error ? error.message : String(error)
   }
 }
@@ -555,6 +709,7 @@ function handleSubmit(): void {
 }
 
 onMounted(() => { void runTrigger({ kind: 'page.mount' }) })
+onBeforeUnmount(() => flowLifecycle.abort('page-unmounted'))
 </script>
 
 <template>

@@ -214,6 +214,67 @@ describe('config form flow core', () => {
     expect((await second).status).toBe('failure')
   })
 
+  it('settles a superseded latest run even when its action ignores abort signals', async () => {
+    const execute = vi.fn((input: unknown) => input === 'first'
+      ? new Promise(() => {})
+      : Promise.resolve(input))
+    const interpreter = new ConfigFormFlowInterpreter({ get: () => ({ execute }) })
+    const latestFlow = flow({ concurrency: 'latest' })
+    const first = interpreter.run(latestFlow, { runId: 'first', values: { name: 'first' } })
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1))
+
+    const second = interpreter.run(latestFlow, { runId: 'second', values: { name: 'second' } })
+
+    await expect(first).resolves.toMatchObject({ runId: 'first', status: 'aborted' })
+    await expect(second).resolves.toMatchObject({ runId: 'second', status: 'success' })
+  })
+
+  it('settles an externally aborted queued run before the active run finishes', async () => {
+    let releaseActive!: () => void
+    const execute = vi.fn((input: unknown) => input === 'active'
+      ? new Promise<void>((resolve) => { releaseActive = resolve })
+      : Promise.resolve(input))
+    const interpreter = new ConfigFormFlowInterpreter({ get: () => ({ execute }) })
+    const queuedFlow = flow({ concurrency: 'queue' })
+    const active = interpreter.run(queuedFlow, { runId: 'active', values: { name: 'active' } })
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1))
+    const controller = new AbortController()
+    const queued = interpreter.run(queuedFlow, {
+      runId: 'queued',
+      signal: controller.signal,
+      values: { name: 'queued' },
+    })
+    let queuedSettled = false
+    void queued.then(() => {
+      queuedSettled = true
+    })
+
+    controller.abort('revision-changed')
+    await Promise.resolve()
+
+    expect(queuedSettled).toBe(true)
+    await expect(queued).resolves.toMatchObject({ runId: 'queued', status: 'aborted' })
+    expect(execute).toHaveBeenCalledTimes(1)
+    releaseActive()
+    await expect(active).resolves.toMatchObject({ status: 'success' })
+  })
+
+  it('removes the external abort listener after a normal run completes', async () => {
+    const controller = new AbortController()
+    const add = vi.spyOn(controller.signal, 'addEventListener')
+    const remove = vi.spyOn(controller.signal, 'removeEventListener')
+    const interpreter = new ConfigFormFlowInterpreter({
+      get: () => ({ execute: async (input: unknown) => input }),
+    })
+
+    await expect(
+      interpreter.run(flow(), { signal: controller.signal, values: { name: 'Ada' } }),
+    ).resolves.toMatchObject({ status: 'success' })
+
+    expect(add.mock.calls.filter(([type]) => type === 'abort')).toHaveLength(1)
+    expect(remove.mock.calls.filter(([type]) => type === 'abort')).toHaveLength(1)
+  })
+
   it('honors an end error policy instead of reporting a failure', async () => {
     const endFlow = flow({
       errorPolicy: { onError: 'end' },

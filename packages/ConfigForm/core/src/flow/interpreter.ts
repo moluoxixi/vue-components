@@ -12,13 +12,18 @@ import type {
 import { applyConfigFormReactionList, evaluateConfigFormReactionCondition } from '../reaction'
 import { analyzeConfigFormFlow } from './plan'
 
+interface QueuedFlowRun {
+  flow: ConfigFormFlow
+  options: ConfigFormFlowRunOptions
+  resolve: (result: ConfigFormFlowRunResult) => void
+  reject: (reason: unknown) => void
+  cleanup: () => void
+  settled: boolean
+}
+
 export class ConfigFormFlowInterpreter {
   private readonly active = new Map<string, { controller: AbortController, promise: Promise<ConfigFormFlowRunResult> }>()
-  private readonly queues = new Map<string, Array<{
-    flow: ConfigFormFlow
-    options: ConfigFormFlowRunOptions
-    resolve: (result: ConfigFormFlowRunResult) => void
-  }>>()
+  private readonly queues = new Map<string, QueuedFlowRun[]>()
 
   constructor(private readonly actions: ConfigFormFlowActionRegistry = { get: () => undefined }) {}
 
@@ -44,6 +49,8 @@ export class ConfigFormFlowInterpreter {
     const plan = planResult.plan
     const flow = 'nodes' in flowOrPlan && 'trigger' in flowOrPlan ? flowOrPlan : planResult.flow
     const key = flow.id
+    if (options.signal?.aborted)
+      return Promise.resolve(abortedRunResult(flow, plan, options))
     const active = this.active.get(key)
     const concurrency = flow.concurrency ?? 'latest'
     if (active) {
@@ -64,32 +71,83 @@ export class ConfigFormFlowInterpreter {
         active.controller.abort('superseded')
       }
       else {
-        const queued = this.queues.get(key) ?? []
-        this.queues.set(key, queued)
-        return new Promise(resolve => queued.push({ flow, options, resolve }))
+        return this.enqueue(flow, plan, options)
       }
     }
+    return this.start(flow, plan, options)
+  }
+
+  private start(
+    flow: ConfigFormFlow,
+    plan: ConfigFormFlowExecutionPlan,
+    options: ConfigFormFlowRunOptions,
+  ): Promise<ConfigFormFlowRunResult> {
+    const key = flow.id
     const controller = new AbortController()
-    if (options.signal) {
-      if (options.signal.aborted)
-        controller.abort(options.signal.reason)
-      else
-        options.signal.addEventListener('abort', () => controller.abort(options.signal!.reason), { once: true })
-    }
+    const unlink = linkAbortSignal(options.signal, controller)
     const mergedOptions = { ...options, signal: controller.signal }
     const promise = this.execute(plan, flow, mergedOptions).finally(() => {
+      unlink()
       if (this.active.get(key)?.promise === promise) {
         this.active.delete(key)
-        const next = this.queues.get(key)?.shift()
-        if (next) {
-          if (this.queues.get(key)?.length === 0)
-            this.queues.delete(key)
-          this.run(next.flow, next.options).then(next.resolve)
-        }
+        this.startNextQueuedRun(key)
       }
     })
     this.active.set(key, { controller, promise })
     return promise
+  }
+
+  private enqueue(
+    flow: ConfigFormFlow,
+    plan: ConfigFormFlowExecutionPlan,
+    options: ConfigFormFlowRunOptions,
+  ): Promise<ConfigFormFlowRunResult> {
+    const key = flow.id
+    return new Promise<ConfigFormFlowRunResult>((resolve, reject) => {
+      const queue = this.queues.get(key) ?? []
+      const entry: QueuedFlowRun = {
+        cleanup: () => {},
+        flow,
+        options,
+        reject,
+        resolve,
+        settled: false,
+      }
+      const abort = (): void => {
+        if (entry.settled)
+          return
+        entry.settled = true
+        entry.cleanup()
+        const index = queue.indexOf(entry)
+        if (index >= 0)
+          queue.splice(index, 1)
+        if (queue.length === 0)
+          this.queues.delete(key)
+        resolve(abortedRunResult(flow, plan, options))
+      }
+      if (options.signal) {
+        options.signal.addEventListener('abort', abort, { once: true })
+        entry.cleanup = () => options.signal?.removeEventListener('abort', abort)
+      }
+      queue.push(entry)
+      this.queues.set(key, queue)
+    })
+  }
+
+  private startNextQueuedRun(key: string): void {
+    const queue = this.queues.get(key)
+    let next = queue?.shift()
+    while (next?.settled)
+      next = queue?.shift()
+    if (!next) {
+      this.queues.delete(key)
+      return
+    }
+    if (queue?.length === 0)
+      this.queues.delete(key)
+    next.settled = true
+    next.cleanup()
+    this.run(next.flow, next.options).then(next.resolve, next.reject)
   }
 
   private async execute(plan: ConfigFormFlowExecutionPlan, flow: ConfigFormFlow, options: ConfigFormFlowRunOptions): Promise<ConfigFormFlowRunResult> {
@@ -204,14 +262,15 @@ export class ConfigFormFlowInterpreter {
       const config = (node.config ?? {}) as ConfigFormFlowActionNodeConfig
       const input = resolveValue(config.input, values, outputs)
       const controller = new AbortController()
-      if (signal) {
-        if (signal.aborted)
-          controller.abort(signal.reason)
-        else
-          signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true })
-      }
+      const unlink = linkAbortSignal(signal, controller)
       const context: ConfigFormFlowActionContext = { flow, node, revision, runId, signal: controller.signal, values, outputs }
-      const result = await withTimeout(action.execute(input, context), flow.errorPolicy?.timeoutMs, controller)
+      let result: unknown
+      try {
+        result = await withTimeout(action.execute(input, context), flow.errorPolicy?.timeoutMs, controller)
+      }
+      finally {
+        unlink()
+      }
       outputs[node.id] = result
       if (config.output) {
         for (const [field, mapping] of Object.entries(config.output))
@@ -255,28 +314,72 @@ export class FlowTimeoutError extends Error {
 
 async function withTimeout<T>(value: T | Promise<T>, timeoutMs: number | undefined, controller: AbortController): Promise<T> {
   const signal = controller.signal
-  if (!timeoutMs || timeoutMs <= 0)
-    return value
+  if (signal.aborted)
+    throw abortReason(signal.reason)
   return new Promise<T>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      const error = new FlowTimeoutError()
-      controller.abort(error)
-      reject(error)
-    }, timeoutMs)
-    const abort = (): void => reject(signal.reason instanceof Error ? signal.reason : new DOMException('Aborted', 'AbortError'))
-    if (signal.aborted)
-      abort()
-    signal.addEventListener('abort', abort, { once: true })
-    Promise.resolve(value).then((result) => {
-      clearTimeout(timeout)
-      signal.removeEventListener('abort', abort)
-      resolve(result)
-    }, (reason) => {
-      clearTimeout(timeout)
-      signal.removeEventListener('abort', abort)
-      reject(reason)
-    })
+    let settled = false
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    let abortListener: (() => void) | undefined
+    const cleanup = (): void => {
+      if (timeout !== undefined)
+        clearTimeout(timeout)
+      if (abortListener)
+        signal.removeEventListener('abort', abortListener)
+    }
+    const settle = (callback: () => void): void => {
+      if (settled)
+        return
+      settled = true
+      cleanup()
+      callback()
+    }
+    abortListener = () => settle(() => reject(abortReason(signal.reason)))
+    signal.addEventListener('abort', abortListener, { once: true })
+    if (timeoutMs && timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        const error = new FlowTimeoutError()
+        controller.abort(error)
+        settle(() => reject(error))
+      }, timeoutMs)
+    }
+    Promise.resolve(value).then(
+      result => settle(() => resolve(result)),
+      reason => settle(() => reject(reason)),
+    )
   })
+}
+
+function linkAbortSignal(source: AbortSignal | undefined, target: AbortController): () => void {
+  if (!source)
+    return () => {}
+  const abort = (): void => target.abort(source.reason)
+  if (source.aborted) {
+    abort()
+    return () => {}
+  }
+  source.addEventListener('abort', abort, { once: true })
+  return () => source.removeEventListener('abort', abort)
+}
+
+function abortReason(reason: unknown): Error {
+  return reason instanceof Error ? reason : new DOMException('Aborted', 'AbortError')
+}
+
+function abortedRunResult(
+  flow: ConfigFormFlow,
+  plan: ConfigFormFlowExecutionPlan,
+  options: ConfigFormFlowRunOptions,
+): ConfigFormFlowRunResult {
+  return {
+    status: 'aborted',
+    flowId: flow.id,
+    runId: options.runId ?? createRunId(),
+    revision: options.revision ?? plan.revision,
+    values: { ...(options.values ?? {}) },
+    outputs: {},
+    projection: emptyReactionProjection(options.values),
+    trace: [],
+  }
 }
 
 function resolveValue(value: unknown, values: Record<string, unknown>, outputs: Record<string, unknown>): unknown {

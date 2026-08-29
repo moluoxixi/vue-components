@@ -8,7 +8,7 @@ import type {
 import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import {
   ConfigFormRenderer as ConfigFormRendererEntry,
   RuntimeSurface as RuntimeSurfaceEntry,
@@ -88,6 +88,33 @@ const SlotLeaf = defineComponent({
 describe('config form renderer', () => {
   it('exports RuntimeSurface as the stable ConfigFormRenderer component', () => {
     expect(RuntimeSurfaceEntry).toBe(ConfigFormRendererEntry)
+  })
+
+  it('synchronizes controlled model replacements without recursive update feedback', async () => {
+    const model = ref<TestValues>({ enabled: false, name: 'Ada', status: 'draft' })
+    const handleUpdate = vi.fn((values: TestValues) => {
+      model.value = values
+    })
+    const Host = defineComponent({
+      setup: () => () => h(ConfigFormRenderer, {
+        'fields': [defineField<TestValues>({ component: InputStub, field: 'name' })],
+        'modelValue': model.value,
+        'onUpdate:modelValue': handleUpdate,
+      }),
+    })
+    const wrapper = mount(Host)
+
+    model.value = { ...model.value, name: 'Flow preview' }
+    await flushPromises()
+
+    expect((wrapper.get('[data-testid="renderer-input"]').element as HTMLInputElement).value).toBe('Flow preview')
+    expect(handleUpdate).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-testid="renderer-input"]').setValue('User edit')
+    await flushPromises()
+
+    expect(model.value.name).toBe('User edit')
+    expect(handleUpdate).toHaveBeenCalledTimes(1)
   })
 
   it('runtimeSurface exposes stable node metadata and editor registration hooks', () => {

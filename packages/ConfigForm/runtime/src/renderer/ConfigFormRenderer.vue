@@ -131,8 +131,12 @@ const {
 meta.value = getMeta()
 
 watch(controlledModel, (values) => {
-  if (values !== model.value)
-    setValues(values, true)
+  if (toRaw(values) === toRaw(model.value))
+    return
+
+  model.value = values
+  clearValidate()
+  refreshReactions()
 })
 
 watch(() => props.fields, refreshReactions, { deep: true })

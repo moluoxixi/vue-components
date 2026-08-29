@@ -1,14 +1,119 @@
+import type { ConfigFormFlow, ConfigFormFlowConcurrency } from '@moluoxixi/config-form-core'
 import type { LowCodePageModel } from '@moluoxixi/config-form-designer'
+import { Buffer } from 'node:buffer'
 import { createLowCodeComponentRegistry } from '@moluoxixi/config-form-designer'
 import { createElementPlusDesignerRegistry } from '@moluoxixi/config-form-designer-element-plus'
 import { parse as parseSfc } from '@vue/compiler-sfc'
 import { strFromU8, unzipSync } from 'fflate'
-import { describe, expect, it } from 'vitest'
+import { transformWithEsbuild } from 'vite'
+import { describe, expect, it, vi } from 'vitest'
 import { applyWorkspaceApplicationOperation, duplicateWorkspacePage } from '../application'
 import { createProjectArchive, createWorkspaceArchive } from '../export/archive'
 import { createPureSourceExport, createWorkspaceApplicationSourceExport } from '../export/source'
 import { normalizeProjectPath } from '../path'
 import { createBuiltInWorkspaceApplication, createBuiltInWorkspaceProject } from '../templates'
+
+interface GeneratedFlowModule {
+  applyFlowValuePatch: (
+    target: Record<string, unknown>,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+  ) => void
+  getFlowProjection: () => { props: Record<string, Record<string, unknown>> }
+  registerFlowAction: (ref: string, action: (input: unknown) => unknown | Promise<unknown>) => void
+  runFlows: (
+    trigger: ConfigFormFlow['trigger'],
+    values: Record<string, unknown>,
+    signal?: AbortSignal,
+  ) => Promise<{ status: string, values: Record<string, unknown>, error?: string }>
+}
+
+function actionFlow(
+  concurrency: ConfigFormFlowConcurrency,
+  options: {
+    id?: string
+    inputField?: string
+    onError?: 'end' | 'failure'
+    outputField?: string
+    projection?: boolean
+    timeoutMs?: number
+  } = {},
+): ConfigFormFlow {
+  const nodes: ConfigFormFlow['nodes'] = [
+    { id: 'trigger', type: 'trigger' },
+    {
+      id: 'work',
+      type: 'action',
+      ref: 'work',
+      config: {
+        input: { $field: options.inputField ?? 'request' },
+        output: { [options.outputField ?? 'result']: { $output: 'work' } },
+      },
+    },
+  ]
+  const edges: ConfigFormFlow['edges'] = [
+    { id: 'trigger-work', source: 'trigger', target: 'work', condition: 'next' },
+  ]
+  if (options.onError === 'failure') {
+    nodes.push({ id: 'failure', type: 'failure' })
+    edges.push({ id: 'work-failure', source: 'work', target: 'failure', condition: 'error' })
+  }
+  if (options.projection) {
+    nodes.push({
+      id: 'project',
+      type: 'reaction',
+      config: {
+        reactions: [{
+          id: 'project-result',
+          when: { kind: 'literal', value: true },
+          then: [{
+            kind: 'setProps',
+            target: 'result',
+            props: { placeholder: { kind: 'literal', value: 'Completed' } },
+          }],
+        }],
+      },
+    })
+    edges.push({ id: 'work-project', source: 'work', target: 'project', condition: 'next' })
+  }
+  nodes.push({ id: 'end', type: 'end' })
+  edges.push({
+    id: 'finish',
+    source: options.projection ? 'project' : 'work',
+    target: 'end',
+    condition: 'next',
+  })
+  return {
+    version: 1,
+    id: options.id ?? 'generated-flow',
+    name: 'Generated flow',
+    trigger: { kind: 'field.change', field: 'request' },
+    concurrency,
+    ...(options.onError || options.timeoutMs
+      ? { errorPolicy: { onError: options.onError ?? 'end', ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}) } }
+      : {}),
+    nodes,
+    edges,
+  }
+}
+
+async function importGeneratedFlowModule(flowOrFlows: ConfigFormFlow | ConfigFormFlow[]): Promise<GeneratedFlowModule> {
+  const generatedFlows = Array.isArray(flowOrFlows) ? flowOrFlows : [flowOrFlows]
+  const primaryFlow = generatedFlows[0]!
+  const project = createBuiltInWorkspaceProject('element-profile', {
+    createdAt: '2026-08-27T08:00:00.000Z',
+    id: `generated-runtime-${primaryFlow.concurrency ?? 'latest'}`,
+    name: 'Generated runtime',
+  })
+  const model = JSON.parse((project.files[normalizeProjectPath('src/form.designer.json')] as { content: string }).content) as LowCodePageModel
+  model.flows = generatedFlows
+  const registry = createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
+  const exported = createPureSourceExport(project, model, registry)
+  const source = (exported.files[normalizeProjectPath('src/flows.ts')] as { content: string }).content
+  const transformed = await transformWithEsbuild(source, 'flows.ts', { format: 'esm', loader: 'ts', target: 'es2022' })
+  const url = `data:text/javascript;base64,${Buffer.from(transformed.code).toString('base64')}#${Math.random()}`
+  return await import(/* @vite-ignore */ url) as GeneratedFlowModule
+}
 
 describe('standalone source export', () => {
   it('generates a routed multi-page Vue application from one Application snapshot', async () => {
@@ -123,12 +228,151 @@ describe('standalone source export', () => {
     expect(flows).toContain('setProps')
     expect(flows).toContain('setState')
     expect(flows).toContain('effect.kind === \'validate\'')
-    expect(app).toContain('import { getFlowProjection, runFlows, type FlowTrigger } from \'./flows\'')
+    expect(app).toContain('import { applyFlowValuePatch, getFlowProjection, runFlows, type FlowTrigger } from \'./flows\'')
     expect(app).toContain('runTrigger({ kind: \'page.mount\' })')
     expect(app).toContain('@change=\'runFieldChange(')
     expect(app).toContain('fieldProps["name"]')
     expect(app).toContain('fieldStates["name"]')
     expect(app).not.toMatch(/ConfigForm|config-form|form\.config/)
+  })
+
+  it('executes generated latest flows without waiting for an action that ignored abort', async () => {
+    const runtime = await importGeneratedFlowModule(actionFlow('latest'))
+    const execute = vi.fn((input: unknown) => input === 'first'
+      ? new Promise(() => {})
+      : Promise.resolve(input))
+    runtime.registerFlowAction('work', execute)
+    const first = runtime.runFlows({ kind: 'field.change', field: 'request' }, { request: 'first' })
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1))
+
+    const second = runtime.runFlows({ kind: 'field.change', field: 'request' }, { request: 'second' })
+
+    await expect(first).resolves.toMatchObject({ status: 'aborted', values: { request: 'first' } })
+    await expect(second).resolves.toMatchObject({ status: 'committed', values: { request: 'second', result: 'second' } })
+  })
+
+  it('executes every generated queue run in order and cancels queued revisions immediately', async () => {
+    const runtime = await importGeneratedFlowModule(actionFlow('queue'))
+    const calls: unknown[] = []
+    const releases: Array<(value: unknown) => void> = []
+    runtime.registerFlowAction('work', input => new Promise((resolve) => {
+      calls.push(input)
+      releases.push(resolve)
+    }))
+    const active = runtime.runFlows({ kind: 'field.change', field: 'request' }, { request: 'active' })
+    await vi.waitFor(() => expect(calls).toEqual(['active']))
+    const next = runtime.runFlows({ kind: 'field.change', field: 'request' }, { request: 'next' })
+    const controller = new AbortController()
+    const cancelled = runtime.runFlows(
+      { kind: 'field.change', field: 'request' },
+      { request: 'cancelled' },
+      controller.signal,
+    )
+    let cancelledSettled = false
+    void cancelled.then(() => {
+      cancelledSettled = true
+    })
+    controller.abort('revision-changed')
+    await vi.waitFor(() => expect(cancelledSettled).toBe(true))
+    await expect(cancelled).resolves.toMatchObject({ status: 'aborted' })
+
+    releases.shift()!('active-result')
+    await vi.waitFor(() => expect(calls).toEqual(['active', 'next']))
+    releases.shift()!('next-result')
+    await expect(active).resolves.toMatchObject({ status: 'committed', values: { result: 'active-result' } })
+    await expect(next).resolves.toMatchObject({ status: 'committed', values: { result: 'next-result' } })
+  })
+
+  it('keeps a generated ignore flow projection and reports timeouts deterministically', async () => {
+    const runtime = await importGeneratedFlowModule(actionFlow('ignore', { projection: true }))
+    let release!: (value: unknown) => void
+    runtime.registerFlowAction('work', () => new Promise((resolve) => {
+      release = resolve
+    }))
+    const active = runtime.runFlows({ kind: 'field.change', field: 'request' }, { request: 'active' })
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'))
+
+    await expect(runtime.runFlows(
+      { kind: 'field.change', field: 'request' },
+      { request: 'ignored' },
+    )).resolves.toMatchObject({ status: 'ignored' })
+    release('active-result')
+    await expect(active).resolves.toMatchObject({ status: 'committed' })
+    expect(runtime.getFlowProjection().props).toEqual({ result: { placeholder: 'Completed' } })
+
+    const timeoutRuntime = await importGeneratedFlowModule(actionFlow('latest', { timeoutMs: 5 }))
+    timeoutRuntime.registerFlowAction('work', () => new Promise(() => {}))
+    await expect(timeoutRuntime.runFlows(
+      { kind: 'field.change', field: 'request' },
+      { request: 'timeout' },
+    )).resolves.toMatchObject({ status: 'timeout', error: 'Flow action timed out.' })
+  })
+
+  it('executes generated end and failure error policies like the core interpreter', async () => {
+    const endRuntime = await importGeneratedFlowModule(actionFlow('latest', { onError: 'end' }))
+    endRuntime.registerFlowAction('work', async () => {
+      throw new Error('best effort')
+    })
+    await expect(endRuntime.runFlows(
+      { kind: 'field.change', field: 'request' },
+      { request: 'end-policy' },
+    )).resolves.toMatchObject({
+      error: 'best effort',
+      status: 'committed',
+      values: { request: 'end-policy' },
+    })
+
+    const failureRuntime = await importGeneratedFlowModule(actionFlow('latest', { onError: 'failure', timeoutMs: 5 }))
+    failureRuntime.registerFlowAction('work', () => new Promise(() => {}))
+    await expect(failureRuntime.runFlows(
+      { kind: 'field.change', field: 'request' },
+      { request: 'failure-policy' },
+    )).resolves.toMatchObject({
+      error: 'Flow action timed out.',
+      status: 'failure',
+      values: { request: 'failure-policy' },
+    })
+  })
+
+  it('runs generated flows in model order and applies only flow-owned value changes', async () => {
+    const runtime = await importGeneratedFlowModule([
+      actionFlow('latest', { id: 'first', outputField: 'intermediate' }),
+      actionFlow('latest', { id: 'second', inputField: 'intermediate', outputField: 'result' }),
+    ])
+    const calls: unknown[] = []
+    runtime.registerFlowAction('work', async (input) => {
+      calls.push(input)
+      return `${String(input)}:${calls.length}`
+    })
+
+    const result = await runtime.runFlows(
+      { kind: 'field.change', field: 'request' },
+      { request: 'start', untouched: 'snapshot' },
+    )
+
+    expect(calls).toEqual(['start', 'start:1'])
+    expect(result).toMatchObject({
+      status: 'committed',
+      values: {
+        intermediate: 'start:1',
+        request: 'start',
+        result: 'start:1:2',
+        untouched: 'snapshot',
+      },
+    })
+
+    const current = { request: 'newer', result: 'old', untouched: 'newer-user-value' }
+    runtime.applyFlowValuePatch(
+      current,
+      { request: 'start', result: 'old', untouched: 'snapshot' },
+      result.values,
+    )
+    expect(current).toEqual({
+      intermediate: 'start:1',
+      request: 'newer',
+      result: 'start:1:2',
+      untouched: 'newer-user-value',
+    })
   })
 
   it('rejects malformed flows before generating a source project', () => {

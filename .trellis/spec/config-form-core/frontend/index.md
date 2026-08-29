@@ -22,6 +22,7 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 | [Material Registry](./material-registry.md) | Deterministic runtime/designer material discovery and validation | Active |
 | [Architecture Documentation](./architecture-documentation.md) | Same-change maintenance rules for the ConfigForm architecture README | Active |
+| [Flow Runtime Consistency](./flow-runtime-consistency.md) | Cross-runtime scheduling, cancellation, patch, projection, and executable-test contracts | Active |
 
 ---
 

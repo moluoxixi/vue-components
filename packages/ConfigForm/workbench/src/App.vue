@@ -21,6 +21,7 @@ import type {
   ExportSnapshot,
 } from './project'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
+import type { ConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
 import {
   Blocks,
   Braces,
@@ -45,6 +46,7 @@ import {
   Redo2,
   RefreshCw,
   Save,
+  Send,
   Settings2,
   Smartphone,
   Tablet,
@@ -76,7 +78,12 @@ import PreviewRuntimeBoundary from './components/PreviewRuntimeBoundary.vue'
 import FlowWorkspace from './components/FlowWorkspace.vue'
 import PageManager from './components/PageManager.vue'
 import ProjectFileTree from './components/ProjectFileTree.vue'
-import { createPreviewRevisionGate, createWorkbenchFlowActionRegistry } from './preview'
+import {
+  applyPreviewFlowValuePatch,
+  createPreviewRevisionGate,
+  createWorkbenchFlowActionRegistry,
+  PreviewFlowCoordinator,
+} from './preview'
 import { cloneWorkbenchJson } from './utils/clone'
 import {
   BUILT_IN_WORKSPACE_TEMPLATES,
@@ -172,6 +179,8 @@ const pageManagerDialogRef = useTemplateRef<HTMLElement>('pageManagerDialog')
 const exportDialogRef = useTemplateRef<HTMLElement>('exportDialog')
 const flowDialogRef = useTemplateRef<HTMLElement>('flowDialog')
 const designerRef = useTemplateRef<ConfigFormDesignerExpose>('designer')
+const previewRendererRef = useTemplateRef<ConfigFormRendererExpose<Record<string, unknown>>>('previewRenderer')
+const fallbackPreviewRendererRef = useTemplateRef<ConfigFormRendererExpose<Record<string, unknown>>>('fallbackPreviewRenderer')
 const designerLeftTabsRef = useTemplateRef<HTMLElement>('designerLeftTabs')
 const mobileSurfaceTabsRef = useTemplateRef<HTMLElement>('mobileSurfaceTabs')
 let openApplicationRequestId = 0
@@ -179,11 +188,11 @@ let disposed = false
 let pageManagerReturnFocus: HTMLElement | undefined
 const previewRevisionGate = createPreviewRevisionGate()
 let previewFlowAbortController = new AbortController()
-let previewFlowTriggerRevision = 0
 const flowActionRegistry = createWorkbenchFlowActionRegistry(
   value => message.value = value,
 )
 const flowInterpreter = new ConfigFormFlowInterpreter(flowActionRegistry)
+const previewFlowCoordinator = new PreviewFlowCoordinator(flowInterpreter)
 const workbenchLocale = computed(() => createDesignerLocale(props.locale))
 
 function advancePreviewRevision(): string {
@@ -210,7 +219,7 @@ const designerDocument = computed(() => configModel.value
   : undefined)
 const previewFlowProjection = computed<ConfigFormReactionProjection<Record<string, unknown>>>(() => {
   const projection: ConfigFormReactionProjection<Record<string, unknown>> = {
-    values: cloneWorkbenchJson(previewModel.value),
+    values: previewModel.value,
     props: {},
     states: {},
     validate: [],
@@ -480,48 +489,56 @@ function handlePreviewRuntimeReady(revision: string): void {
   runPreviewFlows('page.mount', previewModel.value)
 }
 
+function submitPreviewForm(): void {
+  const renderer = previewRendererRef.value ?? fallbackPreviewRendererRef.value
+  if (!renderer)
+    return
+  void renderer.submit().catch((error) => {
+    message.value = error instanceof Error ? error.message : String(error)
+  })
+}
+
 function runPreviewFlows(kind: 'page.mount' | 'form.submit' | 'field.change', values: Record<string, unknown>, field?: string): void {
   const flows = configModel.value?.flows ?? []
   const applicationId = currentApplication.value?.id
   const pageId = currentPageId.value
+  if (!applicationId || !pageId)
+    return
   const revision = modelRevision.value
-  const triggerRevision = ++previewFlowTriggerRevision
+  const signal = previewFlowAbortController.signal
   const isCurrentRun = (): boolean => applicationId === currentApplication.value?.id
     && pageId === currentPageId.value
     && revision === modelRevision.value
-    && triggerRevision === previewFlowTriggerRevision
-  const matchingFlows = flows.filter(flow => flow.trigger.kind === kind
-    && (kind !== 'field.change' || !flow.trigger.field || flow.trigger.field === field))
+    && !signal.aborted
 
-  // Execute matching flows in model order and feed each result into the next
-  // one. This keeps Preview semantics aligned with the standalone Source
-  // runtime and prevents concurrent flows from overwriting each other's value
-  // updates with stale snapshots.
-  void (async () => {
-    let nextValues = cloneWorkbenchJson(values)
-    const nextProjections = { ...previewFlowProjections.value }
-    for (const flow of matchingFlows) {
-      const result = await flowInterpreter.run(flow, {
-        revision,
-        values: cloneWorkbenchJson(nextValues),
-        signal: previewFlowAbortController.signal,
-        onTrace: event => {
-          if (isCurrentRun() && event.type === 'error' && event.error)
-            message.value = event.error
-        },
-      })
-      if (!isCurrentRun())
-        return
-      if (result.status === 'success' || result.status === 'end') {
-        nextValues = result.values
-        nextProjections[flow.id] = result.projection
-      }
+  void previewFlowCoordinator.dispatch({
+    flows,
+    trigger: { kind, ...(field ? { field } : {}) },
+    values: cloneWorkbenchJson(values),
+    revision,
+    signal,
+    isCurrent: isCurrentRun,
+    onTrace: event => {
+      if (event.type === 'error' && event.error)
+        message.value = event.error
+    },
+  }).then((result) => {
+    if (!isCurrentRun())
+      return
+    if ((result.status === 'failure' || result.status === 'timeout') && result.error)
+      message.value = result.error.message
+    if (result.status !== 'committed')
+      return
+
+    const nextProjections: typeof previewFlowProjections.value = {}
+    for (const flow of configModel.value?.flows ?? []) {
+      const current = previewFlowProjections.value[flow.id]
+      if (current)
+        nextProjections[flow.id] = current
     }
-    if (isCurrentRun()) {
-      previewFlowProjections.value = nextProjections
-      previewModel.value = nextValues
-    }
-  })()
+    previewFlowProjections.value = { ...nextProjections, ...result.projectionUpdates }
+    previewModel.value = applyPreviewFlowValuePatch(previewModel.value, result.valuePatch)
+  })
 }
 
 function undoDesign(): boolean {
@@ -1311,6 +1328,15 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <button
+              type="button"
+              :disabled="!activePreview"
+              title="Submit preview form"
+              aria-label="Submit preview form"
+              @click="submitPreviewForm"
+            >
+              <Send :size="15" aria-hidden="true" />
+            </button>
+            <button
               class="preview-expand-button"
               type="button"
               :title="previewExpanded ? 'Restore preview' : 'Expand preview'"
@@ -1342,6 +1368,7 @@ onBeforeUnmount(() => {
             >
               <ConfigFormRenderer
                 :key="`${currentApplication.id}-${currentPageId}-${rendererPreviewVersion}`"
+                ref="previewRenderer"
                 v-model="previewModel"
                 class="page-preview-form"
                 mode="preview"
@@ -1354,6 +1381,7 @@ onBeforeUnmount(() => {
               <template #fallback>
                 <ConfigFormRenderer
                   v-if="runtimeFallbackPreview"
+                  ref="fallbackPreviewRenderer"
                   v-model="fallbackPreviewModel"
                   class="page-preview-form"
                   mode="preview"
