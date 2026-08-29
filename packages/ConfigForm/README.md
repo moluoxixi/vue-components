@@ -96,6 +96,21 @@ Component Registry
 
 Workbench 的 Source 与 Config 不再是编辑 provider，也不参与模型反向解析。导出配置使用公开 `defineFields<T>()` / `defineField({...})` API；Source 使用文件树与只读 Monaco 展示不依赖 ConfigForm runtime 的 standalone Vue 工程。JSON / Tree 是配置的辅助查看投影，导出菜单还可下载完整项目 ZIP。旧 `parseDesignerConfig` 与 Designer artifact 解析只用于一次性迁移。
 
+Workbench 以 `WorkspaceApplication` v2 作为持久化根，一个 Application 拥有有序的
+`pages[]`、唯一 `homePageId`、稳定页面路由和当前页草稿。每个 Page 独立保存一个
+`LowCodePageModel`；页面内部 Undo/Redo 仍由 Model Operation 管理，新建、复制、删除、
+排序、重命名、路由和首页切换则通过 Application Operation 管理。旧 v1
+`WorkspaceProject` 只在 repository 边界确定性迁移为单页 Application，正常编辑不会
+维护第二份 Project 草稿。左侧 Pages 是工作区内的页面切换入口，完整页面操作集中在
+Page Manager。
+
+打开 Source 导出弹窗时，Workbench 从当前 Application revision 创建一次不可变
+`ExportSnapshot`。层级文件树、只读 Monaco、单文件下载和项目 ZIP 全部读取该快照；
+后续 Design 修改只会把弹窗标记为 stale，用户显式刷新后才生成新快照。多页面 Source
+工程包含 Vue Router、每个页面的独立目录和 `package.json`，且不依赖 ConfigForm
+Runtime。Config 导出继续面向当前页面，提供只读 defineField Source、JSON 和 Tree
+投影。
+
 页面事件流程同样从 `LowCodePageModel.flows` 投影：Core 只保存 JSON-safe 的
 `trigger -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
 `ConfigFormFlowExecutionPlan`，Workbench 再注入显式的 `ConfigFormFlowActionRegistry`。

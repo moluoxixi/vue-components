@@ -23,6 +23,30 @@ interface LowCodePageModel {
   flows?: ConfigFormFlow[]
 }
 
+interface WorkspaceApplication {
+  schemaVersion: 2
+  id: string
+  name: string
+  revision: number
+  homePageId: string
+  pages: Array<{
+    id: string
+    name: string
+    route: string
+    model: LowCodePageModel
+  }>
+  files: Record<ProjectPath, WorkspaceFile>
+  manifest: WorkspaceProjectManifest
+}
+
+interface ExportSnapshot {
+  applicationId: string
+  applicationRevision: number
+  modelRevision: number
+  createdAt: string
+  files: Record<ProjectPath, WorkspaceFile>
+}
+
 interface LowCodeNode {
   id: string
   component: string
@@ -113,6 +137,16 @@ legacy Designer artifact (open/migrate once)
   `form.config.ts` back into model state.
 - Source and Config are opened from the single Export menu and are read-only. Config export serializes
   `LowCodePageModel`, not the compatibility `DesignerDocument`.
+- The Workbench persistence root is `WorkspaceApplication` version 2. Every page owns one `LowCodePageModel`; the
+  application owns page order, unique normalized routes, and the only `homePageId`. Page model history and application
+  operations are separate transaction boundaries. The left Pages panel switches the active page; Page Manager owns
+  creation, rename, duplicate, delete, reorder, route, and home-page operations.
+- A legacy version 1 `WorkspaceProject` migrates at the repository boundary to one-page `WorkspaceApplication` data.
+  Migration must be deterministic and idempotent; a failed migration must not overwrite the legacy record.
+- Opening Source export creates one immutable `ExportSnapshot`. The file tree, Monaco model, single-file download, and
+  ZIP download read the same snapshot. Later Design revisions only mark it stale; refresh replaces the complete
+  snapshot atomically. Multi-page Source contains Vue Router, every page directory, and `package.json`, with no
+  ConfigForm Runtime import.
 - Runtime form values belong to the Preview instance. They never update page structure.
 - Pointer dragging never reorders business DOM. The drag controller creates one Registry-backed candidate node and
   projects the candidate Model through the same RuntimeSurface used after commit. Pointer up submits one semantic
@@ -128,6 +162,10 @@ legacy Designer artifact (open/migrate once)
 - RuntimeSurface metadata (`data-config-node-id`, `data-config-path`, `data-config-slot`, and node kind) is derived from
   the same model path in Design and Preview. Design mode may intercept control events, but must not replace registered
   runtime components with static summaries; selection and drop visuals belong to an editor overlay.
+- `RuntimeSurface` is a public value alias of the typed `ConfigFormRenderer` export, not a second Vue SFC wrapper. This
+  keeps the runtime tree and public generic declaration identical and prevents Volar from expanding transitive Core
+  types into a second generated component declaration. The package-boundary smoke consumer must import and type-check
+  both names.
 - `DESIGNER_LOCALE_KEY` follows Vue's descendant-only provide/inject boundary. A Workbench dialog or sibling projection
   rendered outside `ConfigFormDesigner` must accept the same `DesignerLocaleOptions` explicitly (while it may retain an
   injected fallback); it must not assume the Designer's internal provider is visible across sibling component trees.
@@ -149,6 +187,11 @@ legacy Designer artifact (open/migrate once)
 | Any nested batch operation fails | Roll back the complete batch to the original model |
 | Flow graph is malformed, cyclic, unreachable, or has an incomplete branch | Flow diagnostic from `analyzeConfigFormFlow`; no model mutation |
 | Flow action ref is unknown when a host registry is supplied | `MODEL_FLOW_ACTION_UNKNOWN`; no model mutation |
+| Application has duplicate page IDs/routes, no pages, or a missing home page | Reject parsing/operation; no persisted revision change |
+| Delete targets the final page | Reject the Application Operation; preserve the page and `homePageId` |
+| A v1 Project migration fails validation or persistence | Preserve the legacy record; do not write partial v2 state |
+| Design changes while an export dialog is open | Keep the current snapshot readable and mark it stale; do not mix revisions |
+| Snapshot refresh generation fails | Preserve the previous complete snapshot and surface the export diagnostic |
 
 ## 5. Good / Base / Bad Cases
 
@@ -157,7 +200,11 @@ legacy Designer artifact (open/migrate once)
   then refresh the Designer from `configModelToDesignerDocument(history.present)`.
 - Base: convert a stored version 1 Designer artifact to `LowCodePageModel` on open and generate the TypeScript Config
   module from the Design projection.
+- Good: open one Source snapshot, navigate its hierarchical tree, and download a ZIP whose file bytes come from the
+  same snapshot revision even if the active page changes meanwhile.
 - Bad: keep `sourceDraft`, `configDraft`, and a Designer document ref, then watch and parse them in both directions.
+- Bad: update the Monaco file list immediately after a Design operation while leaving the ZIP cache on the older
+  application revision.
 - Bad: export `configModelToDesignerDocument(model)` as "Config Model" because that drops page metadata,
   `events`, and `bindings`.
 - Bad: let the controlled Designer commit local history before the Model reducer accepts the command; a rejected
@@ -176,11 +223,18 @@ legacy Designer artifact (open/migrate once)
 - Unit: root and nested candidate targets resolve append indices without DOM reordering; sticky nested and collapsed
   geometry targets remain deterministic; palette cancellation removes candidate/overlay state without emitting a Model
   mutation.
+- Unit: Application parsing and operations cover v1 migration, repository round trips, revision conflicts, unique
+  routes, home-page invariants, final-page deletion, deep-ID duplication, and page-order changes.
+- Unit: Export snapshots are immutable, become stale on later model/application revisions, and replace every consumer
+  atomically only after explicit refresh.
 - Unit: structural children with `allowedParents` are accepted only in the declared material/slot pair, rejected at the
   root and wrong parents, and omitted from live Runtime projection when loading invalid stored documents.
 - Unit: a Workbench projection outside the Designer provider applies an explicit locale and reacts when the locale
   options are replaced without mutating the Config Model.
 - Integration: both built-in adapter projects install, type-check, and build from generated files.
+- Integration: both built-in multi-page standalone Source projects install, type-check, and build without any
+  `@moluoxixi/config-form*` dependency; the Runtime package smoke consumer imports and types both `ConfigFormRenderer`
+  and `RuntimeSurface` with `skipLibCheck: false`.
 - Browser: Components/Layers/Pages are reachable; Layers selection updates Inspector; a committed Inspector edit updates
   Canvas and the open Preview; Source/Config open only through the Export menu and remain read-only.
 - Browser: palette drops into populated Flex/Grid and other legal nested slots append to the intended parent, then the
@@ -211,3 +265,29 @@ function applyDesignCommand(command: DesignerCommand, projected: DesignerDocumen
 ```
 
 The compatibility conversion is owned at the Design boundary. Generated Source and Config never call the reverse path.
+
+### Application export snapshot
+
+Wrong:
+
+```ts
+watch(modelRevision, () => {
+  sourceFiles.value = generateSource(application.value)
+})
+```
+
+Correct:
+
+```ts
+const snapshot = ref(createExportSnapshot(application.value, modelRevision.value, registry))
+const stale = computed(() =>
+  application.revision !== snapshot.applicationRevision
+  || modelRevision !== snapshot.modelRevision,
+)
+
+function refreshExport() {
+  snapshot.value = createExportSnapshot(application.value, modelRevision.value, registry)
+}
+```
+
+Every export surface reads `snapshot.files`; live model changes never update only one consumer.
