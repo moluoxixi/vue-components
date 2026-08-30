@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./.tsbuildinfo/tsconfig.app.tsbuildinfo",
+    "lib": ["DOM", "ESNext"],
+    "types": ["vite/client", "vitest"]
+  },
+  "include": ["src", "index.ts", "__tests__"],
+  "exclude": ["vite.config.ts"]
+}

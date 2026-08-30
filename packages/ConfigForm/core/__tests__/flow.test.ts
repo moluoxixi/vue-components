@@ -32,7 +32,13 @@ describe('config form flow core', () => {
     const result = analyzeConfigFormFlow(flow(), 7)
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.plan.revision).toBe(7)
+      expect(result.plan).toMatchObject({
+        version: 1,
+        flowId: 'profile-submit',
+        name: 'Profile submit',
+        trigger: { kind: 'form.submit' },
+      })
+      expect(result.plan).not.toHaveProperty('revision')
       expect(result.plan.topologicalOrder).toEqual(['trigger', 'check', 'failure', 'save', 'success'])
       expect(result.plan.nodes.find(node => node.id === 'check')?.outgoing.map(edge => edge.condition)).toEqual(['true', 'false'])
     }
@@ -48,6 +54,34 @@ describe('config form flow core', () => {
       node.position = { x: index * 120, y: 240 }
     })
     expect(getConfigFormFlowSemanticHash(left)).toBe(getConfigFormFlowSemanticHash(right))
+    const analyzed = analyzeConfigFormFlow(right)
+    expect(analyzed.success).toBe(true)
+    if (analyzed.success)
+      expect(analyzed.plan.nodes.every(node => !Object.hasOwn(node, 'position'))).toBe(true)
+  })
+
+  it('executes a self-contained plan without depending on the authoring graph', async () => {
+    const source = flow({ concurrency: 'ignore', errorPolicy: { onError: 'end' } })
+    const analyzed = analyzeConfigFormFlow(source)
+    expect(analyzed.success).toBe(true)
+    if (!analyzed.success)
+      return
+
+    const execute = vi.fn(async (input: unknown) => ({ saved: input }))
+    const interpreter = new ConfigFormFlowInterpreter({ get: () => ({ execute }) })
+    const result = await interpreter.run(structuredClone(analyzed.plan), {
+      revision: 11,
+      values: { name: 'Plan only' },
+    })
+
+    expect(result).toMatchObject({ status: 'success', revision: 11 })
+    expect(execute).toHaveBeenCalledWith('Plan only', expect.objectContaining({
+      flow: expect.objectContaining({
+        concurrency: 'ignore',
+        errorPolicy: { onError: 'end' },
+        trigger: { kind: 'form.submit' },
+      }),
+    }))
   })
 
   it('keeps semantic hashes stable across JSON object key order', () => {

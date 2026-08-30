@@ -1,14 +1,13 @@
 <script setup lang="ts">
+import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type {
-  DesignerLocaleOptions,
-  LowCodeComponentRegistry,
-} from '@moluoxixi/config-form-designer'
-import type {
-  ExportSnapshot,
+  BuildExportSnapshotInput,
+  ExportFileSet,
+  ExportSessionState,
   ProjectPath,
   WorkspaceFile,
 } from '../../project'
-import type { WorkspaceProjectionSnapshot } from '../../session'
 import {
   Clipboard,
   Download,
@@ -16,39 +15,44 @@ import {
   RefreshCw,
   X,
 } from '@lucide/vue'
-import { computed, defineAsyncComponent, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  ref,
+  shallowRef,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import ProjectFileTree from '../../components/ProjectFileTree.vue'
 import { useWorkbenchDialogFocus } from '../../components/use-dialog-focus'
 import {
   buildProjectFileTree,
   collectProjectTreeDirectoryIds,
-  createExportSnapshot,
-  createWorkspaceApplicationSourceExport,
+  createExportSession,
   downloadWorkspaceArchive,
-  isExportSnapshotStale,
   normalizeProjectPath,
   resolveExportSnapshotPath,
-  WORKSPACE_CONFIG_MODULE_PATH,
 } from '../../project'
-import { formatLowCodePageConfig } from '../../workbench/config-codec'
 
 export type ExportMode = 'source' | 'config'
 type ConfigViewMode = 'source' | 'json' | 'tree'
+type MobileFileView = 'tree' | 'code'
 
 interface ConfigTreeEntry {
   branch: boolean
   depth: number
+  label: string
   path: string
   value: string
 }
 
 const props = defineProps<{
-  capture: () => WorkspaceProjectionSnapshot | undefined
-  currentRevisionKey: string
+  capture: () => BuildExportSnapshotInput | undefined
+  currentCompilation?: ProjectCompilation
   locale?: DesignerLocaleOptions
   mode?: ExportMode
-  registry: LowCodeComponentRegistry
   theme: 'dark' | 'light'
 }>()
 
@@ -58,129 +62,119 @@ const emit = defineEmits<{
 }>()
 
 const WorkspaceCodeEditor = defineAsyncComponent(() => import('../../components/WorkspaceCodeEditor.vue'))
-const SOURCE_PATH = normalizeProjectPath('src/App.vue')
-const CONFIG_PATH = WORKSPACE_CONFIG_MODULE_PATH
+const DEFAULT_SOURCE_PATH = normalizeProjectPath('src/App.vue')
+const DEFAULT_CONFIG_PATH = normalizeProjectPath('project.config.ts')
 const dialog = useTemplateRef<HTMLElement>('dialog')
-const projection = shallowRef<WorkspaceProjectionSnapshot>()
-const sourceSnapshot = shallowRef<ExportSnapshot>()
-const sourceSnapshotError = ref('')
-const sourceViewPath = ref<ProjectPath>(SOURCE_PATH)
+const sourceViewPath = ref<ProjectPath>(DEFAULT_SOURCE_PATH)
+const configViewPath = ref<ProjectPath>(DEFAULT_CONFIG_PATH)
 const sourceTreeExpandedIds = ref<string[]>([])
-const sourceMobileView = ref<'tree' | 'code'>('tree')
+const configTreeExpandedIds = ref<string[]>([])
+const sourceMobileView = ref<MobileFileView>('tree')
+const configMobileView = ref<MobileFileView>('tree')
 const configViewMode = ref<ConfigViewMode>('source')
 const locale = computed(() => createDesignerLocale(props.locale))
+const exportSession = createExportSession({
+  capture: () => props.capture(),
+  currentCompilation: () => props.currentCompilation,
+})
+const sessionState = shallowRef<ExportSessionState>(exportSession.state)
+const unsubscribeSession = exportSession.subscribe(state => sessionState.value = state)
+const snapshot = computed(() => sessionState.value.snapshot)
+const snapshotEditVersion = computed(() => {
+  const origin = snapshot.value?.compilation.origin
+  if (!origin)
+    return '-'
+  return origin.kind === 'committed' ? origin.editVersion : origin.baseEditVersion
+})
+const snapshotError = computed(() => sessionState.value.error ?? '')
+const snapshotStale = computed(() => sessionState.value.stale)
+const sourceFileSet = computed(() => snapshot.value?.source)
+const configFileSet = computed(() => snapshot.value?.config)
+const sourceFileTree = computed(() => sourceFileSet.value ? buildProjectFileTree(sourceFileSet.value.files) : [])
+const configFileTree = computed(() => configFileSet.value ? buildProjectFileTree(configFileSet.value.files) : [])
+const selectedSourceFile = computed<Readonly<WorkspaceFile> | undefined>(() => sourceFileSet.value?.files[sourceViewPath.value])
+const selectedConfigFile = computed<Readonly<WorkspaceFile> | undefined>(() => configFileSet.value?.files[configViewPath.value])
+const sourceCode = computed(() => selectedSourceFile.value?.kind === 'text' ? selectedSourceFile.value.content : '')
+const configCode = computed(() => selectedConfigFile.value?.kind === 'text' ? selectedConfigFile.value.content : '')
+const configDocument = computed(() => snapshot.value?.compilation.snapshot.document)
+const generatedConfigJson = computed(() => configDocument.value
+  ? `${JSON.stringify(configDocument.value, null, 2)}\n`
+  : '')
 const { handleKeydown } = useWorkbenchDialogFocus(
   () => !!props.mode,
   dialog,
   () => emit('close'),
 )
 
-const projectionStale = computed(() => !!projection.value
-  && projection.value.revisionKey !== props.currentRevisionKey)
-const sourceSnapshotStale = computed(() => isExportSnapshotStale(
-  sourceSnapshot.value,
-  projection.value?.application.id,
-  props.currentRevisionKey,
-))
-const sourceFileTree = computed(() => sourceSnapshot.value
-  ? buildProjectFileTree(sourceSnapshot.value.files)
-  : [])
-const selectedSourceFile = computed<WorkspaceFile | undefined>(() => sourceSnapshot.value?.files[sourceViewPath.value])
-const sourceCode = computed(() => selectedSourceFile.value?.kind === 'text' ? selectedSourceFile.value.content : '')
-const sourceLanguage = computed(() => {
-  const file = selectedSourceFile.value
-  if (file?.kind === 'text' && file.language)
-    return file.language
-  if (sourceViewPath.value.endsWith('.vue')) return 'vue'
-  if (sourceViewPath.value.endsWith('.json')) return 'json'
-  if (sourceViewPath.value.endsWith('.css')) return 'css'
-  if (sourceViewPath.value.endsWith('.html')) return 'html'
-  return 'typescript'
-})
-const configModel = computed(() => projection.value?.currentPage.model)
-const generatedConfigSource = computed(() => configModel.value
-  ? formatLowCodePageConfig(configModel.value, props.registry)
-  : '')
-const generatedConfigJson = computed(() => configModel.value
-  ? `${JSON.stringify(configModel.value, null, 2)}\n`
-  : '')
 const generatedConfigTree = computed<ConfigTreeEntry[]>(() => {
-  if (!configModel.value)
+  const document = configDocument.value
+  if (!document)
     return []
   const entries: ConfigTreeEntry[] = []
-  const visit = (value: unknown, path: string, depth: number): void => {
+  const visit = (value: unknown, path: string, depth: number, label: string): void => {
+    const branch = typeof value === 'object' && value !== null
+    entries.push({
+      branch,
+      depth,
+      label,
+      path,
+      value: branch ? (Array.isArray(value) ? `[${value.length}]` : '{...}') : JSON.stringify(value),
+    })
     if (Array.isArray(value)) {
-      value.forEach((item, index) => visit(item, `${path}[${index}]`, depth))
+      value.forEach((item, index) => visit(item, `${path}[${index}]`, depth + 1, `[${index}]`))
       return
     }
-    if (typeof value !== 'object' || value === null)
-      return
-    for (const [key, child] of Object.entries(value)) {
-      const childPath = path ? `${path}.${key}` : key
-      const branch = typeof child === 'object' && child !== null
-      entries.push({
-        branch,
-        depth,
-        path: childPath,
-        value: branch ? (Array.isArray(child) ? `[${child.length}]` : '{...}') : JSON.stringify(child),
-      })
-      if (branch)
-        visit(child, childPath, depth + 1)
+    if (branch) {
+      Object.entries(value).forEach(([key, child]) => visit(
+        child,
+        path ? `${path}.${key}` : key,
+        depth + 1,
+        key,
+      ))
     }
   }
-  visit(configModel.value, '', 0)
+  Object.entries(document).forEach(([key, value]) => visit(value, key, 0, key))
   return entries
 })
 
+watch(() => props.currentCompilation, () => exportSession.sync())
 watch(() => props.mode, (mode) => {
   if (!mode)
     return
-  if (mode === 'source') {
-    sourceViewPath.value = SOURCE_PATH
+  if (mode === 'source')
     sourceMobileView.value = 'tree'
-    sourceSnapshot.value = undefined
-    sourceSnapshotError.value = ''
-    refreshSourceSnapshot()
-  }
   else {
     configViewMode.value = 'source'
-    refreshConfigSnapshot()
+    configMobileView.value = 'tree'
   }
+  if (!snapshot.value)
+    void refreshSnapshot()
+  else
+    exportSession.sync()
 }, { immediate: true })
 
-function refreshConfigSnapshot(): void {
-  const next = props.capture()
-  if (next)
-    projection.value = next
+onBeforeUnmount(unsubscribeSession)
+
+function languageFor(file: Readonly<WorkspaceFile> | undefined, path: ProjectPath): string {
+  if (file?.kind === 'text' && file.language)
+    return file.language
+  if (path.endsWith('.vue')) return 'vue'
+  if (path.endsWith('.json')) return 'json'
+  if (path.endsWith('.css')) return 'css'
+  if (path.endsWith('.html')) return 'html'
+  return 'typescript'
 }
 
-function refreshSourceSnapshot(): void {
-  const nextProjection = props.capture()
-  if (!nextProjection)
+async function refreshSnapshot(): Promise<void> {
+  const result = await exportSession.refresh()
+  if (!result.success)
     return
-  try {
-    const exported = createWorkspaceApplicationSourceExport(
-      nextProjection.application,
-      props.registry,
-    )
-    const next = createExportSnapshot({
-      applicationId: nextProjection.application.id,
-      applicationName: nextProjection.application.name,
-      applicationRevision: nextProjection.applicationRevision,
-      entry: SOURCE_PATH,
-      files: exported.files,
-      modelRevision: nextProjection.modelRevision,
-      revisionKey: nextProjection.revisionKey,
-    })
-    projection.value = nextProjection
-    sourceSnapshot.value = next
-    sourceSnapshotError.value = ''
-    sourceViewPath.value = resolveExportSnapshotPath(next, sourceViewPath.value) ?? SOURCE_PATH
-    sourceTreeExpandedIds.value = collectProjectTreeDirectoryIds(buildProjectFileTree(next.files))
-  }
-  catch (error) {
-    sourceSnapshotError.value = error instanceof Error ? error.message : String(error)
-  }
+  sourceViewPath.value = resolveExportSnapshotPath(result.snapshot.source, sourceViewPath.value)
+    ?? result.snapshot.source.entry
+  configViewPath.value = resolveExportSnapshotPath(result.snapshot.config, configViewPath.value)
+    ?? result.snapshot.config.entry
+  sourceTreeExpandedIds.value = collectProjectTreeDirectoryIds(buildProjectFileTree(result.snapshot.source.files))
+  configTreeExpandedIds.value = collectProjectTreeDirectoryIds(buildProjectFileTree(result.snapshot.config.files))
 }
 
 function selectSourcePath(path: ProjectPath): void {
@@ -188,15 +182,24 @@ function selectSourcePath(path: ProjectPath): void {
   sourceMobileView.value = 'code'
 }
 
+function selectConfigPath(path: ProjectPath): void {
+  configViewPath.value = path
+  configMobileView.value = 'code'
+}
+
+function activeFileSet(): ExportFileSet | undefined {
+  return props.mode === 'source' ? sourceFileSet.value : configFileSet.value
+}
+
 function exportText(): string {
   if (props.mode === 'source')
     return sourceCode.value
-  return configViewMode.value === 'source' ? generatedConfigSource.value : generatedConfigJson.value
+  return configViewMode.value === 'source' ? configCode.value : generatedConfigJson.value
 }
 
 async function copyExport(): Promise<void> {
-  if (props.mode === 'source' && !sourceSnapshot.value) {
-    emit('message', sourceSnapshotError.value)
+  if (!snapshot.value) {
+    emit('message', snapshotError.value)
     return
   }
   try {
@@ -212,15 +215,17 @@ async function copyExport(): Promise<void> {
 
 function downloadCurrent(): void {
   const mode = props.mode
-  if (!mode || (mode === 'source' && !sourceSnapshot.value))
+  if (!mode || !snapshot.value)
     return
-  const isSourceText = mode === 'source' || configViewMode.value === 'source'
-  const url = URL.createObjectURL(new Blob([exportText()], { type: isSourceText ? 'text/plain' : 'application/json' }))
+  const isCode = mode === 'source' || configViewMode.value === 'source'
+  const url = URL.createObjectURL(new Blob([exportText()], { type: isCode ? 'text/plain' : 'application/json' }))
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = mode === 'source'
     ? sourceViewPath.value.split('/').at(-1)!
-    : configViewMode.value === 'source' ? 'form.config.ts' : 'page.config.json'
+    : configViewMode.value === 'source'
+      ? configViewPath.value.split('/').at(-1)!
+      : 'project.config.json'
   anchor.click()
   URL.revokeObjectURL(url)
   emit('message', mode === 'source'
@@ -228,13 +233,16 @@ function downloadCurrent(): void {
     : locale.value.t('export.downloadedConfig', 'Downloaded config export'))
 }
 
-async function downloadProject(): Promise<void> {
-  if (!sourceSnapshot.value)
+async function downloadBundle(): Promise<void> {
+  const fileSet = activeFileSet()
+  const current = snapshot.value
+  if (!fileSet || !current)
     return
   try {
+    const suffix = props.mode === 'source' ? 'source' : 'config'
     const filename = await downloadWorkspaceArchive({
-      name: sourceSnapshot.value.applicationName,
-      files: sourceSnapshot.value.files,
+      name: `${current.compilation.ir.name}-${suffix}`,
+      files: fileSet.files,
     })
     emit('message', locale.value.t('export.downloaded', 'Downloaded {name}', { name: filename }))
   }
@@ -256,15 +264,16 @@ async function downloadProject(): Promise<void> {
           <X :size="17" aria-hidden="true" />
         </button>
       </header>
+
       <div class="export-preview-body">
         <div v-if="mode === 'source'" class="source-export-view">
-          <div v-if="sourceSnapshotError" class="export-diagnostic" role="alert">
+          <div v-if="snapshotError" class="export-diagnostic" role="alert">
             <strong>{{ locale.t('export.sourceUnavailable', 'Source export unavailable') }}</strong>
-            <p>{{ sourceSnapshotError }}</p>
+            <p>{{ snapshotError }}</p>
           </div>
-          <div v-else-if="sourceSnapshotStale" class="export-stale" role="status">
+          <div v-if="snapshotStale" class="export-stale" role="status">
             <span>{{ locale.t('export.staleSource', 'The design changed after this export snapshot was opened.') }}</span>
-            <button type="button" @click="refreshSourceSnapshot">
+            <button type="button" @click="refreshSnapshot">
               <RefreshCw :size="14" aria-hidden="true" /> {{ locale.t('export.refresh', 'Refresh snapshot') }}
             </button>
           </div>
@@ -285,7 +294,7 @@ async function downloadProject(): Promise<void> {
               <WorkspaceCodeEditor
                 v-if="selectedSourceFile?.kind === 'text'"
                 :filename="sourceViewPath"
-                :language="sourceLanguage"
+                :language="languageFor(selectedSourceFile, sourceViewPath)"
                 :locale="props.locale"
                 :model-value="sourceCode"
                 :readonly="true"
@@ -299,10 +308,15 @@ async function downloadProject(): Promise<void> {
             </div>
           </div>
         </div>
-        <template v-else>
-          <div v-if="projectionStale" class="export-stale" role="status">
-            <span>{{ locale.t('export.staleConfig', 'The design changed after this config snapshot was opened.') }}</span>
-            <button type="button" @click="refreshConfigSnapshot">
+
+        <div v-else class="config-export-view">
+          <div v-if="snapshotError" class="export-diagnostic" role="alert">
+            <strong>{{ locale.t('export.configUnavailable', 'Config export unavailable') }}</strong>
+            <p>{{ snapshotError }}</p>
+          </div>
+          <div v-if="snapshotStale" class="export-stale" role="status">
+            <span>{{ locale.t('export.staleConfig', 'The design changed after this export snapshot was opened.') }}</span>
+            <button type="button" @click="refreshSnapshot">
               <RefreshCw :size="14" aria-hidden="true" /> {{ locale.t('export.refresh', 'Refresh snapshot') }}
             </button>
           </div>
@@ -311,35 +325,51 @@ async function downloadProject(): Promise<void> {
             <button type="button" role="tab" :aria-selected="configViewMode === 'json'" @click="configViewMode = 'json'">JSON</button>
             <button type="button" role="tab" :aria-selected="configViewMode === 'tree'" @click="configViewMode = 'tree'">{{ locale.t('export.tree', 'Tree') }}</button>
           </nav>
-          <WorkspaceCodeEditor
-            v-if="configViewMode === 'source'"
-            :filename="CONFIG_PATH"
-            language="typescript"
-            :locale="props.locale"
-            :model-value="generatedConfigSource"
-            :readonly="true"
-            :theme="theme"
-          />
-          <pre v-if="configViewMode === 'json'" class="config-json-view" tabindex="0">{{ generatedConfigJson }}</pre>
-          <div v-else-if="configViewMode === 'tree'" class="config-tree-view" role="tree" tabindex="0">
+          <div v-if="configViewMode === 'source'" class="source-file-layout">
+            <nav class="source-file-tabs" role="tablist" :aria-label="locale.t('export.configSourceView', 'Config source view')">
+              <button type="button" role="tab" :aria-selected="configMobileView === 'tree'" @click="configMobileView = 'tree'">{{ locale.t('export.tree', 'Tree') }}</button>
+              <button type="button" role="tab" :aria-selected="configMobileView === 'code'" @click="configMobileView = 'code'">{{ locale.t('export.code', 'Code') }}</button>
+            </nav>
+            <ProjectFileTree
+              v-model:expanded-ids="configTreeExpandedIds"
+              :class="{ 'is-mobile-hidden': configMobileView !== 'tree' }"
+              :nodes="configFileTree"
+              :locale="props.locale"
+              :selected-path="configViewPath"
+              @select="selectConfigPath"
+            />
+            <div class="source-code-pane" :class="{ 'is-mobile-hidden': configMobileView !== 'code' }">
+              <WorkspaceCodeEditor
+                v-if="selectedConfigFile?.kind === 'text'"
+                :filename="configViewPath"
+                :language="languageFor(selectedConfigFile, configViewPath)"
+                :locale="props.locale"
+                :model-value="configCode"
+                :readonly="true"
+                :theme="theme"
+              />
+            </div>
+          </div>
+          <pre v-else-if="configViewMode === 'json'" class="config-json-view" tabindex="0">{{ generatedConfigJson }}</pre>
+          <div v-else class="config-tree-view" role="tree" tabindex="0">
             <div v-for="entry in generatedConfigTree" :key="entry.path" role="treeitem" :style="{ paddingLeft: `${12 + entry.depth * 18}px` }">
-              <span class="config-tree-key">{{ entry.path.split('.').at(-1) }}</span>
+              <span class="config-tree-key">{{ entry.label }}</span>
               <span class="config-tree-value" :class="{ 'is-branch': entry.branch }">{{ entry.value }}</span>
             </div>
           </div>
-        </template>
+        </div>
       </div>
+
       <footer>
-        <span v-if="mode === 'source'">{{ locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', { revision: sourceSnapshot?.modelRevision ?? '-' }) }}{{ sourceSnapshotStale ? ` · ${locale.t('export.stale', 'Stale')}` : '' }}</span>
-        <span v-else>{{ locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', { revision: projection?.modelRevision ?? '-' }) }}{{ projectionStale ? ` · ${locale.t('export.stale', 'Stale')}` : '' }}</span>
+        <span>{{ locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', { revision: snapshotEditVersion }) }}{{ snapshotStale ? ` · ${locale.t('export.stale', 'Stale')}` : '' }}</span>
         <div>
-          <button v-if="mode === 'source'" type="button" class="dialog-action secondary" :disabled="!sourceSnapshot" @click="downloadProject">
-            <Download :size="15" aria-hidden="true" /> {{ locale.t('export.projectZip', 'Project ZIP') }}
+          <button type="button" class="dialog-action secondary" :disabled="!snapshot" @click="downloadBundle">
+            <Download :size="15" aria-hidden="true" /> {{ mode === 'source' ? locale.t('export.projectZip', 'Project ZIP') : locale.t('export.configZip', 'Config ZIP') }}
           </button>
-          <button type="button" class="dialog-action secondary" @click="copyExport">
+          <button type="button" class="dialog-action secondary" :disabled="!snapshot" @click="copyExport">
             <Clipboard :size="15" aria-hidden="true" /> {{ locale.t('action.copy', 'Copy') }}
           </button>
-          <button type="button" class="dialog-action" :disabled="mode === 'source' && !sourceSnapshot" @click="downloadCurrent">
+          <button type="button" class="dialog-action" :disabled="!snapshot" @click="downloadCurrent">
             <Download :size="15" aria-hidden="true" /> {{ locale.t('action.download', 'Download') }}
           </button>
         </div>

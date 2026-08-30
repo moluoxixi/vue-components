@@ -102,6 +102,73 @@ describe('indexDBStorage', () => {
     expect(results.filter(result => result.status === 'rejected')).toHaveLength(1)
     await expect(first.getItem('project')).resolves.toEqual({ revision: 2 })
   })
+
+  it('atomically updates multiple declared keys after one CAS read', async () => {
+    const storage = createStorage('storage-update-items')
+    await storage.setItems({ manifest: { revision: 1 }, page: { name: 'Home' } })
+
+    const result = await storage.updateItems<{ revision: number } | { name: string }>(
+      ['manifest', 'page'],
+      (current) => {
+        expect(current.get('manifest')).toEqual({ revision: 1 })
+        return [
+          { key: 'manifest', value: { revision: 2 } },
+          { key: 'page', value: { name: 'Landing' } },
+        ]
+      },
+    )
+
+    expect(result.get('manifest')).toEqual({ revision: 2 })
+    await expect(storage.getItems(['manifest', 'page'])).resolves.toEqual({
+      manifest: { revision: 2 },
+      page: { name: 'Landing' },
+    })
+  })
+
+  it('aborts every key when a multi-item updater fails contract validation', async () => {
+    const storage = createStorage('storage-update-items-abort')
+    await storage.setItems({ manifest: { revision: 1 }, page: { name: 'Home' } })
+
+    await expect(storage.updateItems<{ revision: number } | { name: string }>(['manifest', 'page'], () => [
+      { key: 'manifest', value: { revision: 2 } },
+      { key: 'undeclared', value: { name: 'Invalid' } },
+    ])).rejects.toThrow('undeclared key')
+    await expect(storage.getItems(['manifest', 'page', 'undeclared'])).resolves.toEqual({
+      manifest: { revision: 1 },
+      page: { name: 'Home' },
+      undeclared: null,
+    })
+    // @ts-expect-error Promise-returning updaters are rejected by both the type and runtime contracts.
+    await expect(storage.updateItems(['manifest'], async () => [])).rejects.toThrow('updater must be synchronous')
+  })
+
+  it('serializes multi-key CAS updates across database connections', async () => {
+    const first = createStorage('storage-update-items-cas')
+    const second = createStorage('storage-update-items-cas')
+    await first.setItems({ manifest: { revision: 1 }, page: { value: 'initial' } })
+
+    const commit = (storage: IndexDBStorage, value: string) => storage.updateItems<{
+      revision?: number
+      value?: string
+    }>(['manifest', 'page'], (current) => {
+      if (current.get('manifest')?.revision !== 1)
+        throw new Error('revision conflict')
+      return [
+        { key: 'manifest', value: { revision: 2 } },
+        { key: 'page', value: { value } },
+      ]
+    })
+    const results = await Promise.allSettled([
+      commit(first, 'first'),
+      commit(second, 'second'),
+    ])
+
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.filter(result => result.status === 'rejected')).toHaveLength(1)
+    const values = await first.getItems<{ revision?: number, value?: string }>(['manifest', 'page'])
+    expect(values.manifest?.revision).toBe(2)
+    expect(['first', 'second']).toContain(values.page?.value)
+  })
 })
 
 describe('indexedDBManager', () => {

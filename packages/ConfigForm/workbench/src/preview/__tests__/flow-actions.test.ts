@@ -9,7 +9,13 @@ describe('workbench flow actions', () => {
     expect(action).toBeDefined()
     const result = await action!.execute({ ok: true }, {
       flow: {} as never,
-      node: { id: 'notify', type: 'action', ref: 'notify' },
+      node: {
+        id: 'notify',
+        type: 'action',
+        ref: 'notify',
+        incoming: [],
+        outgoing: [],
+      },
       revision: 1,
       runId: 'run-1',
       signal: new AbortController().signal,

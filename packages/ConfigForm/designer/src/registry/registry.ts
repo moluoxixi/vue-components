@@ -30,6 +30,7 @@ function assertDesignPolicy(definition: DesignerMaterialDefinition, layerName: s
     || !valid(policy.interaction, ['preview', 'blocked'])
     || !valid(policy.async, ['blocked', 'adapter'])
     || !valid(policy.sideEffects, ['blocked', 'adapter'])
+    || !valid(policy.visualEquivalence, ['runtime-geometry'])
     || (policy.diagnostic !== undefined && (typeof policy.diagnostic !== 'string' || !policy.diagnostic.trim()))
     || (policy.adapter !== undefined && !isControlledAdapter(policy.adapter))) {
     throw new DesignerRegistryError(
@@ -46,6 +47,13 @@ function assertDesignPolicy(definition: DesignerMaterialDefinition, layerName: s
     throw new DesignerRegistryError(
       'DESIGNER_DESIGN_POLICY_ADAPTER_REQUIRED',
       `Designer material ${definition.key} requires a controlled design adapter`,
+      { key: definition.key, layerName },
+    )
+  }
+  if (adapterRequired && policy.visualEquivalence !== 'runtime-geometry') {
+    throw new DesignerRegistryError(
+      'DESIGNER_DESIGN_POLICY_EQUIVALENCE_REQUIRED',
+      `Designer material ${definition.key} must declare runtime geometry equivalence for its design adapter`,
       { key: definition.key, layerName },
     )
   }

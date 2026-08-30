@@ -2,56 +2,28 @@ import type {
   ConfigFormFlow,
   ConfigFormFlowEdge,
   ConfigFormFlowNode,
-  ConfigFormReaction,
 } from '@moluoxixi/config-form-core'
-import type { RuleSet } from '@moluoxixi/zod3-to-rule'
-import type { DesignerConditionExpression, DesignerConditionTarget } from '../condition'
 import type {
-  DesignerFormSettings,
-  DesignerJsonObject,
-  DesignerJsonValue,
-  DesignerNodeKind,
-  DesignerRegisteredBinding,
-  DesignerRegisteredEventAction,
-} from '../document'
+  FormSettings,
+  LegacyLowCodeNodeV1,
+  LegacyLowCodePageModelV1,
+  ModelJsonObject,
+  RegisteredBinding as ModelRegisteredBinding,
+  RegisteredEventAction as ModelRegisteredEventAction,
+} from '@moluoxixi/config-form-model'
+import { LEGACY_LOW_CODE_PAGE_MODEL_VERSION } from '@moluoxixi/config-form-model'
 
 export type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 
-export const LOW_CODE_PAGE_MODEL_VERSION = 1 as const
+export const LOW_CODE_PAGE_MODEL_VERSION = LEGACY_LOW_CODE_PAGE_MODEL_VERSION
 
-export type RegisteredEventAction = DesignerRegisteredEventAction
-export type RegisteredBinding = DesignerRegisteredBinding
+export type RegisteredEventAction = ModelRegisteredEventAction
+export type RegisteredBinding = ModelRegisteredBinding
 
-export interface LowCodeNode {
-  id: string
-  component: string
-  props: DesignerJsonObject
-  events: Record<string, RegisteredEventAction[]>
-  bindings: Record<string, RegisteredBinding>
-  children: LowCodeNode[]
-  slots: Record<string, LowCodeNode[]>
-  kind: DesignerNodeKind
-  field?: string
-  label?: string
-  defaultValue?: DesignerJsonValue
-  validation?: RuleSet
-  validateOn?: 'submit' | 'blur' | 'change' | Array<'submit' | 'blur' | 'change'>
-  extensions?: DesignerJsonObject
-  span?: number
-  conditions?: Partial<Record<DesignerConditionTarget, DesignerConditionExpression>>
-  reactions?: ConfigFormReaction[]
-}
-
-export interface LowCodePageModel {
-  id: string
-  name: string
-  version: typeof LOW_CODE_PAGE_MODEL_VERSION
-  props: DesignerJsonObject
-  form: DesignerFormSettings
-  nodes: LowCodeNode[]
-  /** Optional JSON-only event flows; model remains the single source of truth. */
-  flows?: ConfigFormFlow[]
-}
+/** @deprecated Use PageGraph from @moluoxixi/config-form-model for new code. */
+export type LowCodeNode = LegacyLowCodeNodeV1
+/** @deprecated Use ProjectDocument/PageGraph from @moluoxixi/config-form-model for new code. */
+export type LowCodePageModel = LegacyLowCodePageModelV1
 
 export interface ModelDiagnostic {
   code: string
@@ -85,7 +57,7 @@ export type ConfigFormFlowSettings = Pick<
 export type ModelOperation
   = | { type: 'insert', node: LowCodeNode, target: ModelNodeTarget }
     | { type: 'move', nodeId: string, target: ModelNodeTarget }
-    | { type: 'updatePage', form: DesignerFormSettings, props: DesignerJsonObject }
+    | { type: 'updatePage', form: FormSettings, props: ModelJsonObject }
     | { type: 'addFlow', flow: ConfigFormFlow, index?: number }
     | { type: 'updateFlowSettings', flowId: string, settings: ConfigFormFlowSettings }
     | { type: 'updateFlowNode', flowId: string, nodeId: string, node: ConfigFormFlowNode }
@@ -96,7 +68,7 @@ export type ModelOperation
     | { type: 'removeFlow', flowId: string }
     /** Compatibility operation for restoring an exact legacy flows snapshot. */
     | { type: 'updateFlows', flows?: ConfigFormFlow[] }
-    | { type: 'updateProps', nodeId: string, props: DesignerJsonObject }
+    | { type: 'updateProps', nodeId: string, props: ModelJsonObject }
     | { type: 'updateEvents', nodeId: string, events: Record<string, RegisteredEventAction[]> }
     | { type: 'updateBindings', nodeId: string, bindings: Record<string, RegisteredBinding> }
     | { type: 'updateNode', nodeId: string, patch: ModelNodePatch }

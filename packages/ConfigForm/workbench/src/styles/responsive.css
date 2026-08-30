@@ -131,6 +131,14 @@
     min-height: 0;
   }
 
+  .designer-left-panel {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .designer-left-tabs {
+    display: none;
+  }
+
   .embedded-designer .mx-config-form-designer__toolbar {
     min-height: 44px;
     padding-inline: 8px;
@@ -287,8 +295,12 @@
     height: 44px;
   }
 
-  .designer-layer-actions button {
+  .designer-layer-actions .designer-layer-menu-trigger {
     width: 44px;
+  }
+
+  .designer-layer-menu button {
+    width: 100%;
   }
 
   .workspace-recovery-notice {

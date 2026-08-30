@@ -108,10 +108,20 @@ describe('workbench theme contract', () => {
     expect(selectorBlock(
       '.workbench-app[data-theme="light"] .embedded-designer.mx-config-form-designer',
     )).toContain('--mx-designer-muted: #526176;')
-    expect(selectorBlock(
+    const paletteItem = selectorBlock(
       '.mx-config-form-designer__palette-item',
       designerStylesheet,
-    )).toContain('transition: border-color 120ms ease, box-shadow 120ms ease;')
+    )
+    expect(paletteItem).toContain('background: transparent;')
+    expect(paletteItem).toContain('transition: background-color 100ms ease, border-color 100ms ease;')
+    expect(selectorBlock(
+      '.mx-config-form-designer__palette-item:focus-within',
+      designerStylesheet,
+    )).toContain('outline: 2px solid color-mix(in srgb, var(--mx-designer-accent) 32%, transparent);')
+    expect(selectorBlock(
+      '.mx-config-form-designer__palette-item-preview',
+      designerStylesheet,
+    )).toContain('background: var(--mx-designer-runtime-surface);')
     expect(contrast(
       '#ffffff',
       colorVariable('.workbench-app[data-theme="dark"] .embedded-designer.mx-config-form-designer', '--mx-designer-selection-bg'),

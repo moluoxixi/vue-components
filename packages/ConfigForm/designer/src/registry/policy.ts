@@ -27,6 +27,7 @@ export function resolveDesignerDesignPolicy(
     async: policy.async ?? 'blocked',
     sideEffects: policy.sideEffects ?? 'blocked',
     ...(policy.adapter === undefined ? {} : { adapter: policy.adapter }),
+    ...(policy.visualEquivalence === undefined ? {} : { visualEquivalence: policy.visualEquivalence }),
     ...(policy.diagnostic === undefined ? {} : { diagnostic: policy.diagnostic.trim() }),
   }
 }

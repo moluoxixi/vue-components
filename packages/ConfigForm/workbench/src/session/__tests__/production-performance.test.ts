@@ -50,7 +50,28 @@ describe('workspace production performance budgets', () => {
       const current = { ...snapshot, modelRevision: revision }
       const projection = coordinator.publish(current, (captured) => {
         const document = configModelToDesignerDocument(captured.currentPage.model)
-        return compileDesignerDocument(document, designerRegistry)
+        const compiled = compileDesignerDocument(document, designerRegistry)
+        return compiled.success
+          ? {
+              success: true,
+              artifact: {
+                compilationKey: {
+                  projectId: captured.application.id,
+                  editVersion: captured.modelRevision,
+                  contentHash: `fnv1a:${captured.modelRevision}`,
+                  registryAdapter: captured.application.manifest.adapter,
+                  registryAdapterVersion: '1',
+                  registryFingerprint: 'fnv1a:registry',
+                  compilerVersion: '1.0.0' as const,
+                  environmentHash: 'fnv1a:environment',
+                  irHash: `fnv1a:ir-${captured.modelRevision}`,
+                },
+                pageId: captured.currentPageId,
+                plan: { renderer: compiled.renderer },
+              },
+              diagnostics: compiled.diagnostics,
+            }
+          : compiled
       })
       expect(projection.status).toBe('live')
     }

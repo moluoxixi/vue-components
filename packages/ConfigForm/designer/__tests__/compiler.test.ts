@@ -5,9 +5,13 @@ import type {
 } from '../index'
 import { describe, expect, it } from 'vitest'
 import {
+  compileConfigModel,
   compileDesignerDocument,
+  createConfigModelRuntimeProjection,
   createDesignerRegistry,
   createDesignerRuntimeProjection,
+  createLowCodeComponentRegistry,
+  designerDocumentToConfigModel,
 } from '../index'
 
 const materials: DesignerMaterialDefinition[] = [
@@ -23,6 +27,7 @@ const materials: DesignerMaterialDefinition[] = [
       trigger: 'update:modelValue',
       readonlyRender: ({ node, value }) => `${node.field}:${String(value ?? '')}`,
     },
+    source: { configComponent: 'Input', tag: 'input', render: 'component' },
     setters: [{
       key: 'defaultValue',
       label: 'Default value',
@@ -44,7 +49,13 @@ const materials: DesignerMaterialDefinition[] = [
     title: 'Section',
     category: 'Layout',
     runtime: { component: 'section' },
-    setters: [],
+    source: { configComponent: 'Section', tag: 'section', render: 'component' },
+    setters: [{
+      key: 'title',
+      label: 'Title',
+      path: ['props', 'title'],
+      control: 'text',
+    }],
     slots: [{ name: 'default', title: 'Content' }],
     createNode: ({ id }) => ({
       id,
@@ -60,6 +71,7 @@ const materials: DesignerMaterialDefinition[] = [
     title: 'Number',
     category: 'Fields',
     runtime: { component: 'input' },
+    source: { configComponent: 'NumberInput', tag: 'input', render: 'component' },
     setters: [{
       key: 'defaultValue',
       label: 'Default value',
@@ -162,6 +174,7 @@ describe('designer compiler', () => {
       designPolicy: {
         async: 'adapter',
         adapter: controlledAdapter,
+        visualEquivalence: 'runtime-geometry',
         diagnostic: 'Async component uses a deterministic editor adapter.',
       },
       createNode: ({ id, field = 'controlled' }) => ({ id, kind: 'field', material: 'element.controlled', field }),
@@ -250,6 +263,45 @@ describe('designer compiler', () => {
     })).toBe('email:person@example.com')
     expect(field.schema?.safeParse('bad').success).toBe(false)
     expect(field.schema?.safeParse('person@example.com').success).toBe(true)
+  })
+
+  it('compiles the canonical config model directly with runtime parity', () => {
+    const registry = createDesignerRegistry([{ name: 'adapter', materials }])
+    const lowCodeRegistry = createLowCodeComponentRegistry(registry)
+    const document = createDocument()
+    const model = designerDocumentToConfigModel(document, { id: 'profile', name: 'Profile' })
+    const modelSnapshot = structuredClone(model)
+    const legacy = compileDesignerDocument(document, registry)
+    const compiled = compileConfigModel(model, lowCodeRegistry)
+    const designProjection = createConfigModelRuntimeProjection(model, lowCodeRegistry)
+    const legacyDesignProjection = createDesignerRuntimeProjection(document, registry)
+
+    expect(compiled.success, JSON.stringify(compiled.success ? [] : compiled.diagnostics)).toBe(true)
+    expect(model).toEqual(modelSnapshot)
+    expect(legacy.success).toBe(true)
+    if (!compiled.success || !legacy.success)
+      return
+    expect(JSON.parse(JSON.stringify(compiled.fields))).toEqual(JSON.parse(JSON.stringify(legacy.fields)))
+    expect(JSON.parse(JSON.stringify(compiled.renderer))).toEqual(JSON.parse(JSON.stringify(legacy.renderer)))
+    expect(JSON.parse(JSON.stringify(designProjection))).toEqual(JSON.parse(JSON.stringify(legacyDesignProjection)))
+
+    const invalid = structuredClone(model)
+    invalid.nodes[0]!.component = 'element.missing'
+    expect(compileConfigModel(invalid, lowCodeRegistry)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'MODEL_COMPONENT_UNKNOWN', nodeId: 'section' }],
+    })
+
+    const invalidDefault = structuredClone(model)
+    const section = invalidDefault.nodes[0]
+    if (section?.kind !== 'container' || section.children[0]?.kind !== 'field')
+      throw new Error('Expected nested field fixture')
+    section.children[0].defaultValue = 42
+    const invalidDefaultResult = compileConfigModel(invalidDefault, lowCodeRegistry)
+    expect(invalidDefaultResult.success).toBe(false)
+    expect(invalidDefaultResult.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'MODEL_DEFAULT_KIND_INVALID', nodeId: 'email' }),
+    ]))
   })
 
   it('does not return renderer fields when material or rule compilation fails', () => {

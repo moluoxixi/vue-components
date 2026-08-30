@@ -398,7 +398,6 @@ function handlePropertyTabKeydown(event: KeyboardEvent, tab: PropertyTab): void 
     <template v-if="node">
       <div class="mx-config-form-designer__property-heading">
         <strong>{{ selectedNodes.length > 1 ? `${selectedNodes.length} selected` : node.kind === 'field' ? (node.label || node.field) : material && locale.materialTitle(material) }}</strong>
-        <code>{{ compatibleSelection ? node.material : 'Mixed components' }}</code>
       </div>
       <div class="mx-config-form-designer__tabs" role="tablist" :aria-label="locale.t('property.views', 'Property views')">
         <button

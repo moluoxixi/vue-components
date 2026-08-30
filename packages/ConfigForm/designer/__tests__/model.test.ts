@@ -7,6 +7,7 @@ import type {
 } from '../index'
 import { describe, expect, it } from 'vitest'
 import {
+  analyzeConfigModel,
   applyConfigModelOperation,
   applyModelOperation,
   configModelToDesignerDocument,
@@ -27,7 +28,10 @@ const inputMaterial: DesignerFieldMaterialDefinition = {
   category: 'Fields',
   runtime: { component: 'TestInput' },
   source: { configComponent: 'text', render: 'component', tag: 'input' },
-  setters: [{ key: 'placeholder', label: 'Placeholder', path: ['props', 'placeholder'], control: 'text' }],
+  setters: [
+    { key: 'placeholder', label: 'Placeholder', path: ['props', 'placeholder'], control: 'text' },
+    { key: 'defaultValue', label: 'Default value', path: ['defaultValue'], control: 'defaultValue', valueKind: 'text' },
+  ],
   createNode: ({ id, field = id }) => ({
     id,
     kind: 'field',
@@ -247,6 +251,32 @@ describe('config model', () => {
       success: false,
       model: insertedPane.model,
       diagnostics: [{ code: 'MODEL_TARGET_PARENT_INVALID', nodeId: 'pane' }],
+    })
+  })
+
+  it('validates complete stored models and rejects invalid default updates', () => {
+    const field = registry.createNode('test.input', { id: 'name', field: 'name' })
+    const model = { ...emptyModel(), nodes: [field] }
+    expect(analyzeConfigModel(model, registry)).toEqual([])
+
+    const duplicate = { ...model, nodes: [field, structuredClone(field)] }
+    expect(analyzeConfigModel(duplicate, registry)).toMatchObject([
+      { code: 'MODEL_NODE_ID_DUPLICATE' },
+    ])
+
+    const paneAtRoot = { ...emptyModel(), nodes: [registry.createNode('test.pane', { id: 'pane' })] }
+    expect(analyzeConfigModel(paneAtRoot, registry)).toMatchObject([
+      { code: 'MODEL_TARGET_PARENT_INVALID', nodeId: 'pane' },
+    ])
+
+    expect(applyModelOperation(model, {
+      type: 'updateNode',
+      nodeId: 'name',
+      patch: { defaultValue: 42 },
+    }, registry)).toMatchObject({
+      success: false,
+      model,
+      diagnostics: [{ code: 'MODEL_DEFAULT_KIND_INVALID', nodeId: 'name' }],
     })
   })
 

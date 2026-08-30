@@ -135,6 +135,8 @@ export interface DesignerDesignPolicy {
   async?: 'blocked' | 'adapter'
   sideEffects?: 'blocked' | 'adapter'
   adapter?: Component | string
+  /** Adapter must preserve the Runtime component's visible box geometry. */
+  visualEquivalence?: 'runtime-geometry'
   /** Human-readable reason shown by the editor diagnostic overlay. */
   diagnostic?: string
 }
@@ -145,6 +147,7 @@ export interface DesignerResolvedDesignPolicy {
   async: 'blocked' | 'adapter'
   sideEffects: 'blocked' | 'adapter'
   adapter?: Component | string
+  visualEquivalence?: 'runtime-geometry'
   diagnostic?: string
 }
 

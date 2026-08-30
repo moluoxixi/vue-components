@@ -1,6 +1,5 @@
-import type { DesignerCompileResult } from '@moluoxixi/config-form-designer'
+import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
 import type { WorkspaceSessionSnapshot } from '../workspace-session'
-import { configModelToDesignerDocument } from '@moluoxixi/config-form-designer'
 import { describe, expect, it } from 'vitest'
 import { createBuiltInWorkspaceApplication } from '../../project'
 import { createWorkspaceProjectionCoordinator } from '../projection-coordinator'
@@ -26,27 +25,39 @@ function sessionSnapshot(): WorkspaceSessionSnapshot {
   }
 }
 
-function success(snapshot: WorkspaceSessionSnapshot): DesignerCompileResult {
-  const document = configModelToDesignerDocument(snapshot.currentPage.model)
+function success(snapshot: WorkspaceSessionSnapshot): VueRuntimeCompileResult {
   return {
     success: true,
-    renderer: {
-      columns: 1,
-      components: {},
-      fieldSpan: 1,
-      fields: [],
-      gap: '0px',
-      inline: false,
-      labelPosition: 'top',
-      readonly: false,
+    artifact: {
+      compilationKey: {
+        projectId: snapshot.application.id,
+        contentHash: `fnv1a:${snapshot.modelRevision}`,
+        registryAdapter: snapshot.application.manifest.adapter,
+        registryAdapterVersion: '1',
+        registryFingerprint: 'fnv1a:registry',
+        compilerVersion: '1.0.0',
+        environmentHash: 'fnv1a:environment',
+        irHash: `fnv1a:ir-${snapshot.modelRevision}`,
+      },
+      pageId: snapshot.currentPageId,
+      plan: {
+        renderer: {
+          columns: 1,
+          components: {},
+          fieldSpan: 1,
+          fields: [],
+          gap: '0px',
+          inline: false,
+          labelPosition: 'top',
+          readonly: false,
+        },
+      },
     },
     diagnostics: [],
-    document,
-    fields: [],
   }
 }
 
-const failure: DesignerCompileResult = {
+const failure: VueRuntimeCompileResult = {
   success: false,
   diagnostics: [{ code: 'TEST', message: 'compile failed', path: [], severity: 'error' }],
 }
@@ -100,7 +111,6 @@ describe('workspace projection coordinator', () => {
     const failed = coordinator.publish({
       ...first,
       application,
-      currentPage: otherPage,
       currentPageId: otherPage.id,
       modelRevision: 1,
     }, () => failure)

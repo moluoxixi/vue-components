@@ -5,7 +5,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const rootDir = fileURLToPath(new URL('..', import.meta.url))
-const registryPackages = [
+const publicContractPackages = [
   {
     directory: 'core',
     exports: [
@@ -25,6 +25,40 @@ const registryPackages = [
       'ConfigFormNamedModuleMap<unknown>',
       'ConfigFormNamedModuleRegistry<unknown>',
       'ConfigFormNamedRegistryEntry<unknown>',
+    ],
+  },
+  {
+    directory: 'model',
+    exports: [
+      'PAGE_GRAPH_VERSION',
+      'PROJECT_DOCUMENT_VERSION',
+      'assertProjectDocument',
+      'migrateLegacyLowCodePageModel',
+      'migrateLegacyWorkspaceApplication',
+      'parseProjectDocument',
+    ],
+    name: '@moluoxixi/config-form-model',
+    types: [
+      'ComponentContract',
+      'LegacyLowCodePageModelV1',
+      'PageGraph',
+      'ProjectDocument',
+      'ProjectTransaction',
+    ],
+  },
+  {
+    directory: 'compiler',
+    exports: [
+      'CANONICAL_PROJECT_IR_VERSION',
+      'CONFIG_FORM_COMPILER_VERSION',
+      'compileCanonicalProject',
+    ],
+    name: '@moluoxixi/config-form-compiler',
+    types: [
+      'CanonicalNodeIR',
+      'CanonicalPageIR',
+      'CanonicalProjectIR',
+      'CompileCanonicalProjectResult',
     ],
   },
   {
@@ -171,37 +205,37 @@ function fail(message) {
   throw new Error(`[ConfigForm adapter package] ${message}`)
 }
 
-function verifyRegistryPackages() {
-  for (const registryPackage of registryPackages) {
-    const packageDir = resolve(rootDir, 'packages', 'ConfigForm', registryPackage.directory)
+function verifyPublicContractPackages() {
+  for (const contractPackage of publicContractPackages) {
+    const packageDir = resolve(rootDir, 'packages', 'ConfigForm', contractPackage.directory)
     const manifest = JSON.parse(readFileSync(resolve(packageDir, 'package.json'), 'utf8'))
     const rootExport = manifest.exports?.['.']
     if (!rootExport?.import || !rootExport?.types)
-      fail(`${registryPackage.name} must expose import and types conditions at the package root`)
+      fail(`${contractPackage.name} must expose import and types conditions at the package root`)
 
     if (!existsSync(resolve(packageDir, rootExport.import)) || !existsSync(resolve(packageDir, rootExport.types)))
-      fail(`${registryPackage.name} build output or declarations are missing`)
+      fail(`${contractPackage.name} build output or declarations are missing`)
 
     const importCheck = `
-      const loaded = await import(${JSON.stringify(registryPackage.name)})
-      const missing = ${JSON.stringify(registryPackage.exports)}.filter(name => !(name in loaded))
-      if (missing.length > 0) throw new Error('Missing registry exports: ' + missing.join(','))
+      const loaded = await import(${JSON.stringify(contractPackage.name)})
+      const missing = ${JSON.stringify(contractPackage.exports)}.filter(name => !(name in loaded))
+      if (missing.length > 0) throw new Error('Missing public exports: ' + missing.join(','))
     `
     const importResult = spawnSync(process.execPath, ['--input-type=module', '--eval', importCheck], {
       cwd: packageDir,
       encoding: 'utf8',
     })
     if (importResult.status !== 0)
-      fail(`${registryPackage.name} registry self-reference failed: ${importResult.stderr || importResult.stdout}`)
+      fail(`${contractPackage.name} self-reference failed: ${importResult.stderr || importResult.stdout}`)
 
     const consumerDir = mkdtempSync(resolve(packageDir, '.config-form-registry-smoke-'))
     try {
       writeFileSync(resolve(consumerDir, 'consumer.ts'), `
-        import { ${registryPackage.exports.join(', ')} } from ${JSON.stringify(registryPackage.name)}
-        import type { ${registryPackage.types.join(', ')} } from ${JSON.stringify(registryPackage.name)}
+        import { ${contractPackage.exports.join(', ')} } from ${JSON.stringify(contractPackage.name)}
+        import type { ${contractPackage.types.join(', ')} } from ${JSON.stringify(contractPackage.name)}
 
-        void [${registryPackage.exports.join(', ')}]
-        type PublicTypes = [${(registryPackage.typeUsages ?? registryPackage.types).join(', ')}]
+        void [${contractPackage.exports.join(', ')}]
+        type PublicTypes = [${(contractPackage.typeUsages ?? contractPackage.types).join(', ')}]
         const publicTypes: PublicTypes | undefined = undefined
         void publicTypes
       `)
@@ -223,7 +257,7 @@ function verifyRegistryPackages() {
         encoding: 'utf8',
       })
       if (typeResult.status !== 0)
-        fail(`${registryPackage.name} registry TypeScript consumer failed: ${typeResult.stderr || typeResult.stdout}`)
+        fail(`${contractPackage.name} TypeScript consumer failed: ${typeResult.stderr || typeResult.stdout}`)
     }
     finally {
       rmSync(consumerDir, { force: true, recursive: true })
@@ -378,7 +412,7 @@ function verifyRendererPackage() {
   }
 }
 
-verifyRegistryPackages()
+verifyPublicContractPackages()
 verifyRendererPackage()
 
 for (const adapter of adapters) {

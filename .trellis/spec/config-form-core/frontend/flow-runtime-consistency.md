@@ -9,7 +9,7 @@ commit, or reaction projection behavior.
 The same JSON Flow model has two runtime implementations:
 
 ```text
-LowCodePageModel.flows
+ProjectDocument.pagesById[pageId].flows
   -> ConfigFormFlowInterpreter -> PreviewFlowCoordinator -> Workbench Preview
   -> generated flows.ts -> generated Vue page
 ```
@@ -49,8 +49,14 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
 
 ## 3. Contracts
 
-- `LowCodePageModel.flows` is persistent. Active runs, queues, signals,
+- `ProjectPage.flows` is persistent and page-local. Its trigger field references,
+  model order, and Flow ID uniqueness are resolved within that owning page.
+  `PageGraph` owns only visual nodes and placement; it must not own Flow state.
+  `LowCodePageModel.flows` is only a legacy ingress/export projection. Active runs, queues, signals,
   outputs, projections, and traces are transient runtime state.
+- A `ConfigFormFlow` must not also be stored at ProjectDocument root. Future
+  cross-page automation uses a distinct Project Workflow contract so page
+  triggers and field references do not acquire ambiguous scope.
 - Concurrency is owned by Flow ID. Never add a global trigger revision that
   converts every Flow into `latest` behavior.
 - `latest` aborts only the previous run with the same Flow ID. A run must settle

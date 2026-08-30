@@ -11,14 +11,23 @@ import type {
   RuleSet,
 } from '@moluoxixi/zod3-to-rule'
 import type {
-  DesignerContainerNode,
   DesignerDiagnostic,
   DesignerDocument,
-  DesignerFieldNode,
+  DesignerFormSettings,
   DesignerNode,
 } from '../document'
+import type { LowCodeComponentRegistry, LowCodePageModel } from '../model'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
-import type { DesignerCompileResult, DesignerRendererConfig } from './types'
+import type {
+  NormalizedRuntimeContainer,
+  NormalizedRuntimeField,
+  NormalizedRuntimeNode,
+} from './normalized-node'
+import type {
+  ConfigModelCompileResult,
+  DesignerCompileResult,
+  DesignerRendererConfig,
+} from './types'
 import { compileRules, RuleCompileError } from '@moluoxixi/zod3-to-rule'
 import { compileDesignerCondition } from '../condition'
 import {
@@ -27,7 +36,13 @@ import {
   hasDesignerErrors,
   parseDesignerDocument,
 } from '../document'
+import { analyzeConfigModel } from '../model'
 import { analyzeDesignerDocument, isDesignerMaterialPlacementAllowed, resolveDesignerDesignPolicy } from '../registry'
+import {
+  normalizeConfigModelNode,
+  normalizeDesignerNode,
+  toReadonlyDesignerField,
+} from './normalized-node'
 
 type DesignerCompileMode = 'design' | 'runtime'
 
@@ -70,7 +85,7 @@ function createRuleContext(ruleSet: RuleSet, registry: DesignerRegistry): RuleCo
 }
 
 function compileValidation(
-  node: DesignerFieldNode,
+  node: NormalizedRuntimeField,
   path: (string | number)[],
   registry: DesignerRegistry,
   diagnostics: DesignerDiagnostic[],
@@ -92,7 +107,7 @@ function compileValidation(
 }
 
 function diagnoseDefaultRules(
-  node: DesignerFieldNode,
+  node: NormalizedRuntimeField,
   path: (string | number)[],
   validation: CompiledRuleSet | undefined,
   diagnostics: DesignerDiagnostic[],
@@ -131,7 +146,7 @@ function diagnoseDefaultRules(
   }
 }
 
-function compileNodeBase(node: DesignerNode, component: ConfigFormRendererNode['component']) {
+function compileNodeBase(node: NormalizedRuntimeNode, component: ConfigFormRendererNode['component']) {
   const lowCodeMetadata = {
     ...(node.events && Object.keys(node.events).length > 0 ? { events: node.events } : {}),
     ...(node.bindings && Object.keys(node.bindings).length > 0 ? { bindings: node.bindings } : {}),
@@ -155,7 +170,7 @@ function compileNodeBase(node: DesignerNode, component: ConfigFormRendererNode['
 }
 
 function compileField(
-  node: DesignerFieldNode,
+  node: NormalizedRuntimeField,
   path: (string | number)[],
   registry: DesignerRegistry,
   diagnostics: DesignerDiagnostic[],
@@ -195,7 +210,7 @@ function compileField(
           }) => material.runtime.readonlyRender!({
             componentProps,
             model,
-            node,
+            node: toReadonlyDesignerField(node),
             value,
           }),
         }
@@ -205,7 +220,7 @@ function compileField(
 }
 
 function compileContainer(
-  node: DesignerContainerNode,
+  node: NormalizedRuntimeContainer,
   path: (string | number)[],
   registry: DesignerRegistry,
   diagnostics: DesignerDiagnostic[],
@@ -239,7 +254,7 @@ function compileContainer(
 }
 
 function compileNode(
-  node: DesignerNode,
+  node: NormalizedRuntimeNode,
   path: (string | number)[],
   registry: DesignerRegistry,
   diagnostics: DesignerDiagnostic[],
@@ -264,24 +279,24 @@ export function compileDesignerNode(
   registry: DesignerRegistry,
 ): ConfigFormRendererNode | undefined {
   const diagnostics: DesignerDiagnostic[] = []
-  return compileNode(node, ['candidate'], registry, diagnostics, 'design')
+  return compileNode(normalizeDesignerNode(node), ['candidate'], registry, diagnostics, 'design')
 }
 
 function rendererConfig(
-  document: DesignerDocument,
+  form: DesignerFormSettings,
   fields: ConfigFormRendererNode[],
   registry: DesignerRegistry,
 ): DesignerRendererConfig {
   return {
     components: registry.components,
     fields,
-    ...(document.form.readonly === undefined ? {} : { readonly: document.form.readonly }),
-    ...(document.form.inline === undefined ? {} : { inline: document.form.inline }),
-    ...(document.form.columns === undefined ? {} : { columns: document.form.columns }),
-    ...(document.form.gap === undefined ? {} : { gap: document.form.gap }),
-    ...(document.form.fieldSpan === undefined ? {} : { fieldSpan: document.form.fieldSpan }),
-    ...(document.form.labelPosition === undefined ? {} : { labelPosition: document.form.labelPosition }),
-    ...(document.form.responsive === undefined ? {} : { responsive: cloneResponsiveLayout(document.form.responsive) }),
+    ...(form.readonly === undefined ? {} : { readonly: form.readonly }),
+    ...(form.inline === undefined ? {} : { inline: form.inline }),
+    ...(form.columns === undefined ? {} : { columns: form.columns }),
+    ...(form.gap === undefined ? {} : { gap: form.gap }),
+    ...(form.fieldSpan === undefined ? {} : { fieldSpan: form.fieldSpan }),
+    ...(form.labelPosition === undefined ? {} : { labelPosition: form.labelPosition }),
+    ...(form.responsive === undefined ? {} : { responsive: cloneResponsiveLayout(form.responsive) }),
   }
 }
 
@@ -303,9 +318,57 @@ export function createDesignerRuntimeProjection(
 ): DesignerRendererConfig {
   const diagnostics: DesignerDiagnostic[] = []
   const fields = document.nodes
-    .map((node, index) => compileNode(node, ['nodes', index], registry, diagnostics, 'design'))
+    .map((node, index) => compileNode(normalizeDesignerNode(node), ['nodes', index], registry, diagnostics, 'design'))
     .filter((node): node is ConfigFormRendererNode => node !== undefined)
-  return rendererConfig(document, fields, registry)
+  return rendererConfig(document.form, fields, registry)
+}
+
+/** Build the live Design projection directly from the canonical model. */
+export function createConfigModelRuntimeProjection(
+  model: LowCodePageModel,
+  registry: LowCodeComponentRegistry,
+): DesignerRendererConfig {
+  const diagnostics: DesignerDiagnostic[] = []
+  const fields = model.nodes
+    .map((node, index) => compileNode(
+      normalizeConfigModelNode(node),
+      ['nodes', index],
+      registry.designer,
+      diagnostics,
+      'design',
+    ))
+    .filter((node): node is ConfigFormRendererNode => node !== undefined)
+  return rendererConfig(model.form, fields, registry.designer)
+}
+
+/**
+ * Compile the canonical Config Model directly into the shared RuntimeSurface
+ * contract. Normal Preview paths should use this function instead of routing
+ * through the legacy DesignerDocument projection.
+ */
+export function compileConfigModel(
+  model: LowCodePageModel,
+  registry: LowCodeComponentRegistry,
+): ConfigModelCompileResult {
+  const designerRegistry = registry.designer
+  const diagnostics = analyzeConfigModel(model, registry).map(diagnostic => designerDiagnostic(
+    diagnostic.code,
+    diagnostic.message,
+    [],
+    'error',
+    diagnostic.nodeId,
+  ))
+  const fields = model.nodes
+    .map((node, index) => compileNode(normalizeConfigModelNode(node), ['nodes', index], designerRegistry, diagnostics, 'runtime'))
+    .filter((node): node is ConfigFormRendererNode => node !== undefined)
+  if (hasDesignerErrors(diagnostics))
+    return { success: false, diagnostics }
+  return {
+    success: true,
+    fields,
+    renderer: rendererConfig(model.form, fields, designerRegistry),
+    diagnostics,
+  }
 }
 
 export function compileDesignerDocument(
@@ -318,7 +381,7 @@ export function compileDesignerDocument(
 
   const diagnostics = analyzeDesignerDocument(parsed.data, registry)
   const fields = parsed.data.nodes
-    .map((node, index) => compileNode(node, ['nodes', index], registry, diagnostics, 'runtime'))
+    .map((node, index) => compileNode(normalizeDesignerNode(node), ['nodes', index], registry, diagnostics, 'runtime'))
     .filter((node): node is ConfigFormRendererNode => node !== undefined)
 
   if (hasDesignerErrors(diagnostics)) {
@@ -333,7 +396,7 @@ export function compileDesignerDocument(
     success: true,
     document: parsed.data,
     fields,
-    renderer: rendererConfig(parsed.data, fields, registry),
+    renderer: rendererConfig(parsed.data.form, fields, registry),
     diagnostics,
   }
 }

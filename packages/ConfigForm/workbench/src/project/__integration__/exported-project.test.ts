@@ -1,4 +1,4 @@
-import type { LowCodePageModel } from '@moluoxixi/config-form-designer'
+import type { LegacyLowCodePageModelV1 as LowCodePageModel } from '@moluoxixi/config-form-model'
 import type { WorkspaceProject } from '../types'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'

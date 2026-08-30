@@ -14,7 +14,7 @@ import type {
   ConfigFormComponentRegistry as HeadlessComponentRegistry,
 } from '@moluoxixi/config-form-headless'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
-import type { ConfigFormResponsiveLayout } from './responsive'
+import type { ConfigFormBreakpoint, ConfigFormResponsiveLayout } from './responsive'
 
 export type ConfigFormRendererFormAttrs = FormHTMLAttributes
 export type ConfigFormRendererLayoutAttrs = HTMLAttributes
@@ -164,6 +164,12 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   resolveBinding?: ConfigFormControlBindingResolver<TValues>
   /** Shared RuntimeSurface mode. Defaults to the historical interactive preview. */
   mode?: ConfigFormRenderMode
+  /**
+   * Optional transient presentation breakpoint. When supplied, RuntimeSurface
+   * resolves the active grid layout from this value instead of the host
+   * viewport media query. It never changes the Config Model.
+   */
+  breakpoint?: ConfigFormBreakpoint
   /** Optional Design Canvas bridge for node metadata and event interception. */
   editor?: ConfigFormRuntimeEditorBridge<TValues>
   /** Transient Flow projection merged after field-declared reactions. */

@@ -7,13 +7,16 @@ import type {
   ConfigFormFlowExecutionPlan,
   ConfigFormFlowRunOptions,
   ConfigFormFlowRunResult,
+  ConfigFormFlowRuntimeDescriptor,
   ConfigFormFlowTraceEvent,
 } from './types'
 import { applyConfigFormReactionList, evaluateConfigFormReactionCondition } from '../reaction'
 import { analyzeConfigFormFlow } from './plan'
+import { CONFIG_FORM_FLOW_VERSION } from './types'
 
 interface QueuedFlowRun {
-  flow: ConfigFormFlow
+  flow: ConfigFormFlowRuntimeDescriptor
+  plan: ConfigFormFlowExecutionPlan
   options: ConfigFormFlowRunOptions
   resolve: (result: ConfigFormFlowRunResult) => void
   reject: (reason: unknown) => void
@@ -29,8 +32,8 @@ export class ConfigFormFlowInterpreter {
 
   run(flowOrPlan: ConfigFormFlow | ConfigFormFlowExecutionPlan, options: ConfigFormFlowRunOptions = {}): Promise<ConfigFormFlowRunResult> {
     const planResult = 'topologicalOrder' in flowOrPlan
-      ? { success: true as const, plan: flowOrPlan, flow: { id: flowOrPlan.flowId } as ConfigFormFlow }
-      : analyzeConfigFormFlow(flowOrPlan, options.revision ?? 0)
+      ? { success: true as const, plan: flowOrPlan }
+      : analyzeConfigFormFlow(flowOrPlan)
     if (!planResult.success) {
       const runId = options.runId ?? createRunId()
       const flowId = 'id' in flowOrPlan ? flowOrPlan.id : flowOrPlan.flowId
@@ -47,10 +50,10 @@ export class ConfigFormFlowInterpreter {
       })
     }
     const plan = planResult.plan
-    const flow = 'nodes' in flowOrPlan && 'trigger' in flowOrPlan ? flowOrPlan : planResult.flow
+    const flow = flowDescriptorFromPlan(planResult.plan)
     const key = flow.id
     if (options.signal?.aborted)
-      return Promise.resolve(abortedRunResult(flow, plan, options))
+      return Promise.resolve(abortedRunResult(flow, options))
     const active = this.active.get(key)
     const concurrency = flow.concurrency ?? 'latest'
     if (active) {
@@ -60,7 +63,7 @@ export class ConfigFormFlowInterpreter {
           status: 'ignored',
           flowId: key,
           runId,
-          revision: options.revision ?? plan.revision,
+          revision: options.revision ?? 0,
           values: { ...(options.values ?? {}) },
           outputs: {},
           projection: emptyReactionProjection(options.values),
@@ -78,7 +81,7 @@ export class ConfigFormFlowInterpreter {
   }
 
   private start(
-    flow: ConfigFormFlow,
+    flow: ConfigFormFlowRuntimeDescriptor,
     plan: ConfigFormFlowExecutionPlan,
     options: ConfigFormFlowRunOptions,
   ): Promise<ConfigFormFlowRunResult> {
@@ -98,7 +101,7 @@ export class ConfigFormFlowInterpreter {
   }
 
   private enqueue(
-    flow: ConfigFormFlow,
+    flow: ConfigFormFlowRuntimeDescriptor,
     plan: ConfigFormFlowExecutionPlan,
     options: ConfigFormFlowRunOptions,
   ): Promise<ConfigFormFlowRunResult> {
@@ -108,6 +111,7 @@ export class ConfigFormFlowInterpreter {
       const entry: QueuedFlowRun = {
         cleanup: () => {},
         flow,
+        plan,
         options,
         reject,
         resolve,
@@ -123,7 +127,7 @@ export class ConfigFormFlowInterpreter {
           queue.splice(index, 1)
         if (queue.length === 0)
           this.queues.delete(key)
-        resolve(abortedRunResult(flow, plan, options))
+        resolve(abortedRunResult(flow, options))
       }
       if (options.signal) {
         options.signal.addEventListener('abort', abort, { once: true })
@@ -147,12 +151,12 @@ export class ConfigFormFlowInterpreter {
       this.queues.delete(key)
     next.settled = true
     next.cleanup()
-    this.run(next.flow, next.options).then(next.resolve, next.reject)
+    this.start(next.flow, next.plan, next.options).then(next.resolve, next.reject)
   }
 
-  private async execute(plan: ConfigFormFlowExecutionPlan, flow: ConfigFormFlow, options: ConfigFormFlowRunOptions): Promise<ConfigFormFlowRunResult> {
+  private async execute(plan: ConfigFormFlowExecutionPlan, flow: ConfigFormFlowRuntimeDescriptor, options: ConfigFormFlowRunOptions): Promise<ConfigFormFlowRunResult> {
     const runId = options.runId ?? createRunId()
-    const revision = options.revision ?? plan.revision
+    const revision = options.revision ?? 0
     const values = { ...(options.values ?? {}) }
     const outputs: Record<string, unknown> = {}
     const projection = emptyReactionProjection(values)
@@ -227,7 +231,7 @@ export class ConfigFormFlowInterpreter {
 
   private async executeNode(
     node: ConfigFormFlowExecutionPlan['nodes'][number],
-    flow: ConfigFormFlow,
+    flow: ConfigFormFlowRuntimeDescriptor,
     values: Record<string, unknown>,
     outputs: Record<string, unknown>,
     flowProjection: ConfigFormReactionProjection<Record<string, unknown>>,
@@ -366,19 +370,29 @@ function abortReason(reason: unknown): Error {
 }
 
 function abortedRunResult(
-  flow: ConfigFormFlow,
-  plan: ConfigFormFlowExecutionPlan,
+  flow: ConfigFormFlowRuntimeDescriptor,
   options: ConfigFormFlowRunOptions,
 ): ConfigFormFlowRunResult {
   return {
     status: 'aborted',
     flowId: flow.id,
     runId: options.runId ?? createRunId(),
-    revision: options.revision ?? plan.revision,
+    revision: options.revision ?? 0,
     values: { ...(options.values ?? {}) },
     outputs: {},
     projection: emptyReactionProjection(options.values),
     trace: [],
+  }
+}
+
+function flowDescriptorFromPlan(plan: ConfigFormFlowExecutionPlan): ConfigFormFlowRuntimeDescriptor {
+  return {
+    version: CONFIG_FORM_FLOW_VERSION,
+    id: plan.flowId,
+    name: plan.name,
+    trigger: structuredClone(plan.trigger),
+    ...(plan.concurrency === undefined ? {} : { concurrency: plan.concurrency }),
+    ...(plan.errorPolicy === undefined ? {} : { errorPolicy: structuredClone(plan.errorPolicy) }),
   }
 }
 

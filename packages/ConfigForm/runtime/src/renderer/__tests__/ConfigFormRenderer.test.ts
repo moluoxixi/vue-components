@@ -277,6 +277,29 @@ describe('config form renderer', () => {
     expect(cellStyle).toContain('--mx-config-form-span-mobile: 4')
   })
 
+  it('pins the active presentation breakpoint for fixed Design and Preview artboards', () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        breakpoint: 'mobile',
+        columns: 24,
+        fieldSpan: 12,
+        fields: [defineField<TestValues>({
+          component: InputStub,
+          field: 'name',
+          span: 12,
+        })],
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        namespace: 'pinned-breakpoint-form',
+        responsive: {
+          mobile: { columns: 1, fieldSpan: 1 },
+        },
+      },
+    })
+
+    expect(wrapper.get('.pinned-breakpoint-form__row').attributes('style')).toContain('--mx-config-form-active-columns: 1')
+    expect(wrapper.get('.pinned-breakpoint-form__cell').attributes('style')).toContain('--mx-config-form-active-span: 1')
+  })
+
   it('lays out a full-width root field before three 8-column fields', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {

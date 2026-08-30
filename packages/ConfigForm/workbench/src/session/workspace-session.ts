@@ -13,6 +13,7 @@ import type { WorkspaceApplicationRepository } from '../project/application-repo
 import { applyModelOperation } from '@moluoxixi/config-form-designer'
 import {
   applyWorkspaceApplicationOperation,
+  applyWorkspaceApplicationOperationWithInverse,
   cloneWorkspaceApplication,
   parseWorkspaceApplication,
 } from '../project/application'
@@ -85,14 +86,10 @@ export interface WorkspaceSessionOptions {
   repository: WorkspaceApplicationRepository
 }
 
-interface WorkspaceStateCapture {
-  application: WorkspaceApplication
-  currentPageId: string
-}
-
 interface WorkspaceHistoryEntry {
-  after: WorkspaceStateCapture
-  before: WorkspaceStateCapture
+  beforePageId: string
+  afterPageId: string
+  inverse: WorkspaceTransaction
   timestamp: number
   transaction: WorkspaceTransaction
 }
@@ -142,6 +139,12 @@ function resolveCurrentPage(application: WorkspaceApplication, preferredId?: str
 
 function cloneTransaction(transaction: WorkspaceTransaction): WorkspaceTransaction {
   return structuredClone(transaction)
+}
+
+interface AppliedWorkspaceTransaction {
+  application: WorkspaceApplication
+  currentPageId: string
+  inverseOperations: WorkspaceOperation[]
 }
 
 export function createWorkspaceSession(options: WorkspaceSessionOptions): WorkspaceSession {
@@ -195,33 +198,14 @@ export function createWorkspaceSession(options: WorkspaceSessionOptions): Worksp
     return { changed: false, diagnostics, snapshot: currentSnapshot() }
   }
 
-  function capture(): WorkspaceStateCapture {
-    return { application: cloneWorkspaceApplication(application), currentPageId }
-  }
-
-  function restore(state: WorkspaceStateCapture): void {
-    const repositoryRevision = application.revision
-    const repositoryUpdatedAt = application.updatedAt
-    application = cloneWorkspaceApplication(state.application)
-    application.revision = repositoryRevision
-    application.updatedAt = repositoryUpdatedAt
-    currentPageId = resolveCurrentPage(application, state.currentPageId).id
-  }
-
-  function dispatch(transaction: WorkspaceTransaction): WorkspaceDispatchResult {
-    const invalid = !transaction.id.trim()
-      ? invalidTransaction('Workspace transaction id is required.')
-      : !transaction.label.trim()
-          ? invalidTransaction('Workspace transaction label is required.')
-          : transaction.operations.length === 0
-            ? invalidTransaction('Workspace transaction must contain at least one operation.')
-            : undefined
-    if (invalid)
-      return unchanged([invalid])
-
-    const before = capture()
-    let candidate = cloneWorkspaceApplication(application)
-    let candidatePageId = currentPageId
+  function applyTransaction(
+    baseApplication: WorkspaceApplication,
+    basePageId: string,
+    transaction: WorkspaceTransaction,
+  ): AppliedWorkspaceTransaction | WorkspaceSessionDiagnostic {
+    let candidate = cloneWorkspaceApplication(baseApplication)
+    let candidatePageId = basePageId
+    const inverseOperations: WorkspaceOperation[] = []
 
     for (const [operationIndex, operation] of transaction.operations.entries()) {
       try {
@@ -235,26 +219,58 @@ export function createWorkspaceSession(options: WorkspaceSessionOptions): Worksp
           }
           const result = applyModelOperation(page.model, operation.operation, registry, modelOperationOptions)
           if (!result.success) {
-            return unchanged(result.diagnostics.map(diagnostic => ({
-              ...diagnostic,
+            return {
+              ...result.diagnostics[0]!,
               operationIndex,
-            })))
+            }
           }
           candidate = applyWorkspaceApplicationOperation(candidate, {
             type: 'update-page-model',
             pageId: operation.pageId,
             model: result.model,
           })
+          inverseOperations.unshift({
+            type: 'page.model',
+            pageId: operation.pageId,
+            operation: result.inverse,
+          })
         }
         else {
-          candidate = applyWorkspaceApplicationOperation(candidate, operation.operation)
+          const result = applyWorkspaceApplicationOperationWithInverse(candidate, operation.operation)
+          candidate = result.application
+          inverseOperations.unshift(...result.inverse.map(inverse => ({
+            type: 'application' as const,
+            operation: inverse,
+          })))
         }
         candidatePageId = resolveCurrentPage(candidate, candidatePageId).id
       }
       catch (error) {
-        return unchanged([diagnosticFromError(error, operationIndex)])
+        return {
+          ...diagnosticFromError(error, operationIndex),
+        }
       }
     }
+
+    return { application: candidate, currentPageId: candidatePageId, inverseOperations }
+  }
+
+  function dispatch(transaction: WorkspaceTransaction): WorkspaceDispatchResult {
+    const invalid = !transaction.id.trim()
+      ? invalidTransaction('Workspace transaction id is required.')
+      : !transaction.label.trim()
+          ? invalidTransaction('Workspace transaction label is required.')
+          : transaction.operations.length === 0
+            ? invalidTransaction('Workspace transaction must contain at least one operation.')
+            : undefined
+    if (invalid)
+      return unchanged([invalid])
+
+    const beforePageId = currentPageId
+    const applied = applyTransaction(application, currentPageId, transaction)
+    if ('code' in applied)
+      return unchanged([applied])
+    const { application: candidate, currentPageId: candidatePageId, inverseOperations } = applied
 
     if (workspaceContentFingerprint(candidate) === workspaceContentFingerprint(application))
       return unchanged()
@@ -264,27 +280,39 @@ export function createWorkspaceSession(options: WorkspaceSessionOptions): Worksp
     modelRevision += 1
     lastError = undefined
     const timestamp = now()
-    const after = capture()
     const previous = past.at(-1)
+    const inverse: WorkspaceTransaction = {
+      id: `${transaction.id}:inverse`,
+      label: `Undo ${transaction.label}`,
+      operations: inverseOperations,
+    }
     if (
       transaction.mergeKey
       && previous?.transaction.mergeKey === transaction.mergeKey
       && timestamp - previous.timestamp <= mergeWindowMs
     ) {
-      previous.after = after
+      previous.afterPageId = candidatePageId
       previous.timestamp = timestamp
       previous.transaction = {
-        ...cloneTransaction(transaction),
+        ...previous.transaction,
         operations: [
           ...previous.transaction.operations,
           ...cloneTransaction(transaction).operations,
         ],
       }
+      previous.inverse = {
+        ...previous.inverse,
+        operations: [
+          ...cloneTransaction(inverse).operations,
+          ...previous.inverse.operations,
+        ],
+      }
     }
     else {
       past = [...past, {
-        after,
-        before,
+        afterPageId: candidatePageId,
+        beforePageId,
+        inverse,
         timestamp,
         transaction: cloneTransaction(transaction),
       }].slice(-historyLimit)
@@ -297,9 +325,13 @@ export function createWorkspaceSession(options: WorkspaceSessionOptions): Worksp
     const entry = past.at(-1)
     if (!entry)
       return unchanged()
+    const applied = applyTransaction(application, currentPageId, entry.inverse)
+    if ('code' in applied)
+      return unchanged([applied])
     past = past.slice(0, -1)
     future = [...future, entry]
-    restore(entry.before)
+    application = applied.application
+    currentPageId = resolveCurrentPage(application, entry.beforePageId).id
     modelRevision += 1
     lastError = undefined
     return { changed: true, diagnostics: [], snapshot: publish() }
@@ -309,9 +341,13 @@ export function createWorkspaceSession(options: WorkspaceSessionOptions): Worksp
     const entry = future.at(-1)
     if (!entry)
       return unchanged()
+    const applied = applyTransaction(application, currentPageId, entry.transaction)
+    if ('code' in applied)
+      return unchanged([applied])
     future = future.slice(0, -1)
     past = [...past, entry].slice(-historyLimit)
-    restore(entry.after)
+    application = applied.application
+    currentPageId = resolveCurrentPage(application, entry.afterPageId).id
     modelRevision += 1
     lastError = undefined
     return { changed: true, diagnostics: [], snapshot: publish() }

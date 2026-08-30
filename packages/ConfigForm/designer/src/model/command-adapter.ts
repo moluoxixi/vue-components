@@ -1,6 +1,7 @@
-import type { DesignerDocument, DesignerJsonObject, DesignerNode } from '../document'
+import type { DesignerDocument, DesignerNode } from '../document'
 import type { DesignerCommand } from '../history'
 import type { ModelNodePatch, ModelOperation } from './types'
+import { modelJsonObjectSchema } from '@moluoxixi/config-form-model'
 import { findDesignerNode } from '../history'
 import { designerNodeToConfigModelNode } from './transform'
 
@@ -54,7 +55,7 @@ function updateOperation(
 export function designerCommandToModelOperation(
   command: DesignerCommand,
   document: DesignerDocument,
-  pageProps: DesignerJsonObject = {},
+  pageProps: unknown = {},
 ): ModelOperation {
   switch (command.type) {
     case 'addNode':
@@ -75,7 +76,11 @@ export function designerCommandToModelOperation(
     case 'updateNodePath':
       return updateOperation(command, document)
     case 'updateForm':
-      return { type: 'updatePage', form: structuredClone(document.form), props: structuredClone(pageProps) }
+      return {
+        type: 'updatePage',
+        form: structuredClone(document.form),
+        props: modelJsonObjectSchema.parse(pageProps),
+      }
     case 'batch':
       return {
         type: 'batch',

@@ -1,4 +1,7 @@
-import type { LowCodeNode, LowCodePageModel } from '@moluoxixi/config-form-designer'
+import type {
+  LegacyLowCodeNodeV1 as LowCodeNode,
+  LegacyLowCodePageModelV1 as LowCodePageModel,
+} from '@moluoxixi/config-form-model'
 import type {
   ProjectPath,
   WorkspaceFile,
@@ -74,6 +77,11 @@ export type WorkspaceApplicationOperation
     | { type: 'set-home-page', pageId: string }
     | { type: 'set-page-route', pageId: string, route: string }
     | { type: 'update-page-model', pageId: string, model: LowCodePageModel }
+
+export interface WorkspaceApplicationOperationResult {
+  application: WorkspaceApplication
+  inverse: WorkspaceApplicationOperation[]
+}
 
 const identifierSchema = z.string().trim().min(1).max(80).regex(/^[a-z0-9][a-z0-9-]*$/)
 const timestampSchema = z.string().datetime({ offset: true })
@@ -157,7 +165,7 @@ export function isLowCodePageModel(value: unknown): value is LowCodePageModel {
 const pageSchema = z.object({
   id: identifierSchema,
   model: z.custom<LowCodePageModel>(isLowCodePageModel, 'page model is invalid'),
-  name: z.string().trim().min(1).max(120),
+  name: z.string().trim().min(1).max(160),
   route: z.string().min(1),
 }).strict()
 
@@ -169,7 +177,7 @@ const applicationSchema = z.object({
   manifest: manifestSchema,
   name: z.string().trim().min(1).max(120),
   pages: z.array(pageSchema).min(1),
-  revision: z.number().int().positive(),
+  revision: z.number().int().nonnegative(),
   schemaVersion: z.literal(WORKSPACE_APPLICATION_SCHEMA_VERSION),
   template: z.object({
     id: identifierSchema,
@@ -425,6 +433,63 @@ export function applyWorkspaceApplicationOperation(
     }
   }
   return parseWorkspaceApplication(next)
+}
+
+/**
+ * Apply an application operation and derive its semantic inverse from the
+ * affected page metadata. The inverse is an operation list because removing
+ * the home page also needs to restore the previous home-page pointer.
+ */
+export function applyWorkspaceApplicationOperationWithInverse(
+  application: WorkspaceApplication,
+  operation: WorkspaceApplicationOperation,
+): WorkspaceApplicationOperationResult {
+  const inverse: WorkspaceApplicationOperation[] = []
+  switch (operation.type) {
+    case 'add-page':
+      inverse.push({ type: 'remove-page', pageId: operation.page.id })
+      break
+    case 'duplicate-page':
+      inverse.push({ type: 'remove-page', pageId: operation.page.id })
+      break
+    case 'move-page': {
+      const sourceIndex = pageIndex(application, operation.pageId)
+      inverse.push({ type: 'move-page', pageId: operation.pageId, index: sourceIndex })
+      break
+    }
+    case 'remove-page': {
+      const index = pageIndex(application, operation.pageId)
+      const page = application.pages[index]
+      if (!page)
+        invalidApplication(`page "${operation.pageId}" does not exist`)
+      inverse.push({ type: 'add-page', page: structuredClone(page), index })
+      if (application.homePageId === operation.pageId)
+        inverse.push({ type: 'set-home-page', pageId: operation.pageId })
+      break
+    }
+    case 'rename-page': {
+      const page = application.pages[pageIndex(application, operation.pageId)]!
+      inverse.push({ type: 'rename-page', pageId: operation.pageId, name: page.name })
+      break
+    }
+    case 'set-home-page':
+      inverse.push({ type: 'set-home-page', pageId: application.homePageId })
+      break
+    case 'set-page-route': {
+      const page = application.pages[pageIndex(application, operation.pageId)]!
+      inverse.push({ type: 'set-page-route', pageId: operation.pageId, route: page.route })
+      break
+    }
+    case 'update-page-model': {
+      const page = application.pages[pageIndex(application, operation.pageId)]!
+      inverse.push({ type: 'update-page-model', pageId: operation.pageId, model: structuredClone(page.model) })
+      break
+    }
+  }
+  return {
+    application: applyWorkspaceApplicationOperation(application, operation),
+    inverse,
+  }
 }
 
 function collectNodeIds(nodes: LowCodeNode[], target: string[] = []): string[] {

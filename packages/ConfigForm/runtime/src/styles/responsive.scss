@@ -1,3 +1,7 @@
+[data-config-form-responsive-root] {
+  container: config-form-runtime / inline-size;
+}
+
 [data-config-form-responsive-layout] {
   --mx-config-form-active-columns: var(--mx-config-form-columns-desktop);
 }
@@ -17,6 +21,31 @@
 }
 
 @media (max-width: 720px) {
+  [data-config-form-responsive-layout] {
+    --mx-config-form-active-columns: var(--mx-config-form-columns-mobile);
+  }
+
+  [data-config-form-responsive-cell] {
+    --mx-config-form-active-span: var(--mx-config-form-span-mobile);
+  }
+}
+
+/*
+ * Preview and embedded designers are often narrower than the browser window.
+ * Container queries keep their real Runtime layout tied to the rendered
+ * artboard instead of the host application's viewport.
+ */
+@container config-form-runtime (max-width: 1024px) {
+  [data-config-form-responsive-layout] {
+    --mx-config-form-active-columns: var(--mx-config-form-columns-tablet);
+  }
+
+  [data-config-form-responsive-cell] {
+    --mx-config-form-active-span: var(--mx-config-form-span-tablet);
+  }
+}
+
+@container config-form-runtime (max-width: 720px) {
   [data-config-form-responsive-layout] {
     --mx-config-form-active-columns: var(--mx-config-form-columns-mobile);
   }

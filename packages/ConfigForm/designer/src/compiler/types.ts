@@ -25,6 +25,23 @@ export interface DesignerCompileSuccess {
   diagnostics: DesignerDiagnostic[]
 }
 
+/** Runtime projection compiled directly from the canonical LowCodePageModel. */
+export interface ConfigModelCompileSuccess {
+  success: true
+  fields: ConfigFormRendererNode[]
+  renderer: DesignerRendererConfig
+  diagnostics: DesignerDiagnostic[]
+}
+
+export interface ConfigModelCompileFailure {
+  success: false
+  fields?: undefined
+  renderer?: undefined
+  diagnostics: DesignerDiagnostic[]
+}
+
+export type ConfigModelCompileResult = ConfigModelCompileSuccess | ConfigModelCompileFailure
+
 export interface DesignerCompileFailure {
   success: false
   document?: DesignerDocument

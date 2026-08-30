@@ -31,6 +31,7 @@ import {
   h,
   markRaw,
   onBeforeUnmount,
+  onMounted,
   shallowRef,
   toHandlerKey,
   toRaw,
@@ -85,6 +86,8 @@ const registeredNodes = new Map<string, {
   element?: HTMLElement
 }>()
 let registeredEditor: ConfigFormRuntimeEditorBridge<TValues> | undefined
+let designInteractionObserver: MutationObserver | undefined
+const designTabIndex = new Map<HTMLElement, string | null>()
 
 const controller = createConfigFormController<TValues>({
   defaultValues: props.defaultValues,
@@ -141,6 +144,16 @@ watch(controlledModel, (values) => {
 
 watch(() => props.fields, refreshReactions, { deep: true })
 
+watch(() => props.mode, (mode) => {
+  if (mode === 'design')
+    startDesignInteractionGuard()
+  else {
+    designInteractionObserver?.disconnect()
+    designInteractionObserver = undefined
+    restoreDesignTabIndex()
+  }
+}, { flush: 'post' })
+
 watch(() => props.reactionProjection?.validate, (fields) => {
   for (const field of fields ?? [])
     void validateField(field)
@@ -158,6 +171,74 @@ function resolveReactionState(field: string) {
     ...getReactionState(field),
     ...props.reactionProjection?.states[field],
   }
+}
+
+/**
+ * Design renders the real Runtime tree as a visual surface. The editor owns
+ * hit testing and focus, so third-party controls must not re-enable native
+ * interaction through their own root attributes or internal defaults.
+ */
+function applyDesignInteractionGuard(target: Record<string, unknown>): void {
+  if (props.mode !== 'design')
+    return
+
+  target.tabindex = -1
+  target['data-config-runtime-control'] = ''
+}
+
+function restoreDesignTabIndex(): void {
+  for (const [element, tabIndex] of designTabIndex) {
+    if (!element.isConnected)
+      continue
+    if (tabIndex === null)
+      element.removeAttribute('tabindex')
+    else
+      element.setAttribute('tabindex', tabIndex)
+  }
+  designTabIndex.clear()
+}
+
+function syncDesignInteractionGuard(): void {
+  const form = formRef.value
+  if (props.mode !== 'design' || !form?.hasAttribute('inert')) {
+    restoreDesignTabIndex()
+    return
+  }
+
+  const selector = [
+    'input',
+    'textarea',
+    'select',
+    'button',
+    '[contenteditable="true"]',
+    '[role="button"]',
+    '[role="checkbox"]',
+    '[role="combobox"]',
+    '[role="listbox"]',
+    '[role="radio"]',
+    '[role="slider"]',
+    '[role="switch"]',
+    '[tabindex]',
+  ].join(',')
+  for (const element of form.querySelectorAll<HTMLElement>(selector)) {
+    if (!designTabIndex.has(element))
+      designTabIndex.set(element, element.getAttribute('tabindex'))
+    element.setAttribute('tabindex', '-1')
+  }
+}
+
+function startDesignInteractionGuard(): void {
+  if (props.mode !== 'design' || typeof MutationObserver === 'undefined' || !formRef.value)
+    return
+  syncDesignInteractionGuard()
+  designInteractionObserver?.disconnect()
+  designInteractionObserver = new MutationObserver(syncDesignInteractionGuard)
+  designInteractionObserver.observe(formRef.value, {
+    attributes: true,
+    attributeFilter: ['inert'],
+    childList: true,
+    subtree: true,
+  })
 }
 
 function updateMeta(nextMeta: ConfigFormMeta): void {
@@ -184,6 +265,13 @@ const responsiveLayouts = computed(() => ({
   tablet: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'tablet'),
   mobile: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'mobile'),
 }))
+
+// Design and Preview can render a fixed artboard inside a desktop viewport.
+// Keep the selected presentation breakpoint transient so the same Runtime
+// layout is used regardless of the host window's media-query state.
+const activePresentationLayout = computed(() => (
+  props.breakpoint ? responsiveLayouts.value[props.breakpoint] : undefined
+))
 
 function ensureEditorBridge(): ConfigFormRuntimeEditorBridge<TValues> | undefined {
   const editor = props.editor
@@ -403,6 +491,9 @@ function renderLayout(): VNodeChild {
           '--mx-config-form-columns-desktop': layouts.desktop.columns,
           '--mx-config-form-columns-mobile': layouts.mobile.columns,
           '--mx-config-form-columns-tablet': layouts.tablet.columns,
+          ...(activePresentationLayout.value
+            ? { '--mx-config-form-active-columns': activePresentationLayout.value.columns }
+            : {}),
           display: 'grid',
           gap: props.gap,
           gridTemplateColumns: 'repeat(var(--mx-config-form-active-columns), minmax(0, 1fr))',
@@ -455,6 +546,9 @@ function renderNode(
           '--mx-config-form-span-desktop': desktopSpan,
           '--mx-config-form-span-mobile': mobileSpan,
           '--mx-config-form-span-tablet': tabletSpan,
+          ...(activePresentationLayout.value
+            ? { '--mx-config-form-active-span': resolveConfigFormNodeSpan(node.span, activePresentationLayout.value) }
+            : {}),
           gridColumn: 'span var(--mx-config-form-active-span) / span var(--mx-config-form-active-span)',
           minWidth: 0,
         },
@@ -580,6 +674,8 @@ function renderControl(
   }
   const reactionState = resolveReactionState(field.field)
 
+  applyDesignInteractionGuard(componentProps)
+
   if (controlId && !isNonEmptyString(componentProps.id))
     componentProps.id = controlId
 
@@ -644,6 +740,7 @@ function renderComponentNode(
     ...metadataAttrs,
     class: [registration?.props?.class, node.props?.class, metadataAttrs.class],
   }
+  applyDesignInteractionGuard(componentProps)
   if (registerElement)
     Object.assign(componentProps, { ref: (element: unknown) => registerNodeElement(metadata, element) })
   wrapComponentListeners(componentProps, metadata)
@@ -909,12 +1006,23 @@ defineExpose({
   validate,
   validateField,
 })
+
+onMounted(() => {
+  startDesignInteractionGuard()
+})
+
+onBeforeUnmount(() => {
+  designInteractionObserver?.disconnect()
+  designInteractionObserver = undefined
+  restoreDesignTabIndex()
+})
 </script>
 
 <template>
   <form
     ref="formRef"
     v-bind="formAttrs"
+    data-config-form-responsive-root
     :data-dirty="meta.dirty"
     :data-touched="meta.touched"
     @submit.prevent="submit"

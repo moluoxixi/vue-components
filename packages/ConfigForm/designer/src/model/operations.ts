@@ -12,7 +12,11 @@ import type {
   ModelOperationResult,
 } from './types'
 import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
-import { cloneDesignerJsonValue } from '../document'
+import { areDesignerJsonValuesEqual, cloneDesignerJsonValue } from '../document'
+import {
+  matchesDesignerDefaultValueKind,
+  resolveDesignerDefaultOptionValues,
+} from '../registry/analyze'
 import { cloneConfigModel } from './transform'
 
 interface NodeLocation {
@@ -157,6 +161,27 @@ function validateSubtree(
     if (valueDiagnostic)
       return valueDiagnostic
     if (node.kind === 'field') {
+      if (node.defaultValue !== undefined) {
+        const setter = definition.props.find(candidate => candidate.key === 'defaultValue' && candidate.valueKind)
+        if (setter?.valueKind && !matchesDesignerDefaultValueKind(node.defaultValue, setter.valueKind)) {
+          return {
+            code: 'MODEL_DEFAULT_KIND_INVALID',
+            message: `Default value must match the ${setter.valueKind} field value kind.`,
+            nodeId: node.id,
+          }
+        }
+        const options = setter ? resolveDesignerDefaultOptionValues(node, setter) : undefined
+        const defaults = setter?.valueKind === 'multiselect' && Array.isArray(node.defaultValue)
+          ? node.defaultValue
+          : [node.defaultValue]
+        if (options && defaults.some(value => !options.some(option => areDesignerJsonValuesEqual(option, value)))) {
+          return {
+            code: 'MODEL_DEFAULT_OPTION_UNKNOWN',
+            message: 'Default value is not present in the current options.',
+            nodeId: node.id,
+          }
+        }
+      }
       if (node.children.length > 0 || Object.values(node.slots).some(slotNodes => slotNodes.length > 0)) {
         return { code: 'MODEL_CHILDREN_INVALID', message: `Field component ${node.component} cannot contain children.`, nodeId: node.id }
       }
@@ -380,6 +405,9 @@ function updateNode(
     else
       Object.assign(location.node, { [key]: cloneJson(value) })
   }
+  const diagnostic = validateSubtree([location.node], registry)
+  if (diagnostic)
+    return failure(model, diagnostic)
   return { success: true, model: candidate, inverse: { type: 'updateNode', nodeId: operation.nodeId, patch: previous }, diagnostics: [] }
 }
 
@@ -425,6 +453,34 @@ function validateFlows(
     ids.add(result.flow.id)
   }
   return undefined
+}
+
+/** Validate a complete persisted model against the active Registry contract. */
+export function analyzeConfigModel(
+  model: LowCodePageModel,
+  registry: LowCodeComponentRegistry,
+  options: ModelOperationOptions = {},
+): ModelDiagnostic[] {
+  const ids = collectIds(model.nodes)
+  if (ids.size !== countNodes(model.nodes)) {
+    return [{ code: 'MODEL_NODE_ID_DUPLICATE', message: 'Model nodes must have unique ids.' }]
+  }
+  const rootWithRequiredParent = model.nodes.find((node) => {
+    const definition = registry.get(node.component)
+    return definition && definition.allowedParents.length > 0
+  })
+  if (rootWithRequiredParent) {
+    return [{
+      code: 'MODEL_TARGET_PARENT_INVALID',
+      message: `Component ${rootWithRequiredParent.component} requires a registered parent slot.`,
+      nodeId: rootWithRequiredParent.id,
+    }]
+  }
+  const nodeDiagnostic = validateSubtree(model.nodes, registry)
+  if (nodeDiagnostic)
+    return [nodeDiagnostic]
+  const flowFailure = validateFlows(model, model.flows ?? [], options)
+  return flowFailure?.diagnostics ?? []
 }
 
 function updateFlows(

@@ -15,6 +15,10 @@ export interface StorageRecord<T = unknown> extends StorageItem<T> {}
 
 export type StorageItemUpdater<T> = (current: T | null) => T | null
 
+export type StorageItemsUpdater<T> = (
+  current: ReadonlyMap<string, T | null>,
+) => readonly StorageItem<T | null>[]
+
 export interface IndexedDBManagerStats {
   dbName: string
   isConnected: boolean

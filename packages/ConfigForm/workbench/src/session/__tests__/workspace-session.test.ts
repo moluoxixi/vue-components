@@ -164,6 +164,32 @@ describe('workspace session transactions', () => {
     expect(session.snapshot.canUndo).toBe(false)
     expect(session.redo().snapshot.currentPage.model.flows).toEqual([flow])
   })
+
+  it('restores a removed home page and its home-page pointer through inverse operations', async () => {
+    const { application, session } = await createFixtureSession()
+    const settings = duplicateWorkspacePage(application.pages[0]!, {
+      id: 'settings',
+      name: 'Settings',
+      route: '/settings',
+    })
+    session.dispatch({
+      id: 'add-settings',
+      label: 'Add settings',
+      operations: [{ type: 'application', operation: { type: 'add-page', page: settings } }],
+    })
+    session.dispatch({
+      id: 'remove-home',
+      label: 'Remove home',
+      operations: [{ type: 'application', operation: { type: 'remove-page', pageId: 'home' } }],
+    })
+
+    expect(session.snapshot.application.homePageId).toBe('settings')
+    expect(session.snapshot.application.pages.map(page => page.id)).toEqual(['settings'])
+    expect(session.undo().snapshot.application.homePageId).toBe('home')
+    expect(session.snapshot.application.pages.map(page => page.id)).toEqual(['home', 'settings'])
+    expect(session.redo().snapshot.application.homePageId).toBe('settings')
+    expect(session.snapshot.application.pages.map(page => page.id)).toEqual(['settings'])
+  })
 })
 
 describe('workspace session persistence', () => {

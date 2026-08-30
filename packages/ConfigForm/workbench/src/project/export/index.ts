@@ -1,4 +1,7 @@
 export * from './archive'
+export * from './canonical-bindings'
+export * from './config'
 export * from './download'
+export * from './serialization'
 export * from './snapshot'
 export * from './source'

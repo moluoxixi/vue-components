@@ -1,5 +1,5 @@
 import type { ConfigFormFlow, ConfigFormFlowConcurrency } from '@moluoxixi/config-form-core'
-import { ConfigFormFlowInterpreter } from '@moluoxixi/config-form-core'
+import { analyzeConfigFormFlow, ConfigFormFlowInterpreter } from '@moluoxixi/config-form-core'
 import { describe, expect, it, vi } from 'vitest'
 import {
   applyPreviewFlowValuePatch,
@@ -61,6 +61,13 @@ function actionFlow(
   }
 }
 
+function executionPlan(flow: ConfigFormFlow) {
+  const result = analyzeConfigFormFlow(flow)
+  if (!result.success)
+    throw new Error(result.diagnostics[0]?.message ?? 'Invalid test flow')
+  return result.plan
+}
+
 describe('preview flow coordinator', () => {
   it('publishes every queued trigger in execution order without a global latest gate', async () => {
     const calls: unknown[] = []
@@ -71,10 +78,10 @@ describe('preview flow coordinator', () => {
     }))
     const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({ get: () => ({ execute }) }))
     const flow = actionFlow('queue')
-    const first = coordinator.dispatch({ flows: [flow], trigger: flow.trigger, values: { request: 'first' }, revision: 1 })
+    const first = coordinator.dispatch({ plans: [executionPlan(flow)], trigger: flow.trigger, values: { request: 'first' }, revision: 1 })
     await vi.waitFor(() => expect(calls).toEqual(['first']))
-    const second = coordinator.dispatch({ flows: [flow], trigger: flow.trigger, values: { request: 'second' }, revision: 1 })
-    const third = coordinator.dispatch({ flows: [flow], trigger: flow.trigger, values: { request: 'third' }, revision: 1 })
+    const second = coordinator.dispatch({ plans: [executionPlan(flow)], trigger: flow.trigger, values: { request: 'second' }, revision: 1 })
+    const third = coordinator.dispatch({ plans: [executionPlan(flow)], trigger: flow.trigger, values: { request: 'third' }, revision: 1 })
 
     releases.shift()!('first-result')
     await vi.waitFor(() => expect(calls).toEqual(['first', 'second']))
@@ -94,11 +101,11 @@ describe('preview flow coordinator', () => {
     }))
     const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({ get: () => ({ execute }) }))
     const flow = actionFlow('ignore', { projection: true })
-    const active = coordinator.dispatch({ flows: [flow], trigger: flow.trigger, values: { request: 'active' }, revision: 1 })
+    const active = coordinator.dispatch({ plans: [executionPlan(flow)], trigger: flow.trigger, values: { request: 'active' }, revision: 1 })
     await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1))
 
     await expect(coordinator.dispatch({
-      flows: [flow],
+      plans: [executionPlan(flow)],
       trigger: flow.trigger,
       values: { request: 'ignored' },
       revision: 1,
@@ -126,7 +133,7 @@ describe('preview flow coordinator', () => {
     }))
     const flow = actionFlow('latest')
     const dispatch = coordinator.dispatch({
-      flows: [flow],
+      plans: [executionPlan(flow)],
       trigger: flow.trigger,
       values: { request: 'stale' },
       revision: 1,
@@ -160,7 +167,7 @@ describe('preview flow coordinator', () => {
     ]
 
     await expect(coordinator.dispatch({
-      flows,
+      plans: flows.map(executionPlan),
       trigger: { kind: 'field.change', field: 'request' },
       values: { request: 'start' },
       revision: 1,

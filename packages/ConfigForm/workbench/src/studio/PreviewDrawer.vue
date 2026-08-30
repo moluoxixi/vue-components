@@ -2,7 +2,8 @@
 import type {
   ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
-import type { DesignerCompileSuccess, DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type { VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
 import type { ConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
 import type { WorkspacePreviewProjection } from '../session'
 import {
@@ -14,7 +15,7 @@ import {
   Tablet,
   X,
 } from '@lucide/vue'
-import { ConfigFormRenderer } from '@moluoxixi/config-form/renderer'
+import { RuntimeSurface } from '@moluoxixi/config-form/renderer'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, useTemplateRef } from 'vue'
 import PreviewRuntimeBoundary from '../components/PreviewRuntimeBoundary.vue'
@@ -22,10 +23,10 @@ import PreviewRuntimeBoundary from '../components/PreviewRuntimeBoundary.vue'
 export type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
 
 const props = defineProps<{
-  active?: DesignerCompileSuccess
+  active?: VueRuntimeCompileSuccess
   configError?: string
   expanded?: boolean
-  fallback?: DesignerCompileSuccess
+  fallback?: VueRuntimeCompileSuccess
   fallbackModelValue: Record<string, unknown>
   locale?: DesignerLocaleOptions
   modelValue: Record<string, unknown>
@@ -126,7 +127,7 @@ function submitForm(): void {
           :revision="projection?.current.revisionKey ?? ''"
           @ready="emit('ready', $event)"
         >
-          <ConfigFormRenderer
+          <RuntimeSurface
             :key="projection?.current.revisionKey"
             ref="renderer"
             :model-value="modelValue"
@@ -134,13 +135,13 @@ function submitForm(): void {
             mode="preview"
             :namespace="namespace"
             :reaction-projection="reactionProjection"
-            v-bind="active.renderer"
+            v-bind="active.artifact.plan.renderer"
             @update:model-value="emit('update:modelValue', $event)"
             @submit="emit('submit', $event)"
             @field-change="emit('fieldChange', $event)"
           />
           <template #fallback>
-            <ConfigFormRenderer
+            <RuntimeSurface
               v-if="fallback"
               ref="fallbackRenderer"
               :model-value="fallbackModelValue"
@@ -148,7 +149,7 @@ function submitForm(): void {
               mode="preview"
               :namespace="namespace"
               :reaction-projection="reactionProjection"
-              v-bind="fallback.renderer"
+              v-bind="fallback.artifact.plan.renderer"
               @update:model-value="emit('update:fallbackModelValue', $event)"
               @submit="emit('submit', $event)"
               @field-change="emit('fieldChange', $event)"

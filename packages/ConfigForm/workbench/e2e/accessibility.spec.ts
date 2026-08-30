@@ -38,6 +38,15 @@ test('keeps the desktop workbench accessible in dark and light themes', async ({
 test('keeps mobile inspector and auxiliary workspaces accessible', async ({ page }) => {
   await createApplication(page, 'element')
   await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.getByRole('tablist', { name: 'Designer navigation' })).toHaveCount(1)
+
+  await page.getByRole('tab', { name: 'Layers' }).click()
+  await page.getByRole('treeitem').first().click()
+  await page.getByRole('button', { name: /Arrange/ }).first().click()
+  await expect(page.getByRole('menu')).toBeVisible()
+  await expectNoAccessibilityViolations(page, 'mobile layers menu')
+  await page.getByRole('menu').press('Escape')
+
   await page.getByRole('tab', { name: 'Inspector' }).click()
   await expect(page.getByRole('complementary', { name: 'Properties' })).toBeVisible()
   await expectNoAccessibilityViolations(page, 'mobile inspector')

@@ -1,0 +1,44 @@
+{
+  "name": "@moluoxixi/config-form-compiler",
+  "type": "module",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moluoxixi/vue-components",
+    "directory": "packages/ConfigForm/compiler"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
+  },
+  "dependencies": {
+    "@moluoxixi/config-form-core": "workspace:*",
+    "@moluoxixi/config-form-model": "workspace:*"
+  },
+  "devDependencies": {
+    "unplugin-dts": "catalog:dev",
+    "vite": "catalog:dev",
+    "vitest": "catalog:dev",
+    "vue-tsc": "catalog:dev"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -6,10 +6,12 @@ import type {
   DesignerRegistry,
   DesignerSelectionMode,
 } from '@moluoxixi/config-form-designer'
+import type { CSSProperties } from 'vue'
 import type { WorkspaceApplication } from '../project'
-import { Blocks, ChevronDown, ChevronUp, Files, IndentDecrease, IndentIncrease, Layers3, Settings2 } from '@lucide/vue'
+import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom'
+import { Blocks, ChevronDown, ChevronUp, Files, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 
 export type StudioLeftView = 'components' | 'layers' | 'pages'
 export type StudioLayerAction = 'moveBefore' | 'moveAfter' | 'indent' | 'outdent'
@@ -48,6 +50,10 @@ const activeView = computed(() => props.activeView ?? internalActiveView.value)
 const tabs = useTemplateRef<HTMLElement>('tabs')
 const layerTree = useTemplateRef<HTMLElement>('layerTree')
 const pageList = useTemplateRef<HTMLElement>('pageList')
+const layerMenuId = useId()
+const layerMenuNodeId = ref<string>()
+const layerMenuStyle = ref<CSSProperties>()
+let stopLayerMenuPositioning: (() => void) | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
 const views = computed(() => [
   { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components') },
@@ -56,8 +62,104 @@ const views = computed(() => [
 ])
 
 function selectView(view: StudioLeftView): void {
+  closeLayerMenu()
   internalActiveView.value = view
   emit('update:activeView', view)
+}
+
+function layerMenuElement(): HTMLElement | undefined {
+  return layerTree.value?.querySelector<HTMLElement>('[data-layer-action-menu]') ?? undefined
+}
+
+function layerMenuTrigger(nodeId: string): HTMLButtonElement | undefined {
+  return [...(layerTree.value?.querySelectorAll<HTMLButtonElement>('[data-layer-menu-trigger]') ?? [])]
+    .find(element => element.dataset.layerMenuTrigger === nodeId)
+}
+
+function closeLayerMenu(restoreFocus = false): void {
+  const nodeId = layerMenuNodeId.value
+  if (!nodeId)
+    return
+  stopLayerMenuPositioning?.()
+  stopLayerMenuPositioning = undefined
+  layerMenuStyle.value = undefined
+  layerMenuNodeId.value = undefined
+  if (restoreFocus)
+    void nextTick(() => layerMenuTrigger(nodeId)?.focus())
+}
+
+async function toggleLayerMenu(nodeId: string): Promise<void> {
+  if (layerMenuNodeId.value === nodeId) {
+    closeLayerMenu(true)
+    return
+  }
+  layerMenuNodeId.value = nodeId
+  await nextTick()
+  const trigger = layerMenuTrigger(nodeId)
+  const menu = layerMenuElement()
+  if (!trigger || !menu) {
+    closeLayerMenu()
+    return
+  }
+  const updatePosition = (): void => {
+    void computePosition(trigger, menu, {
+      middleware: [offset(4), flip({ fallbackPlacements: ['top-end'] }), shift({ padding: 8 })],
+      placement: 'bottom-end',
+      strategy: 'fixed',
+    }).then(({ x, y }) => {
+      if (layerMenuNodeId.value !== nodeId)
+        return
+      layerMenuStyle.value = {
+        left: `${x}px`,
+        position: 'fixed',
+        top: `${y}px`,
+      }
+    })
+  }
+  stopLayerMenuPositioning?.()
+  stopLayerMenuPositioning = autoUpdate(trigger, menu, updatePosition)
+  updatePosition()
+  menu.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+}
+
+function runLayerAction(action: StudioLayerAction, nodeId: string): void {
+  closeLayerMenu()
+  emit('arrangeLayer', action, nodeId)
+  void nextTick(() => layerMenuTrigger(nodeId)?.focus())
+}
+
+function handleLayerMenuKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    closeLayerMenu(true)
+    return
+  }
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key))
+    return
+  const menu = event.currentTarget as HTMLElement
+  const items = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+  if (items.length === 0)
+    return
+  event.preventDefault()
+  const current = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement))
+  const next = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? items.length - 1
+      : event.key === 'ArrowDown'
+        ? (current + 1) % items.length
+        : (current - 1 + items.length) % items.length
+  items[next]?.focus()
+}
+
+function handleDocumentPointerDown(event: PointerEvent): void {
+  if (!layerMenuNodeId.value || !(event.target instanceof Node))
+    return
+  const nodeId = layerMenuNodeId.value
+  if (layerMenuElement()?.contains(event.target) || layerMenuTrigger(nodeId)?.contains(event.target))
+    return
+  closeLayerMenu()
 }
 
 function selectLayer(nodeId: string, event: Pick<MouseEvent | KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>): void {
@@ -153,6 +255,17 @@ function handleTabKeydown(event: KeyboardEvent, view: StudioLeftView): void {
     ?.querySelector<HTMLButtonElement>(`[data-designer-left-tab="${activeView.value}"]`)
     ?.focus())
 }
+
+watch(() => props.layers, (layers) => {
+  if (layerMenuNodeId.value && !layers.some(layer => layer.id === layerMenuNodeId.value))
+    closeLayerMenu()
+})
+
+onMounted(() => document.addEventListener('pointerdown', handleDocumentPointerDown))
+onBeforeUnmount(() => {
+  stopLayerMenuPositioning?.()
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
+})
 </script>
 
 <template>
@@ -197,16 +310,41 @@ function handleTabKeydown(event: KeyboardEvent, view: StudioLeftView): void {
         :class="{ 'is-selected': selectedIds.includes(layer.id) }"
         @keydown="handleLayerKeydown($event, layer.id)"
       >
-        <button type="button" class="designer-layer-select" :style="{ paddingLeft: `${10 + layer.depth * 16}px` }" @click="selectLayer(layer.id, $event)">
+        <button type="button" tabindex="-1" class="designer-layer-select" :style="{ paddingLeft: `${10 + layer.depth * 16}px` }" @click="selectLayer(layer.id, $event)">
           <Layers3 :size="13" aria-hidden="true" />
           <span>{{ layer.label }}</span>
-          <small>{{ layer.component }}</small>
         </button>
-        <div class="designer-layer-actions" role="toolbar" :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })">
-          <button type="button" :title="locale.t('layer.moveUp', 'Move up')" :aria-label="locale.t('layer.moveUp', 'Move up')" @click="emit('arrangeLayer', 'moveBefore', layer.id)"><ChevronUp :size="12" aria-hidden="true" /></button>
-          <button type="button" :title="locale.t('layer.moveDown', 'Move down')" :aria-label="locale.t('layer.moveDown', 'Move down')" @click="emit('arrangeLayer', 'moveAfter', layer.id)"><ChevronDown :size="12" aria-hidden="true" /></button>
-          <button type="button" :title="locale.t('layer.indent', 'Indent')" :aria-label="locale.t('layer.indent', 'Indent')" @click="emit('arrangeLayer', 'indent', layer.id)"><IndentIncrease :size="12" aria-hidden="true" /></button>
-          <button type="button" :title="locale.t('layer.outdent', 'Outdent')" :aria-label="locale.t('layer.outdent', 'Outdent')" @click="emit('arrangeLayer', 'outdent', layer.id)"><IndentDecrease :size="12" aria-hidden="true" /></button>
+        <div class="designer-layer-actions">
+          <button
+            :id="`${layerMenuId}-${index}-trigger`"
+            type="button"
+            class="designer-layer-menu-trigger"
+            :data-layer-menu-trigger="layer.id"
+            :tabindex="selectedIds.includes(layer.id) ? 0 : -1"
+            :title="locale.t('workbench.moreActions', 'More actions')"
+            :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
+            aria-haspopup="menu"
+            :aria-controls="layerMenuId"
+            :aria-expanded="layerMenuNodeId === layer.id"
+            @click.stop="toggleLayerMenu(layer.id)"
+          >
+            <MoreHorizontal :size="14" aria-hidden="true" />
+          </button>
+          <div
+            v-if="layerMenuNodeId === layer.id"
+            :id="layerMenuId"
+            class="designer-layer-menu"
+            data-layer-action-menu
+            role="menu"
+            :style="layerMenuStyle"
+            :aria-labelledby="`${layerMenuId}-${index}-trigger`"
+            @keydown="handleLayerMenuKeydown"
+          >
+            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('moveBefore', layer.id)"><ChevronUp :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveUp', 'Move up') }}</span></button>
+            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('moveAfter', layer.id)"><ChevronDown :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveDown', 'Move down') }}</span></button>
+            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('indent', layer.id)"><IndentIncrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.indent', 'Indent') }}</span></button>
+            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('outdent', layer.id)"><IndentDecrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.outdent', 'Outdent') }}</span></button>
+          </div>
         </div>
       </div>
       <p v-if="layers.length === 0">{{ locale.t('layer.empty', 'No layers yet') }}</p>

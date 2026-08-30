@@ -278,84 +278,127 @@
 .mx-config-form-designer__palette-items {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
-  padding: 0 10px;
+  gap: 2px;
+  padding: 0 8px;
 }
 
 .mx-config-form-designer__palette-item {
   position: relative;
+  display: grid;
   min-width: 0;
-  min-height: 92px;
-  padding: 0;
+  min-height: 56px;
+  padding: 5px 8px;
   text-align: left;
   color: var(--mx-designer-text);
-  background: var(--mx-designer-surface-raised);
-  border: 1px solid var(--mx-designer-control-border);
-  border-radius: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
   cursor: grab;
+  grid-template-columns: minmax(88px, 1fr) minmax(72px, 0.86fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
   user-select: none;
-  touch-action: none;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition: background-color 100ms ease, border-color 100ms ease;
 }
 
-.mx-config-form-designer__palette-item[aria-pressed="true"] {
+.mx-config-form-designer__palette-item.is-keyboard-dragging {
   color: var(--mx-designer-accent);
   border-color: var(--mx-designer-accent);
   background: var(--mx-designer-accent-soft);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mx-designer-accent) 18%, transparent);
 }
 
-.mx-config-form-designer__palette-item:hover:not([aria-disabled="true"]) {
+.mx-config-form-designer__palette-item:hover:not(.is-disabled) {
+  border-color: var(--mx-designer-border);
+  background: var(--mx-designer-hover);
+}
+
+.mx-config-form-designer__palette-item:focus-within {
   border-color: var(--mx-designer-accent);
-  background: var(--mx-designer-accent-soft);
-  box-shadow: 0 2px 7px rgb(37 99 235 / 10%);
+  outline: 2px solid color-mix(in srgb, var(--mx-designer-accent) 32%, transparent);
+  outline-offset: -1px;
 }
 
-.mx-config-form-designer__palette-item[aria-disabled="true"] {
+.mx-config-form-designer__palette-item.is-disabled {
   cursor: not-allowed;
   opacity: 0.42;
 }
 
+.mx-config-form-designer__palette-item-action {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  color: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.mx-config-form-designer__palette-item-action:focus-visible {
+  outline: none;
+}
+
+.mx-config-form-designer__palette-item-action:disabled {
+  cursor: not-allowed;
+}
+
 .mx-config-form-designer__palette-item-summary {
   display: grid;
-  height: 34px;
   min-height: 0;
-  padding: 5px 7px;
+  padding: 0;
   align-items: center;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-columns: 20px minmax(0, 1fr);
   gap: 6px;
 }
 
 .mx-config-form-designer__palette-item-preview {
   position: relative;
-  height: 54px;
-  margin: 0 6px 6px;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  min-width: 0;
+  margin: 0;
+  padding: 1px 3px;
   overflow: hidden;
   color: var(--mx-designer-runtime-text);
   background: var(--mx-designer-runtime-surface);
   border: 1px solid var(--mx-designer-runtime-border);
   border-radius: 3px;
+  align-items: center;
   pointer-events: none;
 }
 
 .mx-config-form-designer__palette-item-preview > form {
-  width: 100%;
+  width: 139%;
+  flex: 0 0 139%;
   margin: 0;
-  padding: 5px 7px;
-  transform-origin: top left;
+  padding: 0;
+  transform: scale(0.72);
+  transform-origin: left center;
+}
+
+.mx-config-form-designer__palette-item-preview [data-config-form-responsive-layout] {
+  align-content: center;
 }
 
 .mx-config-form-designer__palette-item-preview [data-config-node-id] {
   box-sizing: border-box;
 }
 
-.mx-config-form-designer__palette-item-preview label,
+.mx-config-form-designer__palette-item-preview [class$="-config-form__label"],
 .mx-config-form-designer__palette-item-preview [class*="form-item__label"] {
-  overflow: hidden;
-  font-size: 10px !important;
-  line-height: 14px !important;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: none !important;
+}
+
+.mx-config-form-designer__palette-item-preview [class*="form-item"] {
+  margin-bottom: 0 !important;
 }
 
 .mx-config-form-designer__palette-item-preview input,
@@ -363,7 +406,7 @@
 .mx-config-form-designer__palette-item-preview select,
 .mx-config-form-designer__palette-item-preview [class*="input__wrapper"],
 .mx-config-form-designer__palette-item-preview [class*="picker"] {
-  min-height: 28px !important;
+  min-height: 30px !important;
 }
 
 .mx-config-form-designer__palette-preview-unavailable {
@@ -377,14 +420,9 @@
 .mx-config-form-designer__palette-item-name {
   min-width: 0;
   overflow: hidden;
+  font-size: 12px;
+  font-weight: 550;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mx-config-form-designer__palette-item-summary small {
-  color: var(--mx-designer-muted);
-  font-size: 10px;
-  line-height: 1;
   white-space: nowrap;
 }
 
@@ -450,32 +488,67 @@
 .mx-config-form-designer__node-actions {
   position: absolute;
   z-index: 100;
-  top: -5px;
-  right: -5px;
+  top: -6px;
+  left: -1px;
   display: none;
   width: max-content;
   max-width: calc(100vw - 24px);
-  padding: 1px;
+  padding: 2px;
   color: var(--mx-designer-text);
   background: color-mix(in srgb, var(--mx-designer-overlay) 94%, transparent);
   border: 1px solid var(--mx-designer-border);
   border-radius: 6px;
   box-shadow: 0 2px 6px var(--mx-designer-shadow);
   cursor: default;
-  overflow-x: auto;
+  gap: 1px;
+  overflow: visible;
   pointer-events: auto;
   scrollbar-width: thin;
   transform: translateY(-100%);
 }
 
-.mx-config-form-designer__property-heading code {
-  color: var(--mx-designer-muted);
-  font-size: 11px;
+.mx-config-form-designer__node-actions .mx-config-form-designer__icon-button {
+  width: 24px;
+  height: 24px;
 }
 
-.mx-config-form-designer__node-actions .mx-config-form-designer__icon-button {
-  width: 22px;
-  height: 22px;
+.mx-config-form-designer__node-action-menu {
+  position: absolute;
+  z-index: 130;
+  top: calc(100% + 5px);
+  left: 0;
+  display: grid;
+  min-width: 172px;
+  padding: 4px;
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-overlay);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px var(--mx-designer-shadow);
+}
+
+.mx-config-form-designer__node-action-menu button {
+  display: grid;
+  min-height: 30px;
+  padding: 4px 8px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__node-action-menu button:hover,
+.mx-config-form-designer__node-action-menu button:focus-visible {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-hover);
+  outline: none;
 }
 
 .mx-config-form-designer__drag-handle {
@@ -506,12 +579,44 @@
   margin: 0;
 }
 
+.mx-config-form-designer__runtime-surface > form[inert] {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/*
+ * Some component libraries set pointer-events/tabindex on their internal
+ * control after the form's inert rule has been applied. Guard the entire
+ * design Runtime subtree so the editor overlay remains the only interaction
+ * surface. Preview uses a separate RuntimeSurface without this class.
+ */
+.mx-config-form-designer__runtime-surface > form[inert] * {
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+
+.mx-config-form-designer__runtime-surface > form[inert] input,
+.mx-config-form-designer__runtime-surface > form[inert] textarea,
+.mx-config-form-designer__runtime-surface > form[inert] select,
+.mx-config-form-designer__runtime-surface > form[inert] button,
+.mx-config-form-designer__runtime-surface > form[inert] [role],
+.mx-config-form-designer__runtime-surface > form[inert] [contenteditable="true"] {
+  caret-color: transparent;
+  cursor: default !important;
+}
+
 .mx-config-form-designer__runtime-surface [data-config-node-id] {
   box-sizing: border-box;
 }
 
 .mx-config-form-designer__runtime-surface [data-config-node-state~="candidate"] {
-  opacity: 0.58;
+  // The candidate preserves real Runtime geometry, while the pointer-following
+  // clone carries the detailed visual. Keep this drop hint deliberately quiet
+  // so the two layers do not read as duplicate controls.
+  opacity: 0.24;
   outline: 2px dashed var(--mx-designer-accent-line);
   outline-offset: 3px;
   transition: opacity 100ms ease, outline-color 100ms ease;
@@ -599,15 +704,34 @@
 .mx-config-form-designer__selection-box {
   position: absolute;
   box-sizing: border-box;
-  border: 1px dashed color-mix(in srgb, var(--mx-designer-accent) 72%, transparent);
-  border-radius: 4px;
+  border: 0;
+  border-radius: 3px;
+  outline: 1px solid color-mix(in srgb, var(--mx-designer-accent) 68%, transparent);
+  // Keep the editor chrome visibly outside the Runtime control. The explicit
+  // gap makes selection distinct from a component-library focus ring.
+  outline-offset: 5px;
   pointer-events: none;
+  transition: outline-color 100ms ease, outline-offset 100ms ease;
 }
 
 .mx-config-form-designer__selection-box.is-primary {
-  border-style: solid;
-  border-width: 2px;
-  border-color: var(--mx-designer-accent);
+  outline-color: var(--mx-designer-accent);
+}
+
+.mx-config-form-designer__selection-box.is-resizing {
+  cursor: ew-resize;
+  outline-offset: 4px;
+}
+
+// Component libraries commonly reset focused tabindex=-1 elements; keep the editor selection visible.
+.mx-config-form-designer__selection-box.is-primary:focus {
+  outline: 1px solid var(--mx-designer-accent);
+  outline-offset: 5px;
+}
+
+.mx-config-form-designer__selection-box.is-primary:focus-visible {
+  outline: 1px solid var(--mx-designer-accent);
+  outline-offset: 5px;
 }
 
 .mx-config-form-designer__selection-box.is-primary > .mx-config-form-designer__node-actions {
@@ -632,23 +756,19 @@
   position: absolute;
   z-index: 110;
   top: 50%;
-  right: -9px;
-  width: 12px;
-  height: 34px;
+  right: -4px;
+  width: 7px;
+  height: 18px;
   padding: 0;
-  background: var(--mx-designer-surface);
-  border: 2px solid var(--mx-designer-accent);
+  background: var(--mx-designer-accent);
+  border: 1px solid var(--mx-designer-runtime-surface);
   border-radius: 3px;
   cursor: ew-resize;
   transform: translateY(-50%);
 }
 
 .mx-config-form-designer__resize-handle::after {
-  position: absolute;
-  inset: 6px 3px;
-  border-left: 1px solid var(--mx-designer-accent);
-  border-right: 1px solid var(--mx-designer-accent);
-  content: "";
+  content: none;
 }
 
 .mx-config-form-designer__property-heading {
@@ -663,14 +783,15 @@
 
 .mx-config-form-designer__tabs {
   display: grid;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: row;
   padding: 8px 10px;
   gap: 2px;
   background: var(--mx-designer-subtle);
 }
 
 .mx-config-form-designer__tabs button {
+  min-width: 0;
   min-height: 30px;
   padding: 4px 6px;
   background: transparent;
@@ -1395,7 +1516,7 @@
 }
 
 .mx-config-form-designer__resize-handle {
-  background: var(--mx-designer-overlay);
+  background: var(--mx-designer-accent);
 }
 
 .mx-config-form-designer-property-form__label,
@@ -1469,12 +1590,7 @@
 
 .mx-config-form-designer__tabs {
   max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.mx-config-form-designer__tabs::-webkit-scrollbar {
-  display: none;
+  overflow: hidden;
 }
 
 .mx-config-form-designer__tabs button {

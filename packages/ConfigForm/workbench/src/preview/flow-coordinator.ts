@@ -1,6 +1,6 @@
 import type {
-  ConfigFormFlow,
   ConfigFormFlowDiagnostic,
+  ConfigFormFlowExecutionPlan,
   ConfigFormFlowInterpreter,
   ConfigFormFlowTraceEvent,
   ConfigFormFlowTrigger,
@@ -22,7 +22,7 @@ export type PreviewFlowDispatchStatus
     | 'timeout'
 
 export interface PreviewFlowDispatchInput {
-  flows: readonly ConfigFormFlow[]
+  plans: readonly ConfigFormFlowExecutionPlan[]
   trigger: ConfigFormFlowTrigger
   values: Record<string, unknown>
   revision: number
@@ -48,9 +48,9 @@ export class PreviewFlowCoordinator {
     if (!isCurrent())
       return emptyResult('stale')
 
-    const matchingFlows = input.flows.filter(flow => flow.trigger.kind === input.trigger.kind
-      && (!flow.trigger.field || flow.trigger.field === input.trigger.field))
-    if (matchingFlows.length === 0)
+    const matchingPlans = input.plans.filter(plan => plan.trigger.kind === input.trigger.kind
+      && (!plan.trigger.field || plan.trigger.field === input.trigger.field))
+    if (matchingPlans.length === 0)
       return emptyResult('noop')
 
     const initialValues = { ...input.values }
@@ -58,8 +58,8 @@ export class PreviewFlowCoordinator {
     let committed = false
     const projectionUpdates: PreviewFlowDispatchResult['projectionUpdates'] = {}
 
-    for (const flow of matchingFlows) {
-      const result = await this.interpreter.run(flow, {
+    for (const plan of matchingPlans) {
+      const result = await this.interpreter.run(plan, {
         revision: input.revision,
         signal: input.signal,
         values: nextValues,
@@ -70,7 +70,7 @@ export class PreviewFlowCoordinator {
       if (result.status === 'success' || result.status === 'end') {
         committed = true
         nextValues = result.values
-        projectionUpdates[flow.id] = result.projection
+        projectionUpdates[plan.flowId] = result.projection
         continue
       }
       if (result.status === 'ignored')

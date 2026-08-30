@@ -218,6 +218,7 @@ describe('designer registry', () => {
     controlled.designPolicy = {
       async: 'adapter',
       adapter: defineComponent({ name: 'ControlledAsyncInput' }),
+      visualEquivalence: 'runtime-geometry',
       diagnostic: 'Async behavior is isolated in Design mode.',
     }
     const registry = createDesignerRegistry([{ name: 'adapter', materials: [controlled] }])
@@ -226,8 +227,19 @@ describe('designer registry', () => {
       interaction: 'preview',
       async: 'adapter',
       sideEffects: 'blocked',
+      visualEquivalence: 'runtime-geometry',
       diagnostic: 'Async behavior is isolated in Design mode.',
     })
+
+    const unproven = fieldMaterial('Unproven adapter')
+    unproven.designPolicy = {
+      render: 'adapter',
+      adapter: defineComponent({ name: 'UnprovenAdapter' }),
+    }
+    expect(() => createDesignerRegistry([{ name: 'adapter', materials: [unproven] }]))
+      .toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+        code: 'DESIGNER_DESIGN_POLICY_EQUIVALENCE_REQUIRED',
+      }))
   })
 
   it('requires an explicit source binding for low-code registration', () => {

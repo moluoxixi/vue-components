@@ -8,13 +8,16 @@ import type {
   ConfigFormFlowPlanNode,
   ConfigFormFlowPlanResult,
 } from './types'
-import { CONFIG_FORM_FLOW_VERSION } from './types'
+import { CONFIG_FORM_FLOW_PLAN_VERSION, CONFIG_FORM_FLOW_VERSION } from './types'
 
 const NODE_TYPES = new Set(['trigger', 'condition', 'reaction', 'action', 'success', 'failure', 'end'])
 const EDGE_CONDITIONS = new Set(['next', 'true', 'false', 'error'])
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
 
-export function analyzeConfigFormFlow(input: unknown, revision = 0): ConfigFormFlowPlanResult {
+export function analyzeConfigFormFlow(
+  input: unknown,
+  _legacyRevision = 0,
+): ConfigFormFlowPlanResult {
   const flow = input as ConfigFormFlow
   const diagnostics: ConfigFormFlowDiagnostic[] = []
   if (!isRecord(input))
@@ -127,16 +130,19 @@ export function analyzeConfigFormFlow(input: unknown, revision = 0): ConfigFormF
   if (diagnostics.length > 0)
     return failure(flow, diagnostics)
 
-  const planNodes: ConfigFormFlowPlanNode[] = nodes.map(node => ({
-    ...node,
+  const planNodes: ConfigFormFlowPlanNode[] = nodes.map(({ position: _position, ...node }) => ({
+    ...cloneJson(node),
     ...(node.config ? { config: cloneJson(node.config) } : {}),
-    ...(node.position ? { position: { ...node.position } } : {}),
-    outgoing: [...(outgoing.get(node.id) ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
-    incoming: [...(incoming.get(node.id) ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
+    outgoing: cloneJson([...(outgoing.get(node.id) ?? [])].sort((left, right) => left.id.localeCompare(right.id))),
+    incoming: cloneJson([...(incoming.get(node.id) ?? [])].sort((left, right) => left.id.localeCompare(right.id))),
   }))
   const plan: ConfigFormFlowExecutionPlan = {
+    version: CONFIG_FORM_FLOW_PLAN_VERSION,
     flowId: flow.id,
-    revision,
+    name: flow.name,
+    trigger: cloneJson(flow.trigger),
+    ...(flow.concurrency === undefined ? {} : { concurrency: flow.concurrency }),
+    ...(flow.errorPolicy === undefined ? {} : { errorPolicy: cloneJson(flow.errorPolicy) }),
     triggerNodeId: triggerNode!.id,
     topologicalOrder: order,
     nodes: planNodes,

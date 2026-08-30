@@ -3,8 +3,20 @@
 import type { WorkspaceApplication } from '../../project'
 import { createDesignerRegistry } from '@moluoxixi/config-form-designer'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import StudioLeftPanel from '../StudioLeftPanel.vue'
+
+vi.mock('@floating-ui/dom', () => ({
+  autoUpdate: (_reference: Element, _floating: HTMLElement, update: () => void) => {
+    update()
+    return vi.fn()
+  },
+  computePosition: vi.fn(async () => ({ x: 8, y: 8 })),
+  flip: vi.fn(() => ({ name: 'flip' })),
+  offset: vi.fn(() => ({ name: 'offset' })),
+  shift: vi.fn(() => ({ name: 'shift' })),
+}))
 
 const registry = createDesignerRegistry([{ name: 'test', materials: [{
   key: 'test.input',
@@ -44,7 +56,14 @@ describe('studio left panel', () => {
     const layer = wrapper.get('[role="treeitem"]')
     expect(layer.attributes('aria-selected')).toBe('true')
     await layer.get('.designer-layer-select').trigger('click', { ctrlKey: true })
-    await layer.findAll('.designer-layer-actions button')[0]!.trigger('click')
+    expect(layer.text()).not.toContain('test.input')
+    const menuTrigger = layer.get('.designer-layer-menu-trigger')
+    await menuTrigger.trigger('click')
+    expect(menuTrigger.attributes()).toMatchObject({
+      'aria-expanded': 'true',
+      'aria-haspopup': 'menu',
+    })
+    await layer.findAll('[role="menuitem"]')[0]!.trigger('click')
     expect(wrapper.emitted('selectLayer')).toEqual([['field', 'toggle']])
     expect(wrapper.emitted('arrangeLayer')).toEqual([['moveBefore', 'field']])
 
@@ -109,6 +128,39 @@ describe('studio left panel', () => {
     await firstPage.trigger('keydown', { key: 'ArrowDown' })
     expect(document.activeElement?.getAttribute('data-page-id')).toBe('page-b')
     expect(wrapper.emitted('selectPage')?.at(-1)).toEqual(['page-b'])
+    wrapper.unmount()
+  })
+
+  it('keeps layer actions in an accessible menu with keyboard focus restoration', async () => {
+    const wrapper = mount(StudioLeftPanel, {
+      attachTo: document.body,
+      props: {
+        application,
+        currentPageId: 'page-a',
+        form: {},
+        layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 0 }],
+        materials: registry.listMaterials(),
+        registry,
+        selectedIds: ['field'],
+      },
+    })
+
+    await wrapper.get('[data-designer-left-tab="layers"]').trigger('click')
+    const trigger = wrapper.get('.designer-layer-menu-trigger')
+    ;(trigger.element as HTMLButtonElement).focus()
+    await trigger.trigger('click')
+    await nextTick()
+    const menu = wrapper.get('[role="menu"]')
+    const items = menu.findAll('[role="menuitem"]')
+    expect(items).toHaveLength(4)
+    expect(document.activeElement).toBe(items[0]!.element)
+
+    await menu.trigger('keydown', { key: 'End' })
+    expect(document.activeElement).toBe(items[3]!.element)
+    await menu.trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
     wrapper.unmount()
   })
 })

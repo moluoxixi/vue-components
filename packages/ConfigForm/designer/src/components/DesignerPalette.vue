@@ -192,24 +192,33 @@ watch(() => props.readonly, (readonly) => {
             v-for="material in entries"
             :key="material.key"
             class="mx-config-form-designer__palette-item"
-            data-designer-draggable
-            :data-material-key="material.key"
-            role="button"
-            :aria-disabled="readonly ? 'true' : undefined"
-            :aria-pressed="isMaterialKeyboardDragging(material.key)"
-            :tabindex="readonly ? -1 : 0"
-            :title="locale.materialTitle(material)"
-            @click="addMaterial(material.key)"
-            @keydown="handleMaterialKeydown(material, $event)"
-            @pointerdown="prepareMaterialDrag(material, $event)"
+            :class="{
+              'is-disabled': readonly,
+              'is-keyboard-dragging': isMaterialKeyboardDragging(material.key),
+            }"
+            :data-material-row-key="material.key"
+            :data-material-kind="material.kind"
           >
-            <span class="mx-config-form-designer__palette-item-summary">
+            <button
+              type="button"
+              class="mx-config-form-designer__palette-item-action"
+              data-designer-draggable
+              :data-material-key="material.key"
+              :data-material-kind="material.kind"
+              :disabled="readonly"
+              :aria-label="locale.materialTitle(material)"
+              :aria-pressed="isMaterialKeyboardDragging(material.key)"
+              :title="locale.materialTitle(material)"
+              @click.stop="addMaterial(material.key)"
+              @keydown="handleMaterialKeydown(material, $event)"
+              @pointerdown="prepareMaterialDrag(material, $event)"
+            />
+            <span class="mx-config-form-designer__palette-item-summary" aria-hidden="true">
               <component :is="material.icon" v-if="material.icon" :size="17" aria-hidden="true" />
               <span class="mx-config-form-designer__palette-icon" v-else aria-hidden="true">
                 {{ material.kind === 'field' ? 'F' : 'L' }}
               </span>
               <span class="mx-config-form-designer__palette-item-name">{{ locale.materialTitle(material) }}</span>
-              <small>{{ material.kind === 'field' ? locale.t('palette.field', 'Field') : locale.t('palette.layout', 'Layout') }}</small>
             </span>
             <DesignerMaterialSpecimen
               v-if="registry"

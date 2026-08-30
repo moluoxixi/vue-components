@@ -14,7 +14,7 @@ export interface AnalyzeDesignerDocumentOptions {
   includeMaterialDiagnostics?: boolean
 }
 
-function readPath(node: DesignerNode, path: string[]): unknown {
+function readPath(node: object, path: string[]): unknown {
   let value: unknown = node
   for (const segment of path) {
     if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -24,7 +24,7 @@ function readPath(node: DesignerNode, path: string[]): unknown {
   return value
 }
 
-function matchesDefaultKind(value: unknown, kind: DesignerDefaultValueKind): boolean {
+export function matchesDesignerDefaultValueKind(value: unknown, kind: DesignerDefaultValueKind): boolean {
   if (value === null)
     return true
   switch (kind) {
@@ -39,7 +39,10 @@ function matchesDefaultKind(value: unknown, kind: DesignerDefaultValueKind): boo
   }
 }
 
-function optionValues(node: DesignerFieldNode, setter: DesignerPropertySetterDefinition): unknown[] | undefined {
+export function resolveDesignerDefaultOptionValues(
+  node: object,
+  setter: DesignerPropertySetterDefinition,
+): unknown[] | undefined {
   if (!setter.optionsPath)
     return undefined
   const source = setter.optionSourcePath ? readPath(node, setter.optionSourcePath) : undefined
@@ -74,7 +77,7 @@ function analyzeFieldDefault(
     return []
 
   const diagnostics: DesignerDiagnostic[] = []
-  if (!matchesDefaultKind(node.defaultValue, setter.valueKind)) {
+  if (!matchesDesignerDefaultValueKind(node.defaultValue, setter.valueKind)) {
     diagnostics.push(designerDiagnostic(
       'DESIGNER_DEFAULT_KIND_INVALID',
       `Default value must match the ${setter.valueKind} field value kind`,
@@ -88,7 +91,7 @@ function analyzeFieldDefault(
   if (node.defaultValue === null)
     return diagnostics
 
-  const values = optionValues(node, setter)
+  const values = resolveDesignerDefaultOptionValues(node, setter)
   if (values) {
     const defaults = setter.valueKind === 'multiselect' && Array.isArray(node.defaultValue)
       ? node.defaultValue

@@ -442,8 +442,8 @@ async function focusNode(nodeId?: string): Promise<void> {
   if (!nodeId)
     return
   await nextTick()
-  const target = [...(rootRef.value?.querySelectorAll<HTMLElement>('[data-focus-node-id]') ?? [])]
-    .find(element => element.dataset.focusNodeId === nodeId)
+  const target = [...(rootRef.value?.querySelectorAll<HTMLElement>('[data-editor-focus-node-id]') ?? [])]
+    .find(element => element.dataset.editorFocusNodeId === nodeId)
   target?.focus()
 }
 
@@ -920,7 +920,9 @@ defineExpose<ConfigFormDesignerExpose>({
             :selected-ids="controller.selectedIds.value"
             :readonly="readonly"
             :breakpoint="activeBreakpoint"
+            :candidate-runtime-renderer="commandControl?.previewRuntime"
             :interactive="linkagePreview"
+            show-interactive-toggle
             :model="previewModel"
             :reaction-props="previewReactionProps"
             :reaction-states="previewReactionStates"
@@ -1040,6 +1042,7 @@ defineExpose<ConfigFormDesignerExpose>({
             v-if="previewResult.success"
             v-model="previewModel"
             :namespace="registry.rendererNamespace"
+            :breakpoint="activeBreakpoint"
             v-bind="previewResult.renderer"
           />
         </slot>

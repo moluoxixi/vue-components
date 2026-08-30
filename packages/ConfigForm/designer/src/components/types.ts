@@ -1,4 +1,5 @@
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
+import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { DesignerCompileResult } from '../compiler'
 import type { DesignerSelectionMode } from '../composables'
@@ -28,6 +29,21 @@ export interface ConfigFormDesignerProps {
 
 export interface DesignerCommandControl {
   apply: (command: DesignerCommand, document: DesignerDocument) => boolean
+  /**
+   * Routes property-panel operations through the host's canonical command
+   * engine. The legacy `modelOperation` emit remains as a compatibility
+   * fallback for standalone consumers that have not adopted this bridge.
+   */
+  applyModelOperation?: (operation: ModelOperation) => boolean
+  /**
+   * Projects an uncommitted command through the host's canonical runtime
+   * pipeline. Returning undefined keeps the committed runtime visible when a
+   * candidate is invalid; it must not fall back to a second runtime compiler.
+   */
+  previewRuntime?: (
+    command: DesignerCommand,
+    document: DesignerDocument,
+  ) => VueRuntimeRendererConfig | undefined
 }
 
 export interface DesignerHistoryControl {
@@ -128,6 +144,8 @@ export interface DesignSurfaceProps {
   modelRegistry: LowCodeComponentRegistry
   readonly?: boolean
   registry: DesignerRegistry
+  /** Canonical Vue Runtime plan used for the normal (non-candidate) canvas. */
+  runtimeRenderer?: VueRuntimeRendererConfig
   workspaceNavigation?: 'external' | 'internal'
 }
 

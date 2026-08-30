@@ -1,5 +1,5 @@
 import type { ConfigFormFlow, ConfigFormFlowConcurrency } from '@moluoxixi/config-form-core'
-import type { LowCodePageModel } from '@moluoxixi/config-form-designer'
+import type { LegacyLowCodePageModelV1 as LowCodePageModel } from '@moluoxixi/config-form-model'
 import { Buffer } from 'node:buffer'
 import { createLowCodeComponentRegistry } from '@moluoxixi/config-form-designer'
 import { createAntdVueDesignerRegistry } from '@moluoxixi/config-form-designer-antd-vue'

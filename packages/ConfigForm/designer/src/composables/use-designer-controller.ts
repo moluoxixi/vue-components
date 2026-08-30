@@ -26,6 +26,7 @@ import {
   createDesignerNodeId,
   findDesignerNode,
   redoDesignerHistory,
+  reduceDesignerCommand,
   resetDesignerHistory,
   undoDesignerHistory,
 } from '../history'
@@ -140,7 +141,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     hasDesignerErrors(initial.diagnostics) ? initial.diagnostics : [],
   )
   const renderVersion = ref(0)
-  const document = computed(() => history.value.present)
+  const document = computed(() => options.controlled() ? options.document() : history.value.present)
   const compileResult = computed(() => compileDesignerDocument(document.value, options.registry()))
   const diagnostics = computed(() => commandDiagnostics.value.length > 0
     ? commandDiagnostics.value
@@ -159,12 +160,16 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
 
   watch(diagnostics, value => options.onDiagnostics(value), { deep: true, immediate: true })
   watch(options.document, (value) => {
-    if (areDesignerJsonValuesEqual(value, document.value)) {
-      return
-    }
     const next = initialState(value, options.registry())
     commandDiagnostics.value = hasDesignerErrors(next.diagnostics) ? next.diagnostics : []
     if (hasDesignerErrors(next.diagnostics))
+      return
+    if (options.controlled()) {
+      pruneSelection(next.document)
+      renderVersion.value += 1
+      return
+    }
+    if (areDesignerJsonValuesEqual(value, document.value))
       return
     history.value = resetDesignerHistory(history.value, next.document)
     pruneSelection(next.document)
@@ -202,6 +207,19 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   function dispatch(command: DesignerCommand): boolean {
     if (rejectReadonly())
       return false
+    if (options.controlled()) {
+      const result = reduceDesignerCommand(document.value, command, options.registry())
+      commandDiagnostics.value = result.changed ? [] : result.diagnostics
+      renderVersion.value += 1
+      if (!result.changed)
+        return false
+      const nextDocument = cloneDesignerDocument(result.document)
+      if (!options.onBeforeCommandCommit(command, nextDocument))
+        return false
+      pruneSelection(nextDocument)
+      options.onCommand(command, nextDocument)
+      return true
+    }
     const result = applyDesignerCommand(history.value, command, options.registry())
     commandDiagnostics.value = result.changed ? [] : result.diagnostics
     renderVersion.value += 1
@@ -210,11 +228,6 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     const nextDocument = cloneDesignerDocument(result.history.present)
     if (!options.onBeforeCommandCommit(command, nextDocument))
       return false
-    if (options.controlled()) {
-      pruneSelection(nextDocument)
-      options.onCommand(command, nextDocument)
-      return true
-    }
     history.value = result.history
     pruneSelection(nextDocument)
     emitDocument(command)

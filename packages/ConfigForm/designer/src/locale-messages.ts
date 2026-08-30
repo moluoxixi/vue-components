@@ -189,6 +189,7 @@ export const DESIGNER_ZH_CN_MESSAGES: Record<string, string> = {
   'node.copyNode': '复制节点',
   'node.delete': '删除',
   'node.deleteNode': '删除节点',
+  'node.moreActions': '更多操作',
   'node.select': '选择 {label}',
   'optionSource.type': '选项来源类型',
   'optionSource.static': '静态选项',

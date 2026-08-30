@@ -1,11 +1,33 @@
 import type {
-  DesignerSourceLibraryBinding,
+  CanonicalPageIR,
+  ProjectCompilation,
+} from '@moluoxixi/config-form-compiler'
+import type {
+  ConfigFormFlow,
+  ConfigFormFlowExecutionPlan,
+  ConfigFormReaction,
+} from '@moluoxixi/config-form-core'
+import type {
   LowCodeComponentRegistry,
-  LowCodeNode,
-  LowCodePageModel,
 } from '@moluoxixi/config-form-designer'
+import type {
+  ConditionExpression,
+  ConditionTarget,
+  FormSettings,
+  LegacyLowCodeNodeV1 as LowCodeNode,
+  LegacyLowCodePageModelV1 as LowCodePageModel,
+  ModelJsonObject,
+  ModelJsonValue,
+  RegisteredBinding,
+  RegisteredEventAction,
+} from '@moluoxixi/config-form-model'
 import type { WorkspaceApplication } from '../application'
 import type { ProjectPath, WorkspaceFile, WorkspaceProject } from '../types'
+import type {
+  CanonicalSourceBindingResolver,
+  CanonicalSourceComponentBinding,
+  CanonicalSourceLibraryBinding,
+} from './canonical-bindings'
 import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
 import { cloneWorkspaceApplication, parseWorkspaceApplication } from '../application'
 import { normalizeProjectPath, safeProjectSlug } from '../path'
@@ -33,8 +55,226 @@ interface PackageJson {
   devDependencies?: Record<string, string>
 }
 
+interface StandaloneSourceNodeBase {
+  id: string
+  component: string
+  props: ModelJsonObject
+  events: Record<string, RegisteredEventAction[]>
+  bindings: Record<string, RegisteredBinding>
+  placement: ModelJsonObject
+  conditions?: Partial<Record<ConditionTarget, ConditionExpression>>
+  reactions?: ConfigFormReaction[]
+}
+
+interface StandaloneSourceFieldNode extends StandaloneSourceNodeBase {
+  kind: 'field'
+  field: string
+  label?: string
+  defaultValue?: ModelJsonValue
+}
+
+interface StandaloneSourceLayoutNode extends StandaloneSourceNodeBase {
+  kind: 'layout'
+  slots: Record<string, StandaloneSourceNode[]>
+}
+
+type StandaloneSourceNode = StandaloneSourceFieldNode | StandaloneSourceLayoutNode
+
+interface StandaloneSourcePage {
+  id: string
+  name: string
+  route: string
+  form: FormSettings
+  root: StandaloneSourceNode[]
+  flowPlans: ConfigFormFlowExecutionPlan[]
+}
+
+interface StandaloneSourceComponentDefinition {
+  binding: CanonicalSourceComponentBinding
+  events: ReadonlyArray<{ name: string }>
+  bindings: ReadonlyArray<{ name: string, valueProp: string, trigger: string }>
+}
+
+interface StandaloneSourceRegistry {
+  get: (component: string) => StandaloneSourceComponentDefinition | undefined
+}
+
+interface StandaloneSourceProject {
+  id: string
+  name: string
+  homePageId: string
+  pages: StandaloneSourcePage[]
+}
+
 function textFile(content: string, language: string): WorkspaceFile {
   return { content, kind: 'text', language }
+}
+
+function createLegacySourceRegistry(registry: LowCodeComponentRegistry): StandaloneSourceRegistry {
+  const definitions = new Map(registry.list().map((definition) => {
+    const binding: CanonicalSourceComponentBinding = {
+      component: definition.component,
+      contractFingerprint: 'legacy',
+      contractVersion: 'legacy',
+      configComponent: definition.source.configComponent,
+      tag: definition.source.tag,
+      render: definition.source.render,
+      ...(definition.defaults.defaultValue === undefined
+        ? {}
+        : { defaultValue: structuredClone(definition.defaults.defaultValue) }),
+      ...(definition.source.library ? { library: structuredClone(definition.source.library) } : {}),
+      ...(definition.source.options ? { options: structuredClone(definition.source.options) } : {}),
+      ...(definition.source.staticProps ? { staticProps: structuredClone(definition.source.staticProps) } : {}),
+      ...(definition.runtime.trigger ? { trigger: definition.runtime.trigger } : {}),
+      ...(definition.runtime.valueProp ? { valueProp: definition.runtime.valueProp } : {}),
+    }
+    return [definition.component, {
+      binding,
+      events: definition.events.map(event => ({ name: event.name })),
+      bindings: definition.bindings.map(item => ({
+        name: item.name,
+        valueProp: item.valueProp,
+        trigger: item.trigger,
+      })),
+    } satisfies StandaloneSourceComponentDefinition] as const
+  }))
+  return { get: component => definitions.get(component) }
+}
+
+function legacySourceNode(node: LowCodeNode): StandaloneSourceNode {
+  const common: StandaloneSourceNodeBase = {
+    id: node.id,
+    component: node.component,
+    props: structuredClone(node.props),
+    events: structuredClone(node.events),
+    bindings: structuredClone(node.bindings),
+    placement: node.span === undefined ? {} : { span: node.span },
+    ...(node.conditions === undefined ? {} : { conditions: structuredClone(node.conditions) }),
+    ...(node.reactions === undefined ? {} : { reactions: structuredClone(node.reactions) }),
+  }
+  if (node.kind === 'field') {
+    return {
+      ...common,
+      kind: 'field',
+      field: node.field ?? node.id,
+      ...(node.label === undefined ? {} : { label: node.label }),
+      ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
+    }
+  }
+
+  const slots = Object.fromEntries(Object.entries(node.slots).map(([name, children]) => [
+    name,
+    children.map(legacySourceNode),
+  ]))
+  if (node.children.length > 0)
+    slots.default = node.children.map(legacySourceNode)
+  return { ...common, kind: 'layout', slots }
+}
+
+function legacySourcePage(model: LowCodePageModel, route = '/'): StandaloneSourcePage {
+  return {
+    id: model.id,
+    name: model.name,
+    route,
+    form: structuredClone(model.form),
+    root: model.nodes.map(legacySourceNode),
+    flowPlans: compileStandaloneFlowPlans(model.flows ?? [], model.id),
+  }
+}
+
+function createCanonicalSourceRegistry(
+  compilation: ProjectCompilation,
+  resolver: CanonicalSourceBindingResolver,
+): StandaloneSourceRegistry {
+  const definitions = new Map(compilation.registry.components.map((component) => {
+    const binding = resolver.resolveBinding(component.key)
+    if (!binding)
+      throw new Error(`Component "${component.key}" has no standalone Source binding.`)
+    if (
+      binding.component !== component.key
+      || binding.contractVersion !== component.contractVersion
+      || binding.contractFingerprint !== component.fingerprint
+    ) {
+      throw new Error(`Component "${component.key}" standalone Source binding does not match the compilation Registry snapshot.`)
+    }
+    return [component.key, {
+      binding: structuredClone(binding),
+      events: component.contract.events.map(event => ({ name: event.name })),
+      bindings: component.contract.bindings.map(item => ({
+        name: item.name,
+        valueProp: item.valueProp,
+        trigger: item.trigger,
+      })),
+    } satisfies StandaloneSourceComponentDefinition] as const
+  }))
+  return { get: component => definitions.get(component) }
+}
+
+function canonicalSourceNode(
+  page: CanonicalPageIR,
+  nodeId: string,
+  ancestors: ReadonlySet<string>,
+): StandaloneSourceNode {
+  if (ancestors.has(nodeId))
+    throw new Error(`Canonical page "${page.id}" contains a node cycle at "${nodeId}".`)
+  const node = page.nodesById[nodeId]
+  if (!node)
+    throw new Error(`Canonical page "${page.id}" references unknown node "${nodeId}".`)
+  const common: StandaloneSourceNodeBase = {
+    id: node.id,
+    component: node.component,
+    props: structuredClone(node.props),
+    events: structuredClone(node.events),
+    bindings: structuredClone(node.bindings),
+    placement: structuredClone(node.placement.props),
+    ...(node.conditions === undefined ? {} : { conditions: structuredClone(node.conditions) }),
+    ...(node.reactions === undefined ? {} : { reactions: structuredClone(node.reactions) }),
+  }
+  if (node.kind === 'field') {
+    return {
+      ...common,
+      kind: 'field',
+      field: node.field,
+      ...(node.label === undefined ? {} : { label: node.label }),
+      ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
+    }
+  }
+
+  const nextAncestors = new Set(ancestors)
+  nextAncestors.add(node.id)
+  return {
+    ...common,
+    kind: 'layout',
+    slots: Object.fromEntries(Object.entries(node.slots).map(([name, childIds]) => [
+      name,
+      childIds.map(childId => canonicalSourceNode(page, childId, nextAncestors)),
+    ])),
+  }
+}
+
+function canonicalSourcePage(page: CanonicalPageIR): StandaloneSourcePage {
+  return {
+    id: page.id,
+    name: page.name,
+    route: page.route,
+    form: structuredClone(page.form),
+    root: page.rootIds.map(nodeId => canonicalSourceNode(page, nodeId, new Set())),
+    flowPlans: page.flows.map(flow => structuredClone(flow.plan)),
+  }
+}
+
+function compileStandaloneFlowPlans(
+  flows: readonly ConfigFormFlow[],
+  pageId: string,
+): ConfigFormFlowExecutionPlan[] {
+  return flows.map((flow) => {
+    const result = analyzeConfigFormFlow(flow)
+    if (!result.success) {
+      throw new Error(result.diagnostics[0]?.message
+        ?? `Flow on page "${pageId}" is invalid.`)
+    }
+    return result.plan
+  })
 }
 
 function quote(value: string): string {
@@ -66,14 +306,15 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>'"]/g, character => entities.get(character)!)
 }
 
-function styleForNode(node: LowCodeNode, columns: number): string | undefined {
-  if (node.kind !== 'field' || node.span === undefined)
+function styleForNode(node: StandaloneSourceNode, columns: number): string | undefined {
+  const span = node.placement.span
+  if (node.kind !== 'field' || typeof span !== 'number')
     return undefined
-  const span = Math.min(columns, Math.max(1, node.span))
-  return `grid-column: span ${span} / span ${span}`
+  const normalized = Math.min(columns, Math.max(1, span))
+  return `grid-column: span ${normalized} / span ${normalized}`
 }
 
-function fieldOptions(node: LowCodeNode): Array<{ label: string, value: unknown }> {
+function fieldOptions(node: StandaloneSourceNode): Array<{ label: string, value: unknown }> {
   const options = node.props.options
   if (!Array.isArray(options))
     return []
@@ -87,17 +328,17 @@ function fieldOptions(node: LowCodeNode): Array<{ label: string, value: unknown 
   })
 }
 
-function componentDefinition(node: LowCodeNode, registry: LowCodeComponentRegistry) {
+function componentDefinition(node: StandaloneSourceNode, registry: StandaloneSourceRegistry): StandaloneSourceComponentDefinition {
   const definition = registry.get(node.component)
   if (!definition)
     throw new Error(`Component "${node.component}" is not registered and cannot be exported.`)
   return definition
 }
 
-function sourceProps(node: LowCodeNode, registry: LowCodeComponentRegistry): Record<string, unknown> {
+function sourceProps(node: StandaloneSourceNode, registry: StandaloneSourceRegistry): Record<string, unknown> {
   const definition = componentDefinition(node, registry)
   const props = {
-    ...(definition.source.staticProps ?? {}),
+    ...(definition.binding.staticProps ?? {}),
     ...node.props,
   }
   delete props.options
@@ -106,41 +347,41 @@ function sourceProps(node: LowCodeNode, registry: LowCodeComponentRegistry): Rec
 }
 
 function collectInitialValues(
-  nodes: LowCodeNode[],
+  nodes: StandaloneSourceNode[],
   values: Record<string, unknown>,
-  registry: LowCodeComponentRegistry,
+  registry: StandaloneSourceRegistry,
 ): void {
   for (const node of nodes) {
     if (node.kind === 'field' && node.field) {
       const definition = componentDefinition(node, registry)
       const defaultValue = node.defaultValue !== undefined
         ? node.defaultValue
-        : definition.defaults.defaultValue
+        : definition.binding.defaultValue
       values[node.field] = defaultValue !== undefined
         ? structuredClone(defaultValue)
-        : definition.source.configComponent === 'boolean'
+        : definition.binding.configComponent === 'boolean'
           ? false
-          : definition.source.configComponent === 'number' ? 0 : ''
+          : definition.binding.configComponent === 'number' ? 0 : ''
     }
-    collectInitialValues(node.children, values, registry)
-    Object.values(node.slots).forEach(children => collectInitialValues(children, values, registry))
+    if (node.kind === 'layout')
+      Object.values(node.slots).forEach(children => collectInitialValues(children, values, registry))
   }
 }
 
-function flowSource(model: LowCodePageModel): string {
-  const serialized = scriptJson(model.flows ?? [], 2)
+function flowSource(plans: readonly ConfigFormFlowExecutionPlan[]): string {
+  const serialized = scriptJson(plans, 2)
   return `export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'field.change', field?: string }
 export type FlowValues = Record<string, unknown>
 export type FlowAction = (input: unknown, context: { flowId: string, nodeId: string, values: FlowValues, outputs: Readonly<Record<string, unknown>>, signal: AbortSignal }) => unknown | Promise<unknown>
-export type GeneratedFlowNode = { id: string, type: string, ref?: string, config?: Record<string, unknown> }
+export type GeneratedFlowNode = { id: string, type: string, ref?: string, config?: Record<string, unknown>, outgoing: GeneratedFlowEdge[], incoming: GeneratedFlowEdge[] }
 export type GeneratedFlowEdge = { id: string, source: string, target: string, condition?: string }
-export type GeneratedFlow = { id: string, trigger: FlowTrigger, concurrency?: 'latest' | 'queue' | 'ignore', nodes: GeneratedFlowNode[], edges: GeneratedFlowEdge[], errorPolicy?: { onError: 'failure' | 'end', timeoutMs?: number } }
+export type GeneratedFlow = { version: 1, flowId: string, name: string, trigger: FlowTrigger, concurrency?: 'latest' | 'queue' | 'ignore', triggerNodeId: string, topologicalOrder: string[], nodes: GeneratedFlowNode[], errorPolicy?: { onError: 'failure' | 'end', timeoutMs?: number } }
 export type FlowProjection = { props: Record<string, Record<string, unknown>>, states: Record<string, Record<string, boolean>>, validate: string[] }
 export type FlowExecutionStatus = 'success' | 'failure' | 'end' | 'aborted' | 'timeout' | 'ignored'
 export type FlowDispatchStatus = 'committed' | 'noop' | 'ignored' | 'aborted' | 'failure' | 'timeout'
 export type FlowDispatchResult = { status: FlowDispatchStatus, values: FlowValues, error?: string }
 
-export const flows = ${serialized} as readonly GeneratedFlow[]
+export const flowPlans = ${serialized} as readonly GeneratedFlow[]
 const actions: Record<string, FlowAction> = Object.create(null)
 const activeRuns = new Map<string, { controller: AbortController, promise: Promise<FlowExecutionResult> }>()
 const queuedRuns = new Map<string, QueuedFlowRun[]>()
@@ -154,8 +395,8 @@ export function registerFlowAction(ref: string, action: FlowAction): void {
 
 export function getFlowProjection(): FlowProjection {
   const projection = emptyProjection()
-  for (const flow of flows) {
-    const current = flowProjections.get(flow.id)
+  for (const flow of flowPlans) {
+    const current = flowProjections.get(flow.flowId)
     if (current)
       mergeProjection(projection, current)
   }
@@ -396,8 +637,8 @@ async function executeFlow(flow: GeneratedFlow, input: FlowValues, controller: A
   const outputs: Record<string, unknown> = {}
   const projection = emptyProjection()
   const byId = new Map(flow.nodes.map(node => [node.id, node]))
-  const outgoing = (id: string) => flow.edges.filter(edge => edge.source === id)
-  let current = flow.nodes.find(node => node.type === 'trigger')?.id
+  const outgoing = (id: string) => byId.get(id)?.outgoing ?? []
+  let current: string | undefined = flow.triggerNodeId
   let guard = 0
   let status: FlowExecutionStatus = 'end'
   let flowError: string | undefined
@@ -427,7 +668,7 @@ async function executeFlow(flow: GeneratedFlow, input: FlowValues, controller: A
         const unlink = linkAbortSignal(signal, actionController)
         let result: unknown
         try {
-          result = await withTimeout(action(operand(node.config?.input, values, outputs), { flowId: flow.id, nodeId: node.id, values, outputs, signal: actionController.signal }), flow.errorPolicy?.timeoutMs, actionController)
+          result = await withTimeout(action(operand(node.config?.input, values, outputs), { flowId: flow.flowId, nodeId: node.id, values, outputs, signal: actionController.signal }), flow.errorPolicy?.timeoutMs, actionController)
         }
         finally {
           unlink()
@@ -491,12 +732,12 @@ function startFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSignal)
   const unlink = linkAbortSignal(signal, controller)
   const promise = executeFlow(flow, input, controller).finally(() => {
     unlink()
-    if (activeRuns.get(flow.id)?.promise !== promise)
+    if (activeRuns.get(flow.flowId)?.promise !== promise)
       return
-    activeRuns.delete(flow.id)
-    startNextQueuedRun(flow.id)
+    activeRuns.delete(flow.flowId)
+    startNextQueuedRun(flow.flowId)
   })
-  activeRuns.set(flow.id, { controller, promise })
+  activeRuns.set(flow.flowId, { controller, promise })
   return promise
 }
 
@@ -518,7 +759,7 @@ function startNextQueuedRun(flowId: string): void {
 
 function enqueueFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSignal): Promise<FlowExecutionResult> {
   return new Promise((resolve, reject) => {
-    const queue = queuedRuns.get(flow.id) ?? []
+    const queue = queuedRuns.get(flow.flowId) ?? []
     const entry: QueuedFlowRun = {
       cleanup: () => {},
       flow,
@@ -537,7 +778,7 @@ function enqueueFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSigna
       if (index >= 0)
         queue.splice(index, 1)
       if (queue.length === 0)
-        queuedRuns.delete(flow.id)
+        queuedRuns.delete(flow.flowId)
       resolve(abortedExecution(input))
     }
     if (signal) {
@@ -545,14 +786,14 @@ function enqueueFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSigna
       entry.cleanup = () => signal.removeEventListener('abort', abort)
     }
     queue.push(entry)
-    queuedRuns.set(flow.id, queue)
+    queuedRuns.set(flow.flowId, queue)
   })
 }
 
 function scheduleFlow(flow: GeneratedFlow, input: FlowValues, signal?: AbortSignal): Promise<FlowExecutionResult> {
   if (signal?.aborted)
     return Promise.resolve(abortedExecution(input))
-  const active = activeRuns.get(flow.id)
+  const active = activeRuns.get(flow.flowId)
   if (!active)
     return startFlow(flow, input, signal)
   const concurrency = flow.concurrency ?? 'latest'
@@ -590,7 +831,7 @@ export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}, sig
   let matched = false
   let committed = false
   let flowError: string | undefined
-  for (const flow of flows) {
+  for (const flow of flowPlans) {
     if (flow.trigger.kind !== trigger.kind || (flow.trigger.field && flow.trigger.field !== trigger.field))
       continue
     matched = true
@@ -598,7 +839,7 @@ export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}, sig
     if (result.status === 'success' || result.status === 'end') {
       committed = true
       replaceValues(values, result.values)
-      projectionUpdates.set(flow.id, result.projection)
+      projectionUpdates.set(flow.flowId, result.projection)
       flowError = result.error ?? flowError
       continue
     }
@@ -617,7 +858,7 @@ export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}, sig
 `
 }
 
-function assertPortableNode(node: LowCodeNode, registry: LowCodeComponentRegistry): void {
+function assertPortableNode(node: StandaloneSourceNode, registry: StandaloneSourceRegistry): void {
   const definition = registry.get(node.component)
   if (!definition)
     throw new Error(`Component "${node.component}" is not registered and cannot be exported.`)
@@ -637,15 +878,15 @@ function assertPortableNode(node: LowCodeNode, registry: LowCodeComponentRegistr
     if (typeof binding.source !== 'string' || !binding.source.trim())
       throw new Error(`Node "${node.id}" binding "${bindingName}" contains an invalid source ref.`)
   }
-  node.children.forEach(child => assertPortableNode(child, registry))
-  Object.values(node.slots).forEach(children => children.forEach(child => assertPortableNode(child, registry)))
+  if (node.kind === 'layout')
+    Object.values(node.slots).forEach(children => children.forEach(child => assertPortableNode(child, registry)))
 }
 
 function kebabCase(value: string): string {
   return value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
-function sourceEventBindings(node: LowCodeNode, updateEvent?: string): string {
+function sourceEventBindings(node: StandaloneSourceNode, updateEvent?: string): string {
   const nodeId = quote(node.id)
   return Object.keys(node.events)
     .filter(eventName => kebabCase(eventName) !== updateEvent)
@@ -654,20 +895,20 @@ function sourceEventBindings(node: LowCodeNode, updateEvent?: string): string {
 }
 
 function renderField(
-  node: LowCodeNode,
+  node: StandaloneSourceFieldNode,
   columns: number,
-  registry: LowCodeComponentRegistry,
+  registry: StandaloneSourceRegistry,
 ): string {
   const definition = componentDefinition(node, registry)
-  const source = definition.source
-  const field = quote(node.field ?? node.id)
+  const source = definition.binding
+  const field = quote(node.field)
   const style = styleForNode(node, columns)
   const styleAttr = style ? ` style="${style}"` : ''
   const hiddenAttr = ` :hidden='fieldStates[${field}]?.visible === false'`
   const safeId = escapeHtml(node.id)
   const safeTag = escapeHtml(source.tag)
   const nodeId = quote(node.id)
-  const valueProp = definition.runtime.valueProp ?? 'modelValue'
+  const valueProp = definition.binding.valueProp ?? 'modelValue'
   const modelDirective = valueProp === 'modelValue'
     ? 'v-model'
     : `v-model:${kebabCase(valueProp)}`
@@ -682,7 +923,7 @@ function renderField(
     ? `\n        <${escapeHtml(source.options.optionTag)} v-for='option in fieldOptions[${field}]' :key="String(option.value)" :${escapeHtml(source.options.labelProp ?? 'label')}="option.label" :${escapeHtml(source.options.valueProp ?? 'value')}="option.value" />\n      `
     : ''
   const eventBindings = sourceEventBindings(node, updateEvent)
-  const updateBinding = `@${updateEvent}='handleFieldUpdate(${nodeId}, ${field}, ${quote(definition.runtime.trigger ?? `update:${valueProp}`)}, $event)'`
+  const updateBinding = `@${updateEvent}='handleFieldUpdate(${nodeId}, ${field}, ${quote(definition.binding.trigger ?? `update:${valueProp}`)}, $event)'`
   const modelBinding = `${modelDirective}='model[fieldModelKeys[${field}]]'`
   const control = optionChildren
     ? `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding}${eventBindings}${optionBinding}>${optionChildren}</${safeTag}>`
@@ -690,21 +931,17 @@ function renderField(
   return `    <div class="source-field" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}"${hiddenAttr}${styleAttr}>${label}\n      ${control}\n    </div>`
 }
 
-function defaultChildren(node: LowCodeNode): LowCodeNode[] {
-  return node.children.length > 0 ? node.children : (node.slots.default ?? [])
-}
-
 function renderContainer(
-  node: LowCodeNode,
+  node: StandaloneSourceLayoutNode,
   columns: number,
-  registry: LowCodeComponentRegistry,
+  registry: StandaloneSourceRegistry,
 ): string {
   const definition = componentDefinition(node, registry)
-  const source = definition.source
+  const source = definition.binding
   const safeId = escapeHtml(node.id)
   const safeTag = escapeHtml(source.tag)
   const nodeKey = quote(node.id)
-  const children = defaultChildren(node)
+  const children = node.slots.default ?? []
   const defaultMarkup = renderNodes(children, columns, registry)
   const namedSlots = Object.entries(node.slots)
     .filter(([name]) => name !== 'default')
@@ -722,17 +959,17 @@ function renderContainer(
 }
 
 function renderNodes(
-  nodes: LowCodeNode[],
+  nodes: StandaloneSourceNode[],
   columns: number,
-  registry: LowCodeComponentRegistry,
+  registry: StandaloneSourceRegistry,
 ): string {
   return nodes.map(node => node.kind === 'field'
     ? renderField(node, columns, registry)
     : renderContainer(node, columns, registry)).join('\n')
 }
 
-function layoutStyle(node: LowCodeNode, registry: LowCodeComponentRegistry): Record<string, string> {
-  const render = componentDefinition(node, registry).source.render
+function layoutStyle(node: StandaloneSourceLayoutNode, registry: StandaloneSourceRegistry): Record<string, string> {
+  const render = componentDefinition(node, registry).binding.render
   const numericGap = typeof node.props.gap === 'number' && Number.isFinite(node.props.gap)
     ? Math.max(0, node.props.gap)
     : 0
@@ -767,22 +1004,22 @@ function layoutStyle(node: LowCodeNode, registry: LowCodeComponentRegistry): Rec
 }
 
 function appSource(
-  model: LowCodePageModel,
-  registry: LowCodeComponentRegistry,
+  page: StandaloneSourcePage,
+  registry: StandaloneSourceRegistry,
   flowImport = './flows',
 ): string {
   const initialValues: Record<string, unknown> = {}
-  collectInitialValues(model.nodes, initialValues, registry)
+  collectInitialValues(page.root, initialValues, registry)
   const props: Record<string, Record<string, unknown>> = {}
   const options: Record<string, Array<{ label: string, value: unknown }>> = {}
   const nodeProps: Record<string, Record<string, unknown>> = {}
   const nodeStyles: Record<string, Record<string, string>> = {}
   const fieldModelKeys: Record<string, string> = {}
-  const fieldConditions: Record<string, LowCodeNode['conditions']> = {}
-  const nodeConditions: Record<string, LowCodeNode['conditions']> = {}
-  const nodeEvents: Record<string, LowCodeNode['events']> = {}
-  const runtimeReactions: NonNullable<LowCodeNode['reactions']> = []
-  const collectProps = (nodes: LowCodeNode[]): void => {
+  const fieldConditions: Record<string, StandaloneSourceNode['conditions']> = {}
+  const nodeConditions: Record<string, StandaloneSourceNode['conditions']> = {}
+  const nodeEvents: Record<string, StandaloneSourceNode['events']> = {}
+  const runtimeReactions: ConfigFormReaction[] = []
+  const collectProps = (nodes: StandaloneSourceNode[]): void => {
     nodes.forEach((node) => {
       nodeEvents[node.id] = node.events
       if (node.reactions)
@@ -790,11 +1027,11 @@ function appSource(
       if (node.kind === 'field') {
         // Reaction targets use the headless field key (not the designer node
         // id), so keep generated projection maps keyed by the same contract.
-        const target = node.field ?? node.id
+        const target = node.field
         props[target] = sourceProps(node, registry)
         options[target] = fieldOptions(node)
         const definition = componentDefinition(node, registry)
-        const valueBinding = definition.bindings.find(binding => binding.valueProp === (definition.runtime.valueProp ?? 'modelValue'))
+        const valueBinding = definition.bindings.find(binding => binding.valueProp === (definition.binding.valueProp ?? 'modelValue'))
         const bindingSource = valueBinding ? node.bindings[valueBinding.name]?.source.trim() : undefined
         fieldModelKeys[target] = bindingSource && Object.hasOwn(initialValues, bindingSource)
           ? bindingSource
@@ -806,12 +1043,12 @@ function appSource(
         nodeStyles[node.id] = layoutStyle(node, registry)
         nodeConditions[node.id] = node.conditions
       }
-      collectProps(node.children)
-      Object.values(node.slots).forEach(collectProps)
+      if (node.kind === 'layout')
+        Object.values(node.slots).forEach(collectProps)
     })
   }
-  collectProps(model.nodes)
-  const columns = model.form.columns ?? 24
+  collectProps(page.root)
+  const columns = page.form.columns ?? 24
   return `<script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { applyFlowValuePatch, evaluateRuntimeCondition, getFlowProjection, invokeRegisteredAction, projectRuntimeReactions, registerFlowAction, runFlows, type FlowTrigger } from '${flowImport}'
@@ -961,12 +1198,12 @@ onBeforeUnmount(() => flowLifecycle.abort('page-unmounted'))
   <main class="source-page">
     <header class="source-header">
       <p class="source-kicker">Generated Vue page</p>
-      <h1>${escapeHtml(model.name)}</h1>
+      <h1>${escapeHtml(page.name)}</h1>
       <p>Standalone source generated from the committed design model.</p>
     </header>
     <form class="source-form" @submit.prevent="handleSubmit">
       <div class="source-grid" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
-${renderNodes(model.nodes, columns, registry)}
+${renderNodes(page.root, columns, registry)}
       </div>
       <button class="source-submit" type="submit">Save</button>
     </form>
@@ -1003,20 +1240,25 @@ button, input, select, textarea { font: inherit; }
 }
 
 function collectSourceLibraries(
-  nodes: LowCodeNode[],
-  registry: LowCodeComponentRegistry,
-  target = new Map<string, DesignerSourceLibraryBinding>(),
-): Map<string, DesignerSourceLibraryBinding> {
+  nodes: StandaloneSourceNode[],
+  registry: StandaloneSourceRegistry,
+  target = new Map<string, CanonicalSourceLibraryBinding>(),
+): Map<string, CanonicalSourceLibraryBinding> {
   for (const node of nodes) {
-    const library = componentDefinition(node, registry).source.library
+    const library = componentDefinition(node, registry).binding.library
     if (library) {
       const existing = target.get(library.packageName)
-      if (existing && (existing.plugin !== library.plugin || existing.stylesheet !== library.stylesheet))
+      if (existing && (
+        existing.plugin !== library.plugin
+        || existing.stylesheet !== library.stylesheet
+        || existing.version !== library.version
+      )) {
         throw new Error(`Source library "${library.packageName}" has conflicting plugin bindings.`)
-      target.set(library.packageName, { ...library })
+      }
+      target.set(library.packageName, structuredClone(library))
     }
-    collectSourceLibraries(node.children, registry, target)
-    Object.values(node.slots).forEach(children => collectSourceLibraries(children, registry, target))
+    if (node.kind === 'layout')
+      Object.values(node.slots).forEach(children => collectSourceLibraries(children, registry, target))
   }
   return target
 }
@@ -1035,7 +1277,7 @@ function portableDependencyVersion(packageName: string, dependencies: Record<str
 
 function sourcePackage(
   project: Pick<WorkspaceProject, 'files' | 'name'>,
-  libraries: ReadonlyMap<string, DesignerSourceLibraryBinding>,
+  libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
   declaredDependencies: Record<string, string>,
 ): string {
   const packageFile = project.files[normalizeProjectPath('package.json')]
@@ -1075,7 +1317,7 @@ function sourcePackage(
 
 function applicationPackage(
   application: WorkspaceApplication,
-  libraries: ReadonlyMap<string, DesignerSourceLibraryBinding>,
+  libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
 ): string {
   const manifest = JSON.parse(sourcePackage(application, libraries, application.manifest.dependencies)) as PackageJson
   manifest.dependencies = {
@@ -1085,8 +1327,24 @@ function applicationPackage(
   return `${JSON.stringify(manifest, null, 2)}\n`
 }
 
+function canonicalProjectPackage(
+  name: string,
+  libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
+): string {
+  const declaredDependencies = Object.fromEntries([...libraries.values()].map(library => [
+    library.packageName,
+    library.version ?? SOURCE_LIBRARY_FALLBACK_VERSIONS[library.packageName] ?? '',
+  ]))
+  const manifest = JSON.parse(sourcePackage({ files: {}, name }, libraries, declaredDependencies)) as PackageJson
+  manifest.dependencies = {
+    ...manifest.dependencies,
+    'vue-router': '4.5.1',
+  }
+  return `${JSON.stringify(manifest, null, 2)}\n`
+}
+
 function mainSource(
-  libraries: ReadonlyMap<string, DesignerSourceLibraryBinding>,
+  libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
   withRouter: boolean,
 ): string {
   const entries = [...libraries.values()].sort((left, right) => left.packageName.localeCompare(right.packageName))
@@ -1117,8 +1375,52 @@ import { RouterView } from 'vue-router'
 `
 }
 
+const standaloneViteConfig = `import Vue from '@vitejs/plugin-vue'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [Vue()],
+})
+`
+
+const standaloneTsconfig = `${JSON.stringify({
+  compilerOptions: {
+    target: 'ES2022',
+    useDefineForClassFields: true,
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    lib: ['ES2022', 'DOM', 'DOM.Iterable'],
+    strict: true,
+    skipLibCheck: true,
+    isolatedModules: true,
+    esModuleInterop: true,
+    resolveJsonModule: true,
+    jsx: 'preserve',
+    jsxImportSource: 'vue',
+    noEmit: true,
+    types: ['vite/client'],
+  },
+  include: ['src/**/*.ts', 'src/**/*.vue'],
+}, null, 2)}\n`
+
+function standaloneHtml(title: string): string {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(title)}</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+`
+}
+
 function applicationRouterSource(
-  application: WorkspaceApplication,
+  application: Pick<StandaloneSourceProject, 'homePageId' | 'pages'>,
   pageDirectories: ReadonlyMap<string, string>,
 ): string {
   const imports = application.pages.map((page, index) => `import Page${index + 1} from './pages/${pageDirectories.get(page.id)}/Page.vue'`).join('\n')
@@ -1139,7 +1441,7 @@ ${routes}
 `
 }
 
-function uniquePageDirectories(application: WorkspaceApplication): ReadonlyMap<string, string> {
+function uniquePageDirectories(application: Pick<StandaloneSourceProject, 'pages'>): ReadonlyMap<string, string> {
   const used = new Set<string>()
   return new Map(application.pages.map((page) => {
     const base = safeProjectSlug(page.id)
@@ -1167,35 +1469,100 @@ function isReplacedApplicationFile(path: ProjectPath): boolean {
     || path.startsWith('src/pages/')
 }
 
+export interface CanonicalProjectSourceExport {
+  entry: ProjectPath
+  files: Record<ProjectPath, WorkspaceFile>
+}
+
+/** Generate a complete standalone Vue project from one indivisible compilation. */
+export function createCanonicalProjectSourceExport(
+  compilation: ProjectCompilation,
+  resolver: CanonicalSourceBindingResolver,
+): CanonicalProjectSourceExport {
+  if (
+    resolver.adapter !== compilation.key.registryAdapter
+    || resolver.adapterVersion !== compilation.key.registryAdapterVersion
+    || resolver.registryFingerprint !== compilation.key.registryFingerprint
+  ) {
+    throw new Error('Standalone Source resolver does not match the ProjectCompilation Registry identity.')
+  }
+
+  const pages = compilation.ir.pageOrder.map((pageId) => {
+    const page = compilation.ir.pagesById[pageId]
+    if (!page)
+      throw new Error(`Canonical project references unknown page "${pageId}".`)
+    return canonicalSourcePage(page as CanonicalPageIR)
+  })
+  const project: StandaloneSourceProject = {
+    id: compilation.ir.identity.projectId,
+    name: compilation.ir.name,
+    homePageId: compilation.ir.homePageId,
+    pages,
+  }
+  const registry = createCanonicalSourceRegistry(compilation, resolver)
+  const pageDirectories = uniquePageDirectories(project)
+  const libraries = new Map<string, CanonicalSourceLibraryBinding>()
+  const files: Record<ProjectPath, WorkspaceFile> = {}
+
+  pages.forEach((page) => {
+    page.root.forEach(node => assertPortableNode(node, registry))
+    collectSourceLibraries(page.root, registry, libraries)
+    const directory = pageDirectories.get(page.id)!
+    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(
+      appSource(page, registry),
+      'vue',
+    )
+    files[normalizeProjectPath(`src/pages/${directory}/flows.ts`)] = textFile(
+      flowSource(page.flowPlans),
+      'typescript',
+    )
+  })
+
+  const entry = normalizeProjectPath('src/main.ts')
+  files[normalizeProjectPath('index.html')] = textFile(standaloneHtml(project.name), 'html')
+  files[normalizeProjectPath('package.json')] = textFile(canonicalProjectPackage(project.name, libraries), 'json')
+  files[normalizeProjectPath('src/App.vue')] = textFile(applicationAppSource(), 'vue')
+  files[normalizeProjectPath('src/router.ts')] = textFile(applicationRouterSource(project, pageDirectories), 'typescript')
+  files[entry] = textFile(mainSource(libraries, true), 'typescript')
+  files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
+  files[normalizeProjectPath('src/vite-env.d.ts')] = textFile('/// <reference types="vite/client" />\n', 'typescript')
+  files[normalizeProjectPath('tsconfig.json')] = textFile(standaloneTsconfig, 'json')
+  files[normalizeProjectPath('vite.config.ts')] = textFile(standaloneViteConfig, 'typescript')
+
+  return { entry, files }
+}
+
 export function createWorkspaceApplicationSourceExport(
   input: WorkspaceApplication,
   registry: LowCodeComponentRegistry,
 ): WorkspaceApplicationSourceExport {
   const application = parseWorkspaceApplication(input)
+  const sourceRegistry = createLegacySourceRegistry(registry)
+  const sourceProject: StandaloneSourceProject = {
+    id: application.id,
+    name: application.name,
+    homePageId: application.homePageId,
+    pages: application.pages.map(page => legacySourcePage(page.model, page.route)),
+  }
   const files: Record<ProjectPath, WorkspaceFile> = {}
   for (const [path, file] of Object.entries(application.files) as Array<[ProjectPath, WorkspaceFile]>) {
     if (!isReplacedApplicationFile(path))
       files[path] = structuredClone(file)
   }
 
-  const pageDirectories = uniquePageDirectories(application)
-  const libraries = new Map<string, DesignerSourceLibraryBinding>()
-  for (const page of application.pages) {
-    page.model.nodes.forEach(node => assertPortableNode(node, registry))
-    collectSourceLibraries(page.model.nodes, registry, libraries)
-    for (const flow of page.model.flows ?? []) {
-      const result = analyzeConfigFormFlow(flow)
-      if (!result.success)
-        throw new Error(result.diagnostics[0]?.message ?? `Flow on page "${page.name}" is invalid.`)
-    }
+  const pageDirectories = uniquePageDirectories(sourceProject)
+  const libraries = new Map<string, CanonicalSourceLibraryBinding>()
+  for (const page of sourceProject.pages) {
+    page.root.forEach(node => assertPortableNode(node, sourceRegistry))
+    collectSourceLibraries(page.root, sourceRegistry, libraries)
     const directory = pageDirectories.get(page.id)!
-    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(appSource(page.model, registry), 'vue')
-    files[normalizeProjectPath(`src/pages/${directory}/flows.ts`)] = textFile(flowSource(page.model), 'typescript')
+    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(appSource(page, sourceRegistry), 'vue')
+    files[normalizeProjectPath(`src/pages/${directory}/flows.ts`)] = textFile(flowSource(page.flowPlans), 'typescript')
   }
 
   files[normalizeProjectPath('package.json')] = textFile(applicationPackage(application, libraries), 'json')
   files[normalizeProjectPath('src/App.vue')] = textFile(applicationAppSource(), 'vue')
-  files[normalizeProjectPath('src/router.ts')] = textFile(applicationRouterSource(application, pageDirectories), 'typescript')
+  files[normalizeProjectPath('src/router.ts')] = textFile(applicationRouterSource(sourceProject, pageDirectories), 'typescript')
   files[normalizeProjectPath('src/main.ts')] = textFile(mainSource(libraries, true), 'typescript')
   files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
 
@@ -1206,15 +1573,12 @@ export function createWorkspaceApplicationSourceExport(
 }
 
 export function createPureSourceExport(project: WorkspaceProject, model: LowCodePageModel, registry: LowCodeComponentRegistry): PureSourceExport {
-  model.nodes.forEach(node => assertPortableNode(node, registry))
   if (model.flows !== undefined && !Array.isArray(model.flows))
     throw new Error('Flow export requires an array of JSON-only flows.')
-  for (const flow of model.flows ?? []) {
-    const result = analyzeConfigFormFlow(flow)
-    if (!result.success)
-      throw new Error(result.diagnostics[0]?.message ?? 'Flow is invalid and cannot be exported.')
-  }
-  const libraries = collectSourceLibraries(model.nodes, registry)
+  const sourceRegistry = createLegacySourceRegistry(registry)
+  const sourcePage = legacySourcePage(model)
+  sourcePage.root.forEach(node => assertPortableNode(node, sourceRegistry))
+  const libraries = collectSourceLibraries(sourcePage.root, sourceRegistry)
   const next = cloneWorkspaceProject(project)
   const files: Record<ProjectPath, WorkspaceFile> = {}
   for (const [path, file] of Object.entries(next.files) as Array<[ProjectPath, WorkspaceFile]>) {
@@ -1224,10 +1588,10 @@ export function createPureSourceExport(project: WorkspaceProject, model: LowCode
   }
   const appPath = normalizeProjectPath('src/App.vue')
   files[normalizeProjectPath('package.json')] = textFile(sourcePackage(project, libraries, project.manifest.dependencies), 'json')
-  files[appPath] = textFile(appSource(model, registry), 'vue')
+  files[appPath] = textFile(appSource(sourcePage, sourceRegistry), 'vue')
   files[normalizeProjectPath('src/main.ts')] = textFile(mainSource(libraries, false), 'typescript')
   files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
-  files[normalizeProjectPath('src/flows.ts')] = textFile(flowSource(model), 'typescript')
+  files[normalizeProjectPath('src/flows.ts')] = textFile(flowSource(sourcePage.flowPlans), 'typescript')
   next.files = files
   next.manifest = {
     ...next.manifest,

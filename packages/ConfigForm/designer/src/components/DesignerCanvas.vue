@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { ConfigFormBreakpoint, RuntimeEditorBridge, RuntimeNodeMetadata } from '@moluoxixi/config-form/renderer'
+import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 import type { ComputedRef, CSSProperties } from 'vue'
 import type { DesignerDocument, DesignerNode } from '../document'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
@@ -15,12 +16,13 @@ import {
   CornerDownLeft,
   CornerDownRight,
   GripVertical,
+  MoreHorizontal,
   TriangleAlert,
   Trash2,
   Workflow,
 } from '@lucide/vue'
 import { RuntimeSurface, resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { createDesignerRuntimeProjection } from '../compiler'
 import { findDesignerNode, reduceDesignerCommand } from '../history'
 import { useDesignerLocale } from '../locale'
@@ -42,10 +44,16 @@ const props = defineProps<{
   selectedIds?: string[]
   readonly?: boolean
   breakpoint?: ConfigFormBreakpoint
+  candidateRuntimeRenderer?: (
+    command: DesignerCommand,
+    document: DesignerDocument,
+  ) => VueRuntimeRendererConfig | undefined
   interactive?: boolean
+  showInteractiveToggle?: boolean
   model?: Record<string, unknown>
   reactionProps?: ConfigFormReactionProjection['props']
   reactionStates?: ConfigFormReactionProjection['states']
+  runtimeRenderer?: VueRuntimeRendererConfig
 }>()
 
 const emit = defineEmits<{
@@ -62,6 +70,8 @@ const locale = useDesignerLocale()
 const dragController = inject(DESIGNER_DRAG_KEY, undefined)
 const sheetRef = ref<HTMLElement>()
 const dragOverlayRef = ref<HTMLElement>()
+const nodeActionMenuId = useId()
+const nodeActionMenuNodeId = ref<string>()
 const nodeElements = new Map<string, HTMLElement>()
 const elementVersion = ref(0)
 const dragOverlayStyle = ref<CSSProperties>()
@@ -74,12 +84,27 @@ let autoScrollFrame: number | undefined
 let autoScrollPoint: DesignerPointerPosition | undefined
 let dragOverlayFrame: number | undefined
 let resizeCleanup: (() => void) | undefined
-let pointerSelection: { nodeId: string, startedAt: number } | undefined
+
+type DesignerOverlayMode = 'idle' | 'selected' | 'pointer-dragging' | 'keyboard-dragging' | 'resizing'
 
 const activeSession = computed(() => dragController?.session.value)
-const candidateId = computed(() => activeSession.value?.active
-  ? activeSession.value.source.candidateId
-  : undefined)
+const candidateActive = computed(() => Boolean(activeSession.value?.active))
+const candidateInput = computed(() => activeSession.value?.active ? activeSession.value.input : undefined)
+const resizingNodeId = ref<string>()
+const overlayMode = computed<DesignerOverlayMode>(() => {
+  if (resizingNodeId.value)
+    return 'resizing'
+  if (candidateActive.value && candidateInput.value === 'pointer')
+    return 'pointer-dragging'
+  if (candidateActive.value && candidateInput.value === 'keyboard')
+    return 'keyboard-dragging'
+  return selectedSet().size > 0 ? 'selected' : 'idle'
+})
+const selectionOverlayVisible = computed(() => overlayMode.value !== 'pointer-dragging' && overlayMode.value !== 'idle')
+const dragSource = computed(() => activeSession.value?.source)
+const candidateSource = computed(() => candidateActive.value ? dragSource.value : undefined)
+const candidateTarget = computed(() => activeSession.value?.active ? activeSession.value.target : undefined)
+const candidateId = computed(() => candidateSource.value?.candidateId)
 
 function nodeForDragSource(source: DesignerDragSource | undefined): DesignerNode | undefined {
   if (!source)
@@ -90,17 +115,17 @@ function nodeForDragSource(source: DesignerDragSource | undefined): DesignerNode
   return createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
 }
 
-const candidateNode = computed<DesignerNode | undefined>(() => nodeForDragSource(activeSession.value?.source))
+const candidateNode = computed<DesignerNode | undefined>(() => nodeForDragSource(dragSource.value))
 
 const candidateFallbackTarget = computed<DesignerDropTarget | undefined>(() => {
-  const session = activeSession.value
-  if (!session?.active || session.input !== 'pointer' || session.source.type !== 'material' || session.target)
+  const source = candidateSource.value
+  if (!candidateActive.value || candidateInput.value !== 'pointer' || source?.type !== 'material' || candidateTarget.value)
     return undefined
-  return keyboardDropTargets(session.source)[0]
+  return keyboardDropTargets(source)[0]
 })
 
-const candidateProjectionTarget = computed(() => activeSession.value?.target ?? candidateFallbackTarget.value)
-const candidateUsesFallback = computed(() => !!candidateFallbackTarget.value && !activeSession.value?.target)
+const candidateProjectionTarget = computed(() => candidateTarget.value ?? candidateFallbackTarget.value)
+const candidateUsesFallback = computed(() => !!candidateFallbackTarget.value && !candidateTarget.value)
 
 function candidateCommandForSource(source: DesignerDragSource | undefined, target: DesignerDropTarget): DesignerCommand | undefined {
   if (!source)
@@ -114,13 +139,12 @@ function candidateCommandForSource(source: DesignerDragSource | undefined, targe
 }
 
 function candidateCommand(target: DesignerDropTarget): DesignerCommand | undefined {
-  return candidateCommandForSource(activeSession.value?.source, target)
+  return candidateCommandForSource(candidateSource.value, target)
 }
 
 const projectedDocument = computed(() => {
-  const session = activeSession.value
   const target = candidateProjectionTarget.value
-  if (!session?.active || !target)
+  if (!candidateActive.value || !target)
     return props.document
   const command = candidateCommand(target)
   if (!command)
@@ -129,7 +153,18 @@ const projectedDocument = computed(() => {
   return result.changed ? result.document : props.document
 })
 
-const renderer = computed(() => createDesignerRuntimeProjection(projectedDocument.value, props.registry))
+const renderer = computed(() => {
+  const target = candidateProjectionTarget.value
+  const command = candidateActive.value && target ? candidateCommand(target) : undefined
+  if (command && props.candidateRuntimeRenderer) {
+    return props.candidateRuntimeRenderer(command, projectedDocument.value)
+      ?? props.runtimeRenderer
+      ?? createDesignerRuntimeProjection(props.document, props.registry)
+  }
+  if (props.runtimeRenderer)
+    return props.runtimeRenderer
+  return createDesignerRuntimeProjection(projectedDocument.value, props.registry)
+})
 
 const surfaceModel: ComputedRef<Record<string, unknown>> = computed({
   get: () => props.model ?? {},
@@ -182,27 +217,13 @@ const editorBridge = computed<RuntimeEditorBridge<Record<string, unknown>>>(() =
         dragCandidateId === metadata.nodeId && candidateUsesFallback.value ? 'visual-source' : '',
       ].filter(Boolean).join(' ')
       return {
-        'aria-label': locale.t('node.select', 'Select {label}', { label: nodeLabel(metadata.nodeId) }),
         'data-config-node-state': states || undefined,
         'data-designer-draggable': dragCandidateId === metadata.nodeId ? undefined : '',
         'data-designer-span': documentNode?.span,
         'data-focus-node-id': metadata.nodeId,
         'data-material': documentNode?.material,
         'data-node-kind': documentNode?.kind,
-        'onClick': (event: MouseEvent) => {
-          if (pointerSelection?.nodeId === metadata.nodeId && performance.now() - pointerSelection.startedAt < 500) {
-            pointerSelection = undefined
-            return
-          }
-          emit('select', metadata.nodeId, selectionMode(event))
-        },
-        'onFocus': () => {
-          if (pointerSelection?.nodeId === metadata.nodeId && performance.now() - pointerSelection.startedAt < 500)
-            return
-          emit('select', metadata.nodeId)
-        },
-        'role': 'group',
-        'tabindex': dragCandidateId === metadata.nodeId ? -1 : 0,
+        'role': 'presentation',
       }
     },
     interceptEvent: ({ metadata }) => {
@@ -222,6 +243,8 @@ interface OverlayBox {
 
 const overlayBoxes = computed<OverlayBox[]>(() => {
   elementVersion.value
+  if (!selectionOverlayVisible.value)
+    return []
   const sheet = sheetRef.value
   if (!sheet)
     return []
@@ -252,27 +275,29 @@ interface DesignPolicySpot {
 
 const designPolicySpots = computed<DesignPolicySpot[]>(() => {
   elementVersion.value
+  if (!selectionOverlayVisible.value || !props.selectedId)
+    return []
   const sheet = sheetRef.value
   if (!sheet)
     return []
   const sheetRect = sheet.getBoundingClientRect()
-  return [...nodeElements.entries()].flatMap(([id, element]) => {
-    const node = findDesignerNode(projectedDocument.value, id)?.node
-    const material = node ? props.registry.getMaterial(node.material) : undefined
-    const policy = resolveDesignerDesignPolicy(material?.designPolicy)
-    if (policy.render !== 'adapter')
-      return []
-    const rect = element.getBoundingClientRect()
-    return [{
-      id,
-      message: policy.diagnostic
-        || locale.t('node.controlledAdapter', 'Controlled design adapter active'),
-      style: {
-        left: `${rect.right - sheetRect.left - 20}px`,
-        top: `${rect.top - sheetRect.top + 4}px`,
-      },
-    }]
-  })
+  const id = props.selectedId
+  const element = nodeElements.get(id)
+  const node = findDesignerNode(projectedDocument.value, id)?.node
+  const material = node ? props.registry.getMaterial(node.material) : undefined
+  const policy = resolveDesignerDesignPolicy(material?.designPolicy)
+  if (!element || policy.render !== 'adapter')
+    return []
+  const rect = element.getBoundingClientRect()
+  return [{
+    id,
+    message: policy.diagnostic
+      || locale.t('node.controlledAdapter', 'Controlled design adapter active'),
+    style: {
+      left: `${rect.right - sheetRect.left - 20}px`,
+      top: `${rect.top - sheetRect.top + 4}px`,
+    },
+  }]
 })
 
 const collapsedCandidateIndicator = computed<CSSProperties | undefined>(() => {
@@ -283,7 +308,10 @@ const collapsedCandidateIndicator = computed<CSSProperties | undefined>(() => {
   if (!sheet || !element)
     return undefined
   const rect = element.getBoundingClientRect()
-  if (rect.width <= 0 || rect.height >= 36)
+  // A collapsed indicator is only meaningful for a zero-height drop target.
+  // Normal controls (including compact inputs) already have a real Runtime
+  // box and must not receive a second, invented 36px frame.
+  if (rect.width <= 0 || rect.height > 0)
     return undefined
   const sheetRect = sheet.getBoundingClientRect()
   const height = 36
@@ -361,19 +389,26 @@ function hitNodeElements(point: DesignerPointerPosition, candidateId: string): H
   const sheet = sheetRef.value
   if (!sheet)
     return []
-  const seen = new Set<HTMLElement>()
-  const hits: HTMLElement[] = []
-  for (const surface of document.elementsFromPoint(point.x, point.y)) {
-    let element = surface.closest<HTMLElement>('[data-config-node-id]')
-    while (element && sheet.contains(element)) {
-      if (element.dataset.configNodeId !== candidateId && !seen.has(element)) {
-        seen.add(element)
-        hits.push(element)
+
+  return [...nodeElements.entries()]
+    .flatMap(([nodeId, element], order) => {
+      if (nodeId === candidateId || !sheet.contains(element))
+        return []
+      const rect = element.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0
+        || point.x < rect.left || point.x > rect.right
+        || point.y < rect.top || point.y > rect.bottom) {
+        return []
       }
-      element = element.parentElement?.closest<HTMLElement>('[data-config-node-id]') ?? null
-    }
-  }
-  return hits
+      return [{
+        area: rect.width * rect.height,
+        depth: findDesignerNode(props.document, nodeId)?.path.length ?? 0,
+        element,
+        order,
+      }]
+    })
+    .sort((left, right) => right.depth - left.depth || left.area - right.area || right.order - left.order)
+    .map(({ element }) => element)
 }
 
 function siblingTarget(nodeId: string, after: boolean): DesignerDropTarget | undefined {
@@ -554,7 +589,17 @@ function nodeIdFromEvent(event: Event): string | undefined {
   const target = event.target instanceof Element
     ? event.target.closest<HTMLElement>('[data-config-node-id]')
     : undefined
-  const nodeId = target?.dataset.configNodeId
+  const directNodeId = target?.dataset.configNodeId
+  if (directNodeId && directNodeId !== candidateId.value)
+    return directNodeId
+  if (!('clientX' in event) || !('clientY' in event)
+    || typeof event.clientX !== 'number' || typeof event.clientY !== 'number') {
+    return undefined
+  }
+  const nodeId = hitNodeElements(
+    { x: event.clientX, y: event.clientY },
+    candidateId.value ?? '',
+  )[0]?.dataset.configNodeId
   return nodeId && nodeId !== candidateId.value ? nodeId : undefined
 }
 
@@ -568,25 +613,122 @@ function selectionMode(event: MouseEvent | PointerEvent): DesignerSelectionMode 
   return event.shiftKey ? 'range' : (event.ctrlKey || event.metaKey) ? 'toggle' : 'replace'
 }
 
-function handleCanvasPointerDown(event: PointerEvent): void {
-  const nodeId = dragHandleNodeIdFromEvent(event) ?? nodeIdFromEvent(event)
-  if (nodeId) {
-    pointerSelection = { nodeId, startedAt: performance.now() }
-    emit('select', nodeId, selectionMode(event))
+function isEditorControlEvent(event: Event): boolean {
+  return event.target instanceof Element && Boolean(event.target.closest('[data-designer-editor-control]'))
+}
+
+function nodeActionMenuElement(): HTMLElement | undefined {
+  return sheetRef.value?.querySelector<HTMLElement>('[data-node-action-menu]') ?? undefined
+}
+
+function nodeActionMenuTriggerElement(): HTMLButtonElement | undefined {
+  return sheetRef.value?.querySelector<HTMLButtonElement>('[data-node-action-menu-trigger]') ?? undefined
+}
+
+function closeNodeActionMenu(restoreFocus = false): void {
+  if (!nodeActionMenuNodeId.value)
+    return
+  nodeActionMenuNodeId.value = undefined
+  if (restoreFocus)
+    void nextTick(() => nodeActionMenuTriggerElement()?.focus({ preventScroll: true }))
+}
+
+async function toggleNodeActionMenu(nodeId: string): Promise<void> {
+  if (nodeActionMenuNodeId.value === nodeId) {
+    closeNodeActionMenu(true)
+    return
   }
-  else if (event.target === sheetRef.value)
-    emit('select', '')
-  if (!props.interactive && nodeId)
+  nodeActionMenuNodeId.value = nodeId
+  await nextTick()
+  nodeActionMenuElement()?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true })
+}
+
+function runNodeAction(action: DesignerNodeAction, nodeId: string): void {
+  closeNodeActionMenu()
+  emit('action', action, nodeId)
+  void nextTick(() => nodeActionMenuTriggerElement()?.focus({ preventScroll: true }))
+}
+
+function moveMenuFocus(event: KeyboardEvent, container: HTMLElement, selector: string): boolean {
+  if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+    return false
+  const items = [...container.querySelectorAll<HTMLButtonElement>(selector)]
+  if (items.length === 0)
+    return false
+  event.preventDefault()
+  const current = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement))
+  const forward = event.key === 'ArrowDown' || event.key === 'ArrowRight'
+  const next = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? items.length - 1
+      : forward
+        ? (current + 1) % items.length
+        : (current - 1 + items.length) % items.length
+  items[next]?.focus({ preventScroll: true })
+  return true
+}
+
+function handleNodeActionMenuKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
     event.preventDefault()
+    event.stopPropagation()
+    closeNodeActionMenu(true)
+    return
+  }
+  moveMenuFocus(event, event.currentTarget as HTMLElement, '[role="menuitem"]:not(:disabled)')
+}
+
+function handleNodeToolbarKeydown(event: KeyboardEvent): void {
+  if (event.target instanceof Element && event.target.closest('[role="menu"]'))
+    return
+  moveMenuFocus(event, event.currentTarget as HTMLElement, '[data-node-toolbar-button]:not(:disabled)')
+}
+
+function handleDocumentPointerDown(event: PointerEvent): void {
+  if (!nodeActionMenuNodeId.value || !(event.target instanceof Node))
+    return
+  if (nodeActionMenuElement()?.contains(event.target) || nodeActionMenuTriggerElement()?.contains(event.target))
+    return
+  closeNodeActionMenu()
+}
+
+async function focusEditorNode(nodeId: string): Promise<void> {
+  await nextTick()
+  const target = [...(sheetRef.value?.querySelectorAll<HTMLElement>('[data-editor-focus-node-id]') ?? [])]
+    .find(element => element.dataset.editorFocusNodeId === nodeId)
+  target?.focus({ preventScroll: true })
+}
+
+function handleCanvasPointerDown(event: PointerEvent): void {
+  if (isEditorControlEvent(event))
+    return
+  const nodeId = dragHandleNodeIdFromEvent(event) ?? nodeIdFromEvent(event)
+  if (nodeId)
+    emit('select', nodeId, selectionMode(event))
+  else
+    emit('select', '')
+  if (!props.interactive) {
+    event.preventDefault()
+    if (nodeId)
+      void focusEditorNode(nodeId)
+  }
 }
 
 function handleCanvasClick(event: MouseEvent): void {
-  if (!nodeIdFromEvent(event) && event.target === sheetRef.value)
+  if (!isEditorControlEvent(event) && !nodeIdFromEvent(event))
     emit('select', '')
+}
+
+function handleCanvasSelectStart(event: Event): void {
+  if (!props.interactive)
+    event.preventDefault()
 }
 
 function handleCanvasKeydown(event: KeyboardEvent): void {
   if (dragHandleNodeIdFromEvent(event))
+    return
+  if (isEditorControlEvent(event))
     return
   const keyboardSession = activeSession.value?.input === 'keyboard' && activeSession.value.active
   if (keyboardSession) {
@@ -606,7 +748,7 @@ function handleCanvasKeydown(event: KeyboardEvent): void {
   }
   if (props.interactive)
     return
-  const nodeId = nodeIdFromEvent(event)
+  const nodeId = nodeIdFromEvent(event) ?? props.selectedId
   if (!nodeId)
     return
   if (event.key === 'Enter') {
@@ -682,6 +824,7 @@ function handleNodeDragCancel(event: PointerEvent): void {
 function beginNodeDrag(event: PointerEvent, nodeId: string): void {
   if (props.readonly || !dragController || event.button !== 0)
     return
+  closeNodeActionMenu()
   event.preventDefault()
   event.stopPropagation()
   activeDragPointer = event.pointerId
@@ -749,6 +892,7 @@ function beginResize(event: PointerEvent, nodeId: string): void {
   event.preventDefault()
   event.stopPropagation()
   resizeCleanup?.()
+  resizingNodeId.value = nodeId
   const layout = resolveConfigFormLayout(
     props.document.form.columns,
     props.document.form.fieldSpan,
@@ -779,6 +923,7 @@ function beginResize(event: PointerEvent, nodeId: string): void {
     window.removeEventListener('pointerup', finish)
     window.removeEventListener('pointercancel', cancel)
     resizeCleanup = undefined
+    resizingNodeId.value = undefined
   }
   window.addEventListener('pointermove', move)
   window.addEventListener('pointerup', finish)
@@ -792,11 +937,16 @@ watch(() => props.breakpoint, () => {
 })
 
 watch([activeSession, elementVersion], ([session]) => {
+  if (session?.active) {
+    closeNodeActionMenu()
+  }
   if (session?.active && session.input === 'pointer')
     scheduleDragOverlay()
   else
     clearDragOverlay()
 }, { flush: 'post' })
+
+watch(() => props.selectedId, () => closeNodeActionMenu())
 
 watch(() => props.readonly, (readonly) => {
   if (!readonly)
@@ -804,6 +954,8 @@ watch(() => props.readonly, (readonly) => {
   dragController?.cancel()
   cleanupNodeDrag()
   clearDragOverlay()
+  resizeCleanup?.()
+  closeNodeActionMenu()
 })
 
 onMounted(() => {
@@ -816,6 +968,7 @@ onMounted(() => {
   }
   unregisterDropResolver = dragController?.registerResolver(resolveDropTarget)
   unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets)
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
 })
 
 onBeforeUnmount(() => {
@@ -825,6 +978,7 @@ onBeforeUnmount(() => {
   cleanupNodeDrag()
   clearDragOverlay()
   resizeCleanup?.()
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
 })
 </script>
 
@@ -834,8 +988,9 @@ onBeforeUnmount(() => {
     :class="{ 'is-dragging': activeSession?.active }"
     :aria-label="locale.t('canvas.form', 'Form canvas')"
     :data-preview-breakpoint="breakpoint ?? 'desktop'"
+    :data-editor-overlay-mode="overlayMode"
   >
-    <div class="mx-config-form-designer__canvas-tools mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.tools', 'Canvas tools')">
+    <div v-if="showInteractiveToggle" class="mx-config-form-designer__canvas-tools mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.tools', 'Canvas tools')">
       <button
         type="button"
         :class="{ 'is-active': interactive }"
@@ -852,8 +1007,10 @@ onBeforeUnmount(() => {
       ref="sheetRef"
       class="mx-config-form-designer__canvas-sheet mx-config-form-designer__runtime-surface"
       :data-sheet-breakpoint="breakpoint ?? 'desktop'"
+      role="group"
       @pointerdown.capture="handleCanvasPointerDown"
       @click="handleCanvasClick"
+      @selectstart="handleCanvasSelectStart"
       @keydown.capture="handleCanvasKeydown"
     >
       <RuntimeSurface
@@ -868,7 +1025,10 @@ onBeforeUnmount(() => {
         :field-span="renderer.fieldSpan"
         :label-position="renderer.labelPosition"
         :responsive="renderer.responsive"
+        :breakpoint="breakpoint"
         :editor="editorBridge"
+        :aria-hidden="!interactive ? 'true' : undefined"
+        :inert="!interactive ? true : undefined"
         mode="design"
       />
 
@@ -886,17 +1046,55 @@ onBeforeUnmount(() => {
           v-for="box in overlayBoxes"
           :key="box.id"
           class="mx-config-form-designer__selection-box"
-          :class="{ 'is-primary': box.primary }"
+          :class="{ 'is-primary': box.primary, 'is-resizing': overlayMode === 'resizing' && box.id === resizingNodeId }"
           :style="box.style"
+          :aria-label="box.primary ? locale.t('node.select', 'Select {label}', { label: nodeLabel(box.id) }) : undefined"
+          :data-editor-focus-node-id="box.primary ? box.id : undefined"
+          :role="box.primary ? 'group' : undefined"
+          :tabindex="box.primary ? -1 : undefined"
         >
-          <div v-if="box.primary" class="mx-config-form-designer__node-actions" role="toolbar" :aria-label="locale.t('node.actions', 'Node actions')" aria-hidden="false">
-            <button type="button" class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle" :disabled="readonly" :title="locale.t('node.move', 'Move')" :aria-label="locale.t('node.moveNode', 'Move node')" :aria-pressed="isNodeKeyboardDragging(box.id)" :data-designer-drag-node-id="box.id" @keydown="handleNodeDragHandleKeydown($event, box.id)" @pointerdown="beginNodeDrag($event, box.id)"><GripVertical :size="16" aria-hidden="true" /></button>
-            <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :title="locale.t('node.moveUp', 'Move up')" :aria-label="locale.t('node.moveNodeUp', 'Move node up')" @click.stop="emit('action', 'moveBefore', box.id)"><ChevronUp :size="15" aria-hidden="true" /></button>
-            <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :title="locale.t('node.moveDown', 'Move down')" :aria-label="locale.t('node.moveNodeDown', 'Move node down')" @click.stop="emit('action', 'moveAfter', box.id)"><ChevronDown :size="15" aria-hidden="true" /></button>
-            <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :title="locale.t('node.indent', 'Indent')" :aria-label="locale.t('node.indentNode', 'Move node into previous container')" @click.stop="emit('action', 'indent', box.id)"><CornerDownRight :size="15" aria-hidden="true" /></button>
-            <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :title="locale.t('node.outdent', 'Outdent')" :aria-label="locale.t('node.outdentNode', 'Move node out of container')" @click.stop="emit('action', 'outdent', box.id)"><CornerDownLeft :size="15" aria-hidden="true" /></button>
-            <button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :title="locale.t('node.copy', 'Copy')" :aria-label="locale.t('node.copyNode', 'Copy node')" @click.stop="emit('action', 'copy', box.id)"><Copy :size="15" aria-hidden="true" /></button>
-            <button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="readonly" :title="locale.t('node.delete', 'Delete')" :aria-label="locale.t('node.deleteNode', 'Delete node')" @click.stop="emit('action', 'remove', box.id)"><Trash2 :size="15" aria-hidden="true" /></button>
+          <div
+            v-if="box.primary"
+            class="mx-config-form-designer__node-actions"
+            role="toolbar"
+            :aria-label="locale.t('node.actions', 'Node actions')"
+            aria-hidden="false"
+            data-designer-editor-control
+            @keydown="handleNodeToolbarKeydown"
+          >
+            <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle" :disabled="readonly" :title="locale.t('node.move', 'Move')" :aria-label="locale.t('node.moveNode', 'Move node')" :aria-pressed="isNodeKeyboardDragging(box.id)" :data-designer-drag-node-id="box.id" @keydown="handleNodeDragHandleKeydown($event, box.id)" @pointerdown="beginNodeDrag($event, box.id)"><GripVertical :size="16" aria-hidden="true" /></button>
+            <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button" :disabled="readonly" :title="locale.t('node.copy', 'Copy')" :aria-label="locale.t('node.copyNode', 'Copy node')" @click.stop="emit('action', 'copy', box.id)"><Copy :size="15" aria-hidden="true" /></button>
+            <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="readonly" :title="locale.t('node.delete', 'Delete')" :aria-label="locale.t('node.deleteNode', 'Delete node')" @click.stop="emit('action', 'remove', box.id)"><Trash2 :size="15" aria-hidden="true" /></button>
+            <button
+              :id="`${nodeActionMenuId}-trigger`"
+              data-node-toolbar-button
+              data-node-action-menu-trigger
+              type="button"
+              class="mx-config-form-designer__icon-button"
+              :disabled="readonly"
+              :title="locale.t('node.moreActions', 'More actions')"
+              :aria-label="locale.t('node.moreActions', 'More actions')"
+              aria-haspopup="menu"
+              :aria-controls="nodeActionMenuId"
+              :aria-expanded="nodeActionMenuNodeId === box.id"
+              @click.stop="toggleNodeActionMenu(box.id)"
+            >
+              <MoreHorizontal :size="16" aria-hidden="true" />
+            </button>
+            <div
+              v-if="nodeActionMenuNodeId === box.id"
+              :id="nodeActionMenuId"
+              class="mx-config-form-designer__node-action-menu"
+              data-node-action-menu
+              role="menu"
+              :aria-labelledby="`${nodeActionMenuId}-trigger`"
+              @keydown="handleNodeActionMenuKeydown"
+            >
+              <button type="button" role="menuitem" tabindex="-1" :aria-label="locale.t('node.moveNodeUp', 'Move node up')" @click.stop="runNodeAction('moveBefore', box.id)"><ChevronUp :size="15" aria-hidden="true" /><span>{{ locale.t('node.moveUp', 'Move up') }}</span></button>
+              <button type="button" role="menuitem" tabindex="-1" :aria-label="locale.t('node.moveNodeDown', 'Move node down')" @click.stop="runNodeAction('moveAfter', box.id)"><ChevronDown :size="15" aria-hidden="true" /><span>{{ locale.t('node.moveDown', 'Move down') }}</span></button>
+              <button type="button" role="menuitem" tabindex="-1" :aria-label="locale.t('node.indentNode', 'Move node into previous container')" @click.stop="runNodeAction('indent', box.id)"><CornerDownRight :size="15" aria-hidden="true" /><span>{{ locale.t('node.indent', 'Indent') }}</span></button>
+              <button type="button" role="menuitem" tabindex="-1" :aria-label="locale.t('node.outdentNode', 'Move node out of container')" @click.stop="runNodeAction('outdent', box.id)"><CornerDownLeft :size="15" aria-hidden="true" /><span>{{ locale.t('node.outdent', 'Outdent') }}</span></button>
+            </div>
           </div>
           <button
             v-if="box.primary && canResize(box.id)"
@@ -905,6 +1103,7 @@ onBeforeUnmount(() => {
             :aria-label="locale.t('node.resize', 'Resize node')"
             :title="locale.t('node.resize', 'Resize node')"
             aria-hidden="false"
+            data-designer-editor-control
             @pointerdown="beginResize($event, box.id)"
           />
         </div>
@@ -915,6 +1114,7 @@ onBeforeUnmount(() => {
           :style="spot.style"
           :title="spot.message"
           :aria-label="spot.message"
+          data-designer-editor-control
           role="img"
           tabindex="0"
         >

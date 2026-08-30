@@ -1,293 +1,331 @@
-# Design-first Config Model State
+# Project-First ConfigForm State
 
 ## 1. Scope / Trigger
 
-This contract applies when changing the ConfigForm Designer model, Workbench page state, model operations, history,
-runtime preview, or Source/Config export. `LowCodePageModel` is the only long-lived mutable page structure in the
-Workbench. Selection, panel state, Preview values, Monaco state, and generated files are projections or transient UI
-state.
+Apply this contract when changing the ConfigForm Model package, Workbench state,
+Designer commands, project persistence, history, Preview projection, Flow
+editing, or Source/Config export.
 
-The existing `DesignerDocument` remains a compatibility projection while the reusable Designer component and version 1
-workspace artifact still use that shape. It must not become a second editable draft.
+`ProjectDocument` is the only persisted business content model in the Workbench.
+`ProjectSnapshot` is its immutable editor envelope. `PersistedProjectEnvelope`
+owns repository metadata. `LowCodePageModel`,
+`DesignerDocument`, and `WorkspaceApplication` are legacy ingress or stateless
+compatibility projections; they must not own a reducer, history, revision, or
+repository in the normal Workbench path.
 
-## 2. Signatures
+## 2. Canonical Data Flow
+
+```text
+ProjectRepository
+  -> PersistedProjectEnvelope
+     { document, repositoryRevision, entityRevisions, createdAt, updatedAt }
+  -> ProjectSaveCoordinator (CAS / commit receipt / save state)
+
+immutable ProjectSnapshot
+  -> ProjectDomainEngine (Command / Transaction / History)
+  -> ProjectEditorSession (application facade)
+
+UI / plugin intent
+  -> ProjectCommand
+  -> resolveProjectCommand
+  -> ProjectOperation[]
+  -> AppliedProjectTransaction + semantic inverse + ProjectChangeSet
+  -> ProjectDomainEngine
+
+ProjectSnapshot
+  -> ProjectCompilation { snapshot, registry, key, ir }
+     -> Design compatibility projection (temporary)
+     -> Runtime/Preview projection
+     -> pinned readonly ExportSnapshot
+
+ProjectSnapshot + candidate transaction
+  -> ProjectDraftSnapshot { base identity, document, draftHash }
+  -> the same compiler path (never history or persistence)
+```
+
+## 3. Signatures
 
 ```ts
-interface LowCodePageModel {
+interface ProjectDomainEngine {
+  readonly snapshot: ProjectDomainSnapshot
+  execute(command: ProjectCommand): ProjectDomainDispatchResult
+  undo(): ProjectDomainDispatchResult
+  redo(): ProjectDomainDispatchResult
+  sealHistoryGroup(): void
+}
+
+interface ProjectEditorSession {
+  readonly snapshot: ProjectEditorSessionSnapshot
+  execute(command: ProjectCommand): ProjectEditorSessionDispatchResult
+  undo(): ProjectEditorSessionDispatchResult
+  redo(): ProjectEditorSessionDispatchResult
+  save(): Promise<ProjectEditorSessionSaveResult>
+}
+
+interface ProjectSaveCoordinator {
+  readonly snapshot: ProjectSaveCoordinatorSnapshot
+  save(
+    capture: { document: ReadonlyProjectDocument, cursor: string },
+    currentCursor: () => string,
+  ): Promise<ProjectSaveCoordinatorResult>
+}
+
+interface ProjectCommand {
   id: string
+  label: string
+  actions: ProjectCommandAction[]
+  mergeKey?: string
+}
+
+interface ProjectNodePatch {
+  set?: Partial<ProjectNodePatchValues>
+  unset?: ProjectNodePatchKey[]
+}
+
+interface ProjectTransaction {
+  id: string
+  label: string
+  operations: ProjectOperation[]
+  mergeKey?: string
+}
+
+interface AppliedProjectTransaction {
+  transaction: ProjectTransaction
+  inverse: ProjectTransaction
+  editVersion: number
+  contentHash: string
+  timestamp: number
+}
+
+interface PageGraph {
+  version: 2
+  props: ModelJsonObject
+  form: FormSettings
+  root: SlotItem[]
+  nodesById: Record<NodeId, FieldNode | LayoutNode>
+}
+
+interface ProjectPage {
+  id: PageId
   name: string
-  version: 1
-  props: DesignerJsonObject
-  form: DesignerFormSettings
-  nodes: LowCodeNode[]
+  route: string
+  graph: PageGraph
   flows?: ConfigFormFlow[]
 }
 
-interface WorkspaceApplication {
-  schemaVersion: 2
-  id: string
-  name: string
-  revision: number
-  homePageId: string
-  pages: Array<{
-    id: string
-    name: string
-    route: string
-    model: LowCodePageModel
-  }>
-  files: Record<ProjectPath, WorkspaceFile>
-  manifest: WorkspaceProjectManifest
-}
-
-interface ExportSnapshot {
-  applicationId: string
-  applicationRevision: number
-  modelRevision: number
-  createdAt: string
-  files: Record<ProjectPath, WorkspaceFile>
-}
-
-interface LowCodeNode {
-  id: string
-  component: string
-  props: DesignerJsonObject
-  events: Record<string, RegisteredEventAction[]>
-  bindings: Record<string, RegisteredBinding>
-  children: LowCodeNode[]
-  slots: Record<string, LowCodeNode[]>
-  kind: DesignerNodeKind
-}
-
-interface LowCodeComponentDefinition {
-  component: string
-  runtime: DesignerRuntimeMaterialBinding
-  sourceComponent?: string
-  props: DesignerPropertySetterDefinition[]
-  events: LowCodeEventSchema[]
-  bindings: LowCodeBindingSchema[]
-  slots: DesignerMaterialSlotDefinition[]
-  allowedParents: DesignerMaterialParentDefinition[]
-  layout: { span?: { min: number, max: number } }
-}
-
-type ModelOperation
-  = { type: 'insert', node: LowCodeNode, target: ModelNodeTarget }
-  | { type: 'move', nodeId: string, target: ModelNodeTarget }
-  | { type: 'updateFlows', flows?: ConfigFormFlow[] }
-  | { type: 'updateProps' | 'updateEvents' | 'updateBindings', nodeId: string, /* payload */ }
-  | { type: 'updateNode', nodeId: string, patch: ModelNodePatch }
-  | { type: 'resize', nodeId: string, span: number | null }
-  | { type: 'duplicate', nodeId: string, target: ModelNodeTarget, idMap: Record<string, string> }
-  | { type: 'remove', nodeId: string }
-  | { type: 'batch', operations: ModelOperation[] }
-
-applyModelOperation(model, operation, registry): ModelOperationResult
-applyConfigModelOperation(history, operation, registry): ConfigModelHistoryResult
-
-interface DesignerCommandControl {
-  apply(command: DesignerCommand, projectedDocument: DesignerDocument): boolean
-}
-
-interface ModelOperationOptions {
-  /** Optional host-side action registry used to reject unknown Flow refs. */
-  flowActions?: ConfigFormFlowActionRegistry
-}
-
-interface ConfigFormFlow {
-  version: 1
-  id: string
-  name: string
-  trigger: { kind: 'page.mount' | 'form.submit' | 'field.change', field?: string }
-  nodes: ConfigFormFlowNode[]
-  edges: ConfigFormFlowEdge[]
+interface SlotItem {
+  nodeId: NodeId
+  placement: ModelJsonObject
 }
 ```
 
-## 3. Contracts
+## 4. Contracts
 
-The normal Workbench flow is one way:
+- `PageGraph` stores each node exactly once. Roots live in `root`; all
+  descendant relationships live in `LayoutNode.slots`. Both are `SlotItem[]`,
+  so layout metadata belongs to the parent-child relation. Default children
+  use `slots.default`. A field node cannot own slots.
+- UI and plugin code call `ProjectEditorSession.execute(command)`, which delegates
+  to `ProjectDomainEngine.execute(command)`. The engine has no Repository,
+  persistence, current-page, selection, or Vue dependency. There is no public
+  low-level `dispatch` escape hatch.
+- A Command expresses intent. A Transaction contains already-resolved
+  canonical Operations. History stores the applied Transaction and semantic
+  inverse, never an unresolved Command or a full project deep copy.
+- A multi-action Command may temporarily violate cross-entity references while
+  its actions are being expanded. The complete Operation batch must pass final
+  PageGraph, Registry, Flow, and schema validation before publication. Failure
+  preserves the original snapshot, history, and revision.
+- One accepted Command produces at most one editVersion and one history
+  entry. Merge keys may combine adjacent history entries without changing
+  transaction atomicity.
+- Command IDs are idempotent inside ProjectDomainEngine. Reusing an ID with a
+  different payload returns `PROJECT_COMMAND_ID_REUSED`.
+- Semantic commands are JSON-safe. Node property removal uses explicit
+  `patch.unset`; `undefined` is invalid in `patch.set` because JSON,
+  postMessage, Worker, and persisted command logs discard it.
+- `ProjectDocument` contains no repository revision or persistence timestamps.
+  Repository commits use a separate stable commit ID and CAS against the saved
+  repository revision. `ProjectSaveCoordinator` owns commit ID generation,
+  repositoryRevision, savedCursor, saving, and persistence diagnostics. Commit
+  IDs include a per-editor-session namespace so two tabs cannot both emit
+  `<project>:save:1` and be mistaken for a payload replay.
+- Saving captures one immutable document and history cursor. Edits made while
+  save is pending remain local and dirty; they are not merged into the captured
+  commit or its merge group.
+- `ProjectSnapshot` is `{ document, editVersion, contentHash }`; it may use structural sharing but is deeply readonly at API
+  boundaries. UI code must not cast it to mutable data.
+- Application facades may expose a superset such as
+  `ProjectEditorSessionSnapshot`, but compiler and export boundaries must build
+  an exact `ProjectSnapshot` envelope explicitly. Never pass the session
+  snapshot through a cast or object spread: its persistence, history, and UI
+  fields are intentionally rejected by the strict compilation schema.
+- Drag and other speculative design operations use `ProjectDraftSnapshot`, which
+  binds the committed base identity to a separate `draftHash`. A draft may enter
+  the semantic compiler, but it cannot enter ProjectDomainEngine history,
+  Repository, save coordination, or the committed Project Store stream.
+- In Design mode the real Runtime form is a non-interactive visual plane. Its
+  form root is `inert` and `aria-hidden`, runtime nodes expose presentation
+  metadata without focus/click handlers, and the editor overlay owns focus,
+  selection, hit testing, resize, and node actions. Geometry hit testing uses
+  registered Runtime node rectangles and prefers the deepest matching node.
+  A collapsed drop indicator is reserved for zero-height containers; normal
+  Runtime controls must keep their measured geometry and must not receive an
+  invented placeholder frame during drag.
+- Runtime accepts an optional transient `breakpoint` presentation value for
+  fixed Design/Preview artboards. When supplied, it pins the active grid
+  columns and node spans through the same Runtime layout resolver instead of
+  depending on the host viewport media query. The value is never persisted in
+  `ProjectDocument` or treated as a design operation.
+  Preview uses a separate Runtime instance and remains natively interactive.
+- Selection overlay focus styles must be explicit on the overlay itself. Adapter
+  styles may reset `[tabindex="-1"]:focus { outline: none; }`; such resets must
+  not hide the editor selection affordance.
+- Designer editor chrome is governed by one explicit overlay mode:
+  `idle`, `selected`, `keyboard-dragging`, `pointer-dragging`, or `resizing`.
+  The mode is a rendering contract, not a second model state. Pointer dragging
+  hides stale selection and policy overlays; dragging shows the Runtime
+  candidate and pointer-following visual; resizing keeps only the active
+  selection and resize handle. New editor feedback must declare its mode
+  priority before it is rendered.
+- Selection chrome must remain visually outside the Runtime control (with an
+  explicit gap or equivalent editor-only affordance) so it cannot be mistaken
+  for a library focus ring. Design policy diagnostics are contextual: render
+  only for the primary selected node, never as a marker on every adapter node.
+- Any change to editor chrome requires a browser regression that asserts the
+  Runtime control remains inert, the editor overlay owns focus, and the
+  relevant overlay count/geometry changes across selected, dragging, nested,
+  and resizing states. A unit test that only checks rendered class names is
+  insufficient evidence for visual interaction behavior.
+- Public Designer entry points must forward the same candidate Runtime
+  projection contract to the Canvas. A capability declared on
+  `DesignerCommandControl` cannot be wired only by the Workbench-specific
+  `DesignSurface` while the compatibility `ConfigFormDesigner` silently uses a
+  second projection path.
+- Pointer coordinates are transient overlay state. Moving the pointer inside
+  one unchanged drop target may reposition the drag visual, but it must not
+  invalidate or rebuild the structural candidate Runtime projection. Candidate
+  compilation dependencies are the drag source, normalized drop target, base
+  document identity, and Registry contract.
+- Palette specimen styling must target Designer-owned wrapper classes. Broad
+  descendant selectors such as `label`, `input`, or `button` are forbidden
+  because the specimen is a real adapter Runtime and owns its internal DOM.
+- Successful semantic compilation returns one immutable `ProjectCompilation`
+  binding the compilation snapshot, Registry snapshot, compiler identity, and
+  Canonical IR. Runtime, Preview, Source, and Export must not pair these inputs
+  independently.
+- The current page ID is Design/Workbench navigation state, not a
+  ProjectDomainEngine or ProjectEditorSessionSnapshot field. Switching pages
+  republishes the relevant projection but does not create a project revision or
+  history entry.
+- Component keys resolve through the Registry Contract. Arbitrary HTML tags,
+  Vue component instances, icons, or functions never enter ProjectDocument.
+- The Workbench may temporarily project a Project page to
+  `LowCodePageModel -> DesignerDocument` for the existing DesignSurface. That
+  projection is stateless and one-way. Designer operations are converted to
+  `ProjectCommandAction`; the projected model is never written to a legacy
+  repository.
+- Pages and Export may temporarily receive a projected `WorkspaceApplication`.
+  Generated files in that object are derived scaffold/output only and never
+  enter ProjectDocument.
+- Runtime form values, touched state, validation, Flow queues, outputs, traces,
+  abort signals, panel state, selection, drag candidates, and Monaco models are
+  transient session/UI state.
+- Source and Config are read-only. They pin one immutable export revision;
+  later design edits mark the session stale rather than partially replacing
+  files.
 
-```text
-legacy Designer artifact (open/migrate once)
-  -> LowCodePageModel
-  -> DesignerDocument compatibility projection -> Design / Runtime Renderer / Preview
-  -> stable Config JSON -> readonly JSON or Tree viewer
-  -> generated Vue project files -> readonly Monaco or download
-```
+## 5. Repository Boundary
 
-- `component` is a Component Registry key, never a Vue component instance or arbitrary HTML tag.
-- Default children live in `children`; only named-slot children live in `slots`. Do not duplicate the same node in both.
-- Model operations apply to a clone and commit atomically. A successful history entry stores both the operation and its
-  inverse; a failed operation returns the original model and does not advance `revision`.
-- In a controlled Workbench, Designer commands must call `DesignerCommandControl.apply` before committing local
-  Designer history. A rejected Model operation leaves the current `DesignerDocument` projection unchanged; the next
-  accepted Model revision refreshes that projection.
-- `events` and `bindings` are JSON-safe registered IR. Version 1 only whitelists event and binding keys through the
-  Component Registry, then stores non-empty `action` and `source` references as opaque strings. It does not execute,
-  compile, or validate workflow semantics. User functions and source snippets do not belong in the model; the deferred
-  workflow engine owns action/source catalogs and execution.
-- Palette, Canvas, Preview, Inspector, and Source generation use one `LowCodeComponentRegistry`. The Designer Registry
-  is reached through `lowCodeRegistry.designer`; generated portable component names come from
-  `LowCodeComponentDefinition.sourceComponent`. A missing definition or source projection blocks the operation/export.
-- A structural material may declare `allowedParents: Array<{ material, slot }>` in the Component Registry. This is a
-  placement capability, not persisted page data. Document analysis, live Runtime projection, Designer commands, and
-  Config Model insert/move validation must all enforce the same contract. Invalid stored structural children are
-  diagnosed and omitted from the live projection so a missing provider cannot corrupt Vue's component tree.
-- Opening a version 1 workspace may read `form.designer.json`. Normal editing must not parse `App.vue` or
-  `form.config.ts` back into model state.
-- Source and Config are opened from the single Export menu and are read-only. Config export serializes
-  `LowCodePageModel`, not the compatibility `DesignerDocument`.
-- The Workbench persistence root is `WorkspaceApplication` version 2. Every page owns one `LowCodePageModel`; the
-  application owns page order, unique normalized routes, and the only `homePageId`. Page model history and application
-  operations are separate transaction boundaries. The left Pages panel switches the active page; Page Manager owns
-  creation, rename, duplicate, delete, reorder, route, and home-page operations.
-- A legacy version 1 `WorkspaceProject` migrates at the repository boundary to one-page `WorkspaceApplication` data.
-  Migration must be deterministic and idempotent; a failed migration must not overwrite the legacy record.
-- Opening Source export creates one immutable `ExportSnapshot`. The file tree, Monaco model, single-file download, and
-  ZIP download read the same snapshot. Later Design revisions only mark it stale; refresh replaces the complete
-  snapshot atomically. Multi-page Source contains Vue Router, every page directory, and `package.json`, with no
-  ConfigForm Runtime import.
-- Runtime form values belong to the Preview instance. They never update page structure.
-- Pointer dragging never reorders business DOM. The drag controller creates one Registry-backed candidate node and
-  projects the candidate Model through the same RuntimeSurface used after commit. Pointer up submits one semantic
-  insert/move command; pointer cancel, readonly teardown, and unmount discard the candidate without advancing history.
-- Nested inside targets are sticky while the pointer still hits the same parent. This prevents the candidate's real
-  height from moving the pointer into a different before/after geometry band. A real empty Flex/Grid may have zero
-  runtime height; only during an active drag, the resolver inflates its measured geometry into a small hit band and the
-  editor overlay draws the drop indicator. It must not add a persisted child, trailing sentinel, or Runtime placeholder.
-- `LowCodePageModel.flows` is an optional JSON-only DAG projection. `analyzeConfigFormFlow` validates graph shape before
-  an operation commits; when a host provides `ModelOperationOptions.flowActions`, every action node ref must resolve in
-  that registry. Flow runtime values, outputs, trace, abort signals, and concurrency queues are transient and never
-  mutate page structure.
-- RuntimeSurface metadata (`data-config-node-id`, `data-config-path`, `data-config-slot`, and node kind) is derived from
-  the same model path in Design and Preview. Design mode may intercept control events, but must not replace registered
-  runtime components with static summaries; selection and drop visuals belong to an editor overlay.
-- `RuntimeSurface` is a public value alias of the typed `ConfigFormRenderer` export, not a second Vue SFC wrapper. This
-  keeps the runtime tree and public generic declaration identical and prevents Volar from expanding transitive Core
-  types into a second generated component declaration. The package-boundary smoke consumer must import and type-check
-  both names.
-- `DESIGNER_LOCALE_KEY` follows Vue's descendant-only provide/inject boundary. A Workbench dialog or sibling projection
-  rendered outside `ConfigFormDesigner` must accept the same `DesignerLocaleOptions` explicitly (while it may retain an
-  injected fallback); it must not assume the Designer's internal provider is visible across sibling component trees.
+- Repository storage may split Manifest, Page, and Resource entities. A
+  `ConfigFormFlow` is owned by one `ProjectPage` as a sibling of its visual
+  `PageGraph`, and both persist inside the same Page entity; project-wide
+  automation requires a different future contract.
+  The manifest references exact revisioned keys and checksums.
+- `load` publishes only a complete validated `PersistedProjectEnvelope`. Missing entities,
+  checksum drift, or mismatched project IDs return
+  `PROJECT_REPOSITORY_CORRUPT`.
+- `commit` writes new entities, the manifest, and commit receipt in one native
+  atomic storage transaction.
+- Legacy Workspace records migrate once at repository ingress. Persisted
+  `ProjectDocument` v3 records deterministically move `graph.flows` to sibling
+  `ProjectPage.flows` and become v4 in memory; ambiguous dual ownership fails
+  closed. Migration failure preserves the original record and does not write
+  partial new state.
+- Compatibility projections are forbidden from calling legacy repository
+  `commit`, `saveDraft`, or application reducers.
 
-## 4. Validation & Error Matrix
+## 6. Error Matrix
 
 | Condition | Required result |
 | --- | --- |
-| Inserted root or descendant component is absent from Registry | `MODEL_COMPONENT_UNKNOWN`; no mutation |
-| Inserted subtree contains duplicate IDs or conflicts with existing IDs | `MODEL_NODE_ID_DUPLICATE`; no mutation |
-| Target parent, slot, accepted kind, or accepted material is invalid | Matching `MODEL_TARGET_*` diagnostic; no mutation |
-| A material is outside every Registry `allowedParents` location | `DESIGNER_MATERIAL_PARENT_INVALID` or `MODEL_TARGET_PARENT_INVALID`; no mutation / live mount |
-| Move targets the moving node's own subtree | `MODEL_MOVE_CYCLE`; no mutation |
-| Resize span is not an integer in `1..24` or `null` | `MODEL_RESIZE_INVALID`; no mutation |
-| Updated property, event key, or binding key is absent from the Component Registry | Matching `MODEL_PROP_UNKNOWN`, `MODEL_EVENT_UNKNOWN`, or `MODEL_BINDING_UNKNOWN`; no mutation |
-| Registered event action or binding source is empty/non-string | Matching `MODEL_EVENT_ACTION_INVALID` or `MODEL_BINDING_SOURCE_INVALID`; no mutation |
-| Duplicate omits an ID for any source descendant | `MODEL_DUPLICATE_MAPPING_INCOMPLETE`; no mutation |
-| Batch is empty | `MODEL_BATCH_EMPTY`; no history entry or revision change |
-| Any nested batch operation fails | Roll back the complete batch to the original model |
-| Flow graph is malformed, cyclic, unreachable, or has an incomplete branch | Flow diagnostic from `analyzeConfigFormFlow`; no model mutation |
-| Flow action ref is unknown when a host registry is supplied | `MODEL_FLOW_ACTION_UNKNOWN`; no model mutation |
-| Application has duplicate page IDs/routes, no pages, or a missing home page | Reject parsing/operation; no persisted revision change |
-| Delete targets the final page | Reject the Application Operation; preserve the page and `homePageId` |
-| A v1 Project migration fails validation or persistence | Preserve the legacy record; do not write partial v2 state |
-| Design changes while an export dialog is open | Keep the current snapshot readable and mark it stale; do not mix revisions |
-| Snapshot refresh generation fails | Preserve the previous complete snapshot and surface the export diagnostic |
+| Empty Command or Transaction | Diagnostic; no mutation or revision |
+| Unknown page/node/component/slot | Structured diagnostic; atomic rollback |
+| Final command graph has a dangling reference or cycle | Diagnostic; atomic rollback |
+| Intermediate action is invalid but final batch is valid | Resolve and validate the final batch |
+| Reused command ID with identical payload | Idempotent no-op |
+| Reused command ID with different payload | `PROJECT_COMMAND_ID_REUSED` |
+| Node patch sets `undefined` | `PROJECT_NODE_PATCH_VALUE_UNDEFINED` |
+| Node patch sets and unsets the same key | `PROJECT_NODE_PATCH_CONFLICT` |
+| Repository CAS mismatch | `PROJECT_REVISION_CONFLICT`; preserve local edits |
+| Two editor sessions save their first edit | Unique commit IDs; stale tab receives CAS conflict, not command reuse |
+| Save succeeds while newer edits exist | Saved captured revision; local state remains dirty |
+| Export generation fails | Preserve the previous complete export snapshot |
 
-## 5. Good / Base / Bad Cases
+## 7. Tests Required
 
-- Good: apply one `batch` operation for a multi-selection delete, then store its reversed inverse batch in history.
-- Good: let a controlled Designer calculate the projected command result, commit the corresponding Model Operation,
-  then refresh the Designer from `configModelToDesignerDocument(history.present)`.
-- Base: convert a stored version 1 Designer artifact to `LowCodePageModel` on open and generate the TypeScript Config
-  module from the Design projection.
-- Good: open one Source snapshot, navigate its hierarchical tree, and download a ZIP whose file bytes come from the
-  same snapshot revision even if the active page changes meanwhile.
-- Bad: keep `sourceDraft`, `configDraft`, and a Designer document ref, then watch and parse them in both directions.
-- Bad: update the Monaco file list immediately after a Design operation while leaving the ZIP cache on the older
-  application revision.
-- Bad: export `configModelToDesignerDocument(model)` as "Config Model" because that drops page metadata,
-  `events`, and `bindings`.
-- Bad: let the controlled Designer commit local history before the Model reducer accepts the command; a rejected
-  Registry validation would split Canvas state from Preview and exports.
+- Model unit tests cover schema invariants, migration, every Operation, semantic
+  inverse, command expansion, multi-action final validation, merge, undo/redo,
+  no-op revisions, structural sharing, and performance at 100/500/2000 nodes.
+- Repository tests cover atomic multi-key create/commit, checksums, missing
+  entities, CAS across connections, command receipt replay, quota/partial
+  failure, save-during-edit, and legacy migration preservation.
+- Architecture boundary tests prove the Domain Engine does not import
+  Repository, Vue, Designer, Workbench, current-page, or saving contracts and
+  that the production Workbench controller cannot import legacy reducers.
+- Workbench boundary tests prove Designer and Page Manager legacy operations
+  become Project Commands and that projected legacy data cannot become the
+  state source.
+- Browser tests prove one visual design action advances one project revision,
+  Undo/Redo use ProjectDomainEngine through ProjectEditorSession, page
+  switching does not create history, and
+  Preview/Export observe the same project revision.
+- Designer regression tests cover every public Canvas host that accepts
+  `DesignerCommandControl.previewRuntime`. Repeated pointer moves within the
+  same normalized drop target call that projection once, while a target change
+  creates a new projection.
+- Browser tests click the geometry of real Design controls and prove that focus
+  stays on the editor overlay, keyboard input cannot mutate Design values,
+  nested nodes select the deepest registered Runtime rectangle, and the same
+  component remains interactive in Preview. These checks must run for every
+  supported UI adapter.
 
-## 6. Tests Required
-
-- Unit: every operation succeeds with the expected inverse and rejects invalid IDs, Registry keys, targets, resize values,
-  duplicate mappings, and empty batches without mutating the input.
-- Unit: undo applies the stored inverse; redo replays the original operation; failed operations do not change revision.
-- Unit: a controlled Designer command rejected by `DesignerCommandControl.apply` does not emit a document update or
-  change the exported projection.
-- Unit: Source generation resolves every component through the supplied Registry and rejects an unregistered component.
-- Unit: DesignerDocument compatibility projection preserves supported field/container structure and default/named slot
-  placement.
-- Unit: root and nested candidate targets resolve append indices without DOM reordering; sticky nested and collapsed
-  geometry targets remain deterministic; palette cancellation removes candidate/overlay state without emitting a Model
-  mutation.
-- Unit: Application parsing and operations cover v1 migration, repository round trips, revision conflicts, unique
-  routes, home-page invariants, final-page deletion, deep-ID duplication, and page-order changes.
-- Unit: Export snapshots are immutable, become stale on later model/application revisions, and replace every consumer
-  atomically only after explicit refresh.
-- Unit: structural children with `allowedParents` are accepted only in the declared material/slot pair, rejected at the
-  root and wrong parents, and omitted from live Runtime projection when loading invalid stored documents.
-- Unit: a Workbench projection outside the Designer provider applies an explicit locale and reacts when the locale
-  options are replaced without mutating the Config Model.
-- Integration: both built-in adapter projects install, type-check, and build from generated files.
-- Integration: both built-in multi-page standalone Source projects install, type-check, and build without any
-  `@moluoxixi/config-form*` dependency; the Runtime package smoke consumer imports and types both `ConfigFormRenderer`
-  and `RuntimeSurface` with `skipLibCheck: false`.
-- Browser: Components/Layers/Pages are reachable; Layers selection updates Inspector; a committed Inspector edit updates
-  Canvas and the open Preview; Source/Config open only through the Export menu and remain read-only.
-- Browser: palette drops into populated Flex/Grid and other legal nested slots append to the intended parent, then the
-  Runtime Preview renders the same committed node count and order. Test helpers must bring the source and final target
-  into view before pointer movement so a viewport miss cannot masquerade as a Designer regression.
-
-## 7. Wrong vs Correct
-
-### Wrong
-
-```ts
-function updateConfig(source: string) {
-  configDraft.value = source
-  designerDocument.value = parseDesignerConfig(source).document
-}
-```
-
-### Correct
-
-```ts
-const designerDocument = computed(() => configModelToDesignerDocument(configModel.value))
-const generatedConfigJson = computed(() => JSON.stringify(configModel.value, null, 2))
-
-function applyDesignCommand(command: DesignerCommand, projected: DesignerDocument) {
-  const operation = designerCommandToModelOperation(command, projected, configModel.value.props)
-  return commitModelHistory(applyConfigModelOperation(history.value, operation, registry.value))
-}
-```
-
-The compatibility conversion is owned at the Design boundary. Generated Source and Config never call the reverse path.
-
-### Application export snapshot
+## 8. Wrong vs Correct
 
 Wrong:
 
 ```ts
-watch(modelRevision, () => {
-  sourceFiles.value = generateSource(application.value)
-})
+workspaceSession.dispatch({ type: 'page.model', operation })
+application = applyWorkspaceApplicationOperation(application, updatePage)
 ```
 
 Correct:
 
 ```ts
-const snapshot = ref(createExportSnapshot(application.value, modelRevision.value, registry))
-const stale = computed(() =>
-  application.revision !== snapshot.applicationRevision
-  || modelRevision !== snapshot.modelRevision,
-)
-
-function refreshExport() {
-  snapshot.value = createExportSnapshot(application.value, modelRevision.value, registry)
-}
+projectEditorSession.execute({
+  id: nextCommandId(),
+  label: 'Update design',
+  actions: [{
+    type: 'node.patch',
+    pageId,
+    nodeId,
+    patch: { set: { label: 'Name' }, unset: ['validation'] },
+  }],
+})
 ```
 
-Every export surface reads `snapshot.files`; live model changes never update only one consumer.
+Wrong: watch a generated file or DesignerDocument and parse it back into the
+project.
+
+Correct: derive Design, Preview, Config, Source, and file-tree projections from
+the current immutable ProjectSnapshot.

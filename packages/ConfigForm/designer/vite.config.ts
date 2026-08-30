@@ -40,6 +40,8 @@ export default defineConfig({
         '@lucide/vue',
         '@moluoxixi/config-form',
         '@moluoxixi/config-form-core',
+        '@moluoxixi/config-form-model',
+        '@moluoxixi/config-form-vue-backend',
         '@moluoxixi/config-form/renderer',
         '@moluoxixi/config-form-headless',
         '@moluoxixi/zod3-to-rule',

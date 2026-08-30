@@ -39,11 +39,12 @@ const {
   closeTemplatePicker,
   configError,
   configModel,
+  captureExportSnapshotInput,
   createApplication,
   currentApplication,
   currentPage,
   currentPageId,
-  currentSourceRevisionKey,
+  designRuntime,
   designerCommandControl,
   designerDocument,
   designerFieldNames,
@@ -53,6 +54,7 @@ const {
   exportPreviewMode,
   fallbackPreviewModel,
   flowWorkspaceOpen,
+  getCurrentExportCompilation,
   handleApplicationOperation,
   handlePreviewRuntimeReady,
   localeId,
@@ -73,7 +75,6 @@ const {
   previewProjection,
   previewState,
   previewViewport,
-  projectionCoordinator,
   registry,
   requestOpenApplication,
   reloadCurrentApplication,
@@ -227,10 +228,10 @@ function showPageManager(): void {
             :locale="localeOptions"
             :readonly="busy"
             :registry="registry"
-            workspace-navigation="external"
-            @selection-set-change="selectedDesignerIds = $event"
-            @model-operation="updateModelOperation"
-          >
+             :runtime-renderer="designRuntime?.artifact.plan.renderer"
+             workspace-navigation="external"
+             @selection-set-change="selectedDesignerIds = $event"
+           >
             <template #toolbar="{ breakpoint, canUndo, canRedo, canEditSelection, copySelection, removeSelection, selectBreakpoint, undo, redo }">
               <div class="mx-config-form-designer__toolbar-actions" role="toolbar" :aria-label="workbenchLocale.t('designer.commands', 'Designer commands')">
                 <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canUndo" :title="workbenchLocale.t('action.undo', 'Undo')" :aria-label="workbenchLocale.t('action.undo', 'Undo')" @click="undo">
@@ -376,11 +377,10 @@ function showPageManager(): void {
 
     <ExportDialog
       v-if="exportDialogLoaded"
-      :capture="projectionCoordinator.capture"
-      :current-revision-key="currentSourceRevisionKey"
+      :capture="captureExportSnapshotInput"
+      :current-compilation="getCurrentExportCompilation()"
       :locale="localeOptions"
       :mode="exportPreviewMode"
-      :registry="lowCodeRegistry"
       :theme="theme"
       @close="closeExportPreview"
       @message="message = $event"

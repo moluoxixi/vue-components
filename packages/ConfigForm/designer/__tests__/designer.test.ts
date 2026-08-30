@@ -12,6 +12,7 @@ import {
   ConfigFormDesigner,
   createDesignerLocale,
   createDesignerRegistry,
+  createDesignerRuntimeProjection,
   createLowCodeComponentRegistry,
   designerDiagnostic,
   designerDocumentToConfigModel,
@@ -139,7 +140,8 @@ describe('config form designer', () => {
 
     expect(wrapper.get('.mx-config-form-designer__toolbar').text()).toContain('表单设计器')
     expect(wrapper.get('.mx-config-form-designer__palette').attributes('aria-label')).toBe('物料')
-    expect(wrapper.get('[data-material-key="element.input"]').text()).toContain('输入框')
+    expect(wrapper.get('[data-material-key="element.input"]').attributes('aria-label')).toBe('输入框')
+    expect(wrapper.get('[data-material-row-key="element.input"]').text()).toContain('输入框')
 
     await wrapper.get('[data-material-key="element.input"]').trigger('click')
     expect(wrapper.findAll('.mx-config-form-designer__setter').some(setter => setter.text().includes('占位文本'))).toBe(true)
@@ -164,7 +166,8 @@ describe('config form designer', () => {
 
     expect(wrapper.get('.mx-config-form-designer__toolbar').text()).toContain('Localized designer')
     expect(wrapper.get('.mx-config-form-designer__palette').attributes('aria-label')).toBe('Localized materials')
-    expect(wrapper.get('[data-material-key="element.input"]').text()).toContain('Localized input')
+    expect(wrapper.get('[data-material-key="element.input"]').attributes('aria-label')).toBe('Localized input')
+    expect(wrapper.get('[data-material-row-key="element.input"]').text()).toContain('Localized input')
     expect(wrapper.findAll('.mx-config-form-designer__setter').some(setter => setter.text().includes('Localized placeholder'))).toBe(true)
     expect(lastDocument(wrapper).nodes[0]).toMatchObject({ material: 'element.input', field: 'input' })
   })
@@ -310,7 +313,7 @@ describe('config form designer', () => {
     expect(rootNodes.map(node => node.attributes('data-designer-span'))).toEqual(['24', '8', '8', '8'])
     expect(rootNodes.every(node => node.classes().includes('mx-config-form__cell'))).toBe(true)
 
-    await rootNodes[0]!.trigger('focus')
+    await rootNodes[0]!.trigger('pointerdown')
     expect(wrapper.findAll('.mx-config-form-designer__selection-box')).toHaveLength(1)
     expect(wrapper.find('.mx-config-form-designer__selection-box .mx-config-form-designer__node-actions').exists()).toBe(true)
   })
@@ -515,15 +518,23 @@ describe('config form designer', () => {
 
     await wrapper.get('button[aria-label="Show properties"]').trigger('click')
     const firstNode = wrapper.get('[data-focus-node-id="first"]')
-    ;(firstNode.element as HTMLElement).focus()
-    await firstNode.trigger('click')
+    await firstNode.trigger('pointerdown')
     expect(propertiesPanel.attributes('hidden')).toBeUndefined()
     expect(propertiesPanel.get('.mx-config-form-designer__property-heading strong').text()).toBe('First field')
+    expect(propertiesPanel.get('.mx-config-form-designer__property-heading').text()).not.toContain('element.input')
+    expect(propertiesPanel.findAll('[role="tab"]').every((tab) => {
+      const element = tab.element as HTMLElement
+      return element.scrollWidth <= element.clientWidth
+    })).toBe(true)
 
-    await firstNode.trigger('keydown', { key: 'Escape' })
+    const canvas = wrapper.get('.mx-config-form-designer__canvas-sheet')
+    const selection = wrapper.get('.mx-config-form-designer__selection-box')
+    expect(selection.attributes('style')).toContain('width:')
+    expect(selection.attributes('style')).toContain('height:')
+    await canvas.trigger('keydown', { key: 'Escape' })
     await nextTick()
     expect(propertiesPanel.attributes('hidden')).toBe('')
-    expect(document.activeElement).toBe(firstNode.element)
+    expect(document.activeElement).toBe(wrapper.get('[data-editor-focus-node-id="first"]').element)
 
     const reopenedTrigger = wrapper.get('button[aria-label="Show properties"]')
     await reopenedTrigger.trigger('click')
@@ -779,14 +790,17 @@ describe('config form designer', () => {
 
     const inputMaterial = wrapper.get('[data-material-key="element.input"]')
     expect(inputMaterial.attributes()).toMatchObject({
-      role: 'button',
-      tabindex: '0',
+      'aria-label': 'Input',
+      'type': 'button',
     })
-    expect(inputMaterial.get('.mx-config-form-designer__palette-item-preview').attributes()).toMatchObject({
+    expect(inputMaterial.element.tagName).toBe('BUTTON')
+    expect(inputMaterial.find('input, textarea, select, [role="radio"], [role="checkbox"]').exists()).toBe(false)
+    const inputMaterialRow = wrapper.get('[data-material-row-key="element.input"]')
+    expect(inputMaterialRow.get('.mx-config-form-designer__palette-item-preview').attributes()).toMatchObject({
       'aria-hidden': 'true',
       'inert': '',
     })
-    expect(inputMaterial.find('[data-specimen-node-id]').exists()).toBe(true)
+    expect(inputMaterialRow.find('[data-specimen-node-id]').exists()).toBe(true)
 
     await wrapper.get('[data-material-key="element.input"]').trigger('click')
     await flushPromises()
@@ -858,7 +872,7 @@ describe('config form designer', () => {
     })
     await flushPromises()
 
-    await wrapper.get('[data-focus-node-id="first"]').trigger('focus')
+    await wrapper.get('[data-focus-node-id="first"]').trigger('pointerdown')
     await flushPromises()
     await wrapper.get('button[aria-label="Move node"]').trigger('keydown', { key: ' ' })
     await flushPromises()
@@ -895,7 +909,10 @@ describe('config form designer', () => {
     })
     await flushPromises()
 
-    expect(wrapper.get('[data-focus-node-id="external"]').attributes('aria-label')).toBe('Select external')
+    expect(wrapper.get('[data-focus-node-id="external"]').attributes()).toMatchObject({
+      role: 'presentation',
+    })
+    expect(wrapper.get('[data-focus-node-id="external"]').attributes('tabindex')).toBeUndefined()
     expect(wrapper.get('button[aria-label="Undo"]').attributes('disabled')).toBeDefined()
   })
 
@@ -934,6 +951,123 @@ describe('config form designer', () => {
     expect(wrapper.find('.mx-config-form-designer__node-list').exists()).toBe(false)
     expect(wrapper.find('.mx-config-form-designer__runtime-surface > form').exists()).toBe(true)
     expect(wrapper.findAll('.mx-config-form-designer__runtime-surface [data-config-node-id]')).toHaveLength(2)
+  })
+
+  it('keeps the runtime tree inert while the canvas owns design focus and selection', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      attachTo: document.body,
+      props: { document: twoFieldDocument(), registry },
+    })
+    await flushPromises()
+
+    const canvas = wrapper.get('.mx-config-form-designer__canvas-sheet')
+    const runtimeForm = wrapper.get('.mx-config-form-designer__runtime-surface > form')
+    const firstNode = wrapper.get('[data-config-node-id="first"]')
+    const input = runtimeForm.get('input')
+
+    expect(runtimeForm.attributes()).toMatchObject({ 'aria-hidden': 'true' })
+    expect(runtimeForm.attributes()).toHaveProperty('inert')
+    expect(input.element.closest('[inert]')?.tagName).toBe('FORM')
+    expect(firstNode.attributes()).toMatchObject({ role: 'presentation' })
+    expect(firstNode.attributes('tabindex')).toBeUndefined()
+    expect(canvas.attributes('tabindex')).toBeUndefined()
+
+    const selectionEvent = new Event('selectstart', { bubbles: true, cancelable: true })
+    canvas.element.dispatchEvent(selectionEvent)
+    expect(selectionEvent.defaultPrevented).toBe(true)
+
+    await firstNode.trigger('pointerdown')
+    await flushPromises()
+
+    expect(document.activeElement).toBe(wrapper.get('[data-editor-focus-node-id="first"]').element)
+    expect(wrapper.findAll('.mx-config-form-designer__selection-box')).toHaveLength(1)
+    expect(input.element).not.toBe(document.activeElement)
+
+    const toolbar = wrapper.get('[role="toolbar"][aria-label="Node actions"]')
+    expect(toolbar.findAll('[data-node-toolbar-button]')).toHaveLength(4)
+    const moreActions = toolbar.get('button[aria-label="More actions"]')
+    expect(moreActions.attributes('aria-expanded')).toBe('false')
+
+    await moreActions.trigger('click')
+    await nextTick()
+    const menu = wrapper.get('[role="menu"]')
+    const menuItems = menu.findAll('[role="menuitem"]')
+    expect(menuItems).toHaveLength(4)
+    expect(document.activeElement).toBe(menuItems[0]!.element)
+
+    await menu.trigger('keydown', { key: 'End' })
+    expect(document.activeElement).toBe(menuItems.at(-1)!.element)
+    await menu.trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(moreActions.element)
+
+    await moreActions.trigger('click')
+    await wrapper.get('[role="menuitem"][aria-label="Move node down"]').trigger('click')
+    await flushPromises()
+    expect(lastDocument(wrapper).nodes.map(node => node.id)).toEqual(['second', 'first'])
+    wrapper.unmount()
+  })
+
+  it('selects the deepest nested runtime node from canvas geometry without control events', async () => {
+    const rect = (x: number, y: number, width: number, height: number): DOMRect => ({
+      bottom: y + height,
+      height,
+      left: x,
+      right: x + width,
+      top: y,
+      width,
+      x,
+      y,
+      toJSON: () => ({}),
+    })
+    const getRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('mx-config-form-designer__canvas-sheet'))
+        return rect(0, 0, 640, 480)
+      if (this.dataset.configNodeId === 'outer')
+        return rect(80, 80, 480, 240)
+      if (this.dataset.configNodeId === 'inner')
+        return rect(120, 120, 260, 40)
+      return rect(0, 0, 0, 0)
+    })
+
+    try {
+      const wrapper = mount(ConfigFormDesigner, {
+        attachTo: document.body,
+        props: {
+          document: {
+            version: 1,
+            form: {},
+            nodes: [{
+              id: 'outer',
+              kind: 'container',
+              material: 'element.section',
+              slots: {
+                default: [{ id: 'inner', kind: 'field', material: 'element.input', field: 'inner' }],
+              },
+            }],
+          },
+          registry,
+        },
+      })
+      await flushPromises()
+
+      const pointerdown = new Event('pointerdown', { bubbles: true, cancelable: true })
+      Object.defineProperties(pointerdown, {
+        clientX: { value: 160 },
+        clientY: { value: 140 },
+        pointerId: { value: 17 },
+      })
+      wrapper.get('.mx-config-form-designer__canvas-sheet').element.dispatchEvent(pointerdown)
+      await flushPromises()
+
+      expect(wrapper.get('[data-config-node-id="inner"]').attributes('data-config-node-state')).toContain('selected')
+      expect(wrapper.get('[data-config-node-id="outer"]').attributes('data-config-node-state') ?? '').not.toContain('selected')
+      wrapper.unmount()
+    }
+    finally {
+      getRect.mockRestore()
+    }
   })
 
   it('keeps the runtime canvas mounted across sequential model operations', async () => {
@@ -1030,10 +1164,7 @@ describe('config form designer', () => {
     await flushPromises()
     await wrapper.setProps({ readonly: true })
     await flushPromises()
-    expect(wrapper.get('[data-material-key="element.input"]').attributes()).toMatchObject({
-      'aria-disabled': 'true',
-      'tabindex': '-1',
-    })
+    expect(wrapper.get('[data-material-key="element.input"]').attributes('disabled')).toBeDefined()
   })
 
   it('prevents native mouse dragging from cancelling repeated material drags', async () => {
@@ -1065,6 +1196,7 @@ describe('config form designer', () => {
   })
 
   it('renders a registry-backed candidate and overlay for a collapsed nested target until cancel', async () => {
+    const previewRuntime = vi.fn((_command, projected: DesignerDocument) => createDesignerRuntimeProjection(projected, registry))
     const rect = (x: number, y: number, width: number, height: number): DOMRect => ({
       bottom: y + height,
       height,
@@ -1103,6 +1235,7 @@ describe('config form designer', () => {
               slots: { default: [] },
             }],
           },
+          commandControl: { apply: vi.fn(() => true), previewRuntime },
           registry,
         },
       })
@@ -1125,6 +1258,13 @@ describe('config form designer', () => {
       })
       window.dispatchEvent(pointermove)
       await flushPromises()
+
+      expect(previewRuntime).toHaveBeenCalledOnce()
+      for (let index = 0; index < 4; index += 1) {
+        window.dispatchEvent(pointermove)
+        await flushPromises()
+      }
+      expect(previewRuntime).toHaveBeenCalledOnce()
 
       const candidate = wrapper.get('[data-config-node-state~="candidate"]')
       expect(candidate.element.parentElement?.closest('[data-config-node-id]')?.getAttribute('data-config-node-id')).toBe('section')
@@ -1205,6 +1345,7 @@ describe('config form designer', () => {
       expect(overlay.attributes('style')).toContain('top: 104px')
       expect(overlay.element.children).toHaveLength(1)
       expect(overlay.element.querySelector('[data-config-node-id]')).toBeNull()
+      expect(wrapper.find('.mx-config-form-designer__collapsed-drop-indicator').exists()).toBe(false)
       expect(wrapper.emitted('update:document')).toBeUndefined()
 
       const pointercancel = new Event('pointercancel')
@@ -1264,10 +1405,8 @@ describe('config form designer', () => {
 
     const first = wrapper.get('[data-focus-node-id="first"]')
     const second = wrapper.get('[data-focus-node-id="second"]')
-    await first.trigger('click')
+    await first.trigger('pointerdown')
     await second.trigger('pointerdown', { ctrlKey: true })
-    await second.trigger('focus')
-    await second.trigger('click', { ctrlKey: true })
 
     expect(wrapper.get('[data-node-id="first"]').attributes('data-config-node-state')).toContain('selected')
     expect(wrapper.get('[data-node-id="second"]').attributes('data-config-node-state')).toContain('selected')
@@ -1398,6 +1537,7 @@ describe('config form designer', () => {
     expect(wrapper.find('button[aria-label="Preview form"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="Import document"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="Export document"]').exists()).toBe(false)
+    expect(wrapper.find('.mx-config-form-designer__canvas-tools').exists()).toBe(false)
 
     await wrapper.get('[data-material-key="element.input"]').trigger('click')
     expect(apply).toHaveBeenCalledOnce()
@@ -1419,6 +1559,37 @@ describe('config form designer', () => {
     expect(exposed.redo()).toBe(true)
     expect(undo).toHaveBeenCalledOnce()
     expect(redo).toHaveBeenCalledOnce()
+  })
+
+  it('routes compatibility property operations through the host command bridge', () => {
+    const applyModelOperation = vi.fn(() => true)
+    const designDocument = twoFieldDocument()
+    const wrapper = mount(DesignSurface, {
+      props: {
+        commandControl: { apply: vi.fn(() => true), applyModelOperation },
+        document: designDocument,
+        historyControl: { canUndo: false, canRedo: false, undo: vi.fn(() => false), redo: vi.fn(() => false) },
+        model: designerDocumentToConfigModel(designDocument, { id: 'page', name: 'Page' }),
+        modelRegistry: createLowCodeComponentRegistry(registry),
+        registry,
+      },
+    })
+
+    const propertyPanel = wrapper.findComponent({ name: 'DesignerPropertyPanel' })
+    expect(propertyPanel.exists()).toBe(true)
+    propertyPanel.vm.$emit('modelOperation', {
+      type: 'updateProps',
+      nodeId: 'first',
+      props: { placeholder: 'Name' },
+    })
+
+    expect(applyModelOperation).toHaveBeenCalledWith({
+      type: 'updateProps',
+      nodeId: 'first',
+      props: { placeholder: 'Name' },
+    })
+    expect(wrapper.emitted('modelOperation')).toBeUndefined()
+    wrapper.unmount()
   })
 
   it('keeps external workspace navigation authoritative when a medium drawer becomes narrow', async () => {

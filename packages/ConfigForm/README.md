@@ -17,6 +17,9 @@ ConfigForm 当前保留两条明确分离的路径：
 
 ```mermaid
 flowchart TD
+  Model["config-form-model"] --> Core["config-form-core"]
+  Compiler["config-form-compiler"] --> Model
+  Compiler --> Core
   Headless["config-form-headless"] --> Core["config-form-core"]
   Runtime["config-form root Runtime"] --> Headless
   Renderer["config-form/renderer"] --> Headless
@@ -25,33 +28,37 @@ flowchart TD
   Antd["config-form-antd-vue"] --> Renderer
   Antd --> Headless
   Designer["config-form-designer"] --> Core
+  Designer --> Model
   Designer --> Headless
   Designer --> Renderer
   DesignerElement["designer-element-plus"] --> Designer
   DesignerAntd["designer-antd-vue"] --> Designer
   Workbench["config-form-workbench (private app)"] --> IndexedDB["indexed-db"]
+  Workbench --> Model
   PluginElement["plugin-element-plus"] --> Runtime
   PluginAntd["plugin-antd-vue"] --> Runtime
   Devtools["devtools-vite-plugin"] --> Runtime
 ```
 
-禁止让 Core 依赖 Vue、Zod、Headless、Runtime、Designer 或 UI 组件库。Headless 和 Designer 可以复用 Core，但 Core 不感知它们的领域类型。
+禁止让 Core 依赖 Vue、Zod、Model、Headless、Runtime、Designer 或 UI 组件库。Model 只依赖 Core 的 JSON/reaction/Flow 协议和纯规则协议，不依赖 Vue、Runtime、Designer、Workbench 或 UI 组件库。
 
 ## 包职责
 
 | 层               | 包                                                                                               | 主要职责                                                                                                             |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | 纯协议           | [`@moluoxixi/config-form-core`](./core/)                                                         | JSON 类型、reaction 条件/effect、Flow IR/Execution Plan/Interpreter、稳定 reducer、配置 helper、通用命名模块注册算法 |
+| 项目领域模型     | [`@moluoxixi/config-form-model`](./model/)                                                       | ProjectDocument、规范化 PageGraph、Command/Operation/Transaction、COW 历史、Repository 合同、Schema、legacy 单向迁移 |
+| 语义编译器       | [`@moluoxixi/config-form-compiler`](./compiler/)                                                 | RegistryContractSnapshot、CanonicalProjectIR、稳定语义哈希、Flow Execution Plan 与 Runtime/Source backend 共享输入   |
 | 表单内核         | [`@moluoxixi/config-form-headless`](./headless/)                                                 | Vue 字段/节点协议、controller、校验、dirty/touched、readonly、runtime slots、reaction 事务、组件注册特化             |
 | Vue 渲染         | [`@moluoxixi/config-form/renderer`](./runtime/)                                                  | 原生 form、Grid/Flex、字段壳、ARIA、递归节点/slot 和 readonly 渲染；它是 Runtime 包子路径                            |
 | 旧 Runtime       | [`@moluoxixi/config-form`](./runtime/)                                                           | schema 转换、组件解析、字段 pipeline、runtime plugin 和旧 `ConfigForm` 根组件                                        |
 | 轻量 UI          | [`config-form-element`](./element/)、[`config-form-antd-vue`](./antd/)                           | 真实 UI 组件、语义别名、值事件绑定和样式                                                                             |
 | Runtime plugin   | [`plugin-element-plus`](./plugin-element-plus/)、[`plugin-antd-vue`](./plugin-antd-vue/)         | 旧 Runtime 的默认字段和 readonly adapter；传给 `runtime.plugins`，不是 Vue `app.use()` 插件                          |
-| 可视化设计器     | [`config-form-designer`](./designer/)                                                            | 受控 JSON 文档、历史、诊断、编译器、画布和属性面板；不直接绑定具体 UI 库                                             |
+| 可视化设计器     | [`config-form-designer`](./designer/)                                                            | 画布、选择/拖拽/overlay、属性面板和 legacy 受控文档兼容边界；正常 Workbench history 属于 ProjectDomainEngine         |
 | Designer adapter | [`designer-element-plus`](./designer-element-plus/)、[`designer-antd-vue`](./designer-antd-vue/) | UI 物料、设计器属性控件、readonly、locale、容器预览和 option resolver 生命周期                                       |
 | 开发工具         | [`devtools-vite-plugin`](./devtools-vite-plugin/)                                                | 开发态源码定位和调试信息                                                                                             |
 | 集成验证         | [`playground`](./playground/)                                                                    | 两套 UI、独立 Designer 页面和端到端交互验证                                                                          |
-| 产品工作台       | [`workbench`](./workbench/)                                                                      | 私有在线应用；版本化虚拟项目、本地 repository、模板与源码导出。它不是发布包，也不改变 Runtime/Designer 协议          |
+| 产品工作台       | [`workbench`](./workbench/)                                                                      | 私有在线应用；组合 ProjectEditorSession、Design/Preview、版本化 Repository、模板与只读导出。它不是发布包             |
 
 “轻量 UI 包”“Runtime plugin”“Designer adapter”是三种不同扩展，不应统称为同一种 adapter。
 
@@ -73,22 +80,26 @@ field config
 
 ```text
 Component Registry
-  -> versioned Config Model
-  -> model operations / inverse history
-  -> Design canvas + layers + inspector
-  -> Runtime renderer / Preview
-  -> readonly Config JSON / defineField Source / standalone Vue Source
+  -> ProjectSnapshot / ProjectPage { PageGraph, flows }
+  -> ProjectCommand -> OperationBatch -> AppliedTransaction
+  -> Semantic Compiler -> ProjectCompilation
+       -> CanonicalProjectIR
+       -> Vue Runtime Backend -> Design canvas / Preview
+       -> Source Backend -> standalone Vue Source
+  -> ProjectDocument -> readonly Config / JSON / Tree
 ```
 
-`LowCodePageModel` 是设计器页面结构唯一可变事实。`DesignerDocument` 仍作为旧 artifact 的兼容投影；画布 selection、诊断、option loading 和 reaction projection 都是派生状态，不写回模型。
+现有 `LowCodePageModel` 由 Model 包以 legacy v1 合同拥有，Designer 只保留 deprecated compatibility alias；`DesignerDocument` 仍作为旧 artifact 的兼容投影。Workbench 的规范业务状态是 Model 包的 `ProjectSnapshot/PageGraph`，画布 selection、诊断、option loading 和 reaction projection 都是派生状态。Drag candidate 使用显式 `ProjectDraftSnapshot`，拥有 draftHash 但不拥有正式 editVersion、Repository revision 或 history。
 
-Design Canvas 和右侧 Preview 使用同一套 `RuntimeSurface` 递归渲染真实注册组件。设计态只通过 editor bridge 增加稳定节点 metadata、事件拦截和独立 overlay；selection、drop indicator、resize handle 与拖拽 candidate 不会替换或改写 Runtime 组件。拖拽期间 candidate 先应用到临时 Model 投影，drop 后再提交一次 Model Operation，因此 candidate 与落地结果共享同一 Registry 默认值、slot 和布局规则。
+Design Canvas 和右侧 Preview 使用同一套 `RuntimeSurface` 递归渲染真实注册组件。设计态只通过 editor bridge 增加稳定节点 metadata、事件拦截和独立 overlay；selection、drop indicator、resize handle 与拖拽 candidate 不会替换或改写 Runtime 组件。拖拽期间 candidate 先应用到临时 Project draft，drop 后提交一次 Project Command，因此 candidate 与落地结果共享同一 Registry 默认值、slot 和布局规则。
 
 ### Workbench Design-first 工作区
 
 ```text
 Component Registry
-  -> LowCodePageModel
+  -> ProjectRepository -> immutable ProjectSnapshot
+  -> ProjectCommand -> OperationBatch -> ProjectDomainEngine
+  -> ProjectEditorSession + ProjectSaveCoordinator
   -> Design canvas (唯一编辑入口)
   -> Runtime Renderer -> right-side Preview
   -> Export menu -> readonly Source / Config preview dialog
@@ -96,32 +107,44 @@ Component Registry
 
 Workbench 的 Source 与 Config 不再是编辑 provider，也不参与模型反向解析。导出配置使用公开 `defineFields<T>()` / `defineField({...})` API；Source 使用文件树与只读 Monaco 展示不依赖 ConfigForm runtime 的 standalone Vue 工程。JSON / Tree 是配置的辅助查看投影，导出菜单还可下载完整项目 ZIP。旧 `parseDesignerConfig` 与 Designer artifact 解析只用于一次性迁移。
 
-Workbench 以 `WorkspaceApplication` v2 作为持久化根，一个 Application 拥有有序的
-`pages[]`、唯一 `homePageId`、稳定页面路由和当前页草稿。每个 Page 独立保存一个
-`LowCodePageModel`；页面内部 Undo/Redo 仍由 Model Operation 管理，新建、复制、删除、
-排序、重命名、路由和首页切换则通过 Application Operation 管理。旧 v1
-`WorkspaceProject` 只在 repository 边界确定性迁移为单页 Application，正常编辑不会
-维护第二份 Project 草稿。左侧 Pages 是工作区内的页面切换入口，完整页面操作集中在
-Page Manager。
+Workbench 以 `ProjectDocument` 作为唯一业务数据；`ProjectSnapshot` 只是其不可变版本 envelope，不得形成第二套结构模型。
+ProjectDomainEngine 只管理页面与节点 Command、semantic inverse history 和 change set；
+它不依赖 Repository、Vue、当前页或保存状态。ProjectEditorSession 组合领域引擎与
+ProjectSaveCoordinator，后者单独拥有 CAS、commit id、saved cursor 和 saving/error 状态。
+当前页属于 Workbench/Design navigation session，不进入 ProjectSnapshot 或领域引擎。
+页面管理与页面内部编辑不再拥有两套 reducer/revision。Repository 可按 revisioned
+Manifest/Page/Resource 实体存储；一个 manifest revision 可以复用较早的未变化 Page/Resource entity revision，但 load/commit 只能发布 checksum 与引用 revision 全部匹配的完整 `PersistedProjectEnvelope`。
+`WorkspaceApplication`、`LowCodePageModel` 和 `DesignerDocument` 只用于 legacy ingress 或
+现有 Pages/Designer/Export 组件的无状态只读投影，禁止写入旧 Repository、draft 或 history。
 
-打开 Source 导出弹窗时，Workbench 从当前 Application revision 创建一次不可变
-`ExportSnapshot`。层级文件树、只读 Monaco、单文件下载和项目 ZIP 全部读取该快照；
+打开 Source 导出弹窗时，Workbench 从当前不可拆分 `ProjectCompilation` 和 generator version
+创建一次不可变 `ExportSnapshot`。层级文件树、只读 Monaco、单文件下载和项目 ZIP 全部读取该快照；
 后续 Design 修改只会把弹窗标记为 stale，用户显式刷新后才生成新快照。多页面 Source
 工程包含 Vue Router、每个页面的独立目录和 `package.json`，且不依赖 ConfigForm
 Runtime。Config 导出继续面向当前页面，提供只读 defineField Source、JSON 和 Tree
 投影。
+
+### ProjectDocument 与 Canonical IR 边界
+
+`@moluoxixi/config-form-model` 定义不依赖 Vue 的项目级生产合同：ProjectDocument 保存页面顺序、路由、首页、registry lock、设置和资源引用；ProjectPage 同时拥有视觉 `PageGraph` 与页面级 `flows`，二者随同一个 Page entity 原子持久化。PageGraph 只使用 `root: SlotItem[] + nodesById` 表达视觉结构，节点关系只存在于 layout `slots`，默认子节点统一使用 `slots.default`，placement 属于 SlotItem 表达的父子关系。field/layout 是判别联合，field 节点不能持有 slots。
+
+`@moluoxixi/config-form-compiler` 只依赖 Core/Model 的 JSON-safe 合同。它接收正式 `ProjectSnapshot` 或带基线 identity/draftHash 的瞬态 `ProjectDraftSnapshot`，连同函数无关的 `RegistryContractSnapshot`，输出不可拆分的 `ProjectCompilation { snapshot, registry, key, ir }`。其中版本化、不可变、框架无关的 `CanonicalProjectIR` 统一解析 Registry defaults、component version/fingerprint、stable node path、slot order、parent placement 和 Flow execution plan。Vue Runtime Backend 与 standalone Source Backend 只能从同一 compilation 降级，禁止调用方自行拼装不同 revision 的 Snapshot、Registry 和 IR；Config/JSON/Tree 读取 compilation 绑定快照中的 ProjectDocument，不经过运行时默认值合并。
+
+Repository/migration boundary 负责把 `unknown` 解析为规范的 `ProjectDocument`。UI 与插件提交 JSON-safe `ProjectCommand`；Command Engine 基于当前快照解析语义 action，生成显式 `ProjectOperation[]`；Transaction Engine 才应用规范 OperationBatch。节点属性删除使用 `node.patch.unset`，禁止借助序列化时会丢失的 `undefined`。Command resolver 允许中间草稿暂态违反跨实体引用，但完整 batch 发布前必须通过最终 Graph/Registry/Flow 校验。`applyProjectTransaction` 使用结构共享的 copy-on-write 草稿，成功后由 History 推进一次 `editVersion`；Repository 只以独立 `expectedRepositoryRevision` 做 CAS。`applyProjectDraftTransaction` 不推进 editVersion、repositoryRevision、timestamp 或 history，candidate 必须再封装为 `ProjectDraftSnapshot`。调用方不得原地修改已发布快照。
+
+旧 `WorkspaceApplication v2`、`LowCodePageModel v1` 和 `DesignerDocument v1` 只允许在 repository ingress 或无状态 compatibility projection 中出现。迁移器会把递归节点树规范化为 PageGraph，并丢弃由模型生成的源码文件；当前 `ProjectDocument v4` 还会在 Repository ingress 确定性读取开发期 v3，将 `graph.flows` 迁移到 `ProjectPage.flows`，双重所有权会直接失败。生成 Source 文件只属于 ExportSnapshot。Workbench Controller 已使用 `ProjectRepository + ProjectEditorSession + ProjectDomainEngine` 作为主路径，禁止新增 legacy Session/Application reducer 或从 Designer 导入持久化模型的代码。
 
 响应式工作区的导航所有权也保持单一：Designer 自带导航时可根据容器焦点切换窄屏
 tabpanel；Workbench 传入 `workspace-navigation="external"` 后，移动端底部导航成为窄屏
 可见面板的唯一控制者，中屏抽屉状态不得覆盖它。由临时菜单打开 Flow、Page Manager
 或 Export 弹窗时，菜单会先把焦点交回稳定触发器，弹窗关闭后再恢复到该触发器。
 
-页面事件流程同样从 `LowCodePageModel.flows` 投影：Core 只保存 JSON-safe 的
+页面事件流程由当前 `ProjectPage.flows` 唯一持有，视觉 `PageGraph` 不保存流程，`LowCodePageModel.flows` 只作为 legacy 投影：Core 只保存 JSON-safe 的
 `trigger -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
 `ConfigFormFlowExecutionPlan`，Workbench 再注入显式的 `ConfigFormFlowActionRegistry`。
 默认工作台只提供无网络副作用的 `notify` action；业务应用应在宿主边界注册自己的
 受控 action。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
-瞬态状态，不写回页面结构；Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
+瞬态状态，不写回页面结构。ConfigForm Flow 的 trigger、字段引用、排序和 ID 唯一性都以所属页面为边界；未来跨页自动化使用独立 Project Workflow，而不是把同一 Flow 再存到 ProjectDocument root。Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
 ConfigForm DSL。
 
 设计器专属 `id`、`material`、conditions 和 validation 放在 `extensions['mx.config-form-designer']`。业务扩展仍与该命名空间并列保存在 `extensions`，因此 Config、Designer 和 Source 往返时不会把业务元数据藏入设计器私有对象。

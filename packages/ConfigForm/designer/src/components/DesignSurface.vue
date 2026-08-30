@@ -354,8 +354,8 @@ async function focusNode(nodeId?: string): Promise<void> {
   if (!nodeId)
     return
   await nextTick()
-  const target = [...(rootRef.value?.querySelectorAll<HTMLElement>('[data-focus-node-id]') ?? [])]
-    .find(element => element.dataset.focusNodeId === nodeId)
+  const target = [...(rootRef.value?.querySelectorAll<HTMLElement>('[data-editor-focus-node-id]') ?? [])]
+    .find(element => element.dataset.editorFocusNodeId === nodeId)
   target?.focus()
 }
 
@@ -424,8 +424,13 @@ function handleUpdateForm(changes: Record<string, unknown>): void {
 }
 
 function handleModelOperation(operation: ModelOperation): void {
-  if (!props.readonly)
-    emit('modelOperation', operation)
+  if (props.readonly)
+    return
+  if (props.commandControl.applyModelOperation) {
+    props.commandControl.applyModelOperation(operation)
+    return
+  }
+  emit('modelOperation', operation)
 }
 
 function handleAction(action: DesignerNodeAction, nodeId: string): void {
@@ -529,8 +534,10 @@ defineExpose<DesignSurfaceExpose>({
           :selected-ids="controller.selectedIds.value"
           :readonly="readonly"
           :breakpoint="activeBreakpoint"
+          :candidate-runtime-renderer="commandControl.previewRuntime"
           :interactive="false"
           :model="runtimeProjection.values"
+          :runtime-renderer="runtimeRenderer"
           :reaction-props="runtimeProjection.props"
           :reaction-states="runtimeProjection.states"
           @select="handleCanvasSelect"

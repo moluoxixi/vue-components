@@ -1,4 +1,11 @@
-import type { IndexedDBManagerOptions, IndexedDBManagerStats, StorageItem, StorageItemUpdater, StorageRecord } from './types'
+import type {
+  IndexedDBManagerOptions,
+  IndexedDBManagerStats,
+  StorageItem,
+  StorageItemsUpdater,
+  StorageItemUpdater,
+  StorageRecord,
+} from './types'
 import { assertNonEmptyString } from './validation'
 
 function createRequestPromise<T>(request: IDBRequest<T>, errorMessage: string): Promise<T> {
@@ -153,6 +160,83 @@ export class IndexedDBManager {
       transaction.oncomplete = () => resolve(nextValue)
       transaction.onerror = () => reject(updaterError ?? createIndexedDBError(`[indexed-db] failed to update item: ${key}`, transaction.error))
       transaction.onabort = () => reject(updaterError ?? createIndexedDBError(`[indexed-db] failed to update item: ${key}`, transaction.error))
+    })
+  }
+
+  async updateItems<T>(
+    keys: string[],
+    updater: StorageItemsUpdater<T>,
+  ): Promise<ReadonlyMap<string, T | null>> {
+    if (keys.length === 0)
+      throw new TypeError('[indexed-db] updateItems keys must not be empty')
+    if (typeof updater !== 'function')
+      throw new TypeError('[indexed-db] updater must be a function')
+
+    const requestedKeys = new Set<string>()
+    keys.forEach((key) => {
+      assertNonEmptyString(key, 'key')
+      if (requestedKeys.has(key))
+        throw new TypeError(`[indexed-db] updateItems key must be unique: ${key}`)
+      requestedKeys.add(key)
+    })
+
+    const { store, transaction } = await this.getStore('readwrite')
+    return await new Promise<ReadonlyMap<string, T | null>>((resolve, reject) => {
+      const current = new Map<string, T | null>()
+      let nextValues: ReadonlyMap<string, T | null> = current
+      let remaining = keys.length
+      let updaterError: unknown
+
+      const abort = (error: unknown) => {
+        updaterError = error
+        transaction.abort()
+      }
+      const applyUpdates = () => {
+        try {
+          const updates = updater(new Map(current))
+          if (updates && typeof (updates as { then?: unknown }).then === 'function')
+            throw new TypeError('[indexed-db] updater must be synchronous')
+          if (!Array.isArray(updates))
+            throw new TypeError('[indexed-db] updateItems updater must return an array')
+
+          const updatedKeys = new Set<string>()
+          const next = new Map(current)
+          updates.forEach((item) => {
+            if (!item || typeof item !== 'object')
+              throw new TypeError('[indexed-db] updateItems updater returned an invalid item')
+            assertNonEmptyString(item.key, 'item.key')
+            if (!requestedKeys.has(item.key))
+              throw new TypeError(`[indexed-db] updateItems updater returned an undeclared key: ${item.key}`)
+            if (updatedKeys.has(item.key))
+              throw new TypeError(`[indexed-db] updateItems updater returned a duplicate key: ${item.key}`)
+            updatedKeys.add(item.key)
+            next.set(item.key, item.value)
+            if (item.value === null)
+              store.delete(item.key)
+            else
+              store.put({ key: item.key, value: item.value } satisfies StorageRecord<T>)
+          })
+          nextValues = next
+        }
+        catch (error) {
+          abort(error)
+        }
+      }
+
+      keys.forEach((key) => {
+        const request = store.get(key) as IDBRequest<StorageRecord<T> | undefined>
+        request.onsuccess = () => {
+          current.set(key, request.result?.value ?? null)
+          remaining -= 1
+          if (remaining === 0)
+            applyUpdates()
+        }
+        request.onerror = () => abort(createIndexedDBError(`[indexed-db] failed to update items while reading: ${key}`, request.error))
+      })
+
+      transaction.oncomplete = () => resolve(nextValues)
+      transaction.onerror = () => reject(updaterError ?? createIndexedDBError('[indexed-db] failed to update items', transaction.error))
+      transaction.onabort = () => reject(updaterError ?? createIndexedDBError('[indexed-db] failed to update items', transaction.error))
     })
   }
 

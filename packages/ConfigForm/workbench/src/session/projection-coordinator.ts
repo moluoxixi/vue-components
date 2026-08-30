@@ -1,10 +1,16 @@
 import type {
-  DesignerCompileResult,
-  DesignerCompileSuccess,
-} from '@moluoxixi/config-form-designer'
+  VueRuntimeCompileResult,
+  VueRuntimeCompileSuccess,
+} from '@moluoxixi/config-form-vue-backend'
 import type { WorkspaceApplication, WorkspacePage } from '../project'
-import type { WorkspaceSessionSnapshot } from './workspace-session'
 import { cloneWorkspaceApplication } from '../project'
+
+export interface WorkspaceProjectionInput {
+  readonly application: WorkspaceApplication
+  readonly applicationRevision: number
+  readonly currentPageId: string
+  readonly modelRevision: number
+}
 
 export interface WorkspaceProjectionSnapshot {
   readonly application: WorkspaceApplication
@@ -16,10 +22,10 @@ export interface WorkspaceProjectionSnapshot {
 }
 
 export interface WorkspacePreviewProjection {
-  readonly compileResult: DesignerCompileResult
+  readonly compileResult: VueRuntimeCompileResult
   readonly current: WorkspaceProjectionSnapshot
   readonly display?: {
-    readonly result: DesignerCompileSuccess
+    readonly result: VueRuntimeCompileSuccess
     readonly snapshot: WorkspaceProjectionSnapshot
     readonly stale: boolean
   }
@@ -28,7 +34,7 @@ export interface WorkspacePreviewProjection {
 }
 
 function projectionRevisionKey(snapshot: Pick<
-  WorkspaceSessionSnapshot,
+  WorkspaceProjectionInput,
   'application' | 'applicationRevision' | 'currentPageId' | 'modelRevision'
 >): string {
   return [
@@ -39,7 +45,7 @@ function projectionRevisionKey(snapshot: Pick<
   ].join(':')
 }
 
-function captureSnapshot(snapshot: WorkspaceSessionSnapshot): WorkspaceProjectionSnapshot {
+function captureSnapshot(snapshot: WorkspaceProjectionInput): WorkspaceProjectionSnapshot {
   const application = cloneWorkspaceApplication(snapshot.application)
   const currentPage = application.pages.find(page => page.id === snapshot.currentPageId)
   if (!currentPage)
@@ -65,15 +71,15 @@ export interface WorkspaceProjectionCoordinator {
   invalidate: (reason?: unknown) => void
   isCurrent: (revisionKey: string) => boolean
   publish: (
-    snapshot: WorkspaceSessionSnapshot,
-    compile: (snapshot: WorkspaceProjectionSnapshot) => DesignerCompileResult,
+    snapshot: WorkspaceProjectionInput,
+    compile: (snapshot: WorkspaceProjectionSnapshot) => VueRuntimeCompileResult,
   ) => WorkspacePreviewProjection
 }
 
 export function createWorkspaceProjectionCoordinator(): WorkspaceProjectionCoordinator {
   let current: WorkspaceProjectionSnapshot | undefined
   let currentController = new AbortController()
-  let lastValid: { result: DesignerCompileSuccess, snapshot: WorkspaceProjectionSnapshot } | undefined
+  let lastValid: { result: VueRuntimeCompileSuccess, snapshot: WorkspaceProjectionSnapshot } | undefined
 
   return {
     capture() {

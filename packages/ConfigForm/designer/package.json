@@ -47,6 +47,8 @@
     "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-core": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
+    "@moluoxixi/config-form-model": "workspace:*",
+    "@moluoxixi/config-form-vue-backend": "workspace:*",
     "@moluoxixi/zod3-to-rule": "workspace:*"
   },
   "devDependencies": {

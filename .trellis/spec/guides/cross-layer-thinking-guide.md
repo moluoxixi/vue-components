@@ -71,7 +71,29 @@ For each boundary:
 
 **Good**: Each layer only knows its neighbors
 
-### Mistake 4: Every Consumer Parses The Same Payload
+### Mistake 4: Passing A Superset Through A Strict Boundary
+
+Structural typing can make an application/session object appear compatible
+with a smaller domain envelope while runtime validation correctly rejects its
+extra persistence or UI fields.
+
+**Bad**: cast or spread a session snapshot into a compiler call.
+
+**Good**: construct the exact boundary value by naming every allowed field.
+
+```typescript
+const compilationSnapshot = {
+  document: session.document,
+  editVersion: session.editVersion,
+  contentHash: session.contentHash,
+}
+```
+
+Add an integration test at the real application composition layer. Unit tests
+for the producer and consumer can both pass while their envelope connection is
+still wrong.
+
+### Mistake 5: Every Consumer Parses The Same Payload
 
 **Bad**: A command reads JSONL events and casts fields inline:
 

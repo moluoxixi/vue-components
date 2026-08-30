@@ -7,6 +7,7 @@ import type {
 } from '../types'
 
 export const CONFIG_FORM_FLOW_VERSION = 1 as const
+export const CONFIG_FORM_FLOW_PLAN_VERSION = 1 as const
 
 export type ConfigFormFlowTriggerKind = 'page.mount' | 'form.submit' | 'field.change'
 export type ConfigFormFlowConcurrency = 'latest' | 'queue' | 'ignore'
@@ -60,17 +61,40 @@ export interface ConfigFormFlowDiagnostic {
   edgeId?: string
 }
 
-export interface ConfigFormFlowPlanNode extends ConfigFormFlowNode {
+export interface ConfigFormFlowPlanNode extends Omit<ConfigFormFlowNode, 'position'> {
   outgoing: ConfigFormFlowEdge[]
   incoming: ConfigFormFlowEdge[]
 }
 
-export interface ConfigFormFlowExecutionPlan {
+interface ConfigFormFlowExecutionPlanDocument {
+  version: typeof CONFIG_FORM_FLOW_PLAN_VERSION
   flowId: string
-  revision: number
+  name: string
+  trigger: ConfigFormFlowTrigger
+  concurrency?: ConfigFormFlowConcurrency
+  errorPolicy?: ConfigFormFlowErrorPolicy
   triggerNodeId: string
   topologicalOrder: string[]
   nodes: ConfigFormFlowPlanNode[]
+}
+
+type FlowDeepReadonly<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly (infer Item)[]
+    ? readonly FlowDeepReadonly<Item>[]
+    : T extends object
+      ? { readonly [Key in keyof T]: FlowDeepReadonly<T[Key]> }
+      : T
+
+export type ConfigFormFlowExecutionPlan = FlowDeepReadonly<ConfigFormFlowExecutionPlanDocument>
+
+export interface ConfigFormFlowRuntimeDescriptor {
+  readonly version: typeof CONFIG_FORM_FLOW_VERSION
+  readonly id: string
+  readonly name: string
+  readonly trigger: Readonly<ConfigFormFlowTrigger>
+  readonly concurrency?: ConfigFormFlowConcurrency
+  readonly errorPolicy?: Readonly<ConfigFormFlowErrorPolicy>
 }
 
 export interface ConfigFormFlowPlanSuccess {
@@ -89,8 +113,8 @@ export interface ConfigFormFlowPlanFailure {
 export type ConfigFormFlowPlanResult = ConfigFormFlowPlanSuccess | ConfigFormFlowPlanFailure
 
 export interface ConfigFormFlowActionContext {
-  flow: ConfigFormFlow
-  node: ConfigFormFlowNode
+  flow: ConfigFormFlowRuntimeDescriptor
+  node: ConfigFormFlowExecutionPlan['nodes'][number]
   revision: number
   runId: string
   signal: AbortSignal
