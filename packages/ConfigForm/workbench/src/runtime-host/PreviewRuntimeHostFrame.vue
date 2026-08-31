@@ -2,7 +2,8 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { WorkbenchAdapterId } from '../adapters'
-import type { PreviewRuntimeMountedEvent } from '../session'
+import type { PreviewRuntimeIdentity, PreviewRuntimeStateEvent } from '../session'
+import type { RuntimeHostRuntimeStatePayload } from './protocol'
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../utils/clone'
 import {
@@ -16,7 +17,7 @@ const props = defineProps<{
   adapter: WorkbenchAdapterId
   compilation: PageCompilation
   locale: string
-  modelValue: Record<string, unknown>
+  runtimeState: RuntimeHostRuntimeStatePayload
   namespace?: string
   reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
   revision: string
@@ -27,9 +28,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   error: [error: Error]
   fieldChange: [payload: { field: string, values: Record<string, unknown> }]
-  modelValue: [value: Record<string, unknown>]
-  mounted: [event: PreviewRuntimeMountedEvent]
-  ready: [revision: string]
+  mounted: [event: PreviewRuntimeIdentity]
+  ready: [event: PreviewRuntimeIdentity]
+  runtimeState: [event: PreviewRuntimeStateEvent]
   runtimeEvent: [payload: { event: string, nodeId: string }]
   submit: [values: Record<string, unknown>]
 }>()
@@ -37,7 +38,7 @@ const emit = defineEmits<{
 const frame = useTemplateRef<HTMLIFrameElement>('frame')
 const frameSource = `${import.meta.env.BASE_URL}runtime-host.html`
 const targetOrigin = window.location.origin
-const sessionId = typeof crypto.randomUUID === 'function'
+const hostId = typeof crypto.randomUUID === 'function'
   ? crypto.randomUUID()
   : `runtime-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 let loaded = false
@@ -54,7 +55,9 @@ function syncRuntime(): void {
   postMessage({
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId,
+    hostId,
+    projectId: props.compilation.snapshotIdentity.projectId,
+    pageId: props.compilation.snapshotIdentity.pageId,
     sequence: ++parentSequence,
     revision: props.revision,
     type: 'sync',
@@ -62,7 +65,7 @@ function syncRuntime(): void {
     compilation: cloneWorkbenchJson(props.compilation),
     mode: 'preview',
     locale: props.locale,
-    modelValue: cloneWorkbenchJson(props.modelValue),
+    runtimeState: cloneWorkbenchJson(props.runtimeState),
     ...(props.namespace ? { namespace: props.namespace } : {}),
     reactionProjection: cloneWorkbenchJson(props.reactionProjection),
     runtimeSessionKey: props.runtimeSessionKey,
@@ -73,11 +76,13 @@ function syncRuntimeState(): void {
   postMessage({
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId,
+    hostId,
+    projectId: props.compilation.snapshotIdentity.projectId,
+    pageId: props.compilation.snapshotIdentity.pageId,
     sequence: ++parentSequence,
     revision: props.revision,
     type: 'state',
-    modelValue: cloneWorkbenchJson(props.modelValue),
+    runtimeState: cloneWorkbenchJson(props.runtimeState),
     reactionProjection: cloneWorkbenchJson(props.reactionProjection),
   })
 }
@@ -86,7 +91,9 @@ function submit(): void {
   postMessage({
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId,
+    hostId,
+    projectId: props.compilation.snapshotIdentity.projectId,
+    pageId: props.compilation.snapshotIdentity.pageId,
     sequence: ++parentSequence,
     revision: props.revision,
     type: 'submit',
@@ -102,8 +109,11 @@ function handleLoad(): void {
 function handleMessage(event: MessageEvent<unknown>): void {
   const message = acceptsRuntimeHostMessageEvent(event, {
     guard: isRuntimeHostToParentMessage,
+    hostId,
     origin: targetOrigin,
-    sessionId,
+    pageId: props.compilation.snapshotIdentity.pageId,
+    projectId: props.compilation.snapshotIdentity.projectId,
+    revision: props.revision,
     source: frame.value?.contentWindow ?? null,
   })
   if (!message || message.sequence <= lastChildSequence)
@@ -112,13 +122,29 @@ function handleMessage(event: MessageEvent<unknown>): void {
 
   switch (message.type) {
     case 'ready':
-      emit('ready', message.revision)
+      emit('ready', {
+        hostId: message.hostId,
+        pageId: message.pageId,
+        projectId: message.projectId,
+        revision: message.revision,
+      })
       break
     case 'mounted':
-      emit('mounted', { hostId: sessionId, revision: message.revision })
+      emit('mounted', {
+        hostId: message.hostId,
+        pageId: message.pageId,
+        projectId: message.projectId,
+        revision: message.revision,
+      })
       break
-    case 'modelValue':
-      emit('modelValue', message.value)
+    case 'runtimeState':
+      emit('runtimeState', {
+        hostId: message.hostId,
+        pageId: message.pageId,
+        projectId: message.projectId,
+        revision: message.revision,
+        state: message.payload,
+      })
       break
     case 'submit':
       emit('submit', message.values)
@@ -148,7 +174,7 @@ watch(
 )
 
 watch(
-  () => [props.modelValue, props.reactionProjection],
+  () => [props.runtimeState, props.reactionProjection],
   syncRuntimeState,
   { deep: true },
 )

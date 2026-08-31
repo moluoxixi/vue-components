@@ -54,6 +54,7 @@ function executionPlan(flow: ConfigFormFlow): ConfigFormFlowExecutionPlan {
 }
 
 function actionFlow(options: {
+  actionInput?: ModelJsonValue
   input: string
   projection?: boolean
   trigger: ConfigFormFlowTrigger
@@ -65,7 +66,7 @@ function actionFlow(options: {
       type: 'action',
       ref: 'notify',
       config: {
-        input: options.input,
+        input: options.actionInput ?? options.input,
         output: { result: { $output: 'work' } },
       },
     },
@@ -203,6 +204,18 @@ function accept(
   })
 }
 
+function runtimeIdentity(
+  projection: NonNullable<ReturnType<typeof accept>>,
+  hostId: string,
+) {
+  return {
+    hostId,
+    pageId: projection.current.pageId,
+    projectId: projection.current.projectId,
+    revision: projection.current.revisionKey,
+  }
+}
+
 describe('preview session', () => {
   it('preserves values only while the field identity and component contract stay compatible', () => {
     const session = createWorkbenchPreviewSession()
@@ -246,6 +259,110 @@ describe('preview session', () => {
     session.dispose()
   })
 
+  it('reconciles touched and validation with compatible field contracts and rejects stale hosts', () => {
+    const session = createWorkbenchPreviewSession()
+    const first = accept(session, {
+      graph: graph(
+        { id: 'name', field: 'name', defaultValue: 'Initial' },
+        { id: 'age', field: 'age', defaultValue: 18 },
+      ),
+    })!
+    const firstHost = runtimeIdentity(first, 'host-a')
+    session.handleRuntimeMounted(firstHost)
+    session.handleRuntimeState({
+      ...firstHost,
+      state: {
+        values: { name: 'Edited', age: 42 },
+        touched: ['name', 'age'],
+        validation: { name: ['Required'], age: ['Too young'] },
+      },
+    })
+    session.handleRuntimeReady(firstHost)
+
+    const next = accept(session, {
+      editVersion: 1,
+      graph: graph(
+        { id: 'name', field: 'name', defaultValue: 'Changed default' },
+        { id: 'age', field: 'age', component: 'element.date', defaultValue: '2026-08-31' },
+      ),
+    })!
+
+    expect(session.runtimeState.value).toEqual({
+      values: { name: 'Edited', age: '2026-08-31' },
+      touched: ['name'],
+      validation: { name: ['Required'] },
+    })
+
+    session.handleRuntimeState({
+      ...firstHost,
+      state: { values: { name: 'Stale' }, touched: [], validation: {} },
+    })
+    expect(session.runtimeState.value.values.name).toBe('Edited')
+
+    const nextHost = runtimeIdentity(next, 'host-b')
+    session.handleRuntimeMounted(nextHost)
+    session.handleRuntimeState({
+      ...nextHost,
+      state: {
+        values: { name: 'Reopened', age: '2026-08-31' },
+        touched: ['name'],
+        validation: { name: ['Still required'] },
+      },
+    })
+    expect(session.runtimeState.value).toEqual({
+      values: { name: 'Reopened', age: '2026-08-31' },
+      touched: ['name'],
+      validation: { name: ['Still required'] },
+    })
+    session.dispose()
+  })
+
+  it('owns a bounded Flow trace and forwards trace events to diagnostics consumers', async () => {
+    const onTrace = vi.fn()
+    const session = createWorkbenchPreviewSession({ onTrace })
+    const trigger: ConfigFormFlowTrigger = { kind: 'component.event', nodeId: 'submit', event: 'click' }
+    accept(session, {
+      compilation: compilation({ plans: [actionFlow({ input: 'trace', trigger })] }),
+    })
+
+    await session.dispatch(trigger)
+
+    expect(session.trace.value.length).toBeGreaterThan(0)
+    expect(session.trace.value.length).toBeLessThanOrEqual(200)
+    expect(onTrace).toHaveBeenCalledTimes(session.trace.value.length)
+    session.dispose()
+  })
+
+  it('updates Preview values before resolving a field-change Flow input', async () => {
+    const execute = vi.fn((input: unknown) => input)
+    const actions: ConfigFormFlowActionRegistry = {
+      get: () => ({ execute }),
+    }
+    const session = createPreviewSession({
+      createFlowEngine: ports => createPageFlowEngine({ ...ports, actions }),
+    })
+    const fieldChange = actionFlow({
+      actionInput: { $field: 'name' },
+      input: 'field-change',
+      trigger: { kind: 'field.change', field: 'name' },
+    })
+    accept(session, {
+      compilation: compilation({ plans: [fieldChange] }),
+    })
+
+    await expect(session.handleFieldChange({
+      field: 'name',
+      values: { name: 'Latest value' },
+    })).resolves.toMatchObject({ status: 'committed' })
+
+    expect(execute.mock.calls[0]?.[0]).toBe('Latest value')
+    expect(session.getRuntimeModel()).toEqual({
+      name: 'Latest value',
+      result: 'Latest value',
+    })
+    session.dispose()
+  })
+
   it('keeps fallback compilation, values, and Flow plans on the same ready revision only', async () => {
     const actions: ConfigFormFlowActionRegistry = {
       get: () => ({ execute: input => input }),
@@ -256,7 +373,8 @@ describe('preview session', () => {
     const trigger: ConfigFormFlowTrigger = { kind: 'component.event', nodeId: 'submit', event: 'click' }
     const oldCompilation = compilation({ plans: [actionFlow({ input: 'old', projection: true, trigger })] })
     const first = accept(session, { compilation: oldCompilation })!
-    session.handleRuntimeReady(first.current.revisionKey)
+    session.handleRuntimeMounted(runtimeIdentity(first, 'host-a'))
+    session.handleRuntimeReady(runtimeIdentity(first, 'host-a'))
     session.updateRuntimeModel({ name: 'Latest input' })
 
     const newCompilation = compilation({
@@ -291,20 +409,20 @@ describe('preview session', () => {
     const firstCompilation = compilation({ plans: [mountPlan] })
     const first = accept(session, { compilation: firstCompilation })!
 
-    await session.handleRuntimeMounted({ hostId: 'host-a', revision: first.current.revisionKey })
+    await session.handleRuntimeMounted(runtimeIdentity(first, 'host-a'))
     const secondCompilation = compilation({ editVersion: 1, plans: [mountPlan] })
     const second = accept(session, { compilation: secondCompilation, editVersion: 1 })!
-    expect(session.handleRuntimeMounted({ hostId: 'host-a', revision: second.current.revisionKey })).toBeUndefined()
+    expect(session.handleRuntimeMounted(runtimeIdentity(second, 'host-a'))).toBeUndefined()
     expect(notify).toHaveBeenCalledTimes(1)
 
-    await session.handleRuntimeMounted({ hostId: 'host-b', revision: second.current.revisionKey })
+    await session.handleRuntimeMounted(runtimeIdentity(second, 'host-b'))
     const otherCompilation = compilation({ editVersion: 2, pageId: 'other', plans: [mountPlan] })
     const other = accept(session, {
       compilation: otherCompilation,
       editVersion: 2,
       pageId: 'other',
     })!
-    await session.handleRuntimeMounted({ hostId: 'host-b', revision: other.current.revisionKey })
+    await session.handleRuntimeMounted(runtimeIdentity(other, 'host-b'))
     expect(notify).toHaveBeenCalledTimes(3)
     session.dispose()
   })
@@ -330,6 +448,10 @@ describe('preview session', () => {
     expect(session.projection.value).toBeUndefined()
     expect(session.getRuntimeModel()).toEqual({})
     expect(session.dispatch(trigger)).toBeUndefined()
+    expect(session.handleFieldChange({ field: 'name', values: { name: 'Ignored' } })).toBeUndefined()
+    expect(session.handleSubmit({ name: 'Ignored' })).toBeUndefined()
+    session.updateRuntimeModel({ name: 'Ignored' })
+    expect(session.getRuntimeModel()).toEqual({})
   })
 
   it('invalidates pending Flow work when the same page advances revision', async () => {

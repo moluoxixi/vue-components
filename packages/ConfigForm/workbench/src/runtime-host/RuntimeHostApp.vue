@@ -8,7 +8,11 @@ import type {
   RuntimeNodeMetadata,
 } from '@moluoxixi/config-form/renderer'
 import type { CSSProperties } from 'vue'
-import type { RuntimeHostSyncMessage, RuntimeHostToParentPayload } from './protocol'
+import type {
+  RuntimeHostRuntimeStatePayload,
+  RuntimeHostSyncMessage,
+  RuntimeHostToParentPayload,
+} from './protocol'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
 import { RuntimeSurface } from '@moluoxixi/config-form/renderer'
 import {
@@ -54,7 +58,9 @@ const registeredNodes = new Map<string, {
 }>()
 
 const targetOrigin = window.location.origin
-let sessionId = ''
+let hostId = ''
+let currentProjectId = ''
+let currentPageId = ''
 let currentRevision = ''
 let currentAdapter = ''
 let currentCompilationKey = ''
@@ -66,18 +72,89 @@ let mountedRuntimeSessionKey = ''
 let geometryFrame: number | undefined
 let nodeOrder = 0
 let geometryObserver: ResizeObserver | undefined
+let applyingParentStateDepth = 0
+let latestRuntimeState: RuntimeHostRuntimeStatePayload = {
+  values: {},
+  touched: [],
+  validation: {},
+}
 
 function postMessage(message: RuntimeHostToParentPayload): void {
-  if (!sessionId)
+  if (!hostId || !currentProjectId || !currentPageId)
     return
   window.parent.postMessage({
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId,
+    hostId,
+    projectId: currentProjectId,
+    pageId: currentPageId,
     sequence: ++childSequence,
     revision: currentRevision,
     ...message,
   }, targetOrigin)
+}
+
+function currentRuntimeState(): RuntimeHostRuntimeStatePayload {
+  const currentRenderer = renderer.value
+  const meta = currentRenderer?.getMeta()
+  return {
+    values: cloneWorkbenchJson(modelValue.value),
+    touched: Object.entries(meta?.fields ?? {})
+      .filter(([, field]) => field.touched)
+      .map(([field]) => field),
+    validation: cloneWorkbenchJson(currentRenderer?.getErrors() ?? {}),
+  }
+}
+
+function postRuntimeState(): void {
+  if (runtimeMode.value === 'preview' && applyingParentStateDepth === 0 && renderer.value)
+    postMessage({ type: 'runtimeState', payload: currentRuntimeState() })
+}
+
+function sameJsonValue(left: unknown, right: unknown): boolean {
+  try {
+    return JSON.stringify(left) === JSON.stringify(right)
+  }
+  catch {
+    return false
+  }
+}
+
+async function applyRuntimeState(
+  state: RuntimeHostRuntimeStatePayload,
+  sequence: number,
+): Promise<void> {
+  if (sequence !== latestStateSequence)
+    return
+
+  applyingParentStateDepth += 1
+  try {
+    if (!sameJsonValue(modelValue.value, state.values))
+      modelValue.value = cloneWorkbenchJson(state.values)
+    await nextTick()
+    if (sequence !== latestStateSequence)
+      return
+
+    const currentRenderer = renderer.value
+    if (currentRenderer) {
+      const currentTouched = Object.entries(currentRenderer.getMeta().fields)
+        .filter(([, field]) => field.touched)
+        .map(([field]) => field)
+        .sort()
+      const nextTouched = [...state.touched].sort()
+      if (JSON.stringify(currentTouched) !== JSON.stringify(nextTouched)) {
+        currentRenderer.setTouched(false)
+        if (nextTouched.length > 0)
+          currentRenderer.setTouched(nextTouched, true)
+      }
+      if (!sameJsonValue(currentRenderer.getErrors(), state.validation))
+        currentRenderer.setErrors(cloneWorkbenchJson(state.validation))
+    }
+    await nextTick()
+  }
+  finally {
+    applyingParentStateDepth -= 1
+  }
 }
 
 function reportError(code: string, error: unknown): void {
@@ -263,13 +340,17 @@ async function acceptSync(message: RuntimeHostSyncMessage): Promise<void> {
   const syncSequence = message.sequence
   const nextCompilationKey = JSON.stringify(message.compilation.key)
   const sessionChanged = runtimeSessionKey.value !== message.runtimeSessionKey
+  currentProjectId = message.projectId
+  currentPageId = message.pageId
   currentRevision = message.revision
   document.documentElement.lang = message.locale
   runtimeMode.value = message.mode
   design.value = message.design
   ghostOffset.value = undefined
   latestStateSequence = message.sequence
-  modelValue.value = cloneWorkbenchJson(message.modelValue)
+  latestRuntimeState = cloneWorkbenchJson(message.runtimeState)
+  if (!sameJsonValue(modelValue.value, latestRuntimeState.values))
+    modelValue.value = cloneWorkbenchJson(latestRuntimeState.values)
   reactionProjection.value = cloneWorkbenchJson(message.reactionProjection)
   namespace.value = message.namespace
 
@@ -319,11 +400,15 @@ async function acceptSync(message: RuntimeHostSyncMessage): Promise<void> {
       await nextTick()
       flushGeometry()
     }
-    postMessage({ type: 'ready' })
+    await applyRuntimeState(latestRuntimeState, latestStateSequence)
+    if (syncSequence !== latestSyncSequence)
+      return
     if (mountedRuntimeSessionKey !== message.runtimeSessionKey) {
       mountedRuntimeSessionKey = message.runtimeSessionKey
       postMessage({ type: 'mounted' })
     }
+    postMessage({ type: 'ready' })
+    postRuntimeState()
   }
   catch (error) {
     if (syncSequence !== latestSyncSequence)
@@ -336,13 +421,13 @@ function handleMessage(event: MessageEvent<unknown>): void {
   const message = acceptsRuntimeHostMessageEvent(event, {
     guard: isParentToRuntimeHostMessage,
     origin: targetOrigin,
-    ...(sessionId ? { sessionId } : {}),
+    ...(hostId ? { hostId } : {}),
     source: window.parent,
   })
   if (!message)
     return
-  if (!sessionId)
-    sessionId = message.sessionId
+  if (!hostId)
+    hostId = message.hostId
   if (message.sequence <= lastParentSequence)
     return
   lastParentSequence = message.sequence
@@ -350,14 +435,18 @@ function handleMessage(event: MessageEvent<unknown>): void {
     void acceptSync(message)
     return
   }
-  if (message.revision !== currentRevision)
+  if (message.projectId !== currentProjectId
+    || message.pageId !== currentPageId
+    || message.revision !== currentRevision) {
     return
+  }
   if (message.type === 'state') {
     if (message.sequence <= latestStateSequence)
       return
     latestStateSequence = message.sequence
-    modelValue.value = cloneWorkbenchJson(message.modelValue)
+    latestRuntimeState = cloneWorkbenchJson(message.runtimeState)
     reactionProjection.value = cloneWorkbenchJson(message.reactionProjection)
+    void applyRuntimeState(latestRuntimeState, message.sequence)
     return
   }
   const currentRenderer = renderer.value
@@ -365,12 +454,14 @@ function handleMessage(event: MessageEvent<unknown>): void {
     reportError('RUNTIME_HOST_NOT_READY', 'Preview Runtime is not ready.')
     return
   }
-  void currentRenderer.submit().catch(error => reportError('RUNTIME_SUBMIT_FAILED', error))
+  void currentRenderer.submit()
+    .then(postRuntimeState)
+    .catch(error => reportError('RUNTIME_SUBMIT_FAILED', error))
 }
 
 function updateModel(value: Record<string, unknown>): void {
   modelValue.value = cloneWorkbenchJson(value)
-  postMessage({ type: 'modelValue', value: cloneWorkbenchJson(value) })
+  postRuntimeState()
 }
 
 function submitValues(values: Record<string, unknown>): void {
@@ -466,6 +557,8 @@ onBeforeUnmount(() => {
         @update:model-value="updateModel"
         @submit="submitValues"
         @field-change="fieldChange"
+        @errors-change="postRuntimeState"
+        @meta-change="postRuntimeState"
         @runtime-event="runtimeEvent"
       />
     </div>

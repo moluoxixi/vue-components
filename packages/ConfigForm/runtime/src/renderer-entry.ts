@@ -28,6 +28,7 @@ export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = 
     'modelValue': TValues
     'onChange'?: (values: TValues) => unknown
     'onError'?: (errors: ConfigFormErrors) => unknown
+    'onErrorsChange'?: (errors: ConfigFormErrors) => unknown
     'onFieldChange'?: (payload: ConfigFormFieldChangePayload<TValues>) => unknown
     'onMetaChange'?: (meta: ConfigFormMeta) => unknown
     'onRuntimeEvent'?: (context: ConfigFormRuntimeEventPayload<TValues>) => unknown

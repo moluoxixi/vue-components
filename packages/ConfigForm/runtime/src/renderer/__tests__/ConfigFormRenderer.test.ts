@@ -508,6 +508,10 @@ describe('config form renderer', () => {
     expect(await form.validate()).toBe(false)
     await nextTick()
     expect(form.getErrors()).toEqual({ name: ['Required'] })
+    form.setErrors({ name: ['Restored'] })
+    await nextTick()
+    expect(form.getErrors()).toEqual({ name: ['Restored'] })
+    expect(wrapper.emitted('errorsChange')?.at(-1)).toEqual([{ name: ['Restored'] }])
 
     await wrapper.setProps({ modelValue: { enabled: false, name: 'Grace', status: 'published' } })
     expect(form.getErrors()).toEqual({})

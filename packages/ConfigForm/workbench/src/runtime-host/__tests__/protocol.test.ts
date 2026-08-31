@@ -30,7 +30,9 @@ async function syncMessage(): Promise<RuntimeHostSyncMessage> {
   return {
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId: 'runtime-host-session',
+    hostId: 'runtime-host-session',
+    projectId: project.id,
+    pageId,
     sequence: 1,
     revision: 'runtime-host-project:3:home',
     type: 'sync',
@@ -38,7 +40,11 @@ async function syncMessage(): Promise<RuntimeHostSyncMessage> {
     compilation: compiled.compilation,
     mode: 'preview',
     locale: 'en-US',
-    modelValue: { name: 'Ada' },
+    runtimeState: {
+      values: { name: 'Ada' },
+      touched: ['name'],
+      validation: { name: ['Required'] },
+    },
     namespace: 'el',
     reactionProjection: {
       values: { name: 'Ada' },
@@ -69,7 +75,9 @@ function childMessage(message: RuntimeHostSyncMessage, payload: Record<string, u
   return {
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId: message.sessionId,
+    hostId: message.hostId,
+    projectId: message.projectId,
+    pageId: message.pageId,
     sequence: 2,
     revision: message.revision,
     ...payload,
@@ -189,12 +197,46 @@ describe('runtime host protocol', () => {
     expect(isRuntimeHostToParentMessage({
       channel: RUNTIME_HOST_CHANNEL,
       version: RUNTIME_HOST_PROTOCOL_VERSION,
-      sessionId: message.sessionId,
+      hostId: message.hostId,
+      projectId: message.projectId,
+      pageId: message.pageId,
       sequence: 2,
       revision: message.revision,
       type: 'runtimeEvent',
       payload: { event: 'change', nodeId: 'name' },
     })).toBe(true)
+  })
+
+  it('validates atomic runtime state and rejects mixed host identities', async () => {
+    const message = await syncMessage()
+    expect(isParentToRuntimeHostMessage({
+      ...message,
+      runtimeState: {
+        values: { name: 'Ada' },
+        touched: ['name'],
+        validation: { name: ['Required'] },
+      },
+    })).toBe(true)
+    expect(isParentToRuntimeHostMessage({
+      ...message,
+      projectId: 'other-project',
+    })).toBe(false)
+    expect(isParentToRuntimeHostMessage({
+      ...message,
+      runtimeState: {
+        values: {},
+        touched: [1],
+        validation: {},
+      },
+    })).toBe(false)
+    expect(isRuntimeHostToParentMessage(childMessage(message, {
+      type: 'runtimeState',
+      payload: {
+        values: { name: 'Lin' },
+        touched: ['name'],
+        validation: { name: [] },
+      },
+    }))).toBe(true)
   })
 
   it('accepts messages only from the expected source, origin, and session', async () => {
@@ -210,25 +252,37 @@ describe('runtime host protocol', () => {
     expect(acceptsRuntimeHostMessageEvent(event, {
       guard: isParentToRuntimeHostMessage,
       origin: 'https://workbench.test',
-      sessionId: message.sessionId,
+      hostId: message.hostId,
+      projectId: message.projectId,
+      pageId: message.pageId,
+      revision: message.revision,
       source,
     })).toBe(message)
     expect(acceptsRuntimeHostMessageEvent(event, {
       guard: isParentToRuntimeHostMessage,
+      origin: 'https://workbench.test',
+      hostId: message.hostId,
+      projectId: message.projectId,
+      pageId: message.pageId,
+      revision: 'stale-revision',
+      source,
+    })).toBeUndefined()
+    expect(acceptsRuntimeHostMessageEvent(event, {
+      guard: isParentToRuntimeHostMessage,
       origin: 'https://other.test',
-      sessionId: message.sessionId,
+      hostId: message.hostId,
       source,
     })).toBeUndefined()
     expect(acceptsRuntimeHostMessageEvent(event, {
       guard: isParentToRuntimeHostMessage,
       origin: 'https://workbench.test',
-      sessionId: 'other-session',
+      hostId: 'other-session',
       source,
     })).toBeUndefined()
     expect(acceptsRuntimeHostMessageEvent(event, {
       guard: isParentToRuntimeHostMessage,
       origin: 'https://workbench.test',
-      sessionId: message.sessionId,
+      hostId: message.hostId,
       source: otherSource,
     })).toBeUndefined()
   })

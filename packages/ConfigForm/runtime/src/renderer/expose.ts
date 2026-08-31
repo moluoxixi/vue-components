@@ -66,6 +66,7 @@ export function createConfigFormRendererExpose<TValues extends ConfigFormValues 
     getValues: () => readRenderer().getValues(),
     resetFields: fields => readRenderer().resetFields(fields),
     scrollToField: field => readRenderer().scrollToField(field),
+    setErrors: errors => readRenderer().setErrors(errors),
     setValue,
     setValues,
     setTouched,

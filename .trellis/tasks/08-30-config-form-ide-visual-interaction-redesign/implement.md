@@ -101,7 +101,7 @@ pnpm --filter @config-form/workbench typecheck
 
 ### 6. Preview Session 与 Flow Engine
 
-- [ ] 把 Preview values、reaction projection、validation、AbortController 和 trace 从 Workbench Controller 移入 Preview Session。
+- [x] 把 Preview values、reaction projection、validation、AbortController 和 trace 从 Workbench Controller 移入 Preview Session。
 - [ ] 把 Flow graph 编辑、action registry、execution plan 和运行调度移入 Flow Engine。
 - [x] 新增页面级 PageFlowEngine，收口 action registry、当前 execution plans、Flow projection、调度、trace/error 与跨 page/revision stale generation；Controller 只负责事件适配和 Preview values 端口。
 - [x] Workbench Inspector 以 Registry 事件作为唯一组件事件入口；点击事件直接打开精确 `nodeId + event` 的 Flow，已有流程选中、无流程按事件源创建。
@@ -109,7 +109,7 @@ pnpm --filter @config-form/workbench typecheck
 - [x] Core 将 FlowGraph 编译为不含 position/revision、包含完整执行元数据的 portable execution plan；Workbench Preview 和 standalone Source 只消费该 plan。
 - [x] 生成 standalone flow runtime，并执行 `latest/queue/ignore`、timeout、abort、error policy、model-order 和 value patch 矩阵。
 - [x] 保证 Design 操作刷新 Preview revision，过期异步结果不能覆盖新页面；PageFlowEngine 另以 page/revision generation 阻止旧值和 projection 提交。
-- [ ] Preview 在切换 RenderPlan 时按稳定 node id/字段合同协调兼容状态；删除或合同变化的字段才清理，不做每 revision 全量重置。
+- [x] Preview 在切换 RenderPlan 时按稳定 node id/字段合同协调兼容状态；删除或合同变化的字段才清理，不做每 revision 全量重置。
 - [ ] Workbench 和 standalone Source 使用同版本 portable flow runtime；导出工程内嵌源码，不复制第二套解释器逻辑。
 
 验证：Core flow tests、Preview coordinator tests、generated Source executable tests、导出工程安装/typecheck/build。
@@ -202,3 +202,14 @@ pnpm --filter @config-form/workbench test:e2e
 - 生产源码、测试、脚本和重建后的 `dist` 对旧精确符号和旧文件路径扫描均为零命中；宽泛审计只剩 Runtime last-good、拖拽命中、Registry 版本锁和导出依赖版本等当前合同内的 fallback/compatibility。
 - Core `36/36`、Model `50/50`、Workbench `29 files / 153 tests`、Workbench 架构边界 `9/9`、Playwright `21/21` 和导出工程 `2/2` 通过；Core/Model/Workbench typecheck、全仓 lint、Workbench build、`git diff --check` 通过；12 个 ConfigForm 发布包及公开包边界验证通过。生产源码、测试源码、脚本和重建后的发布产物对旧精确符号均为零命中，20 个旧模块或目录路径均不存在。
 - 本记录只完成父任务的 hard-cut 子范围，父任务保持 `in_progress`。
+
+## Preview Session 与 UI Store 验证记录（2026-08-31）
+
+- RuntimeHost 协议升级为 v2，父子 realm 使用 `hostId + projectId + pageId + revision + sequence` 校验身份；Preview 状态原子同步 `{ values, touched, validation }`，不再分散传输。
+- PreviewSession 独立持有 values、touched、validation、Flow projection、Abort 生命周期和最多 200 条 trace；同页 revision 按 `nodeId + component + contractVersion + fingerprint` 保留兼容字段状态，切项目/页面/adapter 或字段合同变化时精确清理。
+- RuntimeHost 在 adapter 异步加载期间保留最高 sequence 的状态，Renderer 挂载后只恢复最新快照；过期 restore 在写入前退出，重叠恢复使用引用计数抑制回传，相同 values/touched/errors 不重复写入，避免旧 sync 覆盖新输入或取消校验。
+- `field.change` 先写入 Preview values 再调度 Flow，`component.event`、submit、mounted 和 runtime state 的事件适配均由 PreviewSession 统一提供；WorkbenchShell 不再拼装 Flow trigger。
+- 新增 WorkbenchUiStore，独立持有移动端/左栏/Preview、弹窗 lazy/open、theme、locale 与 message；它不依赖 ProjectDocument、Runtime state 或 ExportSnapshot。
+- Headless controller 新增 `setErrors()`，Renderer expose 同步开放并发布 `errorsChange`，用于恢复隔离 Runtime validation 快照；更早启动的异步校验不能覆盖恢复结果。
+- 验证：Headless `7 files / 29 tests`、Runtime `23 files / 204 tests`、Workbench `31 files / 162 tests`；三包 typecheck/build、全仓 lint、Workbench Playwright `21/21`、12 个 ConfigForm 发布包与独立消费者、`git diff --check` 全部通过。
+- 本批完成 Preview Session 和 UI Store 边界，但父任务仍保持 `in_progress`：Registry 内部合同、Transaction/History 剩余不变量、Design Session、Workbench Controller 中剩余 Design/Export 编排和 visualEquivalence 仍未完成。

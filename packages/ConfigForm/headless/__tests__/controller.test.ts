@@ -262,6 +262,34 @@ describe('createConfigFormController', () => {
     expect(controller.getErrors()).toEqual({})
   })
 
+  it('restores an error snapshot and rejects an older async validation result', async () => {
+    let model: UserForm = { age: 18, name: 'Ada' }
+    let releaseValidation!: () => void
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [{
+        component: 'input',
+        field: 'name',
+        validator: async () => {
+          await new Promise<void>((resolve) => {
+            releaseValidation = resolve
+          })
+          return 'Late error'
+        },
+      }],
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+    })
+
+    const pending = controller.validateField('name')
+    controller.setErrors({ name: ['Restored error'] })
+    releaseValidation()
+
+    await expect(pending).resolves.toBe(false)
+    expect(controller.getErrors()).toEqual({ name: ['Restored error'] })
+  })
+
   it('does not submit a model that replaced the validated snapshot', async () => {
     let model: UserForm = { age: 18, name: 'Ada' }
     let releaseValidation!: () => void

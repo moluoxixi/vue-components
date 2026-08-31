@@ -1,5 +1,6 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
+  ConfigFormFlowTraceEvent,
   ConfigFormFlowTrigger,
   ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
@@ -10,6 +11,7 @@ import type {
   PageFlowEngine,
   WorkbenchPageFlowEngineOptions,
 } from '../flow/page-flow-engine'
+import type { RuntimeHostRuntimeStatePayload } from '../runtime-host/protocol'
 import type { PagePreviewProjection } from './projection-coordinator'
 import { createDesignPreviewModel, walkDesignGraph } from '@moluoxixi/config-form-designer'
 import { computed, ref, shallowRef } from 'vue'
@@ -20,11 +22,14 @@ import { cloneWorkbenchJson } from '../utils/clone'
 import { createPageProjectionCoordinator } from './projection-coordinator'
 
 type PreviewFieldContracts = Record<string, string>
+type PreviewValidationState = Record<string, string[]>
+
+const PREVIEW_TRACE_LIMIT = 200
 
 interface LastReadyPreview {
   readonly compilation: PageCompilation
   readonly fieldContracts: PreviewFieldContracts
-  readonly modelValue: Record<string, unknown>
+  readonly runtimeState: RuntimeHostRuntimeStatePayload
   readonly scopeKey: string
 }
 
@@ -39,9 +44,15 @@ export interface PreviewSessionAcceptInput {
   readonly runtime: VueRuntimeCompileResult
 }
 
-export interface PreviewRuntimeMountedEvent {
+export interface PreviewRuntimeIdentity {
   readonly hostId: string
+  readonly pageId: string
+  readonly projectId: string
   readonly revision: string
+}
+
+export interface PreviewRuntimeStateEvent extends PreviewRuntimeIdentity {
+  readonly state: RuntimeHostRuntimeStatePayload
 }
 
 export interface PreviewSessionValuePorts {
@@ -49,8 +60,13 @@ export interface PreviewSessionValuePorts {
   readonly writeValues: (values: Record<string, unknown>) => void
 }
 
+export interface PreviewSessionFlowPorts extends PreviewSessionValuePorts {
+  readonly onTrace: (event: ConfigFormFlowTraceEvent) => void
+}
+
 export interface CreatePreviewSessionOptions {
-  readonly createFlowEngine: (ports: PreviewSessionValuePorts) => PageFlowEngine
+  readonly createFlowEngine: (ports: PreviewSessionFlowPorts) => PageFlowEngine
+  readonly onTrace?: (event: ConfigFormFlowTraceEvent) => void
 }
 
 export type CreateWorkbenchPreviewSessionOptions = Pick<
@@ -62,6 +78,10 @@ export interface PreviewSession {
   readonly flowProjection: ComputedRef<ConfigFormReactionProjection<Record<string, unknown>>>
   readonly projection: ShallowRef<PagePreviewProjection | undefined>
   readonly revisionKey: ComputedRef<string>
+  readonly runtimeState: ComputedRef<RuntimeHostRuntimeStatePayload>
+  readonly touched: ShallowRef<readonly string[]>
+  readonly trace: ShallowRef<readonly ConfigFormFlowTraceEvent[]>
+  readonly validation: ShallowRef<Readonly<PreviewValidationState>>
   readonly values: Ref<Record<string, unknown>>
   accept: (input: PreviewSessionAcceptInput) => PagePreviewProjection | undefined
   clear: (reason?: unknown) => void
@@ -73,10 +93,22 @@ export interface PreviewSession {
   dispose: () => void
   getCompilation: () => PageCompilation | undefined
   getRuntimeModel: () => Record<string, unknown>
+  handleFieldChange: (payload: {
+    field: string
+    values: Record<string, unknown>
+  }) => ReturnType<PageFlowEngine['dispatch']> | undefined
+  handleRuntimeEvent: (payload: {
+    event: string
+    nodeId: string
+  }) => ReturnType<PageFlowEngine['dispatch']> | undefined
   handleRuntimeMounted: (
-    event: PreviewRuntimeMountedEvent,
+    event: PreviewRuntimeIdentity,
   ) => ReturnType<PageFlowEngine['dispatch']> | undefined
-  handleRuntimeReady: (revision: string) => void
+  handleRuntimeReady: (event: PreviewRuntimeIdentity) => void
+  handleRuntimeState: (event: PreviewRuntimeStateEvent) => void
+  handleSubmit: (
+    values: Record<string, unknown>,
+  ) => ReturnType<PageFlowEngine['dispatch']> | undefined
   updateRuntimeModel: (value: Record<string, unknown>) => void
 }
 
@@ -125,20 +157,59 @@ function reconcileValues(
   return { contracts, values }
 }
 
+function reconcileRuntimeFieldState(
+  contracts: PreviewFieldContracts,
+  previousContracts: PreviewFieldContracts,
+  previousState: RuntimeHostRuntimeStatePayload,
+  reset: boolean,
+): Pick<RuntimeHostRuntimeStatePayload, 'touched' | 'validation'> {
+  if (reset)
+    return { touched: [], validation: {} }
+  const compatible = new Set(Object.entries(contracts)
+    .filter(([field, contract]) => previousContracts[field] === contract)
+    .map(([field]) => field))
+  return {
+    touched: previousState.touched.filter(field => compatible.has(field)),
+    validation: Object.fromEntries(Object.entries(previousState.validation)
+      .filter(([field]) => compatible.has(field))
+      .map(([field, errors]) => [field, [...errors]])),
+  }
+}
+
+function cloneRuntimeState(state: RuntimeHostRuntimeStatePayload): RuntimeHostRuntimeStatePayload {
+  return {
+    values: cloneWorkbenchJson(state.values),
+    touched: [...state.touched],
+    validation: cloneWorkbenchJson(state.validation),
+  }
+}
+
+function sameRuntimeFieldState(
+  left: Pick<RuntimeHostRuntimeStatePayload, 'touched' | 'validation'>,
+  right: Pick<RuntimeHostRuntimeStatePayload, 'touched' | 'validation'>,
+): boolean {
+  return JSON.stringify([...left.touched].sort()) === JSON.stringify([...right.touched].sort())
+    && JSON.stringify(left.validation) === JSON.stringify(right.validation)
+}
+
 export function createPreviewSession(options: CreatePreviewSessionOptions): PreviewSession {
   const projectionCoordinator = createPageProjectionCoordinator()
   const values = ref<Record<string, unknown>>({})
+  const touched = shallowRef<readonly string[]>([])
+  const validation = shallowRef<Readonly<PreviewValidationState>>({})
+  const trace = shallowRef<readonly ConfigFormFlowTraceEvent[]>([])
   const projection = shallowRef<PagePreviewProjection>()
   const revisionKey = computed(() => projection.value?.current.revisionKey ?? '')
   let currentCompilation: PageCompilation | undefined
   let currentScopeKey = ''
   let liveFieldContracts: PreviewFieldContracts = Object.create(null)
-  let lastReadyPreview: LastReadyPreview | undefined
+  const lastReadyPreview = shallowRef<LastReadyPreview>()
+  let activeHostId = ''
   let lastMountIdentity = ''
   let disposed = false
 
   function fallbackForCurrentScope(): LastReadyPreview | undefined {
-    return lastReadyPreview?.scopeKey === currentScopeKey ? lastReadyPreview : undefined
+    return lastReadyPreview.value?.scopeKey === currentScopeKey ? lastReadyPreview.value : undefined
   }
 
   function getCompilation(): PageCompilation | undefined {
@@ -148,10 +219,25 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
   }
 
   function getRuntimeModel(): Record<string, unknown> {
-    if (projection.value?.compileResult.success)
-      return values.value
-    return fallbackForCurrentScope()?.modelValue ?? values.value
+    return getRuntimeState().values
   }
+
+  function getRuntimeState(): RuntimeHostRuntimeStatePayload {
+    if (projection.value?.compileResult.success) {
+      return {
+        values: values.value,
+        touched: [...touched.value],
+        validation: cloneWorkbenchJson(validation.value),
+      }
+    }
+    return fallbackForCurrentScope()?.runtimeState ?? {
+      values: values.value,
+      touched: [...touched.value],
+      validation: cloneWorkbenchJson(validation.value),
+    }
+  }
+
+  const runtimeState = computed(() => cloneRuntimeState(getRuntimeState()))
 
   function activeFieldContracts(): PreviewFieldContracts {
     if (projection.value?.compileResult.success)
@@ -160,22 +246,36 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
   }
 
   function updateRuntimeModel(value: Record<string, unknown>): void {
+    if (disposed)
+      return
     const next = cloneWorkbenchJson(value)
     if (projection.value?.compileResult.success) {
       values.value = next
       const ready = fallbackForCurrentScope()
-      if (ready && ready.compilation === currentCompilation)
-        lastReadyPreview = { ...ready, modelValue: cloneWorkbenchJson(next) }
+      if (ready && ready.compilation === currentCompilation) {
+        lastReadyPreview.value = {
+          ...ready,
+          runtimeState: { ...ready.runtimeState, values: cloneWorkbenchJson(next) },
+        }
+      }
       return
     }
     const fallback = fallbackForCurrentScope()
-    if (fallback)
-      lastReadyPreview = { ...fallback, modelValue: next }
+    if (fallback) {
+      lastReadyPreview.value = {
+        ...fallback,
+        runtimeState: { ...fallback.runtimeState, values: next },
+      }
+    }
   }
 
   const flowEngine = options.createFlowEngine({
     readValues: getRuntimeModel,
     writeValues: updateRuntimeModel,
+    onTrace: (event) => {
+      trace.value = [...trace.value, cloneWorkbenchJson(event)].slice(-PREVIEW_TRACE_LIMIT)
+      options.onTrace?.(event)
+    },
   })
 
   function accept(input: PreviewSessionAcceptInput): PagePreviewProjection | undefined {
@@ -193,15 +293,25 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
       activeFieldContracts(),
       scopeChanged,
     )
+    const reconciledFieldState = reconcileRuntimeFieldState(
+      reconciled.contracts,
+      activeFieldContracts(),
+      getRuntimeState(),
+      scopeChanged,
+    )
 
     if (scopeChanged) {
-      lastReadyPreview = undefined
+      lastReadyPreview.value = undefined
       lastMountIdentity = ''
+      activeHostId = ''
+      trace.value = []
     }
     currentScopeKey = nextScopeKey
     currentCompilation = input.compilation
     liveFieldContracts = reconciled.contracts
     values.value = reconciled.values
+    touched.value = reconciledFieldState.touched
+    validation.value = reconciledFieldState.validation
     projection.value = projectionCoordinator.publish({
       adapter: input.adapter,
       editVersion: input.editVersion,
@@ -248,27 +358,112 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     })
   }
 
-  function handleRuntimeReady(revision: string): void {
+  function isCurrentRuntimeIdentity(event: PreviewRuntimeIdentity): boolean {
+    const current = projection.value?.current
+    return !!current
+      && event.projectId === current.projectId
+      && event.pageId === current.pageId
+      && event.revision === current.revisionKey
+      && projectionCoordinator.isCurrent(event.revision)
+  }
+
+  function handleFieldChange(payload: {
+    field: string
+    values: Record<string, unknown>
+  }): ReturnType<PageFlowEngine['dispatch']> | undefined {
+    if (disposed || !projection.value)
+      return undefined
+    updateRuntimeModel(payload.values)
+    return dispatch('field.change', payload.values, payload.field)
+  }
+
+  function handleRuntimeEvent(payload: {
+    event: string
+    nodeId: string
+  }): ReturnType<PageFlowEngine['dispatch']> | undefined {
+    return dispatch({
+      kind: 'component.event',
+      nodeId: payload.nodeId,
+      event: payload.event,
+    })
+  }
+
+  function handleSubmit(
+    submittedValues: Record<string, unknown>,
+  ): ReturnType<PageFlowEngine['dispatch']> | undefined {
+    if (disposed || !projection.value)
+      return undefined
+    updateRuntimeModel(submittedValues)
+    return dispatch('form.submit', submittedValues)
+  }
+
+  function handleRuntimeReady(event: PreviewRuntimeIdentity): void {
     const current = projection.value
     if (!current?.compileResult.success
       || !currentCompilation
-      || !projectionCoordinator.isCurrent(revision)) {
+      || event.hostId !== activeHostId
+      || !isCurrentRuntimeIdentity(event)) {
       return
     }
-    lastReadyPreview = {
+    lastReadyPreview.value = {
       compilation: currentCompilation,
       fieldContracts: { ...liveFieldContracts },
-      modelValue: cloneWorkbenchJson(values.value),
+      runtimeState: cloneRuntimeState(getRuntimeState()),
       scopeKey: currentScopeKey,
     }
   }
 
+  function handleRuntimeState(event: PreviewRuntimeStateEvent): void {
+    if (event.hostId !== activeHostId || !isCurrentRuntimeIdentity(event))
+      return
+    const contracts = activeFieldContracts()
+    const compatibleFields = new Set(Object.keys(contracts))
+    const nextFieldState = {
+      touched: event.state.touched.filter(field => compatibleFields.has(field)),
+      validation: Object.fromEntries(Object.entries(event.state.validation)
+        .filter(([field]) => compatibleFields.has(field))
+        .map(([field, errors]) => [field, [...errors]])),
+    }
+    updateRuntimeModel(event.state.values)
+    if (projection.value?.compileResult.success) {
+      if (!sameRuntimeFieldState({
+        touched: [...touched.value],
+        validation: cloneWorkbenchJson(validation.value),
+      }, nextFieldState)) {
+        touched.value = nextFieldState.touched
+        validation.value = nextFieldState.validation
+      }
+      const ready = fallbackForCurrentScope()
+      if (ready && ready.compilation === currentCompilation) {
+        lastReadyPreview.value = {
+          ...ready,
+          runtimeState: cloneRuntimeState({
+            values: values.value,
+            ...nextFieldState,
+          }),
+        }
+      }
+      return
+    }
+    const fallback = fallbackForCurrentScope()
+    if (fallback) {
+      lastReadyPreview.value = {
+        ...fallback,
+        runtimeState: cloneRuntimeState({
+          values: event.state.values,
+          ...nextFieldState,
+        }),
+      }
+    }
+  }
+
   function handleRuntimeMounted(
-    event: PreviewRuntimeMountedEvent,
+    event: PreviewRuntimeIdentity,
   ): ReturnType<PageFlowEngine['dispatch']> | undefined {
     const current = projection.value
-    if (!current || !projectionCoordinator.isCurrent(event.revision))
+    if (!current || !isCurrentRuntimeIdentity(event))
       return undefined
+    activeHostId = event.hostId
     const mountIdentity = `${event.hostId}:${current.current.runtimeSessionKey}`
     if (mountIdentity === lastMountIdentity)
       return undefined
@@ -281,11 +476,15 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     flowEngine.clear()
     currentCompilation = undefined
     currentScopeKey = ''
+    activeHostId = ''
     lastMountIdentity = ''
-    lastReadyPreview = undefined
+    lastReadyPreview.value = undefined
     liveFieldContracts = Object.create(null)
     projection.value = undefined
     values.value = {}
+    touched.value = []
+    validation.value = {}
+    trace.value = []
   }
 
   function clear(reason: unknown = 'preview-session-cleared'): void {
@@ -305,6 +504,10 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     flowProjection: flowEngine.projection,
     projection,
     revisionKey,
+    runtimeState,
+    touched,
+    trace,
+    validation,
     values,
     accept,
     clear,
@@ -312,8 +515,12 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     dispose,
     getCompilation,
     getRuntimeModel,
+    handleFieldChange,
+    handleRuntimeEvent,
     handleRuntimeMounted,
     handleRuntimeReady,
+    handleRuntimeState,
+    handleSubmit,
     updateRuntimeModel,
   }
 }
@@ -322,9 +529,10 @@ export function createWorkbenchPreviewSession(
   options: CreateWorkbenchPreviewSessionOptions = {},
 ): PreviewSession {
   return createPreviewSession({
+    onTrace: options.onTrace,
     createFlowEngine: ports => createWorkbenchPageFlowEngine({
-      ...ports,
       ...options,
+      ...ports,
     }),
   })
 }

@@ -50,7 +50,7 @@ const frame = useTemplateRef<HTMLIFrameElement>('frame')
 const frameHeight = ref(1)
 const frameSource = `${import.meta.env.BASE_URL}runtime-host.html`
 const targetOrigin = window.location.origin
-const sessionId = typeof crypto.randomUUID === 'function'
+const hostId = typeof crypto.randomUUID === 'function'
   ? crypto.randomUUID()
   : `design-runtime-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 const compilation = computed(() => (
@@ -96,7 +96,9 @@ function syncRuntime(): void {
   postMessage({
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId,
+    hostId,
+    projectId: current.snapshotIdentity.projectId,
+    pageId: current.snapshotIdentity.pageId,
     sequence: ++parentSequence,
     revision: revision.value,
     type: 'sync',
@@ -111,7 +113,11 @@ function syncRuntime(): void {
       variant: props.variant,
     },
     locale: props.locale,
-    modelValue: cloneWorkbenchJson(props.modelValue),
+    runtimeState: {
+      values: cloneWorkbenchJson(props.modelValue),
+      touched: [],
+      validation: {},
+    },
     ...(props.namespace ? { namespace: props.namespace } : {}),
     reactionProjection: {
       values: cloneWorkbenchJson(props.modelValue),
@@ -124,14 +130,23 @@ function syncRuntime(): void {
 }
 
 function syncRuntimeState(): void {
+  const current = compilation.value
+  if (!current)
+    return
   postMessage({
     channel: RUNTIME_HOST_CHANNEL,
     version: RUNTIME_HOST_PROTOCOL_VERSION,
-    sessionId,
+    hostId,
+    projectId: current.snapshotIdentity.projectId,
+    pageId: current.snapshotIdentity.pageId,
     sequence: ++parentSequence,
     revision: revision.value,
     type: 'state',
-    modelValue: cloneWorkbenchJson(props.modelValue),
+    runtimeState: {
+      values: cloneWorkbenchJson(props.modelValue),
+      touched: [],
+      validation: {},
+    },
     reactionProjection: {
       values: cloneWorkbenchJson(props.modelValue),
       props: cloneWorkbenchJson(props.reactionProps),
@@ -195,16 +210,16 @@ function handleLoad(): void {
 function handleMessage(event: MessageEvent<unknown>): void {
   const message = acceptsRuntimeHostMessageEvent(event, {
     guard: isRuntimeHostToParentMessage,
+    hostId,
     origin: targetOrigin,
-    sessionId,
+    pageId: compilation.value?.snapshotIdentity.pageId,
+    projectId: compilation.value?.snapshotIdentity.projectId,
+    revision: revision.value,
     source: frame.value?.contentWindow ?? null,
   })
   if (!message || message.sequence <= lastChildSequence)
     return
   lastChildSequence = message.sequence
-  if (message.revision !== revision.value)
-    return
-
   if (message.type === 'geometry' && props.variant === 'canvas') {
     frameHeight.value = Math.max(1, Math.ceil(message.payload.viewport.height))
     lastGeometry = { payload: message.payload, revision: message.revision }

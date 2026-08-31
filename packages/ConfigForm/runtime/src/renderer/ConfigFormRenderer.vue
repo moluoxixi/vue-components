@@ -103,6 +103,7 @@ const controller = createConfigFormController<TValues>({
   onError: formErrors => emit('error', formErrors),
   onErrorsChange: (formErrors) => {
     errors.value = formErrors
+    emit('errorsChange', formErrors)
   },
   onFieldChange: payload => emit('fieldChange', payload),
   onMetaChange: updateMeta,
@@ -123,6 +124,7 @@ const {
   getValues,
   refreshReactions,
   resetFields,
+  setErrors,
   setValue,
   setValues,
   setTouched,
@@ -1072,6 +1074,7 @@ defineExpose({
   getValues,
   resetFields,
   scrollToField,
+  setErrors,
   setValue,
   setValues,
   setTouched,

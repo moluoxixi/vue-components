@@ -507,3 +507,123 @@ downloadWorkspaceFile({
 })
 // The shared helper copies binary bytes and revokes the URL asynchronously.
 ```
+
+## 10. RuntimeHost Preview State Synchronization
+
+### 10.1 Scope / Trigger
+
+Apply this contract when changing RuntimeHost messages, Preview lifecycle,
+Renderer error/meta events, Preview Flow dispatch, or state restoration across
+an iframe reload, adapter load, project/page switch, or Design revision.
+
+### 10.2 Signatures
+
+```ts
+interface RuntimeHostMessageBase {
+  channel: 'mx-config-form-runtime-host'
+  version: 2
+  hostId: string
+  projectId: string
+  pageId: string
+  revision: string
+  sequence: number
+}
+
+interface RuntimeHostRuntimeStatePayload {
+  values: Record<string, unknown>
+  touched: string[]
+  validation: Record<string, string[]>
+}
+
+interface PreviewRuntimeIdentity {
+  hostId: string
+  projectId: string
+  pageId: string
+  revision: string
+}
+```
+
+### 10.3 Contracts
+
+- Parent and iframe validate the complete host/project/page/revision identity
+  and reject non-monotonic sequence numbers before publishing an event.
+- Structural `sync` and transient `state` are separate messages. Both carry
+  one atomic runtime snapshot; values, touched, and validation cannot be sent
+  or restored independently.
+- Adapter loading and Runtime compilation are asynchronous. The iframe retains
+  the state payload with the highest accepted sequence and, after the Renderer
+  mounts, restores that payload rather than the older payload captured by the
+  structural sync.
+- A stale restore checks its sequence before writing values. Concurrent parent
+  restores use reference-counted callback suppression, so an older completion
+  cannot re-enable child-to-parent events while a newer restore is active.
+- Restoring values, touched, or validation that are already equal is a no-op.
+  In particular, do not call `setValues` or `setErrors` for an echoed snapshot,
+  because both invalidate in-flight validation generations.
+- `PreviewSession` owns values, touched, validation, Flow projection, Abort
+  lifecycle, and a bounded 200-event trace. `field.change` writes the event's
+  values before dispatch so Flow input resolution observes the new field value.
+- On a same-scope revision, Preview keeps state only for fields whose
+  `nodeId + component + contractVersion + fingerprint` contract is unchanged.
+  Project, page, adapter, removed field, or changed contract resets the affected
+  state. Runtime events from a stale host or revision are ignored.
+
+### 10.4 Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Wrong host, project, page, or revision | Reject before emitting to PreviewSession |
+| Replayed or lower sequence | Ignore without changing Runtime or Preview state |
+| New state arrives while structural sync compiles | Mount with the newest values/touched/validation |
+| Older restore finishes after newer restore starts | Older restore is a no-op; callback suppression remains active |
+| Parent echoes an identical snapshot | No Renderer value/error/meta mutation |
+| Field contract changes at the same page | Reset that field to its new default and remove touched/errors |
+| Preview page/project/adapter changes | Reset scope state, trace, mount identity, Flow projection, and async work |
+| `field.change` and Flow run in the same turn | Flow reads the event payload's latest values |
+
+### 10.5 Good / Base / Bad Cases
+
+- Good: `sync(seq=1)` starts adapter loading, `state(seq=2)` arrives, and the
+  newly mounted Renderer restores only state from `seq=2`.
+- Base: a same-page revision preserves a compatible edited value and its error;
+  closing and reopening the iframe creates a new host while PreviewSession keeps
+  the compatible snapshot.
+- Bad: apply `sync.runtimeState` after an `await`, then check whether the sync is
+  stale. The write already replaced newer values and can cancel validation.
+
+### 10.6 Tests Required
+
+- Protocol unit tests validate the complete v2 identity, runtime-state payload,
+  stale revision, replay, source, and origin.
+- RuntimeHost component tests control adapter resolution and assert a state that
+  arrives during compilation wins for values, touched, and validation.
+- RuntimeHost tests send the same state again and assert `setTouched` and
+  `setErrors` are not called a second time.
+- PreviewSession tests cover compatible reconciliation, contract changes,
+  project/page/adapter reset, stale hosts, bounded trace, and field-change value
+  ordering before Flow input resolution.
+- Headless tests prove `setErrors` invalidates older async validation; Renderer
+  tests prove the restored snapshot emits `errorsChange`.
+- Browser tests cover interactive Preview input, close/reopen, component events,
+  validation, submit, page switch, and a clean warning/error console.
+
+### 10.7 Wrong vs Correct
+
+Wrong:
+
+```ts
+modelValue.value = clone(sync.runtimeState.values)
+await loadAdapter()
+if (sync.sequence !== latestSequence)
+  return
+```
+
+Correct:
+
+```ts
+latestRuntimeState = clone(message.runtimeState)
+latestSequence = message.sequence
+await loadAdapter()
+await applyRuntimeState(latestRuntimeState, latestSequence)
+// applyRuntimeState checks the sequence before its first write.
+```

@@ -158,6 +158,39 @@ describe('workbench production architecture boundary', () => {
     expect(previewSession).toContain('createPageProjectionCoordinator')
     expect(previewSession).toContain('lastReadyPreview')
     expect(previewSession).toContain('handleRuntimeMounted')
+    expect(previewSession).toContain('handleRuntimeState')
+    expect(previewSession).toContain('const touched = shallowRef')
+    expect(previewSession).toContain('const validation = shallowRef')
+    expect(previewSession).toContain('const trace = shallowRef')
+  })
+
+  it('keeps transient chrome state inside the UI Store', () => {
+    const controller = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
+    const shell = readFileSync(new URL('../WorkbenchShell.vue', import.meta.url), 'utf8')
+    const uiStore = readFileSync(new URL('../workbench-ui-store.ts', import.meta.url), 'utf8')
+    const uiRefs = [
+      'mobileStudioView',
+      'studioLeftView',
+      'previewOpen',
+      'previewExpanded',
+      'previewViewport',
+      'templatePickerOpen',
+      'pageManagerOpen',
+      'exportPreviewMode',
+      'flowWorkspaceOpen',
+      'theme',
+      'localeId',
+      'message',
+    ]
+
+    uiRefs.forEach((name) => {
+      expect(controller).not.toContain(`const ${name} = ref`)
+      expect(uiStore).toContain(`const ${name} = ref`)
+    })
+    expect(shell).toContain('useWorkbenchUiStore()')
+    expect(uiStore).not.toContain('ProjectDocument')
+    expect(uiStore).not.toContain('RuntimeHostRuntimeStatePayload')
+    expect(uiStore).not.toContain('ExportSnapshot')
   })
 
   it('delegates event-flow execution to the page Flow Engine', () => {

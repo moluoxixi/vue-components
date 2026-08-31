@@ -20,15 +20,14 @@ import type {
 } from '@moluoxixi/config-form-model'
 import type { VueRuntimeCompileResult, VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../adapters'
-import type { WorkbenchLocaleId } from '../locale'
 import type {
   BuildExportSnapshotInput,
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
   ProjectPageAction,
 } from '../project'
-import type { PreviewViewport } from '../studio/PreviewDrawer.vue'
-import type { StudioLayerEntry, StudioLeftView } from '../studio/StudioLeftPanel.vue'
+import type { StudioLayerEntry } from '../studio/StudioLeftPanel.vue'
+import type { WorkbenchUiStore } from './workbench-ui-store'
 import {
   compileCanonicalProject,
   createCompileCoordinator,
@@ -43,14 +42,11 @@ import {
   resolveProjectCommand,
 } from '@moluoxixi/config-form-model'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { loadWorkbenchAdapter } from '../adapters'
 import { collectFlowEventTargets } from '../flow/event-targets'
 import {
   createWorkbenchLocaleOptions,
-  readWorkbenchLocalePreference,
-  resolveWorkbenchLocale,
-  writeWorkbenchLocalePreference,
 } from '../locale'
 import {
   BUILT_IN_PROJECT_TEMPLATES,
@@ -66,9 +62,6 @@ import {
   createPageRuntimeArtifactCache,
   createWorkbenchPreviewSession,
 } from '../session'
-
-export type MobileStudioView = 'canvas' | 'components' | 'inspector' | 'layers' | 'pages'
-export type WorkbenchTheme = 'dark' | 'light'
 
 export interface WorkbenchControllerProps {
   locale?: DesignerLocaleOptions
@@ -96,16 +89,10 @@ function canonicalDiagnosticsToRuntimeResult(
   }
 }
 
-export function createWorkbenchController(props: Readonly<WorkbenchControllerProps>) {
-  function initialLocale(): WorkbenchLocaleId {
-    if (props.locale?.locale)
-      return resolveWorkbenchLocale(props.locale.locale)
-    const persisted = readWorkbenchLocalePreference(typeof localStorage === 'undefined' ? undefined : localStorage)
-    if (persisted)
-      return persisted
-    return resolveWorkbenchLocale(typeof navigator === 'undefined' ? undefined : navigator.language)
-  }
-
+export function createWorkbenchController(
+  props: Readonly<WorkbenchControllerProps>,
+  ui: WorkbenchUiStore,
+) {
   const repository = shallowRef<ProjectRepository>()
   const currentAdapter = shallowRef<WorkbenchAdapter>()
   const projects = ref<ProjectSummary[]>([])
@@ -113,28 +100,16 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   const projectSessionSnapshot = shallowRef<ProjectEditorSessionSnapshot>()
   const currentPageId = ref('')
   const configError = ref('')
-  const mobileStudioView = ref<MobileStudioView>('canvas')
-  const studioLeftView = ref<StudioLeftView>('components')
-  const previewOpen = ref(false)
-  const previewExpanded = ref(false)
-  const previewViewport = ref<PreviewViewport>('desktop')
-  const templatePickerOpen = ref(false)
-  const pageManagerOpen = ref(false)
-  const exportPreviewMode = ref<'source' | 'config'>()
-  const flowWorkspaceOpen = ref(false)
   const selectedDesignerIds = ref<string[]>([])
-  const theme = ref<WorkbenchTheme>('dark')
-  const localeId = ref<WorkbenchLocaleId>(initialLocale())
   const busy = ref(false)
-  const message = ref('')
   let openProjectRequestId = 0
   let projectCommandSequence = 0
   let disposed = false
   let unsubscribeProjectSession: (() => void) | undefined
   let projectedPageId = ''
   const previewSession = createWorkbenchPreviewSession({
-    onNotify: value => message.value = value,
-    onDiagnostic: diagnostic => message.value = diagnostic.message,
+    onNotify: ui.notify,
+    onDiagnostic: diagnostic => ui.notify(diagnostic.message),
   })
   const previewProjection = previewSession.projection
   const previewFlowProjection = previewSession.flowProjection
@@ -146,7 +121,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   const canonicalExportProject = shallowRef<ProjectCompilation>()
   const canonicalPageRuntime = shallowRef<VueRuntimeCompileSuccess>()
   const localeOptions = computed(() => createWorkbenchLocaleOptions(
-    localeId.value,
+    ui.localeId.value,
     currentAdapter.value?.locale,
     props.locale,
   ))
@@ -236,13 +211,14 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       return adapter
     throw new TypeError('Workbench adapter is unavailable.')
   }
-  const currentSourceRevisionKey = previewSession.revisionKey
   const getPreviewCompilation = previewSession.getCompilation
-  const getPreviewRuntimeModel = previewSession.getRuntimeModel
   const handlePreviewRuntimeMounted = previewSession.handleRuntimeMounted
+  const handlePreviewFieldChange = previewSession.handleFieldChange
+  const handlePreviewRuntimeEvent = previewSession.handleRuntimeEvent
   const handlePreviewRuntimeReady = previewSession.handleRuntimeReady
-  const runPreviewFlows = previewSession.dispatch
-  const updatePreviewRuntimeModel = previewSession.updateRuntimeModel
+  const handlePreviewRuntimeState = previewSession.handleRuntimeState
+  const handlePreviewSubmit = previewSession.handleSubmit
+  const previewRuntimeState = previewSession.runtimeState
   const previewState = computed(() => {
     const projection = previewProjection.value
     if (configError.value || projection?.status === 'stale') {
@@ -611,7 +587,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       registry: adapter.componentRegistry,
       repository: activeRepository,
     }), page.id)
-    templatePickerOpen.value = false
+    ui.closeTemplatePicker()
   }
 
   async function requestOpenProject(id: string, pageId?: string): Promise<void> {
@@ -621,10 +597,10 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       return
     }
     if (hasUnsavedChanges.value) {
-      message.value = workbenchLocale.value.t(
+      ui.notify(workbenchLocale.value.t(
         'workbench.openBlocked',
         'Save or resolve the current project before opening another project.',
-      )
+      ))
       return
     }
     await openProject(id, pageId)
@@ -634,7 +610,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     if (!repository.value || busy.value)
       return
     busy.value = true
-    message.value = ''
+    ui.clearMessage()
     try {
       const template = BUILT_IN_PROJECT_TEMPLATES.get(templateId)!
       const adapter = await loadWorkbenchAdapter(template.adapter)
@@ -645,10 +621,10 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       await repository.value.create({ document: project })
       await refreshProjects()
       await openProject(project.id)
-      templatePickerOpen.value = false
+      ui.closeTemplatePicker()
     }
     catch (error) {
-      message.value = error instanceof Error ? error.message : String(error)
+      ui.notify(error)
     }
     finally {
       busy.value = false
@@ -660,7 +636,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     if (!repository.value || !document || busy.value)
       return
     busy.value = true
-    message.value = ''
+    ui.clearMessage()
     try {
       const name = `${BUILT_IN_PROJECT_TEMPLATES.get(templateId)?.title ?? 'New'} page`
       const id = nextProjectPageId(document, name)
@@ -675,10 +651,10 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       )
       if (changed)
         selectCurrentPage(page.id)
-      templatePickerOpen.value = false
+      ui.closeTemplatePicker()
     }
     catch (error) {
-      message.value = error instanceof Error ? error.message : String(error)
+      ui.notify(error)
     }
     finally {
       busy.value = false
@@ -714,7 +690,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       executeProjectActions('Update pages', [{ type: 'operation.apply', operations }])
     }
     catch (error) {
-      message.value = error instanceof Error ? error.message : String(error)
+      ui.notify(error)
     }
   }
 
@@ -723,24 +699,24 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     if (!session || !repository.value || configError.value || busy.value)
       return
     busy.value = true
-    message.value = ''
+    ui.clearMessage()
     try {
       const result = await session.save()
       if (!result.success) {
-        message.value = result.error.message
+        ui.notify(result.error.message)
         return
       }
       await refreshProjects()
-      message.value = result.newerEdits
+      ui.notify(result.newerEdits
         ? workbenchLocale.value.t(
             'workbench.savedWithNewer',
             'Saved revision {revision}; newer edits remain unsaved',
             { revision: result.repositoryRevision },
           )
-        : workbenchLocale.value.t('workbench.saved', 'Saved revision {revision}', { revision: result.repositoryRevision })
+        : workbenchLocale.value.t('workbench.saved', 'Saved revision {revision}', { revision: result.repositoryRevision }))
     }
     catch (error) {
-      message.value = error instanceof Error ? error.message : String(error)
+      ui.notify(error)
     }
     finally {
       busy.value = false
@@ -753,73 +729,21 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     if (!projectId || busy.value)
       return
     busy.value = true
-    message.value = ''
+    ui.clearMessage()
     try {
       await openProject(projectId, pageId)
-      message.value = workbenchLocale.value.t('recovery.reloaded', 'Reloaded the latest saved revision')
+      ui.notify(workbenchLocale.value.t('recovery.reloaded', 'Reloaded the latest saved revision'))
     }
     catch (error) {
-      message.value = error instanceof Error ? error.message : String(error)
+      ui.notify(error)
     }
     finally {
       busy.value = false
     }
   }
 
-  function openExportPreview(mode: 'source' | 'config'): void {
-    exportPreviewMode.value = mode
-  }
-
-  function closeExportPreview(): void {
-    exportPreviewMode.value = undefined
-  }
-
-  function openFlowWorkspace(): void {
-    if (currentProject.value)
-      flowWorkspaceOpen.value = true
-  }
-
-  function closeFlowWorkspace(): void {
-    flowWorkspaceOpen.value = false
-  }
-
-  function togglePreview(): void {
-    previewOpen.value = !previewOpen.value
-    if (!previewOpen.value)
-      previewExpanded.value = false
-  }
-
-  function toggleTheme(): void {
-    theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  }
-
-  function toggleLocale(): void {
-    localeId.value = localeId.value === 'zh-CN' ? 'en-US' : 'zh-CN'
-  }
-
   async function selectPageFromDesigner(pageId: string): Promise<void> {
     selectCurrentPage(pageId)
-  }
-
-  function openTemplatePicker(): void {
-    templatePickerOpen.value = true
-  }
-
-  function openPageTemplatePicker(): void {
-    pageManagerOpen.value = false
-    openTemplatePicker()
-  }
-
-  function openPageManager(): void {
-    pageManagerOpen.value = true
-  }
-
-  function closePageManager(): void {
-    pageManagerOpen.value = false
-  }
-
-  function closeTemplatePicker(): void {
-    templatePickerOpen.value = false
   }
 
   function selectTemplate(templateId: string): void {
@@ -828,17 +752,6 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     else
       void createProject(templateId)
   }
-
-  watch(() => props.locale?.locale, (value) => {
-    if (value)
-      localeId.value = resolveWorkbenchLocale(value)
-  })
-
-  watch(localeId, (value) => {
-    writeWorkbenchLocalePreference(value, typeof localStorage === 'undefined' ? undefined : localStorage)
-    if (typeof document !== 'undefined')
-      document.documentElement.lang = value
-  }, { immediate: true })
 
   onMounted(async () => {
     try {
@@ -855,11 +768,11 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       if (first)
         await openProject(first.id)
       else
-        templatePickerOpen.value = true
+        ui.openTemplatePicker()
     }
     catch (error) {
-      message.value = error instanceof Error ? error.message : String(error)
-      templatePickerOpen.value = true
+      ui.notify(error)
+      ui.openTemplatePicker()
     }
   })
 
@@ -876,10 +789,6 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   return {
     projects,
     busy,
-    closeExportPreview,
-    closeFlowWorkspace,
-    closePageManager,
-    closeTemplatePicker,
     componentRegistry,
     configError,
     captureExportSnapshotInput,
@@ -888,7 +797,6 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     currentGraph,
     currentPage,
     currentPageId,
-    currentSourceRevisionKey,
     designRuntime: canonicalPageRuntime,
     designerCommandControl,
     designerFieldNames,
@@ -896,51 +804,33 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     designerHistoryControl,
     designerLayers,
     dirty,
-    exportPreviewMode,
     executeFlowCommand: executeDesignerCommand,
-    flowWorkspaceOpen,
     getCurrentExportCompilation,
     getCurrentAdapterId,
     getDesignRuntimeCompilation,
-    getPreviewRuntimeModel,
     handlePageAction,
+    handlePreviewFieldChange,
     handlePreviewRuntimeMounted,
+    handlePreviewRuntimeEvent,
     handlePreviewRuntimeReady,
-    localeId,
+    handlePreviewRuntimeState,
+    handlePreviewSubmit,
     localeOptions,
-    message,
-    mobileStudioView,
-    openExportPreview,
-    openFlowWorkspace,
-    openPageManager,
-    openPageTemplatePicker,
-    openTemplatePicker,
-    pageManagerOpen,
-    previewExpanded,
     getPreviewCompilation,
     previewFlowProjection,
-    previewOpen,
     previewProjection,
+    previewRuntimeState,
     previewState,
-    previewViewport,
     registry,
     repositoryRevision,
     requestOpenProject,
     reloadCurrentProject,
-    runPreviewFlows,
     saveProject,
     selectPageFromDesigner,
     selectedDesignerIds,
     selectTemplate,
     statusLabel,
-    studioLeftView,
     templates: BUILT_IN_PROJECT_TEMPLATES,
-    templatePickerOpen,
-    theme,
-    toggleLocale,
-    togglePreview,
-    toggleTheme,
-    updatePreviewRuntimeModel,
     workbenchLocale,
     workspaceRecoveryNotice,
   }

@@ -187,6 +187,7 @@ export type RuntimeSurfaceProps<TValues extends ConfigFormValues = ConfigFormVal
 export interface ConfigFormRendererEmits<TValues extends ConfigFormValues = ConfigFormValues> {
   (event: 'change', values: TValues): void
   (event: 'error', errors: ConfigFormErrors): void
+  (event: 'errorsChange', errors: ConfigFormErrors): void
   (event: 'fieldChange', payload: ConfigFormFieldChangePayload<TValues>): void
   (event: 'metaChange', meta: ConfigFormMeta): void
   (event: 'runtimeEvent', context: ConfigFormRuntimeEventPayload<TValues>): void
@@ -204,6 +205,7 @@ export interface ConfigFormRendererExpose<TValues extends ConfigFormValues = Con
     | 'getValue'
     | 'getValues'
     | 'resetFields'
+    | 'setErrors'
     | 'setValue'
     | 'setValues'
     | 'setTouched'

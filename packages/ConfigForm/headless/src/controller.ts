@@ -130,6 +130,8 @@ export interface ConfigFormController<TValues extends ConfigFormValues = ConfigF
   ) => Promise<boolean>
   /** 清除全部或指定字段错误，并使运行中的旧校验失效。 */
   clearValidate: (fields?: ConfigFormFieldSelector<TValues>) => void
+  /** 原子替换当前校验错误，用于恢复隔离 Runtime 的会话快照。 */
+  setErrors: (errors: ConfigFormErrors) => void
   /** 标记全部或指定字段的 touched 状态。 */
   setTouched: {
     (): void
@@ -473,6 +475,12 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     commitErrors(nextErrors)
   }
 
+  function setErrors(nextErrors: ConfigFormErrors): void {
+    valuesRevision += 1
+    latestFieldRequest.clear()
+    commitErrors(nextErrors)
+  }
+
   function clearFieldError(field: string): void {
     if (!(field in errors))
       return
@@ -629,6 +637,7 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     resetFields,
     setValue,
     setValues,
+    setErrors,
     setTouched,
     submit,
     validate,

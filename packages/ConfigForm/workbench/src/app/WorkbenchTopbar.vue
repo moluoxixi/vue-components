@@ -2,6 +2,7 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { ProjectPage, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import type { WorkbenchLocaleId } from '../locale'
+import type { WorkbenchTheme } from './workbench-ui-store'
 import {
   Braces,
   ChevronDown,
@@ -21,7 +22,6 @@ import {
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 
-export type WorkbenchTheme = 'dark' | 'light'
 export type WorkbenchExportMode = 'source' | 'config'
 
 const props = defineProps<{

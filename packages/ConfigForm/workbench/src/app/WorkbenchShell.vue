@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
-import type { MobileStudioView } from './workbench-controller'
+import type { MobileStudioView } from './workbench-ui-store'
 import {
   AlertTriangle,
   Blocks,
@@ -18,26 +18,23 @@ import {
   Undo2,
 } from '@lucide/vue'
 import { DesignSurface } from '@moluoxixi/config-form-designer'
-import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, nextTick, useTemplateRef } from 'vue'
 import DesignRuntimeHostFrame from '../runtime-host/DesignRuntimeHostFrame.vue'
 import PreviewDrawer from '../studio/PreviewDrawer.vue'
 import StudioLeftPanel from '../studio/StudioLeftPanel.vue'
 import TemplateDialog from '../features/templates/TemplateDialog.vue'
 import WorkbenchTopbar from './WorkbenchTopbar.vue'
-import { useWorkbenchController } from './workbench-context'
+import { useWorkbenchController, useWorkbenchUiStore } from './workbench-context'
 
 const ExportDialog = defineAsyncComponent(() => import('../features/export/ExportDialog.vue'))
 const FlowDialog = defineAsyncComponent(() => import('../features/flow/FlowDialog.vue'))
 const PageManagerDialog = defineAsyncComponent(() => import('../features/pages/PageManagerDialog.vue'))
 
 const controller = useWorkbenchController()
+const ui = useWorkbenchUiStore()
 const {
   projects,
   busy,
-  closeExportPreview,
-  closeFlowWorkspace,
-  closePageManager,
-  closeTemplatePicker,
   componentRegistry,
   configError,
   captureExportSnapshotInput,
@@ -54,18 +51,46 @@ const {
   designerLayers,
   dirty,
   executeFlowCommand,
-  exportPreviewMode,
-  flowWorkspaceOpen,
   getCurrentExportCompilation,
   getCurrentAdapterId,
   getDesignRuntimeCompilation,
   getPreviewCompilation,
-  getPreviewRuntimeModel,
   handlePageAction,
+  handlePreviewFieldChange,
   handlePreviewRuntimeMounted,
+  handlePreviewRuntimeEvent,
   handlePreviewRuntimeReady,
-  localeId,
+  handlePreviewRuntimeState,
+  handlePreviewSubmit,
   localeOptions,
+  previewFlowProjection,
+  previewProjection,
+  previewRuntimeState,
+  previewState,
+  registry,
+  repositoryRevision,
+  requestOpenProject,
+  reloadCurrentProject,
+  saveProject,
+  selectPageFromDesigner,
+  selectedDesignerIds,
+  selectTemplate,
+  statusLabel,
+  templates,
+  workbenchLocale,
+  workspaceRecoveryNotice,
+} = controller
+const {
+  closeExportPreview,
+  closeFlowWorkspace,
+  closePageManager,
+  closeTemplatePicker,
+  exportDialogLoaded,
+  exportPreviewMode,
+  flowDialogLoaded,
+  flowInitialTrigger,
+  flowWorkspaceOpen,
+  localeId,
   message,
   mobileStudioView,
   openExportPreview,
@@ -73,41 +98,22 @@ const {
   openPageManager,
   openPageTemplatePicker,
   openTemplatePicker,
+  pageManagerLoaded,
   pageManagerOpen,
   previewExpanded,
-  previewFlowProjection,
   previewOpen,
-  previewProjection,
-  previewState,
   previewViewport,
-  registry,
-  repositoryRevision,
-  requestOpenProject,
-  reloadCurrentProject,
-  runPreviewFlows,
-  saveProject,
-  selectPageFromDesigner,
-  selectedDesignerIds,
-  selectTemplate,
-  statusLabel,
+  selectMobileStudioView: selectMobileView,
   studioLeftView,
-  templates,
   templatePickerOpen,
   theme,
   toggleLocale,
   togglePreview,
   toggleTheme,
-  updatePreviewRuntimeModel,
-  workbenchLocale,
-  workspaceRecoveryNotice,
-} = controller
+} = ui
 
 const designer = useTemplateRef<DesignSurfaceExpose>('designer')
 const mobileDock = useTemplateRef<HTMLElement>('mobileDock')
-const exportDialogLoaded = ref(false)
-const flowDialogLoaded = ref(false)
-const flowInitialTrigger = ref<ConfigFormFlowTrigger>()
-const pageManagerLoaded = ref(false)
 const mobileStudioViews = computed(() => [
   { icon: Blocks, id: 'components' as const, label: workbenchLocale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: workbenchLocale.value.t('designer.view.layers', 'Layers') },
@@ -117,9 +123,7 @@ const mobileStudioViews = computed(() => [
 ])
 
 function selectMobileStudioView(view: MobileStudioView): void {
-  previewOpen.value = false
-  previewExpanded.value = false
-  mobileStudioView.value = view
+  selectMobileView(view)
   if (view === 'canvas') {
     designer.value?.selectWorkspaceView('canvas')
     return
@@ -128,7 +132,6 @@ function selectMobileStudioView(view: MobileStudioView): void {
     designer.value?.selectWorkspaceView('properties')
     return
   }
-  studioLeftView.value = view
   designer.value?.selectWorkspaceView('palette')
 }
 
@@ -164,14 +167,11 @@ function moveDesignerLayer(
 }
 
 function showExportDialog(mode: 'source' | 'config'): void {
-  exportDialogLoaded.value = true
   openExportPreview(mode)
 }
 
 function showFlowDialog(trigger?: ConfigFormFlowTrigger): void {
-  flowInitialTrigger.value = trigger
-  flowDialogLoaded.value = true
-  openFlowWorkspace()
+  openFlowWorkspace(trigger)
 }
 
 function showComponentEventFlow(nodeId: string, eventName: string): void {
@@ -179,7 +179,6 @@ function showComponentEventFlow(nodeId: string, eventName: string): void {
 }
 
 function showPageManager(): void {
-  pageManagerLoaded.value = true
   openPageManager()
 }
 </script>
@@ -350,7 +349,7 @@ function showPageManager(): void {
         :compilation="getPreviewCompilation()"
         :config-error="configError"
         :locale="localeOptions"
-        :model-value="getPreviewRuntimeModel()"
+        :runtime-state="previewRuntimeState"
         :namespace="registry.rendererNamespace"
         :open="previewOpen"
         :projection="previewProjection"
@@ -358,12 +357,12 @@ function showPageManager(): void {
         :state="previewState"
         @close="togglePreview"
         @error="message = $event instanceof Error ? $event.message : String($event)"
-        @field-change="runPreviewFlows('field.change', $event.values, $event.field)"
-        @runtime-event="runPreviewFlows({ kind: 'component.event', nodeId: $event.nodeId, event: $event.event })"
+        @field-change="handlePreviewFieldChange"
+        @runtime-event="handlePreviewRuntimeEvent"
         @runtime-mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
-        @submit="runPreviewFlows('form.submit', $event)"
-        @update:model-value="updatePreviewRuntimeModel"
+        @runtime-state="handlePreviewRuntimeState"
+        @submit="handlePreviewSubmit"
       />
     </section>
 

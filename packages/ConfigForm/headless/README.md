@@ -66,7 +66,7 @@ const modules = {
 const components = createConfigFormComponentRegistry(modules)
 ```
 
-`createConfigFormController` 提供 `getValues`、`setValue(s)`、`validate`、`validateField`、`clearValidate`、`resetFields`、`submit`、`getErrors` 和 validating 状态查询，也提供 `getMeta`、`getFieldMeta` 和 `setTouched`。`dirty` 表示当前值是否偏离 reset 基准；`touched` 可按全部或指定字段显式设置，submit 会标记当前可交互字段。宿主在 controller 之外整体替换模型后，可调用 `refreshMeta`；替换字段树后调用 `refreshReactions` 会重新执行稳定 reaction 事务并同步 meta。两者与 `validateOn` 的 `change` / `blur` / `submit` 校验触发策略相互独立，且 submit 校验始终启用。Zod 和业务 validator 都在 Headless 执行，不再委托 UI 库 rules。
+`createConfigFormController` 提供 `getValues`、`setValue(s)`、`validate`、`validateField`、`clearValidate`、`resetFields`、`submit`、`getErrors` 和 validating 状态查询，也提供 `getMeta`、`getFieldMeta`、`setTouched` 与 `setErrors`。`setErrors` 原子替换当前错误并使更早启动的异步校验失效，用于恢复隔离 Runtime 的 validation 快照；相同错误不会重复发布 `onErrorsChange`。`dirty` 表示当前值是否偏离 reset 基准；`touched` 可按全部或指定字段显式设置，submit 会标记当前可交互字段。宿主在 controller 之外整体替换模型后，可调用 `refreshMeta`；替换字段树后调用 `refreshReactions` 会重新执行稳定 reaction 事务并同步 meta。两者与 `validateOn` 的 `change` / `blur` / `submit` 校验触发策略相互独立，且 submit 校验始终启用。Zod 和业务 validator 都在 Headless 执行，不再委托 UI 库 rules。
 
 ## Readonly
 

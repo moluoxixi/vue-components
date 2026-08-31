@@ -5,7 +5,12 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { WorkbenchAdapterId } from '../adapters'
-import type { PagePreviewProjection, PreviewRuntimeMountedEvent } from '../session'
+import type {
+  PagePreviewProjection,
+  PreviewRuntimeIdentity,
+  PreviewRuntimeStateEvent,
+} from '../session'
+import type { RuntimeHostRuntimeStatePayload } from '../runtime-host/protocol'
 import {
   Maximize2,
   Minimize2,
@@ -27,7 +32,7 @@ const props = defineProps<{
   configError?: string
   expanded?: boolean
   locale?: DesignerLocaleOptions
-  modelValue: Record<string, unknown>
+  runtimeState: RuntimeHostRuntimeStatePayload
   namespace?: string
   open: boolean
   projection?: PagePreviewProjection
@@ -41,11 +46,11 @@ const emit = defineEmits<{
   error: [error: unknown]
   fieldChange: [payload: { field: string, values: Record<string, unknown> }]
   runtimeEvent: [payload: { event: string, nodeId: string }]
-  runtimeMounted: [event: PreviewRuntimeMountedEvent]
-  ready: [revision: string]
+  runtimeMounted: [event: PreviewRuntimeIdentity]
+  runtimeState: [event: PreviewRuntimeStateEvent]
+  ready: [event: PreviewRuntimeIdentity]
   submit: [values: Record<string, unknown>]
   'update:expanded': [expanded: boolean]
-  'update:modelValue': [value: Record<string, unknown>]
   'update:viewport': [viewport: PreviewViewport]
 }>()
 
@@ -62,11 +67,11 @@ function submitForm(): void {
   runtimeHost.value?.submit()
 }
 
-function handleRuntimeReady(revision: string): void {
-  if (revision !== props.projection?.current.revisionKey)
+function handleRuntimeReady(event: PreviewRuntimeIdentity): void {
+  if (event.revision !== props.projection?.current.revisionKey)
     return
   runtimeReady.value = true
-  emit('ready', revision)
+  emit('ready', event)
 }
 
 function handleRuntimeError(error: Error): void {
@@ -141,7 +146,7 @@ watch(
           :adapter="adapter"
           :compilation="compilation"
           :locale="locale.locale"
-          :model-value="modelValue"
+          :runtime-state="runtimeState"
           :namespace="namespace"
           :reaction-projection="reactionProjection"
           :revision="projection?.current.revisionKey ?? ''"
@@ -149,10 +154,10 @@ watch(
           :title="locale.t('preview.runtimeFrame', 'Page preview runtime')"
           @error="handleRuntimeError"
           @field-change="emit('fieldChange', $event)"
-          @model-value="emit('update:modelValue', $event)"
           @mounted="emit('runtimeMounted', $event)"
           @ready="handleRuntimeReady"
           @runtime-event="emit('runtimeEvent', $event)"
+          @runtime-state="emit('runtimeState', $event)"
           @submit="emit('submit', $event)"
         />
         <div v-else class="preview-errors">

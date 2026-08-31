@@ -3,14 +3,22 @@ import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { WorkbenchAdapterId } from '../adapters'
 
 export const RUNTIME_HOST_CHANNEL = 'mx-config-form-runtime-host'
-export const RUNTIME_HOST_PROTOCOL_VERSION = 1
+export const RUNTIME_HOST_PROTOCOL_VERSION = 2
 
 export interface RuntimeHostMessageBase {
   channel: typeof RUNTIME_HOST_CHANNEL
   version: typeof RUNTIME_HOST_PROTOCOL_VERSION
-  sessionId: string
+  hostId: string
+  projectId: string
+  pageId: string
   sequence: number
   revision: string
+}
+
+export interface RuntimeHostRuntimeStatePayload {
+  values: Record<string, unknown>
+  touched: string[]
+  validation: Record<string, string[]>
 }
 
 export interface RuntimeHostSyncMessage extends RuntimeHostMessageBase {
@@ -26,7 +34,7 @@ export interface RuntimeHostSyncMessage extends RuntimeHostMessageBase {
     variant: 'canvas' | 'drag-visual'
   }
   locale: string
-  modelValue: Record<string, unknown>
+  runtimeState: RuntimeHostRuntimeStatePayload
   namespace?: string
   reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
   runtimeSessionKey: string
@@ -38,7 +46,7 @@ export interface RuntimeHostSubmitMessage extends RuntimeHostMessageBase {
 
 export interface RuntimeHostStateMessage extends RuntimeHostMessageBase {
   type: 'state'
-  modelValue: Record<string, unknown>
+  runtimeState: RuntimeHostRuntimeStatePayload
   reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
 }
 
@@ -98,7 +106,7 @@ export type RuntimeHostToParentPayload
   = | { type: 'ready' | 'mounted' }
     | { type: 'geometry', payload: RuntimeHostGeometryPayload }
     | { type: 'designPointerDown' | 'designPointerMove' | 'designPointerUp' | 'designPointerCancel', payload: RuntimeHostDesignPointerPayload }
-    | { type: 'modelValue', value: Record<string, unknown> }
+    | { type: 'runtimeState', payload: RuntimeHostRuntimeStatePayload }
     | { type: 'submit', values: Record<string, unknown> }
     | { type: 'fieldChange', payload: RuntimeHostFieldChangePayload }
     | { type: 'runtimeEvent', payload: RuntimeHostComponentEventPayload }
@@ -115,8 +123,12 @@ function hasMessageBase(value: unknown): value is RuntimeHostMessageBase & Recor
     return false
   return value.channel === RUNTIME_HOST_CHANNEL
     && value.version === RUNTIME_HOST_PROTOCOL_VERSION
-    && typeof value.sessionId === 'string'
-    && value.sessionId.length > 0
+    && typeof value.hostId === 'string'
+    && value.hostId.length > 0
+    && typeof value.projectId === 'string'
+    && value.projectId.length > 0
+    && typeof value.pageId === 'string'
+    && value.pageId.length > 0
     && Number.isSafeInteger(value.sequence)
     && Number(value.sequence) >= 0
     && typeof value.revision === 'string'
@@ -142,6 +154,17 @@ function isReactionProjection(value: unknown): value is ConfigFormReactionProjec
     && isRecord(value.states)
     && Array.isArray(value.validate)
     && value.validate.every(field => typeof field === 'string')
+}
+
+function isRuntimeState(value: unknown): value is RuntimeHostRuntimeStatePayload {
+  return isRecord(value)
+    && isRecord(value.values)
+    && Array.isArray(value.touched)
+    && value.touched.every(field => typeof field === 'string' && field.length > 0)
+    && isRecord(value.validation)
+    && Object.entries(value.validation).every(([field, errors]) => field.length > 0
+      && Array.isArray(errors)
+      && errors.every(error => typeof error === 'string'))
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -190,12 +213,14 @@ export function isParentToRuntimeHostMessage(value: unknown): value is ParentToR
   if (value.type === 'submit')
     return true
   if (value.type === 'state') {
-    return isRecord(value.modelValue)
+    return isRuntimeState(value.runtimeState)
       && isReactionProjection(value.reactionProjection)
   }
   return value.type === 'sync'
     && (value.adapter === 'antd-vue' || value.adapter === 'element-plus')
     && isPageCompilation(value.compilation)
+    && value.projectId === value.compilation.snapshotIdentity.projectId
+    && value.pageId === value.compilation.snapshotIdentity.pageId
     && (value.mode === 'design' || value.mode === 'preview')
     && (value.mode === 'preview'
       ? value.design === undefined
@@ -206,7 +231,7 @@ export function isParentToRuntimeHostMessage(value: unknown): value is ParentToR
         && (value.design.candidateUsesFallback === undefined || typeof value.design.candidateUsesFallback === 'boolean')
         && (value.design.canvasWidth === undefined || (isFiniteNumber(value.design.canvasWidth) && value.design.canvasWidth >= 0)))
       && typeof value.locale === 'string'
-      && isRecord(value.modelValue)
+      && isRuntimeState(value.runtimeState)
       && (value.namespace === undefined || typeof value.namespace === 'string')
       && isReactionProjection(value.reactionProjection)
       && typeof value.runtimeSessionKey === 'string'
@@ -235,8 +260,8 @@ export function isRuntimeHostToParentMessage(value: unknown): value is RuntimeHo
       && typeof value.payload.shiftKey === 'boolean'
       && (value.payload.nodeId === undefined || (typeof value.payload.nodeId === 'string' && value.payload.nodeId.length > 0))
   }
-  if (value.type === 'modelValue')
-    return isRecord(value.value)
+  if (value.type === 'runtimeState')
+    return isRuntimeState(value.payload)
   if (value.type === 'submit')
     return isRecord(value.values)
   if (value.type === 'fieldChange') {
@@ -260,14 +285,23 @@ export function acceptsRuntimeHostMessageEvent<T extends RuntimeHostMessageBase>
   event: MessageEvent<unknown>,
   options: {
     guard: (value: unknown) => value is T
+    hostId?: string
     origin: string
-    sessionId?: string
+    pageId?: string
+    projectId?: string
+    revision?: string
     source: MessageEventSource | null
   },
 ): T | undefined {
   if (event.source !== options.source || event.origin !== options.origin || !options.guard(event.data))
     return undefined
-  if (options.sessionId !== undefined && event.data.sessionId !== options.sessionId)
+  if (options.hostId !== undefined && event.data.hostId !== options.hostId)
+    return undefined
+  if (options.projectId !== undefined && event.data.projectId !== options.projectId)
+    return undefined
+  if (options.pageId !== undefined && event.data.pageId !== options.pageId)
+    return undefined
+  if (options.revision !== undefined && event.data.revision !== options.revision)
     return undefined
   return event.data
 }
