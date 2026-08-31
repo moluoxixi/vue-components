@@ -443,3 +443,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 20: ConfigForm 持久化与故障恢复收口
+
+**Date**: 2026-08-31
+**Task**: ConfigForm 持久化与故障恢复收口
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 Workbench 自动保存、recovery draft、版本历史、跨标签页协调、IndexedDB v3 迁移与 UI；修复键盘物料拖拽首次渲染竞态并加入可取消重试。通过 Model 53/53、Workbench 185/185、Designer 19/19、完整 E2E 23/23、重复拖拽 20/20、typecheck、build、lint 和 diff check。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0a3f0051` | (see git log) |
+
+### Status
+
+[OK] **Completed**
