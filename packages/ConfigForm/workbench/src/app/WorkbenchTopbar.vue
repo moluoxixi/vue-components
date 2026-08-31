@@ -237,8 +237,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
         type="button"
         class="topbar-secondary-action"
         :class="{ 'is-active': flowOpen }"
-        :title="locale.t('flow.dialog.title', 'Flow orchestration')"
-        :aria-label="locale.t('flow.dialog.title', 'Flow orchestration')"
+        :title="locale.t('flow.dialog.title', 'Event flow orchestration')"
+        :aria-label="locale.t('flow.dialog.title', 'Event flow orchestration')"
         :aria-expanded="flowOpen"
         data-flow-workspace-trigger
         @click="emit('openFlow')"
@@ -285,7 +285,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
           <button v-if="application" type="button" role="menuitem" @click="chooseMobileAction('openPages')"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('newPage')"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></button>
           <button type="button" role="menuitem" :disabled="!dirty || !!configError || busy" @click="chooseMobileAction('save')"><Save :size="15" aria-hidden="true" /><span>{{ locale.t('action.save', 'Save') }}</span></button>
-          <button v-if="application" type="button" role="menuitem" @click="chooseMobileAction('openFlow')"><Workflow :size="15" aria-hidden="true" /><span>{{ locale.t('flow.dialog.title', 'Flow orchestration') }}</span></button>
+          <button v-if="application" type="button" role="menuitem" @click="chooseMobileAction('openFlow')"><Workflow :size="15" aria-hidden="true" /><span>{{ locale.t('flow.dialog.title', 'Event flow orchestration') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('toggleLocale')"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('toggleTheme')"><Sun v-if="theme === 'dark'" :size="15" aria-hidden="true" /><Moon v-else :size="15" aria-hidden="true" /><span>{{ theme === 'dark' ? locale.t('theme.useLight', 'Use light theme') : locale.t('theme.useDark', 'Use dark theme') }}</span></button>
         </div>

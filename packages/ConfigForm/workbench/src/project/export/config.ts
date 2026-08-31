@@ -65,10 +65,11 @@ function initialValue(node: Extract<PageNode, { kind: 'field' }>, binding: Canon
   return ''
 }
 
-function designerMetadata(node: PageNode): Record<string, unknown> {
+function designerMetadata(node: PageNode, placement: Record<string, unknown>): Record<string, unknown> {
   return {
     id: node.id,
     material: node.component,
+    placement,
     ...(Object.keys(node.events).length === 0 ? {} : { events: node.events }),
     ...(Object.keys(node.bindings).length === 0 ? {} : { bindings: node.bindings }),
     ...(node.kind === 'field' ? { hasDefaultValue: node.defaultValue !== undefined } : {}),
@@ -94,7 +95,7 @@ function runtimeNode(
     ...(node.reactions === undefined ? {} : { reactions: node.reactions }),
     extensions: {
       ...(node.extensions ?? {}),
-      'mx.config-form-designer': designerMetadata(node),
+      'mx.config-form-designer': designerMetadata(node, placement),
     },
   }
   if (node.kind === 'field') {
@@ -168,6 +169,11 @@ ${formatValueModel(values)}
 
 const { defineField } = defineFields<PageFormValues>()
 
+export const graph = ${formatStaticValue({
+  version: page.graph.version,
+  props: page.graph.props,
+})}
+
 export const form = ${formatStaticValue(page.graph.form)}
 
 export const initialValues: PageFormValues = ${formatStaticValue(values)}
@@ -229,12 +235,14 @@ export function createCanonicalProjectConfigExport(
     config: `./pages/${directories.get(page.id)}/form.config`,
   }))
   files[entry] = textFile(`export const project = ${formatStaticValue({
+    schemaVersion: document.schemaVersion,
     id: document.id,
     name: document.name,
     homePageId: document.homePageId,
     pages: projectPages,
     settings: document.settings,
     resources: document.resources,
+    registryLock: document.registryLock,
   })}\n`, 'typescript')
 
   return { entry, files }

@@ -1,6 +1,7 @@
 import type {
   CanonicalProjectIdentity,
   ProjectCompilation,
+  ProjectCompilationOrigin,
 } from '@moluoxixi/config-form-compiler'
 import type { ProjectPath, WorkspaceFile } from '../types'
 import type { CanonicalSourceBindingResolver } from './canonical-bindings'
@@ -49,15 +50,23 @@ export interface CreateExportSessionOptions {
   build?: (input: BuildExportSnapshotInput) => ExportSnapshot
   capture: () => BuildExportSnapshotInput | undefined
   currentCompilation: () => ProjectCompilation | undefined
+  currentGeneratorVersion?: () => string
 }
 
 function cloneSnapshotFile(file: WorkspaceFile): Readonly<WorkspaceFile> {
-  return Object.freeze(file.kind === 'text'
-    ? { ...file }
-    : { ...file, content: Uint8Array.from(file.content) })
+  if (file.kind === 'text')
+    return Object.freeze({ ...file })
+
+  const content = Uint8Array.from(file.content)
+  return Object.freeze({
+    ...file,
+    get content() {
+      return Uint8Array.from(content)
+    },
+  })
 }
 
-function createExportFileSet(
+export function createExportFileSet(
   entryInput: ProjectPath,
   sourceFiles: Readonly<Record<ProjectPath, WorkspaceFile>>,
 ): ExportFileSet {
@@ -108,11 +117,28 @@ export function isSameCompilation(
     && left.irHash === right.irHash
 }
 
+export function isSameCompilationOrigin(
+  left: ProjectCompilationOrigin,
+  right: ProjectCompilationOrigin,
+): boolean {
+  if (left.kind === 'committed')
+    return right.kind === 'committed' && left.editVersion === right.editVersion
+  return right.kind === 'draft'
+    && left.baseEditVersion === right.baseEditVersion
+    && left.draftId === right.draftId
+}
+
 export function isExportSnapshotStale(
   snapshot: ExportSnapshot | undefined,
   current: ProjectCompilation | undefined,
+  currentGeneratorVersion: string = CONFIG_FORM_EXPORT_GENERATOR_VERSION,
 ): boolean {
-  return !!snapshot && (!current || !isSameCompilation(snapshot.compilation.key, current.key))
+  return !!snapshot && (
+    !current
+    || snapshot.generatorVersion !== currentGeneratorVersion
+    || !isSameCompilation(snapshot.compilation.key, current.key)
+    || !isSameCompilationOrigin(snapshot.compilation.origin, current.origin)
+  )
 }
 
 export function resolveExportSnapshotPath(
@@ -130,6 +156,8 @@ export function resolveExportSnapshotPath(
 
 export function createExportSession(options: CreateExportSessionOptions): ExportSession {
   const build = options.build ?? buildExportSnapshot
+  const currentGeneratorVersion = options.currentGeneratorVersion
+    ?? (() => CONFIG_FORM_EXPORT_GENERATOR_VERSION)
   const listeners = new Set<(state: ExportSessionState) => void>()
   let state: ExportSessionState = Object.freeze({ stale: false })
 
@@ -140,7 +168,11 @@ export function createExportSession(options: CreateExportSessionOptions): Export
   }
 
   function sync(): ExportSessionState {
-    const stale = isExportSnapshotStale(state.snapshot, options.currentCompilation())
+    const stale = isExportSnapshotStale(
+      state.snapshot,
+      options.currentCompilation(),
+      currentGeneratorVersion(),
+    )
     if (stale === state.stale)
       return state
     return publish({ ...state, stale })
@@ -154,7 +186,14 @@ export function createExportSession(options: CreateExportSessionOptions): Export
     }
     try {
       const snapshot = build(input)
-      const next = publish({ snapshot, stale: false })
+      const next = publish({
+        snapshot,
+        stale: isExportSnapshotStale(
+          snapshot,
+          options.currentCompilation(),
+          currentGeneratorVersion(),
+        ),
+      })
       return { success: true, snapshot, state: next }
     }
     catch (cause) {
@@ -162,7 +201,11 @@ export function createExportSession(options: CreateExportSessionOptions): Export
       const next = publish({
         ...(state.snapshot ? { snapshot: state.snapshot } : {}),
         error,
-        stale: isExportSnapshotStale(state.snapshot, options.currentCompilation()),
+        stale: isExportSnapshotStale(
+          state.snapshot,
+          options.currentCompilation(),
+          currentGeneratorVersion(),
+        ),
       })
       return { success: false, error, state: next }
     }

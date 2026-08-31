@@ -60,6 +60,7 @@ interface StandaloneSourceNodeBase {
   component: string
   props: ModelJsonObject
   events: Record<string, RegisteredEventAction[]>
+  flowEvents: string[]
   bindings: Record<string, RegisteredBinding>
   placement: ModelJsonObject
   conditions?: Partial<Record<ConditionTarget, ConditionExpression>>
@@ -141,12 +142,16 @@ function createLegacySourceRegistry(registry: LowCodeComponentRegistry): Standal
   return { get: component => definitions.get(component) }
 }
 
-function legacySourceNode(node: LowCodeNode): StandaloneSourceNode {
+function legacySourceNode(
+  node: LowCodeNode,
+  flowEventsByNode: ReadonlyMap<string, readonly string[]>,
+): StandaloneSourceNode {
   const common: StandaloneSourceNodeBase = {
     id: node.id,
     component: node.component,
     props: structuredClone(node.props),
     events: structuredClone(node.events),
+    flowEvents: [...(flowEventsByNode.get(node.id) ?? [])],
     bindings: structuredClone(node.bindings),
     placement: node.span === undefined ? {} : { span: node.span },
     ...(node.conditions === undefined ? {} : { conditions: structuredClone(node.conditions) }),
@@ -164,21 +169,23 @@ function legacySourceNode(node: LowCodeNode): StandaloneSourceNode {
 
   const slots = Object.fromEntries(Object.entries(node.slots).map(([name, children]) => [
     name,
-    children.map(legacySourceNode),
+    children.map(child => legacySourceNode(child, flowEventsByNode)),
   ]))
   if (node.children.length > 0)
-    slots.default = node.children.map(legacySourceNode)
+    slots.default = node.children.map(child => legacySourceNode(child, flowEventsByNode))
   return { ...common, kind: 'layout', slots }
 }
 
 function legacySourcePage(model: LowCodePageModel, route = '/'): StandaloneSourcePage {
+  const flowPlans = compileStandaloneFlowPlans(model.flows ?? [], model.id)
+  const flowEvents = collectFlowEventsByNode(flowPlans)
   return {
     id: model.id,
     name: model.name,
     route,
     form: structuredClone(model.form),
-    root: model.nodes.map(legacySourceNode),
-    flowPlans: compileStandaloneFlowPlans(model.flows ?? [], model.id),
+    root: model.nodes.map(node => legacySourceNode(node, flowEvents)),
+    flowPlans,
   }
 }
 
@@ -225,6 +232,7 @@ function canonicalSourceNode(
     component: node.component,
     props: structuredClone(node.props),
     events: structuredClone(node.events),
+    flowEvents: [...(node.flowEvents ?? [])],
     bindings: structuredClone(node.bindings),
     placement: structuredClone(node.placement.props),
     ...(node.conditions === undefined ? {} : { conditions: structuredClone(node.conditions) }),
@@ -275,6 +283,21 @@ function compileStandaloneFlowPlans(
     }
     return result.plan
   })
+}
+
+function collectFlowEventsByNode(
+  plans: readonly ConfigFormFlowExecutionPlan[],
+): ReadonlyMap<string, readonly string[]> {
+  const eventsByNode = new Map<string, Set<string>>()
+  for (const plan of plans) {
+    const trigger = plan.trigger
+    if (trigger.kind !== 'component.event' || !trigger.nodeId || !trigger.event)
+      continue
+    const events = eventsByNode.get(trigger.nodeId) ?? new Set<string>()
+    events.add(trigger.event)
+    eventsByNode.set(trigger.nodeId, events)
+  }
+  return new Map([...eventsByNode].map(([nodeId, events]) => [nodeId, [...events].sort()] as const))
 }
 
 function quote(value: string): string {
@@ -370,7 +393,7 @@ function collectInitialValues(
 
 function flowSource(plans: readonly ConfigFormFlowExecutionPlan[]): string {
   const serialized = scriptJson(plans, 2)
-  return `export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'field.change', field?: string }
+  return `export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'field.change' | 'component.event', field?: string, nodeId?: string, event?: string }
 export type FlowValues = Record<string, unknown>
 export type FlowAction = (input: unknown, context: { flowId: string, nodeId: string, values: FlowValues, outputs: Readonly<Record<string, unknown>>, signal: AbortSignal }) => unknown | Promise<unknown>
 export type GeneratedFlowNode = { id: string, type: string, ref?: string, config?: Record<string, unknown>, outgoing: GeneratedFlowEdge[], incoming: GeneratedFlowEdge[] }
@@ -832,7 +855,12 @@ export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}, sig
   let committed = false
   let flowError: string | undefined
   for (const flow of flowPlans) {
-    if (flow.trigger.kind !== trigger.kind || (flow.trigger.field && flow.trigger.field !== trigger.field))
+    if (
+      flow.trigger.kind !== trigger.kind
+      || (flow.trigger.field && flow.trigger.field !== trigger.field)
+      || (flow.trigger.nodeId && flow.trigger.nodeId !== trigger.nodeId)
+      || (flow.trigger.event && flow.trigger.event !== trigger.event)
+    )
       continue
     matched = true
     const result = await scheduleFlow(flow, values, signal)
@@ -870,6 +898,9 @@ function assertPortableNode(node: StandaloneSourceNode, registry: StandaloneSour
     if (actions.some(action => typeof action.action !== 'string' || !action.action.trim()))
       throw new Error(`Node "${node.id}" event "${eventName}" contains an invalid action ref.`)
   }
+  const unknownFlowEvent = node.flowEvents.find(eventName => !eventNames.has(eventName))
+  if (unknownFlowEvent)
+    throw new Error(`Node "${node.id}" Flow uses unregistered event "${unknownFlowEvent}".`)
 
   const bindingNames = new Set(definition.bindings.map(binding => binding.name))
   for (const [bindingName, binding] of Object.entries(node.bindings)) {
@@ -888,7 +919,8 @@ function kebabCase(value: string): string {
 
 function sourceEventBindings(node: StandaloneSourceNode, updateEvent?: string): string {
   const nodeId = quote(node.id)
-  return Object.keys(node.events)
+  const eventNames = [...new Set([...node.flowEvents, ...Object.keys(node.events)])]
+  return eventNames
     .filter(eventName => kebabCase(eventName) !== updateEvent)
     .map(eventName => ` @${escapeHtml(kebabCase(eventName))}='runNodeEvent(${nodeId}, ${quote(eventName)}, $event)'`)
     .join('')
@@ -1133,7 +1165,7 @@ function applyRuntimeProjection(): void {
   }
 }
 
-async function runTrigger(trigger: { kind: FlowTrigger['kind'], field?: string }): Promise<void> {
+async function runTrigger(trigger: FlowTrigger): Promise<void> {
   const snapshot = { ...model }
   try {
     const result = await runFlows(trigger, snapshot, flowLifecycle.signal)
@@ -1175,6 +1207,7 @@ async function runNodeEvent(nodeId: string, eventName: string, payload: unknown)
       return
     }
   }
+  await runTrigger({ kind: 'component.event', nodeId, event: eventName })
 }
 
 function handleFieldUpdate(nodeId: string, field: string, eventName: string, payload: unknown): void {

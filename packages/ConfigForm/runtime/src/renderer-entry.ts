@@ -10,6 +10,7 @@ import type {
   ConfigFormRendererEmits,
   ConfigFormRendererExpose,
   ConfigFormRendererProps,
+  ConfigFormRuntimeEventPayload,
 } from './renderer/types'
 import ConfigFormRendererSource from './renderer/ConfigFormRenderer.vue'
 
@@ -29,6 +30,7 @@ export type ConfigFormRendererComponentProps<TValues extends ConfigFormValues = 
     'onError'?: (errors: ConfigFormErrors) => unknown
     'onFieldChange'?: (payload: ConfigFormFieldChangePayload<TValues>) => unknown
     'onMetaChange'?: (meta: ConfigFormMeta) => unknown
+    'onRuntimeEvent'?: (context: ConfigFormRuntimeEventPayload<TValues>) => unknown
     'onSubmit'?: (values: TValues) => unknown
     'onUpdate:modelValue'?: (value: TValues) => unknown
   }

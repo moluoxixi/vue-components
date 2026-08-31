@@ -377,16 +377,14 @@
   container-name: preview-runtime;
   container-type: inline-size;
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
   min-height: 100%;
   margin: 0 auto;
   background: #fff;
   transition: width 160ms ease;
-}
-
-.preview-runtime-boundary {
-  min-height: 100%;
 }
 
 .preview-stage[data-viewport="tablet"] {
@@ -399,13 +397,31 @@
   border-inline: 1px solid #c8d1dc;
 }
 
-.page-preview-form {
-  width: min(760px, 100%);
-  margin: 0 auto;
-  padding: 24px;
-  border: 1px solid #d5dce5;
-  border-radius: 6px;
+.preview-runtime-host {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 420px;
+  border: 0;
   background: #fff;
+}
+
+.design-runtime-host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: #fff;
+}
+
+.design-runtime-host.is-canvas {
+  min-height: 1px;
+}
+
+.design-runtime-host.is-drag-visual {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .preview-errors {

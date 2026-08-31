@@ -440,19 +440,36 @@
 
 .mx-config-form-designer__canvas {
   position: relative;
+  display: grid;
   min-width: 0;
   min-height: 0;
-  padding: 28px 30px 34px;
-  overflow: auto;
+  overflow: hidden;
   background: var(--mx-designer-canvas);
 }
 
+.mx-config-form-designer__canvas-viewport {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 28px 30px 64px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.mx-config-form-designer__camera-sizer {
+  position: relative;
+  min-width: 1px;
+  min-height: 1px;
+  margin: 0 auto;
+}
+
 .mx-config-form-designer__canvas-tools {
-  position: sticky;
+  position: absolute;
   z-index: 120;
-  top: 0;
+  top: 12px;
+  right: 14px;
   width: 136px;
-  margin: 0 0 10px auto;
   background: color-mix(in srgb, var(--mx-designer-overlay) 96%, transparent);
   border: 1px solid var(--mx-designer-border);
   border-radius: 5px;
@@ -465,30 +482,103 @@
 }
 
 .mx-config-form-designer__canvas-sheet {
-  position: relative;
-  width: min(100%, 900px);
-  min-height: 100%;
-  margin: 0 auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 900px;
+  min-height: 560px;
+  margin: 0;
   padding: 28px;
   color: var(--mx-designer-runtime-text);
   background: var(--mx-designer-canvas-sheet);
   border: 1px solid var(--mx-designer-runtime-border);
   border-radius: 8px;
   box-shadow: 0 12px 30px rgb(15 23 42 / 7%);
+  transform-origin: top left;
+  will-change: transform;
 }
 
 .mx-config-form-designer__canvas-sheet[data-sheet-breakpoint="tablet"] {
-  width: min(100%, 720px);
+  width: 720px;
 }
 
 .mx-config-form-designer__canvas-sheet[data-sheet-breakpoint="mobile"] {
-  width: min(100%, 390px);
+  width: 390px;
+}
+
+.mx-config-form-designer__camera-controls {
+  position: absolute;
+  z-index: 180;
+  bottom: 12px;
+  left: 50%;
+  display: flex;
+  min-height: 32px;
+  padding: 2px;
+  color: var(--mx-designer-text);
+  background: color-mix(in srgb, var(--mx-designer-overlay) 96%, transparent);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px var(--mx-designer-shadow);
+  align-items: center;
+  gap: 1px;
+  transform: translateX(-50%);
+}
+
+.mx-config-form-designer__camera-controls .mx-config-form-designer__icon-button {
+  width: 28px;
+  height: 26px;
+}
+
+.mx-config-form-designer__camera-controls .is-active {
+  color: var(--mx-designer-accent);
+  background: var(--mx-designer-accent-soft);
+  border-color: color-mix(in srgb, var(--mx-designer-accent) 36%, var(--mx-designer-border));
+}
+
+.mx-config-form-designer__camera-percent {
+  min-width: 50px;
+  height: 26px;
+  padding: 0 6px;
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__camera-percent:hover,
+.mx-config-form-designer__camera-percent:focus-visible {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-hover);
+  border-color: var(--mx-designer-control-border);
+}
+
+.mx-config-form-designer__camera-separator {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--mx-designer-border);
+}
+
+.mx-config-form-designer__camera-gesture-layer {
+  position: absolute;
+  z-index: 170;
+  cursor: grab;
+  inset: 0;
+  touch-action: none;
+}
+
+.mx-config-form-designer__camera-gesture-layer.is-panning {
+  cursor: grabbing;
 }
 
 .mx-config-form-designer__node-actions {
   position: absolute;
   z-index: 100;
-  top: -6px;
+  top: calc(-6px * var(--mx-designer-camera-inverse-scale, 1));
   left: -1px;
   display: none;
   width: max-content;
@@ -504,7 +594,8 @@
   overflow: visible;
   pointer-events: auto;
   scrollbar-width: thin;
-  transform: translateY(-100%);
+  transform: translateY(-100%) scale(var(--mx-designer-camera-inverse-scale, 1));
+  transform-origin: bottom left;
 }
 
 .mx-config-form-designer__node-actions .mx-config-form-designer__icon-button {
@@ -639,10 +730,12 @@
   box-sizing: border-box;
   overflow: hidden;
   opacity: 0.64;
-  border: 1px solid color-mix(in srgb, var(--mx-designer-accent-line) 76%, transparent);
+  border: 0;
   border-radius: 5px;
   background: var(--mx-designer-runtime-surface);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 24%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--mx-designer-accent-line) 76%, transparent),
+    0 10px 28px rgb(0 0 0 / 24%);
   contain: layout paint style;
   pointer-events: none;
   user-select: none;
@@ -652,6 +745,11 @@
 .mx-config-form-designer__drag-overlay * {
   pointer-events: none !important;
   user-select: none !important;
+}
+
+.mx-config-form-designer__drag-overlay-content {
+  width: 100%;
+  height: 100%;
 }
 
 .mx-config-form-designer__canvas-empty {
@@ -676,7 +774,7 @@
   position: absolute;
   box-sizing: border-box;
   background: color-mix(in srgb, var(--mx-designer-accent-soft) 42%, transparent);
-  border: 2px dashed var(--mx-designer-accent-line);
+  border: calc(2px * var(--mx-designer-camera-inverse-scale, 1)) dashed var(--mx-designer-accent-line);
   border-radius: 5px;
   pointer-events: none;
 }
@@ -694,6 +792,8 @@
   box-shadow: 0 1px 3px rgb(15 23 42 / 14%);
   place-items: center;
   pointer-events: auto;
+  transform: scale(var(--mx-designer-camera-inverse-scale, 1));
+  transform-origin: top left;
 }
 
 .mx-config-form-designer__design-policy-spot:focus-visible {
@@ -706,10 +806,10 @@
   box-sizing: border-box;
   border: 0;
   border-radius: 3px;
-  outline: 1px solid color-mix(in srgb, var(--mx-designer-accent) 68%, transparent);
+  outline: calc(1px * var(--mx-designer-camera-inverse-scale, 1)) solid color-mix(in srgb, var(--mx-designer-accent) 68%, transparent);
   // Keep the editor chrome visibly outside the Runtime control. The explicit
   // gap makes selection distinct from a component-library focus ring.
-  outline-offset: 5px;
+  outline-offset: calc(5px * var(--mx-designer-camera-inverse-scale, 1));
   pointer-events: none;
   transition: outline-color 100ms ease, outline-offset 100ms ease;
 }
@@ -720,18 +820,18 @@
 
 .mx-config-form-designer__selection-box.is-resizing {
   cursor: ew-resize;
-  outline-offset: 4px;
+  outline-offset: calc(4px * var(--mx-designer-camera-inverse-scale, 1));
 }
 
 // Component libraries commonly reset focused tabindex=-1 elements; keep the editor selection visible.
 .mx-config-form-designer__selection-box.is-primary:focus {
-  outline: 1px solid var(--mx-designer-accent);
-  outline-offset: 5px;
+  outline: calc(1px * var(--mx-designer-camera-inverse-scale, 1)) solid var(--mx-designer-accent);
+  outline-offset: calc(5px * var(--mx-designer-camera-inverse-scale, 1));
 }
 
 .mx-config-form-designer__selection-box.is-primary:focus-visible {
-  outline: 1px solid var(--mx-designer-accent);
-  outline-offset: 5px;
+  outline: calc(1px * var(--mx-designer-camera-inverse-scale, 1)) solid var(--mx-designer-accent);
+  outline-offset: calc(5px * var(--mx-designer-camera-inverse-scale, 1));
 }
 
 .mx-config-form-designer__selection-box.is-primary > .mx-config-form-designer__node-actions {
@@ -756,7 +856,7 @@
   position: absolute;
   z-index: 110;
   top: 50%;
-  right: -4px;
+  right: calc(-4px * var(--mx-designer-camera-inverse-scale, 1));
   width: 7px;
   height: 18px;
   padding: 0;
@@ -764,7 +864,8 @@
   border: 1px solid var(--mx-designer-runtime-surface);
   border-radius: 3px;
   cursor: ew-resize;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scale(var(--mx-designer-camera-inverse-scale, 1));
+  transform-origin: center right;
 }
 
 .mx-config-form-designer__resize-handle::after {
@@ -815,6 +916,67 @@
 
 .mx-config-form-designer__property-fields[hidden] {
   display: none;
+}
+
+.mx-config-form-designer__event-flows {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+}
+
+.mx-config-form-designer__event-flows > button {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 7px 8px;
+  align-items: center;
+  grid-template-columns: 18px minmax(0, 1fr) 16px;
+  gap: 7px;
+  color: var(--mx-designer-text);
+  text-align: left;
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__event-flows > button:hover:not(:disabled),
+.mx-config-form-designer__event-flows > button:focus-visible {
+  background: var(--mx-designer-hover);
+  border-color: var(--mx-designer-accent);
+  outline: 0;
+}
+
+.mx-config-form-designer__event-flows > button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.mx-config-form-designer__event-flows > button > svg {
+  color: var(--mx-designer-accent);
+}
+
+.mx-config-form-designer__event-flows > button > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mx-config-form-designer__event-flows strong,
+.mx-config-form-designer__event-flows code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__event-flows strong {
+  font-size: 12px;
+}
+
+.mx-config-form-designer__event-flows code {
+  color: var(--mx-designer-muted);
+  font-size: 10px;
 }
 
 .mx-config-form-designer-property-form,
@@ -1492,16 +1654,8 @@
   border: 0;
 }
 
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__canvas {
-  padding: 12px;
-}
-
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__canvas-sheet {
-  padding: 16px;
-}
-
-.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__canvas-sheet [class*="config-form__row--grid"] {
-  gap: 12px 6px !important;
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__canvas-viewport {
+  padding: 12px 12px 58px;
 }
 
 .mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-heading,

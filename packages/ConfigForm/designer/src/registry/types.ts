@@ -86,6 +86,12 @@ export interface DesignerMaterialParentDefinition {
   slot: string
 }
 
+/** Component event that may be selected as a Flow trigger. */
+export interface DesignerMaterialEventDefinition {
+  name: string
+  title: string
+}
+
 export interface DesignerRuntimeMaterialBinding {
   component: Component | string
   designerComponent?: Component | string
@@ -175,6 +181,8 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   runtime: DesignerRuntimeMaterialBinding
   source?: DesignerSourceMaterialBinding
   designPolicy?: DesignerDesignPolicy
+  /** Explicit non-binding events exposed to Flow orchestration. */
+  events?: DesignerMaterialEventDefinition[]
   /** When present, the material is structural and may only exist in these parent slots. */
   allowedParents?: DesignerMaterialParentDefinition[]
   setters: DesignerPropertySetterDefinition[]

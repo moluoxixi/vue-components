@@ -284,6 +284,39 @@ describe('config form designer', () => {
     })
   })
 
+  it('keeps intrinsic frame widths separate from transient canvas camera state', async () => {
+    const wrapper = mount(ConfigFormDesigner, {
+      props: { document: twoFieldDocument(), registry },
+    })
+    const viewport = wrapper.get('[data-canvas-camera-viewport]')
+    ;(viewport.element as HTMLElement).style.padding = '0'
+    Object.defineProperty(viewport.element, 'clientWidth', { configurable: true, value: 450 })
+
+    await wrapper.get('button[aria-label="Fit canvas"]').trigger('click')
+    const canvas = wrapper.get('.mx-config-form-designer__canvas')
+    const sheet = wrapper.get('.mx-config-form-designer__canvas-sheet')
+    expect(sheet.attributes()).toMatchObject({
+      'data-intrinsic-width': '900',
+      'data-sheet-breakpoint': 'desktop',
+    })
+    expect((sheet.element as HTMLElement).style.width).toBe('900px')
+    expect(Number(canvas.attributes('data-camera-scale'))).toBeCloseTo(0.5)
+    expect(canvas.attributes('data-camera-mode')).toBe('fit')
+
+    await wrapper.get('button[aria-label="Actual size"]').trigger('click')
+    expect(Number(canvas.attributes('data-camera-scale'))).toBe(1)
+    expect(canvas.attributes('data-camera-mode')).toBe('manual')
+    await wrapper.get('button[aria-label="Zoom out"]').trigger('click')
+    expect(Number(canvas.attributes('data-camera-scale'))).toBe(0.8)
+
+    await wrapper.get('button[aria-label="Mobile"]').trigger('click')
+    await wrapper.get('button[aria-label="Fit canvas"]').trigger('click')
+    expect(sheet.attributes('data-intrinsic-width')).toBe('390')
+    expect((sheet.element as HTMLElement).style.width).toBe('390px')
+    expect(Number(canvas.attributes('data-camera-scale'))).toBe(1)
+    expect(wrapper.emitted('update:document')).toBeUndefined()
+  })
+
   it('lays out root spans as one full row followed by three equal columns', async () => {
     const wrapper = mount(ConfigFormDesigner, {
       props: {
@@ -1268,7 +1301,11 @@ describe('config form designer', () => {
 
       const candidate = wrapper.get('[data-config-node-state~="candidate"]')
       expect(candidate.element.parentElement?.closest('[data-config-node-id]')?.getAttribute('data-config-node-id')).toBe('section')
-      expect(wrapper.get('.mx-config-form-designer__collapsed-drop-indicator').attributes('style')).toContain('height: 36px')
+      const indicatorHeight = Number.parseFloat(
+        (wrapper.get('.mx-config-form-designer__collapsed-drop-indicator').element as HTMLElement).style.height,
+      )
+      const cameraScale = Number(wrapper.get('.mx-config-form-designer__canvas').attributes('data-camera-scale'))
+      expect(indicatorHeight * cameraScale).toBe(36)
       expect(wrapper.emitted('update:document')).toBeUndefined()
 
       const pointercancel = new Event('pointercancel')
@@ -1530,6 +1567,8 @@ describe('config form designer', () => {
       },
     })
 
+    expect((wrapper.vm as any).$?.setupState.controller.history).toBeUndefined()
+
     expect(wrapper.find('.mx-config-form-designer__palette').exists()).toBe(true)
     expect(wrapper.find('.mx-config-form-designer__canvas').exists()).toBe(true)
     expect(wrapper.find('.mx-config-form-designer__properties').exists()).toBe(true)
@@ -1590,6 +1629,30 @@ describe('config form designer', () => {
     })
     expect(wrapper.emitted('modelOperation')).toBeUndefined()
     wrapper.unmount()
+  })
+
+  it('routes Workbench component events to Flow instead of editing legacy action references', async () => {
+    const designDocument = twoFieldDocument()
+    const wrapper = mount(DesignSurface, {
+      props: {
+        commandControl: { apply: vi.fn(() => true), applyModelOperation: vi.fn(() => true) },
+        document: designDocument,
+        eventEditor: 'flow',
+        historyControl: { canUndo: false, canRedo: false, undo: vi.fn(() => false), redo: vi.fn(() => false) },
+        model: designerDocumentToConfigModel(designDocument, { id: 'page', name: 'Page' }),
+        modelRegistry: createLowCodeComponentRegistry(registry),
+        registry,
+      },
+    })
+
+    ;(wrapper.vm as unknown as DesignSurfaceExpose).select('first')
+    await nextTick()
+    await wrapper.get('[data-property-tab="events"]').trigger('click')
+    const configure = wrapper.get('button[aria-label="Configure Value change event flow"]')
+    await configure.trigger('click')
+
+    expect(wrapper.emitted('configureEvent')).toEqual([['first', 'input']])
+    expect(wrapper.find('.mx-config-form-designer__property-fields:not([hidden]) .mx-config-form-designer-property-form').exists()).toBe(false)
   })
 
   it('keeps external workspace navigation authoritative when a medium drawer becomes narrow', async () => {

@@ -23,6 +23,7 @@ export type {
   ConfigFormRenderMode,
   ConfigFormRuntimeEditorBridge,
   ConfigFormRuntimeEventContext,
+  ConfigFormRuntimeEventPayload,
   ConfigFormRuntimeNodeMetadata,
   RuntimeEditorBridge,
   RuntimeEditorEventContext,

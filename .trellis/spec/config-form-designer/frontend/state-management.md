@@ -33,9 +33,11 @@ UI / plugin intent
   -> ProjectDomainEngine
 
 ProjectSnapshot
-  -> ProjectCompilation { snapshot, registry, key, ir }
+  -> CompileCoordinator
+     -> PageCompilation { snapshotIdentity, registryUsage, key, page }
      -> Design compatibility projection (temporary)
      -> Runtime/Preview projection
+  -> lazy ProjectCompilation { snapshot, registry, key, ir }
      -> pinned readonly ExportSnapshot
 
 ProjectSnapshot + candidate transaction
@@ -210,10 +212,69 @@ interface SlotItem {
 - Palette specimen styling must target Designer-owned wrapper classes. Broad
   descendant selectors such as `label`, `input`, or `button` are forbidden
   because the specimen is a real adapter Runtime and owns its internal DOM.
-- Successful semantic compilation returns one immutable `ProjectCompilation`
-  binding the compilation snapshot, Registry snapshot, compiler identity, and
-  Canonical IR. Runtime, Preview, Source, and Export must not pair these inputs
-  independently.
+- Realtime semantic compilation returns one immutable `PageCompilation`
+  binding snapshot identity, actually used Registry contracts, compiler
+  identity, and Canonical Page IR. `CompileCoordinator` consumes adjacent
+  `ProjectChangeSet.pageIds` plus page-qualified `nodeChanges`, reuses
+  unaffected page/key and node identities, keeps draft and committed caches
+  separate, and falls back to conservative invalidation when attribution is
+  missing. Runtime and Preview must not pair these inputs independently.
+- Canonical node identity must not duplicate sibling indexes or full ancestry
+  paths. Order belongs to `rootIds` / layout `slots`; parent and slot belong to
+  placement; a path is derived when traversing. Each node carries a subtree
+  hash so an updated leaf only recreates that node and its semantic ancestors.
+- Drag candidates created from a validated Project Transaction use the trusted
+  draft snapshot path. They must not reparse the complete ProjectDocument.
+  The Vue backend caches successful Runtime fragments by resolver and immutable
+  Canonical node identity; changed ancestors are rebuilt while unrelated real
+  component fragments retain object identity.
+- The Workbench may memoize successful committed Vue Runtime artifacts by exact
+  `PageCompilation.key` object identity. This cache is bounded, page-scoped,
+  cleared on project/adapter disposal, and must never admit draft or failed
+  artifacts. Reusing an unaffected page must skip both semantic and Vue backend
+  compilation.
+- Full `ProjectCompilation` assembly is reserved for an explicit readonly
+  Export capture/refresh. Ordinary Design edits invalidate the pinned Export
+  identity but do not compile other pages or rebuild generated files.
+- Design and Preview each run in a dedicated same-origin iframe RuntimeHost.
+  The parent sends only structured-cloneable `PageCompilation`, adapter
+  identity, presentation, values, reaction projection, and design-session
+  metadata. Vue Components, resolver functions, validators, DOM nodes, and
+  full Runtime plans never cross the message boundary; each iframe loads its
+  adapter and compiles the Vue Runtime plan in its own realm.
+- RuntimeHost messages use one versioned protocol with channel, session,
+  revision, and monotonic sequence identities. Both realms validate source,
+  origin, protocol version, session, and payload shape before accepting a
+  message. Replayed, stale-revision, or out-of-order messages are ignored.
+- Structural RuntimeHost sync and transient state sync are separate. Model or
+  Flow projection changes send only values/reaction state; they must not clone
+  or recompile the complete `PageCompilation`. A same-page revision keeps one
+  runtime session and does not emit `page.mount` again.
+- Each RuntimeHost realm loads provider CSS and owns its Teleport targets.
+  Workbench theme CSS must not enter the iframe. Component events crossing the
+  bridge are reduced to registered `{ nodeId, event }`; Runtime component
+  instances and event args remain inside the realm.
+- In the Workbench, the selected node's Registry events are authored through a
+  single Inspector-to-Flow path. The Inspector emits the exact stable
+  `{ nodeId, event }` target, the Flow dialog selects an existing matching Flow
+  or creates one from that event source, and all edits still commit through
+  Project Transactions. Designer's inline action-string event editor remains
+  available only to compatibility hosts that explicitly request it; it is not
+  a second Workbench event model.
+- Design Runtime nodes register geometry by stable `nodeId`; ancestry path and
+  slot are mutable traversal metadata, not registration identity. Candidate
+  moves between nested slots must update the registration without allowing an
+  old cleanup callback to remove the new geometry entry.
+- Selection, drop, resize, and node actions stay in the parent editor overlay.
+  The Design Runtime DOM remains an inert business tree. Geometry and pointer
+  messages are validated by the same versioned RuntimeHost protocol, and the
+  host must preserve pointer capture through down/move/up/cancel across the
+  iframe lifecycle.
+- Canvas candidate and pointer-following drag visual use separate Design
+  RuntimeHost instances fed by the same candidate `PageCompilation`. The drag
+  visual is not a hand-authored control or an editor-owned DOM approximation;
+  parity tests must compare stable node identity, visible DOM signature, and
+  measured geometry.
 - The current page ID is Design/Workbench navigation state, not a
   ProjectDomainEngine or ProjectEditorSessionSnapshot field. Switching pages
   republishes the relevant projection but does not create a project revision or
@@ -299,6 +360,13 @@ interface SlotItem {
   nested nodes select the deepest registered Runtime rectangle, and the same
   component remains interactive in Preview. These checks must run for every
   supported UI adapter.
+- RuntimeHost tests structured-clone a real `PageCompilation`, reject invalid
+  source/origin/session/version/payloads, exercise model/submit/field/component
+  events through the iframe, and prove provider Teleports plus Runtime computed
+  styles stay inside the iframe across Workbench Light/Dark changes. Design
+  tests additionally cover geometry sync, nested hit testing, pointer
+  down/move/up/cancel, stable registration across slot moves, and candidate /
+  drag-visual Runtime parity.
 
 ## 8. Wrong vs Correct
 
@@ -329,3 +397,115 @@ project.
 
 Correct: derive Design, Preview, Config, Source, and file-tree projections from
 the current immutable ProjectSnapshot.
+
+## 9. Readonly Export Snapshot Contract
+
+### 9.1 Scope / Trigger
+
+Apply this contract when changing Source/Config generation, the export dialog,
+single-file download, ZIP assembly, generator versions, or `WorkspaceFile`.
+Export is a reproducible-build boundary: every visible or downloaded artifact
+must belong to one exact editor snapshot and generator implementation.
+
+### 9.2 Signatures
+
+```ts
+interface ExportSnapshot {
+  readonly compilation: ProjectCompilation
+  readonly generatorVersion: string
+  readonly source: ExportFileSet
+  readonly config: ExportFileSet
+}
+
+interface CreateExportSessionOptions {
+  capture: () => BuildExportSnapshotInput | undefined
+  currentCompilation: () => ProjectCompilation | undefined
+  currentGeneratorVersion?: () => string
+}
+
+function isExportSnapshotStale(
+  snapshot: ExportSnapshot | undefined,
+  current: ProjectCompilation | undefined,
+  currentGeneratorVersion?: string,
+): boolean
+```
+
+### 9.3 Contracts
+
+- Snapshot identity includes `ProjectCompilation.key`, the complete committed
+  or draft `ProjectCompilation.origin`, and `generatorVersion`. A semantic key
+  match alone does not mean the authoring export is current.
+- `sync()` may compare identities but must not call `capture()` or compile the
+  whole project. Only opening or explicitly refreshing Export may generate
+  files.
+- Text and binary files are retained immutably. A binary `content` read returns
+  a defensive `Uint8Array` copy; mutating it cannot change later reads or ZIP
+  bytes.
+- File preview, copy, single-file download, and ZIP use the same pinned
+  `ExportFileSet`. Binary files are never coerced through a text getter.
+- Config source preserves `ProjectDocument.schemaVersion`, `registryLock`, page
+  graph version/props, complete `SlotItem.placement`, node authoring metadata,
+  and Flow editor positions. Runtime-compatible numeric `span` may also be
+  promoted, but it does not replace relation metadata.
+- `__proto__`, `constructor`, and `prototype` are rejected by one shared Config
+  object-key guard in both generation and legacy parsing.
+- Object URLs are revoked on a later task after the anchor click. Synchronous
+  revocation is forbidden because browsers may not have consumed the URL yet.
+
+### 9.4 Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Current compilation is missing | Existing snapshot is stale; retain its files |
+| Committed editVersion changes | Snapshot is stale even if semantic key is unchanged |
+| Draft base version or draftId changes | Snapshot is stale |
+| Generator version changes | Snapshot is stale |
+| Refresh generation fails | Preserve the previous complete snapshot and report the error |
+| Binary file is selected | Download exact bytes; text copy is disabled |
+| Unsafe Config object key appears at any depth | Fail generation with key and nested path |
+| Export entry path is absent | Reject the file set before publishing the snapshot |
+
+### 9.5 Good / Base / Bad Cases
+
+- Good: editing the model marks the open export stale, refresh atomically swaps
+  Source, Config, Tree, and ZIP to the new origin and generator version.
+- Base: switching files or Config Source/JSON/Tree views reads the existing
+  pinned snapshot without recompilation.
+- Bad: rebuilding only the selected file, pairing an old Config projection with
+  a new Source project, returning a retained `Uint8Array`, or serializing binary
+  content as an empty string.
+
+### 9.6 Tests Required
+
+- Unit: committed/draft origin and generator drift independently mark stale.
+- Unit: mutating the source buffer or a returned binary buffer cannot change a
+  subsequent read or archived bytes, including `0` and `255`.
+- Unit: text/binary Blob MIME and bytes, requested filename, and deferred URL
+  revocation are exact.
+- Unit: Config source preserves graph props, nested placement, Registry lock,
+  node metadata, and Flow positions; Babel parses every generated file.
+- Unit: all three unsafe keys fail in nested objects, `defineField`, and value
+  model generation.
+- Integration: Element Plus and Ant Design Vue standalone projects install,
+  type-check, and build from the pinned export.
+- Browser: Source/Config dialogs show a real tree and read-only Monaco, download
+  feedback succeeds, and the clean page has no warning/error logs.
+
+### 9.7 Wrong vs Correct
+
+Wrong:
+
+```ts
+const blob = new Blob([selectedFile.kind === 'text' ? selectedFile.content : ''])
+URL.revokeObjectURL(url)
+```
+
+Correct:
+
+```ts
+downloadWorkspaceFile({
+  file: snapshot.source.files[selectedPath]!,
+  filename: selectedPath.split('/').at(-1)!,
+})
+// The shared helper copies binary bytes and revokes the URL asynchronously.
+```

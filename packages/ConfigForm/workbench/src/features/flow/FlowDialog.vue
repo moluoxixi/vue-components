@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
+import type { ConfigFormFlow, ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions, ModelOperation } from '@moluoxixi/config-form-designer'
 import { X } from '@lucide/vue'
 import { computed, defineAsyncComponent, useTemplateRef } from 'vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { useWorkbenchDialogFocus } from '../../components/use-dialog-focus'
+import type { FlowEventTarget } from '../../flow/event-targets'
 
 type FlowOperation = Extract<ModelOperation, {
   type: 'addFlow'
@@ -17,7 +18,9 @@ type FlowOperation = Extract<ModelOperation, {
 
 const props = defineProps<{
   fieldNames?: string[]
+  eventTargets?: FlowEventTarget[]
   flows: ConfigFormFlow[]
+  initialTrigger?: ConfigFormFlowTrigger
   locale?: DesignerLocaleOptions
   open: boolean
   readonly?: boolean
@@ -51,15 +54,17 @@ const { handleKeydown } = useWorkbenchDialogFocus(
       @keydown="handleKeydown"
     >
       <header class="flow-workspace-dialog-header">
-        <h2 id="flow-workspace-dialog-title">{{ locale.t('flow.dialog.title', 'Flow orchestration') }}</h2>
-        <button type="button" :title="locale.t('flow.dialog.close', 'Close flow orchestration')" :aria-label="locale.t('flow.dialog.close', 'Close flow orchestration')" @click="emit('close')">
+        <h2 id="flow-workspace-dialog-title">{{ locale.t('flow.dialog.title', 'Event flow orchestration') }}</h2>
+        <button type="button" :title="locale.t('flow.dialog.close', 'Close event flow orchestration')" :aria-label="locale.t('flow.dialog.close', 'Close event flow orchestration')" @click="emit('close')">
           <X :size="17" aria-hidden="true" />
         </button>
       </header>
       <div class="flow-workspace-dialog-body">
         <FlowWorkspace
           :flows="flows"
+          :initial-trigger="initialTrigger"
           :field-names="fieldNames"
+          :event-targets="eventTargets"
           :locale="props.locale"
           :readonly="readonly"
           @operation="emit('operation', $event)"

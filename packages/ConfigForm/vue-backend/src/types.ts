@@ -1,6 +1,7 @@
 import type {
+  CanonicalPageIdentity,
   CanonicalProjectIdentity,
-  CanonicalProjectIR,
+  PageCompilation,
   ProjectCompilation,
 } from '@moluoxixi/config-form-compiler'
 import type {
@@ -11,7 +12,7 @@ import type {
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
 
-export type CanonicalRuntimePage = CanonicalProjectIR['pagesById'][string]
+export type CanonicalRuntimePage = PageCompilation['page']
 export type CanonicalRuntimeNode = CanonicalRuntimePage['nodesById'][string]
 export type CanonicalRuntimeFieldNode = Extract<CanonicalRuntimeNode, { readonly kind: 'field' }>
 
@@ -62,15 +63,14 @@ export interface VueRuntimeRenderPlan {
  * pairing a page plan with an independently captured project revision.
  */
 export interface VueRuntimeArtifact {
-  readonly compilationKey: Readonly<CanonicalProjectIdentity>
+  readonly compilationKey: Readonly<CanonicalPageIdentity | CanonicalProjectIdentity>
   readonly pageId: string
   readonly plan: Readonly<VueRuntimeRenderPlan>
 }
 
-export interface CompileCanonicalPageRuntimeInput {
-  compilation: ProjectCompilation
-  pageId: string
-}
+export type CompileCanonicalPageRuntimeInput
+  = | { compilation: PageCompilation, pageId?: never }
+    | { compilation: ProjectCompilation, pageId: string }
 
 export type VueRuntimeDiagnosticSeverity = 'error' | 'warning'
 

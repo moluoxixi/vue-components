@@ -1,3 +1,4 @@
+import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { Draft } from 'immer'
 import type {
   ComponentContract,
@@ -11,6 +12,8 @@ import type {
   PageId,
   PageNode,
   ProjectDocument,
+  ProjectNodeChange,
+  ProjectNodeRelation,
   ProjectOperation,
   ProjectPage,
   ProjectTransaction,
@@ -48,6 +51,7 @@ interface OperationResult {
   inverse: ProjectOperation[]
   changedPageIds: PageId[]
   changedNodeIds: NodeId[]
+  changedNodeChanges: ProjectNodeChange[]
 }
 
 interface ValidationPlan {
@@ -126,6 +130,7 @@ function applyProjectChange(
   const inverseOperations: ProjectOperation[] = []
   const changedPageIds = new Set<PageId>()
   const changedNodeIds = new Set<NodeId>()
+  const changedNodeChanges: ProjectNodeChange[] = []
   const validationPlan = createValidationPlan()
   let changedProject = false
   let draftCandidate: ProjectDocument
@@ -138,6 +143,7 @@ function applyProjectChange(
         changedProject ||= result.changedProject
         result.changedPageIds.forEach(pageId => changedPageIds.add(pageId))
         result.changedNodeIds.forEach(nodeId => changedNodeIds.add(nodeId))
+        changedNodeChanges.push(...result.changedNodeChanges)
         collectValidationPlan(validationPlan, operation, result)
       })
     })
@@ -164,6 +170,7 @@ function applyProjectChange(
       changedProject: false,
       changedPageIds: [],
       changedNodeIds: [],
+      changedNodeChanges: [],
     }
   }
 
@@ -214,6 +221,7 @@ function applyProjectChange(
     changedProject,
     changedPageIds: [...changedPageIds],
     changedNodeIds: [...changedNodeIds],
+    changedNodeChanges: normalizeNodeChanges(changedNodeChanges),
   }
 }
 
@@ -416,7 +424,13 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       const index = operation.index ?? flows.length
       assertInsertIndex(index, flows.length, 'PROJECT_FLOW_INDEX_INVALID')
       flows.splice(index, 0, flow)
-      return changed([{ type: 'flow.remove', pageId: page.id, flowId: flow.id }], [page.id])
+      return changed(
+        [{ type: 'flow.remove', pageId: page.id, flowId: flow.id }],
+        [page.id],
+        [],
+        false,
+        flowTargetChanges(page.id, undefined, flow),
+      )
     }
     case 'flow.update': {
       const page = requirePage(document, operation.pageId)
@@ -436,7 +450,13 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       if (semanticallyEqual(previous, flow))
         return unchanged()
       flows[index] = flow
-      return changed([{ type: 'flow.update', pageId: page.id, flowId: previous.id, flow: previous }], [page.id])
+      return changed(
+        [{ type: 'flow.update', pageId: page.id, flowId: previous.id, flow: previous }],
+        [page.id],
+        [],
+        false,
+        flowTargetChanges(page.id, previous, flow),
+      )
     }
     case 'flow.remove': {
       const page = requirePage(document, operation.pageId)
@@ -447,7 +467,13 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       const [removed] = flows.splice(index, 1)
       if (flows.length === 0)
         delete page.flows
-      return changed([{ type: 'flow.add', pageId: page.id, flow: cloneModelValue(removed!), index }], [page.id])
+      return changed(
+        [{ type: 'flow.add', pageId: page.id, flow: cloneModelValue(removed!), index }],
+        [page.id],
+        [],
+        false,
+        flowTargetChanges(page.id, removed, undefined),
+      )
     }
   }
 }
@@ -488,10 +514,15 @@ function insertSubgraph(
   })
   sequence.splice(index, 0, ...normalizedSubgraph.root)
   const roots = normalizedSubgraph.root.map(item => item.nodeId)
+  const nodeChanges = collectInsertedNodeChanges(pageId, normalizedSubgraph, target)
+  if (target.parentId)
+    nodeChanges.push({ kind: 'content', pageId, nodeId: target.parentId })
   return changed(
     [...roots].reverse().map(nodeId => ({ type: 'node.remove', pageId, nodeId })),
     [pageId],
     Object.keys(normalizedSubgraph.nodesById),
+    false,
+    nodeChanges,
   )
 }
 
@@ -520,7 +551,24 @@ function moveNode(
   const index = target.index ?? destination.length
   assertInsertIndex(index, destination.length, 'PROJECT_NODE_INDEX_INVALID')
   destination.splice(index, 0, location.item)
-  return changed([{ type: 'node.move', pageId, nodeId, target: previousTarget }], [pageId], [nodeId])
+  const nodeChanges: ProjectNodeChange[] = [{
+    kind: 'move',
+    pageId,
+    nodeId,
+    before: nodeRelation(location.parentId, location.slot),
+    after: nodeRelation(target.parentId, targetSlot),
+  }]
+  for (const parentId of new Set([location.parentId, target.parentId])) {
+    if (parentId)
+      nodeChanges.push({ kind: 'content', pageId, nodeId: parentId })
+  }
+  return changed(
+    [{ type: 'node.move', pageId, nodeId, target: previousTarget }],
+    [pageId],
+    [nodeId],
+    false,
+    nodeChanges,
+  )
 }
 
 function updateNodeSettings(
@@ -563,6 +611,9 @@ function removeNode(document: ProjectDocument, pageId: PageId, nodeId: NodeId): 
   const page = requirePage(document, pageId)
   const location = requireNodeLocation(page.graph, nodeId, pageId)
   const subtreeIds = collectSubtreeIds(page.graph, nodeId)
+  const nodeChanges = collectRemovedNodeChanges(pageId, page.graph, nodeId, location)
+  if (location.parentId)
+    nodeChanges.push({ kind: 'content', pageId, nodeId: location.parentId })
   const nodesById: NodeSubgraph['nodesById'] = Object.create(null)
   subtreeIds.forEach((descendantId) => {
     nodesById[descendantId] = cloneModelValue(page.graph.nodesById[descendantId]!)
@@ -579,7 +630,7 @@ function removeNode(document: ProjectDocument, pageId: PageId, nodeId: NodeId): 
     pageId,
     subgraph: { root: [cloneModelValue(location.item)], nodesById },
     target,
-  }], [pageId], [...subtreeIds])
+  }], [pageId], [...subtreeIds], false, nodeChanges)
 }
 
 function validateDocumentAgainstRegistry(
@@ -672,6 +723,28 @@ function validatePageAgainstRegistry(page: ProjectPage, registry: ComponentContr
     if (contract.allowedParents.length > 0)
       invalid('PROJECT_COMPONENT_PARENT_INVALID', `Component ${node.component} requires a registered parent slot.`, page.id, node.id)
   })
+  validatePageFlowTriggers(page, registry)
+}
+
+function validatePageFlowTriggers(page: ProjectPage, registry: ComponentContractRegistry): void {
+  for (const flow of page.flows ?? []) {
+    if (flow.trigger.kind !== 'component.event')
+      continue
+    const nodeId = flow.trigger.nodeId
+    const eventName = flow.trigger.event
+    const node = nodeId ? page.graph.nodesById[nodeId] : undefined
+    if (!node)
+      invalid('PROJECT_FLOW_TRIGGER_NODE_UNKNOWN', `Flow trigger node does not exist: ${nodeId ?? '<missing>'}`, page.id, nodeId)
+    const contract = requireComponentContract(registry, page, node)
+    if (!eventName || !contract.events.some(event => event.name === eventName)) {
+      invalid(
+        'PROJECT_FLOW_TRIGGER_EVENT_UNKNOWN',
+        `Event is not registered for ${node.component}: ${eventName ?? '<missing>'}`,
+        page.id,
+        node.id,
+      )
+    }
+  }
 }
 
 function requireComponentContract(
@@ -820,10 +893,13 @@ function collectValidationPlan(
       return
     }
     case 'node.remove':
+      plan.pageIds.add(operation.pageId)
+      break
     case 'flow.add':
     case 'flow.update':
     case 'flow.remove':
       plan.pageIds.add(operation.pageId)
+      plan.registryPageIds.add(operation.pageId)
       break
     case 'node.move': {
       const nodeIds = plan.registryPlacementIdsByPage.get(operation.pageId) ?? new Set<NodeId>()
@@ -945,6 +1021,58 @@ function collectSubtreeIds(graph: PageGraph, rootId: NodeId, target = new Set<No
   if (node.kind === 'layout')
     Object.values(node.slots).forEach(items => items.forEach(item => collectSubtreeIds(graph, item.nodeId, target)))
   return target
+}
+
+function collectInsertedNodeChanges(
+  pageId: PageId,
+  subgraph: NodeSubgraph,
+  target: NodeTarget,
+): ProjectNodeChange[] {
+  const changes: ProjectNodeChange[] = []
+  const visit = (nodeId: NodeId, relation: ProjectNodeRelation): void => {
+    changes.push({ kind: 'insert', pageId, nodeId, after: relation })
+    const node = subgraph.nodesById[nodeId]
+    if (!node || node.kind !== 'layout')
+      return
+    Object.entries(node.slots).forEach(([slot, children]) => {
+      children.forEach(child => visit(child.nodeId, nodeRelation(nodeId, slot)))
+    })
+  }
+  subgraph.root.forEach(item => visit(item.nodeId, nodeRelation(target.parentId, target.slot)))
+  return changes
+}
+
+function collectRemovedNodeChanges(
+  pageId: PageId,
+  graph: PageGraph,
+  rootId: NodeId,
+  rootLocation: NodeLocation,
+): ProjectNodeChange[] {
+  const changes: ProjectNodeChange[] = []
+  const visit = (nodeId: NodeId, relation: ProjectNodeRelation): void => {
+    changes.push({ kind: 'remove', pageId, nodeId, before: relation })
+    const node = graph.nodesById[nodeId]
+    if (!node || node.kind !== 'layout')
+      return
+    Object.entries(node.slots).forEach(([slot, children]) => {
+      children.forEach(child => visit(child.nodeId, nodeRelation(nodeId, slot)))
+    })
+  }
+  visit(rootId, nodeRelation(rootLocation.parentId, rootLocation.slot))
+  return changes
+}
+
+function flowTargetChanges(
+  pageId: PageId,
+  before: ConfigFormFlow | undefined,
+  after: ConfigFormFlow | undefined,
+): ProjectNodeChange[] {
+  const nodeIds = new Set<NodeId>()
+  if (before?.trigger.kind === 'component.event' && before.trigger.nodeId)
+    nodeIds.add(before.trigger.nodeId)
+  if (after?.trigger.kind === 'component.event' && after.trigger.nodeId)
+    nodeIds.add(after.trigger.nodeId)
+  return [...nodeIds].map(nodeId => ({ kind: 'content', pageId, nodeId }))
 }
 
 function assertInsertedFieldNamesUnique(
@@ -1072,12 +1200,53 @@ function changed(
   changedPageIds: PageId[],
   changedNodeIds: NodeId[] = [],
   changedProject = false,
+  changedNodeChanges: ProjectNodeChange[] = defaultNodeChanges(changedPageIds, changedNodeIds),
 ): OperationResult {
-  return { changedProject, inverse, changedPageIds, changedNodeIds }
+  return { changedProject, inverse, changedPageIds, changedNodeIds, changedNodeChanges }
 }
 
 function unchanged(): OperationResult {
   return changed([], [])
+}
+
+function defaultNodeChanges(pageIds: PageId[], nodeIds: NodeId[]): ProjectNodeChange[] {
+  const pageId = pageIds.length === 1 ? pageIds[0] : undefined
+  return pageId
+    ? nodeIds.map(nodeId => ({ kind: 'content', pageId, nodeId }))
+    : []
+}
+
+function normalizeNodeChanges(changes: ProjectNodeChange[]): ProjectNodeChange[] {
+  const normalized = new Map<string, ProjectNodeChange>()
+  for (const change of changes) {
+    const key = `${change.pageId}\u0000${change.nodeId}`
+    const previous = normalized.get(key)
+    if (!previous) {
+      normalized.set(key, change)
+      continue
+    }
+    const before = previous.before ?? change.before
+    const after = change.after ?? previous.after
+    const kind = previous.kind === 'insert' && change.kind === 'remove'
+      ? 'content'
+      : previous.kind === 'remove' && change.kind === 'insert'
+        ? 'move'
+        : change.kind === 'content'
+          ? previous.kind
+          : change.kind
+    normalized.set(key, {
+      kind,
+      pageId: change.pageId,
+      nodeId: change.nodeId,
+      ...(before ? { before } : {}),
+      ...(after ? { after } : {}),
+    })
+  }
+  return [...normalized.values()]
+}
+
+function nodeRelation(parentId: NodeId | null, slot?: string): ProjectNodeRelation {
+  return { parentId, slot: parentId === null ? null : (slot ?? 'default') }
 }
 
 function failure(document: ProjectDocument, code: string, message: string): ProjectTransactionResult {

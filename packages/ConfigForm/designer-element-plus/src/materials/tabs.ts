@@ -14,6 +14,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: shared.PanelsTopLeft,
       runtime: { component: shared.ElTabs },
+      events: [{ name: 'tab-change', title: 'Active tab change' }],
       setters: [
         shared.propSetter('tabPosition', 'Position', 'select', [{ label: 'Top', value: 'top' }, { label: 'Right', value: 'right' }, { label: 'Bottom', value: 'bottom' }, { label: 'Left', value: 'left' }]),
         shared.propSetter('stretch', 'Stretch', 'boolean'),

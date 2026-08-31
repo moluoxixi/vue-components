@@ -191,6 +191,47 @@ describe('designer registry', () => {
     })
   })
 
+  it('merges explicit component events with field binding events by canonical name', () => {
+    const field = fieldMaterial('Input')
+    field.events = [
+      { name: 'click', title: 'Click' },
+      { name: 'update:modelValue', title: 'Committed value' },
+    ]
+    const container = containerMaterial()
+    container.events = [{ name: 'change', title: 'Section change' }]
+    const registry = createLowCodeComponentRegistry(createDesignerRegistry([{
+      name: 'adapter',
+      materials: [field, container],
+    }]))
+
+    expect(registry.get('element.input')?.events).toEqual([
+      { name: 'update:modelValue', displayName: 'Committed value' },
+      { name: 'click', displayName: 'Click' },
+    ])
+    expect(registry.get('element.section')?.events).toEqual([
+      { name: 'change', displayName: 'Section change' },
+    ])
+  })
+
+  it('rejects malformed or duplicate material event declarations', () => {
+    const empty = fieldMaterial('Input')
+    empty.events = [{ name: '', title: 'Change' }]
+    expect(() => createDesignerRegistry([{ name: 'adapter', materials: [empty] }]))
+      .toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+        code: 'DESIGNER_MATERIAL_EVENT_INVALID',
+      }))
+
+    const duplicate = fieldMaterial('Input')
+    duplicate.events = [
+      { name: 'change', title: 'Change' },
+      { name: 'change', title: 'Another change' },
+    ]
+    expect(() => createDesignerRegistry([{ name: 'adapter', materials: [duplicate] }]))
+      .toThrowError(expect.objectContaining<Partial<DesignerRegistryError>>({
+        code: 'DESIGNER_MATERIAL_EVENT_INVALID',
+      }))
+  })
+
   it('rejects duplicate keys inside one layer', () => {
     expect(() => createDesignerRegistry([{
       name: 'adapter',

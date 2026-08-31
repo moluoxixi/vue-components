@@ -82,16 +82,17 @@ field config
 Component Registry
   -> ProjectSnapshot / ProjectPage { PageGraph, flows }
   -> ProjectCommand -> OperationBatch -> AppliedTransaction
-  -> Semantic Compiler -> ProjectCompilation
-       -> CanonicalProjectIR
-       -> Vue Runtime Backend -> Design canvas / Preview
-       -> Source Backend -> standalone Vue Source
+  -> CompileCoordinator -> PageCompilation
+       -> CanonicalPageIR -> Vue Runtime Backend -> Design canvas
+       -> iframe RuntimeHost -> adapter resolver -> Preview Runtime
+  -> lazy ProjectCompilation
+       -> CanonicalProjectIR -> Source Backend -> standalone Vue Source
   -> ProjectDocument -> readonly Config / JSON / Tree
 ```
 
 现有 `LowCodePageModel` 由 Model 包以 legacy v1 合同拥有，Designer 只保留 deprecated compatibility alias；`DesignerDocument` 仍作为旧 artifact 的兼容投影。Workbench 的规范业务状态是 Model 包的 `ProjectSnapshot/PageGraph`，画布 selection、诊断、option loading 和 reaction projection 都是派生状态。Drag candidate 使用显式 `ProjectDraftSnapshot`，拥有 draftHash 但不拥有正式 editVersion、Repository revision 或 history。
 
-Design Canvas 和右侧 Preview 使用同一套 `RuntimeSurface` 递归渲染真实注册组件。设计态只通过 editor bridge 增加稳定节点 metadata、事件拦截和独立 overlay；selection、drop indicator、resize handle 与拖拽 candidate 不会替换或改写 Runtime 组件。拖拽期间 candidate 先应用到临时 Project draft，drop 后提交一次 Project Command，因此 candidate 与落地结果共享同一 Registry 默认值、slot 和布局规则。
+Design Canvas 和右侧 Preview 使用同一份 `PageCompilation` 和同一 Vue Runtime Backend 递归渲染真实注册组件，并分别运行在独立的同源 iframe RuntimeHost。每个 Host 自己加载 adapter resolver、组件库 CSS、Vue Runtime plan 和 Teleport；IDE 只在父 document 渲染 selection、drop、resize 等 editor overlay。Design Host 通过版本化 geometry/pointer bridge 上报稳定 `nodeId`、派生 path、slot 和矩形，业务 Runtime DOM 不包裹编辑器控件。父子 realm 只通过带 channel/version/session/revision/sequence 的 JSON-safe 协议传递 PageCompilation、values、reaction projection、设计态几何/指针信息和稳定 `{ nodeId, event }`，不传 Vue Component、函数、DOM 或 RuntimePlan。结构 sync 与运行 state sync 分离，输入值变化不会重复 clone 或编译页面 IR。拖拽期间 candidate 先应用到临时 Project draft；Canvas candidate 和跟随指针的 drag visual 分别由真实 Design RuntimeHost 渲染同一个稳定 candidate node，drop 后只提交一次 Project Command，因此 candidate、drag visual 与落地结果共享同一 Registry 默认值、slot 和布局规则。
 
 ### Workbench Design-first 工作区
 
@@ -101,7 +102,7 @@ Component Registry
   -> ProjectCommand -> OperationBatch -> ProjectDomainEngine
   -> ProjectEditorSession + ProjectSaveCoordinator
   -> Design canvas (唯一编辑入口)
-  -> Runtime Renderer -> right-side Preview
+  -> iframe RuntimeHost -> Runtime Renderer -> right-side Preview
   -> Export menu -> readonly Source / Config preview dialog
 ```
 
@@ -117,18 +118,22 @@ Manifest/Page/Resource 实体存储；一个 manifest revision 可以复用较�
 `WorkspaceApplication`、`LowCodePageModel` 和 `DesignerDocument` 只用于 legacy ingress 或
 现有 Pages/Designer/Export 组件的无状态只读投影，禁止写入旧 Repository、draft 或 history。
 
-打开 Source 导出弹窗时，Workbench 从当前不可拆分 `ProjectCompilation` 和 generator version
+打开 Source 导出弹窗时，Workbench 才按需组装当前不可拆分 `ProjectCompilation` 和 generator version
 创建一次不可变 `ExportSnapshot`。层级文件树、只读 Monaco、单文件下载和项目 ZIP 全部读取该快照；
 后续 Design 修改只会把弹窗标记为 stale，用户显式刷新后才生成新快照。多页面 Source
 工程包含 Vue Router、每个页面的独立目录和 `package.json`，且不依赖 ConfigForm
-Runtime。Config 导出继续面向当前页面，提供只读 defineField Source、JSON 和 Tree
-投影。
+Runtime。Config 导出提供包含每个页面 `defineField` 文件的项目级只读 Source，以及 JSON 和 Tree
+投影。快照身份同时比较 compilation key、committed/draft origin 和 generator version；二进制文件
+通过防御性字节副本供单文件与 ZIP 下载，调用方不能改写已固定的历史输出。Config Source 在
+`extensions['mx.config-form-designer'].placement` 中保留完整父子关系 placement，同时导出 graph
+version/props、Project schemaVersion、Registry lock 和 Flow 编辑坐标；numeric `span` 仅作为 Runtime
+兼容字段，不取代关系元数据。生成端与 legacy parser 共用危险对象键守卫。
 
 ### ProjectDocument 与 Canonical IR 边界
 
 `@moluoxixi/config-form-model` 定义不依赖 Vue 的项目级生产合同：ProjectDocument 保存页面顺序、路由、首页、registry lock、设置和资源引用；ProjectPage 同时拥有视觉 `PageGraph` 与页面级 `flows`，二者随同一个 Page entity 原子持久化。PageGraph 只使用 `root: SlotItem[] + nodesById` 表达视觉结构，节点关系只存在于 layout `slots`，默认子节点统一使用 `slots.default`，placement 属于 SlotItem 表达的父子关系。field/layout 是判别联合，field 节点不能持有 slots。
 
-`@moluoxixi/config-form-compiler` 只依赖 Core/Model 的 JSON-safe 合同。它接收正式 `ProjectSnapshot` 或带基线 identity/draftHash 的瞬态 `ProjectDraftSnapshot`，连同函数无关的 `RegistryContractSnapshot`，输出不可拆分的 `ProjectCompilation { snapshot, registry, key, ir }`。其中版本化、不可变、框架无关的 `CanonicalProjectIR` 统一解析 Registry defaults、component version/fingerprint、stable node path、slot order、parent placement 和 Flow execution plan。Vue Runtime Backend 与 standalone Source Backend 只能从同一 compilation 降级，禁止调用方自行拼装不同 revision 的 Snapshot、Registry 和 IR；Config/JSON/Tree 读取 compilation 绑定快照中的 ProjectDocument，不经过运行时默认值合并。
+`@moluoxixi/config-form-compiler` 只依赖 Core/Model 的 JSON-safe 合同。实时 Design/Preview 链路由 `CompileCoordinator` 接收正式 `ProjectSnapshot` 或带基线 identity/draftHash 的瞬态 `ProjectDraftSnapshot`，按 `ProjectChangeSet.pageIds + nodeChanges` 做页面/子树失效并输出不可拆分的 `PageCompilation { snapshotIdentity, registryUsage, key, page }`。页面 key 只包含页面运行语义、实际使用的 Registry contracts、compiler version 和 structural environment；其他页面、Flow 编辑器坐标、未使用物料和 editVersion 不污染该 key。节点顺序只由 `rootIds/slots` 表达，节点 placement 只保留 parent/slot/语义属性，祖先 path 在遍历时派生；subtree hash 使叶节点变化只重建该节点及其语义祖先。Vue Runtime Backend 直接消费 PageCompilation，并按 resolver + 不可变 Canonical node identity 复用真实 Runtime fragment。只有 Source/Config Export 在用户显式打开或刷新导出快照时，才从同一固定 ProjectSnapshot 组装 `ProjectCompilation { snapshot, registry, key, ir }` 与版本化 `CanonicalProjectIR`。两个编译产物共享 Registry defaults、component version/fingerprint、slot order、parent placement 和 Flow execution plan 规则，禁止 backend 回头解释 ProjectDocument 或调用方自行配对不同 revision 的 Snapshot、Registry 和 IR。
 
 Repository/migration boundary 负责把 `unknown` 解析为规范的 `ProjectDocument`。UI 与插件提交 JSON-safe `ProjectCommand`；Command Engine 基于当前快照解析语义 action，生成显式 `ProjectOperation[]`；Transaction Engine 才应用规范 OperationBatch。节点属性删除使用 `node.patch.unset`，禁止借助序列化时会丢失的 `undefined`。Command resolver 允许中间草稿暂态违反跨实体引用，但完整 batch 发布前必须通过最终 Graph/Registry/Flow 校验。`applyProjectTransaction` 使用结构共享的 copy-on-write 草稿，成功后由 History 推进一次 `editVersion`；Repository 只以独立 `expectedRepositoryRevision` 做 CAS。`applyProjectDraftTransaction` 不推进 editVersion、repositoryRevision、timestamp 或 history，candidate 必须再封装为 `ProjectDraftSnapshot`。调用方不得原地修改已发布快照。
 
@@ -140,12 +145,14 @@ tabpanel；Workbench 传入 `workspace-navigation="external"` 后，移动端底
 或 Export 弹窗时，菜单会先把焦点交回稳定触发器，弹窗关闭后再恢复到该触发器。
 
 页面事件流程由当前 `ProjectPage.flows` 唯一持有，视觉 `PageGraph` 不保存流程，`LowCodePageModel.flows` 只作为 legacy 投影：Core 只保存 JSON-safe 的
-`trigger -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
+`page.mount | form.submit | field.change | component.event -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
 `ConfigFormFlowExecutionPlan`，Workbench 再注入显式的 `ConfigFormFlowActionRegistry`。
 默认工作台只提供无网络副作用的 `notify` action；业务应用应在宿主边界注册自己的
-受控 action。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
-瞬态状态，不写回页面结构。ConfigForm Flow 的 trigger、字段引用、排序和 ID 唯一性都以所属页面为边界；未来跨页自动化使用独立 Project Workflow，而不是把同一 Flow 再存到 ProjectDocument root。Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
+受控 action。Workbench 的页面级 `PageFlowEngine` 独立拥有 action registry、当前 execution plans、Flow projection、调度器、trace/error 边界和跨 page/revision stale generation；Workbench Controller 只把真实 Runtime 事件转成稳定 trigger，并通过 Preview values 读写端口应用 Flow-owned patch。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
+瞬态状态，不写回页面结构。ConfigForm Flow 的 trigger、字段引用、排序和 ID 唯一性都以所属页面为边界；切页会清空 projection 并使旧异步结果失效，同页删除 Flow 会裁剪其 projection。未来跨页自动化使用独立 Project Workflow，而不是把同一 Flow 再存到 ProjectDocument root。Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
 ConfigForm DSL。
+
+`component.event` 触发器只保存页面节点的稳定 `nodeId` 与 Registry 声明的 `event` 名称。Designer 物料通过 `events` 显式声明可编排的非 binding 事件，field 的值事件由同一份 Runtime `valueProp/trigger` 自动生成并按事件名去重。Workbench 的正常事件编辑入口只有一个：Inspector 列出当前节点的注册事件，点击后用精确 `{ nodeId, event }` 打开 Flow 弹窗；已有同目标流程时直接选中，否则从该事件源创建。Designer 的逗号 action 字符串编辑器只为兼容宿主保留，不与 Workbench Flow 并存。Semantic Compiler 把当前页面 Flow 实际引用的 `nodeId + event` 投影为 Canonical node `flowEvents`；Vue backend、RuntimeSurface 和 standalone Source 只消费该投影，不扫描 DOM，也不会给未引用的 Registry 事件安装 listener。RuntimeSurface 在 Preview 中从真实 Vue 节点发出事件上下文，Design 模式仍由编辑器桥接拦截；binding listener 先更新 values，再以 Registry 原名分发 Flow，且同一 Vue handler key 只执行一次。简单的 `v-model`、显隐、disabled 和同步 reaction 不应被流程化，只有异步、分支、校验、请求和副作用才进入 Flow。
 
 设计器专属 `id`、`material`、conditions 和 validation 放在 `extensions['mx.config-form-designer']`。业务扩展仍与该命名空间并列保存在 `extensions`，因此 Config、Designer 和 Source 往返时不会把业务元数据藏入设计器私有对象。
 

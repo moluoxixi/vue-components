@@ -14,6 +14,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: s.PanelsTopLeft,
       runtime: { component: s.Tabs, designerComponent: s.AntdTabsPreview },
+      events: [{ name: 'change', title: 'Active tab change' }],
       setters: [
         s.propSetter('tabPosition', 'Position', 'select', [
           { label: 'Top', value: 'top' },

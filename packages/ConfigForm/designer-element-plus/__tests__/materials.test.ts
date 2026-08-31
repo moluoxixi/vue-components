@@ -80,6 +80,19 @@ describe('element plus designer materials', () => {
     })
   })
 
+  it('publishes binding and explicit component events through the shared Registry', () => {
+    const definitions = createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
+    expect(definitions.get('element.input')?.events).toEqual([
+      { name: 'update:modelValue', displayName: 'Value change' },
+    ])
+    expect(definitions.get('element.tabs')?.events).toEqual([
+      { name: 'tab-change', displayName: 'Active tab change' },
+    ])
+    expect(definitions.get('element.collapse')?.events).toEqual([
+      { name: 'change', displayName: 'Expanded items change' },
+    ])
+  })
+
   it('creates and compiles every registry material in a single regression matrix', () => {
     const registry = createElementPlusDesignerRegistry()
     const materials = registry.listMaterials()

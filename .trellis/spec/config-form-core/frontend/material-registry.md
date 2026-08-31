@@ -25,6 +25,11 @@ createConfigFormComponentRegistry<TComponent>(
 createDesignerMaterialModuleRegistry(
   modules: DesignerMaterialModuleMap,
 ): DesignerMaterialModuleRegistry
+
+interface DesignerMaterialDefinitionBase {
+  events?: Array<{ name: string, title: string }>
+  runtime: { valueProp?: string, trigger?: string }
+}
 ```
 
 Adapter discovery is eager and local to one aggregation entry:
@@ -45,6 +50,8 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 - Designer material keys remain adapter-namespaced, and their final segment must equal `module.name`.
 - Entries sort by non-negative integer `order`, then `name`, then source. Never rely on filesystem traversal order.
 - A designer module co-locates `material`, optional locale, and order. The registry derives both the material array and locale map from the same entries.
+- `material.events` declares non-binding component events that may trigger a Flow. Field value-binding events are derived from `runtime.valueProp/trigger`; explicit events merge by canonical name and may replace the generated display title without creating a duplicate event.
+- Event names are stable Registry contract values, not DOM event discovery results. They must be non-empty, trimmed, whitespace-free, unique within the material, and must not use `__proto__`, `constructor`, or `prototype`.
 - Scanning creates adapter defaults only. Runtime caller `components` and Designer caller layers retain their existing higher precedence.
 - Public adapter registry constants must be explicitly annotated with Headless/Designer layer types. Do not leak an inferred Core type through an adapter declaration.
 
@@ -60,6 +67,7 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 | Negative or non-integer order | `CONFIG_FORM_MODULE_ORDER_INVALID` |
 | Designer module has no valid material | `DESIGNER_MATERIAL_MODULE_INVALID` |
 | Designer key final segment differs from module name | `DESIGNER_MATERIAL_MODULE_KEY_MISMATCH` |
+| Designer event is empty, unsafe, malformed, or duplicated | `DESIGNER_MATERIAL_EVENT_INVALID` |
 
 Errors must retain source/name context. Do not let malformed runtime input fall through to native `TypeError`.
 
@@ -72,7 +80,11 @@ export default defineDesignerMaterialModule({
   name: 'input-number',
   order: 30,
   value: {
-    material: { key: 'element.input-number', /* ... */ },
+    material: {
+      key: 'element.input-number',
+      events: [{ name: 'change', title: 'Committed value' }],
+      /* ... */
+    },
     locale: { title: '数字输入' },
   },
 })
@@ -95,11 +107,12 @@ export default defineConfigFormComponentMaterial({
 - Core unit tests assert stable ordering and every error code above.
 - Headless tests prove direct components and binding-aware registration objects preserve `ConfigFormComponentRegistry` shape.
 - Designer tests prove material/locale co-location and malformed-value diagnostics.
-- Each adapter test asserts exact material names, source paths, order, locale coverage, and existing caller override precedence.
+- Designer tests prove explicit events merge with generated field binding events by canonical name and reject malformed/duplicate declarations.
+- Each adapter test asserts exact material names, source paths, order, locale coverage, provider-specific binding triggers, explicit events, and existing caller override precedence.
 - `pnpm test:config-form-packages` must explicitly build Core and validate Core, Headless, Designer, and adapter JS exports plus independent TypeScript consumers.
 
 ## 7. Wrong vs Correct
 
-Wrong: maintain a hand-written array beside scanned files, silently overwrite duplicate names, or let glob order define palette order.
+Wrong: maintain a hand-written array beside scanned files, discover Flow events from rendered DOM listeners, silently overwrite duplicate names, or let glob order define palette order.
 
-Correct: use one named module per material, derive every default registry projection from the validated module map, and keep application extension APIs separate from build-time scanning.
+Correct: use one named module per material, declare event capabilities in that material, derive binding events from the same Runtime binding, and keep application extension APIs separate from build-time scanning.

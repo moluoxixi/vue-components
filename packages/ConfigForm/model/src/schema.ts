@@ -21,6 +21,7 @@ import type {
   ProjectDraftSnapshot,
   ProjectPage,
   ProjectSnapshot,
+  ProjectTransactionSuccess,
   ReadonlyProjectDocument,
   SlotItem,
 } from './types'
@@ -111,8 +112,10 @@ export const flowSchema: z.ZodType<ConfigFormFlow> = z.object({
   id: identifierSchema,
   name: z.string().trim().min(1).max(160),
   trigger: z.object({
-    kind: z.enum(['page.mount', 'form.submit', 'field.change']),
+    kind: z.enum(['page.mount', 'form.submit', 'field.change', 'component.event']),
     field: identifierSchema.optional(),
+    nodeId: identifierSchema.optional(),
+    event: identifierSchema.optional(),
   }).strict(),
   concurrency: z.enum(['latest', 'queue', 'ignore']).optional(),
   errorPolicy: z.object({
@@ -375,6 +378,30 @@ export function createProjectDraftSnapshot(
   }, candidate, id)
 }
 
+/**
+ * Fast path for a document already validated by the Project Transaction
+ * Engine. It preserves structural sharing and avoids reparsing the complete
+ * project on every drag-candidate update.
+ */
+export function createProjectDraftSnapshotFromTransaction(
+  base: ProjectSnapshot,
+  result: ProjectTransactionSuccess,
+  draftId: string,
+): ProjectDraftSnapshot {
+  const id = draftId.trim()
+  if (!id)
+    throw new TypeError('Project draft snapshots require a non-empty draft id.')
+  if (!result.changed)
+    throw new TypeError('Project draft snapshots require a changed transaction result.')
+  if (result.document.id !== base.document.id)
+    throw new TypeError('Project draft snapshots cannot change project identity.')
+  return freezeProjectDraftSnapshot({
+    projectId: base.document.id,
+    editVersion: base.editVersion,
+    contentHash: base.contentHash,
+  }, result.document, id)
+}
+
 export function parseProjectSnapshot(input: unknown): ProjectSnapshotParseResult {
   const cyclePath = findReferenceCycle(input)
   if (cyclePath) {
@@ -629,6 +656,23 @@ function validateProjectPageContent(
         message: `Flow field.change trigger references an unknown field: ${flow.trigger.field ?? '<missing>'}`,
         path: ['flows', index, 'trigger', 'field'],
       })
+    }
+    if (flow.trigger.kind === 'component.event') {
+      const target = flow.trigger.nodeId ? page.graph.nodesById[flow.trigger.nodeId] : undefined
+      if (!target) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Flow component.event trigger references an unknown node: ${flow.trigger.nodeId ?? '<missing>'}`,
+          path: ['flows', index, 'trigger', 'nodeId'],
+        })
+      }
+      if (!flow.trigger.event) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Flow component.event trigger requires an event name.',
+          path: ['flows', index, 'trigger', 'event'],
+        })
+      }
     }
     const analysis = analyzeConfigFormFlow(flow)
     analysis.diagnostics.forEach(diagnostic => context.addIssue({

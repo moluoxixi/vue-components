@@ -138,6 +138,8 @@ export interface ConfigFormDesignerExpose {
 export interface DesignSurfaceProps {
   commandControl: DesignerCommandControl
   document: DesignerDocument
+  /** Workbench uses Flow as the only normal editor for component events. */
+  eventEditor?: 'actions' | 'flow'
   historyControl: DesignerHistoryControl
   locale?: DesignerLocaleOptions
   model: LowCodePageModel
@@ -150,6 +152,7 @@ export interface DesignSurfaceProps {
 }
 
 export interface DesignSurfaceEmits {
+  (event: 'configureEvent', nodeId: string, eventName: string): void
   (event: 'diagnostics', diagnostics: DesignerDiagnostic[]): void
   (event: 'modelOperation', operation: ModelOperation): void
   (event: 'selectionChange', nodeId: string | undefined): void
@@ -173,6 +176,88 @@ export interface DesignSurfaceSlots {
   toolbar?: (scope: DesignSurfaceToolbarScope) => unknown
   palette?: (scope: DesignerPaletteScope) => unknown
   properties?: (scope: DesignerPropertiesScope) => unknown
+  runtime?: (scope: DesignerRuntimeSlotScope) => unknown
+  dragVisual?: (scope: DesignerDragVisualSlotScope) => unknown
+}
+
+export interface DesignerRuntimeRect {
+  bottom: number
+  height: number
+  left: number
+  right: number
+  top: number
+  width: number
+}
+
+export interface DesignerRuntimeNodeGeometry {
+  depth: number
+  nodeId: string
+  order: number
+  path: string
+  rect: DesignerRuntimeRect
+  slot?: string
+}
+
+export interface DesignerRuntimeGeometrySnapshot {
+  layoutRect?: DesignerRuntimeRect
+  nodes: DesignerRuntimeNodeGeometry[]
+  revision: string
+  surfaceRect: DesignerRuntimeRect
+  viewport: {
+    height: number
+    width: number
+  }
+}
+
+export type DesignerCanvasCameraMode = 'fit' | 'manual'
+
+export interface DesignerCanvasCamera {
+  mode: DesignerCanvasCameraMode
+  pan: {
+    x: number
+    y: number
+  }
+  scale: number
+}
+
+export interface DesignerRuntimePointerPayload {
+  button: number
+  clientX: number
+  clientY: number
+  ctrlKey: boolean
+  metaKey: boolean
+  nodeId?: string
+  pointerId: number
+  shiftKey: boolean
+}
+
+export interface DesignerRuntimeHostBridge {
+  pointerCancel: (payload: DesignerRuntimePointerPayload) => void
+  pointerDown: (payload: DesignerRuntimePointerPayload) => void
+  pointerMove: (payload: DesignerRuntimePointerPayload) => void
+  pointerUp: (payload: DesignerRuntimePointerPayload) => void
+  updateGeometry: (snapshot: DesignerRuntimeGeometrySnapshot) => void
+}
+
+export interface DesignerRuntimeSlotScope {
+  breakpoint: ConfigFormBreakpoint
+  bridge: DesignerRuntimeHostBridge
+  cameraScale: number
+  candidateId?: string
+  candidateUsesFallback: boolean
+  command?: DesignerCommand
+  document: DesignerDocument
+  interactive: boolean
+  model: Record<string, unknown>
+  reactionProps: ConfigFormReactionProjection['props']
+  reactionStates: ConfigFormReactionProjection['states']
+  renderer: VueRuntimeRendererConfig
+}
+
+export interface DesignerDragVisualSlotScope extends DesignerRuntimeSlotScope {
+  canvasWidth: number
+  height: number
+  width: number
 }
 
 export interface DesignSurfaceExpose {

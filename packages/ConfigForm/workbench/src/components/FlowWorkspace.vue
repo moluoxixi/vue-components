@@ -4,6 +4,7 @@ import type {
   ConfigFormFlowEdge,
   ConfigFormFlowNode,
   ConfigFormFlowNodeType,
+  ConfigFormFlowTrigger,
   ConfigFormJsonObject,
 } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
@@ -20,7 +21,9 @@ import {
 import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
 import { createDesignerLocale, useDesignerLocale } from '@moluoxixi/config-form-designer'
 import { Handle, Position, VueFlow } from '@vue-flow/core'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, useId, useTemplateRef, watch } from 'vue'
+import type { FlowEventTarget } from '../flow/event-targets'
+import { flowEventTargetKey } from '../flow/event-targets'
 import { cloneWorkbenchJson } from '../utils/clone'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -29,6 +32,16 @@ interface FlowNodeData extends Record<string, unknown> {
   node: ConfigFormFlowNode
   title: string
   deletable: boolean
+}
+
+type FlowTriggerGroup = 'component' | 'field' | 'form' | 'lifecycle'
+
+interface FlowTriggerChoice {
+  detail: string
+  group: FlowTriggerGroup
+  key: string
+  label: string
+  trigger: ConfigFormFlowTrigger
 }
 
 type FlowWorkspaceOperation = Extract<ModelOperation, {
@@ -47,6 +60,8 @@ type FlowEditOperation = Extract<FlowWorkspaceOperation, {
 const props = defineProps<{
   flows: ConfigFormFlow[]
   fieldNames?: string[]
+  eventTargets?: FlowEventTarget[]
+  initialTrigger?: ConfigFormFlowTrigger
   locale?: DesignerLocaleOptions
   readonly?: boolean
 }>()
@@ -59,9 +74,12 @@ const locale = computed(() => props.locale ? createDesignerLocale(props.locale) 
 
 const selectedId = ref<string>()
 const selectedNodeId = ref<string>()
+const flowCreatorOpen = ref(false)
 const graphError = ref('')
 const nodeConfigDraft = ref('')
 const draftPositions = shallowRef<Record<string, XYPosition>>({})
+const flowCreatorId = useId()
+const addFlowButton = useTemplateRef<HTMLButtonElement>('addFlowButton')
 
 watch(() => props.flows, (flows) => {
   if (!flows.some(flow => flow.id === selectedId.value))
@@ -70,12 +88,74 @@ watch(() => props.flows, (flows) => {
 
 const selectedFlow = computed(() => props.flows.find(flow => flow.id === selectedId.value))
 const selectedNode = computed(() => selectedFlow.value?.nodes.find(node => node.id === selectedNodeId.value))
+const selectedEventTarget = computed(() => {
+  const trigger = selectedFlow.value?.trigger
+  if (trigger?.kind !== 'component.event')
+    return undefined
+  return props.eventTargets?.find(target => target.nodeId === trigger.nodeId && target.event === trigger.event)
+})
+const selectedEventTargetValue = computed(() => selectedEventTarget.value
+  ? flowEventTargetKey(selectedEventTarget.value)
+  : '')
+const triggerChoices = computed<FlowTriggerChoice[]>(() => {
+  const choices: FlowTriggerChoice[] = [
+    createTriggerChoice(
+      { kind: 'page.mount' },
+      'lifecycle',
+      locale.value.t('flow.trigger.mount', 'Page mount'),
+      'page.mount',
+    ),
+    createTriggerChoice(
+      { kind: 'form.submit' },
+      'form',
+      locale.value.t('flow.trigger.submit', 'Form submit'),
+      'form.submit',
+    ),
+  ]
+  for (const field of [...new Set(props.fieldNames ?? [])]) {
+    choices.push(createTriggerChoice(
+      { kind: 'field.change', field },
+      'field',
+      `${field} · ${locale.value.t('flow.trigger.change', 'Field change')}`,
+      'field.change',
+    ))
+  }
+  for (const target of props.eventTargets ?? []) {
+    choices.push(createTriggerChoice(
+      { kind: 'component.event', nodeId: target.nodeId, event: target.event },
+      'component',
+      `${target.nodeLabel} · ${target.eventLabel}`,
+      target.event,
+    ))
+  }
+  return choices
+})
+const triggerGroups = computed(() => (['lifecycle', 'form', 'field', 'component'] as const)
+  .map(group => ({
+    group,
+    label: locale.value.t(`flow.triggerGroup.${group}`, group[0]!.toUpperCase() + group.slice(1)),
+    choices: triggerChoices.value.filter(choice => choice.group === group),
+  }))
+  .filter(group => group.choices.length > 0))
+const initialTriggerKey = computed(() => props.initialTrigger ? triggerKey(props.initialTrigger) : '')
 
 watch(() => selectedFlow.value?.id, () => {
   selectedNodeId.value = undefined
   graphError.value = ''
   draftPositions.value = {}
 })
+
+watch(() => props.initialTrigger, (trigger) => {
+  if (!trigger)
+    return
+  const matchingFlow = props.flows.find(flow => triggersEqual(flow.trigger, trigger))
+  if (matchingFlow) {
+    selectedId.value = matchingFlow.id
+    flowCreatorOpen.value = false
+    return
+  }
+  flowCreatorOpen.value = true
+}, { immediate: true, deep: true })
 
 watch(selectedNode, (node) => {
   nodeConfigDraft.value = node?.config ? JSON.stringify(node.config, null, 2) : ''
@@ -131,7 +211,7 @@ function selectedFlowSettings(flow: ConfigFormFlow): Extract<FlowWorkspaceOperat
   }
 }
 
-function addFlow(): void {
+function addFlow(trigger: ConfigFormFlowTrigger): void {
   const ids = new Set(props.flows.map(flow => flow.id))
   let index = props.flows.length + 1
   while (ids.has(`flow-${index}`)) index += 1
@@ -139,8 +219,8 @@ function addFlow(): void {
   const flow: ConfigFormFlow = {
     version: 1,
     id,
-    name: `Flow ${index}`,
-    trigger: { kind: 'form.submit' },
+    name: locale.value.t('flow.defaultName', 'On {event}', { event: flowTriggerLabel(trigger) }),
+    trigger: cloneWorkbenchJson(trigger),
     concurrency: 'latest',
     errorPolicy: { onError: 'end', timeoutMs: 10000 },
     nodes: [
@@ -151,6 +231,77 @@ function addFlow(): void {
   }
   emit('operation', { type: 'addFlow', flow })
   selectedId.value = id
+  flowCreatorOpen.value = false
+}
+
+function createTriggerChoice(
+  trigger: ConfigFormFlowTrigger,
+  group: FlowTriggerGroup,
+  label: string,
+  detail: string,
+): FlowTriggerChoice {
+  return { detail, group, key: triggerKey(trigger), label, trigger }
+}
+
+function triggerKey(trigger: ConfigFormFlowTrigger): string {
+  if (trigger.kind === 'field.change')
+    return JSON.stringify([trigger.kind, trigger.field ?? ''])
+  if (trigger.kind === 'component.event')
+    return JSON.stringify([trigger.kind, trigger.nodeId ?? '', trigger.event ?? ''])
+  return JSON.stringify([trigger.kind])
+}
+
+function triggersEqual(left: ConfigFormFlowTrigger, right: ConfigFormFlowTrigger): boolean {
+  return triggerKey(left) === triggerKey(right)
+}
+
+function flowTriggerLabel(trigger: ConfigFormFlowTrigger): string {
+  const choice = triggerChoices.value.find(candidate => triggersEqual(candidate.trigger, trigger))
+  if (choice)
+    return choice.label
+  if (trigger.kind === 'field.change')
+    return `${trigger.field ?? locale.value.t('flow.eventUnavailable', 'Registered event unavailable')} · ${locale.value.t('flow.trigger.change', 'Field change')}`
+  if (trigger.kind === 'component.event')
+    return `${trigger.nodeId ?? '?'} · ${trigger.event ?? locale.value.t('flow.eventUnavailable', 'Registered event unavailable')}`
+  return locale.value.t(`flow.trigger.${trigger.kind === 'page.mount' ? 'mount' : 'submit'}`, trigger.kind)
+}
+
+function toggleFlowCreator(): void {
+  if (props.readonly)
+    return
+  flowCreatorOpen.value = !flowCreatorOpen.value
+}
+
+function openFlowCreator(): void {
+  if (props.readonly)
+    return
+  flowCreatorOpen.value = true
+  void nextTick(() => addFlowButton.value?.focus())
+}
+
+function handleFlowCreatorFocusout(event: FocusEvent): void {
+  const container = event.currentTarget as HTMLElement
+  if (!(event.relatedTarget instanceof Node) || !container.contains(event.relatedTarget))
+    flowCreatorOpen.value = false
+}
+
+function handleTriggerMenuKeydown(event: KeyboardEvent): void {
+  const menu = event.currentTarget as HTMLElement
+  const items = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+  const current = items.indexOf(document.activeElement as HTMLButtonElement)
+  const next = event.key === 'ArrowDown'
+    ? (current + 1) % items.length
+    : event.key === 'ArrowUp'
+      ? (current - 1 + items.length) % items.length
+      : event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? items.length - 1
+          : undefined
+  if (next === undefined)
+    return
+  event.preventDefault()
+  items[next]?.focus()
 }
 
 function removeFlow(id: string): void {
@@ -180,12 +331,40 @@ function updateTrigger(kind: ConfigFormFlow['trigger']['kind']): void {
     patchSelected({ trigger: { kind, field } })
     return
   }
+  if (kind === 'component.event') {
+    const target = selectedEventTarget.value ?? props.eventTargets?.[0]
+    if (!target) {
+      graphError.value = locale.value.t('flow.eventRequired', 'Select a registered component event first')
+      return
+    }
+    patchSelected({ trigger: { kind, nodeId: target.nodeId, event: target.event } })
+    return
+  }
   patchSelected({ trigger: { kind } })
 }
 
 function updateTriggerField(field: string): void {
   if (selectedFlow.value?.trigger.kind === 'field.change' && field)
     patchSelected({ trigger: { kind: 'field.change', field } })
+}
+
+function updateTriggerEvent(value: string): void {
+  if (selectedFlow.value?.trigger.kind !== 'component.event' || !value)
+    return
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed) || parsed.length !== 2 || typeof parsed[0] !== 'string' || typeof parsed[1] !== 'string')
+      throw new TypeError('Invalid component event target')
+    const target = props.eventTargets?.find(candidate => candidate.nodeId === parsed[0] && candidate.event === parsed[1])
+    if (!target) {
+      graphError.value = locale.value.t('flow.eventRequired', 'Select a registered component event first')
+      return
+    }
+    patchSelected({ trigger: { kind: 'component.event', nodeId: target.nodeId, event: target.event } })
+  }
+  catch {
+    graphError.value = locale.value.t('flow.eventRequired', 'Select a registered component event first')
+  }
 }
 
 function updateConcurrency(value: string): void {
@@ -438,6 +617,8 @@ function defaultNodePosition(node: ConfigFormFlowNode, index: number): XYPositio
 }
 
 function nodeTitle(node: ConfigFormFlowNode): string {
+  if (node.type === 'trigger' && selectedFlow.value)
+    return flowTriggerLabel(selectedFlow.value.trigger)
   if (node.type === 'action' && node.ref)
     return node.ref
   return locale.value.t(`flow.node.${node.type}`, node.type[0]!.toUpperCase() + node.type.slice(1))
@@ -455,24 +636,65 @@ function nodeIcon(node: ConfigFormFlowNode) {
 </script>
 
 <template>
-  <section class="flow-workspace" :aria-label="locale.t('flow.workspace', 'Flow workspace')">
+  <section class="flow-workspace" :aria-label="locale.t('flow.workspace', 'Event flow workspace')">
     <header class="flow-workspace-header">
       <div>
-        <strong>{{ locale.t('flow.title', 'Flows') }}</strong>
+        <strong>{{ locale.t('flow.title', 'Event flows') }}</strong>
         <small v-if="selectedFlow">{{ locale.t('flow.summary', '{nodes} nodes · {edges} edges', { nodes: selectedFlow.nodes.length, edges: selectedFlow.edges.length }) }}</small>
       </div>
-      <button type="button" :disabled="readonly" data-testid="add-flow" :title="locale.t('flow.add', 'Add flow')" @click="addFlow">
-        <Plus :size="14" aria-hidden="true" />
-        <span>{{ locale.t('flow.add', 'Add flow') }}</span>
-      </button>
+      <div class="flow-create-control" @focusout="handleFlowCreatorFocusout">
+        <button
+          ref="addFlowButton"
+          type="button"
+          :disabled="readonly"
+          data-testid="add-flow"
+          aria-haspopup="menu"
+          :aria-controls="flowCreatorId"
+          :aria-expanded="flowCreatorOpen"
+          :title="locale.t('flow.add', 'Add event flow')"
+          @click="toggleFlowCreator"
+          @keydown.esc.stop="flowCreatorOpen = false"
+        >
+          <Plus :size="14" aria-hidden="true" />
+          <span>{{ locale.t('flow.add', 'Add event flow') }}</span>
+        </button>
+        <div
+          v-if="flowCreatorOpen"
+          :id="flowCreatorId"
+          class="flow-trigger-menu"
+          role="menu"
+          :aria-label="locale.t('flow.chooseEvent', 'Choose event source')"
+          @keydown="handleTriggerMenuKeydown"
+          @keydown.esc.stop="flowCreatorOpen = false; addFlowButton?.focus()"
+        >
+          <section v-for="group in triggerGroups" :key="group.group" role="group" :aria-label="group.label">
+            <strong>{{ group.label }}</strong>
+            <button
+              v-for="choice in group.choices"
+              :key="choice.key"
+              type="button"
+              role="menuitem"
+              :class="{ 'is-preferred': initialTriggerKey === choice.key }"
+              :data-trigger-key="choice.key"
+              @click="addFlow(choice.trigger)"
+            >
+              <Play :size="13" aria-hidden="true" />
+              <span>
+                <b>{{ choice.label }}</b>
+                <code>{{ choice.detail }}</code>
+              </span>
+            </button>
+          </section>
+        </div>
+      </div>
     </header>
 
     <div v-if="flows.length" class="flow-workspace-body">
-      <nav class="flow-list" :aria-label="locale.t('flow.list', 'Flows')">
+      <nav class="flow-list" :aria-label="locale.t('flow.list', 'Event flows')">
         <div v-for="flow in flows" :key="flow.id" class="flow-list-item" :class="{ 'is-active': selectedId === flow.id }">
           <button type="button" @click="selectedId = flow.id">
             <span>{{ flow.name }}</span>
-            <small>{{ locale.t('flow.nodes', '{count} nodes', { count: flow.nodes.length }) }}</small>
+            <small>{{ flowTriggerLabel(flow.trigger) }}</small>
           </button>
           <button type="button" :disabled="readonly" :title="locale.t('flow.delete', 'Delete flow')" :aria-label="locale.t('flow.delete', 'Delete flow')" @click="removeFlow(flow.id)">
             <Trash2 :size="13" aria-hidden="true" />
@@ -484,14 +706,14 @@ function nodeIcon(node: ConfigFormFlowNode) {
         <div class="flow-editor-toolbar">
           <div class="flow-editor-title">
             <strong>{{ selectedFlow.name }}</strong>
-            <code>{{ selectedFlow.id }}</code>
+            <code>{{ flowTriggerLabel(selectedFlow.trigger) }}</code>
           </div>
           <div class="flow-node-palette" role="toolbar" :aria-label="locale.t('flow.addNode', 'Add flow node')">
             <button type="button" :disabled="readonly" data-testid="add-condition" @click="addNode('condition')">
               <GitBranch :size="14" aria-hidden="true" />{{ locale.t('flow.condition', 'Condition') }}
             </button>
             <button type="button" :disabled="readonly" data-testid="add-reaction" @click="addNode('reaction')">
-              <Zap :size="14" aria-hidden="true" />{{ locale.t('flow.reaction', 'Reaction') }}
+              <Zap :size="14" aria-hidden="true" />{{ locale.t('flow.reaction', 'Update form state') }}
             </button>
             <button type="button" :disabled="readonly" data-testid="add-action" @click="addNode('action')">
               <Plus :size="14" aria-hidden="true" />{{ locale.t('flow.action', 'Action') }}
@@ -551,30 +773,40 @@ function nodeIcon(node: ConfigFormFlowNode) {
         </div>
       </div>
 
-      <aside v-if="selectedFlow" class="flow-inspector" :aria-label="locale.t('flow.inspector', 'Flow inspector')">
+      <aside v-if="selectedFlow" class="flow-inspector" :aria-label="locale.t('flow.inspector', 'Event flow inspector')">
         <section>
           <header>
-            <strong>{{ locale.t('flow.settings', 'Flow settings') }}</strong>
+            <strong>{{ locale.t('flow.settings', 'Event flow settings') }}</strong>
             <code>{{ selectedFlow.version }}</code>
           </header>
           <label>
-            <span>{{ locale.t('flow.name', 'Flow name') }}</span>
-            <input :value="selectedFlow.name" :disabled="readonly" :aria-label="locale.t('flow.name', 'Flow name')" @change="patchSelected({ name: ($event.target as HTMLInputElement).value })">
+            <span>{{ locale.t('flow.name', 'Event flow name') }}</span>
+            <input :value="selectedFlow.name" :disabled="readonly" :aria-label="locale.t('flow.name', 'Event flow name')" @change="patchSelected({ name: ($event.target as HTMLInputElement).value })">
           </label>
           <label>
-            <span>{{ locale.t('flow.trigger', 'Flow trigger') }}</span>
-            <select :value="selectedFlow.trigger.kind" :disabled="readonly" :aria-label="locale.t('flow.trigger', 'Flow trigger')" @change="updateTrigger(($event.target as HTMLSelectElement).value as ConfigFormFlow['trigger']['kind'])">
-              <option value="page.mount">{{ locale.t('flow.trigger.mount', 'Page mount') }}</option>
-              <option value="form.submit">{{ locale.t('flow.trigger.submit', 'Form submit') }}</option>
-              <option value="field.change" :disabled="!fieldNames?.length">{{ locale.t('flow.trigger.change', 'Field change') }}</option>
-            </select>
-          </label>
+            <span>{{ locale.t('flow.trigger', 'Event source') }}</span>
+            <select :value="selectedFlow.trigger.kind" :disabled="readonly" :aria-label="locale.t('flow.trigger', 'Event source')" @change="updateTrigger(($event.target as HTMLSelectElement).value as ConfigFormFlow['trigger']['kind'])">
+               <option value="page.mount">{{ locale.t('flow.trigger.mount', 'Page mount') }}</option>
+               <option value="form.submit">{{ locale.t('flow.trigger.submit', 'Form submit') }}</option>
+               <option value="field.change" :disabled="!fieldNames?.length">{{ locale.t('flow.trigger.change', 'Field change') }}</option>
+               <option value="component.event" :disabled="!eventTargets?.length">{{ locale.t('flow.trigger.componentEvent', 'Component event') }}</option>
+             </select>
+           </label>
           <label v-if="selectedFlow.trigger.kind === 'field.change'">
             <span>{{ locale.t('flow.field', 'Field') }}</span>
             <select :value="selectedFlow.trigger.field" :disabled="readonly" :aria-label="locale.t('flow.field', 'Field')" @change="updateTriggerField(($event.target as HTMLSelectElement).value)">
-              <option v-for="field in fieldNames" :key="field" :value="field">{{ field }}</option>
-            </select>
-          </label>
+               <option v-for="field in fieldNames" :key="field" :value="field">{{ field }}</option>
+             </select>
+           </label>
+           <label v-if="selectedFlow.trigger.kind === 'component.event'">
+             <span>{{ locale.t('flow.eventTarget', 'Event target') }}</span>
+             <select :value="selectedEventTargetValue" :disabled="readonly || !eventTargets?.length" :aria-label="locale.t('flow.eventTarget', 'Event target')" @change="updateTriggerEvent(($event.target as HTMLSelectElement).value)">
+               <option v-if="!selectedEventTarget" value="" disabled>{{ locale.t('flow.eventUnavailable', 'Registered event unavailable') }}</option>
+               <option v-for="target in eventTargets" :key="flowEventTargetKey(target)" :value="flowEventTargetKey(target)">
+                 {{ target.nodeLabel }} · {{ target.eventLabel }} ({{ target.event }})
+               </option>
+             </select>
+           </label>
           <label>
             <span>{{ locale.t('flow.concurrency', 'Concurrency') }}</span>
             <select :value="selectedFlow.concurrency ?? 'latest'" :disabled="readonly" :aria-label="locale.t('flow.concurrency', 'Concurrency')" @change="updateConcurrency(($event.target as HTMLSelectElement).value)">
@@ -622,9 +854,9 @@ function nodeIcon(node: ConfigFormFlowNode) {
 
     <div v-else class="flow-empty">
       <GitBranch :size="24" aria-hidden="true" />
-      <strong>{{ locale.t('flow.empty.title', 'No flows configured') }}</strong>
-      <button type="button" :disabled="readonly" data-testid="create-first-flow" @click="addFlow">
-        <Plus :size="14" aria-hidden="true" />{{ locale.t('flow.empty.action', 'Create first flow') }}
+      <strong>{{ locale.t('flow.empty.title', 'No event flows configured') }}</strong>
+      <button type="button" :disabled="readonly" data-testid="create-first-flow" @click="openFlowCreator">
+        <Plus :size="14" aria-hidden="true" />{{ locale.t('flow.empty.action', 'Choose an event') }}
       </button>
     </div>
   </section>
@@ -633,17 +865,29 @@ function nodeIcon(node: ConfigFormFlowNode) {
 <style scoped>
 .flow-workspace { display: grid; height: 100%; min-height: 0; grid-template-rows: 44px minmax(0, 1fr); color: var(--wb-text); background: var(--wb-surface); }
 .flow-workspace-header { display: flex; min-width: 0; padding: 7px 10px; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--wb-border); }
-.flow-workspace-header > div { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
+.flow-workspace-header > div:first-child { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
 .flow-workspace-header small { color: var(--wb-muted); font-size: 10px; }
 .flow-workspace button { display: inline-flex; min-height: 28px; padding: 0 8px; align-items: center; justify-content: center; gap: 5px; color: var(--wb-text); border: 1px solid var(--wb-control-border); border-radius: 4px; background: var(--wb-bg); cursor: pointer; white-space: nowrap; }
 .flow-workspace button:hover:not(:disabled), .flow-list-item.is-active { border-color: var(--wb-accent); background: var(--wb-hover); }
 .flow-workspace button:disabled { cursor: default; opacity: .5; }
+.flow-create-control { position: relative; display: flex; flex: 0 0 auto; }
+.flow-trigger-menu { position: absolute; z-index: 30; top: calc(100% + 5px); right: 0; display: grid; box-sizing: border-box; width: min(310px, calc(100vw - 32px)); max-height: min(520px, calc(100vh - 120px)); padding: 5px; overflow: auto; gap: 5px; border: 1px solid var(--wb-control-border); border-radius: 6px; background: var(--wb-elevated); box-shadow: 0 12px 28px rgb(0 0 0 / 24%); }
+.flow-trigger-menu section { display: grid; gap: 2px; }
+.flow-trigger-menu section + section { padding-top: 5px; border-top: 1px solid var(--wb-border); }
+.flow-trigger-menu section > strong { padding: 3px 7px; color: var(--wb-muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.flow-trigger-menu button { display: grid; min-width: 0; min-height: 38px; padding: 5px 7px; justify-content: stretch; grid-template-columns: 16px minmax(0, 1fr); text-align: left; border-color: transparent; background: transparent; }
+.flow-trigger-menu button.is-preferred { border-color: color-mix(in srgb, var(--wb-accent) 56%, transparent); background: color-mix(in srgb, var(--wb-accent) 12%, transparent); }
+.flow-trigger-menu button > svg { color: var(--wb-accent); }
+.flow-trigger-menu button > span { display: grid; min-width: 0; gap: 1px; }
+.flow-trigger-menu b, .flow-trigger-menu code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-trigger-menu b { font-size: 11px; font-weight: 600; }
+.flow-trigger-menu code { color: var(--wb-muted); font-size: 9px; }
 .flow-workspace-body { position: relative; display: grid; min-width: 0; min-height: 0; grid-template-columns: 168px minmax(320px, 1fr) 248px; }
 .flow-list { min-width: 0; padding: 6px; overflow: auto; border-right: 1px solid var(--wb-border); }
 .flow-list-item { display: grid; grid-template-columns: minmax(0, 1fr) 28px; margin-bottom: 4px; border: 1px solid transparent; border-radius: 5px; }
 .flow-list-item > button:first-child { display: grid; min-width: 0; min-height: 46px; grid-template-columns: minmax(0, 1fr); justify-items: start; text-align: left; border: 0; background: transparent; }
 .flow-list-item > button:first-child span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.flow-list-item > button:first-child small { color: var(--wb-muted); font-size: 10px; }
+.flow-list-item > button:first-child small { width: 100%; overflow: hidden; color: var(--wb-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .flow-list-item > button:last-child { width: 24px; min-height: 24px; margin: 4px 3px 0 0; padding: 0; color: var(--wb-muted); border-color: transparent; background: transparent; }
 .flow-editor { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
 .flow-editor-toolbar { display: flex; min-width: 0; min-height: 48px; padding: 7px 9px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--wb-border); }

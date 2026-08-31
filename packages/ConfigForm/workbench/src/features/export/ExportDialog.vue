@@ -31,6 +31,7 @@ import {
   buildProjectFileTree,
   collectProjectTreeDirectoryIds,
   createExportSession,
+  downloadWorkspaceFile,
   downloadWorkspaceArchive,
   normalizeProjectPath,
   resolveExportSnapshotPath,
@@ -191,11 +192,13 @@ function activeFileSet(): ExportFileSet | undefined {
   return props.mode === 'source' ? sourceFileSet.value : configFileSet.value
 }
 
-function exportText(): string {
+const exportText = computed<string | undefined>(() => {
   if (props.mode === 'source')
-    return sourceCode.value
-  return configViewMode.value === 'source' ? configCode.value : generatedConfigJson.value
-}
+    return selectedSourceFile.value?.kind === 'text' ? selectedSourceFile.value.content : undefined
+  if (configViewMode.value === 'source')
+    return selectedConfigFile.value?.kind === 'text' ? selectedConfigFile.value.content : undefined
+  return generatedConfigJson.value
+})
 
 async function copyExport(): Promise<void> {
   if (!snapshot.value) {
@@ -205,7 +208,9 @@ async function copyExport(): Promise<void> {
   try {
     if (!navigator.clipboard)
       throw new Error(locale.value.t('export.clipboardUnavailable', 'Clipboard API is unavailable.'))
-    await navigator.clipboard.writeText(exportText())
+    if (exportText.value === undefined)
+      throw new Error(locale.value.t('export.binaryCopyUnavailable', 'Binary files cannot be copied as text.'))
+    await navigator.clipboard.writeText(exportText.value)
     emit('message', locale.value.t('export.copied', 'Copied export to clipboard'))
   }
   catch (error) {
@@ -217,17 +222,24 @@ function downloadCurrent(): void {
   const mode = props.mode
   if (!mode || !snapshot.value)
     return
-  const isCode = mode === 'source' || configViewMode.value === 'source'
-  const url = URL.createObjectURL(new Blob([exportText()], { type: isCode ? 'text/plain' : 'application/json' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = mode === 'source'
-    ? sourceViewPath.value.split('/').at(-1)!
+  const file = mode === 'source'
+    ? selectedSourceFile.value
     : configViewMode.value === 'source'
-      ? configViewPath.value.split('/').at(-1)!
-      : 'project.config.json'
-  anchor.click()
-  URL.revokeObjectURL(url)
+      ? selectedConfigFile.value
+      : { content: generatedConfigJson.value, kind: 'text' as const, language: 'json' }
+  if (!file)
+    return
+  downloadWorkspaceFile({
+    file,
+    filename: mode === 'source'
+      ? sourceViewPath.value.split('/').at(-1)!
+      : configViewMode.value === 'source'
+        ? configViewPath.value.split('/').at(-1)!
+        : 'project.config.json',
+    ...(mode === 'config' && configViewMode.value !== 'source'
+      ? { mime: 'application/json;charset=utf-8' }
+      : {}),
+  })
   emit('message', mode === 'source'
     ? locale.value.t('export.downloadedSource', 'Downloaded source export')
     : locale.value.t('export.downloadedConfig', 'Downloaded config export'))
@@ -366,7 +378,7 @@ async function downloadBundle(): Promise<void> {
           <button type="button" class="dialog-action secondary" :disabled="!snapshot" @click="downloadBundle">
             <Download :size="15" aria-hidden="true" /> {{ mode === 'source' ? locale.t('export.projectZip', 'Project ZIP') : locale.t('export.configZip', 'Config ZIP') }}
           </button>
-          <button type="button" class="dialog-action secondary" :disabled="!snapshot" @click="copyExport">
+          <button type="button" class="dialog-action secondary" :disabled="!snapshot || exportText === undefined" @click="copyExport">
             <Clipboard :size="15" aria-hidden="true" /> {{ locale.t('action.copy', 'Copy') }}
           </button>
           <button type="button" class="dialog-action" :disabled="!snapshot" @click="downloadCurrent">

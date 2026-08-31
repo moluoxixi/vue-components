@@ -28,6 +28,17 @@ type CanonicalRuntimeCondition = NonNullable<
   NonNullable<CanonicalRuntimeNode['conditions']>[keyof NonNullable<CanonicalRuntimeNode['conditions']>]
 >
 
+interface RuntimeNodeFragmentCacheEntry {
+  diagnostics: readonly VueRuntimeDiagnostic[]
+  flowEventsKey: string
+  node: ConfigFormRendererNode
+}
+
+const runtimeNodeFragmentCaches = new WeakMap<
+  VueRuntimeBindingResolver,
+  WeakMap<object, RuntimeNodeFragmentCacheEntry>
+>()
+
 function diagnostic(
   code: string,
   message: string,
@@ -145,10 +156,14 @@ function diagnoseDefaultRules(
   }
 }
 
-function cloneNodeMetadata(node: CanonicalRuntimeNode): Record<string, unknown> | undefined {
+function cloneNodeMetadata(
+  node: CanonicalRuntimeNode,
+  runtimeFlowEvents: readonly string[] = [],
+): Record<string, unknown> | undefined {
   const lowCodeMetadata = {
     ...(Object.keys(node.events).length > 0 ? { events: structuredClone(node.events) } : {}),
     ...(Object.keys(node.bindings).length > 0 ? { bindings: structuredClone(node.bindings) } : {}),
+    ...(runtimeFlowEvents.length > 0 ? { flowEvents: [...runtimeFlowEvents] } : {}),
   }
   const extensions = {
     ...(node.extensions ? structuredClone(node.extensions) : {}),
@@ -160,9 +175,10 @@ function cloneNodeMetadata(node: CanonicalRuntimeNode): Record<string, unknown> 
 function compileNodeBase(
   node: CanonicalRuntimeNode,
   binding: VueRuntimeComponentBinding,
+  runtimeFlowEvents?: readonly string[],
 ) {
   const span = node.placement.props.span
-  const extensions = cloneNodeMetadata(node)
+  const extensions = cloneNodeMetadata(node, runtimeFlowEvents)
   return {
     id: node.id,
     component: binding.component,
@@ -183,6 +199,7 @@ function compileField(
   path: Array<string | number>,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
+  runtimeFlowEvents?: readonly string[],
 ): ConfigFormRendererField {
   const validation = compileValidation(node, path, resolver, diagnostics)
   diagnoseDefaultRules(node, path, validation, diagnostics)
@@ -191,7 +208,7 @@ function compileField(
     : validation?.required
 
   return {
-    ...compileNodeBase(node, binding),
+    ...compileNodeBase(node, binding, runtimeFlowEvents),
     field: node.field,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined
@@ -225,16 +242,12 @@ function compileField(
   }
 }
 
-function samePath(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((value, index) => value === right[index])
-}
-
 function compileNode(
   page: CanonicalRuntimePage,
   nodeId: string,
   resolver: VueRuntimeBindingResolver,
   diagnostics: VueRuntimeDiagnostic[],
-  expected: { parentId: string | null, slot: string | null, index: number, path: string[] },
+  expected: { parentId: string | null, slot: string | null },
   ancestors: ReadonlySet<string>,
 ): ConfigFormRendererNode | undefined {
   const path = ['nodesById', nodeId]
@@ -260,7 +273,6 @@ function compileNode(
   if (
     node.placement.parentId !== expected.parentId
     || node.placement.slot !== expected.slot
-    || node.placement.index !== expected.index
   ) {
     diagnostics.push(diagnostic(
       'VUE_RUNTIME_IR_PLACEMENT_MISMATCH',
@@ -270,15 +282,18 @@ function compileNode(
     ))
     return undefined
   }
-  if (!samePath(node.path, expected.path)) {
-    diagnostics.push(diagnostic(
-      'VUE_RUNTIME_IR_PATH_MISMATCH',
-      `Canonical ancestry path does not match the rendered relation for node ${nodeId}.`,
-      [...path, 'path'],
-      nodeId,
-    ))
-    return undefined
+  const nodeFlowEvents = node.flowEvents
+  const flowEventsKey = (nodeFlowEvents ?? []).join('\u0000')
+  const fragmentCache = runtimeNodeFragmentCaches.get(resolver)
+    ?? new WeakMap<object, RuntimeNodeFragmentCacheEntry>()
+  if (!runtimeNodeFragmentCaches.has(resolver))
+    runtimeNodeFragmentCaches.set(resolver, fragmentCache)
+  const cached = fragmentCache.get(node as object)
+  if (cached && cached.flowEventsKey === flowEventsKey) {
+    diagnostics.push(...cached.diagnostics)
+    return cached.node
   }
+  const diagnosticStart = diagnostics.length
 
   const binding = resolver.resolveBinding(node.component)
   if (!binding) {
@@ -312,27 +327,42 @@ function compileNode(
     return undefined
   }
 
-  if (node.kind === 'field')
-    return compileField(node, binding, path, resolver, diagnostics)
+  if (node.kind === 'field') {
+    const compiled = compileField(node, binding, path, resolver, diagnostics, nodeFlowEvents)
+    if (!hasErrors(diagnostics.slice(diagnosticStart))) {
+      fragmentCache.set(node as object, {
+        diagnostics: diagnostics.slice(diagnosticStart),
+        flowEventsKey,
+        node: compiled,
+      })
+    }
+    return compiled
+  }
 
   const nextAncestors = new Set(ancestors)
   nextAncestors.add(nodeId)
   const slots = Object.fromEntries(Object.entries(node.slots).map(([slotName, childIds]) => [
     slotName,
-    childIds.flatMap((childId, index) => {
+    childIds.flatMap((childId) => {
       const child = compileNode(page, childId, resolver, diagnostics, {
         parentId: node.id,
         slot: slotName,
-        index,
-        path: [...expected.path, childId],
       }, nextAncestors)
       return child ? [child] : []
     }),
   ]))
-  return {
-    ...compileNodeBase(node, binding),
+  const compiled = {
+    ...compileNodeBase(node, binding, nodeFlowEvents),
     slots,
   }
+  if (!hasErrors(diagnostics.slice(diagnosticStart))) {
+    fragmentCache.set(node as object, {
+      diagnostics: diagnostics.slice(diagnosticStart),
+      flowEventsKey,
+      node: compiled,
+    })
+  }
+  return compiled
 }
 
 function rendererConfig(
@@ -361,8 +391,20 @@ export function compileCanonicalPageRuntime(
   input: CompileCanonicalPageRuntimeInput,
   resolver: VueRuntimeBindingResolver,
 ): VueRuntimeCompileResult {
-  const { compilation, pageId } = input
-  const page = compilation.ir.pagesById[pageId]
+  const { compilation } = input
+  const pageScoped = 'page' in compilation
+  const pageId = pageScoped ? compilation.key.pageId : input.pageId
+  if (!pageId) {
+    return {
+      success: false,
+      diagnostics: [diagnostic(
+        'VUE_RUNTIME_PAGE_ID_REQUIRED',
+        'ProjectCompilation runtime input requires a page id.',
+        ['pageId'],
+      )],
+    }
+  }
+  const page = pageScoped ? compilation.page : compilation.ir.pagesById[pageId]
   if (!page) {
     return {
       success: false,
@@ -375,12 +417,10 @@ export function compileCanonicalPageRuntime(
   }
 
   const diagnostics: VueRuntimeDiagnostic[] = []
-  const fields = page.rootIds.flatMap((nodeId, index) => {
+  const fields = page.rootIds.flatMap((nodeId) => {
     const compiled = compileNode(page, nodeId, resolver, diagnostics, {
       parentId: null,
       slot: null,
-      index,
-      path: [nodeId],
     }, new Set())
     return compiled ? [compiled] : []
   })

@@ -193,7 +193,7 @@ describe('projectDomainEngine', () => {
 
     const changed = engine.execute(command)
     expect(changed.changed).toBe(true)
-    expect(changed.changeSet).toEqual({ project: false, pageIds: ['home'], nodeIds: [] })
+    expect(changed.changeSet).toEqual({ project: false, pageIds: ['home'], nodeIds: [], nodeChanges: [] })
     expect(engine.snapshot.document.pagesById.home?.name).toBe('Landing')
     const changedCursor = engine.snapshot.cursor
 

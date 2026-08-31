@@ -1,4 +1,4 @@
-import type { CDPSession, Locator, Page } from '@playwright/test'
+import type { CDPSession, FrameLocator, Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 import { createApplication } from './helpers'
 
@@ -18,6 +18,46 @@ function expectSameSize(actual: DragGeometry, expected: DragGeometry): void {
   expect(Math.abs(actual.height - expected.height)).toBeLessThanOrEqual(1)
 }
 
+function expectSameRect(
+  actual: DragGeometry & { x: number, y: number },
+  expected: DragGeometry & { x: number, y: number },
+): void {
+  expectSameSize(actual, expected)
+  expect(Math.abs(actual.x - expected.x)).toBeLessThanOrEqual(1)
+  expect(Math.abs(actual.y - expected.y)).toBeLessThanOrEqual(1)
+}
+
+function previewRuntime(page: Page): FrameLocator {
+  return page.frameLocator('iframe[data-preview-runtime-host]')
+}
+
+function designRuntime(page: Page): FrameLocator {
+  return page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
+}
+
+function dragVisualRuntime(page: Page): FrameLocator {
+  return page.frameLocator('iframe[data-design-runtime-variant="drag-visual"]')
+}
+
+async function runtimeNodeSignature(node: Locator): Promise<{
+  descendantCount: number
+  kind: string | null
+  nodeClasses: string[]
+  rootClasses: string[]
+  rootTag: string | null
+}> {
+  return node.evaluate((element) => {
+    const root = element.firstElementChild
+    return {
+      descendantCount: element.querySelectorAll('*').length,
+      kind: element.getAttribute('data-config-node-kind'),
+      nodeClasses: [...element.classList].sort(),
+      rootClasses: root ? [...root.classList].sort() : [],
+      rootTag: root?.tagName ?? null,
+    }
+  })
+}
+
 async function visibleBox(locator: Locator): Promise<DragGeometry & { x: number, y: number }> {
   await expect(locator).toBeVisible()
   const box = await locator.boundingBox()
@@ -33,12 +73,19 @@ async function attachedBox(locator: Locator): Promise<DragGeometry & { x: number
 }
 
 async function selectCanvasNode(page: Page, node: Locator, hitTarget: Locator = node): Promise<void> {
+  const nodeId = await node.getAttribute('data-config-node-id')
+  expect(nodeId).toBeTruthy()
   const box = await visibleBox(hitTarget)
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-  await expect(node).toHaveAttribute('data-config-node-state', /(?:^|\s)selected(?:\s|$)/)
+  await expect(page.locator(`[data-editor-focus-node-id="${nodeId}"]`)).toBeVisible()
 }
 
-async function pointerDrop(page: Page, materialKey: string, target: Locator): Promise<DragResult> {
+async function pointerDrop(
+  page: Page,
+  materialKey: string,
+  target: Locator,
+  options: { verifyCommitGeometry?: boolean } = {},
+): Promise<DragResult> {
   const source = page.locator(`[data-material-key="${materialKey}"]`)
   await source.scrollIntoViewIfNeeded()
   const sourceBox = await visibleBox(source)
@@ -49,13 +96,20 @@ async function pointerDrop(page: Page, materialKey: string, target: Locator): Pr
   await page.mouse.move(sourceBox.x + sourceBox.width + 12, sourceBox.y + sourceBox.height / 2, { steps: 4 })
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + Math.min(targetBox.height / 2, 72), { steps: 12 })
 
-  const candidate = page.locator('.mx-config-form-designer__canvas [data-config-node-state~="candidate"]')
+  const candidate = designRuntime(page).locator('[data-config-node-state~="candidate"]')
   const candidateBox = await attachedBox(candidate)
   const nodeId = await candidate.getAttribute('data-config-node-id')
   expect(nodeId).toBeTruthy()
 
   const overlay = page.locator('[data-designer-drag-overlay]:visible')
   const overlayBox = await visibleBox(overlay)
+  const dragVisualNode = dragVisualRuntime(page).locator(`[data-config-node-id="${nodeId}"]`)
+  const dragVisualBox = await attachedBox(dragVisualNode)
+  expectSameSize(dragVisualBox, candidateBox)
+  const dragVisualSignature = await runtimeNodeSignature(dragVisualNode)
+  expect(dragVisualSignature).toEqual(await runtimeNodeSignature(candidate))
+  expect(dragVisualSignature.kind).toBeTruthy()
+  expect([...dragVisualSignature.nodeClasses, ...dragVisualSignature.rootClasses].length).toBeGreaterThan(0)
   const layerOpacity = await Promise.all([
     candidate.evaluate(element => Number.parseFloat(getComputedStyle(element).opacity)),
     overlay.evaluate(element => Number.parseFloat(getComputedStyle(element).opacity)),
@@ -69,10 +123,11 @@ async function pointerDrop(page: Page, materialKey: string, target: Locator): Pr
     expectSameSize(overlayBox, candidateBox)
 
   await page.mouse.up()
-  const committed = page.locator(`.mx-config-form-designer__canvas [data-config-node-id="${nodeId}"]`)
+  const committed = designRuntime(page).locator(`[data-config-node-id="${nodeId}"]`)
   const committedBox = collapsed ? await attachedBox(committed) : await visibleBox(committed)
-  expectSameSize(committedBox, candidateBox)
-  await expect(page.locator('.mx-config-form-designer__canvas [data-config-node-state~="candidate"]')).toHaveCount(0)
+  if (options.verifyCommitGeometry !== false)
+    expectSameSize(committedBox, candidateBox)
+  await expect(designRuntime(page).locator('[data-config-node-state~="candidate"]')).toHaveCount(0)
 
   return { geometry: committedBox, node: committed, nodeId: nodeId! }
 }
@@ -103,7 +158,7 @@ async function touchDrop(page: Page, materialKey: string, target: Locator): Prom
   await dispatchTouch(client, 'touchMove', { x: start.x + 36, y: start.y + 12 })
   await dispatchTouch(client, 'touchMove', end)
 
-  const candidate = page.locator('.mx-config-form-designer__canvas [data-config-node-state~="candidate"]')
+  const candidate = designRuntime(page).locator('[data-config-node-state~="candidate"]')
   const candidateBox = await visibleBox(candidate)
   const nodeId = await candidate.getAttribute('data-config-node-id')
   expect(nodeId).toBeTruthy()
@@ -111,7 +166,7 @@ async function touchDrop(page: Page, materialKey: string, target: Locator): Prom
 
   await dispatchTouch(client, 'touchEnd')
   await client.detach()
-  const committed = page.locator(`.mx-config-form-designer__canvas [data-config-node-id="${nodeId}"]`)
+  const committed = designRuntime(page).locator(`[data-config-node-id="${nodeId}"]`)
   const committedBox = await visibleBox(committed)
   expectSameSize(committedBox, candidateBox)
   return { geometry: committedBox, node: committed, nodeId: nodeId! }
@@ -132,9 +187,14 @@ async function expectAllPaletteSpecimens(page: Page, prefix: 'antd' | 'element',
 
   const materials = page.locator(`[data-material-row-key^="${prefix}."]`)
   await expect(materials).toHaveCount(expectedCount)
+  const materialKeys = await materials.evaluateAll(elements => elements.map(element => (
+    element.getAttribute('data-material-row-key')
+  )))
+  expect(materialKeys).toHaveLength(expectedCount)
 
-  for (let index = 0; index < expectedCount; index += 1) {
-    const material = materials.nth(index)
+  for (const materialKey of materialKeys) {
+    expect(materialKey).toBeTruthy()
+    const material = page.locator(`[data-material-row-key="${materialKey}"]`)
     await material.scrollIntoViewIfNeeded()
     await expect(material).toBeVisible()
     const geometry = await material.evaluate((element) => {
@@ -186,8 +246,9 @@ for (const adapter of [
     await createApplication(page, adapter.id)
     const canvas = page.locator('.mx-config-form-designer__canvas')
     const sheet = canvas.locator('.mx-config-form-designer__canvas-sheet')
-    const runtimeForm = canvas.locator('.mx-config-form-designer__runtime-surface > form')
-    const nameNode = canvas.locator('[data-config-node-id="profile-name"]')
+    const runtime = designRuntime(page)
+    const runtimeForm = runtime.locator('form')
+    const nameNode = runtime.locator('[data-config-node-id="profile-name"]')
     const designInput = nameNode.locator('input').first()
 
     await expect(runtimeForm).toHaveAttribute('inert', '')
@@ -304,11 +365,19 @@ for (const adapter of [
     expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('')
 
     await page.getByRole('button', { name: 'Show preview' }).click()
-    const preview = page.getByRole('complementary', { name: 'Page preview' })
-    const previewInput = preview.locator('[data-config-node-id="profile-name"] input').first()
+    const previewInput = previewRuntime(page).locator('[data-config-node-id="profile-name"] input').first()
     await previewInput.fill('Preview value')
     await expect(previewInput).toHaveValue('Preview value')
     await expect(previewInput).toBeFocused()
+    const runtimeStyle = await previewInput.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { backgroundColor: style.backgroundColor, color: style.color }
+    })
+    await page.getByRole('button', { name: 'Use light theme' }).click()
+    expect(await previewInput.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { backgroundColor: style.backgroundColor, color: style.color }
+    })).toEqual(runtimeStyle)
   })
 }
 
@@ -323,15 +392,14 @@ test('keeps pointer candidates, drag visuals, committed nodes, and Preview on th
   await expect(section.node.locator(`[data-config-node-id="${flex.nodeId}"] [data-config-node-id="${input.nodeId}"]`)).toBeVisible()
 
   await page.getByRole('button', { name: 'Show preview' }).click()
-  const previewInput = page.getByRole('complementary', { name: 'Page preview' })
-    .locator(`[data-config-node-id="${input.nodeId}"]`)
+  const previewInput = previewRuntime(page).locator(`[data-config-node-id="${input.nodeId}"]`)
   await expect(previewInput.locator('.el-input')).toBeVisible()
 })
 
 test('removes stale selection chrome while a pointer drag is active', async ({ page }) => {
   await createApplication(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
-  const selectedNode = canvas.locator('[data-config-node-id="profile-name"]')
+  const selectedNode = designRuntime(page).locator('[data-config-node-id="profile-name"]')
   await selectCanvasNode(page, selectedNode, selectedNode.locator('input').first())
   await expect(canvas.locator('.mx-config-form-designer__selection-box')).toHaveCount(1)
 
@@ -344,7 +412,7 @@ test('removes stale selection chrome while a pointer drag is active', async ({ p
   await page.mouse.move(sourceBox.x + sourceBox.width + 16, sourceBox.y + sourceBox.height / 2, { steps: 4 })
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + 92, { steps: 8 })
 
-  await expect(canvas.locator('[data-config-node-state~="candidate"]')).toHaveCount(1)
+  await expect(designRuntime(page).locator('[data-config-node-state~="candidate"]')).toHaveCount(1)
   await expect(canvas).toHaveAttribute('data-editor-overlay-mode', 'pointer-dragging')
   await expect(canvas.locator('.mx-config-form-designer__selection-box')).toHaveCount(0)
   await expect(canvas.locator('[data-designer-drag-overlay]:visible')).toBeVisible()
@@ -354,14 +422,15 @@ test('removes stale selection chrome while a pointer drag is active', async ({ p
 test('keeps a compact Preview inside its own responsive runtime viewport', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
   await createApplication(page, 'element')
-  const roleNode = page.locator('.mx-config-form-designer__canvas [data-config-node-id="profile-role"]')
+  const roleNode = designRuntime(page).locator('[data-config-node-id="profile-role"]')
   await selectCanvasNode(page, roleNode, roleNode.locator('.el-select__wrapper'))
   await page.getByRole('button', { name: 'Show preview' }).click()
 
   const preview = page.getByRole('complementary', { name: 'Page preview' })
   const stage = preview.locator('.preview-stage')
-  const layout = stage.locator('[data-config-form-responsive-layout]').first()
-  const cells = stage.locator('[data-config-form-responsive-cell]')
+  const runtime = previewRuntime(page)
+  const layout = runtime.locator('[data-config-form-responsive-layout]').first()
+  const cells = runtime.locator('[data-config-form-responsive-cell]')
   await expect(cells).toHaveCount(3)
 
   const responsiveVariables = await layout.evaluate((element) => {
@@ -379,16 +448,141 @@ test('keeps a compact Preview inside its own responsive runtime viewport', async
     expect(cellBox.x).toBeGreaterThanOrEqual(stageBox.x - 1)
     expect(cellBox.x + cellBox.width).toBeLessThanOrEqual(stageBox.x + stageBox.width + 1)
   }
-  const overflow = await stage.evaluate(element => ({
+  const overflow = await runtime.locator('html').evaluate(element => ({
     clientWidth: element.clientWidth,
     scrollWidth: element.scrollWidth,
   }))
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
 
-  await preview.locator('[data-config-node-id="profile-role"] .el-select__wrapper').click()
-  await expect(page.getByRole('option', { name: 'Developer' })).toBeVisible()
+  await runtime.locator('[data-config-node-id="profile-role"] .el-select__wrapper').click()
+  await expect(runtime.getByRole('option', { name: 'Developer' })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'Developer' })).toHaveCount(0)
   await page.keyboard.press('Escape')
 })
+
+test('separates the intrinsic canvas frame from fit, manual zoom, and pan state', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 })
+  await createApplication(page, 'element')
+  await page.getByRole('button', { name: 'Desktop' }).click()
+
+  const canvas = page.locator('.mx-config-form-designer__canvas')
+  const viewport = page.locator('[data-canvas-camera-viewport]')
+  const sheet = page.locator('.mx-config-form-designer__canvas-sheet')
+  const runtimeFrame = page.locator('iframe[data-design-runtime-variant="canvas"]')
+  await expect(sheet).toHaveAttribute('data-intrinsic-width', '900')
+  expect(await sheet.evaluate(element => getComputedStyle(element).width)).toBe('900px')
+  await runtimeFrame.evaluate(element => element.setAttribute('data-camera-runtime-identity', 'stable'))
+
+  await page.getByRole('button', { name: 'Actual size' }).click()
+  await expect(canvas).toHaveAttribute('data-camera-scale', '1')
+  await expect.poll(() => viewport.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
+
+  await page.getByRole('button', { name: 'Zoom out' }).click()
+  await expect(canvas).toHaveAttribute('data-camera-scale', '0.8')
+  const nameNode = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+  await selectCanvasNode(page, nameNode, nameNode.locator('input').first())
+  expectSameRect(
+    await visibleBox(page.locator('[data-editor-focus-node-id="profile-name"]')),
+    await visibleBox(nameNode),
+  )
+
+  await page.getByRole('button', { name: 'Actual size' }).click()
+  await expect(canvas).toHaveAttribute('data-camera-scale', '1')
+  await canvas.focus()
+  const viewportBox = await visibleBox(viewport)
+  await page.keyboard.down('Space')
+  await page.mouse.move(viewportBox.x + viewportBox.width * 0.75, viewportBox.y + 96)
+  await page.mouse.down()
+  await page.mouse.move(viewportBox.x + viewportBox.width * 0.35, viewportBox.y + 96, { steps: 8 })
+  await page.mouse.up()
+  await page.keyboard.up('Space')
+  expect(await viewport.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+
+  await canvas.hover()
+  await page.keyboard.press('Shift+1')
+  await expect(canvas).toHaveAttribute('data-camera-mode', 'fit')
+  await expect.poll(() => viewport.evaluate(element => element.scrollLeft)).toBe(0)
+  await expect(runtimeFrame).toHaveAttribute('data-camera-runtime-identity', 'stable')
+  await expect(sheet).toHaveAttribute('data-intrinsic-width', '900')
+})
+
+test('keeps mobile and desktop intrinsic frames stable inside a 390px workbench', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await createApplication(page, 'element')
+  const canvas = page.locator('.mx-config-form-designer__canvas')
+  const viewport = page.locator('[data-canvas-camera-viewport]')
+  const sheet = page.locator('.mx-config-form-designer__canvas-sheet')
+
+  await page.getByRole('button', { name: 'Mobile' }).click()
+  await expect(sheet).toHaveAttribute('data-intrinsic-width', '390')
+  expect(await sheet.evaluate(element => ({
+    padding: getComputedStyle(element).padding,
+    width: getComputedStyle(element).width,
+  }))).toEqual({ padding: '28px', width: '390px' })
+
+  await page.getByRole('button', { name: 'Desktop' }).click()
+  await page.getByRole('button', { name: 'Fit canvas' }).click()
+  await expect(sheet).toHaveAttribute('data-intrinsic-width', '900')
+  expect(await sheet.evaluate(element => getComputedStyle(element).width)).toBe('900px')
+  expect(Number(await canvas.getAttribute('data-camera-scale'))).toBeLessThan(0.5)
+
+  await page.getByRole('button', { name: 'Actual size' }).click()
+  await expect(canvas).toHaveAttribute('data-camera-scale', '1')
+  await expect.poll(() => viewport.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
+})
+
+for (const adapter of ['element', 'antd'] as const) {
+  test(`runs a ${adapter} component event flow from the real Preview Runtime node`, async ({ page }) => {
+    await createApplication(page, adapter)
+
+    await page.getByRole('button', { name: 'Event flow orchestration' }).click()
+    const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
+    await flowDialog.getByRole('button', { name: 'Choose an event' }).click()
+    await flowDialog.getByRole('menuitem').filter({ hasText: 'Name · Value change' }).click()
+
+    const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
+    await expect(flowInspector.getByRole('combobox', { name: 'Event target' })).toHaveValue(/profile-name/)
+
+    await flowDialog.getByRole('button', { name: 'Action', exact: true }).click()
+    await flowInspector.getByRole('textbox', { name: 'Node config' }).fill(`{"input":"${adapter}-component-event"}`)
+    await flowDialog.getByRole('button', { name: 'Close event flow orchestration' }).click()
+
+    await page.getByRole('button', { name: 'Show preview' }).click()
+    await previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true }).fill('Alice')
+    await expect(page.getByText(`${adapter}-component-event`, { exact: true })).toBeVisible()
+  })
+}
+
+for (const scenario of [
+  { adapter: 'element', material: 'element.collapse', trigger: '.el-collapse-item__header' },
+  { adapter: 'antd', material: 'antd.collapse', trigger: '.ant-collapse-header' },
+] as const) {
+  test(`runs a registered non-binding ${scenario.adapter} event exactly once`, async ({ page }) => {
+    await createApplication(page, scenario.adapter)
+    const canvas = page.locator('.mx-config-form-designer__canvas')
+    const collapse = await pointerDrop(page, scenario.material, canvas, { verifyCommitGeometry: false })
+
+    await page.getByRole('tab', { name: 'Layers' }).click()
+    await page.locator(`[data-layer-id="${collapse.nodeId}"] .designer-layer-select`).click()
+    await page.getByRole('tab', { name: 'Events' }).click()
+    await page.getByRole('button', { name: 'Configure Expanded items change event flow' }).click()
+    const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
+    const preferredEvent = flowDialog.getByRole('menuitem').filter({ hasText: 'Expanded items change' })
+    await expect(preferredEvent).toHaveClass(/is-preferred/)
+    await preferredEvent.click()
+    const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
+    await expect(flowInspector.getByRole('combobox', { name: 'Event target' })).toHaveValue(new RegExp(collapse.nodeId))
+
+    await flowDialog.getByRole('button', { name: 'Action', exact: true }).click()
+    await flowInspector.getByRole('textbox', { name: 'Node config' })
+      .fill(`{"input":"${scenario.adapter}-collapse-change"}`)
+    await flowDialog.getByRole('button', { name: 'Close event flow orchestration' }).click()
+
+    await page.getByRole('button', { name: 'Show preview' }).click()
+    await previewRuntime(page).locator(`[data-config-node-id="${collapse.nodeId}"] ${scenario.trigger}`).click()
+    await expect(page.getByText(`${scenario.adapter}-collapse-change`, { exact: true })).toHaveCount(1)
+  })
+}
 
 test('pins the selected Preview viewport when the host window is wider', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -398,7 +592,7 @@ test('pins the selected Preview viewport when the host window is wider', async (
   const preview = page.getByRole('complementary', { name: 'Page preview' })
   await preview.getByRole('button', { name: 'Mobile preview' }).click()
   const stage = preview.locator('.preview-stage')
-  const layout = stage.locator('[data-config-form-responsive-layout]').first()
+  const layout = previewRuntime(page).locator('[data-config-form-responsive-layout]').first()
   const activeColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-active-columns').trim())
   const mobileColumns = await layout.evaluate(element => getComputedStyle(element).getPropertyValue('--mx-config-form-columns-mobile').trim())
 
@@ -418,19 +612,19 @@ test('supports keyboard and touch material drops without a second editable model
   const inputMaterial = page.locator('[data-material-key="element.input"]')
 
   await inputMaterial.press(' ')
-  const keyboardCandidate = canvas.locator('[data-config-node-state~="candidate"]')
+  const keyboardCandidate = designRuntime(page).locator('[data-config-node-state~="candidate"]')
   const candidateBox = await visibleBox(keyboardCandidate)
   const candidateId = await keyboardCandidate.getAttribute('data-config-node-id')
   await expect(inputMaterial).toHaveAttribute('aria-pressed', 'true')
   await inputMaterial.press('ArrowDown')
   await inputMaterial.press(' ')
-  const keyboardNode = canvas.locator(`[data-config-node-id="${candidateId}"]`)
+  const keyboardNode = designRuntime(page).locator(`[data-config-node-id="${candidateId}"]`)
   expectSameSize(await visibleBox(keyboardNode), candidateBox)
 
   const date = await touchDrop(page, 'element.date', canvas)
   await expect(date.node.locator('.el-date-editor')).toBeVisible()
   await page.getByRole('button', { name: 'Undo' }).click()
-  await expect(canvas.locator(`[data-config-node-id="${date.nodeId}"]`)).toHaveCount(0)
+  await expect(designRuntime(page).locator(`[data-config-node-id="${date.nodeId}"]`)).toHaveCount(0)
 })
 
 test('keeps the layer action menu inside the viewport at the scroll boundary', async ({ page }) => {
@@ -454,4 +648,38 @@ test('keeps the layer action menu inside the viewport at the scroll boundary', a
   expect(box.y).toBeGreaterThanOrEqual(8)
   expect(box.x + box.width).toBeLessThanOrEqual(viewport!.width - 8)
   expect(box.y + box.height).toBeLessThanOrEqual(viewport!.height - 8)
+})
+
+test('exports pinned source and config files through the readonly workspace', async ({ page }) => {
+  const browserErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning')
+      browserErrors.push(message.text())
+  })
+  page.on('pageerror', error => browserErrors.push(error.message))
+  await createApplication(page, 'element')
+
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Export source', exact: true }).click()
+  const sourceDialog = page.getByRole('dialog', { name: 'Generated Vue source' })
+  await expect(sourceDialog.getByRole('tree', { name: 'Generated source files' })).toContainText('package.json')
+  await expect(sourceDialog.getByRole('region', { name: 'Code viewer' })).toBeVisible()
+  const [sourceDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    sourceDialog.getByRole('button', { name: 'Download', exact: true }).click(),
+  ])
+  expect(sourceDownload.suggestedFilename()).toBe('App.vue')
+
+  await sourceDialog.getByRole('button', { name: 'Close export' }).click()
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Export config', exact: true }).click()
+  const configDialog = page.getByRole('dialog', { name: 'Config model' })
+  await expect(configDialog.getByRole('tree', { name: 'Generated source files' })).toContainText('form.config.ts')
+  await expect(configDialog.locator('.view-lines')).toContainText('schemaVersion: 4')
+  const [configDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    configDialog.getByRole('button', { name: 'Download', exact: true }).click(),
+  ])
+  expect(configDownload.suggestedFilename()).toBe('project.config.ts')
+  expect(browserErrors).toEqual([])
 })

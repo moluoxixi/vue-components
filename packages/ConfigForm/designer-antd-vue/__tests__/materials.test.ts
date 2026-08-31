@@ -74,6 +74,20 @@ describe('ant design vue designer materials', () => {
     expect(definitions.find(definition => definition.component === 'antd.checkbox')?.source.options).toEqual({ mode: 'prop' })
   })
 
+  it('publishes provider-specific binding and explicit events through the shared Registry', () => {
+    const definitions = createLowCodeComponentRegistry(createAntdVueDesignerRegistry())
+    expect(definitions.get('antd.input')?.events).toEqual([
+      { name: 'update:value', displayName: 'Value change' },
+    ])
+    expect(definitions.get('antd.search')?.events).toEqual([
+      { name: 'update:value', displayName: 'Value change' },
+      { name: 'search', displayName: 'Search' },
+    ])
+    expect(definitions.get('antd.tabs')?.events).toEqual([
+      { name: 'change', displayName: 'Active tab change' },
+    ])
+  })
+
   it('creates and compiles every registry material in a single regression matrix', () => {
     const registry = createAntdVueDesignerRegistry()
     const materials = registry.listMaterials()

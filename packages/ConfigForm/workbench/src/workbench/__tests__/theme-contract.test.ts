@@ -153,7 +153,7 @@ describe('workbench theme contract', () => {
     }
   })
 
-  it('keeps export and narrow runtime surfaces responsive to their context', () => {
+  it('keeps export and Preview responsive without mutating intrinsic Canvas runtime styles', () => {
     expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
     expect(selectorBlock('.topbar-actions .export-menu-popover button')).toContain('white-space: nowrap;')
     expect(stylesheet).toContain('@media (max-width: 480px)')
@@ -170,7 +170,7 @@ describe('workbench theme contract', () => {
     expect(stylesheet).toContain('--mx-config-form-active-span: var(--mx-config-form-span-mobile);')
     expect(stylesheet).toContain('@container preview-runtime (max-width: 520px) {')
     expect(stylesheet).toContain('.page-preview-form [class*="config-form__row--grid"] {\n    gap: 12px 6px !important;')
-    expect(designerStylesheet).toContain('.mx-config-form-designer__canvas-sheet [class*="config-form__row--grid"] {\n  gap: 12px 6px !important;')
+    expect(designerStylesheet).not.toContain('.mx-config-form-designer__canvas-sheet [class*="config-form__row--grid"]')
   })
 
   it('keeps Preview as an overlay that cannot resize the Design surface', () => {

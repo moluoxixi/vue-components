@@ -72,12 +72,14 @@ pnpm --filter @config-form/workbench typecheck
 
 - [x] 新建独立 `@moluoxixi/config-form-compiler`，纯 Semantic Compiler 消费 ProjectCompilationSnapshot + RegistryContractSnapshot + RuntimeStructuralEnvironment，输出 viewport-neutral、框架无关且不可变的 Canonical Program。
 - [ ] 拆分 `editVersion`、content identity、compile key 与 runtime instance identity；禁止 editVersion 进入 IR hash。
-- [ ] 增加 PageCompilation 与 CompileCoordinator，实时路径只编译活动页面/受影响子树；ProjectCompilation 仅在导出等全局场景按需组装。
+- [x] 增加 PageCompilation 与 CompileCoordinator，实时路径只编译活动页面并按 ProjectChangeSet 做页面级失效；ProjectCompilation 仅在导出等全局场景按需组装。
 - [ ] Vue Runtime Backend 从 CanonicalProjectIR 生成 RenderPlan；Source Backend 从同一 IR 生成 standalone Vue AST/file graph。禁止任一 backend 重新解释 ProjectDocument。
-- [ ] 建立独立 Incremental Compiler Service，基于结构共享、derived parent/dependency index、subtree hash 与 changed entity set 管理页面/子树缓存和 invalidation；拖拽 candidate 不重新编译或挂载整页。
-- [ ] Design/Preview 共用同一 project revision 的 node id、path、slot、component、props 和 layout 解析结果。
-- [ ] Design/Preview 分别创建独立 RuntimeHost；viewport、locale、字体和 runtime theme 由 RuntimePresentationSnapshot 控制，`mode` 只控制 editor bridge、事件拦截和生命周期，不改变 RenderPlan 或默认替换组件。
-- [ ] RuntimeHost 隔离 IDE CSS、组件库全局样式、Teleport 和副作用；生产 Workbench 优先使用 iframe bootstrap，overlay 通过 node geometry/event bridge 工作。
+- [x] 将页面级 CompileCoordinator 扩展为子树级 Incremental Compiler Service，基于结构共享、derived parent/dependency index、subtree hash 与 page-qualified changed entity set 管理缓存和 invalidation；拖拽 candidate 不重新编译或挂载整页。
+- [x] Design/Preview 共用同一 project revision 的 node id、path、slot、component、props 和 layout 解析结果。
+- [x] Design/Preview 分别创建独立 RuntimeHost；viewport、locale、字体和 runtime theme 由 RuntimePresentationSnapshot 控制，`mode` 只控制 editor bridge、事件拦截和生命周期，不改变 RenderPlan 或默认替换组件。
+- [x] RuntimeHost 隔离 IDE CSS、组件库全局样式、Teleport 和副作用；生产 Workbench 使用 iframe bootstrap，overlay 通过 node geometry/event bridge 工作。
+- [x] Preview 已迁移到独立 iframe RuntimeHost；父子 realm 只传 JSON-safe PageCompilation/运行状态，iframe 独立加载 adapter、组件样式与 Teleport，并保持同页 Runtime session 生命周期。
+- [x] Design 迁移到独立 RuntimeHost，并实现 node geometry/event bridge；节点以稳定 nodeId 注册，path/slot 作为可更新 metadata，pointer lifecycle 和跨 slot cleanup 均由协议测试覆盖。
 - [ ] 仅允许声明视觉等价性的受控 adapter，增加 geometry/DOM parity 测试。
 - [ ] 保留 RuntimeSurface 的真实 Vue 递归渲染、ARIA、readonly 和 editor metadata。
 
@@ -101,10 +103,12 @@ pnpm --filter @config-form/workbench typecheck
 
 - [ ] 把 Preview values、reaction projection、validation、AbortController 和 trace 从 Workbench Controller 移入 Preview Session。
 - [ ] 把 Flow graph 编辑、action registry、execution plan 和运行调度移入 Flow Engine。
+- [x] 新增页面级 PageFlowEngine，收口 action registry、当前 execution plans、Flow projection、调度、trace/error 与跨 page/revision stale generation；Controller 只负责事件适配和 Preview values 端口。
+- [x] Workbench Inspector 以 Registry 事件作为唯一正常组件事件入口；点击事件直接打开精确 `nodeId + event` 的 Flow，已有流程选中、无流程按事件源创建，旧 action 字符串编辑仅留给兼容宿主。
 - [ ] 明确纯同步 binding/reaction 与异步/副作用 Flow 的能力边界和冲突诊断。
-- [ ] Core 将 FlowGraph 编译为不含 position/revision、包含完整执行元数据的 portable execution plan；Workbench Preview 和 standalone Source 只消费该 plan。
-- [ ] 生成 standalone flow runtime，并执行 `latest/queue/ignore`、timeout、abort、error policy、model-order 和 value patch 矩阵。
-- [ ] 保证 Design 操作刷新 Preview revision，过期异步结果不能覆盖新页面。
+- [x] Core 将 FlowGraph 编译为不含 position/revision、包含完整执行元数据的 portable execution plan；Workbench Preview 和 standalone Source 只消费该 plan。
+- [x] 生成 standalone flow runtime，并执行 `latest/queue/ignore`、timeout、abort、error policy、model-order 和 value patch 矩阵。
+- [x] 保证 Design 操作刷新 Preview revision，过期异步结果不能覆盖新页面；PageFlowEngine 另以 page/revision generation 阻止旧值和 projection 提交。
 - [ ] Preview 在切换 RenderPlan 时按稳定 node id/字段合同协调兼容状态；删除或合同变化的字段才清理，不做每 revision 全量重置。
 - [ ] Workbench 和 standalone Source 使用同版本 portable flow runtime；导出工程内嵌源码，不复制第二套解释器逻辑。
 
@@ -114,11 +118,11 @@ pnpm --filter @config-form/workbench typecheck
 
 ### 7. Readonly Export Service
 
-- [ ] 将纯 `buildExportSnapshot` 与有状态 `ExportSession` 分离；Config、Source、Tree 和 ZIP 统一接入含 project revision、registry fingerprint、generator version 的 immutable ExportSnapshot。
-- [ ] Config 生成器只从 ProjectDocument/PageGraph 无损生成 `defineFields<T>()` / `defineField` 源码和 JSON/Tree 投影。
-- [ ] Source Backend 只从 CanonicalProjectIR 输出完整 standalone Vue 工程、真实文件树、package.json、页面、路由和 flow runtime。
-- [ ] 生成器使用统一安全序列化/AST helper，补齐 HTML-sensitive values、特殊 key、二进制文件和路径校验。
-- [ ] 明确 Source/Config 只读，设计修改只标记 snapshot stale，显式刷新才替换快照。
+- [x] 将纯 `buildExportSnapshot` 与有状态 `ExportSession` 分离；Config、Source、Tree 和 ZIP 统一接入含 project revision、registry fingerprint、generator version 的 immutable ExportSnapshot。
+- [x] Config 生成器只从 ProjectDocument/PageGraph 无损生成 `defineFields<T>()` / `defineField` 源码和 JSON/Tree 投影。
+- [x] Source Backend 只从 CanonicalProjectIR 输出完整 standalone Vue 工程、真实文件树、package.json、页面、路由和 flow runtime。
+- [x] 生成器使用统一安全序列化/AST helper，补齐 HTML-sensitive values、特殊 key、二进制文件和路径校验。
+- [x] 明确 Source/Config 只读，设计修改只标记 snapshot stale，显式刷新才替换快照。
 
 验证：export dialog、file tree、single-file download、ZIP byte consistency、多页工程 integration tests。
 
@@ -169,3 +173,22 @@ pnpm --filter @config-form/workbench test:e2e
 3. Source、Config、Tree、单文件下载和 ZIP 均来自同一 immutable snapshot。
 4. Flow Preview 与 standalone Source 在完整并发/错误矩阵下行为一致。
 5. 设计器、Runtime、Export 和 Workbench 的受影响包都通过 lint/typecheck/test/build 和浏览器可访问性检查。
+
+## 本轮验证记录（2026-08-31）
+
+- Workbench Playwright：`20 passed`。覆盖 Element/Ant 全量真实物料、三级嵌套、Design inert 与 Preview interactive、pointer/keyboard/touch candidate、真实 drag visual、candidate/落地/Preview 同一 Runtime tree、Inspector 到 Flow 的单一事件入口、两套 Provider 的 binding/non-binding `component.event` exactly-once、Flow 弹窗、Dark/Light、移动端、只读 Source/Config 下载和 axe。
+- Designer：`13 files / 152 tests`；Workbench：`36 files / 200 tests`；Runtime：`23 files / 204 tests`；RuntimeHost protocol：`6/6`。
+- Designer/Workbench typecheck 与 build 均通过；Design 与 Preview iframe 以稳定 nodeId 同步 geometry，三级嵌套跨 slot candidate 不再被旧 cleanup 删除。
+- 最新本地服务 `http://127.0.0.1:4319/` 人工检查：Workbench Inspector 的事件页只显示 Registry 注册事件，不显示旧 action 输入；点击事件行后 Flow 辅助弹窗打开并把精确节点事件标为首选来源；IDE 暗色控件清晰，干净重载后的页面控制台无 warning/error。
+- 本任务仍为 `in_progress`：ExportSnapshot/Canonical Source、Preview Session/Flow Engine 与 Workbench Controller 拆分、Canvas camera/zoom 和其余实施清单尚未完成，因此不归档父任务。
+
+## Readonly Export Service 验证记录（2026-08-31）
+
+- ExportSnapshot stale identity 现在同时比较 compilation key、committed/draft origin 和 generator version；普通 `sync()` 不触发全项目 capture。
+- retained binary 使用防御性 getter，外部修改源 buffer 或读取 buffer 都不能改变后续单文件/ZIP 字节；文本与二进制单文件统一经过 download helper，并延迟回收 Object URL。
+- Canonical Config Source 保留 Project schemaVersion、Registry lock、graph version/props、完整 SlotItem placement、节点 authoring metadata 和 Flow position；`span` 只保留 Runtime 兼容投影。
+- Config 生成器与 legacy parser 共用危险键守卫，嵌套 `__proto__`、`constructor`、`prototype` 均 fail closed 并报告路径。
+- 定向导出回归 `5 files / 21 tests`、Workbench 全量 `38 files / 210 tests`、Playwright `20/20`、导出工程安装/typecheck/build `4/4`、Workbench typecheck/build 与全仓 lint 通过。
+- Source/Config 下载浏览器回归同时捕获到 Chromium 对 `allow-scripts + allow-same-origin` 的无效 sandbox 警告；Design/Preview RuntimeHost 已移除伪安全 sandbox，继续依靠独立 iframe document、版本化 postMessage 协议和平台注册组件边界隔离运行态，干净浏览器控制台无 warning/error。
+- 干净 `http://127.0.0.1:4319/` 浏览器验证 Source/Config 真实文件树、只读 Monaco、Project Config metadata 和单文件下载反馈，console 无 warning/error。长期运行的旧 `4315` Vite 会话曾出现 Monaco HMR duplicate-extension 警告，干净实例与生产 build 不复现，因此未把开发缓存现象误记为产品缺陷。
+- 本任务继续保持 `in_progress`：standalone Flow runtime 仍需完整并发/错误可执行 parity matrix；Preview Session、Workbench Controller/UI Store 拆分等父任务事项尚未完成。

@@ -7,7 +7,17 @@ import type { DesignerDocument, DesignerNode } from '../document'
 import type { DesignerCommand, DesignerDropTarget } from '../history'
 import type { DesignerMaterialSlotDefinition, DesignerRegistry } from '../registry'
 import type { DesignerSelectionMode } from '../composables'
-import type { DesignerNodeAction } from './types'
+import type {
+  DesignerCanvasCamera,
+  DesignerDragVisualSlotScope,
+  DesignerNodeAction,
+  DesignerRuntimeGeometrySnapshot,
+  DesignerRuntimeHostBridge,
+  DesignerRuntimeNodeGeometry,
+  DesignerRuntimePointerPayload,
+  DesignerRuntimeRect,
+  DesignerRuntimeSlotScope,
+} from './types'
 import type { DesignerDragSource, DesignerPointerPosition } from './designer-drag'
 import {
   ChevronDown,
@@ -17,12 +27,15 @@ import {
   CornerDownRight,
   GripVertical,
   MoreHorizontal,
+  Scan,
   TriangleAlert,
   Trash2,
   Workflow,
+  ZoomIn,
+  ZoomOut,
 } from '@lucide/vue'
 import { RuntimeSurface, resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { createDesignerRuntimeProjection } from '../compiler'
 import { findDesignerNode, reduceDesignerCommand } from '../history'
 import { useDesignerLocale } from '../locale'
@@ -36,6 +49,21 @@ import {
   resolveStickyDesignerDropTarget,
 } from './designer-drag'
 import { createDesignerDragVisualClone } from './designer-drag-overlay'
+
+const CANVAS_FRAME_WIDTHS: Record<ConfigFormBreakpoint, number> = {
+  desktop: 900,
+  tablet: 720,
+  mobile: 390,
+}
+const CANVAS_MIN_SCALE = 0.25
+const CANVAS_MAX_SCALE = 2
+const CANVAS_MIN_SHEET_HEIGHT = 560
+const CANVAS_SCALE_STEPS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2] as const
+
+const slots = defineSlots<{
+  runtime?: (scope: DesignerRuntimeSlotScope) => unknown
+  dragVisual?: (scope: DesignerDragVisualSlotScope) => unknown
+}>()
 
 const props = defineProps<{
   document: DesignerDocument
@@ -68,13 +96,28 @@ const emit = defineEmits<{
 
 const locale = useDesignerLocale()
 const dragController = inject(DESIGNER_DRAG_KEY, undefined)
+const canvasRef = ref<HTMLElement>()
+const cameraViewportRef = ref<HTMLElement>()
 const sheetRef = ref<HTMLElement>()
 const dragOverlayRef = ref<HTMLElement>()
 const nodeActionMenuId = useId()
 const nodeActionMenuNodeId = ref<string>()
 const nodeElements = new Map<string, HTMLElement>()
+const externalGeometry = ref<DesignerRuntimeGeometrySnapshot>()
+const externalGeometryAnchor = ref<{ left: number, scale: number, top: number }>()
 const elementVersion = ref(0)
 const dragOverlayStyle = ref<CSSProperties>()
+const dragOverlayHtml = ref('')
+const dragVisualMetrics = ref<{ canvasWidth: number, height: number, width: number }>()
+const camera = reactive<DesignerCanvasCamera>({
+  mode: 'fit',
+  pan: { x: 0, y: 0 },
+  scale: 1,
+})
+const sheetHeight = ref(CANVAS_MIN_SHEET_HEIGHT)
+const cameraHovered = ref(false)
+const cameraPanning = ref(false)
+const spacePressed = ref(false)
 let resizeObserver: ResizeObserver | undefined
 let unregisterDropResolver: (() => void) | undefined
 let unregisterKeyboardTargets: (() => void) | undefined
@@ -83,7 +126,12 @@ let activeDragPointerTarget: HTMLElement | undefined
 let autoScrollFrame: number | undefined
 let autoScrollPoint: DesignerPointerPosition | undefined
 let dragOverlayFrame: number | undefined
+let cameraMeasureFrame: number | undefined
+let cameraPanCleanup: (() => void) | undefined
 let resizeCleanup: (() => void) | undefined
+let runtimePointerMove: ((payload: DesignerRuntimePointerPayload) => void) | undefined
+let runtimePointerUp: ((payload: DesignerRuntimePointerPayload) => void) | undefined
+let runtimePointerCancel: ((payload: DesignerRuntimePointerPayload) => void) | undefined
 
 type DesignerOverlayMode = 'idle' | 'selected' | 'pointer-dragging' | 'keyboard-dragging' | 'resizing'
 
@@ -105,6 +153,207 @@ const dragSource = computed(() => activeSession.value?.source)
 const candidateSource = computed(() => candidateActive.value ? dragSource.value : undefined)
 const candidateTarget = computed(() => activeSession.value?.active ? activeSession.value.target : undefined)
 const candidateId = computed(() => candidateSource.value?.candidateId)
+const intrinsicFrameWidth = computed(() => CANVAS_FRAME_WIDTHS[props.breakpoint ?? 'desktop'])
+const cameraPercent = computed(() => Math.round(camera.scale * 100))
+const cameraSizerStyle = computed<CSSProperties>(() => ({
+  height: `${Math.max(1, sheetHeight.value * camera.scale)}px`,
+  width: `${intrinsicFrameWidth.value * camera.scale}px`,
+}))
+const cameraSheetStyle = computed(() => ({
+  '--mx-designer-camera-inverse-scale': String(1 / camera.scale),
+  'transform': `scale(${camera.scale})`,
+  'width': `${intrinsicFrameWidth.value}px`,
+}) satisfies CSSProperties)
+
+function clampCameraScale(scale: number): number {
+  return Math.min(CANVAS_MAX_SCALE, Math.max(CANVAS_MIN_SCALE, scale))
+}
+
+function canvasFitScale(): number {
+  const viewport = cameraViewportRef.value
+  if (!viewport)
+    return 1
+  const styles = getComputedStyle(viewport)
+  const horizontalPadding = (Number.parseFloat(styles.paddingLeft) || 0)
+    + (Number.parseFloat(styles.paddingRight) || 0)
+  const availableWidth = Math.max(1, viewport.clientWidth - horizontalPadding)
+  return clampCameraScale(Math.min(1, availableWidth / intrinsicFrameWidth.value))
+}
+
+function measureCanvasCamera(): void {
+  cameraMeasureFrame = undefined
+  const sheet = sheetRef.value
+  if (sheet)
+    sheetHeight.value = Math.max(CANVAS_MIN_SHEET_HEIGHT, sheet.offsetHeight)
+  if (camera.mode === 'fit') {
+    camera.scale = canvasFitScale()
+    void nextTick(() => {
+      const viewport = cameraViewportRef.value
+      if (!viewport)
+        return
+      viewport.scrollLeft = 0
+      camera.pan.x = 0
+    })
+  }
+}
+
+function scheduleCanvasCameraMeasure(): void {
+  if (cameraMeasureFrame !== undefined)
+    return
+  cameraMeasureFrame = window.requestAnimationFrame(measureCanvasCamera)
+}
+
+function updateCameraPan(): void {
+  const viewport = cameraViewportRef.value
+  if (!viewport)
+    return
+  camera.pan.x = viewport.scrollLeft
+  camera.pan.y = viewport.scrollTop
+  elementVersion.value += 1
+}
+
+function setCameraScale(scale: number): void {
+  const viewport = cameraViewportRef.value
+  const sheet = sheetRef.value
+  const nextScale = clampCameraScale(scale)
+  if (!viewport || !sheet) {
+    camera.mode = 'manual'
+    camera.scale = nextScale
+    return
+  }
+
+  const viewportRect = viewport.getBoundingClientRect()
+  const sheetRect = sheet.getBoundingClientRect()
+  const anchor = {
+    x: (viewportRect.left + viewport.clientWidth / 2 - sheetRect.left) / camera.scale,
+    y: (viewportRect.top + viewport.clientHeight / 2 - sheetRect.top) / camera.scale,
+  }
+  camera.mode = 'manual'
+  camera.scale = nextScale
+  void nextTick(() => {
+    const nextSheetRect = sheet.getBoundingClientRect()
+    viewport.scrollBy({
+      left: nextSheetRect.left + anchor.x * nextScale - (viewportRect.left + viewport.clientWidth / 2),
+      top: nextSheetRect.top + anchor.y * nextScale - (viewportRect.top + viewport.clientHeight / 2),
+    })
+    updateCameraPan()
+  })
+}
+
+function zoomCamera(direction: 'in' | 'out'): void {
+  const epsilon = 0.001
+  const next = direction === 'in'
+    ? CANVAS_SCALE_STEPS.find(scale => scale > camera.scale + epsilon)
+    : [...CANVAS_SCALE_STEPS].reverse().find(scale => scale < camera.scale - epsilon)
+  if (next !== undefined)
+    setCameraScale(next)
+}
+
+function fitCamera(): void {
+  camera.mode = 'fit'
+  measureCanvasCamera()
+}
+
+function resetCamera(): void {
+  setCameraScale(1)
+}
+
+function editableKeyboardTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement
+    && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+}
+
+function cameraShortcutActive(target: EventTarget | null): boolean {
+  const canvas = canvasRef.value
+  return Boolean(cameraHovered.value
+    || (target instanceof Node && canvas?.contains(target)))
+}
+
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (!cameraShortcutActive(event.target) || editableKeyboardTarget(event.target))
+    return
+  if (event.code === 'Space') {
+    const target = event.target instanceof Element ? event.target : undefined
+    if (target?.closest('[data-designer-editor-control], [data-editor-focus-node-id]'))
+      return
+    event.preventDefault()
+    spacePressed.value = true
+    return
+  }
+  if (event.shiftKey && event.code === 'Digit1') {
+    event.preventDefault()
+    fitCamera()
+  }
+  else if (event.code === 'Digit0' && !event.ctrlKey && !event.metaKey) {
+    event.preventDefault()
+    resetCamera()
+  }
+  else if (event.key === '+' || event.key === '=') {
+    event.preventDefault()
+    zoomCamera('in')
+  }
+  else if (event.key === '-') {
+    event.preventDefault()
+    zoomCamera('out')
+  }
+}
+
+function handleDocumentKeyup(event: KeyboardEvent): void {
+  if (event.code === 'Space')
+    spacePressed.value = false
+}
+
+function cancelCameraPan(): void {
+  cameraPanCleanup?.()
+}
+
+function handleWindowBlur(): void {
+  spacePressed.value = false
+  cancelCameraPan()
+}
+
+function beginCameraPan(event: PointerEvent): void {
+  if (event.button !== 0 || !cameraViewportRef.value)
+    return
+  event.preventDefault()
+  event.stopPropagation()
+  cameraPanCleanup?.()
+  const viewport = cameraViewportRef.value
+  const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
+  const pointerId = event.pointerId
+  const start = {
+    scrollLeft: viewport.scrollLeft,
+    scrollTop: viewport.scrollTop,
+    x: event.clientX,
+    y: event.clientY,
+  }
+  cameraPanning.value = true
+  target?.setPointerCapture?.(pointerId)
+  const move = (moveEvent: PointerEvent): void => {
+    if (moveEvent.pointerId !== pointerId)
+      return
+    viewport.scrollLeft = start.scrollLeft - (moveEvent.clientX - start.x)
+    viewport.scrollTop = start.scrollTop - (moveEvent.clientY - start.y)
+    updateCameraPan()
+  }
+  const finish = (finishEvent: PointerEvent): void => {
+    if (finishEvent.pointerId === pointerId)
+      cameraPanCleanup?.()
+  }
+  cameraPanCleanup = () => {
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', finish)
+    window.removeEventListener('pointercancel', finish)
+    if (target?.hasPointerCapture?.(pointerId))
+      target.releasePointerCapture(pointerId)
+    cameraPanCleanup = undefined
+    cameraPanning.value = false
+    updateCameraPan()
+  }
+  window.addEventListener('pointermove', move, { passive: false })
+  window.addEventListener('pointerup', finish)
+  window.addEventListener('pointercancel', finish)
+}
 
 function nodeForDragSource(source: DesignerDragSource | undefined): DesignerNode | undefined {
   if (!source)
@@ -142,6 +391,11 @@ function candidateCommand(target: DesignerDropTarget): DesignerCommand | undefin
   return candidateCommandForSource(candidateSource.value, target)
 }
 
+const activeCandidateCommand = computed(() => {
+  const target = candidateProjectionTarget.value
+  return candidateActive.value && target ? candidateCommand(target) : undefined
+})
+
 const projectedDocument = computed(() => {
   const target = candidateProjectionTarget.value
   if (!candidateActive.value || !target)
@@ -154,9 +408,8 @@ const projectedDocument = computed(() => {
 })
 
 const renderer = computed(() => {
-  const target = candidateProjectionTarget.value
-  const command = candidateActive.value && target ? candidateCommand(target) : undefined
-  if (command && props.candidateRuntimeRenderer) {
+  const command = activeCandidateCommand.value
+  if (command && props.candidateRuntimeRenderer && !slots.runtime) {
     return props.candidateRuntimeRenderer(command, projectedDocument.value)
       ?? props.runtimeRenderer
       ?? createDesignerRuntimeProjection(props.document, props.registry)
@@ -181,6 +434,171 @@ const surfaceModel: ComputedRef<Record<string, unknown>> = computed({
 function selectedSet(): Set<string> {
   return new Set(props.selectedIds ?? (props.selectedId ? [props.selectedId] : []))
 }
+
+function domRectValue(rect: DOMRect): DesignerRuntimeRect {
+  return {
+    bottom: rect.bottom,
+    height: rect.height,
+    left: rect.left,
+    right: rect.right,
+    top: rect.top,
+    width: rect.width,
+  }
+}
+
+function localNodeGeometry(): DesignerRuntimeNodeGeometry[] {
+  return [...nodeElements.entries()].map(([nodeId, element], order) => {
+    const location = findDesignerNode(props.document, nodeId)
+    return {
+      depth: location?.path.length ?? 0,
+      nodeId,
+      order,
+      path: location?.path.join('.') ?? nodeId,
+      rect: domRectValue(element.getBoundingClientRect()),
+      ...(location?.slot ? { slot: location.slot } : {}),
+    }
+  })
+}
+
+function runtimeNodeGeometry(): DesignerRuntimeNodeGeometry[] {
+  elementVersion.value
+  return slots.runtime
+    ? (externalGeometry.value?.nodes.map(node => ({
+        ...node,
+        rect: currentExternalRect(node.rect),
+      })) ?? [])
+    : localNodeGeometry()
+}
+
+function runtimeNodeGeometryById(nodeId: string): DesignerRuntimeNodeGeometry | undefined {
+  return runtimeNodeGeometry().find(node => node.nodeId === nodeId)
+}
+
+function runtimeLayoutRect(): DesignerRuntimeRect | undefined {
+  if (slots.runtime) {
+    const rect = externalGeometry.value?.layoutRect
+    return rect ? currentExternalRect(rect) : undefined
+  }
+  const row = sheetRef.value?.querySelector<HTMLElement>('[data-config-form-responsive-layout]')
+  return row ? domRectValue(row.getBoundingClientRect()) : undefined
+}
+
+function currentExternalRect(rect: DesignerRuntimeRect): DesignerRuntimeRect {
+  const sheetRect = sheetRef.value?.getBoundingClientRect()
+  const anchor = externalGeometryAnchor.value
+  if (!sheetRect || !anchor)
+    return rect
+  const scale = camera.scale / anchor.scale
+  const left = sheetRect.left + (rect.left - anchor.left) * scale
+  const top = sheetRect.top + (rect.top - anchor.top) * scale
+  const width = rect.width * scale
+  const height = rect.height * scale
+  return {
+    bottom: top + height,
+    height,
+    left,
+    right: left + width,
+    top,
+    width,
+  }
+}
+
+function finiteRect(rect: DesignerRuntimeRect): boolean {
+  return [rect.bottom, rect.height, rect.left, rect.right, rect.top, rect.width]
+    .every(Number.isFinite)
+}
+
+function updateRuntimeGeometry(snapshot: DesignerRuntimeGeometrySnapshot): void {
+  if (!finiteRect(snapshot.surfaceRect)
+    || !Number.isFinite(snapshot.viewport.height)
+    || !Number.isFinite(snapshot.viewport.width)
+    || snapshot.nodes.some(node => !node.nodeId || !finiteRect(node.rect))) {
+    return
+  }
+  externalGeometry.value = snapshot
+  const sheetRect = sheetRef.value?.getBoundingClientRect()
+  externalGeometryAnchor.value = sheetRect
+    ? { left: sheetRect.left, scale: camera.scale, top: sheetRect.top }
+    : undefined
+  elementVersion.value += 1
+}
+
+function handleRuntimePointerDown(payload: DesignerRuntimePointerPayload): void {
+  if (payload.button !== 0)
+    return
+  if (payload.nodeId)
+    emit('select', payload.nodeId, payload.shiftKey ? 'range' : (payload.ctrlKey || payload.metaKey) ? 'toggle' : 'replace')
+  else
+    emit('select', '')
+  if (payload.nodeId)
+    void focusEditorNode(payload.nodeId)
+}
+
+const runtimeHostBridge: DesignerRuntimeHostBridge = {
+  pointerCancel: payload => runtimePointerCancel?.(payload),
+  pointerDown: handleRuntimePointerDown,
+  pointerMove: payload => runtimePointerMove?.(payload),
+  pointerUp: payload => runtimePointerUp?.(payload),
+  updateGeometry: updateRuntimeGeometry,
+}
+
+const runtimeSlotScope = computed<DesignerRuntimeSlotScope>(() => ({
+  breakpoint: props.breakpoint ?? 'desktop',
+  bridge: runtimeHostBridge,
+  cameraScale: camera.scale,
+  candidateId: candidateId.value,
+  candidateUsesFallback: candidateUsesFallback.value,
+  command: activeCandidateCommand.value,
+  document: projectedDocument.value,
+  interactive: Boolean(props.interactive),
+  model: surfaceModel.value,
+  reactionProps: props.reactionProps ?? {},
+  reactionStates: props.reactionStates ?? {},
+  renderer: renderer.value,
+}))
+
+const hostedDragVisual = computed(() => {
+  const session = activeSession.value
+  const id = candidateId.value
+  const geometry = id ? runtimeNodeGeometryById(id) : undefined
+  if (!slots.runtime || !session?.active || session.input !== 'pointer' || !geometry || geometry.rect.width <= 0)
+    return undefined
+  const height = Math.max(geometry.rect.height, candidateNode.value?.kind === 'container' ? 36 : 1)
+  const position = resolveDesignerDragOverlayPosition(
+    session.position,
+    session.pointerOffset,
+    { width: geometry.rect.width, height },
+  )
+  return {
+    metrics: {
+      canvasWidth: externalGeometry.value?.viewport.width ?? sheetRef.value?.clientWidth ?? geometry.rect.width,
+      height,
+      width: geometry.rect.width,
+    },
+    style: {
+      height: `${height}px`,
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      width: `${geometry.rect.width}px`,
+    } satisfies CSSProperties,
+  }
+})
+
+const effectiveDragOverlayStyle = computed(() => slots.runtime
+  ? hostedDragVisual.value?.style
+  : dragOverlayStyle.value)
+
+const dragVisualSlotScope = computed<DesignerDragVisualSlotScope | undefined>(() => {
+  const metrics = slots.runtime
+    ? hostedDragVisual.value?.metrics
+    : dragVisualMetrics.value
+  if (!metrics)
+    return undefined
+  return {
+    ...runtimeSlotScope.value,
+    ...metrics,
+  }
+})
 
 function nodeLabel(nodeId: string): string {
   const node = findDesignerNode(props.document, nodeId)?.node
@@ -241,6 +659,19 @@ interface OverlayBox {
   style: CSSProperties
 }
 
+function relativeSheetRectStyle(rect: DesignerRuntimeRect): CSSProperties {
+  const sheet = sheetRef.value
+  if (!sheet)
+    return {}
+  const sheetRect = sheet.getBoundingClientRect()
+  return {
+    height: `${rect.height / camera.scale}px`,
+    left: `${(rect.left - sheetRect.left) / camera.scale}px`,
+    top: `${(rect.top - sheetRect.top) / camera.scale}px`,
+    width: `${rect.width / camera.scale}px`,
+  }
+}
+
 const overlayBoxes = computed<OverlayBox[]>(() => {
   elementVersion.value
   if (!selectionOverlayVisible.value)
@@ -248,21 +679,15 @@ const overlayBoxes = computed<OverlayBox[]>(() => {
   const sheet = sheetRef.value
   if (!sheet)
     return []
-  const sheetRect = sheet.getBoundingClientRect()
   return [...selectedSet()].flatMap((id) => {
-    const element = nodeElements.get(id)
-    if (!element)
+    const geometry = runtimeNodeGeometryById(id)
+    if (!geometry)
       return []
-    const rect = element.getBoundingClientRect()
+    const rect = geometry.rect
     return [{
       id,
       primary: id === props.selectedId,
-      style: {
-        height: `${rect.height}px`,
-        left: `${rect.left - sheetRect.left}px`,
-        top: `${rect.top - sheetRect.top}px`,
-        width: `${rect.width}px`,
-      },
+      style: relativeSheetRectStyle(rect),
     }]
   })
 })
@@ -282,20 +707,20 @@ const designPolicySpots = computed<DesignPolicySpot[]>(() => {
     return []
   const sheetRect = sheet.getBoundingClientRect()
   const id = props.selectedId
-  const element = nodeElements.get(id)
+  const geometry = runtimeNodeGeometryById(id)
   const node = findDesignerNode(projectedDocument.value, id)?.node
   const material = node ? props.registry.getMaterial(node.material) : undefined
   const policy = resolveDesignerDesignPolicy(material?.designPolicy)
-  if (!element || policy.render !== 'adapter')
+  if (!geometry || policy.render !== 'adapter')
     return []
-  const rect = element.getBoundingClientRect()
+  const rect = geometry.rect
   return [{
     id,
     message: policy.diagnostic
       || locale.t('node.controlledAdapter', 'Controlled design adapter active'),
     style: {
-      left: `${rect.right - sheetRect.left - 20}px`,
-      top: `${rect.top - sheetRect.top + 4}px`,
+      left: `${(rect.right - sheetRect.left - 20) / camera.scale}px`,
+      top: `${(rect.top - sheetRect.top + 4) / camera.scale}px`,
     },
   }]
 })
@@ -304,10 +729,10 @@ const collapsedCandidateIndicator = computed<CSSProperties | undefined>(() => {
   elementVersion.value
   const sheet = sheetRef.value
   const id = candidateId.value
-  const element = id ? nodeElements.get(id) : undefined
-  if (!sheet || !element)
+  const geometry = id ? runtimeNodeGeometryById(id) : undefined
+  if (!sheet || !geometry)
     return undefined
-  const rect = element.getBoundingClientRect()
+  const rect = geometry.rect
   // A collapsed indicator is only meaningful for a zero-height drop target.
   // Normal controls (including compact inputs) already have a real Runtime
   // box and must not receive a second, invented 36px frame.
@@ -316,10 +741,10 @@ const collapsedCandidateIndicator = computed<CSSProperties | undefined>(() => {
   const sheetRect = sheet.getBoundingClientRect()
   const height = 36
   return {
-    height: `${height}px`,
-    left: `${rect.left - sheetRect.left}px`,
-    top: `${rect.top - sheetRect.top - (height - rect.height) / 2}px`,
-    width: `${rect.width}px`,
+    height: `${height / camera.scale}px`,
+    left: `${(rect.left - sheetRect.left) / camera.scale}px`,
+    top: `${(rect.top - sheetRect.top - (height - rect.height) / 2) / camera.scale}px`,
+    width: `${rect.width / camera.scale}px`,
   }
 })
 
@@ -328,21 +753,22 @@ function clearDragOverlay(): void {
     window.cancelAnimationFrame(dragOverlayFrame)
   dragOverlayFrame = undefined
   dragOverlayStyle.value = undefined
-  dragOverlayRef.value?.replaceChildren()
+  dragOverlayHtml.value = ''
+  dragVisualMetrics.value = undefined
 }
 
 function updateDragOverlay(): void {
   dragOverlayFrame = undefined
   const session = activeSession.value
   const id = candidateId.value
-  const source = id ? nodeElements.get(id) : undefined
+  const geometry = id ? runtimeNodeGeometryById(id) : undefined
   const host = dragOverlayRef.value
-  if (!session?.active || session.input !== 'pointer' || !source || !host) {
+  if (!session?.active || session.input !== 'pointer' || !geometry || !host) {
     clearDragOverlay()
     return
   }
 
-  const rect = source.getBoundingClientRect()
+  const rect = geometry.rect
   if (rect.width <= 0) {
     clearDragOverlay()
     return
@@ -353,8 +779,19 @@ function updateDragOverlay(): void {
     session.pointerOffset,
     { width: rect.width, height },
   )
-  const clone = createDesignerDragVisualClone(source)
-  host.replaceChildren(clone)
+  if (!slots.runtime) {
+    const source = nodeElements.get(id ?? '')
+    if (!source) {
+      clearDragOverlay()
+      return
+    }
+    dragOverlayHtml.value = createDesignerDragVisualClone(source).outerHTML
+  }
+  dragVisualMetrics.value = {
+    canvasWidth: externalGeometry.value?.viewport.width ?? sheetRef.value?.clientWidth ?? rect.width,
+    height,
+    width: rect.width,
+  }
   dragOverlayStyle.value = {
     height: `${height}px`,
     left: `${position.x}px`,
@@ -385,16 +822,12 @@ function acceptedSlot(parent: DesignerNode, node: DesignerNode): DesignerMateria
   ))
 }
 
-function hitNodeElements(point: DesignerPointerPosition, candidateId: string): HTMLElement[] {
-  const sheet = sheetRef.value
-  if (!sheet)
-    return []
-
-  return [...nodeElements.entries()]
-    .flatMap(([nodeId, element], order) => {
-      if (nodeId === candidateId || !sheet.contains(element))
+function hitNodeElements(point: DesignerPointerPosition, candidateId: string): DesignerRuntimeNodeGeometry[] {
+  return runtimeNodeGeometry()
+    .flatMap((geometry) => {
+      if (geometry.nodeId === candidateId)
         return []
-      const rect = element.getBoundingClientRect()
+      const rect = geometry.rect
       if (rect.width <= 0 || rect.height <= 0
         || point.x < rect.left || point.x > rect.right
         || point.y < rect.top || point.y > rect.bottom) {
@@ -402,13 +835,13 @@ function hitNodeElements(point: DesignerPointerPosition, candidateId: string): H
       }
       return [{
         area: rect.width * rect.height,
-        depth: findDesignerNode(props.document, nodeId)?.path.length ?? 0,
-        element,
-        order,
+        geometry,
       }]
     })
-    .sort((left, right) => right.depth - left.depth || left.area - right.area || right.order - left.order)
-    .map(({ element }) => element)
+    .sort((left, right) => right.geometry.depth - left.geometry.depth
+      || left.area - right.area
+      || right.geometry.order - left.geometry.order)
+    .map(({ geometry }) => geometry)
 }
 
 function siblingTarget(nodeId: string, after: boolean): DesignerDropTarget | undefined {
@@ -469,7 +902,7 @@ function scheduleCanvasAutoScroll(point: DesignerPointerPosition): void {
 function runCanvasAutoScroll(): void {
   autoScrollFrame = undefined
   const point = autoScrollPoint
-  const viewport = sheetRef.value?.parentElement
+  const viewport = cameraViewportRef.value
   if (!point || !viewport || !activeSession.value?.active || activeSession.value.input !== 'pointer')
     return
   const delta = resolveDesignerAutoScrollDelta(point, viewport.getBoundingClientRect())
@@ -504,13 +937,13 @@ function resolveDropTarget(
 
   const hits = hitNodeElements(point, source.candidateId)
   const hit = hits[0]
-  const hitId = hit?.dataset.configNodeId
+  const hitId = hit?.nodeId
   const collapsedTarget = resolveDesignerCollapsedDropTarget(
     point,
-    [...nodeElements.entries()].flatMap(([nodeId, element]) => {
-      if (nodeId === source.candidateId)
+    runtimeNodeGeometry().flatMap((geometry) => {
+      if (geometry.nodeId === source.candidateId)
         return []
-      const location = findDesignerNode(props.document, nodeId)
+      const location = findDesignerNode(props.document, geometry.nodeId)
       if (!location)
         return []
       const slot = acceptedSlot(location.node, node)
@@ -523,7 +956,7 @@ function resolveDropTarget(
       } satisfies DesignerDropTarget
       if (!isValidTarget(target))
         return []
-      const rect = element.getBoundingClientRect()
+      const rect = geometry.rect
       return [{
         depth: location.path.length,
         rect: {
@@ -547,11 +980,11 @@ function resolveDropTarget(
     return isValidTarget(target) ? target : previous
   }
 
-  const insideTargets = hits.flatMap((element, depth) => {
-    const location = findDesignerNode(props.document, element.dataset.configNodeId ?? '')
+  const insideTargets = hits.flatMap((geometry, depth) => {
+    const location = findDesignerNode(props.document, geometry.nodeId)
     if (!location)
       return []
-    const rect = element.getBoundingClientRect()
+    const rect = geometry.rect
     const verticalRatio = rect.height > 0 ? (point.y - rect.top) / rect.height : 0.5
     const slot = acceptedSlot(location.node, node)
     if (!slot || verticalRatio < 0.2 || verticalRatio > 0.8)
@@ -570,7 +1003,7 @@ function resolveDropTarget(
 
   const stickyTarget = resolveStickyDesignerDropTarget(
     previous,
-    hits.flatMap(element => element.dataset.configNodeId ? [element.dataset.configNodeId] : []),
+    hits.map(geometry => geometry.nodeId),
     isValidTarget,
   )
   if (stickyTarget)
@@ -579,7 +1012,7 @@ function resolveDropTarget(
   const location = findDesignerNode(props.document, hitId)
   if (!location)
     return previous
-  const rect = hit.getBoundingClientRect()
+  const rect = hit.rect
   const verticalRatio = rect.height > 0 ? (point.y - rect.top) / rect.height : 0.5
   const target = siblingTarget(hitId, verticalRatio > 0.5)
   return target && isValidTarget(target) ? target : previous
@@ -599,7 +1032,7 @@ function nodeIdFromEvent(event: Event): string | undefined {
   const nodeId = hitNodeElements(
     { x: event.clientX, y: event.clientY },
     candidateId.value ?? '',
-  )[0]?.dataset.configNodeId
+  )[0]?.nodeId
   return nodeId && nodeId !== candidateId.value ? nodeId : undefined
 }
 
@@ -832,7 +1265,7 @@ function beginNodeDrag(event: PointerEvent, nodeId: string): void {
   activeDragPointerTarget?.setPointerCapture?.(event.pointerId)
   activeDragPointerTarget?.addEventListener('lostpointercapture', handleNodeLostPointerCapture)
   const point = { x: event.clientX, y: event.clientY }
-  const sourceRect = nodeElements.get(nodeId)?.getBoundingClientRect()
+  const sourceRect = runtimeNodeGeometryById(nodeId)?.rect
   const pointerOffset = sourceRect
     && point.x >= sourceRect.left && point.x <= sourceRect.right
     && point.y >= sourceRect.top && point.y <= sourceRect.bottom
@@ -886,8 +1319,8 @@ function canResize(nodeId: string): boolean {
 
 function beginResize(event: PointerEvent, nodeId: string): void {
   const location = findDesignerNode(props.document, nodeId)
-  const row = sheetRef.value?.querySelector<HTMLElement>('[data-config-form-responsive-layout]')
-  if (!location || !row || !canResize(nodeId))
+  const layoutRect = runtimeLayoutRect()
+  if (!location || !layoutRect || !canResize(nodeId))
     return
   event.preventDefault()
   event.stopPropagation()
@@ -901,8 +1334,10 @@ function beginResize(event: PointerEvent, nodeId: string): void {
   )
   const startSpan = location.node.span ?? layout.fieldSpan
   const startX = event.clientX
-  const width = row.getBoundingClientRect().width || 1
+  const width = layoutRect.width || 1
   const pointerId = event.pointerId
+  const pointerTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
+  pointerTarget?.setPointerCapture?.(pointerId)
   let nextSpan = startSpan
   const move = (moveEvent: PointerEvent): void => {
     if (moveEvent.pointerId !== pointerId)
@@ -910,7 +1345,13 @@ function beginResize(event: PointerEvent, nodeId: string): void {
     const delta = Math.round((moveEvent.clientX - startX) / width * layout.columns)
     nextSpan = Math.min(layout.columns, Math.max(1, startSpan + delta))
   }
-  const finish = (finishEvent: PointerEvent): void => {
+  const moveFromRuntime = (moveEvent: DesignerRuntimePointerPayload): void => {
+    if (moveEvent.pointerId !== pointerId)
+      return
+    const delta = Math.round((moveEvent.clientX - startX) / width * layout.columns)
+    nextSpan = Math.min(layout.columns, Math.max(1, startSpan + delta))
+  }
+  const finish = (finishEvent: Pick<PointerEvent, 'pointerId'>): void => {
     if (finishEvent.pointerId !== pointerId)
       return
     resizeCleanup?.()
@@ -918,10 +1359,24 @@ function beginResize(event: PointerEvent, nodeId: string): void {
       emit('resize', nodeId, nextSpan)
   }
   const cancel = (): void => resizeCleanup?.()
+  const lostCapture = (lostEvent: PointerEvent): void => {
+    if (lostEvent.pointerId === pointerId)
+      resizeCleanup?.()
+  }
+  pointerTarget?.addEventListener('lostpointercapture', lostCapture)
+  runtimePointerMove = moveFromRuntime
+  runtimePointerUp = finish
+  runtimePointerCancel = cancel
   resizeCleanup = () => {
     window.removeEventListener('pointermove', move)
     window.removeEventListener('pointerup', finish)
     window.removeEventListener('pointercancel', cancel)
+    pointerTarget?.removeEventListener('lostpointercapture', lostCapture)
+    if (pointerTarget?.hasPointerCapture?.(pointerId))
+      pointerTarget.releasePointerCapture(pointerId)
+    runtimePointerMove = undefined
+    runtimePointerUp = undefined
+    runtimePointerCancel = undefined
     resizeCleanup = undefined
     resizingNodeId.value = undefined
   }
@@ -933,6 +1388,15 @@ function beginResize(event: PointerEvent, nodeId: string): void {
 watch(() => props.breakpoint, () => {
   void nextTick(() => {
     elementVersion.value += 1
+    scheduleCanvasCameraMeasure()
+  })
+})
+
+watch(() => camera.scale, () => {
+  void nextTick(() => {
+    elementVersion.value += 1
+    if (activeSession.value?.active && activeSession.value.input === 'pointer')
+      scheduleDragOverlay()
   })
 })
 
@@ -962,13 +1426,20 @@ onMounted(() => {
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(() => {
       elementVersion.value += 1
+      scheduleCanvasCameraMeasure()
     })
     if (sheetRef.value)
       resizeObserver.observe(sheetRef.value)
+    if (cameraViewportRef.value)
+      resizeObserver.observe(cameraViewportRef.value)
   }
+  scheduleCanvasCameraMeasure()
   unregisterDropResolver = dragController?.registerResolver(resolveDropTarget)
   unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets)
   document.addEventListener('pointerdown', handleDocumentPointerDown)
+  document.addEventListener('keydown', handleDocumentKeydown)
+  document.addEventListener('keyup', handleDocumentKeyup)
+  window.addEventListener('blur', handleWindowBlur)
 })
 
 onBeforeUnmount(() => {
@@ -977,18 +1448,30 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   cleanupNodeDrag()
   clearDragOverlay()
+  cameraPanCleanup?.()
+  if (cameraMeasureFrame !== undefined)
+    window.cancelAnimationFrame(cameraMeasureFrame)
   resizeCleanup?.()
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  document.removeEventListener('keydown', handleDocumentKeydown)
+  document.removeEventListener('keyup', handleDocumentKeyup)
+  window.removeEventListener('blur', handleWindowBlur)
 })
 </script>
 
 <template>
   <main
+    ref="canvasRef"
     class="mx-config-form-designer__canvas"
-    :class="{ 'is-dragging': activeSession?.active }"
+    :class="{ 'is-dragging': activeSession?.active, 'is-camera-panning': cameraPanning }"
     :aria-label="locale.t('canvas.form', 'Form canvas')"
+    :data-camera-mode="camera.mode"
+    :data-camera-scale="camera.scale"
     :data-preview-breakpoint="breakpoint ?? 'desktop'"
     :data-editor-overlay-mode="overlayMode"
+    tabindex="-1"
+    @pointerenter="cameraHovered = true"
+    @pointerleave="cameraHovered = false"
   >
     <div v-if="showInteractiveToggle" class="mx-config-form-designer__canvas-tools mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.tools', 'Canvas tools')">
       <button
@@ -1004,39 +1487,50 @@ onBeforeUnmount(() => {
     </div>
 
     <div
-      ref="sheetRef"
-      class="mx-config-form-designer__canvas-sheet mx-config-form-designer__runtime-surface"
-      :data-sheet-breakpoint="breakpoint ?? 'desktop'"
-      role="group"
-      @pointerdown.capture="handleCanvasPointerDown"
-      @click="handleCanvasClick"
-      @selectstart="handleCanvasSelectStart"
-      @keydown.capture="handleCanvasKeydown"
+      ref="cameraViewportRef"
+      class="mx-config-form-designer__canvas-viewport"
+      data-canvas-camera-viewport
+      @scroll="updateCameraPan"
     >
-      <RuntimeSurface
-        v-model="surfaceModel"
-        :fields="renderer.fields"
-        :components="renderer.components"
-        :namespace="registry.rendererNamespace"
-        :readonly="renderer.readonly"
-        :inline="renderer.inline"
-        :columns="renderer.columns"
-        :gap="renderer.gap"
-        :field-span="renderer.fieldSpan"
-        :label-position="renderer.labelPosition"
-        :responsive="renderer.responsive"
-        :breakpoint="breakpoint"
-        :editor="editorBridge"
-        :aria-hidden="!interactive ? 'true' : undefined"
-        :inert="!interactive ? true : undefined"
-        mode="design"
-      />
+      <div class="mx-config-form-designer__camera-sizer" :style="cameraSizerStyle">
+        <div
+          ref="sheetRef"
+          class="mx-config-form-designer__canvas-sheet mx-config-form-designer__runtime-surface"
+          :data-sheet-breakpoint="breakpoint ?? 'desktop'"
+          :data-intrinsic-width="intrinsicFrameWidth"
+          :style="cameraSheetStyle"
+          role="group"
+          @pointerdown.capture="handleCanvasPointerDown"
+          @click="handleCanvasClick"
+          @selectstart="handleCanvasSelectStart"
+          @keydown.capture="handleCanvasKeydown"
+        >
+      <slot name="runtime" v-bind="runtimeSlotScope">
+        <RuntimeSurface
+          v-model="surfaceModel"
+          :fields="renderer.fields"
+          :components="renderer.components"
+          :namespace="registry.rendererNamespace"
+          :readonly="renderer.readonly"
+          :inline="renderer.inline"
+          :columns="renderer.columns"
+          :gap="renderer.gap"
+          :field-span="renderer.fieldSpan"
+          :label-position="renderer.labelPosition"
+          :responsive="renderer.responsive"
+          :breakpoint="breakpoint"
+          :editor="editorBridge"
+          :aria-hidden="!interactive ? 'true' : undefined"
+          :inert="!interactive ? true : undefined"
+          mode="design"
+        />
+      </slot>
 
-      <div v-if="renderer.fields.length === 0" class="mx-config-form-designer__canvas-empty" aria-hidden="true">
-        {{ locale.t('canvas.dropHere', 'Drop a field here') }}
-      </div>
+          <div v-if="renderer.fields.length === 0" class="mx-config-form-designer__canvas-empty" aria-hidden="true">
+            {{ locale.t('canvas.dropHere', 'Drop a field here') }}
+          </div>
 
-      <div class="mx-config-form-designer__editor-overlay">
+          <div class="mx-config-form-designer__editor-overlay">
         <div
           v-if="collapsedCandidateIndicator"
           class="mx-config-form-designer__collapsed-drop-indicator"
@@ -1120,15 +1614,42 @@ onBeforeUnmount(() => {
         >
           <TriangleAlert :size="13" aria-hidden="true" />
         </span>
+          </div>
+        </div>
       </div>
     </div>
     <div
+      v-if="spacePressed || cameraPanning"
+      class="mx-config-form-designer__camera-gesture-layer"
+      :class="{ 'is-panning': cameraPanning }"
+      aria-hidden="true"
+      @pointerdown="beginCameraPan"
+    />
+    <div class="mx-config-form-designer__camera-controls" role="group" :aria-label="locale.t('canvas.camera', 'Canvas zoom and pan')" data-designer-editor-control>
+      <button type="button" class="mx-config-form-designer__icon-button" :disabled="camera.scale <= CANVAS_MIN_SCALE" :aria-label="locale.t('canvas.zoomOut', 'Zoom out')" :title="locale.t('canvas.zoomOut', 'Zoom out')" @click="zoomCamera('out')">
+        <ZoomOut :size="16" aria-hidden="true" />
+      </button>
+      <button type="button" class="mx-config-form-designer__camera-percent" :aria-label="locale.t('canvas.actualSize', 'Actual size')" :title="locale.t('canvas.actualSizeHint', 'Actual size (100%)')" @click="resetCamera">
+        {{ cameraPercent }}%
+      </button>
+      <button type="button" class="mx-config-form-designer__icon-button" :disabled="camera.scale >= CANVAS_MAX_SCALE" :aria-label="locale.t('canvas.zoomIn', 'Zoom in')" :title="locale.t('canvas.zoomIn', 'Zoom in')" @click="zoomCamera('in')">
+        <ZoomIn :size="16" aria-hidden="true" />
+      </button>
+      <span class="mx-config-form-designer__camera-separator" aria-hidden="true" />
+      <button type="button" class="mx-config-form-designer__icon-button" :class="{ 'is-active': camera.mode === 'fit' }" :aria-label="locale.t('canvas.fit', 'Fit canvas')" :title="locale.t('canvas.fitHint', 'Fit canvas (Shift+1)')" :aria-pressed="camera.mode === 'fit'" @click="fitCamera">
+        <Scan :size="16" aria-hidden="true" />
+      </button>
+    </div>
+    <div
       ref="dragOverlayRef"
-      v-show="dragOverlayStyle"
+      v-show="effectiveDragOverlayStyle"
       class="mx-config-form-designer__drag-overlay"
-      :style="dragOverlayStyle"
+      :style="effectiveDragOverlayStyle"
       aria-hidden="true"
       data-designer-drag-overlay
-    />
+    >
+      <slot v-if="slots.runtime && dragVisualSlotScope" name="dragVisual" v-bind="dragVisualSlotScope" />
+      <div v-else-if="dragOverlayHtml" class="mx-config-form-designer__drag-overlay-content" v-html="dragOverlayHtml" />
+    </div>
   </main>
 </template>

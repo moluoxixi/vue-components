@@ -8,6 +8,14 @@ const currentDirectory = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   base: process.env.CONFIG_FORM_WORKBENCH_BASE ?? '/',
+  build: {
+    rollupOptions: {
+      input: {
+        'index': resolve(currentDirectory, 'index.html'),
+        'runtime-host': resolve(currentDirectory, 'runtime-host.html'),
+      },
+    },
+  },
   plugins: [Vue()],
   resolve: {
     alias: {

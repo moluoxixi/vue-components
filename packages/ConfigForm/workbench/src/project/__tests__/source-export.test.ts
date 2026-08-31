@@ -277,6 +277,29 @@ describe('standalone source export', () => {
     expect(app).not.toMatch(/ConfigForm|config-form|form\.config/)
   })
 
+  it('exports component event triggers and wires them to the real source node', () => {
+    const project = createBuiltInWorkspaceProject('element-profile', {
+      createdAt: '2026-08-27T08:00:00.000Z',
+      id: 'standalone-component-event',
+      name: 'Standalone component event',
+    })
+    const model = JSON.parse((project.files[normalizeProjectPath('src/form.designer.json')] as { content: string }).content) as LowCodePageModel
+    model.flows = [{
+      ...actionFlow('latest', { id: 'click-flow' }),
+      trigger: { kind: 'component.event', nodeId: 'profile-name', event: 'update:modelValue' },
+    }]
+    const registry = createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
+    const exported = createPureSourceExport(project, model, registry)
+    const flows = (exported.files[normalizeProjectPath('src/flows.ts')] as { content: string }).content
+    const app = (exported.files[normalizeProjectPath('src/App.vue')] as { content: string }).content
+
+    expect(flows).toContain('\'component.event\'')
+    expect(flows).toContain('trigger.nodeId')
+    expect(flows).toContain('trigger.event')
+    expect(app).toContain('runTrigger({ kind: \'component.event\'')
+    expect(app).toContain('@update:model-value=\'handleFieldUpdate(')
+  })
+
   it('executes generated latest flows without waiting for an action that ignored abort', async () => {
     const runtime = await importGeneratedFlowModule(actionFlow('latest'))
     const execute = vi.fn((input: unknown) => input === 'first'

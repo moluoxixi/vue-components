@@ -14,6 +14,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: s.ListCollapse,
       runtime: { component: s.Collapse, designerComponent: s.AntdCollapsePreview },
+      events: [{ name: 'change', title: 'Expanded items change' }],
       setters: [s.propSetter('accordion', 'Accordion', 'boolean')],
       slots: [{ name: 'default', title: 'Items', accepts: ['container'], materials: ['antd.collapse-item'] }],
       createNode: ({ id }) => {

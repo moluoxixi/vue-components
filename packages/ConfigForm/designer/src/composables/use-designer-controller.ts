@@ -48,7 +48,13 @@ interface UseDesignerControllerOptions {
 export type DesignerSelectionMode = 'range' | 'replace' | 'toggle'
 
 export interface DesignerController {
-  history: Ref<DesignerHistoryState>
+  /**
+   * Local history is available only for the standalone, uncontrolled designer.
+   * The Workbench passes a controlled document and owns history in its
+   * ProjectEditorSession, so exposing a local history there would create a
+   * second source of truth.
+   */
+  history?: Ref<DesignerHistoryState>
   document: ComputedRef<DesignerDocument>
   selectedId: Ref<string | undefined>
   selectedIds: Ref<string[]>
@@ -134,14 +140,18 @@ function acceptsNode(material: DesignerMaterialDefinition, node: DesignerNode): 
 
 export function useDesignerController(options: UseDesignerControllerOptions): DesignerController {
   const initial = initialState(options.document(), options.registry())
-  const history = shallowRef(createDesignerHistory(initial.document, normalizeHistoryLimit(options.historyLimit())))
+  const history = options.controlled()
+    ? undefined
+    : shallowRef(createDesignerHistory(initial.document, normalizeHistoryLimit(options.historyLimit())))
   const selectedId = ref<string>()
   const selectedIds = ref<string[]>([])
   const commandDiagnostics = ref<DesignerDiagnostic[]>(
     hasDesignerErrors(initial.diagnostics) ? initial.diagnostics : [],
   )
   const renderVersion = ref(0)
-  const document = computed(() => options.controlled() ? options.document() : history.value.present)
+  const document = computed(() => options.controlled()
+    ? options.document()
+    : history!.value.present)
   const compileResult = computed(() => compileDesignerDocument(document.value, options.registry()))
   const diagnostics = computed(() => commandDiagnostics.value.length > 0
     ? commandDiagnostics.value
@@ -155,8 +165,12 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   const selectedMaterial = computed(() => selectedNode.value
     ? options.registry().getMaterial(selectedNode.value.material)
     : undefined)
-  const canUndo = computed(() => !options.readonly() && history.value.past.length > 0)
-  const canRedo = computed(() => !options.readonly() && history.value.future.length > 0)
+  const canUndo = computed(() => !options.controlled()
+    && !options.readonly()
+    && (history?.value.past.length ?? 0) > 0)
+  const canRedo = computed(() => !options.controlled()
+    && !options.readonly()
+    && (history?.value.future.length ?? 0) > 0)
 
   watch(diagnostics, value => options.onDiagnostics(value), { deep: true, immediate: true })
   watch(options.document, (value) => {
@@ -171,12 +185,14 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     }
     if (areDesignerJsonValuesEqual(value, document.value))
       return
+    if (!history)
+      return
     history.value = resetDesignerHistory(history.value, next.document)
     pruneSelection(next.document)
     renderVersion.value += 1
   }, { deep: true })
   watch(options.historyLimit, (limit) => {
-    if (!Number.isInteger(limit) || limit < 1)
+    if (!history || !Number.isInteger(limit) || limit < 1)
       return
     history.value = {
       ...history.value,
@@ -220,6 +236,8 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
       options.onCommand(command, nextDocument)
       return true
     }
+    if (!history)
+      return false
     const result = applyDesignerCommand(history.value, command, options.registry())
     commandDiagnostics.value = result.changed ? [] : result.diagnostics
     renderVersion.value += 1
@@ -239,6 +257,8 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     renderVersion.value += 1
     if (!next.changed)
       return false
+    if (!history)
+      return false
     history.value = next.history
     pruneSelection(document.value)
     emitDocument()
@@ -246,11 +266,15 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   }
 
   function undo(): boolean {
-    return options.readonly() ? false : applyHistory(undoDesignerHistory(history.value))
+    if (options.controlled() || options.readonly() || !history)
+      return false
+    return applyHistory(undoDesignerHistory(history.value))
   }
 
   function redo(): boolean {
-    return options.readonly() ? false : applyHistory(redoDesignerHistory(history.value))
+    if (options.controlled() || options.readonly() || !history)
+      return false
+    return applyHistory(redoDesignerHistory(history.value))
   }
 
   function documentOrder(): string[] {
@@ -520,6 +544,8 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     })
     commandDiagnostics.value = hasDesignerErrors(semanticDiagnostics) ? semanticDiagnostics : []
     if (hasDesignerErrors(semanticDiagnostics))
+      return false
+    if (!history)
       return false
     history.value = resetDesignerHistory(history.value, parsed.data)
     select()

@@ -178,6 +178,28 @@ describe('preview flow coordinator', () => {
     expect(calls).toEqual(['start', 'start:1'])
   })
 
+  it('matches component event triggers by node id and event name', async () => {
+    const execute = vi.fn(async (input: unknown) => input)
+    const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter({ get: () => ({ execute }) }))
+    const flow = actionFlow('latest', { id: 'component-event' })
+    flow.trigger = { kind: 'component.event', nodeId: 'submit-button', event: 'click' }
+
+    await expect(coordinator.dispatch({
+      plans: [executionPlan(flow)],
+      trigger: { kind: 'component.event', nodeId: 'submit-button', event: 'click' },
+      values: { request: 'clicked' },
+      revision: 1,
+    })).resolves.toMatchObject({ status: 'committed', valuePatch: { set: { result: 'clicked' } } })
+    expect(execute).toHaveBeenCalledWith('clicked', expect.anything())
+
+    await expect(coordinator.dispatch({
+      plans: [executionPlan(flow)],
+      trigger: { kind: 'component.event', nodeId: 'other-button', event: 'click' },
+      values: { request: 'ignored' },
+      revision: 1,
+    })).resolves.toMatchObject({ status: 'noop' })
+  })
+
   it('applies only flow-owned value changes to the latest preview values', () => {
     expect(applyPreviewFlowValuePatch(
       { request: 'latest', result: 'old', untouched: 'newer-user-value' },

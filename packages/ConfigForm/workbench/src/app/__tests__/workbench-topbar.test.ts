@@ -83,7 +83,7 @@ describe('workbench topbar', () => {
     const trigger = wrapper.get('button[aria-label="More actions"]')
     await trigger.trigger('click')
     const flow = wrapper.findAll('[role="menuitem"]')
-      .find(item => item.text() === 'Flow orchestration')!
+      .find(item => item.text() === 'Event flow orchestration')!
     ;(flow.element as HTMLButtonElement).focus()
     await flow.trigger('click')
 

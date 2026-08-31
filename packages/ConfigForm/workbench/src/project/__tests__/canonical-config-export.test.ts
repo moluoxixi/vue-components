@@ -1,3 +1,4 @@
+import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import { parse } from '@babel/parser'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import {
@@ -12,7 +13,10 @@ import { createCanonicalProjectSourceExport } from '../export/source'
 import { normalizeProjectPath, safeProjectSlug } from '../path'
 import { createBuiltInWorkspaceApplication } from '../templates'
 
-async function fixture() {
+async function fixture(update?: (
+  document: ProjectDocument,
+  adapter: Awaited<ReturnType<typeof loadWorkbenchAdapter>>,
+) => void) {
   const adapter = await loadWorkbenchAdapter('element-plus')
   const application = createBuiltInWorkspaceApplication('element-profile', {
     createdAt: '2026-08-30T00:00:00.000Z',
@@ -24,6 +28,7 @@ async function fixture() {
   })
   if (!migrated.success)
     throw new Error(migrated.diagnostics[0]?.message ?? 'Migration failed.')
+  update?.(migrated.data, adapter)
   const result = compileCanonicalProject({
     snapshot: createProjectSnapshot(migrated.data, 4),
     registry: adapter.registrySnapshot,
@@ -63,6 +68,48 @@ describe('canonical Config export', () => {
       ...adapter.sourceResolver,
       registryFingerprint: 'fnv1a:stale',
     })).toThrow('does not match the ProjectCompilation Registry identity')
+  })
+
+  it('preserves graph, relation placement, Registry lock, and Flow authoring metadata', async () => {
+    const { adapter, compilation } = await fixture((document) => {
+      const page = document.pagesById.home!
+      page.graph.props = { authoringSurface: 'customer-profile' }
+      page.graph.root[0]!.placement = {
+        basis: '42%',
+        region: { lane: 'main' },
+        span: 7,
+      }
+      page.flows = [{
+        version: 1,
+        id: 'positioned-flow',
+        name: 'Positioned flow',
+        trigger: { kind: 'page.mount' },
+        nodes: [
+          { id: 'trigger', position: { x: 13, y: 21 }, type: 'trigger' },
+          { id: 'end', position: { x: 144, y: 89 }, type: 'end' },
+        ],
+        edges: [{ id: 'trigger-end', source: 'trigger', target: 'end' }],
+      }]
+    })
+    const exported = createCanonicalProjectConfigExport(compilation, adapter.sourceResolver)
+    const pageFile = exported.files[normalizeProjectPath('pages/home/form.config.ts')]
+    const projectFile = exported.files[normalizeProjectPath('project.config.ts')]
+    expect(pageFile?.kind).toBe('text')
+    expect(projectFile?.kind).toBe('text')
+    if (pageFile?.kind !== 'text' || projectFile?.kind !== 'text')
+      return
+
+    expect(pageFile.content).toContain('export const graph = {')
+    expect(pageFile.content).toContain('authoringSurface: "customer-profile"')
+    expect(pageFile.content).toContain('placement: {')
+    expect(pageFile.content).toContain('basis: "42%"')
+    expect(pageFile.content).toContain('lane: "main"')
+    expect(pageFile.content).toContain('position: {')
+    expect(pageFile.content).toContain('x: 13')
+    expect(projectFile.content).toContain('schemaVersion: 4')
+    expect(projectFile.content).toContain('registryLock: {')
+    expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
+    expect(() => parse(projectFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
   })
 })
 
@@ -112,5 +159,58 @@ describe('canonical standalone Source export', () => {
       ...adapter.sourceResolver,
       registryFingerprint: 'fnv1a:stale',
     })).toThrow('does not match the ProjectCompilation Registry identity')
+  })
+
+  it('binds only node events used by actions or canonical Flow listeners', async () => {
+    const { adapter, compilation } = await fixture((document, activeAdapter) => {
+      const page = document.pagesById.home!
+      document.registryLock.components['element.tabs'] = structuredClone(
+        activeAdapter.componentRegistry.lock.components['element.tabs']!,
+      )
+      document.registryLock.components['element.collapse'] = structuredClone(
+        activeAdapter.componentRegistry.lock.components['element.collapse']!,
+      )
+      page.graph.root.push(
+        { nodeId: 'event-tabs', placement: {} },
+        { nodeId: 'idle-collapse', placement: {} },
+      )
+      page.graph.nodesById['event-tabs'] = {
+        id: 'event-tabs',
+        component: 'element.tabs',
+        kind: 'layout',
+        props: {},
+        events: {},
+        bindings: {},
+        slots: { default: [] },
+      }
+      page.graph.nodesById['idle-collapse'] = {
+        id: 'idle-collapse',
+        component: 'element.collapse',
+        kind: 'layout',
+        props: {},
+        events: {},
+        bindings: {},
+        slots: { default: [] },
+      }
+      page.flows = [{
+        version: 1,
+        id: 'tab-change-flow',
+        name: 'Tab change',
+        trigger: { kind: 'component.event', nodeId: 'event-tabs', event: 'tab-change' },
+        nodes: [
+          { id: 'trigger', type: 'trigger' },
+          { id: 'end', type: 'end' },
+        ],
+        edges: [{ id: 'trigger-end', source: 'trigger', target: 'end', condition: 'next' }],
+      }]
+    })
+    const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
+    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
+    expect(page?.kind).toBe('text')
+    if (page?.kind !== 'text')
+      return
+
+    expect(page.content).toContain('@tab-change=\'runNodeEvent("event-tabs", "tab-change", $event)\'')
+    expect(page.content).not.toContain('runNodeEvent("idle-collapse", "change"')
   })
 })

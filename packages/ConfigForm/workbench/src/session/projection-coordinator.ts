@@ -18,6 +18,8 @@ export interface WorkspaceProjectionSnapshot {
   readonly currentPage: WorkspacePage
   readonly currentPageId: string
   readonly modelRevision: number
+  /** Stable identity for one mounted Preview Runtime instance. */
+  readonly runtimeSessionKey: string
   readonly revisionKey: string
 }
 
@@ -45,6 +47,17 @@ function projectionRevisionKey(snapshot: Pick<
   ].join(':')
 }
 
+function projectionRuntimeSessionKey(snapshot: Pick<
+  WorkspaceProjectionInput,
+  'application' | 'currentPageId'
+>): string {
+  return [
+    snapshot.application.id,
+    snapshot.application.manifest.adapter,
+    snapshot.currentPageId,
+  ].join(':')
+}
+
 function captureSnapshot(snapshot: WorkspaceProjectionInput): WorkspaceProjectionSnapshot {
   const application = cloneWorkspaceApplication(snapshot.application)
   const currentPage = application.pages.find(page => page.id === snapshot.currentPageId)
@@ -57,6 +70,7 @@ function captureSnapshot(snapshot: WorkspaceProjectionInput): WorkspaceProjectio
     currentPage,
     currentPageId: currentPage.id,
     modelRevision: snapshot.modelRevision,
+    runtimeSessionKey: projectionRuntimeSessionKey(snapshot),
     revisionKey: projectionRevisionKey(snapshot),
   }
 }

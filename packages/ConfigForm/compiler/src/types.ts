@@ -9,8 +9,11 @@ import type {
   NodeId,
   PageId,
   PageNode,
+  ProjectChangeSet,
   ProjectCompilationSnapshot,
+  ProjectDraftSnapshot,
   ProjectResourceReference,
+  ProjectSnapshot,
   RegisteredBinding,
   RegisteredEventAction,
   RegistryContractSnapshot,
@@ -18,8 +21,8 @@ import type {
   ValidateTrigger,
 } from '@moluoxixi/config-form-model'
 
-export const CANONICAL_PROJECT_IR_VERSION = 2 as const
-export const CONFIG_FORM_COMPILER_VERSION = '2.0.0' as const
+export const CANONICAL_PROJECT_IR_VERSION = 3 as const
+export const CONFIG_FORM_COMPILER_VERSION = '2.2.0' as const
 
 export interface SemanticCompilerEnvironment {
   version: string
@@ -37,10 +40,27 @@ export interface CanonicalProjectIdentity {
   irHash: string
 }
 
+export interface CanonicalPageRegistryUsage {
+  key: ComponentKey
+  contractVersion: string
+  fingerprint: string
+}
+
+export interface CanonicalPageIdentity {
+  irVersion: typeof CANONICAL_PROJECT_IR_VERSION
+  projectId: string
+  pageId: PageId
+  registryAdapter: string
+  registryAdapterVersion: string
+  registryUsageHash: string
+  compilerVersion: string
+  environmentHash: string
+  semanticHash: string
+}
+
 export interface CanonicalNodePlacement {
   parentId: NodeId | null
   slot: SlotName | null
-  index: number
   props: ModelJsonObject
 }
 
@@ -49,12 +69,14 @@ interface CanonicalNodeBase {
   component: ComponentKey
   componentVersion: string
   componentFingerprint: string
-  path: NodeId[]
+  /** Hash of this node and its complete semantic subtree. */
+  subtreeHash: string
   placement: CanonicalNodePlacement
   configuredProps: ModelJsonObject
   props: ModelJsonObject
   events: Record<string, RegisteredEventAction[]>
   bindings: Record<string, RegisteredBinding>
+  flowEvents?: string[]
   extensions?: ModelJsonObject
   conditions?: PageNode['conditions']
   reactions?: PageNode['reactions']
@@ -106,6 +128,36 @@ export interface CanonicalProjectIRDocument {
 
 export type CanonicalProjectIR = DeepReadonly<CanonicalProjectIRDocument>
 
+export type PageCompilationSnapshotIdentity
+  = | {
+    source: 'committed'
+    projectId: string
+    pageId: PageId
+    contentHash: string
+    editVersion: number
+  }
+  | {
+    source: 'draft'
+    projectId: string
+    pageId: PageId
+    contentHash: string
+    baseEditVersion: number
+    draftId: string
+  }
+
+export interface PageCompilationDocument {
+  snapshotIdentity: PageCompilationSnapshotIdentity
+  registryUsage: CanonicalPageRegistryUsage[]
+  key: CanonicalPageIdentity
+  page: CanonicalPageIR
+}
+
+/**
+ * Indivisible page-scoped compiler output for Design and Preview. The full
+ * ProjectDocument stays outside the realtime Runtime boundary.
+ */
+export type PageCompilation = DeepReadonly<PageCompilationDocument>
+
 export type ProjectCompilationOrigin
   = | {
     kind: 'committed'
@@ -145,6 +197,31 @@ export interface CompileCanonicalProjectInput {
   environment?: Partial<SemanticCompilerEnvironment>
 }
 
+export interface CompileCanonicalPageInput extends CompileCanonicalProjectInput {
+  pageId: PageId
+}
+
+export interface CreateCompileCoordinatorOptions {
+  registry: RegistryContractSnapshot | unknown
+  environment?: Partial<SemanticCompilerEnvironment>
+  maxCachedPages?: number
+}
+
+export interface CompileCoordinator {
+  acceptSnapshot: (snapshot: ProjectSnapshot, changeSet?: ProjectChangeSet) => void
+  compilePage: (pageId: PageId) => CompileCanonicalPageResult
+  compileDraftPage: (
+    snapshot: ProjectDraftSnapshot,
+    pageId: PageId,
+    changeSet?: ProjectChangeSet,
+  ) => CompileCanonicalPageResult
+  clear: () => void
+}
+
 export type CompileCanonicalProjectResult
   = | { success: true, compilation: ProjectCompilation, diagnostics: [] }
+    | { success: false, diagnostics: SemanticCompilerDiagnostic[] }
+
+export type CompileCanonicalPageResult
+  = | { success: true, compilation: PageCompilation, diagnostics: [] }
     | { success: false, diagnostics: SemanticCompilerDiagnostic[] }

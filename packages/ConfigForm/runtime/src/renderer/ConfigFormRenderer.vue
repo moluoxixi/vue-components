@@ -419,15 +419,39 @@ function shouldInterceptEditorEvent(
   return decision !== false
 }
 
+function emitRuntimeEvent(
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  event: string,
+  args: unknown[],
+): void {
+  if (props.mode !== 'preview')
+    return
+  emit('runtimeEvent', {
+    args,
+    event,
+    metadata,
+    mode: metadata.mode,
+    node: metadata.node,
+    nodeId: metadata.nodeId,
+    path: metadata.path,
+    slot: metadata.slot,
+  })
+}
+
 function editorEventListener(
   metadata: ConfigFormRuntimeNodeMetadata<TValues>,
   event: string,
   listener: (...args: unknown[]) => void,
+  runtimeEvent?: string,
 ): (...args: unknown[]) => void {
   return (...args: unknown[]) => {
     if (shouldInterceptEditorEvent(metadata, event, args))
       return
     listener(...args)
+    // Emit after the component listener so model-bound events expose the
+    // latest Runtime values to Flow dispatchers.
+    if (runtimeEvent)
+      emitRuntimeEvent(metadata, runtimeEvent, args)
   }
 }
 
@@ -435,8 +459,9 @@ function wrapComponentListeners(
   target: Record<string, unknown>,
   metadata: ConfigFormRuntimeNodeMetadata<TValues>,
   skipKeys: ReadonlySet<string> = new Set(),
+  runtimeEvents: ReadonlyMap<string, string> = new Map(),
 ): void {
-  if (props.mode !== 'design')
+  if (props.mode !== 'design' && props.mode !== 'preview')
     return
 
   for (const key of Object.keys(target)) {
@@ -445,15 +470,19 @@ function wrapComponentListeners(
     if (skipKeys.has(key))
       continue
     const value = target[key]
+    const runtimeEvent = runtimeEvents.get(key)
+    if (props.mode === 'preview' && !runtimeEvent)
+      continue
+    const event = runtimeEvent ?? eventNameFromHandlerKey(key)
     if (typeof value === 'function') {
-      target[key] = editorEventListener(metadata, key.slice(2), value as (...args: unknown[]) => void)
+      target[key] = editorEventListener(metadata, event, value as (...args: unknown[]) => void, runtimeEvent)
     }
     else if (Array.isArray(value)) {
       const listeners = value.filter((listener): listener is (...args: unknown[]) => void => typeof listener === 'function')
-      target[key] = editorEventListener(metadata, key.slice(2), (...args: unknown[]) => {
+      target[key] = editorEventListener(metadata, event, (...args: unknown[]) => {
         for (const listener of listeners)
           listener(...args)
-      })
+      }, runtimeEvent)
     }
   }
 }
@@ -691,6 +720,8 @@ function renderControl(
       componentProps['aria-describedby'] = mergeAriaTokens(componentProps['aria-describedby'], errorId)
   }
 
+  const runtimeEvents = runtimeFlowEventMap(field)
+  const bindingEventKey = toHandlerKey(camelize(binding.trigger))
   addListener(componentProps, binding.trigger, (...args: unknown[]) => {
     applyFieldChange({
       field: field.field,
@@ -700,16 +731,20 @@ function renderControl(
           ? registration.getValueFromEvent(...args)
           : args[0],
     })
-  }, metadata)
-  addListener(componentProps, field.blurTrigger ?? registration?.blurTrigger ?? 'blur', () => {
+  }, metadata, runtimeEvents.get(bindingEventKey))
+  const blurEvent = field.blurTrigger ?? registration?.blurTrigger ?? 'blur'
+  const blurEventKey = toHandlerKey(camelize(blurEvent))
+  addListener(componentProps, blurEvent, () => {
     setTouched(field.field)
     void validateField(field.field, 'blur')
-  }, metadata)
+  }, metadata, runtimeEvents.get(blurEventKey))
   if (metadata) {
-    wrapComponentListeners(componentProps, metadata, new Set([
-      toHandlerKey(camelize(binding.trigger)),
-      toHandlerKey(camelize(field.blurTrigger ?? registration?.blurTrigger ?? 'blur')),
-    ]))
+    const managedListeners = new Set([
+      bindingEventKey,
+      blurEventKey,
+    ])
+    addRuntimeFlowEventListeners(componentProps, metadata, runtimeEvents, managedListeners)
+    wrapComponentListeners(componentProps, metadata, managedListeners, runtimeEvents)
   }
 
   return h(resolveComponent(registration?.component ?? field.component), {
@@ -743,7 +778,10 @@ function renderComponentNode(
   applyDesignInteractionGuard(componentProps)
   if (registerElement)
     Object.assign(componentProps, { ref: (element: unknown) => registerNodeElement(metadata, element) })
-  wrapComponentListeners(componentProps, metadata)
+  const runtimeEvents = runtimeFlowEventMap(node)
+  const managedListeners = new Set<string>()
+  addRuntimeFlowEventListeners(componentProps, metadata, runtimeEvents, managedListeners)
+  wrapComponentListeners(componentProps, metadata, managedListeners, runtimeEvents)
   const configuredKey = componentProps.key
   const vnodeKey = isVNodeKey(configuredKey) ? configuredKey : `${path}.component`
 
@@ -925,6 +963,7 @@ function addListener(
   event: string,
   listener: (...args: unknown[]) => void,
   metadata?: ConfigFormRuntimeNodeMetadata<TValues>,
+  runtimeEvent?: string,
 ): void {
   const key = toHandlerKey(camelize(event))
   const existing = target[key]
@@ -937,7 +976,41 @@ function addListener(
     for (const existingListener of existingListeners)
       existingListener(...args)
     listener(...args)
+    if (metadata && runtimeEvent)
+      emitRuntimeEvent(metadata, runtimeEvent, args)
   }
+}
+
+function addRuntimeFlowEventListeners(
+  target: Record<string, unknown>,
+  metadata: ConfigFormRuntimeNodeMetadata<TValues>,
+  runtimeEvents: ReadonlyMap<string, string>,
+  managedListenerKeys: Set<string>,
+): void {
+  for (const [key, event] of runtimeEvents) {
+    if (!managedListenerKeys.has(key))
+      addListener(target, event, () => {}, metadata, event)
+    managedListenerKeys.add(key)
+  }
+}
+
+function runtimeFlowEventMap(node: ConfigFormRendererNode<TValues>): ReadonlyMap<string, string> {
+  return new Map(runtimeFlowEvents(node).map(event => [toHandlerKey(camelize(event)), event] as const))
+}
+
+function runtimeFlowEvents(node: ConfigFormRendererNode<TValues>): string[] {
+  const lowCode = node.extensions?.['mx.low-code']
+  if (!isObject(lowCode))
+    return []
+  const events = (lowCode as Record<string, unknown>).flowEvents
+  if (!Array.isArray(events))
+    return []
+  return [...new Set(events.filter(isNonEmptyString))]
+}
+
+function eventNameFromHandlerKey(key: string): string {
+  const event = key.slice(2)
+  return event.charAt(0).toLowerCase() + event.slice(1)
 }
 
 function mergeAriaTokens(current: unknown, token: string): string {

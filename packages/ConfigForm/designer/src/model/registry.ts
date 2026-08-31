@@ -78,6 +78,11 @@ function definitionFor(
   const { id: _defaultId, ...nodeDefaults } = defaults
   const valueProp = material.runtime.valueProp ?? 'modelValue'
   const trigger = material.runtime.trigger ?? `update:${valueProp}`
+  const events = new Map<string, LowCodeEventSchema>()
+  if (material.kind === 'field')
+    events.set(trigger, { name: trigger, displayName: 'Value change' })
+  for (const event of material.events ?? [])
+    events.set(event.name, { name: event.name, displayName: event.title })
   return {
     component: material.key,
     displayName: material.title,
@@ -85,9 +90,7 @@ function definitionFor(
     icon: material.icon,
     kind: material.kind === 'container' ? 'layout' : 'component',
     props: material.setters,
-    events: material.kind === 'field'
-      ? [{ name: trigger, displayName: 'Value change' }]
-      : [],
+    events: [...events.values()],
     bindings: material.kind === 'field'
       ? [{ name: 'value', displayName: 'Value', valueProp, trigger }]
       : [],

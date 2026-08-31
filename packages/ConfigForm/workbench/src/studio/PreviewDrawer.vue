@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
   ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
-import type { ConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
+import type { WorkbenchAdapterId } from '../adapters'
 import type { WorkspacePreviewProjection } from '../session'
 import {
   Maximize2,
@@ -15,19 +15,17 @@ import {
   Tablet,
   X,
 } from '@lucide/vue'
-import { RuntimeSurface } from '@moluoxixi/config-form/renderer'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, useTemplateRef } from 'vue'
-import PreviewRuntimeBoundary from '../components/PreviewRuntimeBoundary.vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
+import PreviewRuntimeHostFrame from '../runtime-host/PreviewRuntimeHostFrame.vue'
 
 export type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
 
 const props = defineProps<{
-  active?: VueRuntimeCompileSuccess
+  adapter?: WorkbenchAdapterId
+  compilation?: PageCompilation
   configError?: string
   expanded?: boolean
-  fallback?: VueRuntimeCompileSuccess
-  fallbackModelValue: Record<string, unknown>
   locale?: DesignerLocaleOptions
   modelValue: Record<string, unknown>
   namespace?: string
@@ -42,16 +40,17 @@ const emit = defineEmits<{
   close: []
   error: [error: unknown]
   fieldChange: [payload: { field: string, values: Record<string, unknown> }]
+  runtimeEvent: [payload: { event: string, nodeId: string }]
+  runtimeMounted: [revision: string]
   ready: [revision: string]
   submit: [values: Record<string, unknown>]
   'update:expanded': [expanded: boolean]
-  'update:fallbackModelValue': [value: Record<string, unknown>]
   'update:modelValue': [value: Record<string, unknown>]
   'update:viewport': [viewport: PreviewViewport]
 }>()
 
-const renderer = useTemplateRef<ConfigFormRendererExpose<Record<string, unknown>>>('renderer')
-const fallbackRenderer = useTemplateRef<ConfigFormRendererExpose<Record<string, unknown>>>('fallbackRenderer')
+const runtimeHost = useTemplateRef<{ submit: () => void }>('runtimeHost')
+const runtimeReady = ref(false)
 const locale = computed(() => createDesignerLocale(props.locale))
 const viewports = computed(() => [
   { icon: Monitor, id: 'desktop' as const, label: locale.value.t('preview.desktop', 'Desktop preview') },
@@ -60,11 +59,25 @@ const viewports = computed(() => [
 ])
 
 function submitForm(): void {
-  const activeRenderer = renderer.value ?? fallbackRenderer.value
-  if (!activeRenderer)
-    return
-  void activeRenderer.submit().catch(error => emit('error', error))
+  runtimeHost.value?.submit()
 }
+
+function handleRuntimeReady(revision: string): void {
+  if (revision !== props.projection?.current.revisionKey)
+    return
+  runtimeReady.value = true
+  emit('ready', revision)
+}
+
+function handleRuntimeError(error: Error): void {
+  runtimeReady.value = false
+  emit('error', error)
+}
+
+watch(
+  () => [props.adapter, props.compilation, props.projection?.current.revisionKey],
+  () => runtimeReady.value = false,
+)
 </script>
 
 <template>
@@ -91,7 +104,7 @@ function submitForm(): void {
             <component :is="item.icon" :size="15" aria-hidden="true" />
           </button>
         </div>
-        <button type="button" :disabled="!active" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" @click="submitForm">
+        <button type="button" :disabled="!compilation || !runtimeReady" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" @click="submitForm">
           <Send :size="15" aria-hidden="true" />
         </button>
         <button
@@ -111,7 +124,7 @@ function submitForm(): void {
     </header>
     <div class="preview-canvas">
       <div class="preview-stage" :data-viewport="viewport">
-        <div v-if="active && (configError || projection?.compileResult.success === false)" class="preview-diagnostics" role="status">
+        <div v-if="compilation && (configError || projection?.compileResult.success === false)" class="preview-diagnostics" role="status">
           <strong>{{ locale.t('preview.showingLastValid', 'Showing last valid preview') }}</strong>
           <p v-if="configError">{{ configError }}</p>
           <p
@@ -121,41 +134,27 @@ function submitForm(): void {
             {{ diagnostic.message }}
           </p>
         </div>
-        <PreviewRuntimeBoundary
-          v-if="active"
-          :locale="props.locale"
+        <PreviewRuntimeHostFrame
+          v-if="adapter && compilation && projection"
+          :key="adapter"
+          ref="runtimeHost"
+          :adapter="adapter"
+          :compilation="compilation"
+          :locale="locale.locale"
+          :model-value="modelValue"
+          :namespace="namespace"
+          :reaction-projection="reactionProjection"
           :revision="projection?.current.revisionKey ?? ''"
-          @ready="emit('ready', $event)"
-        >
-          <RuntimeSurface
-            :key="projection?.current.revisionKey"
-            ref="renderer"
-            :model-value="modelValue"
-            class="page-preview-form"
-            mode="preview"
-            :namespace="namespace"
-            :reaction-projection="reactionProjection"
-            v-bind="active.artifact.plan.renderer"
-            @update:model-value="emit('update:modelValue', $event)"
-            @submit="emit('submit', $event)"
-            @field-change="emit('fieldChange', $event)"
-          />
-          <template #fallback>
-            <RuntimeSurface
-              v-if="fallback"
-              ref="fallbackRenderer"
-              :model-value="fallbackModelValue"
-              class="page-preview-form"
-              mode="preview"
-              :namespace="namespace"
-              :reaction-projection="reactionProjection"
-              v-bind="fallback.artifact.plan.renderer"
-              @update:model-value="emit('update:fallbackModelValue', $event)"
-              @submit="emit('submit', $event)"
-              @field-change="emit('fieldChange', $event)"
-            />
-          </template>
-        </PreviewRuntimeBoundary>
+          :runtime-session-key="projection.current.runtimeSessionKey"
+          :title="locale.t('preview.runtimeFrame', 'Page preview runtime')"
+          @error="handleRuntimeError"
+          @field-change="emit('fieldChange', $event)"
+          @model-value="emit('update:modelValue', $event)"
+          @mounted="emit('runtimeMounted', $event)"
+          @ready="handleRuntimeReady"
+          @runtime-event="emit('runtimeEvent', $event)"
+          @submit="emit('submit', $event)"
+        />
         <div v-else class="preview-errors">
           <strong>{{ locale.t('preview.unavailable', 'Preview unavailable') }}</strong>
           <p v-for="diagnostic in projection?.compileResult.diagnostics ?? []" :key="`${diagnostic.code}-${diagnostic.path.join('.')}`">

@@ -148,20 +148,8 @@
     max-width: 112px;
   }
 
-  .embedded-designer .mx-config-form-designer__canvas {
-    padding: 14px 12px 20px;
-  }
-
-  .embedded-designer .mx-config-form-designer__canvas-sheet {
-    padding: 16px;
-  }
-
   .preview-canvas {
     padding: 10px;
-  }
-
-  .page-preview-form {
-    padding: 14px;
   }
 
   .template-list {

@@ -1,4 +1,8 @@
-import type { CanonicalPageIR, ProjectCompilation } from '@moluoxixi/config-form-compiler'
+import type {
+  CanonicalPageIR,
+  PageCompilation,
+  ProjectCompilation,
+} from '@moluoxixi/config-form-compiler'
 import type {
   ConfigFormRendererField,
   ConfigFormRendererNode,
@@ -7,13 +11,14 @@ import type {
   VueRuntimeBindingResolver,
   VueRuntimeComponentBinding,
 } from '../index'
+import { performance } from 'node:perf_hooks'
 import {
   CANONICAL_PROJECT_IR_VERSION,
   CONFIG_FORM_COMPILER_VERSION,
 } from '@moluoxixi/config-form-compiler'
 import { RuntimeSurface } from '@moluoxixi/config-form/renderer'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { compileCanonicalPageRuntime } from '../index'
 
@@ -93,8 +98,8 @@ function pageFixture(): CanonicalPageIR {
         componentVersion: '1',
         componentFingerprint: 'fnv1a:layout',
         kind: 'layout',
-        path: ['section'],
-        placement: { parentId: null, slot: null, index: 0, props: {} },
+        subtreeHash: 'fnv1a:section',
+        placement: { parentId: null, slot: null, props: {} },
         configuredProps: {},
         props: { gap: 12 },
         events: {},
@@ -107,11 +112,10 @@ function pageFixture(): CanonicalPageIR {
         componentVersion: '2',
         componentFingerprint: 'fnv1a:field',
         kind: 'field',
-        path: ['section', 'name'],
+        subtreeHash: 'fnv1a:name',
         placement: {
           parentId: 'section',
           slot: 'default',
-          index: 0,
           props: { span: 12 },
         },
         configuredProps: { placeholder: 'Configured name' },
@@ -166,13 +170,40 @@ function compilationFixture(page = pageFixture()): ProjectCompilation {
   }
 }
 
+function pageCompilationFixture(page = pageFixture()): PageCompilation {
+  return {
+    snapshotIdentity: {
+      source: 'committed',
+      projectId: 'runtime-project',
+      pageId: page.id,
+      contentHash: 'fnv1a:content',
+      editVersion: 7,
+    },
+    registryUsage: [
+      { key: 'element.input', contractVersion: '2', fingerprint: 'fnv1a:field' },
+      { key: 'layout.section', contractVersion: '1', fingerprint: 'fnv1a:layout' },
+    ],
+    key: {
+      irVersion: CANONICAL_PROJECT_IR_VERSION,
+      projectId: 'runtime-project',
+      pageId: page.id,
+      registryAdapter: 'runtime-fixture',
+      registryAdapterVersion: '1',
+      registryUsageHash: 'fnv1a:usage',
+      compilerVersion: CONFIG_FORM_COMPILER_VERSION,
+      environmentHash: 'fnv1a:environment',
+      semanticHash: 'fnv1a:page',
+    },
+    page,
+  }
+}
+
 function compilePage(
   page: CanonicalPageIR,
   bindingResolver: VueRuntimeBindingResolver = resolver(),
 ) {
   return compileCanonicalPageRuntime({
-    compilation: compilationFixture(page),
-    pageId: page.id,
+    compilation: pageCompilationFixture(page),
   }, bindingResolver)
 }
 
@@ -188,8 +219,8 @@ describe('vue Runtime backend', () => {
   it('renders resolved Canonical IR through real Vue components without mutating the IR', () => {
     const page = pageFixture()
     const snapshot = structuredClone(page)
-    const compilation = compilationFixture(page)
-    const result = compileCanonicalPageRuntime({ compilation, pageId: page.id }, resolver())
+    const compilation = pageCompilationFixture(page)
+    const result = compileCanonicalPageRuntime({ compilation }, resolver())
 
     expect(result.success, JSON.stringify(result.success ? [] : result.diagnostics)).toBe(true)
     expect(page).toEqual(snapshot)
@@ -266,19 +297,108 @@ describe('vue Runtime backend', () => {
     })
   })
 
-  it('rejects a nested relation whose placement or ancestry path disagrees with the IR', () => {
+  it('forwards only component events projected onto the canonical node listener set', () => {
+    const page = pageFixture()
+    page.nodesById.name!.flowEvents = ['click']
+    page.flows = [{
+      semanticHash: 'fnv1a:component-click',
+      plan: {
+        version: 1,
+        flowId: 'field-click-flow',
+        name: 'Field click',
+        trigger: { kind: 'component.event', nodeId: 'name', event: 'click' },
+        triggerNodeId: 'trigger',
+        topologicalOrder: ['trigger'],
+        nodes: [{ id: 'trigger', type: 'trigger', incoming: [], outgoing: [] }],
+      },
+    }]
+
+    const result = compilePage(page)
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+
+    expect(nestedField(result.artifact.plan.renderer.fields[0]!).extensions).toMatchObject({
+      'mx.low-code': { flowEvents: ['click'] },
+    })
+  })
+
+  it('does not reinterpret Flow plans when the canonical node listener projection is absent', () => {
+    const page = pageFixture()
+    page.flows = [{
+      semanticHash: 'fnv1a:component-click',
+      plan: {
+        version: 1,
+        flowId: 'field-click-flow',
+        name: 'Field click',
+        trigger: { kind: 'component.event', nodeId: 'name', event: 'click' },
+        triggerNodeId: 'trigger',
+        topologicalOrder: ['trigger'],
+        nodes: [{ id: 'trigger', type: 'trigger', incoming: [], outgoing: [] }],
+      },
+    }]
+
+    const result = compilePage(page)
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    const metadata = nestedField(result.artifact.plan.renderer.fields[0]!).extensions?.['mx.low-code']
+    expect(metadata).not.toHaveProperty('flowEvents')
+  })
+
+  it('reuses unchanged Runtime fragments across incremental page compilations', () => {
+    const page = pageFixture()
+    const name = page.nodesById.name!
+    if (name.kind !== 'field')
+      throw new TypeError('Expected field fixture.')
+    page.rootIds.push('other')
+    page.nodesById.other = {
+      ...name,
+      id: 'other',
+      field: 'other',
+      subtreeHash: 'fnv1a:other',
+      placement: { parentId: null, slot: null, props: {} },
+      props: { placeholder: 'Unchanged root' },
+    }
+    const resolveBinding = vi.fn((component: string) => bindings[component])
+    const stableResolver = resolver({ resolveBinding })
+    const first = compilePage(page, stableResolver)
+    expect(first.success).toBe(true)
+    if (!first.success)
+      return
+    expect(resolveBinding).toHaveBeenCalledTimes(3)
+
+    const nextName = {
+      ...name,
+      props: { ...name.props, placeholder: 'Changed name' },
+      subtreeHash: 'fnv1a:name-next',
+    }
+    const section = page.nodesById.section!
+    const nextSection = { ...section, subtreeHash: 'fnv1a:section-next' }
+    const nextPage: CanonicalPageIR = {
+      ...page,
+      nodesById: {
+        ...page.nodesById,
+        name: nextName,
+        section: nextSection,
+      },
+    }
+    const second = compilePage(nextPage, stableResolver)
+    expect(second.success).toBe(true)
+    if (!second.success)
+      return
+
+    expect(resolveBinding).toHaveBeenCalledTimes(5)
+    expect(second.artifact.plan.renderer.fields[0]).not.toBe(first.artifact.plan.renderer.fields[0])
+    expect(second.artifact.plan.renderer.fields[1]).toBe(first.artifact.plan.renderer.fields[1])
+  })
+
+  it('rejects a nested relation whose parent placement disagrees with the IR', () => {
     const placement = pageFixture()
-    placement.nodesById.name!.placement.index = 2
+    placement.nodesById.name!.placement.parentId = null
     expect(compilePage(placement)).toMatchObject({
       success: false,
       diagnostics: [{ code: 'VUE_RUNTIME_IR_PLACEMENT_MISMATCH', nodeId: 'name' }],
-    })
-
-    const path = pageFixture()
-    path.nodesById.name!.path = ['name']
-    expect(compilePage(path)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'VUE_RUNTIME_IR_PATH_MISMATCH', nodeId: 'name' }],
     })
   })
 
@@ -291,5 +411,39 @@ describe('vue Runtime backend', () => {
         path: ['pagesById', 'missing'],
       }],
     })
+  })
+
+  it('binds a 2000-node page plan within the page-scoped production budget', () => {
+    const page = pageFixture()
+    page.rootIds = []
+    page.nodesById = {}
+    for (let index = 0; index < 2_000; index += 1) {
+      const id = `field-${index}`
+      page.rootIds.push(id)
+      page.nodesById[id] = {
+        id,
+        component: 'element.input',
+        componentVersion: '2',
+        componentFingerprint: 'fnv1a:field',
+        kind: 'field',
+        subtreeHash: `fnv1a:${id}`,
+        placement: { parentId: null, slot: null, props: { span: 6 } },
+        configuredProps: {},
+        props: {},
+        events: {},
+        bindings: {},
+        field: id,
+      }
+    }
+
+    const startedAt = performance.now()
+    const result = compilePage(page)
+    const duration = performance.now() - startedAt
+
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    expect(result.artifact.plan.renderer.fields).toHaveLength(2_000)
+    expect(duration).toBeLessThan(750)
   })
 })

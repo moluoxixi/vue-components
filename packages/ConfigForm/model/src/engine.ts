@@ -22,6 +22,7 @@ const EMPTY_CHANGE_SET: ProjectChangeSet = Object.freeze({
   project: false,
   pageIds: Object.freeze([]),
   nodeIds: Object.freeze([]),
+  nodeChanges: Object.freeze([]),
 })
 
 export interface ProjectDomainSnapshot extends ProjectSnapshot {

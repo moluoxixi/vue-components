@@ -73,6 +73,8 @@ describe('workspace projection coordinator', () => {
 
     expect(firstProjection.signal.aborted).toBe(true)
     expect(secondProjection.signal.aborted).toBe(false)
+    expect(secondProjection.current.runtimeSessionKey).toBe(firstProjection.current.runtimeSessionKey)
+    expect(secondProjection.current.runtimeSessionKey).toBe(`projection-app:element-plus:${first.currentPageId}`)
     expect(secondProjection.current.revisionKey).toBe(`projection-app:${first.applicationRevision}:${first.currentPageId}:1`)
     expect(coordinator.isCurrent(firstProjection.current.revisionKey)).toBe(false)
     expect(coordinator.isCurrent(secondProjection.current.revisionKey)).toBe(true)
@@ -117,6 +119,7 @@ describe('workspace projection coordinator', () => {
 
     expect(failed.status).toBe('blocked')
     expect(failed.display).toBeUndefined()
+    expect(failed.current.runtimeSessionKey).not.toBe(`projection-app:element-plus:${first.currentPageId}`)
   })
 
   it('captures an isolated application snapshot for export features', () => {

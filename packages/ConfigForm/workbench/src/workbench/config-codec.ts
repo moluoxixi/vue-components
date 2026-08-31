@@ -10,6 +10,7 @@ import type { WorkspaceAdapter } from '../project'
 import { parse } from '@babel/parser'
 import { configModelToDesignerDocument, parseDesignerDocument } from '@moluoxixi/config-form-designer'
 import {
+  assertSafeConfigObjectKey,
   formatDefineField,
   formatStaticValue,
   formatValueModel,
@@ -111,8 +112,7 @@ function parseStaticObject(node: AstNode): Record<string, unknown> {
     if (!isAstNode(property) || property.type !== 'ObjectProperty' || !isAstNode(property.value))
       throw new Error('Object methods, shorthand properties, and spreads are not supported in Config.')
     const key = objectPropertyKey(property)
-    if (['__proto__', 'constructor', 'prototype'].includes(key))
-      throw new Error(`Unsafe Config object key "${key}" is not supported.`)
+    assertSafeConfigObjectKey(key)
     result[key] = parseStaticValue(property.value)
   }
   return result

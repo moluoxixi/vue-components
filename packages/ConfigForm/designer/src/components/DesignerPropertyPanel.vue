@@ -14,6 +14,7 @@ import type {
   DesignerSetterOption,
 } from '../registry'
 import type { LowCodeComponentDefinition, LowCodeNode, ModelOperation } from '../model'
+import { ChevronRight, Workflow } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import { areDesignerJsonValuesEqual, cloneDesignerJsonValue, walkDesignerNodes } from '../document'
@@ -24,6 +25,7 @@ import DesignerResponsiveSettings from './DesignerResponsiveSettings.vue'
 
 const props = defineProps<{
   document: DesignerDocument
+  eventEditor?: 'actions' | 'flow'
   node?: DesignerNode
   nodes?: DesignerNode[]
   material?: DesignerMaterialDefinition
@@ -38,6 +40,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  configureEvent: [payload: { nodeId: string, eventName: string }]
   updatePath: [nodeId: string, path: string[], value: unknown]
   updatePaths: [nodeIds: string[], path: string[], value: unknown]
   updateForm: [changes: Record<string, unknown>]
@@ -310,6 +313,11 @@ function commitEvent(value: unknown, setter: DesignerPropertySetterDefinition): 
     emit('modelOperation', operation)
 }
 
+function configureEvent(eventName: string): void {
+  if (props.node)
+    emit('configureEvent', { nodeId: props.node.id, eventName })
+}
+
 function commitBinding(value: unknown, setter: DesignerPropertySetterDefinition): void {
   const source = typeof value === 'string' ? value.trim() : ''
   const operation = batchModelOperations((props.modelNodes ?? []).map((node) => {
@@ -428,8 +436,25 @@ function handlePropertyTabKeydown(event: KeyboardEvent, tab: PropertyTab): void 
         :inert="activeTab !== tab.id ? true : undefined"
         :tabindex="activeTab === tab.id ? 0 : -1"
       >
+        <div v-if="tab.id === 'events' && eventEditor === 'flow'" class="mx-config-form-designer__event-flows">
+          <button
+            v-for="event in componentDefinition?.events ?? []"
+            :key="event.name"
+            type="button"
+            :disabled="readonly"
+            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: event.displayName })"
+            @click="configureEvent(event.name)"
+          >
+            <Workflow :size="15" aria-hidden="true" />
+            <span>
+              <strong>{{ event.displayName }}</strong>
+              <code>{{ event.name }}</code>
+            </span>
+            <ChevronRight :size="15" aria-hidden="true" />
+          </button>
+        </div>
         <DesignerPropertyForm
-          v-if="tab.id === 'events'"
+          v-else-if="tab.id === 'events'"
           :entries="propertyEntries.events"
           :components="components"
           :controls="propertyControls"

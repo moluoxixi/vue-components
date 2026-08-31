@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
 import type { MobileStudioView } from './workbench-controller'
 import {
@@ -18,6 +19,7 @@ import {
 } from '@lucide/vue'
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef } from 'vue'
+import DesignRuntimeHostFrame from '../runtime-host/DesignRuntimeHostFrame.vue'
 import PreviewDrawer from '../studio/PreviewDrawer.vue'
 import StudioLeftPanel from '../studio/StudioLeftPanel.vue'
 import TemplateDialog from '../features/templates/TemplateDialog.vue'
@@ -30,7 +32,6 @@ const PageManagerDialog = defineAsyncComponent(() => import('../features/pages/P
 
 const controller = useWorkbenchController()
 const {
-  activePreview,
   applications,
   busy,
   closeExportPreview,
@@ -48,14 +49,18 @@ const {
   designerCommandControl,
   designerDocument,
   designerFieldNames,
+  flowEventTargets,
   designerHistoryControl,
   designerLayers,
   dirty,
   exportPreviewMode,
-  fallbackPreviewModel,
   flowWorkspaceOpen,
   getCurrentExportCompilation,
+  getDesignRuntimeCompilation,
+  getPreviewCompilation,
+  getPreviewRuntimeModel,
   handleApplicationOperation,
+  handlePreviewRuntimeMounted,
   handlePreviewRuntimeReady,
   localeId,
   localeOptions,
@@ -79,7 +84,6 @@ const {
   requestOpenApplication,
   reloadCurrentApplication,
   runPreviewFlows,
-  runtimeFallbackPreview,
   saveProject,
   selectPageFromDesigner,
   selectedDesignerIds,
@@ -93,6 +97,7 @@ const {
   togglePreview,
   toggleTheme,
   updateModelOperation,
+  updatePreviewRuntimeModel,
   workbenchLocale,
   workspaceRecoveryNotice,
 } = controller
@@ -101,6 +106,7 @@ const designer = useTemplateRef<DesignSurfaceExpose>('designer')
 const mobileDock = useTemplateRef<HTMLElement>('mobileDock')
 const exportDialogLoaded = ref(false)
 const flowDialogLoaded = ref(false)
+const flowInitialTrigger = ref<ConfigFormFlowTrigger>()
 const pageManagerLoaded = ref(false)
 const mobileStudioViews = computed(() => [
   { icon: Blocks, id: 'components' as const, label: workbenchLocale.value.t('designer.view.components', 'Components') },
@@ -162,9 +168,14 @@ function showExportDialog(mode: 'source' | 'config'): void {
   openExportPreview(mode)
 }
 
-function showFlowDialog(): void {
+function showFlowDialog(trigger?: ConfigFormFlowTrigger): void {
+  flowInitialTrigger.value = trigger
   flowDialogLoaded.value = true
   openFlowWorkspace()
+}
+
+function showComponentEventFlow(nodeId: string, eventName: string): void {
+  showFlowDialog({ kind: 'component.event', nodeId, event: eventName })
 }
 
 function showPageManager(): void {
@@ -189,7 +200,7 @@ function showPageManager(): void {
       :theme="theme"
       @export="showExportDialog"
       @new-page="openTemplatePicker"
-      @open-flow="showFlowDialog"
+      @open-flow="showFlowDialog()"
       @open-pages="showPageManager"
       @save="saveProject"
       @toggle-locale="toggleLocale"
@@ -221,6 +232,7 @@ function showPageManager(): void {
             :key="`${currentApplication.manifest.adapter}-${currentPageId}`"
             class="embedded-designer"
             :document="designerDocument"
+            event-editor="flow"
             :model="configModel"
             :model-registry="lowCodeRegistry"
             :command-control="designerCommandControl"
@@ -229,7 +241,8 @@ function showPageManager(): void {
             :readonly="busy"
             :registry="registry"
              :runtime-renderer="designRuntime?.artifact.plan.renderer"
-             workspace-navigation="external"
+            workspace-navigation="external"
+            @configure-event="showComponentEventFlow"
              @selection-set-change="selectedDesignerIds = $event"
            >
             <template #toolbar="{ breakpoint, canUndo, canRedo, canEditSelection, copySelection, removeSelection, selectBreakpoint, undo, redo }">
@@ -281,19 +294,64 @@ function showPageManager(): void {
                 @select-page="selectPageFromDesigner"
               />
             </template>
+            <template #runtime="scope">
+              <DesignRuntimeHostFrame
+                :adapter="currentApplication.manifest.adapter"
+                :breakpoint="scope.breakpoint"
+                :camera-scale="scope.cameraScale"
+                :candidate-id="scope.candidateId"
+                :candidate-uses-fallback="scope.candidateUsesFallback"
+                :command="scope.command"
+                :document="scope.document"
+                :locale="workbenchLocale.locale"
+                :model-value="scope.model"
+                :namespace="registry.rendererNamespace"
+                :reaction-props="scope.reactionProps"
+                :reaction-states="scope.reactionStates"
+                :resolve-compilation="getDesignRuntimeCompilation"
+                :title="workbenchLocale.t('canvas.runtimeFrame', 'Design runtime')"
+                variant="canvas"
+                @error="message = $event.message"
+                @geometry="scope.bridge.updateGeometry"
+                @pointer-cancel="scope.bridge.pointerCancel"
+                @pointer-down="scope.bridge.pointerDown"
+                @pointer-move="scope.bridge.pointerMove"
+                @pointer-up="scope.bridge.pointerUp"
+              />
+            </template>
+            <template #dragVisual="scope">
+              <DesignRuntimeHostFrame
+                :adapter="currentApplication.manifest.adapter"
+                :breakpoint="scope.breakpoint"
+                :camera-scale="scope.cameraScale"
+                :candidate-id="scope.candidateId"
+                :candidate-uses-fallback="scope.candidateUsesFallback"
+                :canvas-width="scope.canvasWidth"
+                :command="scope.command"
+                :document="scope.document"
+                :locale="workbenchLocale.locale"
+                :model-value="scope.model"
+                :namespace="registry.rendererNamespace"
+                :reaction-props="scope.reactionProps"
+                :reaction-states="scope.reactionStates"
+                :resolve-compilation="getDesignRuntimeCompilation"
+                :title="workbenchLocale.t('canvas.dragVisualFrame', 'Drag preview runtime')"
+                variant="drag-visual"
+                @error="message = $event.message"
+              />
+            </template>
           </DesignSurface>
         </div>
       </section>
 
       <PreviewDrawer
         v-model:expanded="previewExpanded"
-        v-model:fallback-model-value="fallbackPreviewModel"
-        v-model:model-value="previewModel"
         v-model:viewport="previewViewport"
-        :active="activePreview"
+        :adapter="currentApplication.manifest.adapter"
+        :compilation="getPreviewCompilation()"
         :config-error="configError"
-        :fallback="runtimeFallbackPreview"
         :locale="localeOptions"
+        :model-value="getPreviewRuntimeModel()"
         :namespace="registry.rendererNamespace"
         :open="previewOpen"
         :projection="previewProjection"
@@ -302,8 +360,11 @@ function showPageManager(): void {
         @close="togglePreview"
         @error="message = $event instanceof Error ? $event.message : String($event)"
         @field-change="runPreviewFlows('field.change', $event.values, $event.field)"
+        @runtime-event="runPreviewFlows({ kind: 'component.event', nodeId: $event.nodeId, event: $event.event }, previewModel)"
+        @runtime-mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
         @submit="runPreviewFlows('form.submit', $event)"
+        @update:model-value="updatePreviewRuntimeModel"
       />
     </section>
 
@@ -367,7 +428,9 @@ function showPageManager(): void {
     <FlowDialog
       v-if="flowDialogLoaded"
       :field-names="designerFieldNames"
+      :event-targets="flowEventTargets"
       :flows="configModel?.flows ?? []"
+      :initial-trigger="flowInitialTrigger"
       :locale="localeOptions"
       :open="flowWorkspaceOpen"
       :readonly="busy"

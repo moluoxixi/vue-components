@@ -188,17 +188,17 @@ interface RuntimeHostOptions {
 ```
 
 - `RuntimeStructuralEnvironment` 只允许真正改变节点结构或组件能力选择的版本化 feature flags。viewport、locale、字体、runtime theme/tokens 和初始值策略属于 `RuntimePresentationSnapshot` 或 Runtime instance，不进入结构 plan key。
-- `CanonicalPageProgram` 保留 page identity、component key/version、resolved props、events、bindings、conditions、validation、portable Flow execution plan、slot 顺序、placement、node id/path 和布局语义，不持有 Vue Component、DOM、生成源码文本、表单 values、viewport、editVersion 或 AbortController。`CanonicalProjectProgram` 组合固定快照的页面 Program 与项目路由/资源语义。
+- `CanonicalPageProgram` 保留 page identity、component key/version、resolved props、events、bindings、conditions、validation、portable Flow execution plan、slot 顺序、placement、node id 和布局语义；祖先 path 在遍历时派生，不复制进每个节点身份。不持有 Vue Component、DOM、生成源码文本、表单 values、viewport、editVersion 或 AbortController。`CanonicalProjectProgram` 组合固定快照的页面 Program 与项目路由/资源语义。
 - 编译身份分为四类：`editVersion` 只表示本地操作时序；`contentHash/pageContentHash` 表示作者内容；`compileKey` 只由语义内容、实际使用的 Registry contracts、compiler version 和 structural environment 组成；`runtimeInstanceId` 只标识一次运行实例。`editVersion` 不得进入 IR hash 或缓存键。
 - `RenderPlan` 只是 Vue Runtime Backend 的输出；它不得被 Source Backend 反向解析，也不得承担源码 imports、AST 或文件布局职责。
 - CompileCoordinator 使用 ProjectSnapshot 的结构共享、derived parent/dependency index、subtree hash 和 changed entity set 做增量编译。拖拽 pointer move 只能重算受影响页面/子树并在 animation frame 内发布，不得解析、克隆、编译或挂载整个项目。
 - `mode` 只影响运行实例的事件拦截、生命周期和 editor metadata，不能改变 RenderPlan 或默认替换组件。
 - 组件必须在 Registry 中注册，任意 HTML DOM 不属于 model 合同。
 - `RuntimeHost` 是可替换隔离合同。iframe、ShadowRoot 与严格 scoped host 是按组件库能力选择的实现，不在领域架构中写死优先级；同一 adapter 的物料 specimen、candidate、Design 与 Preview 必须使用同一个 bootstrap。Host 必须隔离 IDE CSS、第三方组件库全局样式、Teleport、字体加载和副作用。
-- `RuntimeSurface` 在 RuntimeHost 内负责真实 Vue 节点、递归 slot、ARIA、Grid/Flex 和 readonly 渲染。Editor overlay 位于宿主编辑器层，只通过 node id/path 驱动的 geometry/event bridge 获取矩形和命中信息；不得包裹或克隆业务节点。
+- `RuntimeSurface` 在 RuntimeHost 内负责真实 Vue 节点、递归 slot、ARIA、Grid/Flex 和 readonly 渲染。Editor overlay 位于宿主编辑器层，只通过 node id 与遍历派生 path 驱动的 geometry/event bridge 获取矩形和命中信息；不得包裹或克隆业务节点。
 - 对确实不能在设计态挂载的异步/副作用组件，Registry 必须声明受控 adapter 和 `visualEquivalence` 合同；没有该合同则阻止进入 Canvas，而不是静默渲染另一种控件。
 - `visualEquivalence` 只是能力声明，必须由 bounding-box、computed-style 和截图契约测试证明。
-- RenderPlan 必须保留 stable node id/path/slot metadata，供 RuntimeHost bridge、overlay、Layers、Preview parity test 使用。同一 presentation 下要求 geometry parity；不同 viewport 下只比较节点语义并允许真实响应式差异。
+- RenderPlan 必须保留 stable node id/slot metadata，并由遍历关系派生 path，供 RuntimeHost bridge、overlay、Layers、Preview parity test 使用。同一 presentation 下要求 geometry parity；不同 viewport 下只比较节点语义并允许真实响应式差异。
 
 ### 3.5 Preview Session
 
@@ -211,7 +211,7 @@ Preview Session 只保存预览实例状态：表单 values、touched/validation
 
 ### 3.6 Flow Engine
 
-`ConfigFormFlow` 只属于一个 `ProjectPage`，作为视觉 `PageGraph` 的同级数据存在。其 `page.mount/form.submit/field.change` trigger、字段引用、校验、排序和 Flow ID 唯一性都以该页面为边界，并与 PageGraph 一起随 Page 实体持久化。Flow Engine 提供校验、编译与运行能力。页面内纯同步显隐/属性联动使用 binding/reaction；分支、异步、接口调用和副作用使用 Flow，禁止两套机制表达同一逻辑。未来跨页面/项目自动化必须使用独立 `ProjectWorkflow` 合同，不得把页面 Flow 复制到 ProjectDocument root。
+`ConfigFormFlow` 只属于一个 `ProjectPage`，作为视觉 `PageGraph` 的同级数据存在。其 `page.mount/form.submit/field.change/component.event` trigger、字段引用、组件事件目标、校验、排序和 Flow ID 唯一性都以该页面为边界，并与 PageGraph 一起随 Page 实体持久化。`component.event` 只保存稳定的 `nodeId + event`，目标必须同时存在于当前 PageGraph 和 Registry contract；Preview 从真实 Runtime 节点发出事件，Design 模式由编辑器 bridge 拦截。Flow Engine 提供校验、编译与运行能力。页面内纯同步显隐/属性联动使用 binding/reaction；分支、异步、接口调用和副作用使用 Flow，禁止两套机制表达同一逻辑。未来跨页面/项目自动化必须使用独立 `ProjectWorkflow` 合同，不得把页面 Flow 复制到 ProjectDocument root。
 
 - Flow 编辑只提交 `addFlow`、`updateFlowGraph`、`updateFlowSettings` 等 Project Transaction operation。
 - Core 负责解析和生成确定性、自包含、与 editVersion 无关的 portable execution plan；计划完整包含 trigger、concurrency、error policy、节点和已解析边，不包含画布 position 或运行 revision。Workbench 注入带 Schema、权限和超时策略的 action registry。
@@ -294,7 +294,7 @@ core model / schema / flow plan
 
 1. 任意项目或页面结构只能通过 `ProjectCommand -> OperationBatch -> Project Transaction Engine` 改变；compatibility adapter 只能产生 Command Action，不能直接维护状态。
 2. PageGraph 中每个 node id 只对应一个实体；父子关系只存在于一个 slot 序列中。
-3. 任意可见 Design/Preview 节点都来自同一 `ProjectCompilation` 的 content hash、Registry component locks、compiler version 和 CanonicalProjectIR node id/path/slot/placement。
+3. 任意可见 Design/Preview 节点都来自同一 `PageCompilation` 的 content identity、Registry component locks、compiler version 和 CanonicalPageIR node id/slot/placement；path 只由同一 root/slot 关系遍历派生。
 4. 同一 revision 的 Canvas 与 Preview 的 Runtime component、props、layout 语义和 slot 顺序相同；相同 presentation 下可见几何一致，不同 viewport 下只允许真实响应式差异；values、validation、Flow queue、DOM、Teleport 和副作用生命周期隔离。
 5. Undo/Redo 只应用 semantic operation/inverse，不恢复隐式 DOM、运行实例或整份旧 Project 快照。
 6. Source、Config、Tree、单文件下载和 ZIP 在同一个 ExportSnapshot 中只读取一个 `ProjectCompilation`；Source 只由其中的 CanonicalProjectIR 生成，Config/Tree 只由其中绑定快照的 ProjectDocument 投影。

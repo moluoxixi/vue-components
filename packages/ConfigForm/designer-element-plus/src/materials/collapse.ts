@@ -14,6 +14,7 @@ export default defineDesignerMaterialModule({
       category: 'Layout',
       icon: shared.ListCollapse,
       runtime: { component: shared.ElCollapse },
+      events: [{ name: 'change', title: 'Expanded items change' }],
       setters: [shared.propSetter('accordion', 'Accordion', 'boolean')],
       slots: [{ name: 'default', title: 'Items', accepts: ['container'], materials: ['element.collapse-item'] }],
       createNode: ({ id }) => {

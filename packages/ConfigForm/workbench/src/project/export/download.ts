@@ -1,20 +1,47 @@
-import type { WorkspaceProject } from '../types'
+import type { WorkspaceFile, WorkspaceProject } from '../types'
 import type { WorkspaceArchiveInput } from './archive'
 import { safeProjectSlug } from '../path'
 import { createProjectArchive, createWorkspaceArchive } from './archive'
 
-async function downloadArchive(input: WorkspaceArchiveInput, data: Uint8Array): Promise<string> {
+export interface DownloadWorkspaceFileInput {
+  file: Readonly<WorkspaceFile>
+  filename: string
+  mime?: string
+}
+
+function downloadBlob(blob: Blob, filename: string): string {
   if (typeof document === 'undefined')
     throw new Error('[config-form-workbench] project downloads require a browser document')
-  const filename = `${safeProjectSlug(input.name)}.zip`
-  const bytes = Uint8Array.from(data)
-  const url = URL.createObjectURL(new Blob([bytes.buffer], { type: 'application/zip' }))
+  const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = filename
-  anchor.click()
-  setTimeout(() => URL.revokeObjectURL(url), 0)
+  document.body.append(anchor)
+  try {
+    anchor.click()
+  }
+  finally {
+    anchor.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
   return filename
+}
+
+export function workspaceFileBlob(file: Readonly<WorkspaceFile>, mime?: string): Blob {
+  if (file.kind === 'text')
+    return new Blob([file.content], { type: mime ?? 'text/plain;charset=utf-8' })
+  const bytes = Uint8Array.from(file.content)
+  return new Blob([bytes.buffer], { type: mime ?? 'application/octet-stream' })
+}
+
+export function downloadWorkspaceFile(input: DownloadWorkspaceFileInput): string {
+  return downloadBlob(workspaceFileBlob(input.file, input.mime), input.filename)
+}
+
+async function downloadArchive(input: WorkspaceArchiveInput, data: Uint8Array): Promise<string> {
+  const filename = `${safeProjectSlug(input.name)}.zip`
+  const bytes = Uint8Array.from(data)
+  return downloadBlob(new Blob([bytes.buffer], { type: 'application/zip' }), filename)
 }
 
 export async function downloadProjectArchive(project: WorkspaceProject): Promise<string> {

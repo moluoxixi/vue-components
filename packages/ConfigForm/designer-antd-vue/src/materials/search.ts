@@ -19,6 +19,7 @@ export default defineDesignerMaterialModule({
         readonlyProp: 'readonly',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
+      events: [{ name: 'search', title: 'Search' }],
       setters: [
         s.defaultValueSetter('text'),
         s.placeholderSetter,

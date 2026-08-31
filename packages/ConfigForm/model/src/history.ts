@@ -14,6 +14,7 @@ const EMPTY_CHANGE_SET = Object.freeze({
   project: false,
   pageIds: Object.freeze([]),
   nodeIds: Object.freeze([]),
+  nodeChanges: Object.freeze([]),
 })
 
 export interface CreateProjectHistoryOptions {
@@ -89,6 +90,7 @@ export function applyProjectHistoryTransaction(
       project: result.changedProject,
       pageIds: result.changedPageIds,
       nodeIds: result.changedNodeIds,
+      nodeChanges: result.changedNodeChanges,
     },
     history: {
       ...history,
@@ -120,6 +122,7 @@ export function undoProjectHistory(
       project: result.changedProject,
       pageIds: result.changedPageIds,
       nodeIds: result.changedNodeIds,
+      nodeChanges: result.changedNodeChanges,
     },
     history: {
       ...history,
@@ -151,6 +154,7 @@ export function redoProjectHistory(
       project: result.changedProject,
       pageIds: result.changedPageIds,
       nodeIds: result.changedNodeIds,
+      nodeChanges: result.changedNodeChanges,
     },
     history: {
       ...history,

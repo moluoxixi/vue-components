@@ -77,6 +77,8 @@ describe('flowWorkspace', () => {
   it('creates a valid trigger-to-end flow and projects it through controlled Vue Flow', async () => {
     const wrapper = mount(FlowWorkspace, { props: { flows: [] } })
     await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
+    expect(wrapper.get('[role="menu"]').attributes('aria-label')).toBe('Choose event source')
+    await wrapper.findAll('[role="menuitem"]').find(button => button.text().includes('Form submit'))!.trigger('click')
     const operation = lastOperation(wrapper)
     expect(operation.type).toBe('addFlow')
     const created = (operation as Extract<FlowOperation, { type: 'addFlow' }>).flow
@@ -85,7 +87,52 @@ describe('flowWorkspace', () => {
     const vueFlow = wrapper.getComponent(VueFlow)
     expect(vueFlow.props('applyDefault')).toBe(false)
     expect((vueFlow.props('nodes') as Array<{ id: string }>).map(node => node.id)).toEqual(['flow-1-trigger', 'flow-1-end'])
+    expect(created).toMatchObject({ name: 'On Form submit', trigger: { kind: 'form.submit' } })
     expect(created.edges).toEqual([{ id: 'flow-1-next', source: 'flow-1-trigger', target: 'flow-1-end', condition: 'next' }])
+    expect(wrapper.get('.flow-list-item small').text()).toBe('Form submit')
+    expect(wrapper.get('[data-node-id="flow-1-trigger"] strong').text()).toBe('Form submit')
+  })
+
+  it('focuses an existing event handler or opens event-first creation for an unhandled inspector event', async () => {
+    const target = { nodeId: 'submit', nodeLabel: 'Submit', component: 'element.button', event: 'click', eventLabel: 'Click' }
+    const existing = { ...createFlow('existing-click'), trigger: { kind: 'component.event', nodeId: 'submit', event: 'click' } } as ConfigFormFlow
+    const wrapper = mount(FlowWorkspace, {
+      props: {
+        flows: [createFlow('submit-flow'), existing],
+        eventTargets: [target],
+        initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'click' },
+      },
+    })
+
+    expect(wrapper.get('.flow-list-item.is-active span').text()).toBe('Existing')
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+
+    await wrapper.setProps({
+      initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'change' },
+    })
+    expect(wrapper.find('[role="menu"]').exists()).toBe(true)
+  })
+
+  it('creates a component event flow from the exact registered node event', async () => {
+    const wrapper = mount(FlowWorkspace, {
+      props: {
+        flows: [],
+        eventTargets: [
+          { nodeId: 'submit', nodeLabel: 'Submit', component: 'element.button', event: 'click', eventLabel: 'Click' },
+        ],
+        initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'click' },
+      },
+    })
+
+    const preferred = wrapper.get('[role="menuitem"].is-preferred')
+    expect(preferred.text()).toContain('Submit · Click')
+    await preferred.trigger('click')
+
+    const operation = lastOperation(wrapper) as Extract<FlowOperation, { type: 'addFlow' }>
+    expect(operation.flow).toMatchObject({
+      name: 'On Submit · Click',
+      trigger: { kind: 'component.event', nodeId: 'submit', event: 'click' },
+    })
   })
 
   it('keeps condition branches explicit when adding a condition node', async () => {
@@ -98,9 +145,34 @@ describe('flowWorkspace', () => {
 
   it('uses a registered field when selecting a field-change trigger', async () => {
     const wrapper = mount(FlowWorkspace, { props: { flows: [createFlow('field-flow')], fieldNames: ['email'] } })
-    await wrapper.get('[aria-label="Flow trigger"]').setValue('field.change')
+    await wrapper.get('[aria-label="Event source"]').setValue('field.change')
     const updated = lastOperation(wrapper) as Extract<FlowOperation, { type: 'updateFlowSettings' }>
     expect(updated.settings.trigger).toEqual({ kind: 'field.change', field: 'email' })
+  })
+
+  it('uses a registered node event when selecting a component-event trigger', async () => {
+    const wrapper = mount(FlowWorkspace, {
+      props: {
+        flows: [createFlow('event-flow')],
+        eventTargets: [
+          { nodeId: 'submit', nodeLabel: 'Submit', component: 'element.input', event: 'change', eventLabel: 'Change' },
+        ],
+      },
+    })
+
+    await wrapper.get('[aria-label="Event source"]').setValue('component.event')
+    const updated = lastOperation(wrapper) as Extract<FlowOperation, { type: 'updateFlowSettings' }>
+    expect(updated.settings.trigger).toEqual({ kind: 'component.event', nodeId: 'submit', event: 'change' })
+
+    await wrapper.setProps({ flows: [{ ...createFlow('event-flow'), trigger: updated.settings.trigger } as ConfigFormFlow] })
+    const eventTarget = wrapper.get('[aria-label="Event target"]')
+    expect((eventTarget.element as HTMLSelectElement).value).toContain('submit')
+  })
+
+  it('keeps component-event selection unavailable without registry targets', async () => {
+    const wrapper = mount(FlowWorkspace, { props: { flows: [createFlow('event-flow')] } })
+    const option = wrapper.get('[aria-label="Event source"] option[value="component.event"]')
+    expect(option.attributes('disabled')).toBeDefined()
   })
 
   it('keeps both condition branches when adding a node after a condition', async () => {

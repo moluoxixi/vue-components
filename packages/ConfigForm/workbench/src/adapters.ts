@@ -34,7 +34,12 @@ export interface WorkbenchAdapter {
   sourceResolver: CanonicalSourceBindingResolver
 }
 
+export interface WorkbenchRuntimeAdapter {
+  runtimeResolver: VueRuntimeBindingResolver
+}
+
 const adapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchAdapter>>()
+const runtimeAdapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchRuntimeAdapter>>()
 
 function createWorkbenchComponentRegistry(
   id: WorkbenchAdapterId,
@@ -112,6 +117,21 @@ function createWorkbenchSourceResolver(
   })
 }
 
+function createWorkbenchRuntimeBindings(
+  id: WorkbenchAdapterId,
+  designerRegistry: DesignerRegistry,
+): Pick<WorkbenchAdapter, 'componentRegistry' | 'lowCodeRegistry' | 'registrySnapshot' | 'runtimeResolver'> {
+  const lowCodeRegistry = createLowCodeComponentRegistry(designerRegistry)
+  const componentRegistry = createWorkbenchComponentRegistry(id, lowCodeRegistry)
+  const registrySnapshot = createRegistryContractSnapshot(componentRegistry)
+  return {
+    componentRegistry,
+    lowCodeRegistry,
+    registrySnapshot,
+    runtimeResolver: createDesignerVueRuntimeResolver(designerRegistry, registrySnapshot),
+  }
+}
+
 async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<WorkbenchAdapter> {
   if (id === 'antd-vue') {
     const [adapter] = await Promise.all([
@@ -121,17 +141,12 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
       import('@moluoxixi/config-form-antd-vue/styles'),
     ])
     const designerRegistry = adapter.createAntdVueDesignerRegistry()
-    const lowCodeRegistry = createLowCodeComponentRegistry(designerRegistry)
-    const componentRegistry = createWorkbenchComponentRegistry(id, lowCodeRegistry)
-    const registrySnapshot = createRegistryContractSnapshot(componentRegistry)
+    const runtime = createWorkbenchRuntimeBindings(id, designerRegistry)
     return {
-      componentRegistry,
+      ...runtime,
       designerRegistry,
       locale: adapter.ANTD_VUE_DESIGNER_ZH_CN,
-      lowCodeRegistry,
-      registrySnapshot,
-      runtimeResolver: createDesignerVueRuntimeResolver(designerRegistry, registrySnapshot),
-      sourceResolver: createWorkbenchSourceResolver(lowCodeRegistry, registrySnapshot),
+      sourceResolver: createWorkbenchSourceResolver(runtime.lowCodeRegistry, runtime.registrySnapshot),
     }
   }
 
@@ -142,17 +157,40 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
     import('@moluoxixi/config-form-element/styles'),
   ])
   const designerRegistry = adapter.createElementPlusDesignerRegistry()
-  const lowCodeRegistry = createLowCodeComponentRegistry(designerRegistry)
-  const componentRegistry = createWorkbenchComponentRegistry(id, lowCodeRegistry)
-  const registrySnapshot = createRegistryContractSnapshot(componentRegistry)
+  const runtime = createWorkbenchRuntimeBindings(id, designerRegistry)
   return {
-    componentRegistry,
+    ...runtime,
     designerRegistry,
     locale: adapter.ELEMENT_PLUS_DESIGNER_ZH_CN,
-    lowCodeRegistry,
-    registrySnapshot,
-    runtimeResolver: createDesignerVueRuntimeResolver(designerRegistry, registrySnapshot),
-    sourceResolver: createWorkbenchSourceResolver(lowCodeRegistry, registrySnapshot),
+    sourceResolver: createWorkbenchSourceResolver(runtime.lowCodeRegistry, runtime.registrySnapshot),
+  }
+}
+
+async function createWorkbenchRuntimeAdapter(id: WorkbenchAdapterId): Promise<WorkbenchRuntimeAdapter> {
+  if (id === 'antd-vue') {
+    const [adapter] = await Promise.all([
+      import('@moluoxixi/config-form-designer-antd-vue'),
+      import('ant-design-vue/dist/reset.css'),
+      import('@moluoxixi/config-form-antd-vue/styles'),
+    ])
+    return {
+      runtimeResolver: createWorkbenchRuntimeBindings(
+        id,
+        adapter.createAntdVueDesignerRegistry(),
+      ).runtimeResolver,
+    }
+  }
+
+  const [adapter] = await Promise.all([
+    import('@moluoxixi/config-form-designer-element-plus'),
+    import('element-plus/dist/index.css'),
+    import('@moluoxixi/config-form-element/styles'),
+  ])
+  return {
+    runtimeResolver: createWorkbenchRuntimeBindings(
+      id,
+      adapter.createElementPlusDesignerRegistry(),
+    ).runtimeResolver,
   }
 }
 
@@ -162,5 +200,14 @@ export function loadWorkbenchAdapter(id: WorkbenchAdapterId): Promise<WorkbenchA
     return current
   const pending = createWorkbenchAdapter(id)
   adapterPromises.set(id, pending)
+  return pending
+}
+
+export function loadWorkbenchRuntimeAdapter(id: WorkbenchAdapterId): Promise<WorkbenchRuntimeAdapter> {
+  const current = runtimeAdapterPromises.get(id)
+  if (current)
+    return current
+  const pending = createWorkbenchRuntimeAdapter(id)
+  runtimeAdapterPromises.set(id, pending)
   return pending
 }

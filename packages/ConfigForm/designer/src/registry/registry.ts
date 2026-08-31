@@ -13,6 +13,7 @@ import type {
 import { DesignerRegistryError } from '../document'
 
 const UNSAFE_COMPONENT_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+const UNSAFE_EVENT_NAMES = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isControlledAdapter(value: unknown): boolean {
   return typeof value === 'string'
@@ -112,6 +113,28 @@ function assertMaterialDefinition(definition: DesignerMaterialDefinition, layerN
   }
   assertDesignPolicy(definition, layerName)
   assertSourceBinding(definition, layerName)
+  const seenEvents = new Set<string>()
+  for (const event of definition.events ?? []) {
+    const name = event && typeof event === 'object' && typeof event.name === 'string'
+      ? event.name
+      : ''
+    const title = event && typeof event === 'object' && typeof event.title === 'string'
+      ? event.title
+      : ''
+    if (!name
+      || name.trim() !== name
+      || /\s/.test(name)
+      || !title.trim()
+      || UNSAFE_EVENT_NAMES.has(name)
+      || seenEvents.has(name)) {
+      throw new DesignerRegistryError(
+        'DESIGNER_MATERIAL_EVENT_INVALID',
+        `Designer material ${definition.key} has an invalid component event`,
+        { event, key: definition.key, layerName },
+      )
+    }
+    seenEvents.add(name)
+  }
   const seenParents = new Set<string>()
   for (const parent of definition.allowedParents ?? []) {
     const key = `${parent.material}:${parent.slot}`

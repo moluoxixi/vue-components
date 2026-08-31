@@ -26,12 +26,22 @@ export function analyzeConfigFormFlow(
     diagnostics.push({ code: 'FLOW_VERSION_UNSUPPORTED', message: `Unsupported flow version: ${String(flow.version)}`, path: 'version' })
   if (!isNonEmptyString(flow.id) || !isNonEmptyString(flow.name))
     diagnostics.push({ code: 'FLOW_ID_NAME_REQUIRED', message: 'Flow id and name are required.' })
-  if (!isRecord(flow.trigger) || !['page.mount', 'form.submit', 'field.change'].includes(flow.trigger.kind as string))
+  if (!isRecord(flow.trigger) || !['page.mount', 'form.submit', 'field.change', 'component.event'].includes(flow.trigger.kind as string))
     diagnostics.push({ code: 'FLOW_TRIGGER_INVALID', message: 'Flow trigger is invalid.', path: 'trigger' })
   if (flow.trigger?.kind === 'field.change' && !isNonEmptyString(flow.trigger.field))
     diagnostics.push({ code: 'FLOW_TRIGGER_FIELD_REQUIRED', message: 'field.change triggers require a field.', path: 'trigger.field' })
   if (flow.trigger?.kind !== 'field.change' && flow.trigger?.field !== undefined)
     diagnostics.push({ code: 'FLOW_TRIGGER_FIELD_UNEXPECTED', message: 'Only field.change triggers may specify a field.', path: 'trigger.field' })
+  if (flow.trigger?.kind === 'component.event') {
+    if (!isNonEmptyString(flow.trigger.nodeId))
+      diagnostics.push({ code: 'FLOW_TRIGGER_NODE_REQUIRED', message: 'component.event triggers require a nodeId.', path: 'trigger.nodeId' })
+    if (!isNonEmptyString(flow.trigger.event))
+      diagnostics.push({ code: 'FLOW_TRIGGER_EVENT_REQUIRED', message: 'component.event triggers require an event.', path: 'trigger.event' })
+  }
+  if (flow.trigger?.kind !== 'component.event' && flow.trigger?.nodeId !== undefined)
+    diagnostics.push({ code: 'FLOW_TRIGGER_NODE_UNEXPECTED', message: 'Only component.event triggers may specify a nodeId.', path: 'trigger.nodeId' })
+  if (flow.trigger?.kind !== 'component.event' && flow.trigger?.event !== undefined)
+    diagnostics.push({ code: 'FLOW_TRIGGER_EVENT_UNEXPECTED', message: 'Only component.event triggers may specify an event.', path: 'trigger.event' })
   if (flow.concurrency !== undefined && !['latest', 'queue', 'ignore'].includes(flow.concurrency))
     diagnostics.push({ code: 'FLOW_CONCURRENCY_INVALID', message: `Unsupported flow concurrency: ${String(flow.concurrency)}`, path: 'concurrency' })
   if (flow.errorPolicy !== undefined) {

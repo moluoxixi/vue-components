@@ -284,6 +284,25 @@ describe('projectDocument schema', () => {
     legacyGraphOwner.pagesById.home!.graph.flows = [pageFlow()]
     expect(parseProjectDocument(legacyGraphOwner).success).toBe(false)
   })
+
+  it('validates component event flow triggers against the normalized page graph', () => {
+    const source = projectDocument()
+    source.pagesById.home!.flows = [{
+      ...pageFlow('name-event'),
+      trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
+    }]
+    expect(parseProjectDocument(source).success).toBe(true)
+
+    source.pagesById.home!.flows[0]!.trigger = {
+      kind: 'component.event',
+      nodeId: 'missing',
+      event: 'change',
+    }
+    const invalid = parseProjectDocument(source)
+    expect(invalid.success).toBe(false)
+    if (!invalid.success)
+      expect(invalid.diagnostics.some(item => item.message.includes('unknown node'))).toBe(true)
+  })
 })
 
 describe('projectSnapshot envelope', () => {
@@ -612,6 +631,44 @@ describe('projectTransaction', () => {
       return
     expect(undone.document.pagesById.home).not.toHaveProperty('flows')
     expect(undone.document).toEqual(initial)
+  })
+
+  it('checks component event flow triggers against the active Registry contract', () => {
+    const registry = createComponentContractRegistry([
+      { ...inputContract, events: [{ name: 'change' }] },
+      sectionContract,
+    ], { adapter: 'element-plus', version: '2.9.1' })
+    const initial = projectDocument(registry.lock)
+    const valid = applyProjectTransaction(initial, {
+      id: 'add-component-event-flow',
+      label: 'Add component event flow',
+      operations: [{
+        type: 'flow.add',
+        pageId: 'home',
+        flow: {
+          ...pageFlow('name-click'),
+          trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
+        },
+      }],
+    }, { registry })
+    expect(valid.success).toBe(true)
+
+    const invalid = applyProjectTransaction(initial, {
+      id: 'add-unknown-component-event-flow',
+      label: 'Add unknown component event flow',
+      operations: [{
+        type: 'flow.add',
+        pageId: 'home',
+        flow: {
+          ...pageFlow('name-hover'),
+          trigger: { kind: 'component.event', nodeId: 'name', event: 'hover' },
+        },
+      }],
+    }, { registry })
+    expect(invalid).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'PROJECT_FLOW_TRIGGER_EVENT_UNKNOWN', nodeId: 'name' }],
+    })
   })
 
   it('resolves semantic command actions against one evolving draft', () => {

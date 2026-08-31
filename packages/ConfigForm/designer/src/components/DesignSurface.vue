@@ -33,11 +33,12 @@ import { createDesignerDragController, createDesignerMaterialCandidate, DESIGNER
 import '../styles.scss'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
+  eventEditor: 'actions',
   readonly: false,
   workspaceNavigation: 'internal',
 })
 const emit = defineEmits<DesignSurfaceEmits>()
-defineSlots<DesignSurfaceSlots>()
+const slots = defineSlots<DesignSurfaceSlots>()
 
 const locale = reactive(createDesignerLocale(props.locale))
 provide(DESIGNER_LOCALE_KEY, locale)
@@ -545,7 +546,14 @@ defineExpose<DesignSurfaceExpose>({
           @add-material="handleAddMaterial"
           @action="handleAction"
           @resize="handleResize"
-        />
+        >
+          <template v-if="slots.runtime" #runtime="scope">
+            <slot name="runtime" v-bind="scope" />
+          </template>
+          <template #dragVisual="scope">
+            <slot v-if="slots.dragVisual" name="dragVisual" v-bind="scope" />
+          </template>
+        </DesignerCanvas>
       </section>
 
       <section :id="`${workspaceId}-properties-panel`" class="mx-config-form-designer__workspace-panel is-properties" data-workspace-panel="properties" :hidden="isWorkspacePanelHidden('properties')" :inert="isWorkspacePanelHidden('properties') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined">
@@ -556,6 +564,7 @@ defineExpose<DesignSurfaceExpose>({
         <slot name="properties" :document="controller.document.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :model-nodes="selectedModelNodes" :component-definition="selectedComponentDefinition">
           <DesignerPropertyPanel
             :document="controller.document.value"
+            :event-editor="eventEditor"
             :node="controller.selectedNode.value"
             :nodes="controller.selectedNodes.value"
             :material="controller.selectedMaterial.value"
@@ -567,6 +576,7 @@ defineExpose<DesignSurfaceExpose>({
             :validator-options="registry.listValidators()"
             :property-controls="registry.propertyControls"
             :readonly="readonly"
+            @configure-event="emit('configureEvent', $event.nodeId, $event.eventName)"
             @update-path="handleUpdatePath"
             @update-paths="handleUpdatePaths"
             @update-form="handleUpdateForm"

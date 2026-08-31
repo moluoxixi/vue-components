@@ -8,6 +8,7 @@ import { loadWorkbenchAdapter } from '../../adapters'
 import { createWorkspaceArchive } from '../export/archive'
 import {
   buildExportSnapshot,
+  createExportFileSet,
   createExportSession,
   isExportSnapshotStale,
   resolveExportSnapshotPath,
@@ -58,6 +59,56 @@ describe('export snapshot', () => {
     expect(isExportSnapshotStale(snapshot, input.compilation)).toBe(false)
     expect(isExportSnapshotStale(snapshot, next.compilation)).toBe(true)
     expect(isExportSnapshotStale(snapshot, undefined)).toBe(true)
+  })
+
+  it('treats compilation origin and generator version as snapshot identity', async () => {
+    const input = await fixture()
+    const snapshot = buildExportSnapshot(input)
+    const revised = {
+      ...input.compilation,
+      origin: { editVersion: 9, kind: 'committed' as const },
+    } as ProjectCompilation
+    const draft = {
+      ...input.compilation,
+      origin: { baseEditVersion: 8, draftId: 'draft-a', kind: 'draft' as const },
+    } as ProjectCompilation
+    const otherDraft = {
+      ...draft,
+      origin: { baseEditVersion: 8, draftId: 'draft-b', kind: 'draft' as const },
+    } as ProjectCompilation
+    const draftSnapshot = buildExportSnapshot({ ...input, compilation: draft })
+    const nextGeneratorSnapshot = buildExportSnapshot({ ...input, generatorVersion: '2.0.0' })
+
+    expect(isExportSnapshotStale(snapshot, revised)).toBe(true)
+    expect(isExportSnapshotStale(draftSnapshot, draft)).toBe(false)
+    expect(isExportSnapshotStale(draftSnapshot, otherDraft)).toBe(true)
+    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation)).toBe(true)
+    expect(isExportSnapshotStale(nextGeneratorSnapshot, input.compilation, '2.0.0')).toBe(false)
+  })
+
+  it('does not expose mutable retained binary bytes', async () => {
+    const path = normalizeProjectPath('assets/payload.bin')
+    const source = new Uint8Array([0, 127, 255])
+    const fileSet = createExportFileSet(path, {
+      [path]: { content: source, kind: 'binary' },
+    })
+    source[0] = 42
+
+    const file = fileSet.files[path]
+    expect(file?.kind).toBe('binary')
+    if (file?.kind !== 'binary')
+      return
+    expect([...file.content]).toEqual([0, 127, 255])
+    const exposed = file.content
+    exposed[1] = 1
+    expect([...file.content]).toEqual([0, 127, 255])
+    expect(Object.isFrozen(file)).toBe(true)
+
+    const archive = unzipSync(await createWorkspaceArchive({
+      files: fileSet.files,
+      name: 'Binary snapshot',
+    }))
+    expect([...archive['binary-snapshot/assets/payload.bin']!]).toEqual([0, 127, 255])
   })
 
   it('feeds frozen Source bytes to the archive', async () => {
@@ -111,5 +162,20 @@ describe('export snapshot', () => {
     expect(failed).toMatchObject({ success: false, error: 'generator failed' })
     expect(session.state.snapshot).toBe(pinned)
     expect(session.state.stale).toBe(true)
+  })
+
+  it('marks a pinned session stale when its generator changes', async () => {
+    const input = await fixture()
+    let generatorVersion = '1.0.0'
+    const session = createExportSession({
+      capture: () => input,
+      currentCompilation: () => input.compilation,
+      currentGeneratorVersion: () => generatorVersion,
+    })
+
+    expect((await session.refresh()).success).toBe(true)
+    expect(session.state.stale).toBe(false)
+    generatorVersion = '1.1.0'
+    expect(session.sync().stale).toBe(true)
   })
 })

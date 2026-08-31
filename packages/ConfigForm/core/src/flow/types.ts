@@ -9,7 +9,7 @@ import type {
 export const CONFIG_FORM_FLOW_VERSION = 1 as const
 export const CONFIG_FORM_FLOW_PLAN_VERSION = 1 as const
 
-export type ConfigFormFlowTriggerKind = 'page.mount' | 'form.submit' | 'field.change'
+export type ConfigFormFlowTriggerKind = 'page.mount' | 'form.submit' | 'field.change' | 'component.event'
 export type ConfigFormFlowConcurrency = 'latest' | 'queue' | 'ignore'
 export type ConfigFormFlowNodeType = 'trigger' | 'condition' | 'reaction' | 'action' | 'success' | 'failure' | 'end'
 export type ConfigFormFlowEdgeCondition = 'next' | 'true' | 'false' | 'error'
@@ -17,6 +17,10 @@ export type ConfigFormFlowEdgeCondition = 'next' | 'true' | 'false' | 'error'
 export interface ConfigFormFlowTrigger {
   kind: ConfigFormFlowTriggerKind
   field?: string
+  /** Stable PageGraph node id for component.event triggers. */
+  nodeId?: string
+  /** Registry event name for component.event triggers. */
+  event?: string
 }
 
 export interface ConfigFormFlowErrorPolicy {

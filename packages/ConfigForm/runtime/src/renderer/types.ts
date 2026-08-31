@@ -96,6 +96,10 @@ export interface ConfigFormRuntimeEventContext<
   args: unknown[]
 }
 
+/** Event emitted by the Preview Runtime for Flow component.event triggers. */
+export type ConfigFormRuntimeEventPayload<TValues extends ConfigFormValues = ConfigFormValues>
+  = ConfigFormRuntimeEventContext<TValues>
+
 /**
  * Optional bridge used by Design Canvas integrations. Registration is invoked
  * with the real node cell element when it mounts. Returning `false` from
@@ -185,6 +189,7 @@ export interface ConfigFormRendererEmits<TValues extends ConfigFormValues = Conf
   (event: 'error', errors: ConfigFormErrors): void
   (event: 'fieldChange', payload: ConfigFormFieldChangePayload<TValues>): void
   (event: 'metaChange', meta: ConfigFormMeta): void
+  (event: 'runtimeEvent', context: ConfigFormRuntimeEventPayload<TValues>): void
   (event: 'submit', values: TValues): void
 }
 

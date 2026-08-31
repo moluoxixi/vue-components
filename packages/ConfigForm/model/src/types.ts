@@ -388,6 +388,7 @@ export interface ProjectTransactionSuccess {
   changedProject: boolean
   changedPageIds: PageId[]
   changedNodeIds: NodeId[]
+  changedNodeChanges: ProjectNodeChange[]
 }
 
 export interface ProjectTransactionFailure {
@@ -427,4 +428,19 @@ export interface ProjectChangeSet {
   project: boolean
   pageIds: readonly PageId[]
   nodeIds: readonly NodeId[]
+  /** Page-qualified semantic and relation changes used by incremental compilers. */
+  nodeChanges: readonly ProjectNodeChange[]
+}
+
+export interface ProjectNodeRelation {
+  parentId: NodeId | null
+  slot: SlotName | null
+}
+
+export interface ProjectNodeChange {
+  pageId: PageId
+  nodeId: NodeId
+  kind: 'content' | 'insert' | 'move' | 'remove'
+  before?: ProjectNodeRelation
+  after?: ProjectNodeRelation
 }

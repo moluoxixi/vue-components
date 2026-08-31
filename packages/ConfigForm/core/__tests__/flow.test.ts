@@ -105,6 +105,24 @@ describe('config form flow core', () => {
     ]))
   })
 
+  it('requires a stable node and event for component event triggers', () => {
+    const valid = analyzeConfigFormFlow(flow({
+      trigger: { kind: 'component.event', nodeId: 'profile-button', event: 'click' },
+    }))
+    expect(valid.success).toBe(true)
+    if (valid.success)
+      expect(valid.plan.trigger).toEqual({ kind: 'component.event', nodeId: 'profile-button', event: 'click' })
+
+    const invalid = analyzeConfigFormFlow(flow({
+      trigger: { kind: 'component.event' },
+    }))
+    expect(invalid.success).toBe(false)
+    expect(invalid.diagnostics.map(diagnostic => diagnostic.code)).toEqual(expect.arrayContaining([
+      'FLOW_TRIGGER_NODE_REQUIRED',
+      'FLOW_TRIGGER_EVENT_REQUIRED',
+    ]))
+  })
+
   it('returns diagnostics for malformed nodes without throwing', () => {
     const malformed = flow({ nodes: [null as unknown as ConfigFormFlow['nodes'][number]] })
     expect(() => analyzeConfigFormFlow(malformed)).not.toThrow()
