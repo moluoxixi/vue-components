@@ -1,10 +1,14 @@
 // @vitest-environment happy-dom
 
-import type { WorkspaceApplication } from '../../project'
+import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import { createDesignerRegistry } from '@moluoxixi/config-form-designer'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import {
+  createProjectDocumentFixture,
+  duplicateProjectPage,
+} from '../../project/__tests__/fixtures'
 import StudioLeftPanel from '../StudioLeftPanel.vue'
 
 vi.mock('@floating-ui/dom', () => ({
@@ -27,22 +31,28 @@ const registry = createDesignerRegistry([{ name: 'test', materials: [{
   runtime: { component: 'input' },
   source: { configComponent: 'text', render: 'component', tag: 'input' },
   setters: [],
-  createNode: ({ id, field = 'input' }) => ({ id, field, kind: 'field', material: 'test.input' }),
+  createNode: ({ id, field = 'input' }) => ({ id, field, kind: 'field', component: 'test.input' }),
 }] }])
 
-const application = {
-  id: 'app',
-  pages: [
-    { id: 'page-a', name: 'Page A', route: '/a' },
-    { id: 'page-b', name: 'Page B', route: '/b' },
-  ],
-} as WorkspaceApplication
+function studioProject(): ProjectDocument {
+  const base = createProjectDocumentFixture({ id: 'app' })
+  const pageA = duplicateProjectPage(base.pagesById[base.homePageId]!, 'page-a', 'Page A', '/a')
+  const pageB = duplicateProjectPage(pageA, 'page-b', 'Page B', '/b')
+  return createProjectDocumentFixture({
+    id: 'app',
+    homePageId: pageA.id,
+    pageOrder: [pageA.id, pageB.id],
+    pagesById: { [pageA.id]: pageA, [pageB.id]: pageB },
+  })
+}
+
+const project = studioProject()
 
 describe('studio left panel', () => {
   it('owns only view state and emits semantic layer and page commands', async () => {
     const wrapper = mount(StudioLeftPanel, {
       props: {
-        application,
+        project,
         currentPageId: 'page-a',
         form: {},
         layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 1 }],
@@ -78,7 +88,7 @@ describe('studio left panel', () => {
     const wrapper = mount(StudioLeftPanel, {
       attachTo: document.body,
       props: {
-        application,
+        project,
         currentPageId: 'page-a',
         form: {},
         layers: [],
@@ -99,7 +109,7 @@ describe('studio left panel', () => {
     const wrapper = mount(StudioLeftPanel, {
       attachTo: document.body,
       props: {
-        application,
+        project,
         currentPageId: 'page-a',
         form: {},
         layers: [
@@ -135,7 +145,7 @@ describe('studio left panel', () => {
     const wrapper = mount(StudioLeftPanel, {
       attachTo: document.body,
       props: {
-        application,
+        project,
         currentPageId: 'page-a',
         form: {},
         layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 0 }],

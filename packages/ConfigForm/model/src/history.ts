@@ -42,7 +42,6 @@ export function createProjectHistory(
     : createProjectSnapshot(document, options.editVersion ?? 0)
   return {
     snapshot,
-    present: mutableDocumentView(snapshot),
     past: [],
     future: [],
     limit,
@@ -55,7 +54,7 @@ export function applyProjectHistoryTransaction(
   transaction: ProjectTransaction,
   options: ApplyProjectHistoryOptions = {},
 ): ProjectHistoryResult {
-  const result = applyProjectTransaction(history.present, transaction, options)
+  const result = applyProjectTransaction(currentDocument(history), transaction, options)
   if (!result.success)
     return { changed: false, history, diagnostics: result.diagnostics, changeSet: EMPTY_CHANGE_SET }
   if (!result.changed)
@@ -95,7 +94,6 @@ export function applyProjectHistoryTransaction(
     history: {
       ...history,
       snapshot,
-      present: mutableDocumentView(snapshot),
       past,
       future: [],
     },
@@ -109,7 +107,7 @@ export function undoProjectHistory(
   const entry = history.past.at(-1)
   if (!entry)
     return { changed: false, history, diagnostics: [], changeSet: EMPTY_CHANGE_SET }
-  const result = applyProjectTransaction(history.present, entry.inverse, options)
+  const result = applyProjectTransaction(currentDocument(history), entry.inverse, options)
   if (!result.success)
     return { changed: false, history, diagnostics: result.diagnostics, changeSet: EMPTY_CHANGE_SET }
   if (!result.changed)
@@ -127,7 +125,6 @@ export function undoProjectHistory(
     history: {
       ...history,
       snapshot,
-      present: mutableDocumentView(snapshot),
       past: history.past.slice(0, -1),
       future: [entry, ...history.future],
     },
@@ -141,7 +138,7 @@ export function redoProjectHistory(
   const [entry, ...future] = history.future
   if (!entry)
     return { changed: false, history, diagnostics: [], changeSet: EMPTY_CHANGE_SET }
-  const result = applyProjectTransaction(history.present, entry.transaction, options)
+  const result = applyProjectTransaction(currentDocument(history), entry.transaction, options)
   if (!result.success)
     return { changed: false, history, diagnostics: result.diagnostics, changeSet: EMPTY_CHANGE_SET }
   if (!result.changed)
@@ -159,7 +156,6 @@ export function redoProjectHistory(
     history: {
       ...history,
       snapshot,
-      present: mutableDocumentView(snapshot),
       past: [...history.past, {
         ...entry,
         inverse: result.inverse,
@@ -205,7 +201,6 @@ function isProjectSnapshot(
   return 'document' in value && 'editVersion' in value && 'contentHash' in value
 }
 
-/** Compatibility view for callers migrating from ProjectHistory.present. */
-function mutableDocumentView(snapshot: ProjectSnapshot): ProjectDocument {
-  return snapshot.document as ProjectDocument
+function currentDocument(history: ProjectHistory): ProjectDocument {
+  return history.snapshot.document as ProjectDocument
 }

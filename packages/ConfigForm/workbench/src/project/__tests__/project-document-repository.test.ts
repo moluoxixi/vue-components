@@ -1,26 +1,15 @@
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
-import type { ProjectDocument, RegistryLock } from '@moluoxixi/config-form-model'
+import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import { CONFIG_FORM_FLOW_VERSION, getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
-import {
-  applyProjectTransaction,
-  migrateLegacyWorkspaceApplication,
-} from '@moluoxixi/config-form-model'
+import { applyProjectTransaction } from '@moluoxixi/config-form-model'
 import { IndexDBStorage } from '@moluoxixi/indexed-db'
 import { afterEach, describe, expect, it } from 'vitest'
-import { migrateWorkspaceProjectToApplication } from '../application'
-import { createIndexedDBWorkspaceApplicationRepository } from '../application-repository-indexed-db'
 import {
   createIndexedDBProjectRepository,
 } from '../project-document-repository-indexed-db'
-import { createProjectFixture } from './fixtures'
+import { createProjectDocumentFixture } from './fixtures'
 import 'fake-indexeddb/auto'
 
-const registryLock: RegistryLock = {
-  adapter: 'element-plus',
-  version: '1',
-  fingerprint: 'fnv1a:fixture-registry',
-  components: {},
-}
 const closeables: Array<{ close: () => void }> = []
 let sequence = 0
 
@@ -29,18 +18,11 @@ afterEach(() => {
 })
 
 function repositoryOptions(dbName: string) {
-  return {
-    dbName,
-    resolveRegistryLock: async () => registryLock,
-  }
+  return { dbName }
 }
 
 function projectDocument(): ProjectDocument {
-  const application = migrateWorkspaceProjectToApplication(createProjectFixture())
-  const migrated = migrateLegacyWorkspaceApplication(application, { registryLock })
-  if (!migrated.success)
-    throw new Error(migrated.diagnostics[0]?.message)
-  return migrated.data
+  return createProjectDocumentFixture()
 }
 
 function rename(document: ProjectDocument, name: string): ProjectDocument {
@@ -182,7 +164,7 @@ describe('indexedDBProjectRepository', () => {
     expect(reloaded?.document.pagesById.home?.graph).not.toHaveProperty('flows')
   })
 
-  it('migrates persisted v3 graph-owned flows when loading the current repository', async () => {
+  it('rejects a persisted document from an unsupported schema version', async () => {
     const dbName = `project-document-v3-flow-${sequence++}`
     const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
     closeables.push(repository)
@@ -229,10 +211,7 @@ describe('indexedDBProjectRepository', () => {
     await storage.setItem(pageKey, entity)
     await storage.setItem(manifestKey, manifest)
 
-    const migrated = await repository.get(initial.id)
-    expect(migrated?.document.schemaVersion).toBe(4)
-    expect(migrated?.document.pagesById.home?.flows).toEqual([mountedFlow()])
-    expect(migrated?.document.pagesById.home?.graph).not.toHaveProperty('flows')
+    await expect(repository.get(initial.id)).rejects.toMatchObject({ code: 'PROJECT_REPOSITORY_CORRUPT' })
   })
 
   it('serializes concurrent multi-record commits across connections', async () => {
@@ -315,34 +294,19 @@ describe('indexedDBProjectRepository', () => {
     await expect(repository.get(initial.id)).resolves.toBeUndefined()
   })
 
-  it('migrates legacy applications only after a complete ProjectDocument is stored', async () => {
-    const dbName = `project-document-migration-${sequence++}`
-    const legacy = createIndexedDBWorkspaceApplicationRepository({ dbName })
-    closeables.push(legacy)
-    const application = migrateWorkspaceProjectToApplication(createProjectFixture())
-    await legacy.create(application)
-
+  it('does not scan or rewrite records outside the current project repository namespace', async () => {
+    const dbName = `project-document-hard-cut-${sequence++}`
+    const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })
+    closeables.push(storage)
+    const oldRecord = { schemaVersion: 2, id: 'old-project' }
+    await storage.setItem('foreign:old-project', oldRecord)
     const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
     closeables.push(repository)
     await repository.open()
 
-    await expect(repository.get(application.id)).resolves.toMatchObject({
-      createdAt: application.createdAt,
-      document: {
-        id: application.id,
-        homePageId: 'home',
-        pageOrder: ['home'],
-        registryLock: {
-          adapter: registryLock.adapter,
-          version: registryLock.version,
-          components: {},
-        },
-      },
-      repositoryRevision: application.revision,
-      updatedAt: application.updatedAt,
-    })
-    await expect(legacy.get(application.id)).resolves.toBeUndefined()
-    expect(repository.migrationErrors).toEqual([])
+    await expect(repository.get('old-project')).resolves.toBeUndefined()
+    await expect(repository.list()).resolves.toEqual([])
+    await expect(storage.getItem('foreign:old-project')).resolves.toEqual(oldRecord)
   })
 
   it('deletes every manifest and entity record for a project', async () => {

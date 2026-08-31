@@ -28,7 +28,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'rate' }) => ({
         id,
         kind: 'field',
-        material: 'antd.rate',
+        component: 'antd.rate',
         field,
         label: 'Rate',
         defaultValue: 0,

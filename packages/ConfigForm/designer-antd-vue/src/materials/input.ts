@@ -28,7 +28,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'input' }) => ({
         id,
         kind: 'field',
-        material: 'antd.input',
+        component: 'antd.input',
         field,
         label: 'Input',
         props: { placeholder: '' },

@@ -23,7 +23,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'textarea' }) => ({
         id,
         kind: 'field',
-        material: 'element.textarea',
+        component: 'element.textarea',
         field,
         label: 'Textarea',
         props: { type: 'textarea', rows: 3, placeholder: '' },

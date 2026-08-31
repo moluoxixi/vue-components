@@ -1,45 +1,35 @@
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
-import type { WorkspaceSessionSnapshot } from '../workspace-session'
+import type { PageProjectionInput } from '../projection-coordinator'
 import { describe, expect, it } from 'vitest'
-import { createBuiltInWorkspaceApplication } from '../../project'
-import { createWorkspaceProjectionCoordinator } from '../projection-coordinator'
+import { createPageProjectionCoordinator } from '../projection-coordinator'
 
-function sessionSnapshot(): WorkspaceSessionSnapshot {
-  const application = createBuiltInWorkspaceApplication('element-profile', {
-    createdAt: '2026-08-30T00:00:00.000Z',
-    id: 'projection-app',
-    name: 'Projection app',
-  })
-  const currentPage = application.pages.find(page => page.id === application.homePageId)!
+function input(overrides: Partial<PageProjectionInput> = {}): PageProjectionInput {
   return {
-    application,
-    applicationRevision: application.revision,
-    canRedo: false,
-    canUndo: false,
-    currentPage,
-    currentPageId: currentPage.id,
-    dirty: false,
-    modelRevision: 0,
-    persistence: 'durable',
-    saving: false,
+    adapter: 'element-plus',
+    editVersion: 0,
+    pageId: 'home',
+    projectId: 'projection-project',
+    repositoryRevision: 4,
+    ...overrides,
   }
 }
 
-function success(snapshot: WorkspaceSessionSnapshot): VueRuntimeCompileResult {
+function success(snapshot: PageProjectionInput): VueRuntimeCompileResult {
   return {
     success: true,
     artifact: {
       compilationKey: {
-        projectId: snapshot.application.id,
-        contentHash: `fnv1a:${snapshot.modelRevision}`,
-        registryAdapter: snapshot.application.manifest.adapter,
+        irVersion: 3,
+        projectId: snapshot.projectId,
+        pageId: snapshot.pageId,
+        registryAdapter: snapshot.adapter,
         registryAdapterVersion: '1',
-        registryFingerprint: 'fnv1a:registry',
+        registryUsageHash: 'fnv1a:registry',
         compilerVersion: '1.0.0',
         environmentHash: 'fnv1a:environment',
-        irHash: `fnv1a:ir-${snapshot.modelRevision}`,
+        semanticHash: `fnv1a:${snapshot.editVersion}`,
       },
-      pageId: snapshot.currentPageId,
+      pageId: snapshot.pageId,
       plan: {
         renderer: {
           columns: 1,
@@ -62,74 +52,51 @@ const failure: VueRuntimeCompileResult = {
   diagnostics: [{ code: 'TEST', message: 'compile failed', path: [], severity: 'error' }],
 }
 
-describe('workspace projection coordinator', () => {
+describe('page projection coordinator', () => {
   it('publishes one revision identity and aborts work from the previous revision', () => {
-    const coordinator = createWorkspaceProjectionCoordinator()
-    const first = sessionSnapshot()
-    const firstProjection = coordinator.publish(first, () => success(first))
+    const coordinator = createPageProjectionCoordinator()
+    const first = coordinator.publish(input(), snapshot => success(snapshot))
+    const second = coordinator.publish(input({ editVersion: 1 }), snapshot => success(snapshot))
 
-    const second = { ...first, modelRevision: first.modelRevision + 1 }
-    const secondProjection = coordinator.publish(second, () => success(second))
-
-    expect(firstProjection.signal.aborted).toBe(true)
-    expect(secondProjection.signal.aborted).toBe(false)
-    expect(secondProjection.current.runtimeSessionKey).toBe(firstProjection.current.runtimeSessionKey)
-    expect(secondProjection.current.runtimeSessionKey).toBe(`projection-app:element-plus:${first.currentPageId}`)
-    expect(secondProjection.current.revisionKey).toBe(`projection-app:${first.applicationRevision}:${first.currentPageId}:1`)
-    expect(coordinator.isCurrent(firstProjection.current.revisionKey)).toBe(false)
-    expect(coordinator.isCurrent(secondProjection.current.revisionKey)).toBe(true)
+    expect(first.signal.aborted).toBe(true)
+    expect(second.signal.aborted).toBe(false)
+    expect(second.current.runtimeSessionKey).toBe(first.current.runtimeSessionKey)
+    expect(second.current.runtimeSessionKey).toBe('projection-project:element-plus:home')
+    expect(second.current.revisionKey).toBe('projection-project:4:home:1')
+    expect(coordinator.isCurrent(first.current.revisionKey)).toBe(false)
+    expect(coordinator.isCurrent(second.current.revisionKey)).toBe(true)
   })
 
   it('marks the last valid projection stale after a compile failure on the same page', () => {
-    const coordinator = createWorkspaceProjectionCoordinator()
-    const first = sessionSnapshot()
-    const valid = success(first)
-    coordinator.publish(first, () => valid)
-
-    const failed = coordinator.publish({ ...first, modelRevision: 2 }, () => failure)
+    const coordinator = createPageProjectionCoordinator()
+    const valid = coordinator.publish(input(), snapshot => success(snapshot))
+    const failed = coordinator.publish(input({ editVersion: 2 }), () => failure)
 
     expect(failed.status).toBe('stale')
     expect(failed.display?.stale).toBe(true)
-    expect(failed.display?.result).toBe(valid)
-    expect(failed.display?.snapshot.modelRevision).toBe(0)
+    expect(failed.display?.result).toBe(valid.compileResult)
+    expect(failed.display?.snapshot.editVersion).toBe(0)
   })
 
-  it('never shows a last-valid page as the fallback for another page', () => {
-    const coordinator = createWorkspaceProjectionCoordinator()
-    const first = sessionSnapshot()
-    coordinator.publish(first, () => success(first))
-    const otherPage = {
-      ...first.currentPage,
-      id: 'other-page',
-      model: { ...first.currentPage.model, id: 'other-model' },
-      name: 'Other page',
-      route: '/other',
-    }
-    const application = {
-      ...first.application,
-      pages: [...first.application.pages, otherPage],
-    }
+  it('never shows the last valid projection for another page', () => {
+    const coordinator = createPageProjectionCoordinator()
+    coordinator.publish(input(), snapshot => success(snapshot))
 
-    const failed = coordinator.publish({
-      ...first,
-      application,
-      currentPageId: otherPage.id,
-      modelRevision: 1,
-    }, () => failure)
+    const failed = coordinator.publish(input({ pageId: 'other-page', editVersion: 1 }), () => failure)
 
     expect(failed.status).toBe('blocked')
     expect(failed.display).toBeUndefined()
-    expect(failed.current.runtimeSessionKey).not.toBe(`projection-app:element-plus:${first.currentPageId}`)
+    expect(failed.current.runtimeSessionKey).toBe('projection-project:element-plus:other-page')
   })
 
-  it('captures an isolated application snapshot for export features', () => {
-    const coordinator = createWorkspaceProjectionCoordinator()
-    const session = sessionSnapshot()
-    coordinator.publish(session, () => success(session))
+  it('captures only immutable page projection identity', () => {
+    const coordinator = createPageProjectionCoordinator()
+    coordinator.publish(input(), snapshot => success(snapshot))
 
-    const captured = coordinator.capture()!
-    captured.application.name = 'mutated export copy'
-
-    expect(coordinator.capture()?.application.name).toBe('Projection app')
+    expect(coordinator.capture()).toEqual({
+      ...input(),
+      runtimeSessionKey: 'projection-project:element-plus:home',
+      revisionKey: 'projection-project:4:home:0',
+    })
   })
 })

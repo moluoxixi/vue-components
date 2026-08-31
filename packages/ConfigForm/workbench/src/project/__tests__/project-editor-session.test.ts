@@ -67,7 +67,6 @@ describe('projectEditorSession', () => {
       releaseCommit = resolve
     })
     const repository: ProjectRepository = {
-      migrationErrors: durable.migrationErrors,
       persistence: durable.persistence,
       close: () => durable.close(),
       create: document => durable.create(document),

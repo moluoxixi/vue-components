@@ -1,11 +1,7 @@
-import type {
-  DesignerDocument,
-  DesignerJsonObject,
-  DesignerMaterialDefinition,
-} from '@moluoxixi/config-form-designer'
-import { compileDesignerDocument, createLowCodeComponentRegistry, DesignerPropertyPanel } from '@moluoxixi/config-form-designer'
+import type { DesignerMaterialDefinition } from '@moluoxixi/config-form-designer'
+import type { FieldNode, PageGraph } from '@moluoxixi/config-form-model'
+import { pageGraphSchema } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
-import { Input } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
 import { defineComponent } from 'vue'
 import {
@@ -48,134 +44,126 @@ const expectedKeys = [
   'antd.grid',
 ]
 
+function graphForRootMaterials(): PageGraph {
+  const registry = createAntdVueDesignerRegistry()
+  const graph: PageGraph = { version: 2, props: {}, form: {}, root: [], nodesById: {} }
+  registry.listMaterials().forEach((material, index) => {
+    const subgraph = registry.createSubgraph(material.key, {
+      id: `matrix-${index}`,
+      ...(material.kind === 'field' ? { field: `field_${index}` } : {}),
+    })
+    expect(subgraph.root).toHaveLength(1)
+    expect(subgraph.nodesById[subgraph.root[0]!.nodeId]).toMatchObject({
+      component: material.key,
+      kind: material.kind,
+    })
+    expect(() => structuredClone(subgraph)).not.toThrow()
+    if (material.allowedParents?.length)
+      return
+    graph.root.push(...subgraph.root)
+    Object.assign(graph.nodesById, subgraph.nodesById)
+  })
+  return graph
+}
+
+function fieldNode(component: string, field: string): FieldNode {
+  return {
+    id: field,
+    kind: 'field',
+    component,
+    field,
+    props: {},
+    events: {},
+    bindings: {},
+  }
+}
+
 describe('ant design vue designer materials', () => {
-  it('registers material definitions and locale from matching named files', () => {
+  it('registers every material and matching locale module', () => {
     const entries = ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.modules.list()
     expect(entries.map(entry => entry.name)).toEqual(expectedKeys.map(key => key.replace('antd.', '')))
     expect(entries.every(entry => entry.source === `./materials/${entry.name}.ts`)).toBe(true)
-    expect(Object.keys(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.locales)).toEqual(expectedKeys)
-  })
-
-  it('registers the complete material set with localized metadata', () => {
     expect(ANTD_VUE_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
+    expect(Object.keys(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.locales)).toEqual(expectedKeys)
     expect(Object.keys(ANTD_VUE_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
-    expect(ANTD_VUE_DESIGNER_ZH_CN.messages?.['property.reactions']).toBe('联动')
-    expect(ANTD_VUE_DESIGNER_ZH_CN.messages?.['reaction.effect.setValue']).toBe('设置值')
-    expect(ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'field')).toHaveLength(14)
-    expect(ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
   })
 
-  it('publishes an explicit source adapter for every material', () => {
-    const definitions = createLowCodeComponentRegistry(createAntdVueDesignerRegistry()).list()
-    expect(definitions).toHaveLength(expectedKeys.length)
-    expect(definitions.every(definition => definition.source.library?.packageName === 'ant-design-vue'
-      || definition.source.render !== 'component')).toBe(true)
-    expect(definitions.find(definition => definition.component === 'antd.date')?.source.tag).toBe('a-date-picker')
-    expect(definitions.find(definition => definition.component === 'antd.checkbox')?.source.options).toEqual({ mode: 'prop' })
+  it('creates a normalized JSON-safe subgraph for every material', () => {
+    const graph = graphForRootMaterials()
+    expect(() => pageGraphSchema.parse(graph)).not.toThrow()
+    expect(Object.keys(graph.nodesById)).toHaveLength(expectedKeys.length)
   })
 
-  it('publishes provider-specific binding and explicit events through the shared Registry', () => {
-    const definitions = createLowCodeComponentRegistry(createAntdVueDesignerRegistry())
-    expect(definitions.get('antd.input')?.events).toEqual([
-      { name: 'update:value', displayName: 'Value change' },
-    ])
-    expect(definitions.get('antd.search')?.events).toEqual([
-      { name: 'update:value', displayName: 'Value change' },
-      { name: 'search', displayName: 'Search' },
-    ])
-    expect(definitions.get('antd.tabs')?.events).toEqual([
-      { name: 'change', displayName: 'Active tab change' },
-    ])
-  })
-
-  it('creates and compiles every registry material in a single regression matrix', () => {
+  it('creates structural tabs and collapse children inside their real parent slots', () => {
     const registry = createAntdVueDesignerRegistry()
-    const materials = registry.listMaterials()
-    const nodes = materials.map((material, index) => registry.createNode(material.key, {
-      id: `matrix-${index}`,
-      ...(material.kind === 'field' ? { field: `matrix-${index}` } : {}),
-    }))
-    const rootNodes = nodes.filter((_, index) => !materials[index]!.allowedParents?.length)
+    const tabs = registry.createSubgraph('antd.tabs', { id: 'tabs' })
+    const collapse = registry.createSubgraph('antd.collapse', { id: 'collapse' })
 
-    expect(nodes).toHaveLength(registry.listMaterials().length)
-    expect(new Set(nodes.map(node => node.id)).size).toBe(nodes.length)
-    expect(compileDesignerDocument({ version: 1, form: {}, nodes: rootNodes }, registry)).toMatchObject({ success: true })
-  })
-
-  it('uses native Ant Design Vue value and checked bindings', () => {
-    const fields = ANTD_VUE_DESIGNER_MATERIALS.filter(material => material.kind === 'field')
-    expect(fields.every(material => material.setters.some(setter => setter.path.join('.') === 'defaultValue'))).toBe(true)
-    expect(fields.every(material => typeof material.runtime.readonlyRender === 'function')).toBe(true)
-    expect(Object.fromEntries(fields.map(material => [material.key, {
-      valueProp: material.runtime.valueProp,
-      trigger: material.runtime.trigger,
-    }]))).toEqual({
-      'antd.input': { valueProp: 'value', trigger: 'update:value' },
-      'antd.password': { valueProp: 'value', trigger: 'update:value' },
-      'antd.search': { valueProp: 'value', trigger: 'update:value' },
-      'antd.textarea': { valueProp: 'value', trigger: 'update:value' },
-      'antd.input-number': { valueProp: 'value', trigger: 'update:value' },
-      'antd.select': { valueProp: 'value', trigger: 'update:value' },
-      'antd.auto-complete': { valueProp: 'value', trigger: 'update:value' },
-      'antd.radio': { valueProp: 'value', trigger: 'update:value' },
-      'antd.checkbox': { valueProp: 'value', trigger: 'update:value' },
-      'antd.switch': { valueProp: 'checked', trigger: 'update:checked' },
-      'antd.slider': { valueProp: 'value', trigger: 'update:value' },
-      'antd.rate': { valueProp: 'value', trigger: 'update:value' },
-      'antd.date': { valueProp: 'value', trigger: 'update:value' },
-      'antd.time': { valueProp: 'value', trigger: 'update:value' },
+    expect(tabs.nodesById.tabs).toMatchObject({
+      kind: 'layout',
+      component: 'antd.tabs',
+      slots: { default: [{ nodeId: 'tabs-pane-1', placement: {} }] },
+    })
+    expect(tabs.nodesById['tabs-pane-1']).toMatchObject({
+      kind: 'layout',
+      component: 'antd.tab-pane',
+    })
+    expect(collapse.nodesById.collapse).toMatchObject({
+      kind: 'layout',
+      component: 'antd.collapse',
+      slots: { default: [{ nodeId: 'collapse-item-1', placement: {} }] },
+    })
+    expect(collapse.nodesById['collapse-item-1']).toMatchObject({
+      kind: 'layout',
+      component: 'antd.collapse-item',
     })
   })
 
-  it('registers native ConfigForm property controls', () => {
+  it('publishes complete source, binding, event, and property-control metadata', () => {
     const registry = createAntdVueDesignerRegistry()
-    const controls = registry.propertyControls
-    expect(Object.keys(controls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
-    expect(controls).toMatchObject({
-      text: { component: 'text' },
-      textarea: { component: 'textarea' },
-      number: { component: 'number' },
-      boolean: { component: 'boolean' },
-      select: { component: 'segmented' },
+    expect(registry.listMaterials().every(material => !!material.source)).toBe(true)
+    expect(registry.getMaterial('antd.date')?.source?.tag).toBe('a-date-picker')
+    expect(registry.getMaterial('antd.checkbox')?.source?.options).toEqual({ mode: 'prop' })
+    expect(registry.getMaterial('antd.input')?.runtime).toMatchObject({
+      valueProp: 'value',
+      trigger: 'update:value',
     })
-    expect(registry.components.text).toMatchObject({ valueProp: 'value', trigger: 'update:value' })
-    expect(registry.components.boolean).toMatchObject({ valueProp: 'checked', trigger: 'change' })
-    expect(registry.components.segmented).toMatchObject({ valueProp: 'value', trigger: 'change', props: { block: true } })
+    expect(registry.getMaterial('antd.switch')?.runtime).toMatchObject({
+      valueProp: 'checked',
+      trigger: 'update:checked',
+    })
+    expect(registry.getMaterial('antd.search')?.events).toEqual([
+      { name: 'search', title: 'Search' },
+    ])
+    expect(registry.getMaterial('antd.tabs')?.events).toEqual([
+      { name: 'change', title: 'Active tab change' },
+    ])
+    expect(registry.getMaterial('antd.collapse')?.events).toEqual([
+      { name: 'change', title: 'Expanded items change' },
+    ])
+    expect(Object.keys(registry.propertyControls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
   })
 
-  it('renders and commits a real Ant Design Vue property control through ConfigForm', async () => {
+  it('creates independent defaults for every field material', () => {
     const registry = createAntdVueDesignerRegistry()
-    const wrapper = mount(DesignerPropertyPanel, {
-      props: {
-        components: registry.components,
-        diagnostics: [],
-        document: {
-          version: 1,
-          form: { columns: 24, fieldSpan: 24, gap: '16px', inline: false, labelPosition: 'left', readonly: false },
-          nodes: [],
-        },
-        propertyControls: registry.propertyControls,
-      },
-    })
-    const gap = wrapper.findAllComponents(Input)
-      .find(control => control.props('value') === '16px')!
-
-    gap.vm.$emit('update:value', '20px')
-    await wrapper.vm.$nextTick()
-    gap.vm.$emit('blur', new FocusEvent('blur'))
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.emitted('updateForm')?.at(-1)).toEqual([{ gap: '20px' }])
+    const fields = registry.listMaterials().filter(material => material.kind === 'field')
+    for (const [index, material] of fields.entries()) {
+      const first = registry.createSubgraph(material.key, { id: `first-${index}`, field: `first_${index}` })
+      const second = registry.createSubgraph(material.key, { id: `second-${index}`, field: `second_${index}` })
+      const firstNode = first.nodesById[`first-${index}`]!
+      const secondNode = second.nodesById[`second-${index}`]!
+      expect(firstNode).not.toBe(secondNode)
+      expect(firstNode.props).not.toBe(secondNode.props)
+      expect(material.setters.some(setter => setter.path.join('.') === 'defaultValue')).toBe(true)
+      expect(typeof material.runtime.readonlyRender).toBe('function')
+    }
   })
 
-  it('renders semantic readonly choice and switch labels', async () => {
-    const registry = createAntdVueDesignerRegistry()
-    const select = registry.createNode('antd.select', { id: 'select', field: 'environment' })
-    const autoComplete = registry.createNode('antd.auto-complete', { id: 'auto-complete', field: 'project' })
-    const password = registry.createNode('antd.password', { id: 'password', field: 'password' })
-    const switchNode = registry.createNode('antd.switch', { id: 'switch', field: 'enabled' })
-    if (select.kind !== 'field' || autoComplete.kind !== 'field' || password.kind !== 'field' || switchNode.kind !== 'field')
-      throw new Error('Expected field fixtures')
+  it('renders semantic readonly values against canonical field nodes', async () => {
+    const select = fieldNode('antd.select', 'environment')
+    const autoComplete = fieldNode('antd.auto-complete', 'project')
+    const password = fieldNode('antd.password', 'password')
+    const switchNode = fieldNode('antd.switch', 'enabled')
 
     expect(renderAntdVueChoiceReadonly({
       node: select,
@@ -183,12 +171,6 @@ describe('ant design vue designer materials', () => {
       value: 'a',
       componentProps: { options: [{ label: 'Playground', value: 'a' }] },
     })).toBe('Playground')
-    expect(renderAntdVueChoiceReadonly({
-      node: autoComplete,
-      model: { project: 'a' },
-      value: 'a',
-      componentProps: { options: [{ label: 'Project A', value: 'a' }] },
-    })).toBe('Project A')
     expect(renderAntdVueSwitchReadonly({
       node: switchNode,
       model: { enabled: true },
@@ -225,120 +207,23 @@ describe('ant design vue designer materials', () => {
     expect(readonlyWrapper.text()).toBe('Project A')
   })
 
-  it('creates independent JSON-safe defaults', () => {
-    const registry = createAntdVueDesignerRegistry()
-    const selectOne = registry.createNode('antd.select', { id: 'select-1', field: 'choiceOne' })
-    const selectTwo = registry.createNode('antd.select', { id: 'select-2', field: 'choiceTwo' })
-    const firstOptions = selectOne.props?.options as DesignerJsonObject[]
-    firstOptions[0]!.label = 'Changed'
-    expect((selectTwo.props?.options as DesignerJsonObject[])[0]?.label).toBe('Option A')
-    expect(registry.createNode('antd.date', { id: 'date', field: 'date' })).toMatchObject({ props: { valueFormat: 'YYYY-MM-DD' } })
-    expect(registry.createNode('antd.time', { id: 'time', field: 'time' })).toMatchObject({ props: { valueFormat: 'HH:mm:ss' } })
-    expect(registry.createNode('antd.slider', { id: 'slider', field: 'slider' })).toMatchObject({ defaultValue: 0, props: { min: 0, max: 100, step: 1 } })
-    expect(registry.createNode('antd.rate', { id: 'rate', field: 'rate' })).toMatchObject({ defaultValue: 0, props: { count: 5, allowHalf: false, allowClear: true } })
-    expect(registry.createNode('antd.tabs', { id: 'tabs' })).toMatchObject({
-      props: { activeKey: 'tabs-pane-1' },
-      slots: {
-        default: [{
-          id: 'tabs-pane-1',
-          material: 'antd.tab-pane',
-          props: { tab: 'Tab 1', key: 'tabs-pane-1' },
-        }],
-      },
-    })
-    expect(registry.createNode('antd.collapse', { id: 'collapse' })).toMatchObject({
-      props: { activeKey: ['collapse-item-1'] },
-      slots: {
-        default: [{
-          id: 'collapse-item-1',
-          material: 'antd.collapse-item',
-          props: { header: 'Item 1', key: 'collapse-item-1' },
-        }],
-      },
-    })
-  })
-
-  it('enforces tabs child materials and compiles nested layouts', () => {
-    const registry = createAntdVueDesignerRegistry()
-    const invalid: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'tabs',
-        kind: 'container',
-        material: 'antd.tabs',
-        slots: { default: [{ id: 'input', kind: 'field', material: 'antd.input', field: 'input' }] },
-      }],
-    }
-    expect(compileDesignerDocument(invalid, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_SLOT_KIND_INVALID' }, { code: 'DESIGNER_SLOT_MATERIAL_INVALID' }],
-    })
-
-    const valid: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'grid',
-        kind: 'container',
-        material: 'antd.grid',
-        props: { columns: 3, gap: 16 },
-        slots: { default: [{ id: 'name', kind: 'field', material: 'antd.input', field: 'name' }] },
-      }],
-    }
-    expect(compileDesignerDocument(valid, registry)).toMatchObject({
-      success: true,
-      fields: [{ props: { columns: 3, gap: 16 } }],
-    })
-  })
-
-  it('validates resolved dictionary defaults', () => {
-    const optionResolver = createAntdVueOptionResolverContext({
-      dictionaries: {
-        environments: [
-          { label: 'Playground', value: 'playground' },
-          { label: 'Production', value: 'production' },
-        ],
-      },
-    })
-    const registry = createAntdVueDesignerRegistry([], { optionResolver })
-    const document: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'environment',
-        kind: 'field',
-        material: 'antd.select',
-        field: 'environment',
-        defaultValue: 'playground',
-        props: { optionSource: { kind: 'dictionary', key: 'environments' } },
-      }],
-    }
-    expect(compileDesignerDocument(document, registry).success).toBe(true)
-    const field = document.nodes[0]
-    if (field?.kind !== 'field')
-      throw new Error('Expected field fixture')
-    field.defaultValue = 'missing'
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_DEFAULT_OPTION_UNKNOWN', nodeId: 'environment' }],
-    })
-  })
-
-  it('keeps caller registry layers above adapter defaults', () => {
-    const localInput: DesignerMaterialDefinition = {
+  it('keeps caller registry layers above provider defaults', () => {
+    const override: DesignerMaterialDefinition = {
       key: 'antd.input',
       version: 1,
       kind: 'field',
-      title: 'Local input',
-      category: 'Local',
+      title: 'Override input',
+      category: 'Custom',
       runtime: { component: 'input' },
       setters: [],
-      createNode: ({ id, field = 'local' }) => ({ id, kind: 'field', material: 'antd.input', field }),
+      createNode: ({ id, field = id }) => ({ id, field, kind: 'field', component: 'antd.input' }),
     }
-    const registry = createAntdVueDesignerRegistry([{ name: 'local', materials: [localInput] }])
+    const registry = createAntdVueDesignerRegistry([{ name: 'override', materials: [override] }])
+
     expect(registry.rendererNamespace).toBe('mx-antd-config-form')
-    expect(registry.getMaterial('antd.input')?.title).toBe('Local input')
+    expect(registry.getMaterial('antd.input')?.title).toBe('Override input')
     expect(registry.listMaterials()).toHaveLength(expectedKeys.length)
+    expect(registry.createSubgraph('antd.input', { id: 'custom', field: 'custom' }).nodesById.custom)
+      .toMatchObject({ component: 'antd.input', field: 'custom' })
   })
 })

@@ -1,3 +1,4 @@
+import type { DesignerNodeSubgraphTemplate } from '@moluoxixi/config-form-designer'
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
 import * as s from '../material-shared'
 
@@ -9,11 +10,11 @@ export default defineDesignerMaterialModule({
       key: 'antd.tabs',
       source: s.antdSource('div', 'a-tabs'),
       version: 1,
-      kind: 'container',
+      kind: 'layout',
       title: 'Tabs',
       category: 'Layout',
       icon: s.PanelsTopLeft,
-      runtime: { component: s.Tabs, designerComponent: s.AntdTabsPreview },
+      runtime: { component: s.Tabs },
       events: [{ name: 'change', title: 'Active tab change' }],
       setters: [
         s.propSetter('tabPosition', 'Position', 'select', [
@@ -24,24 +25,26 @@ export default defineDesignerMaterialModule({
         ]),
         s.propSetter('centered', 'Centered', 'boolean'),
       ],
-      slots: [{ name: 'default', title: 'Panes', accepts: ['container'], materials: ['antd.tab-pane'] }],
-      createNode: ({ id }) => {
+      slots: [{ name: 'default', title: 'Panes', accepts: ['layout'], materials: ['antd.tab-pane'] }],
+      createNode: ({ id }): DesignerNodeSubgraphTemplate => {
         const paneId = `${id}-pane-1`
         return {
-          id,
-          kind: 'container',
-          material: 'antd.tabs',
-          props: { tabPosition: 'top', activeKey: paneId },
-          slots: {
-            default: [
-              {
-                id: paneId,
-                kind: 'container',
-                material: 'antd.tab-pane',
-                props: { tab: 'Tab 1', key: paneId },
-                slots: { default: [] },
-              },
-            ],
+          root: [{ nodeId: id, placement: {} }],
+          nodesById: {
+            [id]: {
+              id,
+              kind: 'layout',
+              component: 'antd.tabs',
+              props: { tabPosition: 'top', activeKey: paneId },
+              slots: { default: [{ nodeId: paneId, placement: {} }] },
+            },
+            [paneId]: {
+              id: paneId,
+              kind: 'layout',
+              component: 'antd.tab-pane',
+              props: { tab: 'Tab 1', key: paneId },
+              slots: { default: [] },
+            },
           },
         }
       },

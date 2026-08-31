@@ -52,8 +52,8 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
 - `ProjectPage.flows` is persistent and page-local. Its trigger field references,
   model order, and Flow ID uniqueness are resolved within that owning page.
   `PageGraph` owns only visual nodes and placement; it must not own Flow state.
-  `LowCodePageModel.flows` is only a legacy ingress/export projection. Active runs, queues, signals,
-  outputs, projections, and traces are transient runtime state.
+  Active runs, queues, signals, outputs, projections, and traces are transient
+  runtime state.
 - Workbench event execution is owned by one page-scoped Flow Engine, not by the
   shell/controller. The engine owns the injected action Registry, active
   execution plans, scheduler, projection retention, trace/error boundary, and
@@ -63,9 +63,8 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
 - Workbench component-event authoring has one normal entry: the Inspector lists
   events from the selected node's Registry contract and opens the Flow dialog
   with that exact `{ nodeId, event }` trigger. If a matching Flow exists it is
-  selected; otherwise creation starts from that event source. The legacy
-  comma-separated `node.events` action editor is compatibility-only and must
-  not be exposed beside Flow in the Workbench.
+  selected; otherwise creation starts from that event source. The Workbench
+  does not expose a comma-separated `node.events` action editor beside Flow.
 - Replacing the owning project/page clears all retained Flow projections and
   invalidates pending work. Updating the same page prunes projections for
   removed Flow IDs while retaining the last successful projection of active

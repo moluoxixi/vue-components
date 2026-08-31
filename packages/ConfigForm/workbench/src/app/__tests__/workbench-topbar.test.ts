@@ -1,25 +1,21 @@
 // @vitest-environment happy-dom
 
-import type { WorkspaceApplication } from '../../project'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
+import { createProjectDocumentFixture } from '../../project/__tests__/fixtures'
 import WorkbenchTopbar from '../WorkbenchTopbar.vue'
 
-const application = {
-  id: 'app',
-  name: 'Account app',
-  revision: 4,
-  pages: [{ id: 'page', name: 'Profile', route: '/profile' }],
-} as WorkspaceApplication
+const project = createProjectDocumentFixture({ id: 'app', name: 'Account app' })
+const currentPage = project.pagesById[project.homePageId]!
 
 describe('workbench topbar', () => {
   it('opens a keyboard navigable export menu and emits the selected projection', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
       props: {
-        application,
-        currentPage: application.pages[0],
+        project,
+        currentPage,
         localeId: 'en-US',
         statusLabel: 'Saved locally',
         theme: 'dark',
@@ -50,8 +46,8 @@ describe('workbench topbar', () => {
   it('keeps commands as host events instead of changing workspace state', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       props: {
-        application,
-        currentPage: application.pages[0],
+        project,
+        currentPage,
         dirty: true,
         localeId: 'en-US',
         previewOpen: false,
@@ -72,8 +68,8 @@ describe('workbench topbar', () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
       props: {
-        application,
-        currentPage: application.pages[0],
+        project,
+        currentPage,
         localeId: 'en-US',
         statusLabel: 'Saved locally',
         theme: 'light',

@@ -2,27 +2,21 @@
 
 import type { BuildExportSnapshotInput } from '../../../project'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import { createProjectSnapshot, migrateLegacyWorkspaceApplication } from '@moluoxixi/config-form-model'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../../adapters'
-import { createBuiltInWorkspaceApplication } from '../../../project'
+import { createBuiltInProject } from '../../../project'
 import ExportDialog from '../ExportDialog.vue'
 
 async function createInput(): Promise<BuildExportSnapshotInput> {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const application = createBuiltInWorkspaceApplication('element-profile', {
-    createdAt: '2026-08-30T08:00:00.000Z',
-    id: 'export-dialog-application',
-    name: 'Export dialog application',
-  })
-  const migrated = migrateLegacyWorkspaceApplication(application, {
-    registryLock: adapter.componentRegistry.lock,
-  })
-  if (!migrated.success)
-    throw new Error(migrated.diagnostics[0]?.message ?? 'Migration failed.')
+  const project = createBuiltInProject('element-profile', {
+    id: 'export-dialog-project',
+    name: 'Export dialog project',
+  }, adapter.componentRegistry.lock)
   const compiled = compileCanonicalProject({
-    snapshot: createProjectSnapshot(migrated.data, 7),
+    snapshot: createProjectSnapshot(project, 7),
     registry: adapter.registrySnapshot,
   })
   if (!compiled.success)

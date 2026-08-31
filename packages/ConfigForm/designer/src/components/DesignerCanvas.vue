@@ -2,9 +2,9 @@
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { ConfigFormBreakpoint, RuntimeEditorBridge, RuntimeNodeMetadata } from '@moluoxixi/config-form/renderer'
 import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
+import type { PageGraph, PageNode, ProjectCommand } from '@moluoxixi/config-form-model'
 import type { ComputedRef, CSSProperties } from 'vue'
-import type { DesignerDocument, DesignerNode } from '../document'
-import type { DesignerCommand, DesignerDropTarget } from '../history'
+import type { DesignCommandPreview, DesignerDropTarget } from '../graph'
 import type { DesignerMaterialSlotDefinition, DesignerRegistry } from '../registry'
 import type { DesignerSelectionMode } from '../composables'
 import type {
@@ -36,8 +36,7 @@ import {
 } from '@lucide/vue'
 import { RuntimeSurface, resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
-import { createDesignerRuntimeProjection } from '../compiler'
-import { findDesignerNode, reduceDesignerCommand } from '../history'
+import { createInsertCommand, createMoveCommand, findDesignNode } from '../graph'
 import { useDesignerLocale } from '../locale'
 import { resolveDesignerDesignPolicy } from '../registry'
 import {
@@ -66,22 +65,20 @@ const slots = defineSlots<{
 }>()
 
 const props = defineProps<{
-  document: DesignerDocument
+  graph: PageGraph
+  pageId: string
   registry: DesignerRegistry
   selectedId?: string
   selectedIds?: string[]
   readonly?: boolean
   breakpoint?: ConfigFormBreakpoint
-  candidateRuntimeRenderer?: (
-    command: DesignerCommand,
-    document: DesignerDocument,
-  ) => VueRuntimeRendererConfig | undefined
+  candidatePreview: (command: ProjectCommand) => DesignCommandPreview | undefined
   interactive?: boolean
   showInteractiveToggle?: boolean
   model?: Record<string, unknown>
   reactionProps?: ConfigFormReactionProjection['props']
   reactionStates?: ConfigFormReactionProjection['states']
-  runtimeRenderer?: VueRuntimeRendererConfig
+  runtimeRenderer: VueRuntimeRendererConfig
 }>()
 
 const emit = defineEmits<{
@@ -355,16 +352,24 @@ function beginCameraPan(event: PointerEvent): void {
   window.addEventListener('pointercancel', finish)
 }
 
-function nodeForDragSource(source: DesignerDragSource | undefined): DesignerNode | undefined {
+function candidateForDragSource(source: DesignerDragSource | undefined) {
   if (!source)
     return undefined
   if (source.type === 'node')
-    return findDesignerNode(props.document, source.nodeId)?.node
+    return undefined
 
   return createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
 }
 
-const candidateNode = computed<DesignerNode | undefined>(() => nodeForDragSource(dragSource.value))
+function nodeForDragSource(source: DesignerDragSource | undefined): PageNode | undefined {
+  if (!source)
+    return undefined
+  return source.type === 'node'
+    ? findDesignNode(props.graph, source.nodeId)?.node
+    : candidateForDragSource(source)?.node
+}
+
+const candidateNode = computed<PageNode | undefined>(() => nodeForDragSource(dragSource.value))
 
 const candidateFallbackTarget = computed<DesignerDropTarget | undefined>(() => {
   const source = candidateSource.value
@@ -376,18 +381,18 @@ const candidateFallbackTarget = computed<DesignerDropTarget | undefined>(() => {
 const candidateProjectionTarget = computed(() => candidateTarget.value ?? candidateFallbackTarget.value)
 const candidateUsesFallback = computed(() => !!candidateFallbackTarget.value && !candidateTarget.value)
 
-function candidateCommandForSource(source: DesignerDragSource | undefined, target: DesignerDropTarget): DesignerCommand | undefined {
+function candidateCommandForSource(source: DesignerDragSource | undefined, target: DesignerDropTarget): ProjectCommand | undefined {
   if (!source)
     return undefined
   if (source.type === 'node')
-    return { type: 'moveNode', nodeId: source.nodeId, target }
-  const node = nodeForDragSource(source)
-  return node
-    ? { type: 'addNode', node, target }
+    return createMoveCommand(props.pageId, source.nodeId, target, { id: `candidate-move-${source.candidateId}` })
+  const candidate = candidateForDragSource(source)
+  return candidate
+    ? createInsertCommand(props.pageId, candidate.subgraph, target, { id: `candidate-insert-${source.candidateId}` })
     : undefined
 }
 
-function candidateCommand(target: DesignerDropTarget): DesignerCommand | undefined {
+function candidateCommand(target: DesignerDropTarget): ProjectCommand | undefined {
   return candidateCommandForSource(candidateSource.value, target)
 }
 
@@ -396,27 +401,15 @@ const activeCandidateCommand = computed(() => {
   return candidateActive.value && target ? candidateCommand(target) : undefined
 })
 
-const projectedDocument = computed(() => {
-  const target = candidateProjectionTarget.value
-  if (!candidateActive.value || !target)
-    return props.document
-  const command = candidateCommand(target)
-  if (!command)
-    return props.document
-  const result = reduceDesignerCommand(props.document, command, props.registry)
-  return result.changed ? result.document : props.document
+const activeCandidatePreview = computed(() => {
+  const command = activeCandidateCommand.value
+  return command ? props.candidatePreview(command) : undefined
 })
 
+const projectedGraph = computed(() => activeCandidatePreview.value?.graph ?? props.graph)
+
 const renderer = computed(() => {
-  const command = activeCandidateCommand.value
-  if (command && props.candidateRuntimeRenderer && !slots.runtime) {
-    return props.candidateRuntimeRenderer(command, projectedDocument.value)
-      ?? props.runtimeRenderer
-      ?? createDesignerRuntimeProjection(props.document, props.registry)
-  }
-  if (props.runtimeRenderer)
-    return props.runtimeRenderer
-  return createDesignerRuntimeProjection(projectedDocument.value, props.registry)
+  return activeCandidatePreview.value?.renderer ?? props.runtimeRenderer
 })
 
 const surfaceModel: ComputedRef<Record<string, unknown>> = computed({
@@ -448,7 +441,7 @@ function domRectValue(rect: DOMRect): DesignerRuntimeRect {
 
 function localNodeGeometry(): DesignerRuntimeNodeGeometry[] {
   return [...nodeElements.entries()].map(([nodeId, element], order) => {
-    const location = findDesignerNode(props.document, nodeId)
+    const location = findDesignNode(props.graph, nodeId)
     return {
       depth: location?.path.length ?? 0,
       nodeId,
@@ -549,7 +542,7 @@ const runtimeSlotScope = computed<DesignerRuntimeSlotScope>(() => ({
   candidateId: candidateId.value,
   candidateUsesFallback: candidateUsesFallback.value,
   command: activeCandidateCommand.value,
-  document: projectedDocument.value,
+  graph: projectedGraph.value,
   interactive: Boolean(props.interactive),
   model: surfaceModel.value,
   reactionProps: props.reactionProps ?? {},
@@ -563,7 +556,7 @@ const hostedDragVisual = computed(() => {
   const geometry = id ? runtimeNodeGeometryById(id) : undefined
   if (!slots.runtime || !session?.active || session.input !== 'pointer' || !geometry || geometry.rect.width <= 0)
     return undefined
-  const height = Math.max(geometry.rect.height, candidateNode.value?.kind === 'container' ? 36 : 1)
+  const height = Math.max(geometry.rect.height, candidateNode.value?.kind === 'layout' ? 36 : 1)
   const position = resolveDesignerDragOverlayPosition(
     session.position,
     session.pointerOffset,
@@ -601,13 +594,13 @@ const dragVisualSlotScope = computed<DesignerDragVisualSlotScope | undefined>(()
 })
 
 function nodeLabel(nodeId: string): string {
-  const node = findDesignerNode(props.document, nodeId)?.node
+  const node = findDesignNode(props.graph, nodeId)?.node
   if (!node)
     return nodeId
   if (node.kind === 'field')
     return node.label || node.field
-  const material = props.registry.getMaterial(node.material)
-  return material ? locale.materialTitle(material) : node.material
+  const material = props.registry.getMaterial(node.component)
+  return material ? locale.materialTitle(material) : node.component
 }
 
 const editorBridge = computed<RuntimeEditorBridge<Record<string, unknown>>>(() => {
@@ -627,7 +620,7 @@ const editorBridge = computed<RuntimeEditorBridge<Record<string, unknown>>>(() =
       }
     },
     getNodeAttrs: (metadata: RuntimeNodeMetadata<Record<string, unknown>>) => {
-      const documentNode = findDesignerNode(projectedDocument.value, metadata.nodeId)?.node
+      const graphNode = findDesignNode(projectedGraph.value, metadata.nodeId)
       const states = [
         selection.has(metadata.nodeId) ? 'selected' : '',
         primary === metadata.nodeId ? 'primary' : '',
@@ -637,16 +630,16 @@ const editorBridge = computed<RuntimeEditorBridge<Record<string, unknown>>>(() =
       return {
         'data-config-node-state': states || undefined,
         'data-designer-draggable': dragCandidateId === metadata.nodeId ? undefined : '',
-        'data-designer-span': documentNode?.span,
+        'data-designer-span': graphNode?.placement.span,
         'data-focus-node-id': metadata.nodeId,
-        'data-material': documentNode?.material,
-        'data-node-kind': documentNode?.kind,
+        'data-material': graphNode?.node.component,
+        'data-node-kind': graphNode?.node.kind,
         'role': 'presentation',
       }
     },
     interceptEvent: ({ metadata }) => {
-      const node = findDesignerNode(projectedDocument.value, metadata.nodeId)?.node
-      const material = node ? props.registry.getMaterial(node.material) : undefined
+      const node = findDesignNode(projectedGraph.value, metadata.nodeId)?.node
+      const material = node ? props.registry.getMaterial(node.component) : undefined
       const policy = resolveDesignerDesignPolicy(material?.designPolicy)
       return policy.interaction === 'blocked' || !props.interactive
     },
@@ -708,8 +701,8 @@ const designPolicySpots = computed<DesignPolicySpot[]>(() => {
   const sheetRect = sheet.getBoundingClientRect()
   const id = props.selectedId
   const geometry = runtimeNodeGeometryById(id)
-  const node = findDesignerNode(projectedDocument.value, id)?.node
-  const material = node ? props.registry.getMaterial(node.material) : undefined
+  const node = findDesignNode(projectedGraph.value, id)?.node
+  const material = node ? props.registry.getMaterial(node.component) : undefined
   const policy = resolveDesignerDesignPolicy(material?.designPolicy)
   if (!geometry || policy.render !== 'adapter')
     return []
@@ -773,7 +766,7 @@ function updateDragOverlay(): void {
     clearDragOverlay()
     return
   }
-  const height = Math.max(rect.height, candidateNode.value?.kind === 'container' ? 36 : 1)
+  const height = Math.max(rect.height, candidateNode.value?.kind === 'layout' ? 36 : 1)
   const position = resolveDesignerDragOverlayPosition(
     session.position,
     session.pointerOffset,
@@ -809,15 +802,15 @@ function scheduleDragOverlay(): void {
   })
 }
 
-function acceptedSlot(parent: DesignerNode, node: DesignerNode): DesignerMaterialSlotDefinition | undefined {
-  if (parent.kind !== 'container')
+function acceptedSlot(parent: PageNode, node: PageNode): DesignerMaterialSlotDefinition | undefined {
+  if (parent.kind !== 'layout')
     return undefined
-  const material = props.registry.getMaterial(parent.material)
-  if (!material || material.kind !== 'container')
+  const material = props.registry.getMaterial(parent.component)
+  if (!material || material.kind !== 'layout')
     return undefined
   return material.slots.find(slot => (
     (!slot.accepts || slot.accepts.includes(node.kind))
-    && (!slot.materials || slot.materials.includes(node.material))
+    && (!slot.materials || slot.materials.includes(node.component))
     && (slot.max === undefined || (parent.slots[slot.name]?.length ?? 0) < slot.max)
   ))
 }
@@ -845,12 +838,12 @@ function hitNodeElements(point: DesignerPointerPosition, candidateId: string): D
 }
 
 function siblingTarget(nodeId: string, after: boolean): DesignerDropTarget | undefined {
-  const location = findDesignerNode(props.document, nodeId)
+  const location = findDesignNode(props.graph, nodeId)
   if (!location)
     return undefined
   const index = location.index + (after ? 1 : 0)
-  return location.parent && location.slot
-    ? { parentId: location.parent.id, slot: location.slot, index }
+  return location.parentId !== null && location.slot
+    ? { parentId: location.parentId, slot: location.slot, index }
     : { parentId: null, index }
 }
 
@@ -858,7 +851,7 @@ function isValidTarget(target: DesignerDropTarget, source = activeSession.value?
   const command = candidateCommandForSource(source, target)
   if (!command)
     return false
-  return reduceDesignerCommand(props.document, command, props.registry).changed
+  return props.candidatePreview(command) !== undefined
 }
 
 function keyboardDropTargets(source: DesignerDragSource): DesignerDropTarget[] {
@@ -866,19 +859,20 @@ function keyboardDropTargets(source: DesignerDragSource): DesignerDropTarget[] {
   if (!node)
     return []
   const targets: DesignerDropTarget[] = []
-  for (let index = 0; index <= props.document.nodes.length; index += 1)
+  for (let index = 0; index <= props.graph.root.length; index += 1)
     targets.push({ parentId: null, index })
 
-  const visit = (nodes: DesignerNode[]): void => {
-    for (const parent of nodes) {
-      if (parent.kind !== 'container')
+  const visit = (items: PageGraph['root']): void => {
+    for (const item of items) {
+      const parent = props.graph.nodesById[item.nodeId]
+      if (!parent || parent.kind !== 'layout')
         continue
-      const material = props.registry.getMaterial(parent.material)
-      if (material?.kind === 'container') {
+      const material = props.registry.getMaterial(parent.component)
+      if (material?.kind === 'layout') {
         for (const slot of material.slots) {
           const children = parent.slots[slot.name] ?? []
           const accepts = (!slot.accepts || slot.accepts.includes(node.kind))
-            && (!slot.materials || slot.materials.includes(node.material))
+            && (!slot.materials || slot.materials.includes(node.component))
           if (accepts) {
             for (let index = 0; index <= children.length; index += 1)
               targets.push({ parentId: parent.id, slot: slot.name, index })
@@ -888,7 +882,7 @@ function keyboardDropTargets(source: DesignerDragSource): DesignerDropTarget[] {
       }
     }
   }
-  visit(props.document.nodes)
+  visit(props.graph.root)
   return targets.filter(target => isValidTarget(target, source))
 }
 
@@ -943,7 +937,7 @@ function resolveDropTarget(
     runtimeNodeGeometry().flatMap((geometry) => {
       if (geometry.nodeId === source.candidateId)
         return []
-      const location = findDesignerNode(props.document, geometry.nodeId)
+      const location = findDesignNode(props.graph, geometry.nodeId)
       if (!location)
         return []
       const slot = acceptedSlot(location.node, node)
@@ -952,7 +946,7 @@ function resolveDropTarget(
       const target = {
         parentId: location.node.id,
         slot: slot.name,
-        index: location.node.kind === 'container' ? (location.node.slots[slot.name]?.length ?? 0) : 0,
+        index: location.node.kind === 'layout' ? (location.node.slots[slot.name]?.length ?? 0) : 0,
       } satisfies DesignerDropTarget
       if (!isValidTarget(target))
         return []
@@ -967,7 +961,7 @@ function resolveDropTarget(
           top: rect.top,
           width: rect.width,
         },
-        specificity: slot.materials?.includes(node.material) ? 1 : 0,
+        specificity: slot.materials?.includes(node.component) ? 1 : 0,
         target,
       }]
     }),
@@ -976,12 +970,12 @@ function resolveDropTarget(
     return collapsedTarget
 
   if (!hitId) {
-    const target = { parentId: null, index: props.document.nodes.length } satisfies DesignerDropTarget
+    const target = { parentId: null, index: props.graph.root.length } satisfies DesignerDropTarget
     return isValidTarget(target) ? target : previous
   }
 
   const insideTargets = hits.flatMap((geometry, depth) => {
-    const location = findDesignerNode(props.document, geometry.nodeId)
+    const location = findDesignNode(props.graph, geometry.nodeId)
     if (!location)
       return []
     const rect = geometry.rect
@@ -992,10 +986,10 @@ function resolveDropTarget(
     const target = {
       parentId: location.node.id,
       slot: slot.name,
-      index: location.node.kind === 'container' ? (location.node.slots[slot.name]?.length ?? 0) : 0,
+      index: location.node.kind === 'layout' ? (location.node.slots[slot.name]?.length ?? 0) : 0,
     } satisfies DesignerDropTarget
     return isValidTarget(target)
-      ? [{ depth, specific: slot.materials?.includes(node.material) ? 1 : 0, target }]
+      ? [{ depth, specific: slot.materials?.includes(node.component) ? 1 : 0, target }]
       : []
   }).sort((left, right) => right.specific - left.specific || left.depth - right.depth)
   if (insideTargets[0])
@@ -1009,7 +1003,7 @@ function resolveDropTarget(
   if (stickyTarget)
     return stickyTarget
 
-  const location = findDesignerNode(props.document, hitId)
+  const location = findDesignNode(props.graph, hitId)
   if (!location)
     return previous
   const rect = hit.rect
@@ -1313,12 +1307,12 @@ function isNodeKeyboardDragging(nodeId: string): boolean {
 
 function canResize(nodeId: string): boolean {
   return !props.readonly
-    && !props.document.form.inline
-    && findDesignerNode(props.document, nodeId)?.parent === undefined
+    && !props.graph.form.inline
+    && findDesignNode(props.graph, nodeId)?.parentId === null
 }
 
 function beginResize(event: PointerEvent, nodeId: string): void {
-  const location = findDesignerNode(props.document, nodeId)
+  const location = findDesignNode(props.graph, nodeId)
   const layoutRect = runtimeLayoutRect()
   if (!location || !layoutRect || !canResize(nodeId))
     return
@@ -1327,12 +1321,12 @@ function beginResize(event: PointerEvent, nodeId: string): void {
   resizeCleanup?.()
   resizingNodeId.value = nodeId
   const layout = resolveConfigFormLayout(
-    props.document.form.columns,
-    props.document.form.fieldSpan,
-    props.document.form.responsive,
+    props.graph.form.columns,
+    props.graph.form.fieldSpan,
+    props.graph.form.responsive,
     props.breakpoint ?? 'desktop',
   )
-  const startSpan = location.node.span ?? layout.fieldSpan
+  const startSpan = typeof location.placement.span === 'number' ? location.placement.span : layout.fieldSpan
   const startX = event.clientX
   const width = layoutRect.width || 1
   const pointerId = event.pointerId

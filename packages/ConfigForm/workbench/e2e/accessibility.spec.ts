@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createApplication } from './helpers'
+import { createProject } from './helpers'
 
 const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
@@ -27,8 +27,8 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('keeps the desktop workbench accessible in dark and light themes', async ({ page }) => {
-  await expectNoAccessibilityViolations(page, 'new application dialog')
-  await createApplication(page, 'element')
+  await expectNoAccessibilityViolations(page, 'new project dialog')
+  await createProject(page, 'element')
   await expectNoAccessibilityViolations(page, 'desktop dark theme')
 
   await page.getByRole('button', { name: 'Use light theme' }).click()
@@ -36,7 +36,7 @@ test('keeps the desktop workbench accessible in dark and light themes', async ({
 })
 
 test('keeps mobile inspector and auxiliary workspaces accessible', async ({ page }) => {
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(page.getByRole('tablist', { name: 'Designer navigation' })).toHaveCount(1)
 

@@ -3,8 +3,8 @@
 ## 实施原则
 
 - 先建立独立领域 Model、Project Transaction Engine 和 Runtime parity 合同，再迁移 UI。
-- 每个工作项保持可构建、可测试；迁移在 repository ingress 单向完成，不用长期 feature flag 维护两套正常架构。
-- 旧 `WorkspaceApplication`、`LowCodePageModel` 和 `DesignerDocument` 只作为兼容输入/输出，不允许新功能继续依赖它们。
+- 每个工作项保持可构建、可测试；Repository ingress 严格拒绝非当前 schema，不用 feature flag 维护两套架构。
+- 旧 `WorkspaceApplication`、`LowCodePageModel` 和 `DesignerDocument` 采用 hard cut：删除类型、解析器、迁移器、兼容输入/输出、公开导出和测试 fixture，产品运行时只接受当前 `ProjectDocument`。
 - 每个工作项结束都执行本项测试和受影响包的全量质量检查；不能用兼容投影的测试代替新架构行为证据。
 
 ## 阶段清单
@@ -12,7 +12,7 @@
 ### 0. 基线与保护网
 
 - [ ] 固定当前主入口和测试命令，补充 architecture smoke test。
-- [ ] 为旧 `WorkspaceApplication`/`LowCodePageModel`、slot 规则、Operation inverse、Preview revision、ExportSnapshot 建立迁移基线 fixture。
+- [x] 删除过期模型 fixture，并为当前 schema、slot 规则、Operation inverse、Preview revision 和 ExportSnapshot 建立保护网。
 - [ ] 记录当前 Designer/Preview 的真实 DOM 节点 id、尺寸、组件类型和 props 快照。
 - [ ] 增加依赖方向测试，禁止 Model/Core 依赖 Vue、Designer、Workbench 或 adapter。
 
@@ -31,14 +31,14 @@ pnpm --filter @config-form/workbench typecheck
 
 - [x] 新建纯 TypeScript `@moluoxixi/config-form-model`，拥有 JSON value、ComponentContract、ProjectDocument、PageGraph、ProjectCommand、ProjectOperation、AppliedProjectTransaction、diagnostics 和版本常量。
 - [x] PageGraph 使用 `root: SlotItem[] + nodesById`；节点只保留 `slots: Record<SlotName, SlotItem[]>`，默认子节点进入 `slots.default`，field/layout 使用判别联合；slot item 持有 placement，删除通用节点上的 `span` 泄漏。
-- [ ] 在 repository ingress 实现 `WorkspaceApplication v2`、`LowCodePageModel v1` 和 `DesignerDocument v1` 到 ProjectDocument 的确定性迁移。
+- [x] Repository ingress 只解析当前 `ProjectDocument`，非当前 schema fail closed 且不扫描、回写或删除来源记录。
 - [x] ProjectDocument 不保存生成源码文件；只保存页面、路由、项目设置、资源引用和 registryLock；页面 Flow 由对应 `ProjectPage.flows` 保存，与视觉 PageGraph 同级并随 Page entity 原子持久化。
-- [ ] 明确 `ProjectDocument` 是唯一业务内容且不含持久化元数据，`ProjectSnapshot` 是 `{ document, editVersion, contentHash }` editor envelope；Repository 以 `{ document, repositoryRevision, entityRevisions, timestamps }` envelope 原子组装 Manifest/Page/Resource，不得把物理分片变成第二套业务模型。
-- [ ] 更新包 exports、README 依赖图、发布包验证和独立 TypeScript consumer。
+- [x] 明确 `ProjectDocument` 是唯一业务内容且不含持久化元数据，`ProjectSnapshot` 是 `{ document, editVersion, contentHash }` editor envelope；Repository 以 `{ document, repositoryRevision, entityRevisions, timestamps }` envelope 原子组装 Manifest/Page/Resource，不得把物理分片变成第二套业务模型。
+- [x] 更新包 exports、README 依赖图、发布包验证和独立 TypeScript consumer。
 
-验证：Model schema/migration 全量单测、legacy fixture round-trip、依赖方向测试、包 build/typecheck/publint consumer。
+验证：Model 当前 schema 全量单测、严格版本拒绝、依赖方向测试、包 build/typecheck/publint consumer。
 
-回滚点：旧记录保持只读原文；新格式写入失败时不覆盖旧记录。
+回滚点：不可解析记录保持原始字节不变；新格式写入失败时不覆盖已提交记录。
 
 ### 2. Project Transaction Engine 与 History
 
@@ -85,7 +85,7 @@ pnpm --filter @config-form/workbench typecheck
 
 验证：Runtime 全量测试、Designer/Preview 节点计数与顺序一致性、嵌套 slot、空容器和响应式尺寸测试。
 
-回滚点：按调用方逐一迁移并保持旧 compiler 仅供 compatibility API 使用；不改动已发布 RuntimeSurface API。
+回滚点：按调用方逐一迁移；不改动已发布 RuntimeSurface API，不恢复重复 compiler。
 
 ### 5. Design Session 与 Canvas 交互
 
@@ -97,14 +97,14 @@ pnpm --filter @config-form/workbench typecheck
 
 验证：Designer 单测、Playwright pointer/keyboard hit testing、真实组件截图和 axe WCAG 2 A/AA。
 
-回滚点：旧 ConfigFormDesigner 入口留在 compatibility adapter；Workbench 不保留双编辑路径。
+回滚点：整体回滚 Design Session 切换；Workbench 不保留双编辑路径。
 
 ### 6. Preview Session 与 Flow Engine
 
 - [ ] 把 Preview values、reaction projection、validation、AbortController 和 trace 从 Workbench Controller 移入 Preview Session。
 - [ ] 把 Flow graph 编辑、action registry、execution plan 和运行调度移入 Flow Engine。
 - [x] 新增页面级 PageFlowEngine，收口 action registry、当前 execution plans、Flow projection、调度、trace/error 与跨 page/revision stale generation；Controller 只负责事件适配和 Preview values 端口。
-- [x] Workbench Inspector 以 Registry 事件作为唯一正常组件事件入口；点击事件直接打开精确 `nodeId + event` 的 Flow，已有流程选中、无流程按事件源创建，旧 action 字符串编辑仅留给兼容宿主。
+- [x] Workbench Inspector 以 Registry 事件作为唯一组件事件入口；点击事件直接打开精确 `nodeId + event` 的 Flow，已有流程选中、无流程按事件源创建。
 - [ ] 明确纯同步 binding/reaction 与异步/副作用 Flow 的能力边界和冲突诊断。
 - [x] Core 将 FlowGraph 编译为不含 position/revision、包含完整执行元数据的 portable execution plan；Workbench Preview 和 standalone Source 只消费该 plan。
 - [x] 生成 standalone flow runtime，并执行 `latest/queue/ignore`、timeout、abort、error policy、model-order 和 value patch 矩阵。
@@ -126,11 +126,11 @@ pnpm --filter @config-form/workbench typecheck
 
 验证：export dialog、file tree、single-file download、ZIP byte consistency、多页工程 integration tests。
 
-回滚点：保留现有 `createWorkspaceApplicationSourceExport` 和 `formatLowCodePageConfig` 作为 compatibility generator。
+回滚点：整体回滚 Export Service 切换；不在当前生成器旁保留第二套输出路径。
 
 ### 8. Workbench Shell 与 UI State 拆分
 
-- [x] Workbench 主状态源和 Repository 已切换到 ProjectEditorSession/ProjectDomainEngine/ProjectDocument；旧 WorkspaceApplication/LowCodePageModel 只作为 Pages/Designer/Export 的无状态只读兼容投影。
+- [x] Workbench 主状态源和 Repository 已切换到 ProjectEditorSession/ProjectDomainEngine/ProjectDocument；Pages、Design、RuntimeHost 和 Export 直接消费当前领域与编译产物。
 - [ ] 将剩余 `workbench-controller.ts` 拆为 Design Session、Preview Session、Flow Engine、Export Service 和 UI Store contexts。
 - [ ] `WorkbenchShell` 只组合 service/session contexts、路由页面和 dialogs，不直接执行领域逻辑。
 - [ ] 保持 Pages 唯一切换入口、Flow/Export/Page Manager 弹窗、Source/Config 只读和移动端 Dock。
@@ -141,17 +141,17 @@ pnpm --filter @config-form/workbench typecheck
 
 回滚点：UI Store 可以独立回退，不回退 Project Store 和 Runtime Compiler。
 
-### 9. 兼容边界与清理
+### 9. 旧契约 Hard Cut
 
-- [ ] `WorkspaceApplication`、`LowCodePageModel`、`DesignerDocument` 仅保留 legacy migration 和旧公共 API adapter。
-- [ ] 删除正常 Workbench 路径中的 `configModelToDesignerDocument`、`designerDocumentToConfigModel` 和 `update-page-model`。
-- [ ] 保留旧配置解析器仅用于一次性迁移，不支持 Source/Config 回写 Model。
-- [ ] 更新 `packages/ConfigForm/README.md`、相关 `.trellis/spec`、包 exports 和 API smoke consumer。
-- [ ] 标记并移除旧 history、重复 compiler、重复 provider 代码。
+- [x] Designer 直接消费 `PageGraph` 并只提交 `ProjectCommand`，删除本地结构 reducer/history 和双向转换器。
+- [x] Workbench Pages、Templates、UI、Repository 和 Export 直接消费 `ProjectDocument`，删除并行的 Application/Page 模型、Session/Repository 和整页替换操作。
+- [x] 从 Model/Designer/Workbench 删除过期 schema、migration、compatibility adapter、公开 exports、旧测试 fixture 和生成模板引用；不保留自动读取的 fallback。
+- [x] 更新 `packages/ConfigForm/README.md`、相关 `.trellis/spec`、包 exports 和 API smoke consumer。
+- [x] 移除旧 history、重复 compiler、重复 provider 投影与独立旧 Designer Playground。
 
-验证：完整 ConfigForm package quality gate、legacy fixture、发布包声明、独立 TypeScript consumer、生成项目 integration。
+验证：生产源码、测试源码、公开声明和模板对旧符号零引用；完整 ConfigForm package quality gate、发布包声明、独立 TypeScript consumer、生成项目 integration。
 
-回滚点：清理必须是最后独立提交；若失败，保留新 Provider 和旧 compatibility adapter 共存。
+回滚点：只能整体回滚 hard cut 提交，不在产品运行时恢复双契约共存。
 
 ## 最终质量门
 
@@ -187,8 +187,18 @@ pnpm --filter @config-form/workbench test:e2e
 - ExportSnapshot stale identity 现在同时比较 compilation key、committed/draft origin 和 generator version；普通 `sync()` 不触发全项目 capture。
 - retained binary 使用防御性 getter，外部修改源 buffer 或读取 buffer 都不能改变后续单文件/ZIP 字节；文本与二进制单文件统一经过 download helper，并延迟回收 Object URL。
 - Canonical Config Source 保留 Project schemaVersion、Registry lock、graph version/props、完整 SlotItem placement、节点 authoring metadata 和 Flow position；`span` 只保留 Runtime 兼容投影。
-- Config 生成器与 legacy parser 共用危险键守卫，嵌套 `__proto__`、`constructor`、`prototype` 均 fail closed 并报告路径。
+- Config 生成器与当前 Model parser 共用危险键守卫，嵌套 `__proto__`、`constructor`、`prototype` 均 fail closed 并报告路径。
 - 定向导出回归 `5 files / 21 tests`、Workbench 全量 `38 files / 210 tests`、Playwright `20/20`、导出工程安装/typecheck/build `4/4`、Workbench typecheck/build 与全仓 lint 通过。
 - Source/Config 下载浏览器回归同时捕获到 Chromium 对 `allow-scripts + allow-same-origin` 的无效 sandbox 警告；Design/Preview RuntimeHost 已移除伪安全 sandbox，继续依靠独立 iframe document、版本化 postMessage 协议和平台注册组件边界隔离运行态，干净浏览器控制台无 warning/error。
 - 干净 `http://127.0.0.1:4319/` 浏览器验证 Source/Config 真实文件树、只读 Monaco、Project Config metadata 和单文件下载反馈，console 无 warning/error。长期运行的旧 `4315` Vite 会话曾出现 Monaco HMR duplicate-extension 警告，干净实例与生产 build 不复现，因此未把开发缓存现象误记为产品缺陷。
 - 本任务继续保持 `in_progress`：standalone Flow runtime 仍需完整并发/错误可执行 parity matrix；Preview Session、Workbench Controller/UI Store 拆分等父任务事项尚未完成。
+
+## 旧契约 Hard Cut 验证记录（2026-08-31）
+
+- Workbench 当前领域术语已从 `applications/openApplication/createApplication` 完整收敛为 `projects/openProject/createProject`；Page Manager、顶栏、侧栏、恢复提示、中英文 locale key、E2E helper 和 standalone Source helper 不再把 Project 称为 Application。标准 MIME `application/*` 不属于领域别名。
+- 架构门禁升级为递归扫描全部 ConfigForm 源码、测试、脚本、模板和公开声明，并显式断言 20 个旧模块/目录路径不存在；门禁实测发现并移除了最后一个空的 `workbench/src/design` 目录壳。
+- 删除 `ProjectHistory.present` 废弃别名、Flow 分析器的旧 revision 参数和 Workbench 旧 workspace 迁移文案；History 、Command Engine 和测试只读取 `ProjectSnapshot.document`。
+- Model/Designer/Workbench 的过期 schema、migration、compatibility adapter、Repository、Session、codec、旧 fixture、旧 Playground 入口和公开导出已删除；产品运行时不保留双模型、自动迁移或 fallback。
+- 生产源码、测试、脚本和重建后的 `dist` 对旧精确符号和旧文件路径扫描均为零命中；宽泛审计只剩 Runtime last-good、拖拽命中、Registry 版本锁和导出依赖版本等当前合同内的 fallback/compatibility。
+- Core `36/36`、Model `50/50`、Workbench `29 files / 153 tests`、Workbench 架构边界 `9/9`、Playwright `21/21` 和导出工程 `2/2` 通过；Core/Model/Workbench typecheck、全仓 lint、Workbench build、`git diff --check` 通过；12 个 ConfigForm 发布包及公开包边界验证通过。生产源码、测试源码、脚本和重建后的发布产物对旧精确符号均为零命中，20 个旧模块或目录路径均不存在。
+- 本记录只完成父任务的 hard-cut 子范围，父任务保持 `in_progress`。

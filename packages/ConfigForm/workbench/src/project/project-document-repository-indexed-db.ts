@@ -10,19 +10,15 @@ import type {
   ProjectSummary,
   RegistryLock,
 } from '@moluoxixi/config-form-model'
-import type { WorkbenchAdapterId } from '../adapters'
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
 import {
   assertProjectDocument,
   assertProjectRepositorySeed,
   createMemoryProjectRepository,
   getProjectRepositoryCommitChecksum,
-  migrateLegacyWorkspaceApplication,
-  migrateProjectDocument,
   ProjectRepositoryError,
 } from '@moluoxixi/config-form-model'
 import { IndexDBStorage, IndexedDBManager } from '@moluoxixi/indexed-db'
-import { createIndexedDBWorkspaceApplicationRepository } from './application-repository-indexed-db'
 
 const PROJECT_STORAGE_VERSION = 2 as const
 const PROJECT_PREFIX = 'project-document:'
@@ -86,7 +82,6 @@ export interface IndexedDBProjectRepositoryOptions {
   dbName?: string
   now?: () => string
   receiptLimit?: number
-  resolveRegistryLock: (adapter: WorkbenchAdapterId) => Promise<RegistryLock>
   storeName?: string
 }
 
@@ -317,79 +312,23 @@ function createEnvelope(
 
 export class IndexedDBProjectRepository implements ProjectRepository {
   readonly persistence = 'durable' as const
-  private readonly errors: string[] = []
   private readonly now: () => string
   private readonly receiptLimit: number
-  private readonly resolveRegistryLock: IndexedDBProjectRepositoryOptions['resolveRegistryLock']
   private readonly storage: IndexDBStorage
-  private readonly legacyOptions: Pick<IndexedDBProjectRepositoryOptions, 'dbName' | 'storeName'>
 
   constructor(options: IndexedDBProjectRepositoryOptions) {
     this.receiptLimit = options.receiptLimit ?? 256
     this.now = options.now ?? (() => new Date().toISOString())
     if (!Number.isInteger(this.receiptLimit) || this.receiptLimit < 1)
       throw new RangeError('Project repository receipt limit must be a positive integer.')
-    this.resolveRegistryLock = options.resolveRegistryLock
-    this.legacyOptions = { dbName: options.dbName, storeName: options.storeName }
     this.storage = new IndexDBStorage({
       dbName: options.dbName ?? 'moluoxixi-config-form-workbench',
       storeName: options.storeName ?? 'workspace-projects',
     })
   }
 
-  get migrationErrors(): readonly string[] {
-    return [...this.errors]
-  }
-
   async open(): Promise<void> {
     await this.storage.length()
-    await this.migrateLegacyApplications()
-  }
-
-  private async migrateLegacyApplications(): Promise<void> {
-    const legacy = createIndexedDBWorkspaceApplicationRepository(this.legacyOptions)
-    try {
-      await legacy.open()
-      for (const summary of await legacy.list()) {
-        try {
-          const existing = await this.get(summary.id)
-          const draft = await legacy.getDraft(summary.id)
-          if (existing) {
-            if (draft)
-              this.errors.push(`Legacy draft was preserved for manual recovery: ${summary.id}`)
-            else
-              await legacy.delete(summary.id)
-            continue
-          }
-          const application = await legacy.get(summary.id)
-          if (!application)
-            continue
-          const registryLock = await this.resolveRegistryLock(application.manifest.adapter)
-          const migrated = migrateLegacyWorkspaceApplication(application, { registryLock })
-          if (!migrated.success)
-            throw new Error(migrated.diagnostics[0]?.message ?? `Failed to migrate application ${application.id}.`)
-          await this.create({
-            document: migrated.data,
-            seed: {
-              repositoryRevision: application.revision,
-              createdAt: application.createdAt,
-              updatedAt: application.updatedAt,
-            },
-          })
-          if (draft)
-            this.errors.push(`Legacy draft was preserved for manual recovery: ${summary.id}`)
-          else
-            await legacy.delete(summary.id)
-        }
-        catch (error) {
-          this.errors.push(error instanceof Error ? error.message : String(error))
-        }
-      }
-      this.errors.push(...legacy.migrationErrors)
-    }
-    finally {
-      legacy.close()
-    }
   }
 
   private async loadSnapshot(snapshot: StoredProjectSnapshotManifest): Promise<PersistedProjectEnvelope> {
@@ -419,21 +358,23 @@ export class IndexedDBProjectRepository implements ProjectRepository {
       resources[id] = entity.value as ProjectResourceReference
       resourceRevisions[id] = entity.revision
     })
-    const migrated = migrateProjectDocument({
-      schemaVersion: snapshot.project.schemaVersion,
-      id: snapshot.project.id,
-      name: snapshot.project.name,
-      homePageId: snapshot.project.homePageId,
-      pageOrder: snapshot.project.pageOrder,
-      registryLock: snapshot.project.registryLock,
-      settings: snapshot.project.settings,
-      pagesById,
-      resources,
-    })
-    if (!migrated.success) {
-      corrupt(migrated.diagnostics[0]?.message ?? `Stored project document migration failed: ${snapshot.project.id}`)
+    let document: ProjectDocument
+    try {
+      document = assertProjectDocument({
+        schemaVersion: snapshot.project.schemaVersion,
+        id: snapshot.project.id,
+        name: snapshot.project.name,
+        homePageId: snapshot.project.homePageId,
+        pageOrder: snapshot.project.pageOrder,
+        registryLock: snapshot.project.registryLock,
+        settings: snapshot.project.settings,
+        pagesById,
+        resources,
+      })
     }
-    const document = migrated.data
+    catch (error) {
+      corrupt(error instanceof Error ? error.message : String(error))
+    }
     return {
       document,
       repositoryRevision: snapshot.project.repositoryRevision,

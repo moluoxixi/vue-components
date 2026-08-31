@@ -1,4 +1,5 @@
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import ElementCollapseItemSpecimen from '../components/ElementCollapseItemSpecimen'
 import * as shared from '../material-shared'
 
 export default defineDesignerMaterialModule({
@@ -9,15 +10,15 @@ export default defineDesignerMaterialModule({
       key: 'element.collapse-item',
       source: shared.elementSource('div', 'el-collapse-item'),
       version: 1,
-      kind: 'container',
+      kind: 'layout',
       title: 'Collapse item',
       category: 'Layout',
       icon: shared.PanelBottom,
-      runtime: { component: shared.ElCollapseItem },
+      runtime: { component: shared.ElCollapseItem, designerComponent: ElementCollapseItemSpecimen },
       allowedParents: [{ material: 'element.collapse', slot: 'default' }],
       setters: [shared.propSetter('title', 'Title', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
-      createNode: ({ id }) => ({ id, kind: 'container', material: 'element.collapse-item', props: { title: 'Item', name: id }, slots: { default: [] } }),
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      createNode: ({ id }) => ({ id, kind: 'layout', component: 'element.collapse-item', props: { title: 'Item', name: id }, slots: { default: [] } }),
     },
     locale: { title: '折叠项', category: '布局', setters: { title: '标题', disabled: '禁用' }, slots: { default: '内容' } },
   },

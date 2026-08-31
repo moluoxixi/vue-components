@@ -2,6 +2,7 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { WorkbenchAdapterId } from '../adapters'
+import type { PreviewRuntimeMountedEvent } from '../session'
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../utils/clone'
 import {
@@ -27,7 +28,7 @@ const emit = defineEmits<{
   error: [error: Error]
   fieldChange: [payload: { field: string, values: Record<string, unknown> }]
   modelValue: [value: Record<string, unknown>]
-  mounted: [revision: string]
+  mounted: [event: PreviewRuntimeMountedEvent]
   ready: [revision: string]
   runtimeEvent: [payload: { event: string, nodeId: string }]
   submit: [values: Record<string, unknown>]
@@ -114,7 +115,7 @@ function handleMessage(event: MessageEvent<unknown>): void {
       emit('ready', message.revision)
       break
     case 'mounted':
-      emit('mounted', message.revision)
+      emit('mounted', { hostId: sessionId, revision: message.revision })
       break
     case 'modelValue':
       emit('modelValue', message.value)

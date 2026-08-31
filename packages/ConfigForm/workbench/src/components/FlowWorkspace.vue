@@ -8,7 +8,7 @@ import type {
   ConfigFormJsonObject,
 } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { ModelOperation } from '@moluoxixi/config-form-designer'
+import type { ProjectCommand, ProjectCommandAction } from '@moluoxixi/config-form-model'
 import type { Connection, Edge, EdgeChange, Node, NodeChange, XYPosition } from '@vue-flow/core'
 import {
   CircleStop,
@@ -44,17 +44,8 @@ interface FlowTriggerChoice {
   trigger: ConfigFormFlowTrigger
 }
 
-type FlowWorkspaceOperation = Extract<ModelOperation, {
-  type: 'addFlow'
-    | 'updateFlowSettings'
-    | 'updateFlowNode'
-    | 'updateFlowEdges'
-    | 'updateFlowGraph'
-    | 'removeFlow'
-}>
-
-type FlowEditOperation = Extract<FlowWorkspaceOperation, {
-  type: 'updateFlowSettings' | 'updateFlowNode' | 'updateFlowEdges' | 'updateFlowGraph'
+type FlowEditAction = Extract<ProjectCommandAction, {
+  type: 'flow.settings' | 'flow.node' | 'flow.edges' | 'flow.graph'
 }>
 
 const props = defineProps<{
@@ -63,12 +54,14 @@ const props = defineProps<{
   eventTargets?: FlowEventTarget[]
   initialTrigger?: ConfigFormFlowTrigger
   locale?: DesignerLocaleOptions
+  pageId: string
   readonly?: boolean
 }>()
 
 const emit = defineEmits<{
-  operation: [operation: FlowWorkspaceOperation]
+  command: [command: ProjectCommand]
 }>()
+let commandSequence = 0
 const inheritedLocale = useDesignerLocale()
 const locale = computed(() => props.locale ? createDesignerLocale(props.locale) : inheritedLocale)
 
@@ -189,7 +182,15 @@ const graphEdges = computed<Edge[]>(() => (selectedFlow.value?.edges ?? []).map(
   selectable: !props.readonly,
 })))
 
-function commitSelectedFlow(candidate: ConfigFormFlow, operation: FlowEditOperation): boolean {
+function emitCommand(label: string, action: ProjectCommandAction): void {
+  emit('command', {
+    id: `flow-${Date.now().toString(36)}-${++commandSequence}`,
+    label,
+    actions: [cloneWorkbenchJson(action)],
+  })
+}
+
+function commitSelectedFlow(candidate: ConfigFormFlow, action: FlowEditAction): boolean {
   if (props.readonly)
     return false
   const analyzed = analyzeConfigFormFlow(candidate)
@@ -198,11 +199,11 @@ function commitSelectedFlow(candidate: ConfigFormFlow, operation: FlowEditOperat
     return false
   }
   graphError.value = ''
-  emit('operation', cloneWorkbenchJson(operation))
+  emitCommand('Update flow', action)
   return true
 }
 
-function selectedFlowSettings(flow: ConfigFormFlow): Extract<FlowWorkspaceOperation, { type: 'updateFlowSettings' }>['settings'] {
+function selectedFlowSettings(flow: ConfigFormFlow): Extract<ProjectCommandAction, { type: 'flow.settings' }>['settings'] {
   return {
     name: flow.name,
     trigger: cloneWorkbenchJson(flow.trigger),
@@ -229,7 +230,10 @@ function addFlow(trigger: ConfigFormFlowTrigger): void {
     ],
     edges: [{ id: `${id}-next`, source: `${id}-trigger`, target: `${id}-end`, condition: 'next' }],
   }
-  emit('operation', { type: 'addFlow', flow })
+  emitCommand('Add flow', {
+    type: 'operation.apply',
+    operations: [{ type: 'flow.add', pageId: props.pageId, flow }],
+  })
   selectedId.value = id
   flowCreatorOpen.value = false
 }
@@ -306,7 +310,10 @@ function handleTriggerMenuKeydown(event: KeyboardEvent): void {
 
 function removeFlow(id: string): void {
   if (!props.readonly)
-    emit('operation', { type: 'removeFlow', flowId: id })
+    emitCommand('Remove flow', {
+      type: 'operation.apply',
+      operations: [{ type: 'flow.remove', pageId: props.pageId, flowId: id }],
+    })
 }
 
 function patchSelected(patch: Partial<ConfigFormFlow>): void {
@@ -315,7 +322,8 @@ function patchSelected(patch: Partial<ConfigFormFlow>): void {
     return
   const candidate = { ...cloneWorkbenchJson(flow), ...patch }
   commitSelectedFlow(candidate, {
-    type: 'updateFlowSettings',
+    type: 'flow.settings',
+    pageId: props.pageId,
     flowId: candidate.id,
     settings: selectedFlowSettings(candidate),
   })
@@ -445,7 +453,8 @@ function addNode(type: Exclude<ConfigFormFlowNodeType, 'trigger' | 'success' | '
     flow.edges.push({ id: uniqueEdgeId(flow, id, 'next', terminal.id), source: id, target: terminal.id, condition: 'next' })
   }
   if (commitSelectedFlow(flow, {
-    type: 'updateFlowGraph',
+    type: 'flow.graph',
+    pageId: props.pageId,
     flowId: flow.id,
     nodes: flow.nodes,
     edges: flow.edges,
@@ -481,7 +490,8 @@ function removeNode(nodeId: string): void {
   }
   flow.nodes = flow.nodes.filter(node => node.id !== nodeId)
   if (commitSelectedFlow(flow, {
-    type: 'updateFlowGraph',
+    type: 'flow.graph',
+    pageId: props.pageId,
     flowId: flow.id,
     nodes: flow.nodes,
     edges: flow.edges,
@@ -529,7 +539,7 @@ function isValidConnection(connection: Connection): boolean {
 function handleConnect(connection: Connection): void {
   const candidate = candidateConnection(connection)
   if (candidate)
-    commitSelectedFlow(candidate, { type: 'updateFlowEdges', flowId: candidate.id, edges: candidate.edges })
+    commitSelectedFlow(candidate, { type: 'flow.edges', pageId: props.pageId, flowId: candidate.id, edges: candidate.edges })
 }
 
 function handleNodesChange(changes: NodeChange[]): void {
@@ -558,7 +568,8 @@ function commitNodePosition(nodeId: string, position: XYPosition): void {
     return
   node.position = { x: Math.round(position.x), y: Math.round(position.y) }
   if (commitSelectedFlow(flow, {
-    type: 'updateFlowNode',
+    type: 'flow.node',
+    pageId: props.pageId,
     flowId: flow.id,
     nodeId,
     node,
@@ -576,7 +587,7 @@ function handleEdgesChange(changes: EdgeChange[]): void {
     return
   const flow = cloneWorkbenchJson(current)
   flow.edges = flow.edges.filter(edge => !removedIds.includes(edge.id))
-  commitSelectedFlow(flow, { type: 'updateFlowEdges', flowId: flow.id, edges: flow.edges })
+  commitSelectedFlow(flow, { type: 'flow.edges', pageId: props.pageId, flowId: flow.id, edges: flow.edges })
 }
 
 function patchSelectedNode(patch: Partial<ConfigFormFlowNode>): void {
@@ -589,7 +600,8 @@ function patchSelectedNode(patch: Partial<ConfigFormFlowNode>): void {
     return
   Object.assign(node, patch)
   commitSelectedFlow(flow, {
-    type: 'updateFlowNode',
+    type: 'flow.node',
+    pageId: props.pageId,
     flowId: flow.id,
     nodeId: node.id,
     node,

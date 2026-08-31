@@ -76,7 +76,6 @@ export interface ProjectRepositoryCommitResult {
 }
 
 export interface ProjectRepository {
-  readonly migrationErrors: readonly string[]
   readonly persistence: ProjectRepositoryPersistence
   close: () => void
   commit: (input: ProjectRepositoryCommitInput) => Promise<ProjectRepositoryCommitResult>
@@ -267,7 +266,6 @@ export function summarizePersistedProject(
 }
 
 export class MemoryProjectRepository implements ProjectRepository {
-  readonly migrationErrors: readonly string[] = Object.freeze([])
   readonly persistence = 'volatile' as const
   private readonly projects = new Map<string, StoredProject>()
   private readonly receiptLimit: number

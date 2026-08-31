@@ -1,7 +1,6 @@
-import type { ProjectPath, WorkspaceFile, WorkspaceProject } from '../types'
+import type { ProjectPath, WorkspaceFile } from '../types'
 import { strToU8, zip } from 'fflate'
 import { assertUniqueProjectPaths, safeProjectSlug } from '../path'
-import { parseWorkspaceProject } from '../schema'
 
 export interface WorkspaceArchiveInput {
   files: Readonly<Record<ProjectPath, Readonly<WorkspaceFile>>>
@@ -24,9 +23,4 @@ export async function createWorkspaceArchive(input: WorkspaceArchiveInput): Prom
         resolve(data)
     })
   })
-}
-
-export async function createProjectArchive(input: WorkspaceProject): Promise<Uint8Array> {
-  const project = parseWorkspaceProject(input)
-  return createWorkspaceArchive(project)
 }

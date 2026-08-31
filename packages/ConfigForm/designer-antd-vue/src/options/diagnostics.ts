@@ -1,7 +1,7 @@
 import type {
   DesignerDiagnostic,
-  DesignerFieldNode,
 } from '@moluoxixi/config-form-designer'
+import type { FieldNode } from '@moluoxixi/config-form-model'
 import type { AntdVueOptionResolverContext } from './context'
 import type { AntdVueDesignerOption, AntdVueOptionSource } from './types'
 import {
@@ -12,7 +12,7 @@ import { normalizeAntdVueOptions, readAntdVueOptionSource } from './resolve'
 
 export function createAntdVueOptionDiagnostics(
   context?: AntdVueOptionResolverContext,
-): (node: DesignerFieldNode, path: (string | number)[]) => DesignerDiagnostic[] {
+): (node: FieldNode, path: (string | number)[]) => DesignerDiagnostic[] {
   return (node, path) => {
     const rawSource = node.props?.optionSource
     if (rawSource === undefined)

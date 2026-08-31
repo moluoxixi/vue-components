@@ -1,7 +1,7 @@
-import type { WorkspaceFile, WorkspaceProject } from '../types'
+import type { WorkspaceFile } from '../types'
 import type { WorkspaceArchiveInput } from './archive'
 import { safeProjectSlug } from '../path'
-import { createProjectArchive, createWorkspaceArchive } from './archive'
+import { createWorkspaceArchive } from './archive'
 
 export interface DownloadWorkspaceFileInput {
   file: Readonly<WorkspaceFile>
@@ -42,10 +42,6 @@ async function downloadArchive(input: WorkspaceArchiveInput, data: Uint8Array): 
   const filename = `${safeProjectSlug(input.name)}.zip`
   const bytes = Uint8Array.from(data)
   return downloadBlob(new Blob([bytes.buffer], { type: 'application/zip' }), filename)
-}
-
-export async function downloadProjectArchive(project: WorkspaceProject): Promise<string> {
-  return downloadArchive(project, await createProjectArchive(project))
 }
 
 export async function downloadWorkspaceArchive(input: WorkspaceArchiveInput): Promise<string> {

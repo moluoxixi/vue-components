@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type {
   DesignerDefaultValueKind,
-  DesignerFieldNode,
   DesignerJsonValue,
 } from '@moluoxixi/config-form-designer'
+import type { FieldNode } from '@moluoxixi/config-form-model'
 import type { ElementPlusDesignerOption } from '../options'
 import { DesignerDefaultValueSetter } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
@@ -17,7 +17,7 @@ import ElementOptionState from './ElementOptionState.vue'
 const props = defineProps<{
   modelValue?: unknown
   disabled?: boolean
-  node?: DesignerFieldNode
+  node?: FieldNode
   kind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>
 }>()
 

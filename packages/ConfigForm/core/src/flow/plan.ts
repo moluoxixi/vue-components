@@ -14,10 +14,7 @@ const NODE_TYPES = new Set(['trigger', 'condition', 'reaction', 'action', 'succe
 const EDGE_CONDITIONS = new Set(['next', 'true', 'false', 'error'])
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
 
-export function analyzeConfigFormFlow(
-  input: unknown,
-  _legacyRevision = 0,
-): ConfigFormFlowPlanResult {
+export function analyzeConfigFormFlow(input: unknown): ConfigFormFlowPlanResult {
   const flow = input as ConfigFormFlow
   const diagnostics: ConfigFormFlowDiagnostic[] = []
   if (!isRecord(input))

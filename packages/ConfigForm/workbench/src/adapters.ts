@@ -1,7 +1,6 @@
 import type {
   DesignerLocaleOptions,
   DesignerRegistry,
-  LowCodeComponentRegistry,
 } from '@moluoxixi/config-form-designer'
 import type {
   ComponentContract,
@@ -15,7 +14,6 @@ import type {
 } from './project/export/canonical-bindings'
 import {
   createDesignerVueRuntimeResolver,
-  createLowCodeComponentRegistry,
 } from '@moluoxixi/config-form-designer'
 import {
   createComponentContractRegistry,
@@ -28,7 +26,6 @@ export interface WorkbenchAdapter {
   componentRegistry: ComponentContractRegistry
   designerRegistry: DesignerRegistry
   locale: DesignerLocaleOptions
-  lowCodeRegistry: LowCodeComponentRegistry
   registrySnapshot: RegistryContractSnapshot
   runtimeResolver: VueRuntimeBindingResolver
   sourceResolver: CanonicalSourceBindingResolver
@@ -43,70 +40,91 @@ const runtimeAdapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchRunt
 
 function createWorkbenchComponentRegistry(
   id: WorkbenchAdapterId,
-  lowCodeRegistry: LowCodeComponentRegistry,
+  designerRegistry: DesignerRegistry,
 ): ComponentContractRegistry {
-  const contracts: ComponentContract[] = lowCodeRegistry.list().map((definition) => {
-    const material = lowCodeRegistry.designer.getMaterial(definition.component)
-    if (!material)
-      throw new Error(`Workbench material is missing from the Designer Registry: ${definition.component}`)
+  const contracts: ComponentContract[] = designerRegistry.listMaterials().map((material) => {
+    const subgraph = designerRegistry.createSubgraph(material.key, {
+      id: '__registry_default__',
+      ...(material.kind === 'field' ? { field: '__registry_field__' } : {}),
+    })
+    const root = subgraph.root[0]
+    const defaults = root ? subgraph.nodesById[root.nodeId] : undefined
+    if (!defaults)
+      throw new Error(`Workbench material factory returned no root node: ${material.key}`)
+    const properties = new Map<string, ComponentContract['props'][number]>()
+    material.setters.forEach((setter) => {
+      if (setter.path[0] !== 'props')
+        return
+      properties.set(setter.key, {
+        key: setter.key,
+        path: [...setter.path],
+        ...(setter.valueKind ? { valueKind: setter.valueKind } : {}),
+      })
+    })
+    const valueProp = material.runtime.valueProp ?? 'modelValue'
+    const trigger = material.runtime.trigger ?? `update:${valueProp}`
+    const events = new Map<string, { name: string }>()
+    if (material.kind === 'field')
+      events.set(trigger, { name: trigger })
+    material.events?.forEach(event => events.set(event.name, { name: event.name }))
     return {
-      key: definition.component,
+      key: material.key,
       version: String(material.version),
-      kind: definition.kind === 'layout' ? 'layout' : 'field',
-      props: definition.props.map(property => ({
-        key: property.key,
-        path: [...property.path],
-        ...(property.valueKind ? { valueKind: property.valueKind } : {}),
-      })),
-      events: definition.events.map(event => ({ name: event.name })),
-      bindings: definition.bindings.map(binding => ({
-        name: binding.name,
-        valueProp: binding.valueProp,
-        trigger: binding.trigger,
-      })),
-      slots: definition.slots.map(slot => ({
+      kind: material.kind,
+      props: [...properties.values()],
+      events: [...events.values()],
+      bindings: material.kind === 'field'
+        ? [{ name: 'value', valueProp, trigger }]
+        : [],
+      slots: (material.kind === 'layout' ? material.slots : []).map(slot => ({
         name: slot.name,
-        ...(slot.accepts
-          ? { accepts: slot.accepts.map(kind => kind === 'container' ? 'layout' as const : 'field' as const) }
-          : {}),
+        ...(slot.accepts ? { accepts: [...slot.accepts] } : {}),
         ...(slot.materials ? { components: [...slot.materials] } : {}),
       })),
-      allowedParents: definition.allowedParents.map(parent => ({
+      allowedParents: (material.allowedParents ?? []).map(parent => ({
         component: parent.material,
         slot: parent.slot,
       })),
-      defaults: structuredClone(definition.defaults.props),
+      defaults: structuredClone(defaults.props),
     }
   })
   return createComponentContractRegistry(contracts, { adapter: id, version: '1' })
 }
 
 function createWorkbenchSourceResolver(
-  lowCodeRegistry: LowCodeComponentRegistry,
+  designerRegistry: DesignerRegistry,
   registrySnapshot: RegistryContractSnapshot,
 ): CanonicalSourceBindingResolver {
   const contracts = new Map(registrySnapshot.components.map(component => [component.key, component]))
   const bindings = new Map<string, CanonicalSourceComponentBinding>()
-  lowCodeRegistry.list().forEach((definition) => {
-    const contract = contracts.get(definition.component)
+  designerRegistry.listMaterials().forEach((material) => {
+    const contract = contracts.get(material.key)
     if (!contract)
-      throw new Error(`Workbench source binding has no component contract: ${definition.component}`)
-    const source = definition.source
-    bindings.set(definition.component, {
-      component: definition.component,
+      throw new Error(`Workbench source binding has no component contract: ${material.key}`)
+    const source = material.source
+    if (!source)
+      throw new Error(`Workbench material is missing its source binding: ${material.key}`)
+    const subgraph = designerRegistry.createSubgraph(material.key, {
+      id: '__source_default__',
+      ...(material.kind === 'field' ? { field: '__source_field__' } : {}),
+    })
+    const root = subgraph.root[0]
+    const defaults = root ? subgraph.nodesById[root.nodeId] : undefined
+    bindings.set(material.key, {
+      component: material.key,
       contractFingerprint: contract.fingerprint,
       contractVersion: contract.contractVersion,
       configComponent: source.configComponent,
       tag: source.tag,
       render: source.render,
-      ...(definition.defaults.defaultValue === undefined
+      ...(defaults?.kind !== 'field' || defaults.defaultValue === undefined
         ? {}
-        : { defaultValue: structuredClone(definition.defaults.defaultValue) }),
+        : { defaultValue: structuredClone(defaults.defaultValue) }),
       ...(source.library ? { library: structuredClone(source.library) } : {}),
       ...(source.options ? { options: structuredClone(source.options) } : {}),
       ...(source.staticProps ? { staticProps: structuredClone(source.staticProps) } : {}),
-      ...(definition.runtime.trigger ? { trigger: definition.runtime.trigger } : {}),
-      ...(definition.runtime.valueProp ? { valueProp: definition.runtime.valueProp } : {}),
+      ...(material.runtime.trigger ? { trigger: material.runtime.trigger } : {}),
+      ...(material.runtime.valueProp ? { valueProp: material.runtime.valueProp } : {}),
     })
   })
   return Object.freeze({
@@ -120,13 +138,11 @@ function createWorkbenchSourceResolver(
 function createWorkbenchRuntimeBindings(
   id: WorkbenchAdapterId,
   designerRegistry: DesignerRegistry,
-): Pick<WorkbenchAdapter, 'componentRegistry' | 'lowCodeRegistry' | 'registrySnapshot' | 'runtimeResolver'> {
-  const lowCodeRegistry = createLowCodeComponentRegistry(designerRegistry)
-  const componentRegistry = createWorkbenchComponentRegistry(id, lowCodeRegistry)
+): Pick<WorkbenchAdapter, 'componentRegistry' | 'registrySnapshot' | 'runtimeResolver'> {
+  const componentRegistry = createWorkbenchComponentRegistry(id, designerRegistry)
   const registrySnapshot = createRegistryContractSnapshot(componentRegistry)
   return {
     componentRegistry,
-    lowCodeRegistry,
     registrySnapshot,
     runtimeResolver: createDesignerVueRuntimeResolver(designerRegistry, registrySnapshot),
   }
@@ -146,7 +162,7 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
       ...runtime,
       designerRegistry,
       locale: adapter.ANTD_VUE_DESIGNER_ZH_CN,
-      sourceResolver: createWorkbenchSourceResolver(runtime.lowCodeRegistry, runtime.registrySnapshot),
+      sourceResolver: createWorkbenchSourceResolver(designerRegistry, runtime.registrySnapshot),
     }
   }
 
@@ -162,7 +178,7 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
     ...runtime,
     designerRegistry,
     locale: adapter.ELEMENT_PLUS_DESIGNER_ZH_CN,
-    sourceResolver: createWorkbenchSourceResolver(runtime.lowCodeRegistry, runtime.registrySnapshot),
+    sourceResolver: createWorkbenchSourceResolver(designerRegistry, runtime.registrySnapshot),
   }
 }
 

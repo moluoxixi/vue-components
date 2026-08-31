@@ -1,14 +1,20 @@
-import type { WorkspaceAdapter, WorkspaceProject } from '../types'
+import type { ProjectDocument, ProjectPage, RegistryLock } from '@moluoxixi/config-form-model'
 
-export interface WorkspaceTemplateInput {
-  createdAt: string
+export type ProjectTemplateAdapter = 'antd-vue' | 'element-plus'
+
+export interface ProjectTemplateInput {
   id: string
   name: string
 }
 
-export interface WorkspaceTemplate {
-  adapter: WorkspaceAdapter
-  create: (input: WorkspaceTemplateInput) => WorkspaceProject
+export interface ProjectPageTemplateInput extends ProjectTemplateInput {
+  route: string
+}
+
+export interface ProjectTemplate {
+  adapter: ProjectTemplateAdapter
+  createPage: (input: ProjectPageTemplateInput) => ProjectPage
+  createProject: (input: ProjectTemplateInput, registryLock: RegistryLock) => ProjectDocument
   description: string
   id: string
   order: number

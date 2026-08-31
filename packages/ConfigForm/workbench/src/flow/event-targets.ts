@@ -1,8 +1,6 @@
-import type {
-  DesignerDocument,
-  DesignerNode,
-  LowCodeComponentRegistry,
-} from '@moluoxixi/config-form-designer'
+import type { DesignerRegistry } from '@moluoxixi/config-form-designer'
+import type { ComponentContractRegistry, PageGraph } from '@moluoxixi/config-form-model'
+import { walkDesignGraph } from '@moluoxixi/config-form-designer'
 
 /** A selectable component event exposed by the active page and Registry. */
 export interface FlowEventTarget {
@@ -19,37 +17,34 @@ export function flowEventTargetKey(target: Pick<FlowEventTarget, 'nodeId' | 'eve
 }
 
 export function collectFlowEventTargets(
-  document: DesignerDocument | undefined,
-  registry: LowCodeComponentRegistry | undefined,
+  graph: PageGraph | undefined,
+  contracts: ComponentContractRegistry | undefined,
+  designer: DesignerRegistry | undefined,
+  labels: { valueChange: string } = { valueChange: 'Value change' },
 ): FlowEventTarget[] {
-  if (!document || !registry)
+  if (!graph || !contracts || !designer)
     return []
 
   const targets: FlowEventTarget[] = []
-  const visit = (nodes: DesignerNode[]): void => {
-    for (const node of nodes) {
-      const definition = registry.get(node.material)
-      if (definition) {
-        const nodeLabel = node.kind === 'field'
-          ? (node.label || node.field || definition.displayName)
-          : definition.displayName
-        for (const event of definition.events) {
-          targets.push({
-            nodeId: node.id,
-            nodeLabel,
-            component: definition.component,
-            event: event.name,
-            eventLabel: event.displayName || event.name,
-          })
-        }
-      }
-      if (node.kind === 'container') {
-        for (const children of Object.values(node.slots))
-          visit(children)
-      }
-    }
-  }
-
-  visit(document.nodes)
+  walkDesignGraph(graph, ({ node }) => {
+    const contract = contracts.get(node.component)
+    const material = designer.getMaterial(node.component)
+    if (!contract || !material)
+      return
+    const eventTitles = new Map(material.events?.map(event => [event.name, event.title]) ?? [])
+    const nodeLabel = node.kind === 'field'
+      ? (node.label || node.field || material.title)
+      : material.title
+    contract.events.forEach((event) => {
+      const bindingEvent = contract.bindings.some(binding => binding.trigger === event.name)
+      targets.push({
+        nodeId: node.id,
+        nodeLabel,
+        component: node.component,
+        event: event.name,
+        eventLabel: eventTitles.get(event.name) ?? (bindingEvent ? labels.valueChange : event.name),
+      })
+    })
+  })
   return targets
 }

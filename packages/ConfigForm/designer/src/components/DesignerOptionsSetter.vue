@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DesignerJsonValue } from '../document'
+import type { DesignerJsonValue } from '../graph'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from '@lucide/vue'
 import { ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'

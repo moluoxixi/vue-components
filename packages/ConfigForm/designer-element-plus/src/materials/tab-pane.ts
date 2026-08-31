@@ -1,4 +1,5 @@
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import ElementTabPaneSpecimen from '../components/ElementTabPaneSpecimen'
 import * as shared from '../material-shared'
 
 export default defineDesignerMaterialModule({
@@ -9,15 +10,15 @@ export default defineDesignerMaterialModule({
       key: 'element.tab-pane',
       source: shared.elementSource('div', 'el-tab-pane'),
       version: 1,
-      kind: 'container',
+      kind: 'layout',
       title: 'Tab pane',
       category: 'Layout',
       icon: shared.PanelBottom,
-      runtime: { component: shared.ElTabPane },
+      runtime: { component: shared.ElTabPane, designerComponent: ElementTabPaneSpecimen },
       allowedParents: [{ material: 'element.tabs', slot: 'default' }],
       setters: [shared.propSetter('label', 'Label', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
-      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'container'] }],
-      createNode: ({ id }) => ({ id, kind: 'container', material: 'element.tab-pane', props: { label: 'Tab', name: id }, slots: { default: [] } }),
+      slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
+      createNode: ({ id }) => ({ id, kind: 'layout', component: 'element.tab-pane', props: { label: 'Tab', name: id }, slots: { default: [] } }),
     },
     locale: { title: '标签面板', category: '布局', setters: { label: '标签', disabled: '禁用' }, slots: { default: '内容' } },
   },

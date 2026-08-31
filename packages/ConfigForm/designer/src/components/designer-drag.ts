@@ -1,6 +1,6 @@
+import type { NodeSubgraph, PageNode } from '@moluoxixi/config-form-model'
 import type { InjectionKey, ShallowRef } from 'vue'
-import type { DesignerNode } from '../document'
-import type { DesignerDropTarget } from '../history'
+import type { DesignerDropTarget } from '../graph'
 import type { DesignerRegistry } from '../registry'
 import { shallowRef } from 'vue'
 
@@ -283,16 +283,19 @@ export function createDesignerMaterialCandidate(
   registry: DesignerRegistry,
   materialKey: string,
   candidateId: string,
-): DesignerNode | undefined {
+): { node: PageNode, subgraph: NodeSubgraph } | undefined {
   const material = registry.getMaterial(materialKey)
   if (!material)
     return undefined
   const field = `candidate_${candidateId.replace(/\W+/g, '_')}`
   try {
-    return registry.createNode(materialKey, {
+    const subgraph = registry.createSubgraph(materialKey, {
       id: candidateId,
       ...(material.kind === 'field' ? { field } : {}),
     })
+    const root = subgraph.root[0]
+    const node = root ? subgraph.nodesById[root.nodeId] : undefined
+    return node ? { node, subgraph } : undefined
   }
   catch {
     return undefined

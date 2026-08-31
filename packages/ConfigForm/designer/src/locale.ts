@@ -1,5 +1,5 @@
 import type { InjectionKey } from 'vue'
-import type { DesignerJsonValue } from './document'
+import type { DesignerJsonValue } from './graph'
 import type { DesignerMaterialDefinition } from './registry'
 import { inject } from 'vue'
 

@@ -24,7 +24,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'checkbox' }) => ({
         id,
         kind: 'field',
-        material: 'antd.checkbox',
+        component: 'antd.checkbox',
         field,
         label: 'Checkbox',
         defaultValue: [],

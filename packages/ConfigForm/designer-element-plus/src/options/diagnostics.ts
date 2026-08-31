@@ -1,7 +1,7 @@
 import type {
   DesignerDiagnostic,
-  DesignerFieldNode,
 } from '@moluoxixi/config-form-designer'
+import type { FieldNode } from '@moluoxixi/config-form-model'
 import type { ElementPlusOptionResolverContext } from './context'
 import type { ElementPlusDesignerOption, ElementPlusOptionSource } from './types'
 import {
@@ -12,7 +12,7 @@ import { normalizeElementPlusOptions, readElementPlusOptionSource } from './reso
 
 export function createElementPlusOptionDiagnostics(
   context?: ElementPlusOptionResolverContext,
-): (node: DesignerFieldNode, path: (string | number)[]) => DesignerDiagnostic[] {
+): (node: FieldNode, path: (string | number)[]) => DesignerDiagnostic[] {
   return (node, path) => {
     const rawSource = node.props?.optionSource
     if (rawSource === undefined)

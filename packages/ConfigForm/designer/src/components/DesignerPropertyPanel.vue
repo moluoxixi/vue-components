@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import type {
-  DesignerDiagnostic,
-  DesignerDocument,
-  DesignerFormSettings,
-  DesignerNode,
-} from '../document'
+import type { ComponentContract, FormSettings, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { DesignerDiagnostic } from '../graph'
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type {
@@ -13,24 +9,21 @@ import type {
   DesignerPropertySetterDefinition,
   DesignerSetterOption,
 } from '../registry'
-import type { LowCodeComponentDefinition, LowCodeNode, ModelOperation } from '../model'
 import { ChevronRight, Workflow } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed, nextTick, ref, useId, watch } from 'vue'
-import { areDesignerJsonValuesEqual, cloneDesignerJsonValue, walkDesignerNodes } from '../document'
-import { findDesignerNode } from '../history'
+import { areDesignerJsonValuesEqual, findDesignNode, walkDesignGraph } from '../graph'
 import { useDesignerLocale } from '../locale'
 import DesignerPropertyForm from './DesignerPropertyForm.vue'
 import DesignerResponsiveSettings from './DesignerResponsiveSettings.vue'
 
 const props = defineProps<{
-  document: DesignerDocument
+  graph: PageGraph
   eventEditor?: 'actions' | 'flow'
-  node?: DesignerNode
-  nodes?: DesignerNode[]
+  node?: PageNode
+  nodes?: PageNode[]
   material?: DesignerMaterialDefinition
-  modelNodes?: LowCodeNode[]
-  componentDefinition?: LowCodeComponentDefinition
+  componentDefinition?: ComponentContract
   diagnostics: DesignerDiagnostic[]
   breakpoint?: ConfigFormBreakpoint
   validatorOptions?: string[]
@@ -44,7 +37,6 @@ const emit = defineEmits<{
   updatePath: [nodeId: string, path: string[], value: unknown]
   updatePaths: [nodeIds: string[], path: string[], value: unknown]
   updateForm: [changes: Record<string, unknown>]
-  modelOperation: [operation: ModelOperation]
 }>()
 
 type PropertyTab = 'properties' | 'events' | 'bindings' | 'validation' | 'conditions' | 'reactions'
@@ -68,16 +60,16 @@ const propertyTabs = computed(() => [
 ])
 const selectedNodes = computed(() => props.nodes?.length ? props.nodes : props.node ? [props.node] : [])
 const compatibleSelection = computed(() => selectedNodes.value.length <= 1
-  || selectedNodes.value.every(node => node.material === props.node?.material && node.kind === props.node?.kind))
+  || selectedNodes.value.every(node => node.component === props.node?.component && node.kind === props.node?.kind))
 const resolvedLayout = computed(() => resolveConfigFormLayout(
-  props.document.form.columns,
-  props.document.form.fieldSpan,
-  props.document.form.responsive,
+  props.graph.form.columns,
+  props.graph.form.fieldSpan,
+  props.graph.form.responsive,
   props.breakpoint ?? 'desktop',
 ))
 const fieldOptions = computed(() => {
   const fields: string[] = []
-  walkDesignerNodes(props.document.nodes, ({ node }) => {
+  walkDesignGraph(props.graph, ({ node }) => {
     if (node.kind === 'field')
       fields.push(node.field)
   })
@@ -85,7 +77,7 @@ const fieldOptions = computed(() => {
 })
 const reactionIds = computed(() => {
   const ids: string[] = []
-  walkDesignerNodes(props.document.nodes, ({ node }) => {
+  walkDesignGraph(props.graph, ({ node }) => {
     node.reactions?.forEach(reaction => ids.push(reaction.id))
   })
   return ids
@@ -94,8 +86,8 @@ const isRootNode = computed(() => {
   if (selectedNodes.value.length === 0)
     return false
   return selectedNodes.value.every((node) => {
-    const location = findDesignerNode(props.document, node.id)
-    return Boolean(location && location.parent === undefined)
+    const location = findDesignNode(props.graph, node.id)
+    return location?.parentId === null
   })
 })
 
@@ -158,7 +150,7 @@ const eventSetters = computed<DesignerPropertySetterDefinition[]>(() =>
   compatibleSelection.value
     ? props.componentDefinition?.events.map(event => ({
         key: event.name,
-        label: event.displayName,
+        label: props.material?.events?.find(candidate => candidate.name === event.name)?.title ?? event.name,
         path: ['events', event.name],
         control: 'text',
       })) ?? []
@@ -168,7 +160,7 @@ const bindingSetters = computed<DesignerPropertySetterDefinition[]>(() =>
   compatibleSelection.value
     ? props.componentDefinition?.bindings.map(binding => ({
         key: binding.name,
-        label: binding.displayName,
+        label: binding.name,
         path: ['bindings', binding.name],
         control: 'text',
       })) ?? []
@@ -178,7 +170,9 @@ const selectedDiagnostics = computed(() => props.node
   ? props.diagnostics.filter(diagnostic => diagnostic.nodeId === props.node?.id)
   : props.diagnostics)
 
-function readNodePath(node: DesignerNode | undefined, path: string[]): unknown {
+function readNodePath(node: PageNode | undefined, path: string[]): unknown {
+  if (node && path.length === 1 && path[0] === 'span')
+    return findDesignNode(props.graph, node.id)?.placement.span
   let value: unknown = node
   for (const segment of path) {
     if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -186,6 +180,10 @@ function readNodePath(node: DesignerNode | undefined, path: string[]): unknown {
     value = (value as Record<string, unknown>)[segment]
   }
   return value
+}
+
+function resolveMaterialEventTitle(eventName: string): string {
+  return props.material?.events?.find(candidate => candidate.name === eventName)?.title ?? eventName
 }
 
 function readPath(path: string[]): unknown {
@@ -227,7 +225,7 @@ function resolveSetterOptions(setter: DesignerPropertySetterDefinition): Designe
 }
 
 function formSetter(
-  key: keyof DesignerFormSettings,
+  key: keyof FormSettings,
   label: string,
   control: DesignerPropertySetterDefinition['control'],
   options?: DesignerPropertySetterDefinition['options'],
@@ -253,15 +251,15 @@ const formSetters = computed(() => [
     control: 'custom' as const,
     component: DesignerResponsiveSettings,
     componentProps: {
-      columns: props.document.form.columns,
-      fieldSpan: props.document.form.fieldSpan,
+      columns: props.graph.form.columns,
+      fieldSpan: props.graph.form.fieldSpan,
       showHeading: false,
     },
   },
 ])
 
 function readFormValue(setter: DesignerPropertySetterDefinition): unknown {
-  return props.document.form[setter.key as keyof DesignerFormSettings]
+  return props.graph.form[setter.key as keyof FormSettings]
 }
 
 function commitNodePath(value: unknown, setter: DesignerPropertySetterDefinition): void {
@@ -283,34 +281,23 @@ function commonModelValue(values: unknown[]): unknown {
 }
 
 function eventValue(name: string): unknown {
-  return commonModelValue((props.modelNodes ?? []).map(node =>
+  return commonModelValue(selectedNodes.value.map(node =>
     node.events[name]?.map(action => action.action).join(', ')))
 }
 
 function bindingValue(name: string): unknown {
-  return commonModelValue((props.modelNodes ?? []).map(node => node.bindings[name]?.source))
-}
-
-function batchModelOperations(operations: ModelOperation[]): ModelOperation | undefined {
-  if (operations.length === 0)
-    return undefined
-  return operations.length === 1 ? operations[0] : { type: 'batch', operations }
+  return commonModelValue(selectedNodes.value.map(node => node.bindings[name]?.source))
 }
 
 function commitEvent(value: unknown, setter: DesignerPropertySetterDefinition): void {
   const actions = typeof value === 'string'
     ? value.split(',').map(action => action.trim()).filter(Boolean).map(action => ({ action }))
     : []
-  const operation = batchModelOperations((props.modelNodes ?? []).map((node) => {
-    const events = cloneDesignerJsonValue(node.events) as LowCodeNode['events']
-    if (actions.length > 0)
-      events[setter.key] = actions
-    else
-      delete events[setter.key]
-    return { type: 'updateEvents', nodeId: node.id, events }
-  }))
-  if (operation)
-    emit('modelOperation', operation)
+  const nodeIds = selectedNodes.value.map(node => node.id)
+  if (nodeIds.length > 1)
+    emit('updatePaths', nodeIds, ['events', setter.key], actions.length > 0 ? actions : undefined)
+  else if (nodeIds[0])
+    emit('updatePath', nodeIds[0], ['events', setter.key], actions.length > 0 ? actions : undefined)
 }
 
 function configureEvent(eventName: string): void {
@@ -320,16 +307,11 @@ function configureEvent(eventName: string): void {
 
 function commitBinding(value: unknown, setter: DesignerPropertySetterDefinition): void {
   const source = typeof value === 'string' ? value.trim() : ''
-  const operation = batchModelOperations((props.modelNodes ?? []).map((node) => {
-    const bindings = cloneDesignerJsonValue(node.bindings) as LowCodeNode['bindings']
-    if (source)
-      bindings[setter.key] = { source }
-    else
-      delete bindings[setter.key]
-    return { type: 'updateBindings', nodeId: node.id, bindings }
-  }))
-  if (operation)
-    emit('modelOperation', operation)
+  const nodeIds = selectedNodes.value.map(node => node.id)
+  if (nodeIds.length > 1)
+    emit('updatePaths', nodeIds, ['bindings', setter.key], source ? { source } : undefined)
+  else if (nodeIds[0])
+    emit('updatePath', nodeIds[0], ['bindings', setter.key], source ? { source } : undefined)
 }
 
 const propertyEntries = computed<Record<PropertyTab, Array<{
@@ -442,12 +424,12 @@ function handlePropertyTabKeydown(event: KeyboardEvent, tab: PropertyTab): void 
             :key="event.name"
             type="button"
             :disabled="readonly"
-            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: event.displayName })"
+            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: resolveMaterialEventTitle(event.name) })"
             @click="configureEvent(event.name)"
           >
             <Workflow :size="15" aria-hidden="true" />
             <span>
-              <strong>{{ event.displayName }}</strong>
+              <strong>{{ resolveMaterialEventTitle(event.name) }}</strong>
               <code>{{ event.name }}</code>
             </span>
             <ChevronRight :size="15" aria-hidden="true" />

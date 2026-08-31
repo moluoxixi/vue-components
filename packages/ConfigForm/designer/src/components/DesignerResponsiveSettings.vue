@@ -4,7 +4,7 @@ import type {
   ConfigFormResponsiveLayout,
   ConfigFormResponsiveLayoutOverride,
 } from '@moluoxixi/config-form/renderer'
-import type { DesignerFormSettings } from '../document'
+import type { FormSettings } from '@moluoxixi/config-form-model'
 import type { DesignerPropertySetterDefinition } from '../registry'
 import { Smartphone, Tablet } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<{
   fieldSpan?: number
   disabled?: boolean
   showHeading?: boolean
-  form?: DesignerFormSettings
+  form?: FormSettings
   readonly?: boolean
 }>(), {
   showHeading: true,

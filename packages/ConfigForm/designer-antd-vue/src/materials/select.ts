@@ -31,7 +31,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'select' }) => ({
         id,
         kind: 'field',
-        material: 'antd.select',
+        component: 'antd.select',
         field,
         label: 'Select',
         props: { options: s.defaultOptions(), placeholder: '' },

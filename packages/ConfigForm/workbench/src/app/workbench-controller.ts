@@ -1,43 +1,32 @@
 import type {
-  CanonicalPageIR,
   CompileCoordinator,
   PageCompilation,
   ProjectCompilation,
 } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormFlowTrigger,
-} from '@moluoxixi/config-form-core'
-import type {
-  DesignerCommand,
-  DesignerDocument,
+  DesignCommandPreview,
   DesignerLocaleOptions,
-  DesignerNode,
-  ModelOperation,
 } from '@moluoxixi/config-form-designer'
 import type {
+  PageGraph,
   ProjectChangeSet,
+  ProjectCommand,
   ProjectCommandAction,
   ProjectCompilationSnapshot,
   ProjectDocument,
-  ProjectPage,
   ProjectRepository,
   ProjectSnapshot,
+  ProjectSummary,
 } from '@moluoxixi/config-form-model'
 import type { VueRuntimeCompileResult, VueRuntimeCompileSuccess } from '@moluoxixi/config-form-vue-backend'
-import type { ComputedRef } from 'vue'
-import type { WorkbenchAdapter } from '../adapters'
+import type { WorkbenchAdapter, WorkbenchAdapterId } from '../adapters'
 import type { WorkbenchLocaleId } from '../locale'
 import type {
   BuildExportSnapshotInput,
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
-  WorkspaceApplication,
-  WorkspaceApplicationOperation,
-  WorkspaceApplicationSummary,
+  ProjectPageAction,
 } from '../project'
-import type {
-  WorkspacePreviewProjection,
-} from '../session'
 import type { PreviewViewport } from '../studio/PreviewDrawer.vue'
 import type { StudioLayerEntry, StudioLeftView } from '../studio/StudioLeftPanel.vue'
 import {
@@ -46,26 +35,17 @@ import {
 } from '@moluoxixi/config-form-compiler'
 import {
   createDesignerLocale,
-  designerCommandToModelOperation,
+  walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
 import {
   applyProjectDraftTransaction,
   createProjectDraftSnapshotFromTransaction,
-  migrateLegacyWorkspaceApplication,
-  projectPageToLegacyLowCodePageModel,
   resolveProjectCommand,
 } from '@moluoxixi/config-form-model'
 import { compileCanonicalPageRuntime } from '@moluoxixi/config-form-vue-backend'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { loadWorkbenchAdapter } from '../adapters'
-import {
-  canonicalPageToDesignerDocument,
-  createPreviewModel,
-  mergePreviewModel,
-  projectPageToDesignerDocument,
-} from '../design'
 import { collectFlowEventTargets } from '../flow/event-targets'
-import { createWorkbenchPageFlowEngine } from '../flow/page-flow-engine'
 import {
   createWorkbenchLocaleOptions,
   readWorkbenchLocalePreference,
@@ -73,24 +53,19 @@ import {
   writeWorkbenchLocalePreference,
 } from '../locale'
 import {
-  BUILT_IN_WORKSPACE_TEMPLATES,
-  createBuiltInWorkspaceApplication,
-  createBuiltInWorkspacePage,
+  BUILT_IN_PROJECT_TEMPLATES,
+  createBuiltInProject,
+  createBuiltInProjectPage,
   createProjectEditorSession,
-  duplicateWorkspacePage,
-  legacyApplicationOperationToProjectActions,
-  legacyModelOperationToProjectActions,
-  nextWorkspacePageId,
-  nextWorkspacePageRoute,
+  duplicateProjectPage,
+  nextProjectPageId,
+  nextProjectPageRoute,
   openDefaultProjectRepository,
-  projectDocumentToLegacyWorkspaceApplication,
-  projectSummaryToLegacyWorkspaceSummary,
 } from '../project'
 import {
   createPageRuntimeArtifactCache,
-  createWorkspaceProjectionCoordinator,
+  createWorkbenchPreviewSession,
 } from '../session'
-import { cloneWorkbenchJson } from '../utils/clone'
 
 export type MobileStudioView = 'canvas' | 'components' | 'inspector' | 'layers' | 'pages'
 export type WorkbenchTheme = 'dark' | 'light'
@@ -133,7 +108,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
 
   const repository = shallowRef<ProjectRepository>()
   const currentAdapter = shallowRef<WorkbenchAdapter>()
-  const applications = ref<WorkspaceApplicationSummary[]>([])
+  const projects = ref<ProjectSummary[]>([])
   const projectSession = shallowRef<ProjectEditorSession>()
   const projectSessionSnapshot = shallowRef<ProjectEditorSessionSnapshot>()
   const currentPageId = ref('')
@@ -143,8 +118,6 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   const previewOpen = ref(false)
   const previewExpanded = ref(false)
   const previewViewport = ref<PreviewViewport>('desktop')
-  const previewModel = ref<Record<string, unknown>>({})
-  const previewProjection = shallowRef<WorkspacePreviewProjection>()
   const templatePickerOpen = ref(false)
   const pageManagerOpen = ref(false)
   const exportPreviewMode = ref<'source' | 'config'>()
@@ -154,18 +127,17 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   const localeId = ref<WorkbenchLocaleId>(initialLocale())
   const busy = ref(false)
   const message = ref('')
-  let openApplicationRequestId = 0
+  let openProjectRequestId = 0
   let projectCommandSequence = 0
   let disposed = false
   let unsubscribeProjectSession: (() => void) | undefined
   let projectedPageId = ''
-  const projectionCoordinator = createWorkspaceProjectionCoordinator()
-  const pageFlowEngine = createWorkbenchPageFlowEngine({
-    readValues: () => previewModel.value,
-    writeValues: values => previewModel.value = values,
+  const previewSession = createWorkbenchPreviewSession({
     onNotify: value => message.value = value,
     onDiagnostic: diagnostic => message.value = diagnostic.message,
   })
+  const previewProjection = previewSession.projection
+  const previewFlowProjection = previewSession.flowProjection
   // Design and Preview share one page-scoped compilation. Full-project
   // compilation is captured lazily and only for readonly Export.
   let compileCoordinator: CompileCoordinator | undefined
@@ -179,66 +151,49 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     props.locale,
   ))
   const workbenchLocale = computed(() => createDesignerLocale(localeOptions.value))
-  const currentApplication = computed(() => {
-    const snapshot = projectSessionSnapshot.value
-    return snapshot
-      ? projectDocumentToLegacyWorkspaceApplication(snapshot.document, {
-          createdAt: snapshot.createdAt,
-          repositoryRevision: snapshot.repositoryRevision,
-          updatedAt: snapshot.updatedAt,
-        })
-      : undefined
-  })
-  const currentPage = computed(() => currentApplication.value?.pages.find(page => page.id === currentPageId.value))
+  const currentProject = computed(() => projectSessionSnapshot.value?.document)
   const currentProjectPage = computed(() => projectSessionSnapshot.value?.document.pagesById[currentPageId.value])
-  const lowCodeRegistry = computed(() => currentAdapter.value!.lowCodeRegistry)
-  const registry = computed(() => currentAdapter.value!.designerRegistry)
-  const configModel = computed(() => currentProjectPage.value
-    ? projectPageToLegacyLowCodePageModel(currentProjectPage.value as unknown as ProjectPage)
+  const currentPage = computed(() => currentProjectPage.value
+    ? structuredClone(currentProjectPage.value) as ProjectDocument['pagesById'][string]
     : undefined)
+  const currentGraph = computed<PageGraph | undefined>(() => currentPage.value?.graph)
+  const componentRegistry = computed(() => currentAdapter.value!.componentRegistry)
+  const registry = computed(() => currentAdapter.value!.designerRegistry)
   const modelRevision = computed(() => projectSessionSnapshot.value?.editVersion ?? 0)
+  const repositoryRevision = computed(() => projectSessionSnapshot.value?.repositoryRevision ?? 0)
   const dirty = computed(() => projectSessionSnapshot.value?.dirty ?? false)
-  const designerDocument = computed(() => {
-    const page = canonicalPage.value?.page
-    if (page)
-      return canonicalPageToDesignerDocument(page as unknown as CanonicalPageIR)
-    const projectPage = currentProjectPage.value
-    return projectPage ? projectPageToDesignerDocument(projectPage as unknown as ProjectPage) : undefined
-  })
-  const previewFlowProjection = pageFlowEngine.projection
   const designerLayers = computed<StudioLayerEntry[]>(() => {
     const entries: StudioLayerEntry[] = []
-    const visit = (nodes: DesignerNode[], depth: number): void => {
-      nodes.forEach((node) => {
-        entries.push({
-          id: node.id,
-          label: node.kind === 'field'
-            ? node.label ?? node.field
-            : registry.value.getMaterial(node.material)?.title ?? node.material,
-          component: node.material,
-          depth,
-        })
-        if (node.kind === 'container')
-          Object.values(node.slots).forEach(children => visit(children, depth + 1))
-      })
-    }
-    visit(designerDocument.value?.nodes ?? [], 0)
+    const graph = currentGraph.value
+    if (!graph)
+      return entries
+    walkDesignGraph(graph, ({ node, path }) => entries.push({
+      id: node.id,
+      label: node.kind === 'field'
+        ? node.label ?? node.field
+        : registry.value.getMaterial(node.component)?.title ?? node.component,
+      component: node.component,
+      depth: path.filter(segment => segment === 'slots').length,
+    }))
     return entries
   })
   const designerFieldNames = computed<string[]>(() => {
     const fields: string[] = []
-    const visit = (nodes: DesignerNode[]): void => {
-      nodes.forEach((node) => {
+    const graph = currentGraph.value
+    if (graph) {
+      walkDesignGraph(graph, ({ node }) => {
         if (node.kind === 'field')
           fields.push(node.field)
-        else
-          Object.values(node.slots).forEach(visit)
       })
     }
-    visit(designerDocument.value?.nodes ?? [])
     return [...new Set(fields)]
   })
-  const flowEventTargets = computed(() => collectFlowEventTargets(designerDocument.value, currentAdapter.value?.lowCodeRegistry))
+  const flowEventTargets = computed(() => collectFlowEventTargets(
+    currentGraph.value,
+    currentAdapter.value?.componentRegistry,
+    currentAdapter.value?.designerRegistry,
+    { valueChange: workbenchLocale.value.t('flow.trigger.valueChange', 'Value change') },
+  ))
 
   function captureExportSnapshotInput(): BuildExportSnapshotInput | undefined {
     const snapshot = projectSessionSnapshot.value
@@ -274,19 +229,26 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   function getCurrentExportCompilation(): ProjectCompilation | undefined {
     return canonicalExportProject.value
   }
-  const currentSourceRevisionKey = computed(() => previewProjection.value?.current.revisionKey ?? '')
-  const lastRuntimePreview = shallowRef<{
-    applicationId: string
-    compilation: PageCompilation
-    modelValue: Record<string, unknown>
-    pageId: string
-  }>()
+
+  function getCurrentAdapterId(): WorkbenchAdapterId {
+    const adapter = currentAdapter.value?.registrySnapshot.adapter
+    if (adapter === 'antd-vue' || adapter === 'element-plus')
+      return adapter
+    throw new TypeError('Workbench adapter is unavailable.')
+  }
+  const currentSourceRevisionKey = previewSession.revisionKey
+  const getPreviewCompilation = previewSession.getCompilation
+  const getPreviewRuntimeModel = previewSession.getRuntimeModel
+  const handlePreviewRuntimeMounted = previewSession.handleRuntimeMounted
+  const handlePreviewRuntimeReady = previewSession.handleRuntimeReady
+  const runPreviewFlows = previewSession.dispatch
+  const updatePreviewRuntimeModel = previewSession.updateRuntimeModel
   const previewState = computed(() => {
     const projection = previewProjection.value
     if (configError.value || projection?.status === 'stale') {
       return {
         label: workbenchLocale.value.t('preview.staleAt', 'Stale at r{revision}', {
-          revision: projection?.display?.snapshot.modelRevision ?? modelRevision.value,
+          revision: projection?.display?.snapshot.editVersion ?? modelRevision.value,
         }),
         tone: 'error' as const,
       }
@@ -300,38 +262,6 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       tone: 'live' as const,
     }
   })
-  const previewCompilation: ComputedRef<PageCompilation | undefined> = computed(() => {
-    const projection = previewProjection.value
-    if (projection?.compileResult.success && canonicalPage.value)
-      return canonicalPage.value
-    const fallback = lastRuntimePreview.value
-    if (!fallback
-      || fallback.applicationId !== currentApplication.value?.id
-      || fallback.pageId !== currentPageId.value) {
-      return undefined
-    }
-    return fallback.compilation
-  })
-
-  function getPreviewCompilation(): PageCompilation | undefined {
-    return previewCompilation.value
-  }
-
-  function getPreviewRuntimeModel(): Record<string, unknown> {
-    if (previewProjection.value?.compileResult.success)
-      return previewModel.value
-    return lastRuntimePreview.value?.modelValue ?? previewModel.value
-  }
-
-  function updatePreviewRuntimeModel(value: Record<string, unknown>): void {
-    if (previewProjection.value?.compileResult.success) {
-      previewModel.value = value
-      return
-    }
-    const fallback = lastRuntimePreview.value
-    if (fallback)
-      lastRuntimePreview.value = { ...fallback, modelValue: value }
-  }
   const designerHistoryControl = computed(() => ({
     canUndo: projectSessionSnapshot.value?.canUndo ?? false,
     canRedo: projectSessionSnapshot.value?.canRedo ?? false,
@@ -346,18 +276,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
         actionLabel: workbenchLocale.value.t('recovery.reloadLatest', 'Reload latest'),
         message: workbenchLocale.value.t(
           'recovery.revisionConflict',
-          'This application changed in another session. Reload the latest saved revision to continue; unsaved local edits will be discarded.',
-        ),
-        tone: 'error',
-      }
-    }
-    const migrationErrors = repository.value?.migrationErrors ?? []
-    if (migrationErrors.length > 0) {
-      return {
-        message: workbenchLocale.value.t(
-          'recovery.migrationFailed',
-          '{count} legacy workspace item(s) could not be migrated. The original data was preserved. {detail}',
-          { count: migrationErrors.length, detail: migrationErrors[0] },
+          'This project changed in another session. Reload the latest saved revision to continue; unsaved local edits will be discarded.',
         ),
         tone: 'error',
       }
@@ -425,21 +344,6 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     })
   }
 
-  function publishWorkspaceProjection(
-    snapshot: ProjectEditorSessionSnapshot,
-    application: WorkspaceApplication,
-    runtime: VueRuntimeCompileResult,
-  ): void {
-    if (!currentAdapter.value)
-      return
-    previewProjection.value = projectionCoordinator.publish({
-      application,
-      applicationRevision: snapshot.repositoryRevision,
-      currentPageId: currentPageId.value,
-      modelRevision: snapshot.editVersion,
-    }, () => runtime)
-  }
-
   function resolveCurrentPageId(
     snapshot: ProjectEditorSessionSnapshot,
     preferredId = currentPageId.value,
@@ -491,25 +395,22 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     )
     canonicalPage.value = compiled.compilation
     canonicalPageRuntime.value = compiled.result.success ? compiled.result : undefined
-    pageFlowEngine.sync({
-      pageKey: `${snapshot.document.id}:${nextPageId}`,
-      plans: compiled.compilation?.page.flows.map(flow => flow.plan) ?? [],
+    const adapter = currentAdapter.value
+    if (!adapter)
+      throw new TypeError('Workbench adapter is unavailable while publishing Preview.')
+    previewSession.accept({
+      adapter: adapter.registrySnapshot.adapter,
+      compilation: compiled.compilation,
+      editVersion: snapshot.editVersion,
+      graph: projectPage.graph as PageGraph,
+      pageId: nextPageId,
+      projectId: snapshot.document.id,
+      repositoryRevision: snapshot.repositoryRevision,
+      runtime: compiled.result,
     })
 
-    const document = compiled.compilation?.page
-      ? canonicalPageToDesignerDocument(compiled.compilation.page as unknown as CanonicalPageIR)
-      : projectPageToDesignerDocument(projectPage as unknown as ProjectPage)
-    const defaults = createPreviewModel(document)
-    previewModel.value = pageChanged
-      ? defaults
-      : mergePreviewModel(document, previewModel.value, defaults)
-    if (pageChanged) {
+    if (pageChanged)
       selectedDesignerIds.value = []
-      lastRuntimePreview.value = undefined
-    }
-    const application = currentApplication.value
-    if (application)
-      publishWorkspaceProjection(snapshot, application, compiled.result)
   }
 
   function bindProjectSession(session: ProjectEditorSession, preferredPageId: string): void {
@@ -552,33 +453,16 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     return result.changed
   }
 
-  function designerCommandActions(
-    command: DesignerCommand,
-    document: DesignerDocument,
-  ): ProjectCommandAction[] {
-    const pageId = currentPageId.value
-    const page = projectSessionSnapshot.value?.document.pagesById[pageId]
-    if (!page)
-      return []
-    const operation = designerCommandToModelOperation(command, document, page.graph.props)
-    return legacyModelOperationToProjectActions(pageId, operation)
+  function executeDesignerCommand(command: ProjectCommand) {
+    const session = projectSession.value
+    if (!session)
+      return { changed: false, diagnostics: [] }
+    const result = session.execute(command)
+    configError.value = result.diagnostics[0]?.message ?? ''
+    return { changed: result.changed, diagnostics: result.diagnostics }
   }
 
-  function updateDesigner(command: DesignerCommand, document: DesignerDocument): boolean {
-    try {
-      const actions = designerCommandActions(command, document)
-      return actions.length > 0 && executeProjectActions('Update design', actions)
-    }
-    catch (error) {
-      configError.value = error instanceof Error ? error.message : String(error)
-      return false
-    }
-  }
-
-  function compileDesignerCandidate(
-    command: DesignerCommand,
-    document: DesignerDocument,
-  ): PageCompilation | undefined {
+  function compileDesignerCandidate(command: ProjectCommand): PageCompilation | undefined {
     const snapshot = projectSessionSnapshot.value
     const adapter = currentAdapter.value
     const pageId = currentPageId.value
@@ -587,11 +471,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
 
     try {
       const base = snapshot.document as ProjectDocument
-      const resolution = resolveProjectCommand(base, {
-        id: 'design-candidate',
-        label: 'Preview design candidate',
-        actions: designerCommandActions(command, document),
-      }, { registry: adapter.componentRegistry })
+      const resolution = resolveProjectCommand(base, command, { registry: adapter.componentRegistry })
       if (!resolution.success || resolution.transaction.operations.length === 0)
         return undefined
       const draft = applyProjectDraftTransaction(base, resolution.transaction, {
@@ -603,7 +483,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
         createProjectDraftSnapshotFromTransaction(
           projectSnapshotFromEditorSession(snapshot),
           draft,
-          'design-candidate',
+          `design-candidate:${command.id}`,
         ),
         pageId,
         {
@@ -622,94 +502,46 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     }
   }
 
-  function getDesignRuntimeCompilation(
-    command?: DesignerCommand,
-    document?: DesignerDocument,
-  ): PageCompilation | undefined {
-    if (!command || !document)
+  function getDesignRuntimeCompilation(command?: ProjectCommand): PageCompilation | undefined {
+    if (!command)
       return canonicalPage.value
-    return compileDesignerCandidate(command, document)
+    return compileDesignerCandidate(command)
   }
 
-  function previewDesignerRuntime(
-    command: DesignerCommand,
-    document: DesignerDocument,
-  ): VueRuntimeCompileSuccess['artifact']['plan']['renderer'] | undefined {
-    const compilation = compileDesignerCandidate(command, document)
+  function previewDesignerCommand(command: ProjectCommand): DesignCommandPreview | undefined {
+    const compilation = compileDesignerCandidate(command)
     const adapter = currentAdapter.value
     if (!compilation || !adapter)
       return undefined
     const result = compileCanonicalPageRuntime({ compilation }, adapter.runtimeResolver)
-    return result.success ? result.artifact.plan.renderer : undefined
+    const graph = projectSessionSnapshot.value?.document.pagesById[currentPageId.value]?.graph
+    if (!graph)
+      return undefined
+    const resolution = resolveProjectCommand(projectSessionSnapshot.value!.document as ProjectDocument, command, {
+      registry: adapter.componentRegistry,
+    })
+    if (!resolution.success)
+      return undefined
+    const draft = applyProjectDraftTransaction(
+      projectSessionSnapshot.value!.document as ProjectDocument,
+      resolution.transaction,
+      { registry: adapter.componentRegistry },
+    )
+    const candidateGraph = draft.success
+      ? draft.document.pagesById[currentPageId.value]?.graph
+      : undefined
+    return candidateGraph
+      ? {
+          command,
+          graph: candidateGraph,
+          ...(result.success ? { renderer: result.artifact.plan.renderer } : {}),
+        }
+      : undefined
   }
 
   const designerCommandControl = {
-    apply: updateDesigner,
-    applyModelOperation: updateModelOperation,
-    previewRuntime: previewDesignerRuntime,
-  }
-
-  function updateModelOperation(operation: ModelOperation): boolean {
-    if (!currentPageId.value)
-      return false
-    return executeProjectActions('Update design', legacyModelOperationToProjectActions(currentPageId.value, operation))
-  }
-
-  function handlePreviewRuntimeReady(revision: string): void {
-    const applicationId = currentApplication.value?.id
-    const pageId = currentPageId.value
-    const compilation = canonicalPage.value
-    const result = previewProjection.value?.compileResult
-    if (!applicationId
-      || !pageId
-      || !projectionCoordinator.isCurrent(revision)
-      || !compilation
-      || !result?.success) {
-      return
-    }
-    lastRuntimePreview.value = {
-      applicationId,
-      compilation,
-      modelValue: cloneWorkbenchJson(previewModel.value),
-      pageId,
-    }
-  }
-
-  function handlePreviewRuntimeMounted(revision: string): void {
-    if (!projectionCoordinator.isCurrent(revision))
-      return
-    runPreviewFlows('page.mount', previewModel.value)
-  }
-
-  function runPreviewFlows(
-    triggerOrKind: ConfigFormFlowTrigger['kind'] | ConfigFormFlowTrigger,
-    values: Record<string, unknown>,
-    field?: string,
-  ): void {
-    const applicationId = currentApplication.value?.id
-    const pageId = currentPageId.value
-    const projection = previewProjection.value
-    if (!applicationId || !pageId || !projection)
-      return
-    const revision = modelRevision.value
-    const revisionKey = projection.current.revisionKey
-    const signal = projection.signal
-    const isCurrentRun = (): boolean => applicationId === currentApplication.value?.id
-      && pageId === currentPageId.value
-      && revision === modelRevision.value
-      && projectionCoordinator.isCurrent(revisionKey)
-      && !signal.aborted
-
-    const trigger: ConfigFormFlowTrigger = typeof triggerOrKind === 'string'
-      ? { kind: triggerOrKind, ...(field ? { field } : {}) }
-      : triggerOrKind
-    void pageFlowEngine.dispatch({
-      trigger,
-      values: cloneWorkbenchJson(values),
-      revision,
-      signal,
-      isCurrent: isCurrentRun,
-    })
+    execute: executeDesignerCommand,
+    preview: previewDesignerCommand,
   }
 
   function undoDesign(): boolean {
@@ -724,17 +556,17 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     return result?.changed ?? false
   }
 
-  async function refreshApplications(): Promise<void> {
+  async function refreshProjects(): Promise<void> {
     const activeRepository = repository.value
     if (!activeRepository)
       return
-    const nextApplications = (await activeRepository.list()).map(projectSummaryToLegacyWorkspaceSummary)
+    const nextProjects = await activeRepository.list()
     if (!disposed && repository.value === activeRepository)
-      applications.value = nextApplications
+      projects.value = nextProjects
   }
 
-  async function openApplication(id: string, pageId?: string): Promise<void> {
-    const requestId = ++openApplicationRequestId
+  async function openProject(id: string, pageId?: string): Promise<void> {
+    const requestId = ++openProjectRequestId
     const activeRepository = repository.value
     if (!activeRepository)
       return
@@ -742,7 +574,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     if (
       !project
       || disposed
-      || requestId !== openApplicationRequestId
+      || requestId !== openProjectRequestId
       || activeRepository !== repository.value
     ) {
       return
@@ -754,7 +586,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     const adapter = await loadWorkbenchAdapter(adapterId)
     if (
       disposed
-      || requestId !== openApplicationRequestId
+      || requestId !== openProjectRequestId
       || activeRepository !== repository.value
     ) {
       return
@@ -764,10 +596,9 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
       ?? document.pagesById[document.pageOrder[0]!]
     if (!page)
       return
-    lastRuntimePreview.value = undefined
+    previewSession.clear('project-opened')
     configError.value = ''
     currentAdapter.value = adapter
-    pageFlowEngine.clear()
     compileCoordinator?.clear()
     pageRuntimeArtifactCache.clear()
     compileCoordinator = createCompileCoordinator({
@@ -783,8 +614,8 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     templatePickerOpen.value = false
   }
 
-  async function requestOpenApplication(id: string, pageId?: string): Promise<void> {
-    if (currentApplication.value?.id === id) {
+  async function requestOpenProject(id: string, pageId?: string): Promise<void> {
+    if (currentProject.value?.id === id) {
       if (pageId && currentPageId.value !== pageId)
         selectCurrentPage(pageId)
       return
@@ -792,35 +623,28 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     if (hasUnsavedChanges.value) {
       message.value = workbenchLocale.value.t(
         'workbench.openBlocked',
-        'Save or resolve the current application before opening another application.',
+        'Save or resolve the current project before opening another project.',
       )
       return
     }
-    await openApplication(id, pageId)
+    await openProject(id, pageId)
   }
 
-  async function createApplication(templateId: string): Promise<void> {
+  async function createProject(templateId: string): Promise<void> {
     if (!repository.value || busy.value)
       return
     busy.value = true
     message.value = ''
     try {
-      const template = BUILT_IN_WORKSPACE_TEMPLATES.get(templateId)!
-      const now = new Date().toISOString()
-      const application = createBuiltInWorkspaceApplication(templateId, {
-        createdAt: now,
+      const template = BUILT_IN_PROJECT_TEMPLATES.get(templateId)!
+      const adapter = await loadWorkbenchAdapter(template.adapter)
+      const project = createBuiltInProject(templateId, {
         id: `${templateId}-${Date.now().toString(36)}`,
         name: `${template.title} page`,
-      })
-      const adapter = await loadWorkbenchAdapter(template.adapter)
-      const migrated = migrateLegacyWorkspaceApplication(application, {
-        registryLock: adapter.componentRegistry.lock,
-      })
-      if (!migrated.success)
-        throw new TypeError(migrated.diagnostics[0]?.message ?? 'Unable to create the project document.')
-      await repository.value.create({ document: migrated.data })
-      await refreshApplications()
-      await openApplication(application.id)
+      }, adapter.componentRegistry.lock)
+      await repository.value.create({ document: project })
+      await refreshProjects()
+      await openProject(project.id)
       templatePickerOpen.value = false
     }
     catch (error) {
@@ -832,27 +656,22 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   }
 
   async function createPage(templateId: string): Promise<void> {
-    const application = currentApplication.value
-    if (!repository.value || !application || busy.value)
+    const document = currentProject.value
+    if (!repository.value || !document || busy.value)
       return
     busy.value = true
     message.value = ''
     try {
-      const now = new Date().toISOString()
-      const name = `${BUILT_IN_WORKSPACE_TEMPLATES.get(templateId)?.title ?? 'New'} page`
-      const id = nextWorkspacePageId(application, name)
-      const page = createBuiltInWorkspacePage(templateId, {
-        createdAt: now,
+      const name = `${BUILT_IN_PROJECT_TEMPLATES.get(templateId)?.title ?? 'New'} page`
+      const id = nextProjectPageId(document, name)
+      const page = createBuiltInProjectPage(templateId, {
         id,
         name,
-        route: nextWorkspacePageRoute(application, name),
+        route: nextProjectPageRoute(document, name),
       })
-      const document = projectSessionSnapshot.value?.document
-      if (!document)
-        return
       const changed = executeProjectActions(
         'Add page',
-        legacyApplicationOperationToProjectActions(document, { type: 'add-page', page }),
+        [{ type: 'operation.apply', operations: [{ type: 'page.add', page }] }],
       )
       if (changed)
         selectCurrentPage(page.id)
@@ -866,36 +685,33 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     }
   }
 
-  async function handleApplicationOperation(operation: WorkspaceApplicationOperation): Promise<void> {
-    const application = currentApplication.value
-    if (!application || busy.value)
+  async function handlePageAction(action: ProjectPageAction): Promise<void> {
+    const document = currentProject.value
+    if (!document || busy.value)
       return
     try {
-      const resolvedOperation = operation.type === 'duplicate-page'
-        ? (() => {
-            const source = application.pages.find(page => page.id === operation.pageId)
+      const operations = (() => {
+        switch (action.type) {
+          case 'page.rename': return [{ type: 'page.rename' as const, pageId: action.pageId, name: action.name }]
+          case 'page.route': return [{ type: 'page.route' as const, pageId: action.pageId, route: action.route }]
+          case 'page.home': return [{ type: 'project.home' as const, pageId: action.pageId }]
+          case 'page.move': return [{ type: 'page.move' as const, pageId: action.pageId, index: action.index }]
+          case 'page.remove': return [{ type: 'page.remove' as const, pageId: action.pageId }]
+          case 'page.duplicate': {
+            const source = document.pagesById[action.pageId]
             if (!source)
-              throw new Error(`Page "${operation.pageId}" does not exist.`)
+              throw new Error(`Page "${action.pageId}" does not exist.`)
             const name = `${source.name} copy`
-            const id = nextWorkspacePageId(application, name)
-            return {
-              type: 'duplicate-page' as const,
-              pageId: source.id,
-              page: duplicateWorkspacePage(source, {
-                id,
-                name,
-                route: nextWorkspacePageRoute(application, name),
-              }),
-            }
-          })()
-        : operation
-      const document = projectSessionSnapshot.value?.document
-      if (!document)
-        return
-      executeProjectActions(
-        'Update pages',
-        legacyApplicationOperationToProjectActions(document, resolvedOperation),
-      )
+            const page = duplicateProjectPage(source, {
+              id: nextProjectPageId(document, name),
+              name,
+              route: nextProjectPageRoute(document, name),
+            })
+            return [{ type: 'page.add' as const, page, index: document.pageOrder.indexOf(source.id) + 1 }]
+          }
+        }
+      })()
+      executeProjectActions('Update pages', [{ type: 'operation.apply', operations }])
     }
     catch (error) {
       message.value = error instanceof Error ? error.message : String(error)
@@ -914,7 +730,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
         message.value = result.error.message
         return
       }
-      await refreshApplications()
+      await refreshProjects()
       message.value = result.newerEdits
         ? workbenchLocale.value.t(
             'workbench.savedWithNewer',
@@ -931,15 +747,15 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     }
   }
 
-  async function reloadCurrentApplication(): Promise<void> {
-    const applicationId = currentApplication.value?.id
+  async function reloadCurrentProject(): Promise<void> {
+    const projectId = currentProject.value?.id
     const pageId = currentPageId.value
-    if (!applicationId || busy.value)
+    if (!projectId || busy.value)
       return
     busy.value = true
     message.value = ''
     try {
-      await openApplication(applicationId, pageId)
+      await openProject(projectId, pageId)
       message.value = workbenchLocale.value.t('recovery.reloaded', 'Reloaded the latest saved revision')
     }
     catch (error) {
@@ -959,7 +775,7 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   }
 
   function openFlowWorkspace(): void {
-    if (currentApplication.value)
+    if (currentProject.value)
       flowWorkspaceOpen.value = true
   }
 
@@ -1007,10 +823,10 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
   }
 
   function selectTemplate(templateId: string): void {
-    if (currentApplication.value)
+    if (currentProject.value)
       void createPage(templateId)
     else
-      void createApplication(templateId)
+      void createProject(templateId)
   }
 
   watch(() => props.locale?.locale, (value) => {
@@ -1026,23 +842,18 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
 
   onMounted(async () => {
     try {
-      const openedRepository = await openDefaultProjectRepository({
-        resolveRegistryLock: async (adapterId) => {
-          const adapter = await loadWorkbenchAdapter(adapterId)
-          return adapter.componentRegistry.lock
-        },
-      })
+      const openedRepository = await openDefaultProjectRepository({})
       if (disposed) {
         openedRepository.close()
         return
       }
       repository.value = openedRepository
-      await refreshApplications()
+      await refreshProjects()
       if (disposed || repository.value !== openedRepository)
         return
-      const first = applications.value[0]
+      const first = projects.value[0]
       if (first)
-        await openApplication(first.id)
+        await openProject(first.id)
       else
         templatePickerOpen.value = true
     }
@@ -1054,49 +865,49 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
 
   onBeforeUnmount(() => {
     disposed = true
-    openApplicationRequestId += 1
+    openProjectRequestId += 1
     unsubscribeProjectSession?.()
     compileCoordinator?.clear()
     pageRuntimeArtifactCache.clear()
-    pageFlowEngine.dispose()
-    projectionCoordinator.invalidate('workbench-unmounted')
+    previewSession.dispose()
     repository.value?.close()
   })
 
   return {
-    applications,
+    projects,
     busy,
     closeExportPreview,
     closeFlowWorkspace,
     closePageManager,
     closeTemplatePicker,
+    componentRegistry,
     configError,
-    configModel,
     captureExportSnapshotInput,
-    createApplication,
-    currentApplication,
+    createProject,
+    currentProject,
+    currentGraph,
     currentPage,
     currentPageId,
     currentSourceRevisionKey,
     designRuntime: canonicalPageRuntime,
     designerCommandControl,
-    designerDocument,
     designerFieldNames,
     flowEventTargets,
     designerHistoryControl,
     designerLayers,
     dirty,
     exportPreviewMode,
+    executeFlowCommand: executeDesignerCommand,
     flowWorkspaceOpen,
     getCurrentExportCompilation,
+    getCurrentAdapterId,
     getDesignRuntimeCompilation,
     getPreviewRuntimeModel,
-    handleApplicationOperation,
+    handlePageAction,
     handlePreviewRuntimeMounted,
     handlePreviewRuntimeReady,
     localeId,
     localeOptions,
-    lowCodeRegistry,
     message,
     mobileStudioView,
     openExportPreview,
@@ -1108,15 +919,14 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     previewExpanded,
     getPreviewCompilation,
     previewFlowProjection,
-    previewModel,
     previewOpen,
     previewProjection,
     previewState,
     previewViewport,
-    projectionCoordinator,
     registry,
-    requestOpenApplication,
-    reloadCurrentApplication,
+    repositoryRevision,
+    requestOpenProject,
+    reloadCurrentProject,
     runPreviewFlows,
     saveProject,
     selectPageFromDesigner,
@@ -1124,13 +934,12 @@ export function createWorkbenchController(props: Readonly<WorkbenchControllerPro
     selectTemplate,
     statusLabel,
     studioLeftView,
-    templates: BUILT_IN_WORKSPACE_TEMPLATES,
+    templates: BUILT_IN_PROJECT_TEMPLATES,
     templatePickerOpen,
     theme,
     toggleLocale,
     togglePreview,
     toggleTheme,
-    updateModelOperation,
     updatePreviewRuntimeModel,
     workbenchLocale,
     workspaceRecoveryNotice,

@@ -1,52 +1,37 @@
-// @vitest-environment happy-dom
-import type {
-  DesignerDocument,
-  LowCodeComponentDefinition,
-  LowCodeComponentRegistry,
-} from '@moluoxixi/config-form-designer'
 import { describe, expect, it } from 'vitest'
+import { loadWorkbenchAdapter } from '../../adapters'
+import { createBuiltInProject } from '../../project'
 import { collectFlowEventTargets, flowEventTargetKey } from '../event-targets'
 
-function registryFor(definitions: LowCodeComponentDefinition[]): LowCodeComponentRegistry {
-  const byComponent = new Map(definitions.map(definition => [definition.component, definition]))
-  return { get: component => byComponent.get(component) } as LowCodeComponentRegistry
-}
-
 describe('flow event targets', () => {
-  it('projects registered events from nested page nodes in stable traversal order', () => {
-    const registry = registryFor([
-      { component: 'section', displayName: 'Section', events: [] } as unknown as LowCodeComponentDefinition,
-      {
-        component: 'input',
-        displayName: 'Input',
-        events: [{ name: 'update:modelValue', displayName: 'Value change' }],
-      } as unknown as LowCodeComponentDefinition,
-      {
-        component: 'select',
-        displayName: 'Select',
-        events: [{ name: 'change', displayName: 'Change' }],
-      } as unknown as LowCodeComponentDefinition,
-    ])
-    const document = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'section',
-        kind: 'container',
-        material: 'section',
-        slots: {
-          default: [
-            { id: 'name', kind: 'field', material: 'input', field: 'name', label: 'Name' },
-            { id: 'role', kind: 'field', material: 'select', field: 'role' },
-          ],
-        },
-      }],
-    } as unknown as DesignerDocument
+  it.each([
+    {
+      adapterId: 'element-plus' as const,
+      templateId: 'element-profile' as const,
+      events: ['update:modelValue', 'update:modelValue', 'update:modelValue'],
+    },
+    {
+      adapterId: 'antd-vue' as const,
+      templateId: 'antd-profile' as const,
+      events: ['update:value', 'update:value', 'update:checked'],
+    },
+  ])('projects $adapterId binding events with user-facing labels and canonical names', async ({ adapterId, events, templateId }) => {
+    const adapter = await loadWorkbenchAdapter(adapterId)
+    const project = createBuiltInProject(
+      templateId,
+      { id: 'event-project', name: 'Event project' },
+      adapter.componentRegistry.lock,
+    )
+    const page = project.pagesById[project.homePageId]!
 
-    expect(collectFlowEventTargets(document, registry)).toEqual([
-      { nodeId: 'name', nodeLabel: 'Name', component: 'input', event: 'update:modelValue', eventLabel: 'Value change' },
-      { nodeId: 'role', nodeLabel: 'role', component: 'select', event: 'change', eventLabel: 'Change' },
-    ])
+    const targets = collectFlowEventTargets(
+      page.graph,
+      adapter.componentRegistry,
+      adapter.designerRegistry,
+    )
+    expect(targets.map(target => target.event)).toEqual(events)
+    expect(targets.map(target => target.eventLabel)).toEqual(['Value change', 'Value change', 'Value change'])
+    expect(targets.map(target => target.nodeId)).toEqual(['profile-name', 'profile-role', 'profile-active'])
   })
 
   it('uses node and event as a collision-safe selector key', () => {

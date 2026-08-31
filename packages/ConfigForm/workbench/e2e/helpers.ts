@@ -8,7 +8,7 @@ const templateNames: Record<WorkbenchAdapter, RegExp> = {
   element: /Element Plus profile/,
 }
 
-export async function createApplication(page: Page, adapter: WorkbenchAdapter): Promise<void> {
+export async function createProject(page: Page, adapter: WorkbenchAdapter): Promise<void> {
   const dialog = page.getByRole('dialog', { name: 'New page' })
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: templateNames[adapter] }).click()

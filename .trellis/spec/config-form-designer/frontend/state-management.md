@@ -8,10 +8,9 @@ editing, or Source/Config export.
 
 `ProjectDocument` is the only persisted business content model in the Workbench.
 `ProjectSnapshot` is its immutable editor envelope. `PersistedProjectEnvelope`
-owns repository metadata. `LowCodePageModel`,
-`DesignerDocument`, and `WorkspaceApplication` are legacy ingress or stateless
-compatibility projections; they must not own a reducer, history, revision, or
-repository in the normal Workbench path.
+owns repository metadata. Repository, Design, Runtime, Preview, and Export
+accept only the current Project schema; no alternate page or aggregate model
+may own a reducer, parser, history, revision, repository, fixture, or projection.
 
 ## 2. Canonical Data Flow
 
@@ -23,7 +22,7 @@ ProjectRepository
 
 immutable ProjectSnapshot
   -> ProjectDomainEngine (Command / Transaction / History)
-  -> ProjectEditorSession (application facade)
+  -> ProjectEditorSession (editor facade)
 
 UI / plugin intent
   -> ProjectCommand
@@ -35,7 +34,7 @@ UI / plugin intent
 ProjectSnapshot
   -> CompileCoordinator
      -> PageCompilation { snapshotIdentity, registryUsage, key, page }
-     -> Design compatibility projection (temporary)
+     -> Design Runtime projection
      -> Runtime/Preview projection
   -> lazy ProjectCompilation { snapshot, registry, key, ir }
      -> pinned readonly ExportSnapshot
@@ -123,6 +122,10 @@ interface SlotItem {
 
 ## 4. Contracts
 
+- The current aggregate is named `Project` across domain types, Controller
+  APIs, locale keys, UI labels, tests, templates, and generated-source helpers.
+  `Application` is not a domain alias. Standard MIME values such as
+  `application/json` and generic host-platform wording are not domain names.
 - `PageGraph` stores each node exactly once. Roots live in `root`; all
   descendant relationships live in `LayoutNode.slots`. Both are `SlotItem[]`,
   so layout metadata belongs to the parent-child relation. Default children
@@ -157,7 +160,7 @@ interface SlotItem {
   commit or its merge group.
 - `ProjectSnapshot` is `{ document, editVersion, contentHash }`; it may use structural sharing but is deeply readonly at API
   boundaries. UI code must not cast it to mutable data.
-- Application facades may expose a superset such as
+- Editor facades may expose a superset such as
   `ProjectEditorSessionSnapshot`, but compiler and export boundaries must build
   an exact `ProjectSnapshot` envelope explicitly. Never pass the session
   snapshot through a cast or object spread: its persistence, history, and UI
@@ -199,11 +202,10 @@ interface SlotItem {
   relevant overlay count/geometry changes across selected, dragging, nested,
   and resizing states. A unit test that only checks rendered class names is
   insufficient evidence for visual interaction behavior.
-- Public Designer entry points must forward the same candidate Runtime
-  projection contract to the Canvas. A capability declared on
-  `DesignerCommandControl` cannot be wired only by the Workbench-specific
-  `DesignSurface` while the compatibility `ConfigFormDesigner` silently uses a
-  second projection path.
+- `DesignSurface` is a controlled `PageGraph` editor. It receives one
+  `DesignerCommandControl`, forwards every edit as a `ProjectCommand`, and must
+  use the same candidate `PageCompilation` contract as the Workbench Canvas.
+  A second document reducer or local structural history is forbidden.
 - Pointer coordinates are transient overlay state. Moving the pointer inside
   one unchanged drop target may reposition the drag visual, but it must not
   invalidate or rebuild the structural candidate Runtime projection. Candidate
@@ -258,9 +260,8 @@ interface SlotItem {
   single Inspector-to-Flow path. The Inspector emits the exact stable
   `{ nodeId, event }` target, the Flow dialog selects an existing matching Flow
   or creates one from that event source, and all edits still commit through
-  Project Transactions. Designer's inline action-string event editor remains
-  available only to compatibility hosts that explicitly request it; it is not
-  a second Workbench event model.
+  Project Transactions. Workbench does not expose a second action-string event
+  model beside Flow.
 - Design Runtime nodes register geometry by stable `nodeId`; ancestry path and
   slot are mutable traversal metadata, not registration identity. Candidate
   moves between nested slots must update the registration without allowing an
@@ -281,14 +282,9 @@ interface SlotItem {
   history entry.
 - Component keys resolve through the Registry Contract. Arbitrary HTML tags,
   Vue component instances, icons, or functions never enter ProjectDocument.
-- The Workbench may temporarily project a Project page to
-  `LowCodePageModel -> DesignerDocument` for the existing DesignSurface. That
-  projection is stateless and one-way. Designer operations are converted to
-  `ProjectCommandAction`; the projected model is never written to a legacy
-  repository.
-- Pages and Export may temporarily receive a projected `WorkspaceApplication`.
-  Generated files in that object are derived scaffold/output only and never
-  enter ProjectDocument.
+- Design, Pages, RuntimeHost, and Export consume `ProjectDocument`,
+  `ProjectSnapshot`, `PageGraph`, or fixed compiler artifacts directly. There
+  is no page-tree projection or project wrapper between those boundaries.
 - Runtime form values, touched state, validation, Flow queues, outputs, traces,
   abort signals, panel state, selection, drag candidates, and Monaco models are
   transient session/UI state.
@@ -308,13 +304,10 @@ interface SlotItem {
   `PROJECT_REPOSITORY_CORRUPT`.
 - `commit` writes new entities, the manifest, and commit receipt in one native
   atomic storage transaction.
-- Legacy Workspace records migrate once at repository ingress. Persisted
-  `ProjectDocument` v3 records deterministically move `graph.flows` to sibling
-  `ProjectPage.flows` and become v4 in memory; ambiguous dual ownership fails
-  closed. Migration failure preserves the original record and does not write
-  partial new state.
-- Compatibility projections are forbidden from calling legacy repository
-  `commit`, `saveDraft`, or application reducers.
+- Repository open/load validates the current schema version and Registry lock.
+  Unknown versions, records from other namespaces, incomplete entities, and
+  ambiguous Flow ownership fail closed with `PROJECT_REPOSITORY_CORRUPT`.
+  Load never scans, rewrites, or deletes the rejected source record.
 
 ## 6. Error Matrix
 
@@ -335,24 +328,30 @@ interface SlotItem {
 
 ## 7. Tests Required
 
-- Model unit tests cover schema invariants, migration, every Operation, semantic
+- Model unit tests cover current schema invariants, every Operation, semantic
   inverse, command expansion, multi-action final validation, merge, undo/redo,
   no-op revisions, structural sharing, and performance at 100/500/2000 nodes.
 - Repository tests cover atomic multi-key create/commit, checksums, missing
   entities, CAS across connections, command receipt replay, quota/partial
-  failure, save-during-edit, and legacy migration preservation.
+  failure, save-during-edit, strict version rejection, and source-record
+  preservation.
 - Architecture boundary tests prove the Domain Engine does not import
   Repository, Vue, Designer, Workbench, current-page, or saving contracts and
-  that the production Workbench controller cannot import legacy reducers.
-- Workbench boundary tests prove Designer and Page Manager legacy operations
-  become Project Commands and that projected legacy data cannot become the
-  state source.
+  that the production Workbench controller cannot import a parallel reducer or
+  page model. Hard-cut boundary tests also assert removed schema, migration,
+  compatibility, repository, session, and codec modules do not return, and
+  `ProjectHistory` does not expose a second document alias beside `snapshot`.
+  The Workbench boundary recursively scans ConfigForm source, tests, scripts,
+  templates, and public declarations for exact legacy symbols and asserts all
+  removed module and directory paths stay absent.
+- Workbench boundary tests prove Design and Page Manager intents become Project
+  Commands and no intermediate structural model can become the state source.
 - Browser tests prove one visual design action advances one project revision,
   Undo/Redo use ProjectDomainEngine through ProjectEditorSession, page
   switching does not create history, and
   Preview/Export observe the same project revision.
-- Designer regression tests cover every public Canvas host that accepts
-  `DesignerCommandControl.previewRuntime`. Repeated pointer moves within the
+- Designer regression tests cover the controlled Canvas command and preview
+  contract. Repeated pointer moves within the
   same normalized drop target call that projection once, while a target change
   creates a new projection.
 - Browser tests click the geometry of real Design controls and prove that focus
@@ -373,8 +372,8 @@ interface SlotItem {
 Wrong:
 
 ```ts
-workspaceSession.dispatch({ type: 'page.model', operation })
-application = applyWorkspaceApplicationOperation(application, updatePage)
+secondaryPageStore.replace(currentPage)
+designerHistory.push(structuredClone(pageTree))
 ```
 
 Correct:
@@ -392,8 +391,7 @@ projectEditorSession.execute({
 })
 ```
 
-Wrong: watch a generated file or DesignerDocument and parse it back into the
-project.
+Wrong: watch generated Config or Source and parse it back into the project.
 
 Correct: derive Design, Preview, Config, Source, and file-tree projections from
 the current immutable ProjectSnapshot.
@@ -448,7 +446,7 @@ function isExportSnapshotStale(
   and Flow editor positions. Runtime-compatible numeric `span` may also be
   promoted, but it does not replace relation metadata.
 - `__proto__`, `constructor`, and `prototype` are rejected by one shared Config
-  object-key guard in both generation and legacy parsing.
+  object-key guard in both generation and current Model parsing.
 - Object URLs are revoked on a later task after the anchor click. Synchronous
   revocation is forbidden because browsers may not have consumed the URL yet.
 

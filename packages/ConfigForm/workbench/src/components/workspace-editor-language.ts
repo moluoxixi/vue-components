@@ -3,7 +3,6 @@ export const WORKBENCH_MODULES = [
   '@moluoxixi/config-form',
   '@moluoxixi/config-form/renderer',
   '@moluoxixi/config-form-headless',
-  '@moluoxixi/config-form-designer',
   '@moluoxixi/config-form-element',
   '@moluoxixi/config-form-antd-vue',
   './form.config',
@@ -132,46 +131,6 @@ function clampOffset(source: string, offset: number): number {
 }
 
 export const WORKBENCH_TYPE_DECLARATIONS = `
-declare module '@moluoxixi/config-form-designer' {
-  export interface DesignerFormSettings {
-    columns?: number
-    fieldSpan?: number
-    gap?: string
-    inline?: boolean
-    labelPosition?: 'left' | 'top'
-    readonly?: boolean
-    responsive?: Record<string, unknown>
-  }
-  export interface DesignerFieldNode {
-    id: string
-    kind: 'field'
-    material: string
-    field: string
-    label?: string
-    span?: number
-    defaultValue?: unknown
-    props?: Record<string, unknown>
-    extensions?: Record<string, unknown>
-    conditions?: Record<string, unknown>
-    reactions?: unknown[]
-    validation?: unknown
-    validateOn?: 'submit' | 'blur' | 'change' | Array<'submit' | 'blur' | 'change'>
-  }
-  export interface DesignerContainerNode {
-    id: string
-    kind: 'container'
-    material: string
-    slots: Record<string, Array<DesignerFieldNode | DesignerContainerNode>>
-    extensions?: Record<string, unknown>
-    conditions?: Record<string, unknown>
-    reactions?: unknown[]
-  }
-  export interface DesignerDocument {
-    version: 1
-    form: DesignerFormSettings
-    nodes: Array<DesignerFieldNode | DesignerContainerNode>
-  }
-}
 declare module 'vue' {
   export interface Ref<T> { value: T }
   export interface ComputedRef<T> { readonly value: T }

@@ -21,7 +21,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'select' }) => ({
         id,
         kind: 'field',
-        material: 'element.select',
+        component: 'element.select',
         field,
         label: 'Select',
         props: { options: shared.defaultOptions(), placeholder: '' },

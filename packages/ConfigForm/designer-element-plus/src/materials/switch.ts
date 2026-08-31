@@ -18,7 +18,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'switch' }) => ({
         id,
         kind: 'field',
-        material: 'element.switch',
+        component: 'element.switch',
         field,
         label: 'Switch',
         defaultValue: false,

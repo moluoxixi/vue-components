@@ -2,6 +2,7 @@ import type {
   ConfigFormComponentRegistration,
   ConfigFormComponentRegistry,
 } from '@moluoxixi/config-form-headless'
+import type { NodeSubgraph, PageNode } from '@moluoxixi/config-form-model'
 import type {
   DesignerMaterialDefinition,
   DesignerPropertyControlDefinition,
@@ -10,10 +11,19 @@ import type {
   DesignerRegistryOptions,
   DesignerSimpleSetterControl,
 } from './types'
-import { DesignerRegistryError } from '../document'
+import { DesignerRegistryError } from '../graph'
 
 const UNSAFE_COMPONENT_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 const UNSAFE_EVENT_NAMES = new Set(['__proto__', 'constructor', 'prototype'])
+
+function normalizeNode(node: PageNode | Record<string, unknown>): PageNode {
+  return {
+    ...structuredClone(node),
+    props: structuredClone((node.props as PageNode['props'] | undefined) ?? {}),
+    events: structuredClone((node.events as PageNode['events'] | undefined) ?? {}),
+    bindings: structuredClone((node.bindings as PageNode['bindings'] | undefined) ?? {}),
+  } as PageNode
+}
 
 function isControlledAdapter(value: unknown): boolean {
   return typeof value === 'string'
@@ -155,12 +165,12 @@ function assertMaterialParents(
 ): void {
   for (const placement of definition.allowedParents ?? []) {
     const parent = materials.get(placement.material)
-    const slot = parent?.kind === 'container'
+    const slot = parent?.kind === 'layout'
       ? parent.slots.find(candidate => candidate.name === placement.slot)
       : undefined
     const acceptsKind = !slot?.accepts || slot.accepts.includes(definition.kind)
     const acceptsMaterial = !slot?.materials || slot.materials.includes(definition.key)
-    if (!parent || parent.kind !== 'container' || !slot || !acceptsKind || !acceptsMaterial) {
+    if (!parent || parent.kind !== 'layout' || !slot || !acceptsKind || !acceptsMaterial) {
       throw new DesignerRegistryError(
         'DESIGNER_MATERIAL_PARENT_INVALID',
         `Designer material ${definition.key} references an incompatible parent placement`,
@@ -249,7 +259,7 @@ export function createDesignerRegistry(
     getValidator: key => validators.get(key),
     listMaterials: () => [...materials.values()],
     listValidators: () => [...validators.keys()],
-    createNode: (key, context) => {
+    createSubgraph: (key, context) => {
       const material = materials.get(key)
       if (!material) {
         throw new DesignerRegistryError(
@@ -258,15 +268,30 @@ export function createDesignerRegistry(
           { key },
         )
       }
-      const node = material.createNode(context)
-      if (node.material !== material.key || node.kind !== material.kind || node.id !== context.id) {
+      const created = material.createNode(context)
+      const subgraph: NodeSubgraph = 'root' in created
+        ? {
+            root: structuredClone(created.root),
+            nodesById: Object.fromEntries(Object.entries(created.nodesById).map(([id, node]) => [id, normalizeNode(node)])),
+          }
+        : {
+            root: [{ nodeId: created.id, placement: {} }],
+            nodesById: { [created.id]: normalizeNode(created) },
+          }
+      const root = subgraph.root[0]
+      const node = root ? subgraph.nodesById[root.nodeId] : undefined
+      if (!node
+        || subgraph.root.length !== 1
+        || node.component !== material.key
+        || node.kind !== material.kind
+        || node.id !== context.id) {
         throw new DesignerRegistryError(
           'DESIGNER_MATERIAL_FACTORY_INVALID',
           `Designer material factory returned an invalid node: ${key}`,
-          { key, nodeId: node.id },
+          { key, nodeId: node?.id },
         )
       }
-      return node
+      return subgraph
     },
   }
 }

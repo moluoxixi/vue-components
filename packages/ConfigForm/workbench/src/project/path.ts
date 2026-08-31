@@ -1,11 +1,11 @@
 import type { ProjectPath } from './types'
-import { WorkspaceProjectError } from './errors'
+import { WorkbenchProjectError } from './errors'
 
 const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i
 const DRIVE_PREFIX = /^[a-z]:/i
 
 function invalidPath(path: string, reason: string): never {
-  throw new WorkspaceProjectError(
+  throw new WorkbenchProjectError(
     'PROJECT_PATH_INVALID',
     `[config-form-workbench] invalid project path "${path}": ${reason}`,
   )

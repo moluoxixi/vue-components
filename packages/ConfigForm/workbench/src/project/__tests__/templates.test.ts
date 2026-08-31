@@ -1,104 +1,82 @@
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { createProjectArchive } from '../export/archive'
-import { normalizeProjectPath, safeProjectSlug } from '../path'
+import { createWorkspaceArchive } from '../export/archive'
+import { normalizeProjectPath } from '../path'
 import {
-  BUILT_IN_WORKSPACE_TEMPLATES,
-  createBuiltInWorkspaceProject,
-  createWorkspaceTemplateRegistry,
-  resetBuiltInWorkspaceProject,
+  BUILT_IN_PROJECT_TEMPLATES,
+  createBuiltInProject,
+  createBuiltInProjectPage,
+  createProjectTemplateRegistry,
 } from '../templates'
-import { FIXED_TIME } from './fixtures'
+import { createRegistryLockFixture } from './fixtures'
 
-function createProject(templateId: string) {
-  return createBuiltInWorkspaceProject(templateId, {
-    createdAt: FIXED_TIME,
+function createProject(templateId: 'antd-profile' | 'element-profile') {
+  const adapter = templateId === 'element-profile' ? 'element-plus' : 'antd-vue'
+  return createBuiltInProject(templateId, {
     id: `${templateId}-fixture`,
     name: `${templateId} fixture`,
-  })
+  }, createRegistryLockFixture(adapter))
 }
 
-describe('workspace templates', () => {
+describe('project templates', () => {
   it('registers deterministic Element Plus and Ant Design Vue templates', () => {
-    expect([...BUILT_IN_WORKSPACE_TEMPLATES.keys()]).toEqual(['element-profile', 'antd-profile'])
+    expect([...BUILT_IN_PROJECT_TEMPLATES.keys()]).toEqual(['element-profile', 'antd-profile'])
 
     const element = createProject('element-profile')
     const antd = createProject('antd-profile')
-    expect(element.manifest.adapter).toBe('element-plus')
-    expect(antd.manifest.adapter).toBe('antd-vue')
-    expect(element.files[normalizeProjectPath('src/form.designer.json')]).toMatchObject({
-      kind: 'text',
-      language: 'json',
+    expect(element.registryLock.adapter).toBe('element-plus')
+    expect(antd.registryLock.adapter).toBe('antd-vue')
+    expect(element).toMatchObject({
+      schemaVersion: 4,
+      id: 'element-profile-fixture',
+      homePageId: 'home',
+      pageOrder: ['home'],
     })
-    const elementModel = JSON.parse((element.files[normalizeProjectPath('src/form.designer.json')] as { content: string }).content)
-    expect(elementModel).toMatchObject({
+    expect(element.pagesById.home?.graph).toMatchObject({
+      version: 2,
       form: {
         responsive: {
           mobile: { columns: 1, fieldSpan: 1 },
           tablet: { columns: 12, fieldSpan: 12 },
         },
       },
-      id: 'element-profile-fixture',
-      name: 'element-profile fixture',
-      version: 1,
     })
-    expect(elementModel.nodes).toEqual(expect.arrayContaining([
+    expect(Object.values(element.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
       expect.objectContaining({ component: 'element.input', events: {}, bindings: {} }),
     ]))
-    const elementConfig = (element.files[normalizeProjectPath('src/form.config.ts')] as { content: string }).content
-    const antdConfig = (antd.files[normalizeProjectPath('src/form.config.ts')] as { content: string }).content
-    expect(element.manifest.generatedFormModule).toBe(normalizeProjectPath('src/form.config.ts'))
-    expect(antd.manifest.generatedFormModule).toBe(normalizeProjectPath('src/form.config.ts'))
-    expect(element.files[normalizeProjectPath('src/form.ts')]).toBeUndefined()
-    expect(elementConfig).toContain('defineFields<PageFormValues>()')
-    expect(elementConfig).toContain('component: "text"')
-    expect(antdConfig).toContain('component: "boolean"')
+    expect(Object.values(antd.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ component: 'antd.switch' }),
+    ]))
   })
 
-  it('uses registry versions instead of workspace or catalog protocols', () => {
-    for (const templateId of BUILT_IN_WORKSPACE_TEMPLATES.keys()) {
-      const project = createProject(templateId)
-      const manifest = (project.files[normalizeProjectPath('package.json')] as { content: string }).content
-      expect(manifest).not.toMatch(/workspace:|catalog:/)
-      expect(JSON.parse(manifest)).toMatchObject({
-        packageManager: 'pnpm@10.29.3',
-        private: true,
-        scripts: { build: expect.stringContaining('vite build') },
-      })
-    }
+  it('creates standalone normalized pages without project metadata', () => {
+    const page = createBuiltInProjectPage('element-profile', {
+      id: 'settings',
+      name: 'Settings',
+      route: '/settings',
+    })
+
+    expect(page).toMatchObject({ id: 'settings', name: 'Settings', route: '/settings' })
+    expect(page.graph.root).toHaveLength(3)
+    expect(page).not.toHaveProperty('registryLock')
   })
 
   it('rejects duplicate or malformed template ids', () => {
-    const template = BUILT_IN_WORKSPACE_TEMPLATES.get('element-profile')!
-    expect(() => createWorkspaceTemplateRegistry([template, template])).toThrow('already exists')
-    expect(() => createWorkspaceTemplateRegistry([{ ...template, id: '../unsafe' }])).toThrow('invalid template id')
+    const template = BUILT_IN_PROJECT_TEMPLATES.get('element-profile')!
+    expect(() => createProjectTemplateRegistry([template, template])).toThrow('already exists')
+    expect(() => createProjectTemplateRegistry([{ ...template, id: '../unsafe' }])).toThrow('invalid template id')
   })
 
-  it('resets a project through a new revision of its original template', () => {
-    const project = createProject('element-profile')
-    project.files[normalizeProjectPath('src/App.vue')] = { content: 'changed', kind: 'text', language: 'vue' }
-    const reset = resetBuiltInWorkspaceProject(project, '2026-08-27T09:00:00.000Z')
+  it('archives an explicit readonly generated file set under one safe root', async () => {
+    const entry = normalizeProjectPath('src/main.ts')
+    const archive = unzipSync(await createWorkspaceArchive({
+      name: 'Element profile fixture',
+      files: {
+        [entry]: { content: 'export {}\n', kind: 'text', language: 'typescript' },
+      },
+    }))
 
-    expect(reset.revision).toBe(2)
-    expect(reset.updatedAt).toBe('2026-08-27T09:00:00.000Z')
-    expect((reset.files[normalizeProjectPath('src/App.vue')] as { content: string }).content).not.toBe('changed')
-  })
-
-  it('exports every project file under one safe ZIP root', async () => {
-    const project = createProject('element-profile')
-    const archive = unzipSync(await createProjectArchive(project))
-    const root = safeProjectSlug(project.name)
-
-    expect(Object.keys(archive).sort()).toEqual(
-      Object.keys(project.files).map(path => `${root}/${path}`).sort(),
-    )
-    for (const [path, file] of Object.entries(project.files)) {
-      const data = archive[`${root}/${path}`]
-      expect(data).toBeDefined()
-      if (file.kind === 'text')
-        expect(strFromU8(data!)).toBe(file.content)
-      else
-        expect(data).toEqual(file.content)
-    }
+    expect(Object.keys(archive)).toEqual(['element-profile-fixture/src/main.ts'])
+    expect(strFromU8(archive['element-profile-fixture/src/main.ts']!)).toBe('export {}\n')
   })
 })

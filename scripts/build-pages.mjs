@@ -109,7 +109,6 @@ function verifyPagesOutput(basePath) {
     'components/copy-text.html',
     'components-playground/index.html',
     'config-form-playground/index.html',
-    'config-form-playground/designer.html',
     'vue-playground/index.html',
     'vue-playground/runtime/moluoxixi-components.js',
     'vue-playground/runtime/moluoxixi-components.css',

@@ -2,7 +2,7 @@ import type { ConfigFormFlowActionRegistry } from '@moluoxixi/config-form-core'
 
 /**
  * The workbench only exposes explicitly registered, side-effect-safe actions.
- * Integrations can replace this registry at the application boundary; the
+ * Integrations can replace this registry at the host boundary; the
  * page model stores only the action ref and JSON input, never a function.
  */
 export function createWorkbenchFlowActionRegistry(

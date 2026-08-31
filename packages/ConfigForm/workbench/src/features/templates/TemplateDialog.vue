@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { WorkspaceTemplate } from '../../project'
+import type { ProjectTemplate } from '../../project'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, useTemplateRef } from 'vue'
 import { useWorkbenchDialogFocus } from '../../components/use-dialog-focus'
@@ -9,7 +9,7 @@ const props = defineProps<{
   busy?: boolean
   locale?: DesignerLocaleOptions
   open: boolean
-  templates: WorkspaceTemplate[]
+  templates: ProjectTemplate[]
 }>()
 
 const emit = defineEmits<{

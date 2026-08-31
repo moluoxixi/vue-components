@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
+import type { PageNode } from '@moluoxixi/config-form-model'
 import type { DesignerPropertySetterDefinition } from '../registry'
-import type { DesignerNode } from '../document'
 import { Minus, Plus } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
@@ -16,7 +16,7 @@ const props = defineProps<{
   value: unknown
   inheritedValue?: unknown
   readonly?: boolean
-  node?: DesignerNode
+  node?: PageNode
   fieldOptions?: string[]
   reactionIds?: string[]
   validatorOptions?: string[]

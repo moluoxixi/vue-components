@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type {
-  DesignerCommand,
-  DesignerDocument,
   DesignerRuntimeGeometrySnapshot,
   DesignerRuntimePointerPayload,
   DesignerRuntimeRect,
 } from '@moluoxixi/config-form-designer'
+import type { ProjectCommand } from '@moluoxixi/config-form-model'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
 import type { CSSProperties } from 'vue'
 import type { WorkbenchAdapterId } from '../adapters'
@@ -27,14 +26,13 @@ const props = defineProps<{
   candidateId?: string
   candidateUsesFallback?: boolean
   canvasWidth?: number
-  command?: DesignerCommand
-  document: DesignerDocument
+  command?: ProjectCommand
   locale: string
   modelValue: Record<string, unknown>
   namespace?: string
   reactionProps: Record<string, Record<string, unknown>>
   reactionStates: Record<string, Record<string, unknown>>
-  resolveCompilation: (command?: DesignerCommand, document?: DesignerDocument) => PageCompilation | undefined
+  resolveCompilation: (command?: ProjectCommand) => PageCompilation | undefined
   title: string
   variant: 'canvas' | 'drag-visual'
 }>()
@@ -56,7 +54,7 @@ const sessionId = typeof crypto.randomUUID === 'function'
   ? crypto.randomUUID()
   : `design-runtime-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 const compilation = computed(() => (
-  props.resolveCompilation(props.command, props.document)
+  props.resolveCompilation(props.command)
   ?? props.resolveCompilation()
 ))
 const revision = computed(() => {
@@ -249,7 +247,6 @@ watch(
     props.candidateUsesFallback,
     props.canvasWidth,
     props.command,
-    props.document,
     props.locale,
     props.namespace,
     props.variant,

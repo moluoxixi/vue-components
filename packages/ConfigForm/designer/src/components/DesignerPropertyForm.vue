@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormComponentRegistry, ConfigFormFieldChangePayload } from '@moluoxixi/config-form-headless'
 import type { ConfigFormRendererField } from '@moluoxixi/config-form/renderer'
-import type { DesignerNode } from '../document'
+import type { PageNode } from '@moluoxixi/config-form-model'
 import type {
   DesignerPropertyControlDefinition,
   DesignerPropertyControlRegistry,
@@ -25,7 +25,7 @@ const props = defineProps<{
   components?: ConfigFormComponentRegistry
   controls?: DesignerPropertyControlRegistry
   readonly?: boolean
-  node?: DesignerNode
+  node?: PageNode
   fieldOptions?: string[]
   reactionIds?: string[]
   validatorOptions?: string[]

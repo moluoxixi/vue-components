@@ -18,7 +18,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'time' }) => ({
         id,
         kind: 'field',
-        material: 'element.time',
+        component: 'element.time',
         field,
         label: 'Time',
         props: { valueFormat: 'HH:mm:ss', placeholder: '' },

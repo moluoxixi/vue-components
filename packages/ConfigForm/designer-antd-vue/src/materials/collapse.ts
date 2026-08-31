@@ -1,3 +1,4 @@
+import type { DesignerNodeSubgraphTemplate } from '@moluoxixi/config-form-designer'
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
 import * as s from '../material-shared'
 
@@ -9,31 +10,33 @@ export default defineDesignerMaterialModule({
       key: 'antd.collapse',
       source: s.antdSource('div', 'a-collapse'),
       version: 1,
-      kind: 'container',
+      kind: 'layout',
       title: 'Collapse',
       category: 'Layout',
       icon: s.ListCollapse,
-      runtime: { component: s.Collapse, designerComponent: s.AntdCollapsePreview },
+      runtime: { component: s.Collapse },
       events: [{ name: 'change', title: 'Expanded items change' }],
       setters: [s.propSetter('accordion', 'Accordion', 'boolean')],
-      slots: [{ name: 'default', title: 'Items', accepts: ['container'], materials: ['antd.collapse-item'] }],
-      createNode: ({ id }) => {
+      slots: [{ name: 'default', title: 'Items', accepts: ['layout'], materials: ['antd.collapse-item'] }],
+      createNode: ({ id }): DesignerNodeSubgraphTemplate => {
         const itemId = `${id}-item-1`
         return {
-          id,
-          kind: 'container',
-          material: 'antd.collapse',
-          props: { accordion: false, activeKey: [itemId] },
-          slots: {
-            default: [
-              {
-                id: itemId,
-                kind: 'container',
-                material: 'antd.collapse-item',
-                props: { header: 'Item 1', key: itemId },
-                slots: { default: [] },
-              },
-            ],
+          root: [{ nodeId: id, placement: {} }],
+          nodesById: {
+            [id]: {
+              id,
+              kind: 'layout',
+              component: 'antd.collapse',
+              props: { accordion: false, activeKey: [itemId] },
+              slots: { default: [{ nodeId: itemId, placement: {} }] },
+            },
+            [itemId]: {
+              id: itemId,
+              kind: 'layout',
+              component: 'antd.collapse-item',
+              props: { header: 'Item 1', key: itemId },
+              slots: { default: [] },
+            },
           },
         }
       },

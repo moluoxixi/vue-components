@@ -21,7 +21,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'checkbox' }) => ({
         id,
         kind: 'field',
-        material: 'element.checkbox',
+        component: 'element.checkbox',
         field,
         label: 'Checkbox',
         defaultValue: [],

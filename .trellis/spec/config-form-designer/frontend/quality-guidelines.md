@@ -22,7 +22,7 @@ Questions to answer:
 
 ## Designer Drag Preview And Panel Visibility
 
-The Design canvas must project a drag candidate into a temporary `DesignerDocument`, then render it through the same
+The Design canvas must project a drag candidate into a `ProjectDraftSnapshot`, then render it through the same
 `RuntimeSurface` and Component Registry used after commit. Candidate opacity and editor feedback belong to the editor
 bridge or overlay; do not replace the candidate with a hand-built input, card, or size approximation. Pointer up submits
 one semantic command. Pointer cancel, readonly teardown, and unmount discard the projection without changing host state.

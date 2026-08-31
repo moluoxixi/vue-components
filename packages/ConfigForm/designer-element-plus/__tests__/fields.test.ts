@@ -1,4 +1,4 @@
-import type { DesignerFieldNode } from '@moluoxixi/config-form-designer'
+import type { FieldNode } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ElCheckbox, ElOption, ElRadio, ElSelect } from 'element-plus'
 import { describe, expect, it, vi } from 'vitest'
@@ -51,12 +51,14 @@ describe('element plus designer fields', () => {
         ],
       },
     })
-    const node: DesignerFieldNode = {
+    const node: FieldNode = {
       id: 'environment',
       kind: 'field',
-      material: 'element.select',
+      component: 'element.select',
       field: 'environment',
       props: { optionSource: { kind: 'dictionary', key: 'environments' } },
+      events: {},
+      bindings: {},
     }
     const wrapper = mount(ElementChoiceDefaultSetter, {
       global: { provide: { [ELEMENT_PLUS_OPTION_RESOLVER_KEY as symbol]: context } },

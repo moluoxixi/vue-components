@@ -1,5 +1,11 @@
 # ConfigForm IDE 架构重构设计
 
+## 旧契约 Hard Cut（2026-08-31）
+
+用户确认不再为旧契约承担兼容成本。Designer 直接消费当前页面的规范化 `PageGraph`，只提交带 `pageId` 的 `ProjectCommand`；Workbench、Pages、Templates、RuntimeHost 和 Export 直接消费 `ProjectDocument / ProjectSnapshot / PageCompilation`。旧 `WorkspaceApplication`、`LowCodePageModel`、`DesignerDocument` 以及双向转换器、旧 Repository、旧 Session、旧 compiler/config codec 不再位于任何产品依赖图中。
+
+旧数据升级不属于产品运行时职责。若发布前确有历史开发数据需要保留，应在仓库外执行一次性迁移并只输出当前 `ProjectDocument`；产品包不得导出或调用旧 schema。验收以生产源码、测试源码、公开声明和生成模板的零旧符号引用为硬门禁。
+
 ## 1. 设计结论
 
 当前产品数据流是正确的，但“页面模型由 Designer 持有”的实现仍是过渡架构。长期生产版本采用项目级逻辑聚合合同：
@@ -22,7 +28,7 @@ ProjectDocument -> Config Projection -> defineFields / JSON / Tree
 
 以下实现边界需要重建：
 
-- `ProjectDocument` 是唯一业务数据模型；它不保存 Repository revision、实体 revision、创建/更新时间或生成文件。`ProjectSnapshot` 只包裹 document、编辑版本和内容哈希；`PersistedProjectEnvelope` 只包裹 document 与持久化元数据，二者都不得形成第二套结构表示。`LowCodePageModel` 与 `DesignerDocument` 都只是历史输入或旧 API 投影。
+- `ProjectDocument` 是唯一业务数据模型；它不保存 Repository revision、实体 revision、创建/更新时间或生成文件。`ProjectSnapshot` 只包裹 document、编辑版本和内容哈希；`PersistedProjectEnvelope` 只包裹 document 与持久化元数据，二者都不得形成第二套结构表示。非当前 schema 不属于产品输入边界。
 - 领域合同位于不依赖 Vue、Designer、Workbench 或 UI library 的 Core/Model 层。
 - `PageGraph v2` 使用 `root: SlotItem[] + nodesById + slots: Record<SlotName, SlotItem[]>` 的规范化结构，默认子节点统一进入 `slots.default`。`SlotItem` 同时拥有 node id 与父子关系上的 placement；Grid span、Flex basis/order、Tab item metadata 等不得继续污染通用节点字段。
 - Designer 只拥有选择、拖拽候选、overlay 和面板等瞬态 UI 状态，不拥有页面结构历史。
@@ -93,7 +99,7 @@ interface ProjectEditorSession {
 - `ProjectEditorSession` 是 Workbench application facade，组合 Domain Engine 与 `ProjectSaveCoordinator`；其公开状态使用 `{ project, history, persistence }` 组合而不是继承 `ProjectSnapshot`。后者独立拥有 `repositoryRevision`、saved cursor、CAS、commit receipt id、saving 和 persistence diagnostics。`editVersion`、`repositoryRevision`、`contentHash`、Registry fingerprint 与 compiler version 是不同维度，禁止复用一个 `revision` 字段表达。
 - 当前页属于 Design/Workbench navigation session。切换页面不调用 Domain Engine，不进入 ProjectSnapshot，也不产生 revision/history。
 - Repository 允许把 `ProjectManifest`、`PageDocument` 和 `ResourceDocument` 分实体保存；页面 Flow 由 `ProjectPage.flows` 持有，与视觉 `PageGraph` 同级并随 Page 实体保存。Manifest 在一个 `repositoryRevision` 下引用带 checksum 的不可变实体版本，未变化实体可以复用较早的 entity revision。一次 load 必须组装并校验完整 `PersistedProjectEnvelope`，一次跨实体 commit 必须保持原子性。Domain Engine 不读取 entity revision 或持久化时间戳。
-- Repository commit 使用 CAS；存储 envelope 必须包含 schema version、project revision、实体 revision/checksum 和迁移状态。进程崩溃、配额失败或部分写入时不得暴露混合 revision。
+- Repository commit 使用 CAS；存储 envelope 必须包含 schema version、project revision 和实体 revision/checksum。进程崩溃、配额失败或部分写入时不得暴露混合 revision。
 - Command 必须携带稳定 id。Command resolver 可在未发布的草稿上展开多个语义 action，但只允许完整 OperationBatch 通过最终 Graph/Registry/Flow 校验；不得因中间暂态非法而拒绝最终合法的原子命令。
 - Command 必须 JSON-safe。`node.patch` 使用显式 `set/unset`，禁止用 `undefined` 表达删除；同一 key 不得同时 set/unset。
 - Transaction 是已解析的规范 OperationBatch，不再承担 UI 意图解释。Repository commit 使用独立稳定 commit id 提供幂等保护；多标签页冲突返回结构化 revision diagnostic，不静默覆盖。
@@ -102,7 +108,7 @@ interface ProjectEditorSession {
 - history 保存 `AppliedProjectTransaction`、semantic inverse、editVersion 和 transaction metadata，不保存 repositoryRevision、未解析 Command 或完整 ProjectDocument 深拷贝。
 - 页面管理与页面内部编辑可处于同一个事务中；正常路径禁止 `update-page-model` 这类整页替换操作。
 - 失败操作不改变 model、history 或 revision；批量操作全量原子回滚。
-- 旧 `WorkspaceApplication`/`LowCodePageModel` 只在 repository ingress 做确定性迁移，迁移完成后不进入业务层。
+- Repository ingress 只解析当前 `ProjectDocument` schema；版本不匹配或结构不完整时 fail closed。
 
 ### 3.2 Component Registry
 
@@ -157,7 +163,7 @@ Design Session 是 ProjectEditorSession/ProjectDomainEngine 的命令客户端�
 - candidate 与 committed snapshot 都通过同一个 Runtime Compiler；overlay 只负责选中框、drop indicator、resize handle 和 node actions。
 - pointer/keyboard drop 最终只提交一次 Project Command，并只产生一个 AppliedProjectTransaction。
 - 不维护 `DesignerHistory`；Undo/Redo 直接调用 ProjectEditorSession。
-- 旧 `DesignerCommand` 仅在 compatibility adapter 中转换为 `ProjectCommandAction`，不拥有 history，也不能把旧模型写回 Repository。
+- `DesignSurface` 只读取 `PageGraph` 并通过受控桥接提交 `ProjectCommand`，不维护第二套结构操作或历史。
 
 ### 3.4 Semantic Compiler、Runtime Backend、RuntimeHost 与运行实例
 
@@ -242,7 +248,7 @@ interface ExportSession {
 - Source Backend 只消费 CanonicalProjectIR 和 Source resolver，生成完整 standalone Vue 工程、真实文件树与 `package.json`；不允许重新解释 ProjectDocument，也不反向解析 Source/Config。
 - 生成器输出统一的 `Record<ProjectPath, WorkspaceFile>`，单文件查看、复制、下载和 ZIP 下载全部读取同一快照。
 - 生成文件不写回 ProjectDocument；未来用户资产单独存入 `resources/assets`，不能与派生源码混用。
-- Generator 使用结构化 AST/安全序列化 helper 处理代码和 HTML 敏感字符；Babel parser 只用于 legacy import/migration，不作为规范 Config Model。
+- Generator 使用结构化 AST/安全序列化 helper 处理代码和 HTML 敏感字符；Babel parser 只用于验证生成的 TypeScript，不作为规范 Config Model。
 
 ### 3.8 Workbench UI State
 
@@ -250,25 +256,18 @@ interface ExportSession {
 
 `WorkbenchShell` 只组合各 Service/Session 的 Vue context 和 UI，不执行 Transaction、Flow 调度或生成 Source。
 
-## 4. 规范模型与兼容迁移
+## 4. 规范模型与严格输入边界
 
 ### 4.1 正常编辑模型
 
-新增版本化 `ProjectDocument` 作为领域内容的标准 wire format。Repository 通过 `PersistedProjectEnvelope` 附加持久化元数据并可按实体存储，但不得形成另一套业务模型。页面使用规范化 `PageGraph v2`，root、default slot 与 named slot 都保存 `SlotItem`，节点实体只出现一次。`LowCodePageModel v1` 不再作为正常编辑模型，只作为迁移输入。
+版本化 `ProjectDocument` 是领域内容的唯一标准 wire format。Repository 通过 `PersistedProjectEnvelope` 附加持久化元数据并可按实体存储，但不得形成另一套业务模型。页面使用规范化 `PageGraph v2`，root、default slot 与 named slot 都保存 `SlotItem`，节点实体只出现一次。
 
-`LowCodePageModel` / `DesignerDocument` 的用途收敛为：
+### 4.2 严格拒绝策略
 
-1. 历史 artifact 的一次性读取与迁移；
-2. 已发布旧公共 API 的 compatibility adapter；
-3. 不参与 Workbench 正常编辑、Runtime 编译、Preview、Config 导出和 Source 导出。
-
-### 4.2 数据迁移
-
-- 打开旧项目时在 repository boundary 完成一次确定性迁移：递归树转 `nodesById`，`children` 转 `slots.default`，生成文件从持久模型剥离。
-- 开发期 `ProjectDocument v3` 在 repository boundary 确定性迁移为 v4：`graph.flows` 移到同一 Page entity 的 `ProjectPage.flows`；两处同时存在时拒绝迁移，禁止猜测覆盖顺序。
-- 迁移失败保留原始记录，不写入部分新格式状态。
-- 新旧 API 可在一个发布周期内并行，但 compatibility 包只能依赖新领域层，领域层禁止反向依赖 compatibility。
-- 清理旧适配层前必须通过 legacy fixture、导出工程和包边界 smoke test。
+- Repository 只打开当前 schema version 且 Registry lock 完整的记录。
+- 未知版本、异 namespace、缺失实体、checksum 漂移或双重 Flow 所有权都返回 `PROJECT_REPOSITORY_CORRUPT`。
+- 拒绝的记录不会被扫描后重写、删除或投影；原始数据保持不变。
+- 若发布前仍需保留历史开发数据，必须在仓库外一次性生成当前 `ProjectDocument`，产品包不提供转换 API。
 
 ## 5. 依赖方向
 
@@ -281,7 +280,6 @@ core model / schema / flow plan
              -> Config projection
         -> designer session + design adapters
         -> workbench services / UI
-        -> compatibility migration (ingress only)
 ```
 
 - Core/Model 不依赖 Vue、Renderer、Designer、Workbench 或 UI library。
@@ -292,7 +290,7 @@ core model / schema / flow plan
 
 ## 6. 关键不变量
 
-1. 任意项目或页面结构只能通过 `ProjectCommand -> OperationBatch -> Project Transaction Engine` 改变；compatibility adapter 只能产生 Command Action，不能直接维护状态。
+1. 任意项目或页面结构只能通过 `ProjectCommand -> OperationBatch -> Project Transaction Engine` 改变；不存在可直接维护第二份结构状态的适配层。
 2. PageGraph 中每个 node id 只对应一个实体；父子关系只存在于一个 slot 序列中。
 3. 任意可见 Design/Preview 节点都来自同一 `PageCompilation` 的 content identity、Registry component locks、compiler version 和 CanonicalPageIR node id/slot/placement；path 只由同一 root/slot 关系遍历派生。
 4. 同一 revision 的 Canvas 与 Preview 的 Runtime component、props、layout 语义和 slot 顺序相同；相同 presentation 下可见几何一致，不同 viewport 下只允许真实响应式差异；values、validation、Flow queue、DOM、Teleport 和副作用生命周期隔离。
@@ -316,7 +314,7 @@ core model / schema / flow plan
 
 ### 回滚策略
 
-- repository 在写入新格式前保留原始旧记录，迁移失败时可重新读取旧记录；正常业务层不保留双写或双模型开关。
+- Repository 拒绝无效记录时保持原始字节不变；产品业务层不保留双写、双模型或自动升级开关。
 - Project Store、Runtime Compiler、Export Service 各自完成契约测试后切换调用方，每次切换保持仓库可构建。
-- 任何阶段发现 Canvas/Preview parity、导出工程或迁移回归，回滚该次代码提交；不通过在运行时长期维护第二套架构规避问题。
-- 删除正常路径中的旧 `DesignerDocument` / `LowCodePageModel` 依赖必须独立验证，并在包边界 smoke test 通过后进行。
+- 任何阶段发现 Canvas/Preview parity 或导出工程回归，回滚该次代码提交；不通过在运行时长期维护第二套架构规避问题。
+- Hard cut 只能整体回滚，不通过恢复公开别名、迁移器或兼容投影来修复回归。

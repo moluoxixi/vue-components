@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { WorkspaceApplication } from '../project'
+import type { ProjectPage, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import type { WorkbenchLocaleId } from '../locale'
 import {
   Braces,
@@ -25,15 +25,16 @@ export type WorkbenchTheme = 'dark' | 'light'
 export type WorkbenchExportMode = 'source' | 'config'
 
 const props = defineProps<{
-  application?: WorkspaceApplication
+  project?: ReadonlyProjectDocument
   busy?: boolean
   configError?: string
-  currentPage?: WorkspaceApplication['pages'][number]
+  currentPage?: ProjectPage
   dirty?: boolean
   flowOpen?: boolean
   locale?: DesignerLocaleOptions
   localeId: WorkbenchLocaleId
   previewOpen?: boolean
+  repositoryRevision?: number
   statusLabel: string
   theme: WorkbenchTheme
 }>()
@@ -175,14 +176,14 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
       <strong>Workbench</strong>
     </div>
 
-    <div v-if="application && currentPage" class="workspace-context" :aria-label="locale.t('workbench.context', 'Current application and page')">
-      <span>{{ application.name }}</span>
+    <div v-if="project && currentPage" class="workspace-context" :aria-label="locale.t('workbench.context', 'Current project and page')">
+      <span>{{ project.name }}</span>
       <strong>{{ currentPage.name }}</strong>
     </div>
 
     <div class="topbar-actions">
       <button
-        v-if="application"
+        v-if="project"
         type="button"
         class="mobile-page-manager-button"
         :title="locale.t('pages.manage', 'Manage pages')"
@@ -191,8 +192,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
       >
         <Files :size="17" aria-hidden="true" />
       </button>
-      <span v-if="application" class="revision-state" :class="{ 'is-dirty': dirty }">
-        r{{ application.revision }} · {{ statusLabel }}
+      <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }">
+        r{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
       <button type="button" class="topbar-secondary-action" :title="locale.t('pages.new', 'New page')" :aria-label="locale.t('pages.new', 'New page')" @click="emit('newPage')">
         <Plus :size="17" aria-hidden="true" />
@@ -207,7 +208,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
       >
         <Save :size="17" aria-hidden="true" />
       </button>
-      <div v-if="application" class="export-menu">
+      <div v-if="project" class="export-menu">
         <button
           ref="exportTrigger"
           type="button"
@@ -233,7 +234,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
         </div>
       </div>
       <button
-        v-if="application"
+        v-if="project"
         type="button"
         class="topbar-secondary-action"
         :class="{ 'is-active': flowOpen }"
@@ -259,7 +260,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
         <Moon v-else :size="17" aria-hidden="true" />
       </button>
       <button
-        v-if="application"
+        v-if="project"
         type="button"
         class="preview-toggle-button"
         :title="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
@@ -282,10 +283,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
           <MoreHorizontal :size="18" aria-hidden="true" />
         </button>
         <div v-if="mobileMenuOpen" ref="mobileMenu" class="mobile-action-popover" role="menu" @keydown="handleMobileMenuKeydown">
-          <button v-if="application" type="button" role="menuitem" @click="chooseMobileAction('openPages')"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></button>
+          <button v-if="project" type="button" role="menuitem" @click="chooseMobileAction('openPages')"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('newPage')"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></button>
           <button type="button" role="menuitem" :disabled="!dirty || !!configError || busy" @click="chooseMobileAction('save')"><Save :size="15" aria-hidden="true" /><span>{{ locale.t('action.save', 'Save') }}</span></button>
-          <button v-if="application" type="button" role="menuitem" @click="chooseMobileAction('openFlow')"><Workflow :size="15" aria-hidden="true" /><span>{{ locale.t('flow.dialog.title', 'Event flow orchestration') }}</span></button>
+          <button v-if="project" type="button" role="menuitem" @click="chooseMobileAction('openFlow')"><Workflow :size="15" aria-hidden="true" /><span>{{ locale.t('flow.dialog.title', 'Event flow orchestration') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('toggleLocale')"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('toggleTheme')"><Sun v-if="theme === 'dark'" :size="15" aria-hidden="true" /><Moon v-else :size="15" aria-hidden="true" /><span>{{ theme === 'dark' ? locale.t('theme.useLight', 'Use light theme') : locale.t('theme.useDark', 'Use dark theme') }}</span></button>
         </div>

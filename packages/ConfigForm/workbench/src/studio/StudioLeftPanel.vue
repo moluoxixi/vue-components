@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type {
-  DesignerDocument,
   DesignerLocaleOptions,
   DesignerMaterialDefinition,
   DesignerRegistry,
   DesignerSelectionMode,
 } from '@moluoxixi/config-form-designer'
+import type { FormSettings, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import type { CSSProperties } from 'vue'
-import type { WorkspaceApplication } from '../project'
 import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom'
 import { Blocks, ChevronDown, ChevronUp, Files, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
@@ -25,9 +24,9 @@ export interface StudioLayerEntry {
 
 const props = defineProps<{
   activeView?: StudioLeftView
-  application: WorkspaceApplication
+  project: ReadonlyProjectDocument
   currentPageId: string
-  form: DesignerDocument['form']
+  form: FormSettings
   layers: StudioLayerEntry[]
   locale?: DesignerLocaleOptions
   materials: DesignerMaterialDefinition[]
@@ -225,12 +224,13 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
     emit('selectPage', pageId)
     return
   }
-  const current = props.application.pages.findIndex(page => page.id === pageId)
-  const next = navigationIndex(event, current, props.application.pages.length)
+  const pages = props.project.pageOrder.map(id => props.project.pagesById[id]!).filter(Boolean)
+  const current = pages.findIndex(page => page.id === pageId)
+  const next = navigationIndex(event, current, pages.length)
   if (next === undefined || next === current)
     return
   event.preventDefault()
-  const nextId = props.application.pages[next]!.id
+  const nextId = pages[next]!.id
   emit('selectPage', nextId)
   focusItem(pageList.value, 'pageId', nextId)
 }
@@ -351,23 +351,23 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-else class="designer-pages-panel">
-      <nav ref="pageList" class="designer-pages" role="listbox" :aria-label="locale.t('pages.application', 'Application pages')">
+      <nav ref="pageList" class="designer-pages" role="listbox" :aria-label="locale.t('pages.project', 'Project pages')">
         <button
-          v-for="page in application.pages"
-          :key="page.id"
+          v-for="pageId in project.pageOrder"
+          :key="pageId"
           type="button"
           role="option"
-          :aria-selected="page.id === currentPageId"
-          :aria-current="page.id === currentPageId ? 'page' : undefined"
-          :data-page-id="page.id"
-          :tabindex="page.id === currentPageId ? 0 : -1"
-          :class="{ 'is-current': page.id === currentPageId }"
-          @click="emit('selectPage', page.id)"
-          @keydown="handlePageKeydown($event, page.id)"
+          :aria-selected="pageId === currentPageId"
+          :aria-current="pageId === currentPageId ? 'page' : undefined"
+          :data-page-id="pageId"
+          :tabindex="pageId === currentPageId ? 0 : -1"
+          :class="{ 'is-current': pageId === currentPageId }"
+          @click="emit('selectPage', pageId)"
+          @keydown="handlePageKeydown($event, pageId)"
         >
           <Files :size="14" aria-hidden="true" />
-          <span>{{ page.name }}</span>
-          <small>{{ page.route }}</small>
+          <span>{{ project.pagesById[pageId]?.name }}</span>
+          <small>{{ project.pagesById[pageId]?.route }}</small>
         </button>
       </nav>
       <button type="button" class="manage-pages-button" @click="emit('managePages')">

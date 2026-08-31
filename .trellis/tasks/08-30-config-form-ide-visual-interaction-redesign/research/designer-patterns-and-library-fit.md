@@ -239,6 +239,6 @@ Workbench 因此显式传入 `eventEditor="flow"`；Designer 默认仍保留 `ac
 | 可复现构建系统 | toolchain/generator version 属于 artifact identity；一次 build 固定全部输出 | 一个 ExportSnapshot 同时供应 Source、Config、JSON/Tree、单文件和 ZIP | 禁止局部刷新造成跨 revision 混装 |
 | immutable snapshot / event-sourced store | 历史产物只能读取，暴露 buffer 不能反向改写历史 | retained `Uint8Array` 不直接暴露；每次读取返回防御性副本 | 外部 mutation 不能改变后续下载或 ZIP |
 
-Config authoring projection 也按同一原则补齐：Project schemaVersion、Registry lock、graph version/props、完整关系 placement、节点 metadata 与 Flow editor position 都保留；Runtime `span` 只是兼容投影。危险对象键由生成端和 legacy parser 的同一 guard 拒绝，避免 `__proto__` 等对象字面量语义进入产物。
+Config authoring projection 也按同一原则补齐：Project schemaVersion、Registry lock、graph version/props、完整关系 placement、节点 metadata 与 Flow editor position 都保留；Runtime `span` 只是兼容投影。危险对象键由生成端和当前 Model schema 的同一 guard 拒绝，避免 `__proto__` 等对象字面量语义进入产物。
 
 验证不是字符串快照：binary 断言覆盖源 buffer、读取 buffer 和 ZIP 三个观察点；Element/Ant 两套完整导出工程都执行 install、typecheck、build；第 20 条 Playwright 回归验证真实 Monaco/文件树/Source 与 Config 单文件下载反馈且无 console error。该回归还发现 Chromium 会警告同源 iframe 同时声明 `allow-scripts + allow-same-origin`，这套 sandbox 并不形成安全边界；当前 RuntimeHost 只运行平台注册组件，因此移除伪安全属性，保留独立 document、运行实例、CSS/Teleport 和版本化消息协议隔离。standalone Flow runtime 已通过 `latest/queue/ignore`、abort、timeout、error policy、model-order 和 value patch 的可执行矩阵；剩余差距是 Workbench 与导出工程仍需绑定同一版本化 portable runtime 实现身份，而不是长期维护两份等价解释器。ExportSnapshot 的 manifest digest/内容寻址缓存则只在需要分发或缓存产物时再引入。

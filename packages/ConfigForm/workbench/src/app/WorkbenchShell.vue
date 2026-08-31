@@ -32,39 +32,40 @@ const PageManagerDialog = defineAsyncComponent(() => import('../features/pages/P
 
 const controller = useWorkbenchController()
 const {
-  applications,
+  projects,
   busy,
   closeExportPreview,
   closeFlowWorkspace,
   closePageManager,
   closeTemplatePicker,
+  componentRegistry,
   configError,
-  configModel,
   captureExportSnapshotInput,
-  createApplication,
-  currentApplication,
+  createProject,
+  currentProject,
+  currentGraph,
   currentPage,
   currentPageId,
   designRuntime,
   designerCommandControl,
-  designerDocument,
   designerFieldNames,
   flowEventTargets,
   designerHistoryControl,
   designerLayers,
   dirty,
+  executeFlowCommand,
   exportPreviewMode,
   flowWorkspaceOpen,
   getCurrentExportCompilation,
+  getCurrentAdapterId,
   getDesignRuntimeCompilation,
   getPreviewCompilation,
   getPreviewRuntimeModel,
-  handleApplicationOperation,
+  handlePageAction,
   handlePreviewRuntimeMounted,
   handlePreviewRuntimeReady,
   localeId,
   localeOptions,
-  lowCodeRegistry,
   message,
   mobileStudioView,
   openExportPreview,
@@ -75,14 +76,14 @@ const {
   pageManagerOpen,
   previewExpanded,
   previewFlowProjection,
-  previewModel,
   previewOpen,
   previewProjection,
   previewState,
   previewViewport,
   registry,
-  requestOpenApplication,
-  reloadCurrentApplication,
+  repositoryRevision,
+  requestOpenProject,
+  reloadCurrentProject,
   runPreviewFlows,
   saveProject,
   selectPageFromDesigner,
@@ -96,7 +97,6 @@ const {
   toggleLocale,
   togglePreview,
   toggleTheme,
-  updateModelOperation,
   updatePreviewRuntimeModel,
   workbenchLocale,
   workspaceRecoveryNotice,
@@ -187,7 +187,7 @@ function showPageManager(): void {
 <template>
   <main class="workbench-app" :data-theme="theme">
     <WorkbenchTopbar
-      :application="currentApplication"
+      :project="currentProject"
       :busy="busy"
       :config-error="configError"
       :current-page="currentPage"
@@ -196,6 +196,7 @@ function showPageManager(): void {
       :locale="localeOptions"
       :locale-id="localeId"
       :preview-open="previewOpen"
+      :repository-revision="repositoryRevision"
       :status-label="statusLabel"
       :theme="theme"
       @export="showExportDialog"
@@ -209,7 +210,7 @@ function showPageManager(): void {
     />
 
     <section
-      v-if="currentApplication"
+      v-if="currentProject"
       id="workspace-panel"
       class="workbench-layout"
       :class="{
@@ -227,20 +228,20 @@ function showPageManager(): void {
       >
         <div class="provider-surface">
           <DesignSurface
-            v-if="designerDocument && configModel"
+            v-if="currentGraph && designRuntime"
             ref="designer"
-            :key="`${currentApplication.manifest.adapter}-${currentPageId}`"
+            :key="`${currentProject.registryLock.adapter}-${currentPageId}`"
             class="embedded-designer"
-            :document="designerDocument"
+            :graph="currentGraph"
             event-editor="flow"
-            :model="configModel"
-            :model-registry="lowCodeRegistry"
+            :page-id="currentPageId"
+            :component-registry="componentRegistry"
             :command-control="designerCommandControl"
             :history-control="designerHistoryControl"
             :locale="localeOptions"
             :readonly="busy"
             :registry="registry"
-             :runtime-renderer="designRuntime?.artifact.plan.renderer"
+            :runtime-renderer="designRuntime.artifact.plan.renderer"
             workspace-navigation="external"
             @configure-event="showComponentEventFlow"
              @selection-set-change="selectedDesignerIds = $event"
@@ -278,7 +279,7 @@ function showPageManager(): void {
             <template #palette="{ materials, addMaterial, readonly, form }">
               <StudioLeftPanel
                 v-model:active-view="studioLeftView"
-                :application="currentApplication"
+                :project="currentProject"
                 :current-page-id="currentPageId"
                 :form="form"
                 :layers="designerLayers"
@@ -296,13 +297,12 @@ function showPageManager(): void {
             </template>
             <template #runtime="scope">
               <DesignRuntimeHostFrame
-                :adapter="currentApplication.manifest.adapter"
+                :adapter="getCurrentAdapterId()"
                 :breakpoint="scope.breakpoint"
                 :camera-scale="scope.cameraScale"
                 :candidate-id="scope.candidateId"
                 :candidate-uses-fallback="scope.candidateUsesFallback"
                 :command="scope.command"
-                :document="scope.document"
                 :locale="workbenchLocale.locale"
                 :model-value="scope.model"
                 :namespace="registry.rendererNamespace"
@@ -321,14 +321,13 @@ function showPageManager(): void {
             </template>
             <template #dragVisual="scope">
               <DesignRuntimeHostFrame
-                :adapter="currentApplication.manifest.adapter"
+                :adapter="getCurrentAdapterId()"
                 :breakpoint="scope.breakpoint"
                 :camera-scale="scope.cameraScale"
                 :candidate-id="scope.candidateId"
                 :candidate-uses-fallback="scope.candidateUsesFallback"
                 :canvas-width="scope.canvasWidth"
                 :command="scope.command"
-                :document="scope.document"
                 :locale="workbenchLocale.locale"
                 :model-value="scope.model"
                 :namespace="registry.rendererNamespace"
@@ -347,7 +346,7 @@ function showPageManager(): void {
       <PreviewDrawer
         v-model:expanded="previewExpanded"
         v-model:viewport="previewViewport"
-        :adapter="currentApplication.manifest.adapter"
+        :adapter="getCurrentAdapterId()"
         :compilation="getPreviewCompilation()"
         :config-error="configError"
         :locale="localeOptions"
@@ -360,7 +359,7 @@ function showPageManager(): void {
         @close="togglePreview"
         @error="message = $event instanceof Error ? $event.message : String($event)"
         @field-change="runPreviewFlows('field.change', $event.values, $event.field)"
-        @runtime-event="runPreviewFlows({ kind: 'component.event', nodeId: $event.nodeId, event: $event.event }, previewModel)"
+        @runtime-event="runPreviewFlows({ kind: 'component.event', nodeId: $event.nodeId, event: $event.event })"
         @runtime-mounted="handlePreviewRuntimeMounted"
         @ready="handlePreviewRuntimeReady"
         @submit="runPreviewFlows('form.submit', $event)"
@@ -368,7 +367,7 @@ function showPageManager(): void {
       />
     </section>
 
-    <nav v-if="currentApplication" ref="mobileDock" class="mobile-studio-dock" role="tablist" :aria-label="workbenchLocale.t('designer.navigation', 'Designer navigation')">
+    <nav v-if="currentProject" ref="mobileDock" class="mobile-studio-dock" role="tablist" :aria-label="workbenchLocale.t('designer.navigation', 'Designer navigation')">
       <button
         v-for="view in mobileStudioViews"
         :key="view.id"
@@ -395,7 +394,7 @@ function showPageManager(): void {
           :key="template.id"
           type="button"
           :disabled="busy"
-          @click="createApplication(template.id)"
+          @click="createProject(template.id)"
         >
           <strong>{{ template.title }}</strong>
           <span>{{ template.adapter }}</span>
@@ -414,28 +413,29 @@ function showPageManager(): void {
 
     <PageManagerDialog
       v-if="pageManagerLoaded"
-      :application="currentApplication"
-      :applications="applications"
+      :project="currentProject"
+      :projects="projects"
       :busy="busy"
       :locale="localeOptions"
       :open="pageManagerOpen"
       @close="closePageManager"
       @create-page="openPageTemplatePicker"
-      @open-application="requestOpenApplication($event)"
-      @operation="handleApplicationOperation"
+      @open-project="requestOpenProject($event)"
+      @action="handlePageAction"
     />
 
     <FlowDialog
       v-if="flowDialogLoaded"
       :field-names="designerFieldNames"
       :event-targets="flowEventTargets"
-      :flows="configModel?.flows ?? []"
+      :flows="currentPage?.flows ?? []"
       :initial-trigger="flowInitialTrigger"
       :locale="localeOptions"
       :open="flowWorkspaceOpen"
+      :page-id="currentPageId"
       :readonly="busy"
       @close="closeFlowWorkspace"
-      @operation="updateModelOperation"
+      @command="executeFlowCommand"
     />
 
     <ExportDialog
@@ -462,7 +462,7 @@ function showPageManager(): void {
         v-if="workspaceRecoveryNotice.action === 'reload'"
         type="button"
         :disabled="busy"
-        @click="reloadCurrentApplication"
+        @click="reloadCurrentProject"
       >
         <RefreshCw :size="14" aria-hidden="true" />
         {{ workspaceRecoveryNotice.actionLabel }}

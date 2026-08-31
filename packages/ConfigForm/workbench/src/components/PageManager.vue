@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import type {
-  WorkspaceApplication,
-  WorkspaceApplicationOperation,
-  WorkspaceApplicationSummary,
-} from '../project'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type { ProjectSummary, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
+import type { ProjectPageAction } from '../project'
 import {
   ArrowDown,
   ArrowUp,
@@ -19,8 +16,8 @@ import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, watch } from 'vue'
 
 const props = defineProps<{
-  application: WorkspaceApplication
-  applications: WorkspaceApplicationSummary[]
+  project: ReadonlyProjectDocument
+  projects: ProjectSummary[]
   busy?: boolean
   locale?: DesignerLocaleOptions
 }>()
@@ -28,8 +25,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   createPage: []
-  openApplication: [id: string]
-  operation: [operation: WorkspaceApplicationOperation]
+  openProject: [id: string]
+  action: [action: ProjectPageAction]
 }>()
 
 const search = ref('')
@@ -38,7 +35,9 @@ const routes = ref<Record<string, string>>({})
 const pendingDeleteId = ref<string>()
 const locale = computed(() => createDesignerLocale(props.locale))
 
-watch(() => props.application.pages, (pages) => {
+const pages = computed(() => props.project.pageOrder.map(id => props.project.pagesById[id]!).filter(Boolean))
+
+watch(pages, (pages) => {
   names.value = Object.fromEntries(pages.map(page => [page.id, page.name]))
   routes.value = Object.fromEntries(pages.map(page => [page.id, page.route]))
   if (pendingDeleteId.value && !pages.some(page => page.id === pendingDeleteId.value))
@@ -48,32 +47,32 @@ watch(() => props.application.pages, (pages) => {
 const filteredPages = computed(() => {
   const query = search.value.trim().toLocaleLowerCase()
   if (!query)
-    return props.application.pages
-  return props.application.pages.filter(page => `${page.name} ${page.route}`.toLocaleLowerCase().includes(query))
+    return pages.value
+  return pages.value.filter(page => `${page.name} ${page.route}`.toLocaleLowerCase().includes(query))
 })
 
-const pendingDeletePage = computed(() => props.application.pages.find(page => page.id === pendingDeleteId.value))
+const pendingDeletePage = computed(() => pages.value.find(page => page.id === pendingDeleteId.value))
 
 function commitName(pageId: string): void {
   const value = names.value[pageId]?.trim()
-  const current = props.application.pages.find(page => page.id === pageId)
+  const current = props.project.pagesById[pageId]
   if (!value || !current) {
     names.value[pageId] = current?.name ?? ''
     return
   }
   if (value !== current.name)
-    emit('operation', { type: 'rename-page', pageId, name: value })
+    emit('action', { type: 'page.rename', pageId, name: value })
 }
 
 function commitRoute(pageId: string): void {
   const value = routes.value[pageId]?.trim()
-  const current = props.application.pages.find(page => page.id === pageId)
+  const current = props.project.pagesById[pageId]
   if (!value || !current) {
     routes.value[pageId] = current?.route ?? ''
     return
   }
   if (value !== current.route)
-    emit('operation', { type: 'set-page-route', pageId, route: value })
+    emit('action', { type: 'page.route', pageId, route: value })
 }
 
 function handleTextKeydown(event: KeyboardEvent): void {
@@ -82,23 +81,23 @@ function handleTextKeydown(event: KeyboardEvent): void {
 }
 
 function movePage(pageId: string, offset: number): void {
-  const index = props.application.pages.findIndex(page => page.id === pageId)
+  const index = props.project.pageOrder.indexOf(pageId)
   if (index >= 0)
-    emit('operation', { type: 'move-page', pageId, index: index + offset })
+    emit('action', { type: 'page.move', pageId, index: index + offset })
 }
 
-function selectApplication(event: Event): void {
+function selectProject(event: Event): void {
   const select = event.target as HTMLSelectElement
   const id = select.value
-  if (id !== props.application.id)
-    emit('openApplication', id)
-  void nextTick(() => select.value = props.application.id)
+  if (id !== props.project.id)
+    emit('openProject', id)
+  void nextTick(() => select.value = props.project.id)
 }
 
 function confirmDelete(): void {
   if (!pendingDeleteId.value)
     return
-  emit('operation', { type: 'remove-page', pageId: pendingDeleteId.value })
+  emit('action', { type: 'page.remove', pageId: pendingDeleteId.value })
   pendingDeleteId.value = undefined
 }
 </script>
@@ -107,7 +106,7 @@ function confirmDelete(): void {
   <section class="page-manager" role="dialog" aria-modal="true" aria-labelledby="page-manager-title">
     <header class="page-manager__header">
       <div>
-        <span>{{ locale.t('pageManager.eyebrow', 'Application structure') }}</span>
+        <span>{{ locale.t('pageManager.eyebrow', 'Project structure') }}</span>
         <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Pages') }}</h2>
       </div>
       <button type="button" :title="locale.t('pageManager.close', 'Close page manager')" :aria-label="locale.t('pageManager.close', 'Close page manager')" @click="emit('close')">
@@ -117,9 +116,9 @@ function confirmDelete(): void {
 
     <div class="page-manager__toolbar">
       <label>
-        <span>{{ locale.t('pageManager.application', 'Application') }}</span>
-        <select :value="application.id" :disabled="busy" :aria-label="locale.t('pageManager.application', 'Application')" @change="selectApplication">
-          <option v-for="item in applications" :key="item.id" :value="item.id">
+        <span>{{ locale.t('pageManager.project', 'Project') }}</span>
+        <select :value="project.id" :disabled="busy" :aria-label="locale.t('pageManager.project', 'Project')" @change="selectProject">
+          <option v-for="item in projects" :key="item.id" :value="item.id">
             {{ item.name }} · {{ locale.t('pageManager.pageCount', '{count} pages', { count: item.pageCount }) }}
           </option>
         </select>
@@ -135,7 +134,7 @@ function confirmDelete(): void {
       </button>
     </div>
 
-    <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.applicationPages', 'Application pages')">
+    <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.projectPages', 'Project pages')">
       <div class="page-manager__table-header" role="row">
         <span role="columnheader">{{ locale.t('pageManager.page', 'Page') }}</span>
         <span role="columnheader">{{ locale.t('pageManager.route', 'Route') }}</span>
@@ -171,25 +170,25 @@ function confirmDelete(): void {
         <div class="page-manager__actions" role="cell">
           <button
             type="button"
-            :class="{ 'is-home': application.homePageId === page.id }"
-            :title="application.homePageId === page.id ? locale.t('pageManager.home', 'Home page') : locale.t('pageManager.setHome', 'Set as home page')"
-            :aria-label="application.homePageId === page.id ? locale.t('pageManager.homeAria', '{name} is the home page', { name: page.name }) : locale.t('pageManager.setHomeAria', 'Set {name} as home page', { name: page.name })"
-            :aria-pressed="application.homePageId === page.id"
-            :disabled="busy || application.homePageId === page.id"
-            @click="emit('operation', { type: 'set-home-page', pageId: page.id })"
+            :class="{ 'is-home': project.homePageId === page.id }"
+            :title="project.homePageId === page.id ? locale.t('pageManager.home', 'Home page') : locale.t('pageManager.setHome', 'Set as home page')"
+            :aria-label="project.homePageId === page.id ? locale.t('pageManager.homeAria', '{name} is the home page', { name: page.name }) : locale.t('pageManager.setHomeAria', 'Set {name} as home page', { name: page.name })"
+            :aria-pressed="project.homePageId === page.id"
+            :disabled="busy || project.homePageId === page.id"
+            @click="emit('action', { type: 'page.home', pageId: page.id })"
           >
             <Home :size="15" aria-hidden="true" />
           </button>
-          <button type="button" :title="locale.t('pageManager.moveUp', 'Move page up')" :aria-label="locale.t('pageManager.moveUpAria', 'Move {name} up', { name: page.name })" :disabled="busy || application.pages[0]?.id === page.id" @click="movePage(page.id, -1)">
+          <button type="button" :title="locale.t('pageManager.moveUp', 'Move page up')" :aria-label="locale.t('pageManager.moveUpAria', 'Move {name} up', { name: page.name })" :disabled="busy || project.pageOrder[0] === page.id" @click="movePage(page.id, -1)">
             <ArrowUp :size="15" aria-hidden="true" />
           </button>
-          <button type="button" :title="locale.t('pageManager.moveDown', 'Move page down')" :aria-label="locale.t('pageManager.moveDownAria', 'Move {name} down', { name: page.name })" :disabled="busy || application.pages.at(-1)?.id === page.id" @click="movePage(page.id, 1)">
+          <button type="button" :title="locale.t('pageManager.moveDown', 'Move page down')" :aria-label="locale.t('pageManager.moveDownAria', 'Move {name} down', { name: page.name })" :disabled="busy || project.pageOrder.at(-1) === page.id" @click="movePage(page.id, 1)">
             <ArrowDown :size="15" aria-hidden="true" />
           </button>
-          <button type="button" :title="locale.t('pageManager.duplicate', 'Duplicate page')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('operation', { type: 'duplicate-page', pageId: page.id, page })">
+          <button type="button" :title="locale.t('pageManager.duplicate', 'Duplicate page')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('action', { type: 'page.duplicate', pageId: page.id })">
             <Copy :size="15" aria-hidden="true" />
           </button>
-          <button type="button" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || application.pages.length === 1" @click="pendingDeleteId = page.id">
+          <button type="button" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || project.pageOrder.length === 1" @click="pendingDeleteId = page.id">
             <Trash2 :size="15" aria-hidden="true" />
           </button>
         </div>
@@ -200,7 +199,7 @@ function confirmDelete(): void {
     <footer v-if="pendingDeletePage" class="page-manager__confirm" role="alertdialog" aria-modal="true" aria-labelledby="delete-page-title">
       <div>
         <strong id="delete-page-title">{{ locale.t('pageManager.deletePrompt', 'Delete {name}?', { name: pendingDeletePage.name }) }}</strong>
-        <span>{{ locale.t('pageManager.deleteDescription', 'This page and its design model will be removed from the application.') }}</span>
+        <span>{{ locale.t('pageManager.deleteDescription', 'This page and its design model will be removed from the project.') }}</span>
       </div>
       <button type="button" @click="pendingDeleteId = undefined">{{ locale.t('pageManager.cancel', 'Cancel') }}</button>
       <button type="button" class="is-danger" @click="confirmDelete">{{ locale.t('pageManager.delete', 'Delete page') }}</button>

@@ -1,6 +1,6 @@
 import type { CDPSession, FrameLocator, Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { createApplication } from './helpers'
+import { createProject } from './helpers'
 
 interface DragGeometry {
   height: number
@@ -238,12 +238,12 @@ for (const adapter of [
   { count: 22, id: 'antd', name: 'Ant' },
 ] as const) {
   test(`renders every registered ${adapter.name} material through a real specimen contract`, async ({ page }) => {
-    await createApplication(page, adapter.id)
+    await createProject(page, adapter.id)
     await expectAllPaletteSpecimens(page, adapter.id, adapter.count)
   })
 
   test(`keeps the ${adapter.name} design runtime inert while Preview stays interactive`, async ({ page }) => {
-    await createApplication(page, adapter.id)
+    await createProject(page, adapter.id)
     const canvas = page.locator('.mx-config-form-designer__canvas')
     const sheet = canvas.locator('.mx-config-form-designer__canvas-sheet')
     const runtime = designRuntime(page)
@@ -382,7 +382,7 @@ for (const adapter of [
 }
 
 test('keeps pointer candidates, drag visuals, committed nodes, and Preview on the same Element runtime tree', async ({ page }) => {
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
 
   const section = await pointerDrop(page, 'element.section', canvas)
@@ -397,7 +397,7 @@ test('keeps pointer candidates, drag visuals, committed nodes, and Preview on th
 })
 
 test('removes stale selection chrome while a pointer drag is active', async ({ page }) => {
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
   const selectedNode = designRuntime(page).locator('[data-config-node-id="profile-name"]')
   await selectCanvasNode(page, selectedNode, selectedNode.locator('input').first())
@@ -421,7 +421,7 @@ test('removes stale selection chrome while a pointer drag is active', async ({ p
 
 test('keeps a compact Preview inside its own responsive runtime viewport', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   const roleNode = designRuntime(page).locator('[data-config-node-id="profile-role"]')
   await selectCanvasNode(page, roleNode, roleNode.locator('.el-select__wrapper'))
   await page.getByRole('button', { name: 'Show preview' }).click()
@@ -462,7 +462,7 @@ test('keeps a compact Preview inside its own responsive runtime viewport', async
 
 test('separates the intrinsic canvas frame from fit, manual zoom, and pan state', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   await page.getByRole('button', { name: 'Desktop' }).click()
 
   const canvas = page.locator('.mx-config-form-designer__canvas')
@@ -508,7 +508,7 @@ test('separates the intrinsic canvas frame from fit, manual zoom, and pan state'
 
 test('keeps mobile and desktop intrinsic frames stable inside a 390px workbench', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
   const viewport = page.locator('[data-canvas-camera-viewport]')
   const sheet = page.locator('.mx-config-form-designer__canvas-sheet')
@@ -533,7 +533,7 @@ test('keeps mobile and desktop intrinsic frames stable inside a 390px workbench'
 
 for (const adapter of ['element', 'antd'] as const) {
   test(`runs a ${adapter} component event flow from the real Preview Runtime node`, async ({ page }) => {
-    await createApplication(page, adapter)
+    await createProject(page, adapter)
 
     await page.getByRole('button', { name: 'Event flow orchestration' }).click()
     const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
@@ -558,7 +558,7 @@ for (const scenario of [
   { adapter: 'antd', material: 'antd.collapse', trigger: '.ant-collapse-header' },
 ] as const) {
   test(`runs a registered non-binding ${scenario.adapter} event exactly once`, async ({ page }) => {
-    await createApplication(page, scenario.adapter)
+    await createProject(page, scenario.adapter)
     const canvas = page.locator('.mx-config-form-designer__canvas')
     const collapse = await pointerDrop(page, scenario.material, canvas, { verifyCommitGeometry: false })
 
@@ -586,7 +586,7 @@ for (const scenario of [
 
 test('pins the selected Preview viewport when the host window is wider', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   await page.getByRole('button', { name: 'Show preview' }).click()
 
   const preview = page.getByRole('complementary', { name: 'Page preview' })
@@ -600,14 +600,32 @@ test('pins the selected Preview viewport when the host window is wider', async (
   expect(activeColumns).toBe(mobileColumns)
 })
 
+test('recreates an interactive Preview Runtime session after closing and reopening', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.getByRole('button', { name: 'Show preview' }).click()
+  const firstRuntime = previewRuntime(page)
+  const firstInput = firstRuntime.getByRole('textbox', { name: 'Name', exact: true })
+  await firstInput.fill('First Preview session')
+  await expect(firstInput).toHaveValue('First Preview session')
+
+  await page.getByRole('button', { name: 'Close preview' }).click()
+  await expect(page.locator('iframe[data-preview-runtime-host]')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show preview' }).click()
+
+  const reopenedInput = previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true })
+  await expect(reopenedInput).toHaveValue('First Preview session')
+  await reopenedInput.fill('Reopened Preview session')
+  await expect(reopenedInput).toHaveValue('Reopened Preview session')
+})
+
 test('uses the real Ant runtime component for pointer candidate, overlay, and committed output', async ({ page }) => {
-  await createApplication(page, 'antd')
+  await createProject(page, 'antd')
   const result = await pointerDrop(page, 'antd.input', page.locator('.mx-config-form-designer__canvas'))
   await expect(result.node.locator('.ant-input')).toBeVisible()
 })
 
 test('supports keyboard and touch material drops without a second editable model', async ({ page }) => {
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
   const inputMaterial = page.locator('[data-material-key="element.input"]')
 
@@ -628,7 +646,7 @@ test('supports keyboard and touch material drops without a second editable model
 })
 
 test('keeps the layer action menu inside the viewport at the scroll boundary', async ({ page }) => {
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
   const inputMaterial = page.locator('[data-material-key="element.input"]')
   for (let index = 0; index < 16; index += 1)
     await inputMaterial.click()
@@ -657,7 +675,7 @@ test('exports pinned source and config files through the readonly workspace', as
       browserErrors.push(message.text())
   })
   page.on('pageerror', error => browserErrors.push(error.message))
-  await createApplication(page, 'element')
+  await createProject(page, 'element')
 
   await page.getByRole('button', { name: 'Export', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Export source', exact: true }).click()

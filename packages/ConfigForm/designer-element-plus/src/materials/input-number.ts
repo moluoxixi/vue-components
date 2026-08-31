@@ -24,7 +24,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'number' }) => ({
         id,
         kind: 'field',
-        material: 'element.input-number',
+        component: 'element.input-number',
         field,
         label: 'Number',
         props: { step: 1, controls: true },

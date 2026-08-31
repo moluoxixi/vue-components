@@ -2,111 +2,62 @@ import type {
   VueRuntimeCompileResult,
   VueRuntimeCompileSuccess,
 } from '@moluoxixi/config-form-vue-backend'
-import type { WorkspaceApplication, WorkspacePage } from '../project'
-import { cloneWorkspaceApplication } from '../project'
 
-export interface WorkspaceProjectionInput {
-  readonly application: WorkspaceApplication
-  readonly applicationRevision: number
-  readonly currentPageId: string
-  readonly modelRevision: number
+export interface PageProjectionInput {
+  readonly adapter: string
+  readonly editVersion: number
+  readonly pageId: string
+  readonly projectId: string
+  readonly repositoryRevision: number
 }
 
-export interface WorkspaceProjectionSnapshot {
-  readonly application: WorkspaceApplication
-  readonly applicationRevision: number
-  readonly currentPage: WorkspacePage
-  readonly currentPageId: string
-  readonly modelRevision: number
+export interface PageProjectionSnapshot extends PageProjectionInput {
   /** Stable identity for one mounted Preview Runtime instance. */
   readonly runtimeSessionKey: string
   readonly revisionKey: string
 }
 
-export interface WorkspacePreviewProjection {
+export interface PagePreviewProjection {
   readonly compileResult: VueRuntimeCompileResult
-  readonly current: WorkspaceProjectionSnapshot
+  readonly current: PageProjectionSnapshot
   readonly display?: {
     readonly result: VueRuntimeCompileSuccess
-    readonly snapshot: WorkspaceProjectionSnapshot
+    readonly snapshot: PageProjectionSnapshot
     readonly stale: boolean
   }
   readonly signal: AbortSignal
   readonly status: 'blocked' | 'live' | 'stale'
 }
 
-function projectionRevisionKey(snapshot: Pick<
-  WorkspaceProjectionInput,
-  'application' | 'applicationRevision' | 'currentPageId' | 'modelRevision'
->): string {
-  return [
-    snapshot.application.id,
-    snapshot.applicationRevision,
-    snapshot.currentPageId,
-    snapshot.modelRevision,
-  ].join(':')
+function captureSnapshot(input: PageProjectionInput): PageProjectionSnapshot {
+  return Object.freeze({
+    ...input,
+    runtimeSessionKey: `${input.projectId}:${input.adapter}:${input.pageId}`,
+    revisionKey: `${input.projectId}:${input.repositoryRevision}:${input.pageId}:${input.editVersion}`,
+  })
 }
 
-function projectionRuntimeSessionKey(snapshot: Pick<
-  WorkspaceProjectionInput,
-  'application' | 'currentPageId'
->): string {
-  return [
-    snapshot.application.id,
-    snapshot.application.manifest.adapter,
-    snapshot.currentPageId,
-  ].join(':')
+function samePage(left: PageProjectionSnapshot, right: PageProjectionSnapshot): boolean {
+  return left.projectId === right.projectId && left.pageId === right.pageId
 }
 
-function captureSnapshot(snapshot: WorkspaceProjectionInput): WorkspaceProjectionSnapshot {
-  const application = cloneWorkspaceApplication(snapshot.application)
-  const currentPage = application.pages.find(page => page.id === snapshot.currentPageId)
-  if (!currentPage)
-    throw new Error(`Projection page "${snapshot.currentPageId}" does not exist.`)
-
-  return {
-    application,
-    applicationRevision: snapshot.applicationRevision,
-    currentPage,
-    currentPageId: currentPage.id,
-    modelRevision: snapshot.modelRevision,
-    runtimeSessionKey: projectionRuntimeSessionKey(snapshot),
-    revisionKey: projectionRevisionKey(snapshot),
-  }
-}
-
-function samePage(left: WorkspaceProjectionSnapshot, right: WorkspaceProjectionSnapshot): boolean {
-  return left.application.id === right.application.id
-    && left.currentPageId === right.currentPageId
-}
-
-export interface WorkspaceProjectionCoordinator {
-  capture: () => WorkspaceProjectionSnapshot | undefined
+export interface PageProjectionCoordinator {
+  capture: () => PageProjectionSnapshot | undefined
   invalidate: (reason?: unknown) => void
   isCurrent: (revisionKey: string) => boolean
   publish: (
-    snapshot: WorkspaceProjectionInput,
-    compile: (snapshot: WorkspaceProjectionSnapshot) => VueRuntimeCompileResult,
-  ) => WorkspacePreviewProjection
+    snapshot: PageProjectionInput,
+    compile: (snapshot: PageProjectionSnapshot) => VueRuntimeCompileResult,
+  ) => PagePreviewProjection
 }
 
-export function createWorkspaceProjectionCoordinator(): WorkspaceProjectionCoordinator {
-  let current: WorkspaceProjectionSnapshot | undefined
+export function createPageProjectionCoordinator(): PageProjectionCoordinator {
+  let current: PageProjectionSnapshot | undefined
   let currentController = new AbortController()
-  let lastValid: { result: VueRuntimeCompileSuccess, snapshot: WorkspaceProjectionSnapshot } | undefined
+  let lastValid: { result: VueRuntimeCompileSuccess, snapshot: PageProjectionSnapshot } | undefined
 
   return {
-    capture() {
-      if (!current)
-        return undefined
-      const captured = current
-      const application = cloneWorkspaceApplication(captured.application)
-      return {
-        ...captured,
-        application,
-        currentPage: application.pages.find(page => page.id === captured.currentPageId)!,
-      }
-    },
+    capture: () => current,
     invalidate(reason = 'projection-invalidated') {
       currentController.abort(reason)
       currentController = new AbortController()

@@ -29,7 +29,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'password' }) => ({
         id,
         kind: 'field',
-        material: 'antd.password',
+        component: 'antd.password',
         field,
         label: 'Password',
         props: { placeholder: '', visibilityToggle: true },

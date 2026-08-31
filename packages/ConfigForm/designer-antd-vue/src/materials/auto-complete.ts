@@ -30,7 +30,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'autoComplete' }) => ({
         id,
         kind: 'field',
-        material: 'antd.auto-complete',
+        component: 'antd.auto-complete',
         field,
         label: 'Autocomplete',
         props: { options: s.defaultOptions(), placeholder: '' },

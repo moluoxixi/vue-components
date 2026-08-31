@@ -47,12 +47,6 @@ import AntdOptionSourceSetter from './components/AntdOptionSourceSetter.vue'
 import AntdRadioField from './components/AntdRadioField.vue'
 import AntdSection from './components/AntdSection.vue'
 import AntdSelectField from './components/AntdSelectField.vue'
-import {
-  AntdCollapseItemPreview,
-  AntdCollapsePreview,
-  AntdTabPanePreview,
-  AntdTabsPreview,
-} from './components/AntdStructuralPreview'
 import AntdFlexLayout from './layout/AntdFlexLayout.vue'
 import AntdGridLayout from './layout/AntdGridLayout.vue'
 import { createAntdVueOptionDiagnostics } from './options'
@@ -67,15 +61,11 @@ export {
   AlignLeft,
   AntdAutoCompleteField,
   AntdCheckboxField,
-  AntdCollapseItemPreview,
-  AntdCollapsePreview,
   AntdFlexLayout,
   AntdGridLayout,
   AntdRadioField,
   AntdSection,
   AntdSelectField,
-  AntdTabPanePreview,
-  AntdTabsPreview,
   Calendar,
   Card,
   CheckSquare,

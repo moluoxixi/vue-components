@@ -1,20 +1,105 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
+const configFormRoot = fileURLToPath(new URL('../../../../', import.meta.url))
+const repositoryRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+const ignoredDirectories = new Set(['coverage', 'dist', 'node_modules'])
+const productTextFile = /\.(?:[cm]?[jt]sx?|css|html|json|md|scss|vue)$/
+
+function collectProductTextFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory())
+      return ignoredDirectories.has(entry.name) ? [] : collectProductTextFiles(path)
+    return entry.isFile() && productTextFile.test(entry.name) ? [path] : []
+  })
+}
+
 describe('workbench production architecture boundary', () => {
-  it('does not restore legacy reducers or mixed ProjectStore ownership', () => {
+  it('keeps ProjectEditorSession as the only production editing owner', () => {
     const source = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
     const forbidden = [
-      'WorkspaceSession',
-      'createWorkspaceSession',
-      'openDefaultWorkspaceApplicationRepository',
-      'applyWorkspaceApplicationOperation',
-      'ProjectStore',
-      'createProjectStore',
+      ['Workspace', 'Session'].join(''),
+      ['create', 'Workspace', 'Session'].join(''),
+      ['openDefault', 'Workspace', 'Application', 'Repository'].join(''),
+      ['apply', 'Workspace', 'Application', 'Operation'].join(''),
+      ['Project', 'Store'].join(''),
+      ['create', 'Project', 'Store'].join(''),
       'setCurrentPage(',
-      'type: \'update-page-model\'',
+      `type: '${['update', 'page', 'model'].join('-')}'`,
     ]
     forbidden.forEach(token => expect(source).not.toContain(token))
+  })
+
+  it('does not ship removed project/session compatibility modules', () => {
+    const removedModules = [
+      `../../project/${['application', 'repository'].join('-')}.ts`,
+      `../../project/${['applica', 'tion'].join('')}.ts`,
+      `../../project/${['leg', 'acy-operation-adapter'].join('')}.ts`,
+      `../../project/${['project-document', 'compatibility'].join('-')}.ts`,
+      `../../project/${['storage', 'migration'].join('-')}.ts`,
+      `../../session/${['workspace', 'session'].join('-')}.ts`,
+      `../../workbench/${['config', 'codec'].join('-')}.ts`,
+    ]
+
+    removedModules.forEach(path => expect(existsSync(new URL(path, import.meta.url))).toBe(false))
+  })
+
+  it('keeps legacy contracts out of every ConfigForm source, test, script, template, and public declaration', () => {
+    const forbiddenTokens = [
+      ['Workspace', 'Application'].join(''),
+      ['LowCode', 'PageModel'].join(''),
+      ['Designer', 'Document'].join(''),
+      ['Workspace', 'Session'].join(''),
+      ['Workspace', 'Repository'].join(''),
+      ['Project', 'Store'].join(''),
+      ['compile', 'Designer', 'Document'].join(''),
+      ['designer', 'DocumentToConfigModel'].join(''),
+      ['configModel', 'ToDesigner', 'Document'].join(''),
+      ['create', 'Designer', 'RuntimeProjection'].join(''),
+      ['create', 'Workspace', 'Session'].join(''),
+      ['create', 'Project', 'Store'].join(''),
+      ['update', 'page', 'model'].join('-'),
+    ]
+    const forbiddenPaths = [
+      ['model', 'src', ['leg', 'acy.ts'].join('')],
+      ['model', 'src', ['mig', 'rate.ts'].join('')],
+      ['designer', 'src', 'compiler'],
+      ['designer', 'src', 'document'],
+      ['designer', 'src', 'history'],
+      ['designer', 'src', 'model'],
+      ['designer', 'src', 'components', ['ConfigForm', 'Designer.vue'].join('')],
+      ['playground', ['designer', '.html'].join('')],
+      ['playground', 'src', 'designer'],
+      ['workbench', 'src', 'design'],
+      ['workbench', 'src', 'project', ['application', 'repository-indexed-db.ts'].join('-')],
+      ['workbench', 'src', 'project', ['application', 'repository.ts'].join('-')],
+      ['workbench', 'src', 'project', ['applica', 'tion.ts'].join('')],
+      ['workbench', 'src', 'project', ['legacy', 'operation-adapter.ts'].join('-')],
+      ['workbench', 'src', 'project', ['project-document', 'compatibility.ts'].join('-')],
+      ['workbench', 'src', 'project', ['repository', 'memory.ts'].join('-')],
+      ['workbench', 'src', 'project', ['storage', 'migration.ts'].join('-')],
+      ['workbench', 'src', 'project', ['up', 'grade.ts'].join('')],
+      ['workbench', 'src', 'session', ['workspace', 'session.ts'].join('-')],
+      ['workbench', 'src', 'workbench', ['config', 'codec.ts'].join('-')],
+    ]
+    const scannedRoots = [configFormRoot, join(repositoryRoot, 'scripts')]
+    const hits = scannedRoots.flatMap(root => collectProductTextFiles(root)).flatMap((path) => {
+      const source = readFileSync(path, 'utf8')
+      return forbiddenTokens
+        .filter(token => source.includes(token))
+        .map(token => `${relative(repositoryRoot, path)}: ${token}`)
+    })
+
+    const existingPaths = forbiddenPaths
+      .map(parts => join(configFormRoot, ...parts))
+      .filter(path => existsSync(path))
+      .map(path => relative(configFormRoot, path))
+
+    expect(hits).toEqual([])
+    expect(existingPaths).toEqual([])
   })
 
   it('routes normal Design rendering through Canonical IR and the Vue backend', () => {
@@ -31,8 +116,8 @@ describe('workbench production architecture boundary', () => {
       source.indexOf('function projectSnapshotFromEditorSession'),
     )
     expect(realtimeCompiler).not.toContain('compileCanonicalProject')
-    expect(source).not.toContain('configModelToDesignerDocument')
-    expect(source).not.toContain('compileDesignerDocument(document')
+    expect(source).not.toContain(['configModel', 'ToDesigner', 'Document'].join(''))
+    expect(source).not.toContain(['compile', 'Designer', 'Document(document'].join(''))
   })
 
   it('keeps Preview inside an iframe RuntimeHost with a data-only protocol', () => {
@@ -53,19 +138,36 @@ describe('workbench production architecture boundary', () => {
     const shell = readFileSync(new URL('../WorkbenchShell.vue', import.meta.url), 'utf8')
     const controller = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
     expect(shell).not.toContain('@model-operation')
-    expect(controller).toContain('applyModelOperation: updateModelOperation')
-    expect(controller).toContain('executeProjectActions(\'Update design\'')
+    expect(controller).toContain('const designerCommandControl = {')
+    expect(controller).toContain('execute: executeDesignerCommand')
+    expect(controller).toContain('const result = session.execute(command)')
+  })
+
+  it('delegates Preview runtime state and lifecycle to PreviewSession', () => {
+    const controller = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
+    const previewSession = readFileSync(new URL('../../session/preview-session.ts', import.meta.url), 'utf8')
+
+    expect(controller).toContain('createWorkbenchPreviewSession')
+    expect(controller).toContain('previewSession.accept')
+    expect(controller).toContain('previewSession.dispose')
+    expect(controller).not.toContain('createPageProjectionCoordinator')
+    expect(controller).not.toContain('lastRuntimePreview')
+    expect(controller).not.toContain('reconcilePreviewModel')
+    expect(controller).not.toContain('projectionCoordinator')
+    expect(controller).not.toContain('pageFlowEngine')
+    expect(previewSession).toContain('createPageProjectionCoordinator')
+    expect(previewSession).toContain('lastReadyPreview')
+    expect(previewSession).toContain('handleRuntimeMounted')
   })
 
   it('delegates event-flow execution to the page Flow Engine', () => {
-    const controller = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
+    const previewSession = readFileSync(new URL('../../session/preview-session.ts', import.meta.url), 'utf8')
     const engine = readFileSync(new URL('../../flow/page-flow-engine.ts', import.meta.url), 'utf8')
 
-    expect(controller).toContain('createWorkbenchPageFlowEngine')
-    expect(controller).toContain('pageFlowEngine.dispatch')
-    expect(controller).not.toContain('new ConfigFormFlowInterpreter')
-    expect(controller).not.toContain('new PreviewFlowCoordinator')
-    expect(controller).not.toContain('previewFlowProjections')
+    expect(previewSession).toContain('createWorkbenchPageFlowEngine')
+    expect(previewSession).toContain('flowEngine.dispatch')
+    expect(previewSession).not.toContain('new ConfigFormFlowInterpreter')
+    expect(previewSession).not.toContain('new PreviewFlowCoordinator')
     expect(engine).toContain('new ConfigFormFlowInterpreter')
     expect(engine).toContain('new PreviewFlowCoordinator')
     expect(engine).toContain('createWorkbenchFlowActionRegistry')

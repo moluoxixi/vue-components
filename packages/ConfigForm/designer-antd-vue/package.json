@@ -38,6 +38,7 @@
   },
   "peerDependencies": {
     "@moluoxixi/config-form-designer": "^0.1.5",
+    "@moluoxixi/config-form-model": "^0.1.0",
     "ant-design-vue": "^4.2.0",
     "vue": "^3.5.0"
   },
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@moluoxixi/config-form-designer": "workspace:*",
+    "@moluoxixi/config-form-model": "workspace:*",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "ant-design-vue": "catalog:ui",

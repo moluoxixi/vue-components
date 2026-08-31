@@ -1,7 +1,7 @@
 import type { ProjectCompilation } from '@moluoxixi/config-form-compiler'
 import type { BuildExportSnapshotInput } from '../index'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import { createProjectSnapshot, migrateLegacyWorkspaceApplication } from '@moluoxixi/config-form-model'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../adapters'
@@ -14,22 +14,16 @@ import {
   resolveExportSnapshotPath,
 } from '../export/snapshot'
 import { normalizeProjectPath } from '../path'
-import { createBuiltInWorkspaceApplication } from '../templates'
+import { createBuiltInProject } from '../templates'
 
 async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput> {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const application = createBuiltInWorkspaceApplication('element-profile', {
-    createdAt: '2026-08-30T00:00:00.000Z',
+  const document = createBuiltInProject('element-profile', {
     id: 'customer-app',
     name,
-  })
-  const migrated = migrateLegacyWorkspaceApplication(application, {
-    registryLock: adapter.componentRegistry.lock,
-  })
-  if (!migrated.success)
-    throw new Error(migrated.diagnostics[0]?.message ?? 'Migration failed.')
+  }, adapter.componentRegistry.lock)
   const result = compileCanonicalProject({
-    snapshot: createProjectSnapshot(migrated.data, 8),
+    snapshot: createProjectSnapshot(document, 8),
     registry: adapter.registrySnapshot,
   })
   if (!result.success)

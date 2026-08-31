@@ -1,9 +1,6 @@
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type {
   ComponentContract,
-  LegacyLowCodeNodeV1,
-  LegacyLowCodePageModelV1,
-  LegacyWorkspaceApplicationV2,
   ProjectDocument,
   RegistryLock,
 } from '../index'
@@ -19,46 +16,16 @@ import {
   createProjectHistory,
   createProjectSnapshot,
   createRegistryContractSnapshot,
-  migrateLegacyLowCodePageModel,
-  migrateLegacyWorkspaceApplication,
-  migrateProjectDocument,
   parseProjectCompilationSnapshot,
   parseProjectDocument,
   parseProjectDraftSnapshot,
   parseProjectSnapshot,
   parseRegistryContractSnapshot,
   PROJECT_DOCUMENT_VERSION,
-  projectPageToLegacyLowCodePageModel,
   redoProjectHistory,
   resolveProjectCommand,
   undoProjectHistory,
 } from '../index'
-
-function legacyField(id: string): LegacyLowCodeNodeV1 {
-  return {
-    id,
-    component: 'element.input',
-    props: { placeholder: 'Name' },
-    events: {},
-    bindings: {},
-    children: [],
-    slots: {},
-    kind: 'field',
-    field: id,
-    label: 'Name',
-  }
-}
-
-function legacyPage(nodes: LegacyLowCodeNodeV1[]): LegacyLowCodePageModelV1 {
-  return {
-    id: 'home',
-    name: 'Home',
-    version: 1,
-    props: {},
-    form: { columns: 24, fieldSpan: 12 },
-    nodes,
-  }
-}
 
 function pageFlow(id = 'mounted', field?: string): ConfigFormFlow {
   return {
@@ -278,11 +245,11 @@ describe('projectDocument schema', () => {
       ]))
     }
 
-    const legacyGraphOwner = projectDocument() as ProjectDocument & {
+    const invalidGraphOwner = projectDocument() as ProjectDocument & {
       pagesById: Record<string, ProjectDocument['pagesById'][string] & { graph: { flows?: ConfigFormFlow[] } }>
     }
-    legacyGraphOwner.pagesById.home!.graph.flows = [pageFlow()]
-    expect(parseProjectDocument(legacyGraphOwner).success).toBe(false)
+    invalidGraphOwner.pagesById.home!.graph.flows = [pageFlow()]
+    expect(parseProjectDocument(invalidGraphOwner).success).toBe(false)
   })
 
   it('validates component event flow triggers against the normalized page graph', () => {
@@ -387,135 +354,6 @@ describe('projectSnapshot envelope', () => {
       success: false,
       diagnostics: [{ code: 'PROJECT_DRAFT_SNAPSHOT_INVARIANT', path: ['draftHash'] }],
     })
-  })
-})
-
-describe('legacy migration', () => {
-  it('migrates v3 graph-owned flows to the v4 ProjectPage boundary without ambiguity', () => {
-    const source = projectDocument()
-    source.pagesById.home!.flows = [pageFlow()]
-    const legacy = structuredClone(source) as unknown as Record<string, unknown> & {
-      pagesById: Record<string, Record<string, unknown> & {
-        graph: Record<string, unknown>
-        flows?: ConfigFormFlow[]
-      }>
-    }
-    legacy.schemaVersion = 3
-    legacy.pagesById.home!.graph.flows = legacy.pagesById.home!.flows
-    delete legacy.pagesById.home!.flows
-
-    const migrated = migrateProjectDocument(legacy)
-    expect(migrated.success).toBe(true)
-    if (!migrated.success)
-      return
-    expect(migrated.data.schemaVersion).toBe(PROJECT_DOCUMENT_VERSION)
-    expect(migrated.data.pagesById.home?.flows?.map(flow => flow.id)).toEqual(['mounted'])
-    expect(migrated.data.pagesById.home?.graph).not.toHaveProperty('flows')
-
-    legacy.pagesById.home!.flows = [pageFlow('duplicate-owner')]
-    expect(migrateProjectDocument(legacy)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'PROJECT_DOCUMENT_FLOW_OWNERSHIP_AMBIGUOUS' }],
-    })
-  })
-
-  it('normalizes default and named slots without retaining tree copies', () => {
-    const page = legacyPage([{
-      id: 'layout',
-      component: 'element.grid',
-      props: {},
-      events: {},
-      bindings: {},
-      children: [legacyField('name')],
-      slots: { actions: [legacyField('submit')] },
-      kind: 'container',
-    }])
-    page.flows = [pageFlow()]
-    const result = migrateLegacyLowCodePageModel(page)
-    expect(result.success).toBe(true)
-    if (!result.success)
-      return
-    expect(result.data.graph.root.map(item => item.nodeId)).toEqual(['layout'])
-    expect(result.data.graph.nodesById.layout).toMatchObject({
-      kind: 'layout',
-      slots: { default: [{ nodeId: 'name', placement: {} }], actions: [{ nodeId: 'submit', placement: {} }] },
-    })
-    expect(Object.keys(result.data.graph.nodesById)).toEqual(['layout', 'name', 'submit'])
-    expect(result.data.flows).toEqual(page.flows)
-    expect(result.data.graph).not.toHaveProperty('flows')
-  })
-
-  it('rejects ambiguous legacy default slots and field children', () => {
-    const layout: LegacyLowCodeNodeV1 = {
-      id: 'layout',
-      component: 'element.grid',
-      props: {},
-      events: {},
-      bindings: {},
-      children: [legacyField('one')],
-      slots: { default: [legacyField('two')] },
-      kind: 'container',
-    }
-    const field = legacyField('field')
-    field.children.push(legacyField('child'))
-    const result = migrateLegacyLowCodePageModel(legacyPage([layout, field]))
-    expect(result.success).toBe(false)
-    if (result.success)
-      return
-    expect(result.diagnostics.map(item => item.code)).toEqual(expect.arrayContaining([
-      'LEGACY_DEFAULT_SLOT_AMBIGUOUS',
-      'LEGACY_FIELD_CHILDREN_INVALID',
-    ]))
-  })
-
-  it('migrates an application while dropping generated files', () => {
-    const application: LegacyWorkspaceApplicationV2 = {
-      schemaVersion: 2,
-      id: 'project',
-      name: 'Project',
-      revision: 5,
-      createdAt: '2026-08-30T00:00:00.000Z',
-      updatedAt: '2026-08-30T00:01:00.000Z',
-      homePageId: 'home',
-      pages: [{ id: 'home', name: 'Home', route: '/', model: legacyPage([legacyField('name')]) }],
-      files: { 'src/App.vue': { kind: 'text', content: '<template />' } },
-      manifest: {
-        adapter: 'element-plus',
-        dependencies: { vue: '^3.5.0' },
-        framework: 'vue',
-        designerArtifact: 'form.designer.json',
-        entry: 'src/main.ts',
-        generatedFormModule: 'src/form.config.ts',
-      },
-      template: { id: 'element', version: 1 },
-    }
-    const result = migrateLegacyWorkspaceApplication(application, {
-      registryLock: componentRegistry().lock,
-    })
-    expect(result.success).toBe(true)
-    if (!result.success)
-      return
-    expect(result.data.pageOrder).toEqual(['home'])
-    expect(result.data.pagesById.home?.graph.root.map(item => item.nodeId)).toEqual(['name'])
-    expect(result.data).not.toHaveProperty('files')
-    expect(Object.keys(result.data.registryLock.components)).toEqual(['element.input'])
-  })
-
-  it('projects a normalized page to the legacy Designer boundary without changing structure', () => {
-    const source = projectDocument().pagesById.home!
-    source.flows = [pageFlow()]
-    const legacy = projectPageToLegacyLowCodePageModel(source)
-    const migrated = migrateLegacyLowCodePageModel(legacy)
-
-    expect(legacy.nodes[0]).toMatchObject({
-      id: 'section',
-      kind: 'container',
-      children: [{ id: 'name', kind: 'field', field: 'name' }],
-    })
-    expect(migrated.success).toBe(true)
-    if (!migrated.success)
-      return
-    expect(migrated.data).toEqual({ graph: source.graph, flows: source.flows })
   })
 })
 
@@ -1268,20 +1106,20 @@ describe('projectHistory', () => {
       editVersion: 2,
       contentHash: second.history.snapshot.contentHash,
     })
-    expect(second.history.present.pagesById.home?.graph.nodesById.name).toMatchObject({ label: 'Name updated' })
+    expect(second.history.snapshot.document.pagesById.home?.graph.nodesById.name).toMatchObject({ label: 'Name updated' })
 
     const undone = undoProjectHistory(second.history, { registry })
     expect(undone.changed).toBe(true)
     expect(undone.history.snapshot.editVersion).toBe(3)
     expect(undone.history.snapshot.contentHash).toBe(initialContentHash)
-    expect(undone.history.present.pagesById.home?.graph.nodesById.name).toMatchObject({ label: 'Name' })
+    expect(undone.history.snapshot.document.pagesById.home?.graph.nodesById.name).toMatchObject({ label: 'Name' })
     expect(undone.history.future).toHaveLength(1)
 
     const redone = redoProjectHistory(undone.history, { registry })
     expect(redone.changed).toBe(true)
     expect(redone.history.snapshot.editVersion).toBe(4)
     expect(redone.history.snapshot.contentHash).toBe(second.history.snapshot.contentHash)
-    expect(redone.history.present.pagesById.home?.graph.nodesById.name).toMatchObject({ label: 'Name updated' })
+    expect(redone.history.snapshot.document.pagesById.home?.graph.nodesById.name).toMatchObject({ label: 'Name updated' })
     expect(redone.history.future).toHaveLength(0)
   })
 

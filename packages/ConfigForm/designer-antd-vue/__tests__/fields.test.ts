@@ -1,4 +1,4 @@
-import type { DesignerFieldNode } from '@moluoxixi/config-form-designer'
+import type { FieldNode } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { AutoComplete, CheckboxGroup, RadioGroup, Select } from 'ant-design-vue'
 import { describe, expect, it, vi } from 'vitest'
@@ -71,12 +71,14 @@ describe('ant design vue designer fields', () => {
     expect(radio.get('[data-designer-selection-target]').classes()).toContain('ant-radio-group')
     expect(checkbox.get('[data-designer-selection-target]').classes()).toContain('ant-checkbox-group')
 
-    const node: DesignerFieldNode = {
+    const node: FieldNode = {
       id: 'environment',
       kind: 'field',
-      material: 'antd.select',
+      component: 'antd.select',
       field: 'environment',
       props: { optionSource },
+      events: {},
+      bindings: {},
     }
     const setter = mount(AntdChoiceDefaultSetter, {
       global,

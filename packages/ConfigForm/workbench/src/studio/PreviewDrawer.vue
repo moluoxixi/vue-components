@@ -5,7 +5,7 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { WorkbenchAdapterId } from '../adapters'
-import type { WorkspacePreviewProjection } from '../session'
+import type { PagePreviewProjection, PreviewRuntimeMountedEvent } from '../session'
 import {
   Maximize2,
   Minimize2,
@@ -30,7 +30,7 @@ const props = defineProps<{
   modelValue: Record<string, unknown>
   namespace?: string
   open: boolean
-  projection?: WorkspacePreviewProjection
+  projection?: PagePreviewProjection
   reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
   state: { label: string, tone: 'error' | 'live' }
   viewport: PreviewViewport
@@ -41,7 +41,7 @@ const emit = defineEmits<{
   error: [error: unknown]
   fieldChange: [payload: { field: string, values: Record<string, unknown> }]
   runtimeEvent: [payload: { event: string, nodeId: string }]
-  runtimeMounted: [revision: string]
+  runtimeMounted: [event: PreviewRuntimeMountedEvent]
   ready: [revision: string]
   submit: [values: Record<string, unknown>]
   'update:expanded': [expanded: boolean]

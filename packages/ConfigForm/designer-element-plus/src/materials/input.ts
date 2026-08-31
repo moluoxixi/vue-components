@@ -18,7 +18,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'input' }) => ({
         id,
         kind: 'field',
-        material: 'element.input',
+        component: 'element.input',
         field,
         label: 'Input',
         props: { placeholder: '' },

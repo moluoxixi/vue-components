@@ -24,7 +24,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'radio' }) => ({
         id,
         kind: 'field',
-        material: 'antd.radio',
+        component: 'antd.radio',
         field,
         label: 'Radio',
         props: { options: s.defaultOptions() },

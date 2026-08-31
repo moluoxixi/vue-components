@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import type { ConfigFormFlow, ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
-import type { DesignerLocaleOptions, ModelOperation } from '@moluoxixi/config-form-designer'
+import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type { ProjectCommand } from '@moluoxixi/config-form-model'
 import { X } from '@lucide/vue'
 import { computed, defineAsyncComponent, useTemplateRef } from 'vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { useWorkbenchDialogFocus } from '../../components/use-dialog-focus'
 import type { FlowEventTarget } from '../../flow/event-targets'
-
-type FlowOperation = Extract<ModelOperation, {
-  type: 'addFlow'
-    | 'updateFlowSettings'
-    | 'updateFlowNode'
-    | 'updateFlowEdges'
-    | 'updateFlowGraph'
-    | 'removeFlow'
-}>
 
 const props = defineProps<{
   fieldNames?: string[]
@@ -23,12 +15,13 @@ const props = defineProps<{
   initialTrigger?: ConfigFormFlowTrigger
   locale?: DesignerLocaleOptions
   open: boolean
+  pageId: string
   readonly?: boolean
 }>()
 
 const emit = defineEmits<{
   close: []
-  operation: [operation: FlowOperation]
+  command: [command: ProjectCommand]
 }>()
 
 const FlowWorkspace = defineAsyncComponent(() => import('../../components/FlowWorkspace.vue'))
@@ -66,8 +59,9 @@ const { handleKeydown } = useWorkbenchDialogFocus(
           :field-names="fieldNames"
           :event-targets="eventTargets"
           :locale="props.locale"
+          :page-id="pageId"
           :readonly="readonly"
-          @operation="emit('operation', $event)"
+          @command="emit('command', $event)"
         />
       </div>
     </section>

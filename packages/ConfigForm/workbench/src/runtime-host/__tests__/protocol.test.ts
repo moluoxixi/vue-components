@@ -1,9 +1,9 @@
 import type { RuntimeHostSyncMessage } from '../protocol'
 import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
-import { createProjectSnapshot, migrateLegacyWorkspaceApplication } from '@moluoxixi/config-form-model'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { createBuiltInWorkspaceApplication } from '../../project'
+import { createBuiltInProject } from '../../project'
 import {
   acceptsRuntimeHostMessageEvent,
   isParentToRuntimeHostMessage,
@@ -14,19 +14,13 @@ import {
 
 async function syncMessage(): Promise<RuntimeHostSyncMessage> {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const application = createBuiltInWorkspaceApplication('element-profile', {
-    createdAt: '2026-08-31T00:00:00.000Z',
+  const project = createBuiltInProject('element-profile', {
     id: 'runtime-host-project',
     name: 'Runtime Host project',
-  })
-  const migrated = migrateLegacyWorkspaceApplication(application, {
-    registryLock: adapter.componentRegistry.lock,
-  })
-  if (!migrated.success)
-    throw new Error(migrated.diagnostics[0]?.message ?? 'Migration failed.')
-  const pageId = migrated.data.homePageId
+  }, adapter.componentRegistry.lock)
+  const pageId = project.homePageId
   const compiled = compileCanonicalPage({
-    snapshot: createProjectSnapshot(migrated.data, 3),
+    snapshot: createProjectSnapshot(project, 3),
     registry: adapter.registrySnapshot,
     pageId,
   })

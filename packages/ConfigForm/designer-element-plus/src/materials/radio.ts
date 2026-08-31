@@ -21,7 +21,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'radio' }) => ({
         id,
         kind: 'field',
-        material: 'element.radio',
+        component: 'element.radio',
         field,
         label: 'Radio',
         props: { options: shared.defaultOptions() },

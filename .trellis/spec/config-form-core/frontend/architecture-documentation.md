@@ -8,7 +8,7 @@ Update it in the same change set when a task changes any of these contracts:
 
 - package ownership, package names, public subpaths, dependencies, or peer dependencies;
 - the Headless/Renderer path or the Runtime/Plugin path;
-- DesignerDocument, Headless node, reaction, slot, option source, or extension metadata;
+- ProjectDocument, PageGraph, Headless node, reaction, slot, option source, or extension metadata;
 - material/component registries, naming rules, error codes, discovery, or precedence;
 - a capability reused by two or more ConfigForm packages.
 

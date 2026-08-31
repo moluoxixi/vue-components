@@ -29,7 +29,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'number' }) => ({
         id,
         kind: 'field',
-        material: 'antd.input-number',
+        component: 'antd.input-number',
         field,
         label: 'Number',
         props: { step: 1, controls: true },

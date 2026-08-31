@@ -28,7 +28,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'slider' }) => ({
         id,
         kind: 'field',
-        material: 'antd.slider',
+        component: 'antd.slider',
         field,
         label: 'Slider',
         defaultValue: 0,

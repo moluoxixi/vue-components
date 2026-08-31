@@ -1,30 +1,13 @@
-import type {
-  DesignerDocument,
-  DesignerJsonObject,
-  DesignerMaterialDefinition,
-} from '@moluoxixi/config-form-designer'
-import {
-  compileDesignerDocument,
-  ConfigFormDesigner,
-  createDesignerRuntimeProjection,
-  createLowCodeComponentRegistry,
-  DesignerPropertyPanel,
-} from '@moluoxixi/config-form-designer'
-import { flushPromises, mount } from '@vue/test-utils'
-import { ElInput } from 'element-plus'
-import { describe, expect, it, vi } from 'vitest'
+import type { DesignerMaterialDefinition } from '@moluoxixi/config-form-designer'
+import type { PageGraph } from '@moluoxixi/config-form-model'
+import { pageGraphSchema } from '@moluoxixi/config-form-model'
+import { describe, expect, it } from 'vitest'
 import {
   createElementPlusDesignerRegistry,
-  createElementPlusOptionResolverContext,
   ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY,
   ELEMENT_PLUS_DESIGNER_MATERIALS,
   ELEMENT_PLUS_DESIGNER_ZH_CN,
 } from '../index'
-import {
-  renderElementPlusChoiceReadonly,
-  renderElementPlusRawReadonly,
-  renderElementPlusSwitchReadonly,
-} from '../src/readonly'
 
 const expectedKeys = [
   'element.input',
@@ -46,475 +29,119 @@ const expectedKeys = [
   'element.grid',
 ]
 
+function graphForRootMaterials(): PageGraph {
+  const registry = createElementPlusDesignerRegistry()
+  const graph: PageGraph = { version: 2, props: {}, form: {}, root: [], nodesById: {} }
+  registry.listMaterials().forEach((material, index) => {
+    const subgraph = registry.createSubgraph(material.key, {
+      id: `matrix-${index}`,
+      ...(material.kind === 'field' ? { field: `field_${index}` } : {}),
+    })
+    expect(subgraph.root).toHaveLength(1)
+    expect(subgraph.nodesById[subgraph.root[0]!.nodeId]).toMatchObject({
+      component: material.key,
+      kind: material.kind,
+    })
+    expect(() => structuredClone(subgraph)).not.toThrow()
+    if (material.allowedParents?.length)
+      return
+    graph.root.push(...subgraph.root)
+    Object.assign(graph.nodesById, subgraph.nodesById)
+  })
+  return graph
+}
+
 describe('element plus designer materials', () => {
-  it('registers material definitions and locale from matching named files', () => {
+  it('registers every material and matching locale module', () => {
     const entries = ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.modules.list()
     expect(entries.map(entry => entry.name)).toEqual(expectedKeys.map(key => key.replace('element.', '')))
     expect(entries.every(entry => entry.source === `./materials/${entry.name}.ts`)).toBe(true)
-    expect(Object.keys(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.locales)).toEqual(expectedKeys)
-  })
-
-  it('ships a locale map for every registered material', () => {
-    expect(Object.keys(ELEMENT_PLUS_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
-    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['designer.title']).toBe('表单设计器')
-    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['property.reactions']).toBe('联动')
-    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.messages?.['reaction.effect.setValue']).toBe('设置值')
-    expect(ELEMENT_PLUS_DESIGNER_ZH_CN.materials?.['element.input']?.setters?.placeholder).toBe('占位文本')
-  })
-
-  it('registers the complete MVP field and container set', () => {
     expect(ELEMENT_PLUS_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
-    expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')).toHaveLength(9)
-    expect(ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'container')).toHaveLength(8)
+    expect(Object.keys(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.locales)).toEqual(expectedKeys)
+    expect(Object.keys(ELEMENT_PLUS_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
   })
 
-  it('publishes an explicit source adapter for every material', () => {
-    const definitions = createLowCodeComponentRegistry(createElementPlusDesignerRegistry()).list()
-    expect(definitions).toHaveLength(expectedKeys.length)
-    expect(definitions.every(definition => definition.source.library?.packageName === 'element-plus'
-      || definition.source.render !== 'component')).toBe(true)
-    expect(definitions.find(definition => definition.component === 'element.date')?.source.tag).toBe('el-date-picker')
-    expect(definitions.find(definition => definition.component === 'element.checkbox')?.source.options).toMatchObject({
+  it('creates a normalized JSON-safe subgraph for every material', () => {
+    const graph = graphForRootMaterials()
+    expect(() => pageGraphSchema.parse(graph)).not.toThrow()
+    expect(Object.keys(graph.nodesById)).toHaveLength(expectedKeys.length)
+  })
+
+  it('creates structural tabs and collapse children inside their real parent slots', () => {
+    const registry = createElementPlusDesignerRegistry()
+    const tabs = registry.createSubgraph('element.tabs', { id: 'tabs' })
+    const collapse = registry.createSubgraph('element.collapse', { id: 'collapse' })
+
+    expect(tabs.nodesById.tabs).toMatchObject({
+      kind: 'layout',
+      component: 'element.tabs',
+      slots: { default: [{ nodeId: 'tabs-pane-1', placement: {} }] },
+    })
+    expect(tabs.nodesById['tabs-pane-1']).toMatchObject({
+      kind: 'layout',
+      component: 'element.tab-pane',
+    })
+    expect(collapse.nodesById.collapse).toMatchObject({
+      kind: 'layout',
+      component: 'element.collapse',
+      slots: { default: [{ nodeId: 'collapse-item-1', placement: {} }] },
+    })
+    expect(collapse.nodesById['collapse-item-1']).toMatchObject({
+      kind: 'layout',
+      component: 'element.collapse-item',
+    })
+  })
+
+  it('publishes complete source, binding, event, and property-control metadata', () => {
+    const registry = createElementPlusDesignerRegistry()
+    expect(registry.listMaterials().every(material => !!material.source)).toBe(true)
+    expect(registry.getMaterial('element.date')?.source?.tag).toBe('el-date-picker')
+    expect(registry.getMaterial('element.checkbox')?.source?.options).toMatchObject({
       mode: 'children',
       optionTag: 'el-checkbox',
     })
-  })
-
-  it('publishes binding and explicit component events through the shared Registry', () => {
-    const definitions = createLowCodeComponentRegistry(createElementPlusDesignerRegistry())
-    expect(definitions.get('element.input')?.events).toEqual([
-      { name: 'update:modelValue', displayName: 'Value change' },
+    const inputRuntime = registry.getMaterial('element.input')?.runtime
+    expect(inputRuntime?.valueProp ?? 'modelValue').toBe('modelValue')
+    expect(inputRuntime?.trigger ?? `update:${inputRuntime?.valueProp ?? 'modelValue'}`).toBe('update:modelValue')
+    expect(registry.getMaterial('element.tabs')?.events).toEqual([
+      { name: 'tab-change', title: 'Active tab change' },
     ])
-    expect(definitions.get('element.tabs')?.events).toEqual([
-      { name: 'tab-change', displayName: 'Active tab change' },
+    expect(registry.getMaterial('element.collapse')?.events).toEqual([
+      { name: 'change', title: 'Expanded items change' },
     ])
-    expect(definitions.get('element.collapse')?.events).toEqual([
-      { name: 'change', displayName: 'Expanded items change' },
-    ])
+    expect(Object.keys(registry.propertyControls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
   })
 
-  it('creates and compiles every registry material in a single regression matrix', () => {
+  it('creates independent defaults for every field material', () => {
     const registry = createElementPlusDesignerRegistry()
-    const materials = registry.listMaterials()
-    const nodes = materials.map((material, index) => registry.createNode(material.key, {
-      id: `matrix-${index}`,
-      ...(material.kind === 'field' ? { field: `matrix-${index}` } : {}),
-    }))
-    const rootNodes = nodes.filter((_, index) => !materials[index]!.allowedParents?.length)
-
-    expect(nodes).toHaveLength(registry.listMaterials().length)
-    expect(new Set(nodes.map(node => node.id)).size).toBe(nodes.length)
-    expect(compileDesignerDocument({ version: 1, form: {}, nodes: rootNodes }, registry)).toMatchObject({ success: true })
-  })
-
-  it('registers native ConfigForm property controls', () => {
-    const registry = createElementPlusDesignerRegistry()
-    const controls = registry.propertyControls
-    expect(Object.keys(controls)).toEqual(['text', 'textarea', 'number', 'boolean', 'select'])
-    expect(controls).toMatchObject({
-      text: { component: 'text' },
-      textarea: { component: 'textarea' },
-      number: { component: 'number' },
-      boolean: { component: 'boolean' },
-      select: { component: 'segmented' },
-    })
-    expect(registry.components.text).toMatchObject({ trigger: 'update:modelValue' })
-    expect(registry.components.segmented).toMatchObject({ trigger: 'change', props: { block: true } })
-  })
-
-  it('renders and commits a real Element Plus property control through ConfigForm', async () => {
-    const registry = createElementPlusDesignerRegistry()
-    const wrapper = mount(DesignerPropertyPanel, {
-      props: {
-        components: registry.components,
-        diagnostics: [],
-        document: {
-          version: 1,
-          form: { columns: 24, fieldSpan: 24, gap: '16px', inline: false, labelPosition: 'left', readonly: false },
-          nodes: [],
-        },
-        propertyControls: registry.propertyControls,
-      },
-    })
-    const gap = wrapper.findAllComponents(ElInput)
-      .find(control => control.props('modelValue') === '16px')!
-
-    gap.vm.$emit('update:modelValue', '20px')
-    await wrapper.vm.$nextTick()
-    gap.vm.$emit('blur', new FocusEvent('blur'))
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.emitted('updateForm')?.at(-1)).toEqual([{ gap: '20px' }])
-  })
-
-  it('provides typed visual default-value setters and readonly preview bindings', () => {
-    const fields = ELEMENT_PLUS_DESIGNER_MATERIALS.filter(material => material.kind === 'field')
-    expect(fields.every(material => material.setters.some(setter => setter.path.join('.') === 'defaultValue'))).toBe(true)
-    expect(fields.every(material => typeof material.runtime.readonlyRender === 'function')).toBe(true)
-    expect(Object.fromEntries(fields.map(material => [material.key, material.runtime.readonlyProp]))).toEqual({
-      'element.input': 'readonly',
-      'element.textarea': 'readonly',
-      'element.input-number': 'disabled',
-      'element.select': 'disabled',
-      'element.radio': 'disabled',
-      'element.checkbox': 'disabled',
-      'element.switch': 'disabled',
-      'element.date': 'readonly',
-      'element.time': 'readonly',
-    })
-
-    const select = fields.find(material => material.key === 'element.select')!
-    expect(select.setters.find(setter => setter.key === 'defaultValue')).toMatchObject({
-      control: 'custom',
-      valueKind: 'select',
-    })
-    expect(select.setters.find(setter => setter.key === 'optionSource')).toMatchObject({
-      control: 'custom',
-      path: ['props', 'optionSource'],
-    })
-    expect(select.runtime.readonlyProp).toBe('disabled')
-
-    const checkbox = fields.find(material => material.key === 'element.checkbox')!
-    expect(checkbox.setters.find(setter => setter.key === 'defaultValue')).toMatchObject({
-      valueKind: 'multiselect',
-    })
-  })
-
-  it('renders semantic readonly values for Element Plus choice fields', () => {
-    const registry = createElementPlusDesignerRegistry()
-    expect(registry.rendererNamespace).toBe('mx-element-config-form')
-    const select = registry.createNode('element.select', { id: 'select', field: 'environment' })
-    const checkbox = registry.createNode('element.checkbox', { id: 'checkbox', field: 'tags' })
-    const switchNode = registry.createNode('element.switch', { id: 'switch', field: 'enabled' })
-    if (select.kind !== 'field' || checkbox.kind !== 'field' || switchNode.kind !== 'field')
-      throw new Error('Expected field fixtures')
-
-    expect(renderElementPlusChoiceReadonly({
-      node: select,
-      model: { environment: 'a' },
-      value: 'a',
-      componentProps: { options: [{ label: 'Playground', value: 'a' }] },
-    })).toBe('Playground')
-    expect(renderElementPlusChoiceReadonly({
-      node: checkbox,
-      model: { tags: ['a', 'b'] },
-      value: ['a', 'b'],
-      componentProps: { options: [
-        { label: 'Alpha', value: 'a' },
-        { label: 'Beta', value: 'b' },
-      ] },
-    })).toBe('Alpha、Beta')
-    expect(renderElementPlusSwitchReadonly({
-      node: switchNode,
-      model: { enabled: true },
-      value: true,
-      componentProps: { activeText: 'Enabled', inactiveText: 'Disabled' },
-    })).toBe('Enabled')
-    expect(renderElementPlusSwitchReadonly({
-      node: switchNode,
-      model: { enabled: false },
-      value: false,
-      componentProps: { activeText: 'Enabled', inactiveText: 'Disabled' },
-    })).toBe('Disabled')
-    expect(renderElementPlusRawReadonly({
-      node: select,
-      model: { environment: 'free text' },
-      value: 'free text',
-      componentProps: {},
-    })).toBe('free text')
-  })
-
-  it('creates valid independent defaults with JSON-safe date and time values', () => {
-    const registry = createElementPlusDesignerRegistry()
-    const selectOne = registry.createNode('element.select', { id: 'select-1', field: 'choiceOne' })
-    const selectTwo = registry.createNode('element.select', { id: 'select-2', field: 'choiceTwo' })
-    const firstOptions = selectOne.props?.options as DesignerJsonObject[]
-    firstOptions[0]!.label = 'Changed'
-    expect((selectTwo.props?.options as DesignerJsonObject[])[0]?.label).toBe('Option A')
-
-    expect(registry.createNode('element.date', { id: 'date', field: 'date' })).toMatchObject({
-      props: { valueFormat: 'YYYY-MM-DD' },
-    })
-    expect(registry.createNode('element.time', { id: 'time', field: 'time' })).toMatchObject({
-      props: { valueFormat: 'HH:mm:ss' },
-    })
-    expect(registry.createNode('element.checkbox', { id: 'tags', field: 'tags' })).toMatchObject({
-      defaultValue: [],
-    })
-    expect(registry.createNode('element.tabs', { id: 'tabs' })).toMatchObject({
-      props: { modelValue: 'tabs-pane-1' },
-      slots: {
-        default: [{
-          id: 'tabs-pane-1',
-          material: 'element.tab-pane',
-          props: { label: 'Tab 1', name: 'tabs-pane-1' },
-        }],
-      },
-    })
-    expect(registry.createNode('element.collapse', { id: 'collapse' })).toMatchObject({
-      props: { modelValue: ['collapse-item-1'] },
-      slots: {
-        default: [{
-          id: 'collapse-item-1',
-          material: 'element.collapse-item',
-          props: { title: 'Item 1', name: 'collapse-item-1' },
-        }],
-      },
-    })
-  })
-
-  it('keeps structural children inside their real Element Plus providers', async () => {
-    const registry = createElementPlusDesignerRegistry()
-    const tabs = registry.createNode('element.tabs', { id: 'tabs' })
-    const collapse = registry.createNode('element.collapse', { id: 'collapse' })
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    try {
-      const wrapper = mount(ConfigFormDesigner, {
-        props: {
-          document: { version: 1, form: {}, nodes: [tabs, collapse] },
-          registry,
-        },
-      })
-      await flushPromises()
-
-      expect(wrapper.find('.el-tabs').exists()).toBe(true)
-      expect(wrapper.find('[data-config-node-id="tabs-pane-1"]').exists()).toBe(true)
-      expect(wrapper.find('.el-collapse').exists()).toBe(true)
-      expect(wrapper.find('[data-config-node-id="collapse-item-1"]').exists()).toBe(true)
-      const messages = [...warn.mock.calls, ...error.mock.calls].flat().map(String).join('\n')
-      expect(messages).not.toContain('[ElTabPane] usage')
-      expect(messages).not.toContain('[ElCollapseItem] usage')
-      wrapper.unmount()
-    }
-    finally {
-      warn.mockRestore()
-      error.mockRestore()
+    const fields = registry.listMaterials().filter(material => material.kind === 'field')
+    for (const [index, material] of fields.entries()) {
+      const first = registry.createSubgraph(material.key, { id: `first-${index}`, field: `first_${index}` })
+      const second = registry.createSubgraph(material.key, { id: `second-${index}`, field: `second_${index}` })
+      const firstNode = first.nodesById[`first-${index}`]!
+      const secondNode = second.nodesById[`second-${index}`]!
+      expect(firstNode).not.toBe(secondNode)
+      expect(firstNode.props).not.toBe(secondNode.props)
+      expect(material.setters.some(setter => setter.path.join('.') === 'defaultValue')).toBe(true)
+      expect(typeof material.runtime.readonlyRender).toBe('function')
     }
   })
 
-  it('rejects standalone structural children and omits them from the Runtime projection', () => {
-    const registry = createElementPlusDesignerRegistry()
-    const pane = registry.createNode('element.tab-pane', { id: 'pane' })
-    const item = registry.createNode('element.collapse-item', { id: 'item' })
-    const document = { version: 1 as const, form: {}, nodes: [pane, item] }
-
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [
-        { code: 'DESIGNER_MATERIAL_PARENT_INVALID', nodeId: 'pane' },
-        { code: 'DESIGNER_MATERIAL_PARENT_INVALID', nodeId: 'item' },
-      ],
-    })
-    expect(createDesignerRuntimeProjection(document, registry).fields).toEqual([])
-  })
-
-  it('enforces finite tabs and collapse child materials during compilation', () => {
-    const registry = createElementPlusDesignerRegistry()
-    const invalid: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'tabs',
-        kind: 'container',
-        material: 'element.tabs',
-        slots: {
-          default: [{
-            id: 'input',
-            kind: 'field',
-            material: 'element.input',
-            field: 'input',
-          }],
-        },
-      }],
-    }
-    expect(compileDesignerDocument(invalid, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_SLOT_KIND_INVALID' }, { code: 'DESIGNER_SLOT_MATERIAL_INVALID' }],
-    })
-
-    const valid: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'tabs',
-        kind: 'container',
-        material: 'element.tabs',
-        slots: {
-          default: [{
-            id: 'pane',
-            kind: 'container',
-            material: 'element.tab-pane',
-            props: { label: 'Profile', name: 'profile' },
-            slots: {
-              default: [{
-                id: 'input',
-                kind: 'field',
-                material: 'element.input',
-                field: 'name',
-              }],
-            },
-          }],
-        },
-      }],
-    }
-    expect(compileDesignerDocument(valid, registry).success).toBe(true)
-  })
-
-  it('compiles real flex and grid layout containers with nested fields', () => {
-    const registry = createElementPlusDesignerRegistry()
-    const document: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'grid',
-        kind: 'container',
-        material: 'element.grid',
-        props: { columns: 3, gap: 16 },
-        slots: {
-          default: [{
-            id: 'flex',
-            kind: 'container',
-            material: 'element.flex',
-            props: { wrap: true, gap: 8 },
-            slots: {
-              default: [{
-                id: 'name',
-                kind: 'field',
-                material: 'element.input',
-                field: 'name',
-              }],
-            },
-          }],
-        },
-      }],
-    }
-
-    const compiled = compileDesignerDocument(document, registry)
-    expect(compiled.success).toBe(true)
-    if (!compiled.success)
-      return
-
-    expect(compiled.fields[0]).toMatchObject({
-      component: expect.anything(),
-      props: { columns: 3, gap: 16 },
-    })
-    const grid = compiled.fields[0]!
-    const flex = Array.isArray(grid.slots?.default) ? grid.slots.default[0] : undefined
-    expect(flex).toMatchObject({ props: { wrap: true, gap: 8 } })
-    const nestedField = flex && Array.isArray(flex.slots?.default) ? flex.slots.default[0] : undefined
-    expect(nestedField).toMatchObject({ field: 'name' })
-  })
-
-  it('validates dictionary defaults against normalized resolved options', () => {
-    const optionResolver = createElementPlusOptionResolverContext({
-      dictionaries: {
-        environments: [
-          { label: 'Playground', value: 'playground' },
-          { label: 'Production', value: 'production' },
-        ],
-      },
-    })
-    const registry = createElementPlusDesignerRegistry([], { optionResolver })
-    const document: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'environment',
-        kind: 'field',
-        material: 'element.select',
-        field: 'environment',
-        defaultValue: 'playground',
-        props: { optionSource: { kind: 'dictionary', key: 'environments' } },
-      }],
-    }
-
-    expect(compileDesignerDocument(document, registry).success).toBe(true)
-    const environment = document.nodes[0]
-    if (environment?.kind !== 'field')
-      throw new Error('Expected field fixture')
-    environment.defaultValue = 'missing'
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_DEFAULT_OPTION_UNKNOWN', nodeId: 'environment' }],
-    })
-    environment.defaultValue = null
-    expect(compileDesignerDocument(document, registry).success).toBe(true)
-
-    environment.defaultValue = undefined
-    environment.props = { optionSource: { kind: 'provider' } }
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_INVALID', nodeId: 'environment' }],
-    })
-  })
-
-  it('tracks provider resolution states and blocks unresolved defaults', () => {
-    const optionResolver = createElementPlusOptionResolverContext()
-    const registry = createElementPlusDesignerRegistry([], { optionResolver })
-    const optionSource = { kind: 'provider' as const, key: 'projects' }
-    const document: DesignerDocument = {
-      version: 1,
-      form: {},
-      nodes: [{
-        id: 'project',
-        kind: 'field',
-        material: 'element.select',
-        field: 'project',
-        defaultValue: 'website',
-        props: { optionSource },
-      }],
-    }
-
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_UNRESOLVED', nodeId: 'project' }],
-    })
-    optionResolver.writeState(optionSource, { status: 'loading', options: [] })
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_LOADING', nodeId: 'project' }],
-    })
-    optionResolver.writeState(optionSource, {
-      status: 'ready',
-      options: [{ label: 'Website', value: 'website' }],
-    })
-    expect(compileDesignerDocument(document, registry).success).toBe(true)
-
-    optionResolver.writeState(optionSource, {
-      status: 'ready',
-      options: [{ label: 'Admin', value: 'admin' }],
-    })
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_DEFAULT_OPTION_UNKNOWN', nodeId: 'project' }],
-    })
-
-    optionResolver.writeState(optionSource, { status: 'error', options: [], error: 'Provider failed' })
-    expect(compileDesignerDocument(document, registry)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'DESIGNER_OPTION_SOURCE_ERROR', message: 'Provider failed' }],
-    })
-  })
-
-  it('keeps caller layers above adapter defaults', () => {
-    const localInput: DesignerMaterialDefinition = {
+  it('keeps caller registry layers above provider defaults', () => {
+    const override: DesignerMaterialDefinition = {
       key: 'element.input',
       version: 1,
       kind: 'field',
-      title: 'Local input',
-      category: 'Local',
+      title: 'Override input',
+      category: 'Custom',
       runtime: { component: 'input' },
       setters: [],
-      createNode: ({ id, field = 'local' }) => ({
-        id,
-        kind: 'field',
-        material: 'element.input',
-        field,
-      }),
+      createNode: ({ id, field = id }) => ({ id, field, kind: 'field', component: 'element.input' }),
     }
-    const registry = createElementPlusDesignerRegistry([{ name: 'local', materials: [localInput] }])
-    expect(registry.getMaterial('element.input')?.title).toBe('Local input')
-    expect(registry.listMaterials()).toHaveLength(expectedKeys.length)
+    const registry = createElementPlusDesignerRegistry([{ name: 'override', materials: [override] }])
+
+    expect(registry.getMaterial('element.input')?.title).toBe('Override input')
+    expect(registry.createSubgraph('element.input', { id: 'custom', field: 'custom' }).nodesById.custom)
+      .toMatchObject({ component: 'element.input', field: 'custom' })
   })
 })

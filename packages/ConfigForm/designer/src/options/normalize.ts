@@ -3,7 +3,7 @@ import type {
   DesignerOptionSource,
   DesignerResolvedOptionState,
 } from './types'
-import { isDesignerJsonObject } from '../document'
+import { isDesignerJsonObject } from '../graph'
 
 export function readDesignerOptionSource(value: unknown): DesignerOptionSource | undefined {
   if (!isRecord(value) || typeof value.kind !== 'string')

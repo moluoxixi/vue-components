@@ -9,7 +9,7 @@ import {
   createConfigFormModuleRegistry,
   defineConfigFormModule,
 } from '@moluoxixi/config-form-core'
-import { DesignerRegistryError } from '../document'
+import { DesignerRegistryError } from '../graph'
 
 export interface DesignerMaterialModuleValue {
   material: DesignerMaterialDefinition

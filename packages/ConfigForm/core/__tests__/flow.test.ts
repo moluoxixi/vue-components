@@ -29,7 +29,7 @@ function flow(overrides: Partial<ConfigFormFlow> = {}): ConfigFormFlow {
 
 describe('config form flow core', () => {
   it('creates a deterministic plan and rejects malformed branch graphs', () => {
-    const result = analyzeConfigFormFlow(flow(), 7)
+    const result = analyzeConfigFormFlow(flow())
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.plan).toMatchObject({

@@ -3,35 +3,25 @@ import type {
   ProjectCompilation,
 } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormFlow,
   ConfigFormFlowExecutionPlan,
   ConfigFormReaction,
 } from '@moluoxixi/config-form-core'
 import type {
-  LowCodeComponentRegistry,
-} from '@moluoxixi/config-form-designer'
-import type {
   ConditionExpression,
   ConditionTarget,
   FormSettings,
-  LegacyLowCodeNodeV1 as LowCodeNode,
-  LegacyLowCodePageModelV1 as LowCodePageModel,
   ModelJsonObject,
   ModelJsonValue,
   RegisteredBinding,
   RegisteredEventAction,
 } from '@moluoxixi/config-form-model'
-import type { WorkspaceApplication } from '../application'
-import type { ProjectPath, WorkspaceFile, WorkspaceProject } from '../types'
+import type { ProjectPath, WorkspaceFile } from '../types'
 import type {
   CanonicalSourceBindingResolver,
   CanonicalSourceComponentBinding,
   CanonicalSourceLibraryBinding,
 } from './canonical-bindings'
-import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
-import { cloneWorkspaceApplication, parseWorkspaceApplication } from '../application'
 import { normalizeProjectPath, safeProjectSlug } from '../path'
-import { cloneWorkspaceProject } from '../revision'
 
 /**
  * Files generated for the downloadable Source artifact.  The workbench
@@ -39,16 +29,6 @@ import { cloneWorkspaceProject } from '../revision'
  * deliberately standalone Vue project that can be installed outside the
  * monorepo without the ConfigForm packages.
  */
-export interface PureSourceExport {
-  project: WorkspaceProject
-  files: Record<ProjectPath, WorkspaceFile>
-}
-
-export interface WorkspaceApplicationSourceExport {
-  application: WorkspaceApplication
-  files: Record<ProjectPath, WorkspaceFile>
-}
-
 interface PackageJson {
   [key: string]: unknown
   dependencies?: Record<string, string>
@@ -109,84 +89,6 @@ interface StandaloneSourceProject {
 
 function textFile(content: string, language: string): WorkspaceFile {
   return { content, kind: 'text', language }
-}
-
-function createLegacySourceRegistry(registry: LowCodeComponentRegistry): StandaloneSourceRegistry {
-  const definitions = new Map(registry.list().map((definition) => {
-    const binding: CanonicalSourceComponentBinding = {
-      component: definition.component,
-      contractFingerprint: 'legacy',
-      contractVersion: 'legacy',
-      configComponent: definition.source.configComponent,
-      tag: definition.source.tag,
-      render: definition.source.render,
-      ...(definition.defaults.defaultValue === undefined
-        ? {}
-        : { defaultValue: structuredClone(definition.defaults.defaultValue) }),
-      ...(definition.source.library ? { library: structuredClone(definition.source.library) } : {}),
-      ...(definition.source.options ? { options: structuredClone(definition.source.options) } : {}),
-      ...(definition.source.staticProps ? { staticProps: structuredClone(definition.source.staticProps) } : {}),
-      ...(definition.runtime.trigger ? { trigger: definition.runtime.trigger } : {}),
-      ...(definition.runtime.valueProp ? { valueProp: definition.runtime.valueProp } : {}),
-    }
-    return [definition.component, {
-      binding,
-      events: definition.events.map(event => ({ name: event.name })),
-      bindings: definition.bindings.map(item => ({
-        name: item.name,
-        valueProp: item.valueProp,
-        trigger: item.trigger,
-      })),
-    } satisfies StandaloneSourceComponentDefinition] as const
-  }))
-  return { get: component => definitions.get(component) }
-}
-
-function legacySourceNode(
-  node: LowCodeNode,
-  flowEventsByNode: ReadonlyMap<string, readonly string[]>,
-): StandaloneSourceNode {
-  const common: StandaloneSourceNodeBase = {
-    id: node.id,
-    component: node.component,
-    props: structuredClone(node.props),
-    events: structuredClone(node.events),
-    flowEvents: [...(flowEventsByNode.get(node.id) ?? [])],
-    bindings: structuredClone(node.bindings),
-    placement: node.span === undefined ? {} : { span: node.span },
-    ...(node.conditions === undefined ? {} : { conditions: structuredClone(node.conditions) }),
-    ...(node.reactions === undefined ? {} : { reactions: structuredClone(node.reactions) }),
-  }
-  if (node.kind === 'field') {
-    return {
-      ...common,
-      kind: 'field',
-      field: node.field ?? node.id,
-      ...(node.label === undefined ? {} : { label: node.label }),
-      ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
-    }
-  }
-
-  const slots = Object.fromEntries(Object.entries(node.slots).map(([name, children]) => [
-    name,
-    children.map(child => legacySourceNode(child, flowEventsByNode)),
-  ]))
-  if (node.children.length > 0)
-    slots.default = node.children.map(child => legacySourceNode(child, flowEventsByNode))
-  return { ...common, kind: 'layout', slots }
-}
-
-function legacySourcePage(model: LowCodePageModel, route = '/'): StandaloneSourcePage {
-  const flowPlans = compileStandaloneFlowPlans(model.flows ?? [], model.id)
-  const flowEvents = collectFlowEventsByNode(flowPlans)
-  return {
-    id: model.id,
-    name: model.name,
-    route,
-    form: structuredClone(model.form),
-    root: model.nodes.map(node => legacySourceNode(node, flowEvents)),
-    flowPlans,
-  }
 }
 
 function createCanonicalSourceRegistry(
@@ -269,35 +171,6 @@ function canonicalSourcePage(page: CanonicalPageIR): StandaloneSourcePage {
     root: page.rootIds.map(nodeId => canonicalSourceNode(page, nodeId, new Set())),
     flowPlans: page.flows.map(flow => structuredClone(flow.plan)),
   }
-}
-
-function compileStandaloneFlowPlans(
-  flows: readonly ConfigFormFlow[],
-  pageId: string,
-): ConfigFormFlowExecutionPlan[] {
-  return flows.map((flow) => {
-    const result = analyzeConfigFormFlow(flow)
-    if (!result.success) {
-      throw new Error(result.diagnostics[0]?.message
-        ?? `Flow on page "${pageId}" is invalid.`)
-    }
-    return result.plan
-  })
-}
-
-function collectFlowEventsByNode(
-  plans: readonly ConfigFormFlowExecutionPlan[],
-): ReadonlyMap<string, readonly string[]> {
-  const eventsByNode = new Map<string, Set<string>>()
-  for (const plan of plans) {
-    const trigger = plan.trigger
-    if (trigger.kind !== 'component.event' || !trigger.nodeId || !trigger.event)
-      continue
-    const events = eventsByNode.get(trigger.nodeId) ?? new Set<string>()
-    events.add(trigger.event)
-    eventsByNode.set(trigger.nodeId, events)
-  }
-  return new Map([...eventsByNode].map(([nodeId, events]) => [nodeId, [...events].sort()] as const))
 }
 
 function quote(value: string): string {
@@ -1309,24 +1182,20 @@ function portableDependencyVersion(packageName: string, dependencies: Record<str
 }
 
 function sourcePackage(
-  project: Pick<WorkspaceProject, 'files' | 'name'>,
+  name: string,
   libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
   declaredDependencies: Record<string, string>,
 ): string {
-  const packageFile = project.files[normalizeProjectPath('package.json')]
-  const original = packageFile?.kind === 'text' ? JSON.parse(packageFile.content) as PackageJson : {}
-  const dependencies = { ...(original.dependencies ?? {}), ...declaredDependencies }
-  const devDependencies = original.devDependencies ?? {}
+  const dependencies = { ...declaredDependencies }
   const runtimeDependencies = Object.fromEntries([...libraries.keys()].sort().map(packageName => [
     packageName,
     portableDependencyVersion(packageName, dependencies),
   ]))
   const manifest = {
-    name: original.name ?? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, '-'),
+    name: name.toLowerCase().replace(/[^a-z0-9-]+/g, '-'),
     private: true,
     type: 'module',
-    version: original.version ?? '0.0.0',
-    packageManager: original.packageManager,
+    version: '0.0.0',
     scripts: {
       build: 'vue-tsc -p tsconfig.json --noEmit && vite build',
       dev: 'vite',
@@ -1337,25 +1206,11 @@ function sourcePackage(
       ...runtimeDependencies,
     },
     devDependencies: {
-      '@vitejs/plugin-vue': devDependencies['@vitejs/plugin-vue'] ?? '5.2.3',
-      'typescript': devDependencies.typescript ?? '5.8.2',
-      'vite': devDependencies.vite ?? '6.2.0',
-      'vue-tsc': devDependencies['vue-tsc'] ?? '2.2.8',
+      '@vitejs/plugin-vue': '5.2.3',
+      'typescript': '5.8.2',
+      'vite': '6.2.0',
+      'vue-tsc': '2.2.8',
     },
-  }
-  if (!manifest.packageManager)
-    delete manifest.packageManager
-  return `${JSON.stringify(manifest, null, 2)}\n`
-}
-
-function applicationPackage(
-  application: WorkspaceApplication,
-  libraries: ReadonlyMap<string, CanonicalSourceLibraryBinding>,
-): string {
-  const manifest = JSON.parse(sourcePackage(application, libraries, application.manifest.dependencies)) as PackageJson
-  manifest.dependencies = {
-    ...manifest.dependencies,
-    'vue-router': '4.5.1',
   }
   return `${JSON.stringify(manifest, null, 2)}\n`
 }
@@ -1368,7 +1223,7 @@ function canonicalProjectPackage(
     library.packageName,
     library.version ?? SOURCE_LIBRARY_FALLBACK_VERSIONS[library.packageName] ?? '',
   ]))
-  const manifest = JSON.parse(sourcePackage({ files: {}, name }, libraries, declaredDependencies)) as PackageJson
+  const manifest = JSON.parse(sourcePackage(name, libraries, declaredDependencies)) as PackageJson
   manifest.dependencies = {
     ...manifest.dependencies,
     'vue-router': '4.5.1',
@@ -1397,7 +1252,7 @@ createApp(App)${appUses}.mount('#app')
 `
 }
 
-function applicationAppSource(): string {
+function projectAppSource(): string {
   return `<script setup lang="ts">
 import { RouterView } from 'vue-router'
 </script>
@@ -1452,13 +1307,13 @@ function standaloneHtml(title: string): string {
 `
 }
 
-function applicationRouterSource(
-  application: Pick<StandaloneSourceProject, 'homePageId' | 'pages'>,
+function projectRouterSource(
+  project: Pick<StandaloneSourceProject, 'homePageId' | 'pages'>,
   pageDirectories: ReadonlyMap<string, string>,
 ): string {
-  const imports = application.pages.map((page, index) => `import Page${index + 1} from './pages/${pageDirectories.get(page.id)}/Page.vue'`).join('\n')
-  const routes = application.pages.map((page, index) => `  { path: ${quote(page.route)}, name: ${quote(page.id)}, component: Page${index + 1} },`).join('\n')
-  const home = application.pages.find(page => page.id === application.homePageId)!
+  const imports = project.pages.map((page, index) => `import Page${index + 1} from './pages/${pageDirectories.get(page.id)}/Page.vue'`).join('\n')
+  const routes = project.pages.map((page, index) => `  { path: ${quote(page.route)}, name: ${quote(page.id)}, component: Page${index + 1} },`).join('\n')
+  const home = project.pages.find(page => page.id === project.homePageId)!
   const redirect = home.route === '/'
     ? ''
     : `\n  { path: '/', redirect: ${quote(home.route)} },`
@@ -1474,9 +1329,9 @@ ${routes}
 `
 }
 
-function uniquePageDirectories(application: Pick<StandaloneSourceProject, 'pages'>): ReadonlyMap<string, string> {
+function uniquePageDirectories(project: Pick<StandaloneSourceProject, 'pages'>): ReadonlyMap<string, string> {
   const used = new Set<string>()
-  return new Map(application.pages.map((page) => {
+  return new Map(project.pages.map((page) => {
     const base = safeProjectSlug(page.id)
     let directory = base
     let suffix = 2
@@ -1487,19 +1342,6 @@ function uniquePageDirectories(application: Pick<StandaloneSourceProject, 'pages
     used.add(directory)
     return [page.id, directory]
   }))
-}
-
-function isReplacedApplicationFile(path: ProjectPath): boolean {
-  return path === normalizeProjectPath('package.json')
-    || path === normalizeProjectPath('src/App.vue')
-    || path === normalizeProjectPath('src/main.ts')
-    || path === normalizeProjectPath('src/router.ts')
-    || path === normalizeProjectPath('src/styles.css')
-    || path === normalizeProjectPath('src/form.config.ts')
-    || path === normalizeProjectPath('src/form.designer.json')
-    || path === normalizeProjectPath('src/flows.ts')
-    || path === normalizeProjectPath('src/page.model.json')
-    || path.startsWith('src/pages/')
 }
 
 export interface CanonicalProjectSourceExport {
@@ -1554,8 +1396,8 @@ export function createCanonicalProjectSourceExport(
   const entry = normalizeProjectPath('src/main.ts')
   files[normalizeProjectPath('index.html')] = textFile(standaloneHtml(project.name), 'html')
   files[normalizeProjectPath('package.json')] = textFile(canonicalProjectPackage(project.name, libraries), 'json')
-  files[normalizeProjectPath('src/App.vue')] = textFile(applicationAppSource(), 'vue')
-  files[normalizeProjectPath('src/router.ts')] = textFile(applicationRouterSource(project, pageDirectories), 'typescript')
+  files[normalizeProjectPath('src/App.vue')] = textFile(projectAppSource(), 'vue')
+  files[normalizeProjectPath('src/router.ts')] = textFile(projectRouterSource(project, pageDirectories), 'typescript')
   files[entry] = textFile(mainSource(libraries, true), 'typescript')
   files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
   files[normalizeProjectPath('src/vite-env.d.ts')] = textFile('/// <reference types="vite/client" />\n', 'typescript')
@@ -1563,74 +1405,4 @@ export function createCanonicalProjectSourceExport(
   files[normalizeProjectPath('vite.config.ts')] = textFile(standaloneViteConfig, 'typescript')
 
   return { entry, files }
-}
-
-export function createWorkspaceApplicationSourceExport(
-  input: WorkspaceApplication,
-  registry: LowCodeComponentRegistry,
-): WorkspaceApplicationSourceExport {
-  const application = parseWorkspaceApplication(input)
-  const sourceRegistry = createLegacySourceRegistry(registry)
-  const sourceProject: StandaloneSourceProject = {
-    id: application.id,
-    name: application.name,
-    homePageId: application.homePageId,
-    pages: application.pages.map(page => legacySourcePage(page.model, page.route)),
-  }
-  const files: Record<ProjectPath, WorkspaceFile> = {}
-  for (const [path, file] of Object.entries(application.files) as Array<[ProjectPath, WorkspaceFile]>) {
-    if (!isReplacedApplicationFile(path))
-      files[path] = structuredClone(file)
-  }
-
-  const pageDirectories = uniquePageDirectories(sourceProject)
-  const libraries = new Map<string, CanonicalSourceLibraryBinding>()
-  for (const page of sourceProject.pages) {
-    page.root.forEach(node => assertPortableNode(node, sourceRegistry))
-    collectSourceLibraries(page.root, sourceRegistry, libraries)
-    const directory = pageDirectories.get(page.id)!
-    files[normalizeProjectPath(`src/pages/${directory}/Page.vue`)] = textFile(appSource(page, sourceRegistry), 'vue')
-    files[normalizeProjectPath(`src/pages/${directory}/flows.ts`)] = textFile(flowSource(page.flowPlans), 'typescript')
-  }
-
-  files[normalizeProjectPath('package.json')] = textFile(applicationPackage(application, libraries), 'json')
-  files[normalizeProjectPath('src/App.vue')] = textFile(applicationAppSource(), 'vue')
-  files[normalizeProjectPath('src/router.ts')] = textFile(applicationRouterSource(sourceProject, pageDirectories), 'typescript')
-  files[normalizeProjectPath('src/main.ts')] = textFile(mainSource(libraries, true), 'typescript')
-  files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
-
-  return {
-    application: cloneWorkspaceApplication(application),
-    files,
-  }
-}
-
-export function createPureSourceExport(project: WorkspaceProject, model: LowCodePageModel, registry: LowCodeComponentRegistry): PureSourceExport {
-  if (model.flows !== undefined && !Array.isArray(model.flows))
-    throw new Error('Flow export requires an array of JSON-only flows.')
-  const sourceRegistry = createLegacySourceRegistry(registry)
-  const sourcePage = legacySourcePage(model)
-  sourcePage.root.forEach(node => assertPortableNode(node, sourceRegistry))
-  const libraries = collectSourceLibraries(sourcePage.root, sourceRegistry)
-  const next = cloneWorkspaceProject(project)
-  const files: Record<ProjectPath, WorkspaceFile> = {}
-  for (const [path, file] of Object.entries(next.files) as Array<[ProjectPath, WorkspaceFile]>) {
-    if (path === normalizeProjectPath('src/form.config.ts') || path === normalizeProjectPath('src/form.designer.json') || path === normalizeProjectPath('src/App.vue') || path === normalizeProjectPath('src/main.ts') || path === normalizeProjectPath('src/styles.css') || path === normalizeProjectPath('package.json'))
-      continue
-    files[path] = file
-  }
-  const appPath = normalizeProjectPath('src/App.vue')
-  files[normalizeProjectPath('package.json')] = textFile(sourcePackage(project, libraries, project.manifest.dependencies), 'json')
-  files[appPath] = textFile(appSource(sourcePage, sourceRegistry), 'vue')
-  files[normalizeProjectPath('src/main.ts')] = textFile(mainSource(libraries, false), 'typescript')
-  files[normalizeProjectPath('src/styles.css')] = textFile(sourceStyles(), 'css')
-  files[normalizeProjectPath('src/flows.ts')] = textFile(flowSource(sourcePage.flowPlans), 'typescript')
-  next.files = files
-  next.manifest = {
-    ...next.manifest,
-    dependencies: JSON.parse((files[normalizeProjectPath('package.json')] as { content: string }).content).dependencies,
-    designerArtifact: appPath,
-    generatedFormModule: appPath,
-  }
-  return { files, project: next }
 }

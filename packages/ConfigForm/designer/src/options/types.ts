@@ -1,4 +1,4 @@
-import type { DesignerJsonObject } from '../document'
+import type { DesignerJsonObject } from '../graph'
 
 export interface DesignerOption {
   label: string

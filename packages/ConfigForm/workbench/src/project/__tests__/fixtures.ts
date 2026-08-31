@@ -1,44 +1,43 @@
-import type { WorkspaceProject, WorkspaceProjectDraft } from '../types'
-import { normalizeProjectPath } from '../path'
+import type {
+  ProjectDocument,
+  ProjectPage,
+  RegistryLock,
+} from '@moluoxixi/config-form-model'
+import { assertProjectDocument } from '@moluoxixi/config-form-model'
+import { createBuiltInProject } from '../templates'
 
 export const FIXED_TIME = '2026-08-27T08:00:00.000Z'
-export const NEXT_TIME = '2026-08-27T08:01:00.000Z'
 
-export function createProjectFixture(overrides: Partial<WorkspaceProject> = {}): WorkspaceProject {
-  const entry = normalizeProjectPath('src/main.ts')
-  const designerArtifact = normalizeProjectPath('src/form.designer.json')
-  const generatedFormModule = normalizeProjectPath('src/form.config.ts')
+export function createRegistryLockFixture(adapter: 'antd-vue' | 'element-plus' = 'element-plus'): RegistryLock {
+  const prefix = adapter === 'element-plus' ? 'element' : 'antd'
   return {
-    createdAt: FIXED_TIME,
-    files: {
-      [designerArtifact]: { content: '{"version":1,"form":{},"nodes":[]}', kind: 'text', language: 'json' },
-      [entry]: { content: 'export {}', kind: 'text', language: 'typescript' },
-      [generatedFormModule]: { content: 'export const fields = []', kind: 'text', language: 'typescript' },
-    },
-    id: 'fixture-project',
-    manifest: {
-      adapter: 'element-plus',
-      dependencies: { vue: '3.5.33' },
-      designerArtifact,
-      entry,
-      framework: 'vue',
-      generatedFormModule,
-    },
-    name: 'Fixture project',
-    revision: 1,
-    schemaVersion: 1,
-    template: { id: 'fixture-template', version: 1 },
-    updatedAt: FIXED_TIME,
-    ...overrides,
+    adapter,
+    version: '1.0.0',
+    fingerprint: `fnv1a:${adapter}`,
+    components: Object.fromEntries(['input', 'select', 'switch'].map(name => [
+      `${prefix}.${name}`,
+      { contractVersion: '1', fingerprint: `fnv1a:${prefix}-${name}` },
+    ])),
   }
 }
 
-export function createDraftFixture(): WorkspaceProjectDraft {
+export function createProjectDocumentFixture(
+  overrides: Partial<ProjectDocument> = {},
+  adapter: 'antd-vue' | 'element-plus' = 'element-plus',
+): ProjectDocument {
+  const base = createBuiltInProject(
+    adapter === 'element-plus' ? 'element-profile' : 'antd-profile',
+    { id: 'project', name: 'Fixture project' },
+    createRegistryLockFixture(adapter),
+  )
+  return assertProjectDocument({ ...base, ...structuredClone(overrides) })
+}
+
+export function duplicateProjectPage(page: ProjectPage, id: string, name: string, route: string): ProjectPage {
   return {
-    baseRevision: 1,
-    files: {
-      [normalizeProjectPath('src/main.ts')]: 'export const draft = true',
-    },
-    updatedAt: NEXT_TIME,
+    ...structuredClone(page),
+    id,
+    name,
+    route,
   }
 }

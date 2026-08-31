@@ -627,6 +627,9 @@ importers:
       '@moluoxixi/config-form-designer':
         specifier: workspace:*
         version: link:../designer
+      '@moluoxixi/config-form-model':
+        specifier: workspace:*
+        version: link:../model
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -664,6 +667,9 @@ importers:
       '@moluoxixi/config-form-designer':
         specifier: workspace:*
         version: link:../designer
+      '@moluoxixi/config-form-model':
+        specifier: workspace:*
+        version: link:../model
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -835,21 +841,9 @@ importers:
 
   packages/ConfigForm/playground:
     dependencies:
-      '@lucide/vue':
-        specifier: catalog:ui
-        version: 1.28.0(vue@3.5.33(typescript@5.9.3))
       '@moluoxixi/config-form-antd-vue':
         specifier: workspace:*
         version: link:../antd
-      '@moluoxixi/config-form-designer':
-        specifier: workspace:*
-        version: link:../designer
-      '@moluoxixi/config-form-designer-antd-vue':
-        specifier: workspace:*
-        version: link:../designer-antd-vue
-      '@moluoxixi/config-form-designer-element-plus':
-        specifier: workspace:*
-        version: link:../designer-element-plus
       '@moluoxixi/config-form-element':
         specifier: workspace:*
         version: link:../element

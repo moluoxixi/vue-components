@@ -1,4 +1,3 @@
-export { default as ConfigFormDesigner } from './ConfigFormDesigner.vue'
 export { default as DesignerCanvas } from './DesignerCanvas.vue'
 export { default as DesignerDefaultValueSetter } from './DesignerDefaultValueSetter.vue'
 export { default as DesignerMaterialSpecimen } from './DesignerMaterialSpecimen.vue'

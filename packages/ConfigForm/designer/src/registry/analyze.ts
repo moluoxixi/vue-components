@@ -1,4 +1,5 @@
-import type { DesignerDiagnostic, DesignerDocument, DesignerFieldNode, DesignerNode } from '../document'
+import type { FieldNode, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { DesignerDiagnostic } from '../graph'
 import type {
   DesignerDefaultValueKind,
   DesignerFieldMaterialDefinition,
@@ -7,9 +8,13 @@ import type {
   DesignerPropertySetterDefinition,
   DesignerRegistry,
 } from './types'
-import { areDesignerJsonValuesEqual, designerDiagnostic, walkDesignerNodes } from '../document'
+import {
+  areDesignerJsonValuesEqual,
+  designerDiagnostic,
+  walkDesignGraph,
+} from '../graph'
 
-export interface AnalyzeDesignerDocumentOptions {
+export interface AnalyzeDesignGraphOptions {
   includeDefaultDiagnostics?: boolean
   includeMaterialDiagnostics?: boolean
 }
@@ -66,9 +71,9 @@ export function resolveDesignerDefaultOptionValues(
 }
 
 function analyzeFieldDefault(
-  node: DesignerFieldNode,
+  node: FieldNode,
   material: DesignerFieldMaterialDefinition,
-  path: (string | number)[],
+  path: Array<string | number>,
 ): DesignerDiagnostic[] {
   if (node.defaultValue === undefined)
     return []
@@ -110,9 +115,9 @@ function analyzeFieldDefault(
 }
 
 function validateSlotChild(
-  child: DesignerNode,
+  child: PageNode,
   slot: DesignerMaterialSlotDefinition,
-  path: (string | number)[],
+  path: Array<string | number>,
 ): DesignerDiagnostic[] {
   const diagnostics: DesignerDiagnostic[] = []
   if (slot.accepts && !slot.accepts.includes(child.kind)) {
@@ -124,10 +129,10 @@ function validateSlotChild(
       child.id,
     ))
   }
-  if (slot.materials && !slot.materials.includes(child.material)) {
+  if (slot.materials && !slot.materials.includes(child.component)) {
     diagnostics.push(designerDiagnostic(
       'DESIGNER_SLOT_MATERIAL_INVALID',
-      `Slot ${slot.name} does not accept material ${child.material}`,
+      `Slot ${slot.name} does not accept component ${child.component}`,
       path,
       'error',
       child.id,
@@ -138,32 +143,32 @@ function validateSlotChild(
 
 export function isDesignerMaterialPlacementAllowed(
   material: DesignerMaterialDefinition,
-  parentMaterial?: string,
+  parentComponent?: string,
   slot?: string,
 ): boolean {
   if (!material.allowedParents || material.allowedParents.length === 0)
     return true
-  if (!parentMaterial || !slot)
+  if (!parentComponent || !slot)
     return false
-  return material.allowedParents.some(parent => parent.material === parentMaterial && parent.slot === slot)
+  return material.allowedParents.some(parent => parent.material === parentComponent && parent.slot === slot)
 }
 
-export function analyzeDesignerDocument(
-  document: DesignerDocument,
+export function analyzeDesignGraph(
+  graph: PageGraph,
   registry: DesignerRegistry,
-  options: AnalyzeDesignerDocumentOptions = {},
+  options: AnalyzeDesignGraphOptions = {},
 ): DesignerDiagnostic[] {
   const diagnostics: DesignerDiagnostic[] = []
   const includeDefaultDiagnostics = options.includeDefaultDiagnostics ?? true
   const includeMaterialDiagnostics = options.includeMaterialDiagnostics ?? true
 
-  walkDesignerNodes(document.nodes, ({ node, path, parent, slot }) => {
-    const material = registry.getMaterial(node.material)
+  walkDesignGraph(graph, ({ node, path, parent, slot }) => {
+    const material = registry.getMaterial(node.component)
     if (!material) {
       diagnostics.push(designerDiagnostic(
         'DESIGNER_MATERIAL_UNKNOWN',
-        `Unknown designer material: ${node.material}`,
-        [...path, 'material'],
+        `Unknown designer component: ${node.component}`,
+        [...path, 'component'],
         'error',
         node.id,
       ))
@@ -172,18 +177,18 @@ export function analyzeDesignerDocument(
     if (material.kind !== node.kind) {
       diagnostics.push(designerDiagnostic(
         'DESIGNER_MATERIAL_KIND_MISMATCH',
-        `Material ${node.material} cannot render a ${node.kind} node`,
-        [...path, 'material'],
+        `Component ${node.component} cannot render a ${node.kind} node`,
+        [...path, 'component'],
         'error',
         node.id,
       ))
       return
     }
-    if (!isDesignerMaterialPlacementAllowed(material, parent?.material, slot)) {
+    if (!isDesignerMaterialPlacementAllowed(material, parent?.component, slot)) {
       diagnostics.push(designerDiagnostic(
         'DESIGNER_MATERIAL_PARENT_INVALID',
-        `Material ${node.material} is not allowed at this parent slot`,
-        [...path, 'material'],
+        `Component ${node.component} is not allowed at this parent slot`,
+        [...path, 'component'],
         'error',
         node.id,
       ))
@@ -202,59 +207,63 @@ export function analyzeDesignerDocument(
 
     if (node.conditions?.required || node.conditions?.disabled || node.conditions?.readonly) {
       diagnostics.push(designerDiagnostic(
-        'DESIGNER_CONTAINER_CONDITION_INVALID',
-        'Container nodes only support visible and hidden conditions',
+        'DESIGNER_LAYOUT_CONDITION_INVALID',
+        'Layout nodes only support visible and hidden conditions',
         [...path, 'conditions'],
         'error',
         node.id,
       ))
     }
 
-    if (material.kind !== 'container')
+    if (material.kind !== 'layout')
       return
     if (includeMaterialDiagnostics)
       diagnostics.push(...(material.analyze?.(node, path) ?? []))
-    const slots = new Map(material.slots.map(slot => [slot.name, slot]))
-    for (const [slotName, children] of Object.entries(node.slots)) {
-      const slot = slots.get(slotName)
-      if (!slot) {
+    const registeredSlots = new Map(material.slots.map(slotDefinition => [slotDefinition.name, slotDefinition]))
+    for (const [slotName, items] of Object.entries(node.slots)) {
+      const slotDefinition = registeredSlots.get(slotName)
+      if (!slotDefinition) {
         diagnostics.push(designerDiagnostic(
           'DESIGNER_SLOT_UNKNOWN',
-          `Unknown slot ${slotName} on material ${material.key}`,
+          `Unknown slot ${slotName} on component ${material.key}`,
           [...path, 'slots', slotName],
           'error',
           node.id,
         ))
         continue
       }
-      if (slot.min !== undefined && children.length < slot.min) {
+      if (slotDefinition.min !== undefined && items.length < slotDefinition.min) {
         diagnostics.push(designerDiagnostic(
           'DESIGNER_SLOT_MIN_UNMET',
-          `Slot ${slotName} requires at least ${slot.min} children`,
+          `Slot ${slotName} requires at least ${slotDefinition.min} children`,
           [...path, 'slots', slotName],
           'error',
           node.id,
         ))
       }
-      if (slot.max !== undefined && children.length > slot.max) {
+      if (slotDefinition.max !== undefined && items.length > slotDefinition.max) {
         diagnostics.push(designerDiagnostic(
           'DESIGNER_SLOT_MAX_EXCEEDED',
-          `Slot ${slotName} accepts at most ${slot.max} children`,
+          `Slot ${slotName} accepts at most ${slotDefinition.max} children`,
           [...path, 'slots', slotName],
           'error',
           node.id,
         ))
       }
-      children.forEach((child, index) => {
-        diagnostics.push(...validateSlotChild(child, slot, [...path, 'slots', slotName, index]))
+      items.forEach((item, index) => {
+        const child = graph.nodesById[item.nodeId]
+        if (child)
+          diagnostics.push(...validateSlotChild(child, slotDefinition, [...path, 'slots', slotName, index]))
       })
     }
-    for (const slot of material.slots) {
-      if (slot.min !== undefined && slot.min > 0 && !Object.hasOwn(node.slots, slot.name)) {
+    for (const slotDefinition of material.slots) {
+      if (slotDefinition.min !== undefined
+        && slotDefinition.min > 0
+        && !Object.hasOwn(node.slots, slotDefinition.name)) {
         diagnostics.push(designerDiagnostic(
           'DESIGNER_SLOT_MIN_UNMET',
-          `Slot ${slot.name} requires at least ${slot.min} children`,
-          [...path, 'slots', slot.name],
+          `Slot ${slotDefinition.name} requires at least ${slotDefinition.min} children`,
+          [...path, 'slots', slotDefinition.name],
           'error',
           node.id,
         ))

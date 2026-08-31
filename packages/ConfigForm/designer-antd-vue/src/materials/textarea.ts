@@ -28,7 +28,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'textarea' }) => ({
         id,
         kind: 'field',
-        material: 'antd.textarea',
+        component: 'antd.textarea',
         field,
         label: 'Textarea',
         props: { rows: 3, placeholder: '' },

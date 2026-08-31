@@ -1,15 +1,17 @@
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
+import type {
+  FieldNode,
+  LayoutNode,
+  ModelJsonObject,
+  ModelJsonValue,
+  NodeSubgraph,
+  PageNode,
+} from '@moluoxixi/config-form-model'
 import type { RuleCustomValidator } from '@moluoxixi/zod3-to-rule'
 import type { Component, VNodeChild } from 'vue'
-import type {
-  DesignerContainerNode,
-  DesignerDiagnostic,
-  DesignerFieldNode,
-  DesignerJsonObject,
-  DesignerJsonValue,
-  DesignerNode,
-  DesignerNodeKind,
-} from '../document'
+import type { DesignerDiagnostic } from '../graph'
+
+export type DesignerNodeKind = PageNode['kind']
 
 export type DesignerSetterControl
   = | 'text'
@@ -40,7 +42,7 @@ export type DesignerDefaultValueKind
 
 export interface DesignerSetterOption {
   label: string
-  value: DesignerJsonValue
+  value: ModelJsonValue
 }
 
 export interface DesignerPropertySetterDefinition {
@@ -129,7 +131,7 @@ export interface DesignerSourceMaterialBinding {
   render: DesignerSourceRenderKind
   library?: DesignerSourceLibraryBinding
   options?: DesignerSourceOptionsBinding
-  staticProps?: DesignerJsonObject
+  staticProps?: ModelJsonObject
 }
 
 export interface DesignerDesignPolicy {
@@ -158,7 +160,7 @@ export interface DesignerResolvedDesignPolicy {
 }
 
 export interface DesignerReadonlyRenderContext {
-  node: DesignerFieldNode
+  node: FieldNode
   model: Record<string, unknown>
   value: unknown
   componentProps: Record<string, unknown>
@@ -169,6 +171,16 @@ export type DesignerReadonlyRender = (context: DesignerReadonlyRenderContext) =>
 export interface DesignerCreateNodeContext {
   id: string
   field?: string
+}
+
+type DesignerOptionalNodeMaps = 'props' | 'events' | 'bindings'
+export type DesignerFieldNodeTemplate = Omit<FieldNode, DesignerOptionalNodeMaps>
+  & Partial<Pick<FieldNode, DesignerOptionalNodeMaps>>
+export type DesignerLayoutNodeTemplate = Omit<LayoutNode, DesignerOptionalNodeMaps>
+  & Partial<Pick<LayoutNode, DesignerOptionalNodeMaps>>
+export interface DesignerNodeSubgraphTemplate {
+  root: NodeSubgraph['root']
+  nodesById: Record<string, DesignerFieldNodeTemplate | DesignerLayoutNodeTemplate>
 }
 
 export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> {
@@ -186,19 +198,19 @@ export interface DesignerMaterialDefinitionBase<TKind extends DesignerNodeKind> 
   /** When present, the material is structural and may only exist in these parent slots. */
   allowedParents?: DesignerMaterialParentDefinition[]
   setters: DesignerPropertySetterDefinition[]
-  analyze?: (node: Extract<DesignerNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
+  analyze?: (node: Extract<PageNode, { kind: TKind }>, path: (string | number)[]) => DesignerDiagnostic[]
 }
 
 export interface DesignerFieldMaterialDefinition extends DesignerMaterialDefinitionBase<'field'> {
-  createNode: (context: DesignerCreateNodeContext) => DesignerFieldNode
+  createNode: (context: DesignerCreateNodeContext) => DesignerFieldNodeTemplate
 }
 
-export interface DesignerContainerMaterialDefinition extends DesignerMaterialDefinitionBase<'container'> {
-  createNode: (context: DesignerCreateNodeContext) => DesignerContainerNode
+export interface DesignerLayoutMaterialDefinition extends DesignerMaterialDefinitionBase<'layout'> {
+  createNode: (context: DesignerCreateNodeContext) => DesignerLayoutNodeTemplate | DesignerNodeSubgraphTemplate
   slots: DesignerMaterialSlotDefinition[]
 }
 
-export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | DesignerContainerMaterialDefinition
+export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | DesignerLayoutMaterialDefinition
 
 export interface DesignerRegistryLayer {
   name: string
@@ -221,5 +233,5 @@ export interface DesignerRegistry {
   getValidator: (key: string) => RuleCustomValidator | undefined
   listMaterials: () => DesignerMaterialDefinition[]
   listValidators: () => string[]
-  createNode: (key: string, context: DesignerCreateNodeContext) => DesignerNode
+  createSubgraph: (key: string, context: DesignerCreateNodeContext) => NodeSubgraph
 }

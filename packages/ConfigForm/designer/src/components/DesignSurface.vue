@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
-import type { DesignerCommand, DesignerDropTarget } from '../history'
-import type { LowCodeNode, ModelOperation } from '../model'
+import type { ProjectCommand } from '@moluoxixi/config-form-model'
+import type { DesignerDropTarget } from '../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from './designer-drag'
 import type {
   DesignSurfaceEmits,
@@ -22,10 +22,16 @@ import {
 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, useId, watch } from 'vue'
 import { useDesignerController } from '../composables'
-import { applyDesignerDocumentReactions, createDesignerPreviewModel } from '../document'
-import { findDesignerNode } from '../history'
+import {
+  applyDesignGraphReactions,
+  createDesignPreviewModel,
+  createFormCommand,
+  createMoveCommand,
+  createNodePathCommand,
+  createResizeCommand,
+  findDesignNode,
+} from '../graph'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
-import { findConfigModelNode } from '../model'
 import DesignerCanvas from './DesignerCanvas.vue'
 import DesignerPalette from './DesignerPalette.vue'
 import DesignerPropertyPanel from './DesignerPropertyPanel.vue'
@@ -251,14 +257,11 @@ onBeforeUnmount(() => {
 })
 
 const controller = useDesignerController({
-  document: () => props.document,
+  execute: command => props.commandControl.execute(command),
+  graph: () => props.graph,
+  pageId: () => props.pageId,
   registry: () => props.registry,
-  historyLimit: () => 1,
   readonly: () => props.readonly,
-  controlled: () => true,
-  onBeforeCommandCommit: (command, document) => props.commandControl.apply(command, document),
-  onDocumentChange: () => {},
-  onCommand: () => {},
   onDiagnostics: diagnostics => emit('diagnostics', diagnostics),
   onSelectionChange: (nodeId, nodeIds) => {
     emit('selectionChange', nodeId)
@@ -268,10 +271,22 @@ const controller = useDesignerController({
 
 const dragController = createDesignerDragController({
   commitMaterial: (source, target) => {
-    const node = createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
-    if (!node || !controller.dispatch({ type: 'addNode', node, target }))
+    const candidate = createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
+    if (!candidate || !controller.dispatch({
+      id: `drop-${source.candidateId}`,
+      label: 'Insert component',
+      actions: [{
+        type: 'operation.apply',
+        operations: [{
+          type: 'node.insert',
+          pageId: props.pageId,
+          subgraph: candidate.subgraph,
+          target,
+        }],
+      }],
+    }))
       return
-    controller.select(node.id)
+    controller.select(candidate.node.id)
     if (workspaceMode.value === 'narrow')
       activeWorkspaceView.value = 'canvas'
     else if (workspaceMode.value === 'medium')
@@ -287,13 +302,13 @@ function dragSourceLabel(source: DesignerDragSource): string {
     const material = props.registry.getMaterial(source.materialKey)
     return material ? locale.materialTitle(material) : source.materialKey
   }
-  const node = findDesignerNode(controller.document.value, source.nodeId)?.node
+  const node = findDesignNode(controller.graph.value, source.nodeId)?.node
   if (!node)
     return source.nodeId
   if (node.kind === 'field')
     return node.label || node.field
-  const material = props.registry.getMaterial(node.material)
-  return material ? locale.materialTitle(material) : node.material
+  const material = props.registry.getMaterial(node.component)
+  return material ? locale.materialTitle(material) : node.component
 }
 
 function dragTargetLabel(target: DesignerDropTarget | undefined): string {
@@ -302,8 +317,8 @@ function dragTargetLabel(target: DesignerDropTarget | undefined): string {
   const position = (target.index ?? 0) + 1
   if (target.parentId === null)
     return locale.t('drag.targetPage', 'at page position {position}', { position })
-  const parent = findDesignerNode(controller.document.value, target.parentId)?.node
-  const parentMaterial = parent ? props.registry.getMaterial(parent.material) : undefined
+  const parent = findDesignNode(controller.graph.value, target.parentId)?.node
+  const parentMaterial = parent ? props.registry.getMaterial(parent.component) : undefined
   const parentLabel = parentMaterial ? locale.materialTitle(parentMaterial) : target.parentId
   const slot = target.slot && parentMaterial
     ? locale.materialSlotTitle(parentMaterial, target.slot, target.slot)
@@ -327,16 +342,13 @@ const dragAnnouncement = computed(() => {
   const announcement = dragController.announcement.value
   return announcement ? formatDragAnnouncement(announcement) : ''
 })
-const runtimeProjection = computed(() => applyDesignerDocumentReactions(
-  controller.document.value,
-  createDesignerPreviewModel(controller.document.value),
+const runtimeProjection = computed(() => applyDesignGraphReactions(
+  controller.graph.value,
+  createDesignPreviewModel(controller.graph.value),
 ))
-const selectedModelNodes = computed<LowCodeNode[]>(() => controller.selectedIds.value
-  .map(nodeId => findConfigModelNode(props.model, nodeId)?.node)
-  .filter((node): node is LowCodeNode => Boolean(node)))
 const selectedComponentDefinition = computed(() => {
-  const component = selectedModelNodes.value[0]?.component
-  return component ? props.modelRegistry.get(component) : undefined
+  const component = controller.selectedNodes.value[0]?.component
+  return component ? props.componentRegistry.get(component) : undefined
 })
 const toolbarScope = computed(() => ({
   breakpoint: activeBreakpoint.value,
@@ -360,7 +372,7 @@ async function focusNode(nodeId?: string): Promise<void> {
   target?.focus()
 }
 
-function dispatch(command: DesignerCommand): boolean {
+function dispatch(command: ProjectCommand): boolean {
   const changed = controller.dispatch(command)
   void focusNode(controller.selectedId.value)
   return changed
@@ -380,7 +392,7 @@ function handleRedo(): boolean {
 
 function handleMove(nodeId: string, target: DesignerDropTarget): void {
   controller.select(nodeId)
-  dispatch({ type: 'moveNode', nodeId, target })
+  dispatch(createMoveCommand(props.pageId, nodeId, target))
 }
 
 function handleAddMaterial(materialKey: string, target: DesignerDropTarget): void {
@@ -409,29 +421,19 @@ function handleCanvasSelect(nodeId?: string, mode: 'range' | 'replace' | 'toggle
 
 function handleResize(nodeId: string, span: number): void {
   controller.select(nodeId)
-  dispatch({ type: 'updateNode', nodeId, changes: { span } })
+  dispatch(createResizeCommand(props.pageId, nodeId, span))
 }
 
 function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
-  dispatch({ type: 'updateNodePath', nodeId, path, value })
+  dispatch(createNodePathCommand(controller.graph.value, props.pageId, [nodeId], path, value))
 }
 
 function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
-  dispatch({ type: 'batch', commands: nodeIds.map(nodeId => ({ type: 'updateNodePath', nodeId, path, value })) })
+  dispatch(createNodePathCommand(controller.graph.value, props.pageId, nodeIds, path, value))
 }
 
 function handleUpdateForm(changes: Record<string, unknown>): void {
-  dispatch({ type: 'updateForm', changes })
-}
-
-function handleModelOperation(operation: ModelOperation): void {
-  if (props.readonly)
-    return
-  if (props.commandControl.applyModelOperation) {
-    props.commandControl.applyModelOperation(operation)
-    return
-  }
-  emit('modelOperation', operation)
+  dispatch(createFormCommand(controller.graph.value, props.pageId, changes))
 }
 
 function handleAction(action: DesignerNodeAction, nodeId: string): void {
@@ -522,20 +524,21 @@ defineExpose<DesignSurfaceExpose>({
           <strong>{{ locale.t('palette.materials', 'Materials') }}</strong>
           <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="palette" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('palette')"><X :size="17" aria-hidden="true" /></button>
         </div>
-        <slot name="palette" :materials="registry.listMaterials()" :add-material="addMaterial" :readonly="readonly" :form="controller.document.value.form">
-          <DesignerPalette :materials="registry.listMaterials()" :registry="registry" :form="controller.document.value.form" :readonly="readonly" @add-material="addMaterial" />
+        <slot name="palette" :materials="registry.listMaterials()" :add-material="addMaterial" :readonly="readonly" :form="controller.graph.value.form">
+          <DesignerPalette :materials="registry.listMaterials()" :registry="registry" :form="controller.graph.value.form" :readonly="readonly" @add-material="addMaterial" />
         </slot>
       </section>
 
       <section :id="`${workspaceId}-canvas-panel`" class="mx-config-form-designer__workspace-panel is-canvas" data-workspace-panel="canvas" tabindex="-1" :hidden="isWorkspacePanelHidden('canvas')" :inert="isWorkspacePanelHidden('canvas') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : undefined">
         <DesignerCanvas
-          :document="controller.document.value"
+          :graph="controller.graph.value"
+          :page-id="pageId"
           :registry="registry"
           :selected-id="controller.selectedId.value"
           :selected-ids="controller.selectedIds.value"
           :readonly="readonly"
           :breakpoint="activeBreakpoint"
-          :candidate-runtime-renderer="commandControl.previewRuntime"
+          :candidate-preview="commandControl.preview"
           :interactive="false"
           :model="runtimeProjection.values"
           :runtime-renderer="runtimeRenderer"
@@ -561,15 +564,14 @@ defineExpose<DesignSurfaceExpose>({
           <strong>{{ locale.t('property.properties', 'Properties') }}</strong>
           <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')"><X :size="17" aria-hidden="true" /></button>
         </div>
-        <slot name="properties" :document="controller.document.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :model-nodes="selectedModelNodes" :component-definition="selectedComponentDefinition">
+        <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition">
           <DesignerPropertyPanel
-            :document="controller.document.value"
+            :graph="controller.graph.value"
             :event-editor="eventEditor"
             :node="controller.selectedNode.value"
             :nodes="controller.selectedNodes.value"
             :material="controller.selectedMaterial.value"
             :diagnostics="controller.diagnostics.value"
-            :model-nodes="selectedModelNodes"
             :component-definition="selectedComponentDefinition"
             :breakpoint="activeBreakpoint"
             :components="registry.components"
@@ -580,7 +582,6 @@ defineExpose<DesignSurfaceExpose>({
             @update-path="handleUpdatePath"
             @update-paths="handleUpdatePaths"
             @update-form="handleUpdateForm"
-            @model-operation="handleModelOperation"
           />
         </slot>
       </section>

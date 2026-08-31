@@ -28,7 +28,7 @@ const EMPTY_CHANGE_SET: ProjectChangeSet = Object.freeze({
 export interface ProjectDomainSnapshot extends ProjectSnapshot {
   canRedo: boolean
   canUndo: boolean
-  /** Opaque history identity used by application sessions to track saved state. */
+  /** Opaque history identity used by editor sessions to track saved state. */
   cursor: string
   lastError?: ModelDiagnostic
 }
@@ -158,7 +158,7 @@ export function createProjectDomainEngine(
     const replay = replayResult(commandId, fingerprint)
     if (replay)
       return replay
-    const resolution = resolveProjectCommand(history.present, command, transactionOptions)
+    const resolution = resolveProjectCommand(history.snapshot.document as ProjectDocument, command, transactionOptions)
     if (!resolution.success)
       return unchanged(resolution.diagnostics)
     if (resolution.transaction.operations.length === 0) {

@@ -409,8 +409,6 @@ export interface AppliedProjectTransaction {
 
 export interface ProjectHistory {
   snapshot: ProjectSnapshot
-  /** @deprecated Use snapshot.document. */
-  present: ProjectDocument
   past: AppliedProjectTransaction[]
   future: AppliedProjectTransaction[]
   limit: number

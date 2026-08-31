@@ -29,7 +29,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'search' }) => ({
         id,
         kind: 'field',
-        material: 'antd.search',
+        component: 'antd.search',
         field,
         label: 'Search',
         props: { placeholder: '', enterButton: false },

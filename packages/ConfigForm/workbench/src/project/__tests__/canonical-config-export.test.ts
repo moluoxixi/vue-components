@@ -1,36 +1,27 @@
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import { parse } from '@babel/parser'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
-import {
-  createProjectSnapshot,
-  migrateLegacyWorkspaceApplication,
-} from '@moluoxixi/config-form-model'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { parse as parseSfc } from '@vue/compiler-sfc'
 import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../adapters'
 import { createCanonicalProjectConfigExport } from '../export/config'
 import { createCanonicalProjectSourceExport } from '../export/source'
 import { normalizeProjectPath, safeProjectSlug } from '../path'
-import { createBuiltInWorkspaceApplication } from '../templates'
+import { createBuiltInProject } from '../templates'
 
 async function fixture(update?: (
   document: ProjectDocument,
   adapter: Awaited<ReturnType<typeof loadWorkbenchAdapter>>,
 ) => void) {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const application = createBuiltInWorkspaceApplication('element-profile', {
-    createdAt: '2026-08-30T00:00:00.000Z',
+  const document = createBuiltInProject('element-profile', {
     id: 'canonical-config-project',
     name: 'Canonical config project',
-  })
-  const migrated = migrateLegacyWorkspaceApplication(application, {
-    registryLock: adapter.componentRegistry.lock,
-  })
-  if (!migrated.success)
-    throw new Error(migrated.diagnostics[0]?.message ?? 'Migration failed.')
-  update?.(migrated.data, adapter)
+  }, adapter.componentRegistry.lock)
+  update?.(document, adapter)
   const result = compileCanonicalProject({
-    snapshot: createProjectSnapshot(migrated.data, 4),
+    snapshot: createProjectSnapshot(document, 4),
     registry: adapter.registrySnapshot,
   })
   if (!result.success)
@@ -58,7 +49,6 @@ describe('canonical Config export', () => {
     expect(pageFile.content).toContain('import { defineFields } from \'@moluoxixi/config-form-headless\'')
     expect(pageFile.content).toContain('const { defineField } = defineFields<PageFormValues>()')
     expect(pageFile.content).toContain('defineField({')
-    expect(pageFile.content).not.toContain('LowCodePageModel')
     expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
   })
 
@@ -133,7 +123,7 @@ describe('canonical standalone Source export', () => {
       'tsconfig.json',
       'vite.config.ts',
     ]))
-    expect(JSON.stringify(exported.files)).not.toMatch(/LowCodePageModel|WorkspaceApplication|@moluoxixi\/config-form/i)
+    expect(JSON.stringify(exported.files)).not.toMatch(/@moluoxixi\/config-form/i)
 
     const manifest = exported.files[normalizeProjectPath('package.json')]
     expect(manifest?.kind).toBe('text')

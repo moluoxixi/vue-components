@@ -18,7 +18,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'date' }) => ({
         id,
         kind: 'field',
-        material: 'element.date',
+        component: 'element.date',
         field,
         label: 'Date',
         props: { type: 'date', valueFormat: 'YYYY-MM-DD', placeholder: '' },

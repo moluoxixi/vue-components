@@ -22,7 +22,7 @@ const material: DesignerMaterialDefinition = {
     id,
     field,
     kind: 'field',
-    material: 'element.input',
+    component: 'element.input',
     props: { placeholder: 'Type here' },
   }),
 }
@@ -135,9 +135,14 @@ describe('designer drag controller', () => {
 
     expect(candidate).toEqual(committed)
     expect(candidate).toMatchObject({
-      id: 'candidate-4',
-      field: 'candidate_candidate_4',
-      props: { placeholder: 'Type here' },
+      node: {
+        id: 'candidate-4',
+        field: 'candidate_candidate_4',
+        props: { placeholder: 'Type here' },
+      },
+      subgraph: {
+        root: [{ nodeId: 'candidate-4', placement: {} }],
+      },
     })
   })
 

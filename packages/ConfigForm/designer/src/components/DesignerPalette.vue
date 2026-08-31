@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { DesignerFormSettings } from '../document'
+import type { FormSettings } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import { Search } from '@lucide/vue'
 import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
-import { createDesignerNodeId } from '../history'
+import { createDesignerNodeId } from '../graph'
 import DesignerMaterialSpecimen from './DesignerMaterialSpecimen.vue'
 import { DESIGNER_DRAG_KEY } from './designer-drag'
 
 const props = defineProps<{
   materials: DesignerMaterialDefinition[]
   registry?: DesignerRegistry
-  form?: DesignerFormSettings
+  form?: FormSettings
   readonly?: boolean
 }>()
 const locale = useDesignerLocale()

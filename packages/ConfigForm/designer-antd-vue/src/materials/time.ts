@@ -28,7 +28,7 @@ export default defineDesignerMaterialModule({
       createNode: ({ id, field = 'time' }) => ({
         id,
         kind: 'field',
-        material: 'antd.time',
+        component: 'antd.time',
         field,
         label: 'Time',
         props: { valueFormat: 'HH:mm:ss', placeholder: '' },

@@ -4,6 +4,8 @@
 
 在已完成生产质量门的 Design-first Low-Code IDE 基础上，重新定义视觉系统、信息层级与核心操作体验，使页面设计、组件发现、层级管理、属性配置、预览和辅助工作区形成一套更克制、连续、可高频使用的专业工具体验。
 
+本轮采用新架构 hard cut：`ProjectDocument / PageGraph / ProjectCommand / PageCompilation` 是唯一产品合同。旧 `WorkspaceApplication`、`LowCodePageModel`、`DesignerDocument` 及其 parser、migration、compatibility adapter、公开导出和测试 fixture 必须从产品仓库中完全移除，不保留运行时 fallback、双写或旧数据自动读取。
+
 本任务不是继续给旧页面叠加局部样式。最终界面应当让 Canvas 成为明确视觉中心，同时保证复杂表单、多级布局、暗色模式和紧凑桌面仍然清晰、稳定、可操作。
 
 ## 已确认事实
@@ -25,7 +27,7 @@
 - 产品数据流合理，应保留：`ProjectDocument -> ProjectPage { PageGraph, flows } -> CompileCoordinator -> PageProgram -> RuntimePlan -> Design/Preview`。Readonly Export 固定同一 ProjectSnapshot 后按需组装 `ProjectProgram`，Registry、语义事务、持久化快照和只读导出快照的职责方向正确。
 - 当前代码边界不够合理，不应继续在现有边界上堆功能。`DesignerDocument` 与 `LowCodePageModel` 存在近重复节点协议；受控 `DesignSurface` 仍实例化本地 Designer history，而 Workbench 同时维护 `WorkspaceSession` history；Design 与 Preview 通过不同编译模式可能选择不同组件；`workbench-controller.ts` 同时编排会话、投影、预览流程、页面、主题、语言、导出和弹窗状态。
 
-因此，本任务的架构目标调整为：独立于 Designer 的 `ProjectDocument` 成为唯一规范业务内容，`LowCodePageModel` 和 `DesignerDocument` 都退为导入迁移/旧 API 边界；页面内部只保留 `root: SlotItem[] + nodesById + slots: Record<SlotName, SlotItem[]>` 一套关系，不再同时持有 `children` 与 `slots`；用户意图先由 Domain Command Engine 解析为规范 Operation，再由 Transaction Engine 原子提交；CompileCoordinator 只对活动页面和受影响子树增量生成 `PageProgram`，全项目 `ProjectProgram` 仅在导出等全局场景按需组装；Design 与 Preview 使用同一个 `PageProgram` 降级出的同一语义 `RuntimePlan`，但由彼此隔离的 RuntimeHost 创建独立运行实例；viewport、字体、运行主题与 locale 属于 Runtime Presentation，不进入页面结构模型；Workbench 拆为 Project Store、Design Session、Preview Session、Flow Engine、Export Service 和 UI Store。
+因此，本任务的架构目标调整为：独立于 Designer 的 `ProjectDocument` 成为唯一规范业务内容，过期页面和应用模型从产品包、公开 API、持久化入口与测试 fixture 中完全删除；页面内部只保留 `root: SlotItem[] + nodesById + slots: Record<SlotName, SlotItem[]>` 一套关系，不再同时持有 `children` 与 `slots`；用户意图先由 Domain Command Engine 解析为规范 Operation，再由 Transaction Engine 原子提交；CompileCoordinator 只对活动页面和受影响子树增量生成 `PageProgram`，全项目 `ProjectProgram` 仅在导出等全局场景按需组装；Design 与 Preview 使用同一个 `PageProgram` 降级出的同一语义 `RuntimePlan`，但由彼此隔离的 RuntimeHost 创建独立运行实例；viewport、字体、运行主题与 locale 属于 Runtime Presentation，不进入页面结构模型；Workbench 拆为 Project Store、Design Session、Preview Session、Flow Engine、Export Service 和 UI Store。
 
 ## 范围内需求
 
@@ -90,7 +92,7 @@
 
 ## 架构重构范围
 
-- 允许重构 Core/Designer/Workbench/Runtime 的包边界和公共接口；历史数据通过 repository boundary 单向迁移，不要求旧内部模型继续参与正常路径。
+- 允许重构 Core/Designer/Workbench/Runtime 的包边界和公共接口；Repository 只接受当前 schema，历史开发数据若需保留必须在仓库外一次性处理。
 - 建立项目级 `ProjectDocument` 与规范化 `PageGraph`，删除持久化模型中的 `children + slots` 双结构和生成文件副本。
 - 统一 `Command -> OperationBatch -> AppliedTransaction`、RenderPlan 和设计命令的类型合同，删除正常编辑路径上的 `LowCodePageModel`/`DesignerDocument` 双重投影状态。
 - 将流程运行时与生成 Source 的流程执行实现收敛到同一可验证的执行计划/运行时合同。
@@ -99,4 +101,4 @@
 
 ## 阻塞决策
 
-- 无待决阻塞项。按上述架构推进：保留历史数据的单向迁移、Registry 能力和真实 Runtime 渲染，推翻 Designer 对领域模型的所有权、`children + slots` 双结构、受控设计器本地历史、持久化生成文件以及 Workbench 巨型 Controller。
+- 无待决阻塞项。按上述架构推进：保留 Registry 能力和真实 Runtime 渲染，严格拒绝非当前 schema，推翻 Designer 对领域模型的所有权、`children + slots` 双结构、受控设计器本地历史、持久化生成文件以及 Workbench 巨型 Controller。

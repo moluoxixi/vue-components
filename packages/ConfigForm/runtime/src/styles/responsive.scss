@@ -33,7 +33,7 @@
 /*
  * Preview and embedded designers are often narrower than the browser window.
  * Container queries keep their real Runtime layout tied to the rendered
- * artboard instead of the host application's viewport.
+ * artboard instead of the parent page's viewport.
  */
 @container config-form-runtime (max-width: 1024px) {
   [data-config-form-responsive-layout] {

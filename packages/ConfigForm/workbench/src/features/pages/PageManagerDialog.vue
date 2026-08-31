@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import type {
-  WorkspaceApplication,
-  WorkspaceApplicationOperation,
-  WorkspaceApplicationSummary,
-} from '../../project'
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
+import type { ProjectSummary, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
+import type { ProjectPageAction } from '../../project'
 import { useTemplateRef } from 'vue'
 import PageManager from '../../components/PageManager.vue'
 import { useWorkbenchDialogFocus } from '../../components/use-dialog-focus'
 
 const props = defineProps<{
-  application?: WorkspaceApplication
-  applications: WorkspaceApplicationSummary[]
+  project?: ReadonlyProjectDocument
+  projects: ProjectSummary[]
   busy?: boolean
   locale?: DesignerLocaleOptions
   open: boolean
@@ -20,8 +17,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   createPage: []
-  openApplication: [id: string]
-  operation: [operation: WorkspaceApplicationOperation]
+  openProject: [id: string]
+  action: [action: ProjectPageAction]
 }>()
 
 const dialog = useTemplateRef<HTMLElement>('dialog')
@@ -34,21 +31,21 @@ const { handleKeydown } = useWorkbenchDialogFocus(
 
 <template>
   <div
-    v-if="open && application"
+    v-if="open && project"
     ref="dialog"
     class="page-manager-overlay"
     @click.self="emit('close')"
     @keydown="handleKeydown"
   >
     <PageManager
-      :application="application"
-      :applications="applications"
+      :project="project"
+      :projects="projects"
       :busy="busy"
       :locale="locale"
       @close="emit('close')"
       @create-page="emit('createPage')"
-      @open-application="emit('openApplication', $event)"
-      @operation="emit('operation', $event)"
+      @open-project="emit('openProject', $event)"
+      @action="emit('action', $event)"
     />
   </div>
 </template>
