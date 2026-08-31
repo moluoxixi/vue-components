@@ -506,3 +506,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 
 - 继续推进其余 planning 任务时，保持 ProjectDocument 单一模型与 Preview 瞬态边界
 - 关注导出、流程和 Workbench 生产体验任务的独立验收
+
+
+## Session 22: 完成 ConfigForm 设计器高效编辑与操作历史
+
+**Date**: 2026-09-01
+**Task**: 完成 ConfigForm 设计器高效编辑与操作历史
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成本地操作历史投影与跳转、设计器撤销重做删除复制快捷键、批量单事务编辑和可撤销删除通知；修复 history identity 冲突与过期通知重复撤销，补齐拖拽排序矩阵及双适配器 E2E。Model 56/56、Designer 25/25、Workbench 194/194、E2E 27/27，以及 lint、typecheck、build、diff-check 全部通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0d2e8b90` | (see git log) |
+
+### Status
+
+[OK] **Completed**

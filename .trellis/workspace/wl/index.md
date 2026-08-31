@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 21
-- **Last Active**: 2026-08-31
+- **Total Sessions**: 22
+- **Last Active**: 2026-09-01
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~508 | Active |
+| `journal-1.md` | ~530 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 22 | 2026-09-01 | 完成 ConfigForm 设计器高效编辑与操作历史 | `0d2e8b90` | `main` |
 | 21 | 2026-08-31 | ConfigForm 真实预览测试台完成 | `32c4b0d0` | `main` |
 | 20 | 2026-08-31 | ConfigForm 持久化与故障恢复收口 | `0a3f0051` | `main` |
 | 19 | 2026-08-31 | ConfigForm IDE 五项生产化收口 | `05e12bf01434a1d81f96447eeb6a9dc5c60f1ec0` | `main` |
