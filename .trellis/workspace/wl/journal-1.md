@@ -465,3 +465,44 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 21: ConfigForm 真实预览测试台完成
+
+**Date**: 2026-08-31
+**Task**: ConfigForm 真实预览测试台完成
+**Package**: config-form-designer
+**Branch**: `main`
+
+### Summary
+
+完成隔离 RuntimeHost 预览测试台：新增 v3 提交结果协议、PreviewSession 提交状态、可交互预览弹窗与提交 JSON 展示，补齐焦点管理、国际化文案和 Element Plus/Ant Design Vue E2E；并增加结构同步后的异步提交 identity gate，防止旧页面结果回写。
+
+### Main Changes
+
+- RuntimeHost v3 提交结果与 stale identity 保护
+- PreviewSession 与 PreviewDrawer 提交测试闭环
+- Element Plus/Ant Design Vue 真实预览回归矩阵
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `32c4b0d0` | (see git log) |
+
+### Testing
+
+- [OK] Workbench 单测 37 文件 / 191 项
+- [OK] Workbench 与 ConfigForm Model typecheck
+- [OK] Workbench production build
+- [OK] Workbench E2E 25/25
+- [OK] 根 lint 与 git diff --check
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 继续推进其余 planning 任务时，保持 ProjectDocument 单一模型与 Preview 瞬态边界
+- 关注导出、流程和 Workbench 生产体验任务的独立验收
