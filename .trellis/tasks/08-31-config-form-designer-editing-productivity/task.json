@@ -3,7 +3,7 @@
   "name": "config-form-designer-editing-productivity",
   "title": "ConfigForm 设计器高效编辑与操作历史",
   "description": "强化拖拽排序、多选批处理、快捷键、可撤销删除和可视化操作历史。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": "frontend",
   "package": "config-form-designer",

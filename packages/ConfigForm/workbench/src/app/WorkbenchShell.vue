@@ -104,6 +104,7 @@ const {
   getCompilation: getCurrentExportCompilation,
 } = exportService
 const {
+  clearNotice,
   closeExportPreview,
   closeFlowWorkspace,
   closePageManager,
@@ -116,6 +117,7 @@ const {
   localeId,
   message,
   mobileStudioView,
+  notice,
   openExportPreview,
   openFlowWorkspace,
   openPageManager,
@@ -127,6 +129,7 @@ const {
   previewOpen,
   previewViewport,
   selectMobileStudioView: selectMobileView,
+  showNotice,
   studioLeftView,
   templatePickerOpen,
   theme,
@@ -180,6 +183,29 @@ function handleMobileStudioKeydown(event: KeyboardEvent, view: MobileStudioView)
 
 function selectDesignerLayer(nodeId: string, mode: DesignerSelectionMode): void {
   designer.value?.select(nodeId, mode)
+}
+
+function jumpDesignerHistory(position: number): void {
+  if (designerHistoryControl.value.jump(position))
+    clearNotice()
+}
+
+function handleDesignerNotice(messageText: string, undo?: () => boolean): void {
+  showNotice({
+    message: messageText,
+    tone: 'success',
+    ...(undo
+      ? {
+          action: {
+            label: workbenchLocale.value.t('action.undo', 'Undo'),
+            run: () => {
+              if (!undo())
+                ui.notify(workbenchLocale.value.t('history.undoUnavailable', 'This deletion can no longer be undone here.'))
+            },
+          },
+        }
+      : {}),
+  })
 }
 
 function moveDesignerLayer(
@@ -289,21 +315,22 @@ watch(recoveryDrafts, (drafts) => {
             :runtime-renderer="designRuntime.artifact.plan.renderer"
             workspace-navigation="external"
             @configure-event="showComponentEventFlow"
-             @selection-set-change="selectedDesignerIds = $event"
+            @notice="handleDesignerNotice"
+            @selection-set-change="selectedDesignerIds = $event"
            >
             <template #toolbar="{ breakpoint, canUndo, canRedo, canEditSelection, copySelection, removeSelection, selectBreakpoint, undo, redo }">
               <div class="mx-config-form-designer__toolbar-actions" role="toolbar" :aria-label="workbenchLocale.t('designer.commands', 'Designer commands')">
-                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canUndo" :title="workbenchLocale.t('action.undo', 'Undo')" :aria-label="workbenchLocale.t('action.undo', 'Undo')" @click="undo">
+                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canUndo" :title="workbenchLocale.t('action.undoShortcut', 'Undo (Ctrl/Cmd+Z)')" :aria-label="workbenchLocale.t('action.undo', 'Undo')" aria-keyshortcuts="Control+Z Meta+Z" @click="undo">
                   <Undo2 :size="17" aria-hidden="true" />
                 </button>
-                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canRedo" :title="workbenchLocale.t('action.redo', 'Redo')" :aria-label="workbenchLocale.t('action.redo', 'Redo')" @click="redo">
+                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canRedo" :title="workbenchLocale.t('action.redoShortcut', 'Redo (Ctrl/Cmd+Shift+Z)')" :aria-label="workbenchLocale.t('action.redo', 'Redo')" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" @click="redo">
                   <Redo2 :size="17" aria-hidden="true" />
                 </button>
                 <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
-                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canEditSelection" :title="workbenchLocale.t('node.copySelection', 'Copy selection')" :aria-label="workbenchLocale.t('node.copySelection', 'Copy selection')" @click="copySelection">
+                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canEditSelection" :title="workbenchLocale.t('node.copySelectionShortcut', 'Copy selection (Ctrl/Cmd+D)')" :aria-label="workbenchLocale.t('node.copySelection', 'Copy selection')" aria-keyshortcuts="Control+D Meta+D" @click="copySelection">
                   <Copy :size="16" aria-hidden="true" />
                 </button>
-                <button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="!canEditSelection" :title="workbenchLocale.t('node.deleteSelection', 'Delete selection')" :aria-label="workbenchLocale.t('node.deleteSelection', 'Delete selection')" @click="removeSelection">
+                <button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="!canEditSelection" :title="workbenchLocale.t('node.deleteSelectionShortcut', 'Delete selection (Delete)')" :aria-label="workbenchLocale.t('node.deleteSelection', 'Delete selection')" aria-keyshortcuts="Delete Backspace" @click="removeSelection">
                   <Trash2 :size="16" aria-hidden="true" />
                 </button>
                 <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
@@ -327,6 +354,7 @@ watch(recoveryDrafts, (drafts) => {
                 :project="currentProject"
                 :current-page-id="currentPageId"
                 :form="form"
+                :history="designerHistoryControl.history"
                 :layers="designerLayers"
                 :locale="localeOptions"
                 :materials="materials"
@@ -335,6 +363,7 @@ watch(recoveryDrafts, (drafts) => {
                 :selected-ids="selectedDesignerIds"
                 @add-material="addMaterial"
                 @arrange-layer="moveDesignerLayer"
+                @jump-history="jumpDesignerHistory"
                 @manage-pages="showPageManager"
                 @select-layer="selectDesignerLayer"
                 @select-page="selectPageFromDesigner"
@@ -542,5 +571,12 @@ watch(recoveryDrafts, (drafts) => {
     <p v-if="message" class="workbench-message" aria-live="polite">
       {{ message }}
     </p>
+    <aside v-if="notice" class="workbench-toast" :data-tone="notice.tone" role="status" aria-live="polite" aria-atomic="true">
+      <span>{{ notice.message }}</span>
+      <button v-if="notice.action" type="button" @click="notice.action.run()">
+        <Undo2 :size="14" aria-hidden="true" />
+        {{ notice.action.label }}
+      </button>
+    </aside>
   </main>
 </template>

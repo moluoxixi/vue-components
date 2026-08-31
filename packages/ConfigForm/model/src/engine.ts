@@ -30,7 +30,23 @@ export interface ProjectDomainSnapshot extends ProjectSnapshot {
   canUndo: boolean
   /** Opaque history identity used by editor sessions to track saved state. */
   cursor: string
+  history: ProjectHistorySummary
   lastError?: ModelDiagnostic
+}
+
+export interface ProjectHistoryEntrySummary {
+  readonly id: string
+  readonly label: string
+  readonly editVersion: number
+  readonly timestamp: number
+}
+
+export interface ProjectHistorySummary {
+  /** Chronological entries, including redo entries after `position`. */
+  readonly entries: readonly ProjectHistoryEntrySummary[]
+  /** Number of retained entries currently applied; zero means the earliest retained state. */
+  readonly position: number
+  readonly limit: number
 }
 
 export interface ProjectDomainDispatchResult {
@@ -73,19 +89,39 @@ export function createProjectDomainEngine(
     ...(options.historyLimit === undefined ? {} : { limit: options.historyLimit }),
     ...(options.mergeWindowMs === undefined ? {} : { mergeWindowMs: options.mergeWindowMs }),
   })
-  const rootCursor = `root:${history.snapshot.document.id}:${history.snapshot.editVersion}:${history.snapshot.contentHash}`
   let lastError: ModelDiagnostic | undefined
   const commandFingerprints = new Map<string, string>()
+  const historyEntrySummaries = new WeakMap<ProjectTransaction, ProjectHistoryEntrySummary>()
+  let historyEntrySequence = 0
   const listeners = new Set<(
     snapshot: ProjectDomainSnapshot,
     changeSet: ProjectChangeSet,
   ) => void>()
 
   function historyCursor(target: ProjectHistory = history): string {
-    return target.past.at(-1)?.transaction.id ?? rootCursor
+    const current = target.past.at(-1)
+    return current
+      ? entrySummary(current).id
+      : `history-base:${target.snapshot.document.id}:${target.snapshot.contentHash}`
+  }
+
+  function entrySummary(entry: ProjectHistory['past'][number]): ProjectHistoryEntrySummary {
+    const existing = historyEntrySummaries.get(entry.transaction)
+    if (existing)
+      return existing
+    const summary = Object.freeze({
+      editVersion: entry.editVersion,
+      id: `local-history-${++historyEntrySequence}`,
+      label: entry.transaction.label,
+      timestamp: entry.timestamp,
+    })
+    historyEntrySummaries.set(entry.transaction, summary)
+    return summary
   }
 
   function currentSnapshot(): ProjectDomainSnapshot {
+    const retainedEntries = [...history.past, ...history.future]
+    const entries = retainedEntries.map(entrySummary)
     return {
       canRedo: history.future.length > 0,
       canUndo: history.past.length > 0,
@@ -93,6 +129,11 @@ export function createProjectDomainEngine(
       cursor: historyCursor(),
       document: history.snapshot.document,
       editVersion: history.snapshot.editVersion,
+      history: Object.freeze({
+        entries: Object.freeze(entries),
+        limit: history.limit,
+        position: history.past.length,
+      }),
       ...(lastError ? { lastError } : {}),
     }
   }
@@ -181,13 +222,17 @@ export function createProjectDomainEngine(
     const previous = history.past.at(-1)
     if (!previous?.transaction.mergeKey)
       return
+    const transaction = { ...previous.transaction, mergeKey: undefined }
+    const summary = historyEntrySummaries.get(previous.transaction)
+    if (summary)
+      historyEntrySummaries.set(transaction, summary)
     history = {
       ...history,
       past: [
         ...history.past.slice(0, -1),
         {
           ...previous,
-          transaction: { ...previous.transaction, mergeKey: undefined },
+          transaction,
         },
       ],
     }

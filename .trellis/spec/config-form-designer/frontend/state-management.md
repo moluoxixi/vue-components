@@ -686,3 +686,147 @@ await loadAdapter()
 await applyRuntimeState(latestRuntimeState, latestSequence)
 // applyRuntimeState checks the sequence before its first write.
 ```
+
+## 11. Local Editing History And Shortcut Contract
+
+### 11.1 Scope / Trigger
+
+Apply this contract when changing Domain Engine history, `ProjectEditorSession`,
+Designer editing shortcuts, batch node actions, deletion feedback, or the local
+History panel. This history is scoped to the current editor session. Persisted
+checkpoints and repository revisions are separate concepts.
+
+### 11.2 Signatures
+
+```ts
+interface ProjectHistoryEntrySummary {
+  readonly id: string
+  readonly label: string
+  readonly editVersion: number
+  readonly timestamp: number
+}
+
+interface ProjectHistorySummary {
+  /** Chronological past plus redo entries. */
+  readonly entries: readonly ProjectHistoryEntrySummary[]
+  /** Number of entries currently applied. */
+  readonly position: number
+  readonly limit: number
+}
+
+interface DesignerHistoryControl {
+  canUndo: boolean
+  canRedo: boolean
+  history?: ProjectHistorySummary
+  undo: () => boolean
+  redo: () => boolean
+}
+
+interface WorkbenchHistoryControl extends DesignerHistoryControl {
+  jump: (position: number) => boolean
+}
+
+type DesignerNotice = {
+  message: string
+  undo?: () => boolean
+}
+```
+
+### 11.3 Contracts
+
+- `ProjectDomainEngine` owns the mutable history internals. Its snapshot exposes
+  only a frozen summary; transactions, inverses, mutable arrays, and historical
+  documents never cross into Session or UI code.
+- History entry ids are session-local opaque identities. They remain stable
+  across undo, redo, and history-group sealing, and cannot be derived by
+  concatenating command ids because a later legal command may use the same
+  string.
+- `entries` is chronological and includes redo entries after `position`.
+  `position === 0` means the earliest retained state and
+  `position === entries.length` means the latest retained state. The earliest
+  retained state may be newer than the original document after the history
+  limit discards old entries.
+- The editor cursor at `position === 0` identifies that retained base state.
+  After limit truncation it must not alias the original document cursor or make
+  a still-modified editor session appear clean.
+- A History jump validates an integer position in the retained range and reaches
+  it only by repeated `ProjectEditorSession.undo()` or `redo()` calls. It never
+  writes a captured UI document back into the Engine.
+- A command accepted after jumping backward uses the Engine's normal branch
+  semantics: the redo suffix is removed deterministically. Selection, hover,
+  camera, active panel, and drag intermediate frames do not create entries.
+- Duplicate, delete, move, and batch property edits submit one `ProjectCommand`.
+  One accepted user intent creates at most one edit version and one history
+  entry, regardless of the selected-node count.
+- `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, `Ctrl+Y`, `Ctrl/Cmd+D`, and
+  `Delete/Backspace` are handled by the DesignSurface root. The handler exits
+  for prevented or composing events, readonly mode, `INPUT`, `TEXTAREA`,
+  `SELECT`, `OPTION`, and `contenteditable` descendants. Preview iframe and
+  readonly Monaco surfaces remain outside this keyboard scope.
+- Successful deletion publishes an accessible notice whose Undo action targets
+  the expected history position. If another history transition has already
+  occurred, the action is stale and returns `false`. The Workbench notice store
+  permits the action to run only once.
+
+### 11.4 Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Jump target is fractional, negative, or beyond `entries.length` | Return `false`; preserve document and history. |
+| Undo or redo fails during a jump | Stop at the reached position and publish the Engine diagnostic. |
+| Shortcut originates in a text editing target | Preserve native editing behavior; do not submit a Project Command. |
+| Designer is readonly or an IME composition is active | Ignore the editing shortcut. |
+| Deletion Undo notice no longer matches the expected position | Return `false`; do not undo an unrelated command. |
+| Notice action is invoked twice | The second invocation is a no-op. |
+| A new command is accepted from an older history position | Truncate the redo suffix and publish the new branch. |
+| A command id equals the concatenated ids of a merged entry | Publish distinct stable entry ids and cursors. |
+| Undo reaches position zero after history-limit truncation | Use the retained base cursor, not the original document cursor. |
+
+### 11.5 Good / Base / Bad Cases
+
+- Good: select five nodes, press Delete, create one command, show one Undo
+  notice, and restore all five nodes with one Engine undo.
+- Base: click an older retained history row and move through Engine undo/redo
+  until that position becomes current.
+- Bad: store full `ProjectDocument` copies in the History panel, mutate
+  `history.entries`, or let Backspace delete a node while an Inspector input is
+  focused.
+
+### 11.6 Tests Required
+
+- Model unit tests freeze the summary, preserve chronological past/future order,
+  enforce the limit, prove redo-branch truncation, distinguish merged-id
+  collisions, and keep the truncated base cursor distinct from the original.
+- Designer component tests cover Windows/Linux and macOS modifiers, batch
+  duplicate/delete command cardinality, readonly mode, composition, and every
+  text-editing target boundary.
+- Workbench session tests jump backward and forward exclusively through
+  `ProjectEditorSession`, reject invalid positions, stop on diagnostics, and
+  produce a new branch after editing an older position.
+- Notice-store tests prove single use, timeout/replace cleanup, and stale
+  deletion callbacks cannot undo a later command.
+- Element Plus and Ant Design Vue browser tests cover Layers multi-selection,
+  duplicate, delete, notice Undo, History jump, redo truncation, and Inspector
+  input isolation on the same project timeline.
+
+### 11.7 Wrong vs Correct
+
+Wrong:
+
+```ts
+historyPanel.onSelect(document => editor.replaceDocument(document))
+selectedIds.forEach(nodeId => session.execute(removeNode(nodeId)))
+```
+
+Correct:
+
+```ts
+while (session.snapshot.history.position > targetPosition)
+  session.undo()
+
+session.execute({
+  id: nextCommandId(),
+  label: 'Remove components',
+  actions: [{ type: 'transaction', operations: selectedIds.map(removeNode) }],
+})
+```

@@ -17,6 +17,26 @@ export interface WorkbenchUiStoreOptions {
   locale?: DesignerLocaleOptions
 }
 
+export interface WorkbenchNotice {
+  readonly id: number
+  readonly message: string
+  readonly tone: 'error' | 'info' | 'success'
+  readonly action?: {
+    readonly label: string
+    readonly run: () => void
+  }
+}
+
+export interface ShowWorkbenchNoticeOptions {
+  action?: {
+    label: string
+    run: () => void
+  }
+  durationMs?: number
+  message: string
+  tone?: WorkbenchNotice['tone']
+}
+
 function initialLocale(options: Readonly<WorkbenchUiStoreOptions>): WorkbenchLocaleId {
   if (options.locale?.locale)
     return resolveWorkbenchLocale(options.locale.locale)
@@ -45,6 +65,9 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const theme = ref<WorkbenchTheme>('dark')
   const localeId = ref<WorkbenchLocaleId>(initialLocale(options))
   const message = ref('')
+  const notice = shallowRef<WorkbenchNotice>()
+  let noticeSequence = 0
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined
 
   function notify(value: unknown): void {
     message.value = value instanceof Error ? value.message : String(value)
@@ -52,6 +75,43 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
 
   function clearMessage(): void {
     message.value = ''
+  }
+
+  function clearNotice(id?: number): void {
+    if (id !== undefined && notice.value?.id !== id)
+      return
+    if (noticeTimer !== undefined)
+      clearTimeout(noticeTimer)
+    noticeTimer = undefined
+    notice.value = undefined
+  }
+
+  function showNotice(options: ShowWorkbenchNoticeOptions): void {
+    clearNotice()
+    const id = ++noticeSequence
+    let actionUsed = false
+    notice.value = {
+      id,
+      message: options.message,
+      tone: options.tone ?? 'info',
+      ...(options.action
+        ? {
+            action: {
+              label: options.action.label,
+              run: () => {
+                if (actionUsed || notice.value?.id !== id)
+                  return
+                actionUsed = true
+                options.action?.run()
+                clearNotice(id)
+              },
+            },
+          }
+        : {}),
+    }
+    const duration = options.durationMs ?? (options.action ? 8000 : 5000)
+    if (duration > 0)
+      noticeTimer = setTimeout(clearNotice, duration, id)
   }
 
   function closeExportPreview(): void {
@@ -133,6 +193,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
 
   return {
     clearMessage,
+    clearNotice,
     closeExportPreview,
     closeFlowWorkspace,
     closePageManager,
@@ -145,6 +206,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     localeId,
     message,
     mobileStudioView,
+    notice,
     notify,
     openExportPreview,
     openFlowWorkspace,
@@ -157,6 +219,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     previewOpen,
     previewViewport,
     selectMobileStudioView,
+    showNotice,
     studioLeftView,
     templatePickerOpen,
     theme,

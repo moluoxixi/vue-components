@@ -23,6 +23,7 @@ export const DESIGNER_ZH_CN_MESSAGES: Record<string, string> = {
   'action.cancel': '取消',
   'action.apply': '应用',
   'action.copy': '复制',
+  'node.deletedUndo': '已删除，可撤销恢复。',
   'action.download': '下载',
   'dialog.preview': '表单预览',
   'error.invalidJson': 'JSON 格式无效',

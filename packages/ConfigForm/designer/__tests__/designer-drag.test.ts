@@ -8,6 +8,7 @@ import {
   resolveDesignerDragOverlayPosition,
   resolveStickyDesignerDropTarget,
 } from '../src/components/designer-drag'
+import { createMoveCommand } from '../src/graph'
 import { createDesignerRegistry } from '../src/registry'
 
 const material: DesignerMaterialDefinition = {
@@ -28,6 +29,48 @@ const material: DesignerMaterialDefinition = {
 }
 
 describe('designer drag controller', () => {
+  it('routes the root, list-end, cross-container, and nested pointer/keyboard matrix through the same move command', () => {
+    const cases = [
+      { id: 'root', target: { parentId: null, index: 0 } as const },
+      { id: 'list-end', target: { parentId: 'outer', slot: 'default', index: 2 } as const },
+      { id: 'cross-container', target: { parentId: 'sibling-container', slot: 'default', index: 1 } as const },
+      { id: 'three-level', target: { parentId: 'inner', slot: 'default', index: 1 } as const },
+    ]
+
+    for (const testCase of cases) {
+      const commands: ReturnType<typeof createMoveCommand>[] = []
+      const controller = createDesignerDragController({
+        commitMaterial: vi.fn(),
+        commitNode: (nodeId, resolvedTarget) => commands.push(createMoveCommand(
+          'home',
+          nodeId,
+          resolvedTarget,
+          { id: `move-${testCase.id}-${commands.length}` },
+        )),
+      })
+      controller.registerResolver(() => testCase.target)
+      controller.registerKeyboardTargets(() => [testCase.target])
+
+      controller.beginNode('field-1', { x: 0, y: 0 })
+      controller.move({ x: 20, y: 20 })
+      controller.finish({ x: 20, y: 20 })
+      expect(controller.beginNodeKeyboard('field-1'), testCase.id).toBe(true)
+      expect(controller.finishKeyboard(), testCase.id).toBe(true)
+
+      expect(commands, testCase.id).toHaveLength(2)
+      expect(commands[0]?.actions, testCase.id).toEqual(commands[1]?.actions)
+      expect(commands[0]?.actions, testCase.id).toEqual([{
+        type: 'operation.apply',
+        operations: [{
+          type: 'node.move',
+          pageId: 'home',
+          nodeId: 'field-1',
+          target: testCase.target,
+        }],
+      }])
+    }
+  })
+
   it('commits the exact material candidate once after a legal drop', () => {
     const commitMaterial = vi.fn()
     const controller = createDesignerDragController({

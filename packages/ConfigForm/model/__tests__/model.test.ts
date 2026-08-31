@@ -12,6 +12,7 @@ import {
   applyProjectTransaction,
   ComponentContractRegistryError,
   createComponentContractRegistry,
+  createProjectDomainEngine,
   createProjectDraftSnapshot,
   createProjectHistory,
   createProjectSnapshot,
@@ -93,6 +94,57 @@ function projectDocument(registryLock: RegistryLock = {
     registryLock,
     settings: {},
     resources: {},
+  }
+}
+
+function dragSortDocument(registryLock: RegistryLock): ProjectDocument {
+  const document = projectDocument(registryLock)
+  document.pagesById.home!.graph = {
+    version: 2,
+    props: {},
+    form: {},
+    root: [
+      { nodeId: 'root-first', placement: { span: 4 } },
+      { nodeId: 'outer', placement: {} },
+      { nodeId: 'sibling-container', placement: {} },
+      { nodeId: 'root-last', placement: {} },
+    ],
+    nodesById: {
+      'root-first': fieldNode('root-first'),
+      'root-last': fieldNode('root-last'),
+      'outer-field': fieldNode('outer-field'),
+      'sibling-field': fieldNode('sibling-field'),
+      'deep-field': fieldNode('deep-field'),
+      'outer': layoutNode('outer', ['outer-field', 'middle']),
+      'middle': layoutNode('middle', ['inner']),
+      'inner': layoutNode('inner', ['deep-field']),
+      'sibling-container': layoutNode('sibling-container', ['sibling-field']),
+    },
+  }
+  return document
+}
+
+function fieldNode(id: string) {
+  return {
+    id,
+    component: 'element.input',
+    kind: 'field' as const,
+    field: id,
+    props: {},
+    events: {},
+    bindings: {},
+  }
+}
+
+function layoutNode(id: string, childIds: string[]) {
+  return {
+    id,
+    component: 'element.section',
+    kind: 'layout' as const,
+    props: {},
+    events: {},
+    bindings: {},
+    slots: { default: childIds.map(nodeId => ({ nodeId, placement: {} })) },
   }
 }
 
@@ -1126,6 +1178,188 @@ describe('projectTransaction', () => {
 })
 
 describe('projectHistory', () => {
+  it('moves nodes at root, list end, across containers, and into three-level nesting with one reversible revision', () => {
+    const registry = componentRegistry()
+    const cases = [
+      {
+        id: 'move-root',
+        nodeId: 'root-last',
+        target: { parentId: null, index: 0 } as const,
+        expected: { root: ['root-last', 'root-first', 'outer', 'sibling-container'] },
+      },
+      {
+        id: 'move-list-end',
+        nodeId: 'root-first',
+        target: { parentId: 'outer', slot: 'default', index: 2 } as const,
+        expected: { parentId: 'outer', slot: ['outer-field', 'middle', 'root-first'] },
+      },
+      {
+        id: 'move-cross-container',
+        nodeId: 'outer-field',
+        target: { parentId: 'sibling-container', slot: 'default', index: 1 } as const,
+        expected: { parentId: 'sibling-container', slot: ['sibling-field', 'outer-field'] },
+      },
+      {
+        id: 'move-three-level',
+        nodeId: 'root-first',
+        target: { parentId: 'inner', slot: 'default', index: 1 } as const,
+        expected: { parentId: 'inner', slot: ['deep-field', 'root-first'] },
+      },
+    ]
+
+    for (const testCase of cases) {
+      const initial = dragSortDocument(registry.lock)
+      const engine = createProjectDomainEngine({ document: initial, registry })
+      const moved = engine.execute({
+        id: testCase.id,
+        label: 'Move component',
+        actions: [{
+          type: 'operation.apply',
+          operations: [{
+            type: 'node.move',
+            pageId: 'home',
+            nodeId: testCase.nodeId,
+            target: testCase.target,
+          }],
+        }],
+      })
+
+      expect(moved.changed, testCase.id).toBe(true)
+      expect(moved.snapshot.editVersion, testCase.id).toBe(1)
+      expect(moved.snapshot.history).toMatchObject({
+        entries: [{ label: 'Move component' }],
+        position: 1,
+      })
+      const graph = moved.snapshot.document.pagesById.home!.graph
+      if ('root' in testCase.expected) {
+        expect(graph.root.map(item => item.nodeId), testCase.id).toEqual(testCase.expected.root)
+      }
+      else {
+        const parent = graph.nodesById[testCase.expected.parentId]
+        expect(parent?.kind, testCase.id).toBe('layout')
+        if (parent?.kind === 'layout') {
+          expect(parent.slots.default?.map(item => item.nodeId), testCase.id)
+            .toEqual(testCase.expected.slot)
+        }
+      }
+
+      const undone = engine.undo()
+      expect(undone.changed, testCase.id).toBe(true)
+      expect(undone.snapshot.editVersion, testCase.id).toBe(2)
+      expect(undone.snapshot.history.position, testCase.id).toBe(0)
+      expect(undone.snapshot.document, testCase.id).toEqual(initial)
+    }
+  })
+
+  it('publishes a bounded immutable timeline with stable entries and deterministic branches', () => {
+    const registry = componentRegistry()
+    let now = 1_000
+    const engine = createProjectDomainEngine({
+      document: projectDocument(registry.lock),
+      historyLimit: 2,
+      nowMs: () => now,
+      registry,
+    })
+    const initialCursor = engine.snapshot.cursor
+    const edit = (id: string, label: string) => engine.execute({
+      id,
+      label,
+      actions: [{
+        type: 'node.patch',
+        pageId: 'home',
+        nodeId: 'name',
+        patch: { set: { label } },
+      }],
+    })
+
+    edit('rename-a', 'Rename A')
+    now = 2_000
+    edit('rename-b', 'Rename B')
+    now = 3_000
+    edit('rename-c', 'Rename C')
+    expect(engine.snapshot.history).toEqual({
+      entries: [
+        { id: 'local-history-2', label: 'Rename B', editVersion: 2, timestamp: 2_000 },
+        { id: 'local-history-3', label: 'Rename C', editVersion: 3, timestamp: 3_000 },
+      ],
+      limit: 2,
+      position: 2,
+    })
+    expect(Object.isFrozen(engine.snapshot.history)).toBe(true)
+    expect(Object.isFrozen(engine.snapshot.history.entries)).toBe(true)
+    expect(Object.isFrozen(engine.snapshot.history.entries[0])).toBe(true)
+
+    engine.undo()
+    expect(engine.snapshot.history.position).toBe(1)
+    engine.undo()
+    expect(engine.snapshot.history).toMatchObject({
+      entries: [
+        { id: 'local-history-2', editVersion: 2, timestamp: 2_000 },
+        { id: 'local-history-3', editVersion: 3, timestamp: 3_000 },
+      ],
+      position: 0,
+    })
+    expect(engine.snapshot.cursor).not.toBe(initialCursor)
+
+    now = 6_000
+    engine.redo()
+    engine.redo()
+    expect(engine.snapshot.history).toMatchObject({
+      entries: [
+        { id: 'local-history-2', editVersion: 2, timestamp: 2_000 },
+        { id: 'local-history-3', editVersion: 3, timestamp: 3_000 },
+      ],
+      position: 2,
+    })
+
+    engine.undo()
+    now = 7_000
+    edit('rename-d', 'Rename D')
+    expect(engine.snapshot.canRedo).toBe(false)
+    expect(engine.snapshot.history).toMatchObject({
+      entries: [
+        { id: 'local-history-2', label: 'Rename B' },
+        { id: 'local-history-4', label: 'Rename D' },
+      ],
+      position: 2,
+    })
+  })
+
+  it('keeps entry identities and cursors distinct when a command id matches a merged transaction id', () => {
+    const registry = componentRegistry()
+    const engine = createProjectDomainEngine({ document: projectDocument(registry.lock), registry })
+    const edit = (id: string, label: string, value: string, mergeKey?: string) => engine.execute({
+      id,
+      label,
+      ...(mergeKey ? { mergeKey } : {}),
+      actions: [{
+        type: 'node.patch',
+        pageId: 'home',
+        nodeId: 'name',
+        patch: { set: { label: value } },
+      }],
+    })
+
+    edit('a', 'Rename A', 'A', 'rename')
+    edit('b', 'Rename B', 'B', 'rename')
+    const merged = engine.snapshot
+    expect(merged.history.entries).toHaveLength(1)
+    engine.sealHistoryGroup()
+    expect(engine.snapshot.history.entries[0]?.id).toBe(merged.history.entries[0]?.id)
+
+    edit('a+b', 'Direct collision', 'C')
+    const collided = engine.snapshot
+    expect(collided.history.entries).toHaveLength(2)
+    expect(new Set(collided.history.entries.map(entry => entry.id)).size).toBe(2)
+    expect(collided.cursor).not.toBe(merged.cursor)
+
+    expect(engine.undo().snapshot.cursor).toBe(merged.cursor)
+    const redone = engine.redo().snapshot
+    expect(redone.cursor).toBe(collided.cursor)
+    expect(redone.history.entries.map(entry => entry.id))
+      .toEqual(collided.history.entries.map(entry => entry.id))
+  })
+
   it('merges matching transactions and undoes them as one semantic edit', () => {
     const registry = componentRegistry()
     let history = createProjectHistory(projectDocument(registry.lock), {

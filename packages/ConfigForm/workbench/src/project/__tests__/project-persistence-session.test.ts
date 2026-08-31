@@ -227,6 +227,7 @@ describe('projectPersistenceSession', () => {
       dirty: false,
       document,
       editVersion: 0,
+      history: { entries: [], limit: 100, position: 0 },
       persistence: 'durable' as const,
       repositoryRevision: 0,
       saving: false,

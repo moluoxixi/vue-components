@@ -24,6 +24,7 @@ async function fixture() {
     canUndo: true,
     createdAt: '2026-08-31T00:00:00.000Z',
     dirty: true,
+    history: { entries: [], limit: 100, position: 0 },
     persistence: 'durable',
     repositoryRevision: 2,
     saving: false,
@@ -114,6 +115,70 @@ describe('workbench service boundaries', () => {
     design.dispose()
     expect(design.compilation.value).toBeUndefined()
     expect(design.runtime.value).toBeUndefined()
+  })
+
+  it('jumps through the engine history with undo and redo instead of replacing snapshots', async () => {
+    const { adapter, snapshot } = await fixture()
+    let current: ProjectEditorSessionSnapshot = {
+      ...snapshot,
+      history: {
+        entries: [
+          { id: 'a', label: 'A', editVersion: 1, timestamp: 1 },
+          { id: 'b', label: 'B', editVersion: 2, timestamp: 2 },
+          { id: 'c', label: 'C', editVersion: 3, timestamp: 3 },
+        ],
+        limit: 100,
+        position: 3,
+      },
+    }
+    const undo = vi.fn(() => {
+      current = { ...current, history: { ...current.history, position: current.history.position - 1 } }
+      return sessionResult(current)
+    })
+    const redo = vi.fn(() => {
+      current = { ...current, history: { ...current.history, position: current.history.position + 1 } }
+      return sessionResult(current)
+    })
+    const projectSession = {
+      get snapshot() { return current },
+      execute: vi.fn(),
+      undo,
+      redo,
+    } as unknown as ProjectEditorSession
+    const setDiagnostic = vi.fn()
+    const design = createWorkbenchDesignSession({
+      getAdapter: () => adapter,
+      getPageId: () => 'home',
+      getProjectSession: () => projectSession,
+      getSnapshot: () => current,
+      setDiagnostic,
+    })
+
+    expect(design.historyControl.value.jump(1)).toBe(true)
+    expect(undo).toHaveBeenCalledTimes(2)
+    expect(current.history.position).toBe(1)
+    expect(design.historyControl.value.jump(3)).toBe(true)
+    expect(redo).toHaveBeenCalledTimes(2)
+    expect(current.history.position).toBe(3)
+    expect(design.historyControl.value.jump(4)).toBe(false)
+    expect(design.historyControl.value.jump(1.5)).toBe(false)
+    expect(undo).toHaveBeenCalledTimes(2)
+    expect(redo).toHaveBeenCalledTimes(2)
+
+    undo
+      .mockImplementationOnce(() => {
+        current = { ...current, history: { ...current.history, position: current.history.position - 1 } }
+        return sessionResult(current)
+      })
+      .mockImplementationOnce(() => ({
+        changed: false,
+        changeSet: { project: false, pageIds: [], nodeIds: [], nodeChanges: [] },
+        diagnostics: [{ code: 'HISTORY_BLOCKED', message: 'History jump blocked.' }],
+        snapshot: current,
+      }))
+    expect(design.historyControl.value.jump(1)).toBe(true)
+    expect(current.history.position).toBe(2)
+    expect(setDiagnostic).toHaveBeenLastCalledWith('History jump blocked.')
   })
 
   it('keeps full-project compilation lazy and snapshot-scoped in Export Service', async () => {

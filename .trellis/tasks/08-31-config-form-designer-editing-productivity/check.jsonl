@@ -1,1 +1,1 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"本任务修改 Domain Engine 历史摘要、Designer 快捷键与 Workbench 本地历史面板，必须遵守本地编辑历史、单事务批处理、删除撤销和跨层状态边界。"}

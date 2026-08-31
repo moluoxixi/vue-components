@@ -765,6 +765,53 @@
   font-size: 12px;
 }
 
+.workbench-toast {
+  position: fixed;
+  z-index: 3150;
+  right: 14px;
+  bottom: 62px;
+  display: flex;
+  max-width: min(440px, calc(100% - 28px));
+  min-height: 40px;
+  padding: 7px 8px 7px 12px;
+  align-items: center;
+  gap: 12px;
+  color: var(--wb-text-strong);
+  border: 1px solid var(--wb-positive);
+  border-radius: 4px;
+  background: var(--wb-surface-raised);
+  box-shadow: 0 12px 34px rgb(0 0 0 / 28%);
+  font-size: 12px;
+}
+
+.workbench-toast > span {
+  min-width: 0;
+  flex: 1;
+}
+
+.workbench-toast button {
+  display: inline-flex;
+  min-height: 28px;
+  padding: 0 8px;
+  align-items: center;
+  gap: 5px;
+  color: var(--wb-accent);
+  border: 1px solid var(--wb-accent-line);
+  border-radius: 3px;
+  background: var(--wb-accent-soft);
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.workbench-toast button:hover,
+.workbench-toast button:focus-visible {
+  color: var(--wb-text-strong);
+  background: var(--wb-hover);
+  outline: 2px solid var(--wb-accent-line);
+  outline-offset: 1px;
+}
+
 .workspace-recovery-notice {
   position: fixed;
   z-index: 3050;

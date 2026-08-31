@@ -5,14 +5,14 @@ import type {
   DesignerRegistry,
   DesignerSelectionMode,
 } from '@moluoxixi/config-form-designer'
-import type { FormSettings, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
+import type { FormSettings, ProjectHistorySummary, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import type { CSSProperties } from 'vue'
 import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom'
-import { Blocks, ChevronDown, ChevronUp, Files, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, Settings2 } from '@lucide/vue'
+import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 
-export type StudioLeftView = 'components' | 'layers' | 'pages'
+export type StudioLeftView = 'components' | 'history' | 'layers' | 'pages'
 export type StudioLayerAction = 'moveBefore' | 'moveAfter' | 'indent' | 'outdent'
 
 export interface StudioLayerEntry {
@@ -27,6 +27,7 @@ const props = defineProps<{
   project: ReadonlyProjectDocument
   currentPageId: string
   form: FormSettings
+  history?: ProjectHistorySummary
   layers: StudioLayerEntry[]
   locale?: DesignerLocaleOptions
   materials: DesignerMaterialDefinition[]
@@ -38,6 +39,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   addMaterial: [materialKey: string]
   arrangeLayer: [action: StudioLayerAction, nodeId: string]
+  jumpHistory: [position: number]
   managePages: []
   selectLayer: [nodeId: string, mode: DesignerSelectionMode]
   selectPage: [pageId: string]
@@ -58,7 +60,37 @@ const views = computed(() => [
   { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: locale.value.t('designer.view.layers', 'Layers') },
   { icon: Files, id: 'pages' as const, label: locale.value.t('designer.view.pages', 'Pages') },
+  { icon: History, id: 'history' as const, label: locale.value.t('designer.view.history', 'History') },
 ])
+const historyPositions = computed(() => {
+  const history = props.history
+  if (!history)
+    return []
+  return [
+    {
+      current: history.position === 0,
+      label: locale.value.t('history.initial', 'Earliest retained state'),
+      position: 0,
+      timestamp: undefined,
+    },
+    ...history.entries.map((entry, index) => ({
+      current: history.position === index + 1,
+      label: entry.label,
+      position: index + 1,
+      timestamp: entry.timestamp as number | undefined,
+    })),
+  ].reverse()
+})
+
+function historyTime(timestamp?: number): string {
+  if (timestamp === undefined)
+    return ''
+  return new Intl.DateTimeFormat(locale.value.locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(timestamp))
+}
 
 function selectView(view: StudioLeftView): void {
   closeLayerMenu()
@@ -350,7 +382,7 @@ onBeforeUnmount(() => {
       <p v-if="layers.length === 0">{{ locale.t('layer.empty', 'No layers yet') }}</p>
     </div>
 
-    <div v-else class="designer-pages-panel">
+    <div v-else-if="activeView === 'pages'" class="designer-pages-panel">
       <nav ref="pageList" class="designer-pages" role="listbox" :aria-label="locale.t('pages.project', 'Project pages')">
         <button
           v-for="pageId in project.pageOrder"
@@ -374,6 +406,29 @@ onBeforeUnmount(() => {
         <Settings2 :size="14" aria-hidden="true" />
         {{ locale.t('pages.manage', 'Manage pages') }}
       </button>
+    </div>
+
+    <div v-else class="designer-history-panel">
+      <div class="designer-history-header">
+        <strong>{{ locale.t('history.title', 'Local history') }}</strong>
+        <small>{{ locale.t('history.position', '{current} of {total}', { current: history?.position ?? 0, total: history?.entries.length ?? 0 }) }}</small>
+      </div>
+      <ol v-if="historyPositions.length > 0" class="designer-history-list" :aria-label="locale.t('history.timeline', 'Operation history')">
+        <li v-for="item in historyPositions" :key="item.position" :class="{ 'is-current': item.current }">
+          <button type="button" :aria-current="item.current ? 'step' : undefined" :disabled="item.current || readonly" @click="emit('jumpHistory', item.position)">
+            <span class="designer-history-marker">
+              <Check v-if="item.current" :size="12" aria-hidden="true" />
+              <RotateCcw v-else :size="12" aria-hidden="true" />
+            </span>
+            <span class="designer-history-copy">
+              <strong>{{ item.label }}</strong>
+              <small v-if="item.timestamp">{{ historyTime(item.timestamp) }}</small>
+            </span>
+          </button>
+        </li>
+      </ol>
+      <p v-else class="designer-history-empty">{{ locale.t('history.empty', 'No local operations yet.') }}</p>
+      <p class="designer-history-limit">{{ locale.t('history.limit', 'Keeps the latest {count} operations', { count: history?.limit ?? 0 }) }}</p>
     </div>
   </div>
 </template>

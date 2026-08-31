@@ -35,6 +35,7 @@ export interface ProjectEditorSessionSnapshot extends ProjectSnapshot {
   canUndo: boolean
   createdAt: string
   dirty: boolean
+  history: ProjectDomainSnapshot['history']
   lastError?: ModelDiagnostic
   persistence: ProjectRepositoryPersistence
   repositoryRevision: number
@@ -136,6 +137,7 @@ export function createProjectEditorSession(
       dirty: engineSnapshot.cursor !== persistenceSnapshot.savedCursor,
       document: engineSnapshot.document,
       editVersion: engineSnapshot.editVersion,
+      history: engineSnapshot.history,
       ...(persistenceSnapshot.lastError ?? engineSnapshot.lastError
         ? { lastError: persistenceSnapshot.lastError ?? engineSnapshot.lastError }
         : {}),

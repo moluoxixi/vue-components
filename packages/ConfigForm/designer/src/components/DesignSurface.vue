@@ -257,8 +257,15 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
 })
 
+let lastAcceptedCommandId: string | undefined
+let historyTransitionSequence = 0
 const controller = useDesignerController({
-  execute: command => props.commandControl.execute(command),
+  execute: (command) => {
+    const result = props.commandControl.execute(command)
+    if (result.changed)
+      lastAcceptedCommandId = command.id
+    return result
+  },
   graph: () => props.graph,
   pageId: () => props.pageId,
   registry: () => props.registry,
@@ -382,12 +389,16 @@ function dispatch(command: ProjectCommand): boolean {
 
 function handleUndo(): boolean {
   const changed = props.historyControl.undo()
+  if (changed)
+    historyTransitionSequence += 1
   void focusNode(controller.selectedId.value)
   return changed
 }
 
 function handleRedo(): boolean {
   const changed = props.historyControl.redo()
+  if (changed)
+    historyTransitionSequence += 1
   void focusNode(controller.selectedId.value)
   return changed
 }
@@ -441,7 +452,10 @@ function handleUpdateForm(changes: Record<string, unknown>): void {
 function handleAction(action: DesignerNodeAction, nodeId: string): void {
   if (!controller.selectedIds.value.includes(nodeId))
     controller.select(nodeId)
-  controller.performNodeAction(action, nodeId)
+  const positionBefore = props.historyControl.history?.position
+  const changed = controller.performNodeAction(action, nodeId)
+  if (changed && action === 'remove')
+    announceDeletionUndo(deletionUndoTarget(positionBefore))
   void focusNode(controller.selectedId.value)
 }
 
@@ -449,29 +463,97 @@ function handleSelectionAction(action: 'copy' | 'remove'): boolean {
   const nodeId = controller.selectedId.value
   if (!nodeId)
     return false
+  const positionBefore = props.historyControl.history?.position
   const changed = controller.performNodeAction(action, nodeId)
+  if (changed && action === 'remove')
+    announceDeletionUndo(deletionUndoTarget(positionBefore))
   void focusNode(controller.selectedId.value)
   return changed
 }
 
+interface DeletionUndoTarget {
+  entryId?: string
+  position?: number
+  transitionSequence: number
+}
+
+function deletionUndoTarget(positionBefore?: number): DeletionUndoTarget {
+  const history = props.historyControl.history
+  const position = positionBefore === undefined
+    ? undefined
+    : Math.min(positionBefore + 1, history?.limit ?? positionBefore + 1)
+  return {
+    ...(lastAcceptedCommandId ? { entryId: lastAcceptedCommandId } : {}),
+    ...(position === undefined ? {} : { position }),
+    transitionSequence: historyTransitionSequence,
+  }
+}
+
+function announceDeletionUndo(target: DeletionUndoTarget): void {
+  void nextTick(() => {
+    const history = props.historyControl.history
+    const acceptedEntry = history && history.position > 0
+      ? history.entries[history.position - 1]
+      : undefined
+    const acceptedTarget = acceptedEntry
+      ? { ...target, entryId: acceptedEntry.id, position: history?.position }
+      : target
+    emit('notice', locale.t('node.deletedUndo', 'Deleted. Undo to restore.'), () => {
+      if (acceptedTarget.transitionSequence !== historyTransitionSequence)
+        return false
+      const currentHistory = props.historyControl.history
+      if (currentHistory && acceptedTarget.entryId) {
+        const currentEntryId = currentHistory.position > 0
+          ? currentHistory.entries[currentHistory.position - 1]?.id
+          : undefined
+        if (currentEntryId !== acceptedTarget.entryId)
+          return false
+      }
+      else if (acceptedTarget.position !== undefined && currentHistory?.position !== acceptedTarget.position) {
+        return false
+      }
+      return handleUndo()
+    })
+  })
+}
+
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement))
+    return false
+  return target.isContentEditable
+    || Boolean(target.closest('[contenteditable="true"]'))
+    || Boolean(target.closest('[data-workspace-panel="properties"]'))
+    || ['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'].includes(target.tagName)
+}
+
 function handleRootKeydown(event: KeyboardEvent): void {
+  if (event.defaultPrevented || event.isComposing || props.readonly || isTextEditingTarget(event.target))
+    return
   if (event.key === 'Escape' && workspaceMode.value === 'medium' && mediumPanel.value) {
     event.preventDefault()
     closeMediumPanel(mediumPanel.value)
     return
   }
-  if (!(event.ctrlKey || event.metaKey))
+  const modifier = event.ctrlKey || event.metaKey
+  if ((event.key === 'Delete' || event.key === 'Backspace') && !modifier && !event.altKey) {
+    event.preventDefault()
+    handleSelectionAction('remove')
     return
-  const target = event.target as HTMLElement
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  }
+  if (!modifier)
     return
-  if (event.key.toLowerCase() === 'z') {
+  if (event.key.toLowerCase() === 'z' && !event.altKey) {
     event.preventDefault()
     event.shiftKey ? handleRedo() : handleUndo()
   }
-  else if (event.key.toLowerCase() === 'y') {
+  else if (event.key.toLowerCase() === 'y'
+    && event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
     event.preventDefault()
     handleRedo()
+  }
+  else if (event.key.toLowerCase() === 'd' && !event.shiftKey && !event.altKey) {
+    event.preventDefault()
+    handleSelectionAction('copy')
   }
 }
 

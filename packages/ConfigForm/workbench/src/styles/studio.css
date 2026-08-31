@@ -17,17 +17,18 @@
 .designer-left-tabs {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-bottom: 1px solid var(--wb-border);
 }
 
 .designer-left-tabs button {
   display: inline-flex;
   min-width: 0;
-  padding: 0 2px;
+  padding: 2px;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 1px;
   color: var(--wb-muted);
   border: 0;
   border-bottom: 2px solid transparent;
@@ -55,6 +56,11 @@
   white-space: nowrap;
 }
 
+.designer-left-tabs span {
+  width: 100%;
+  text-align: center;
+}
+
 .designer-left-panel > .mx-config-form-designer__palette {
   min-height: 0;
 }
@@ -70,6 +76,130 @@
   display: grid;
   min-height: 0;
   grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.designer-history-panel {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.designer-history-header {
+  display: flex;
+  min-height: 36px;
+  padding: 0 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--wb-text-strong);
+  border-bottom: 1px solid var(--wb-border);
+  font-size: 11px;
+}
+
+.designer-history-header small,
+.designer-history-limit,
+.designer-history-copy small {
+  color: var(--wb-muted);
+  font-size: 9px;
+}
+
+.designer-history-list {
+  min-height: 0;
+  margin: 0;
+  padding: 6px;
+  overflow: auto;
+  list-style: none;
+}
+
+.designer-history-list li {
+  position: relative;
+}
+
+.designer-history-list li:not(:last-child)::after {
+  position: absolute;
+  top: 27px;
+  bottom: -7px;
+  left: 18px;
+  width: 1px;
+  background: var(--wb-border);
+  content: '';
+}
+
+.designer-history-list button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 5px 7px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: var(--wb-text);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.designer-history-list button:hover:not(:disabled),
+.designer-history-list button:focus-visible {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-control-border);
+  background: var(--wb-hover);
+  outline: none;
+}
+
+.designer-history-list li.is-current button {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-accent-soft);
+  cursor: default;
+}
+
+.designer-history-marker {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  color: var(--wb-muted);
+  border: 1px solid var(--wb-control-border);
+  border-radius: 50%;
+  background: var(--wb-surface);
+  place-items: center;
+}
+
+.designer-history-list li.is-current .designer-history-marker {
+  color: #fff;
+  border-color: var(--wb-accent);
+  background: var(--wb-accent);
+}
+
+.designer-history-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.designer-history-copy strong {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-history-empty,
+.designer-history-limit {
+  margin: 0;
+  padding: 10px;
+  line-height: 1.45;
+}
+
+.designer-history-limit {
+  border-top: 1px solid var(--wb-border);
 }
 
 .manage-pages-button {

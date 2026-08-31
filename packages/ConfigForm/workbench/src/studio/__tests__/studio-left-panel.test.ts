@@ -55,6 +55,11 @@ describe('studio left panel', () => {
         project,
         currentPageId: 'page-a',
         form: {},
+        history: {
+          entries: [{ id: 'rename', label: 'Rename field', editVersion: 1, timestamp: 1_000 }],
+          limit: 100,
+          position: 1,
+        },
         layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 1 }],
         materials: registry.listMaterials(),
         registry,
@@ -82,9 +87,14 @@ describe('studio left panel', () => {
     await wrapper.get('.manage-pages-button').trigger('click')
     expect(wrapper.emitted('selectPage')).toEqual([['page-b']])
     expect(wrapper.emitted('managePages')).toHaveLength(1)
+
+    await wrapper.get('[data-designer-left-tab="history"]').trigger('click')
+    expect(wrapper.get('.designer-history-list').text()).toContain('Rename field')
+    await wrapper.findAll('.designer-history-list button')[1]!.trigger('click')
+    expect(wrapper.emitted('jumpHistory')).toEqual([[0]])
   })
 
-  it('implements roving keyboard focus for the three views', async () => {
+  it('implements roving keyboard focus for the four views', async () => {
     const wrapper = mount(StudioLeftPanel, {
       attachTo: document.body,
       props: {
@@ -101,7 +111,7 @@ describe('studio left panel', () => {
     const components = wrapper.get('[data-designer-left-tab="components"]')
     ;(components.element as HTMLButtonElement).focus()
     await components.trigger('keydown', { key: 'End' })
-    expect(document.activeElement).toBe(wrapper.get('[data-designer-left-tab="pages"]').element)
+    expect(document.activeElement).toBe(wrapper.get('[data-designer-left-tab="history"]').element)
     wrapper.unmount()
   })
 

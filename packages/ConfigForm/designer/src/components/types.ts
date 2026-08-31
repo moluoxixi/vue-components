@@ -7,6 +7,7 @@ import type {
   PageGraph,
   PageNode,
   ProjectCommand,
+  ProjectHistorySummary,
 } from '@moluoxixi/config-form-model'
 import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form/renderer'
@@ -32,6 +33,7 @@ export interface DesignerCommandControl {
 export interface DesignerHistoryControl {
   canUndo: boolean
   canRedo: boolean
+  history?: ProjectHistorySummary
   undo: () => boolean
   redo: () => boolean
 }
@@ -71,6 +73,7 @@ export interface DesignSurfaceProps {
 export interface DesignSurfaceEmits {
   (event: 'configureEvent', nodeId: string, eventName: string): void
   (event: 'diagnostics', diagnostics: DesignerDiagnostic[]): void
+  (event: 'notice', message: string, undo?: () => boolean): void
   (event: 'selectionChange', nodeId: string | undefined): void
   (event: 'selectionSetChange', nodeIds: string[], primaryId: string | undefined): void
 }

@@ -11,6 +11,7 @@ import type {
   ProjectCommand,
   ProjectCompilationSnapshot,
   ProjectDocument,
+  ProjectHistorySummary,
 } from '@moluoxixi/config-form-model'
 import type {
   VueRuntimeCompileResult,
@@ -55,6 +56,8 @@ export interface WorkbenchDesignSession {
   readonly historyControl: ComputedRef<{
     canUndo: boolean
     canRedo: boolean
+    history: ProjectHistorySummary | undefined
+    jump: (position: number) => boolean
     undo: () => boolean
     redo: () => boolean
   }>
@@ -239,9 +242,42 @@ export function createWorkbenchDesignSession(
     return result?.changed ?? false
   }
 
+  function jump(position: number): boolean {
+    const session = options.getProjectSession()
+    const snapshot = options.getSnapshot()
+    if (!session || !snapshot || !Number.isSafeInteger(position)
+      || position < 0 || position > snapshot.history.entries.length) {
+      return false
+    }
+    let current = snapshot.history.position
+    let changed = false
+    while (current > position) {
+      const result = session.undo()
+      if (!result.changed) {
+        options.setDiagnostic(result.diagnostics[0]?.message ?? '')
+        return changed
+      }
+      changed = true
+      current -= 1
+    }
+    while (current < position) {
+      const result = session.redo()
+      if (!result.changed) {
+        options.setDiagnostic(result.diagnostics[0]?.message ?? '')
+        return changed
+      }
+      changed = true
+      current += 1
+    }
+    options.setDiagnostic('')
+    return changed
+  }
+
   const historyControl = computed(() => ({
     canUndo: options.getSnapshot()?.canUndo ?? false,
     canRedo: options.getSnapshot()?.canRedo ?? false,
+    history: options.getSnapshot()?.history,
+    jump,
     undo,
     redo,
   }))

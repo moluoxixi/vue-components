@@ -174,7 +174,7 @@ async function touchDrop(page: Page, materialKey: string, target: Locator): Prom
 
 async function expectAllPaletteSpecimens(page: Page, prefix: 'antd' | 'element', expectedCount: number): Promise<void> {
   const navigationTabs = page.locator('.designer-left-tabs button')
-  await expect(navigationTabs).toHaveCount(3)
+  await expect(navigationTabs).toHaveCount(4)
   const navigationGeometry = await navigationTabs.evaluateAll(tabs => tabs.map((tab) => {
     const label = tab.querySelector('span')
     return {
@@ -232,6 +232,71 @@ async function expectAllPaletteSpecimens(page: Page, prefix: 'antd' | 'element',
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
+
+for (const adapter of [
+  { id: 'element', name: 'Element' },
+  { id: 'antd', name: 'Ant' },
+] as const) {
+  test(`keeps ${adapter.name} keyboard editing, undo notice, and local history on one project timeline`, async ({ page }) => {
+    await createProject(page, adapter.id)
+    await page.getByRole('tab', { name: 'Layers' }).click()
+
+    const layers = page.getByRole('treeitem')
+    const nameLayer = page.locator('[data-layer-id="profile-name"] .designer-layer-select')
+    const roleLayer = page.locator('[data-layer-id="profile-role"] .designer-layer-select')
+    await roleLayer.click()
+    const propertyInput = page.locator('[data-workspace-panel="properties"] input').first()
+    await expect(propertyInput).toBeVisible()
+    await propertyInput.focus()
+    await page.keyboard.press('Control+D')
+    await page.keyboard.press('Delete')
+    await expect(layers).toHaveCount(3)
+
+    await page.getByRole('button', { name: 'Show preview' }).click()
+    const previewInput = previewRuntime(page).locator('[data-config-node-id="profile-name"] input').first()
+    await previewInput.focus()
+    await page.keyboard.press('Control+D')
+    await page.keyboard.press('Delete')
+    await page.getByRole('button', { name: 'Close preview' }).click()
+    await expect(layers).toHaveCount(3)
+
+    await nameLayer.click()
+    await roleLayer.click({ modifiers: ['Control'] })
+    await expect(page.locator('[role="treeitem"][aria-selected="true"]')).toHaveCount(2)
+    const copyButton = page.getByRole('button', { name: 'Copy selection' })
+    await expect(copyButton).toHaveAttribute('aria-keyshortcuts', 'Control+D Meta+D')
+    await page.keyboard.press('Control+D')
+    await expect(layers).toHaveCount(5)
+    await expect(page.locator('[role="treeitem"][aria-selected="true"]')).toHaveCount(2)
+
+    await page.keyboard.press('Delete')
+    await expect(layers).toHaveCount(3)
+    const notice = page.locator('.workbench-toast')
+    await expect(notice).toContainText('Deleted. Undo to restore.')
+    await notice.getByRole('button', { name: 'Undo' }).click()
+    await expect(notice).toHaveCount(0)
+    await expect(layers).toHaveCount(5)
+
+    await page.getByRole('tab', { name: 'History' }).click()
+    const historyPanel = page.locator('.designer-history-panel')
+    await expect(historyPanel).toContainText('1 of 2')
+    await expect(historyPanel).toContainText('Duplicate components')
+    await expect(historyPanel).toContainText('Remove components')
+    await historyPanel.getByRole('button', { name: 'Earliest retained state' }).click()
+
+    await page.getByRole('tab', { name: 'Layers' }).click()
+    await expect(layers).toHaveCount(3)
+    await nameLayer.click()
+    await page.keyboard.press('Control+D')
+    await expect(layers).toHaveCount(4)
+
+    await page.getByRole('tab', { name: 'History' }).click()
+    await expect(historyPanel).toContainText('1 of 1')
+    await expect(historyPanel).toContainText('Duplicate component')
+    await expect(historyPanel).not.toContainText('Remove components')
+    await expect(page.getByRole('button', { name: 'Redo' })).toBeDisabled()
+  })
+}
 
 for (const adapter of [
   { count: 17, id: 'element', name: 'Element' },

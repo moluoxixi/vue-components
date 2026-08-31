@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { createWorkbenchUiStore } from '../workbench-ui-store'
 
 describe('workbench UI store', () => {
   beforeEach(() => localStorage.clear())
+  afterEach(() => vi.useRealTimers())
 
   it('owns dialog, preview, mobile navigation, theme, locale, and message state', async () => {
     const ui = createWorkbenchUiStore({ locale: { locale: 'en-US' } })
@@ -47,5 +48,43 @@ describe('workbench UI store', () => {
     expect(ui.previewExpanded.value).toBe(false)
     expect(ui.pageManagerOpen.value).toBe(false)
     expect(ui.templatePickerOpen.value).toBe(true)
+  })
+
+  it('publishes a one-shot actionable notice without turning it into document state', () => {
+    const ui = createWorkbenchUiStore({})
+    const firstAction = vi.fn()
+    ui.showNotice({
+      action: { label: 'Undo', run: firstAction },
+      durationMs: 0,
+      message: 'Deleted',
+      tone: 'success',
+    })
+    const first = ui.notice.value!
+    first.action?.run()
+    first.action?.run()
+
+    expect(firstAction).toHaveBeenCalledOnce()
+    expect(ui.notice.value).toBeUndefined()
+
+    ui.showNotice({ action: { label: 'Undo', run: firstAction }, durationMs: 0, message: 'First' })
+    const staleAction = ui.notice.value?.action
+    ui.showNotice({ durationMs: 0, message: 'Second' })
+    staleAction?.run()
+    expect(firstAction).toHaveBeenCalledOnce()
+    expect(ui.notice.value?.message).toBe('Second')
+  })
+
+  it('expires only the currently scheduled notice', () => {
+    vi.useFakeTimers()
+    const ui = createWorkbenchUiStore({})
+
+    ui.showNotice({ durationMs: 100, message: 'First' })
+    vi.advanceTimersByTime(50)
+    ui.showNotice({ durationMs: 100, message: 'Second' })
+    vi.advanceTimersByTime(50)
+    expect(ui.notice.value?.message).toBe('Second')
+
+    vi.advanceTimersByTime(50)
+    expect(ui.notice.value).toBeUndefined()
   })
 })
