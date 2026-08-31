@@ -12,7 +12,7 @@ import type {
 } from './types'
 import { applyConfigFormReactionList, evaluateConfigFormReactionCondition } from '../reaction'
 import { analyzeConfigFormFlow } from './plan'
-import { CONFIG_FORM_FLOW_VERSION } from './types'
+import { CONFIG_FORM_FLOW_RUNTIME_VERSION, CONFIG_FORM_FLOW_VERSION } from './types'
 
 interface QueuedFlowRun {
   flow: ConfigFormFlowRuntimeDescriptor
@@ -25,6 +25,8 @@ interface QueuedFlowRun {
 }
 
 export class ConfigFormFlowInterpreter {
+  readonly runtimeVersion = CONFIG_FORM_FLOW_RUNTIME_VERSION
+
   private readonly active = new Map<string, { controller: AbortController, promise: Promise<ConfigFormFlowRunResult> }>()
   private readonly queues = new Map<string, QueuedFlowRun[]>()
 
@@ -387,6 +389,7 @@ function abortedRunResult(
 
 function flowDescriptorFromPlan(plan: ConfigFormFlowExecutionPlan): ConfigFormFlowRuntimeDescriptor {
   return {
+    runtimeVersion: CONFIG_FORM_FLOW_RUNTIME_VERSION,
     version: CONFIG_FORM_FLOW_VERSION,
     id: plan.flowId,
     name: plan.name,

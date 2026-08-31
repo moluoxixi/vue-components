@@ -35,7 +35,8 @@ import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
 import DesignerCanvas from './DesignerCanvas.vue'
 import DesignerPalette from './DesignerPalette.vue'
 import DesignerPropertyPanel from './DesignerPropertyPanel.vue'
-import { createDesignerDragController, createDesignerMaterialCandidate, DESIGNER_DRAG_KEY } from './designer-drag'
+import { createDesignerMaterialCandidate } from './designer-drag'
+import { createDesignerDesignSession, DESIGNER_SESSION_KEY } from './design-session'
 import '../styles.scss'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
@@ -269,7 +270,7 @@ const controller = useDesignerController({
   },
 })
 
-const dragController = createDesignerDragController({
+const designSession = createDesignerDesignSession(controller, {
   commitMaterial: (source, target) => {
     const candidate = createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
     if (!candidate || !controller.dispatch({
@@ -294,8 +295,9 @@ const dragController = createDesignerDragController({
   },
   commitNode: (nodeId, target) => handleMove(nodeId, target),
 })
-provide(DESIGNER_DRAG_KEY, dragController)
-onBeforeUnmount(dragController.cancel)
+const dragController = designSession.drag
+provide(DESIGNER_SESSION_KEY, designSession)
+onBeforeUnmount(designSession.dispose)
 
 function dragSourceLabel(source: DesignerDragSource): string {
   if (source.type === 'material') {

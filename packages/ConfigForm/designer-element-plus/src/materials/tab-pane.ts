@@ -1,5 +1,4 @@
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
-import ElementTabPaneSpecimen from '../components/ElementTabPaneSpecimen'
 import * as shared from '../material-shared'
 
 export default defineDesignerMaterialModule({
@@ -14,7 +13,7 @@ export default defineDesignerMaterialModule({
       title: 'Tab pane',
       category: 'Layout',
       icon: shared.PanelBottom,
-      runtime: { component: shared.ElTabPane, designerComponent: ElementTabPaneSpecimen },
+      runtime: { component: shared.ElTabPane },
       allowedParents: [{ material: 'element.tabs', slot: 'default' }],
       setters: [shared.propSetter('label', 'Label', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
       slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],

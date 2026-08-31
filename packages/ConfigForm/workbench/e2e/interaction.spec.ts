@@ -419,6 +419,58 @@ test('removes stale selection chrome while a pointer drag is active', async ({ p
   await page.mouse.up()
 })
 
+for (const adapter of ['element', 'antd'] as const) {
+  test(`keeps the ${adapter} 900px canvas active while stable triggers open non-modal sidebars`, async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await createProject(page, adapter)
+
+    const designer = page.locator('.mx-config-form-design-surface')
+    const workspace = designer.locator('.mx-config-form-designer__workspace')
+    const canvasPanel = designer.locator('[data-workspace-panel="canvas"]')
+    const palettePanel = designer.locator('[data-workspace-panel="palette"]')
+    const propertiesPanel = designer.locator('[data-workspace-panel="properties"]')
+    const paletteTrigger = designer.locator('[data-sidebar-trigger="palette"]')
+    const propertiesTrigger = designer.locator('[data-sidebar-trigger="properties"]')
+
+    await expect(designer).toHaveAttribute('data-workspace-mode', 'medium')
+    await expect(canvasPanel).toBeVisible()
+    await expect(palettePanel).toBeHidden()
+    await expect(propertiesPanel).toBeHidden()
+    await expect(paletteTrigger).toHaveAttribute('aria-expanded', 'false')
+    await expect(propertiesTrigger).toHaveAttribute('aria-expanded', 'false')
+    const initialWorkspace = await visibleBox(workspace)
+
+    await paletteTrigger.click()
+    await expect(paletteTrigger).toHaveAttribute('aria-expanded', 'true')
+    await expect(palettePanel).toBeVisible()
+    await expect(propertiesPanel).toBeHidden()
+    await expect(canvasPanel).toBeVisible()
+    expectSameSize(await visibleBox(workspace), initialWorkspace)
+
+    await propertiesTrigger.click()
+    await expect(palettePanel).toBeHidden()
+    await expect(propertiesPanel).toBeVisible()
+    await expect(propertiesTrigger).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvasPanel).toBeVisible()
+    expectSameSize(await visibleBox(workspace), initialWorkspace)
+
+    const nameNode = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+    await selectCanvasNode(page, nameNode, nameNode.locator('input').first())
+    const selection = page.locator('[data-editor-focus-node-id="profile-name"]')
+    await expect(propertiesPanel).toBeVisible()
+    await expect(selection).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(propertiesPanel).toBeHidden()
+    await expect(selection).toBeFocused()
+
+    const overflow = await designer.evaluate(element => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }))
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
+  })
+}
+
 test('keeps a compact Preview inside its own responsive runtime viewport', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
   await createProject(page, 'element')

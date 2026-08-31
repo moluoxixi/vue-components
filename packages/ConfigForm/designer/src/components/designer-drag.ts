@@ -1,5 +1,5 @@
 import type { NodeSubgraph, PageNode } from '@moluoxixi/config-form-model'
-import type { InjectionKey, ShallowRef } from 'vue'
+import type { ShallowRef } from 'vue'
 import type { DesignerDropTarget } from '../graph'
 import type { DesignerRegistry } from '../registry'
 import { shallowRef } from 'vue'
@@ -80,8 +80,6 @@ export interface CreateDesignerDragControllerOptions {
   commitMaterial: (source: Extract<DesignerDragSource, { type: 'material' }>, target: DesignerDropTarget) => void
   commitNode: (nodeId: string, target: DesignerDropTarget) => void
 }
-
-export const DESIGNER_DRAG_KEY: InjectionKey<DesignerDragController> = Symbol('config-form-designer-drag')
 
 export function resolveDesignerDragOverlayPosition(
   pointer: DesignerPointerPosition,

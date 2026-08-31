@@ -61,6 +61,26 @@ describe('element plus designer materials', () => {
     expect(Object.keys(ELEMENT_PLUS_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)
   })
 
+  it('publishes one complete four-capability contract for every material', () => {
+    const capabilities = ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.capabilities
+    expect(capabilities.map(entry => entry.contract.key)).toEqual(expectedKeys)
+    expect(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.contracts).toHaveLength(expectedKeys.length)
+    for (const entry of capabilities) {
+      expect(ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY.get(entry.contract.key)).toBe(entry)
+      expect(entry.runtime.component).toBe(entry.contract.key)
+      expect(entry.runtime.contractVersion).toBe(entry.contract.version)
+      expect(entry.design.component).toBe(entry.contract.key)
+      expect(entry.design.contractVersion).toBe(entry.contract.version)
+      expect(entry.source).toMatchObject({
+        component: entry.contract.key,
+        contractVersion: entry.contract.version,
+      })
+      expect(() => structuredClone(entry.contract)).not.toThrow()
+      expect(JSON.stringify(entry.contract)).not.toContain('component:')
+      expect(Object.values(entry.contract).some(value => typeof value === 'function')).toBe(false)
+    }
+  })
+
   it('creates a normalized JSON-safe subgraph for every material', () => {
     const graph = graphForRootMaterials()
     expect(() => pageGraphSchema.parse(graph)).not.toThrow()

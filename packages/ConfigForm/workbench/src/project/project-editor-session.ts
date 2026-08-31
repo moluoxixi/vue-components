@@ -83,6 +83,17 @@ export interface ProjectEditorSession {
   undo: () => ProjectEditorSessionDispatchResult
 }
 
+/** Construct the exact compiler boundary without persistence/session fields. */
+export function projectSnapshotFromEditorSession(
+  snapshot: ProjectEditorSessionSnapshot,
+): ProjectSnapshot {
+  return Object.freeze({
+    document: snapshot.document,
+    editVersion: snapshot.editVersion,
+    contentHash: snapshot.contentHash,
+  })
+}
+
 export function createProjectEditorSession(
   options: ProjectEditorSessionOptions,
 ): ProjectEditorSession {

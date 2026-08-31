@@ -6,7 +6,7 @@ import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import { createDesignerNodeId } from '../graph'
 import DesignerMaterialSpecimen from './DesignerMaterialSpecimen.vue'
-import { DESIGNER_DRAG_KEY } from './designer-drag'
+import { DESIGNER_SESSION_KEY } from './design-session'
 
 const props = defineProps<{
   materials: DesignerMaterialDefinition[]
@@ -19,7 +19,8 @@ const locale = useDesignerLocale()
 const emit = defineEmits<{
   addMaterial: [materialKey: string]
 }>()
-const dragController = inject(DESIGNER_DRAG_KEY, undefined)
+const designSession = inject(DESIGNER_SESSION_KEY, undefined)
+const dragController = designSession?.drag
 
 const query = ref('')
 let activePointerId: number | undefined

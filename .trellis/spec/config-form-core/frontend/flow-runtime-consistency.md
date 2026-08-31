@@ -21,6 +21,8 @@ equivalent behavior.
 ## 2. Signatures
 
 ```ts
+const CONFIG_FORM_FLOW_RUNTIME_VERSION = 1
+
 ConfigFormFlowInterpreter.run(
   flow: ConfigFormFlow,
   options?: ConfigFormFlowRunOptions,
@@ -60,6 +62,10 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
   a stale generation. Preview values remain Preview-session state and cross
   the engine through explicit read/write ports so a Flow-owned patch is
   applied to the latest values.
+- Core and generated Source publish the same
+  `CONFIG_FORM_FLOW_RUNTIME_VERSION`. Generated `flows.ts` embeds that version
+  and is executed in parity tests; a version string match without observable
+  scheduling/error parity is insufficient.
 - Workbench component-event authoring has one normal entry: the Inspector lists
   events from the selected node's Registry contract and opens the Flow dialog
   with that exact `{ nodeId, event }` trigger. If a matching Flow exists it is
@@ -109,6 +115,12 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
   dispatch began.
 - Projection state is keyed by Flow ID. Only `success` or `end` replaces that
   Flow's last successful projection.
+- Semantic compilation rejects a Flow when its reaction writes a capability
+  that the same field already owns through synchronous binding/reaction logic.
+  The overlap set includes value, state, prop, and validation targets. A pure
+  synchronous Flow reaction on a binding event is redundant; an event Flow
+  containing a condition or action remains valid because it expresses branch
+  or side-effect behavior rather than a second declarative binding.
 
 ## 4. Validation & Error Matrix
 
@@ -125,6 +137,9 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
 | Action timeout | `timeout`, or failure edge policy | none unless terminal policy succeeds | none unless terminal policy succeeds |
 | Ordinary error + `onError: end` | `end` with diagnostic | commit successful prior changes | commit Flow projection |
 | Ordinary error + `onError: failure` | follow error edge or `failure` | commit only if Flow reaches success/end | same |
+| Flow reaction overlaps synchronous value/state/prop/validate ownership | `COMPILER_FLOW_REACTION_CAPABILITY_CONFLICT` | none | none |
+| Flow contains only a synchronous reaction already expressible declaratively | `COMPILER_FLOW_SYNC_REACTION_REDUNDANT` | none | none |
+| Binding event Flow duplicates only the existing binding reaction | `COMPILER_FLOW_BINDING_REACTION_REDUNDANT` | none | none |
 
 Invalid Flow IR must fail analysis before scheduling. Unknown action refs and
 node execution failures return diagnostics; they must not leave active or
@@ -155,6 +170,10 @@ queued entries behind.
 - Generated `flows.ts` executable tests: import transpiled generated code and
   run the same concurrency/error/order matrix. String containment alone is
   insufficient.
+- Version tests assert Core interpreter and generated `flows.ts` expose the
+  same `CONFIG_FORM_FLOW_RUNTIME_VERSION` before executing the parity matrix.
+- Compiler tests cover value/state/prop/validation conflicts, redundant pure
+  synchronous reactions, and the allowed condition/action event-Flow cases.
 - Generated project integration: install, type-check, and build Element Plus
   and Ant Design Vue complete exports and pure Source exports.
 - Browser verification: observe `page.mount`, `field.change`, and

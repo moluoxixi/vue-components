@@ -103,21 +103,21 @@ describe('workbench production architecture boundary', () => {
   })
 
   it('routes normal Design rendering through Canonical IR and the Vue backend', () => {
-    const source = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
-    expect(source).toContain('compileCanonicalProject')
-    expect(source).toContain('createCompileCoordinator')
-    expect(source).toContain('coordinator.compilePage(pageId)')
-    expect(source).toContain('coordinator.compileDraftPage(snapshot, pageId, changeSet)')
-    expect(source).toContain('createProjectDraftSnapshotFromTransaction')
-    expect(source).toContain('compileCanonicalPageRuntime')
-    expect(source).toContain('canonicalPageRuntime')
-    const realtimeCompiler = source.slice(
-      source.indexOf('function compileCanonicalDocument'),
-      source.indexOf('function projectSnapshotFromEditorSession'),
-    )
-    expect(realtimeCompiler).not.toContain('compileCanonicalProject')
-    expect(source).not.toContain(['configModel', 'ToDesigner', 'Document'].join(''))
-    expect(source).not.toContain(['compile', 'Designer', 'Document(document'].join(''))
+    const controller = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
+    const designSession = readFileSync(new URL('../../session/workbench-design-session.ts', import.meta.url), 'utf8')
+    const exportService = readFileSync(new URL('../../session/workbench-export-service.ts', import.meta.url), 'utf8')
+    expect(designSession).toContain('createCompileCoordinator')
+    expect(designSession).toContain('coordinator.compilePage(pageId)')
+    expect(designSession).toContain('coordinator.compileDraftPage(snapshot, pageId, changeSet)')
+    expect(designSession).toContain('createProjectDraftSnapshotFromTransaction')
+    expect(designSession).toContain('compileCanonicalPageRuntime')
+    expect(designSession).not.toContain('compileCanonicalProject')
+    expect(exportService).toContain('compileCanonicalProject')
+    expect(controller).not.toContain('compileCanonicalProject')
+    expect(controller).not.toContain('compileCanonicalPageRuntime')
+    expect(controller).not.toContain('createCompileCoordinator')
+    expect(controller).not.toContain(['configModel', 'ToDesigner', 'Document'].join(''))
+    expect(controller).not.toContain(['compile', 'Designer', 'Document(document'].join(''))
   })
 
   it('keeps Preview inside an iframe RuntimeHost with a data-only protocol', () => {
@@ -136,11 +136,26 @@ describe('workbench production architecture boundary', () => {
 
   it('keeps property mutations on the single Designer command bridge', () => {
     const shell = readFileSync(new URL('../WorkbenchShell.vue', import.meta.url), 'utf8')
-    const controller = readFileSync(new URL('../workbench-controller.ts', import.meta.url), 'utf8')
+    const designSession = readFileSync(new URL('../../session/workbench-design-session.ts', import.meta.url), 'utf8')
     expect(shell).not.toContain('@model-operation')
-    expect(controller).toContain('const designerCommandControl = {')
-    expect(controller).toContain('execute: executeDesignerCommand')
-    expect(controller).toContain('const result = session.execute(command)')
+    expect(designSession).toContain('commandControl: { execute, preview }')
+    expect(designSession).toContain('const result = session.execute(command)')
+  })
+
+  it('provides Design, Preview, Export, and UI through separate contexts', () => {
+    const context = readFileSync(new URL('../workbench-context.ts', import.meta.url), 'utf8')
+    const shell = readFileSync(new URL('../WorkbenchShell.vue', import.meta.url), 'utf8')
+    for (const name of [
+      'useWorkbenchDesignSession',
+      'useWorkbenchPreviewSession',
+      'useWorkbenchExportService',
+      'useWorkbenchUiStore',
+    ]) {
+      expect(context).toContain(`export function ${name}`)
+      expect(shell).toContain(`${name}()`)
+    }
+    expect(shell).not.toContain('compileCanonicalProject')
+    expect(shell).not.toContain('compileCanonicalPageRuntime')
   })
 
   it('delegates Preview runtime state and lifecycle to PreviewSession', () => {

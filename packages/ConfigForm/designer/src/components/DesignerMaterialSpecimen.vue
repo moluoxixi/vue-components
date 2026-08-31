@@ -52,7 +52,7 @@ function createSpecimenSubgraph(): NodeSubgraph | undefined {
     return undefined
 
   const allowedParent = props.material.allowedParents?.[0]
-  if (!allowedParent || props.material.runtime.designerComponent)
+  if (!allowedParent)
     return value
 
   try {
@@ -110,10 +110,9 @@ function projectNode(subgraph: NodeSubgraph, item: SlotItem): ConfigFormRenderer
   if (!material || material.kind !== node.kind)
     return undefined
   const policy = resolveDesignerDesignPolicy(material.designPolicy)
-  const component = material.runtime.designerComponent
-    ?? (policy.render === 'adapter' && policy.adapter
+  const component = policy.render === 'adapter' && policy.adapter
     ? policy.adapter
-    : material.runtime.component)
+    : material.runtime.component
   const common = {
     id: node.id,
     component,

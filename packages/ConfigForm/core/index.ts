@@ -1,7 +1,11 @@
 export * from './src/flow/hash'
 export * from './src/flow/interpreter'
 export * from './src/flow/plan'
-export { CONFIG_FORM_FLOW_VERSION } from './src/flow/types'
+export {
+  CONFIG_FORM_FLOW_PLAN_VERSION,
+  CONFIG_FORM_FLOW_RUNTIME_VERSION,
+  CONFIG_FORM_FLOW_VERSION,
+} from './src/flow/types'
 export type * from './src/flow/types'
 export * from './src/json'
 export * from './src/module-registry'

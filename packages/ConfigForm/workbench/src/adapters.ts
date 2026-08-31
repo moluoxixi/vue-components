@@ -1,5 +1,6 @@
 import type {
   DesignerLocaleOptions,
+  DesignerMaterialCapabilityRegistry,
   DesignerRegistry,
 } from '@moluoxixi/config-form-designer'
 import type {
@@ -40,91 +41,40 @@ const runtimeAdapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchRunt
 
 function createWorkbenchComponentRegistry(
   id: WorkbenchAdapterId,
-  designerRegistry: DesignerRegistry,
+  capabilities: DesignerMaterialCapabilityRegistry,
 ): ComponentContractRegistry {
-  const contracts: ComponentContract[] = designerRegistry.listMaterials().map((material) => {
-    const subgraph = designerRegistry.createSubgraph(material.key, {
-      id: '__registry_default__',
-      ...(material.kind === 'field' ? { field: '__registry_field__' } : {}),
-    })
-    const root = subgraph.root[0]
-    const defaults = root ? subgraph.nodesById[root.nodeId] : undefined
-    if (!defaults)
-      throw new Error(`Workbench material factory returned no root node: ${material.key}`)
-    const properties = new Map<string, ComponentContract['props'][number]>()
-    material.setters.forEach((setter) => {
-      if (setter.path[0] !== 'props')
-        return
-      properties.set(setter.key, {
-        key: setter.key,
-        path: [...setter.path],
-        ...(setter.valueKind ? { valueKind: setter.valueKind } : {}),
-      })
-    })
-    const valueProp = material.runtime.valueProp ?? 'modelValue'
-    const trigger = material.runtime.trigger ?? `update:${valueProp}`
-    const events = new Map<string, { name: string }>()
-    if (material.kind === 'field')
-      events.set(trigger, { name: trigger })
-    material.events?.forEach(event => events.set(event.name, { name: event.name }))
-    return {
-      key: material.key,
-      version: String(material.version),
-      kind: material.kind,
-      props: [...properties.values()],
-      events: [...events.values()],
-      bindings: material.kind === 'field'
-        ? [{ name: 'value', valueProp, trigger }]
-        : [],
-      slots: (material.kind === 'layout' ? material.slots : []).map(slot => ({
-        name: slot.name,
-        ...(slot.accepts ? { accepts: [...slot.accepts] } : {}),
-        ...(slot.materials ? { components: [...slot.materials] } : {}),
-      })),
-      allowedParents: (material.allowedParents ?? []).map(parent => ({
-        component: parent.material,
-        slot: parent.slot,
-      })),
-      defaults: structuredClone(defaults.props),
-    }
-  })
-  return createComponentContractRegistry(contracts, { adapter: id, version: '1' })
+  return createComponentContractRegistry(
+    capabilities.contracts as readonly ComponentContract[],
+    { adapter: id, version: '1' },
+  )
 }
 
 function createWorkbenchSourceResolver(
-  designerRegistry: DesignerRegistry,
+  capabilities: DesignerMaterialCapabilityRegistry,
   registrySnapshot: RegistryContractSnapshot,
 ): CanonicalSourceBindingResolver {
   const contracts = new Map(registrySnapshot.components.map(component => [component.key, component]))
   const bindings = new Map<string, CanonicalSourceComponentBinding>()
-  designerRegistry.listMaterials().forEach((material) => {
-    const contract = contracts.get(material.key)
+  capabilities.capabilities.forEach((capability) => {
+    const contract = contracts.get(capability.contract.key)
     if (!contract)
-      throw new Error(`Workbench source binding has no component contract: ${material.key}`)
-    const source = material.source
+      throw new Error(`Workbench source binding has no component contract: ${capability.contract.key}`)
+    const source = capability.source
     if (!source)
-      throw new Error(`Workbench material is missing its source binding: ${material.key}`)
-    const subgraph = designerRegistry.createSubgraph(material.key, {
-      id: '__source_default__',
-      ...(material.kind === 'field' ? { field: '__source_field__' } : {}),
-    })
-    const root = subgraph.root[0]
-    const defaults = root ? subgraph.nodesById[root.nodeId] : undefined
-    bindings.set(material.key, {
-      component: material.key,
+      throw new Error(`Workbench material is missing its source binding: ${capability.contract.key}`)
+    bindings.set(capability.contract.key, {
+      component: capability.contract.key,
       contractFingerprint: contract.fingerprint,
       contractVersion: contract.contractVersion,
-      configComponent: source.configComponent,
-      tag: source.tag,
-      render: source.render,
-      ...(defaults?.kind !== 'field' || defaults.defaultValue === undefined
-        ? {}
-        : { defaultValue: structuredClone(defaults.defaultValue) }),
-      ...(source.library ? { library: structuredClone(source.library) } : {}),
-      ...(source.options ? { options: structuredClone(source.options) } : {}),
-      ...(source.staticProps ? { staticProps: structuredClone(source.staticProps) } : {}),
-      ...(material.runtime.trigger ? { trigger: material.runtime.trigger } : {}),
-      ...(material.runtime.valueProp ? { valueProp: material.runtime.valueProp } : {}),
+      configComponent: source.binding.configComponent,
+      tag: source.binding.tag,
+      render: source.binding.render,
+      ...(source.defaultValue === undefined ? {} : { defaultValue: structuredClone(source.defaultValue) }),
+      ...(source.binding.library ? { library: structuredClone(source.binding.library) } : {}),
+      ...(source.binding.options ? { options: structuredClone(source.binding.options) } : {}),
+      ...(source.binding.staticProps ? { staticProps: structuredClone(source.binding.staticProps) } : {}),
+      ...(source.trigger ? { trigger: source.trigger } : {}),
+      ...(source.valueProp ? { valueProp: source.valueProp } : {}),
     })
   })
   return Object.freeze({
@@ -138,13 +88,14 @@ function createWorkbenchSourceResolver(
 function createWorkbenchRuntimeBindings(
   id: WorkbenchAdapterId,
   designerRegistry: DesignerRegistry,
+  capabilities: DesignerMaterialCapabilityRegistry,
 ): Pick<WorkbenchAdapter, 'componentRegistry' | 'registrySnapshot' | 'runtimeResolver'> {
-  const componentRegistry = createWorkbenchComponentRegistry(id, designerRegistry)
+  const componentRegistry = createWorkbenchComponentRegistry(id, capabilities)
   const registrySnapshot = createRegistryContractSnapshot(componentRegistry)
   return {
     componentRegistry,
     registrySnapshot,
-    runtimeResolver: createDesignerVueRuntimeResolver(designerRegistry, registrySnapshot),
+    runtimeResolver: createDesignerVueRuntimeResolver(designerRegistry, registrySnapshot, capabilities),
   }
 }
 
@@ -157,12 +108,13 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
       import('@moluoxixi/config-form-antd-vue/styles'),
     ])
     const designerRegistry = adapter.createAntdVueDesignerRegistry()
-    const runtime = createWorkbenchRuntimeBindings(id, designerRegistry)
+    const capabilities = adapter.ANTD_VUE_DESIGNER_MATERIAL_REGISTRY
+    const runtime = createWorkbenchRuntimeBindings(id, designerRegistry, capabilities)
     return {
       ...runtime,
       designerRegistry,
       locale: adapter.ANTD_VUE_DESIGNER_ZH_CN,
-      sourceResolver: createWorkbenchSourceResolver(designerRegistry, runtime.registrySnapshot),
+      sourceResolver: createWorkbenchSourceResolver(capabilities, runtime.registrySnapshot),
     }
   }
 
@@ -173,12 +125,13 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
     import('@moluoxixi/config-form-element/styles'),
   ])
   const designerRegistry = adapter.createElementPlusDesignerRegistry()
-  const runtime = createWorkbenchRuntimeBindings(id, designerRegistry)
+  const capabilities = adapter.ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY
+  const runtime = createWorkbenchRuntimeBindings(id, designerRegistry, capabilities)
   return {
     ...runtime,
     designerRegistry,
     locale: adapter.ELEMENT_PLUS_DESIGNER_ZH_CN,
-    sourceResolver: createWorkbenchSourceResolver(designerRegistry, runtime.registrySnapshot),
+    sourceResolver: createWorkbenchSourceResolver(capabilities, runtime.registrySnapshot),
   }
 }
 
@@ -193,6 +146,7 @@ async function createWorkbenchRuntimeAdapter(id: WorkbenchAdapterId): Promise<Wo
       runtimeResolver: createWorkbenchRuntimeBindings(
         id,
         adapter.createAntdVueDesignerRegistry(),
+        adapter.ANTD_VUE_DESIGNER_MATERIAL_REGISTRY,
       ).runtimeResolver,
     }
   }
@@ -206,6 +160,7 @@ async function createWorkbenchRuntimeAdapter(id: WorkbenchAdapterId): Promise<Wo
     runtimeResolver: createWorkbenchRuntimeBindings(
       id,
       adapter.createElementPlusDesignerRegistry(),
+      adapter.ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY,
     ).runtimeResolver,
   }
 }

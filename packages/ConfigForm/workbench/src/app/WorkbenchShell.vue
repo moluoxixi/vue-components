@@ -24,48 +24,41 @@ import PreviewDrawer from '../studio/PreviewDrawer.vue'
 import StudioLeftPanel from '../studio/StudioLeftPanel.vue'
 import TemplateDialog from '../features/templates/TemplateDialog.vue'
 import WorkbenchTopbar from './WorkbenchTopbar.vue'
-import { useWorkbenchController, useWorkbenchUiStore } from './workbench-context'
+import {
+  useWorkbenchController,
+  useWorkbenchDesignSession,
+  useWorkbenchExportService,
+  useWorkbenchPreviewSession,
+  useWorkbenchUiStore,
+} from './workbench-context'
 
 const ExportDialog = defineAsyncComponent(() => import('../features/export/ExportDialog.vue'))
 const FlowDialog = defineAsyncComponent(() => import('../features/flow/FlowDialog.vue'))
 const PageManagerDialog = defineAsyncComponent(() => import('../features/pages/PageManagerDialog.vue'))
 
 const controller = useWorkbenchController()
+const designSession = useWorkbenchDesignSession()
+const previewSession = useWorkbenchPreviewSession()
+const exportService = useWorkbenchExportService()
 const ui = useWorkbenchUiStore()
 const {
   projects,
   busy,
   componentRegistry,
   configError,
-  captureExportSnapshotInput,
   createProject,
   currentProject,
   currentGraph,
   currentPage,
   currentPageId,
-  designRuntime,
-  designerCommandControl,
   designerFieldNames,
   flowEventTargets,
-  designerHistoryControl,
   designerLayers,
   dirty,
   executeFlowCommand,
-  getCurrentExportCompilation,
   getCurrentAdapterId,
-  getDesignRuntimeCompilation,
-  getPreviewCompilation,
   handlePageAction,
-  handlePreviewFieldChange,
-  handlePreviewRuntimeMounted,
-  handlePreviewRuntimeEvent,
-  handlePreviewRuntimeReady,
-  handlePreviewRuntimeState,
-  handlePreviewSubmit,
   localeOptions,
-  previewFlowProjection,
-  previewProjection,
-  previewRuntimeState,
   previewState,
   registry,
   repositoryRevision,
@@ -73,13 +66,35 @@ const {
   reloadCurrentProject,
   saveProject,
   selectPageFromDesigner,
-  selectedDesignerIds,
   selectTemplate,
   statusLabel,
   templates,
   workbenchLocale,
   workspaceRecoveryNotice,
 } = controller
+const {
+  commandControl: designerCommandControl,
+  getCompilation: getDesignRuntimeCompilation,
+  historyControl: designerHistoryControl,
+  runtime: designRuntime,
+  selectedIds: selectedDesignerIds,
+} = designSession
+const {
+  flowProjection: previewFlowProjection,
+  getCompilation: getPreviewCompilation,
+  handleFieldChange: handlePreviewFieldChange,
+  handleRuntimeEvent: handlePreviewRuntimeEvent,
+  handleRuntimeMounted: handlePreviewRuntimeMounted,
+  handleRuntimeReady: handlePreviewRuntimeReady,
+  handleRuntimeState: handlePreviewRuntimeState,
+  handleSubmit: handlePreviewSubmit,
+  projection: previewProjection,
+  runtimeState: previewRuntimeState,
+} = previewSession
+const {
+  capture: captureExportSnapshotInput,
+  getCompilation: getCurrentExportCompilation,
+} = exportService
 const {
   closeExportPreview,
   closeFlowWorkspace,

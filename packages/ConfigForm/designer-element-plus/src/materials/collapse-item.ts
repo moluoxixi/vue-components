@@ -1,5 +1,4 @@
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
-import ElementCollapseItemSpecimen from '../components/ElementCollapseItemSpecimen'
 import * as shared from '../material-shared'
 
 export default defineDesignerMaterialModule({
@@ -14,7 +13,7 @@ export default defineDesignerMaterialModule({
       title: 'Collapse item',
       category: 'Layout',
       icon: shared.PanelBottom,
-      runtime: { component: shared.ElCollapseItem, designerComponent: ElementCollapseItemSpecimen },
+      runtime: { component: shared.ElCollapseItem },
       allowedParents: [{ material: 'element.collapse', slot: 'default' }],
       setters: [shared.propSetter('title', 'Title', 'text'), shared.propSetter('disabled', 'Disabled', 'boolean')],
       slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],

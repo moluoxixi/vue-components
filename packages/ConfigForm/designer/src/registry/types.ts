@@ -1,5 +1,6 @@
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type {
+  ComponentContract,
   FieldNode,
   LayoutNode,
   ModelJsonObject,
@@ -96,7 +97,6 @@ export interface DesignerMaterialEventDefinition {
 
 export interface DesignerRuntimeMaterialBinding {
   component: Component | string
-  designerComponent?: Component | string
   valueProp?: string
   trigger?: string
   blurTrigger?: string
@@ -211,6 +211,52 @@ export interface DesignerLayoutMaterialDefinition extends DesignerMaterialDefini
 }
 
 export type DesignerMaterialDefinition = DesignerFieldMaterialDefinition | DesignerLayoutMaterialDefinition
+
+/** Runtime resolver entry. Vue components and functions never enter the contract snapshot. */
+export interface DesignerMaterialRuntimeBinding {
+  component: string
+  contractVersion: string
+  kind: DesignerNodeKind
+  binding: DesignerRuntimeMaterialBinding
+}
+
+/** Designer-only metadata projected from an adapter material declaration. */
+export interface DesignerMaterialDesignMetadata {
+  component: string
+  contractVersion: string
+  kind: DesignerNodeKind
+  title: string
+  category: string
+  icon?: Component
+  setters: DesignerPropertySetterDefinition[]
+  events: DesignerMaterialEventDefinition[]
+  slots: DesignerMaterialSlotDefinition[]
+  policy?: DesignerDesignPolicy
+}
+
+/** Source generator entry. It is serializable apart from the resolver function that owns it. */
+export interface DesignerMaterialSourceBinding {
+  component: string
+  contractVersion: string
+  binding: DesignerSourceMaterialBinding
+  defaultValue?: ModelJsonValue
+  trigger?: string
+  valueProp?: string
+}
+
+/** Internal four-capability split assembled once at the adapter composition root. */
+export interface DesignerMaterialCapabilities {
+  contract: ComponentContract
+  runtime: DesignerMaterialRuntimeBinding
+  design: DesignerMaterialDesignMetadata
+  source?: DesignerMaterialSourceBinding
+}
+
+export interface DesignerMaterialCapabilityRegistry {
+  capabilities: readonly DesignerMaterialCapabilities[]
+  contracts: readonly ComponentContract[]
+  get: (component: string) => DesignerMaterialCapabilities | undefined
+}
 
 export interface DesignerRegistryLayer {
   name: string

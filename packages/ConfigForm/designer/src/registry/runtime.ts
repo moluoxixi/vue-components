@@ -3,7 +3,7 @@ import type {
   CanonicalRuntimeFieldNode,
   VueRuntimeBindingResolver,
 } from '@moluoxixi/config-form-vue-backend'
-import type { DesignerRegistry } from './types'
+import type { DesignerMaterialCapabilityRegistry, DesignerRegistry } from './types'
 
 function toFieldNode(node: CanonicalRuntimeFieldNode): FieldNode {
   return {
@@ -27,30 +27,32 @@ function toFieldNode(node: CanonicalRuntimeFieldNode): FieldNode {
 export function createDesignerVueRuntimeResolver(
   registry: DesignerRegistry,
   contractSnapshot: RegistryContractSnapshot,
+  capabilities: DesignerMaterialCapabilityRegistry,
 ): VueRuntimeBindingResolver {
   const contracts = new Map(contractSnapshot.components.map(component => [component.key, component]))
   return {
     components: registry.components,
     resolveBinding(component) {
-      const material = registry.getMaterial(component)
+      const capability = capabilities.get(component)
       const contract = contracts.get(component)
-      if (!material || !contract)
+      if (!capability || !contract)
         return undefined
+      const runtime = capability.runtime.binding
       return {
-        component: material.runtime.component,
+        component: runtime.component,
         contractFingerprint: contract.fingerprint,
         contractVersion: contract.contractVersion,
-        kind: material.kind,
-        ...(material.runtime.valueProp ? { valueProp: material.runtime.valueProp } : {}),
-        ...(material.runtime.trigger ? { trigger: material.runtime.trigger } : {}),
-        ...(material.runtime.blurTrigger ? { blurTrigger: material.runtime.blurTrigger } : {}),
-        ...(material.runtime.getValueFromEvent
-          ? { getValueFromEvent: material.runtime.getValueFromEvent }
+        kind: capability.runtime.kind,
+        ...(runtime.valueProp ? { valueProp: runtime.valueProp } : {}),
+        ...(runtime.trigger ? { trigger: runtime.trigger } : {}),
+        ...(runtime.blurTrigger ? { blurTrigger: runtime.blurTrigger } : {}),
+        ...(runtime.getValueFromEvent
+          ? { getValueFromEvent: runtime.getValueFromEvent }
           : {}),
-        ...(material.kind === 'field' && material.runtime.readonlyRender
+        ...(capability.runtime.kind === 'field' && runtime.readonlyRender
           ? {
               readonlyRender: ({ componentProps, model, node, value }) => (
-                material.runtime.readonlyRender!({
+                runtime.readonlyRender!({
                   componentProps,
                   model,
                   node: toFieldNode(node),

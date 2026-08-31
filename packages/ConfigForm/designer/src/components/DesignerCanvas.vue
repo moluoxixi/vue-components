@@ -41,13 +41,14 @@ import { useDesignerLocale } from '../locale'
 import { resolveDesignerDesignPolicy } from '../registry'
 import {
   createDesignerMaterialCandidate,
-  DESIGNER_DRAG_KEY,
   resolveDesignerAutoScrollDelta,
   resolveDesignerCollapsedDropTarget,
   resolveDesignerDragOverlayPosition,
   resolveStickyDesignerDropTarget,
 } from './designer-drag'
 import { createDesignerDragVisualClone } from './designer-drag-overlay'
+import type { DesignerOverlayMode } from './design-session'
+import { DESIGNER_SESSION_KEY } from './design-session'
 
 const CANVAS_FRAME_WIDTHS: Record<ConfigFormBreakpoint, number> = {
   desktop: 900,
@@ -92,7 +93,8 @@ const emit = defineEmits<{
 }>()
 
 const locale = useDesignerLocale()
-const dragController = inject(DESIGNER_DRAG_KEY, undefined)
+const designSession = inject(DESIGNER_SESSION_KEY, undefined)
+const dragController = designSession?.drag
 const canvasRef = ref<HTMLElement>()
 const cameraViewportRef = ref<HTMLElement>()
 const sheetRef = ref<HTMLElement>()
@@ -129,8 +131,6 @@ let resizeCleanup: (() => void) | undefined
 let runtimePointerMove: ((payload: DesignerRuntimePointerPayload) => void) | undefined
 let runtimePointerUp: ((payload: DesignerRuntimePointerPayload) => void) | undefined
 let runtimePointerCancel: ((payload: DesignerRuntimePointerPayload) => void) | undefined
-
-type DesignerOverlayMode = 'idle' | 'selected' | 'pointer-dragging' | 'keyboard-dragging' | 'resizing'
 
 const activeSession = computed(() => dragController?.session.value)
 const candidateActive = computed(() => Boolean(activeSession.value?.active))
@@ -401,6 +401,8 @@ const activeCandidateCommand = computed(() => {
   return candidateActive.value && target ? candidateCommand(target) : undefined
 })
 
+watch(activeCandidateCommand, command => designSession?.publishCandidate(command), { immediate: true })
+
 const activeCandidatePreview = computed(() => {
   const command = activeCandidateCommand.value
   return command ? props.candidatePreview(command) : undefined
@@ -509,6 +511,7 @@ function updateRuntimeGeometry(snapshot: DesignerRuntimeGeometrySnapshot): void 
     return
   }
   externalGeometry.value = snapshot
+  designSession?.publishGeometry(snapshot)
   const sheetRect = sheetRef.value?.getBoundingClientRect()
   externalGeometryAnchor.value = sheetRect
     ? { left: sheetRect.left, scale: camera.scale, top: sheetRect.top }
@@ -1404,6 +1407,8 @@ watch([activeSession, elementVersion], ([session]) => {
     clearDragOverlay()
 }, { flush: 'post' })
 
+watch(overlayMode, mode => designSession?.publishOverlayMode(mode), { immediate: true })
+
 watch(() => props.selectedId, () => closeNodeActionMenu())
 
 watch(() => props.readonly, (readonly) => {
@@ -1450,6 +1455,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleDocumentKeydown)
   document.removeEventListener('keyup', handleDocumentKeyup)
   window.removeEventListener('blur', handleWindowBlur)
+  designSession?.publishCandidate(undefined)
+  designSession?.publishGeometry(undefined)
+  designSession?.publishOverlayMode('idle')
 })
 </script>
 

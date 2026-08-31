@@ -21,6 +21,7 @@ import type {
   CanonicalSourceComponentBinding,
   CanonicalSourceLibraryBinding,
 } from './canonical-bindings'
+import { CONFIG_FORM_FLOW_RUNTIME_VERSION } from '@moluoxixi/config-form-core'
 import { normalizeProjectPath, safeProjectSlug } from '../path'
 
 /**
@@ -264,9 +265,11 @@ function collectInitialValues(
   }
 }
 
-function flowSource(plans: readonly ConfigFormFlowExecutionPlan[]): string {
+export function createStandaloneFlowRuntimeSource(plans: readonly ConfigFormFlowExecutionPlan[]): string {
   const serialized = scriptJson(plans, 2)
-  return `export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'field.change' | 'component.event', field?: string, nodeId?: string, event?: string }
+  return `export const FLOW_RUNTIME_VERSION = ${CONFIG_FORM_FLOW_RUNTIME_VERSION} as const
+
+export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'field.change' | 'component.event', field?: string, nodeId?: string, event?: string }
 export type FlowValues = Record<string, unknown>
 export type FlowAction = (input: unknown, context: { flowId: string, nodeId: string, values: FlowValues, outputs: Readonly<Record<string, unknown>>, signal: AbortSignal }) => unknown | Promise<unknown>
 export type GeneratedFlowNode = { id: string, type: string, ref?: string, config?: Record<string, unknown>, outgoing: GeneratedFlowEdge[], incoming: GeneratedFlowEdge[] }
@@ -1388,7 +1391,7 @@ export function createCanonicalProjectSourceExport(
       'vue',
     )
     files[normalizeProjectPath(`src/pages/${directory}/flows.ts`)] = textFile(
-      flowSource(page.flowPlans),
+      createStandaloneFlowRuntimeSource(page.flowPlans),
       'typescript',
     )
   })

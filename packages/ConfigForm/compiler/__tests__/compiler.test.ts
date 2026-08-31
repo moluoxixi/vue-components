@@ -1,4 +1,8 @@
 import type {
+  ConfigFormFlow,
+  ConfigFormFlowTrigger,
+} from '@moluoxixi/config-form-core'
+import type {
   ComponentContract,
   ProjectDocument,
 } from '@moluoxixi/config-form-model'
@@ -29,7 +33,7 @@ const contracts: ComponentContract[] = [
       { key: 'clearable', path: ['props', 'clearable'] },
       { key: 'placeholder', path: ['props', 'placeholder'] },
     ],
-    events: [{ name: 'change' }],
+    events: [{ name: 'change' }, { name: 'update:modelValue' }],
     bindings: [{ name: 'model', valueProp: 'modelValue', trigger: 'update:modelValue' }],
     slots: [],
     allowedParents: [],
@@ -134,6 +138,34 @@ function addPage(document: ProjectDocument, sourceId: string, pageId: string): v
   }
 }
 
+function synchronousFlow(id: string, trigger: ConfigFormFlowTrigger): ConfigFormFlow {
+  return {
+    version: CONFIG_FORM_FLOW_VERSION,
+    id,
+    name: id,
+    trigger,
+    nodes: [
+      { id: 'trigger', type: 'trigger' },
+      {
+        id: 'reaction',
+        type: 'reaction',
+        config: {
+          reactions: [{
+            id: `${id}-reaction`,
+            when: { kind: 'literal', value: true },
+            then: [{ kind: 'setValue', target: 'name', value: { kind: 'literal', value: id } }],
+          }],
+        },
+      },
+      { id: 'end', type: 'end' },
+    ],
+    edges: [
+      { id: 'trigger-reaction', source: 'trigger', target: 'reaction', condition: 'next' },
+      { id: 'reaction-end', source: 'reaction', target: 'end', condition: 'next' },
+    ],
+  }
+}
+
 describe('canonical project compiler', () => {
   it('compiles one deterministic immutable IR for runtime and source backends', () => {
     const input = fixture()
@@ -209,6 +241,92 @@ describe('canonical project compiler', () => {
       success: false,
       diagnostics: [{ code: 'COMPILER_FLOW_TRIGGER_EVENT_UNKNOWN', nodeId: 'name' }],
     })
+  })
+
+  it('rejects duplicated declarative and Flow reaction ownership', () => {
+    const input = fixture()
+    updateSnapshot(input, (document) => {
+      document.pagesById.home!.graph.nodesById.name!.reactions = [{
+        id: 'declarative-placeholder',
+        when: { kind: 'literal', value: true },
+        then: [{
+          kind: 'setProps',
+          target: 'name',
+          props: { placeholder: { kind: 'literal', value: 'Declarative' } },
+        }],
+      }]
+      document.pagesById.home!.flows = [{
+        version: CONFIG_FORM_FLOW_VERSION,
+        id: 'duplicate-placeholder',
+        name: 'Duplicate placeholder',
+        trigger: { kind: 'page.mount' },
+        nodes: [
+          { id: 'trigger', type: 'trigger' },
+          {
+            id: 'reaction',
+            type: 'reaction',
+            config: {
+              reactions: [{
+                id: 'flow-placeholder',
+                when: { kind: 'literal', value: true },
+                then: [{
+                  kind: 'setProps',
+                  target: 'name',
+                  props: { placeholder: { kind: 'literal', value: 'Flow' } },
+                }],
+              }],
+            },
+          },
+          { id: 'end', type: 'end' },
+        ],
+        edges: [
+          { id: 'trigger-reaction', source: 'trigger', target: 'reaction', condition: 'next' },
+          { id: 'reaction-end', source: 'reaction', target: 'end', condition: 'next' },
+        ],
+      }]
+    })
+
+    expect(compileCanonicalProject(input)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'COMPILER_FLOW_REACTION_CAPABILITY_CONFLICT' }],
+    })
+  })
+
+  it('diagnoses synchronous Flow updates that belong to field reactions or bindings', () => {
+    const fieldChange = fixture()
+    updateSnapshot(fieldChange, (document) => {
+      document.pagesById.home!.flows = [synchronousFlow('field-sync', {
+        kind: 'field.change',
+        field: 'name',
+      })]
+    })
+    expect(compileCanonicalProject(fieldChange)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'COMPILER_FLOW_SYNC_REACTION_REDUNDANT' }],
+    })
+
+    const bindingEvent = fixture()
+    updateSnapshot(bindingEvent, (document) => {
+      document.pagesById.home!.flows = [synchronousFlow('binding-sync', {
+        kind: 'component.event',
+        nodeId: 'name',
+        event: 'update:modelValue',
+      })]
+    })
+    expect(compileCanonicalProject(bindingEvent)).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'COMPILER_FLOW_BINDING_REACTION_REDUNDANT', nodeId: 'name' }],
+    })
+
+    updateSnapshot(bindingEvent, (document) => {
+      const flow = document.pagesById.home!.flows![0]!
+      flow.nodes.splice(1, 1, { id: 'action', type: 'action', ref: 'notify', config: {} })
+      flow.edges = [
+        { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
+        { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
+      ]
+    })
+    expect(compileCanonicalProject(bindingEvent).success).toBe(true)
   })
 
   it('keeps editor-only flow positions out of runtime IR identity', () => {

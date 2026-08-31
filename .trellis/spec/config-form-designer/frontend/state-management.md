@@ -238,6 +238,17 @@ interface SlotItem {
 - Full `ProjectCompilation` assembly is reserved for an explicit readonly
   Export capture/refresh. Ordinary Design edits invalidate the pinned Export
   identity but do not compile other pages or rebuild generated files.
+- Workbench composition exposes independent `WorkbenchDesignSession`,
+  `PreviewSession`, `WorkbenchExportService`, and `WorkbenchUiStore` contexts.
+  Design owns active/candidate page compilation, Runtime artifacts, selection,
+  command execution, and Undo/Redo. Export owns lazy full-project compilation
+  and pinned identity invalidation. The controller wires project/navigation
+  publication only; the Shell consumes contexts and routes view/dialog events.
+- A committed Design publication failure clears the unusable Runtime artifact
+  and forwards its first compiler diagnostic to Workbench UI. Rendering an
+  unexplained empty `provider-surface` is forbidden. Transient invalid drag
+  candidates may still remain silent because the committed Runtime stays
+  visible and final command execution owns the user-facing diagnostic.
 - Design and Preview each run in a dedicated same-origin iframe RuntimeHost.
   The parent sends only structured-cloneable `PageCompilation`, adapter
   identity, presentation, values, reaction projection, and design-session
@@ -346,6 +357,12 @@ interface SlotItem {
   removed module and directory paths stay absent.
 - Workbench boundary tests prove Design and Page Manager intents become Project
   Commands and no intermediate structural model can become the state source.
+- Workbench service tests prove Design publishes one `PageCompilation`, draft
+  candidates do not mutate the committed snapshot, Undo/Redo delegate to
+  `ProjectEditorSession`, Export `sync()` never compiles, and only `capture()`
+  assembles a full `ProjectCompilation`. They also assert committed compile
+  failures reach the UI diagnostic boundary instead of producing a blank
+  canvas.
 - Browser tests prove one visual design action advances one project revision,
   Undo/Redo use ProjectDomainEngine through ProjectEditorSession, page
   switching does not create history, and

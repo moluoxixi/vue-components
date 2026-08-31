@@ -92,10 +92,34 @@ export interface ComponentContract {
   defaults: ModelJsonObject
 }
 
+/** Function-bearing adapter capability. It is never serialized into a Registry snapshot. */
+export interface ComponentContractMigration {
+  component: ComponentKey
+  fromVersion: string
+  toVersion: string
+  migrate: (node: PageNode) => PageNode
+}
+
+export type ComponentContractMigrationResult
+  = | {
+    success: true
+    node: PageNode
+    fromVersion: string
+    toVersion: string
+    appliedVersions: string[]
+  }
+  | {
+    success: false
+    node: PageNode
+    diagnostics: ModelDiagnostic[]
+  }
+
 export interface ComponentContractRegistry {
   readonly lock: RegistryLock
+  analyzeLock: (lock: RegistryLock) => ModelDiagnostic[]
   get: (key: ComponentKey) => ComponentContract | undefined
   list: () => ComponentContract[]
+  migrateNode: (node: PageNode, fromVersion: string) => ComponentContractMigrationResult
 }
 
 export interface RegistryComponentLock {

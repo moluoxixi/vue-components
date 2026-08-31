@@ -1,8 +1,10 @@
 import type {
   ComponentContract,
+  ComponentContractMigration,
   ComponentContractRegistry,
   ModelDiagnostic,
   ModelJsonObject,
+  PageNode,
   ProjectDocument,
   RegistryContractSnapshot,
   RegistryContractSnapshotParseResult,
@@ -10,7 +12,7 @@ import type {
 } from './types'
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
 import { z } from 'zod'
-import { modelJsonObjectSchema } from './schema'
+import { modelJsonObjectSchema, pageNodeSchema } from './schema'
 import { REGISTRY_CONTRACT_SNAPSHOT_VERSION } from './types'
 
 const FORBIDDEN_MEMBER_NAMES = new Set(['__proto__', 'constructor', 'prototype'])
@@ -65,6 +67,7 @@ export const registryContractSnapshotSchema = z.object({
 export interface CreateComponentContractRegistryOptions {
   adapter: string
   version: string
+  migrations?: readonly ComponentContractMigration[]
 }
 
 export class ComponentContractRegistryError extends Error {
@@ -134,9 +137,76 @@ export function createComponentContractRegistry(
     fingerprint: registryLockFingerprint(componentLocks),
     components: componentLocks,
   })
+  const migrations = createMigrationIndex(options.migrations ?? [], byKey)
+
+  function migrationPath(component: string, fromVersion: string): ComponentContractMigration[] | undefined {
+    const contract = byKey.get(component)
+    if (!contract)
+      return undefined
+    if (fromVersion === contract.version)
+      return []
+    const byVersion = migrations.get(component)
+    const path: ComponentContractMigration[] = []
+    const visited = new Set<string>()
+    let version = fromVersion
+    while (version !== contract.version) {
+      if (visited.has(version))
+        return undefined
+      visited.add(version)
+      const migration = byVersion?.get(version)
+      if (!migration)
+        return undefined
+      path.push(migration)
+      version = migration.toVersion
+    }
+    return path
+  }
 
   return Object.freeze({
     lock,
+    analyzeLock(candidate: RegistryLock) {
+      const diagnostics: ModelDiagnostic[] = []
+      if (candidate.adapter !== lock.adapter) {
+        diagnostics.push({
+          code: 'MODEL_REGISTRY_ADAPTER_MISMATCH',
+          message: `Registry adapter ${candidate.adapter} does not match ${lock.adapter}.`,
+          path: ['adapter'],
+        })
+        return diagnostics
+      }
+      Object.entries(candidate.components).forEach(([component, expected]) => {
+        const actual = lock.components[component]
+        if (!actual) {
+          diagnostics.push({
+            code: 'MODEL_REGISTRY_COMPONENT_MISSING',
+            message: `Component is not registered: ${component}`,
+            path: ['components', component],
+          })
+          return
+        }
+        if (expected.contractVersion !== actual.contractVersion) {
+          const path = migrationPath(component, expected.contractVersion)
+          diagnostics.push({
+            code: path
+              ? 'MODEL_REGISTRY_COMPONENT_MIGRATION_REQUIRED'
+              : 'MODEL_REGISTRY_COMPONENT_VERSION_UNSUPPORTED',
+            message: path
+              ? `Component ${component} can migrate from ${expected.contractVersion} to ${actual.contractVersion}.`
+              : `Component ${component} cannot migrate from ${expected.contractVersion} to ${actual.contractVersion}.`,
+            path: ['components', component, 'contractVersion'],
+          })
+          return
+        }
+        if (expected.fingerprint !== actual.fingerprint) {
+          diagnostics.push({
+            code: 'MODEL_REGISTRY_COMPONENT_FINGERPRINT_MISMATCH',
+            message: `Component contract fingerprint does not match: ${component}`,
+            path: ['components', component, 'fingerprint'],
+          })
+        }
+      })
+      return diagnostics
+    },
     get(key: string) {
       const contract = byKey.get(key)
       return contract ? structuredClone(contract) : undefined
@@ -144,7 +214,106 @@ export function createComponentContractRegistry(
     list() {
       return structuredClone(ordered)
     },
+    migrateNode(node: PageNode, fromVersion: string) {
+      const contract = byKey.get(node.component)
+      const path = migrationPath(node.component, fromVersion)
+      if (!contract || !path) {
+        return {
+          success: false as const,
+          node,
+          diagnostics: [{
+            code: contract ? 'MODEL_COMPONENT_MIGRATION_UNAVAILABLE' : 'MODEL_COMPONENT_UNKNOWN',
+            message: contract
+              ? `No migration path exists for ${node.component} from ${fromVersion} to ${contract.version}.`
+              : `Component is not registered: ${node.component}`,
+            nodeId: node.id,
+          }],
+        }
+      }
+      let candidate = structuredClone(node)
+      const appliedVersions: string[] = []
+      for (const migration of path) {
+        let first: PageNode
+        let second: PageNode
+        try {
+          first = migration.migrate(structuredClone(candidate))
+          second = migration.migrate(structuredClone(candidate))
+        }
+        catch (cause) {
+          return {
+            success: false as const,
+            node,
+            diagnostics: [{
+              code: 'MODEL_COMPONENT_MIGRATION_FAILED',
+              message: cause instanceof Error ? cause.message : String(cause),
+              nodeId: node.id,
+            }],
+          }
+        }
+        const parsed = pageNodeSchema.safeParse(first)
+        const deterministic = getConfigFormJsonSemanticHash(first) === getConfigFormJsonSemanticHash(second)
+        if (!parsed.success
+          || !deterministic
+          || parsed.data.id !== node.id
+          || parsed.data.component !== node.component
+          || parsed.data.kind !== contract.kind) {
+          return {
+            success: false as const,
+            node,
+            diagnostics: [{
+              code: deterministic
+                ? 'MODEL_COMPONENT_MIGRATION_RESULT_INVALID'
+                : 'MODEL_COMPONENT_MIGRATION_NON_DETERMINISTIC',
+              message: `Component migration returned an invalid result for ${node.component}.`,
+              nodeId: node.id,
+            }],
+          }
+        }
+        candidate = parsed.data
+        appliedVersions.push(migration.toVersion)
+      }
+      return {
+        success: true as const,
+        node: candidate,
+        fromVersion,
+        toVersion: contract.version,
+        appliedVersions,
+      }
+    },
   })
+}
+
+function createMigrationIndex(
+  migrations: readonly ComponentContractMigration[],
+  contracts: ReadonlyMap<string, ComponentContract>,
+): Map<string, Map<string, ComponentContractMigration>> {
+  const index = new Map<string, Map<string, ComponentContractMigration>>()
+  migrations.forEach((migration) => {
+    if (!contracts.has(migration.component)) {
+      throw new ComponentContractRegistryError(
+        'MODEL_COMPONENT_MIGRATION_COMPONENT_UNKNOWN',
+        `Migration references an unknown component: ${migration.component}`,
+      )
+    }
+    if (!migration.fromVersion.trim()
+      || !migration.toVersion.trim()
+      || migration.fromVersion === migration.toVersion) {
+      throw new ComponentContractRegistryError(
+        'MODEL_COMPONENT_MIGRATION_VERSION_INVALID',
+        `Migration versions are invalid for ${migration.component}.`,
+      )
+    }
+    const byVersion = index.get(migration.component) ?? new Map<string, ComponentContractMigration>()
+    if (byVersion.has(migration.fromVersion)) {
+      throw new ComponentContractRegistryError(
+        'MODEL_COMPONENT_MIGRATION_AMBIGUOUS',
+        `Multiple migrations start at ${migration.component}@${migration.fromVersion}.`,
+      )
+    }
+    byVersion.set(migration.fromVersion, migration)
+    index.set(migration.component, byVersion)
+  })
+  return index
 }
 
 export function createComponentDefaults(

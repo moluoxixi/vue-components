@@ -63,27 +63,27 @@
 ### R5. 响应式、主题和可访问性
 
 - 1440px 使用稳定三栏；900px 保持 Canvas 与非模态侧栏/Preview 的连续操作；390px 提供明确的移动端工作区切换。
-- 900px 使用持续可见的 activity rail 打开 Components/Layers/Pages 和 Inspector 非模态 drawer；390px 使用 Components/Layers/Canvas/Inspector/Pages 五工作区 Dock。
+- 900px 使用持续可见的工具栏触发器打开 Components/Layers/Pages 和 Inspector 非模态 drawer；390px 使用 Components/Layers/Canvas/Inspector/Pages 五工作区 Dock。
 - Light/Dark、zh-CN/en-US 具有同等完成度，不允许操作按钮、菜单标签和 Inspector 控件在暗色模式失去对比度。
 - 所有核心工作流支持键盘，dialog/menu/tree/tab 遵守既有无障碍合同。
 
 ## 暂定验收标准
 
-- [ ] 1440/900/390 三个视口下，页面设计、选中节点、配置属性、打开 Preview 和导出均可完成，且无遮挡、横向溢出或文本截断。
-- [ ] 1440 下左/中/右三栏稳定；900 下 Canvas 始终可见且左右 drawer 可由稳定 activity rail 打开；390 下五工作区 Dock 可见、可点击并保持焦点与选中状态。
-- [ ] Components 首屏扫描密度明显提高，同时每个平台注册物料仍由真实 Runtime specimen 渲染；不得出现静态 HTML 仿制控件。
-- [ ] Element Plus 与 Ant Design Vue 的全部注册物料继续使用真实 Runtime specimen、candidate 和 Preview。
-- [ ] 三级布局嵌套下，选择、drop、resize 和 node actions 不互相抢占命中。
-- [ ] Preview 打开、关闭和扩展不改变 Design Surface 的内部 breakpoint 或几何。
-- [ ] Canvas 与 Preview 使用同一不可拆分 `PageCompilation`，其中绑定 ProjectSnapshot identity、页面 content hash、实际使用的 Registry contracts、compiler identity 和 `CanonicalPageProgram`；两者再使用同一 Vue Runtime Backend 生成的 `RuntimePlan`。Source Export 从同一固定 ProjectSnapshot 按需组装 `ProjectCompilation`。相同 Runtime Presentation 下组件、props、slot placement 与可见几何一致，不同 viewport 下只发生真实响应式差异；运行值、校验、异步任务和 Flow trace 彼此隔离。
-- [ ] Repository 的分实体存储不会暴露混合 revision；跨页事务、CAS 冲突、保存期间继续编辑、配额/部分写入失败均有行为测试。
-- [ ] pointer move 只增量编译受影响子树；2000 节点页面的 candidate 更新不触发整页重新编译或重新挂载。
-- [ ] IDE Light/Dark 不改变 Canvas sheet、Preview 和导出页面的 Runtime computed style。
-- [ ] Design 与 Preview 通过独立 RuntimeHost 隔离 IDE CSS、第三方组件库全局样式、Teleport 容器和副作用生命周期；editor overlay 只通过稳定 geometry/event bridge 读取运行节点，不进入 Runtime DOM。
-- [ ] Source/Config、Flow 和 Page Manager 保持辅助 dialog/workspace；Source/Config 仍只读且不出现在 Design 主模式导航中；Source 只由固定快照的 CanonicalProjectIR 生成，Config/JSON/Tree 只由同一快照的 ProjectDocument 无损投影。
-- [ ] 中英文可见文案、aria-label、tooltip 和菜单保持完整且不换行溢出。
-- [ ] Playwright 覆盖真实视觉几何、hit testing、键盘主路径和 axe WCAG 2 A/AA，全部通过。
-- [ ] 所有受影响包 test/typecheck/build、lint、发布包边界和导出工程验证通过。
+- [x] 1440/900/390 三个视口下，页面设计、选中节点、配置属性、打开 Preview 和导出均可完成，且无遮挡、横向溢出或文本截断。
+- [x] 1440 下左/中/右三栏稳定；900 下 Canvas 始终可见且左右 drawer 可由稳定工具栏触发器打开；390 下五工作区 Dock 可见、可点击并保持焦点与选中状态。
+- [x] Components 首屏扫描密度明显提高，同时每个平台注册物料仍由真实 Runtime specimen 渲染；不得出现静态 HTML 仿制控件。
+- [x] Element Plus 与 Ant Design Vue 的全部注册物料继续使用真实 Runtime specimen、candidate 和 Preview。
+- [x] 三级布局嵌套下，选择、drop、resize 和 node actions 不互相抢占命中。
+- [x] Preview 打开、关闭和扩展不改变 Design Surface 的内部 breakpoint 或几何。
+- [x] Canvas 与 Preview 使用同一不可拆分 `PageCompilation`，其中绑定 ProjectSnapshot identity、页面 content hash、实际使用的 Registry contracts、compiler identity 和 `CanonicalPageProgram`；两者再使用同一 Vue Runtime Backend 生成的 `RuntimePlan`。Source Export 从同一固定 ProjectSnapshot 按需组装 `ProjectCompilation`。相同 Runtime Presentation 下组件、props、slot placement 与可见几何一致，不同 viewport 下只发生真实响应式差异；运行值、校验、异步任务和 Flow trace 彼此隔离。
+- [x] Repository 的分实体存储不会暴露混合 revision；跨页事务、CAS 冲突、保存期间继续编辑、配额/部分写入失败均有行为测试。
+- [x] pointer move 只增量编译受影响子树；2000 节点页面的 candidate 更新不触发整页重新编译或重新挂载。
+- [x] IDE Light/Dark 不改变 Canvas sheet、Preview 和导出页面的 Runtime computed style。
+- [x] Design 与 Preview 通过独立 RuntimeHost 隔离 IDE CSS、第三方组件库全局样式、Teleport 容器和副作用生命周期；editor overlay 只通过稳定 geometry/event bridge 读取运行节点，不进入 Runtime DOM。
+- [x] Source/Config、Flow 和 Page Manager 保持辅助 dialog/workspace；Source/Config 仍只读且不出现在 Design 主模式导航中；Source 只由固定快照的 CanonicalProjectIR 生成，Config/JSON/Tree 只由同一快照的 ProjectDocument 无损投影。
+- [x] 中英文可见文案、aria-label、tooltip 和菜单保持完整且不换行溢出。
+- [x] Playwright 覆盖真实视觉几何、hit testing、键盘主路径和 axe WCAG 2 A/AA，全部通过。
+- [x] 所有受影响包 test/typecheck/build、lint、发布包边界和导出工程验证通过。
 
 ## 暂定范围外
 

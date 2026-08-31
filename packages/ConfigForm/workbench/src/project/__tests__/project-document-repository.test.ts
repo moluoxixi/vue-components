@@ -3,7 +3,7 @@ import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import { CONFIG_FORM_FLOW_VERSION, getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
 import { applyProjectTransaction } from '@moluoxixi/config-form-model'
 import { IndexDBStorage } from '@moluoxixi/indexed-db'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createIndexedDBProjectRepository,
 } from '../project-document-repository-indexed-db'
@@ -111,6 +111,54 @@ describe('indexedDBProjectRepository', () => {
     })
     expect(replayed.project).toEqual(committed.project)
     expect(committed.project.entityRevisions.pages.home).toBe(committed.project.repositoryRevision)
+  })
+
+  it('rolls back every record when a later write aborts the commit transaction', async () => {
+    const dbName = `project-document-aborted-commit-${sequence++}`
+    const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
+    closeables.push(repository)
+    await repository.open()
+    const initial = projectDocument()
+    const created = await repository.create({ document: initial })
+    const input = {
+      commandId: 'save-aborted-landing',
+      document: rename(initial, 'Aborted landing'),
+      expectedRepositoryRevision: created.repositoryRevision,
+      id: initial.id,
+    }
+    const originalPut = IDBObjectStore.prototype.put
+    let putCount = 0
+    const putSpy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+      this: IDBObjectStore,
+      value,
+      key,
+    ) {
+      putCount += 1
+      if (putCount === 2)
+        throw new DOMException('Injected quota failure.', 'QuotaExceededError')
+      return key === undefined
+        ? originalPut.call(this, value)
+        : originalPut.call(this, value, key)
+    })
+
+    try {
+      await expect(repository.commit(input)).rejects.toThrow()
+    }
+    finally {
+      putSpy.mockRestore()
+    }
+
+    await expect(repository.get(initial.id)).resolves.toEqual(created)
+    const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })
+    closeables.push(storage)
+    expect((await storage.keys()).some(key => key.endsWith(':1'))).toBe(false)
+    await expect(repository.commit(input)).resolves.toMatchObject({
+      replayed: false,
+      project: {
+        document: input.document,
+        repositoryRevision: created.repositoryRevision + 1,
+      },
+    })
   })
 
   it('reuses unchanged entity revisions while advancing the repository manifest', async () => {

@@ -117,7 +117,7 @@ ProjectSaveCoordinator，后者单独拥有 CAS、commit id、saved cursor 和 s
 Manifest/Page/Resource 实体存储；一个 manifest revision 可以复用较早的未变化 Page/Resource entity revision，但 load/commit 只能发布 checksum 与引用 revision 全部匹配的完整 `PersistedProjectEnvelope`。
 Repository 只发布通过当前 `ProjectDocument` schema 验证的内容；版本不匹配、结构不完整或 Registry lock 不一致都以可诊断错误拒绝，不扫描其他 namespace，不回写来源记录。
 
-Workbench 的运行与界面状态不进入领域 Controller：`PreviewSession` 独立持有 values、touched、validation、Flow projection、最多 200 条 trace 和 Abort 生命周期，并按稳定 field node/component/contractVersion/fingerprint 协调同页 revision 状态；切页、切项目、切 adapter 或字段合同变化时只清理不兼容状态。`WorkbenchUiStore` 只持有面板、弹窗、Preview viewport、移动端导航、主题、语言、消息和 lazy-open 状态，不依赖 `ProjectDocument`、Runtime state 或 `ExportSnapshot`。`WorkbenchShell` 消费这些 session/store context 组合页面和 dialog。
+Workbench 的运行与界面状态不进入领域 Controller：`WorkbenchDesignSession` 独立持有活动页/候选页编译、Runtime artifact cache、selection、Project Command 与 Undo/Redo；正式编译失败会清理不可用 Runtime 并把首个诊断交给 UI，不能静默留下空白画布。`PreviewSession` 独立持有 values、touched、validation、Flow projection、最多 200 条 trace 和 Abort 生命周期，并按稳定 field node/component/contractVersion/fingerprint 协调同页 revision 状态；切页、切项目、切 adapter 或字段合同变化时只清理不兼容状态。`WorkbenchExportService` 只在显式 capture 时懒组装完整 ProjectCompilation，普通 sync 只失效固定 identity。`WorkbenchUiStore` 只持有面板、弹窗、Preview viewport、移动端导航、主题、语言、消息和 lazy-open 状态，不依赖 `ProjectDocument`、Runtime state 或 `ExportSnapshot`。`WorkbenchShell` 分别消费 Design、Preview、Export、UI context，只组合页面和 dialog。
 
 打开 Source 导出弹窗时，Workbench 才按需组装当前不可拆分 `ProjectCompilation` 和 generator version
 创建一次不可变 `ExportSnapshot`。层级文件树、只读 Monaco、单文件下载和项目 ZIP 全部读取该快照；
@@ -151,13 +151,15 @@ tabpanel；Workbench 传入 `workspace-navigation="external"` 后，移动端底
 默认工作台只提供无网络副作用的 `notify` action；业务应用应在宿主边界注册自己的
 受控 action。Workbench 的页面级 `PageFlowEngine` 独立拥有 action registry、当前 execution plans、Flow projection、调度器、trace/error 边界和跨 page/revision stale generation；`PreviewSession` 先接收真实 Runtime 的最新 values，再把 `field.change`、`component.event`、`form.submit` 和 `page.mount` 转为稳定 trigger，通过同一 values 端口应用 Flow-owned patch。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
 瞬态状态，不写回页面结构。ConfigForm Flow 的 trigger、字段引用、排序和 ID 唯一性都以所属页面为边界；切页会清空 projection 并使旧异步结果失效，同页删除 Flow 会裁剪其 projection。未来跨页自动化使用独立 Project Workflow，而不是把同一 Flow 再存到 ProjectDocument root。Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
-ConfigForm DSL。
+ConfigForm DSL。Core interpreter 与生成的 `flows.ts` 共同固定 `CONFIG_FORM_FLOW_RUNTIME_VERSION`，并通过实际加载执行的并发、timeout、failure edge、model order 与 value patch 矩阵证明等价，而不是只比较模板字符串。Semantic Compiler 同时拒绝 Flow reaction 与同步 binding/reaction 对同一 value/state/prop/validate 能力的重复写入；纯同步联动应回归声明式 reaction，包含 condition/action 的分支与副作用 Flow 保持可用。
 
 `component.event` 触发器只保存页面节点的稳定 `nodeId` 与 Registry 声明的 `event` 名称。Designer 物料通过 `events` 显式声明可编排的非 binding 事件，field 的值事件由同一份 Runtime `valueProp/trigger` 自动生成并按事件名去重。Workbench 的正常事件编辑入口只有一个：Inspector 列出当前节点的注册事件，点击后用精确 `{ nodeId, event }` 打开 Flow 弹窗；已有同目标流程时直接选中，否则从该事件源创建。Designer 的逗号 action 字符串编辑器只为兼容宿主保留，不与 Workbench Flow 并存。Semantic Compiler 把当前页面 Flow 实际引用的 `nodeId + event` 投影为 Canonical node `flowEvents`；Vue backend、RuntimeSurface 和 standalone Source 只消费该投影，不扫描 DOM，也不会给未引用的 Registry 事件安装 listener。RuntimeSurface 在 Preview 中从真实 Vue 节点发出事件上下文，Design 模式仍由编辑器桥接拦截；binding listener 先更新 values，再以 Registry 原名分发 Flow，且同一 Vue handler key 只执行一次。简单的 `v-model`、显隐、disabled 和同步 reaction 不应被流程化，只有异步、分支、校验、请求和副作用才进入 Flow。
 
 设计器专属 `id`、`material`、conditions 和 validation 放在 `extensions['mx.config-form-designer']`。业务扩展仍与该命名空间并列保存在 `extensions`，因此 Config、Designer 和 Source 往返时不会把业务元数据藏入设计器私有对象。
 
 ## 物料注册器分层
+
+Workbench Registry facade 从每个 Designer 物料模块组合四类能力：JSON-safe `ComponentContract`、Vue `RuntimeBinding`、编辑器 `DesignMetadata` 和生成器 `SourceBinding`。只有 `ComponentContract` 进入 Model 的不可变 `RegistryContractSnapshot` 与项目 `registryLock`；Vue Component、图标、render 函数和 source resolver 留在对应 adapter resolver。合同按 `contractVersion + fingerprint` 校验实际使用组件并提供确定性 migration chain；`visualEquivalence` 是 Design 能力声明，必须由真实 Runtime specimen、candidate、落地节点与 Preview 的 geometry/computed-style 浏览器测试证明。
 
 三个 `define*` API 都只是带类型的声明 helper，不执行注册：
 
