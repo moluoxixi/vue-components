@@ -9,6 +9,14 @@ import { assertProjectDocument } from './schema'
 
 export type ProjectRepositoryPersistence = 'durable' | 'volatile'
 
+export type ProjectCommitSource = 'autosave' | 'manual' | 'restore'
+
+export interface ProjectCommitMetadata {
+  source: ProjectCommitSource
+  label?: string
+  restoredFromRevision?: number
+}
+
 export type ProjectRepositoryErrorCode
   = | 'PROJECT_REPOSITORY_COMMAND_REUSED'
     | 'PROJECT_REPOSITORY_CORRUPT'
@@ -68,11 +76,35 @@ export interface ProjectRepositoryCommitInput {
   document: ProjectDocument
   expectedRepositoryRevision: number
   id: string
+  metadata: ProjectCommitMetadata
 }
 
 export interface ProjectRepositoryCommitResult {
   project: PersistedProjectEnvelope
   replayed: boolean
+}
+
+export interface ProjectVersionSummary {
+  projectId: string
+  repositoryRevision: number
+  source: ProjectCommitSource | 'migration'
+  label?: string
+  contentHash: string
+  createdAt: string
+  restoredFromRevision?: number
+}
+
+export interface ProjectVersionLabelInput {
+  projectId: string
+  revision: number
+  label?: string
+  expectedRepositoryRevision: number
+}
+
+export interface ProjectVersionRetentionPolicy {
+  keepDailyForDays?: number
+  keepLatestAutosaves?: number
+  now?: string
 }
 
 export interface ProjectRepository {
@@ -82,7 +114,11 @@ export interface ProjectRepository {
   create: (input: ProjectRepositoryCreateInput) => Promise<PersistedProjectEnvelope>
   delete: (id: string) => Promise<void>
   get: (id: string) => Promise<PersistedProjectEnvelope | undefined>
+  getVersion: (projectId: string, revision: number) => Promise<PersistedProjectEnvelope | undefined>
   list: () => Promise<ProjectSummary[]>
+  listVersions: (projectId: string) => Promise<ProjectVersionSummary[]>
+  pruneVersions: (projectId: string, policy?: ProjectVersionRetentionPolicy) => Promise<void>
+  setVersionLabel: (input: ProjectVersionLabelInput) => Promise<void>
 }
 
 interface StoredEntity<T> {
@@ -111,11 +147,17 @@ interface CommitReceipt {
   payloadChecksum: string
 }
 
+interface StoredProjectVersion {
+  metadata: ProjectVersionSummary
+  project: PersistedProjectEnvelope
+}
+
 interface StoredProject {
   manifest: StoredProjectManifest
   pages: Map<string, StoredEntity<ProjectPage>>
   resources: Map<string, StoredEntity<ProjectResourceReference>>
   receipts: Map<string, CommitReceipt>
+  versions: Map<number, StoredProjectVersion>
 }
 
 export interface MemoryProjectRepositoryOptions {
@@ -131,6 +173,7 @@ function splitProject(
   project: PersistedProjectEnvelope,
   receipts = new Map<string, CommitReceipt>(),
   current?: StoredProject,
+  versions = current?.versions ?? new Map<number, StoredProjectVersion>(),
 ): StoredProject {
   const parsed = assertProjectDocument(project.document)
   const pages = new Map<string, StoredEntity<ProjectPage>>()
@@ -165,6 +208,7 @@ function splitProject(
     pages,
     resources,
     receipts,
+    versions,
   }
 }
 
@@ -243,11 +287,85 @@ function clonePersistedProject(project: PersistedProjectEnvelope): PersistedProj
   }
 }
 
+function assertVersionLabel(label: string | undefined): string | undefined {
+  if (label === undefined)
+    return undefined
+  const normalized = label.trim()
+  const containsControlCharacter = [...normalized].some((character) => {
+    const code = character.charCodeAt(0)
+    return code <= 0x1F || code === 0x7F
+  })
+  if (!normalized || normalized.length > 80 || containsControlCharacter) {
+    throw new ProjectRepositoryError(
+      'PROJECT_REPOSITORY_INVALID_COMMIT',
+      'Version labels must contain 1 to 80 characters and cannot contain control characters.',
+    )
+  }
+  return normalized
+}
+
+export function assertProjectCommitMetadata(metadata: ProjectCommitMetadata): ProjectCommitMetadata {
+  if (!metadata || !['autosave', 'manual', 'restore'].includes(metadata.source)) {
+    throw new ProjectRepositoryError(
+      'PROJECT_REPOSITORY_INVALID_COMMIT',
+      'Repository commits require a valid commit source.',
+    )
+  }
+  const label = assertVersionLabel(metadata.label)
+  const restoredFromRevision = metadata.restoredFromRevision
+  if (restoredFromRevision !== undefined
+    && (!Number.isInteger(restoredFromRevision) || restoredFromRevision < 0)) {
+    throw new ProjectRepositoryError(
+      'PROJECT_REPOSITORY_INVALID_COMMIT',
+      'Restored revision must be a non-negative integer.',
+    )
+  }
+  if (metadata.source === 'restore' && restoredFromRevision === undefined) {
+    throw new ProjectRepositoryError(
+      'PROJECT_REPOSITORY_INVALID_COMMIT',
+      'Restore commits require the source revision.',
+    )
+  }
+  if (metadata.source !== 'restore' && restoredFromRevision !== undefined) {
+    throw new ProjectRepositoryError(
+      'PROJECT_REPOSITORY_INVALID_COMMIT',
+      'Only restore commits may reference a restored revision.',
+    )
+  }
+  return {
+    source: metadata.source,
+    ...(label ? { label } : {}),
+    ...(restoredFromRevision !== undefined ? { restoredFromRevision } : {}),
+  }
+}
+
+function createVersionSummary(
+  project: PersistedProjectEnvelope,
+  metadata: ProjectCommitMetadata | { source: 'migration' },
+): ProjectVersionSummary {
+  return {
+    projectId: project.document.id,
+    repositoryRevision: project.repositoryRevision,
+    source: metadata.source,
+    ...('label' in metadata && metadata.label ? { label: metadata.label } : {}),
+    contentHash: checksum(project.document),
+    createdAt: project.updatedAt,
+    ...('restoredFromRevision' in metadata && metadata.restoredFromRevision !== undefined
+      ? { restoredFromRevision: metadata.restoredFromRevision }
+      : {}),
+  }
+}
+
+function cloneVersionSummary(version: ProjectVersionSummary): ProjectVersionSummary {
+  return structuredClone(version)
+}
+
 export function getProjectRepositoryCommitChecksum(input: ProjectRepositoryCommitInput): string {
   return checksum({
     document: input.document,
     expectedRepositoryRevision: input.expectedRepositoryRevision,
     id: input.id,
+    metadata: assertProjectCommitMetadata(input.metadata),
   })
 }
 
@@ -310,8 +428,13 @@ export class MemoryProjectRepository implements ProjectRepository {
       createdAt: seed.createdAt,
       updatedAt: seed.updatedAt,
     })
+    const project = assembleProject(stored)
+    stored.versions.set(project.repositoryRevision, {
+      metadata: createVersionSummary(project, { source: 'migration' }),
+      project: clonePersistedProject(project),
+    })
     this.projects.set(document.id, stored)
-    return assembleProject(stored)
+    return project
   }
 
   async commit(input: ProjectRepositoryCommitInput): Promise<ProjectRepositoryCommitResult> {
@@ -350,6 +473,7 @@ export class MemoryProjectRepository implements ProjectRepository {
       )
     }
     const document = assertProjectDocument(input.document)
+    const metadata = assertProjectCommitMetadata(input.metadata)
     if (document.id !== input.id || document.id !== currentProject.document.id) {
       throw new ProjectRepositoryError(
         'PROJECT_REPOSITORY_INVALID_COMMIT',
@@ -374,7 +498,12 @@ export class MemoryProjectRepository implements ProjectRepository {
     while (receipts.size > this.receiptLimit)
       receipts.delete(receipts.keys().next().value!)
 
-    const staged = splitProject(project, receipts, current)
+    const versions = new Map(current.versions)
+    versions.set(project.repositoryRevision, {
+      metadata: createVersionSummary(project, metadata),
+      project: clonePersistedProject(project),
+    })
+    const staged = splitProject(project, receipts, current, versions)
     const committedProject = assembleProject(staged)
     staged.receipts.set(commandId, {
       commandId,
@@ -388,6 +517,96 @@ export class MemoryProjectRepository implements ProjectRepository {
 
   async delete(id: string): Promise<void> {
     this.projects.delete(id)
+  }
+
+  async getVersion(projectId: string, revision: number): Promise<PersistedProjectEnvelope | undefined> {
+    const version = this.projects.get(projectId)?.versions.get(revision)
+    return version ? clonePersistedProject(version.project) : undefined
+  }
+
+  async listVersions(projectId: string): Promise<ProjectVersionSummary[]> {
+    const project = this.projects.get(projectId)
+    if (!project)
+      return []
+    return [...project.versions.values()]
+      .map(version => cloneVersionSummary(version.metadata))
+      .sort((left, right) => right.repositoryRevision - left.repositoryRevision)
+  }
+
+  async setVersionLabel(input: ProjectVersionLabelInput): Promise<void> {
+    const project = this.projects.get(input.projectId)
+    if (!project) {
+      throw new ProjectRepositoryError(
+        'PROJECT_REPOSITORY_NOT_FOUND',
+        `Project does not exist: ${input.projectId}`,
+      )
+    }
+    if (project.manifest.repositoryRevision !== input.expectedRepositoryRevision) {
+      throw new ProjectRepositoryError(
+        'PROJECT_REVISION_CONFLICT',
+        `Expected repository revision ${input.expectedRepositoryRevision}, but repository has ${project.manifest.repositoryRevision}.`,
+      )
+    }
+    const version = project.versions.get(input.revision)
+    if (!version) {
+      throw new ProjectRepositoryError(
+        'PROJECT_REPOSITORY_NOT_FOUND',
+        `Project version does not exist: ${input.projectId}@${input.revision}`,
+      )
+    }
+    const label = assertVersionLabel(input.label)
+    version.metadata = {
+      ...version.metadata,
+      ...(label ? { label } : {}),
+    }
+    if (!label)
+      delete version.metadata.label
+  }
+
+  async pruneVersions(
+    projectId: string,
+    policy: ProjectVersionRetentionPolicy = {},
+  ): Promise<void> {
+    const project = this.projects.get(projectId)
+    if (!project)
+      return
+    const keepLatest = policy.keepLatestAutosaves ?? 50
+    const keepDailyForDays = policy.keepDailyForDays ?? 30
+    if (!Number.isInteger(keepLatest) || keepLatest < 0
+      || !Number.isInteger(keepDailyForDays) || keepDailyForDays < 0) {
+      throw new RangeError('Project version retention limits must be non-negative integers.')
+    }
+    const now = Date.parse(policy.now ?? this.now())
+    if (!Number.isFinite(now))
+      throw new RangeError('Project version retention time must be a valid ISO date string.')
+
+    const keep = new Set<number>([project.manifest.repositoryRevision])
+    project.receipts.forEach(receipt => keep.add(receipt.project.repositoryRevision))
+    project.versions.forEach((version) => {
+      if (version.metadata.label)
+        keep.add(version.metadata.repositoryRevision)
+      if (version.metadata.restoredFromRevision !== undefined)
+        keep.add(version.metadata.restoredFromRevision)
+    })
+    const ordinary = [...project.versions.values()]
+      .filter(version => !version.metadata.label)
+      .sort((left, right) => right.metadata.repositoryRevision - left.metadata.repositoryRevision)
+    ordinary.slice(0, keepLatest).forEach(version => keep.add(version.metadata.repositoryRevision))
+    const daily = new Set<string>()
+    ordinary.forEach((version) => {
+      const timestamp = Date.parse(version.metadata.createdAt)
+      if (!Number.isFinite(timestamp) || now - timestamp > keepDailyForDays * 86_400_000)
+        return
+      const day = version.metadata.createdAt.slice(0, 10)
+      if (!daily.has(day)) {
+        daily.add(day)
+        keep.add(version.metadata.repositoryRevision)
+      }
+    })
+    project.versions.forEach((_version, revision) => {
+      if (!keep.has(revision))
+        project.versions.delete(revision)
+    })
   }
 
   close(): void {}

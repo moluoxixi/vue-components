@@ -100,7 +100,9 @@ Design Canvas 和右侧 Preview 使用同一份 `PageCompilation` 和同一 Vue 
 Component Registry
   -> ProjectRepository -> immutable ProjectSnapshot
   -> ProjectCommand -> OperationBatch -> ProjectDomainEngine
-  -> ProjectEditorSession + ProjectSaveCoordinator
+  -> ProjectEditorSession + ProjectPersistenceSession
+     -> ProjectSaveCoordinator + ProjectRepository
+     -> RecoveryDraftStore + ProjectCoordinationChannel
   -> Design canvas (唯一编辑入口)
   -> iframe RuntimeHost -> Runtime Renderer -> right-side Preview
   -> Export menu -> readonly Source / Config preview dialog
@@ -113,9 +115,12 @@ ProjectDomainEngine 只管理页面与节点 Command、semantic inverse history 
 它不依赖 Repository、Vue、当前页或保存状态。ProjectEditorSession 组合领域引擎与
 ProjectSaveCoordinator，后者单独拥有 CAS、commit id、saved cursor 和 saving/error 状态。
 当前页属于 Workbench/Design navigation session，不进入 ProjectSnapshot 或领域引擎。
-页面管理与页面内部编辑不再拥有两套 reducer/revision。Repository 可按 revisioned
-Manifest/Page/Resource 实体存储；一个 manifest revision 可以复用较早的未变化 Page/Resource entity revision，但 load/commit 只能发布 checksum 与引用 revision 全部匹配的完整 `PersistedProjectEnvelope`。
+页面管理与页面内部编辑不再拥有两套 reducer/revision。Repository 使用 v3 Manifest 保存当前 snapshot、版本索引和幂等 receipt，并按 revisioned Page/Resource 实体存储；manifest schema 与 v2 entity codec 分离，因此升级版本索引时不重写未变化实体。一个 manifest revision 可以复用较早的未变化 Page/Resource entity revision，但 load/commit/version read 只能发布 checksum 与引用 revision 全部匹配的完整 `PersistedProjectEnvelope`。v2 manifest 在读取时经 compare-and-replace 原子迁移为 v3；并发连接已完成迁移时直接采用其结果。
 Repository 只发布通过当前 `ProjectDocument` schema 验证的内容；版本不匹配、结构不完整或 Registry lock 不一致都以可诊断错误拒绝，不扫描其他 namespace，不回写来源记录。
+
+`ProjectPersistenceSession` 是 Workbench 唯一 autosave owner。所有 Project Command、Undo/Redo、拖拽、Inspector 和 Flow 修改只推进同一个 Editor Session；Persistence Session 使用 800ms idle / 5s max-wait 合并正式 revision，并用 250ms idle / 1s max-wait 写独立 recovery draft。Autosave 不封闭 Undo merge group；立即保存与命名检查点显式封闭。Recovery draft 复用正式 snapshot/entity codec 和未变化实体引用，但不进入 Preview、Export 或正式版本；只有较新的 edit identity 能覆盖旧草稿，正式保存较早 capture 后先写后切换地重基线草稿。`ProjectDocument` 不保存 revision、版本、草稿或 UI 状态。
+
+同浏览器多标签页通过 versioned `ProjectCoordinationChannel` 发送 revision 与 presence hint，不传项目内容。clean session 收到更新后从 Repository 重载；dirty session 停止 autosave、固定 durable draft，并让用户查看最新、放弃本地或将草稿另存为新项目。BroadcastChannel 缺失、消息重复或乱序不会改变正确性，Repository CAS 始终是最终边界。版本恢复读取并验证历史 snapshot 后，以当前 revision 为 CAS 基线创建新的 `restore` revision，不覆盖既有历史。
 
 Workbench 的运行与界面状态不进入领域 Controller：`WorkbenchDesignSession` 独立持有活动页/候选页编译、Runtime artifact cache、selection、Project Command 与 Undo/Redo；正式编译失败会清理不可用 Runtime 并把首个诊断交给 UI，不能静默留下空白画布。`PreviewSession` 独立持有 values、touched、validation、Flow projection、最多 200 条 trace 和 Abort 生命周期，并按稳定 field node/component/contractVersion/fingerprint 协调同页 revision 状态；切页、切项目、切 adapter 或字段合同变化时只清理不兼容状态。`WorkbenchExportService` 只在显式 capture 时懒组装完整 ProjectCompilation，普通 sync 只失效固定 identity。`WorkbenchUiStore` 只持有面板、弹窗、Preview viewport、移动端导航、主题、语言、消息和 lazy-open 状态，不依赖 `ProjectDocument`、Runtime state 或 `ExportSnapshot`。`WorkbenchShell` 分别消费 Design、Preview、Export、UI context，只组合页面和 dialog。
 
@@ -138,7 +143,7 @@ version/props、Project schemaVersion、Registry lock 和 Flow 编辑坐标；nu
 
 Repository boundary 负责把 `unknown` 严格解析为当前规范的 `ProjectDocument`。UI 与插件提交 JSON-safe `ProjectCommand`；Command Engine 基于当前快照解析语义 action，生成显式 `ProjectOperation[]`；Transaction Engine 才应用规范 OperationBatch。节点属性删除使用 `node.patch.unset`，禁止借助序列化时会丢失的 `undefined`。Command resolver 允许中间草稿暂态违反跨实体引用，但完整 batch 发布前必须通过最终 Graph/Registry/Flow 校验。`applyProjectTransaction` 使用结构共享的 copy-on-write 草稿，成功后由 History 推进一次 `editVersion`；Repository 只以独立 `expectedRepositoryRevision` 做 CAS。`applyProjectDraftTransaction` 不推进 editVersion、repositoryRevision、timestamp 或 history，candidate 必须再封装为 `ProjectDraftSnapshot`。调用方不得原地修改已发布快照。
 
-Repository 不执行 schema 迁移、无状态兼容投影或异 namespace 扫描。生成 Source 文件只属于 ExportSnapshot。Workbench Controller 只使用 `ProjectRepository + ProjectEditorSession + ProjectDomainEngine`，禁止增加并行的编辑状态 reducer 或从 Designer 导入持久化模型的代码。
+Repository 不执行 `ProjectDocument` schema 迁移、无状态兼容投影或异 namespace 扫描；仅允许自身 manifest v2→v3 的原子存储迁移。生成 Source 文件只属于 ExportSnapshot。Workbench Controller 只组合 `ProjectRepository + ProjectEditorSession + ProjectPersistenceSession + ProjectDomainEngine`，禁止增加并行的编辑状态 reducer 或从 Designer 导入持久化模型的代码。
 
 响应式工作区的导航所有权也保持单一：Designer 自带导航时可根据容器焦点切换窄屏
 tabpanel；Workbench 传入 `workspace-navigation="external"` 后，移动端底部导航成为窄屏

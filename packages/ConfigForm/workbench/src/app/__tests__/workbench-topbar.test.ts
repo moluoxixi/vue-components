@@ -56,10 +56,25 @@ describe('workbench topbar', () => {
       },
     })
 
-    await wrapper.get('button[aria-label="Save"]').trigger('click')
+    expect(wrapper.get('.revision-state').text()).toContain('v0 · Unsaved')
+    expect(wrapper.get('.revision-state').attributes('aria-live')).toBe('polite')
+    await wrapper.get('button[aria-label="Save options"]').trigger('click')
+    const saveItems = wrapper.findAll('.save-menu-popover [role="menuitem"]')
+    expect(saveItems.map(item => item.text())).toEqual([
+      'Save now',
+      'Create named checkpoint',
+      'Version history',
+    ])
+    await saveItems[0]!.trigger('click')
+    await wrapper.get('button[aria-label="Save options"]').trigger('click')
+    await wrapper.findAll('.save-menu-popover [role="menuitem"]')[1]!.trigger('click')
+    await wrapper.get('button[aria-label="Save options"]').trigger('click')
+    await wrapper.findAll('.save-menu-popover [role="menuitem"]')[2]!.trigger('click')
     await wrapper.get('button[aria-label="Show preview"]').trigger('click')
     await wrapper.get('button[aria-label="Use dark theme"]').trigger('click')
     expect(wrapper.emitted('save')).toHaveLength(1)
+    expect(wrapper.emitted('createCheckpoint')).toHaveLength(1)
+    expect(wrapper.emitted('openVersions')).toHaveLength(1)
     expect(wrapper.emitted('togglePreview')).toHaveLength(1)
     expect(wrapper.emitted('toggleTheme')).toHaveLength(1)
   })

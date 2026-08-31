@@ -15,6 +15,8 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Plus,
+  History,
+  BookmarkPlus,
   Save,
   Sun,
   Workflow,
@@ -44,6 +46,8 @@ const emit = defineEmits<{
   newPage: []
   openFlow: []
   openPages: []
+  openVersions: []
+  createCheckpoint: []
   save: []
   toggleLocale: []
   togglePreview: []
@@ -55,8 +59,11 @@ const exportTrigger = useTemplateRef<HTMLButtonElement>('exportTrigger')
 const exportMenu = useTemplateRef<HTMLElement>('exportMenu')
 const mobileMenuTrigger = useTemplateRef<HTMLButtonElement>('mobileMenuTrigger')
 const mobileMenu = useTemplateRef<HTMLElement>('mobileMenu')
+const saveTrigger = useTemplateRef<HTMLButtonElement>('saveTrigger')
+const saveMenu = useTemplateRef<HTMLElement>('saveMenu')
 const exportMenuOpen = ref(false)
 const mobileMenuOpen = ref(false)
+const saveMenuOpen = ref(false)
 const locale = computed(() => createDesignerLocale(props.locale))
 
 function closeExportMenu(restoreFocus = false): void {
@@ -69,6 +76,7 @@ function closeExportMenu(restoreFocus = false): void {
 
 function toggleExportMenu(): void {
   closeMobileMenu()
+  closeSaveMenu()
   exportMenuOpen.value = !exportMenuOpen.value
   if (exportMenuOpen.value) {
     void nextTick(() => exportMenu.value
@@ -87,6 +95,7 @@ function closeMobileMenu(restoreFocus = false): void {
 
 function toggleMobileMenu(): void {
   closeExportMenu()
+  closeSaveMenu()
   mobileMenuOpen.value = !mobileMenuOpen.value
   if (mobileMenuOpen.value) {
     void nextTick(() => mobileMenu.value
@@ -95,7 +104,7 @@ function toggleMobileMenu(): void {
   }
 }
 
-type MobileAction = 'newPage' | 'openFlow' | 'openPages' | 'save' | 'toggleLocale' | 'toggleTheme'
+type MobileAction = 'checkpoint' | 'newPage' | 'openFlow' | 'openPages' | 'save' | 'toggleLocale' | 'toggleTheme' | 'versions'
 
 function chooseMobileAction(action: MobileAction): void {
   closeMobileMenu()
@@ -105,9 +114,41 @@ function chooseMobileAction(action: MobileAction): void {
     case 'openFlow': emit('openFlow'); break
     case 'openPages': emit('openPages'); break
     case 'save': emit('save'); break
+    case 'checkpoint': emit('createCheckpoint'); break
+    case 'versions': emit('openVersions'); break
     case 'toggleLocale': emit('toggleLocale'); break
     case 'toggleTheme': emit('toggleTheme'); break
   }
+}
+
+function closeSaveMenu(restoreFocus = false): void {
+  if (!saveMenuOpen.value)
+    return
+  saveMenuOpen.value = false
+  if (restoreFocus)
+    void nextTick(() => saveTrigger.value?.focus())
+}
+
+function toggleSaveMenu(): void {
+  closeExportMenu()
+  closeMobileMenu()
+  saveMenuOpen.value = !saveMenuOpen.value
+  if (saveMenuOpen.value) {
+    void nextTick(() => saveMenu.value
+      ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+      ?.focus())
+  }
+}
+
+function chooseSaveAction(action: 'save' | 'checkpoint' | 'versions'): void {
+  closeSaveMenu()
+  saveTrigger.value?.focus()
+  if (action === 'save')
+    emit('save')
+  else if (action === 'checkpoint')
+    emit('createCheckpoint')
+  else
+    emit('openVersions')
 }
 
 function chooseExport(mode: WorkbenchExportMode): void {
@@ -158,10 +199,32 @@ function handleMobileMenuKeydown(event: KeyboardEvent): void {
   items[next]?.focus()
 }
 
+function handleSaveMenuKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeSaveMenu(true)
+    return
+  }
+  const items = [...(saveMenu.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])]
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || items.length === 0)
+    return
+  event.preventDefault()
+  const current = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement))
+  const next = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? items.length - 1
+      : event.key === 'ArrowDown'
+        ? (current + 1) % items.length
+        : (current - 1 + items.length) % items.length
+  items[next]?.focus()
+}
+
 function handleDocumentPointerdown(event: PointerEvent): void {
   if (event.target instanceof Node && !root.value?.contains(event.target)) {
     closeExportMenu()
     closeMobileMenu()
+    closeSaveMenu()
   }
 }
 
@@ -192,22 +255,42 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
       >
         <Files :size="17" aria-hidden="true" />
       </button>
-      <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }">
-        r{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
+      <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
+        v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
       <button type="button" class="topbar-secondary-action" :title="locale.t('pages.new', 'New page')" :aria-label="locale.t('pages.new', 'New page')" @click="emit('newPage')">
         <Plus :size="17" aria-hidden="true" />
       </button>
-      <button
-        type="button"
-        class="topbar-secondary-action"
-        :title="locale.t('action.save', 'Save')"
-        :aria-label="locale.t('action.save', 'Save')"
-        :disabled="!dirty || !!configError || busy"
-        @click="emit('save')"
-      >
-        <Save :size="17" aria-hidden="true" />
-      </button>
+      <div v-if="project" class="save-menu export-menu">
+        <button
+          ref="saveTrigger"
+          type="button"
+          :title="locale.t('save.menu', 'Save options')"
+          :aria-label="locale.t('save.menu', 'Save options')"
+          :aria-expanded="saveMenuOpen"
+          aria-haspopup="menu"
+          :disabled="!!configError || busy"
+          @click="toggleSaveMenu"
+          @keydown.down.prevent="toggleSaveMenu"
+        >
+          <Save :size="16" aria-hidden="true" />
+          <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
+        </button>
+        <div v-if="saveMenuOpen" ref="saveMenu" class="export-menu-popover save-menu-popover" role="menu" @keydown="handleSaveMenuKeydown">
+          <button type="button" role="menuitem" :disabled="!dirty" @click="chooseSaveAction('save')">
+            <Save :size="15" aria-hidden="true" />
+            <span>{{ locale.t('save.now', 'Save now') }}</span>
+          </button>
+          <button type="button" role="menuitem" @click="chooseSaveAction('checkpoint')">
+            <BookmarkPlus :size="15" aria-hidden="true" />
+            <span>{{ locale.t('save.checkpoint', 'Create named checkpoint') }}</span>
+          </button>
+          <button type="button" role="menuitem" @click="chooseSaveAction('versions')">
+            <History :size="15" aria-hidden="true" />
+            <span>{{ locale.t('save.history', 'Version history') }}</span>
+          </button>
+        </div>
+      </div>
       <div v-if="project" class="export-menu">
         <button
           ref="exportTrigger"
@@ -286,6 +369,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocument
           <button v-if="project" type="button" role="menuitem" @click="chooseMobileAction('openPages')"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('newPage')"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></button>
           <button type="button" role="menuitem" :disabled="!dirty || !!configError || busy" @click="chooseMobileAction('save')"><Save :size="15" aria-hidden="true" /><span>{{ locale.t('action.save', 'Save') }}</span></button>
+          <button v-if="project" type="button" role="menuitem" :disabled="!!configError || busy" @click="chooseMobileAction('checkpoint')"><BookmarkPlus :size="15" aria-hidden="true" /><span>{{ locale.t('save.checkpoint', 'Create named checkpoint') }}</span></button>
+          <button v-if="project" type="button" role="menuitem" @click="chooseMobileAction('versions')"><History :size="15" aria-hidden="true" /><span>{{ locale.t('save.history', 'Version history') }}</span></button>
           <button v-if="project" type="button" role="menuitem" @click="chooseMobileAction('openFlow')"><Workflow :size="15" aria-hidden="true" /><span>{{ locale.t('flow.dialog.title', 'Event flow orchestration') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('toggleLocale')"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></button>
           <button type="button" role="menuitem" @click="chooseMobileAction('toggleTheme')"><Sun v-if="theme === 'dark'" :size="15" aria-hidden="true" /><Moon v-else :size="15" aria-hidden="true" /><span>{{ theme === 'dark' ? locale.t('theme.useLight', 'Use light theme') : locale.t('theme.useDark', 'Use dark theme') }}</span></button>

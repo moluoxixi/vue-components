@@ -2,6 +2,7 @@
 import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
 import type { MobileStudioView } from './workbench-ui-store'
+import type { PersistenceDialogMode } from '../features/persistence/PersistenceDialog.vue'
 import {
   AlertTriangle,
   Blocks,
@@ -18,7 +19,7 @@ import {
   Undo2,
 } from '@lucide/vue'
 import { DesignSurface } from '@moluoxixi/config-form-designer'
-import { computed, defineAsyncComponent, nextTick, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
 import DesignRuntimeHostFrame from '../runtime-host/DesignRuntimeHostFrame.vue'
 import PreviewDrawer from '../studio/PreviewDrawer.vue'
 import StudioLeftPanel from '../studio/StudioLeftPanel.vue'
@@ -35,6 +36,7 @@ import {
 const ExportDialog = defineAsyncComponent(() => import('../features/export/ExportDialog.vue'))
 const FlowDialog = defineAsyncComponent(() => import('../features/flow/FlowDialog.vue'))
 const PageManagerDialog = defineAsyncComponent(() => import('../features/pages/PageManagerDialog.vue'))
+const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence/PersistenceDialog.vue'))
 
 const controller = useWorkbenchController()
 const designSession = useWorkbenchDesignSession()
@@ -62,9 +64,11 @@ const {
   previewState,
   registry,
   repositoryRevision,
+  recoveryDrafts,
   requestOpenProject,
   reloadCurrentProject,
   saveProject,
+  saveCurrentDraftAsProject,
   selectPageFromDesigner,
   selectTemplate,
   statusLabel,
@@ -72,6 +76,7 @@ const {
   workbenchLocale,
   workspaceRecoveryNotice,
 } = controller
+const persistenceDialogMode = ref<PersistenceDialogMode>()
 const {
   commandControl: designerCommandControl,
   getCompilation: getDesignRuntimeCompilation,
@@ -196,6 +201,27 @@ function showComponentEventFlow(nodeId: string, eventName: string): void {
 function showPageManager(): void {
   openPageManager()
 }
+
+function showPersistenceDialog(mode: PersistenceDialogMode): void {
+  persistenceDialogMode.value = mode
+}
+
+function handleRecoveryAction(action: 'fork' | 'reload' | 'versions'): void {
+  if (action === 'reload') {
+    void reloadCurrentProject()
+    return
+  }
+  if (action === 'fork') {
+    void saveCurrentDraftAsProject()
+    return
+  }
+  showPersistenceDialog('versions')
+}
+
+watch(recoveryDrafts, (drafts) => {
+  if (drafts.length > 0 && !persistenceDialogMode.value)
+    persistenceDialogMode.value = 'recovery'
+}, { immediate: true })
 </script>
 
 <template>
@@ -214,9 +240,11 @@ function showPageManager(): void {
       :status-label="statusLabel"
       :theme="theme"
       @export="showExportDialog"
+      @create-checkpoint="showPersistenceDialog('checkpoint')"
       @new-page="openTemplatePicker"
       @open-flow="showFlowDialog()"
       @open-pages="showPageManager"
+      @open-versions="showPersistenceDialog('versions')"
       @save="saveProject"
       @toggle-locale="toggleLocale"
       @toggle-preview="togglePreview"
@@ -463,6 +491,11 @@ function showPageManager(): void {
       @message="message = $event"
     />
 
+    <PersistenceDialog
+      :mode="persistenceDialogMode"
+      @close="persistenceDialogMode = undefined"
+    />
+
     <aside
       v-if="workspaceRecoveryNotice"
       class="workspace-recovery-notice"
@@ -473,13 +506,29 @@ function showPageManager(): void {
       <AlertTriangle :size="17" aria-hidden="true" />
       <span>{{ workspaceRecoveryNotice.message }}</span>
       <button
-        v-if="workspaceRecoveryNotice.action === 'reload'"
+        v-if="workspaceRecoveryNotice.action"
         type="button"
         :disabled="busy"
-        @click="reloadCurrentProject"
+        @click="handleRecoveryAction(workspaceRecoveryNotice.action)"
       >
         <RefreshCw :size="14" aria-hidden="true" />
         {{ workspaceRecoveryNotice.actionLabel }}
+      </button>
+      <button
+        v-if="workspaceRecoveryNotice.secondaryAction"
+        type="button"
+        :disabled="busy"
+        @click="handleRecoveryAction(workspaceRecoveryNotice.secondaryAction)"
+      >
+        {{ workspaceRecoveryNotice.secondaryActionLabel }}
+      </button>
+      <button
+        v-if="workspaceRecoveryNotice.tertiaryAction"
+        type="button"
+        :disabled="busy"
+        @click="handleRecoveryAction(workspaceRecoveryNotice.tertiaryAction)"
+      >
+        {{ workspaceRecoveryNotice.tertiaryActionLabel }}
       </button>
     </aside>
 

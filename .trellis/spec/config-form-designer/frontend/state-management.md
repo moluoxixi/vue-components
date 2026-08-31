@@ -60,14 +60,19 @@ interface ProjectEditorSession {
   execute(command: ProjectCommand): ProjectEditorSessionDispatchResult
   undo(): ProjectEditorSessionDispatchResult
   redo(): ProjectEditorSessionDispatchResult
-  save(): Promise<ProjectEditorSessionSaveResult>
+  save(options: {
+    source: 'autosave' | 'manual'
+    label?: string
+    sealHistoryGroup: boolean
+  }): Promise<ProjectEditorSessionSaveResult>
 }
 
 interface ProjectSaveCoordinator {
   readonly snapshot: ProjectSaveCoordinatorSnapshot
   save(
-    capture: { document: ReadonlyProjectDocument, cursor: string },
-    currentCursor: () => string,
+    capture: ProjectSaveCapture,
+    metadata: ProjectCommitMetadata,
+    currentIdentity: () => Pick<ProjectSaveCapture, 'contentHash' | 'cursor' | 'editVersion'>,
   ): Promise<ProjectSaveCoordinatorResult>
 }
 
@@ -155,6 +160,10 @@ interface SlotItem {
   repositoryRevision, savedCursor, saving, and persistence diagnostics. Commit
   IDs include a per-editor-session namespace so two tabs cannot both emit
   `<project>:save:1` and be mistaken for a payload replay.
+- `ProjectEditorSession.save()` is an explicit hard-cut boundary: autosave uses
+  `source: 'autosave'` and `sealHistoryGroup: false`; user-triggered immediate
+  saves and named checkpoints use `source: 'manual'` and may seal the current
+  merge group. There is no no-argument save path.
 - Saving captures one immutable document and history cursor. Edits made while
   save is pending remain local and dirty; they are not merged into the captured
   commit or its merge group.
@@ -211,6 +220,12 @@ interface SlotItem {
   invalidate or rebuild the structural candidate Runtime projection. Candidate
   compilation dependencies are the drag source, normalized drop target, base
   document identity, and Registry contract.
+- Keyboard material drag startup is allowed a short cancellable retry window
+  when the target resolver is settling across the first Vue render frame. The
+  retry reuses one candidate ID, stops on success, Escape, readonly/unmount, or
+  a bounded attempt count, and never creates a second model or history entry.
+  Register keyboard targets during setup so a fast Space press has a resolver;
+  do not hide this race by adding waits to browser tests.
 - Palette specimen styling must target Designer-owned wrapper classes. Broad
   descendant selectors such as `label`, `input`, or `button` are forbidden
   because the specimen is a real adapter Runtime and owns its internal DOM.
@@ -238,6 +253,22 @@ interface SlotItem {
 - Full `ProjectCompilation` assembly is reserved for an explicit readonly
   Export capture/refresh. Ordinary Design edits invalidate the pinned Export
   identity but do not compile other pages or rebuild generated files.
+- Persistence scheduling is owned by one `ProjectPersistenceSession`, not by
+  Inspector, Designer, Flow, or Pages. It coalesces edits with an 800ms idle /
+  5s maximum autosave policy and a 250ms idle / 1s maximum durable recovery
+  draft policy. A save captures one edit identity; edits arriving while it is
+  in flight remain pending for the next save. Draft coverage is tracked
+  independently from formal save status so volatile or failed storage cannot
+  be presented as recoverable.
+- Recovery drafts are validated, project-scoped, and never silently applied.
+  A newer draft must not be overwritten by an older capture; after a formal
+  save, rebasing a newer draft is write-before-delete. Drafts with unknown
+  presence, corrupt schema/checksum, or Registry mismatch fail closed.
+- Cross-tab coordination sends only versioned revision hints and presence
+  probes. Clean sessions reload after Repository confirmation; dirty sessions
+  pause autosave and retain a durable draft until the user chooses an explicit
+  conflict path. Duplicate, stale, out-of-order, self, or unavailable channel
+  messages never replace CAS correctness.
 - Workbench composition exposes independent `WorkbenchDesignSession`,
   `PreviewSession`, `WorkbenchExportService`, and `WorkbenchUiStore` contexts.
   Design owns active/candidate page compilation, Runtime artifacts, selection,

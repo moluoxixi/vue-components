@@ -2,7 +2,7 @@
 import type { FormSettings } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
 import { Search } from '@lucide/vue'
-import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import { createDesignerNodeId } from '../graph'
 import DesignerMaterialSpecimen from './DesignerMaterialSpecimen.vue'
@@ -27,6 +27,39 @@ let activePointerId: number | undefined
 let activePointerTarget: HTMLElement | undefined
 let dragActivated = false
 let suppressClick = false
+let keyboardStartFrame: number | undefined
+let keyboardStartToken = 0
+
+function cancelKeyboardStart(): void {
+  keyboardStartToken += 1
+  if (keyboardStartFrame !== undefined)
+    window.cancelAnimationFrame(keyboardStartFrame)
+  keyboardStartFrame = undefined
+}
+
+function beginMaterialKeyboardDrag(materialKey: string): void {
+  if (!dragController)
+    return
+  cancelKeyboardStart()
+  const candidateId = createDesignerNodeId('candidate')
+  const token = keyboardStartToken
+  let attempts = 0
+  const attempt = (): void => {
+    keyboardStartFrame = undefined
+    if (token !== keyboardStartToken || props.readonly || dragController?.session.value)
+      return
+    if (dragController.beginMaterialKeyboard(materialKey, candidateId))
+      return
+    if (attempts >= 30)
+      return
+    attempts += 1
+    keyboardStartFrame = window.requestAnimationFrame(attempt)
+  }
+  // The Canvas registers its target resolver before paint, but its first
+  // compiled page can still settle on the next Vue tick. Retry briefly so a
+  // fast Space press cannot be lost during that hand-off.
+  void nextTick(attempt)
+}
 
 const keyboardDragSession = computed(() => {
   const session = dragController?.session.value
@@ -145,6 +178,7 @@ function handleMaterialKeydown(material: DesignerMaterialDefinition, event: Keyb
   if (event.key === 'Escape' && keyboardSession) {
     event.preventDefault()
     event.stopPropagation()
+    cancelKeyboardStart()
     dragController?.cancel()
     return
   }
@@ -162,10 +196,11 @@ function handleMaterialKeydown(material: DesignerMaterialDefinition, event: Keyb
   if (keyboardSession)
     dragController.finishKeyboard()
   else
-    dragController.beginMaterialKeyboard(material.key, createDesignerNodeId('candidate'))
+    beginMaterialKeyboardDrag(material.key)
 }
 
 onBeforeUnmount(() => {
+  cancelKeyboardStart()
   dragController?.cancel()
   cleanupPointerDrag()
 })
@@ -174,6 +209,7 @@ watch(() => props.readonly, (readonly) => {
   if (!readonly)
     return
   dragController?.cancel()
+  cancelKeyboardStart()
   cleanupPointerDrag()
   dragActivated = false
 })

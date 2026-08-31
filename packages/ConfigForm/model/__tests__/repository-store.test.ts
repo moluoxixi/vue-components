@@ -104,6 +104,7 @@ describe('projectRepository', () => {
       document: landing,
       expectedRepositoryRevision: 0,
       id: initial.id,
+      metadata: { source: 'manual' as const, label: 'Landing ready' },
     }
 
     const committed = await repository.commit(input)
@@ -136,6 +137,7 @@ describe('projectRepository', () => {
       document: rename(initial, 'Remote'),
       expectedRepositoryRevision: 0,
       id: initial.id,
+      metadata: { source: 'autosave' as const },
     })
 
     await expect(repository.commit({
@@ -143,8 +145,61 @@ describe('projectRepository', () => {
       document: rename(initial, 'Stale'),
       expectedRepositoryRevision: 0,
       id: initial.id,
+      metadata: { source: 'autosave' as const },
     })).rejects.toMatchObject({ code: 'PROJECT_REVISION_CONFLICT' })
     expect((await repository.get(initial.id))?.document.pagesById.home?.name).toBe('Remote')
+  })
+
+  it('lists, labels, and restores immutable project versions', async () => {
+    const repository = createMemoryProjectRepository({ now: () => NEXT_TIME })
+    const initial = projectDocument()
+    const created = await repository.create({
+      document: initial,
+      seed: { repositoryRevision: 0, createdAt: INITIAL_TIME, updatedAt: INITIAL_TIME },
+    })
+    const committed = await repository.commit({
+      commandId: 'save-landing-version',
+      document: rename(initial, 'Landing'),
+      expectedRepositoryRevision: created.repositoryRevision,
+      id: initial.id,
+      metadata: { source: 'autosave' },
+    })
+
+    await repository.setVersionLabel({
+      projectId: initial.id,
+      revision: committed.project.repositoryRevision,
+      label: ' Release candidate ',
+      expectedRepositoryRevision: committed.project.repositoryRevision,
+    })
+    expect(await repository.listVersions(initial.id)).toEqual([
+      expect.objectContaining({ repositoryRevision: 1, source: 'autosave', label: 'Release candidate' }),
+      expect.objectContaining({ repositoryRevision: 0, source: 'migration' }),
+    ])
+    expect((await repository.getVersion(initial.id, 0))?.document.pagesById.home?.name).toBe('Home')
+
+    const restored = await repository.commit({
+      commandId: 'restore-initial',
+      document: (await repository.getVersion(initial.id, 0))!.document,
+      expectedRepositoryRevision: committed.project.repositoryRevision,
+      id: initial.id,
+      metadata: { source: 'restore', restoredFromRevision: 0 },
+    })
+    expect(restored.project.repositoryRevision).toBe(2)
+    expect(restored.project.document.pagesById.home?.name).toBe('Home')
+    expect(await repository.listVersions(initial.id)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ repositoryRevision: 2, source: 'restore', restoredFromRevision: 0 }),
+      expect.objectContaining({ repositoryRevision: 1, label: 'Release candidate' }),
+      expect.objectContaining({ repositoryRevision: 0 }),
+    ]))
+
+    await repository.setVersionLabel({
+      projectId: initial.id,
+      revision: 1,
+      expectedRepositoryRevision: 2,
+    })
+    expect((await repository.listVersions(initial.id)).find(version => version.repositoryRevision === 1))
+      .not
+      .toHaveProperty('label')
   })
 })
 

@@ -15,6 +15,7 @@ import type {
   ProjectSaveCoordinator,
   ProjectSaveCoordinatorResult,
   ProjectSaveCoordinatorSnapshot,
+  ProjectSavedIdentity,
 } from './project-save-coordinator'
 import {
   createProjectDomainEngine,
@@ -53,6 +54,7 @@ export type ProjectEditorSessionSaveResult
     success: true
     newerEdits: boolean
     repositoryRevision: number
+    savedIdentity: ProjectSavedIdentity
     snapshot: ProjectEditorSessionSnapshot
   }
   | {
@@ -76,11 +78,17 @@ export interface ProjectEditorSession {
   readonly snapshot: ProjectEditorSessionSnapshot
   execute: (command: ProjectCommand) => ProjectEditorSessionDispatchResult
   redo: () => ProjectEditorSessionDispatchResult
-  save: () => Promise<ProjectEditorSessionSaveResult>
+  save: (options: ProjectEditorSessionSaveOptions) => Promise<ProjectEditorSessionSaveResult>
   subscribe: (
     listener: (snapshot: ProjectEditorSessionSnapshot, changeSet: ProjectChangeSet) => void,
   ) => () => void
   undo: () => ProjectEditorSessionDispatchResult
+}
+
+export interface ProjectEditorSessionSaveOptions {
+  label?: string
+  sealHistoryGroup: boolean
+  source: 'autosave' | 'manual'
 }
 
 /** Construct the exact compiler boundary without persistence/session fields. */
@@ -107,7 +115,9 @@ export function createProjectEditorSession(
     projectId: engineSnapshot.document.id,
     repository: options.repository,
     repositoryRevision: options.project.repositoryRevision,
+    savedContentHash: engineSnapshot.contentHash,
     savedCursor: engineSnapshot.cursor,
+    savedEditVersion: engineSnapshot.editVersion,
     createdAt: options.project.createdAt,
     updatedAt: options.project.updatedAt,
   })
@@ -179,13 +189,24 @@ export function createProjectEditorSession(
       : { ...result, snapshot: currentSnapshot() }
   }
 
-  async function save(): Promise<ProjectEditorSessionSaveResult> {
-    engine.sealHistoryGroup()
-    engineSnapshot = engine.snapshot
+  async function save(saveOptions: ProjectEditorSessionSaveOptions): Promise<ProjectEditorSessionSaveResult> {
+    if (saveOptions.sealHistoryGroup) {
+      engine.sealHistoryGroup()
+      engineSnapshot = engine.snapshot
+    }
     return sessionSaveResult(await saveCoordinator.save({
+      contentHash: engineSnapshot.contentHash,
       cursor: engineSnapshot.cursor,
       document: engineSnapshot.document,
-    }, () => engine.snapshot.cursor))
+      editVersion: engineSnapshot.editVersion,
+    }, {
+      source: saveOptions.source,
+      ...(saveOptions.label ? { label: saveOptions.label } : {}),
+    }, () => ({
+      contentHash: engine.snapshot.contentHash,
+      cursor: engine.snapshot.cursor,
+      editVersion: engine.snapshot.editVersion,
+    })))
   }
 
   return {

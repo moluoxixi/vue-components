@@ -8,10 +8,14 @@ import type {
   ProjectRepositoryCreateInput,
   ProjectResourceReference,
   ProjectSummary,
+  ProjectVersionLabelInput,
+  ProjectVersionRetentionPolicy,
+  ProjectVersionSummary,
   RegistryLock,
 } from '@moluoxixi/config-form-model'
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
 import {
+  assertProjectCommitMetadata,
   assertProjectDocument,
   assertProjectRepositorySeed,
   createMemoryProjectRepository,
@@ -20,16 +24,18 @@ import {
 } from '@moluoxixi/config-form-model'
 import { IndexDBStorage, IndexedDBManager } from '@moluoxixi/indexed-db'
 
-const PROJECT_STORAGE_VERSION = 2 as const
+const PROJECT_MANIFEST_VERSION = 3 as const
+const LEGACY_PROJECT_MANIFEST_VERSION = 2 as const
+const PROJECT_ENTITY_CODEC_VERSION = 2 as const
 const PROJECT_PREFIX = 'project-document:'
 
-interface StoredEntityReference {
+export interface StoredEntityReference {
   checksum: string
   key: string
   revision: number
 }
 
-interface StoredProjectMetadata {
+export interface StoredProjectMetadata {
   schemaVersion: ProjectDocument['schemaVersion']
   id: string
   name: string
@@ -42,7 +48,7 @@ interface StoredProjectMetadata {
   settings: ProjectDocument['settings']
 }
 
-interface StoredProjectSnapshotManifest {
+export interface StoredProjectSnapshotManifest {
   checksum: string
   pages: Record<string, StoredEntityReference>
   project: StoredProjectMetadata
@@ -55,24 +61,37 @@ interface StoredCommitReceipt {
   snapshot: StoredProjectSnapshotManifest
 }
 
-interface StoredProjectManifest {
+interface StoredProjectManifestV2 {
   checksum: string
   receipts: StoredCommitReceipt[]
   snapshot: StoredProjectSnapshotManifest
-  storageSchemaVersion: typeof PROJECT_STORAGE_VERSION
+  storageSchemaVersion: typeof LEGACY_PROJECT_MANIFEST_VERSION
 }
 
-interface StoredProjectEntity {
+interface StoredProjectVersion extends ProjectVersionSummary {
+  snapshot: StoredProjectSnapshotManifest
+}
+
+interface StoredProjectManifestV3 {
+  checksum: string
+  receipts: StoredCommitReceipt[]
+  snapshot: StoredProjectSnapshotManifest
+  storageSchemaVersion: typeof PROJECT_MANIFEST_VERSION
+  versions: StoredProjectVersion[]
+}
+
+export interface StoredProjectEntity {
   checksum: string
   projectId: string
   revision: number
-  storageSchemaVersion: typeof PROJECT_STORAGE_VERSION
+  storageSchemaVersion: typeof PROJECT_ENTITY_CODEC_VERSION
   value: ProjectPage | ProjectResourceReference
 }
 
+type StoredProjectManifest = StoredProjectManifestV2 | StoredProjectManifestV3
 type StoredProjectValue = StoredProjectEntity | StoredProjectManifest
 
-interface SnapshotBuildResult {
+export interface SnapshotBuildResult {
   entities: StoredProjectEntity[]
   entityKeys: string[]
   snapshot: StoredProjectSnapshotManifest
@@ -85,7 +104,7 @@ export interface IndexedDBProjectRepositoryOptions {
   storeName?: string
 }
 
-function semanticChecksum(value: unknown): string {
+export function semanticChecksum(value: unknown): string {
   return `fnv1a:${getConfigFormJsonSemanticHash(value)}`
 }
 
@@ -97,7 +116,7 @@ function projectStoragePrefix(id: string): string {
   return `${PROJECT_PREFIX}${encoded(id)}:`
 }
 
-function projectManifestKey(id: string): string {
+export function projectManifestKey(id: string): string {
   return `${projectStoragePrefix(id)}manifest`
 }
 
@@ -109,7 +128,7 @@ function projectResourceKey(projectId: string, resourceId: string, revision: num
   return `${projectStoragePrefix(projectId)}resource:${encoded(resourceId)}:${revision}`
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isStoredRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
@@ -118,7 +137,7 @@ function corrupt(message: string): never {
 }
 
 function parseEntityReference(input: unknown, label: string): StoredEntityReference {
-  if (!isRecord(input)
+  if (!isStoredRecord(input)
     || typeof input.checksum !== 'string'
     || typeof input.key !== 'string'
     || !Number.isInteger(input.revision)
@@ -129,7 +148,7 @@ function parseEntityReference(input: unknown, label: string): StoredEntityRefere
 }
 
 function parseReferenceMap(input: unknown, label: string): Record<string, StoredEntityReference> {
-  if (!isRecord(input))
+  if (!isStoredRecord(input))
     corrupt(`Invalid ${label} reference map.`)
   return Object.fromEntries(Object.entries(input).map(([id, reference]) => [
     id,
@@ -145,10 +164,10 @@ function snapshotPayload(snapshot: Omit<StoredProjectSnapshotManifest, 'checksum
   }
 }
 
-function parseSnapshotManifest(input: unknown): StoredProjectSnapshotManifest {
-  if (!isRecord(input)
+export function parseSnapshotManifest(input: unknown): StoredProjectSnapshotManifest {
+  if (!isStoredRecord(input)
     || typeof input.checksum !== 'string'
-    || !isRecord(input.project)
+    || !isStoredRecord(input.project)
     || !Array.isArray(input.project.pageOrder)
     || !input.project.pageOrder.every(id => typeof id === 'string')
     || typeof input.project.id !== 'string'
@@ -158,8 +177,8 @@ function parseSnapshotManifest(input: unknown): StoredProjectSnapshotManifest {
     || typeof input.project.createdAt !== 'string'
     || typeof input.project.updatedAt !== 'string'
     || typeof input.project.homePageId !== 'string'
-    || !isRecord(input.project.registryLock)
-    || !isRecord(input.project.settings)) {
+    || !isStoredRecord(input.project.registryLock)
+    || !isStoredRecord(input.project.settings)) {
     corrupt('Stored project snapshot manifest is invalid.')
   }
   const candidate = {
@@ -173,23 +192,11 @@ function parseSnapshotManifest(input: unknown): StoredProjectSnapshotManifest {
   return candidate
 }
 
-function manifestPayload(manifest: Omit<StoredProjectManifest, 'checksum'>): unknown {
-  return {
-    receipts: manifest.receipts,
-    snapshot: manifest.snapshot,
-    storageSchemaVersion: manifest.storageSchemaVersion,
-  }
-}
-
-function parseStoredManifest(input: unknown): StoredProjectManifest {
-  if (!isRecord(input)
-    || input.storageSchemaVersion !== PROJECT_STORAGE_VERSION
-    || typeof input.checksum !== 'string'
-    || !Array.isArray(input.receipts)) {
-    corrupt('Stored project manifest is invalid.')
-  }
-  const receipts = input.receipts.map((receipt, index) => {
-    if (!isRecord(receipt)
+function parseReceipts(input: unknown): StoredCommitReceipt[] {
+  if (!Array.isArray(input))
+    corrupt('Stored project commit receipts are invalid.')
+  return input.map((receipt, index) => {
+    if (!isStoredRecord(receipt)
       || typeof receipt.commandId !== 'string'
       || typeof receipt.payloadChecksum !== 'string') {
       corrupt(`Stored project commit receipt is invalid at index ${index}.`)
@@ -200,28 +207,138 @@ function parseStoredManifest(input: unknown): StoredProjectManifest {
       snapshot: parseSnapshotManifest(receipt.snapshot),
     }
   })
-  const candidate: StoredProjectManifest = {
+}
+
+function parseVersion(input: unknown, index: number): StoredProjectVersion {
+  if (!isStoredRecord(input)
+    || typeof input.projectId !== 'string'
+    || !Number.isInteger(input.repositoryRevision)
+    || !['autosave', 'manual', 'restore', 'migration'].includes(String(input.source))
+    || typeof input.contentHash !== 'string'
+    || typeof input.createdAt !== 'string'
+    || (input.label !== undefined && typeof input.label !== 'string')
+    || (input.restoredFromRevision !== undefined && !Number.isInteger(input.restoredFromRevision))) {
+    corrupt(`Stored project version is invalid at index ${index}.`)
+  }
+  const snapshot = parseSnapshotManifest(input.snapshot)
+  if (snapshot.project.id !== input.projectId
+    || snapshot.project.repositoryRevision !== input.repositoryRevision) {
+    corrupt(`Stored project version identity mismatch at index ${index}.`)
+  }
+  return {
+    projectId: input.projectId,
+    repositoryRevision: Number(input.repositoryRevision),
+    source: input.source as ProjectVersionSummary['source'],
+    ...(input.label !== undefined ? { label: input.label } : {}),
+    contentHash: input.contentHash,
+    createdAt: input.createdAt,
+    ...(input.restoredFromRevision !== undefined
+      ? { restoredFromRevision: Number(input.restoredFromRevision) }
+      : {}),
+    snapshot,
+  }
+}
+
+function manifestV2Payload(manifest: Omit<StoredProjectManifestV2, 'checksum'>): unknown {
+  return {
+    receipts: manifest.receipts,
+    snapshot: manifest.snapshot,
+    storageSchemaVersion: manifest.storageSchemaVersion,
+  }
+}
+
+function manifestV3Payload(manifest: Omit<StoredProjectManifestV3, 'checksum'>): unknown {
+  return {
+    receipts: manifest.receipts,
+    snapshot: manifest.snapshot,
+    storageSchemaVersion: manifest.storageSchemaVersion,
+    versions: manifest.versions,
+  }
+}
+
+function parseStoredManifest(input: unknown): StoredProjectManifest {
+  if (!isStoredRecord(input)
+    || typeof input.checksum !== 'string'
+    || (input.storageSchemaVersion !== LEGACY_PROJECT_MANIFEST_VERSION
+      && input.storageSchemaVersion !== PROJECT_MANIFEST_VERSION)) {
+    corrupt('Stored project manifest is invalid.')
+  }
+  const receipts = parseReceipts(input.receipts)
+  if (input.storageSchemaVersion === LEGACY_PROJECT_MANIFEST_VERSION) {
+    const candidate: StoredProjectManifestV2 = {
+      checksum: input.checksum,
+      receipts,
+      snapshot: parseSnapshotManifest(input.snapshot),
+      storageSchemaVersion: LEGACY_PROJECT_MANIFEST_VERSION,
+    }
+    if (candidate.checksum !== semanticChecksum(manifestV2Payload(candidate)))
+      corrupt(`Stored project manifest checksum mismatch: ${candidate.snapshot.project.id}`)
+    return candidate
+  }
+  if (!Array.isArray(input.versions))
+    corrupt('Stored project versions are invalid.')
+  const candidate: StoredProjectManifestV3 = {
     checksum: input.checksum,
     receipts,
     snapshot: parseSnapshotManifest(input.snapshot),
-    storageSchemaVersion: PROJECT_STORAGE_VERSION,
+    storageSchemaVersion: PROJECT_MANIFEST_VERSION,
+    versions: input.versions.map(parseVersion),
   }
-  if (candidate.checksum !== semanticChecksum(manifestPayload(candidate)))
+  if (candidate.checksum !== semanticChecksum(manifestV3Payload(candidate)))
     corrupt(`Stored project manifest checksum mismatch: ${candidate.snapshot.project.id}`)
   return candidate
+}
+
+export async function readCurrentStoredProjectSnapshot(
+  storage: Pick<IndexDBStorage, 'getItem'>,
+  projectId: string,
+): Promise<StoredProjectSnapshotManifest | undefined> {
+  const input = await storage.getItem<StoredProjectValue>(projectManifestKey(projectId))
+  return input === null ? undefined : parseStoredManifest(input).snapshot
 }
 
 function createStoredManifest(
   snapshot: StoredProjectSnapshotManifest,
   receipts: StoredCommitReceipt[],
-): StoredProjectManifest {
-  const payload = { receipts, snapshot, storageSchemaVersion: PROJECT_STORAGE_VERSION }
+  versions: StoredProjectVersion[],
+): StoredProjectManifestV3 {
+  const payload = {
+    receipts,
+    snapshot,
+    storageSchemaVersion: PROJECT_MANIFEST_VERSION,
+    versions,
+  }
   return { ...payload, checksum: semanticChecksum(payload) }
 }
 
-function createSnapshotManifest(
+function createStoredVersion(
+  project: PersistedProjectEnvelope,
+  snapshot: StoredProjectSnapshotManifest,
+  metadata: Pick<ProjectVersionSummary, 'source' | 'label' | 'restoredFromRevision'>,
+): StoredProjectVersion {
+  return {
+    projectId: project.document.id,
+    repositoryRevision: project.repositoryRevision,
+    source: metadata.source,
+    ...(metadata.label ? { label: metadata.label } : {}),
+    contentHash: semanticChecksum(project.document),
+    createdAt: project.updatedAt,
+    ...(metadata.restoredFromRevision !== undefined
+      ? { restoredFromRevision: metadata.restoredFromRevision }
+      : {}),
+    snapshot,
+  }
+}
+
+export function createSnapshotManifest(
   project: PersistedProjectEnvelope,
   current?: StoredProjectSnapshotManifest,
+  createEntityKey?: (
+    kind: 'page' | 'resource',
+    id: string,
+    revision: number,
+    checksum: string,
+  ) => string,
 ): SnapshotBuildResult {
   const document = assertProjectDocument(project.document)
   const pages: Record<string, StoredEntityReference> = Object.create(null)
@@ -238,14 +355,16 @@ function createSnapshotManifest(
     const previous = kind === 'page' ? current?.pages[id] : current?.resources[id]
     if (previous?.checksum === entityChecksum)
       return previous
-    const key = kind === 'page'
-      ? projectPageKey(document.id, id, project.repositoryRevision)
-      : projectResourceKey(document.id, id, project.repositoryRevision)
+    const key = createEntityKey
+      ? createEntityKey(kind, id, project.repositoryRevision, entityChecksum)
+      : kind === 'page'
+        ? projectPageKey(document.id, id, project.repositoryRevision)
+        : projectResourceKey(document.id, id, project.repositoryRevision)
     entities.push({
       checksum: entityChecksum,
       projectId: document.id,
       revision: project.repositoryRevision,
-      storageSchemaVersion: PROJECT_STORAGE_VERSION,
+      storageSchemaVersion: PROJECT_ENTITY_CODEC_VERSION,
       value,
     })
     entityKeys.push(key)
@@ -278,9 +397,9 @@ function createSnapshotManifest(
   }
 }
 
-function parseStoredEntity(input: unknown, reference: StoredEntityReference): StoredProjectEntity {
-  if (!isRecord(input)
-    || input.storageSchemaVersion !== PROJECT_STORAGE_VERSION
+export function parseStoredEntity(input: unknown, reference: StoredEntityReference): StoredProjectEntity {
+  if (!isStoredRecord(input)
+    || input.storageSchemaVersion !== PROJECT_ENTITY_CODEC_VERSION
     || typeof input.checksum !== 'string'
     || typeof input.projectId !== 'string'
     || !Number.isInteger(input.revision)
@@ -310,6 +429,133 @@ function createEnvelope(
   }
 }
 
+function requireV3Manifest(manifest: StoredProjectManifest): StoredProjectManifestV3 {
+  if (manifest.storageSchemaVersion !== PROJECT_MANIFEST_VERSION)
+    corrupt('Stored project manifest migration did not complete.')
+  return manifest
+}
+
+function versionSummary(version: StoredProjectVersion): ProjectVersionSummary {
+  const { snapshot: _snapshot, ...summary } = version
+  return structuredClone(summary)
+}
+
+function validateRetentionPolicy(
+  policy: ProjectVersionRetentionPolicy,
+  fallbackNow: string,
+): { keepDailyForDays: number, keepLatestAutosaves: number, now: number } {
+  const keepDailyForDays = policy.keepDailyForDays ?? 30
+  const keepLatestAutosaves = policy.keepLatestAutosaves ?? 50
+  const now = Date.parse(policy.now ?? fallbackNow)
+  if (!Number.isInteger(keepDailyForDays) || keepDailyForDays < 0
+    || !Number.isInteger(keepLatestAutosaves) || keepLatestAutosaves < 0) {
+    throw new RangeError('Project version retention limits must be non-negative integers.')
+  }
+  if (!Number.isFinite(now))
+    throw new RangeError('Project version retention time must be a valid ISO date string.')
+  return { keepDailyForDays, keepLatestAutosaves, now }
+}
+
+function retainedVersions(
+  manifest: StoredProjectManifestV3,
+  policy: ReturnType<typeof validateRetentionPolicy>,
+): StoredProjectVersion[] {
+  const keep = new Set<number>([manifest.snapshot.project.repositoryRevision])
+  manifest.receipts.forEach(receipt => keep.add(receipt.snapshot.project.repositoryRevision))
+  manifest.versions.forEach((version) => {
+    if (version.label)
+      keep.add(version.repositoryRevision)
+    if (version.restoredFromRevision !== undefined)
+      keep.add(version.restoredFromRevision)
+  })
+  const ordinary = manifest.versions
+    .filter(version => !version.label)
+    .sort((left, right) => right.repositoryRevision - left.repositoryRevision)
+  ordinary.slice(0, policy.keepLatestAutosaves)
+    .forEach(version => keep.add(version.repositoryRevision))
+  const daily = new Set<string>()
+  ordinary.forEach((version) => {
+    const timestamp = Date.parse(version.createdAt)
+    if (!Number.isFinite(timestamp)
+      || policy.now - timestamp > policy.keepDailyForDays * 86_400_000) {
+      return
+    }
+    const day = version.createdAt.slice(0, 10)
+    if (!daily.has(day)) {
+      daily.add(day)
+      keep.add(version.repositoryRevision)
+    }
+  })
+  return manifest.versions.filter(version => keep.has(version.repositoryRevision))
+}
+
+export function snapshotReferenceKeys(snapshot: StoredProjectSnapshotManifest): string[] {
+  return [
+    ...Object.values(snapshot.pages).map(reference => reference.key),
+    ...Object.values(snapshot.resources).map(reference => reference.key),
+  ]
+}
+
+export async function loadStoredProjectSnapshot(
+  storage: Pick<IndexDBStorage, 'getItems'>,
+  snapshot: StoredProjectSnapshotManifest,
+): Promise<PersistedProjectEnvelope> {
+  const references = [...Object.values(snapshot.pages), ...Object.values(snapshot.resources)]
+  const stored = await storage.getItems<StoredProjectValue>(references.map(reference => reference.key))
+  const pagesById: ProjectDocument['pagesById'] = Object.create(null)
+  const resources: ProjectDocument['resources'] = Object.create(null)
+  const pageRevisions: Record<string, number> = Object.create(null)
+  const resourceRevisions: Record<string, number> = Object.create(null)
+  Object.entries(snapshot.pages).forEach(([id, reference]) => {
+    const input = stored[reference.key]
+    if (input === null)
+      corrupt(`Stored page entity is missing: ${reference.key}`)
+    const entity = parseStoredEntity(input, reference)
+    if (entity.projectId !== snapshot.project.id)
+      corrupt(`Stored page entity belongs to another project: ${reference.key}`)
+    pagesById[id] = entity.value as ProjectPage
+    pageRevisions[id] = entity.revision
+  })
+  Object.entries(snapshot.resources).forEach(([id, reference]) => {
+    const input = stored[reference.key]
+    if (input === null)
+      corrupt(`Stored resource entity is missing: ${reference.key}`)
+    const entity = parseStoredEntity(input, reference)
+    if (entity.projectId !== snapshot.project.id)
+      corrupt(`Stored resource entity belongs to another project: ${reference.key}`)
+    resources[id] = entity.value as ProjectResourceReference
+    resourceRevisions[id] = entity.revision
+  })
+  let document: ProjectDocument
+  try {
+    document = assertProjectDocument({
+      schemaVersion: snapshot.project.schemaVersion,
+      id: snapshot.project.id,
+      name: snapshot.project.name,
+      homePageId: snapshot.project.homePageId,
+      pageOrder: snapshot.project.pageOrder,
+      registryLock: snapshot.project.registryLock,
+      settings: snapshot.project.settings,
+      pagesById,
+      resources,
+    })
+  }
+  catch (error) {
+    corrupt(error instanceof Error ? error.message : String(error))
+  }
+  return {
+    document,
+    repositoryRevision: snapshot.project.repositoryRevision,
+    entityRevisions: {
+      manifest: snapshot.project.repositoryRevision,
+      pages: pageRevisions,
+      resources: resourceRevisions,
+    },
+    createdAt: snapshot.project.createdAt,
+    updatedAt: snapshot.project.updatedAt,
+  }
+}
+
 export class IndexedDBProjectRepository implements ProjectRepository {
   readonly persistence = 'durable' as const
   private readonly now: () => string
@@ -331,79 +577,82 @@ export class IndexedDBProjectRepository implements ProjectRepository {
     await this.storage.length()
   }
 
-  private async loadSnapshot(snapshot: StoredProjectSnapshotManifest): Promise<PersistedProjectEnvelope> {
-    const references = [...Object.values(snapshot.pages), ...Object.values(snapshot.resources)]
-    const stored = await this.storage.getItems<StoredProjectValue>(references.map(reference => reference.key))
-    const pagesById: ProjectDocument['pagesById'] = Object.create(null)
-    const resources: ProjectDocument['resources'] = Object.create(null)
-    const pageRevisions: Record<string, number> = Object.create(null)
-    const resourceRevisions: Record<string, number> = Object.create(null)
-    Object.entries(snapshot.pages).forEach(([id, reference]) => {
-      const input = stored[reference.key]
+  private async ensureManifest(id: string): Promise<StoredProjectManifestV3 | undefined> {
+    const manifestKey = projectManifestKey(id)
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const input = await this.storage.getItem<StoredProjectValue>(manifestKey)
       if (input === null)
-        corrupt(`Stored page entity is missing: ${reference.key}`)
-      const entity = parseStoredEntity(input, reference)
-      if (entity.projectId !== snapshot.project.id)
-        corrupt(`Stored page entity belongs to another project: ${reference.key}`)
-      pagesById[id] = entity.value as ProjectPage
-      pageRevisions[id] = entity.revision
-    })
-    Object.entries(snapshot.resources).forEach(([id, reference]) => {
-      const input = stored[reference.key]
-      if (input === null)
-        corrupt(`Stored resource entity is missing: ${reference.key}`)
-      const entity = parseStoredEntity(input, reference)
-      if (entity.projectId !== snapshot.project.id)
-        corrupt(`Stored resource entity belongs to another project: ${reference.key}`)
-      resources[id] = entity.value as ProjectResourceReference
-      resourceRevisions[id] = entity.revision
-    })
-    let document: ProjectDocument
-    try {
-      document = assertProjectDocument({
-        schemaVersion: snapshot.project.schemaVersion,
-        id: snapshot.project.id,
-        name: snapshot.project.name,
-        homePageId: snapshot.project.homePageId,
-        pageOrder: snapshot.project.pageOrder,
-        registryLock: snapshot.project.registryLock,
-        settings: snapshot.project.settings,
-        pagesById,
-        resources,
+        return undefined
+      const current = parseStoredManifest(input)
+      if (current.storageSchemaVersion === PROJECT_MANIFEST_VERSION)
+        return current
+
+      const snapshots = new Map<number, StoredProjectSnapshotManifest>()
+      current.receipts.forEach(receipt => snapshots.set(
+        receipt.snapshot.project.repositoryRevision,
+        receipt.snapshot,
+      ))
+      snapshots.set(current.snapshot.project.repositoryRevision, current.snapshot)
+      const projects = await Promise.all(
+        [...snapshots.values()].map(snapshot => loadStoredProjectSnapshot(this.storage, snapshot)),
+      )
+      const versions = projects
+        .map((project) => {
+          const snapshot = snapshots.get(project.repositoryRevision)
+          if (!snapshot)
+            corrupt(`Missing migration snapshot for revision ${project.repositoryRevision}.`)
+          return createStoredVersion(project, snapshot, { source: 'migration' })
+        })
+        .sort((left, right) => left.repositoryRevision - right.repositoryRevision)
+      const migrated = createStoredManifest(current.snapshot, current.receipts, versions)
+      let accepted: StoredProjectManifestV3 | undefined
+      let changed = false
+      await this.storage.updateItems<StoredProjectValue>([manifestKey], (values) => {
+        const latestInput = values.get(manifestKey)
+        if (latestInput === null)
+          return []
+        const latest = parseStoredManifest(latestInput)
+        if (latest.storageSchemaVersion === PROJECT_MANIFEST_VERSION) {
+          accepted = latest
+          return []
+        }
+        if (latest.checksum !== current.checksum) {
+          changed = true
+          return []
+        }
+        accepted = migrated
+        return [{ key: manifestKey, value: migrated }]
       })
+      if (accepted)
+        return accepted
+      if (!changed)
+        return undefined
     }
-    catch (error) {
-      corrupt(error instanceof Error ? error.message : String(error))
-    }
-    return {
-      document,
-      repositoryRevision: snapshot.project.repositoryRevision,
-      entityRevisions: {
-        manifest: snapshot.project.repositoryRevision,
-        pages: pageRevisions,
-        resources: resourceRevisions,
-      },
-      createdAt: snapshot.project.createdAt,
-      updatedAt: snapshot.project.updatedAt,
-    }
+    throw new ProjectRepositoryError(
+      'PROJECT_REVISION_CONFLICT',
+      `Project manifest kept changing while migrating: ${id}`,
+    )
   }
 
   async get(id: string): Promise<PersistedProjectEnvelope | undefined> {
-    const input = await this.storage.getItem<StoredProjectValue>(projectManifestKey(id))
-    if (input === null)
+    const manifest = await this.ensureManifest(id)
+    if (!manifest)
       return undefined
-    return await this.loadSnapshot(parseStoredManifest(input).snapshot)
+    return await loadStoredProjectSnapshot(this.storage, manifest.snapshot)
   }
 
   async list(): Promise<ProjectSummary[]> {
     const keys = (await this.storage.keys())
       .filter(key => key.startsWith(PROJECT_PREFIX) && key.endsWith(':manifest'))
-    const records = await this.storage.getItems<StoredProjectValue>(keys)
-    return keys.flatMap((key) => {
-      const input = records[key]
-      if (input === null)
+    const manifests = await Promise.all(keys.map(async (key) => {
+      const marker = `${PROJECT_PREFIX}`
+      const encodedId = key.slice(marker.length, -':manifest'.length)
+      return await this.ensureManifest(decodeURIComponent(encodedId))
+    }))
+    return manifests.flatMap((manifest) => {
+      if (!manifest)
         return []
-      const project = parseStoredManifest(input).snapshot.project
+      const project = manifest.snapshot.project
       return [{
         id: project.id,
         name: project.name,
@@ -426,7 +675,9 @@ export class IndexedDBProjectRepository implements ProjectRepository {
     })
     const project = createEnvelope(document, seed.repositoryRevision, seed.createdAt, seed.updatedAt)
     const build = createSnapshotManifest(project)
-    const manifest = createStoredManifest(build.snapshot, [])
+    const manifest = createStoredManifest(build.snapshot, [], [
+      createStoredVersion(project, build.snapshot, { source: 'migration' }),
+    ])
     const manifestKey = projectManifestKey(document.id)
     const keys = [manifestKey, ...build.entityKeys]
     await this.storage.updateItems<StoredProjectValue>(keys, (current) => {
@@ -441,7 +692,7 @@ export class IndexedDBProjectRepository implements ProjectRepository {
         ...build.entities.map((entity, index) => ({ key: build.entityKeys[index]!, value: entity })),
       ]
     })
-    return await this.loadSnapshot(build.snapshot)
+    return await loadStoredProjectSnapshot(this.storage, build.snapshot)
   }
 
   async commit(input: ProjectRepositoryCommitInput): Promise<ProjectRepositoryCommitResult> {
@@ -453,6 +704,7 @@ export class IndexedDBProjectRepository implements ProjectRepository {
       )
     }
     const document = assertProjectDocument(input.document)
+    const metadata = assertProjectCommitMetadata(input.metadata)
     if (document.id !== input.id) {
       throw new ProjectRepositoryError(
         'PROJECT_REPOSITORY_INVALID_COMMIT',
@@ -460,14 +712,13 @@ export class IndexedDBProjectRepository implements ProjectRepository {
       )
     }
     const manifestKey = projectManifestKey(input.id)
-    const preliminaryInput = await this.storage.getItem<StoredProjectValue>(manifestKey)
-    if (preliminaryInput === null) {
+    const preliminary = await this.ensureManifest(input.id)
+    if (!preliminary) {
       throw new ProjectRepositoryError(
         'PROJECT_REPOSITORY_NOT_FOUND',
         `Project does not exist: ${input.id}`,
       )
     }
-    const preliminary = parseStoredManifest(preliminaryInput)
     const project = createEnvelope(
       document,
       input.expectedRepositoryRevision + 1,
@@ -488,7 +739,7 @@ export class IndexedDBProjectRepository implements ProjectRepository {
           `Project does not exist: ${input.id}`,
         )
       }
-      const current = parseStoredManifest(manifestInput)
+      const current = requireV3Manifest(parseStoredManifest(manifestInput))
       const receipt = current.receipts.find(candidate => candidate.commandId === commandId)
       if (receipt) {
         if (receipt.payloadChecksum !== payloadChecksum) {
@@ -520,7 +771,11 @@ export class IndexedDBProjectRepository implements ProjectRepository {
         ...current.receipts,
         { commandId, payloadChecksum, snapshot: build.snapshot },
       ].slice(-this.receiptLimit)
-      const manifest = createStoredManifest(build.snapshot, receipts)
+      const versions = [
+        ...current.versions.filter(version => version.repositoryRevision !== project.repositoryRevision),
+        createStoredVersion(project, build.snapshot, metadata),
+      ].sort((left, right) => left.repositoryRevision - right.repositoryRevision)
+      const manifest = createStoredManifest(build.snapshot, receipts, versions)
       return [
         { key: manifestKey, value: manifest },
         ...build.entities.map((entity, index) => ({ key: build.entityKeys[index]!, value: entity })),
@@ -529,7 +784,121 @@ export class IndexedDBProjectRepository implements ProjectRepository {
 
     if (!targetSnapshot)
       throw new ProjectRepositoryError('PROJECT_REPOSITORY_CORRUPT', 'Repository commit produced no snapshot.')
-    return { project: await this.loadSnapshot(targetSnapshot), replayed }
+    return { project: await loadStoredProjectSnapshot(this.storage, targetSnapshot), replayed }
+  }
+
+  async getVersion(
+    projectId: string,
+    revision: number,
+  ): Promise<PersistedProjectEnvelope | undefined> {
+    const manifest = await this.ensureManifest(projectId)
+    const version = manifest?.versions.find(candidate => candidate.repositoryRevision === revision)
+    return version ? await loadStoredProjectSnapshot(this.storage, version.snapshot) : undefined
+  }
+
+  async listVersions(projectId: string): Promise<ProjectVersionSummary[]> {
+    const manifest = await this.ensureManifest(projectId)
+    return manifest
+      ? manifest.versions
+          .map(versionSummary)
+          .sort((left, right) => right.repositoryRevision - left.repositoryRevision)
+      : []
+  }
+
+  async setVersionLabel(input: ProjectVersionLabelInput): Promise<void> {
+    const manifest = await this.ensureManifest(input.projectId)
+    if (!manifest) {
+      throw new ProjectRepositoryError(
+        'PROJECT_REPOSITORY_NOT_FOUND',
+        `Project does not exist: ${input.projectId}`,
+      )
+    }
+    const label = assertProjectCommitMetadata({
+      source: 'manual',
+      ...(input.label !== undefined ? { label: input.label } : {}),
+    }).label
+    const manifestKey = projectManifestKey(input.projectId)
+    await this.storage.updateItems<StoredProjectValue>([manifestKey], (values) => {
+      const currentInput = values.get(manifestKey)
+      if (currentInput === null) {
+        throw new ProjectRepositoryError(
+          'PROJECT_REPOSITORY_NOT_FOUND',
+          `Project does not exist: ${input.projectId}`,
+        )
+      }
+      const current = requireV3Manifest(parseStoredManifest(currentInput))
+      if (current.snapshot.project.repositoryRevision !== input.expectedRepositoryRevision) {
+        throw new ProjectRepositoryError(
+          'PROJECT_REVISION_CONFLICT',
+          `Expected repository revision ${input.expectedRepositoryRevision}, but repository has ${current.snapshot.project.repositoryRevision}.`,
+        )
+      }
+      const index = current.versions.findIndex(version => version.repositoryRevision === input.revision)
+      if (index < 0) {
+        throw new ProjectRepositoryError(
+          'PROJECT_REPOSITORY_NOT_FOUND',
+          `Project version does not exist: ${input.projectId}@${input.revision}`,
+        )
+      }
+      const versions = [...current.versions]
+      const version = { ...versions[index]!, ...(label ? { label } : {}) }
+      if (!label)
+        delete version.label
+      versions[index] = version
+      return [{
+        key: manifestKey,
+        value: createStoredManifest(current.snapshot, current.receipts, versions),
+      }]
+    })
+  }
+
+  async pruneVersions(
+    projectId: string,
+    inputPolicy: ProjectVersionRetentionPolicy = {},
+  ): Promise<void> {
+    if (!await this.ensureManifest(projectId))
+      return
+    const policy = validateRetentionPolicy(inputPolicy, this.now())
+    const manifestKey = projectManifestKey(projectId)
+    const allKeys = await this.storage.keys()
+    const candidates = allKeys.filter(key =>
+      key.startsWith(projectStoragePrefix(projectId)) && key !== manifestKey)
+    const draftManifestKeys = allKeys.filter(key =>
+      key.startsWith('project-recovery-draft:') && key.endsWith(':manifest'))
+    const transactionKeys = [manifestKey, ...candidates, ...draftManifestKeys]
+    await this.storage.updateItems<unknown>(transactionKeys, (values) => {
+      const currentInput = values.get(manifestKey)
+      if (currentInput === null)
+        return []
+      const current = requireV3Manifest(parseStoredManifest(currentInput))
+      const versions = retainedVersions(current, policy)
+      const reachable = new Set<string>(snapshotReferenceKeys(current.snapshot))
+      current.receipts.forEach(receipt =>
+        snapshotReferenceKeys(receipt.snapshot).forEach(key => reachable.add(key)))
+      versions.forEach(version =>
+        snapshotReferenceKeys(version.snapshot).forEach(key => reachable.add(key)))
+      draftManifestKeys.forEach((key) => {
+        const draft = values.get(key)
+        if (!isStoredRecord(draft) || draft.projectId !== projectId)
+          return
+        try {
+          snapshotReferenceKeys(parseSnapshotManifest(draft.snapshot))
+            .forEach(reference => reachable.add(reference))
+        }
+        catch {
+          // Corrupt drafts are not valid reachability roots.
+        }
+      })
+      return [
+        {
+          key: manifestKey,
+          value: createStoredManifest(current.snapshot, current.receipts, versions),
+        },
+        ...candidates
+          .filter(key => !reachable.has(key))
+          .map(key => ({ key, value: null })),
+      ]
+    })
   }
 
   async delete(id: string): Promise<void> {

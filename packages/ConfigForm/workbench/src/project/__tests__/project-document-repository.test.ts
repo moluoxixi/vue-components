@@ -91,6 +91,7 @@ describe('indexedDBProjectRepository', () => {
       document: landing,
       expectedRepositoryRevision: created.repositoryRevision,
       id: initial.id,
+      metadata: { source: 'manual' as const },
     }
 
     const committed = await repository.commit(input)
@@ -125,6 +126,7 @@ describe('indexedDBProjectRepository', () => {
       document: rename(initial, 'Aborted landing'),
       expectedRepositoryRevision: created.repositoryRevision,
       id: initial.id,
+      metadata: { source: 'manual' as const },
     }
     const originalPut = IDBObjectStore.prototype.put
     let putCount = 0
@@ -174,6 +176,7 @@ describe('indexedDBProjectRepository', () => {
       document: initial,
       expectedRepositoryRevision: created.repositoryRevision,
       id: initial.id,
+      metadata: { source: 'autosave' },
     })
 
     expect(committed.project.repositoryRevision).toBe(created.repositoryRevision + 1)
@@ -204,6 +207,7 @@ describe('indexedDBProjectRepository', () => {
       document: withFlow.document,
       expectedRepositoryRevision: created.repositoryRevision,
       id: initial.id,
+      metadata: { source: 'autosave' },
     })
     const reloaded = await repository.get(initial.id)
 
@@ -277,12 +281,14 @@ describe('indexedDBProjectRepository', () => {
         document: rename(initial, 'First'),
         expectedRepositoryRevision: created.repositoryRevision,
         id: initial.id,
+        metadata: { source: 'autosave' },
       }),
       second.commit({
         commandId: 'save-second',
         document: rename(initial, 'Second'),
         expectedRepositoryRevision: created.repositoryRevision,
         id: initial.id,
+        metadata: { source: 'autosave' },
       }),
     ])
 
@@ -290,6 +296,56 @@ describe('indexedDBProjectRepository', () => {
     const rejected = results.find(result => result.status === 'rejected')
     expect(rejected).toMatchObject({ reason: { code: 'PROJECT_REVISION_CONFLICT' } })
     expect(['First', 'Second']).toContain((await first.get(initial.id))?.document.pagesById.home?.name)
+  })
+
+  it('migrates a v2 manifest to v3 once across concurrent connections', async () => {
+    const dbName = `project-document-v2-migration-${sequence++}`
+    const seedRepository = createIndexedDBProjectRepository(repositoryOptions(dbName))
+    closeables.push(seedRepository)
+    await seedRepository.open()
+    const initial = projectDocument()
+    await seedRepository.create({ document: initial })
+    seedRepository.close()
+
+    const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })
+    closeables.push(storage)
+    const manifestKey = (await storage.keys()).find(key => key.endsWith(':manifest'))!
+    const manifest = await storage.getItem<Record<string, unknown>>(manifestKey) as {
+      checksum: string
+      receipts: unknown[]
+      snapshot: unknown
+      storageSchemaVersion: number
+      versions?: unknown[]
+    }
+    delete manifest.versions
+    manifest.storageSchemaVersion = 2
+    manifest.checksum = semanticChecksum({
+      receipts: manifest.receipts,
+      snapshot: manifest.snapshot,
+      storageSchemaVersion: 2,
+    })
+    await storage.setItem(manifestKey, manifest)
+
+    const first = createIndexedDBProjectRepository(repositoryOptions(dbName))
+    const second = createIndexedDBProjectRepository(repositoryOptions(dbName))
+    closeables.push(first, second)
+    await Promise.all([first.open(), second.open()])
+    const [firstLoaded, secondLoaded] = await Promise.all([
+      first.get(initial.id),
+      second.get(initial.id),
+    ])
+    expect(firstLoaded?.document).toEqual(initial)
+    expect(secondLoaded).toEqual(firstLoaded)
+    expect(await first.listVersions(initial.id)).toEqual([
+      expect.objectContaining({ repositoryRevision: 0, source: 'migration' }),
+    ])
+    const migrated = await storage.getItem<Record<string, unknown>>(manifestKey)
+    expect(migrated).toMatchObject({ storageSchemaVersion: 3 })
+    expect(migrated?.versions).toHaveLength(1)
+    const pageKey = (await storage.keys()).find(key => key.includes(':page:'))!
+    expect(await storage.getItem<Record<string, unknown>>(pageKey)).toMatchObject({
+      storageSchemaVersion: 2,
+    })
   })
 
   it('rejects a manifest whose referenced entity is missing', async () => {
@@ -369,6 +425,7 @@ describe('indexedDBProjectRepository', () => {
       document: rename(initial, 'Landing'),
       expectedRepositoryRevision: created.repositoryRevision,
       id: initial.id,
+      metadata: { source: 'manual' },
     })
 
     await repository.delete(initial.id)

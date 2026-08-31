@@ -1434,12 +1434,15 @@ onMounted(() => {
   }
   scheduleCanvasCameraMeasure()
   unregisterDropResolver = dragController?.registerResolver(resolveDropTarget)
-  unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets)
   document.addEventListener('pointerdown', handleDocumentPointerDown)
   document.addEventListener('keydown', handleDocumentKeydown)
   document.addEventListener('keyup', handleDocumentKeyup)
   window.addEventListener('blur', handleWindowBlur)
 })
+
+// Keyboard destinations only depend on the graph and registry, so register them
+// before the first paint. This keeps a fast Space press from racing Canvas mount.
+unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDropTargets)
 
 onBeforeUnmount(() => {
   unregisterDropResolver?.()

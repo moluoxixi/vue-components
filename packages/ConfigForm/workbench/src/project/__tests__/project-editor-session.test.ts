@@ -72,7 +72,11 @@ describe('projectEditorSession', () => {
       create: document => durable.create(document),
       delete: id => durable.delete(id),
       get: id => durable.get(id),
+      getVersion: (id, revision) => durable.getVersion(id, revision),
       list: () => durable.list(),
+      listVersions: id => durable.listVersions(id),
+      pruneVersions: (id, policy) => durable.pruneVersions(id, policy),
+      setVersionLabel: input => durable.setVersionLabel(input),
       async commit(input: ProjectRepositoryCommitInput): Promise<ProjectRepositoryCommitResult> {
         await commitGate
         return durable.commit(input)
@@ -86,7 +90,7 @@ describe('projectEditorSession', () => {
     })
     session.execute(renameCommand('label-a', 'Landing', 'page:home:name'))
 
-    const savePromise = session.save()
+    const savePromise = session.save({ source: 'manual', sealHistoryGroup: true })
     expect(session.snapshot.saving).toBe(true)
     session.execute(renameCommand('label-b', 'Landing updated', 'page:home:name'))
     releaseCommit()
@@ -111,9 +115,9 @@ describe('projectEditorSession', () => {
     session.execute(renameCommand('local-edit', 'Local'))
     const remote = createProjectEditorSession({ project, repository })
     remote.execute(renameCommand('remote-edit', 'Remote'))
-    expect((await remote.save()).success).toBe(true)
+    expect((await remote.save({ source: 'manual', sealHistoryGroup: true })).success).toBe(true)
 
-    const saved = await session.save()
+    const saved = await session.save({ source: 'manual', sealHistoryGroup: true })
     expect(saved.success).toBe(false)
     if (saved.success)
       return

@@ -18,6 +18,48 @@
 }
 
 @media (max-width: 700px) {
+  .persistence-dialog-overlay {
+    padding: 8px;
+  }
+
+  .persistence-dialog {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+  }
+
+  .version-history-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(130px, 34vh) minmax(0, 1fr);
+  }
+
+  .version-history-layout > nav {
+    border-right: 0;
+    border-bottom: 1px solid var(--wb-border);
+  }
+
+  .version-label-editor > div {
+    grid-template-columns: 1fr auto;
+  }
+
+  .version-label-editor > div button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .version-inspector footer,
+  .recovery-draft-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .version-inspector footer p {
+    margin: 0;
+  }
+
+  .recovery-draft-list article > div:last-child button {
+    flex: 1 1 0;
+  }
+
   .workbench-layout,
   .workbench-layout.is-preview-collapsed,
   .workbench-layout.is-preview-expanded {

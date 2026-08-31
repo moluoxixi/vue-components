@@ -1,5 +1,6 @@
 import type {
   ModelDiagnostic,
+  ProjectCommitMetadata,
   ProjectRepository,
   ProjectRepositoryPersistence,
   ReadonlyProjectDocument,
@@ -8,7 +9,16 @@ import { assertProjectDocument, ProjectRepositoryError } from '@moluoxixi/config
 
 export interface ProjectSaveCapture {
   cursor: string
+  contentHash: string
   document: ReadonlyProjectDocument
+  editVersion: number
+}
+
+export interface ProjectSavedIdentity {
+  contentHash: string
+  cursor: string
+  editVersion: number
+  repositoryRevision: number
 }
 
 export interface ProjectSaveCoordinatorSnapshot {
@@ -26,6 +36,7 @@ export type ProjectSaveCoordinatorResult
     success: true
     newerEdits: boolean
     repositoryRevision: number
+    savedIdentity: ProjectSavedIdentity
     snapshot: ProjectSaveCoordinatorSnapshot
   }
   | {
@@ -39,7 +50,9 @@ export interface ProjectSaveCoordinatorOptions {
   projectId: string
   repository: ProjectRepository
   repositoryRevision: number
+  savedContentHash: string
   savedCursor: string
+  savedEditVersion: number
   createdAt: string
   updatedAt: string
 }
@@ -48,7 +61,8 @@ export interface ProjectSaveCoordinator {
   readonly snapshot: ProjectSaveCoordinatorSnapshot
   save: (
     capture: ProjectSaveCapture,
-    currentCursor: () => string,
+    metadata: ProjectCommitMetadata,
+    currentIdentity: () => Pick<ProjectSaveCapture, 'contentHash' | 'cursor' | 'editVersion'>,
   ) => Promise<ProjectSaveCoordinatorResult>
   subscribe: (listener: (snapshot: ProjectSaveCoordinatorSnapshot) => void) => () => void
 }
@@ -78,6 +92,8 @@ export function createProjectSaveCoordinator(
 ): ProjectSaveCoordinator {
   const repository = options.repository
   let savedCursor = options.savedCursor
+  let savedContentHash = options.savedContentHash
+  let savedEditVersion = options.savedEditVersion
   let repositoryRevision = options.repositoryRevision
   let createdAt = options.createdAt
   let updatedAt = options.updatedAt
@@ -109,7 +125,8 @@ export function createProjectSaveCoordinator(
 
   async function save(
     capture: ProjectSaveCapture,
-    currentCursor: () => string,
+    metadata: ProjectCommitMetadata,
+    currentIdentity: () => Pick<ProjectSaveCapture, 'contentHash' | 'cursor' | 'editVersion'>,
   ): Promise<ProjectSaveCoordinatorResult> {
     if (saving) {
       const error = {
@@ -119,11 +136,36 @@ export function createProjectSaveCoordinator(
       return { success: false, error, snapshot: currentSnapshot() }
     }
     if (capture.cursor === savedCursor) {
+      if (metadata.label) {
+        saving = true
+        lastError = undefined
+        publish()
+        try {
+          await repository.setVersionLabel({
+            projectId: options.projectId,
+            revision: repositoryRevision,
+            label: metadata.label,
+            expectedRepositoryRevision: repositoryRevision,
+          })
+        }
+        catch (error) {
+          lastError = diagnosticFromError(error)
+          saving = false
+          return { success: false, error: lastError, snapshot: publish() }
+        }
+        saving = false
+      }
       return {
         success: true,
         newerEdits: false,
         repositoryRevision,
-        snapshot: currentSnapshot(),
+        savedIdentity: {
+          contentHash: savedContentHash,
+          cursor: savedCursor,
+          editVersion: savedEditVersion,
+          repositoryRevision,
+        },
+        snapshot: publish(),
       }
     }
 
@@ -147,16 +189,25 @@ export function createProjectSaveCoordinator(
         document,
         expectedRepositoryRevision: repositoryRevision,
         id: document.id,
+        metadata,
       })
       repositoryRevision = committed.project.repositoryRevision
       createdAt = committed.project.createdAt
       updatedAt = committed.project.updatedAt
       savedCursor = capture.cursor
+      savedContentHash = capture.contentHash
+      savedEditVersion = capture.editVersion
       saving = false
       return {
         success: true,
-        newerEdits: currentCursor() !== capture.cursor,
+        newerEdits: currentIdentity().cursor !== capture.cursor,
         repositoryRevision,
+        savedIdentity: {
+          contentHash: capture.contentHash,
+          cursor: capture.cursor,
+          editVersion: capture.editVersion,
+          repositoryRevision,
+        },
         snapshot: publish(),
       }
     }

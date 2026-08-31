@@ -7,12 +7,16 @@ import type {
   ProjectDocument,
   ProjectRepository,
   ProjectSummary,
+  ProjectVersionSummary,
 } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../adapters'
 import type {
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
   ProjectPageAction,
+  ProjectPersistenceSession,
+  ProjectPersistenceSnapshot,
+  ProjectRecoveryDraftSummary,
 } from '../project'
 import type { StudioLayerEntry } from '../studio/StudioLeftPanel.vue'
 import type { WorkbenchUiStore } from './workbench-ui-store'
@@ -30,7 +34,11 @@ import {
   BUILT_IN_PROJECT_TEMPLATES,
   createBuiltInProject,
   createBuiltInProjectPage,
+  createIndexedDBProjectRecoveryDraftStore,
+  createMemoryProjectRecoveryDraftStore,
+  createProjectCoordinationChannel,
   createProjectEditorSession,
+  createProjectPersistenceSession,
   duplicateProjectPage,
   nextProjectPageId,
   nextProjectPageRoute,
@@ -47,10 +55,18 @@ export interface WorkbenchControllerProps {
 }
 
 export interface WorkbenchRecoveryNotice {
-  action?: 'reload'
+  action?: 'fork' | 'reload' | 'versions'
   actionLabel?: string
   message: string
+  secondaryAction?: 'fork' | 'reload' | 'versions'
+  secondaryActionLabel?: string
+  tertiaryAction?: 'fork' | 'reload' | 'versions'
+  tertiaryActionLabel?: string
   tone: 'error' | 'warning'
+}
+
+export interface WorkbenchRecoveryDraftSummary extends ProjectRecoveryDraftSummary {
+  presence: 'active' | 'inactive' | 'unknown'
 }
 
 export function createWorkbenchController(
@@ -62,6 +78,8 @@ export function createWorkbenchController(
   const projects = ref<ProjectSummary[]>([])
   const projectSession = shallowRef<ProjectEditorSession>()
   const projectSessionSnapshot = shallowRef<ProjectEditorSessionSnapshot>()
+  const persistenceSnapshot = shallowRef<ProjectPersistenceSnapshot>()
+  const recoveryDrafts = shallowRef<WorkbenchRecoveryDraftSummary[]>([])
   const currentPageId = ref('')
   const configError = ref('')
   const busy = ref(false)
@@ -69,6 +87,10 @@ export function createWorkbenchController(
   let projectCommandSequence = 0
   let disposed = false
   let unsubscribeProjectSession: (() => void) | undefined
+  let unsubscribePersistenceSession: (() => void) | undefined
+  let persistenceSession: ProjectPersistenceSession | undefined
+  let projectSessionIdSequence = 0
+  let disposePromise: Promise<void> | undefined
   let projectedPageId = ''
   const previewSession = createWorkbenchPreviewSession({
     onNotify: ui.notify,
@@ -163,13 +185,17 @@ export function createWorkbenchController(
   })
   const hasUnsavedChanges = computed(() => dirty.value || !!configError.value)
   const workspaceRecoveryNotice = computed<WorkbenchRecoveryNotice | undefined>(() => {
-    if (projectSessionSnapshot.value?.lastError?.code === 'PROJECT_REVISION_CONFLICT') {
+    if (persistenceSnapshot.value?.status === 'conflict') {
       return {
-        action: 'reload',
-        actionLabel: workbenchLocale.value.t('recovery.reloadLatest', 'Reload latest'),
+        action: 'versions',
+        actionLabel: workbenchLocale.value.t('recovery.viewLatest', 'View latest'),
+        secondaryAction: 'fork',
+        secondaryActionLabel: workbenchLocale.value.t('recovery.saveAsProject', 'Save draft as new project'),
+        tertiaryAction: 'reload',
+        tertiaryActionLabel: workbenchLocale.value.t('recovery.discardAndReload', 'Discard and reload'),
         message: workbenchLocale.value.t(
           'recovery.revisionConflict',
-          'This project changed in another session. Reload the latest saved revision to continue; unsaved local edits will be discarded.',
+          'This project changed in another session. Your local work is preserved as a recovery draft. Reload the latest revision or save the draft as another project.',
         ),
         tone: 'error',
       }
@@ -188,11 +214,17 @@ export function createWorkbenchController(
   const statusLabel = computed(() => {
     if (!repository.value)
       return workbenchLocale.value.t('status.loading', 'Loading')
-    if (hasUnsavedChanges.value)
-      return workbenchLocale.value.t('status.unsaved', 'Unsaved')
-    return repository.value.persistence === 'durable'
-      ? workbenchLocale.value.t('status.savedLocal', 'Saved locally')
-      : workbenchLocale.value.t('status.temporary', 'Temporary session')
+    switch (persistenceSnapshot.value?.status) {
+      case 'saving': return workbenchLocale.value.t('status.saving', 'Autosaving')
+      case 'pending': return workbenchLocale.value.t('status.pending', 'Changes pending')
+      case 'failed': return workbenchLocale.value.t('status.failed', 'Autosave failed')
+      case 'conflict': return workbenchLocale.value.t('status.conflict', 'External revision detected')
+      case 'volatile': return workbenchLocale.value.t('status.temporary', 'Temporary session')
+      case 'saved': return workbenchLocale.value.t('status.savedAuto', 'Autosaved')
+      default: return repository.value.persistence === 'durable'
+        ? workbenchLocale.value.t('status.savedAuto', 'Autosaved')
+        : workbenchLocale.value.t('status.temporary', 'Temporary session')
+    }
   })
 
   function resolveCurrentPageId(
@@ -251,12 +283,51 @@ export function createWorkbenchController(
       designSession.selectedIds.value = []
   }
 
-  function bindProjectSession(session: ProjectEditorSession, preferredPageId: string): void {
+  async function disposeProjectPersistence(): Promise<void> {
+    unsubscribePersistenceSession?.()
+    unsubscribePersistenceSession = undefined
+    const active = persistenceSession
+    persistenceSession = undefined
+    persistenceSnapshot.value = undefined
+    if (active)
+      await active.dispose()
+  }
+
+  async function bindProjectSession(
+    session: ProjectEditorSession,
+    preferredPageId: string,
+    activeRepository: ProjectRepository,
+  ): Promise<void> {
+    await disposeProjectPersistence()
     unsubscribeProjectSession?.()
     projectSession.value = session
     currentPageId.value = resolveCurrentPageId(session.snapshot, preferredPageId)
     projectedPageId = ''
     unsubscribeProjectSession = session.subscribe(acceptProjectSnapshot)
+    const sessionId = `${session.snapshot.document.id}:workbench:${++projectSessionIdSequence}:${Date.now().toString(36)}`
+    const draftStore = activeRepository.persistence === 'durable'
+      ? createIndexedDBProjectRecoveryDraftStore()
+      : createMemoryProjectRecoveryDraftStore()
+    if ('open' in draftStore)
+      await draftStore.open()
+    const coordination = createProjectCoordinationChannel({
+      projectId: session.snapshot.document.id,
+      sessionId,
+    })
+    persistenceSession = createProjectPersistenceSession({
+      coordination,
+      draftStore,
+      editor: session,
+      sessionId,
+      onExternalRevision: async (resolution) => {
+        if (resolution === 'reload' && !disposed)
+          await openProject(session.snapshot.document.id, currentPageId.value)
+      },
+    })
+    unsubscribePersistenceSession = persistenceSession.subscribe((snapshot) => {
+      persistenceSnapshot.value = snapshot
+    })
+    recoveryDrafts.value = await listRecoveryDrafts()
   }
 
   function selectCurrentPage(pageId: string): boolean {
@@ -345,11 +416,11 @@ export function createWorkbenchController(
     currentAdapter.value = adapter
     designSession.configure(adapter)
     exportService.clear()
-    bindProjectSession(createProjectEditorSession({
+    await bindProjectSession(createProjectEditorSession({
       project,
       registry: adapter.componentRegistry,
       repository: activeRepository,
-    }), page.id)
+    }), page.id, activeRepository)
     ui.closeTemplatePicker()
   }
 
@@ -458,13 +529,15 @@ export function createWorkbenchController(
   }
 
   async function saveProject(): Promise<void> {
-    const session = projectSession.value
-    if (!session || !repository.value || configError.value || busy.value)
+    const activePersistence = persistenceSession
+    if (!activePersistence || !repository.value || configError.value || busy.value)
       return
     busy.value = true
     ui.clearMessage()
     try {
-      const result = await session.save()
+      const result = await activePersistence.flush()
+      if (!result)
+        return
       if (!result.success) {
         ui.notify(result.error.message)
         return
@@ -486,6 +559,180 @@ export function createWorkbenchController(
     }
   }
 
+  async function createNamedCheckpoint(label: string): Promise<void> {
+    const activePersistence = persistenceSession
+    if (!activePersistence || configError.value || busy.value)
+      return
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const result = await activePersistence.createNamedCheckpoint(label)
+      if (!result)
+        return
+      if (!result.success) {
+        ui.notify(result.error.message)
+        return
+      }
+      await refreshProjects()
+      ui.notify(workbenchLocale.value.t(
+        'workbench.checkpointCreated',
+        'Created checkpoint “{label}” at v{revision}',
+        { label: label.trim(), revision: result.repositoryRevision },
+      ))
+    }
+    catch (error) {
+      ui.notify(error)
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function listProjectVersions(): Promise<ProjectVersionSummary[]> {
+    const projectId = currentProject.value?.id
+    return projectId && repository.value
+      ? await repository.value.listVersions(projectId)
+      : []
+  }
+
+  async function setProjectVersionLabel(revision: number, label?: string): Promise<void> {
+    const projectId = currentProject.value?.id
+    const activeRepository = repository.value
+    if (!projectId || !activeRepository)
+      return
+    await activeRepository.setVersionLabel({
+      projectId,
+      revision,
+      ...(label !== undefined ? { label } : {}),
+      expectedRepositoryRevision: repositoryRevision.value,
+    })
+  }
+
+  async function inspectProjectVersion(revision: number) {
+    const projectId = currentProject.value?.id
+    return projectId && repository.value
+      ? await repository.value.getVersion(projectId, revision)
+      : undefined
+  }
+
+  async function restoreProjectVersion(revision: number): Promise<void> {
+    const projectId = currentProject.value?.id
+    const activeRepository = repository.value
+    const activePersistence = persistenceSession
+    if (!projectId || !activeRepository || !activePersistence || busy.value)
+      return
+    busy.value = true
+    try {
+      const flushed = await activePersistence.flush()
+      if (flushed && !flushed.success)
+        throw new Error(flushed.error.message)
+      const version = await activeRepository.getVersion(projectId, revision)
+      if (!version)
+        throw new Error(`Project version does not exist: ${projectId}@${revision}`)
+      const expectedRepositoryRevision = projectSession.value?.snapshot.repositoryRevision
+      if (expectedRepositoryRevision === undefined)
+        return
+      await disposeProjectPersistence()
+      await activeRepository.commit({
+        commandId: `${projectId}:restore:${revision}:${Date.now().toString(36)}`,
+        document: version.document,
+        expectedRepositoryRevision,
+        id: projectId,
+        metadata: { source: 'restore', restoredFromRevision: revision },
+      })
+      await openProject(projectId, currentPageId.value)
+      await refreshProjects()
+    }
+    catch (error) {
+      ui.notify(error)
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function openRecoveryDraftStore() {
+    const activeRepository = repository.value
+    if (!activeRepository)
+      return undefined
+    const store = activeRepository.persistence === 'durable'
+      ? createIndexedDBProjectRecoveryDraftStore()
+      : createMemoryProjectRecoveryDraftStore()
+    if ('open' in store)
+      await store.open()
+    return store
+  }
+
+  async function listRecoveryDrafts(): Promise<WorkbenchRecoveryDraftSummary[]> {
+    const store = await openRecoveryDraftStore()
+    if (!store)
+      return []
+    try {
+      const drafts = await store.list(currentProject.value?.id)
+      return await Promise.all(drafts
+        .filter(draft => draft.draftId !== persistenceSession?.draftId)
+        .map(async draft => ({
+          ...draft,
+          presence: await (persistenceSession?.querySessionPresence(draft.sessionId)
+            ?? Promise.resolve('unknown' as const)),
+        })))
+    }
+    finally {
+      store.close()
+    }
+  }
+
+  async function discardRecoveryDraft(draftId: string): Promise<void> {
+    const store = await openRecoveryDraftStore()
+    if (!store)
+      return
+    try {
+      await store.delete(draftId)
+      recoveryDrafts.value = recoveryDrafts.value.filter(draft => draft.draftId !== draftId)
+    }
+    finally {
+      store.close()
+    }
+  }
+
+  async function restoreRecoveryDraft(draftId: string): Promise<void> {
+    const activeRepository = repository.value
+    const projectId = currentProject.value?.id
+    if (!activeRepository || !projectId || busy.value)
+      return
+    busy.value = true
+    const store = await openRecoveryDraftStore()
+    try {
+      const draft = await store?.get(draftId)
+      const latest = await activeRepository.get(projectId)
+      if (!draft || !latest)
+        throw new Error('Recovery draft is no longer available.')
+      if (draft.projectId !== projectId
+        || draft.baseRepositoryRevision !== latest.repositoryRevision) {
+        throw new Error('Recovery draft is based on another project revision and cannot be applied automatically.')
+      }
+      await disposeProjectPersistence()
+      await activeRepository.commit({
+        commandId: `${projectId}:recover:${draft.editVersion}:${Date.now().toString(36)}`,
+        document: draft.document,
+        expectedRepositoryRevision: latest.repositoryRevision,
+        id: projectId,
+        metadata: { source: 'manual', label: 'Recovered draft' },
+      })
+      await store?.delete(draftId)
+      await openProject(projectId, currentPageId.value)
+      await refreshProjects()
+      recoveryDrafts.value = recoveryDrafts.value.filter(draft => draft.draftId !== draftId)
+    }
+    catch (error) {
+      ui.notify(error)
+    }
+    finally {
+      store?.close()
+      busy.value = false
+    }
+  }
+
   async function reloadCurrentProject(): Promise<void> {
     const projectId = currentProject.value?.id
     const pageId = currentPageId.value
@@ -494,8 +741,44 @@ export function createWorkbenchController(
     busy.value = true
     ui.clearMessage()
     try {
+      const discardedDraftId = persistenceSession?.draftId
       await openProject(projectId, pageId)
+      if (discardedDraftId)
+        await discardRecoveryDraft(discardedDraftId)
       ui.notify(workbenchLocale.value.t('recovery.reloaded', 'Reloaded the latest saved revision'))
+    }
+    catch (error) {
+      ui.notify(error)
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function saveCurrentDraftAsProject(): Promise<void> {
+    const activeRepository = repository.value
+    const document = currentProject.value
+    const pageId = currentPageId.value
+    if (!activeRepository || !document || busy.value)
+      return
+    busy.value = true
+    try {
+      await persistenceSession?.handleVisibilityHidden()
+      const oldDraftId = persistenceSession?.draftId
+      const id = `${document.id}-recovered-${Date.now().toString(36)}`
+      const fork: ProjectDocument = structuredClone(document) as ProjectDocument
+      fork.id = id
+      fork.name = `${document.name} recovered`
+      await activeRepository.create({ document: fork })
+      await refreshProjects()
+      await openProject(id, pageId)
+      if (oldDraftId)
+        await discardRecoveryDraft(oldDraftId)
+      ui.notify(workbenchLocale.value.t(
+        'recovery.savedAsProject',
+        'Saved local draft as “{name}”',
+        { name: fork.name },
+      ))
     }
     catch (error) {
       ui.notify(error)
@@ -516,7 +799,39 @@ export function createWorkbenchController(
       void createProject(templateId)
   }
 
+  function handleVisibilityChange(): void {
+    if (document.visibilityState === 'hidden')
+      void persistenceSession?.handleVisibilityHidden()
+  }
+
+  function handlePageHide(): void {
+    void persistenceSession?.handleVisibilityHidden()
+  }
+
+  function handleBeforeUnload(event: BeforeUnloadEvent): void {
+    if (!persistenceSnapshot.value?.beforeUnloadRequired)
+      return
+    event.preventDefault()
+    event.returnValue = ''
+  }
+
+  async function disposeWorkbench(): Promise<void> {
+    if (disposePromise)
+      return await disposePromise
+    disposePromise = (async () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      globalThis.removeEventListener('pagehide', handlePageHide)
+      globalThis.removeEventListener('beforeunload', handleBeforeUnload)
+      await disposeProjectPersistence()
+      repository.value?.close()
+    })()
+    return await disposePromise
+  }
+
   onMounted(async () => {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    globalThis.addEventListener('pagehide', handlePageHide)
+    globalThis.addEventListener('beforeunload', handleBeforeUnload)
     try {
       const openedRepository = await openDefaultProjectRepository({})
       if (disposed) {
@@ -546,7 +861,7 @@ export function createWorkbenchController(
     designSession.dispose()
     exportService.clear()
     previewSession.dispose()
-    repository.value?.close()
+    void disposeWorkbench()
   })
 
   return {
@@ -554,11 +869,13 @@ export function createWorkbenchController(
     busy,
     componentRegistry,
     configError,
+    createNamedCheckpoint,
     createProject,
     currentProject,
     currentGraph,
     currentPage,
     currentPageId,
+    discardRecoveryDraft,
     designerFieldNames,
     flowEventTargets,
     designerLayers,
@@ -566,15 +883,23 @@ export function createWorkbenchController(
     executeFlowCommand: executeProjectCommand,
     getCurrentAdapterId,
     handlePageAction,
+    inspectProjectVersion,
+    listProjectVersions,
+    listRecoveryDrafts,
     localeOptions,
     previewState,
     registry,
     repositoryRevision,
+    recoveryDrafts,
     requestOpenProject,
+    restoreProjectVersion,
+    restoreRecoveryDraft,
     reloadCurrentProject,
     saveProject,
+    saveCurrentDraftAsProject,
     selectPageFromDesigner,
     selectTemplate,
+    setProjectVersionLabel,
     statusLabel,
     templates: BUILT_IN_PROJECT_TEMPLATES,
     workbenchLocale,
