@@ -569,7 +569,7 @@ an iframe reload, adapter load, project/page switch, or Design revision.
 ```ts
 interface RuntimeHostMessageBase {
   channel: 'mx-config-form-runtime-host'
-  version: 2
+  version: 3
   hostId: string
   projectId: string
   pageId: string
@@ -581,6 +581,10 @@ interface RuntimeHostRuntimeStatePayload {
   values: Record<string, unknown>
   touched: string[]
   validation: Record<string, string[]>
+}
+
+interface RuntimeHostSubmitResultPayload extends RuntimeHostRuntimeStatePayload {
+  status: 'success' | 'invalid'
 }
 
 interface PreviewRuntimeIdentity {
@@ -598,6 +602,9 @@ interface PreviewRuntimeIdentity {
 - Structural `sync` and transient `state` are separate messages. Both carry
   one atomic runtime snapshot; values, touched, and validation cannot be sent
   or restored independently.
+- Runtime submit emits one atomic `submitResult` payload with `success` or
+  `invalid` status. Only a successful result is followed by the semantic
+  `submit` event used by Flow; validation failure never dispatches `form.submit`.
 - Adapter loading and Runtime compilation are asynchronous. The iframe retains
   the state payload with the highest accepted sequence and, after the Renderer
   mounts, restores that payload rather than the older payload captured by the
@@ -615,6 +622,9 @@ interface PreviewRuntimeIdentity {
   `nodeId + component + contractVersion + fingerprint` contract is unchanged.
   Project, page, adapter, removed field, or changed contract resets the affected
   state. Runtime events from a stale host or revision are ignored.
+- `PreviewSession.lastSubmission` is transient, carries the accepted revision
+  key, and is cleared on scope changes, revision changes, compile failures, or
+  explicit user clearing. Clearing the result never resets Preview values.
 
 ### 10.4 Validation & Error Matrix
 
@@ -641,7 +651,8 @@ interface PreviewRuntimeIdentity {
 
 ### 10.6 Tests Required
 
-- Protocol unit tests validate the complete v2 identity, runtime-state payload,
+- Protocol unit tests validate the complete v3 identity, runtime-state and
+  submit-result payloads,
   stale revision, replay, source, and origin.
 - RuntimeHost component tests control adapter resolution and assert a state that
   arrives during compilation wins for values, touched, and validation.

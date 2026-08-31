@@ -9,19 +9,25 @@ import type {
   PagePreviewProjection,
   PreviewRuntimeIdentity,
   PreviewRuntimeStateEvent,
+  PreviewRuntimeSubmitResultEvent,
+  PreviewSubmission,
 } from '../session'
 import type { RuntimeHostRuntimeStatePayload } from '../runtime-host/protocol'
 import {
+  Check,
+  Clipboard,
   Maximize2,
   Minimize2,
   Monitor,
   Send,
   Smartphone,
   Tablet,
+  Trash2,
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, ref, useTemplateRef, watch } from 'vue'
+import { useWorkbenchDialogFocus } from '../components/use-dialog-focus'
 import PreviewRuntimeHostFrame from '../runtime-host/PreviewRuntimeHostFrame.vue'
 
 export type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
@@ -37,12 +43,14 @@ const props = defineProps<{
   open: boolean
   projection?: PagePreviewProjection
   reactionProjection: ConfigFormReactionProjection<Record<string, unknown>>
+  lastSubmission?: PreviewSubmission
   state: { label: string, tone: 'error' | 'live' }
   viewport: PreviewViewport
 }>()
 
 const emit = defineEmits<{
   close: []
+  clearSubmission: []
   error: [error: unknown]
   fieldChange: [payload: { field: string, values: Record<string, unknown> }]
   runtimeEvent: [payload: { event: string, nodeId: string }]
@@ -50,13 +58,35 @@ const emit = defineEmits<{
   runtimeState: [event: PreviewRuntimeStateEvent]
   ready: [event: PreviewRuntimeIdentity]
   submit: [values: Record<string, unknown>]
+  submitResult: [event: PreviewRuntimeSubmitResultEvent]
+  message: [message: string]
   'update:expanded': [expanded: boolean]
   'update:viewport': [viewport: PreviewViewport]
 }>()
 
 const runtimeHost = useTemplateRef<{ submit: () => void }>('runtimeHost')
+const dialog = useTemplateRef<HTMLElement>('dialog')
 const runtimeReady = ref(false)
 const locale = computed(() => createDesignerLocale(props.locale))
+const dialogFocus = useWorkbenchDialogFocus(
+  () => props.open && !!props.expanded,
+  dialog,
+  () => emit('update:expanded', false),
+)
+const submissionJson = computed(() => {
+  if (!props.lastSubmission)
+    return ''
+  try {
+    return JSON.stringify(props.lastSubmission.values, null, 2)
+  }
+  catch {
+    return locale.value.t('preview.resultUnavailable', 'Submission values cannot be formatted.')
+  }
+})
+const submissionValidation = computed(() => Object.entries(props.lastSubmission?.validation ?? {}))
+const submissionStatusLabel = computed(() => props.lastSubmission?.status === 'success'
+  ? locale.value.t('preview.submitSuccess', 'Submitted successfully')
+  : locale.value.t('preview.submitInvalid', 'Validation failed'))
 const viewports = computed(() => [
   { icon: Monitor, id: 'desktop' as const, label: locale.value.t('preview.desktop', 'Desktop preview') },
   { icon: Tablet, id: 'tablet' as const, label: locale.value.t('preview.tablet', 'Tablet preview') },
@@ -65,6 +95,22 @@ const viewports = computed(() => [
 
 function submitForm(): void {
   runtimeHost.value?.submit()
+}
+
+async function copySubmission(): Promise<void> {
+  if (!props.lastSubmission)
+    return
+  if (!navigator.clipboard) {
+    emit('error', new Error(locale.value.t('preview.copyUnavailable', 'Clipboard access is unavailable.')))
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(submissionJson.value)
+    emit('message', locale.value.t('preview.copySuccess', 'Submission JSON copied.'))
+  }
+  catch (error) {
+    emit('error', error)
+  }
 }
 
 function handleRuntimeReady(event: PreviewRuntimeIdentity): void {
@@ -86,10 +132,20 @@ watch(
 </script>
 
 <template>
-  <aside v-if="open" class="preview-pane" :aria-label="locale.t('preview.page', 'Page preview')">
+  <aside
+    v-if="open"
+    ref="dialog"
+    class="preview-pane"
+    :class="{ 'is-expanded': expanded }"
+    :aria-label="locale.t('preview.page', 'Page preview')"
+    :aria-labelledby="expanded ? 'preview-dialog-title' : undefined"
+    :aria-modal="expanded ? 'true' : undefined"
+    :role="expanded ? 'dialog' : undefined"
+    @keydown="dialogFocus.handleKeydown"
+  >
     <header class="pane-header">
       <div class="preview-heading">
-        <strong>{{ locale.t('preview.title', 'Preview') }}</strong>
+        <strong id="preview-dialog-title">{{ locale.t('preview.title', 'Preview') }}</strong>
         <span class="preview-live-state" :data-tone="state.tone" role="status" aria-live="polite">
           <span aria-hidden="true" />
           {{ state.label }}
@@ -112,6 +168,9 @@ watch(
         <button type="button" :disabled="!compilation || !runtimeReady" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" @click="submitForm">
           <Send :size="15" aria-hidden="true" />
         </button>
+        <button v-if="expanded" type="button" class="preview-exit-command" @click="emit('update:expanded', false)">
+          {{ locale.t('preview.exit', 'Exit preview') }}
+        </button>
         <button
           class="preview-expand-button"
           type="button"
@@ -127,46 +186,97 @@ watch(
         </button>
       </div>
     </header>
-    <div class="preview-canvas">
-      <div class="preview-stage" :data-viewport="viewport">
-        <div v-if="compilation && (configError || projection?.compileResult.success === false)" class="preview-diagnostics" role="status">
-          <strong>{{ locale.t('preview.showingLastValid', 'Showing last valid preview') }}</strong>
-          <p v-if="configError">{{ configError }}</p>
-          <p
-            v-for="diagnostic in projection?.compileResult.success === false ? projection.compileResult.diagnostics : []"
-            :key="`${diagnostic.code}-${diagnostic.path.join('.')}`"
-          >
-            {{ diagnostic.message }}
-          </p>
-        </div>
-        <PreviewRuntimeHostFrame
-          v-if="adapter && compilation && projection"
-          :key="adapter"
-          ref="runtimeHost"
-          :adapter="adapter"
-          :compilation="compilation"
-          :locale="locale.locale"
-          :runtime-state="runtimeState"
-          :namespace="namespace"
-          :reaction-projection="reactionProjection"
-          :revision="projection?.current.revisionKey ?? ''"
-          :runtime-session-key="projection.current.runtimeSessionKey"
-          :title="locale.t('preview.runtimeFrame', 'Page preview runtime')"
-          @error="handleRuntimeError"
-          @field-change="emit('fieldChange', $event)"
-          @mounted="emit('runtimeMounted', $event)"
-          @ready="handleRuntimeReady"
-          @runtime-event="emit('runtimeEvent', $event)"
-          @runtime-state="emit('runtimeState', $event)"
-          @submit="emit('submit', $event)"
-        />
-        <div v-else class="preview-errors">
-          <strong>{{ locale.t('preview.unavailable', 'Preview unavailable') }}</strong>
-          <p v-for="diagnostic in projection?.compileResult.diagnostics ?? []" :key="`${diagnostic.code}-${diagnostic.path.join('.')}`">
-            {{ diagnostic.message }}
-          </p>
+    <div class="preview-body">
+      <div class="preview-canvas">
+        <div class="preview-stage" :data-viewport="viewport">
+          <div v-if="compilation && (configError || projection?.compileResult.success === false)" class="preview-diagnostics" role="status">
+            <strong>{{ locale.t('preview.showingLastValid', 'Showing last valid preview') }}</strong>
+            <p v-if="configError">{{ configError }}</p>
+            <p
+              v-for="diagnostic in projection?.compileResult.success === false ? projection.compileResult.diagnostics : []"
+              :key="`${diagnostic.code}-${diagnostic.path.join('.')}`"
+            >
+              {{ diagnostic.message }}
+            </p>
+          </div>
+          <PreviewRuntimeHostFrame
+            v-if="adapter && compilation && projection"
+            :key="adapter"
+            ref="runtimeHost"
+            :adapter="adapter"
+            :compilation="compilation"
+            :locale="locale.locale"
+            :runtime-state="runtimeState"
+            :namespace="namespace"
+            :reaction-projection="reactionProjection"
+            :revision="projection?.current.revisionKey ?? ''"
+            :runtime-session-key="projection.current.runtimeSessionKey"
+            :title="locale.t('preview.runtimeFrame', 'Page preview runtime')"
+            @error="handleRuntimeError"
+            @field-change="emit('fieldChange', $event)"
+            @mounted="emit('runtimeMounted', $event)"
+            @ready="handleRuntimeReady"
+            @runtime-event="emit('runtimeEvent', $event)"
+            @runtime-state="emit('runtimeState', $event)"
+            @submit="emit('submit', $event)"
+            @submit-result="emit('submitResult', $event)"
+          />
+          <div v-else class="preview-errors">
+            <strong>{{ locale.t('preview.unavailable', 'Preview unavailable') }}</strong>
+            <p v-for="diagnostic in projection?.compileResult.diagnostics ?? []" :key="`${diagnostic.code}-${diagnostic.path.join('.')}`">
+              {{ diagnostic.message }}
+            </p>
+          </div>
         </div>
       </div>
+      <section class="preview-results" data-preview-results :aria-label="locale.t('preview.results', 'Submission results')" aria-live="polite">
+        <header class="preview-results-header">
+          <div>
+            <strong>{{ locale.t('preview.results', 'Submission results') }}</strong>
+            <span v-if="lastSubmission" class="preview-result-status" :data-status="lastSubmission.status">
+              <Check v-if="lastSubmission.status === 'success'" :size="13" aria-hidden="true" />
+              <span v-else aria-hidden="true">!</span>
+              {{ submissionStatusLabel }}
+            </span>
+          </div>
+          <div v-if="lastSubmission" class="preview-results-actions">
+            <button type="button" :title="locale.t('preview.copy', 'Copy submission JSON')" :aria-label="locale.t('preview.copy', 'Copy submission JSON')" @click="copySubmission">
+              <Clipboard :size="14" aria-hidden="true" />
+              <span>{{ locale.t('preview.copy', 'Copy') }}</span>
+            </button>
+            <button type="button" :title="locale.t('preview.clearResult', 'Clear submission result')" :aria-label="locale.t('preview.clearResult', 'Clear submission result')" @click="emit('clearSubmission')">
+              <Trash2 :size="14" aria-hidden="true" />
+              <span>{{ locale.t('preview.clearResult', 'Clear') }}</span>
+            </button>
+          </div>
+        </header>
+        <template v-if="lastSubmission">
+          <div class="preview-result-toolbar">
+            <span>{{ locale.t('preview.submittedAt', 'Submitted {time}', { time: new Date(lastSubmission.submittedAt).toLocaleTimeString(locale.locale) }) }}</span>
+            <button type="button" class="preview-submit-again" :disabled="!compilation || !runtimeReady" @click="submitForm">
+              <Send :size="13" aria-hidden="true" />
+              {{ locale.t('preview.submitAgain', 'Submit again') }}
+            </button>
+          </div>
+          <pre class="preview-result-json" data-preview-submission-json>{{ submissionJson }}</pre>
+          <div v-if="lastSubmission.touched.length > 0" class="preview-result-section">
+            <strong>{{ locale.t('preview.touched', 'Touched fields') }}</strong>
+            <span v-for="field in lastSubmission.touched" :key="field" class="preview-result-chip">{{ field }}</span>
+          </div>
+          <div v-if="submissionValidation.length > 0" class="preview-result-section preview-result-validation">
+            <strong>{{ locale.t('preview.validation', 'Validation') }}</strong>
+            <ul>
+              <li v-for="[field, errors] in submissionValidation" :key="field">
+                <span>{{ field }}</span>
+                <span>{{ errors.join(', ') }}</span>
+              </li>
+            </ul>
+          </div>
+        </template>
+        <p v-else class="preview-results-empty">
+          {{ locale.t('preview.resultsEmpty', 'Submit the preview form to inspect its JSON result and validation state.') }}
+        </p>
+      </section>
     </div>
   </aside>
 </template>

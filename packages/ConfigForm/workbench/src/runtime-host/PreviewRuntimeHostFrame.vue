@@ -2,7 +2,11 @@
 import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { WorkbenchAdapterId } from '../adapters'
-import type { PreviewRuntimeIdentity, PreviewRuntimeStateEvent } from '../session'
+import type {
+  PreviewRuntimeIdentity,
+  PreviewRuntimeStateEvent,
+  PreviewRuntimeSubmitResultEvent,
+} from '../session'
 import type { RuntimeHostRuntimeStatePayload } from './protocol'
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../utils/clone'
@@ -33,6 +37,7 @@ const emit = defineEmits<{
   runtimeState: [event: PreviewRuntimeStateEvent]
   runtimeEvent: [payload: { event: string, nodeId: string }]
   submit: [values: Record<string, unknown>]
+  submitResult: [event: PreviewRuntimeSubmitResultEvent]
 }>()
 
 const frame = useTemplateRef<HTMLIFrameElement>('frame')
@@ -148,6 +153,15 @@ function handleMessage(event: MessageEvent<unknown>): void {
       break
     case 'submit':
       emit('submit', message.values)
+      break
+    case 'submitResult':
+      emit('submitResult', {
+        hostId: message.hostId,
+        pageId: message.pageId,
+        projectId: message.projectId,
+        revision: message.revision,
+        result: message.payload,
+      })
       break
     case 'fieldChange':
       emit('fieldChange', message.payload)

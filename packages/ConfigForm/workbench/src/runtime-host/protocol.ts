@@ -3,7 +3,7 @@ import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { WorkbenchAdapterId } from '../adapters'
 
 export const RUNTIME_HOST_CHANNEL = 'mx-config-form-runtime-host'
-export const RUNTIME_HOST_PROTOCOL_VERSION = 2
+export const RUNTIME_HOST_PROTOCOL_VERSION = 3
 
 export interface RuntimeHostMessageBase {
   channel: typeof RUNTIME_HOST_CHANNEL
@@ -19,6 +19,12 @@ export interface RuntimeHostRuntimeStatePayload {
   values: Record<string, unknown>
   touched: string[]
   validation: Record<string, string[]>
+}
+
+export type RuntimeSubmitStatus = 'success' | 'invalid'
+
+export interface RuntimeHostSubmitResultPayload extends RuntimeHostRuntimeStatePayload {
+  status: RuntimeSubmitStatus
 }
 
 export interface RuntimeHostSyncMessage extends RuntimeHostMessageBase {
@@ -107,6 +113,7 @@ export type RuntimeHostToParentPayload
     | { type: 'geometry', payload: RuntimeHostGeometryPayload }
     | { type: 'designPointerDown' | 'designPointerMove' | 'designPointerUp' | 'designPointerCancel', payload: RuntimeHostDesignPointerPayload }
     | { type: 'runtimeState', payload: RuntimeHostRuntimeStatePayload }
+    | { type: 'submitResult', payload: RuntimeHostSubmitResultPayload }
     | { type: 'submit', values: Record<string, unknown> }
     | { type: 'fieldChange', payload: RuntimeHostFieldChangePayload }
     | { type: 'runtimeEvent', payload: RuntimeHostComponentEventPayload }
@@ -262,6 +269,11 @@ export function isRuntimeHostToParentMessage(value: unknown): value is RuntimeHo
   }
   if (value.type === 'runtimeState')
     return isRuntimeState(value.payload)
+  if (value.type === 'submitResult') {
+    return isRecord(value.payload)
+      && (value.payload.status === 'success' || value.payload.status === 'invalid')
+      && isRuntimeState(value.payload)
+  }
   if (value.type === 'submit')
     return isRecord(value.values)
   if (value.type === 'fieldChange') {

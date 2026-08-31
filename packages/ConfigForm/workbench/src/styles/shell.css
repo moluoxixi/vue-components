@@ -370,6 +370,14 @@ select:focus-visible {
   box-shadow: -16px 0 36px rgb(0 0 0 / 24%);
 }
 
+.preview-pane.is-expanded {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-left: 0;
+  box-shadow: none;
+}
+
 .workbench-layout.is-preview-expanded .preview-pane {
   left: 0;
   width: 100%;
@@ -430,6 +438,24 @@ select:focus-visible {
 .preview-toolbar {
   flex: 0 0 auto;
   gap: 4px !important;
+}
+
+.preview-exit-command {
+  min-height: 26px;
+  padding: 0 7px;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-control-border);
+  border-radius: 4px;
+  background: var(--wb-elevated);
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.preview-exit-command:hover {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-hover);
 }
 
 .preview-viewport-switch {

@@ -317,6 +317,71 @@ describe('preview session', () => {
     session.dispose()
   })
 
+  it('captures revision-bound submit results without letting stale results or clearing reset runtime values', () => {
+    const session = createWorkbenchPreviewSession()
+    const first = accept(session, {
+      graph: graph({ id: 'name', field: 'name', defaultValue: 'Initial' }),
+    })!
+    const firstHost = runtimeIdentity(first, 'host-a')
+    session.handleRuntimeMounted(firstHost)
+    session.handleSubmitResult({
+      ...firstHost,
+      result: {
+        status: 'invalid',
+        values: { name: '' },
+        touched: ['name'],
+        validation: { name: ['Required'] },
+      },
+    })
+
+    expect(session.lastSubmission.value).toMatchObject({
+      status: 'invalid',
+      values: { name: '' },
+      touched: ['name'],
+      validation: { name: ['Required'] },
+      revisionKey: first.current.revisionKey,
+    })
+    expect(session.runtimeState.value).toEqual({
+      values: { name: '' },
+      touched: ['name'],
+      validation: { name: ['Required'] },
+    })
+
+    const next = accept(session, { editVersion: 1 })!
+    expect(session.lastSubmission.value).toBeUndefined()
+    session.handleSubmitResult({
+      ...firstHost,
+      result: {
+        status: 'success',
+        values: { name: 'stale' },
+        touched: ['name'],
+        validation: {},
+      },
+    })
+    expect(session.lastSubmission.value).toBeUndefined()
+
+    const nextHost = runtimeIdentity(next, 'host-b')
+    session.handleRuntimeMounted(nextHost)
+    session.handleSubmitResult({
+      ...nextHost,
+      result: {
+        status: 'success',
+        values: { name: 'Submitted' },
+        touched: ['name'],
+        validation: {},
+      },
+    })
+    expect(session.lastSubmission.value).toMatchObject({
+      status: 'success',
+      values: { name: 'Submitted' },
+      revisionKey: next.current.revisionKey,
+    })
+    session.clearSubmission()
+    expect(session.lastSubmission.value).toBeUndefined()
+    expect(session.getRuntimeModel()).toEqual({ name: 'Submitted' })
+    session.dispose()
+  })
+
   it('owns a bounded Flow trace and forwards trace events to diagnostics consumers', async () => {
     const onTrace = vi.fn()
     const session = createWorkbenchPreviewSession({ onTrace })

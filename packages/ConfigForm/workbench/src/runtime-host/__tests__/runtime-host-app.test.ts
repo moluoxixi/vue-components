@@ -43,7 +43,7 @@ const runtimeController = vi.hoisted(() => {
       }
       fieldsOrTouched.forEach(field => value ? touched.add(field) : touched.delete(field))
     }),
-    submit: vi.fn(() => Promise.resolve()),
+    submit: vi.fn<() => Promise<boolean>>(() => Promise.resolve(true)),
   }
 })
 
@@ -82,12 +82,12 @@ vi.mock('@moluoxixi/config-form/renderer', async () => {
   }
 })
 
-function compilation(): PageCompilation {
+function compilation(pageId = 'home'): PageCompilation {
   return {
     snapshotIdentity: {
       source: 'committed',
       projectId: 'project',
-      pageId: 'home',
+      pageId,
       contentHash: 'fnv1a:project',
       editVersion: 1,
     },
@@ -95,7 +95,7 @@ function compilation(): PageCompilation {
     key: {
       irVersion: CANONICAL_PROJECT_IR_VERSION,
       projectId: 'project',
-      pageId: 'home',
+      pageId,
       registryAdapter: 'element-plus',
       registryAdapterVersion: '1',
       registryUsageHash: 'fnv1a:registry',
@@ -104,7 +104,7 @@ function compilation(): PageCompilation {
       semanticHash: 'fnv1a:page',
     },
     page: {
-      id: 'home',
+      id: pageId,
       name: 'Home',
       route: '/',
       props: {},
@@ -185,5 +185,96 @@ describe('runtime host app', () => {
     expect(runtimeController.setErrors).toHaveBeenCalledTimes(1)
     expect(runtimeController.setTouched).toHaveBeenCalledTimes(2)
     wrapper.unmount()
+  })
+
+  it('reports invalid submissions without a success event and reports successful values atomically', async () => {
+    runtimeController.submit.mockReset()
+    runtimeController.submit
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+    const postMessage = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    const wrapper = mount(RuntimeHostApp)
+
+    dispatchParentMessage({
+      type: 'sync',
+      sequence: 1,
+      adapter: 'element-plus',
+      compilation: compilation(),
+      mode: 'preview',
+      locale: 'en-US',
+      runtimeState: { values: { name: 'Ada' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+      runtimeSessionKey: 'project:element-plus:home',
+    })
+    adapterControl.release()
+    await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'ready')).toBe(true))
+
+    dispatchParentMessage({ type: 'submit', sequence: 2 })
+    await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => {
+      const value = payload as { type?: string, payload?: { status?: string } }
+      return value.type === 'submitResult' && value.payload?.status === 'invalid'
+    })).toBe(true))
+    expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'submit')).toBe(false)
+
+    dispatchParentMessage({ type: 'submit', sequence: 3 })
+    await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => {
+      const value = payload as { type?: string, payload?: { status?: string } }
+      return value.type === 'submitResult' && value.payload?.status === 'success'
+    })).toBe(true))
+    expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'submit')).toBe(true)
+
+    wrapper.unmount()
+    postMessage.mockRestore()
+  })
+
+  it('drops a submission result when a newer structural sync changes its identity', async () => {
+    let resolveSubmit: ((valid: boolean) => void) | undefined
+    runtimeController.submit.mockReset()
+    runtimeController.submit.mockImplementation(() => new Promise<boolean>((resolve) => {
+      resolveSubmit = resolve
+    }))
+    const postMessage = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    const wrapper = mount(RuntimeHostApp)
+
+    dispatchParentMessage({
+      type: 'sync',
+      sequence: 1,
+      adapter: 'element-plus',
+      compilation: compilation(),
+      mode: 'preview',
+      locale: 'en-US',
+      runtimeState: { values: { name: 'Ada' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+      runtimeSessionKey: 'project:element-plus:home',
+    })
+    adapterControl.release()
+    await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'ready')).toBe(true))
+
+    dispatchParentMessage({ type: 'submit', sequence: 2 })
+    await vi.waitFor(() => expect(runtimeController.submit).toHaveBeenCalledTimes(1))
+    dispatchParentMessage({
+      type: 'sync',
+      sequence: 3,
+      adapter: 'element-plus',
+      compilation: compilation('settings'),
+      mode: 'preview',
+      locale: 'en-US',
+      runtimeState: { values: { name: 'Grace' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+      pageId: 'settings',
+      revision: 'project:settings:2',
+      runtimeSessionKey: 'project:element-plus:settings',
+    })
+    resolveSubmit?.(true)
+    await nextTick()
+    await nextTick()
+
+    expect(postMessage.mock.calls.some(([payload]) => {
+      const value = payload as { type?: string }
+      return value.type === 'submitResult' || value.type === 'submit'
+    })).toBe(false)
+
+    wrapper.unmount()
+    postMessage.mockRestore()
   })
 })

@@ -239,6 +239,33 @@ describe('runtime host protocol', () => {
     }))).toBe(true)
   })
 
+  it('validates success and invalid submit results as one atomic payload', async () => {
+    const message = await syncMessage()
+    const base = childMessage(message, {
+      type: 'submitResult',
+      payload: {
+        status: 'success',
+        values: { name: 'Ada' },
+        touched: ['name'],
+        validation: {},
+      },
+    })
+
+    expect(isRuntimeHostToParentMessage(structuredClone(base))).toBe(true)
+    expect(isRuntimeHostToParentMessage({
+      ...base,
+      payload: { ...(base.payload as object), status: 'invalid', validation: { name: ['Required'] } },
+    })).toBe(true)
+    expect(isRuntimeHostToParentMessage({
+      ...base,
+      payload: { ...(base.payload as object), status: 'pending' },
+    })).toBe(false)
+    expect(isRuntimeHostToParentMessage({
+      ...base,
+      payload: { ...(base.payload as object), touched: [''] },
+    })).toBe(false)
+  })
+
   it('accepts messages only from the expected source, origin, and session', async () => {
     const message = await syncMessage()
     const source = {} as MessageEventSource

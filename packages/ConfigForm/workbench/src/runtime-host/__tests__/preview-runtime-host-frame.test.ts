@@ -59,6 +59,36 @@ describe('preview RuntimeHost frame', () => {
     expect(wrapper.emitted('mounted')).toEqual([[
       { hostId, projectId: 'project', pageId: 'home', revision: 'project:4:home:1' },
     ]])
+    window.dispatchEvent(new MessageEvent('message', {
+      data: {
+        ...message,
+        sequence: 2,
+        type: 'submitResult',
+        payload: {
+          status: 'invalid',
+          values: { name: '' },
+          touched: ['name'],
+          validation: { name: ['Required'] },
+        },
+      },
+      origin: window.location.origin,
+      source,
+    }))
+    await nextTick()
+    expect(wrapper.emitted('submitResult')).toEqual([[
+      {
+        hostId,
+        projectId: 'project',
+        pageId: 'home',
+        revision: 'project:4:home:1',
+        result: {
+          status: 'invalid',
+          values: { name: '' },
+          touched: ['name'],
+          validation: { name: ['Required'] },
+        },
+      },
+    ]])
     wrapper.unmount()
   })
 

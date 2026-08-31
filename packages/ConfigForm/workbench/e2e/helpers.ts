@@ -13,4 +13,5 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: templateNames[adapter] }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
+  await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled()
 }

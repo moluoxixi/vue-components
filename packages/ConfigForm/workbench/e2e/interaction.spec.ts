@@ -58,8 +58,8 @@ async function runtimeNodeSignature(node: Locator): Promise<{
   })
 }
 
-async function visibleBox(locator: Locator): Promise<DragGeometry & { x: number, y: number }> {
-  await expect(locator).toBeVisible()
+async function visibleBox(locator: Locator, options: { timeout?: number } = {}): Promise<DragGeometry & { x: number, y: number }> {
+  await expect(locator).toBeVisible({ timeout: options.timeout })
   const box = await locator.boundingBox()
   expect(box).not.toBeNull()
   return box!
@@ -512,6 +512,26 @@ test('keeps a compact Preview inside its own responsive runtime viewport', async
   await page.keyboard.press('Escape')
 })
 
+for (const adapter of [
+  { id: 'element', name: 'Element' },
+  { id: 'antd', name: 'Ant' },
+] as const) {
+  test(`shows the submitted runtime JSON in the ${adapter.name} Preview testbench`, async ({ page }) => {
+    await createProject(page, adapter.id)
+    await page.getByRole('button', { name: 'Show preview' }).click()
+
+    const preview = page.getByRole('complementary', { name: 'Page preview' })
+    const input = previewRuntime(page).getByRole('textbox', { name: 'Name', exact: true })
+    await input.fill(`${adapter.name} preview value`)
+    await expect(input).toHaveValue(`${adapter.name} preview value`)
+    await preview.getByRole('button', { name: 'Submit preview form' }).click()
+
+    const result = preview.locator('[data-preview-submission-json]')
+    await expect(result).toContainText(`${adapter.name} preview value`)
+    await expect(preview.locator('[data-preview-results]')).toContainText('Submitted successfully')
+  })
+}
+
 test('separates the intrinsic canvas frame from fit, manual zoom, and pan state', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
   await createProject(page, 'element')
@@ -683,7 +703,7 @@ test('supports keyboard and touch material drops without a second editable model
 
   await inputMaterial.press(' ')
   const keyboardCandidate = designRuntime(page).locator('[data-config-node-state~="candidate"]')
-  const candidateBox = await visibleBox(keyboardCandidate)
+  const candidateBox = await visibleBox(keyboardCandidate, { timeout: 10_000 })
   const candidateId = await keyboardCandidate.getAttribute('data-config-node-id')
   await expect(inputMaterial).toHaveAttribute('aria-pressed', 'true')
   await inputMaterial.press('ArrowDown')

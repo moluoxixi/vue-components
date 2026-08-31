@@ -10,6 +10,7 @@ import type {
 import type { CSSProperties } from 'vue'
 import type {
   RuntimeHostRuntimeStatePayload,
+  RuntimeHostSubmitResultPayload,
   RuntimeHostSyncMessage,
   RuntimeHostToParentPayload,
 } from './protocol'
@@ -73,6 +74,10 @@ let geometryFrame: number | undefined
 let nodeOrder = 0
 let geometryObserver: ResizeObserver | undefined
 let applyingParentStateDepth = 0
+let submitInFlight = false
+let submitRequestToken = 0
+let activeSubmitToken: number | undefined
+let submittedValues: Record<string, unknown> | undefined
 let latestRuntimeState: RuntimeHostRuntimeStatePayload = {
   values: {},
   touched: [],
@@ -338,6 +343,10 @@ async function acceptSync(message: RuntimeHostSyncMessage): Promise<void> {
     return
   latestSyncSequence = message.sequence
   const syncSequence = message.sequence
+  submitRequestToken += 1
+  activeSubmitToken = undefined
+  submitInFlight = false
+  submittedValues = undefined
   const nextCompilationKey = JSON.stringify(message.compilation.key)
   const sessionChanged = runtimeSessionKey.value !== message.runtimeSessionKey
   currentProjectId = message.projectId
@@ -454,9 +463,47 @@ function handleMessage(event: MessageEvent<unknown>): void {
     reportError('RUNTIME_HOST_NOT_READY', 'Preview Runtime is not ready.')
     return
   }
+  if (submitInFlight)
+    return
+  const requestToken = ++submitRequestToken
+  const requestIdentity = {
+    projectId: currentProjectId,
+    pageId: currentPageId,
+    revision: currentRevision,
+    runtimeSessionKey: runtimeSessionKey.value,
+    syncSequence: latestSyncSequence,
+  }
+  activeSubmitToken = requestToken
+  submitInFlight = true
+  submittedValues = undefined
   void currentRenderer.submit()
-    .then(postRuntimeState)
-    .catch(error => reportError('RUNTIME_SUBMIT_FAILED', error))
+    .then((valid) => {
+      if (!isCurrentSubmit(requestToken, requestIdentity)) {
+        return
+      }
+      const state = currentRuntimeState()
+      const result: RuntimeHostSubmitResultPayload = {
+        status: valid ? 'success' : 'invalid',
+        values: cloneWorkbenchJson(valid ? (submittedValues ?? state.values) : state.values),
+        touched: [...state.touched],
+        validation: cloneWorkbenchJson(state.validation),
+      }
+      postMessage({ type: 'submitResult', payload: result })
+      if (valid)
+        postMessage({ type: 'submit', values: cloneWorkbenchJson(submittedValues ?? state.values) })
+      postRuntimeState()
+    })
+    .catch((error) => {
+      if (isCurrentSubmit(requestToken, requestIdentity))
+        reportError('RUNTIME_SUBMIT_FAILED', error)
+    })
+    .finally(() => {
+      if (activeSubmitToken !== requestToken)
+        return
+      activeSubmitToken = undefined
+      submitInFlight = false
+      submittedValues = undefined
+    })
 }
 
 function updateModel(value: Record<string, unknown>): void {
@@ -465,7 +512,25 @@ function updateModel(value: Record<string, unknown>): void {
 }
 
 function submitValues(values: Record<string, unknown>): void {
-  postMessage({ type: 'submit', values: cloneWorkbenchJson(values) })
+  submittedValues = cloneWorkbenchJson(values)
+}
+
+function isCurrentSubmit(
+  requestToken: number,
+  identity: {
+    projectId: string
+    pageId: string
+    revision: string
+    runtimeSessionKey: string
+    syncSequence: number
+  },
+): boolean {
+  return activeSubmitToken === requestToken
+    && identity.projectId === currentProjectId
+    && identity.pageId === currentPageId
+    && identity.revision === currentRevision
+    && identity.runtimeSessionKey === runtimeSessionKey.value
+    && identity.syncSequence === latestSyncSequence
 }
 
 function fieldChange(payload: { field: string, values: Record<string, unknown> }): void {

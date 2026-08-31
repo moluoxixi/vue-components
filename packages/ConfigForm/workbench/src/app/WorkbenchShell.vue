@@ -92,7 +92,10 @@ const {
   handleRuntimeMounted: handlePreviewRuntimeMounted,
   handleRuntimeReady: handlePreviewRuntimeReady,
   handleRuntimeState: handlePreviewRuntimeState,
+  handleSubmitResult: handlePreviewSubmitResult,
   handleSubmit: handlePreviewSubmit,
+  clearSubmission: clearPreviewSubmission,
+  lastSubmission: previewLastSubmission,
   projection: previewProjection,
   runtimeState: previewRuntimeState,
 } = previewSession
@@ -393,6 +396,7 @@ watch(recoveryDrafts, (drafts) => {
         :config-error="configError"
         :locale="localeOptions"
         :runtime-state="previewRuntimeState"
+        :last-submission="previewLastSubmission"
         :namespace="registry.rendererNamespace"
         :open="previewOpen"
         :projection="previewProjection"
@@ -406,6 +410,9 @@ watch(recoveryDrafts, (drafts) => {
         @ready="handlePreviewRuntimeReady"
         @runtime-state="handlePreviewRuntimeState"
         @submit="handlePreviewSubmit"
+        @submit-result="handlePreviewSubmitResult"
+        @clear-submission="clearPreviewSubmission"
+        @message="message = $event"
       />
     </section>
 
