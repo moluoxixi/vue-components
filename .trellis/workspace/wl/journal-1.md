@@ -616,3 +616,36 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 27: 完成 ConfigForm JSON 导入与 Workbench 生产体验收口
+
+**Date**: 2026-09-02
+**Task**: 完成 ConfigForm JSON 导入与 Workbench 生产体验收口
+**Package**: config-form-designer
+**Branch**: `main`
+
+### Summary
+
+完成严格 JSON 导入、迁移、隔离预览与创建生命周期，归档 JSON 导入子任务和生产体验父任务，并通过全量门禁与浏览器冒烟验证。
+
+### Main Changes
+
+- 实现 Project/Page JSON 严格导入、身份重映射、迁移、预览、创建与导出范围。
+- 同步 JSON Import 规格并完成父任务八个子任务的跨任务验收。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `97ec69b5` | (see git log) |
+
+### Testing
+
+- [OK] JSON Import 单测 19/19、Workbench 单测 258/258、Model 单测 65/65。
+- [OK] JSON Import E2E 4/4、Workbench E2E 66/66、build/typecheck/lint/Trellis validate 通过。
+- [OK] 应用内浏览器验证 Page v1 迁移到 PageGraph v2，隔离预览渲染且无新增控制台错误。
+
+### Status
+
+[OK] **Completed**
