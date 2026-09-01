@@ -455,13 +455,13 @@ test('keeps the empty canvas hint out of runtime geometry and removes it after a
   await createProject(page, 'element')
   await page.getByRole('tab', { name: 'Layers' }).click()
   for (const nodeId of ['profile-name', 'profile-role']) {
-    await page.locator(`[data-layer-id="${nodeId}"] .designer-layer-select`).click()
+    await page.locator(`[data-layer-id^="${nodeId}-"] .designer-layer-select`).click()
     await page.keyboard.press('Delete')
   }
 
   const sheet = page.locator('.mx-config-form-designer__canvas-sheet')
   const before = await visibleBox(sheet)
-  await page.locator('[data-layer-id="profile-active"] .designer-layer-select').click()
+  await page.locator('[data-layer-id^="profile-active-"] .designer-layer-select').click()
   await page.keyboard.press('Delete')
   const empty = page.locator('.mx-config-form-designer__canvas-empty')
   await expect(empty).toHaveText('Drag or click a component on the left to add a field')
@@ -481,7 +481,7 @@ test('keeps the empty canvas hint out of runtime geometry and removes it after a
 
 test('keeps Camera inside the canvas lower right without covering selected node actions', async ({ page }) => {
   await createProject(page, 'element')
-  const node = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+  const node = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
   await selectCanvasNode(page, node, node.locator('input').first())
 
   for (const viewport of [
@@ -493,16 +493,21 @@ test('keeps Camera inside the canvas lower right without covering selected node 
     if (viewport.width === 390)
       await page.locator('[data-mobile-studio-tab="canvas"]').click()
     const canvas = page.locator('.mx-config-form-designer__canvas')
-    const camera = page.getByRole('group', { name: 'Canvas zoom and pan' })
-    await expect.poll(async () => {
-      const [canvasBox, cameraBox] = await Promise.all([canvas.boundingBox(), camera.boundingBox()])
-      return Boolean(canvasBox && cameraBox
-        && cameraBox.x + cameraBox.width <= canvasBox.x + canvasBox.width - 8
-        && cameraBox.y + cameraBox.height <= canvasBox.y + canvasBox.height - 8)
-    }).toBe(true)
-    const canvasBox = await visibleBox(canvas)
-    const cameraBox = await visibleBox(camera)
-    const toolbarBox = await visibleBox(page.locator('.mx-config-form-designer__node-actions'))
+    const { cameraBox, canvasBox, toolbarBox } = await canvas.evaluate((element) => {
+      const camera = element.querySelector<HTMLElement>('.mx-config-form-designer__camera-controls')
+      const toolbar = element.querySelector<HTMLElement>('.mx-config-form-designer__node-actions')
+      if (!camera || !toolbar)
+        throw new Error('Canvas camera and selected node actions must be visible.')
+      const rectangle = (target: Element): DragGeometry => {
+        const rect = target.getBoundingClientRect()
+        return { height: rect.height, width: rect.width, x: rect.x, y: rect.y }
+      }
+      return {
+        cameraBox: rectangle(camera),
+        canvasBox: rectangle(element),
+        toolbarBox: rectangle(toolbar),
+      }
+    })
     expect(cameraBox.x + cameraBox.width).toBeLessThanOrEqual(canvasBox.x + canvasBox.width - 8)
     expect(cameraBox.y + cameraBox.height).toBeLessThanOrEqual(canvasBox.y + canvasBox.height - 8)
     expect(cameraBox.x).toBeGreaterThan(canvasBox.x + canvasBox.width / 2)
@@ -519,8 +524,8 @@ for (const adapter of [
     await page.getByRole('tab', { name: 'Layers' }).click()
 
     const layers = page.getByRole('treeitem')
-    const nameLayer = page.locator('[data-layer-id="profile-name"] .designer-layer-select')
-    const roleLayer = page.locator('[data-layer-id="profile-role"] .designer-layer-select')
+    const nameLayer = page.locator('[data-layer-id^="profile-name-"] .designer-layer-select')
+    const roleLayer = page.locator('[data-layer-id^="profile-role-"] .designer-layer-select')
     await roleLayer.click()
     const propertyInput = page.locator('[data-workspace-panel="properties"] input').first()
     await expect(propertyInput).toBeVisible()
@@ -530,7 +535,7 @@ for (const adapter of [
     await expect(layers).toHaveCount(3)
 
     await page.getByRole('button', { name: 'Show preview' }).click()
-    const previewInput = previewRuntime(page).locator('[data-config-node-id="profile-name"] input').first()
+    const previewInput = previewRuntime(page).locator('[data-config-node-id^="profile-name-"] input').first()
     await previewInput.focus()
     await page.keyboard.press('Control+D')
     await page.keyboard.press('Delete')
@@ -609,7 +614,7 @@ for (const adapter of [
     const sheet = canvas.locator('.mx-config-form-designer__canvas-sheet')
     const runtime = designRuntime(page)
     const runtimeForm = runtime.locator('form')
-    const nameNode = runtime.locator('[data-config-node-id="profile-name"]')
+    const nameNode = runtime.locator('[data-config-node-id^="profile-name-"]')
     const designInput = nameNode.locator('input').first()
 
     await expect(runtimeForm).toHaveAttribute('inert', '')
@@ -654,7 +659,7 @@ for (const adapter of [
     await selectCanvasNode(page, nameNode, designInput)
     await expect(canvas).toHaveAttribute('data-editor-overlay-mode', 'selected')
 
-    const selection = canvas.locator('[data-editor-focus-node-id="profile-name"]')
+    const selection = canvas.locator('[data-editor-focus-node-id^="profile-name-"]')
     await expect(selection).toBeFocused()
     await expect(designInput).not.toBeFocused()
     await expect(canvas.locator('.mx-config-form-designer__selection-box')).toHaveCount(1)
@@ -714,7 +719,7 @@ for (const adapter of [
     expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('')
 
     await page.getByRole('button', { name: 'Show preview' }).click()
-    const previewInput = previewRuntime(page).locator('[data-config-node-id="profile-name"] input').first()
+    const previewInput = previewRuntime(page).locator('[data-config-node-id^="profile-name-"] input').first()
     await previewInput.fill('Preview value')
     await expect(previewInput).toHaveValue('Preview value')
     await expect(previewInput).toBeFocused()
@@ -748,7 +753,7 @@ test('keeps pointer candidates, drag visuals, committed nodes, and Preview on th
 test('removes stale selection chrome while a pointer drag is active', async ({ page }) => {
   await createProject(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
-  const selectedNode = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+  const selectedNode = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
   await selectCanvasNode(page, selectedNode, selectedNode.locator('input').first())
   await expect(canvas.locator('.mx-config-form-designer__selection-box')).toHaveCount(1)
 
@@ -803,9 +808,9 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(canvasPanel).toBeVisible()
     expectSameSize(await visibleBox(workspace), initialWorkspace)
 
-    const nameNode = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+    const nameNode = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
     await selectCanvasNode(page, nameNode, nameNode.locator('input').first())
-    const selection = page.locator('[data-editor-focus-node-id="profile-name"]')
+    const selection = page.locator('[data-editor-focus-node-id^="profile-name-"]')
     await expect(propertiesPanel).toBeVisible()
     await expect(selection).toBeFocused()
     await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
@@ -828,7 +833,7 @@ for (const adapter of ['element', 'antd'] as const) {
     await page.setViewportSize({ width: 390, height: 844 })
     await createProject(page, adapter)
     await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.locator('[data-layer-id="profile-name"] .designer-layer-select').click()
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
     await page.getByRole('tab', { name: 'Inspector' }).click()
     await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
     await expectInspectorTabGeometry(page)
@@ -837,7 +842,7 @@ for (const adapter of ['element', 'antd'] as const) {
   test(`removes and restores a ${adapter} selection-incompatible stored binding`, async ({ page }) => {
     await createProject(page, adapter)
     await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.locator('[data-layer-id="profile-name"] .designer-layer-select').click()
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
     await page.getByRole('tab', { name: 'Bindings' }).click()
     const source = page.getByRole('tabpanel', { name: 'Bindings' }).getByRole('textbox', { name: 'value' })
     await source.fill('profile.source')
@@ -846,11 +851,11 @@ for (const adapter of ['element', 'antd'] as const) {
     await page.getByRole('tab', { name: 'Components' }).click()
     await page.locator(`[data-material-key="${adapter}.section"]`).click()
     await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.locator('[data-layer-id="profile-name"] .designer-layer-select').click({ modifiers: ['Control'] })
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click({ modifiers: ['Control'] })
     await expect(page.locator('[role="treeitem"][aria-selected="true"]')).toHaveCount(2)
 
     await page.getByRole('tab', { name: 'Bindings' }).click()
-    const stale = page.locator('[data-stale-kind="selection-incompatible"][data-stale-node-id="profile-name"]')
+    const stale = page.locator('[data-stale-kind="selection-incompatible"][data-stale-node-id^="profile-name-"]')
     await expect(stale).toContainText('value')
     await expect(stale).toContainText('profile.source')
     const staleKey = stale.locator('code')
@@ -889,7 +894,7 @@ for (const adapter of ['element', 'antd'] as const) {
 test('keeps a compact Preview inside its own responsive runtime viewport', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
   await createProject(page, 'element')
-  const roleNode = designRuntime(page).locator('[data-config-node-id="profile-role"]')
+  const roleNode = designRuntime(page).locator('[data-config-node-id^="profile-role-"]')
   await selectCanvasNode(page, roleNode, roleNode.locator('.el-select__wrapper'))
   await page.getByRole('button', { name: 'Show preview' }).click()
 
@@ -921,7 +926,7 @@ test('keeps a compact Preview inside its own responsive runtime viewport', async
   }))
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
 
-  await runtime.locator('[data-config-node-id="profile-role"] .el-select__wrapper').click()
+  await runtime.locator('[data-config-node-id^="profile-role-"] .el-select__wrapper').click()
   await expect(runtime.getByRole('option', { name: 'Developer' })).toBeVisible()
   await expect(page.getByRole('option', { name: 'Developer' })).toHaveCount(0)
   await page.keyboard.press('Escape')
@@ -966,10 +971,10 @@ test('separates the intrinsic canvas frame from fit, manual zoom, and pan state'
 
   await page.getByRole('button', { name: 'Zoom out' }).click()
   await expect(canvas).toHaveAttribute('data-camera-scale', '0.8')
-  const nameNode = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+  const nameNode = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
   await selectCanvasNode(page, nameNode, nameNode.locator('input').first())
   expectSameRect(
-    await visibleBox(page.locator('[data-editor-focus-node-id="profile-name"]')),
+    await visibleBox(page.locator('[data-editor-focus-node-id^="profile-name-"]')),
     await visibleBox(nameNode),
   )
 
@@ -1113,7 +1118,7 @@ test('restores Preview focus and removes the closed drawer from Canvas hit testi
 
   await expect(previewTrigger).toBeFocused()
   await expect(page.locator('.preview-drawer-overlay')).toHaveCount(0)
-  const node = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+  const node = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
   const nodeBox = await visibleBox(node)
   const parentHitClasses = await page.evaluate(({ x, y }) => document
     .elementsFromPoint(x, y)
@@ -1125,7 +1130,7 @@ test('restores Preview focus and removes the closed drawer from Canvas hit testi
   expect(parentHitClasses.join(' ')).not.toContain('preview-drawer')
 
   await selectCanvasNode(page, node, node.locator('input').first())
-  await expect(page.locator('[data-editor-focus-node-id="profile-name"]')).toBeFocused()
+  await expect(page.locator('[data-editor-focus-node-id^="profile-name-"]')).toBeFocused()
 })
 
 test('uses the real Ant runtime component for pointer candidate, overlay, and committed output', async ({ page }) => {

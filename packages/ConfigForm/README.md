@@ -110,6 +110,16 @@ Component Registry
   -> Export menu -> readonly Source / Config preview dialog
 ```
 
+#### Workbench 创建工作区与模板目录
+
+Workbench `App` 拥有 `designer | create` 顶层视图和显式 `project | page` 创建目标；`WorkbenchShell` 只编辑当前项目，不导入模板目录、模板浏览状态或模板预览服务。首次启动且没有项目时，App 直接进入项目创建；从 Topbar 或 Page Manager 进入时，App 只保留稳定的返回焦点 key，取消后由原入口恢复焦点，成功后回到 Designer。
+
+模板来源实现只读异步 `TemplateCatalogProvider`，只返回 JSON-safe manifest 与 page seed。Catalog service 是 `unknown -> typed` 的唯一解析边界，统一校验 provider/template identity、版本、危险 key、seed schema、稳定排序与 Registry requirements；UI 不解释 Provider 原始数据，也不接收 Vue component、函数、HTML 或脚本。内置 Provider 当前提供 Element Plus 与 Ant Design Vue 的空白/资料表单四个条目，未来来源仍必须遵守同一 data-only 合同。
+
+模板详情从不可变 seed 实例化独立的内存候选项目，经 `createProjectSnapshot`、Compiler 和隔离的 `PreviewRuntimeHostFrame` 渲染。目录筛选、选中、移动 pane、compatibility、preview request、values/touched/validation 与 reaction projection 都是创建工作区瞬态状态，不进入 `ProjectDocument`、活动 `PreviewSession`、history、selection、persistence revision 或 autosave。异步 adapter/preview 结果按当前 template request identity 发布，过期结果直接丢弃。
+
+创建项目在 adapter、Registry、schema 与 Compiler 预检通过后才调用 `ProjectRepository.create`；创建页面只向当前 `ProjectEditorSession` 提交一个 `page.add` Project Command，因此一次 Undo 可完整回退。两条路径共用纯 identity remap：每次实例化都为 project/page/node/field/reaction/flow/flow-node/flow-edge 生成带来源前缀的新 identity，并按所属 Flow/node 作用域重写引用；模板 seed、实例之间不共享可变对象，opaque action config 不做猜测式字符串替换。
+
 Workbench 的 Source 与 Config 不是编辑 provider，也不参与模型反向解析。导出配置使用公开 `defineFields<T>()` / `defineField({...})` API；Source 使用文件树与只读 Monaco 展示不依赖 ConfigForm runtime 的 standalone Vue 工程。JSON / Tree 是配置的辅助查看投影，导出菜单还可下载完整项目 ZIP。
 
 Workbench 以 `ProjectDocument` 作为唯一业务数据；`ProjectSnapshot` 只是其不可变版本 envelope，不得形成第二套结构模型。

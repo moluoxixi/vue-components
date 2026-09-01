@@ -16,7 +16,10 @@ const WORKBENCH_DESIGN_SESSION_KEY: InjectionKey<WorkbenchDesignSession> = Symbo
 const WORKBENCH_PREVIEW_SESSION_KEY: InjectionKey<PreviewSession> = Symbol('config-form-workbench-preview-session')
 const WORKBENCH_EXPORT_SERVICE_KEY: InjectionKey<WorkbenchExportService> = Symbol('config-form-workbench-export-service')
 
-export function provideWorkbenchController(props: Readonly<WorkbenchControllerProps>): WorkbenchController {
+export function provideWorkbenchController(props: Readonly<WorkbenchControllerProps>): {
+  controller: WorkbenchController
+  ui: WorkbenchUiStore
+} {
   const ui = createWorkbenchUiStore(props)
   const controller = createWorkbenchController(props, ui)
   provide(WORKBENCH_UI_STORE_KEY, ui)
@@ -24,7 +27,7 @@ export function provideWorkbenchController(props: Readonly<WorkbenchControllerPr
   provide(WORKBENCH_PREVIEW_SESSION_KEY, controller.previewSession)
   provide(WORKBENCH_EXPORT_SERVICE_KEY, controller.exportService)
   provide(WORKBENCH_CONTROLLER_KEY, controller)
-  return controller
+  return { controller, ui }
 }
 
 export function useWorkbenchDesignSession(): WorkbenchDesignSession {

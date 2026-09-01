@@ -189,7 +189,6 @@ describe('workbench production architecture boundary', () => {
       'previewOpen',
       'previewExpanded',
       'previewViewport',
-      'templatePickerOpen',
       'pageManagerOpen',
       'exportPreviewMode',
       'flowWorkspaceOpen',
@@ -206,6 +205,22 @@ describe('workbench production architecture boundary', () => {
     expect(uiStore).not.toContain('ProjectDocument')
     expect(uiStore).not.toContain('RuntimeHostRuntimeStatePayload')
     expect(uiStore).not.toContain('ExportSnapshot')
+  })
+
+  it('keeps template browsing in the App-level creation workspace', () => {
+    const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
+    const shell = readFileSync(new URL('../WorkbenchShell.vue', import.meta.url), 'utf8')
+    const uiStore = readFileSync(new URL('../workbench-ui-store.ts', import.meta.url), 'utf8')
+    const workspace = readFileSync(new URL('../../features/templates/TemplateCreationWorkspace.vue', import.meta.url), 'utf8')
+
+    expect(app).toContain('TemplateCreationWorkspace')
+    expect(app).toContain('ref<\'create\' | \'designer\'>')
+    expect(workspace).toContain('createTemplateCatalogService')
+    expect(workspace).toContain('PreviewRuntimeHostFrame')
+    expect(shell).not.toContain('TemplateDialog')
+    expect(shell).not.toContain('templatePickerOpen')
+    expect(shell).not.toContain('builtInTemplateCatalogProvider')
+    expect(uiStore).not.toContain('templatePickerOpen')
   })
 
   it('delegates event-flow execution to the page Flow Engine', () => {

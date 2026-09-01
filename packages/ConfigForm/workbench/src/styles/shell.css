@@ -30,6 +30,7 @@ select:focus-visible {
 }
 
 .workbench-app,
+.template-creation-workspace,
 .workbench-overlays {
   --wb-bg: #151618;
   --wb-border: #6c707a;
@@ -118,6 +119,7 @@ select:focus-visible {
 }
 
 .workbench-app[data-theme="light"],
+.template-creation-workspace[data-theme="light"],
 .workbench-overlays[data-theme="light"] {
   --wb-bg: #f3f4f6;
   --wb-border: #808a9a;

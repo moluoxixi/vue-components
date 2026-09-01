@@ -3,6 +3,7 @@ import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/config-form-designer'
 import type { MobileStudioView } from './workbench-ui-store'
 import type { PersistenceDialogMode } from '../features/persistence/PersistenceDialog.vue'
+import type { TemplateCreationTarget } from '../project'
 import {
   Blocks,
   Copy,
@@ -22,7 +23,6 @@ import { computed, defineAsyncComponent, nextTick, onMounted, ref, useTemplateRe
 import DesignRuntimeHostFrame from '../runtime-host/DesignRuntimeHostFrame.vue'
 import PreviewDrawer from '../studio/PreviewDrawer.vue'
 import StudioLeftPanel from '../studio/StudioLeftPanel.vue'
-import TemplateDialog from '../features/templates/TemplateDialog.vue'
 import WorkbenchCommandTooltip from './WorkbenchCommandTooltip.vue'
 import WorkbenchTopbar from './WorkbenchTopbar.vue'
 import {
@@ -33,10 +33,19 @@ import {
   useWorkbenchUiStore,
 } from './workbench-context'
 
+defineProps<{
+  creationReturnFocusKey?: string
+}>()
+
 const ExportDialog = defineAsyncComponent(() => import('../features/export/ExportDialog.vue'))
 const FlowDialog = defineAsyncComponent(() => import('../features/flow/FlowDialog.vue'))
 const PageManagerDialog = defineAsyncComponent(() => import('../features/pages/PageManagerDialog.vue'))
 const PersistenceDialog = defineAsyncComponent(() => import('../features/persistence/PersistenceDialog.vue'))
+
+const emit = defineEmits<{
+  create: [request: { focusKey: string, target: TemplateCreationTarget }]
+  creationFocusRestored: []
+}>()
 
 const controller = useWorkbenchController()
 const designSession = useWorkbenchDesignSession()
@@ -48,7 +57,6 @@ const {
   busy,
   componentRegistry,
   configError,
-  createProject,
   currentProject,
   currentGraph,
   currentPage,
@@ -70,9 +78,7 @@ const {
   saveProject,
   saveCurrentDraftAsProject,
   selectPageFromDesigner,
-  selectTemplate,
   statusLabel,
-  templates,
   workbenchLocale,
   workspaceRecoveryNotice,
 } = controller
@@ -108,7 +114,6 @@ const {
   closeExportPreview,
   closeFlowWorkspace,
   closePageManager,
-  closeTemplatePicker,
   exportDialogLoaded,
   exportPreviewMode,
   flowDialogLoaded,
@@ -121,8 +126,6 @@ const {
   openExportPreview,
   openFlowWorkspace,
   openPageManager,
-  openPageTemplatePicker,
-  openTemplatePicker,
   pageManagerLoaded,
   pageManagerOpen,
   previewExpanded,
@@ -131,7 +134,6 @@ const {
   selectMobileStudioView: selectMobileView,
   showNotice,
   studioLeftView,
-  templatePickerOpen,
   theme,
   toggleLocale,
   togglePreview,
@@ -233,6 +235,10 @@ function showPageManager(): void {
   openPageManager()
 }
 
+function requestCreation(target: TemplateCreationTarget, focusKey: string): void {
+  emit('create', { focusKey, target })
+}
+
 function showPersistenceDialog(mode: PersistenceDialogMode): void {
   persistenceDialogMode.value = mode
 }
@@ -260,7 +266,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main ref="workbenchRoot" class="workbench-app" :data-theme="theme">
+  <main ref="workbenchRoot" class="workbench-app" :data-theme="theme" data-designer-entry tabindex="-1">
     <WorkbenchCommandTooltip :root="workbenchRoot" :overlay-root="overlayRoot" />
     <WorkbenchTopbar
       :project="currentProject"
@@ -277,7 +283,7 @@ onMounted(() => {
       :theme="theme"
       @export="showExportDialog"
       @create-checkpoint="showPersistenceDialog('checkpoint')"
-      @new-page="openTemplatePicker"
+      @new-page="requestCreation('page', $event)"
       @open-flow="showFlowDialog()"
       @open-pages="showPageManager"
       @open-versions="showPersistenceDialog('versions')"
@@ -469,33 +475,6 @@ onMounted(() => {
       </button>
     </nav>
 
-    <section v-else class="empty-workbench" aria-labelledby="new-page-title">
-      <h1 id="new-page-title">
-        {{ workbenchLocale.t('template.newPage', 'New page') }}
-      </h1>
-      <div class="template-list">
-        <ElButton
-          v-for="template in templates.values()"
-          :key="template.id"
-          native-type="button"
-          :disabled="busy"
-          @click="createProject(template.id)"
-        >
-          <strong>{{ template.title }}</strong>
-          <span>{{ template.adapter }}</span>
-        </ElButton>
-      </div>
-    </section>
-
-    <TemplateDialog
-      :busy="busy"
-      :locale="localeOptions"
-      :open="templatePickerOpen"
-      :templates="[...templates.values()]"
-      @close="closeTemplatePicker"
-      @select="selectTemplate"
-    />
-
     <PageManagerDialog
       v-if="pageManagerLoaded"
       :project="currentProject"
@@ -503,10 +482,13 @@ onMounted(() => {
       :busy="busy"
       :locale="localeOptions"
       :open="pageManagerOpen"
+      :return-focus-key="creationReturnFocusKey"
       @close="closePageManager"
-      @create-page="openPageTemplatePicker"
+      @create-page="requestCreation('page', 'page-manager-new-page')"
+      @create-project="requestCreation('project', 'page-manager-new-project')"
       @open-project="requestOpenProject($event)"
       @action="handlePageAction"
+      @return-focus-restored="emit('creationFocusRestored')"
     />
 
     <FlowDialog

@@ -1,6 +1,7 @@
 export * from './errors'
 export * from './export/index'
 export * from './file-tree'
+export * from './identity-remap'
 export * from './page-actions'
 export * from './path'
 export * from './project-coordination-channel'

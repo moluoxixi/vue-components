@@ -54,7 +54,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
   const previewOpen = ref(false)
   const previewExpanded = ref(false)
   const previewViewport = ref<PreviewViewport>('desktop')
-  const templatePickerOpen = ref(false)
   const pageManagerOpen = ref(false)
   const pageManagerLoaded = ref(false)
   const exportPreviewMode = ref<'source' | 'config'>()
@@ -142,19 +141,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     pageManagerOpen.value = true
   }
 
-  function closeTemplatePicker(): void {
-    templatePickerOpen.value = false
-  }
-
-  function openTemplatePicker(): void {
-    templatePickerOpen.value = true
-  }
-
-  function openPageTemplatePicker(): void {
-    closePageManager()
-    openTemplatePicker()
-  }
-
   function selectMobileStudioView(view: MobileStudioView): void {
     previewOpen.value = false
     previewExpanded.value = false
@@ -202,7 +188,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     closeExportPreview,
     closeFlowWorkspace,
     closePageManager,
-    closeTemplatePicker,
     exportDialogLoaded,
     exportPreviewMode,
     flowDialogLoaded,
@@ -216,8 +201,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     openExportPreview,
     openFlowWorkspace,
     openPageManager,
-    openPageTemplatePicker,
-    openTemplatePicker,
     pageManagerLoaded,
     pageManagerOpen,
     previewExpanded,
@@ -226,7 +209,6 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     selectMobileStudioView,
     showNotice,
     studioLeftView,
-    templatePickerOpen,
     theme,
     toggleLocale,
     togglePreview,

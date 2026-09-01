@@ -25,7 +25,7 @@ interface TemplateDefinition {
   title: string
 }
 
-function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
+export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
   const prefix = adapter === 'element-plus' ? 'element' : 'antd'
   return {
     version: PAGE_GRAPH_VERSION,
@@ -86,6 +86,25 @@ function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
         bindings: {},
       },
     },
+  }
+}
+
+export function createBlankGraph(): PageGraph {
+  return {
+    version: PAGE_GRAPH_VERSION,
+    props: {},
+    form: {
+      columns: 24,
+      fieldSpan: 24,
+      gap: '16px',
+      labelPosition: 'left',
+      responsive: {
+        tablet: { columns: 12, fieldSpan: 12 },
+        mobile: { columns: 1, fieldSpan: 1 },
+      },
+    },
+    root: [],
+    nodesById: {},
   }
 }
 

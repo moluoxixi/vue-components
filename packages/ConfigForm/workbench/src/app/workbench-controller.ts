@@ -17,13 +17,16 @@ import type {
   ProjectPersistenceSession,
   ProjectPersistenceSnapshot,
   ProjectRecoveryDraftSummary,
+  ProjectTemplateCatalogEntry,
 } from '../project'
 import type { StudioLayerEntry } from '../studio/StudioLeftPanel.vue'
 import type { WorkbenchUiStore } from './workbench-ui-store'
+import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
 import {
   createDesignerLocale,
   walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
+import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { loadWorkbenchAdapter } from '../adapters'
 import { collectFlowEventTargets } from '../flow/event-targets'
@@ -31,15 +34,15 @@ import {
   createWorkbenchLocaleOptions,
 } from '../locale'
 import {
-  BUILT_IN_PROJECT_TEMPLATES,
-  createBuiltInProject,
-  createBuiltInProjectPage,
+  analyzeTemplateCompatibility,
   createIndexedDBProjectRecoveryDraftStore,
   createMemoryProjectRecoveryDraftStore,
   createProjectCoordinationChannel,
   createProjectEditorSession,
   createProjectPersistenceSession,
   duplicateProjectPage,
+  instantiateTemplatePage,
+  instantiateTemplateProject,
   nextProjectPageId,
   nextProjectPageRoute,
   openDefaultProjectRepository,
@@ -83,6 +86,7 @@ export function createWorkbenchController(
   const currentPageId = ref('')
   const configError = ref('')
   const busy = ref(false)
+  const initialized = ref(false)
   let openProjectRequestId = 0
   let projectCommandSequence = 0
   let disposed = false
@@ -297,37 +301,61 @@ export function createWorkbenchController(
     session: ProjectEditorSession,
     preferredPageId: string,
     activeRepository: ProjectRepository,
+    activate: () => void,
   ): Promise<void> {
-    await disposeProjectPersistence()
-    unsubscribeProjectSession?.()
-    projectSession.value = session
-    currentPageId.value = resolveCurrentPageId(session.snapshot, preferredPageId)
-    projectedPageId = ''
-    unsubscribeProjectSession = session.subscribe(acceptProjectSnapshot)
+    const nextPageId = resolveCurrentPageId(session.snapshot, preferredPageId)
     const sessionId = `${session.snapshot.document.id}:workbench:${++projectSessionIdSequence}:${Date.now().toString(36)}`
     const draftStore = activeRepository.persistence === 'durable'
       ? createIndexedDBProjectRecoveryDraftStore()
       : createMemoryProjectRecoveryDraftStore()
-    if ('open' in draftStore)
-      await draftStore.open()
-    const coordination = createProjectCoordinationChannel({
-      projectId: session.snapshot.document.id,
-      sessionId,
-    })
-    persistenceSession = createProjectPersistenceSession({
-      coordination,
-      draftStore,
-      editor: session,
-      sessionId,
-      onExternalRevision: async (resolution) => {
-        if (resolution === 'reload' && !disposed)
-          await openProject(session.snapshot.document.id, currentPageId.value)
-      },
-    })
-    unsubscribePersistenceSession = persistenceSession.subscribe((snapshot) => {
-      persistenceSnapshot.value = snapshot
-    })
-    recoveryDrafts.value = await listRecoveryDrafts()
+    let coordination: ReturnType<typeof createProjectCoordinationChannel> | undefined
+    let nextPersistenceSession: ProjectPersistenceSession | undefined
+    try {
+      if ('open' in draftStore)
+        await draftStore.open()
+      coordination = createProjectCoordinationChannel({
+        projectId: session.snapshot.document.id,
+        sessionId,
+      })
+      nextPersistenceSession = createProjectPersistenceSession({
+        coordination,
+        draftStore,
+        editor: session,
+        sessionId,
+        onExternalRevision: async (resolution) => {
+          if (resolution === 'reload' && !disposed)
+            await openProject(session.snapshot.document.id, currentPageId.value)
+        },
+      })
+      await disposeProjectPersistence()
+      activate()
+      unsubscribeProjectSession?.()
+      projectSession.value = session
+      currentPageId.value = nextPageId
+      projectedPageId = ''
+      unsubscribeProjectSession = session.subscribe(acceptProjectSnapshot)
+      persistenceSession = nextPersistenceSession
+      unsubscribePersistenceSession = nextPersistenceSession.subscribe((snapshot) => {
+        persistenceSnapshot.value = snapshot
+      })
+    }
+    catch (error) {
+      if (nextPersistenceSession) {
+        await nextPersistenceSession.dispose()
+      }
+      else {
+        draftStore.close()
+        coordination?.close()
+      }
+      throw error
+    }
+    try {
+      recoveryDrafts.value = await listRecoveryDrafts()
+    }
+    catch (error) {
+      recoveryDrafts.value = []
+      ui.notify(error)
+    }
   }
 
   function selectCurrentPage(pageId: string): boolean {
@@ -411,17 +439,18 @@ export function createWorkbenchController(
       ?? document.pagesById[document.pageOrder[0]!]
     if (!page)
       return
-    previewSession.clear('project-opened')
-    configError.value = ''
-    currentAdapter.value = adapter
-    designSession.configure(adapter)
-    exportService.clear()
-    await bindProjectSession(createProjectEditorSession({
+    const session = createProjectEditorSession({
       project,
       registry: adapter.componentRegistry,
       repository: activeRepository,
-    }), page.id, activeRepository)
-    ui.closeTemplatePicker()
+    })
+    await bindProjectSession(session, page.id, activeRepository, () => {
+      previewSession.clear('project-opened')
+      configError.value = ''
+      currentAdapter.value = adapter
+      designSession.configure(adapter)
+      exportService.clear()
+    })
   }
 
   async function requestOpenProject(id: string, pageId?: string): Promise<void> {
@@ -440,55 +469,140 @@ export function createWorkbenchController(
     await openProject(id, pageId)
   }
 
-  async function createProject(templateId: string): Promise<void> {
-    if (!repository.value || busy.value)
-      return
+  function preflightTemplateProject(
+    project: ProjectDocument,
+    adapter: WorkbenchAdapter,
+    pageId = project.homePageId,
+  ): void {
+    const snapshot = createProjectSnapshot(project, 0)
+    const result = compileCanonicalPage({
+      snapshot: {
+        document: snapshot.document,
+        editVersion: snapshot.editVersion,
+        contentHash: snapshot.contentHash,
+      },
+      pageId,
+      registry: adapter.registrySnapshot,
+    })
+    if (!result.success)
+      throw new TypeError(`${result.diagnostics[0]?.code ?? 'TEMPLATE_COMPILE_FAILED'}: ${result.diagnostics[0]?.message ?? 'Template compilation failed.'}`)
+  }
+
+  async function createProjectFromTemplate(
+    template: ProjectTemplateCatalogEntry,
+    name = template.manifest.displayName,
+  ): Promise<boolean> {
+    const activeRepository = repository.value
+    const capturedProjectId = currentProject.value?.id
+    const capturedContentHash = projectSessionSnapshot.value?.contentHash
+    if (!activeRepository || busy.value)
+      return false
+    if (currentProject.value && hasUnsavedChanges.value) {
+      ui.notify(workbenchLocale.value.t(
+        'template.createProjectBlocked',
+        'Save or resolve the current project before creating another project.',
+      ))
+      return false
+    }
     busy.value = true
     ui.clearMessage()
     try {
-      const template = BUILT_IN_PROJECT_TEMPLATES.get(templateId)!
-      const adapter = await loadWorkbenchAdapter(template.adapter)
-      const project = createBuiltInProject(templateId, {
-        id: `${templateId}-${Date.now().toString(36)}`,
-        name: `${template.title} page`,
-      }, adapter.componentRegistry.lock)
-      await repository.value.create({ document: project })
-      await refreshProjects()
-      await openProject(project.id)
-      ui.closeTemplatePicker()
+      const adapter = await loadWorkbenchAdapter(template.manifest.adapter)
+      if (
+        disposed
+        || repository.value !== activeRepository
+        || currentProject.value?.id !== capturedProjectId
+        || projectSessionSnapshot.value?.contentHash !== capturedContentHash
+      ) {
+        return false
+      }
+      const compatibility = analyzeTemplateCompatibility(template, {
+        registry: adapter.registrySnapshot,
+        target: 'project',
+      })
+      if (!compatibility.compatible)
+        throw new TypeError(compatibility.diagnostics[0]?.message ?? 'Template is incompatible with this Registry.')
+      const project = instantiateTemplateProject(template, {
+        name,
+        registryLock: adapter.componentRegistry.lock,
+      })
+      preflightTemplateProject(project, adapter)
+      await activeRepository.create({ document: project })
+      try {
+        await openProject(project.id)
+        if (currentProject.value?.id !== project.id)
+          throw new TypeError('Created project could not be opened.')
+      }
+      catch (error) {
+        try {
+          await activeRepository.delete(project.id)
+        }
+        catch (compensationError) {
+          throw new Error(
+            `${error instanceof Error ? error.message : String(error)} Repository compensation failed: ${compensationError instanceof Error ? compensationError.message : String(compensationError)}`,
+          )
+        }
+        throw error
+      }
+      try {
+        await refreshProjects()
+      }
+      catch (error) {
+        ui.notify(error)
+      }
+      return true
     }
     catch (error) {
       ui.notify(error)
+      return false
     }
     finally {
       busy.value = false
     }
   }
 
-  async function createPage(templateId: string): Promise<void> {
+  async function createPageFromTemplate(
+    template: ProjectTemplateCatalogEntry,
+    name = template.manifest.displayName,
+  ): Promise<boolean> {
     const document = currentProject.value
+    const capturedContentHash = projectSessionSnapshot.value?.contentHash
     if (!repository.value || !document || busy.value)
-      return
+      return false
     busy.value = true
     ui.clearMessage()
     try {
-      const name = `${BUILT_IN_PROJECT_TEMPLATES.get(templateId)?.title ?? 'New'} page`
+      const adapter = await loadWorkbenchAdapter(template.manifest.adapter)
+      if (disposed || currentProject.value?.id !== document.id || projectSessionSnapshot.value?.contentHash !== capturedContentHash)
+        return false
+      const compatibility = analyzeTemplateCompatibility(template, {
+        registry: adapter.registrySnapshot,
+        target: 'page',
+        targetLock: structuredClone(document.registryLock),
+      })
+      if (!compatibility.compatible)
+        throw new TypeError(compatibility.diagnostics[0]?.message ?? 'Template is incompatible with the current project Registry.')
       const id = nextProjectPageId(document, name)
-      const page = createBuiltInProjectPage(templateId, {
+      const page = instantiateTemplatePage(template, {
         id,
         name,
         route: nextProjectPageRoute(document, name),
       })
+      const candidate = structuredClone(document) as ProjectDocument
+      candidate.pageOrder.push(page.id)
+      candidate.pagesById[page.id] = page
+      preflightTemplateProject(candidate, adapter, page.id)
       const changed = executeProjectActions(
         'Add page',
         [{ type: 'operation.apply', operations: [{ type: 'page.add', page }] }],
       )
       if (changed)
         selectCurrentPage(page.id)
-      ui.closeTemplatePicker()
+      return changed
     }
     catch (error) {
       ui.notify(error)
+      return false
     }
     finally {
       busy.value = false
@@ -792,13 +906,6 @@ export function createWorkbenchController(
     selectCurrentPage(pageId)
   }
 
-  function selectTemplate(templateId: string): void {
-    if (currentProject.value)
-      void createPage(templateId)
-    else
-      void createProject(templateId)
-  }
-
   function handleVisibilityChange(): void {
     if (document.visibilityState === 'hidden')
       void persistenceSession?.handleVisibilityHidden()
@@ -845,12 +952,12 @@ export function createWorkbenchController(
       const first = projects.value[0]
       if (first)
         await openProject(first.id)
-      else
-        ui.openTemplatePicker()
     }
     catch (error) {
       ui.notify(error)
-      ui.openTemplatePicker()
+    }
+    finally {
+      initialized.value = true
     }
   })
 
@@ -870,7 +977,8 @@ export function createWorkbenchController(
     componentRegistry,
     configError,
     createNamedCheckpoint,
-    createProject,
+    createPageFromTemplate,
+    createProjectFromTemplate,
     currentProject,
     currentGraph,
     currentPage,
@@ -884,6 +992,7 @@ export function createWorkbenchController(
     getCurrentAdapterId,
     handlePageAction,
     inspectProjectVersion,
+    initialized,
     listProjectVersions,
     listRecoveryDrafts,
     localeOptions,
@@ -898,10 +1007,8 @@ export function createWorkbenchController(
     saveProject,
     saveCurrentDraftAsProject,
     selectPageFromDesigner,
-    selectTemplate,
     setProjectVersionLabel,
     statusLabel,
-    templates: BUILT_IN_PROJECT_TEMPLATES,
     workbenchLocale,
     workspaceRecoveryNotice,
     designSession,

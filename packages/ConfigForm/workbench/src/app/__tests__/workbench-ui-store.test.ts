@@ -46,12 +46,11 @@ describe('workbench UI store', () => {
     ui.previewExpanded.value = true
     ui.togglePreview()
     ui.openPageManager()
-    ui.openPageTemplatePicker()
+    ui.closePageManager()
 
     expect(ui.previewOpen.value).toBe(false)
     expect(ui.previewExpanded.value).toBe(false)
     expect(ui.pageManagerOpen.value).toBe(false)
-    expect(ui.templatePickerOpen.value).toBe(true)
   })
 
   it('publishes a one-shot actionable notice without turning it into document state', () => {

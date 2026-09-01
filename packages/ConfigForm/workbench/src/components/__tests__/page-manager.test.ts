@@ -73,4 +73,14 @@ describe('page manager', () => {
     ])
     wrapper.unmount()
   })
+
+  it('emits explicit project and page creation targets', async () => {
+    const wrapper = mountManager(createProjectDocumentFixture())
+    await wrapper.get('[data-create-trigger="page-manager-new-project"]').trigger('click')
+    await wrapper.get('[data-create-trigger="page-manager-new-page"]').trigger('click')
+
+    expect(wrapper.emitted('createProject')).toHaveLength(1)
+    expect(wrapper.emitted('createPage')).toHaveLength(1)
+    wrapper.unmount()
+  })
 })

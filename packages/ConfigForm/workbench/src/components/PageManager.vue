@@ -7,6 +7,7 @@ import {
   ArrowUp,
   Copy,
   FilePlus2,
+  FolderPlus,
   Home,
   Search,
   Trash2,
@@ -25,6 +26,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   createPage: []
+  createProject: []
   openProject: [id: string]
   action: [action: ProjectPageAction]
 }>()
@@ -126,10 +128,16 @@ function confirmDelete(): void {
           </template>
         </ElInput>
       </label>
-      <ElButton class="page-manager__create" native-type="button" type="primary" :disabled="busy" @click="emit('createPage')">
-        <FilePlus2 :size="16" aria-hidden="true" />
-        {{ locale.t('pageManager.new', 'New page') }}
-      </ElButton>
+      <div class="page-manager__create-actions">
+        <ElButton data-create-trigger="page-manager-new-project" native-type="button" :disabled="busy" @click="emit('createProject')">
+          <FolderPlus :size="16" aria-hidden="true" />
+          {{ locale.t('pageManager.newProject', 'New project') }}
+        </ElButton>
+        <ElButton data-create-trigger="page-manager-new-page" native-type="button" type="primary" :disabled="busy" @click="emit('createPage')">
+          <FilePlus2 :size="16" aria-hidden="true" />
+          {{ locale.t('pageManager.new', 'New page') }}
+        </ElButton>
+      </div>
     </div>
 
     <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.projectPages', 'Project pages')">
@@ -286,10 +294,15 @@ function confirmDelete(): void {
   align-self: end;
 }
 
-.page-manager__create {
+.page-manager__create-actions {
+  display: flex;
+  align-self: end;
+  gap: 8px;
+}
+
+.page-manager__create-actions .el-button {
   min-height: 32px;
   margin-left: 0;
-  align-self: end;
   white-space: nowrap;
 }
 

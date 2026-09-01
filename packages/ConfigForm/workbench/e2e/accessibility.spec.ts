@@ -24,7 +24,7 @@ async function expectNoAccessibilityViolations(page: Page, state: string): Promi
 }
 
 async function runtimeStyleFingerprint(page: Page, frameSelector: string): Promise<Record<string, Record<string, string>>> {
-  return page.frameLocator(frameSelector).locator('[data-config-node-id="profile-name"]').first().evaluate((node) => {
+  return page.frameLocator(frameSelector).locator('[data-config-node-id^="profile-name-"]').first().evaluate((node) => {
     const input = node.querySelector('input')
     const label = node.querySelector('label')
     if (!(input instanceof HTMLElement) || !(label instanceof HTMLElement))
@@ -57,7 +57,11 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('keeps the desktop workbench accessible in dark and light themes', async ({ page }) => {
-  await expectNoAccessibilityViolations(page, 'new project dialog')
+  const creationWorkspace = page.getByRole('main', { name: 'Create project' })
+  await expect(creationWorkspace.getByText('Registry compatible', { exact: true })).toBeVisible()
+  await expect(creationWorkspace.getByRole('button', { name: 'Create project', exact: true }))
+    .toHaveCSS('background-color', 'rgb(23, 105, 170)')
+  await expectNoAccessibilityViolations(page, 'new project workspace')
   await createProject(page, 'element')
   await expectNoAccessibilityViolations(page, 'desktop dark theme')
 

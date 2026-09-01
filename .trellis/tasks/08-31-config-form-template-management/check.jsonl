@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"检查模板预览、创建和 UI 状态没有引入第二份 Project 模型或绕过正式 Command/Repository。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"检查 manifest/compatibility 与 Registry 合同、排序和 adapter 边界一致。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查架构 README 与实际新边界同步。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Provider 到 Runtime/Repository 的数据流、失败原子性和集成证据。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查 identity/校验/筛选逻辑没有在 controller、service 和 UI 重复实现。"}
+{"file":".trellis/tasks/08-31-config-form-template-management/research/template-management-evidence.md","reason":"按已识别调用链、测试缺口和视觉矩阵做独立复核。"}

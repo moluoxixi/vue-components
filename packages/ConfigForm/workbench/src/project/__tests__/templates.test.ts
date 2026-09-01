@@ -44,6 +44,13 @@ describe('project templates', () => {
     expect(Object.values(element.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
       expect.objectContaining({ component: 'element.input', events: {}, bindings: {} }),
     ]))
+    expect(Object.keys(element.pagesById.home!.graph.nodesById)).toEqual([
+      'profile-name',
+      'profile-role',
+      'profile-active',
+    ])
+    expect(Object.values(element.pagesById.home!.graph.nodesById).map(node =>
+      node.kind === 'field' ? node.field : undefined)).toEqual(['name', 'role', 'active'])
     expect(Object.values(antd.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
       expect.objectContaining({ component: 'antd.switch' }),
     ]))
@@ -57,7 +64,9 @@ describe('project templates', () => {
     })
 
     expect(page).toMatchObject({ id: 'settings', name: 'Settings', route: '/settings' })
-    expect(page.graph.root).toHaveLength(3)
+    expect(page.graph.root.map(item => item.nodeId)).toEqual(['profile-name', 'profile-role', 'profile-active'])
+    expect(Object.values(page.graph.nodesById).map(node =>
+      node.kind === 'field' ? node.field : undefined)).toEqual(['name', 'role', 'active'])
     expect(page).not.toHaveProperty('registryLock')
   })
 

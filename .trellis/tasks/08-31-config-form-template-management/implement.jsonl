@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"约束 ProjectDocument 单一真源、Repository/Project Command 原子边界、UI transient state 与 RuntimeHost data-only 协议。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"约束 Registry 命名、稳定排序、adapter 依赖方向和可解释校验。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"要求跨边界变更同步维护 ConfigForm 架构 README。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"模板 seed 经 Provider、catalog、Model、Compiler、Repository、UI 多层流转，需要单一解析和边界集成验证。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"identity remap 与创建流程将被 JSON import 复用，禁止复制第二套引用重写逻辑。"}
+{"file":".trellis/tasks/08-31-config-form-template-management/research/template-management-evidence.md","reason":"包含现有调用链、测试缺口、成熟库复用判断和视觉方向。"}

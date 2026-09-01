@@ -43,7 +43,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   export: [mode: WorkbenchExportMode]
-  newPage: []
+  newPage: [focusKey: string]
   openFlow: []
   openPages: []
   openVersions: []
@@ -83,7 +83,7 @@ function chooseMobileAction(action: MobileAction): void {
   void nextTick(() => {
     mobileMenuTrigger.value?.$el?.focus()
     switch (action) {
-      case 'newPage': emit('newPage'); break
+      case 'newPage': emit('newPage', 'topbar-mobile-menu'); break
       case 'openFlow': emit('openFlow'); break
       case 'openPages': emit('openPages'); break
       case 'toggleLocale': emit('toggleLocale'); break
@@ -139,7 +139,7 @@ function chooseExport(mode: WorkbenchExportMode): void {
       <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
         v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
-        <ElButton native-type="button" class="topbar-secondary-action" :aria-label="locale.t('pages.new', 'New page')" data-command-hint circle @click="emit('newPage')">
+        <ElButton native-type="button" class="topbar-secondary-action" :aria-label="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-page" data-command-hint circle @click="emit('newPage', 'topbar-new-page')">
           <Plus :size="17" aria-hidden="true" />
         </ElButton>
         <ElDropdown v-if="project" class="save-menu export-menu" :disabled="Boolean(saveUnavailableReason)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
@@ -225,7 +225,7 @@ function chooseExport(mode: WorkbenchExportMode): void {
         <PanelRightOpen v-else :size="17" aria-hidden="true" />
       </ElButton>
         <ElDropdown class="mobile-action-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseMobileAction">
-          <ElButton ref="mobileMenuTrigger" native-type="button" :aria-label="locale.t('workbench.moreActions', 'More actions')" data-command-hint circle><MoreHorizontal :size="18" aria-hidden="true" /></ElButton>
+          <ElButton ref="mobileMenuTrigger" native-type="button" :aria-label="locale.t('workbench.moreActions', 'More actions')" data-create-trigger="topbar-mobile-menu" data-command-hint circle><MoreHorizontal :size="18" aria-hidden="true" /></ElButton>
           <template #dropdown>
             <ElDropdownMenu class="mobile-action-popover" data-mobile-action-menu>
               <ElDropdownItem v-if="project" class="topbar-status-item" disabled>

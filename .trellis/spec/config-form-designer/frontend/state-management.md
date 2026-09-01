@@ -938,3 +938,153 @@ session.execute({
   actions: [{ type: 'transaction', operations: selectedIds.map(removeNode) }],
 })
 ```
+
+## 12. Template Creation Workspace Contract
+
+### 12.1 Scope / Trigger
+
+Apply this contract when changing template providers, catalog validation,
+template preview, project/page creation, or the Workbench transition between
+the Designer and a creation source.
+
+### 12.2 Signatures
+
+```ts
+interface TemplateCatalogProvider {
+  readonly id: string
+  list: () => Promise<readonly unknown[]>
+}
+
+interface TemplateCatalogLoadResult {
+  templates: ProjectTemplateCatalogEntry[]
+  diagnostics: TemplateCatalogDiagnostic[]
+}
+
+interface TemplateIdentityFactory {
+  create: (kind: TemplateIdentityKind, source: string) => string
+}
+
+createProjectFromTemplate(
+  template: ProjectTemplateCatalogEntry,
+  name?: string,
+): Promise<boolean>
+
+createPageFromTemplate(
+  template: ProjectTemplateCatalogEntry,
+  name?: string,
+): Promise<boolean>
+```
+
+### 12.3 Contracts
+
+- Workbench `App` owns the top-level `designer | create` view, the explicit
+  `project | page` creation target, and a stable return-focus key.
+  `WorkbenchShell` edits only the active project and must not import a template
+  catalog, template browsing state, or template preview service.
+- A `TemplateCatalogProvider` is readonly and asynchronous. It returns only a
+  JSON-safe manifest plus page seed. The catalog service is the single
+  `unknown -> typed` boundary for provider/template ids, dangerous keys,
+  version, category, adapter, Registry requirements, seed schema, duplicate
+  detection, diagnostics, and stable ordering. UI code must not parse or cast
+  provider payloads. One Provider may return at most 256 entries; any array in
+  one seed may contain at most 4096 items, and the array-length guard runs
+  before recursive JSON-safe traversal. Manifest `order` is a non-negative
+  integer.
+- Search, filters, selected template, mobile pane, compatibility state,
+  preview request identity, and preview Runtime values/touched/validation are
+  feature-local transient state. They never enter `ProjectDocument`, the
+  active `PreviewSession`, history, selection, persistence revision, recovery
+  drafts, or autosave.
+- Template preview instantiates an in-memory candidate, constructs the exact
+  `ProjectSnapshot` envelope, compiles it through the normal Compiler, and
+  renders it in an isolated `PreviewRuntimeHostFrame`. Adapter and compilation
+  results publish only when both the request identity and selected template
+  still match; stale or unmounted results are discarded.
+- Project creation completes catalog, adapter, Registry, schema, and compiler
+  preflight before calling `ProjectRepository.create`. Page creation is one
+  `page.add` Project Command against the current `ProjectEditorSession`, so it
+  produces at most one edit version/history entry and one Undo removes it.
+  A failed or stale creation preserves the active session and workspace choice.
+  After Repository create, recovery storage, coordination, and persistence are
+  prepared before publishing the adapter or editor session. Failure before
+  activation compensates by deleting the new entity; compensation failure is
+  reported explicitly and leaves that entity recoverable. Failure while
+  refreshing the project catalog or recovery-draft list after activation must
+  not delete or roll back the active project.
+- Template instantiation uses one shared pure identity-remap function. Default
+  identities retain a readable source prefix and add a UUID. Node, edge, and
+  embedded reaction mappings are keyed by their owning Flow and flow-node
+  scope, so two Flows may legally reuse local ids without collisions. Only
+  formally typed identity references are rewritten; opaque action config is
+  never searched or replaced heuristically.
+- Provider seeds and instantiated projects/pages are defensively cloned. No
+  mutable object may be shared between the provider, preview candidate,
+  created instance, or another instantiation.
+
+### 12.4 Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Provider rejects or returns a non-array / more than 256 entries | Isolate that Provider as `TEMPLATE_PROVIDER_FAILED`; keep other Providers available |
+| Any seed array contains more than 4096 items | Reject that seed as `TEMPLATE_INVALID` before recursive parsing |
+| Manifest order is negative or fractional | Reject as `TEMPLATE_INVALID` |
+| Seed contains a dangerous key, function, cycle, or unsupported identity reference | Reject before compatibility, preview, or creation |
+| Adapter / Registry lock is incompatible | Keep the template browsable; publish a diagnostic and disable creation |
+| Persistence preparation fails after Repository create | Preserve the active session, delete the new entity, close staged resources, and report failure |
+| Compensating delete fails | Preserve the entity for recovery and report both activation and rollback failure |
+| Project list or recovery-draft refresh fails after activation | Keep the new project active and report the refresh error without rollback |
+| Page command fails | Preserve page, history, editVersion, selection, and workspace choice |
+
+### 12.5 Good / Base / Bad Cases
+
+- Good: preflight a template, persist it, prepare recovery/persistence resources,
+  activate one editor session, then refresh project and draft projections.
+- Base: one Provider fails while another returns valid templates; the catalog
+  publishes the valid entries plus a Provider-scoped diagnostic.
+- Bad: publish the new session before recovery storage opens, then delete its
+  Repository entity when that late preparation fails.
+
+### 12.6 Tests Required
+
+- Catalog tests cover malformed/non-JSON provider data, dangerous and duplicate
+  ids, provider failure, stable sorting, compatibility diagnostics, and seed
+  immutability. Boundary tests accept exactly 256 Provider entries and 4096
+  seed array items, then reject 257/4097 before deep traversal.
+- Identity tests cover two instances plus two Flows that reuse node, edge, and
+  embedded reaction ids, and verify every typed reference after remapping.
+- Component tests cover search/filter/empty recovery, roving selection,
+  mobile Details-to-Catalog Escape, focus restoration, incompatibility, and
+  stale preview completion order.
+- Controller tests cover activation-preparation compensation, compensation
+  failure, preservation of an existing session/adapter, and post-activation
+  refresh failure without rollback.
+- Browser tests cover both adapters, project/page creation, one-command page
+  history, return focus, 1440/900/390 layouts, Light/Dark contrast, long
+  Registry diagnostics, both locales, and axe.
+
+### 12.7 Wrong vs Correct
+
+Wrong:
+
+```ts
+await repository.create({ document: project })
+publishProjectSession(project)
+await openRecoveryStore() // failure now leaves a published orphan session
+```
+
+Correct:
+
+```ts
+await repository.create({ document: project })
+try {
+  const prepared = await prepareProjectActivation(project)
+  activateProjectSession(prepared)
+}
+catch (error) {
+  await repository.delete(project.id)
+  throw error
+}
+```
+
+The production implementation must also close partially prepared resources and
+surface compensating-delete failure instead of replacing the original error.

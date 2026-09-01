@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const stylesheetEntry = readFileSync(new URL('../../styles.css', import.meta.url), 'utf8')
-const stylesheetLayers = ['shell', 'studio', 'features', 'responsive'] as const
+const stylesheetLayers = ['shell', 'studio', 'features', 'templates', 'responsive'] as const
 const stylesheet = stylesheetLayers
   .map(layer => readFileSync(new URL(`../../styles/${layer}.css`, import.meta.url), 'utf8'))
   .join('\n')
