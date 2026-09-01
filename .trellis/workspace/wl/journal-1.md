@@ -528,3 +528,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 23: 完成 ConfigForm Workbench 组件化视觉重构
+
+**Date**: 2026-09-01
+**Task**: 完成 ConfigForm Workbench 组件化视觉重构
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+将 Workbench 通用 chrome 迁移到 Element Plus 按需组件，建立 overlay root、精确 bundle verifier 和组件替换审计；修复 Preview Teleport/焦点/hit-test、Popper 竞态、PageManager modal 语义及拖拽视觉几何。Workbench 197/197、Designer 26/26、E2E 28/28，lint、typecheck、build、declarations、视觉矩阵与 diff-check 全部通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `946b1e05` | (see git log) |
+
+### Status
+
+[OK] **Completed**
