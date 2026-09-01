@@ -5,7 +5,10 @@ import { nextTick } from 'vue'
 import { createWorkbenchUiStore } from '../workbench-ui-store'
 
 describe('workbench UI store', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    document.body.innerHTML = '<div id="workbench-overlays" data-theme="dark"></div>'
+  })
   afterEach(() => vi.useRealTimers())
 
   it('owns dialog, preview, mobile navigation, theme, locale, and message state', async () => {
@@ -32,6 +35,7 @@ describe('workbench UI store', () => {
     expect(ui.mobileStudioView.value).toBe('pages')
     expect(ui.studioLeftView.value).toBe('pages')
     expect(ui.theme.value).toBe('light')
+    expect(document.getElementById('workbench-overlays')?.dataset.theme).toBe('light')
     expect(ui.localeId.value).toBe('zh-CN')
     expect(document.documentElement.lang).toBe('zh-CN')
   })

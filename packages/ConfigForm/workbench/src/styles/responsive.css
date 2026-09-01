@@ -18,14 +18,13 @@
 }
 
 @media (max-width: 700px) {
-  .persistence-dialog-overlay {
-    padding: 8px;
-  }
-
   .persistence-dialog {
-    width: 100%;
+    width: 100% !important;
     height: 100%;
     max-height: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
   }
 
   .version-history-layout {
@@ -76,6 +75,18 @@
 
   .preview-pane {
     position: static;
+    border-left: 0;
+    box-shadow: none;
+  }
+
+  .workbench-overlays > .preview-drawer-overlay {
+    top: 48px !important;
+    bottom: 54px !important;
+    height: auto !important;
+  }
+
+  .preview-drawer-shell {
+    width: 100% !important;
     border-left: 0;
     box-shadow: none;
   }
@@ -198,42 +209,32 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .export-preview-overlay {
-    padding: 0;
-  }
-
-  .page-manager-overlay {
-    padding: 0;
-  }
-
-  .flow-workspace-overlay {
-    padding: 0;
-  }
-
+  .template-dialog,
+  .page-manager-dialog-shell,
   .flow-workspace-dialog {
-    width: 100%;
+    width: 100% !important;
     height: 100%;
+    max-height: none;
+    margin: 0;
     border: 0;
     border-radius: 0;
-  }
-
-  .flow-workspace-dialog-header {
-    padding: 12px;
   }
 
   .export-preview-dialog {
-    width: 100%;
+    width: 100% !important;
     height: 100%;
+    max-height: none;
+    margin: 0;
     border: 0;
     border-radius: 0;
   }
 
-  .export-preview-dialog > footer {
+  .export-dialog-footer {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .export-preview-dialog > footer > div {
+  .export-dialog-footer > div {
     width: 100%;
   }
 
@@ -243,7 +244,7 @@
   }
 
   .source-file-layout > .source-file-tabs {
-    display: flex;
+    display: block;
   }
 
   .source-file-layout > .project-file-tree,
@@ -311,8 +312,8 @@
   .manage-pages-button,
   .designer-layers button,
   .designer-pages button,
-  .topbar-actions .export-menu-popover button,
-  .topbar-actions .mobile-action-popover button,
+  .export-menu-popover .el-dropdown-menu__item,
+  .mobile-action-popover .el-dropdown-menu__item,
   .project-file-tree .project-file-tree__row {
     min-height: 44px;
   }
@@ -338,13 +339,13 @@
     right: 8px;
     bottom: auto;
     left: 8px;
+    width: auto;
     max-width: none;
-    grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .workspace-recovery-notice button {
+  .workspace-recovery-notice__actions .el-button {
+    width: 100%;
     min-height: 44px;
-    grid-column: 1 / -1;
     justify-content: center;
   }
 }

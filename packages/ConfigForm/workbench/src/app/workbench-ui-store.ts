@@ -186,6 +186,11 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
       document.documentElement.lang = value
   }, { immediate: true })
 
+  watch(theme, (value) => {
+    if (typeof document !== 'undefined')
+      document.getElementById('workbench-overlays')?.setAttribute('data-theme', value)
+  }, { immediate: true })
+
   watch(() => options.locale?.locale, (value) => {
     if (value)
       localeId.value = resolveWorkbenchLocale(value)

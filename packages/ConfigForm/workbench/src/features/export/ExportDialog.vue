@@ -21,12 +21,10 @@ import {
   onBeforeUnmount,
   ref,
   shallowRef,
-  useTemplateRef,
   watch,
 } from 'vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import ProjectFileTree from '../../components/ProjectFileTree.vue'
-import { useWorkbenchDialogFocus } from '../../components/use-dialog-focus'
 import {
   buildProjectFileTree,
   collectProjectTreeDirectoryIds,
@@ -65,7 +63,6 @@ const emit = defineEmits<{
 const WorkspaceCodeEditor = defineAsyncComponent(() => import('../../components/WorkspaceCodeEditor.vue'))
 const DEFAULT_SOURCE_PATH = normalizeProjectPath('src/App.vue')
 const DEFAULT_CONFIG_PATH = normalizeProjectPath('project.config.ts')
-const dialog = useTemplateRef<HTMLElement>('dialog')
 const sourceViewPath = ref<ProjectPath>(DEFAULT_SOURCE_PATH)
 const configViewPath = ref<ProjectPath>(DEFAULT_CONFIG_PATH)
 const sourceTreeExpandedIds = ref<string[]>([])
@@ -101,11 +98,9 @@ const configDocument = computed(() => snapshot.value?.compilation.snapshot.docum
 const generatedConfigJson = computed(() => configDocument.value
   ? `${JSON.stringify(configDocument.value, null, 2)}\n`
   : '')
-const { handleKeydown } = useWorkbenchDialogFocus(
-  () => !!props.mode,
-  dialog,
-  () => emit('close'),
-)
+const dialogTitle = computed(() => props.mode === 'source'
+  ? locale.value.t('export.generatedSource', 'Generated Vue source')
+  : locale.value.t('export.configModel', 'Config model'))
 
 const generatedConfigTree = computed<ConfigTreeEntry[]>(() => {
   const document = configDocument.value
@@ -265,35 +260,58 @@ async function downloadBundle(): Promise<void> {
 </script>
 
 <template>
-  <div v-if="mode" class="export-preview-overlay" @click.self="emit('close')">
-    <section ref="dialog" class="export-preview-dialog" role="dialog" aria-modal="true" :aria-labelledby="`${mode}-export-title`" @keydown="handleKeydown">
-      <header>
+  <ElDialog
+    class="export-preview-dialog"
+    :model-value="!!mode"
+    :title="dialogTitle"
+    width="min(1120px, calc(100vw - 40px))"
+    append-to="#workbench-overlays"
+    transition="none"
+    :show-close="false"
+    @close="emit('close')"
+  >
+    <template #header>
+      <div class="export-dialog-heading">
         <div>
           <span class="dialog-eyebrow">{{ locale.t('export.readOnly', 'Read only export') }}</span>
-          <h2 :id="`${mode}-export-title`">{{ mode === 'source' ? locale.t('export.generatedSource', 'Generated Vue source') : locale.t('export.configModel', 'Config model') }}</h2>
+          <h2>{{ dialogTitle }}</h2>
         </div>
-        <button type="button" :title="locale.t('export.close', 'Close export')" :aria-label="locale.t('export.close', 'Close export')" @click="emit('close')">
+        <ElButton
+          native-type="button"
+          text
+          :title="locale.t('export.close', 'Close export')"
+          :aria-label="locale.t('export.close', 'Close export')"
+          @click="emit('close')"
+        >
           <X :size="17" aria-hidden="true" />
-        </button>
-      </header>
+        </ElButton>
+      </div>
+    </template>
 
-      <div class="export-preview-body">
+    <div class="export-preview-body">
         <div v-if="mode === 'source'" class="source-export-view">
-          <div v-if="snapshotError" class="export-diagnostic" role="alert">
-            <strong>{{ locale.t('export.sourceUnavailable', 'Source export unavailable') }}</strong>
-            <p>{{ snapshotError }}</p>
-          </div>
-          <div v-if="snapshotStale" class="export-stale" role="status">
-            <span>{{ locale.t('export.staleSource', 'The design changed after this export snapshot was opened.') }}</span>
-            <button type="button" @click="refreshSnapshot">
-              <RefreshCw :size="14" aria-hidden="true" /> {{ locale.t('export.refresh', 'Refresh snapshot') }}
-            </button>
-          </div>
+          <ElAlert
+            v-if="snapshotError"
+            class="export-diagnostic"
+            type="error"
+            :title="locale.t('export.sourceUnavailable', 'Source export unavailable')"
+            :description="snapshotError"
+            :closable="false"
+            show-icon
+          />
+          <ElAlert v-if="snapshotStale" class="export-stale" type="warning" :closable="false" show-icon>
+            <template #title>
+              <span>{{ locale.t('export.staleSource', 'The design changed after this export snapshot was opened.') }}</span>
+              <ElButton native-type="button" text @click="refreshSnapshot">
+                <RefreshCw :size="14" aria-hidden="true" /> {{ locale.t('export.refresh', 'Refresh snapshot') }}
+              </ElButton>
+            </template>
+          </ElAlert>
           <div class="source-file-layout">
-            <nav class="source-file-tabs" role="tablist" :aria-label="locale.t('export.sourceView', 'Source export view')">
-              <button type="button" role="tab" :aria-selected="sourceMobileView === 'tree'" @click="sourceMobileView = 'tree'">{{ locale.t('export.tree', 'Tree') }}</button>
-              <button type="button" role="tab" :aria-selected="sourceMobileView === 'code'" @click="sourceMobileView = 'code'">{{ locale.t('export.code', 'Code') }}</button>
-            </nav>
+            <ElTabs v-model="sourceMobileView" class="source-file-tabs" :aria-label="locale.t('export.sourceView', 'Source export view')">
+              <ElTabPane :label="locale.t('export.tree', 'Tree')" name="tree" />
+              <ElTabPane :label="locale.t('export.code', 'Code')" name="code" />
+            </ElTabs>
             <ProjectFileTree
               v-model:expanded-ids="sourceTreeExpandedIds"
               :class="{ 'is-mobile-hidden': sourceMobileView !== 'tree' }"
@@ -322,26 +340,33 @@ async function downloadBundle(): Promise<void> {
         </div>
 
         <div v-else class="config-export-view">
-          <div v-if="snapshotError" class="export-diagnostic" role="alert">
-            <strong>{{ locale.t('export.configUnavailable', 'Config export unavailable') }}</strong>
-            <p>{{ snapshotError }}</p>
-          </div>
-          <div v-if="snapshotStale" class="export-stale" role="status">
-            <span>{{ locale.t('export.staleConfig', 'The design changed after this export snapshot was opened.') }}</span>
-            <button type="button" @click="refreshSnapshot">
-              <RefreshCw :size="14" aria-hidden="true" /> {{ locale.t('export.refresh', 'Refresh snapshot') }}
-            </button>
-          </div>
-          <nav class="config-view-tabs" role="tablist" :aria-label="locale.t('export.configView', 'Config view')">
-            <button type="button" role="tab" :aria-selected="configViewMode === 'source'" @click="configViewMode = 'source'">{{ locale.t('export.sourceViewTab', 'Source') }}</button>
-            <button type="button" role="tab" :aria-selected="configViewMode === 'json'" @click="configViewMode = 'json'">JSON</button>
-            <button type="button" role="tab" :aria-selected="configViewMode === 'tree'" @click="configViewMode = 'tree'">{{ locale.t('export.tree', 'Tree') }}</button>
-          </nav>
+          <ElAlert
+            v-if="snapshotError"
+            class="export-diagnostic"
+            type="error"
+            :title="locale.t('export.configUnavailable', 'Config export unavailable')"
+            :description="snapshotError"
+            :closable="false"
+            show-icon
+          />
+          <ElAlert v-if="snapshotStale" class="export-stale" type="warning" :closable="false" show-icon>
+            <template #title>
+              <span>{{ locale.t('export.staleConfig', 'The design changed after this export snapshot was opened.') }}</span>
+              <ElButton native-type="button" text @click="refreshSnapshot">
+                <RefreshCw :size="14" aria-hidden="true" /> {{ locale.t('export.refresh', 'Refresh snapshot') }}
+              </ElButton>
+            </template>
+          </ElAlert>
+          <ElTabs v-model="configViewMode" class="config-view-tabs" :aria-label="locale.t('export.configView', 'Config view')">
+            <ElTabPane :label="locale.t('export.sourceViewTab', 'Source')" name="source" />
+            <ElTabPane label="JSON" name="json" />
+            <ElTabPane :label="locale.t('export.tree', 'Tree')" name="tree" />
+          </ElTabs>
           <div v-if="configViewMode === 'source'" class="source-file-layout">
-            <nav class="source-file-tabs" role="tablist" :aria-label="locale.t('export.configSourceView', 'Config source view')">
-              <button type="button" role="tab" :aria-selected="configMobileView === 'tree'" @click="configMobileView = 'tree'">{{ locale.t('export.tree', 'Tree') }}</button>
-              <button type="button" role="tab" :aria-selected="configMobileView === 'code'" @click="configMobileView = 'code'">{{ locale.t('export.code', 'Code') }}</button>
-            </nav>
+            <ElTabs v-model="configMobileView" class="source-file-tabs" :aria-label="locale.t('export.configSourceView', 'Config source view')">
+              <ElTabPane :label="locale.t('export.tree', 'Tree')" name="tree" />
+              <ElTabPane :label="locale.t('export.code', 'Code')" name="code" />
+            </ElTabs>
             <ProjectFileTree
               v-model:expanded-ids="configTreeExpandedIds"
               :class="{ 'is-mobile-hidden': configMobileView !== 'tree' }"
@@ -370,22 +395,23 @@ async function downloadBundle(): Promise<void> {
             </div>
           </div>
         </div>
-      </div>
+    </div>
 
-      <footer>
+    <template #footer>
+      <div class="export-dialog-footer">
         <span>{{ locale.t('export.snapshotRevision', 'Snapshot model revision {revision}', { revision: snapshotEditVersion }) }}{{ snapshotStale ? ` · ${locale.t('export.stale', 'Stale')}` : '' }}</span>
         <div>
-          <button type="button" class="dialog-action secondary" :disabled="!snapshot" @click="downloadBundle">
+          <ElButton native-type="button" class="dialog-action secondary" :disabled="!snapshot" @click="downloadBundle">
             <Download :size="15" aria-hidden="true" /> {{ mode === 'source' ? locale.t('export.projectZip', 'Project ZIP') : locale.t('export.configZip', 'Config ZIP') }}
-          </button>
-          <button type="button" class="dialog-action secondary" :disabled="!snapshot || exportText === undefined" @click="copyExport">
+          </ElButton>
+          <ElButton native-type="button" class="dialog-action secondary" :disabled="!snapshot || exportText === undefined" @click="copyExport">
             <Clipboard :size="15" aria-hidden="true" /> {{ locale.t('action.copy', 'Copy') }}
-          </button>
-          <button type="button" class="dialog-action" :disabled="!snapshot" @click="downloadCurrent">
+          </ElButton>
+          <ElButton native-type="button" type="primary" class="dialog-action" :disabled="!snapshot" @click="downloadCurrent">
             <Download :size="15" aria-hidden="true" /> {{ locale.t('action.download', 'Download') }}
-          </button>
+          </ElButton>
         </div>
-      </footer>
-    </section>
-  </div>
+      </div>
+    </template>
+  </ElDialog>
 </template>

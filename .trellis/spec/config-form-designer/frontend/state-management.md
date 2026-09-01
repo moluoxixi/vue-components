@@ -333,6 +333,42 @@ interface SlotItem {
 - Source and Config are read-only. They pin one immutable export revision;
   later design edits mark the session stale rather than partially replacing
   files.
+- Element Plus owns general-purpose Workbench chrome only: buttons, tooltips,
+  dropdowns, tabs, inputs, scrollbars, empty states, dialogs, drawers, and
+  alerts. Thin Workbench components may connect those controls to i18n,
+  commands, sessions, and stable test identifiers, but must not copy the
+  component library's focus, keyboard, modal, or menu state machines.
+- Workbench template components use `unplugin-vue-components` with
+  `ElementPlusResolver({ importStyle: 'css' })`. Full-library installation,
+  `app.use(ElementPlus)`, default `ElementPlus` imports, and
+  `element-plus/dist/index.css` are forbidden.
+- Parent-document dialogs, drawers, menus, and notifications belong under the
+  dedicated `#workbench-overlays` root. That root mirrors Workbench theme
+  tokens and z-index behavior, while Design and Preview Runtime poppers remain
+  inside their own iframe realms. Workbench theme CSS must never enter a
+  RuntimeHost document.
+- Workbench `ElDropdown`, `ElTooltip`, and `ElSelect` keep teleporting enabled
+  and set `append-to="#workbench-overlays"`. Do not use `teleported="false"`
+  inside the Topbar or scrollable editor panels: inline poppers are clipped by
+  panel overflow and do not inherit the overlay root's theme/z-index contract.
+  Unit tests create the real target and query teleported content from it.
+  Pointer-transparent help tooltips use a dedicated popper class; never disable
+  pointer events through Element Plus's generic `.el-tooltip` class because
+  interactive Dropdown poppers also carry that internal class.
+- Commands that replace focus with a Dialog/Drawer run on the tick after the
+  Dropdown closes. Restore the stable trigger first, then open the workspace;
+  mounting a modal during the Dropdown item's synchronous close handler can
+  race Popper positioning against removed reference geometry.
+- Preview drawer positioning is a cross-realm geometry contract. Its overlay
+  begins below the fixed Workbench topbar, and the drawer/stage must not animate
+  their coordinate space while iframe geometry is sampled. Runtime content and
+  parent stage rectangles must be comparable without timing waits.
+- Canvas camera, selection, resize, drag candidate/visual, Registry specimens,
+  schema-driven setters, Flow canvas, RuntimeHost bridges, and Monaco models
+  remain domain-owned. Replacing them with a general UI component is allowed
+  only when Project Command ownership, Runtime geometry, and provider isolation
+  remain unchanged; generic `BaseButton` / `BaseTabs` abstraction layers are
+  forbidden.
 
 ## 5. Repository Boundary
 

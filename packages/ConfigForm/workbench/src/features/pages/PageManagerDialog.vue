@@ -2,9 +2,9 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { ProjectSummary, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
 import type { ProjectPageAction } from '../../project'
-import { useTemplateRef } from 'vue'
+import { createDesignerLocale } from '@moluoxixi/config-form-designer'
+import { computed } from 'vue'
 import PageManager from '../../components/PageManager.vue'
-import { useWorkbenchDialogFocus } from '../../components/use-dialog-focus'
 
 const props = defineProps<{
   project?: ReadonlyProjectDocument
@@ -21,21 +21,21 @@ const emit = defineEmits<{
   action: [action: ProjectPageAction]
 }>()
 
-const dialog = useTemplateRef<HTMLElement>('dialog')
-const { handleKeydown } = useWorkbenchDialogFocus(
-  () => props.open,
-  dialog,
-  () => emit('close'),
-)
+const dialogTitle = computed(() => createDesignerLocale(props.locale).t('pageManager.title', 'Pages'))
+
 </script>
 
 <template>
-  <div
-    v-if="open && project"
-    ref="dialog"
-    class="page-manager-overlay"
-    @click.self="emit('close')"
-    @keydown="handleKeydown"
+  <ElDialog
+    v-if="project"
+    class="page-manager-dialog-shell"
+    :model-value="open"
+    :aria-label="dialogTitle"
+    :show-close="false"
+    width="min(980px, calc(100vw - 24px))"
+    append-to="#workbench-overlays"
+    transition="none"
+    @close="emit('close')"
   >
     <PageManager
       :project="project"
@@ -47,5 +47,5 @@ const { handleKeydown } = useWorkbenchDialogFocus(
       @open-project="emit('openProject', $event)"
       @action="emit('action', $event)"
     />
-  </div>
+  </ElDialog>
 </template>

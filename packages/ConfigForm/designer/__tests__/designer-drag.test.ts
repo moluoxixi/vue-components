@@ -6,6 +6,7 @@ import {
   resolveDesignerAutoScrollDelta,
   resolveDesignerCollapsedDropTarget,
   resolveDesignerDragOverlayPosition,
+  resolveDesignerDragVisualHeight,
   resolveStickyDesignerDropTarget,
 } from '../src/components/designer-drag'
 import { createMoveCommand } from '../src/graph'
@@ -122,6 +123,12 @@ describe('designer drag controller', () => {
       { x: 500, y: -10 },
       { width: 120, height: 40 },
     )).toEqual({ x: -12, y: 72 })
+  })
+
+  it('resolves drag visual height from the measured node geometry', () => {
+    expect(resolveDesignerDragVisualHeight(0, 'layout')).toBe(36)
+    expect(resolveDesignerDragVisualHeight(18, 'layout')).toBe(18)
+    expect(resolveDesignerDragVisualHeight(0, 'field')).toBe(1)
   })
 
   it('does not commit cancelled or targetless drags', () => {

@@ -124,6 +124,14 @@ Repository 只发布通过当前 `ProjectDocument` schema 验证的内容；版�
 
 Workbench 的运行与界面状态不进入领域 Controller：`WorkbenchDesignSession` 独立持有活动页/候选页编译、Runtime artifact cache、selection、Project Command 与 Undo/Redo；正式编译失败会清理不可用 Runtime 并把首个诊断交给 UI，不能静默留下空白画布。`PreviewSession` 独立持有 values、touched、validation、Flow projection、最多 200 条 trace 和 Abort 生命周期，并按稳定 field node/component/contractVersion/fingerprint 协调同页 revision 状态；切页、切项目、切 adapter 或字段合同变化时只清理不兼容状态。`WorkbenchExportService` 只在显式 capture 时懒组装完整 ProjectCompilation，普通 sync 只失效固定 identity。`WorkbenchUiStore` 只持有面板、弹窗、Preview viewport、移动端导航、主题、语言、消息和 lazy-open 状态，不依赖 `ProjectDocument`、Runtime state 或 `ExportSnapshot`。`WorkbenchShell` 分别消费 Design、Preview、Export、UI context，只组合页面和 dialog。
 
+#### Workbench chrome 与 Runtime UI 边界
+
+Workbench chrome 统一使用 Element Plus 提供 Button、Tooltip、Dropdown、Tabs、Input、Scrollbar、Empty、Dialog、Drawer 与 Alert 等通用交互。模板组件通过 `unplugin-vue-components` 的 `ElementPlusResolver({ importStyle: 'css' })` 按需导入；禁止 `app.use(ElementPlus)`、全量默认导入和 `element-plus/dist/index.css`。Workbench 的薄组件只连接 i18n、Project Command、Design/Preview/Export/UI session 和稳定测试标识，不复制组件库的焦点、键盘、菜单或 modal 状态机。
+
+父文档弹层统一挂载到 `#workbench-overlays`。该 root 镜像 Workbench Light/Dark token、z-index 和 Topbar 下方的布局边界；Preview Drawer 与 stage 不在 iframe 几何采样期间移动坐标系。Design/Preview Runtime 仍分别在同源 iframe 内加载 Element 或 Ant adapter、Provider CSS 与自己的 Teleport target，Workbench 的 Element Plus 样式和父文档 popper 不进入 Runtime realm。
+
+Canvas camera、selection、resize、drag candidate/visual、Registry specimen、schema-driven Inspector setter、Flow 画布、RuntimeHost bridge 和 Monaco model 继续由领域组件拥有。它们可以在外壳使用成熟组件，但不得为组件化引入第二份 Model、History、Selection、Flow 或 Runtime 状态，也不得建立 `BaseButton`、`BaseTabs` 等二次通用 UI 框架。
+
 打开 Source 导出弹窗时，Workbench 才按需组装当前不可拆分 `ProjectCompilation` 和 generator version
 创建一次不可变 `ExportSnapshot`。层级文件树、只读 Monaco、单文件下载和项目 ZIP 全部读取该快照；
 后续 Design 修改只会把弹窗标记为 stale，用户显式刷新后才生成新快照。多页面 Source

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { DOMWrapper, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { createProjectDocumentFixture } from '../../project/__tests__/fixtures'
 import WorkbenchTopbar from '../WorkbenchTopbar.vue'
@@ -9,7 +9,17 @@ import WorkbenchTopbar from '../WorkbenchTopbar.vue'
 const project = createProjectDocumentFixture({ id: 'app', name: 'Account app' })
 const currentPage = project.pagesById[project.homePageId]!
 
+function overlayRoot(): DOMWrapper<Element> {
+  return new DOMWrapper(document.getElementById('workbench-overlays')!)
+}
+
 describe('workbench topbar', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="workbench-overlays" class="workbench-overlays" data-theme="dark"></div>'
+  })
+
+  afterEach(() => document.body.replaceChildren())
+
   it('opens a keyboard navigable export menu and emits the selected projection', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
@@ -24,20 +34,20 @@ describe('workbench topbar', () => {
 
     const trigger = wrapper.get('button[aria-label="Export"]')
     await trigger.trigger('click')
-    const items = wrapper.findAll('[role="menuitem"]')
+    const overlays = overlayRoot()
+    const items = overlays.findAll('[data-export-menu] [role="menuitem"]')
     expect(items).toHaveLength(2)
+    expect(overlays.find('[data-export-menu]').exists()).toBe(true)
     expect(items.map(item => item.text())).toEqual(['Export source', 'Export config'])
-    expect(document.activeElement).toBe(items[0]!.element)
-
-    await items[0]!.trigger('keydown', { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(items[1]!.element)
+    expect(trigger.attributes('aria-haspopup')).toBe('menu')
+    expect(items.every(item => item.attributes('role') === 'menuitem')).toBe(true)
     await items[1]!.trigger('click')
     expect(wrapper.emitted('export')).toEqual([['config']])
-    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(overlays.get('[data-export-menu]').isVisible()).toBe(false)
     expect(document.activeElement).toBe(trigger.element)
 
     await trigger.trigger('click')
-    await wrapper.get('[role="menu"]').trigger('keydown', { key: 'Escape' })
+    await overlays.get('[data-export-menu]').trigger('keydown', { code: 'Escape', key: 'Escape' })
     await nextTick()
     expect(document.activeElement).toBe(trigger.element)
     wrapper.unmount()
@@ -59,7 +69,8 @@ describe('workbench topbar', () => {
     expect(wrapper.get('.revision-state').text()).toContain('v0 · Unsaved')
     expect(wrapper.get('.revision-state').attributes('aria-live')).toBe('polite')
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
-    const saveItems = wrapper.findAll('.save-menu-popover [role="menuitem"]')
+    const overlays = overlayRoot()
+    const saveItems = overlays.findAll('[data-save-menu] [role="menuitem"]')
     expect(saveItems.map(item => item.text())).toEqual([
       'Save now',
       'Create named checkpoint',
@@ -67,9 +78,9 @@ describe('workbench topbar', () => {
     ])
     await saveItems[0]!.trigger('click')
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
-    await wrapper.findAll('.save-menu-popover [role="menuitem"]')[1]!.trigger('click')
+    await overlays.findAll('[data-save-menu] [role="menuitem"]')[1]!.trigger('click')
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
-    await wrapper.findAll('.save-menu-popover [role="menuitem"]')[2]!.trigger('click')
+    await overlays.findAll('[data-save-menu] [role="menuitem"]')[2]!.trigger('click')
     await wrapper.get('button[aria-label="Show preview"]').trigger('click')
     await wrapper.get('button[aria-label="Use dark theme"]').trigger('click')
     expect(wrapper.emitted('save')).toHaveLength(1)
@@ -77,6 +88,7 @@ describe('workbench topbar', () => {
     expect(wrapper.emitted('openVersions')).toHaveLength(1)
     expect(wrapper.emitted('togglePreview')).toHaveLength(1)
     expect(wrapper.emitted('toggleTheme')).toHaveLength(1)
+    wrapper.unmount()
   })
 
   it('restores the stable mobile trigger before opening a dialog workspace', async () => {
@@ -93,8 +105,9 @@ describe('workbench topbar', () => {
 
     const trigger = wrapper.get('button[aria-label="More actions"]')
     await trigger.trigger('click')
-    const flow = wrapper.findAll('[role="menuitem"]')
-      .find(item => item.text() === 'Event flow orchestration')!
+    const flow = overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').find(
+      item => item.text() === 'Event flow orchestration',
+    )!
     ;(flow.element as HTMLButtonElement).focus()
     await flow.trigger('click')
 

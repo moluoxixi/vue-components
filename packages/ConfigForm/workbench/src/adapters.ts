@@ -101,13 +101,19 @@ function createWorkbenchRuntimeBindings(
 
 async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<WorkbenchAdapter> {
   if (id === 'antd-vue') {
-    const [adapter] = await Promise.all([
+    const [adapter, inspector] = await Promise.all([
       import('@moluoxixi/config-form-designer-antd-vue'),
+      import('@moluoxixi/config-form-designer-element-plus'),
       import('ant-design-vue/dist/reset.css'),
       import('@moluoxixi/config-form-designer-antd-vue/styles'),
       import('@moluoxixi/config-form-antd-vue/styles'),
+      import('./element-plus-inspector-styles'),
     ])
-    const designerRegistry = adapter.createAntdVueDesignerRegistry()
+    const designerRegistry = adapter.createAntdVueDesignerRegistry([{
+      name: 'workbench-element-plus-inspector',
+      components: inspector.ELEMENT_PLUS_DESIGNER_COMPONENTS,
+      propertyControls: inspector.ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS,
+    }])
     const capabilities = adapter.ANTD_VUE_DESIGNER_MATERIAL_REGISTRY
     const runtime = createWorkbenchRuntimeBindings(id, designerRegistry, capabilities)
     return {
@@ -120,7 +126,7 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
 
   const [adapter] = await Promise.all([
     import('@moluoxixi/config-form-designer-element-plus'),
-    import('element-plus/dist/index.css'),
+    import('./element-plus-inspector-styles'),
     import('@moluoxixi/config-form-designer-element-plus/styles'),
     import('@moluoxixi/config-form-element/styles'),
   ])
@@ -153,7 +159,8 @@ async function createWorkbenchRuntimeAdapter(id: WorkbenchAdapterId): Promise<Wo
 
   const [adapter] = await Promise.all([
     import('@moluoxixi/config-form-designer-element-plus'),
-    import('element-plus/dist/index.css'),
+    import('./element-plus-runtime-styles'),
+    import('@moluoxixi/config-form-designer-element-plus/styles'),
     import('@moluoxixi/config-form-element/styles'),
   ])
   return {

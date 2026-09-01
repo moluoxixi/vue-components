@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node scripts/verify-element-plus-bundle.mjs",
     "dev": "vite",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@babel/parser": "catalog:dev",
-    "@floating-ui/dom": "catalog:ui",
     "@lucide/vue": "catalog:ui",
     "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-antd-vue": "workspace:*",
@@ -42,6 +41,7 @@
     "fake-indexeddb": "catalog:dev",
     "happy-dom": "catalog:dev",
     "sass": "catalog:dev",
+    "unplugin-vue-components": "catalog:conflicts_dev_h31_0_0",
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue-tsc": "catalog:dev"

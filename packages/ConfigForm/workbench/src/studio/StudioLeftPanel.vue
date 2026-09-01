@@ -6,11 +6,9 @@ import type {
   DesignerSelectionMode,
 } from '@moluoxixi/config-form-designer'
 import type { FormSettings, ProjectHistorySummary, ReadonlyProjectDocument } from '@moluoxixi/config-form-model'
-import type { CSSProperties } from 'vue'
-import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom'
-import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Settings2 } from '@lucide/vue'
+import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 
 export type StudioLeftView = 'components' | 'history' | 'layers' | 'pages'
 export type StudioLayerAction = 'moveBefore' | 'moveAfter' | 'indent' | 'outdent'
@@ -47,14 +45,10 @@ const emit = defineEmits<{
 }>()
 
 const internalActiveView = ref<StudioLeftView>('components')
+const materialQuery = ref('')
 const activeView = computed(() => props.activeView ?? internalActiveView.value)
-const tabs = useTemplateRef<HTMLElement>('tabs')
 const layerTree = useTemplateRef<HTMLElement>('layerTree')
 const pageList = useTemplateRef<HTMLElement>('pageList')
-const layerMenuId = useId()
-const layerMenuNodeId = ref<string>()
-const layerMenuStyle = ref<CSSProperties>()
-let stopLayerMenuPositioning: (() => void) | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
 const views = computed(() => [
   { icon: Blocks, id: 'components' as const, label: locale.value.t('designer.view.components', 'Components') },
@@ -81,6 +75,14 @@ const historyPositions = computed(() => {
     })),
   ].reverse()
 })
+const filteredMaterials = computed(() => {
+  const query = materialQuery.value.trim().toLocaleLowerCase()
+  if (!query)
+    return props.materials
+  return props.materials.filter(material => `${locale.value.materialTitle(material)} ${locale.value.materialCategory(material)}`
+    .toLocaleLowerCase()
+    .includes(query))
+})
 
 function historyTime(timestamp?: number): string {
   if (timestamp === undefined)
@@ -93,104 +95,29 @@ function historyTime(timestamp?: number): string {
 }
 
 function selectView(view: StudioLeftView): void {
-  closeLayerMenu()
   internalActiveView.value = view
   emit('update:activeView', view)
 }
 
-function layerMenuElement(): HTMLElement | undefined {
-  return layerTree.value?.querySelector<HTMLElement>('[data-layer-action-menu]') ?? undefined
-}
-
-function layerMenuTrigger(nodeId: string): HTMLButtonElement | undefined {
-  return [...(layerTree.value?.querySelectorAll<HTMLButtonElement>('[data-layer-menu-trigger]') ?? [])]
-    .find(element => element.dataset.layerMenuTrigger === nodeId)
-}
-
-function closeLayerMenu(restoreFocus = false): void {
-  const nodeId = layerMenuNodeId.value
-  if (!nodeId)
-    return
-  stopLayerMenuPositioning?.()
-  stopLayerMenuPositioning = undefined
-  layerMenuStyle.value = undefined
-  layerMenuNodeId.value = undefined
-  if (restoreFocus)
-    void nextTick(() => layerMenuTrigger(nodeId)?.focus())
-}
-
-async function toggleLayerMenu(nodeId: string): Promise<void> {
-  if (layerMenuNodeId.value === nodeId) {
-    closeLayerMenu(true)
-    return
-  }
-  layerMenuNodeId.value = nodeId
-  await nextTick()
-  const trigger = layerMenuTrigger(nodeId)
-  const menu = layerMenuElement()
-  if (!trigger || !menu) {
-    closeLayerMenu()
-    return
-  }
-  const updatePosition = (): void => {
-    void computePosition(trigger, menu, {
-      middleware: [offset(4), flip({ fallbackPlacements: ['top-end'] }), shift({ padding: 8 })],
-      placement: 'bottom-end',
-      strategy: 'fixed',
-    }).then(({ x, y }) => {
-      if (layerMenuNodeId.value !== nodeId)
-        return
-      layerMenuStyle.value = {
-        left: `${x}px`,
-        position: 'fixed',
-        top: `${y}px`,
-      }
-    })
-  }
-  stopLayerMenuPositioning?.()
-  stopLayerMenuPositioning = autoUpdate(trigger, menu, updatePosition)
-  updatePosition()
-  menu.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+function selectViewName(view: string | number): void {
+  const value = String(view) as StudioLeftView
+  if (views.value.some(item => item.id === value))
+    selectView(value)
 }
 
 function runLayerAction(action: StudioLayerAction, nodeId: string): void {
-  closeLayerMenu()
   emit('arrangeLayer', action, nodeId)
-  void nextTick(() => layerMenuTrigger(nodeId)?.focus())
 }
 
-function handleLayerMenuKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    event.stopPropagation()
-    closeLayerMenu(true)
-    return
-  }
-  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key))
-    return
-  const menu = event.currentTarget as HTMLElement
-  const items = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-  if (items.length === 0)
-    return
-  event.preventDefault()
-  const current = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement))
-  const next = event.key === 'Home'
-    ? 0
-    : event.key === 'End'
-      ? items.length - 1
-      : event.key === 'ArrowDown'
-        ? (current + 1) % items.length
-        : (current - 1 + items.length) % items.length
-  items[next]?.focus()
+function focusLayerMenuTrigger(nodeId: string): void {
+  void nextTick(() => layerTree.value
+    ?.querySelector<HTMLButtonElement>(`[data-layer-menu-trigger="${CSS.escape(nodeId)}"]`)
+    ?.focus())
 }
 
-function handleDocumentPointerDown(event: PointerEvent): void {
-  if (!layerMenuNodeId.value || !(event.target instanceof Node))
-    return
-  const nodeId = layerMenuNodeId.value
-  if (layerMenuElement()?.contains(event.target) || layerMenuTrigger(nodeId)?.contains(event.target))
-    return
-  closeLayerMenu()
+function restoreLayerMenuFocus(visible: boolean, nodeId: string): void {
+  if (!visible)
+    focusLayerMenuTrigger(nodeId)
 }
 
 function selectLayer(nodeId: string, event: Pick<MouseEvent | KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>): void {
@@ -267,69 +194,45 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
   focusItem(pageList.value, 'pageId', nextId)
 }
 
-function handleTabKeydown(event: KeyboardEvent, view: StudioLeftView): void {
-  const ids = views.value.map(item => item.id)
-  const index = ids.indexOf(view)
-  let nextIndex = index
-  if (event.key === 'ArrowRight')
-    nextIndex = (index + 1) % ids.length
-  else if (event.key === 'ArrowLeft')
-    nextIndex = (index - 1 + ids.length) % ids.length
-  else if (event.key === 'Home')
-    nextIndex = 0
-  else if (event.key === 'End')
-    nextIndex = ids.length - 1
-  else
-    return
-  event.preventDefault()
-  selectView(ids[nextIndex]!)
-  void nextTick(() => tabs.value
-    ?.querySelector<HTMLButtonElement>(`[data-designer-left-tab="${activeView.value}"]`)
-    ?.focus())
-}
-
-watch(() => props.layers, (layers) => {
-  if (layerMenuNodeId.value && !layers.some(layer => layer.id === layerMenuNodeId.value))
-    closeLayerMenu()
-})
-
-onMounted(() => document.addEventListener('pointerdown', handleDocumentPointerDown))
-onBeforeUnmount(() => {
-  stopLayerMenuPositioning?.()
-  document.removeEventListener('pointerdown', handleDocumentPointerDown)
-})
 </script>
 
 <template>
   <div class="designer-left-panel">
-    <nav ref="tabs" class="designer-left-tabs" role="tablist" :aria-label="locale.t('designer.navigation', 'Designer navigation')">
-      <button
-        v-for="view in views"
-        :key="view.id"
-        type="button"
-        role="tab"
-        :aria-selected="activeView === view.id"
-        :data-designer-left-tab="view.id"
-        :tabindex="activeView === view.id ? 0 : -1"
-        :title="view.label"
-        @click="selectView(view.id)"
-        @keydown="handleTabKeydown($event, view.id)"
+    <ElTabs class="designer-left-tabs" :model-value="activeView" stretch @tab-change="selectViewName">
+      <ElTabPane v-for="view in views" :key="view.id" :name="view.id">
+        <template #label>
+          <ElTooltip :content="view.label" placement="bottom" :show-after="350" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
+            <span :data-designer-left-tab="view.id" :aria-label="view.label" :title="view.label">
+              <component :is="view.icon" :size="14" aria-hidden="true" />
+            </span>
+          </ElTooltip>
+        </template>
+      </ElTabPane>
+    </ElTabs>
+
+    <div v-if="activeView === 'components'" class="designer-components-panel">
+      <ElInput
+        v-model="materialQuery"
+        class="designer-material-search"
+        clearable
+        :placeholder="locale.t('palette.search', 'Search')"
+        :aria-label="locale.t('palette.searchMaterials', 'Search materials')"
       >
-        <component :is="view.icon" :size="14" aria-hidden="true" />
-        <span>{{ view.label }}</span>
-      </button>
-    </nav>
+        <template #prefix><Search :size="14" aria-hidden="true" /></template>
+      </ElInput>
+      <DesignerPalette
+        v-if="filteredMaterials.length > 0"
+        :materials="filteredMaterials"
+        :form="form"
+        :registry="registry"
+        :readonly="readonly"
+        @add-material="emit('addMaterial', $event)"
+      />
+      <ElEmpty v-else :description="locale.t('palette.empty', 'No materials')" :image-size="42" />
+    </div>
 
-    <DesignerPalette
-      v-if="activeView === 'components'"
-      :materials="materials"
-      :form="form"
-      :registry="registry"
-      :readonly="readonly"
-      @add-material="emit('addMaterial', $event)"
-    />
-
-    <div v-else-if="activeView === 'layers'" ref="layerTree" class="designer-layers" role="tree" :aria-label="locale.t('layer.tree', 'Page layers')">
+    <ElScrollbar v-else-if="activeView === 'layers'" class="designer-layers-scrollbar">
+    <div ref="layerTree" class="designer-layers" role="tree" :aria-label="locale.t('layer.tree', 'Page layers')">
       <div
         v-for="(layer, index) in layers"
         :key="layer.id"
@@ -342,52 +245,45 @@ onBeforeUnmount(() => {
         :class="{ 'is-selected': selectedIds.includes(layer.id) }"
         @keydown="handleLayerKeydown($event, layer.id)"
       >
-        <button type="button" tabindex="-1" class="designer-layer-select" :style="{ paddingLeft: `${10 + layer.depth * 16}px` }" @click="selectLayer(layer.id, $event)">
+        <ElButton text native-type="button" tabindex="-1" class="designer-layer-select" :style="{ paddingLeft: `${10 + layer.depth * 16}px` }" @click="selectLayer(layer.id, $event)">
           <Layers3 :size="13" aria-hidden="true" />
           <span>{{ layer.label }}</span>
-        </button>
+        </ElButton>
         <div class="designer-layer-actions">
-          <button
-            :id="`${layerMenuId}-${index}-trigger`"
-            type="button"
-            class="designer-layer-menu-trigger"
-            :data-layer-menu-trigger="layer.id"
-            :tabindex="selectedIds.includes(layer.id) ? 0 : -1"
-            :title="locale.t('workbench.moreActions', 'More actions')"
-            :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
-            aria-haspopup="menu"
-            :aria-controls="layerMenuId"
-            :aria-expanded="layerMenuNodeId === layer.id"
-            @click.stop="toggleLayerMenu(layer.id)"
-          >
-            <MoreHorizontal :size="14" aria-hidden="true" />
-          </button>
-          <div
-            v-if="layerMenuNodeId === layer.id"
-            :id="layerMenuId"
-            class="designer-layer-menu"
-            data-layer-action-menu
-            role="menu"
-            :style="layerMenuStyle"
-            :aria-labelledby="`${layerMenuId}-${index}-trigger`"
-            @keydown="handleLayerMenuKeydown"
-          >
-            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('moveBefore', layer.id)"><ChevronUp :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveUp', 'Move up') }}</span></button>
-            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('moveAfter', layer.id)"><ChevronDown :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveDown', 'Move down') }}</span></button>
-            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('indent', layer.id)"><IndentIncrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.indent', 'Indent') }}</span></button>
-            <button type="button" role="menuitem" tabindex="-1" @click.stop="runLayerAction('outdent', layer.id)"><IndentDecrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.outdent', 'Outdent') }}</span></button>
-          </div>
+          <ElTooltip :content="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })" placement="right" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
+            <ElDropdown trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="runLayerAction($event, layer.id)" @visible-change="restoreLayerMenuFocus($event, layer.id)">
+              <ElButton
+                text
+                native-type="button"
+                class="designer-layer-menu-trigger"
+                :data-layer-menu-trigger="layer.id"
+                :tabindex="selectedIds.includes(layer.id) ? 0 : -1"
+                :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
+              ><MoreHorizontal :size="14" aria-hidden="true" /></ElButton>
+              <template #dropdown>
+                <ElDropdownMenu class="designer-layer-menu" data-layer-action-menu @keydown.capture.esc="focusLayerMenuTrigger(layer.id)">
+                  <ElDropdownItem command="moveBefore"><ChevronUp :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveUp', 'Move up') }}</span></ElDropdownItem>
+                  <ElDropdownItem command="moveAfter"><ChevronDown :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveDown', 'Move down') }}</span></ElDropdownItem>
+                  <ElDropdownItem command="indent"><IndentIncrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.indent', 'Indent') }}</span></ElDropdownItem>
+                  <ElDropdownItem command="outdent"><IndentDecrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.outdent', 'Outdent') }}</span></ElDropdownItem>
+                </ElDropdownMenu>
+              </template>
+            </ElDropdown>
+          </ElTooltip>
         </div>
       </div>
-      <p v-if="layers.length === 0">{{ locale.t('layer.empty', 'No layers yet') }}</p>
+      <ElEmpty v-if="layers.length === 0" :description="locale.t('layer.empty', 'No layers yet')" :image-size="42" />
     </div>
+    </ElScrollbar>
 
     <div v-else-if="activeView === 'pages'" class="designer-pages-panel">
+      <ElScrollbar>
       <nav ref="pageList" class="designer-pages" role="listbox" :aria-label="locale.t('pages.project', 'Project pages')">
-        <button
+        <ElButton
           v-for="pageId in project.pageOrder"
           :key="pageId"
-          type="button"
+          text
+          native-type="button"
           role="option"
           :aria-selected="pageId === currentPageId"
           :aria-current="pageId === currentPageId ? 'page' : undefined"
@@ -400,12 +296,13 @@ onBeforeUnmount(() => {
           <Files :size="14" aria-hidden="true" />
           <span>{{ project.pagesById[pageId]?.name }}</span>
           <small>{{ project.pagesById[pageId]?.route }}</small>
-        </button>
+        </ElButton>
       </nav>
-      <button type="button" class="manage-pages-button" @click="emit('managePages')">
+      </ElScrollbar>
+      <ElButton native-type="button" class="manage-pages-button" @click="emit('managePages')">
         <Settings2 :size="14" aria-hidden="true" />
         {{ locale.t('pages.manage', 'Manage pages') }}
-      </button>
+      </ElButton>
     </div>
 
     <div v-else class="designer-history-panel">
@@ -413,9 +310,10 @@ onBeforeUnmount(() => {
         <strong>{{ locale.t('history.title', 'Local history') }}</strong>
         <small>{{ locale.t('history.position', '{current} of {total}', { current: history?.position ?? 0, total: history?.entries.length ?? 0 }) }}</small>
       </div>
-      <ol v-if="historyPositions.length > 0" class="designer-history-list" :aria-label="locale.t('history.timeline', 'Operation history')">
+      <ElScrollbar v-if="historyPositions.length > 0">
+      <ol class="designer-history-list" :aria-label="locale.t('history.timeline', 'Operation history')">
         <li v-for="item in historyPositions" :key="item.position" :class="{ 'is-current': item.current }">
-          <button type="button" :aria-current="item.current ? 'step' : undefined" :disabled="item.current || readonly" @click="emit('jumpHistory', item.position)">
+          <ElButton text native-type="button" :aria-current="item.current ? 'step' : undefined" :disabled="item.current || readonly" @click="emit('jumpHistory', item.position)">
             <span class="designer-history-marker">
               <Check v-if="item.current" :size="12" aria-hidden="true" />
               <RotateCcw v-else :size="12" aria-hidden="true" />
@@ -424,10 +322,11 @@ onBeforeUnmount(() => {
               <strong>{{ item.label }}</strong>
               <small v-if="item.timestamp">{{ historyTime(item.timestamp) }}</small>
             </span>
-          </button>
+          </ElButton>
         </li>
       </ol>
-      <p v-else class="designer-history-empty">{{ locale.t('history.empty', 'No local operations yet.') }}</p>
+      </ElScrollbar>
+      <ElEmpty v-else class="designer-history-empty" :description="locale.t('history.empty', 'No local operations yet.')" :image-size="42" />
       <p class="designer-history-limit">{{ locale.t('history.limit', 'Keeps the latest {count} operations', { count: history?.limit ?? 0 }) }}</p>
     </div>
   </div>

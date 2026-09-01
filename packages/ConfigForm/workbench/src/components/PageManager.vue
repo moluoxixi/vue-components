@@ -13,7 +13,7 @@ import {
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   project: ReadonlyProjectDocument
@@ -75,8 +75,8 @@ function commitRoute(pageId: string): void {
     emit('action', { type: 'page.route', pageId, route: value })
 }
 
-function handleTextKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Enter')
+function handleTextKeydown(event: Event | KeyboardEvent): void {
+  if ('key' in event && event.key === 'Enter')
     (event.currentTarget as HTMLInputElement).blur()
 }
 
@@ -86,12 +86,9 @@ function movePage(pageId: string, offset: number): void {
     emit('action', { type: 'page.move', pageId, index: index + offset })
 }
 
-function selectProject(event: Event): void {
-  const select = event.target as HTMLSelectElement
-  const id = select.value
+function selectProject(id: string): void {
   if (id !== props.project.id)
     emit('openProject', id)
-  void nextTick(() => select.value = props.project.id)
 }
 
 function confirmDelete(): void {
@@ -103,35 +100,36 @@ function confirmDelete(): void {
 </script>
 
 <template>
-  <section class="page-manager" role="dialog" aria-modal="true" aria-labelledby="page-manager-title">
+  <section class="page-manager" aria-labelledby="page-manager-title">
     <header class="page-manager__header">
       <div>
         <span>{{ locale.t('pageManager.eyebrow', 'Project structure') }}</span>
         <h2 id="page-manager-title">{{ locale.t('pageManager.title', 'Pages') }}</h2>
       </div>
-      <button type="button" :title="locale.t('pageManager.close', 'Close page manager')" :aria-label="locale.t('pageManager.close', 'Close page manager')" @click="emit('close')">
+      <ElButton native-type="button" text circle :title="locale.t('pageManager.close', 'Close page manager')" :aria-label="locale.t('pageManager.close', 'Close page manager')" @click="emit('close')">
         <X :size="18" aria-hidden="true" />
-      </button>
+      </ElButton>
     </header>
 
     <div class="page-manager__toolbar">
       <label>
         <span>{{ locale.t('pageManager.project', 'Project') }}</span>
-        <select :value="project.id" :disabled="busy" :aria-label="locale.t('pageManager.project', 'Project')" @change="selectProject">
-          <option v-for="item in projects" :key="item.id" :value="item.id">
-            {{ item.name }} · {{ locale.t('pageManager.pageCount', '{count} pages', { count: item.pageCount }) }}
-          </option>
-        </select>
+        <ElSelect :model-value="project.id" :disabled="busy" :aria-label="locale.t('pageManager.project', 'Project')" append-to="#workbench-overlays" @change="selectProject">
+          <ElOption v-for="item in projects" :key="item.id" :value="item.id" :label="`${item.name} · ${locale.t('pageManager.pageCount', '{count} pages', { count: item.pageCount })}`" />
+        </ElSelect>
       </label>
       <label class="page-manager__search">
-        <Search :size="15" aria-hidden="true" />
         <span class="sr-only">{{ locale.t('pageManager.search', 'Search pages') }}</span>
-        <input v-model="search" type="search" :placeholder="locale.t('pageManager.search', 'Search pages')" :aria-label="locale.t('pageManager.search', 'Search pages')">
+        <ElInput v-model="search" type="search" clearable :placeholder="locale.t('pageManager.search', 'Search pages')" :aria-label="locale.t('pageManager.search', 'Search pages')">
+          <template #prefix>
+            <Search :size="15" aria-hidden="true" />
+          </template>
+        </ElInput>
       </label>
-      <button class="page-manager__create" type="button" :disabled="busy" @click="emit('createPage')">
+      <ElButton class="page-manager__create" native-type="button" type="primary" :disabled="busy" @click="emit('createPage')">
         <FilePlus2 :size="16" aria-hidden="true" />
         {{ locale.t('pageManager.new', 'New page') }}
-      </button>
+      </ElButton>
     </div>
 
     <div class="page-manager__table" role="table" :aria-label="locale.t('pageManager.projectPages', 'Project pages')">
@@ -148,28 +146,32 @@ function confirmDelete(): void {
       >
         <label role="cell">
           <span class="sr-only">{{ locale.t('pageManager.pageName', 'Page name') }}</span>
-          <input
+          <ElInput
             v-model="names[page.id]"
+            size="small"
             :disabled="busy"
             :aria-label="locale.t('pageManager.pageNameAria', 'Page name for {name}', { name: page.name })"
             @blur="commitName(page.id)"
             @keydown="handleTextKeydown"
-          >
+          />
           <small>{{ page.id }}</small>
         </label>
         <label role="cell">
           <span class="sr-only">{{ locale.t('pageManager.route', 'Page route') }}</span>
-          <input
+          <ElInput
             v-model="routes[page.id]"
+            size="small"
             :disabled="busy"
             :aria-label="locale.t('pageManager.routeAria', 'Route for {name}', { name: page.name })"
             @blur="commitRoute(page.id)"
             @keydown="handleTextKeydown"
-          >
+          />
         </label>
         <div class="page-manager__actions" role="cell">
-          <button
-            type="button"
+          <ElButton
+            native-type="button"
+            text
+            circle
             :class="{ 'is-home': project.homePageId === page.id }"
             :title="project.homePageId === page.id ? locale.t('pageManager.home', 'Home page') : locale.t('pageManager.setHome', 'Set as home page')"
             :aria-label="project.homePageId === page.id ? locale.t('pageManager.homeAria', '{name} is the home page', { name: page.name }) : locale.t('pageManager.setHomeAria', 'Set {name} as home page', { name: page.name })"
@@ -178,54 +180,63 @@ function confirmDelete(): void {
             @click="emit('action', { type: 'page.home', pageId: page.id })"
           >
             <Home :size="15" aria-hidden="true" />
-          </button>
-          <button type="button" :title="locale.t('pageManager.moveUp', 'Move page up')" :aria-label="locale.t('pageManager.moveUpAria', 'Move {name} up', { name: page.name })" :disabled="busy || project.pageOrder[0] === page.id" @click="movePage(page.id, -1)">
+          </ElButton>
+          <ElButton native-type="button" text circle :title="locale.t('pageManager.moveUp', 'Move page up')" :aria-label="locale.t('pageManager.moveUpAria', 'Move {name} up', { name: page.name })" :disabled="busy || project.pageOrder[0] === page.id" @click="movePage(page.id, -1)">
             <ArrowUp :size="15" aria-hidden="true" />
-          </button>
-          <button type="button" :title="locale.t('pageManager.moveDown', 'Move page down')" :aria-label="locale.t('pageManager.moveDownAria', 'Move {name} down', { name: page.name })" :disabled="busy || project.pageOrder.at(-1) === page.id" @click="movePage(page.id, 1)">
+          </ElButton>
+          <ElButton native-type="button" text circle :title="locale.t('pageManager.moveDown', 'Move page down')" :aria-label="locale.t('pageManager.moveDownAria', 'Move {name} down', { name: page.name })" :disabled="busy || project.pageOrder.at(-1) === page.id" @click="movePage(page.id, 1)">
             <ArrowDown :size="15" aria-hidden="true" />
-          </button>
-          <button type="button" :title="locale.t('pageManager.duplicate', 'Duplicate page')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('action', { type: 'page.duplicate', pageId: page.id })">
+          </ElButton>
+          <ElButton native-type="button" text circle :title="locale.t('pageManager.duplicate', 'Duplicate page')" :aria-label="locale.t('pageManager.duplicateAria', 'Duplicate {name}', { name: page.name })" :disabled="busy" @click="emit('action', { type: 'page.duplicate', pageId: page.id })">
             <Copy :size="15" aria-hidden="true" />
-          </button>
-          <button type="button" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || project.pageOrder.length === 1" @click="pendingDeleteId = page.id">
+          </ElButton>
+          <ElButton native-type="button" text circle type="danger" class="is-danger" :title="locale.t('pageManager.delete', 'Delete page')" :aria-label="locale.t('pageManager.deleteAria', 'Delete {name}', { name: page.name })" :disabled="busy || project.pageOrder.length === 1" @click="pendingDeleteId = page.id">
             <Trash2 :size="15" aria-hidden="true" />
-          </button>
+          </ElButton>
         </div>
       </div>
       <p v-if="filteredPages.length === 0" class="page-manager__empty">{{ locale.t('pageManager.noMatch', 'No pages match this search.') }}</p>
     </div>
 
-    <footer v-if="pendingDeletePage" class="page-manager__confirm" role="alertdialog" aria-modal="true" aria-labelledby="delete-page-title">
-      <div>
+    <ElAlert
+      v-if="pendingDeletePage"
+      class="page-manager__confirm"
+      type="error"
+      :closable="false"
+      show-icon
+      role="alert"
+      aria-labelledby="delete-page-title"
+    >
+      <template #title>
         <strong id="delete-page-title">{{ locale.t('pageManager.deletePrompt', 'Delete {name}?', { name: pendingDeletePage.name }) }}</strong>
+      </template>
+      <div class="page-manager__confirm-content">
         <span>{{ locale.t('pageManager.deleteDescription', 'This page and its design model will be removed from the project.') }}</span>
+        <div>
+          <ElButton native-type="button" size="small" @click="pendingDeleteId = undefined">{{ locale.t('pageManager.cancel', 'Cancel') }}</ElButton>
+          <ElButton native-type="button" size="small" type="danger" class="is-danger" @click="confirmDelete">{{ locale.t('pageManager.delete', 'Delete page') }}</ElButton>
+        </div>
       </div>
-      <button type="button" @click="pendingDeleteId = undefined">{{ locale.t('pageManager.cancel', 'Cancel') }}</button>
-      <button type="button" class="is-danger" @click="confirmDelete">{{ locale.t('pageManager.delete', 'Delete page') }}</button>
-    </footer>
+    </ElAlert>
   </section>
 </template>
 
 <style scoped>
 .page-manager {
   display: grid;
-  width: min(980px, calc(100vw - 32px));
-  max-height: min(760px, calc(100vh - 32px));
+  width: 100%;
+  height: min(700px, calc(100vh - 104px));
+  max-height: none;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   color: var(--wb-text);
-  border: 1px solid var(--wb-border);
-  border-radius: 7px;
-  background: var(--wb-elevated);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 38%);
+  background: transparent;
 }
 
 .page-manager__header,
 .page-manager__toolbar,
 .page-manager__table-header,
-.page-manager__row,
-.page-manager__confirm {
+.page-manager__row {
   display: grid;
   align-items: center;
 }
@@ -250,32 +261,9 @@ function confirmDelete(): void {
   letter-spacing: 0;
 }
 
-.page-manager button {
-  color: var(--wb-text);
-  border: 1px solid var(--wb-border);
-  border-radius: 4px;
-  background: var(--wb-surface);
-  cursor: pointer;
-}
-
-.page-manager button:hover:not(:disabled) {
-  color: var(--wb-text-strong);
-  border-color: var(--wb-control-border);
-  background: var(--wb-hover);
-}
-
-.page-manager button:disabled {
-  cursor: default;
-  opacity: 0.48;
-}
-
-.page-manager__header > button,
-.page-manager__actions button {
-  display: inline-grid;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  place-items: center;
+.page-manager__header > .el-button,
+.page-manager__actions .el-button {
+  margin-left: 0;
 }
 
 .page-manager__toolbar {
@@ -293,42 +281,15 @@ function confirmDelete(): void {
   font-size: 11px;
 }
 
-.page-manager input,
-.page-manager select {
-  width: 100%;
-  min-width: 0;
-  height: 32px;
-  padding: 0 9px;
-  color: var(--wb-text);
-  border: 1px solid var(--wb-control-border);
-  border-radius: 4px;
-  background: var(--wb-bg);
-  font: inherit;
-}
-
 .page-manager__search {
   position: relative;
   align-self: end;
 }
 
-.page-manager__search svg {
-  position: absolute;
-  top: 8px;
-  left: 9px;
-  color: var(--wb-muted);
-}
-
-.page-manager__search input {
-  padding-left: 31px;
-}
-
 .page-manager__create {
-  display: inline-flex;
   min-height: 32px;
-  padding: 0 11px;
+  margin-left: 0;
   align-self: end;
-  align-items: center;
-  gap: 7px;
   white-space: nowrap;
 }
 
@@ -381,14 +342,14 @@ function confirmDelete(): void {
   gap: 5px;
 }
 
-.page-manager button.is-home {
+.page-manager .el-button.is-home {
   color: var(--wb-accent);
   border-color: var(--wb-accent);
   background: var(--wb-accent-soft);
   opacity: 1;
 }
 
-.page-manager button.is-danger {
+.page-manager .el-button.is-danger {
   color: var(--wb-danger);
 }
 
@@ -400,27 +361,25 @@ function confirmDelete(): void {
 }
 
 .page-manager__confirm {
-  min-height: 66px;
-  padding: 10px 14px;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
+  min-height: 72px;
+  border-radius: 0;
   border-top: 1px solid var(--wb-danger);
-  background: var(--wb-danger-soft);
 }
 
-.page-manager__confirm div {
+.page-manager__confirm-content {
   display: grid;
   gap: 3px;
 }
 
-.page-manager__confirm span {
+.page-manager__confirm-content > span {
   color: var(--wb-muted);
   font-size: 12px;
 }
 
-.page-manager__confirm button {
-  min-height: 32px;
-  padding: 0 11px;
+.page-manager__confirm-content > div {
+  display: flex;
+  margin-top: 6px;
+  gap: 8px;
 }
 
 .sr-only {
@@ -436,11 +395,9 @@ function confirmDelete(): void {
 
 @media (max-width: 680px) {
   .page-manager {
-    width: 100vw;
-    max-height: 100vh;
-    height: 100vh;
-    border: 0;
-    border-radius: 0;
+    width: 100%;
+    height: calc(100vh - 49px);
+    max-height: none;
   }
 
   .page-manager__toolbar {
@@ -464,12 +421,5 @@ function confirmDelete(): void {
     justify-content: flex-start;
   }
 
-  .page-manager__confirm {
-    grid-template-columns: 1fr auto;
-  }
-
-  .page-manager__confirm div {
-    grid-column: 1 / -1;
-  }
 }
 </style>

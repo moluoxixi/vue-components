@@ -4,7 +4,6 @@ import type { DesignerSelectionMode, DesignSurfaceExpose } from '@moluoxixi/conf
 import type { MobileStudioView } from './workbench-ui-store'
 import type { PersistenceDialogMode } from '../features/persistence/PersistenceDialog.vue'
 import {
-  AlertTriangle,
   Blocks,
   Copy,
   Files,
@@ -467,16 +466,16 @@ watch(recoveryDrafts, (drafts) => {
         {{ workbenchLocale.t('template.newPage', 'New page') }}
       </h1>
       <div class="template-list">
-        <button
+        <ElButton
           v-for="template in templates.values()"
           :key="template.id"
-          type="button"
+          native-type="button"
           :disabled="busy"
           @click="createProject(template.id)"
         >
           <strong>{{ template.title }}</strong>
           <span>{{ template.adapter }}</span>
-        </button>
+        </ElButton>
       </div>
     </section>
 
@@ -532,51 +531,79 @@ watch(recoveryDrafts, (drafts) => {
       @close="persistenceDialogMode = undefined"
     />
 
-    <aside
-      v-if="workspaceRecoveryNotice"
-      class="workspace-recovery-notice"
-      :data-tone="workspaceRecoveryNotice.tone"
-      :role="workspaceRecoveryNotice.tone === 'error' ? 'alert' : 'status'"
-      aria-live="polite"
-    >
-      <AlertTriangle :size="17" aria-hidden="true" />
-      <span>{{ workspaceRecoveryNotice.message }}</span>
-      <button
-        v-if="workspaceRecoveryNotice.action"
-        type="button"
-        :disabled="busy"
-        @click="handleRecoveryAction(workspaceRecoveryNotice.action)"
+    <Teleport to="#workbench-overlays">
+      <ElAlert
+        v-if="workspaceRecoveryNotice"
+        class="workspace-recovery-notice"
+        :type="workspaceRecoveryNotice.tone === 'error' ? 'error' : 'warning'"
+        :data-tone="workspaceRecoveryNotice.tone"
+        :closable="false"
+        show-icon
+        :role="workspaceRecoveryNotice.tone === 'error' ? 'alert' : 'status'"
+        aria-live="polite"
       >
-        <RefreshCw :size="14" aria-hidden="true" />
-        {{ workspaceRecoveryNotice.actionLabel }}
-      </button>
-      <button
-        v-if="workspaceRecoveryNotice.secondaryAction"
-        type="button"
-        :disabled="busy"
-        @click="handleRecoveryAction(workspaceRecoveryNotice.secondaryAction)"
-      >
-        {{ workspaceRecoveryNotice.secondaryActionLabel }}
-      </button>
-      <button
-        v-if="workspaceRecoveryNotice.tertiaryAction"
-        type="button"
-        :disabled="busy"
-        @click="handleRecoveryAction(workspaceRecoveryNotice.tertiaryAction)"
-      >
-        {{ workspaceRecoveryNotice.tertiaryActionLabel }}
-      </button>
-    </aside>
+        <template #title>
+          <span class="workspace-recovery-notice__message">{{ workspaceRecoveryNotice.message }}</span>
+          <span class="workspace-recovery-notice__actions">
+            <ElButton
+              v-if="workspaceRecoveryNotice.action"
+              native-type="button"
+              size="small"
+              :disabled="busy"
+              @click="handleRecoveryAction(workspaceRecoveryNotice.action)"
+            >
+              <RefreshCw :size="14" aria-hidden="true" />
+              {{ workspaceRecoveryNotice.actionLabel }}
+            </ElButton>
+            <ElButton
+              v-if="workspaceRecoveryNotice.secondaryAction"
+              native-type="button"
+              size="small"
+              :disabled="busy"
+              @click="handleRecoveryAction(workspaceRecoveryNotice.secondaryAction)"
+            >
+              {{ workspaceRecoveryNotice.secondaryActionLabel }}
+            </ElButton>
+            <ElButton
+              v-if="workspaceRecoveryNotice.tertiaryAction"
+              native-type="button"
+              size="small"
+              :disabled="busy"
+              @click="handleRecoveryAction(workspaceRecoveryNotice.tertiaryAction)"
+            >
+              {{ workspaceRecoveryNotice.tertiaryActionLabel }}
+            </ElButton>
+          </span>
+        </template>
+      </ElAlert>
 
-    <p v-if="message" class="workbench-message" aria-live="polite">
-      {{ message }}
-    </p>
-    <aside v-if="notice" class="workbench-toast" :data-tone="notice.tone" role="status" aria-live="polite" aria-atomic="true">
-      <span>{{ notice.message }}</span>
-      <button v-if="notice.action" type="button" @click="notice.action.run()">
-        <Undo2 :size="14" aria-hidden="true" />
-        {{ notice.action.label }}
-      </button>
-    </aside>
+      <ElAlert
+        v-if="message"
+        class="workbench-message"
+        type="info"
+        :closable="false"
+        :title="message"
+        role="status"
+        aria-live="polite"
+      />
+      <ElAlert
+        v-if="notice"
+        class="workbench-toast"
+        :type="notice.tone"
+        :closable="false"
+        show-icon
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <template #title>
+          <span>{{ notice.message }}</span>
+          <ElButton v-if="notice.action" native-type="button" text size="small" @click="notice.action.run()">
+            <Undo2 :size="14" aria-hidden="true" />
+            {{ notice.action.label }}
+          </ElButton>
+        </template>
+      </ElAlert>
+    </Teleport>
   </main>
 </template>

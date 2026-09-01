@@ -44,6 +44,7 @@ import {
   resolveDesignerAutoScrollDelta,
   resolveDesignerCollapsedDropTarget,
   resolveDesignerDragOverlayPosition,
+  resolveDesignerDragVisualHeight,
   resolveStickyDesignerDropTarget,
 } from './designer-drag'
 import { createDesignerDragVisualClone } from './designer-drag-overlay'
@@ -559,7 +560,7 @@ const hostedDragVisual = computed(() => {
   const geometry = id ? runtimeNodeGeometryById(id) : undefined
   if (!slots.runtime || !session?.active || session.input !== 'pointer' || !geometry || geometry.rect.width <= 0)
     return undefined
-  const height = Math.max(geometry.rect.height, candidateNode.value?.kind === 'layout' ? 36 : 1)
+  const height = resolveDesignerDragVisualHeight(geometry.rect.height, candidateNode.value?.kind)
   const position = resolveDesignerDragOverlayPosition(
     session.position,
     session.pointerOffset,
@@ -769,7 +770,7 @@ function updateDragOverlay(): void {
     clearDragOverlay()
     return
   }
-  const height = Math.max(rect.height, candidateNode.value?.kind === 'layout' ? 36 : 1)
+  const height = resolveDesignerDragVisualHeight(rect.height, candidateNode.value?.kind)
   const position = resolveDesignerDragOverlayPosition(
     session.position,
     session.pointerOffset,

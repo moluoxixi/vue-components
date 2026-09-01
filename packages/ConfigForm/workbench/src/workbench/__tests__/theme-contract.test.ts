@@ -95,7 +95,7 @@ describe('workbench theme contract', () => {
 
   it('keeps interaction styling and runtime canvas tokens explicit', () => {
     expect(stylesheet).toContain('.topbar-actions button:hover:not(:disabled),')
-    expect(stylesheet).toContain('.export-preview-dialog > header button:hover:not(:disabled)')
+    expect(stylesheet).toContain('.export-stale .el-button')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
     )).toContain('--el-segmented-item-selected-bg-color: var(--mx-designer-selection-bg);')
@@ -140,25 +140,26 @@ describe('workbench theme contract', () => {
     expect(designerStylesheet).not.toContain('--mx-designer-surface: var(--mx-designer-runtime-surface')
   })
 
-  it('keeps every provider theme rule inside a themed Inspector scope', () => {
+  it('keeps provider theme rules in Workbench chrome and out of Runtime surfaces', () => {
     const providerRules = cssRules(stylesheet).filter(({ body, selector }) =>
       body.includes('--el-') || selector.includes('.el-') || selector.includes('.ant-'),
     )
-    const scope = /^\.workbench-app\[data-theme(?:="dark")?\] \.embedded-designer \.mx-config-form-designer__properties(?:\s|$)/
 
     expect(providerRules.length).toBeGreaterThan(0)
     for (const rule of providerRules) {
-      for (const selector of rule.selector.split(','))
-        expect(selector.trim()).toMatch(scope)
+      for (const selector of rule.selector.split(',')) {
+        expect(selector).not.toMatch(/(?:design-runtime-host|preview-runtime-host|preview-stage|canvas-sheet)/)
+      }
     }
+    expect(selectorBlock('.workbench-app')).toContain('--el-color-primary: var(--wb-accent);')
   })
 
   it('keeps export and Preview responsive without mutating intrinsic Canvas runtime styles', () => {
     expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
-    expect(selectorBlock('.topbar-actions .export-menu-popover button')).toContain('white-space: nowrap;')
+    expect(selectorBlock('.export-menu-popover .el-dropdown-menu__item')).toContain('white-space: nowrap;')
     expect(stylesheet).toContain('@media (max-width: 480px)')
-    expect(stylesheet).toContain('.topbar-actions .export-menu-popover button,')
-    expect(stylesheet).toContain('.topbar-actions .mobile-action-popover button,')
+    expect(stylesheet).toContain('.export-menu-popover .el-dropdown-menu__item,')
+    expect(stylesheet).toContain('.mobile-action-popover .el-dropdown-menu__item,')
     expect(stylesheet).toContain('.export-menu > button .export-chevron')
     expect(selectorBlock('.preview-stage')).toContain('container-name: preview-runtime;')
     expect(selectorBlock('.preview-stage')).toContain('container-type: inline-size;')
@@ -176,14 +177,18 @@ describe('workbench theme contract', () => {
   it('keeps Preview as an overlay that cannot resize the Design surface', () => {
     const rules = cssRules(stylesheet)
     const previewRule = rules.find(rule => rule.selector === '.preview-pane')
-    const expandedRule = rules.find(rule => rule.selector === '.workbench-layout.is-preview-expanded .preview-pane')
+    const overlayRule = rules.find(
+      rule => rule.selector === '.workbench-overlays > .preview-drawer-overlay',
+    )
+    const expandedRule = rules.find(rule => rule.selector === '.preview-drawer-shell.is-expanded')
 
     expect(selectorBlock('.workbench-layout')).toContain('position: relative;')
     expect(selectorBlock('.workbench-layout')).toContain('grid-template-columns: minmax(0, 1fr);')
     expect(rules.some(rule => rule.selector === '.editor-pane' && rule.body.includes('isolation: isolate;'))).toBe(true)
-    expect(previewRule?.body).toContain('position: absolute;')
-    expect(previewRule?.body).toContain('right: 0;')
-    expect(expandedRule?.body).toContain('width: 100%;')
+    expect(overlayRule?.body).toContain('top: 48px !important;')
+    expect(overlayRule?.body).toContain('height: auto !important;')
+    expect(previewRule?.body).toContain('position: static;')
+    expect(expandedRule?.body).toContain('box-shadow: none;')
   })
 
   it('keeps compact desktop Preview as an overlay and reserves replacement mode for mobile', () => {

@@ -173,7 +173,7 @@ async function touchDrop(page: Page, materialKey: string, target: Locator): Prom
 }
 
 async function expectAllPaletteSpecimens(page: Page, prefix: 'antd' | 'element', expectedCount: number): Promise<void> {
-  const navigationTabs = page.locator('.designer-left-tabs button')
+  const navigationTabs = page.locator('.designer-left-tabs [role="tab"]')
   await expect(navigationTabs).toHaveCount(4)
   const navigationGeometry = await navigationTabs.evaluateAll(tabs => tabs.map((tab) => {
     const label = tab.querySelector('span')
@@ -697,7 +697,7 @@ for (const scenario of [
   test(`runs a registered non-binding ${scenario.adapter} event exactly once`, async ({ page }) => {
     await createProject(page, scenario.adapter)
     const canvas = page.locator('.mx-config-form-designer__canvas')
-    const collapse = await pointerDrop(page, scenario.material, canvas, { verifyCommitGeometry: false })
+    const collapse = await pointerDrop(page, scenario.material, canvas)
 
     await page.getByRole('tab', { name: 'Layers' }).click()
     await page.locator(`[data-layer-id="${collapse.nodeId}"] .designer-layer-select`).click()
@@ -753,6 +753,29 @@ test('recreates an interactive Preview Runtime session after closing and reopeni
   await expect(reopenedInput).toHaveValue('First Preview session')
   await reopenedInput.fill('Reopened Preview session')
   await expect(reopenedInput).toHaveValue('Reopened Preview session')
+})
+
+test('restores Preview focus and removes the closed drawer from Canvas hit testing', async ({ page }) => {
+  await createProject(page, 'element')
+  const previewTrigger = page.getByRole('button', { name: 'Show preview' })
+  await previewTrigger.click()
+  await page.getByRole('button', { name: 'Close preview' }).click()
+
+  await expect(previewTrigger).toBeFocused()
+  await expect(page.locator('.preview-drawer-overlay')).toHaveCount(0)
+  const node = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+  const nodeBox = await visibleBox(node)
+  const parentHitClasses = await page.evaluate(({ x, y }) => document
+    .elementsFromPoint(x, y)
+    .map(element => element.className)
+    .filter(value => typeof value === 'string'), {
+    x: nodeBox.x + nodeBox.width / 2,
+    y: nodeBox.y + nodeBox.height / 2,
+  })
+  expect(parentHitClasses.join(' ')).not.toContain('preview-drawer')
+
+  await selectCanvasNode(page, node, node.locator('input').first())
+  await expect(page.locator('[data-editor-focus-node-id="profile-name"]')).toBeFocused()
 })
 
 test('uses the real Ant runtime component for pointer candidate, overlay, and committed output', async ({ page }) => {
@@ -811,7 +834,7 @@ test('exports pinned source and config files through the readonly workspace', as
     if (message.type() === 'error' || message.type() === 'warning')
       browserErrors.push(message.text())
   })
-  page.on('pageerror', error => browserErrors.push(error.message))
+  page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
   await createProject(page, 'element')
 
   await page.getByRole('button', { name: 'Export', exact: true }).click()

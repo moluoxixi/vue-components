@@ -2,25 +2,14 @@
 
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import { createDesignerRegistry } from '@moluoxixi/config-form-designer'
-import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { DOMWrapper, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import {
   createProjectDocumentFixture,
   duplicateProjectPage,
 } from '../../project/__tests__/fixtures'
 import StudioLeftPanel from '../StudioLeftPanel.vue'
-
-vi.mock('@floating-ui/dom', () => ({
-  autoUpdate: (_reference: Element, _floating: HTMLElement, update: () => void) => {
-    update()
-    return vi.fn()
-  },
-  computePosition: vi.fn(async () => ({ x: 8, y: 8 })),
-  flip: vi.fn(() => ({ name: 'flip' })),
-  offset: vi.fn(() => ({ name: 'offset' })),
-  shift: vi.fn(() => ({ name: 'shift' })),
-}))
 
 const registry = createDesignerRegistry([{ name: 'test', materials: [{
   key: 'test.input',
@@ -48,7 +37,38 @@ function studioProject(): ProjectDocument {
 
 const project = studioProject()
 
+function overlayRoot(): DOMWrapper<Element> {
+  return new DOMWrapper(document.getElementById('workbench-overlays')!)
+}
+
 describe('studio left panel', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="workbench-overlays" class="workbench-overlays" data-theme="dark"></div>'
+  })
+
+  afterEach(() => document.body.replaceChildren())
+
+  it('filters materials through the Element Plus search shell without changing palette commands', async () => {
+    const wrapper = mount(StudioLeftPanel, {
+      props: {
+        project,
+        currentPageId: 'page-a',
+        form: {},
+        layers: [],
+        materials: registry.listMaterials(),
+        registry,
+        selectedIds: [],
+      },
+    })
+
+    const search = wrapper.get('input[aria-label="Search materials"]')
+    await search.setValue('missing')
+    expect(wrapper.get('.el-empty').text()).toContain('No materials')
+    await search.setValue('Input')
+    await wrapper.get('[data-material-key="test.input"]').trigger('click')
+    expect(wrapper.emitted('addMaterial')).toEqual([['test.input']])
+  })
+
   it('owns only view state and emits semantic layer and page commands', async () => {
     const wrapper = mount(StudioLeftPanel, {
       props: {
@@ -75,10 +95,9 @@ describe('studio left panel', () => {
     const menuTrigger = layer.get('.designer-layer-menu-trigger')
     await menuTrigger.trigger('click')
     expect(menuTrigger.attributes()).toMatchObject({
-      'aria-expanded': 'true',
       'aria-haspopup': 'menu',
     })
-    await layer.findAll('[role="menuitem"]')[0]!.trigger('click')
+    await overlayRoot().findAll('[data-layer-action-menu] [role="menuitem"]')[0]!.trigger('click')
     expect(wrapper.emitted('selectLayer')).toEqual([['field', 'toggle']])
     expect(wrapper.emitted('arrangeLayer')).toEqual([['moveBefore', 'field']])
 
@@ -109,9 +128,16 @@ describe('studio left panel', () => {
     })
 
     const components = wrapper.get('[data-designer-left-tab="components"]')
-    ;(components.element as HTMLButtonElement).focus()
-    await components.trigger('keydown', { key: 'End' })
-    expect(document.activeElement).toBe(wrapper.get('[data-designer-left-tab="history"]').element)
+    const componentTab = components.element.closest<HTMLElement>('[role="tab"]')!
+    expect(components.attributes()).toMatchObject({
+      'aria-label': 'Components',
+      'title': 'Components',
+    })
+    expect(wrapper.findAll('.designer-left-tabs [role="tab"]')).toHaveLength(4)
+    componentTab.focus()
+    await componentTab.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'ArrowRight', key: 'ArrowRight' }))
+    await nextTick()
+    expect(document.activeElement).toBe(wrapper.get('[data-designer-left-tab="layers"]').element.closest('[role="tab"]'))
     wrapper.unmount()
   })
 
@@ -170,16 +196,16 @@ describe('studio left panel', () => {
     ;(trigger.element as HTMLButtonElement).focus()
     await trigger.trigger('click')
     await nextTick()
-    const menu = wrapper.get('[role="menu"]')
+    const menu = overlayRoot().get('[data-layer-action-menu]')
     const items = menu.findAll('[role="menuitem"]')
     expect(items).toHaveLength(4)
-    expect(document.activeElement).toBe(items[0]!.element)
-
-    await menu.trigger('keydown', { key: 'End' })
-    expect(document.activeElement).toBe(items[3]!.element)
-    await menu.trigger('keydown', { key: 'Escape' })
+    expect(trigger.attributes('aria-haspopup')).toBe('menu')
+    ;(items[0]!.element as HTMLElement).focus()
+    await items[0]!.trigger('keydown', { code: 'ArrowDown', key: 'ArrowDown' })
+    expect(document.activeElement).toBe(items[1]!.element)
+    await items[1]!.trigger('keydown', { code: 'Escape', key: 'Escape' })
     await nextTick()
-    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(overlayRoot().get('[data-layer-action-menu]').isVisible()).toBe(false)
     expect(document.activeElement).toBe(trigger.element)
     wrapper.unmount()
   })

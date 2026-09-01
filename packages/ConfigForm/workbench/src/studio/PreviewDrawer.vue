@@ -26,8 +26,7 @@ import {
   X,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, ref, useTemplateRef, watch } from 'vue'
-import { useWorkbenchDialogFocus } from '../components/use-dialog-focus'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import PreviewRuntimeHostFrame from '../runtime-host/PreviewRuntimeHostFrame.vue'
 
 export type PreviewViewport = 'desktop' | 'tablet' | 'mobile'
@@ -65,14 +64,10 @@ const emit = defineEmits<{
 }>()
 
 const runtimeHost = useTemplateRef<{ submit: () => void }>('runtimeHost')
-const dialog = useTemplateRef<HTMLElement>('dialog')
 const runtimeReady = ref(false)
+let returnFocus: HTMLElement | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
-const dialogFocus = useWorkbenchDialogFocus(
-  () => props.open && !!props.expanded,
-  dialog,
-  () => emit('update:expanded', false),
-)
+const drawerSize = computed(() => props.expanded ? '100%' : 'clamp(420px, 42vw, 680px)')
 const submissionJson = computed(() => {
   if (!props.lastSubmission)
     return ''
@@ -125,25 +120,66 @@ function handleRuntimeError(error: Error): void {
   emit('error', error)
 }
 
+function handleDrawerClose(): void {
+  if (!props.open)
+    return
+  if (props.expanded)
+    emit('update:expanded', false)
+  else
+    emit('close')
+}
+
 watch(
   () => [props.adapter, props.compilation, props.projection?.current.revisionKey],
   () => runtimeReady.value = false,
 )
+
+watch(() => props.open, (open, wasOpen) => {
+  if (open) {
+    returnFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : undefined
+    return
+  }
+  const target = returnFocus
+  returnFocus = undefined
+  if (wasOpen && target?.isConnected)
+    void nextTick(() => target.focus())
+})
 </script>
 
 <template>
-  <aside
+  <ElDrawer
     v-if="open"
-    ref="dialog"
-    class="preview-pane"
+    class="preview-drawer-shell"
     :class="{ 'is-expanded': expanded }"
+    modal-class="preview-drawer-overlay"
+    :model-value="open"
+    direction="rtl"
+    :size="drawerSize"
+    :modal="!!expanded"
+    modal-penetrable
+    append-to="#workbench-overlays"
+    destroy-on-close
+    :lock-scroll="!!expanded"
+    :trap-focus="!!expanded"
+    :close-on-click-modal="!!expanded"
+    :close-on-press-escape="!!expanded"
+    :show-close="false"
+    :with-header="false"
     :aria-label="locale.t('preview.page', 'Page preview')"
     :aria-labelledby="expanded ? 'preview-dialog-title' : undefined"
     :aria-modal="expanded ? 'true' : undefined"
-    :role="expanded ? 'dialog' : undefined"
-    @keydown="dialogFocus.handleKeydown"
+    @close="handleDrawerClose"
   >
-    <header class="pane-header">
+    <aside
+      v-if="open"
+      class="preview-pane"
+      :class="{ 'is-expanded': expanded }"
+      role="complementary"
+      :aria-label="locale.t('preview.page', 'Page preview')"
+    >
+      <header class="pane-header">
       <div class="preview-heading">
         <strong id="preview-dialog-title">{{ locale.t('preview.title', 'Preview') }}</strong>
         <span class="preview-live-state" :data-tone="state.tone" role="status" aria-live="polite">
@@ -185,8 +221,8 @@ watch(
           <X :size="16" aria-hidden="true" />
         </button>
       </div>
-    </header>
-    <div class="preview-body">
+      </header>
+      <div class="preview-body">
       <div class="preview-canvas">
         <div class="preview-stage" :data-viewport="viewport">
           <div v-if="compilation && (configError || projection?.compileResult.success === false)" class="preview-diagnostics" role="status">
@@ -277,6 +313,7 @@ watch(
           {{ locale.t('preview.resultsEmpty', 'Submit the preview form to inspect its JSON result and validation state.') }}
         </p>
       </section>
-    </div>
-  </aside>
+      </div>
+    </aside>
+  </ElDrawer>
 </template>

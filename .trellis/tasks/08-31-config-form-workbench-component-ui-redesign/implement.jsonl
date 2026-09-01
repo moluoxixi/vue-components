@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"定位 Designer/Workbench 前端规范与适用状态合同。"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"保持 ProjectDocument、History、Selection、RuntimeHost 与 UI 状态的单一所有权。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"保持 Palette 与两套 Provider 的 Registry 发现、命名和事件能力合同。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"识别跨包边界变化并同步 ConfigForm 架构文档。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"审查 Workbench chrome、Designer、RuntimeHost 和 Provider 之间的数据流与隔离。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"避免创建 BaseButton/BaseTabs 等重复 Element Plus 状态机的通用抽象。"}

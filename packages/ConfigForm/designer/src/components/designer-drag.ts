@@ -97,6 +97,15 @@ export function resolveDesignerDragOverlayPosition(
   }
 }
 
+export function resolveDesignerDragVisualHeight(
+  measuredHeight: number,
+  kind?: 'field' | 'layout',
+): number {
+  return measuredHeight <= 0 && kind === 'layout'
+    ? 36
+    : Math.max(measuredHeight, 1)
+}
+
 export function resolveDesignerAutoScrollDelta(
   point: DesignerPointerPosition,
   rect: Pick<DOMRect, 'bottom' | 'left' | 'right' | 'top'>,

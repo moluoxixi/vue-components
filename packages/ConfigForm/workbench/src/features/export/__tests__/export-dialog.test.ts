@@ -3,7 +3,7 @@
 import type { BuildExportSnapshotInput } from '../../../project'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '../../../adapters'
 import { createBuiltInProject } from '../../../project'
@@ -27,6 +27,11 @@ async function createInput(): Promise<BuildExportSnapshotInput> {
 describe('export dialog', () => {
   it('captures one complete Source and Config snapshot in source mode', async () => {
     const input = await createInput()
+    const target = document.createElement('main')
+    target.id = 'workbench-overlays'
+    target.className = 'workbench-overlays'
+    target.dataset.theme = 'light'
+    document.body.append(target)
     const wrapper = mount(ExportDialog, {
       props: {
         capture: () => input,
@@ -38,19 +43,21 @@ describe('export dialog', () => {
         stubs: { WorkspaceCodeEditor: true },
       },
     })
+    const root = new DOMWrapper(target)
 
     await flushPromises()
 
-    expect(wrapper.get('[role="tree"]').text()).toContain('package.json')
-    expect(wrapper.get('[role="tree"]').text()).toContain('Page.vue')
-    expect(wrapper.text()).toContain('Snapshot model revision 7')
-    expect(wrapper.get('button.dialog-action').attributes('disabled')).toBeUndefined()
+    expect(root.get('[role="tree"]').text()).toContain('package.json')
+    expect(root.get('[role="tree"]').text()).toContain('Page.vue')
+    expect(root.text()).toContain('Snapshot model revision 7')
+    expect(root.get('button.dialog-action').attributes('disabled')).toBeUndefined()
 
     await wrapper.setProps({ mode: 'config' })
     await flushPromises()
-    expect(wrapper.get('[role="tree"]').text()).toContain('project.config.ts')
-    expect(wrapper.get('[role="tree"]').text()).toContain('form.config.ts')
+    expect(root.get('[role="tree"]').text()).toContain('project.config.ts')
+    expect(root.get('[role="tree"]').text()).toContain('form.config.ts')
 
     wrapper.unmount()
+    target.remove()
   })
 })

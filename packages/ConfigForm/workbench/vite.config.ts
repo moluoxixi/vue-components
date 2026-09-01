@@ -2,6 +2,8 @@ import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import Vue from '@vitejs/plugin-vue'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url))
@@ -16,7 +18,14 @@ export default defineConfig({
       },
     },
   },
-  plugins: [Vue()],
+  plugins: [
+    Vue(),
+    Components({
+      dirs: [],
+      dts: resolve(currentDirectory, 'src/components.d.ts'),
+      resolvers: [ElementPlusResolver({ importStyle: 'css' })],
+    }),
+  ],
   resolve: {
     alias: {
       '@': resolve(currentDirectory, 'src'),

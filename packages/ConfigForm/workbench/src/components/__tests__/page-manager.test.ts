@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { DOMWrapper, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   createProjectDocumentFixture,
   duplicateProjectPage,
@@ -26,7 +26,17 @@ function mountManager(project: ProjectDocument) {
   })
 }
 
+function overlayRoot(): DOMWrapper<Element> {
+  return new DOMWrapper(document.getElementById('workbench-overlays')!)
+}
+
 describe('page manager', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="workbench-overlays" class="workbench-overlays" data-theme="dark"></div>'
+  })
+
+  afterEach(() => document.body.replaceChildren())
+
   it('emits page actions without mutating the project', async () => {
     const project = createProjectDocumentFixture()
     const wrapper = mountManager(project)
@@ -38,6 +48,10 @@ describe('page manager', () => {
       { type: 'page.rename', pageId: 'home', name: 'Home page' },
     ])
     expect(project.pagesById.home!.name).toBe('Fixture project')
+
+    await wrapper.get('.el-select__wrapper').trigger('click')
+    expect(overlayRoot().find('.el-select-dropdown').exists()).toBe(true)
+    wrapper.unmount()
   })
 
   it('requires an explicit confirmation before deleting a page', async () => {
@@ -50,12 +64,13 @@ describe('page manager', () => {
     })
     const wrapper = mountManager(project)
     await wrapper.get('button[aria-label="Delete Settings"]').trigger('click')
-    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(true)
+    expect(wrapper.find('.page-manager__confirm[role="alert"]').exists()).toBe(true)
     expect(wrapper.emitted('action')).toBeUndefined()
 
-    await wrapper.get('[role="alertdialog"] button.is-danger').trigger('click')
+    await wrapper.get('.page-manager__confirm button.is-danger').trigger('click')
     expect(wrapper.emitted('action')?.[0]).toEqual([
       { type: 'page.remove', pageId: 'settings' },
     ])
+    wrapper.unmount()
   })
 })
