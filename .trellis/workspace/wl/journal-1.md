@@ -594,3 +594,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 26: 完成 ConfigForm 独立模板管理
+
+**Date**: 2026-09-01
+**Task**: 完成 ConfigForm 独立模板管理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 JSON-safe 模板 Provider 与内置目录、严格校验和全量身份重映射、隔离运行时预览、独立创建工作区、持久化补偿与发布安全，并通过单元、E2E、类型、构建及真实浏览器验收。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2f316a7b` | (see git log) |
+
+### Status
+
+[OK] **Completed**
