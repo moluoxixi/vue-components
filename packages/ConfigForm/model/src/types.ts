@@ -313,6 +313,13 @@ export type ProjectOperation
     | { type: 'node.props', pageId: PageId, nodeId: NodeId, props: ModelJsonObject }
     | { type: 'node.events', pageId: PageId, nodeId: NodeId, events: Record<string, RegisteredEventAction[]> }
     | { type: 'node.bindings', pageId: PageId, nodeId: NodeId, bindings: Record<string, RegisteredBinding> }
+    | {
+      type: 'node.config.remove'
+      pageId: PageId
+      nodeId: NodeId
+      property: 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn'
+      key?: string
+    }
     | { type: 'node.placement', pageId: PageId, nodeId: NodeId, placement: NodePlacement }
     | { type: 'node.settings', pageId: PageId, nodeId: NodeId, settings: PageNodeSettings }
     | { type: 'node.remove', pageId: PageId, nodeId: NodeId }

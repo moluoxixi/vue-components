@@ -107,7 +107,11 @@ export function undoProjectHistory(
   const entry = history.past.at(-1)
   if (!entry)
     return { changed: false, history, diagnostics: [], changeSet: EMPTY_CHANGE_SET }
-  const result = applyProjectTransaction(currentDocument(history), entry.inverse, options)
+  const result = applyProjectTransaction(
+    currentDocument(history),
+    entry.inverse,
+    inverseOptions(entry.transaction, options),
+  )
   if (!result.success)
     return { changed: false, history, diagnostics: result.diagnostics, changeSet: EMPTY_CHANGE_SET }
   if (!result.changed)
@@ -129,6 +133,19 @@ export function undoProjectHistory(
       future: [entry, ...history.future],
     },
   }
+}
+
+function inverseOptions(
+  transaction: ProjectTransaction,
+  options: ApplyProjectHistoryOptions,
+): ApplyProjectHistoryOptions {
+  if (!transaction.operations.every(operation => operation.type === 'node.config.remove'))
+    return options
+  // The forward transaction was accepted only because every operation was a
+  // monotonic deletion. Its engine-generated inverse must be able to restore
+  // the exact prior snapshot, including the stale Registry data being repaired.
+  const { registry: _registry, ...rest } = options
+  return rest
 }
 
 export function redoProjectHistory(

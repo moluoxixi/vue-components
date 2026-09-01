@@ -116,6 +116,21 @@ function applyProjectChange(
   }
   if (transaction.operations.length === 0)
     return failure(document, 'PROJECT_TRANSACTION_EMPTY', 'Transactions must contain at least one operation.')
+  const configRemovalCount = transaction.operations.filter(operation => operation.type === 'node.config.remove').length
+  if (configRemovalCount > 0 && configRemovalCount !== transaction.operations.length) {
+    return failure(
+      document,
+      'PROJECT_NODE_CONFIG_REMOVE_MIXED',
+      'Stored configuration removal cannot be mixed with other operations.',
+    )
+  }
+  if (configRemovalCount > 0 && transaction.mergeKey) {
+    return failure(
+      document,
+      'PROJECT_NODE_CONFIG_REMOVE_MERGE_INVALID',
+      'Stored configuration removal cannot join a merged history entry.',
+    )
+  }
   if (options.registry) {
     try {
       validateRegistryLock(document, options.registry)
@@ -386,6 +401,7 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       requirePage(document, operation.pageId).graph.nodesById[node.id] = nextNode
       return changed([{ type: 'node.bindings', pageId: operation.pageId, nodeId: node.id, bindings: previous }], [operation.pageId], [node.id])
     }
+    case 'node.config.remove': return removeNodeConfig(document, operation)
     case 'node.placement': {
       requireNode(document, operation.pageId, operation.nodeId)
       const page = requirePage(document, operation.pageId)
@@ -476,6 +492,98 @@ function applyOperation(document: ProjectDocument, operation: ProjectOperation):
       )
     }
   }
+}
+
+function removeNodeConfig(
+  document: ProjectDocument,
+  operation: Extract<ProjectOperation, { type: 'node.config.remove' }>,
+): OperationResult {
+  const page = requirePage(document, operation.pageId)
+  const node = requireNode(document, operation.pageId, operation.nodeId)
+
+  if (operation.property === 'events' || operation.property === 'bindings' || operation.property === 'conditions') {
+    const key = operation.key
+    if (!key?.trim()) {
+      invalid(
+        'PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED',
+        `Stored ${operation.property} removal requires a non-empty key.`,
+        page.id,
+        node.id,
+      )
+    }
+    assertSafeRecordKey(key, 'PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID')
+    const current = operation.property === 'conditions'
+      ? node.conditions
+      : node[operation.property]
+    if (!current || !Object.hasOwn(current, key))
+      return unchanged()
+
+    if (operation.property === 'events') {
+      const previous = cloneModelValue(node.events)
+      const events = cloneModelValue(node.events)
+      delete events[key]
+      page.graph.nodesById[node.id] = parseNodeCandidate({ ...node, events }, page.id, node.id)
+      return changed([{
+        type: 'node.events',
+        pageId: page.id,
+        nodeId: node.id,
+        events: previous,
+      }], [page.id], [node.id])
+    }
+    if (operation.property === 'bindings') {
+      const previous = cloneModelValue(node.bindings)
+      const bindings = cloneModelValue(node.bindings)
+      delete bindings[key]
+      page.graph.nodesById[node.id] = parseNodeCandidate({ ...node, bindings }, page.id, node.id)
+      return changed([{
+        type: 'node.bindings',
+        pageId: page.id,
+        nodeId: node.id,
+        bindings: previous,
+      }], [page.id], [node.id])
+    }
+
+    const previous = settingsForNode(node)
+    const conditions = cloneModelValue(node.conditions ?? {})
+    delete conditions[key as keyof typeof conditions]
+    page.graph.nodesById[node.id] = parseNodeCandidate({ ...node, conditions }, page.id, node.id)
+    return changed([{
+      type: 'node.settings',
+      pageId: page.id,
+      nodeId: node.id,
+      settings: previous,
+    }], [page.id], [node.id])
+  }
+
+  if (operation.key !== undefined) {
+    invalid(
+      'PROJECT_NODE_CONFIG_REMOVE_KEY_UNEXPECTED',
+      `Stored ${operation.property} removal does not accept a nested key.`,
+      page.id,
+      node.id,
+    )
+  }
+  if (node.kind !== 'field') {
+    invalid(
+      'PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID',
+      `Layout nodes do not contain ${operation.property}.`,
+      page.id,
+      node.id,
+    )
+  }
+  if (node[operation.property] === undefined)
+    return unchanged()
+
+  const previous = settingsForNode(node)
+  const candidate = { ...node }
+  delete candidate[operation.property]
+  page.graph.nodesById[node.id] = parseNodeCandidate(candidate, page.id, node.id)
+  return changed([{
+    type: 'node.settings',
+    pageId: page.id,
+    nodeId: node.id,
+    settings: previous,
+  }], [page.id], [node.id])
 }
 
 function insertSubgraph(
@@ -876,6 +984,11 @@ function collectValidationPlan(
         addValidationNode(plan.registryPlacementIdsByPage, operation.pageId, operation.nodeId)
       return
     }
+    case 'node.config.remove':
+      // This operation can only remove an existing schema-owned value. Validate
+      // the page schema, while allowing unrelated stale Registry keys to remain.
+      plan.pageIds.add(operation.pageId)
+      return
     case 'page.add':
       result.changedPageIds.forEach(pageId => plan.registryPageIds.add(pageId))
       return

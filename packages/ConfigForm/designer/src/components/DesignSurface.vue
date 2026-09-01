@@ -29,6 +29,7 @@ import {
   createMoveCommand,
   createNodePathCommand,
   createResizeCommand,
+  createStoredConfigRemovalCommand,
   findDesignNode,
 } from '../graph'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../locale'
@@ -356,7 +357,7 @@ const runtimeProjection = computed(() => applyDesignGraphReactions(
   createDesignPreviewModel(controller.graph.value),
 ))
 const selectedComponentDefinition = computed(() => {
-  const component = controller.selectedNodes.value[0]?.component
+  const component = controller.selectedNode.value?.component
   return component ? props.componentRegistry.get(component) : undefined
 })
 const toolbarScope = computed(() => ({
@@ -443,6 +444,10 @@ function handleUpdatePath(nodeId: string, path: string[], value: unknown): void 
 
 function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
   dispatch(createNodePathCommand(controller.graph.value, props.pageId, nodeIds, path, value))
+}
+
+function handleRemoveStoredConfig(nodeId: string, path: string[]): void {
+  dispatch(createStoredConfigRemovalCommand(props.pageId, nodeId, path))
 }
 
 function handleUpdateForm(changes: Record<string, unknown>): void {
@@ -657,12 +662,15 @@ defineExpose<DesignSurfaceExpose>({
             :material="controller.selectedMaterial.value"
             :diagnostics="controller.diagnostics.value"
             :component-definition="selectedComponentDefinition"
+            :get-material="registry.getMaterial"
+            :get-component-definition="componentRegistry.get"
             :breakpoint="activeBreakpoint"
             :components="registry.components"
             :validator-options="registry.listValidators()"
             :property-controls="registry.propertyControls"
             :readonly="readonly"
             @configure-event="emit('configureEvent', $event.nodeId, $event.eventName)"
+            @remove-stored-config="handleRemoveStoredConfig"
             @update-path="handleUpdatePath"
             @update-paths="handleUpdatePaths"
             @update-form="handleUpdateForm"

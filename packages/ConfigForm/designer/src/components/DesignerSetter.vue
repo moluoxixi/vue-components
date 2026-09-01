@@ -3,7 +3,7 @@ import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type { PageNode } from '@moluoxixi/config-form-model'
 import type { DesignerPropertySetterDefinition } from '../registry'
 import { Minus, Plus } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import DesignerConditionSetter from './DesignerConditionSetter.vue'
 import DesignerDefaultValueSetter from './DesignerDefaultValueSetter.vue'
@@ -15,6 +15,7 @@ const props = defineProps<{
   setter: DesignerPropertySetterDefinition
   value: unknown
   inheritedValue?: unknown
+  hint?: string
   readonly?: boolean
   node?: PageNode
   fieldOptions?: string[]
@@ -26,6 +27,7 @@ const emit = defineEmits<{
   commit: [value: unknown]
 }>()
 const locale = useDesignerLocale()
+const hintId = useId()
 
 const textDraft = ref('')
 const draftDirty = ref(false)
@@ -114,7 +116,10 @@ function reactionValue(value: unknown): ConfigFormReaction[] | undefined {
   <div class="mx-config-form-designer__setter" :class="{ 'is-compound': compound }">
     <span class="mx-config-form-designer__setter-label-row">
       <span class="mx-config-form-designer__setter-label" :title="setter.label">{{ setter.label }}</span>
-      <span v-if="inherited" class="mx-config-form-designer__setter-hint">{{ locale.t('setter.inherited', 'Inherited') }}</span>
+      <span class="mx-config-form-designer__setter-hints">
+        <span v-if="inherited" class="mx-config-form-designer__setter-hint">{{ locale.t('setter.inherited', 'Inherited') }}</span>
+        <span v-if="hint" :id="hintId" class="mx-config-form-designer__setter-hint is-value">{{ hint }}</span>
+      </span>
     </span>
 
     <input
@@ -143,6 +148,7 @@ function reactionValue(value: unknown): ConfigFormReaction[] | undefined {
         v-model="textDraft"
         type="number"
         :aria-label="setter.label"
+        :aria-describedby="hint ? hintId : undefined"
         :min="setter.min"
         :max="setter.max"
         :step="setter.step"

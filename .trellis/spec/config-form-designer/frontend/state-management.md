@@ -95,6 +95,14 @@ interface ProjectTransaction {
   mergeKey?: string
 }
 
+type ProjectStoredConfigRemovalOperation = {
+  type: 'node.config.remove'
+  pageId: PageId
+  nodeId: NodeId
+  property: 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn'
+  key?: string
+}
+
 interface AppliedProjectTransaction {
   transaction: ProjectTransaction
   inverse: ProjectTransaction
@@ -154,6 +162,22 @@ interface SlotItem {
 - Semantic commands are JSON-safe. Node property removal uses explicit
   `patch.unset`; `undefined` is invalid in `patch.set` because JSON,
   postMessage, Worker, and persisted command logs discard it.
+- Registry-stale stored configuration uses the narrower
+  `node.config.remove` repair operation. `events`, `bindings`, and `conditions`
+  require one safe non-empty `key`; `validation` and `validateOn` reject a key
+  and require a field node. The operation carries no replacement value and an
+  absent target is a semantic no-op.
+- A transaction containing `node.config.remove` contains only that operation
+  type and has no `mergeKey`. Forward application still validates the current
+  Registry lock and the changed Page schema, while deliberately allowing
+  unrelated stale Registry keys to remain. This is what lets the Inspector
+  remove one obsolete key without rewriting a record that Registry validation
+  would reject as a whole.
+- Only History may apply the semantic inverse of an already accepted pure
+  `node.config.remove` transaction without Registry revalidation. The inverse
+  restores the exact prior schema-valid snapshot; UI commands cannot request
+  this inverse mode or use it to write arbitrary stale data. Redo executes the
+  original deletion through normal validation again.
 - `ProjectDocument` contains no repository revision or persistence timestamps.
   Repository commits use a separate stable commit ID and CAS against the saved
   repository revision. `ProjectSaveCoordinator` owns commit ID generation,
@@ -404,6 +428,10 @@ interface SlotItem {
 | Reused command ID with different payload | `PROJECT_COMMAND_ID_REUSED` |
 | Node patch sets `undefined` | `PROJECT_NODE_PATCH_VALUE_UNDEFINED` |
 | Node patch sets and unsets the same key | `PROJECT_NODE_PATCH_CONFLICT` |
+| Stored record removal omits or uses an unsafe key | `PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED` / `PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID`; atomic rollback |
+| `validation` / `validateOn` removal supplies a key or targets a layout | `PROJECT_NODE_CONFIG_REMOVE_KEY_UNEXPECTED` / `PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID`; atomic rollback |
+| Stored configuration removal is mixed with another operation | `PROJECT_NODE_CONFIG_REMOVE_MIXED`; atomic rollback |
+| Stored configuration removal supplies `mergeKey` | `PROJECT_NODE_CONFIG_REMOVE_MERGE_INVALID`; atomic rollback |
 | Repository CAS mismatch | `PROJECT_REVISION_CONFLICT`; preserve local edits |
 | Two editor sessions save their first edit | Unique commit IDs; stale tab receives CAS conflict, not command reuse |
 | Save succeeds while newer edits exist | Saved captured revision; local state remains dirty |
@@ -414,6 +442,14 @@ interface SlotItem {
 - Model unit tests cover current schema invariants, every Operation, semantic
   inverse, command expansion, multi-action final validation, merge, undo/redo,
   no-op revisions, structural sharing, and performance at 100/500/2000 nodes.
+- Model repair tests start from a schema-valid document with multiple unrelated
+  Registry-stale event/binding keys, prove an ordinary record rewrite fails,
+  remove only the named target, preserve every sibling key, and prove one
+  Undo/Redo round trip restores and removes the exact structured value.
+- Designer and Workbench tests prove removal intent is absent when matching
+  material/contract evidence is missing, readonly keeps the value visible but
+  disables deletion, heterogeneous selection identifies the owning node, and
+  browser Undo restores the stale item through the Project history timeline.
 - Repository tests cover atomic multi-key create/commit, checksums, missing
   entities, CAS across connections, command receipt replay, quota/partial
   failure, save-during-edit, strict version rejection, and source-record
@@ -456,6 +492,15 @@ interface SlotItem {
   down/move/up/cancel, stable registration across slot moves, and candidate /
   drag-visual Runtime parity.
 
+### 7.1 Good / Base / Bad Cases
+
+- Good: delete `events.legacy.remove` while `events.legacy.keep` and an unknown
+  binding remain, then Undo restores the exact nested action payload.
+- Base: delete an already absent supported path; publish no revision or history
+  entry.
+- Bad: rewrite the full `events` record, mix repair with `page.rename`, attach a
+  merge key, or expose Registry-validation bypass as a UI option.
+
 ## 8. Wrong vs Correct
 
 Wrong:
@@ -484,6 +529,28 @@ Wrong: watch generated Config or Source and parse it back into the project.
 
 Correct: derive Design, Preview, Config, Source, and file-tree projections from
 the current immutable ProjectSnapshot.
+
+For Registry-stale repair, correct means one exact monotonic operation:
+
+```ts
+projectEditorSession.execute({
+  id: nextCommandId(),
+  label: 'Remove stored configuration',
+  actions: [{
+    type: 'operation.apply',
+    operations: [{
+      type: 'node.config.remove',
+      pageId,
+      nodeId,
+      property: 'events',
+      key: 'legacy.change',
+    }],
+  }],
+})
+```
+
+Wrong: copy the remaining stale record into `node.events`, mix the repair with
+ordinary edits, or add a replacement value to `node.config.remove`.
 
 ## 9. Readonly Export Snapshot Contract
 

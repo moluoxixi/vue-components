@@ -18,6 +18,7 @@ export interface DesignerPropertyFormEntry {
   setter: DesignerPropertySetterDefinition
   value: unknown
   inheritedValue?: unknown
+  hint?: string
 }
 
 const props = defineProps<{
@@ -55,7 +56,7 @@ function fieldKey(entry: DesignerPropertyFormEntry, index: number): string {
 }
 
 function controlFor(entry: DesignerPropertyFormEntry): DesignerPropertyControlDefinition | undefined {
-  return isSimpleControl(entry.setter.control)
+  return isSimpleControl(entry.setter.control) && !entry.hint
     ? props.controls?.[entry.setter.control]
     : undefined
 }
@@ -153,6 +154,7 @@ function customField(
     trigger: 'commit',
     props: {
       setter,
+      hint: entry.hint,
       inheritedValue: entry.inheritedValue,
       readonly: props.readonly,
       node: props.node,

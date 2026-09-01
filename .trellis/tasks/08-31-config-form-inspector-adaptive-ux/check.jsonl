@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"核对 Designer 前端质量要求与本任务适用规范。"}
+{"file":".trellis/tasks/08-31-config-form-inspector-adaptive-ux/research/inspector-evidence.md","reason":"核对代码证据、状态所有权、精确清理命令路径与规划时识别的测试缺口。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"验证两套 Provider 的 material/contract 能力投影、未知配置处理和 Registry 边界。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查公共 API、依赖或架构变化是否完成同变更文档维护。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"执行 Inspector 到 command/runtime/export 的跨层一致性与数据保真检查。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查 capability、fraction 与 stale cleanup 没有重复实现或多处漂移。"}

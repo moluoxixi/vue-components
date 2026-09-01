@@ -77,6 +77,32 @@ export function createRemoveCommand(pageId: string, nodeIds: string[]): ProjectC
   )
 }
 
+export function createStoredConfigRemovalCommand(
+  pageId: string,
+  nodeId: string,
+  path: string[],
+): ProjectCommand {
+  const [property, key, ...extra] = path
+  const recordProperties = new Set(['bindings', 'conditions', 'events'])
+  const fieldProperties = new Set(['validation', 'validateOn'])
+  if (
+    !property
+    || extra.length > 0
+    || (recordProperties.has(property) && !key)
+    || (fieldProperties.has(property) && key !== undefined)
+    || (!recordProperties.has(property) && !fieldProperties.has(property))
+  ) {
+    throw new TypeError('DESIGN_STORED_CONFIG_PATH_INVALID: Stored configuration removal requires one exact supported path.')
+  }
+  return createOperationCommand('Remove stored configuration', [{
+    type: 'node.config.remove',
+    pageId,
+    nodeId,
+    property: property as 'bindings' | 'conditions' | 'events' | 'validation' | 'validateOn',
+    ...(key === undefined ? {} : { key }),
+  }])
+}
+
 export function createResizeCommand(pageId: string, nodeId: string, span: number | null): ProjectCommand {
   return {
     id: createDesignerCommandId('resize'),

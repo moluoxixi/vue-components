@@ -258,6 +258,99 @@ async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', exp
   }
 }
 
+async function expectInspectorTabs(page: Page, expected: string[]): Promise<void> {
+  const tabs = page.locator('.mx-config-form-designer__properties .mx-config-form-designer__tabs > [role="tab"]')
+  await expect(tabs).toHaveText(expected)
+}
+
+async function expectInspectorTabGeometry(page: Page, expectedPanelWidth?: number): Promise<void> {
+  const panel = page.locator('.mx-config-form-designer__properties')
+  const tabs = panel.locator('.mx-config-form-designer__tabs > [role="tab"]')
+  await expect(panel).toBeVisible()
+  await tabs.last().click()
+  await expect(tabs.last()).toHaveAttribute('aria-selected', 'true')
+  await expect.poll(() => panel.evaluate((element) => {
+    const track = element.querySelector<HTMLElement>('.mx-config-form-designer__tabs')
+    const active = track?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+    if (!track || !active)
+      return false
+    const trackRect = track.getBoundingClientRect()
+    const activeRect = active.getBoundingClientRect()
+    return activeRect.left >= trackRect.left - 1 && activeRect.right <= trackRect.right + 1
+  })).toBe(true)
+
+  const geometry = await panel.evaluate((element) => {
+    const panelRect = element.getBoundingClientRect()
+    const track = element.querySelector<HTMLElement>('.mx-config-form-designer__tabs')!
+    const trackRect = track.getBoundingClientRect()
+    const tabRects = [...track.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => {
+      const rect = tab.getBoundingClientRect()
+      return {
+        bottom: rect.bottom,
+        clientWidth: tab.clientWidth,
+        height: rect.height,
+        scrollWidth: tab.scrollWidth,
+        top: rect.top,
+        width: rect.width,
+      }
+    })
+    return {
+      documentClientWidth: document.documentElement.clientWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      panelWidth: panelRect.width,
+      tabRects,
+      track: {
+        clientWidth: track.clientWidth,
+        flexWrap: getComputedStyle(track).flexWrap,
+        height: trackRect.height,
+        overflowX: getComputedStyle(track).overflowX,
+        scrollWidth: track.scrollWidth,
+      },
+    }
+  })
+  expect(geometry.documentScrollWidth).toBeLessThanOrEqual(geometry.documentClientWidth + 1)
+  if (expectedPanelWidth !== undefined)
+    expect(Math.abs(geometry.panelWidth - expectedPanelWidth)).toBeLessThanOrEqual(1)
+  expect(geometry.track.flexWrap).toBe('nowrap')
+  expect(geometry.track.overflowX).toBe('auto')
+  expect(geometry.track.scrollWidth).toBeGreaterThanOrEqual(geometry.track.clientWidth)
+  expect(Math.max(...geometry.tabRects.map(rect => rect.top)) - Math.min(...geometry.tabRects.map(rect => rect.top))).toBeLessThanOrEqual(1)
+  for (const tab of geometry.tabRects) {
+    expect(tab.width).toBeGreaterThan(0)
+    expect(tab.height).toBeGreaterThan(0)
+    expect(tab.bottom).toBeLessThanOrEqual(geometry.tabRects[0]!.top + geometry.track.height + 1)
+    expect(tab.scrollWidth).toBeLessThanOrEqual(tab.clientWidth + 1)
+  }
+}
+
+async function expectCompactResponsiveFieldsReadable(page: Page): Promise<void> {
+  const fields = page.locator('.mx-config-form-designer__properties .mx-config-form-designer__responsive-fields')
+  await expect(fields).toHaveCount(2)
+  const geometry = await fields.evaluateAll(elements => elements.map((element) => {
+    const setters = [...element.querySelectorAll<HTMLElement>('.mx-config-form-designer__setter')]
+    return {
+      columns: getComputedStyle(element).gridTemplateColumns,
+      setters: setters.map((setter) => {
+        const rect = setter.getBoundingClientRect()
+        const label = setter.querySelector<HTMLElement>('.mx-config-form-designer__setter-label')
+        const hint = setter.querySelector<HTMLElement>('.mx-config-form-designer__setter-hint.is-value')
+        return {
+          bottom: rect.bottom,
+          labelFits: !label || label.scrollWidth <= label.clientWidth + 1,
+          hintFits: !hint || hint.scrollWidth <= hint.clientWidth + 1,
+          top: rect.top,
+        }
+      }),
+    }
+  }))
+  for (const row of geometry) {
+    expect(row.setters).toHaveLength(2)
+    expect(row.columns.trim().split(/\s+/)).toHaveLength(1)
+    expect(row.setters[1]!.top).toBeGreaterThanOrEqual(row.setters[0]!.bottom - 1)
+    expect(row.setters.every(setter => setter.labelFits && setter.hintFits)).toBe(true)
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
@@ -273,6 +366,8 @@ for (const viewport of [
         await page.setViewportSize({ height: viewport.height, width: viewport.width })
         await page.emulateMedia({ reducedMotion: 'reduce' })
         await createProject(page, 'element')
+        if (viewport.id === '1440')
+          await expectCompactResponsiveFieldsReadable(page)
         if (theme === 'light')
           await chooseResponsiveTopbarAction(page, viewport.width, 'Use light theme')
         if (locale === 'zh')
@@ -489,6 +584,25 @@ for (const adapter of [
     await expectAllPaletteItems(page, adapter.id, adapter.count)
   })
 
+  test(`projects the ${adapter.name} Inspector capability matrix from Registry contracts`, async ({ page }) => {
+    await createProject(page, adapter.id)
+    const scenarios = [
+      { material: 'input', tabs: ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'] },
+      { material: 'switch', tabs: ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'] },
+      { material: 'section', tabs: ['Properties', 'Conditions', 'Reactions'] },
+      { material: 'grid', tabs: ['Properties', 'Conditions', 'Reactions'] },
+      { material: 'tabs', tabs: ['Properties', 'Events', 'Conditions', 'Reactions'] },
+      { material: 'collapse', tabs: ['Properties', 'Events', 'Conditions', 'Reactions'] },
+    ]
+
+    for (const scenario of scenarios) {
+      await page.locator(`[data-material-key="${adapter.id}.${scenario.material}"]`).click()
+      await expectInspectorTabs(page, scenario.tabs)
+      if (scenario.material === 'input')
+        await expectInspectorTabGeometry(page, 304)
+    }
+  })
+
   test(`keeps the ${adapter.name} design runtime inert while Preview stays interactive`, async ({ page }) => {
     await createProject(page, adapter.id)
     const canvas = page.locator('.mx-config-form-designer__canvas')
@@ -557,20 +671,8 @@ for (const adapter of [
     const propertyHeading = propertyPanel.locator('.mx-config-form-designer__property-heading')
     await expect(propertyHeading).toBeVisible()
     await expect(propertyHeading).not.toContainText('element.input')
-    const propertyTabs = propertyPanel.locator('.mx-config-form-designer__tabs > [role="tab"]')
-    await expect(propertyTabs).toHaveCount(6)
-    const propertyTabGeometry = await propertyTabs.evaluateAll(tabs => tabs.map((tab) => {
-      const rect = tab.getBoundingClientRect()
-      return { right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height, scrollWidth: tab.scrollWidth, clientWidth: tab.clientWidth }
-    }))
-    const propertyPanelBox = await visibleBox(propertyPanel)
-    for (const tab of propertyTabGeometry) {
-      expect(tab.width).toBeGreaterThan(0)
-      expect(tab.height).toBeGreaterThan(0)
-      expect(tab.scrollWidth).toBeLessThanOrEqual(tab.clientWidth)
-      expect(tab.right).toBeLessThanOrEqual(propertyPanelBox.x + propertyPanelBox.width + 1)
-      expect(tab.bottom).toBeLessThanOrEqual(propertyPanelBox.y + propertyPanelBox.height + 1)
-    }
+    await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
+    await expectInspectorTabGeometry(page, 304)
 
     const nodeToolbar = selection.getByRole('toolbar', { name: 'Node actions' })
     await expect(nodeToolbar.locator('[data-node-toolbar-button]')).toHaveCount(4)
@@ -706,6 +808,9 @@ for (const adapter of ['element', 'antd'] as const) {
     const selection = page.locator('[data-editor-focus-node-id="profile-name"]')
     await expect(propertiesPanel).toBeVisible()
     await expect(selection).toBeFocused()
+    await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
+    await expectInspectorTabGeometry(page, 304)
+    await selection.focus()
     await page.keyboard.press('Escape')
     await expect(propertiesPanel).toBeHidden()
     await expect(selection).toBeFocused()
@@ -715,6 +820,69 @@ for (const adapter of ['element', 'antd'] as const) {
       scrollWidth: element.scrollWidth,
     }))
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
+  })
+}
+
+for (const adapter of ['element', 'antd'] as const) {
+  test(`keeps the ${adapter} 390px Inspector tabs on one reachable track`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await createProject(page, adapter)
+    await page.getByRole('tab', { name: 'Layers' }).click()
+    await page.locator('[data-layer-id="profile-name"] .designer-layer-select').click()
+    await page.getByRole('tab', { name: 'Inspector' }).click()
+    await expectInspectorTabs(page, ['Properties', 'Validation', 'Events', 'Bindings', 'Conditions', 'Reactions'])
+    await expectInspectorTabGeometry(page)
+  })
+
+  test(`removes and restores a ${adapter} selection-incompatible stored binding`, async ({ page }) => {
+    await createProject(page, adapter)
+    await page.getByRole('tab', { name: 'Layers' }).click()
+    await page.locator('[data-layer-id="profile-name"] .designer-layer-select').click()
+    await page.getByRole('tab', { name: 'Bindings' }).click()
+    const source = page.getByRole('tabpanel', { name: 'Bindings' }).getByRole('textbox', { name: 'value' })
+    await source.fill('profile.source')
+    await source.press('Enter')
+
+    await page.getByRole('tab', { name: 'Components' }).click()
+    await page.locator(`[data-material-key="${adapter}.section"]`).click()
+    await page.getByRole('tab', { name: 'Layers' }).click()
+    await page.locator('[data-layer-id="profile-name"] .designer-layer-select').click({ modifiers: ['Control'] })
+    await expect(page.locator('[role="treeitem"][aria-selected="true"]')).toHaveCount(2)
+
+    await page.getByRole('tab', { name: 'Bindings' }).click()
+    const stale = page.locator('[data-stale-kind="selection-incompatible"][data-stale-node-id="profile-name"]')
+    await expect(stale).toContainText('value')
+    await expect(stale).toContainText('profile.source')
+    const staleKey = stale.locator('code')
+    await staleKey.evaluate((element) => {
+      element.textContent = 'stored.binding.key.that.must.remain.fully.readable.at.compact.inspector.width'
+    })
+    const staleGeometry = await stale.evaluate((element) => {
+      const key = element.querySelector<HTMLElement>('code')!
+      const remove = element.querySelector<HTMLElement>('[data-stale-remove]')!
+      const itemRect = element.getBoundingClientRect()
+      const removeRect = remove.getBoundingClientRect()
+      return {
+        documentClientWidth: document.documentElement.clientWidth,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        keyOverflowWrap: getComputedStyle(key).overflowWrap,
+        keyWhiteSpace: getComputedStyle(key).whiteSpace,
+        removeInside: removeRect.left >= itemRect.left && removeRect.right <= itemRect.right,
+        removeWidth: removeRect.width,
+      }
+    })
+    expect(staleGeometry.keyOverflowWrap).toBe('anywhere')
+    expect(staleGeometry.keyWhiteSpace).toBe('normal')
+    expect(staleGeometry.removeInside).toBe(true)
+    expect(staleGeometry.removeWidth).toBeGreaterThan(0)
+    expect(staleGeometry.documentScrollWidth).toBeLessThanOrEqual(staleGeometry.documentClientWidth + 1)
+    await stale.getByRole('button', { name: 'Delete stored configuration value' }).click()
+    await expect(page.getByRole('tab', { name: 'Bindings' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Properties' })).toHaveAttribute('aria-selected', 'true')
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await page.getByRole('tab', { name: 'Bindings' }).click()
+    await expect(stale).toContainText('profile.source')
   })
 }
 

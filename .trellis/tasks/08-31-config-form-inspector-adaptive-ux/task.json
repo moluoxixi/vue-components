@@ -3,7 +3,7 @@
   "name": "config-form-inspector-adaptive-ux",
   "title": "ConfigForm Inspector 自适应属性体验",
   "description": "按 Registry 能力动态组织属性页签，并增强栅格占比等配置语义。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": "frontend",
   "package": "config-form-designer",

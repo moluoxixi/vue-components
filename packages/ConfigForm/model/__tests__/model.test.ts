@@ -2,6 +2,7 @@ import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type {
   ComponentContract,
   ProjectDocument,
+  ProjectOperation,
   RegistryLock,
 } from '../index'
 import { CONFIG_FORM_FLOW_VERSION } from '@moluoxixi/config-form-core'
@@ -1015,6 +1016,164 @@ describe('projectTransaction', () => {
       events: {},
       bindings: {},
     })
+  })
+
+  it('removes one stored config item from a Registry-stale document and restores it with undo', () => {
+    const registry = componentRegistry()
+    const initial = projectDocument(registry.lock)
+    const node = initial.pagesById.home!.graph.nodesById.name!
+    node.events = {
+      'legacy.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
+      'legacy.remove': [{ action: 'remove', args: { exact: true } }],
+    }
+    node.bindings = { legacyValue: { source: 'legacy.value' } }
+    const engine = createProjectDomainEngine({ document: initial, registry })
+
+    const ordinaryRemoval = engine.execute({
+      id: 'ordinary-stale-removal',
+      label: 'Ordinary stale removal',
+      actions: [{
+        type: 'operation.apply',
+        operations: [{
+          type: 'node.events',
+          pageId: 'home',
+          nodeId: 'name',
+          events: { 'legacy.keep': node.events['legacy.keep']! },
+        }],
+      }],
+    })
+    expect(ordinaryRemoval.changed).toBe(false)
+    expect(ordinaryRemoval.diagnostics[0]?.code).toBe('PROJECT_COMPONENT_EVENT_UNKNOWN')
+
+    const removed = engine.execute({
+      id: 'remove-one-stale-config',
+      label: 'Remove stored configuration',
+      actions: [{
+        type: 'operation.apply',
+        operations: [{
+          type: 'node.config.remove',
+          pageId: 'home',
+          nodeId: 'name',
+          property: 'events',
+          key: 'legacy.remove',
+        }],
+      }],
+    })
+    expect(removed.changed).toBe(true)
+    expect(removed.diagnostics).toEqual([])
+    expect(removed.snapshot.document.pagesById.home?.graph.nodesById.name).toMatchObject({
+      events: { 'legacy.keep': [{ action: 'keep', args: { nested: [1, 2] } }] },
+      bindings: { legacyValue: { source: 'legacy.value' } },
+    })
+
+    const undone = engine.undo()
+    expect(undone.changed).toBe(true)
+    expect(undone.diagnostics).toEqual([])
+    expect(undone.snapshot.document.pagesById.home?.graph.nodesById.name?.events).toEqual(node.events)
+
+    const redone = engine.redo()
+    expect(redone.changed).toBe(true)
+    expect(redone.snapshot.document.pagesById.home?.graph.nodesById.name?.events).toEqual({
+      'legacy.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
+    })
+  })
+
+  it('keeps stored config removal isolated from ordinary edits and history merging', () => {
+    const initial = projectDocument()
+    initial.pagesById.home!.graph.nodesById.name!.events = {
+      legacy: [{ action: 'legacy' }],
+    }
+    const removal = {
+      type: 'node.config.remove' as const,
+      pageId: 'home',
+      nodeId: 'name',
+      property: 'events' as const,
+      key: 'legacy',
+    }
+
+    const mixed = applyProjectTransaction(initial, {
+      id: 'mixed-config-removal',
+      label: 'Mixed config removal',
+      operations: [removal, { type: 'page.rename', pageId: 'home', name: 'Landing' }],
+    })
+    expect(mixed.success).toBe(false)
+    expect(mixed.diagnostics[0]?.code).toBe('PROJECT_NODE_CONFIG_REMOVE_MIXED')
+
+    const merged = applyProjectTransaction(initial, {
+      id: 'merged-config-removal',
+      label: 'Merged config removal',
+      mergeKey: 'repair',
+      operations: [removal],
+    })
+    expect(merged.success).toBe(false)
+    expect(merged.diagnostics[0]?.code).toBe('PROJECT_NODE_CONFIG_REMOVE_MERGE_INVALID')
+  })
+
+  it.each([
+    {
+      code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_REQUIRED',
+      operation: { property: 'events', key: '   ', nodeId: 'name' },
+    },
+    {
+      code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID',
+      operation: { property: 'events', key: '__proto__', nodeId: 'name' },
+    },
+    {
+      code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID',
+      operation: { property: 'bindings', key: 'constructor', nodeId: 'name' },
+    },
+    {
+      code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_INVALID',
+      operation: { property: 'conditions', key: 'prototype', nodeId: 'name' },
+    },
+    {
+      code: 'PROJECT_NODE_CONFIG_REMOVE_KEY_UNEXPECTED',
+      operation: { property: 'validation', key: 'nested', nodeId: 'name' },
+    },
+    {
+      code: 'PROJECT_NODE_CONFIG_REMOVE_KIND_INVALID',
+      operation: { property: 'validateOn', nodeId: 'section' },
+    },
+  ] as Array<{
+    code: string
+    operation: Pick<Extract<ProjectOperation, { type: 'node.config.remove' }>, 'key' | 'nodeId' | 'property'>
+  }>)('rejects invalid stored config removal with $code', ({ code, operation }) => {
+    const initial = projectDocument()
+    const result = applyProjectTransaction(initial, {
+      id: `invalid-config-removal-${code}`,
+      label: 'Invalid stored config removal',
+      operations: [{
+        type: 'node.config.remove',
+        pageId: 'home',
+        ...operation,
+      }],
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.document).toBe(initial)
+    expect(result.diagnostics[0]?.code).toBe(code)
+  })
+
+  it('treats removal of an absent stored config path as a semantic no-op', () => {
+    const registry = componentRegistry()
+    const initial = projectDocument(registry.lock)
+    const result = applyProjectTransaction(initial, {
+      id: 'absent-config-removal',
+      label: 'Remove absent stored configuration',
+      operations: [{
+        type: 'node.config.remove',
+        pageId: 'home',
+        nodeId: 'name',
+        property: 'events',
+        key: 'missing',
+      }],
+    }, { registry })
+
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    expect(result.changed).toBe(false)
+    expect(result.document).toBe(initial)
   })
 
   it('preserves document identity for a semantic no-op', () => {

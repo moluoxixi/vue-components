@@ -6,9 +6,10 @@ import type {
 } from '@moluoxixi/config-form/renderer'
 import type { FormSettings } from '@moluoxixi/config-form-model'
 import type { DesignerPropertySetterDefinition } from '../registry'
-import { Smartphone, Tablet } from '@lucide/vue'
+import { Monitor, Smartphone, Tablet } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form/renderer'
 import { computed } from 'vue'
+import { resolveInspectorGridFraction } from '../inspector/grid-fraction'
 import { useDesignerLocale } from '../locale'
 import DesignerSetter from './DesignerSetter.vue'
 
@@ -43,6 +44,36 @@ function title(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): string {
   return breakpoint === 'tablet'
     ? locale.t('breakpoint.tablet', 'Tablet')
     : locale.t('breakpoint.mobile', 'Mobile')
+}
+
+function breakpointTitle(breakpoint: ConfigFormBreakpoint): string {
+  return breakpoint === 'desktop'
+    ? locale.t('breakpoint.desktop', 'Desktop')
+    : title(breakpoint)
+}
+
+function resolvedFraction(breakpoint: ConfigFormBreakpoint): string {
+  const layout = resolveConfigFormLayout(
+    baseColumns.value,
+    baseFieldSpan.value,
+    responsive.value,
+    breakpoint,
+  )
+  return resolveInspectorGridFraction(layout.fieldSpan, layout.columns).label
+}
+
+function resolvedWidthText(breakpoint: ConfigFormBreakpoint, inherited = false): string {
+  const fraction = resolvedFraction(breakpoint)
+  return inherited
+    ? locale.t('property.resolvedWidthInherited', 'Resolved width (inherited): {fraction}', { fraction })
+    : locale.t('property.resolvedWidth', 'Resolved width: {fraction}', { fraction })
+}
+
+function resolvedWidthAria(breakpoint: ConfigFormBreakpoint, inherited = false): string {
+  return locale.t('property.breakpointWidth', '{breakpoint}, {width}', {
+    breakpoint: breakpointTitle(breakpoint),
+    width: resolvedWidthText(breakpoint, inherited),
+  })
 }
 
 function isEnabled(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): boolean {
@@ -120,6 +151,15 @@ function commit(value: ConfigFormResponsiveLayout | undefined): void {
     <div v-if="showHeading" class="mx-config-form-designer__responsive-heading">
       <strong>{{ locale.t('property.responsive', 'Responsive layout') }}</strong>
     </div>
+    <div class="mx-config-form-designer__responsive-breakpoint is-resolved">
+      <span class="mx-config-form-designer__responsive-label">
+        <Monitor :size="15" aria-hidden="true" />
+        {{ breakpointTitle('desktop') }}
+      </span>
+      <output class="mx-config-form-designer__responsive-fraction" :aria-label="resolvedWidthAria('desktop')">
+        {{ resolvedWidthText('desktop') }}
+      </output>
+    </div>
     <div v-for="breakpoint in breakpoints" :key="breakpoint.key" class="mx-config-form-designer__responsive-breakpoint">
       <button
         type="button"
@@ -137,6 +177,13 @@ function commit(value: ConfigFormResponsiveLayout | undefined): void {
         <span class="mx-config-form-designer__switch" :class="{ 'is-on': isEnabled(breakpoint.key) }" aria-hidden="true"><span /></span>
       </button>
 
+      <output
+        class="mx-config-form-designer__responsive-fraction"
+        :aria-label="resolvedWidthAria(breakpoint.key, !isEnabled(breakpoint.key))"
+      >
+        {{ resolvedWidthText(breakpoint.key, !isEnabled(breakpoint.key)) }}
+      </output>
+
       <div v-if="isEnabled(breakpoint.key)" class="mx-config-form-designer__responsive-fields">
         <DesignerSetter
           :setter="setter(breakpoint.key, 'columns')"
@@ -147,6 +194,7 @@ function commit(value: ConfigFormResponsiveLayout | undefined): void {
         <DesignerSetter
           :setter="setter(breakpoint.key, 'fieldSpan')"
           :value="responsive?.[breakpoint.key]?.fieldSpan"
+          :hint="resolvedFraction(breakpoint.key)"
           :readonly="isReadonly"
           @commit="commitValue(breakpoint.key, 'fieldSpan', $event)"
         />

@@ -886,15 +886,19 @@
 }
 
 .mx-config-form-designer__tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-flow: row;
+  display: flex;
+  max-width: 100%;
   padding: 8px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
   gap: 2px;
   background: var(--mx-designer-subtle);
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 
 .mx-config-form-designer__tabs button {
+  flex: 0 0 auto;
   min-width: 0;
   min-height: 30px;
   padding: 4px 6px;
@@ -1075,6 +1079,22 @@
   font-weight: 500;
 }
 
+.mx-config-form-designer__setter-hints {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.mx-config-form-designer__setter-hint.is-value {
+  overflow: hidden;
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mx-config-form-designer__responsive-settings,
 .mx-config-form-designer__responsive-breakpoint,
 .mx-config-form-designer__responsive-fields {
@@ -1108,6 +1128,106 @@
 
 .mx-config-form-designer__responsive-fields {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container config-form-inspector (max-width: 340px) {
+  .mx-config-form-designer__responsive-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mx-config-form-designer__responsive-breakpoint.is-resolved {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mx-config-form-designer__responsive-fraction {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--mx-designer-muted);
+  direction: ltr;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+.mx-config-form-designer__stale-configs {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 8px;
+  list-style: none;
+}
+
+.mx-config-form-designer__stale-configs > li {
+  display: grid;
+  min-width: 0;
+  padding: 8px;
+  gap: 5px;
+  background: var(--mx-designer-accent-soft);
+  border: 1px solid var(--mx-designer-accent-line);
+  border-radius: 5px;
+}
+
+.mx-config-form-designer__stale-configs > li > span {
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.mx-config-form-designer__stale-heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mx-config-form-designer__stale-heading strong {
+  color: var(--mx-designer-text);
+  font-size: 12px;
+}
+
+.mx-config-form-designer__stale-heading code {
+  max-width: 100%;
+  min-width: 0;
+  color: var(--mx-designer-accent);
+  direction: ltr;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.mx-config-form-designer__stale-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.mx-config-form-designer__stale-actions .mx-config-form-designer__icon-button {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+}
+
+.mx-config-form-designer__stale-configs pre {
+  max-width: 100%;
+  max-height: 180px;
+  margin: 0;
+  padding: 7px;
+  overflow: auto;
+  color: var(--mx-designer-text);
+  direction: ltr;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .mx-config-form-designer__stepper {
@@ -1742,13 +1862,16 @@
 }
 
 .mx-config-form-designer__properties {
+  container-name: config-form-inspector;
+  container-type: inline-size;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 .mx-config-form-designer__tabs {
   max-width: 100%;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .mx-config-form-designer__tabs button {

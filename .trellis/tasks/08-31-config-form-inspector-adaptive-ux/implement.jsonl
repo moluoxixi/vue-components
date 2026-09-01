@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"定位 ConfigForm Designer 前端规范及适用状态/Registry 合同。"}
+{"file":".trellis/tasks/08-31-config-form-inspector-adaptive-ux/research/inspector-evidence.md","reason":"注入与本任务相关的代码锚点、状态所有权摘要、命令删除路径和缺失测试，避免超长规范截断。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"按 Designer material 与 ComponentContract 现有职责派生能力，不扩展或复制 Registry。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"判断跨包能力、公共 export 或依赖变化是否要求同步 ConfigForm 架构文档。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"审查 Registry、PageNode、Inspector projection、Project Command 与 Runtime 布局之间的数据流边界。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"复用现有响应式 resolver 和 command 删除路径，避免重复能力判断与第二套布局计算。"}
