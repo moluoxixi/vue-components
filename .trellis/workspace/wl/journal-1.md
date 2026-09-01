@@ -572,3 +572,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 25: 完成 ConfigForm Inspector 自适应属性体验
+
+**Date**: 2026-09-01
+**Task**: 完成 ConfigForm Inspector 自适应属性体验
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成动态 Inspector 页签、多选安全能力交集、stale 配置删除与历史恢复、栅格占比展示，以及响应式、无障碍和视觉回归覆盖；相关规范与架构说明同步更新。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b5f395a9` | (see git log) |
+
+### Status
+
+[OK] **Completed**
