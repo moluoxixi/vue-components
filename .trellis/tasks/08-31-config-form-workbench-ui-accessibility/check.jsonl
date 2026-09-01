@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"核对全部适用 Designer/Workbench 前端规范。"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"验证视觉与响应式改造未新增 Model、History、Selection 或 Runtime 状态源。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"验证 Palette hard cut 未破坏 Registry、drag candidate 或 Provider Runtime 合同。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"检查公共 Designer 能力、依赖和架构 README 是否需要同步。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"执行 Workbench 到 Designer/RuntimeHost 的跨层数据流与样式隔离检查。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查无重复 Tooltip/overflow 状态机、全量 UI 库导入或二次 UI 框架。"}

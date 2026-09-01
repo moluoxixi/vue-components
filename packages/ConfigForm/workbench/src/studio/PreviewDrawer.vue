@@ -68,6 +68,9 @@ const runtimeReady = ref(false)
 let returnFocus: HTMLElement | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
 const drawerSize = computed(() => props.expanded ? '100%' : 'clamp(420px, 42vw, 680px)')
+const submitUnavailableReason = computed(() => !props.compilation || !runtimeReady.value
+  ? locale.value.t('preview.submitUnavailable', 'Preview is not ready to submit')
+  : undefined)
 const submissionJson = computed(() => {
   if (!props.lastSubmission)
     return ''
@@ -196,12 +199,13 @@ watch(() => props.open, (open, wasOpen) => {
             :aria-label="item.label"
             :aria-pressed="viewport === item.id"
             :title="item.label"
+            data-command-hint
             @click="emit('update:viewport', item.id)"
           >
             <component :is="item.icon" :size="15" aria-hidden="true" />
           </button>
         </div>
-        <button type="button" :disabled="!compilation || !runtimeReady" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" @click="submitForm">
+        <button type="button" :aria-disabled="submitUnavailableReason ? 'true' : undefined" :data-command-disabled-reason="submitUnavailableReason" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" data-command-hint @click="!submitUnavailableReason && submitForm()">
           <Send :size="15" aria-hidden="true" />
         </button>
         <button v-if="expanded" type="button" class="preview-exit-command" @click="emit('update:expanded', false)">
@@ -212,12 +216,13 @@ watch(() => props.open, (open, wasOpen) => {
           type="button"
           :title="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
           :aria-label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
+          data-command-hint
           @click="emit('update:expanded', !expanded)"
         >
           <Minimize2 v-if="expanded" :size="16" aria-hidden="true" />
           <Maximize2 v-else :size="16" aria-hidden="true" />
         </button>
-        <button type="button" :title="locale.t('preview.close', 'Close preview')" :aria-label="locale.t('preview.close', 'Close preview')" @click="emit('close')">
+        <button type="button" :title="locale.t('preview.close', 'Close preview')" :aria-label="locale.t('preview.close', 'Close preview')" data-command-hint @click="emit('close')">
           <X :size="16" aria-hidden="true" />
         </button>
       </div>

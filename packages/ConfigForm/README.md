@@ -94,6 +94,8 @@ Workbench 的规范业务状态是 Model 包的 `ProjectDocument -> ProjectSnaps
 
 Design Canvas 和右侧 Preview 使用同一份 `PageCompilation` 和同一 Vue Runtime Backend 递归渲染真实注册组件，并分别运行在独立的同源 iframe RuntimeHost。每个 Host 自己加载 adapter resolver、组件库 CSS、Vue Runtime plan 和 Teleport；IDE 只在父 document 渲染 selection、drop、resize 等 editor overlay。Design Host 通过版本化 geometry/pointer bridge 上报稳定 `nodeId`、派生 path、slot 和矩形，业务 Runtime DOM 不包裹编辑器控件。父子 realm 只通过 RuntimeHost v2 的 `channel + version + hostId + projectId + pageId + revision + sequence` JSON-safe 协议传递 PageCompilation、原子 `{ values, touched, validation }` 运行快照、reaction projection、设计态几何/指针信息和稳定 `{ nodeId, event }`，不传 Vue Component、函数、DOM 或 RuntimePlan。结构 sync 与运行 state sync 分离；Host 在异步加载 adapter 期间保留最高 sequence 的运行快照，挂载后只恢复最新状态，相同快照不重复写入 Renderer，避免旧 sync 覆盖输入或使进行中的校验失效。拖拽期间 candidate 先应用到临时 Project draft；Canvas candidate 和跟随指针的 drag visual 分别由真实 Design RuntimeHost 渲染同一个稳定 candidate node，drop 后只提交一次 Project Command，因此 candidate、drag visual 与落地结果共享同一 Registry 默认值、slot 和布局规则。
 
+`DesignerPalette` 只呈现 Registry icon/fallback 与本地化 display name，不渲染 Provider Runtime specimen；真实 Runtime 仅用于 Canvas candidate、drag visual、落地节点和 Preview。公共 `showSearch` prop 只控制 Palette 自带搜索框，允许 Workbench 等宿主提供唯一搜索入口，不改变 Registry、drag 或 command 合同。
+
 ### Workbench Design-first 工作区
 
 ```text
@@ -127,6 +129,8 @@ Workbench 的运行与界面状态不进入领域 Controller：`WorkbenchDesignS
 #### Workbench chrome 与 Runtime UI 边界
 
 Workbench chrome 统一使用 Element Plus 提供 Button、Tooltip、Dropdown、Tabs、Input、Scrollbar、Empty、Dialog、Drawer 与 Alert 等通用交互。模板组件通过 `unplugin-vue-components` 的 `ElementPlusResolver({ importStyle: 'css' })` 按需导入；禁止 `app.use(ElementPlus)`、全量默认导入和 `element-plus/dist/index.css`。Workbench 的薄组件只连接 i18n、Project Command、Design/Preview/Export/UI session 和稳定测试标识，不复制组件库的焦点、键盘、菜单或 modal 状态机。
+
+父文档 icon command 通过一个 Element Plus virtual Tooltip host 统一提示；宿主在 `.workbench-app` 与 `#workbench-overlays` 上做事件委托，从 trigger 的 ARIA/command metadata 读取当前 locale、真实 shortcut 和 disabled reason。Designer 只输出 UI 库无关元数据与原生 `title` fallback，不依赖 Element Plus。
 
 父文档弹层统一挂载到 `#workbench-overlays`。该 root 镜像 Workbench Light/Dark token、z-index 和 Topbar 下方的布局边界；Preview Drawer 与 stage 不在 iframe 几何采样期间移动坐标系。Design/Preview Runtime 仍分别在同源 iframe 内加载 Element 或 Ant adapter、Provider CSS 与自己的 Teleport target，Workbench 的 Element Plus 样式和父文档 popper 不进入 Runtime realm。
 

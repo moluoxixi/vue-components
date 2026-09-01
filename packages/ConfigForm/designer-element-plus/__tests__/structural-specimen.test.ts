@@ -7,7 +7,7 @@ import { nextTick } from 'vue'
 import { createElementPlusDesignerRegistry } from '../index'
 
 describe('element plus structural material specimens', () => {
-  it('renders the complete provider palette without detaching structural children', async () => {
+  it('keeps the palette presentation limited to registry icons and names', async () => {
     const registry = createElementPlusDesignerRegistry()
     const materials = registry.listMaterials()
     const wrapper = mount(DesignerPalette, {
@@ -17,8 +17,12 @@ describe('element plus structural material specimens', () => {
     await nextTick()
 
     expect(wrapper.findAll('[data-material-row-key]')).toHaveLength(materials.length)
-    for (const material of materials)
-      expect(wrapper.find(`[data-material-row-key="${material.key}"] [data-specimen-node-id]`).exists()).toBe(true)
+    for (const material of materials) {
+      const row = wrapper.get(`[data-material-row-key="${material.key}"]`)
+      expect(row.get('.mx-config-form-designer__palette-item-name').text()).toBe(material.title)
+      expect(row.find('[data-specimen-node-id]').exists()).toBe(false)
+      expect(row.find('.mx-config-form-designer__palette-item-preview').exists()).toBe(false)
+    }
   })
 
   it.each([

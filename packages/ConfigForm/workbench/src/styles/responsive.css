@@ -7,6 +7,14 @@
     display: none;
   }
 
+  .topbar-actions > .topbar-secondary-action {
+    display: none;
+  }
+
+  .mobile-action-menu {
+    display: block;
+  }
+
   .topbar-actions .mobile-page-manager-button {
     display: inline-grid;
   }
@@ -296,6 +304,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .workbench-command-tooltip,
+  .workbench-command-tooltip * {
+    transition: none !important;
+    animation: none !important;
+  }
+
   .preview-stage,
   .is-spinning {
     transition: none;

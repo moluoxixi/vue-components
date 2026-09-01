@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"定位 Designer/Workbench 前端规范与适用状态合同。"}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"保持 ProjectDocument、History、Selection、RuntimeHost 与 UI 状态的单一所有权。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"保持 Palette icon/name、material 排序和两套 Provider 的 Registry 合同。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"判断跨包 presentation/API 变化是否需要同步 ConfigForm 架构文档。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"审查 Workbench Tooltip/Overflow、Designer DOM 元数据与 RuntimeHost 隔离边界。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"复用现有 Element Plus overlay 与命令数据，避免重复 Tooltip 状态机和 Base UI 抽象。"}

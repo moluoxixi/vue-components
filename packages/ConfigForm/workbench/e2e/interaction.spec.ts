@@ -27,6 +27,50 @@ function expectSameRect(
   expect(Math.abs(actual.y - expected.y)).toBeLessThanOrEqual(1)
 }
 
+function rectsIntersect(
+  left: DragGeometry & { x: number, y: number },
+  right: DragGeometry & { x: number, y: number },
+): boolean {
+  return left.x < right.x + right.width
+    && left.x + left.width > right.x
+    && left.y < right.y + right.height
+    && left.y + left.height > right.y
+}
+
+async function expectTopbarFits(page: Page): Promise<void> {
+  const geometry = await page.locator('.workbench-topbar').evaluate((header) => {
+    const headerRect = header.getBoundingClientRect()
+    const visible = [...header.querySelectorAll<HTMLElement>(':scope > *, .topbar-actions > *')]
+      .filter(element => getComputedStyle(element).display !== 'none')
+      .map((element) => {
+        const rect = element.getBoundingClientRect()
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }
+      })
+    return {
+      documentClientWidth: document.documentElement.clientWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      header: { bottom: headerRect.bottom, left: headerRect.left, right: headerRect.right, top: headerRect.top },
+      visible,
+    }
+  })
+  expect(geometry.documentScrollWidth).toBe(geometry.documentClientWidth)
+  for (const box of geometry.visible) {
+    expect(box.left).toBeGreaterThanOrEqual(geometry.header.left - 1)
+    expect(box.right).toBeLessThanOrEqual(geometry.header.right + 1)
+    expect(box.top).toBeGreaterThanOrEqual(geometry.header.top - 1)
+    expect(box.bottom).toBeLessThanOrEqual(geometry.header.bottom + 1)
+  }
+}
+
+async function chooseResponsiveTopbarAction(page: Page, width: number, name: string): Promise<void> {
+  if (width > 900) {
+    await page.getByRole('button', { name }).click()
+    return
+  }
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name }).click()
+}
+
 function previewRuntime(page: Page): FrameLocator {
   return page.frameLocator('iframe[data-preview-runtime-host]')
 }
@@ -172,7 +216,7 @@ async function touchDrop(page: Page, materialKey: string, target: Locator): Prom
   return { geometry: committedBox, node: committed, nodeId: nodeId! }
 }
 
-async function expectAllPaletteSpecimens(page: Page, prefix: 'antd' | 'element', expectedCount: number): Promise<void> {
+async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', expectedCount: number): Promise<void> {
   const navigationTabs = page.locator('.designer-left-tabs [role="tab"]')
   await expect(navigationTabs).toHaveCount(4)
   const navigationGeometry = await navigationTabs.evaluateAll(tabs => tabs.map((tab) => {
@@ -200,37 +244,175 @@ async function expectAllPaletteSpecimens(page: Page, prefix: 'antd' | 'element',
     const geometry = await material.evaluate((element) => {
       const row = element.getBoundingClientRect()
       const summary = element.querySelector('.mx-config-form-designer__palette-item-summary')?.getBoundingClientRect()
-      const preview = element.querySelector('.mx-config-form-designer__palette-item-preview')?.getBoundingClientRect()
       return {
         row: { height: row.height, width: row.width },
-        summary: summary ? { bottom: summary.bottom, top: summary.top } : undefined,
-        preview: preview ? { bottom: preview.bottom, top: preview.top, width: preview.width } : undefined,
+        summary: summary ? { height: summary.height, width: summary.width } : undefined,
       }
     })
-    expect(geometry.row.height).toBeLessThanOrEqual(60)
-    expect(geometry.preview?.width ?? 0).toBeGreaterThan(0)
-    if (geometry.summary && geometry.preview) {
-      const summaryCenter = (geometry.summary.top + geometry.summary.bottom) / 2
-      const previewCenter = (geometry.preview.top + geometry.preview.bottom) / 2
-      expect(Math.abs(summaryCenter - previewCenter)).toBeLessThanOrEqual(2)
-    }
-    const kind = await material.getAttribute('data-material-kind')
-    const runtimeNodes = material.locator('[data-specimen-node-id]')
-    const unavailable = material.locator('.mx-config-form-designer__palette-preview-unavailable')
-    if (kind === 'field') {
-      await expect(runtimeNodes, `field specimen ${await material.getAttribute('data-material-key')}`).not.toHaveCount(0)
-    }
-    else {
-      await expect(
-        runtimeNodes.or(unavailable),
-        `layout specimen ${await material.getAttribute('data-material-key')}`,
-      ).not.toHaveCount(0)
-    }
+    expect(geometry.row.height).toBeGreaterThanOrEqual(44)
+    expect(geometry.summary?.height ?? 0).toBeGreaterThan(0)
+    expect(geometry.summary?.width ?? 0).toBeGreaterThan(0)
+    await expect(material.locator('.mx-config-form-designer__palette-item-name')).not.toHaveText('')
+    await expect(material.locator('svg, .mx-config-form-designer__palette-icon')).toHaveCount(1)
+    await expect(material.locator('[data-specimen-node-id], .mx-config-form-designer__palette-item-preview')).toHaveCount(0)
   }
 }
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
+})
+
+for (const viewport of [
+  { height: 1000, id: '1440', width: 1440 },
+  { height: 900, id: '900', width: 900 },
+  { height: 844, id: '390', width: 390 },
+] as const) {
+  for (const theme of ['dark', 'light'] as const) {
+    for (const locale of ['en', 'zh'] as const) {
+      test(`matches the ${viewport.id}px ${theme} ${locale} workbench visual contract`, async ({ page }) => {
+        await page.setViewportSize({ height: viewport.height, width: viewport.width })
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await createProject(page, 'element')
+        if (theme === 'light')
+          await chooseResponsiveTopbarAction(page, viewport.width, 'Use light theme')
+        if (locale === 'zh')
+          await chooseResponsiveTopbarAction(page, viewport.width, 'Switch to Chinese')
+        await page.keyboard.press('Escape')
+        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+        await page.locator('.workbench-layout').hover({ position: { x: 2, y: 2 } })
+        await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
+        await expect(page.locator('iframe[data-design-runtime-variant="canvas"]')).toBeVisible()
+        await expect(page.locator('.mx-config-form-designer__camera-controls')).toBeVisible()
+        await expect(page.locator('.workbench-app')).toHaveScreenshot(
+          `workbench-${viewport.id}-${theme}-${locale}.png`,
+          { animations: 'disabled' },
+        )
+      })
+    }
+  }
+}
+
+test('provides focus and Escape command hints, including disabled reasons and real shortcuts', async ({ page }) => {
+  await createProject(page, 'element')
+  const undo = page.getByRole('button', { name: 'Undo' })
+  await expect(undo).toHaveAttribute('aria-disabled', 'true')
+  await undo.focus()
+  const tooltip = page.locator('.workbench-command-tooltip:visible')
+  await expect(tooltip).toContainText('Undo · Ctrl/Cmd+Z · No operation to undo')
+  await page.keyboard.press('Escape')
+  await expect(tooltip).toHaveCount(0)
+
+  const desktop = page.getByRole('button', { name: 'Desktop' })
+  const tablet = page.getByRole('button', { name: 'Tablet' })
+  await tablet.hover()
+  await desktop.hover()
+  await expect(page.locator('.workbench-command-tooltip:visible')).toHaveText('Desktop')
+  await page.keyboard.press('Escape')
+  await desktop.dispatchEvent('pointerover', { pointerType: 'touch' })
+  await page.waitForTimeout(400)
+  await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Show preview' }).click()
+  await expect(page.getByRole('complementary', { name: 'Page preview' })).toBeVisible()
+  await page.keyboard.press('Tab')
+  await page.getByRole('button', { name: 'Mobile preview' }).focus()
+  await expect(page.locator('.workbench-command-tooltip:visible')).toHaveText('Mobile preview')
+})
+
+test('keeps status and lower-priority commands reachable without topbar overflow at 900 and 390', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.setViewportSize({ width: 900, height: 900 })
+  await expectTopbarFits(page)
+  await expect(page.getByRole('button', { name: 'Save options' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Export' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'New page' })).toBeHidden()
+
+  const more = page.getByRole('button', { name: 'More actions' })
+  await more.click()
+  const menu = page.locator('[data-mobile-action-menu]')
+  await expect(menu.getByRole('status')).toContainText(/^v\d+ · /)
+  await expect(page.getByRole('button', { name: 'Manage pages' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Manage pages' })).toHaveCount(0)
+  await expect(menu.getByRole('menuitem', { name: 'Save' })).toHaveCount(0)
+  await expect(menu.getByRole('menuitem', { name: 'Create named checkpoint' })).toHaveCount(0)
+  await expect(menu.getByRole('menuitem', { name: 'Version history' })).toHaveCount(0)
+  await expect(menu.getByRole('menuitem', { name: 'New page' })).toBeVisible()
+  await menu.getByRole('menuitem', { name: 'Switch to Chinese' }).click()
+  await expect(page.getByRole('button', { name: '更多操作' })).toBeVisible()
+  await expectTopbarFits(page)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expectTopbarFits(page)
+  await expect(page.getByRole('button', { name: '保存选项' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '导出' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '显示预览' })).toBeVisible()
+  await page.getByRole('button', { name: '更多操作' }).click()
+  await expect(page.getByRole('button', { name: '管理页面' })).toBeHidden()
+  await expect(page.locator('[data-mobile-action-menu]').getByRole('menuitem', { name: '管理页面' })).toBeVisible()
+  await expect(page.locator('[data-mobile-action-menu]').getByRole('menuitem', { name: '保存' })).toHaveCount(0)
+  await expect(page.locator('[data-mobile-action-menu]').getByRole('status')).toContainText(/^v\d+ · /)
+  await page.locator('[data-mobile-action-menu]').press('Escape')
+  await expect(page.getByRole('button', { name: '更多操作' })).toBeFocused()
+})
+
+test('keeps the empty canvas hint out of runtime geometry and removes it after adding a material', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.getByRole('tab', { name: 'Layers' }).click()
+  for (const nodeId of ['profile-name', 'profile-role']) {
+    await page.locator(`[data-layer-id="${nodeId}"] .designer-layer-select`).click()
+    await page.keyboard.press('Delete')
+  }
+
+  const sheet = page.locator('.mx-config-form-designer__canvas-sheet')
+  const before = await visibleBox(sheet)
+  await page.locator('[data-layer-id="profile-active"] .designer-layer-select').click()
+  await page.keyboard.press('Delete')
+  const empty = page.locator('.mx-config-form-designer__canvas-empty')
+  await expect(empty).toHaveText('Drag or click a component on the left to add a field')
+  expect(await empty.evaluate(element => ({
+    pointerEvents: getComputedStyle(element).pointerEvents,
+    position: getComputedStyle(element).position,
+  }))).toEqual({ pointerEvents: 'none', position: 'absolute' })
+  expectSameRect(await visibleBox(sheet), before)
+  await expect(page.locator('.mx-config-form-designer__canvas')).toHaveAttribute('aria-describedby', await empty.getAttribute('id') ?? '')
+
+  await page.getByRole('tab', { name: 'Components' }).click()
+  await page.locator('[data-material-key="element.input"]').click()
+  await expect(empty).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show preview' }).click()
+  await expect(previewRuntime(page).locator('[data-config-node-id] input')).toBeVisible()
+})
+
+test('keeps Camera inside the canvas lower right without covering selected node actions', async ({ page }) => {
+  await createProject(page, 'element')
+  const node = designRuntime(page).locator('[data-config-node-id="profile-name"]')
+  await selectCanvasNode(page, node, node.locator('input').first())
+
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 900, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport)
+    if (viewport.width === 390)
+      await page.locator('[data-mobile-studio-tab="canvas"]').click()
+    const canvas = page.locator('.mx-config-form-designer__canvas')
+    const camera = page.getByRole('group', { name: 'Canvas zoom and pan' })
+    await expect.poll(async () => {
+      const [canvasBox, cameraBox] = await Promise.all([canvas.boundingBox(), camera.boundingBox()])
+      return Boolean(canvasBox && cameraBox
+        && cameraBox.x + cameraBox.width <= canvasBox.x + canvasBox.width - 8
+        && cameraBox.y + cameraBox.height <= canvasBox.y + canvasBox.height - 8)
+    }).toBe(true)
+    const canvasBox = await visibleBox(canvas)
+    const cameraBox = await visibleBox(camera)
+    const toolbarBox = await visibleBox(page.locator('.mx-config-form-designer__node-actions'))
+    expect(cameraBox.x + cameraBox.width).toBeLessThanOrEqual(canvasBox.x + canvasBox.width - 8)
+    expect(cameraBox.y + cameraBox.height).toBeLessThanOrEqual(canvasBox.y + canvasBox.height - 8)
+    expect(cameraBox.x).toBeGreaterThan(canvasBox.x + canvasBox.width / 2)
+    expect(rectsIntersect(cameraBox, toolbarBox)).toBe(false)
+  }
 })
 
 for (const adapter of [
@@ -302,9 +484,9 @@ for (const adapter of [
   { count: 17, id: 'element', name: 'Element' },
   { count: 22, id: 'antd', name: 'Ant' },
 ] as const) {
-  test(`renders every registered ${adapter.name} material through a real specimen contract`, async ({ page }) => {
+  test(`renders every registered ${adapter.name} material as a dense icon and name row`, async ({ page }) => {
     await createProject(page, adapter.id)
-    await expectAllPaletteSpecimens(page, adapter.id, adapter.count)
+    await expectAllPaletteItems(page, adapter.id, adapter.count)
   })
 
   test(`keeps the ${adapter.name} design runtime inert while Preview stays interactive`, async ({ page }) => {

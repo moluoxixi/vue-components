@@ -397,8 +397,8 @@
 }
 
 .workbench-app[data-theme="dark"] .embedded-designer.mx-config-form-designer {
-  --mx-designer-border: #3d4047;
-  --mx-designer-control-border: #646872;
+  --mx-designer-border: #6c707a;
+  --mx-designer-control-border: #6c707a;
   --mx-designer-muted: #a9adb7;
   --mx-designer-surface: #1a1b1f;
   --mx-designer-surface-raised: #222429;

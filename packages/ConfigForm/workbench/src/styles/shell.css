@@ -32,8 +32,8 @@ select:focus-visible {
 .workbench-app,
 .workbench-overlays {
   --wb-bg: #151618;
-  --wb-border: #3d4047;
-  --wb-control-border: #646872;
+  --wb-border: #6c707a;
+  --wb-control-border: #6c707a;
   --wb-elevated: #0f1012;
   --wb-hover: #2a2c31;
   --wb-muted: #a9adb7;
@@ -108,10 +108,19 @@ select:focus-visible {
   pointer-events: none !important;
 }
 
+.workbench-overlays .workbench-command-tooltip {
+  max-width: min(280px, calc(100vw - 16px));
+  color: var(--wb-text-strong);
+  border: 1px solid var(--wb-control-border);
+  background: var(--wb-surface-raised);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .workbench-app[data-theme="light"],
 .workbench-overlays[data-theme="light"] {
   --wb-bg: #f3f4f6;
-  --wb-border: #d5d8de;
+  --wb-border: #808a9a;
   --wb-control-border: #6b7280;
   --wb-elevated: #fff;
   --wb-hover: #e8eaee;
@@ -202,6 +211,12 @@ select:focus-visible {
   gap: 5px;
 }
 
+.topbar-actions .is-command-disabled {
+  color: var(--wb-disabled);
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
 .mobile-action-menu,
 .mobile-studio-dock {
   display: none;
@@ -227,6 +242,15 @@ select:focus-visible {
   justify-content: flex-start;
   gap: 8px;
   white-space: nowrap;
+}
+
+.mobile-action-popover .topbar-status-item {
+  height: auto;
+  min-height: 34px;
+  color: var(--wb-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .topbar-actions .mobile-page-manager-button {
@@ -300,8 +324,8 @@ select:focus-visible {
   opacity: 0.82;
 }
 
-.topbar-actions button:hover:not(:disabled),
-.pane-header button:hover:not(:disabled) {
+.topbar-actions button:hover:not(:disabled, [aria-disabled="true"]),
+.pane-header button:hover:not(:disabled, [aria-disabled="true"]) {
   color: var(--wb-text-strong);
   border-color: var(--wb-control-border);
   background: var(--wb-hover);

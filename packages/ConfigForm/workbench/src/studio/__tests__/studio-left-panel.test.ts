@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
-import { createDesignerRegistry } from '@moluoxixi/config-form-designer'
+import { createDesignerRegistry, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
@@ -62,9 +62,13 @@ describe('studio left panel', () => {
     })
 
     const search = wrapper.get('input[aria-label="Search materials"]')
+    const palette = wrapper.getComponent(DesignerPalette)
+    expect(palette.props('showSearch')).toBe(false)
+    expect(palette.find('.mx-config-form-designer__search').exists()).toBe(false)
     await search.setValue('missing')
     expect(wrapper.get('.el-empty').text()).toContain('No materials')
     await search.setValue('Input')
+    expect(wrapper.find('[data-specimen-node-id]').exists()).toBe(false)
     await wrapper.get('[data-material-key="test.input"]').trigger('click')
     expect(wrapper.emitted('addMaterial')).toEqual([['test.input']])
   })

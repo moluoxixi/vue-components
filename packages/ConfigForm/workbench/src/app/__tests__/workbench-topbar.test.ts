@@ -115,4 +115,32 @@ describe('workbench topbar', () => {
     expect(document.activeElement).toBe(trigger.element)
     wrapper.unmount()
   })
+
+  it('keeps responsive overflow status and disabled command explanations on one command surface', async () => {
+    const wrapper = mount(WorkbenchTopbar, {
+      attachTo: document.body,
+      props: {
+        project,
+        busy: true,
+        currentPage,
+        localeId: 'en-US',
+        repositoryRevision: 7,
+        statusLabel: 'Saving',
+        theme: 'dark',
+      },
+    })
+
+    const commandTriggers = wrapper.findAll('[data-command-hint]')
+    expect(commandTriggers.length).toBeGreaterThanOrEqual(8)
+    expect(commandTriggers.every(trigger => Boolean(trigger.attributes('aria-label')))).toBe(true)
+    const save = wrapper.get('button[aria-label="Save options"]')
+    expect(save.attributes('aria-disabled')).toBe('true')
+    expect(save.attributes('data-command-disabled-reason')).toBe('Wait for the current operation to finish')
+    expect(save.attributes('disabled')).toBeUndefined()
+
+    await wrapper.get('button[aria-label="More actions"]').trigger('click')
+    const status = overlayRoot().get('[data-mobile-action-menu] [role="status"]')
+    expect(status.text()).toBe('v7 · Saving')
+    wrapper.unmount()
+  })
 })

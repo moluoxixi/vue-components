@@ -355,6 +355,11 @@ interface SlotItem {
   Pointer-transparent help tooltips use a dedicated popper class; never disable
   pointer events through Element Plus's generic `.el-tooltip` class because
   interactive Dropdown poppers also carry that internal class.
+- A delegated virtual tooltip must position through a non-DOM `Measurable`
+  proxy when the command trigger owns semantic ARIA such as `aria-controls`,
+  `aria-haspopup`, or `aria-expanded`. Passing the focusable command element
+  directly to `ElTooltip.virtual-ref` lets Element Plus overwrite and later
+  remove those attributes when the virtual reference changes.
 - Commands that replace focus with a Dialog/Drawer run on the tick after the
   Dropdown closes. Restore the stable trigger first, then open the workspace;
   mounting a modal during the Dropdown item's synchronous close handler can

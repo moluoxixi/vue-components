@@ -16,10 +16,40 @@ async function expectNoAccessibilityViolations(page: Page, state: string): Promi
     nodes: violation.nodes.map(node => ({
       details: node.any.map(check => check.data),
       failureSummary: node.failureSummary,
+      html: node.html,
       target: node.target.join(' '),
     })),
   }))
   expect(summary, `${state} accessibility violations`).toEqual([])
+}
+
+async function runtimeStyleFingerprint(page: Page, frameSelector: string): Promise<Record<string, Record<string, string>>> {
+  return page.frameLocator(frameSelector).locator('[data-config-node-id="profile-name"]').first().evaluate((node) => {
+    const input = node.querySelector('input')
+    const label = node.querySelector('label')
+    if (!(input instanceof HTMLElement) || !(label instanceof HTMLElement))
+      throw new Error('Representative Runtime input and label are required')
+    const styleValues = (element: HTMLElement): Record<string, string> => {
+      const style = getComputedStyle(element)
+      return {
+        backgroundColor: style.backgroundColor,
+        borderBottomColor: style.borderBottomColor,
+        borderBottomStyle: style.borderBottomStyle,
+        borderBottomWidth: style.borderBottomWidth,
+        borderLeftColor: style.borderLeftColor,
+        borderRightColor: style.borderRightColor,
+        borderTopColor: style.borderTopColor,
+        color: style.color,
+        fontFamily: style.fontFamily,
+        fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
+      }
+    }
+    return {
+      input: styleValues(input),
+      label: styleValues(label),
+    }
+  })
 }
 
 test.beforeEach(async ({ page }) => {
@@ -66,3 +96,33 @@ test('keeps mobile inspector and auxiliary workspaces accessible', async ({ page
   await expect(page.getByRole('tree', { name: 'Generated source files' })).toBeVisible()
   await expectNoAccessibilityViolations(page, 'mobile source export')
 })
+
+test('keeps the 900px light-theme overflow menu accessible', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.setViewportSize({ width: 900, height: 900 })
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: 'Use light theme' }).click()
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await expect(page.locator('[data-mobile-action-menu]')).toBeVisible()
+  await expectNoAccessibilityViolations(page, '900px light theme overflow')
+})
+
+for (const adapter of ['element', 'antd'] as const) {
+  test(`keeps ${adapter} Design and Preview runtime computed styles independent from Workbench theme`, async ({ page }) => {
+    await createProject(page, adapter)
+    await page.getByRole('button', { name: 'Show preview' }).click()
+    const designSelector = 'iframe[data-design-runtime-variant="canvas"]'
+    const previewSelector = 'iframe[data-preview-runtime-host]'
+    const before = {
+      design: await runtimeStyleFingerprint(page, designSelector),
+      preview: await runtimeStyleFingerprint(page, previewSelector),
+    }
+
+    await page.getByRole('button', { name: 'Use light theme' }).click()
+    const after = {
+      design: await runtimeStyleFingerprint(page, designSelector),
+      preview: await runtimeStyleFingerprint(page, previewSelector),
+    }
+    expect(after).toEqual(before)
+  })
+}

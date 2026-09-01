@@ -3,7 +3,7 @@
   "name": "config-form-workbench-ui-accessibility",
   "title": "ConfigForm Workbench 视觉与可访问性交互",
   "description": "统一工具提示、物料列表、空画布、缩放布局及明暗主题视觉层级。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": "frontend",
   "package": "config-form-designer",

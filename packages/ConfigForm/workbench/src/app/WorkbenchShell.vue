@@ -18,11 +18,12 @@ import {
   Undo2,
 } from '@lucide/vue'
 import { DesignSurface } from '@moluoxixi/config-form-designer'
-import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import DesignRuntimeHostFrame from '../runtime-host/DesignRuntimeHostFrame.vue'
 import PreviewDrawer from '../studio/PreviewDrawer.vue'
 import StudioLeftPanel from '../studio/StudioLeftPanel.vue'
 import TemplateDialog from '../features/templates/TemplateDialog.vue'
+import WorkbenchCommandTooltip from './WorkbenchCommandTooltip.vue'
 import WorkbenchTopbar from './WorkbenchTopbar.vue'
 import {
   useWorkbenchController,
@@ -139,6 +140,8 @@ const {
 
 const designer = useTemplateRef<DesignSurfaceExpose>('designer')
 const mobileDock = useTemplateRef<HTMLElement>('mobileDock')
+const workbenchRoot = useTemplateRef<HTMLElement>('workbenchRoot')
+const overlayRoot = ref<HTMLElement>()
 const mobileStudioViews = computed(() => [
   { icon: Blocks, id: 'components' as const, label: workbenchLocale.value.t('designer.view.components', 'Components') },
   { icon: Layers3, id: 'layers' as const, label: workbenchLocale.value.t('designer.view.layers', 'Layers') },
@@ -250,10 +253,15 @@ watch(recoveryDrafts, (drafts) => {
   if (drafts.length > 0 && !persistenceDialogMode.value)
     persistenceDialogMode.value = 'recovery'
 }, { immediate: true })
+
+onMounted(() => {
+  overlayRoot.value = document.getElementById('workbench-overlays') ?? undefined
+})
 </script>
 
 <template>
-  <main class="workbench-app" :data-theme="theme">
+  <main ref="workbenchRoot" class="workbench-app" :data-theme="theme">
+    <WorkbenchCommandTooltip :root="workbenchRoot" :overlay-root="overlayRoot" />
     <WorkbenchTopbar
       :project="currentProject"
       :busy="busy"
@@ -319,28 +327,28 @@ watch(recoveryDrafts, (drafts) => {
            >
             <template #toolbar="{ breakpoint, canUndo, canRedo, canEditSelection, copySelection, removeSelection, selectBreakpoint, undo, redo }">
               <div class="mx-config-form-designer__toolbar-actions" role="toolbar" :aria-label="workbenchLocale.t('designer.commands', 'Designer commands')">
-                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canUndo" :title="workbenchLocale.t('action.undoShortcut', 'Undo (Ctrl/Cmd+Z)')" :aria-label="workbenchLocale.t('action.undo', 'Undo')" aria-keyshortcuts="Control+Z Meta+Z" @click="undo">
+                <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="!canUndo ? 'true' : undefined" :data-command-disabled-reason="!canUndo ? workbenchLocale.t('action.undoUnavailable', 'No operation to undo') : undefined" data-command-hint data-command-shortcut="Ctrl/Cmd+Z" :title="workbenchLocale.t('action.undoShortcut', 'Undo (Ctrl/Cmd+Z)')" :aria-label="workbenchLocale.t('action.undo', 'Undo')" aria-keyshortcuts="Control+Z Meta+Z" @click="canUndo && undo()">
                   <Undo2 :size="17" aria-hidden="true" />
                 </button>
-                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canRedo" :title="workbenchLocale.t('action.redoShortcut', 'Redo (Ctrl/Cmd+Shift+Z)')" :aria-label="workbenchLocale.t('action.redo', 'Redo')" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" @click="redo">
+                <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="!canRedo ? 'true' : undefined" :data-command-disabled-reason="!canRedo ? workbenchLocale.t('action.redoUnavailable', 'No operation to redo') : undefined" data-command-hint data-command-shortcut="Ctrl/Cmd+Shift+Z" :title="workbenchLocale.t('action.redoShortcut', 'Redo (Ctrl/Cmd+Shift+Z)')" :aria-label="workbenchLocale.t('action.redo', 'Redo')" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" @click="canRedo && redo()">
                   <Redo2 :size="17" aria-hidden="true" />
                 </button>
                 <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
-                <button type="button" class="mx-config-form-designer__icon-button" :disabled="!canEditSelection" :title="workbenchLocale.t('node.copySelectionShortcut', 'Copy selection (Ctrl/Cmd+D)')" :aria-label="workbenchLocale.t('node.copySelection', 'Copy selection')" aria-keyshortcuts="Control+D Meta+D" @click="copySelection">
+                <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="!canEditSelection ? 'true' : undefined" :data-command-disabled-reason="!canEditSelection ? workbenchLocale.t('node.selectionRequired', 'Select a component first') : undefined" data-command-hint data-command-shortcut="Ctrl/Cmd+D" :title="workbenchLocale.t('node.copySelectionShortcut', 'Copy selection (Ctrl/Cmd+D)')" :aria-label="workbenchLocale.t('node.copySelection', 'Copy selection')" aria-keyshortcuts="Control+D Meta+D" @click="canEditSelection && copySelection()">
                   <Copy :size="16" aria-hidden="true" />
                 </button>
-                <button type="button" class="mx-config-form-designer__icon-button is-danger" :disabled="!canEditSelection" :title="workbenchLocale.t('node.deleteSelectionShortcut', 'Delete selection (Delete)')" :aria-label="workbenchLocale.t('node.deleteSelection', 'Delete selection')" aria-keyshortcuts="Delete Backspace" @click="removeSelection">
+                <button type="button" class="mx-config-form-designer__icon-button is-danger" :aria-disabled="!canEditSelection ? 'true' : undefined" :data-command-disabled-reason="!canEditSelection ? workbenchLocale.t('node.selectionRequired', 'Select a component first') : undefined" data-command-hint data-command-shortcut="Delete" :title="workbenchLocale.t('node.deleteSelectionShortcut', 'Delete selection (Delete)')" :aria-label="workbenchLocale.t('node.deleteSelection', 'Delete selection')" aria-keyshortcuts="Delete Backspace" @click="canEditSelection && removeSelection()">
                   <Trash2 :size="16" aria-hidden="true" />
                 </button>
                 <span class="mx-config-form-designer__toolbar-separator" aria-hidden="true" />
                 <div class="mx-config-form-designer__segmented" role="group" :aria-label="workbenchLocale.t('canvas.viewport', 'Canvas viewport')">
-                  <button type="button" :class="{ 'is-active': breakpoint === 'desktop' }" :aria-pressed="breakpoint === 'desktop'" :title="workbenchLocale.t('canvas.desktop', 'Desktop')" :aria-label="workbenchLocale.t('canvas.desktop', 'Desktop')" @click="selectBreakpoint('desktop')">
+                  <button type="button" :class="{ 'is-active': breakpoint === 'desktop' }" :aria-pressed="breakpoint === 'desktop'" :title="workbenchLocale.t('canvas.desktop', 'Desktop')" :aria-label="workbenchLocale.t('canvas.desktop', 'Desktop')" data-command-hint @click="selectBreakpoint('desktop')">
                     <Monitor :size="15" aria-hidden="true" />
                   </button>
-                  <button type="button" :class="{ 'is-active': breakpoint === 'tablet' }" :aria-pressed="breakpoint === 'tablet'" :title="workbenchLocale.t('canvas.tablet', 'Tablet')" :aria-label="workbenchLocale.t('canvas.tablet', 'Tablet')" @click="selectBreakpoint('tablet')">
+                  <button type="button" :class="{ 'is-active': breakpoint === 'tablet' }" :aria-pressed="breakpoint === 'tablet'" :title="workbenchLocale.t('canvas.tablet', 'Tablet')" :aria-label="workbenchLocale.t('canvas.tablet', 'Tablet')" data-command-hint @click="selectBreakpoint('tablet')">
                     <Tablet :size="15" aria-hidden="true" />
                   </button>
-                  <button type="button" :class="{ 'is-active': breakpoint === 'mobile' }" :aria-pressed="breakpoint === 'mobile'" :title="workbenchLocale.t('canvas.mobile', 'Mobile')" :aria-label="workbenchLocale.t('canvas.mobile', 'Mobile')" @click="selectBreakpoint('mobile')">
+                  <button type="button" :class="{ 'is-active': breakpoint === 'mobile' }" :aria-pressed="breakpoint === 'mobile'" :title="workbenchLocale.t('canvas.mobile', 'Mobile')" :aria-label="workbenchLocale.t('canvas.mobile', 'Mobile')" data-command-hint @click="selectBreakpoint('mobile')">
                     <Smartphone :size="15" aria-hidden="true" />
                   </button>
                 </div>

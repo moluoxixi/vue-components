@@ -22,7 +22,7 @@ import {
   Workflow,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 
 export type WorkbenchExportMode = 'source' | 'config'
 
@@ -58,8 +58,26 @@ const exportTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('exportTrigger
 const mobileMenuTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('mobileMenuTrigger')
 const saveTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('saveTrigger')
 const locale = computed(() => createDesignerLocale(props.locale))
+const pageManagerInOverflow = ref(false)
+const saveUnavailableReason = computed(() => props.configError
+  || (props.busy ? locale.value.t('action.busyUnavailable', 'Wait for the current operation to finish') : undefined))
+let narrowTopbarQuery: MediaQueryList | undefined
 
-type MobileAction = 'checkpoint' | 'newPage' | 'openFlow' | 'openPages' | 'save' | 'toggleLocale' | 'toggleTheme' | 'versions'
+function updatePageManagerPlacement(event: Pick<MediaQueryListEvent, 'matches'> | MediaQueryList): void {
+  pageManagerInOverflow.value = event.matches
+}
+
+onMounted(() => {
+  if (typeof window.matchMedia !== 'function')
+    return
+  narrowTopbarQuery = window.matchMedia('(max-width: 700px)')
+  updatePageManagerPlacement(narrowTopbarQuery)
+  narrowTopbarQuery.addEventListener('change', updatePageManagerPlacement)
+})
+
+onBeforeUnmount(() => narrowTopbarQuery?.removeEventListener('change', updatePageManagerPlacement))
+
+type MobileAction = 'newPage' | 'openFlow' | 'openPages' | 'toggleLocale' | 'toggleTheme'
 
 function chooseMobileAction(action: MobileAction): void {
   void nextTick(() => {
@@ -68,9 +86,6 @@ function chooseMobileAction(action: MobileAction): void {
       case 'newPage': emit('newPage'); break
       case 'openFlow': emit('openFlow'); break
       case 'openPages': emit('openPages'); break
-      case 'save': emit('save'); break
-      case 'checkpoint': emit('createCheckpoint'); break
-      case 'versions': emit('openVersions'); break
       case 'toggleLocale': emit('toggleLocale'); break
       case 'toggleTheme': emit('toggleTheme'); break
     }
@@ -110,29 +125,33 @@ function chooseExport(mode: WorkbenchExportMode): void {
     </div>
 
     <div class="topbar-actions">
-      <ElTooltip :content="locale.t('pages.manage', 'Manage pages')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
       <ElButton
         v-if="project"
         native-type="button"
         class="mobile-page-manager-button"
         :aria-label="locale.t('pages.manage', 'Manage pages')"
+        data-command-hint
         circle
         @click="emit('openPages')"
       >
         <Files :size="17" aria-hidden="true" />
       </ElButton>
-      </ElTooltip>
       <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
         v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
-      <ElTooltip :content="locale.t('pages.new', 'New page')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
-        <ElButton native-type="button" class="topbar-secondary-action" :aria-label="locale.t('pages.new', 'New page')" circle @click="emit('newPage')">
+        <ElButton native-type="button" class="topbar-secondary-action" :aria-label="locale.t('pages.new', 'New page')" data-command-hint circle @click="emit('newPage')">
           <Plus :size="17" aria-hidden="true" />
         </ElButton>
-      </ElTooltip>
-      <ElTooltip v-if="project" :content="locale.t('save.menu', 'Save options')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
-        <ElDropdown class="save-menu export-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
-          <ElButton ref="saveTrigger" native-type="button" :aria-label="locale.t('save.menu', 'Save options')" :disabled="!!configError || busy">
+        <ElDropdown v-if="project" class="save-menu export-menu" :disabled="Boolean(saveUnavailableReason)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
+          <ElButton
+            ref="saveTrigger"
+            native-type="button"
+            :class="{ 'is-command-disabled': Boolean(saveUnavailableReason) }"
+            :aria-label="locale.t('save.menu', 'Save options')"
+            :aria-disabled="saveUnavailableReason ? 'true' : undefined"
+            :data-command-disabled-reason="saveUnavailableReason"
+            data-command-hint
+          >
             <Save :size="16" aria-hidden="true" />
             <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
           </ElButton>
@@ -153,10 +172,8 @@ function chooseExport(mode: WorkbenchExportMode): void {
             </ElDropdownMenu>
           </template>
         </ElDropdown>
-      </ElTooltip>
-      <ElTooltip v-if="project" :content="locale.t('action.export', 'Export')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
-        <ElDropdown class="export-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseExport">
-          <ElButton ref="exportTrigger" native-type="button" :aria-label="locale.t('action.export', 'Export')">
+        <ElDropdown v-if="project" class="export-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseExport">
+          <ElButton ref="exportTrigger" native-type="button" :aria-label="locale.t('action.export', 'Export')" data-command-hint>
             <Download :size="16" aria-hidden="true" />
             <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
           </ElButton>
@@ -167,8 +184,6 @@ function chooseExport(mode: WorkbenchExportMode): void {
             </ElDropdownMenu>
           </template>
         </ElDropdown>
-      </ElTooltip>
-      <ElTooltip v-if="project" :content="locale.t('flow.dialog.title', 'Event flow orchestration')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
       <ElButton
         v-if="project"
         native-type="button"
@@ -177,59 +192,53 @@ function chooseExport(mode: WorkbenchExportMode): void {
         :aria-label="locale.t('flow.dialog.title', 'Event flow orchestration')"
         :aria-expanded="flowOpen"
         circle
+        data-command-hint
         data-flow-workspace-trigger
         @click="emit('openFlow')"
       >
         <Workflow :size="17" aria-hidden="true" />
       </ElButton>
-      </ElTooltip>
-      <ElTooltip :content="localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
       <ElButton
         native-type="button"
         class="topbar-secondary-action"
         :aria-label="localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese')"
         circle
+        data-command-hint
         @click="emit('toggleLocale')"
       >
         <Languages :size="17" aria-hidden="true" />
       </ElButton>
-      </ElTooltip>
-      <ElTooltip :content="theme === 'dark' ? locale.t('theme.useLight', 'Use light theme') : locale.t('theme.useDark', 'Use dark theme')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
-      <ElButton native-type="button" class="topbar-secondary-action" :aria-label="theme === 'dark' ? locale.t('theme.useLight', 'Use light theme') : locale.t('theme.useDark', 'Use dark theme')" circle @click="emit('toggleTheme')">
+      <ElButton native-type="button" class="topbar-secondary-action" :aria-label="theme === 'dark' ? locale.t('theme.useLight', 'Use light theme') : locale.t('theme.useDark', 'Use dark theme')" data-command-hint circle @click="emit('toggleTheme')">
         <Sun v-if="theme === 'dark'" :size="17" aria-hidden="true" />
         <Moon v-else :size="17" aria-hidden="true" />
       </ElButton>
-      </ElTooltip>
-      <ElTooltip v-if="project" :content="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
       <ElButton
         v-if="project"
         native-type="button"
         class="preview-toggle-button"
         :aria-label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
         circle
+        data-command-hint
         @click="emit('togglePreview')"
       >
         <PanelRightClose v-if="previewOpen" :size="17" aria-hidden="true" />
         <PanelRightOpen v-else :size="17" aria-hidden="true" />
       </ElButton>
-      </ElTooltip>
-      <ElTooltip :content="locale.t('workbench.moreActions', 'More actions')" placement="bottom" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
         <ElDropdown class="mobile-action-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseMobileAction">
-          <ElButton ref="mobileMenuTrigger" native-type="button" :aria-label="locale.t('workbench.moreActions', 'More actions')" circle><MoreHorizontal :size="18" aria-hidden="true" /></ElButton>
+          <ElButton ref="mobileMenuTrigger" native-type="button" :aria-label="locale.t('workbench.moreActions', 'More actions')" data-command-hint circle><MoreHorizontal :size="18" aria-hidden="true" /></ElButton>
           <template #dropdown>
             <ElDropdownMenu class="mobile-action-popover" data-mobile-action-menu>
-              <ElDropdownItem v-if="project" command="openPages"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></ElDropdownItem>
+              <ElDropdownItem v-if="project" class="topbar-status-item" disabled>
+                <span role="status">v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}</span>
+              </ElDropdownItem>
+              <ElDropdownItem v-if="project && pageManagerInOverflow" command="openPages"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></ElDropdownItem>
               <ElDropdownItem command="newPage"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></ElDropdownItem>
-              <ElDropdownItem command="save" :disabled="!dirty || !!configError || busy"><Save :size="15" aria-hidden="true" /><span>{{ locale.t('action.save', 'Save') }}</span></ElDropdownItem>
-              <ElDropdownItem v-if="project" command="checkpoint" :disabled="!!configError || busy"><BookmarkPlus :size="15" aria-hidden="true" /><span>{{ locale.t('save.checkpoint', 'Create named checkpoint') }}</span></ElDropdownItem>
-              <ElDropdownItem v-if="project" command="versions"><History :size="15" aria-hidden="true" /><span>{{ locale.t('save.history', 'Version history') }}</span></ElDropdownItem>
               <ElDropdownItem v-if="project" command="openFlow"><Workflow :size="15" aria-hidden="true" /><span>{{ locale.t('flow.dialog.title', 'Event flow orchestration') }}</span></ElDropdownItem>
               <ElDropdownItem command="toggleLocale"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></ElDropdownItem>
               <ElDropdownItem command="toggleTheme"><Sun v-if="theme === 'dark'" :size="15" aria-hidden="true" /><Moon v-else :size="15" aria-hidden="true" /><span>{{ theme === 'dark' ? locale.t('theme.useLight', 'Use light theme') : locale.t('theme.useDark', 'Use dark theme') }}</span></ElDropdownItem>
             </ElDropdownMenu>
           </template>
         </ElDropdown>
-      </ElTooltip>
     </div>
   </header>
 </template>

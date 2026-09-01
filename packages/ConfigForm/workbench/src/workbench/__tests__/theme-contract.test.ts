@@ -8,6 +8,7 @@ const stylesheet = stylesheetLayers
   .join('\n')
 const responsiveStylesheet = readFileSync(new URL('../../styles/responsive.css', import.meta.url), 'utf8')
 const designerStylesheet = readFileSync(new URL('../../../../designer/src/styles.scss', import.meta.url), 'utf8')
+  .replace(/^@use[^\n]+\n+/, '')
 
 interface CssRule {
   body: string
@@ -30,9 +31,9 @@ function selectorBlock(selector: string, source = stylesheet): string {
   return rule.body
 }
 
-function colorVariable(selector: string, name: string): string {
+function colorVariable(selector: string, name: string, source = stylesheet): string {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = selectorBlock(selector).match(new RegExp(`${escaped}:\\s*(#[0-9a-f]{3,8})\\s*;`, 'i'))
+  const match = selectorBlock(selector, source).match(new RegExp(`${escaped}:\\s*(#[0-9a-f]{3,8})\\s*;`, 'i'))
   if (!match)
     throw new Error(`Missing color variable ${name} in ${selector}`)
   return match[1]!
@@ -78,11 +79,16 @@ describe('workbench theme contract', () => {
   it.each([
     ['.workbench-app', '--wb-text', '--wb-surface', 4.5],
     ['.workbench-app', '--wb-muted', '--wb-surface', 4.5],
+    ['.workbench-app', '--wb-border', '--wb-surface', 3],
+    ['.workbench-app', '--wb-border', '--wb-surface-raised', 3],
     ['.workbench-app', '--wb-control-border', '--wb-surface', 3],
+    ['.workbench-app', '--wb-control-border', '--wb-surface-raised', 3],
     ['.workbench-app', '--wb-accent', '--wb-surface', 3],
     ['.workbench-app', '--wb-action-text', '--wb-action-bg', 4.5],
     ['.workbench-app[data-theme="light"]', '--wb-text', '--wb-surface', 4.5],
     ['.workbench-app[data-theme="light"]', '--wb-muted', '--wb-surface', 4.5],
+    ['.workbench-app[data-theme="light"]', '--wb-border', '--wb-surface', 3],
+    ['.workbench-app[data-theme="light"]', '--wb-border', '--wb-surface-raised', 3],
     ['.workbench-app[data-theme="light"]', '--wb-control-border', '--wb-surface', 3],
     ['.workbench-app[data-theme="light"]', '--wb-accent', '--wb-surface', 3],
     ['.workbench-app[data-theme="light"]', '--wb-action-text', '--wb-action-bg', 4.5],
@@ -94,7 +100,7 @@ describe('workbench theme contract', () => {
   })
 
   it('keeps interaction styling and runtime canvas tokens explicit', () => {
-    expect(stylesheet).toContain('.topbar-actions button:hover:not(:disabled),')
+    expect(stylesheet).toContain('.topbar-actions button:hover:not(:disabled, [aria-disabled="true"]),')
     expect(stylesheet).toContain('.export-stale .el-button')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
@@ -138,6 +144,30 @@ describe('workbench theme contract', () => {
     expect(designerStylesheet).toContain('--mx-designer-runtime-surface: #ffffff;')
     expect(designerStylesheet).toContain('--mx-designer-surface: var(--mx-designer-overlay-surface, #fff);')
     expect(designerStylesheet).not.toContain('--mx-designer-surface: var(--mx-designer-runtime-surface')
+    for (const [foreground, minimum] of [
+      ['--mx-designer-text', 4.5],
+      ['--mx-designer-muted', 4.5],
+      ['--mx-designer-border', 3],
+      ['--mx-designer-control-border', 3],
+      ['--mx-designer-accent', 3],
+    ] as const) {
+      expect(contrast(
+        colorVariable('.mx-config-form-designer', foreground, designerStylesheet),
+        colorVariable('.mx-config-form-designer', '--mx-designer-overlay', designerStylesheet),
+      )).toBeGreaterThanOrEqual(minimum)
+    }
+    expect(contrast(
+      colorVariable('.mx-config-form-designer', '--mx-designer-border', designerStylesheet),
+      colorVariable('.mx-config-form-designer', '--mx-designer-canvas', designerStylesheet),
+    )).toBeGreaterThanOrEqual(3)
+
+    const embeddedDark = '.workbench-app[data-theme="dark"] .embedded-designer.mx-config-form-designer'
+    for (const foreground of ['--mx-designer-border', '--mx-designer-control-border'] as const) {
+      expect(contrast(
+        colorVariable(embeddedDark, foreground),
+        colorVariable(embeddedDark, '--mx-designer-surface-raised'),
+      )).toBeGreaterThanOrEqual(3)
+    }
   })
 
   it('keeps provider theme rules in Workbench chrome and out of Runtime surfaces', () => {

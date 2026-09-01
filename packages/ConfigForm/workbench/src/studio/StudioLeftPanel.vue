@@ -201,11 +201,9 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
     <ElTabs class="designer-left-tabs" :model-value="activeView" stretch @tab-change="selectViewName">
       <ElTabPane v-for="view in views" :key="view.id" :name="view.id">
         <template #label>
-          <ElTooltip :content="view.label" placement="bottom" :show-after="350" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
-            <span :data-designer-left-tab="view.id" :aria-label="view.label" :title="view.label">
-              <component :is="view.icon" :size="14" aria-hidden="true" />
-            </span>
-          </ElTooltip>
+          <span :data-designer-left-tab="view.id" :aria-label="view.label" :title="view.label" data-command-hint>
+            <component :is="view.icon" :size="14" aria-hidden="true" />
+          </span>
         </template>
       </ElTabPane>
     </ElTabs>
@@ -226,6 +224,7 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
         :form="form"
         :registry="registry"
         :readonly="readonly"
+        :show-search="false"
         @add-material="emit('addMaterial', $event)"
       />
       <ElEmpty v-else :description="locale.t('palette.empty', 'No materials')" :image-size="42" />
@@ -250,26 +249,25 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
           <span>{{ layer.label }}</span>
         </ElButton>
         <div class="designer-layer-actions">
-          <ElTooltip :content="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })" placement="right" popper-class="workbench-passive-tooltip" append-to="#workbench-overlays">
-            <ElDropdown trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="runLayerAction($event, layer.id)" @visible-change="restoreLayerMenuFocus($event, layer.id)">
-              <ElButton
-                text
-                native-type="button"
-                class="designer-layer-menu-trigger"
-                :data-layer-menu-trigger="layer.id"
-                :tabindex="selectedIds.includes(layer.id) ? 0 : -1"
-                :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
-              ><MoreHorizontal :size="14" aria-hidden="true" /></ElButton>
-              <template #dropdown>
-                <ElDropdownMenu class="designer-layer-menu" data-layer-action-menu @keydown.capture.esc="focusLayerMenuTrigger(layer.id)">
-                  <ElDropdownItem command="moveBefore"><ChevronUp :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveUp', 'Move up') }}</span></ElDropdownItem>
-                  <ElDropdownItem command="moveAfter"><ChevronDown :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveDown', 'Move down') }}</span></ElDropdownItem>
-                  <ElDropdownItem command="indent"><IndentIncrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.indent', 'Indent') }}</span></ElDropdownItem>
-                  <ElDropdownItem command="outdent"><IndentDecrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.outdent', 'Outdent') }}</span></ElDropdownItem>
-                </ElDropdownMenu>
-              </template>
-            </ElDropdown>
-          </ElTooltip>
+          <ElDropdown trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="runLayerAction($event, layer.id)" @visible-change="restoreLayerMenuFocus($event, layer.id)">
+            <ElButton
+              text
+              native-type="button"
+              class="designer-layer-menu-trigger"
+              :data-layer-menu-trigger="layer.id"
+              :tabindex="selectedIds.includes(layer.id) ? 0 : -1"
+              :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
+              data-command-hint
+            ><MoreHorizontal :size="14" aria-hidden="true" /></ElButton>
+            <template #dropdown>
+              <ElDropdownMenu class="designer-layer-menu" data-layer-action-menu @keydown.capture.esc="focusLayerMenuTrigger(layer.id)">
+                <ElDropdownItem command="moveBefore"><ChevronUp :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveUp', 'Move up') }}</span></ElDropdownItem>
+                <ElDropdownItem command="moveAfter"><ChevronDown :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveDown', 'Move down') }}</span></ElDropdownItem>
+                <ElDropdownItem command="indent"><IndentIncrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.indent', 'Indent') }}</span></ElDropdownItem>
+                <ElDropdownItem command="outdent"><IndentDecrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.outdent', 'Outdent') }}</span></ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
         </div>
       </div>
       <ElEmpty v-if="layers.length === 0" :description="locale.t('layer.empty', 'No layers yet')" :image-size="42" />

@@ -5,15 +5,17 @@ import { Search } from '@lucide/vue'
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import { createDesignerNodeId } from '../graph'
-import DesignerMaterialSpecimen from './DesignerMaterialSpecimen.vue'
 import { DESIGNER_SESSION_KEY } from './design-session'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   materials: DesignerMaterialDefinition[]
   registry?: DesignerRegistry
   form?: FormSettings
   readonly?: boolean
-}>()
+  showSearch?: boolean
+}>(), {
+  showSearch: true,
+})
 const locale = useDesignerLocale()
 
 const emit = defineEmits<{
@@ -217,7 +219,7 @@ watch(() => props.readonly, (readonly) => {
 
 <template>
   <aside class="mx-config-form-designer__palette" :aria-label="locale.t('palette.materials', 'Materials')">
-    <div class="mx-config-form-designer__search">
+    <div v-if="showSearch" class="mx-config-form-designer__search">
       <Search :size="16" aria-hidden="true" />
       <input v-model="query" type="search" :placeholder="locale.t('palette.search', 'Search')" :aria-label="locale.t('palette.searchMaterials', 'Search materials')">
     </div>
@@ -257,12 +259,6 @@ watch(() => props.readonly, (readonly) => {
               </span>
               <span class="mx-config-form-designer__palette-item-name">{{ locale.materialTitle(material) }}</span>
             </span>
-            <DesignerMaterialSpecimen
-              v-if="registry"
-              :form="form"
-              :material="material"
-              :registry="registry"
-            />
           </div>
         </div>
       </section>
