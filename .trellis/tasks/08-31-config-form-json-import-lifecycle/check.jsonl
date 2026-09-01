@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-designer/frontend/state-management.md","reason":"复核 raw JSON 不进入 Runtime/Repository、Project/Page 创建原子性、session 发布顺序和 identity/Flow 一致性。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"复核代码质量、可访问性、测试覆盖与禁止模式。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"执行端到端数据流审查，避免只验证局部 parser 或 UI。"}
+{"file":".trellis/tasks/08-31-config-form-json-import-lifecycle/research/json-import-evidence.md","reason":"按已确认版本、迁移、限制与现有创建合同核对实现。"}

@@ -119,6 +119,7 @@ catalogs:
     eslint: ^9.5.0
     eslint-plugin-format: ^2.0.1
     fake-indexeddb: ^6.2.5
+    fast-check: ^4.3.0
     happy-dom: ^20.9.0
     husky: ^9.1.7
     jiti: ^2.7.0

@@ -120,7 +120,13 @@ Workbench `App` 拥有 `designer | create` 顶层视图和显式 `project | page
 
 创建项目在 adapter、Registry、schema 与 Compiler 预检通过后才调用 `ProjectRepository.create`；创建页面只向当前 `ProjectEditorSession` 提交一个 `page.add` Project Command，因此一次 Undo 可完整回退。两条路径共用纯 identity remap：每次实例化都为 project/page/node/field/reaction/flow/flow-node/flow-edge 生成带来源前缀的新 identity，并按所属 Flow/node 作用域重写引用；模板 seed、实例之间不共享可变对象，opaque action config 不做猜测式字符串替换。
 
-Workbench 的 Source 与 Config 不是编辑 provider，也不参与模型反向解析。导出配置使用公开 `defineFields<T>()` / `defineField({...})` API；Source 使用文件树与只读 Monaco 展示不依赖 ConfigForm runtime 的 standalone Vue 工程。JSON / Tree 是配置的辅助查看投影，导出菜单还可下载完整项目 ZIP。
+同一创建工作区还提供受限的 Config Model JSON ingress。项目目标只接受 Project JSON，页面目标只接受 `ProjectPage` JSON；`.vue`、TypeScript Source、ZIP、HTML、JavaScript、旧 Workspace Application 与任意工程结构都不会被猜测或逆向导入。输入固定经过 UTF-8 源大小、JSON 语法、迭代式结构预算与污染 key、显式版本迁移、当前 Zod schema、Registry/adapter 兼容、fresh identity、schema 复验和 Compiler preview，原始字符串不会进入 Runtime、Repository 或 Project Command。
+
+导入入口只支持当前 Project v4 / PageGraph v2、历史 Project v3→v4 Flow 归属迁移，以及历史 Page Model v1→PageGraph v2 展平迁移；缺失、未来或其他旧版本 fail closed。安全预算为 2 MiB 源文本、64 层深度、单数组 4096 项、总结构 100000 项、128 页面和 4096 节点，并拒绝任意深度的 `__proto__`、`prototype`、`constructor`。项目 Registry 可使用现有确定性 component migration chain；页面 JSON 没有来源 lock，只能匹配当前项目 lock 与可用 Registry，不能虚构 migration 起点。
+
+导入成功只创建新实例：project/page/node/field/reaction/Flow/Flow node/Flow edge identity 全部重建，资源 id 与 opaque metadata 在新项目 namespace 内原样保留。项目继续使用 Repository create→prepare/open→失败 delete compensation；页面先绑定分析时的 project id/content hash 做 stale gate，再完整 compile candidate 并提交一个 `page.add` Command。分析、诊断和隔离预览都是创建工作区瞬态状态。
+
+Workbench 的 Source 与 Config 不是编辑 provider，也不参与模型反向解析。导出配置使用公开 `defineFields<T>()` / `defineField({...})` API；Source 使用文件树与只读 Monaco 展示不依赖 ConfigForm runtime 的 standalone Vue 工程。JSON / Tree 可在同一个 pinned ExportSnapshot 内切换“整个项目 / 当前页面”，复制、树视图与下载读取同一不可变值，从而形成 Project/Page JSON 对称 round-trip；导出菜单还可下载完整项目 ZIP。
 
 Workbench 以 `ProjectDocument` 作为唯一业务数据；`ProjectSnapshot` 只是其不可变版本 envelope，不得形成第二套结构模型。
 ProjectDomainEngine 只管理页面与节点 Command、semantic inverse history 和 change set；

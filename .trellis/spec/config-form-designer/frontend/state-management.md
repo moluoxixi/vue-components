@@ -1088,3 +1088,138 @@ catch (error) {
 
 The production implementation must also close partially prepared resources and
 surface compensating-delete failure instead of replacing the original error.
+
+## 13. Config Model JSON Import Ingress
+
+### 13.1 Scope / Trigger
+
+Apply this contract when changing Workbench Project/Page JSON import, import
+migrations, creation-workspace diagnostics, isolated import preview, or the
+Project/Page JSON export scope. Import is an explicit Workbench ingress; it is
+not Repository compatibility.
+
+### 13.2 Signatures
+
+```ts
+prepareConfigImport(options: {
+  source: string
+  target: 'page' | 'project'
+  currentProject?: ProjectDocument
+}): Promise<PrepareConfigImportResult>
+
+preflightProjectDocument(
+  document: ProjectDocument,
+  registry: RegistryContractSnapshot,
+): void
+
+createFromJsonImport(prepared: PreparedConfigImport): Promise<boolean>
+```
+
+`PreparedConfigImport` is the only value allowed to cross from import analysis
+into creation. A prepared page carries the captured host project id and content
+hash; a prepared project carries only a current, validated `ProjectDocument`.
+
+### 13.3 Contracts
+
+- Project creation accepts Project JSON only; page creation accepts one strict
+  `ProjectPage` only. Source, Vue, ZIP, HTML, JavaScript, Workspace Application,
+  and missing/future/unknown versions fail closed without shape guessing.
+- The only migration window is Project v3→v4 Flow ownership and Page Model
+  v1→PageGraph v2 tree flattening. Migration results pass the current strict
+  schema again. Repository, Runtime, Design, Preview, and Command continue to
+  accept the current schema only.
+- Processing order is source bytes → `JSON.parse` → iterative structure/key
+  guard → version/migration → current schema → adapter/Registry compatibility →
+  fresh identity → current schema → Compiler preview. Raw strings and guarded
+  `unknown` values never enter Runtime, Repository, or Project Command.
+- Budgets are 2 MiB UTF-8 source, depth 64, array length 4096, 100000 total
+  structural entries, 128 pages, and 4096 nodes. All depths reject
+  `__proto__`, `prototype`, and `constructor` with a stable code and JSON path.
+- Depth, array, and total-entry budgets apply to the guarded parsed JSON. Page
+  and node budgets apply after explicit migration to the canonical payload.
+  Do not count arbitrary `pagesById` / `nodesById` keys in opaque metadata, and
+  do count every node in a legacy v1 tree before accepting the migrated page.
+- Project import may run only an available deterministic component migration
+  chain and then rebuild the lock from actually used contracts. Page JSON has
+  no source lock and must exactly match the active project lock and Registry.
+- Imported project/page/node/field/reaction/Flow/Flow-node/Flow-edge identities
+  are fresh. Only typed references are rewritten. Project resources keep ids,
+  URIs, integrity, and opaque metadata inside the new project namespace.
+- Fresh identities remain within the Model identifier length limit even when a
+  valid source id already occupies the full limit. Production identity
+  generation keeps a bounded readable prefix plus UUID and monotonic sequence;
+  truncation must not make two generated identities equal.
+- Project creation uses Repository create/open/delete compensation. Page
+  preparation captures the host project id and content hash; both async result
+  publication and final `page.add` reject stale identity. One successful page
+  import is one Project Command and one Undo.
+- Final creation preflight compiles the complete candidate project through the
+  project-layer helper. A non-home-page compile failure blocks Repository
+  `create` and `page.add`; Controller must not import the Compiler directly.
+- JSON and Tree export scopes read either the whole Project or current Page
+  from one pinned `ProjectCompilation.snapshot.document`; copy, tree, and
+  download must not select different revisions. If the selected current Page
+  is absent from that pinned snapshot, show an unavailable state and disable
+  copy/download rather than exporting an empty file.
+
+### 13.4 Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Source exceeds a byte/structure budget or contains an unsafe key | Stable import diagnostic with an escaped JSON path; no adapter load or preview |
+| Legacy v1 page contains exactly 4096 nodes / 4097 nodes | Accept the budget boundary / reject with `IMPORT_NODE_LIMIT_EXCEEDED` |
+| Opaque metadata contains a property named `nodesById` | Preserve it without adding to the canonical node count |
+| Legacy layout uses only `slots.default` | Preserve and flatten those children exactly once |
+| Generated identity source is already 128 characters | Produce a unique, schema-valid bounded identity |
+| Any candidate page, including a non-home page, fails compilation | Reject before Repository create or Project Command |
+| Dynamic page/node/component/slot key contains punctuation | Escape the key in diagnostic and migration JSON paths |
+| Current Page is absent from the pinned export snapshot | Render unavailable status; disable JSON copy/download |
+
+### 13.5 Good / Base / Bad Cases
+
+- Good: analyze a v1 page with `slots.default`, migrate it, validate the
+  canonical 4096-node budget, remap bounded identities, compile the full host
+  candidate, then submit one `page.add` Command.
+- Base: opaque resource metadata contains strings and keys that resemble Model
+  identities; preserve it unchanged and exclude it from page/node budgets.
+- Bad: count every property named `nodesById` before migration, append a UUID to
+  an already maximum-length id, compile only `homePageId`, or let a missing
+  pinned Page download as an empty JSON file.
+
+### 13.6 Tests Required
+
+- Exact and first-over-limit security boundaries, all unsafe keys, syntax,
+  current/legacy/future versions, Registry failures, identity references, and
+  migration ambiguity. Include v1 default-slot ownership, canonical 4096/4097
+  node budgets, opaque metadata lookalikes, escaped dynamic paths, and a
+  maximum-length source identity.
+- Property-based Project/Page stringify→prepare→identity-normalized semantic
+  round trips over the complete document, plus arbitrary JSON proving no
+  non-diagnostic exception escapes.
+- Controller tests cover imported-project activation compensation and stale
+  page analyze→edit/switch→create with unchanged document/history/selection.
+  Final preflight must also reject a non-home-page compiler failure before any
+  Repository create or Project Command.
+- Component and browser tests cover paste/file, diagnostics, migrations,
+  isolated preview, both adapters/locales/themes, 1440/900/390 overflow,
+  keyboard focus, and accessible names/live regions. Export tests cover a Page
+  disappearing from the pinned snapshot with copy/download disabled.
+
+### 13.7 Wrong vs Correct
+
+Wrong:
+
+```ts
+const nodes = countPropertiesNamed(parsed, 'nodesById')
+compileCanonicalPage({ snapshot, pageId: document.homePageId, registry })
+repository.create({ document })
+```
+
+Correct:
+
+```ts
+const canonical = migrateAndValidate(parsed)
+assertCanonicalImportBudget(canonical)
+preflightProjectDocument(canonical.document, adapter.registrySnapshot)
+repository.create({ document: canonical.document })
+```

@@ -528,6 +528,23 @@
   white-space: pre;
 }
 
+.config-json-scope {
+  display: flex;
+  min-height: 42px;
+  padding: 6px 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--wb-muted);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+  font-size: 12px;
+}
+
+.config-json-scope .el-segmented {
+  max-width: 100%;
+}
+
 .config-view-tabs,
 .source-file-tabs {
   --el-tabs-header-height: 34px;

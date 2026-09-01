@@ -11,6 +11,9 @@ import type {
 } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapter, WorkbenchAdapterId } from '../adapters'
 import type {
+  ConfigImportTarget,
+  PrepareConfigImportResult,
+  PreparedConfigImport,
   ProjectEditorSession,
   ProjectEditorSessionSnapshot,
   ProjectPageAction,
@@ -21,12 +24,10 @@ import type {
 } from '../project'
 import type { StudioLayerEntry } from '../studio/StudioLeftPanel.vue'
 import type { WorkbenchUiStore } from './workbench-ui-store'
-import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
 import {
   createDesignerLocale,
   walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
-import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { loadWorkbenchAdapter } from '../adapters'
 import { collectFlowEventTargets } from '../flow/event-targets'
@@ -46,6 +47,8 @@ import {
   nextProjectPageId,
   nextProjectPageRoute,
   openDefaultProjectRepository,
+  preflightPreparedProject,
+  prepareConfigImport,
 } from '../project'
 import {
   createWorkbenchDesignSession,
@@ -469,23 +472,54 @@ export function createWorkbenchController(
     await openProject(id, pageId)
   }
 
-  function preflightTemplateProject(
+  async function persistPreparedProject(
     project: ProjectDocument,
     adapter: WorkbenchAdapter,
-    pageId = project.homePageId,
-  ): void {
-    const snapshot = createProjectSnapshot(project, 0)
-    const result = compileCanonicalPage({
-      snapshot: {
-        document: snapshot.document,
-        editVersion: snapshot.editVersion,
-        contentHash: snapshot.contentHash,
-      },
-      pageId,
-      registry: adapter.registrySnapshot,
-    })
-    if (!result.success)
-      throw new TypeError(`${result.diagnostics[0]?.code ?? 'TEMPLATE_COMPILE_FAILED'}: ${result.diagnostics[0]?.message ?? 'Template compilation failed.'}`)
+    activeRepository: ProjectRepository,
+  ): Promise<boolean> {
+    preflightPreparedProject(project, adapter.registrySnapshot)
+    await activeRepository.create({ document: project })
+    try {
+      await openProject(project.id)
+      if (currentProject.value?.id !== project.id)
+        throw new TypeError('Created project could not be opened.')
+    }
+    catch (error) {
+      try {
+        await activeRepository.delete(project.id)
+      }
+      catch (compensationError) {
+        throw new Error(
+          `${error instanceof Error ? error.message : String(error)} Repository compensation failed: ${compensationError instanceof Error ? compensationError.message : String(compensationError)}`,
+        )
+      }
+      throw error
+    }
+    try {
+      await refreshProjects()
+    }
+    catch (error) {
+      ui.notify(error)
+    }
+    return true
+  }
+
+  function addPreparedPage(
+    page: ProjectDocument['pagesById'][string],
+    adapter: WorkbenchAdapter,
+    document: ProjectDocument,
+  ): boolean {
+    const candidate = structuredClone(document) as ProjectDocument
+    candidate.pageOrder.push(page.id)
+    candidate.pagesById[page.id] = page
+    preflightPreparedProject(candidate, adapter.registrySnapshot)
+    const changed = executeProjectActions(
+      'Add page',
+      [{ type: 'operation.apply', operations: [{ type: 'page.add', page }] }],
+    )
+    if (changed)
+      selectCurrentPage(page.id)
+    return changed
   }
 
   async function createProjectFromTemplate(
@@ -526,31 +560,7 @@ export function createWorkbenchController(
         name,
         registryLock: adapter.componentRegistry.lock,
       })
-      preflightTemplateProject(project, adapter)
-      await activeRepository.create({ document: project })
-      try {
-        await openProject(project.id)
-        if (currentProject.value?.id !== project.id)
-          throw new TypeError('Created project could not be opened.')
-      }
-      catch (error) {
-        try {
-          await activeRepository.delete(project.id)
-        }
-        catch (compensationError) {
-          throw new Error(
-            `${error instanceof Error ? error.message : String(error)} Repository compensation failed: ${compensationError instanceof Error ? compensationError.message : String(compensationError)}`,
-          )
-        }
-        throw error
-      }
-      try {
-        await refreshProjects()
-      }
-      catch (error) {
-        ui.notify(error)
-      }
-      return true
+      return await persistPreparedProject(project, adapter, activeRepository)
     }
     catch (error) {
       ui.notify(error)
@@ -588,17 +598,91 @@ export function createWorkbenchController(
         name,
         route: nextProjectPageRoute(document, name),
       })
-      const candidate = structuredClone(document) as ProjectDocument
-      candidate.pageOrder.push(page.id)
-      candidate.pagesById[page.id] = page
-      preflightTemplateProject(candidate, adapter, page.id)
-      const changed = executeProjectActions(
-        'Add page',
-        [{ type: 'operation.apply', operations: [{ type: 'page.add', page }] }],
+      return addPreparedPage(page, adapter, structuredClone(document) as ProjectDocument)
+    }
+    catch (error) {
+      ui.notify(error)
+      return false
+    }
+    finally {
+      busy.value = false
+    }
+  }
+
+  async function prepareJsonImport(
+    source: string,
+    target: ConfigImportTarget,
+  ): Promise<PrepareConfigImportResult> {
+    const capturedProjectId = currentProject.value?.id
+    const capturedContentHash = projectSessionSnapshot.value?.contentHash
+    const result = await prepareConfigImport({
+      source,
+      target,
+      ...(currentProject.value ? { currentProject: structuredClone(currentProject.value) as ProjectDocument } : {}),
+    })
+    if (
+      target === 'page'
+      && (
+        currentProject.value?.id !== capturedProjectId
+        || projectSessionSnapshot.value?.contentHash !== capturedContentHash
       )
-      if (changed)
-        selectCurrentPage(page.id)
-      return changed
+    ) {
+      return {
+        success: false,
+        diagnostics: [{
+          code: 'IMPORT_STALE',
+          message: 'The active project changed while the page import was being analyzed.',
+          path: '$',
+        }],
+      }
+    }
+    return result
+  }
+
+  async function createFromJsonImport(prepared: PreparedConfigImport): Promise<boolean> {
+    const activeRepository = repository.value
+    const document = currentProject.value
+    const capturedProjectId = document?.id
+    const capturedContentHash = projectSessionSnapshot.value?.contentHash
+    if (!activeRepository || busy.value)
+      return false
+    if (prepared.target === 'project' && document && hasUnsavedChanges.value) {
+      ui.notify(workbenchLocale.value.t(
+        'import.createProjectBlocked',
+        'Save or resolve the current project before importing another project.',
+      ))
+      return false
+    }
+    if (prepared.target === 'page' && !document)
+      return false
+    if (
+      prepared.target === 'page'
+      && (
+        prepared.originProjectId !== document?.id
+        || prepared.originContentHash !== capturedContentHash
+      )
+    ) {
+      ui.notify(workbenchLocale.value.t(
+        'import.stale',
+        'The active project changed after analysis. Analyze the JSON again.',
+      ))
+      return false
+    }
+    busy.value = true
+    ui.clearMessage()
+    try {
+      const adapter = await loadWorkbenchAdapter(prepared.adapter)
+      if (
+        disposed
+        || repository.value !== activeRepository
+        || currentProject.value?.id !== capturedProjectId
+        || projectSessionSnapshot.value?.contentHash !== capturedContentHash
+      ) {
+        return false
+      }
+      if (prepared.target === 'project')
+        return await persistPreparedProject(prepared.document, adapter, activeRepository)
+      return addPreparedPage(prepared.page, adapter, structuredClone(document!) as ProjectDocument)
     }
     catch (error) {
       ui.notify(error)
@@ -976,6 +1060,7 @@ export function createWorkbenchController(
     busy,
     componentRegistry,
     configError,
+    createFromJsonImport,
     createNamedCheckpoint,
     createPageFromTemplate,
     createProjectFromTemplate,
@@ -997,6 +1082,7 @@ export function createWorkbenchController(
     listRecoveryDrafts,
     localeOptions,
     previewState,
+    prepareJsonImport,
     registry,
     repositoryRevision,
     recoveryDrafts,

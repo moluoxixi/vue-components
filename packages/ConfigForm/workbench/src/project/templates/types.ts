@@ -8,6 +8,12 @@ import type {
 } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapterId } from '../../adapters'
 import type { RuntimeHostRuntimeStatePayload } from '../../runtime-host/protocol'
+import type {
+  ProjectIdentityFactory,
+  ProjectIdentityKind,
+  ProjectPageIdentityMap,
+  RemappedProjectPage,
+} from '../identity-remap'
 
 export type ProjectTemplateAdapter = WorkbenchAdapterId
 export type TemplateCreationTarget = 'page' | 'project'
@@ -98,33 +104,10 @@ export interface TemplateCompatibilityInput {
   targetLock?: RegistryLock
 }
 
-export type TemplateIdentityKind
-  = | 'field'
-    | 'flow'
-    | 'flow-edge'
-    | 'flow-node'
-    | 'node'
-    | 'page'
-    | 'project'
-    | 'reaction'
-
-export interface TemplateIdentityFactory {
-  create: (kind: TemplateIdentityKind, source: string) => string
-}
-
-export interface TemplateIdentityMap {
-  fields: ReadonlyMap<string, string>
-  flowEdges: ReadonlyMap<string, string>
-  flowNodes: ReadonlyMap<string, string>
-  flows: ReadonlyMap<string, string>
-  nodes: ReadonlyMap<string, string>
-  reactions: ReadonlyMap<string, string>
-}
-
-export interface RemappedTemplatePage {
-  identityMap: TemplateIdentityMap
-  page: ProjectPage
-}
+export type TemplateIdentityKind = ProjectIdentityKind
+export type TemplateIdentityFactory = ProjectIdentityFactory
+export type TemplateIdentityMap = ProjectPageIdentityMap
+export type RemappedTemplatePage = RemappedProjectPage
 
 export interface InstantiateTemplatePageInput {
   id: string

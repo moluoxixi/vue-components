@@ -1,4 +1,3 @@
-import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { ProjectDocument, ProjectPage } from '@moluoxixi/config-form-model'
 import type { WorkbenchAdapter } from '../../adapters'
 import type {
@@ -8,13 +7,12 @@ import type {
   ProjectTemplateCatalogEntry,
   TemplateIdentityFactory,
 } from './types'
-import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
 import {
   assertProjectDocument,
-  createProjectSnapshot,
   PROJECT_DOCUMENT_VERSION,
 } from '@moluoxixi/config-form-model'
 import { DEFAULT_TEMPLATE_IDENTITY_FACTORY, remapTemplatePageIdentity } from '../identity-remap'
+import { prepareIsolatedProjectPreview } from '../isolated-preview'
 import { registryLockFromSnapshot } from './catalog'
 
 export function instantiateTemplatePage(
@@ -63,12 +61,6 @@ export function instantiateTemplateProject(
   })
 }
 
-function initialValues(page: ProjectPage): Record<string, unknown> {
-  return Object.fromEntries(Object.values(page.graph.nodesById)
-    .filter(node => node.kind === 'field' && node.defaultValue !== undefined)
-    .map(node => [node.kind === 'field' ? node.field : '', structuredClone(node.kind === 'field' ? node.defaultValue : undefined)]))
-}
-
 export function prepareTemplatePreview(
   template: ProjectTemplateCatalogEntry,
   adapter: Pick<WorkbenchAdapter, 'designerRegistry' | 'registrySnapshot'>,
@@ -79,33 +71,11 @@ export function prepareTemplatePreview(
     name: template.manifest.displayName,
     registryLock: registryLockFromSnapshot(adapter.registrySnapshot),
   })
-  const snapshot = createProjectSnapshot(project, 0)
-  const compiled = compileCanonicalPage({
-    snapshot: {
-      document: snapshot.document,
-      editVersion: snapshot.editVersion,
-      contentHash: snapshot.contentHash,
-    },
+  return prepareIsolatedProjectPreview({
+    adapter,
+    adapterId: template.manifest.adapter,
+    document: project,
     pageId: project.homePageId,
-    registry: adapter.registrySnapshot,
+    revision: `template:${template.manifest.id}:${template.manifest.version}:${project.id}`,
   })
-  if (!compiled.success)
-    throw new TypeError(`${compiled.diagnostics[0]?.code ?? 'TEMPLATE_PREVIEW_COMPILE_FAILED'}: ${compiled.diagnostics[0]?.message ?? 'Template preview compilation failed.'}`)
-  const values = initialValues(project.pagesById[project.homePageId]!)
-  const reactionProjection: ConfigFormReactionProjection<Record<string, unknown>> = {
-    values: structuredClone(values),
-    props: {},
-    states: {},
-    validate: [],
-  }
-  const revision = `template:${template.manifest.id}:${template.manifest.version}:${project.id}`
-  return {
-    adapter: template.manifest.adapter,
-    compilation: compiled.compilation,
-    namespace: adapter.designerRegistry.rendererNamespace,
-    reactionProjection,
-    revision,
-    runtimeSessionKey: `${project.id}:${template.manifest.adapter}:${project.homePageId}`,
-    runtimeState: { values, touched: [], validation: {} },
-  }
 }

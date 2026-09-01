@@ -172,4 +172,121 @@ describe('workbench template project creation transaction', () => {
     expect(listProjects).toHaveBeenCalledTimes(2)
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: 'catalog refresh failed' }))
   })
+
+  it('creates an imported page as one undoable project command', async () => {
+    const repository = durableRepository()
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    await repository.create({
+      document: createBuiltInProject('element-profile', {
+        id: 'import-host',
+        name: 'Import host',
+      }, adapter.componentRegistry.lock),
+    })
+    const { controller } = await setup(repository)
+    const source = controller.currentProject.value!.pagesById[controller.currentProject.value!.homePageId]!
+    const analyzed = await controller.prepareJsonImport(JSON.stringify(source), 'page')
+    expect(analyzed.success).toBe(true)
+    if (!analyzed.success)
+      return
+    const beforeCount = controller.currentProject.value!.pageOrder.length
+    const beforeHistory = controller.designSession.historyControl.value.history?.position
+
+    expect(await controller.createFromJsonImport(analyzed.prepared)).toBe(true)
+    expect(controller.currentProject.value!.pageOrder).toHaveLength(beforeCount + 1)
+    expect(controller.designSession.historyControl.value.history?.position).toBe((beforeHistory ?? 0) + 1)
+    expect(controller.designSession.historyControl.value.undo()).toBe(true)
+    expect(controller.currentProject.value!.pageOrder).toHaveLength(beforeCount)
+  })
+
+  it('rejects a prepared page after the host project changes', async () => {
+    const repository = durableRepository()
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    await repository.create({
+      document: createBuiltInProject('element-profile', {
+        id: 'stale-import-host',
+        name: 'Stale import host',
+      }, adapter.componentRegistry.lock),
+    })
+    const { controller } = await setup(repository)
+    const project = controller.currentProject.value!
+    const source = project.pagesById[project.homePageId]!
+    const analyzed = await controller.prepareJsonImport(JSON.stringify(source), 'page')
+    expect(analyzed.success).toBe(true)
+    if (!analyzed.success)
+      return
+    await controller.handlePageAction({ type: 'page.rename', pageId: source.id, name: 'Changed after analysis' })
+    const historyPosition = controller.designSession.historyControl.value.history?.position
+    const pageId = controller.currentPageId.value
+
+    expect(await controller.createFromJsonImport(analyzed.prepared)).toBe(false)
+    expect(controller.currentProject.value!.pageOrder).toHaveLength(1)
+    expect(controller.designSession.historyControl.value.history?.position).toBe(historyPosition)
+    expect(controller.currentPageId.value).toBe(pageId)
+  })
+
+  it('compensates an imported project when activation preparation fails', async () => {
+    const repository = durableRepository()
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    const source = createBuiltInProject('element-profile', {
+      id: 'imported-project-source',
+      name: 'Imported project source',
+    }, adapter.componentRegistry.lock)
+    const deleteProject = vi.spyOn(repository, 'delete')
+    mocks.createDraftStore.mockImplementation(() => durableDraftStore(new Error('import activation unavailable')))
+    const { controller } = await setup(repository)
+    const analyzed = await controller.prepareJsonImport(JSON.stringify(source), 'project')
+    expect(analyzed.success).toBe(true)
+    if (!analyzed.success)
+      return
+
+    expect(await controller.createFromJsonImport(analyzed.prepared)).toBe(false)
+    expect(deleteProject).toHaveBeenCalledOnce()
+    expect(controller.currentProject.value).toBeUndefined()
+    expect(await repository.get(deleteProject.mock.calls[0]![0])).toBeUndefined()
+  })
+
+  it('rejects a prepared project when a non-home page fails final compilation', async () => {
+    const repository = durableRepository()
+    const createProject = vi.spyOn(repository, 'create')
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    const source = createBuiltInProject('element-profile', {
+      id: 'multi-page-source',
+      name: 'Multi-page source',
+    }, adapter.componentRegistry.lock)
+    const home = source.pagesById[source.homePageId]!
+    const secondary = {
+      ...structuredClone(home),
+      id: 'secondary',
+      name: 'Secondary',
+      route: '/secondary',
+    }
+    source.pageOrder.push(secondary.id)
+    source.pagesById[secondary.id] = secondary
+    const { controller } = await setup(repository)
+    const analyzed = await controller.prepareJsonImport(JSON.stringify(source), 'project')
+    expect(analyzed.success).toBe(true)
+    if (!analyzed.success || analyzed.prepared.target !== 'project')
+      return
+
+    const candidate = structuredClone(analyzed.prepared.document)
+    const candidateSecondary = candidate.pagesById[candidate.pageOrder[1]!]!
+    const nodeId = candidateSecondary.graph.root[0]!.nodeId
+    const node = candidateSecondary.graph.nodesById[nodeId]!
+    candidateSecondary.graph.nodesById[nodeId] = {
+      id: node.id,
+      component: node.component,
+      kind: 'layout',
+      props: structuredClone(node.props),
+      events: structuredClone(node.events),
+      bindings: structuredClone(node.bindings),
+      slots: {},
+    }
+
+    expect(await controller.createFromJsonImport({
+      ...analyzed.prepared,
+      document: candidate,
+    })).toBe(false)
+    expect(createProject).not.toHaveBeenCalled()
+    expect(controller.currentProject.value).toBeUndefined()
+  })
 })

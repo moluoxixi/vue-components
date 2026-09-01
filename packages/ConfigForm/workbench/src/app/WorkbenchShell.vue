@@ -509,6 +509,7 @@ onMounted(() => {
       v-if="exportDialogLoaded"
       :capture="captureExportSnapshotInput"
       :current-compilation="getCurrentExportCompilation()"
+      :current-page-id="currentPageId"
       :locale="localeOptions"
       :mode="exportPreviewMode"
       :theme="theme"

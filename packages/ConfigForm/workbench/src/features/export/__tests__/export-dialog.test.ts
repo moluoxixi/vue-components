@@ -36,6 +36,7 @@ describe('export dialog', () => {
       props: {
         capture: () => input,
         currentCompilation: input.compilation,
+        currentPageId: input.compilation.snapshot.document.homePageId,
         mode: 'source',
         theme: 'light',
       },
@@ -56,6 +57,20 @@ describe('export dialog', () => {
     await flushPromises()
     expect(root.get('[role="tree"]').text()).toContain('project.config.ts')
     expect(root.get('[role="tree"]').text()).toContain('form.config.ts')
+
+    await root.findAll('.el-tabs__item').find(item => item.text() === 'JSON')!.trigger('click')
+    await flushPromises()
+    expect(root.get('.config-json-view').text()).toContain('"schemaVersion": 4')
+    await root.findAll('.el-segmented__item').find(item => item.text().includes('Current page'))!.trigger('click')
+    await flushPromises()
+    expect(root.get('.config-json-view').text()).toContain('"graph"')
+    expect(root.get('.config-json-view').text()).not.toContain('"schemaVersion"')
+
+    await wrapper.setProps({ currentPageId: 'missing-page' })
+    await flushPromises()
+    expect(root.get('[role="status"]').text()).toBe('The current page is unavailable in this export snapshot.')
+    expect(root.findAll('button').find(button => button.text().trim() === 'Copy')!.attributes('disabled')).toBeDefined()
+    expect(root.findAll('button').find(button => button.text().trim() === 'Download')!.attributes('disabled')).toBeDefined()
 
     wrapper.unmount()
     target.remove()

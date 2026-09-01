@@ -37,6 +37,7 @@ import {
 
 export type ExportMode = 'source' | 'config'
 type ConfigViewMode = 'source' | 'json' | 'tree'
+type ConfigJsonScope = 'page' | 'project'
 type MobileFileView = 'tree' | 'code'
 
 interface ConfigTreeEntry {
@@ -50,6 +51,7 @@ interface ConfigTreeEntry {
 const props = defineProps<{
   capture: () => BuildExportSnapshotInput | undefined
   currentCompilation?: ProjectCompilation
+  currentPageId?: string
   locale?: DesignerLocaleOptions
   mode?: ExportMode
   theme: 'dark' | 'light'
@@ -70,6 +72,7 @@ const configTreeExpandedIds = ref<string[]>([])
 const sourceMobileView = ref<MobileFileView>('tree')
 const configMobileView = ref<MobileFileView>('tree')
 const configViewMode = ref<ConfigViewMode>('source')
+const configJsonScope = ref<ConfigJsonScope>('project')
 const locale = computed(() => createDesignerLocale(props.locale))
 const exportSession = createExportSession({
   capture: () => props.capture(),
@@ -95,16 +98,28 @@ const selectedConfigFile = computed<Readonly<WorkspaceFile> | undefined>(() => c
 const sourceCode = computed(() => selectedSourceFile.value?.kind === 'text' ? selectedSourceFile.value.content : '')
 const configCode = computed(() => selectedConfigFile.value?.kind === 'text' ? selectedConfigFile.value.content : '')
 const configDocument = computed(() => snapshot.value?.compilation.snapshot.document)
-const generatedConfigJson = computed(() => configDocument.value
-  ? `${JSON.stringify(configDocument.value, null, 2)}\n`
+const configJsonValue = computed(() => {
+  const document = configDocument.value
+  if (!document)
+    return undefined
+  return configJsonScope.value === 'project'
+    ? document
+    : document.pagesById[props.currentPageId ?? '']
+})
+const generatedConfigJson = computed(() => configJsonValue.value
+  ? `${JSON.stringify(configJsonValue.value, null, 2)}\n`
   : '')
+const configScopeOptions = computed(() => [
+  { label: locale.value.t('export.scopeProject', 'Entire project'), value: 'project' },
+  { label: locale.value.t('export.scopePage', 'Current page'), value: 'page', disabled: !props.currentPageId || !configDocument.value?.pagesById[props.currentPageId] },
+])
 const dialogTitle = computed(() => props.mode === 'source'
   ? locale.value.t('export.generatedSource', 'Generated Vue source')
   : locale.value.t('export.configModel', 'Config model'))
 
 const generatedConfigTree = computed<ConfigTreeEntry[]>(() => {
-  const document = configDocument.value
-  if (!document)
+  const value = configJsonValue.value
+  if (!value)
     return []
   const entries: ConfigTreeEntry[] = []
   const visit = (value: unknown, path: string, depth: number, label: string): void => {
@@ -129,7 +144,7 @@ const generatedConfigTree = computed<ConfigTreeEntry[]>(() => {
       ))
     }
   }
-  Object.entries(document).forEach(([key, value]) => visit(value, key, 0, key))
+  Object.entries(value).forEach(([key, child]) => visit(child, key, 0, key))
   return entries
 })
 
@@ -192,7 +207,7 @@ const exportText = computed<string | undefined>(() => {
     return selectedSourceFile.value?.kind === 'text' ? selectedSourceFile.value.content : undefined
   if (configViewMode.value === 'source')
     return selectedConfigFile.value?.kind === 'text' ? selectedConfigFile.value.content : undefined
-  return generatedConfigJson.value
+  return configJsonValue.value ? generatedConfigJson.value : undefined
 })
 
 async function copyExport(): Promise<void> {
@@ -221,7 +236,9 @@ function downloadCurrent(): void {
     ? selectedSourceFile.value
     : configViewMode.value === 'source'
       ? selectedConfigFile.value
-      : { content: generatedConfigJson.value, kind: 'text' as const, language: 'json' }
+      : configJsonValue.value
+        ? { content: generatedConfigJson.value, kind: 'text' as const, language: 'json' }
+        : undefined
   if (!file)
     return
   downloadWorkspaceFile({
@@ -230,7 +247,9 @@ function downloadCurrent(): void {
       ? sourceViewPath.value.split('/').at(-1)!
       : configViewMode.value === 'source'
         ? configViewPath.value.split('/').at(-1)!
-        : 'project.config.json',
+        : configJsonScope.value === 'page'
+          ? `${(props.currentPageId ?? 'page').replace(/[^a-z0-9._-]+/gi, '-')}.page.json`
+          : 'project.config.json',
     ...(mode === 'config' && configViewMode.value !== 'source'
       ? { mime: 'application/json;charset=utf-8' }
       : {}),
@@ -362,6 +381,14 @@ async function downloadBundle(): Promise<void> {
             <ElTabPane label="JSON" name="json" />
             <ElTabPane :label="locale.t('export.tree', 'Tree')" name="tree" />
           </ElTabs>
+          <div v-if="configViewMode !== 'source'" class="config-json-scope">
+            <span>{{ locale.t('export.scope', 'JSON scope') }}</span>
+            <ElSegmented
+              v-model="configJsonScope"
+              :aria-label="locale.t('export.scope', 'JSON scope')"
+              :options="configScopeOptions"
+            />
+          </div>
           <div v-if="configViewMode === 'source'" class="source-file-layout">
             <ElTabs v-model="configMobileView" class="source-file-tabs" :aria-label="locale.t('export.configSourceView', 'Config source view')">
               <ElTabPane :label="locale.t('export.tree', 'Tree')" name="tree" />
@@ -387,6 +414,7 @@ async function downloadBundle(): Promise<void> {
               />
             </div>
           </div>
+          <p v-else-if="!configJsonValue" class="config-json-view" role="status">{{ locale.t('export.currentPageUnavailable', 'The current page is unavailable in this export snapshot.') }}</p>
           <pre v-else-if="configViewMode === 'json'" class="config-json-view" tabindex="0">{{ generatedConfigJson }}</pre>
           <div v-else class="config-tree-view" role="tree" tabindex="0">
             <div v-for="entry in generatedConfigTree" :key="entry.path" role="treeitem" :style="{ paddingLeft: `${12 + entry.depth * 18}px` }">
@@ -407,7 +435,7 @@ async function downloadBundle(): Promise<void> {
           <ElButton native-type="button" class="dialog-action secondary" :disabled="!snapshot || exportText === undefined" @click="copyExport">
             <Clipboard :size="15" aria-hidden="true" /> {{ locale.t('action.copy', 'Copy') }}
           </ElButton>
-          <ElButton native-type="button" type="primary" class="dialog-action" :disabled="!snapshot" @click="downloadCurrent">
+          <ElButton native-type="button" type="primary" class="dialog-action" :disabled="!snapshot || exportText === undefined" @click="downloadCurrent">
             <Download :size="15" aria-hidden="true" /> {{ locale.t('action.download', 'Download') }}
           </ElButton>
         </div>

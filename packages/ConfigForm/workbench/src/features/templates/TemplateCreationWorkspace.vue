@@ -29,6 +29,7 @@ import {
   prepareTemplatePreview,
 } from '../../project'
 import PreviewRuntimeHostFrame from '../../runtime-host/PreviewRuntimeHostFrame.vue'
+import JsonImportPane from './JsonImportPane.vue'
 
 const props = defineProps<{
   canClose: boolean
@@ -57,6 +58,7 @@ const query = ref('')
 const category = ref<ProjectTemplateCategory | 'all'>('all')
 const providerId = ref('all')
 const mobilePane = ref<'catalog' | 'details'>('catalog')
+const creationMode = ref<'json' | 'template'>('template')
 const loadingCatalog = ref(true)
 const loadingPreview = ref(false)
 const submitting = ref(false)
@@ -294,7 +296,7 @@ onBeforeUnmount(() => {
   <main
     ref="workspace"
     class="template-creation-workspace"
-    :class="`is-mobile-${mobilePane}`"
+    :class="[`is-mobile-${mobilePane}`, { 'is-json-mode': creationMode === 'json' }]"
     :data-theme="theme"
     :aria-label="creationTitle"
   >
@@ -317,6 +319,15 @@ onBeforeUnmount(() => {
           <h1>{{ creationTitle }}</h1>
         </div>
       </div>
+      <ElSegmented
+        v-model="creationMode"
+        class="creation-mode-switch"
+        :aria-label="locale.t('import.creationMode', 'Creation source')"
+        :options="[
+          { label: locale.t('template.catalog', 'Templates'), value: 'template' },
+          { label: locale.t('import.title', 'JSON import'), value: 'json' },
+        ]"
+      />
       <div class="template-workspace-actions">
         <ElButton native-type="button" text circle :title="locale.t('locale.switch', 'Switch language')" :aria-label="locale.t('locale.switch', 'Switch language')" @click="emit('toggleLocale')">
           <Languages :size="17" aria-hidden="true" />
@@ -328,12 +339,12 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div class="template-mobile-panes" role="tablist" :aria-label="locale.t('template.mobileView', 'Template workspace view')">
+    <div v-if="creationMode === 'template'" class="template-mobile-panes" role="tablist" :aria-label="locale.t('template.mobileView', 'Template workspace view')">
       <button type="button" role="tab" :aria-selected="mobilePane === 'catalog'" @click="showCatalog">{{ locale.t('template.catalog', 'Catalog') }}</button>
       <button type="button" role="tab" :aria-selected="mobilePane === 'details'" :disabled="!selectedTemplate" @click="mobilePane = 'details'">{{ locale.t('template.details', 'Details') }}</button>
     </div>
 
-    <section class="template-workspace-layout">
+    <section v-if="creationMode === 'template'" class="template-workspace-layout">
       <aside class="template-catalog-pane" :aria-label="locale.t('template.catalog', 'Catalog')">
         <div class="template-catalog-filters">
           <ElInput ref="searchInput" v-model="query" type="search" clearable :placeholder="locale.t('template.search', 'Search templates')" :aria-label="locale.t('template.search', 'Search templates')">
@@ -452,5 +463,6 @@ onBeforeUnmount(() => {
         </template>
       </section>
     </section>
+    <JsonImportPane v-else :locale="props.locale" :target="target" @created="emit('created')" />
   </main>
 </template>
