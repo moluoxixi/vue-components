@@ -23,15 +23,16 @@
 5. `config-form-template-management`：将模板管理从 Designer/Workbench 主编辑壳拆为独立功能。
 6. `config-form-json-import-lifecycle`：在新建流程支持严格校验的 Config Model JSON 导入。
 7. `config-form-editing-durability-recovery`：autosave、恢复、正式版本与跨标签页协调。
+8. `config-form-workbench-component-ui-redesign`：完成 Workbench 组件化界面重构与全尺寸视觉收口。
 
 ## 跨任务验收标准
 
-- [ ] Preview、Design、Inspector 和批量操作继续只读写同一 `ProjectDocument/PageGraph`，不引入第二份可编辑 schema。
-- [ ] Pointer、keyboard、toolbar 和 Layers 对同一操作生成等价 Model Command；批量操作一次撤销。
-- [ ] 模板、JSON 导入、持久性版本和操作历史的职责边界明确，不把 UI 状态、模板目录或恢复草稿写入 `ProjectDocument`。
-- [ ] Element Plus 与 Ant Design Vue 均通过对应交互矩阵；新增 Registry 物料后测试矩阵自动覆盖。
-- [ ] 1440/900/390、Light/Dark、zh-CN/en-US 下无文本截断、控件遮挡、不可达操作或焦点丢失。
-- [ ] 子任务分别通过定向单测、typecheck、Playwright 和可访问性检查后，父任务再做整体验收。
+- [x] Preview、Design、Inspector 和批量操作继续只读写同一 `ProjectDocument/PageGraph`，不引入第二份可编辑 schema。
+- [x] Pointer、keyboard、toolbar 和 Layers 对同一操作生成等价 Model Command；批量操作一次撤销。
+- [x] 模板、JSON 导入、持久性版本和操作历史的职责边界明确，不把 UI 状态、模板目录或恢复草稿写入 `ProjectDocument`。
+- [x] Element Plus 与 Ant Design Vue 均通过对应交互矩阵；新增 Registry 物料后测试矩阵自动覆盖。
+- [x] 1440/900/390、Light/Dark、zh-CN/en-US 下无文本截断、控件遮挡、不可达操作或焦点丢失。
+- [x] 子任务分别通过定向单测、typecheck、Playwright 和可访问性检查后，父任务再做整体验收。
 
 ## 范围外
 
