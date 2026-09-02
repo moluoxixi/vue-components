@@ -64,6 +64,9 @@ if (!jsFiles.some(file => file.endsWith('/repository.js'))) {
 if (!jsFiles.some(file => file.endsWith('/repository-node.js'))) {
   failures.push('Node repository entry is missing')
 }
+if (!declarationFiles.some(file => file.endsWith('/repository-node.d.ts'))) {
+  failures.push('Node repository declaration entry is missing')
+}
 const cliPath = `${distRoot}/element-plus-docs.js`
 if (!jsFiles.includes(cliPath)) {
   failures.push('element-plus-docs CLI entry is missing')

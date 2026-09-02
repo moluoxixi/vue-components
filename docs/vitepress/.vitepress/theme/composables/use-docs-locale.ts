@@ -4,7 +4,7 @@ import {
   getDocsMessages,
   localePath,
   resolveDocsLocale,
-} from '../../catalog/docs-i18n'
+} from '../../catalog/i18n'
 
 export function useDocsLocale() {
   const { lang, localeIndex } = useData()

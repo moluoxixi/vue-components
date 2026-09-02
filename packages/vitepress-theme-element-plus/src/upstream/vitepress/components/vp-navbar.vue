@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
+import { resolveNavbarIdentity } from '../composables/navbar-identity'
 import { useSiteLocales } from '../composables/site-locale'
 import VPNavbarSearch from './navbar/vp-search.vue'
 import VPNavbarMenu from './navbar/vp-menu.vue'
@@ -18,6 +19,7 @@ defineEmits(['toggle'])
 const { theme, site } = useData()
 const { homePath: currentLink } = useSiteLocales()
 
+const identity = computed(() => resolveNavbarIdentity(theme.value.logo, theme.value.siteTitle, site.value.title))
 const showVersion = computed(() => String(theme.value.version ?? ''))
 </script>
 
@@ -27,10 +29,12 @@ const showVersion = computed(() => String(theme.value.version ?? ''))
       <div class="logo-container">
         <a :href="withBase(currentLink)">
           <img
+            v-if="identity.logo"
             class="logo"
-            :src="withBase(String(theme.logo ?? ''))"
-            :alt="String(site?.title ?? '')"
+            :src="withBase(identity.logo)"
+            :alt="identity.siteTitle"
           />
+          <span v-else class="site-title" :title="identity.siteTitle">{{ identity.siteTitle }}</span>
         </a>
 
         <el-tag v-if="showVersion" round size="small">
@@ -59,12 +63,23 @@ const showVersion = computed(() => String(theme.value.version ?? ''))
   align-items: center;
   height: var(--header-height);
   > a {
+    display: flex;
+    align-items: center;
     height: 28px;
     width: 128px;
+    color: var(--text-color);
+    text-decoration: none;
   }
   .logo {
     position: relative;
     height: 100%;
+  }
+  .site-title {
+    overflow: hidden;
+    font-size: 18px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 .dark {

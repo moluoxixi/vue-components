@@ -67,12 +67,12 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        'element-plus-docs': resolve(__dirname, 'src/node/cli.ts'),
+        'element-plus-docs': resolve(__dirname, 'src/node/lifecycle/cli.ts'),
         'index': resolve(__dirname, 'index.ts'),
         'markdown': resolve(__dirname, 'markdown.ts'),
         'node': resolve(__dirname, 'node.ts'),
         'repository': resolve(__dirname, 'repository.ts'),
-        'repository-node': resolve(__dirname, 'src/node/repository/index.ts'),
+        'repository-node': resolve(__dirname, 'repository-node.ts'),
         'repl': resolve(__dirname, 'src/repl-entry.ts'),
       },
       name: 'MoluoxixiElementPlusDocs',

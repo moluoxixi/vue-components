@@ -7,6 +7,7 @@ import { elementPlusDocsProjectMarkdownPlugin } from '@moluoxixi/vitepress-theme
 import project from '../element-plus-docs.config'
 
 const projectRoot = fileURLToPath(new URL('../../../../..', import.meta.url))
+const dependencyRoot = fileURLToPath(new URL('..', import.meta.url))
 
 export default defineElementPlusDocs({
   site: {
@@ -22,7 +23,7 @@ export default defineElementPlusDocs({
     markdown: {
       config(md) {
         md.use(elementPlusDocsProjectMarkdownPlugin, {
-          dependencyRoot: projectRoot,
+          dependencyRoot,
           project,
           projectRoot,
         })

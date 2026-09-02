@@ -35,8 +35,8 @@
       "import": "./dist/repository.js"
     },
     "./repository/node": {
-      "source": "./src/node/repository/index.ts",
-      "types": "./dist/src/node/repository/index.d.ts",
+      "source": "./repository-node.ts",
+      "types": "./dist/repository-node.d.ts",
       "import": "./dist/repository-node.js"
     },
     "./repl": {
@@ -60,6 +60,7 @@
     "index.ts",
     "markdown.ts",
     "node.ts",
+    "repository-node.ts",
     "repository.ts",
     "src"
   ],
@@ -77,7 +78,9 @@
     "test:consumer": "node dist/element-plus-docs.js build --config fixtures/consumer/element-plus-docs.config.ts",
     "build:fixture": "pnpm build && node dist/element-plus-docs.js build --config fixtures/basic/element-plus-docs.config.ts",
     "pretest:e2e": "pnpm build",
-    "test:e2e": "playwright test --config playwright.config.ts"
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "pretest:e2e:functional": "pnpm build",
+    "test:e2e:functional": "playwright test --config playwright.config.ts --grep-invert \"@visual\""
   },
   "peerDependencies": {
     "element-plus": "^2.9.0",

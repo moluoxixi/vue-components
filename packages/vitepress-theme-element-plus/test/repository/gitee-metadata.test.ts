@@ -12,7 +12,7 @@ import {
   resolveGiteeNextPage,
   syncGiteeMetadata,
   writeGiteeMetadataAtomically,
-} from '../../src/node/repository/gitee'
+} from '../../src/node/repository'
 
 const temporaryDirectories: string[] = []
 const headSha = 'a'.repeat(40)

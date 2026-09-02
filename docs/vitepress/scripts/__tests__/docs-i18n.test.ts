@@ -1,17 +1,17 @@
 // @vitest-environment node
 
 import { describe, expect, it } from 'vitest'
-import { documentedComponentNames } from '../../.vitepress/catalog/component-manifest'
 import {
+  documentedComponentNames,
+  documentedUtilityPackageNames,
   formatDocsMessage,
   getDocsMessages,
   getLocalizedComponents,
   getLocalizedUtilities,
   localePath,
   resolveDocsLocale,
-} from '../../.vitepress/catalog/docs-i18n'
-import { documentedUtilityPackageNames } from '../../.vitepress/catalog/utility-manifest'
-import { docsLocales } from '../../.vitepress/site/docs-site'
+} from '../../.vitepress/catalog'
+import { docsLocales } from '../../.vitepress/site/config'
 
 describe('documentation internationalization', () => {
   it('keeps component identities stable across locales', () => {
@@ -21,11 +21,13 @@ describe('documentation internationalization', () => {
       .toBe('Copy actions with built-in status feedback')
   })
 
-  it('keeps utility identities stable across locales', () => {
+  it('publishes utility detail routes only for locales with explicit sources', () => {
     expect(getLocalizedUtilities('en-US').map(utility => utility.packageName))
+      .toEqual([])
+    expect(getLocalizedUtilities('zh-CN').map(utility => utility.packageName))
       .toEqual(documentedUtilityPackageNames)
-    expect(getLocalizedUtilities('en-US').find(utility => utility.packageName === '@moluoxixi/utils')?.description)
-      .toBe('Cross-runtime functions and Node.js project manifest utilities')
+    expect(getLocalizedUtilities('zh-CN').every(utility => utility.sourcePath.endsWith('/README.md')))
+      .toBe(true)
   })
 
   it('resolves locale paths without changing default URLs', () => {

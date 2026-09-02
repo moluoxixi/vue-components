@@ -1,6 +1,6 @@
 import type { ElementPlusDocsThemeConfig } from '@moluoxixi/vitepress-theme-element-plus'
 import type { DefaultTheme, UserConfig } from 'vitepress'
-import type { DocsLocale } from './site/docs-site'
+import type { DocsLocale } from './site/config'
 import process from 'node:process'
 import {
   createElementPlusDocsContentRewrites,
@@ -9,19 +9,19 @@ import {
 import { elementPlusDocsProjectMarkdownPlugin } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import { createStableChunksPlugin } from '../../../scripts/vite-chunks'
 import projectConfig from '../element-plus-docs.config.ts'
-import { getDocsMessages, getLocalizedComponentGroups, getLocalizedUtilityGroups, localePath } from './catalog/docs-i18n'
-import { createComponentAutoLoadPlugins } from './site/auto-loaders'
+import { getDocsMessages, getLocalizedComponentGroups, getLocalizedUtilityGroups, localePath } from './catalog'
 import {
   defaultDocsLocale,
   docsLocales,
   docsRoutePath,
   docsSite,
-} from './site/docs-site'
+} from './site/config'
+import { createComponentAutoLoadPlugins } from './site/plugins'
 import {
   docsRepository,
   docsRepositoryLabel,
   resolveDocsRepositoryDefaultBranch,
-} from './site/repository-config'
+} from './site/repository/config'
 
 function createThemeConfig(locale: DocsLocale): DefaultTheme.Config & Pick<ElementPlusDocsThemeConfig, 'repositoryLabel'> {
   const messages = getDocsMessages(locale)
@@ -79,7 +79,7 @@ function createThemeConfig(locale: DocsLocale): DefaultTheme.Config & Pick<Eleme
     },
     socialLinks: [{
       ariaLabel: docsRepositoryLabel,
-      icon: 'github',
+      icon: docsRepository.provider,
       link: docsRepository.url!,
     }],
     repositoryLabel: docsRepositoryLabel,

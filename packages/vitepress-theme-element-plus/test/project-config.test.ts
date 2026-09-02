@@ -11,7 +11,7 @@ import {
   resolveElementPlusDocsProjectRepository,
   resolveElementPlusDocsRepository,
 } from '../index'
-import { synchronizeElementPlusDocsRepository } from '../src/node/repository/project'
+import { synchronizeElementPlusDocsRepository } from '../src/node/repository'
 
 const temporaryDirectories: string[] = []
 

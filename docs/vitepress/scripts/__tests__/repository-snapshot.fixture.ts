@@ -1,4 +1,4 @@
-import { docsProject } from '../../.vitepress/catalog/component-manifest'
+import { docsProject } from '../../.vitepress/catalog'
 
 const repositoryUrl = 'https://github.com/moluoxixi/vue-components'
 const headSha = 'a'.repeat(40)

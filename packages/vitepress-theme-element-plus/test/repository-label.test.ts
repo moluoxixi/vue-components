@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { Cloud, CodeXml, GitBranch, GitFork, HardDrive } from '@lucide/vue'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import VPFooter from '../src/upstream/vitepress/components/globals/vp-footer.vue'
@@ -15,11 +16,27 @@ vi.mock('vitepress', () => ({
 }))
 
 describe('repository provider labels', () => {
+  it('uses a distinct navigation icon for every supported provider', () => {
+    const providers = [
+      ['github', GitFork],
+      ['gitlab', GitBranch],
+      ['gitee', CodeXml],
+      ['yunxiao', Cloud],
+      ['local', HardDrive],
+    ] as const
+
+    for (const [provider, icon] of providers) {
+      expect(resolveSocialLinks({
+        socialLinks: [{ ariaLabel: provider, icon: provider, link: `https://${provider}.test/project` }],
+      })[0]?.icon).toBe(icon)
+    }
+  })
+
   it('uses the explicit provider label for navigation and the footer', () => {
     expect(resolveSocialLinks({
-      socialLinks: [{ ariaLabel: 'GitLab', icon: 'github', link: 'https://gitlab.test/group/project' }],
+      socialLinks: [{ ariaLabel: 'GitLab', icon: 'gitlab', link: 'https://gitlab.test/group/project' }],
     })).toEqual([{
-      icon: undefined,
+      icon: GitBranch,
       link: 'https://gitlab.test/group/project',
       text: 'GitLab',
     }])

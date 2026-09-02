@@ -6,14 +6,14 @@ import type {
   GiteeMetadataExpectation,
   GiteeMetadataSnapshot,
 } from '../../content/repository/providers/gitee'
-import type { AtomicFileSystem } from './atomic-write'
+import type { AtomicFileSystem } from '../utils'
 import {
   assertGiteeMetadataSnapshot,
   isExactGiteeProfileUrl,
   isTrustedGiteeAvatarUrl,
 } from '../../content/repository/providers/gitee'
+import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
-import { writeJsonAtomically } from './atomic-write'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
 
 interface GiteeAccountResponse {

@@ -13,7 +13,7 @@ import {
   syncYunxiaoMetadata,
   writeYunxiaoMetadataAtomically,
   yunxiaoRepositoryApiPath,
-} from '../../src/node/repository/yunxiao'
+} from '../../src/node/repository'
 
 const temporaryDirectories: string[] = []
 const headSha = 'a'.repeat(40)

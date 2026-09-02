@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { documentedApiComponentEntries } from '../../.vitepress/catalog/component-manifest'
+import { documentedApiComponentEntries } from '../../.vitepress/catalog'
 
 describe('api component entries', () => {
   it('extracts regular components and the standalone rich-text editor package', () => {

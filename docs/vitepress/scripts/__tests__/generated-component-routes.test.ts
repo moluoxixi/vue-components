@@ -3,10 +3,8 @@ import { readdirSync, readFileSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { synchronizeElementPlusDocsContent } from '@moluoxixi/vitepress-theme-element-plus/node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { docsProject } from '../../.vitepress/catalog/component-manifest.ts'
-import { getLocalizedComponents } from '../../.vitepress/catalog/docs-i18n.ts'
-import { documentedUtilities } from '../../.vitepress/catalog/utility-manifest.ts'
-import { docsLocales } from '../../.vitepress/site/docs-site.ts'
+import { docsProject, getLocalizedComponents, getLocalizedUtilities } from '../../.vitepress/catalog'
+import { docsLocales } from '../../.vitepress/site/config'
 import { GENERATED_COMPONENT_ROUTE_MARKER } from '../component-routes.mts'
 import { generateComponentRoutes } from '../generate-component-routes.mts'
 import {
@@ -69,11 +67,13 @@ describe('generated searchable component routes', () => {
   })
 
   it('materializes every localized utility inside the runtime content tree', () => {
-    for (const configured of Object.values(docsLocales)) {
+    for (const locale of Object.keys(docsLocales) as Array<keyof typeof docsLocales>) {
+      const configured = docsLocales[locale]
       const directory = resolve(contentRoot, configured.sourceDirectory, 'utils')
       const generated = readdirSync(directory)
         .filter(fileName => fileName !== 'index.md' && fileName.endsWith('.md'))
-      expect(generated).toHaveLength(documentedUtilities.length)
+      const expectedCount = getLocalizedUtilities(locale).length
+      expect(generated).toHaveLength(expectedCount)
       for (const fileName of generated) {
         const source = readFileSync(resolve(directory, fileName), 'utf8')
         expect(source).toContain(GENERATED_UTILITY_ROUTE_MARKER)

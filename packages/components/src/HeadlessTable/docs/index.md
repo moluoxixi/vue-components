@@ -153,7 +153,7 @@ function handleModeChange(change: HeadlessTableModeChange): void {
           :min-width="column.minWidth"
         >
           <template #default="{ row, $index }">
-            <Cell :row="row" :column="column" :row-index="$index" :column-index="columnIndex" />
+            <component :is="Cell" :row="row" :column="column" :row-index="$index" :column-index="columnIndex" />
           </template>
         </ElTableColumn>
       </ElTable>

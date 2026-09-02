@@ -15,7 +15,7 @@ import {
   collectElementPlusDocsDemos,
   elementPlusDocsDemoPlugin,
 } from '../src/markdown/demo'
-import { createElementPlusDocsDemoSourceHrefResolver } from '../src/markdown/source-links'
+import { createElementPlusDocsDemoSourceHrefResolver } from '../src/markdown/source'
 
 const temporaryDirectories: string[] = []
 

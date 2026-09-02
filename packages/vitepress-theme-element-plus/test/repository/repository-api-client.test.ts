@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { describe, expect, it } from 'vitest'
-import { resolveTrustedApiUrl } from '../../src/node/repository/api-client'
+import { resolveTrustedApiUrl } from '../../src/node/repository'
 
 describe('repository API pagination trust boundary', () => {
   it('accepts configured API paths and rejects foreign origins or sibling paths', () => {

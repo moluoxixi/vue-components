@@ -1,5 +1,5 @@
-import type { AtomicFileSystem } from './atomic-write'
-import { defaultAtomicFileSystem, writeJsonAtomically } from './atomic-write'
+import type { AtomicFileSystem } from '../utils'
+import { defaultAtomicFileSystem, writeJsonAtomically } from '../utils'
 
 export async function collectValidateAndWrite<T>(options: {
   assertSnapshot: (snapshot: T) => void

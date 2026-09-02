@@ -13,7 +13,7 @@ export default defineElementPlusDocsProject({
         label: 'English',
         pathPrefix: '',
         sourceDirectory: 'content',
-        sourceDoc: 'content.md',
+        sourceDoc: 'docs/index.md',
       },
     },
   },

@@ -13,7 +13,7 @@ import {
   parseNextLink,
   syncGithubMetadata,
   writeGithubMetadataAtomically,
-} from '../../src/node/repository/github'
+} from '../../src/node/repository'
 import { createGithubMetadataFixture, fixtureExpectations } from './fixtures'
 
 const headSha = 'a'.repeat(40)

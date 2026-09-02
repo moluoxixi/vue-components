@@ -3,9 +3,9 @@ import { readdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import { describe, expect, it } from 'vitest'
-import { documentedComponents } from '../../.vitepress/catalog/component-manifest'
-import { docsLocales } from '../../.vitepress/site/docs-site'
-import { supportedLocalSfcModules } from '../../.vitepress/theme/content'
+import { documentedComponents } from '../../.vitepress/catalog'
+import { docsLocales } from '../../.vitepress/site/config'
+import { supportedLocalSfcModules } from '../../.vitepress/theme/integration'
 
 const workspaceRoot = resolve(process.cwd(), '../..')
 const componentSourceDocs = [...new Set(Object.values(docsLocales).map(locale => locale.sourceDoc))]

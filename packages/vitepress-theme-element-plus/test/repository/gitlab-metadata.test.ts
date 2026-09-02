@@ -12,7 +12,7 @@ import {
   resolveGitlabNextPage,
   syncGitlabMetadata,
   writeGitlabMetadataAtomically,
-} from '../../src/node/repository/gitlab'
+} from '../../src/node/repository'
 
 const temporaryDirectories: string[] = []
 const headSha = 'a'.repeat(40)

@@ -1,8 +1,8 @@
 import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
-import { createComponentAutoLoadPlugins } from './.vitepress/site/auto-loaders'
-import { elementPlusDocsRepositorySnapshotId } from './.vitepress/site/repository-config'
+import { createComponentAutoLoadPlugins } from './.vitepress/site/plugins'
+import { elementPlusDocsRepositorySnapshotId } from './.vitepress/site/repository/config'
 
 export default defineConfig({
   plugins: [vue(), ...createComponentAutoLoadPlugins()],

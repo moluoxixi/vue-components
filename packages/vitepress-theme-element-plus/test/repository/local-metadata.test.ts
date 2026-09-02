@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createLocalMetadata, writeLocalMetadata } from '../../src/node/repository/local'
+import { createLocalMetadata, writeLocalMetadata } from '../../src/node/repository'
 
 const temporaryDirectories: string[] = []
 

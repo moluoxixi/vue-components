@@ -8,8 +8,10 @@ export function collectBrowserProblems(page: Page): string[] {
   page.on('console', (message) => {
     if (message.text().includes('ERR_NETWORK_ACCESS_DENIED'))
       return
-    if (message.type() === 'warning' || message.type() === 'error')
-      problems.push(`console ${message.type()}: ${message.text()}`)
+    if (message.type() === 'warning' || message.type() === 'error') {
+      const source = message.location().url
+      problems.push(`console ${message.type()}: ${message.text()}${source ? ` (${source})` : ''}`)
+    }
   })
   page.on('pageerror', error => problems.push(`page error: ${error.message}`))
   page.on('requestfailed', (request) => {

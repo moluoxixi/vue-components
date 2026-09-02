@@ -14,8 +14,8 @@ import {
 } from '@moluoxixi/vitepress-theme-element-plus/markdown'
 import MarkdownIt from 'markdown-it'
 import { afterAll, describe, expect, it } from 'vitest'
-import { documentedComponents } from '../../.vitepress/catalog/component-manifest'
-import { docsLocales } from '../../.vitepress/site/docs-site'
+import { documentedComponents } from '../../.vitepress/catalog'
+import { docsLocales } from '../../.vitepress/site/config'
 import projectConfig from '../../element-plus-docs.config.ts'
 
 const workspaceRoot = resolve(import.meta.dirname, '../../../..')

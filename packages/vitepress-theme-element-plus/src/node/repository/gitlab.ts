@@ -6,7 +6,7 @@ import type {
   GitlabMetadataExpectation,
   GitlabMetadataSnapshot,
 } from '../../content/repository/providers/gitlab'
-import type { AtomicFileSystem } from './atomic-write'
+import type { AtomicFileSystem } from '../utils'
 import { createHash } from 'node:crypto'
 import {
   assertGitlabMetadataSnapshot,
@@ -14,8 +14,8 @@ import {
   isTrustedGitlabWebUrl,
   resolveGitlabWebBaseUrl,
 } from '../../content/repository/providers/gitlab'
+import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
-import { writeJsonAtomically } from './atomic-write'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
 
 interface GitlabProjectResponse {

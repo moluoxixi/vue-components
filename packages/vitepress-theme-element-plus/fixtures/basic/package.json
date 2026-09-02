@@ -1,0 +1,12 @@
+{
+  "name": "@fixture/element-plus-docs-basic",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@moluoxixi/ai-doc-assistant": "workspace:*",
+    "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
+    "element-plus": "catalog:ui",
+    "vitepress": "catalog:",
+    "vue": "catalog:build"
+  }
+}

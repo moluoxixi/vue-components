@@ -7,7 +7,8 @@ test('built theme renders and searches fixture content in light and dark modes',
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1, name: 'Basic documentation' })).toBeVisible()
   await expect(page.getByText('The reusable Element Plus documentation theme is active.')).toBeVisible()
-  await expect(page).toHaveScreenshot('basic-desktop-light.png', { animations: 'disabled', fullPage: true })
+  await expect(page.locator('.logo-container img')).toHaveCount(0)
+  await expect(page.locator('.logo-container')).toContainText('Basic docs')
 
   await page.getByRole('button', { name: 'Search' }).click()
   await page.getByRole('searchbox').fill('Navigation')
@@ -18,8 +19,6 @@ test('built theme renders and searches fixture content in light and dark modes',
 
   await page.locator('.theme-toggler-content .el-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await page.goto('/')
-  await expect(page).toHaveScreenshot('basic-desktop-dark.png', { animations: 'disabled', fullPage: true })
 
   await page.goto('/guide/')
   await expect(page.getByRole('heading', { level: 1, name: 'Guide' })).toBeVisible()
@@ -52,6 +51,16 @@ test('built theme renders and searches fixture content in light and dark modes',
   expect(browserProblems).toEqual([])
 })
 
+test('@visual built theme matches desktop baselines', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1, name: 'Basic documentation' })).toBeVisible()
+  await expect(page).toHaveScreenshot('basic-desktop-light.png', { animations: 'disabled', fullPage: true })
+
+  await page.locator('.theme-toggler-content .el-switch__core').click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect(page).toHaveScreenshot('basic-desktop-dark.png', { animations: 'disabled', fullPage: true })
+})
+
 test('renders nested table-of-content links recursively', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
@@ -82,7 +91,8 @@ test('renders nested table-of-content links recursively', async ({ page }) => {
 test('fresh consumer enables Demo, Playground, and ApiDocs from public package APIs', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
-  await page.goto('/content.html')
+  await page.goto('/consumer.html')
+  await expect(page.getByRole('heading', { level: 1, name: 'Reusable content modules' })).toBeVisible()
   const demoButton = page.getByTestId('fixture-demo-button')
   await expect(demoButton).toHaveText('Fixture count: 0')
   await demoButton.click()
@@ -97,7 +107,7 @@ test('fresh consumer enables Demo, Playground, and ApiDocs from public package A
   await demo.getByTestId('demo-source-language').getByText('JS', { exact: true }).click()
   await expect(demo.locator('.demo-source')).not.toContainText('lang="ts"')
 
-  await page.getByRole('button', { name: 'Open in playground' }).click()
+  await page.getByRole('button', { name: 'Edit in lightweight playground' }).click()
   await expect(page).toHaveURL(/\/playground\.html\?session=[a-z0-9-]+$/i)
   const editor = page.getByTestId('playground-editor')
   await expect(editor).toHaveValue(/Fixture count/)

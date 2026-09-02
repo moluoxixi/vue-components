@@ -35,6 +35,29 @@ test('current component page remains usable in light and dark mobile layouts', a
   await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
   await expect(page.locator('.component-doc-meta')).toHaveCSS('border-bottom-style', 'solid')
   await expect(page.locator('.demo-loading')).toHaveCount(0)
+
+  const navigation = page.getByRole('button', { name: '切换导航' })
+  await navigation.click()
+  await page.locator('#full-screen .el-switch__core').click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  await page.locator('#full-screen .full-screen-menu__item a').first().click()
+  await page.goto('/components/copy-text.html')
+  await expect(navigation).toHaveAttribute('aria-expanded', 'false')
+
+  const widths = await page.evaluate(() => ({
+    body: document.body.scrollWidth,
+    root: document.documentElement.scrollWidth,
+    viewport: window.innerWidth,
+  }))
+  expect(widths.body).toBeLessThanOrEqual(widths.viewport)
+  expect(widths.root).toBeLessThanOrEqual(widths.viewport)
+  expect(browserProblems).toEqual([])
+})
+
+test('@visual current component page matches mobile baselines', async ({ page }) => {
+  await page.goto('/components/copy-text.html')
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+  await expect(page.locator('.demo-loading')).toHaveCount(0)
   await expect(page).toHaveScreenshot('docs-component-mobile-light.png', { animations: 'disabled' })
 
   const navigation = page.getByRole('button', { name: '切换导航' })
@@ -45,15 +68,6 @@ test('current component page remains usable in light and dark mobile layouts', a
   await page.goto('/components/copy-text.html')
   await expect(navigation).toHaveAttribute('aria-expanded', 'false')
   await expect(page).toHaveScreenshot('docs-component-mobile-dark.png', { animations: 'disabled' })
-
-  const widths = await page.evaluate(() => ({
-    body: document.body.scrollWidth,
-    root: document.documentElement.scrollWidth,
-    viewport: window.innerWidth,
-  }))
-  expect(widths.body).toBeLessThanOrEqual(widths.viewport)
-  expect(widths.root).toBeLessThanOrEqual(widths.viewport)
-  expect(browserProblems).toEqual([])
 })
 
 test('English component pages expose the complete compact table of contents', async ({ page }) => {

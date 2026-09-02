@@ -20,12 +20,10 @@ test('current component page renders consumer features in light and dark modes',
   await expect(demo).toBeVisible()
   await expect(demo.getByText('Hello, World!', { exact: true })).toBeVisible()
   await expect(page.getByText('加载中...', { exact: true })).toHaveCount(0)
-  await expect(page).toHaveScreenshot('docs-component-desktop-light.png', { animations: 'allow' })
 
   await page.locator('.theme-toggler-content .el-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect.poll(() => page.locator('html').getAttribute('data-theme-transition')).toBeNull()
-  await expect(page).toHaveScreenshot('docs-component-desktop-dark.png', { animations: 'allow' })
   await page.locator('.theme-toggler-content .el-switch__core').click()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
 
@@ -39,11 +37,7 @@ test('current component page renders consumer features in light and dark modes',
   await expect(demo.locator('.demo-source')).toContainText('lang="ts"')
   await demo.getByTestId('demo-source-language').getByText('JS', { exact: true }).click()
   await expect(demo.locator('.demo-source')).not.toContainText('lang="ts"')
-  const sourceLink = demo.getByTestId('demo-source-link')
-  await expect(sourceLink).toHaveAttribute(
-    'href',
-    /github\.com\/moluoxixi\/vue-components\/blob\/main\/packages\/components\/src\/CopyText\/docs\/index\.md\?plain=1#L\d+-L\d+$/,
-  )
+  await expect(demo.getByTestId('demo-source-link')).toHaveCount(0)
   await demo.getByTestId('demo-source-collapse').click()
   await expect(demo.getByRole('button', { name: '展开示例代码' })).toHaveAttribute('aria-expanded', 'false')
   await expect(demo.locator('.demo-source')).toHaveAttribute('aria-hidden', 'true')
@@ -86,7 +80,8 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
   const toc = page.locator('.toc-wrapper')
   await expect(toc).toBeVisible()
   await expect(toc.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()
-  await expect(toc.getByRole('link', { name: 'Renderer 与列设置', exact: true })).toBeVisible()
+  await expect(toc.getByRole('link', { name: 'Renderer', exact: true })).toBeVisible()
+  await expect(toc.getByRole('link', { name: '列配置面板', exact: true })).toBeVisible()
 
   await page.goto('/playground.html')
   const playground = page.locator('main.page-content.docs-playground-page')
@@ -99,6 +94,18 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
   await expect(page.getByTestId('playground-diagnostics')).toHaveCount(0)
 
   expect(browserProblems).toEqual([])
+})
+
+test('@visual current component page matches desktop baselines', async ({ page }) => {
+  await page.goto('/components/copy-text.html')
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+  await expect(page.locator('.demo-block').first().getByText('Hello, World!', { exact: true })).toBeVisible()
+  await expect(page).toHaveScreenshot('docs-component-desktop-light.png', { animations: 'allow' })
+
+  await page.locator('.theme-toggler-content .el-switch__core').click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect.poll(() => page.locator('html').getAttribute('data-theme-transition')).toBeNull()
+  await expect(page).toHaveScreenshot('docs-component-desktop-dark.png', { animations: 'allow' })
 })
 
 test('current docs include runtime API headings in the table of contents', async ({ page }) => {
@@ -248,10 +255,16 @@ test('current docs provide title navigation at every supported width', async ({ 
       await expect(tocPanel).toHaveAttribute('aria-label', '本页目录')
       await expect(tocPanel.locator('a[href^="#"]')).toHaveText([
         '基础用法',
-        'Renderer 与列设置',
+        'Renderer',
+        '列配置面板',
         '远程请求 + 分页',
+        '编辑模式',
         '自定义单元格插槽',
         'API',
+        'Props',
+        'Emits',
+        'Slots',
+        'Expose',
         '组件贡献者',
       ])
       await expect(tocPanel.getByRole('link', { name: '基础用法', exact: true })).toBeVisible()

@@ -6,11 +6,11 @@ import type {
   YunxiaoMetadataExpectation,
   YunxiaoMetadataSnapshot,
 } from '../../content/repository/providers/yunxiao'
-import type { AtomicFileSystem } from './atomic-write'
+import type { AtomicFileSystem } from '../utils'
 import { createHash } from 'node:crypto'
 import { assertYunxiaoMetadataSnapshot, isTrustedYunxiaoAvatarUrl } from '../../content/repository/providers/yunxiao'
+import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
-import { writeJsonAtomically } from './atomic-write'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
 
 interface YunxiaoRepositoryResponse {

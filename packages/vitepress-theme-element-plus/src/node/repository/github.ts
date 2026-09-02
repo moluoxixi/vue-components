@@ -6,14 +6,14 @@ import type {
   GithubMetadataExpectation,
   GithubMetadataSnapshot,
 } from '../../content/repository/providers/github'
-import type { AtomicFileSystem } from './atomic-write'
+import type { AtomicFileSystem } from '../utils'
 import {
   assertGithubMetadataSnapshot,
   isExactGithubProfileUrl,
   isTrustedGithubAvatarUrl,
 } from '../../content/repository/providers/github'
+import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
-import { writeJsonAtomically } from './atomic-write'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
 
 interface GithubRefResponse {

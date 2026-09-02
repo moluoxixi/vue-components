@@ -9,7 +9,7 @@ import {
   defineElementPlusDocsProject,
   resolveElementPlusDocsProject,
 } from '../index'
-import { createElementPlusDocsExternalProjectSourceResolver } from '../src/markdown/external-project'
+import { createElementPlusDocsExternalProjectSourceResolver } from '../src/markdown/playground'
 
 const componentsManifest = {
   packageName: '@fixture/components',

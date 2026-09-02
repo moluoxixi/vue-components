@@ -10,8 +10,8 @@ import {
   documentedApiComponentEntries,
   documentedComponentNames,
   documentedComponents,
-} from '../.vitepress/catalog/component-manifest.ts'
-import { docsGeneratedApiDirectory } from '../.vitepress/site/generated-paths.ts'
+} from '../.vitepress/catalog'
+import { docsGeneratedApiDirectory } from '../.vitepress/site/utils'
 import { syncApiOutputDirectory } from './api-output.mts'
 import { createTypeDetail } from './api-type-detail.mts'
 import { createComponentRoutePaths } from './component-routes.mts'
