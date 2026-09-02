@@ -29,7 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
-| 28 | 2026-09-02 | 全局目录结构规范与 Spec 去重 | `5af97f6b`, `c77ca835` | `main` |
+| 28 | 2026-09-02 | 全局目录结构规范与 Spec 去重 | `5af97f6b`, `c77ca835`, `97611e8d` | `main` |
 | 27 | 2026-09-02 | 完成 ConfigForm JSON 导入与 Workbench 生产体验收口 | `97ec69b5` | `main` |
 | 26 | 2026-09-01 | 完成 ConfigForm 独立模板管理 | `2f316a7b` | `main` |
 | 25 | 2026-09-01 | 完成 ConfigForm Inspector 自适应属性体验 | `b5f395a9` | `main` |

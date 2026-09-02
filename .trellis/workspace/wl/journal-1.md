@@ -11,7 +11,7 @@
 
 **Date**: 2026-08-24
 **Task**: 文档主题最新契约与生命周期
-**Package**: ai-doc-assistant
+**Package**: repository
 **Branch**: `main`
 
 ### Summary
@@ -673,6 +673,7 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 |------|---------|
 | `5af97f6b` | (see git log) |
 | `c77ca835` | (see git log) |
+| `97611e8d` | (see git log) |
 
 ### Testing
 
