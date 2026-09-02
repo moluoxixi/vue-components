@@ -1,45 +1,25 @@
-# Frontend Development Guidelines
-
-> Best practices for frontend development in this project.
-
----
+# Config Form Designer Frontend Guidelines
 
 ## Overview
 
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
-
----
+These guidelines route changes in `config-form-designer`'s frontend layer to the repository
+contract and the package-specific contracts that contain real project rules.
 
 ## Guidelines Index
 
 | Guide | Description | Status |
-|-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Design-first Config Model, operations, history, and projection boundaries | Active |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| --- | --- | --- |
+| [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
+| [State Management](./state-management.md) | Package-specific contract | Ready |
+| [Quality Guidelines](./quality-guidelines.md) | Package-specific contract | Ready |
+| [Workbench Appearance](./workbench-appearance.md) | Package-specific contract | Ready |
+| [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md) | Package-specific contract | Ready |
+| [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md) | Package-specific contract | Ready |
+| [ConfigForm Designer Structure Supplement](./designer-structure.md) | Package-specific contract | Ready |
+| [Designer Overlay Interaction Regression](./overlay-interaction-regression.md) | Package-specific contract | Ready |
 
-Shared contract: [ConfigForm Material Registry](../../config-form-core/frontend/material-registry.md).
+## Pre-Development Checklist
 
-State contract: [Design-first Config Model State](./state-management.md).
-
-Architecture rule: [ConfigForm Architecture Documentation](../../config-form-core/frontend/architecture-documentation.md).
-
----
-
-## How to Fill These Guidelines
-
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+- Read [Repository Directory Structure](../../directory-structure.md) before creating or moving modules.
+- Read each package-specific contract relevant to the files and behavior being changed.
+- Run the validation commands required by those contracts.

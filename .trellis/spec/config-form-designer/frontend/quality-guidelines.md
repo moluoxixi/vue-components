@@ -1,29 +1,12 @@
-# Quality Guidelines
+# ConfigForm Designer Quality Contracts
 
-> Code quality standards for frontend development.
-
----
-
-## Overview
-
-<!--
-Document your project's quality standards here.
-
-Questions to answer:
-- What patterns are forbidden?
-- What linting rules do you enforce?
-- What are your testing requirements?
-- What code review standards apply?
--->
-
-(To be filled by the team)
-
----
+These contracts apply to Designer rendering, responsive workspace behavior,
+focus migration, theme isolation, and runtime preview boundaries.
 
 ## Designer Drag Preview And Panel Visibility
 
 The Design canvas must project a drag candidate into a `ProjectDraftSnapshot`, then render it through the same
-`RuntimeSurface` and Component Registry used after commit. Candidate opacity and editor feedback belong to the editor
+`ConfigFormRenderer` and Component Registry used after commit. Candidate opacity and editor feedback belong to the editor
 bridge or overlay; do not replace the candidate with a hand-built input, card, or size approximation. Pointer up submits
 one semantic command. Pointer cancel, readonly teardown, and unmount discard the projection without changing host state.
 
@@ -32,14 +15,14 @@ offset come from that measured candidate. Do not mount a second business compone
 container hit areas and append positions are geometry-only overlays; they must not add a persistent trailing cell or
 placeholder to Runtime layout.
 
-`DesignerMaterialSpecimen` may lazily mount a visible palette item through `RuntimeSurface` with events intercepted by an
+`DesignerMaterialSpecimen` may lazily mount a visible palette item through `ConfigFormRenderer` with events intercepted by an
 editor bridge. A material that cannot form a legal standalone projection must use its explicit unavailable/design-policy
 state. It must not silently fall back to a fabricated control that suggests different props or dimensions. The specimen
 root must carry both `aria-hidden="true"` and native `inert`; `aria-hidden` alone leaves real descendant inputs focusable
 and creates an invalid accessibility tree.
 
 ```vue
-<RuntimeSurface
+<ConfigFormRenderer
   v-if="projection"
   v-model="specimenModel"
   :fields="projection.fields"
@@ -172,33 +155,3 @@ Required regression coverage:
   node actions do not intercept the Preview control.
 
 ---
-
-## Forbidden Patterns
-
-<!-- Patterns that should never be used and why -->
-
-(To be filled by the team)
-
----
-
-## Required Patterns
-
-<!-- Patterns that must always be used -->
-
-(To be filled by the team)
-
----
-
-## Testing Requirements
-
-<!-- What level of testing is expected -->
-
-(To be filled by the team)
-
----
-
-## Code Review Checklist
-
-<!-- What reviewers should check -->
-
-(To be filled by the team)

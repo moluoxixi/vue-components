@@ -161,6 +161,8 @@ channel:
 packages:
   ai-doc-assistant:
     path: packages/ai-doc-assistant
+  ai-provider:
+    path: packages/ai-provider
   ajax-package:
     path: packages/ajax-package
   components:
@@ -171,6 +173,8 @@ packages:
     path: packages/excel
   hooks:
     path: packages/hooks
+  i18n-tool:
+    path: packages/i18n-tool
   indexed-db:
     path: packages/indexed-db
   postcss-selector-prefix:
@@ -201,6 +205,8 @@ packages:
     path: packages/ConfigForm/element
   config-form-headless:
     path: packages/ConfigForm/headless
+  config-form-workbench:
+    path: packages/ConfigForm/workbench
   playground:
     path: packages/ConfigForm/playground
   config-form-plugin-antd-vue:

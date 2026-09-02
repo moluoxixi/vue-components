@@ -1,0 +1,89 @@
+# ConfigForm Workbench Quality Contracts
+
+These contracts apply to `packages/ConfigForm/workbench`. Read them before
+changing Monaco language services, dialog focus behavior, or accessibility
+gates.
+
+## Monaco Vue SFC Language Services
+
+The workbench keeps the visible `src/App.vue` model on the `vue` language so template HTML, folding, and embedded
+tokenization remain available. TypeScript semantics for `<script>` blocks use a hidden `typescript` mirror whose length and
+line breaks exactly match the SFC; all non-script characters are replaced with spaces. This makes TypeScript worker offsets
+safe to map directly back to the visible Vue model.
+
+Required contracts:
+
+- `MonacoEnvironment.getWorker(..., 'vue')` must return the bundled HTML worker because the custom Vue HTML language
+  service creates its worker with the `vue` label.
+- Vue script completion and Hover must query Monaco's TypeScript worker and the shared workbench declarations. A global
+  mixed Vue/ConfigForm completion list is forbidden because it leaks exports across named-import modules.
+- TypeScript Config semantic completion and Hover belong to Monaco's built-in TypeScript provider. The custom provider
+  is limited to ConfigForm snippets and project-manifest module paths that have no ambient declaration; it must not
+  duplicate worker exports or signatures.
+- Module-path completion may use the explicit workbench module allowlist for Vue/Config fallback, plus package names from
+  the current project manifest. Named-import completion must come from the declaration for the statement's actual module.
+- Installing the workbench worker router must preserve an existing `MonacoEnvironment` and delegate unknown labels to its
+  previous `getWorker`; TypeScript entries are de-duplicated before they are mapped to Monaco suggestions.
+- If modular loading misses Monaco's one-shot TypeScript language event, initialize the pinned Monaco `tsMode` with
+  `typescriptDefaults` before retrying `getTypeScriptWorker()`.
+- Mirror content must update with the SFC model and be disposed with it.
+- Every language used by an embedded SFC region must load its Monaco basic-language contribution explicitly;
+  language-service workers provide diagnostics and semantic features but do not provide syntax tokenization.
+- Vue SFC boundary rules must accept attributes on `<template>` as well as `<script>` and `<style>`, otherwise the
+  template falls back to the outer plain-text tokenizer and loses HTML highlighting.
+
+Regression coverage must assert worker routing for `vue`, exact mirror offsets/newlines, named-import module detection,
+declaration isolation, manifest module merging, and real-browser completion/Hover for both Vue Source and TypeScript
+Config models. Config checks must also prove that worker-provided exports and field properties are visible without duplicate
+custom candidates.
+
+---
+
+## Dialog Focus From Ephemeral Menus
+
+Workbench dialogs capture `document.activeElement` when their `open` prop becomes true and restore that element after
+close. A menu item is not a valid return target because choosing it unmounts the menu. Before emitting an action that opens
+a dialog, the menu owner must synchronously focus its stable trigger, then emit the action. Scheduling focus for the next
+tick is too late because the dialog watcher may already capture `body` or a detached menu item.
+
+```ts
+function chooseMobileAction(action: MobileAction): void {
+  closeMobileMenu()
+  mobileMenuTrigger.value?.focus()
+  emit(action)
+}
+```
+
+Required regression coverage:
+
+- Choosing Flow, Page Manager, or another dialog workspace from the mobile action menu focuses the stable menu trigger
+  before the host event is emitted.
+- Closing the resulting dialog restores focus to that trigger, not `body` or an unmounted menu item.
+- Escape and pointer-close paths share the same restoration behavior.
+
+---
+
+## Automated Accessibility Gate
+
+Workbench production changes must run `pnpm --filter @config-form/workbench test:e2e`. The Playwright suite uses
+`@axe-core/playwright` with WCAG 2 A/AA and WCAG 2.1 A/AA tags against the initial template dialog, desktop dark and
+light themes, the 390px Inspector, Flow dialog, and Source export dialog. Do not disable a rule or exclude a component
+to make this gate pass.
+
+Theme tests run immediately after the theme control is activated. A foreground may not switch instantly while its
+background animates through an unreadable intermediate color. Theme-sensitive surfaces must either update atomically or
+remove the conflicting color transition. Filled command buttons use a dedicated foreground/background token pair whose
+contrast is asserted by the static theme contract as well as axe.
+
+Failure output must retain each target, axe failure summary, foreground/background colors, measured ratio, and expected
+ratio. This keeps a browser failure actionable without adding temporary logging.
+
+Required regression coverage:
+
+- The full axe scenario matrix reports zero violations without exclusions.
+- Provider controls remain readable immediately after light/dark switching, not only after animations settle.
+- Palette specimen containers are both `aria-hidden` and `inert`, so their real Runtime controls never enter the
+  accessibility or focus tree.
+- Primary export actions meet 4.5:1 in both themes; non-text borders and focus indicators meet 3:1.
+
+---

@@ -1,38 +1,18 @@
-# Backend Development Guidelines
-
-> Best practices for backend development in this project.
-
----
+# Excel Backend Guidelines
 
 ## Overview
 
-This directory contains guidelines for backend development. Fill in each file with your project's specific conventions.
-
----
+These guidelines route changes in `excel`'s backend layer to the repository
+contract and the package-specific contracts that contain real project rules.
 
 ## Guidelines Index
 
 | Guide | Description | Status |
-|-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | To fill |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
+| --- | --- | --- |
+| [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 
----
+## Pre-Development Checklist
 
-## How to Fill These Guidelines
-
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+- Read [Repository Directory Structure](../../directory-structure.md) before creating or moving modules.
+- Read each package-specific contract relevant to the files and behavior being changed.
+- Run the validation commands required by those contracts.
