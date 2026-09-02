@@ -649,3 +649,35 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 28: 全局目录结构规范与 Spec 去重
+
+**Date**: 2026-09-02
+**Task**: 全局目录结构规范与 Spec 去重
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+建立全仓目录结构权威规范，清理重复占位模板并统一 package/layer 索引；保留并迁移真实专项契约，补齐遗漏 package 路由。
+
+### Main Changes
+
+- 将 .trellis/spec 从 345 份 Markdown 收敛为 65 份，无字节级重复和占位模板
+- 44 个注册 layer 索引全部按需链接全局目录规范
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5af97f6b` | (see git log) |
+| `c77ca835` | (see git log) |
+
+### Testing
+
+- [OK] Trellis task validate、Markdown 链接与锚点解析、重复/占位/路由计数均通过
+
+### Status
+
+[OK] **Completed**
