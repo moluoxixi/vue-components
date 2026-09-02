@@ -6,13 +6,17 @@ import type {
   ProjectCommandAction,
   ProjectOperation,
 } from '@moluoxixi/config-form-model'
-import type { ComputedRef, Ref } from 'vue'
 import type {
   DesignerDiagnostic,
   DesignerDropTarget,
   DesignNodeLocation,
 } from '../graph'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
+import type {
+  DesignerController,
+  DesignerSelectionMode,
+  UseDesignerControllerOptions,
+} from './types'
 import { computed, ref, watch } from 'vue'
 import {
   collectDesignSubtreeIds,
@@ -26,40 +30,6 @@ import {
   walkDesignGraph,
 } from '../graph'
 import { analyzeDesignGraph } from '../registry'
-
-interface DesignCommandResult {
-  changed: boolean
-  diagnostics: readonly ModelDiagnostic[]
-}
-
-interface UseDesignerControllerOptions {
-  execute: (command: ProjectCommand) => DesignCommandResult
-  graph: () => PageGraph
-  onDiagnostics: (diagnostics: DesignerDiagnostic[]) => void
-  onSelectionChange: (nodeId: string | undefined, nodeIds: string[]) => void
-  pageId: () => string
-  readonly: () => boolean
-  registry: () => DesignerRegistry
-}
-
-export type DesignerSelectionMode = 'range' | 'replace' | 'toggle'
-
-export interface DesignerController {
-  diagnostics: ComputedRef<DesignerDiagnostic[]>
-  dispatch: (command: ProjectCommand) => boolean
-  graph: ComputedRef<PageGraph>
-  selectedId: Ref<string | undefined>
-  selectedIds: Ref<string[]>
-  selectedMaterial: ComputedRef<DesignerMaterialDefinition | undefined>
-  selectedNode: ComputedRef<PageNode | undefined>
-  selectedNodes: ComputedRef<PageNode[]>
-  select: (nodeId?: string, mode?: DesignerSelectionMode) => void
-  addMaterial: (component: string, target?: DesignerDropTarget) => boolean
-  performNodeAction: (
-    action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'remove',
-    nodeId: string,
-  ) => boolean
-}
 
 function uniqueField(graph: PageGraph, component: string): string {
   const used = new Set<string>()

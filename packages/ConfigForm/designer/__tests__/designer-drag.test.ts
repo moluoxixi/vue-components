@@ -8,7 +8,7 @@ import {
   resolveDesignerDragOverlayPosition,
   resolveDesignerDragVisualHeight,
   resolveStickyDesignerDropTarget,
-} from '../src/components/designer-drag'
+} from '../src/components/DesignerCanvas/services'
 import { createMoveCommand } from '../src/graph'
 import { createDesignerRegistry } from '../src/registry'
 

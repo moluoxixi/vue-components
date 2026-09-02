@@ -1,13 +1,12 @@
 // @vitest-environment happy-dom
 
 import type { Component } from 'vue'
-import type { ConfigImportMigrationRecord } from '../../../project'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref, shallowRef } from 'vue'
+import { JsonImportPane } from '..'
 import { createWorkbenchLocaleOptions } from '../../../locale'
 import { MAX_IMPORT_SOURCE_BYTES } from '../../../project'
-import JsonImportPane from '../JsonImportPane.vue'
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -17,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   useUi: vi.fn(),
 }))
 
-vi.mock('../../../app/workbench-context', () => ({
+vi.mock('../../../app', () => ({
   useWorkbenchController: mocks.useController,
   useWorkbenchUiStore: mocks.useUi,
 }))
@@ -90,7 +89,6 @@ function prepared(name = 'Imported project') {
     adapter: 'element-plus',
     diagnostics: [],
     document: { id: 'imported' },
-    migrations: [],
     preview: {
       adapter: 'element-plus',
       compilation: { page: { id: 'page' } },
@@ -109,7 +107,7 @@ function prepared(name = 'Imported project') {
       pageCount: 1,
       pageGraphVersion: 2,
       resourceCount: 0,
-      schemaVersion: 4,
+      version: 4,
       target: 'project',
     },
     target: 'project',
@@ -187,38 +185,6 @@ describe('json import pane', () => {
     expect(alert.text()).toContain('输入内容不是有效的 JSON。')
     expect(alert.text()).not.toContain('The source is not valid JSON.')
     wrapper.unmount()
-  })
-
-  it('localizes migration messages while preserving code, versions, and path', async () => {
-    const migrations: ConfigImportMigrationRecord[] = [{
-      code: 'IMPORT_PROJECT_V3_TO_V4',
-      fromVersion: 'Project v3',
-      message: 'Service-only migration message.',
-      path: '$.pagesById',
-      toVersion: 'Project v4',
-    }]
-    const candidate = { ...prepared('迁移项目'), migrations }
-    mocks.prepare.mockResolvedValue({ success: true, prepared: candidate })
-    const zhWrapper = mountPane('zh-CN')
-    await zhWrapper.get('textarea').setValue('{}')
-    await zhWrapper.findAll('button').find(button => button.text().includes('分析 JSON'))!.trigger('click')
-    await flushPromises()
-
-    expect(zhWrapper.text()).toContain('IMPORT_PROJECT_V3_TO_V4')
-    expect(zhWrapper.text()).toContain('Project v3 → Project v4')
-    expect(zhWrapper.text()).toContain('$.pagesById')
-    expect(zhWrapper.text()).toContain('已将页面 Flow 归属从 PageGraph 移至 ProjectPage。')
-    expect(zhWrapper.text()).not.toContain('Service-only migration message.')
-    zhWrapper.unmount()
-
-    mocks.prepare.mockResolvedValue({ success: true, prepared: candidate })
-    const enWrapper = mountPane('en-US')
-    await enWrapper.get('textarea').setValue('{}')
-    await enWrapper.findAll('button').find(button => button.text().includes('Analyze JSON'))!.trigger('click')
-    await flushPromises()
-    expect(enWrapper.text()).toContain('Moved page Flow ownership from PageGraph to ProjectPage.')
-    expect(enWrapper.text()).not.toContain('Service-only migration message.')
-    enWrapper.unmount()
   })
 
   it('renders the full workflow in zh-CN and creates the analyzed instance', async () => {

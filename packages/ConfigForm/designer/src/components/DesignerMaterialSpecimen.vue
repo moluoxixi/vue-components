@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { RuntimeEditorBridge } from '@moluoxixi/config-form/renderer'
-import type { ConfigFormRendererNode } from '@moluoxixi/config-form/renderer'
+import type { ConfigFormRuntimeEditorBridge } from '@moluoxixi/config-form'
+import type { ConfigFormRendererNode } from '@moluoxixi/config-form'
 import type { FormSettings, LayoutNode, NodeSubgraph, PageGraph, SlotItem } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerRegistry } from '../registry'
-import { RuntimeSurface } from '@moluoxixi/config-form/renderer'
+import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { createDesignPreviewModel } from '../graph'
 import { useDesignerLocale } from '../locale'
 import { resolveDesignerDesignPolicy } from '../registry'
-import { createDesignerMaterialCandidate } from './designer-drag'
+import { createDesignerMaterialCandidate } from './DesignerCanvas/services'
 
 const props = defineProps<{
   form?: FormSettings
@@ -161,7 +161,7 @@ const projection = computed(() => {
   }
 })
 
-const editorBridge: RuntimeEditorBridge<Record<string, unknown>> = {
+const editorBridge: ConfigFormRuntimeEditorBridge<Record<string, unknown>> = {
   getNodeAttrs: metadata => ({
     'aria-hidden': 'true',
     'data-specimen-node-id': metadata.nodeId,
@@ -191,7 +191,7 @@ onBeforeUnmount(() => observer?.disconnect())
 
 <template>
   <div ref="host" class="mx-config-form-designer__palette-item-preview" aria-hidden="true" inert>
-    <RuntimeSurface
+    <ConfigFormRenderer
       v-if="visible && projection && projection.fields.length > 0"
       v-model="specimenModel"
       :columns="projection.columns"

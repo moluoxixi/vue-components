@@ -58,6 +58,7 @@ Supported lifecycle commands follow this contract:
 VITE_DOCS_REPOSITORY_METADATA_PROVIDER=<provider-id> element-plus-docs dev
 element-plus-docs prepare
 element-plus-docs build
+element-plus-docs preview [--config <path>] [--port <port>]
 ```
 
 #### 3. Contracts
@@ -83,13 +84,14 @@ element-plus-docs build
 - The public Node staging API must independently reject absolute or non-normalized `sourceDirectory` values, overlapping projections, source events that resolve outside their source root, and destinations that resolve outside runtime content. Revalidate immediately before every destructive replacement or watcher mutation. Use a system-created unique temporary directory; retry atomic rename only for bounded transient filesystem-lock errors, never for an existing/conflicting destination.
 - VitePress consumes `.generated/content` through `srcDir`. Components and utilities are physical generated Markdown under each locale tree so built-in local search can index them; they must never be written back into the authoring directories or committed.
 - When a locale's `sourceDirectory` differs from its public `pathPrefix`, use `createElementPlusDocsContentRewrites(project)`. For VitePress 1.6.4 the supported root-locale rule is `zh/:path* -> :path*`; regex-shaped `zh/(.*) -> $1` is invalid.
-- `pnpm -C docs/vitepress dev`, `pnpm -C docs/vitepress build`, root `build:docs`, and Pages builds run the preparation pipeline before VitePress. Direct `vitepress build` bypasses this contract and is unsupported.
+- `pnpm -C docs/vitepress dev`, `pnpm -C docs/vitepress build`, `pnpm -C docs/vitepress preview`, root `build:docs`, and Pages builds run the preparation pipeline before VitePress. Direct `vitepress build` or `vitepress preview` bypasses this contract and is unsupported.
+- `element-plus-docs preview` prepares the selected provider and generated content before serving the existing VitePress output. It does not rebuild that output. Under VitePress 1.6.4 the preview server contract is limited to the docs root and optional port; an occupied port is a hard startup failure rather than an automatic fallback.
 - The preparation pipeline emits stable `[docs:prepare] START|OK|FAIL` records with step names and durations. Metadata steps include the selected provider and generated directory; failures preserve child output, report the exit code, and stop the pipeline without printing credentials.
 - Preparation is strictly sequential. A failed command, manifest load, provider synchronization, or selected-snapshot validation releases the lock, prevents all later steps, and prevents VitePress `dev` / `build` from starting.
 - Preparation is not a global filesystem transaction across generated routes, API contracts, manifest snapshots, and provider snapshots. Earlier successful steps may remain after a later failure; the next supported prepare rebuilds them. Each JSON snapshot writer still validates in memory and replaces its own file atomically.
 - After validation, the CLI injects the selected snapshot path and resolved default branch into the same process before starting VitePress. `defineElementPlusDocs` installs the virtual snapshot resolver; consumer `.vitepress/config.ts` must not reproduce a provider-specific alias.
 - CLI path injection distinguishes `ELEMENT_PLUS_DOCS_PROJECT_ROOT` for repository source files from `ELEMENT_PLUS_DOCS_DOCS_ROOT` for resolving documentation-package dependencies under pnpm's strict layout.
-- Preparation uses an exclusive `.generated/prepare.lock`; a concurrent dev/build fails visibly at the lock step instead of reading partially generated API or route files. The lock is always released after success or child failure.
+- Preparation uses an exclusive `.generated/prepare.lock`; a concurrent dev/build whose owner process is still running fails visibly at the lock step instead of reading partially generated API or route files. A valid lock contains a positive PID, timestamp, and unique ownership token. A lock whose owner process has exited is removed only while its full owner payload still matches, then exclusive acquisition is retried once, so an interrupted CLI does not permanently block later lifecycle commands. Malformed locks and acquisition races still fail closed. Release removes the path only when its ownership token still matches, so it cannot delete a successor lock. A failed owner-payload write cleans up only an empty, partial, or complete payload that still matches the acquiring owner; a replaced lock is preserved. Process-probe errors other than `ESRCH`, including Windows `EPERM`, are treated as a live or unverifiable owner.
 - A provider capability is a maximum. Snapshot resolution may disable it but cannot enable a capability absent from the provider definition.
 - Provider-specific environment keys are runtime-only: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `GITEE_TOKEN`, and `YUNXIAO_TOKEN`. Never persist or print them.
 - GitLab contributor profiles use `Record<gitlab:<sha256>, exactUsername>`. Resolve every relevant mapping with `GET /users?username=<exactUsername>` and require exactly one response with the same username and a complete provider-owned profile.
@@ -108,6 +110,8 @@ element-plus-docs build
 - Turbo's `@moluoxixi/docs#build` must depend on `^build` so dependency packages finish before docs reads their `dist` output.
 - Turbo's `@moluoxixi/docs#test` and `@moluoxixi/docs#typecheck` also depend on `^build`, never on the docs `build` task. Required tests and type checks must not synchronize a production provider; the explicit docs build is the only CI phase that does so.
 - Browser CI runs in the official Playwright container pinned by version and amd64 digest; the image version must exactly match the locked `@playwright/test` version.
+- Linux browser CI runs `test:e2e:functional`, which excludes only tests tagged `@visual`. Functional coverage still includes real-route assertions, responsive desktop/mobile behavior, Demo/Playground/ApiDocs interaction, and browser console/runtime-error collection.
+- Screenshot tests remain strict in the full local `test:e2e` suite and use reviewed OS-specific baselines. Do not generate or commit a Linux baseline unless it has been rendered and visually reviewed on Linux; CI must not silently update snapshots.
 
 #### 4. Validation & Error Matrix
 
@@ -149,6 +153,11 @@ element-plus-docs build
 | Yunxiao Markdown source URL omits the source-view marker | Codeup opens the preview and cannot honor the line anchor |
 | Yunxiao placeholder identity or all-zero SHA | Reject validation |
 | Playwright container version differs from the lockfile | Reject the workflow contract test |
+| `element-plus-docs preview` preparation fails | Do not start the preview server; preserve the preparation failure and exit code |
+| A valid prepare lock names an exited owner process | Remove the stale lock and retry exclusive acquisition once |
+| A prepare lock is malformed, still owned, or replaced during stale-lock recovery | Fail the lock step; do not delete an owner that cannot be proven dead |
+| Preview port is already occupied | Fail startup on the requested port; do not choose another port implicitly |
+| Linux CI executes the theme browser suite | Run all functional tests and exclude only `@visual` screenshot assertions |
 
 #### 5. Good / Base / Bad Cases
 
@@ -156,8 +165,11 @@ element-plus-docs build
 - Good: select `yunxiao`, map an opaque commit identity to one reviewed exact username, resolve its current member profile once, reuse it in both the contributor list and changelog, and generate a Codeup blob URL anchored to the exact demo start line.
 - Good: verify `yunxiao:<sha256(login)>` with the browser-compatible synchronous `@noble/hashes` implementation shared by SSR and client bundles.
 - Good: resolve an installed direct dependency's exact version from the docs package while separately confirming the original root/subpath import is exported.
+- Good: build docs once, then run `element-plus-docs preview --port 4173`; preparation validates current generated/provider state before the existing output is served on that exact port.
 - Base: omit the debug environment variable; production and CI generate and select the GitHub snapshot.
+- Base: run `test:e2e:functional` in Linux CI and the full `test:e2e` suite on the reviewed local OS.
 - Bad: treat the debug environment variable as `auto`, merge snapshots, expose a client-side provider switch, or require a guessed Yunxiao profile URL before showing a verified avatar.
+- Bad: call `vitepress preview` directly, let CI update screenshots, or commit a baseline copied from another operating system without visual review.
 - Bad: use `node:crypto` in `.vitepress/*-metadata-types.ts`; offline validation may pass while the production client bundle fails.
 - Bad: accept a hoisted package, a private subpath, or a package root absent from `exports` merely because its `package.json` can be read.
 
@@ -185,6 +197,9 @@ element-plus-docs build
 - Packed-package tests import `./repository/node`, execute the installed `element-plus-docs` bin in an isolated Git repository, then render a Demo through the packed public `./markdown` entry and assert the generated manifest, rewritten import, dependency, and style data.
 - Root path-contract tests assert Node `>=22.6.0`, offline CI validators, Turbo docs build ordering, and provider-network-free docs test/typecheck task graphs.
 - Release-workflow tests assert the Playwright image version, immutable digest, lockfile match, IPC option, and job timeout.
+- Theme CLI regression tests assert that `preview` is accepted, runs preparation first, serves from the resolved docs root, forwards the requested port, and never starts the server after a preparation failure.
+- Theme functional E2E must prove that the consumer URL is not a 404 fallback before asserting Demo, Playground, ApiDocs, responsive navigation, and absence of browser console/runtime errors.
+- Theme visual E2E is tagged `@visual`; the full local suite compares strict reviewed OS-specific screenshots, while Linux CI uses `--grep-invert "@visual"` and never creates replacement baselines.
 - Before commit, run lint, typecheck, tests, snapshot validators, docs build, release checks, and package verification in proportion to the change.
 
 #### 7. Wrong vs Correct
@@ -202,6 +217,22 @@ const next = await fetch(response.headers.get('link')!)
 ```ts
 const repository = resolveElementPlusDocsProjectRepository(project, environmentProvider)
 const next = resolveTrustedApiUrl(apiBaseUrl, nextLink, providerName)
+```
+
+For the preview lifecycle and browser CI split:
+
+```jsonc
+// Wrong: bypasses generated content/provider validation and mixes unreviewed screenshots into Linux CI.
+{
+  "preview": "vitepress preview",
+  "test:ci": "playwright test --update-snapshots"
+}
+
+// Correct: uses the theme lifecycle and keeps strict visual review in the full local suite.
+{
+  "preview": "element-plus-docs preview",
+  "test:ci": "playwright test --grep-invert @visual"
+}
 ```
 
 For external Playground dependencies, readable package metadata does not prove that the Demo import is public:
@@ -249,6 +280,8 @@ const id = `yunxiao:${bytesToHex(sha256(new TextEncoder().encode(login)))}`
 - Explicit maintainer synchronization for GitLab, Gitee, Yunxiao, or local writes ignored snapshots for local validation and never stages them.
 - A mocked provider test suite proves protocol behavior; a retained real-platform fixture is still required before claiming platform acceptance.
 - Preparation-pipeline tests assert successful and failing step logs, duration/provider/path visibility, exit-code propagation, ordering, early stop, and credential redaction.
+- Preview tests assert preparation occurs before serving the existing build, preparation failure prevents server startup, the resolved docs root is used, and an occupied requested port fails without fallback.
+- Linux CI runs the functional theme E2E suite and uploads its Playwright report/test-results on failure. Strict `@visual` screenshot tests remain in the full local suite with reviewed OS-specific baselines.
 - Fixture files live under `packages/vitepress-theme-element-plus/test/repository/fixtures/` and use fixed fictional identities/components; they must not import production site config, manifest, or expectation data.
 
 ---
@@ -266,3 +299,5 @@ const id = `yunxiao:${bytesToHex(sha256(new TextEncoder().encode(login)))}`
 - Required provider tests remain offline; only the selected production GitHub docs build performs synchronization, and pre-commit never refreshes or stages metadata.
 - Docs builds retain dependency ordering and the documented Node minimum matches `package.json`.
 - Browser CI uses the lockfile-matched, digest-pinned Playwright image and keeps a bounded job timeout.
+- Preview scripts use `element-plus-docs preview`, not the raw VitePress command, and do not promise preview options unsupported by the locked VitePress version.
+- Linux CI excludes only `@visual`; functional responsive and runtime-error coverage remains mandatory, and screenshot baselines are never updated automatically.

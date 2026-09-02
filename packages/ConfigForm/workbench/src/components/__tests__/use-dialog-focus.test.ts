@@ -3,7 +3,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, nextTick, ref, useTemplateRef } from 'vue'
-import { useWorkbenchDialogFocus } from '../use-dialog-focus'
+import { useWorkbenchDialogFocus } from '..'
 
 const DialogHarness = defineComponent({
   setup(_, { expose }) {

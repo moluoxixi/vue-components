@@ -16,6 +16,7 @@ describe('defineFields typing', () => {
       field: 'username',
       component: 'input',
       defaultValue: '',
+      id: 'username',
       validator: (value, values) => {
         expectTypeOf(value).toEqualTypeOf<string>()
         expectTypeOf(values.age).toEqualTypeOf<number>()
@@ -38,6 +39,7 @@ describe('defineFields typing', () => {
     defineLoginField({
       field: 'age',
       component: 'input',
+      id: 'age',
       schema: z.number(),
       validator: (value, values) => {
         expectTypeOf(value).toEqualTypeOf<number>()
@@ -56,6 +58,7 @@ describe('defineFields typing', () => {
     defineLoginField({
       field: 'remember',
       component: 'input',
+      id: 'remember',
       validator: (value, values) => {
         expectTypeOf(value).toEqualTypeOf<boolean>()
         expectTypeOf(values.age).toEqualTypeOf<number>()
@@ -66,6 +69,7 @@ describe('defineFields typing', () => {
 
     defineLoginField({
       component: 'section',
+      id: 'section',
       visible: (values) => {
         expectTypeOf(values.remember).toEqualTypeOf<boolean>()
 

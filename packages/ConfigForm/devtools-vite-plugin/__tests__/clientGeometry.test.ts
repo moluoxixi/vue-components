@@ -1,12 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  BUBBLE_MARGIN,
-  BUBBLE_SIZE,
-  PANEL_MAX_HEIGHT,
-  RIGHT_DOCK_SCROLLBAR_FALLBACK,
-} from '../src/client/constants'
-import {
   clamp,
   compareElementsByDocumentPosition,
   elementArea,
@@ -21,7 +15,13 @@ import {
   selectEarlierElement,
   viewportHeight,
   viewportWidth,
-} from '../src/client/geometry'
+} from '../src/client'
+import {
+  BUBBLE_MARGIN,
+  BUBBLE_SIZE,
+  PANEL_MAX_HEIGHT,
+  RIGHT_DOCK_SCROLLBAR_FALLBACK,
+} from '../src/client/constants'
 
 interface RectOptions {
   height: number

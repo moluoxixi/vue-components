@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { createConfigFormController } from '../src/controller'
-import { defineFields } from '../src/utils/field'
+import { createConfigFormController, defineFields } from '../index'
 
 interface UserForm {
   age: number
@@ -81,8 +80,8 @@ describe('createConfigFormController', () => {
     const onMetaChange = vi.fn()
     const controller = createConfigFormController<UserForm>({
       fields: () => [
-        { component: 'input', field: 'age' },
-        { component: 'input', field: 'name' },
+        { component: 'input', field: 'age', id: 'age' },
+        { component: 'input', field: 'name', id: 'name' },
       ],
       model: {
         read: () => model,
@@ -162,6 +161,7 @@ describe('createConfigFormController', () => {
         component: 'input',
         defaultValue: 'initial',
         field: '__proto__',
+        id: 'prototype-field',
       }],
       model: {
         read: () => model,
@@ -195,6 +195,7 @@ describe('createConfigFormController', () => {
         {
           component: 'input',
           field: 'age',
+          id: 'age',
           readonly: true,
           schema: z.number().min(18),
         },
@@ -202,6 +203,7 @@ describe('createConfigFormController', () => {
           component: 'input',
           defaultValue: 'initial',
           field: 'name',
+          id: 'name',
           required: true,
           requiredMessage: '请输入姓名',
           schema: z.string().min(2, '至少两个字符'),
@@ -239,6 +241,7 @@ describe('createConfigFormController', () => {
       fields: () => [{
         component: 'input',
         field: 'name',
+        id: 'name',
         validator: async (_value, values) => {
           await new Promise<void>((resolve) => {
             releaseValidation = resolve
@@ -269,6 +272,7 @@ describe('createConfigFormController', () => {
       fields: () => [{
         component: 'input',
         field: 'name',
+        id: 'name',
         validator: async () => {
           await new Promise<void>((resolve) => {
             releaseValidation = resolve
@@ -299,6 +303,7 @@ describe('createConfigFormController', () => {
       fields: () => [{
         component: 'input',
         field: 'name',
+        id: 'name',
         validator: async () => {
           await new Promise<void>((resolve) => {
             releaseValidation = resolve
@@ -327,8 +332,8 @@ describe('createConfigFormController', () => {
     const onSubmit = vi.fn()
     const controller = createConfigFormController<UserForm>({
       fields: () => [
-        { component: 'input', field: 'age' },
-        { component: 'input', field: 'name', hidden: true, readonly: true },
+        { component: 'input', field: 'age', id: 'age' },
+        { component: 'input', field: 'name', hidden: true, id: 'name', readonly: true },
       ],
       model: {
         read: () => model,
@@ -344,7 +349,7 @@ describe('createConfigFormController', () => {
   it('uses defaults from fields added after controller creation when resetting', () => {
     let model: DynamicForm = { name: 'Ada' }
     const fields: Array<Record<string, unknown>> = [
-      { component: 'input', field: 'name' },
+      { component: 'input', field: 'name', id: 'name' },
     ]
     const controller = createConfigFormController<DynamicForm>({
       fields: () => fields as never,
@@ -354,7 +359,7 @@ describe('createConfigFormController', () => {
       },
     })
 
-    fields.push({ component: 'input', defaultValue: 'new default', field: 'extra' })
+    fields.push({ component: 'input', defaultValue: 'new default', field: 'extra', id: 'extra' })
     controller.setValue('extra', 'changed')
     controller.resetFields('extra')
     expect(model).toEqual({ extra: 'new default', name: 'Ada' })
@@ -369,6 +374,7 @@ describe('createConfigFormController', () => {
     const field = defineField({
       component: 'input',
       field: 'age',
+      id: 'age',
       schema: z.number(),
     })
 
@@ -379,6 +385,7 @@ describe('createConfigFormController', () => {
       defineField({
         component: 'input',
         field: 'age',
+        id: 'age-invalid',
         schema: z.string(),
       })
     }

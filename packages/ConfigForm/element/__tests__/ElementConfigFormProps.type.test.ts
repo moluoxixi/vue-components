@@ -1,4 +1,4 @@
-import type { ConfigFormRendererProps } from '@moluoxixi/config-form/renderer'
+import type { ConfigFormRendererProps } from '@moluoxixi/config-form'
 import type { ElementConfigFormDefaultSlotContext, ElementConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
@@ -19,6 +19,7 @@ const elementFields = [
     component: 'input',
     field: 'name',
     fieldAttrs: { class: 'profile-field' },
+    id: 'name',
     label: '姓名',
     span: 12,
   },
@@ -52,6 +53,7 @@ const elementInvalidFields = [
       // @ts-expect-error Native field shell attrs do not accept UI FormItem layout props.
       labelWidth: 120,
     },
+    id: 'name',
     label: '姓名',
   },
 ] satisfies ElementConfigFormProps<UserForm>['fields']

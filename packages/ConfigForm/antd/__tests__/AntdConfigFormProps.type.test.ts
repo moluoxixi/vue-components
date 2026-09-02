@@ -1,4 +1,4 @@
-import type { ConfigFormRendererProps } from '@moluoxixi/config-form/renderer'
+import type { ConfigFormRendererProps } from '@moluoxixi/config-form'
 import type { AntdConfigFormDefaultSlotContext, AntdConfigFormProps } from '../index'
 import { describe, expect, it } from 'vitest'
 
@@ -18,6 +18,7 @@ const antdFields = [
     component: 'input',
     field: 'status',
     fieldAttrs: { class: 'status-field' },
+    id: 'status',
     label: '状态',
     span: 8,
   },
@@ -51,6 +52,7 @@ const antdInvalidFields = [
       // @ts-expect-error Native field shell attrs do not accept UI FormItem layout props.
       labelCol: { span: 6 },
     },
+    id: 'status',
     label: '状态',
   },
 ] satisfies AntdConfigFormProps<UserForm>['fields']

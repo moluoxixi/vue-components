@@ -39,7 +39,7 @@ export default defineConfig({
       external: [
         '@moluoxixi/config-form-compiler',
         '@moluoxixi/config-form-core',
-        '@moluoxixi/config-form/renderer',
+        '@moluoxixi/config-form',
         '@moluoxixi/zod3-to-rule',
         'vue',
         'zod',

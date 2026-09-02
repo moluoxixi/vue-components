@@ -1,7 +1,7 @@
 import type {
   ConfigFormReaction,
   ConfigFormReactionEffect,
-} from '../src/types'
+} from '../src/reaction'
 import { describe, expect, it } from 'vitest'
 import {
   appendConfigFormReactionEffect,
@@ -20,7 +20,7 @@ import {
   updateConfigFormReactionOperandValue,
   updateConfigFormReactionProp,
   updateConfigFormReactionState,
-} from '../src/reaction-config'
+} from '../src/reaction'
 
 describe('config-form reaction configuration primitives', () => {
   it('creates deterministic ids, reactions, and every effect shape', () => {

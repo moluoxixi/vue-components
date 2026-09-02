@@ -1,9 +1,5 @@
-import type { RenderDevtools } from '../types'
+import type { AsyncRenderScheduler, RenderDevtools } from '../types'
 import { CONTEXT_SYNC_ATTRIBUTES } from '../constants'
-
-interface AsyncRenderScheduler extends RenderDevtools {
-  isPending: () => boolean
-}
 
 /**
  * 创建异步渲染调度器。

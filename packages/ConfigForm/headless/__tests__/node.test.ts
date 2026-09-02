@@ -16,6 +16,7 @@ describe('collectConfigFormFields', () => {
         component: 'input',
         disabled: values => values.age < 18,
         field: 'name',
+        id: 'name',
       }),
     ]
 
@@ -31,6 +32,7 @@ describe('collectConfigFormFields', () => {
   it('fails fast for circular configured slots', () => {
     const node: Record<string, unknown> = {
       component: 'div',
+      id: 'circular',
       slots: {},
     }
     ;(node.slots as Record<string, unknown>).default = node
@@ -44,8 +46,9 @@ describe('collectConfigFormFields', () => {
     const nodes: ConfigFormNode<AccountForm, string>[] = [{
       component: 'section',
       hidden: true,
+      id: 'hidden-section',
       slots: {
-        default: [{ component: 'input', field: 'name', hidden: true }],
+        default: [{ component: 'input', field: 'name', hidden: true, id: 'name' }],
       },
     }]
     const values = { age: 18, name: 'Ada' }
@@ -69,10 +72,12 @@ describe('collectConfigFormFields', () => {
     const { defineField } = defineFields<AccountForm>()
     const nodes = [defineField({
       component: Container,
+      id: 'container',
       slots: {
         default: [defineField({
           component: Input,
           field: 'name',
+          id: 'name',
           readonlyRender: ({ value }) => {
             const exactValue: string = value
             return exactValue

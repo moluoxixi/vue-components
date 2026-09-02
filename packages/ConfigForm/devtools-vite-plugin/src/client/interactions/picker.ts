@@ -5,7 +5,7 @@ import type {
   RenderDevtools,
   SetDevtoolsMessage,
 } from '../types'
-import { resolvePickedNode } from '../tree'
+import { resolvePickedNode } from '../utils'
 import { activateSourceNode } from './activate'
 
 /**

@@ -10,7 +10,7 @@ import {
   readElementPlusOptionKeys,
   readElementPlusOptionSource,
   resolveElementPlusPathLabel,
-} from '../src/readonly/options'
+} from '../src/utils'
 
 const ElSelectV2 = { name: 'ElSelectV2' }
 const ElCascader = { name: 'ElCascader' }
@@ -67,6 +67,7 @@ describe('element plus plugin package', () => {
     const selectField = asField(runtime.transformField(defineField({
       component: ElSelectV2,
       field: 'role',
+      id: 'role',
       props: {
         options: [
           { label: '管理员', value: 'admin' },
@@ -77,6 +78,7 @@ describe('element plus plugin package', () => {
     const checkboxGroupField = asField(runtime.transformField(defineField({
       component: ElCheckboxGroup,
       field: 'permissions',
+      id: 'permissions',
       props: {
         options: [
           { label: '读', value: 'read' },
@@ -88,6 +90,7 @@ describe('element plus plugin package', () => {
     const radioGroupField = asField(runtime.transformField(defineField({
       component: ElRadioGroup,
       field: 'status',
+      id: 'status',
       props: {
         options: [
           { label: '启用', value: 'enabled' },
@@ -98,6 +101,7 @@ describe('element plus plugin package', () => {
     const switchField = asField(runtime.transformField(defineField({
       component: ElSwitch,
       field: 'enabled',
+      id: 'enabled',
       props: {
         activeText: '开启',
         inactiveText: '关闭',
@@ -106,6 +110,7 @@ describe('element plus plugin package', () => {
     const colorField = asField(runtime.transformField(defineField({
       component: ElColorPicker,
       field: 'themeColor',
+      id: 'themeColor',
     })))
 
     expect(runtime.readonlyAdapters.ElSelectV2).toBeDefined()
@@ -167,6 +172,7 @@ describe('element plus plugin package', () => {
     const cascaderField = asField(runtime.transformField(defineField({
       component: ElCascader,
       field: 'region',
+      id: 'region',
       props: {
         props: {
           children: 'nodes',
@@ -199,7 +205,7 @@ describe('element plus plugin package', () => {
     }).text()).toBe('[\n  "east",\n  "missing"\n]')
   })
 
-  it('falls back to raw values for missing option labels and inactive switch labels', () => {
+  it('renders raw values when option or inactive switch labels are unavailable', () => {
     const runtime = createFormRuntime({
       plugins: [createElementPlusPlugin()],
     })
@@ -207,6 +213,7 @@ describe('element plus plugin package', () => {
     const selectField = asField(runtime.transformField(defineField({
       component: ElSelectV2,
       field: 'role',
+      id: 'role',
       props: {
         options: [
           { label: '管理员', value: 'admin' },
@@ -216,6 +223,7 @@ describe('element plus plugin package', () => {
     const switchField = asField(runtime.transformField(defineField({
       component: ElSwitch,
       field: 'enabled',
+      id: 'enabled',
       props: {
         activeValue: 'yes',
         inactiveText: '关闭',
@@ -243,7 +251,7 @@ describe('element plus plugin package', () => {
     }).text()).toBe('pending')
     expect(renderReadonly(runtime.readonlyAdapters.ElSwitch, {
       field: 'enabled',
-      node: asField(runtime.transformField(defineField({ component: ElSwitch, field: 'rawEnabled' }))),
+      node: asField(runtime.transformField(defineField({ component: ElSwitch, field: 'rawEnabled', id: 'rawEnabled' }))),
       value: true,
       values: { rawEnabled: true },
     }).text()).toBe('true')
@@ -267,7 +275,7 @@ describe('element plus plugin package', () => {
         ],
       },
     ]
-    const fallbackOptions = [
+    const defaultKeyOptions = [
       {
         options: [
           { label: '默认子项', value: 'default-child' },
@@ -350,7 +358,7 @@ describe('element plus plugin package', () => {
     expect(findElementPlusOptionLabel([{ id: 'raw-value' }], 'raw-value', optionKeys)).toBe('raw-value')
     expect(findElementPlusOptionLabel([null, 'invalid', { id: 'valid', name: '有效项' }], 'valid', optionKeys))
       .toBe('有效项')
-    expect(findElementPlusOptionLabel(fallbackOptions, 'default-child', optionKeys)).toBe('默认子项')
+    expect(findElementPlusOptionLabel(defaultKeyOptions, 'default-child', optionKeys)).toBe('默认子项')
     expect(findElementPlusOptionLabel(options, 'missing', optionKeys)).toBeUndefined()
     expect(resolveElementPlusPathLabel(options, ['east', 'hangzhou'], optionKeys)).toBe('华东 / 杭州')
     expect(resolveElementPlusPathLabel(rawPathOptions, ['raw-parent', 'raw-child'], optionKeys))

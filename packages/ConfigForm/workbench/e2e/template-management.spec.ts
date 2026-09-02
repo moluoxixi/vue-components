@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createProject } from './helpers'
+import { createProject, setAppearance } from './helpers'
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page): Promise<void> {
   const width = await page.evaluate(() => ({
@@ -37,7 +37,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await expect(workspace.getByRole('option', { name: /Ant Design Vue profile/ })).toHaveAttribute('aria-selected', 'true')
   await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
   await expect(workspace.locator('iframe[data-preview-runtime-host]')).toHaveAttribute('title', /Runtime preview/)
-  await expect(workspace.getByText('Registry compatible', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
   const results = await new AxeBuilder({ page })
@@ -46,10 +46,11 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
     .analyze()
   expect(results.violations).toEqual([])
 
-  await workspace.getByRole('button', { name: 'Use light theme' }).click()
-  await expect(workspace).toHaveAttribute('data-theme', 'light')
+  await setAppearance(page, 'dark', 'kanagawa')
+  await expect(workspace).toHaveAttribute('data-theme', 'dark')
+  await expect(workspace).toHaveAttribute('data-palette', 'kanagawa')
   await expect(workspace.locator('.template-catalog-filters .el-select__wrapper').first())
-    .toHaveCSS('background-color', 'rgb(255, 255, 255)')
+    .toHaveCSS('background-color', 'rgb(42, 42, 55)')
   const lightResults = await new AxeBuilder({ page })
     .exclude('iframe[data-preview-runtime-host]')
     .withTags(['wcag2a', 'wcag2aa'])
@@ -59,7 +60,7 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
   await page.getByRole('button', { name: 'Switch language' }).click()
   const localizedWorkspace = page.getByRole('main', { name: '创建项目' })
   await expect(localizedWorkspace.getByRole('option', { name: /Ant Design Vue 资料表单/ })).toBeVisible()
-  await expect(localizedWorkspace.getByText('Registry 兼容', { exact: true })).toBeVisible()
+  await expect(localizedWorkspace.getByText('Registry 要求已满足', { exact: true })).toBeVisible()
   await expectNoHorizontalOverflow(page)
   const localizedResults = await new AxeBuilder({ page })
     .exclude('iframe[data-preview-runtime-host]')
@@ -82,7 +83,7 @@ test('creates unique pages through one explicit page workspace and blocks cross-
   await expect(workspace.getByRole('button', { name: 'Create page', exact: true })).toBeDisabled()
 
   await workspace.getByRole('option', { name: /Element Plus profile/ }).click()
-  await expect(workspace.getByText('Registry compatible', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   const secondPageId = await page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
@@ -100,7 +101,7 @@ test('creates an Ant Design Vue page as one undoable Project Command', async ({ 
   await openPageCreation(page)
   const workspace = page.getByRole('main', { name: 'Create page' })
   await workspace.getByRole('option', { name: /Ant Design Vue profile/ }).click()
-  await expect(workspace.getByText('Registry compatible', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   const createdPageNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
   expect(createdPageNodeId).not.toBe(firstPageNodeId)
@@ -137,7 +138,7 @@ test('restores Topbar and Pages triggers on cancel and closes Pages after succes
   await expect(newPage).toBeFocused()
 
   await newPage.click()
-  await expect(workspace.getByText('Registry compatible', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create page', exact: true }).click()
   await expect(pages).not.toBeVisible()
   await expect(page.locator('[data-designer-entry]')).toBeFocused()
@@ -153,7 +154,7 @@ test('keeps long Registry diagnostics and the create action visible at 390px', a
   await workspace.getByRole('tab', { name: 'Details' }).click()
   const blocked = workspace.getByText('Cannot create with this Registry', { exact: true })
   await expect(blocked).toBeVisible()
-  await expect(workspace.locator('.template-compatibility li')).toHaveCount(5)
+  await expect(workspace.locator('.template-eligibility li')).toHaveCount(5)
 
   const geometry = await workspace.locator('.template-detail-pane').evaluate((pane) => {
     const footer = pane.querySelector<HTMLElement>('.template-create-footer')

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  title?: string
-  description?: string
-}>()
+import type { ElementSectionProps } from '../types'
+
+defineProps<ElementSectionProps>()
 </script>
 
 <template>

@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"按 Workbench 前端质量清单检查模板页。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"检查响应式、可访问性、状态表达和 E2E 覆盖。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"确认模板与项目数据当前契约未变化。"}
+{"file":".trellis/spec/config-form-core/frontend/flow-runtime-consistency.md","reason":"确认 Preview Runtime revision/race 合同无回归。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Catalog/adapter/eligibility/Runtime/create 跨层数据流。"}

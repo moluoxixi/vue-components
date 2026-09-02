@@ -2,7 +2,7 @@ import type { FormNodeConfig, NormalizedFieldConfig, ResolvedFormNode } from '..
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { z } from 'zod'
-import { useForm, VALIDATION_THROTTLE_MS } from '../src/composables/useForm'
+import { useForm, VALIDATION_THROTTLE_MS } from '../src/composables'
 import { createFormRuntime } from '../src/runtime'
 import { defineField } from '../src/utils/field'
 
@@ -25,7 +25,7 @@ describe('useForm', () => {
 
   it('throws when the same resolved node object is reused in multiple positions', () => {
     const reusedNode = resolveTestFields([
-      defineField({ component: 'section' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-1', component: 'section' }),
     ])[0]
     const fields = ref<ResolvedFormNode[]>([reusedNode, reusedNode])
 
@@ -34,12 +34,12 @@ describe('useForm', () => {
 
   it('fails fast when resolved nodes contain a circular slot reference', () => {
     const child = resolveTestFields([
-      defineField({ component: 'section' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-2', component: 'section' }),
     ])[0] as ResolvedFormNode & { slots?: Record<string, unknown> }
     child.slots = { default: child }
 
     expect(() => resolveTestFields([
-      defineField({ component: 'section', slots: { default: child as never } }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-3', component: 'section', slots: { default: child as never } }),
     ])).toThrow(/contains a circular plain-object reference/)
   })
 
@@ -49,19 +49,11 @@ describe('useForm', () => {
         component: 'section',
         slots: {
           default: [
-            defineField({
-              component: 'article',
-              slots: {
-                default: [
-                  defineField({
-                    component: 'input',
-                    defaultValue: '',
-                    field: 'username',
-                    validator: value => value ? undefined : '用户名必填',
-                  }),
-                ],
-              },
-            }),
+            defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-4', component: 'article', slots: {
+              default: [
+                defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-5', component: 'input', defaultValue: '', field: 'username', validator: value => value ? undefined : '用户名必填' }),
+              ],
+            } }),
           ],
         },
       },
@@ -82,8 +74,8 @@ describe('useForm', () => {
 
   it('initializes from defaultValues without watching external replacements', async () => {
     const fields = createResolvedFieldRef([
-      defineField({ field: 'name', component: 'input', defaultValue: 'default name' }),
-      defineField({ field: 'age', component: 'input', defaultValue: 18 }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-6', field: 'name', component: 'input', defaultValue: 'default name' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-7', field: 'age', component: 'input', defaultValue: 18 }),
     ])
     const defaultValues: Record<string, unknown> = { name: 'Ada' }
 
@@ -106,29 +98,15 @@ describe('useForm', () => {
 
   it('preserves edited values when field metadata changes or fields are appended', async () => {
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'name',
-        component: 'input',
-        defaultValue: 'default name',
-        props: { placeholder: 'initial' },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-8', field: 'name', component: 'input', defaultValue: 'default name', props: { placeholder: 'initial' } }),
     ])
 
     const form = useForm({ fields })
 
     form.setValue('name', 'Grace')
     fields.value = resolveTestFields([
-      defineField({
-        field: 'name',
-        component: 'input',
-        defaultValue: 'changed default',
-        props: { placeholder: 'changed' },
-      }),
-      defineField({
-        field: 'age',
-        component: 'input',
-        defaultValue: 37,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-9', field: 'name', component: 'input', defaultValue: 'changed default', props: { placeholder: 'changed' } }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-10', field: 'age', component: 'input', defaultValue: 37 }),
     ])
     await nextTick()
 
@@ -140,13 +118,8 @@ describe('useForm', () => {
 
   it('supports validators that can inspect all field values', async () => {
     const fields = createResolvedFieldRef([
-      defineField({ field: 'password', component: 'input', defaultValue: 'secret' }),
-      defineField({
-        field: 'confirm',
-        component: 'input',
-        defaultValue: 'nope',
-        validator: (value, values) => value === values.password ? undefined : '两次密码不一致',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-11', field: 'password', component: 'input', defaultValue: 'secret' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-12', field: 'confirm', component: 'input', defaultValue: 'nope', validator: (value, values) => value === values.password ? undefined : '两次密码不一致' }),
     ])
 
     const form = useForm({ fields })
@@ -163,23 +136,11 @@ describe('useForm', () => {
   it('lets fields opt into submitting hidden or disabled values', async () => {
     const onSubmit = vi.fn()
     const fields = createResolvedFieldRef([
-      defineField({ field: 'visible', component: 'input', defaultValue: 'ok' }),
-      defineField({ field: 'hidden', component: 'input', defaultValue: 'skip', visible: () => false }),
-      defineField({ field: 'disabled', component: 'input', defaultValue: 'skip', disabled: () => true, submitWhenDisabled: false }),
-      defineField({
-        field: 'hiddenKept',
-        component: 'input',
-        defaultValue: 'keep',
-        visible: () => false,
-        submitWhenHidden: true,
-      }),
-      defineField({
-        field: 'disabledKept',
-        component: 'input',
-        defaultValue: 'keep',
-        disabled: () => true,
-        submitWhenDisabled: true,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-13', field: 'visible', component: 'input', defaultValue: 'ok' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-14', field: 'hidden', component: 'input', defaultValue: 'skip', visible: () => false }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-15', field: 'disabled', component: 'input', defaultValue: 'skip', disabled: () => true, submitWhenDisabled: false }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-16', field: 'hiddenKept', component: 'input', defaultValue: 'keep', visible: () => false, submitWhenHidden: true }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-17', field: 'disabledKept', component: 'input', defaultValue: 'keep', disabled: () => true, submitWhenDisabled: true }),
     ])
 
     const form = useForm({ fields, onSubmit })
@@ -195,14 +156,7 @@ describe('useForm', () => {
   it('skips validation for readonly fields and still submits their values even when disabled', async () => {
     const onSubmit = vi.fn()
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'name',
-        component: 'input',
-        defaultValue: 'Ada',
-        disabled: () => true,
-        readonly: true,
-        validator: () => '不应执行',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-18', field: 'name', component: 'input', defaultValue: 'Ada', disabled: () => true, readonly: true, validator: () => '不应执行' }),
     ])
 
     const form = useForm({ fields, onSubmit })
@@ -222,32 +176,24 @@ describe('useForm', () => {
     let active = 0
     let maxActive = 0
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'first',
-        component: 'input',
-        validator: async () => {
-          calls.push('first:start')
-          active += 1
-          maxActive = Math.max(maxActive, active)
-          await new Promise(resolve => setTimeout(resolve, 20))
-          active -= 1
-          calls.push('first:end')
-          return undefined
-        },
-      }),
-      defineField({
-        field: 'second',
-        component: 'input',
-        validator: async () => {
-          calls.push('second:start')
-          active += 1
-          maxActive = Math.max(maxActive, active)
-          await new Promise(resolve => setTimeout(resolve, 20))
-          active -= 1
-          calls.push('second:end')
-          return undefined
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-19', field: 'first', component: 'input', validator: async () => {
+        calls.push('first:start')
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        await new Promise(resolve => setTimeout(resolve, 20))
+        active -= 1
+        calls.push('first:end')
+        return undefined
+      } }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-20', field: 'second', component: 'input', validator: async () => {
+        calls.push('second:start')
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        await new Promise(resolve => setTimeout(resolve, 20))
+        active -= 1
+        calls.push('second:end')
+        return undefined
+      } }),
     ])
 
     const form = useForm({ fields })
@@ -260,26 +206,9 @@ describe('useForm', () => {
 
   it('validates hidden or disabled fields when they opt into submit output', async () => {
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'hiddenSkipped',
-        component: 'input',
-        visible: () => false,
-        validator: () => '不会出现',
-      }),
-      defineField({
-        field: 'hiddenKept',
-        component: 'input',
-        visible: () => false,
-        submitWhenHidden: true,
-        validator: () => '隐藏字段需要校验',
-      }),
-      defineField({
-        field: 'disabledKept',
-        component: 'input',
-        disabled: () => true,
-        submitWhenDisabled: true,
-        validator: () => '禁用字段需要校验',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-21', field: 'hiddenSkipped', component: 'input', visible: () => false, validator: () => '不会出现' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-22', field: 'hiddenKept', component: 'input', visible: () => false, submitWhenHidden: true, validator: () => '隐藏字段需要校验' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-23', field: 'disabledKept', component: 'input', disabled: () => true, submitWhenDisabled: true, validator: () => '禁用字段需要校验' }),
     ])
 
     const form = useForm({ fields })
@@ -292,13 +221,7 @@ describe('useForm', () => {
 
   it('validates single fields by trigger and clears errors on value changes', async () => {
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'name',
-        component: 'input',
-        defaultValue: '',
-        schema: z.string().min(2, '姓名至少 2 个字符'),
-        validateOn: 'blur',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-24', field: 'name', component: 'input', defaultValue: '', schema: z.string().min(2, '姓名至少 2 个字符'), validateOn: 'blur' }),
     ])
 
     const form = useForm({ fields })
@@ -322,20 +245,14 @@ describe('useForm', () => {
     let active = 0
     let maxActive = 0
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'name',
-        component: 'input',
-        defaultValue: '',
-        validateOn: 'change',
-        validator: async (value) => {
-          calls.push(value)
-          active += 1
-          maxActive = Math.max(maxActive, active)
-          await new Promise(resolve => setTimeout(resolve, 20))
-          active -= 1
-          return value === 'bad' ? '错误' : undefined
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-25', field: 'name', component: 'input', defaultValue: '', validateOn: 'change', validator: async (value) => {
+        calls.push(value)
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        await new Promise(resolve => setTimeout(resolve, 20))
+        active -= 1
+        return value === 'bad' ? '错误' : undefined
+      } }),
     ])
     const form = useForm({ fields })
 
@@ -362,20 +279,14 @@ describe('useForm', () => {
     let active = 0
     let maxActive = 0
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'name',
-        component: 'input',
-        defaultValue: '',
-        validateOn: 'change',
-        validator: async (value) => {
-          calls.push(value)
-          active += 1
-          maxActive = Math.max(maxActive, active)
-          await new Promise(resolve => setTimeout(resolve, 30))
-          active -= 1
-          return value === 'second' ? '第二次错误' : undefined
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-26', field: 'name', component: 'input', defaultValue: '', validateOn: 'change', validator: async (value) => {
+        calls.push(value)
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        await new Promise(resolve => setTimeout(resolve, 30))
+        active -= 1
+        return value === 'second' ? '第二次错误' : undefined
+      } }),
     ])
     const form = useForm({ fields })
 
@@ -403,14 +314,9 @@ describe('useForm', () => {
   it('supports merge and replace value updates with explicit error clearing', async () => {
     const onError = vi.fn()
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'name',
-        component: 'input',
-        defaultValue: 'default name',
-        schema: z.string().min(2, '姓名至少 2 个字符'),
-      }),
-      defineField({ field: 'age', component: 'input', defaultValue: 18 }),
-      defineField({ field: 'obsolete', component: 'input', defaultValue: 'old' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-27', field: 'name', component: 'input', defaultValue: 'default name', schema: z.string().min(2, '姓名至少 2 个字符') }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-28', field: 'age', component: 'input', defaultValue: 18 }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-29', field: 'obsolete', component: 'input', defaultValue: 'old' }),
     ])
 
     const form = useForm({ fields, onError })
@@ -440,11 +346,7 @@ describe('useForm', () => {
 
   it('clears stale errors when validation rules are removed from a field', async () => {
     const fields = createResolvedFieldRef([
-      defineField({
-        component: 'input',
-        field: 'name',
-        schema: z.string().min(2, '姓名至少 2 个字符'),
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-30', component: 'input', field: 'name', schema: z.string().min(2, '姓名至少 2 个字符') }),
     ])
 
     const form = useForm({ fields })
@@ -453,10 +355,7 @@ describe('useForm', () => {
     expect(form.errors.value.name).toEqual(['Required'])
 
     fields.value = resolveTestFields([
-      defineField({
-        component: 'input',
-        field: 'name',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-31', component: 'input', field: 'name' }),
     ])
     await nextTick()
 
@@ -466,11 +365,7 @@ describe('useForm', () => {
 
   it('prunes errors when fields are removed from the topology', async () => {
     const fields = createResolvedFieldRef([
-      defineField({
-        component: 'input',
-        field: 'name',
-        schema: z.string().min(2, '姓名至少 2 个字符'),
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-32', component: 'input', field: 'name', schema: z.string().min(2, '姓名至少 2 个字符') }),
     ])
 
     const form = useForm({ fields })
@@ -487,34 +382,10 @@ describe('useForm', () => {
 
   it('skips inactive single-field validation unless the field opts into submit validation', async () => {
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'missingValue',
-        component: 'input',
-        validator: () => '不会校验',
-      }),
-      defineField({
-        field: 'hidden',
-        component: 'input',
-        defaultValue: 'hidden',
-        visible: () => false,
-        validator: () => '隐藏字段默认跳过',
-      }),
-      defineField({
-        field: 'disabled',
-        component: 'input',
-        defaultValue: 'disabled',
-        disabled: () => true,
-        submitWhenDisabled: false,
-        validator: () => '禁用字段默认跳过',
-      }),
-      defineField({
-        field: 'hiddenRequired',
-        component: 'input',
-        defaultValue: '',
-        visible: () => false,
-        submitWhenHidden: true,
-        validator: () => '隐藏字段提交时校验',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-33', field: 'missingValue', component: 'input', validator: () => '不会校验' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-34', field: 'hidden', component: 'input', defaultValue: 'hidden', visible: () => false, validator: () => '隐藏字段默认跳过' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-35', field: 'disabled', component: 'input', defaultValue: 'disabled', disabled: () => true, submitWhenDisabled: false, validator: () => '禁用字段默认跳过' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-36', field: 'hiddenRequired', component: 'input', defaultValue: '', visible: () => false, submitWhenHidden: true, validator: () => '隐藏字段提交时校验' }),
     ])
 
     const form = useForm({ fields })
@@ -541,20 +412,12 @@ describe('useForm', () => {
     const syncFailure = new Error('sync validator failed')
     const asyncFailure = new Error('async validator failed')
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'syncFailure',
-        component: 'input',
-        validator: () => {
-          throw syncFailure
-        },
-      }),
-      defineField({
-        field: 'asyncFailure',
-        component: 'input',
-        validator: async () => {
-          throw asyncFailure
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-37', field: 'syncFailure', component: 'input', validator: () => {
+        throw syncFailure
+      } }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-38', field: 'asyncFailure', component: 'input', validator: async () => {
+        throw asyncFailure
+      } }),
     ])
 
     const form = useForm({ fields })
@@ -567,20 +430,12 @@ describe('useForm', () => {
   it('short-circuits child visible predicates when a parent container is hidden', () => {
     let childVisibleCalls = 0
     const fields = createResolvedFieldRef([
-      defineField({
-        component: 'section',
-        visible: () => false,
-        slots: {
-          default: defineField({
-            component: 'input',
-            field: 'secret',
-            visible: () => {
-              childVisibleCalls += 1
-              return true
-            },
-          }),
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-39', component: 'section', visible: () => false, slots: {
+        default: defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-40', component: 'input', field: 'secret', visible: () => {
+          childVisibleCalls += 1
+          return true
+        } }),
+      } }),
     ])
 
     const form = useForm({ fields })
@@ -592,29 +447,15 @@ describe('useForm', () => {
   it('reuses one visibility snapshot across submit validation and output filtering', async () => {
     let parentVisibleCalls = 0
     const fields = createResolvedFieldRef([
-      defineField({
-        component: 'section',
-        visible: () => {
-          parentVisibleCalls += 1
-          return false
-        },
-        slots: {
-          default: [
-            defineField({
-              component: 'input',
-              defaultValue: 'first',
-              field: 'first',
-              validator: () => '隐藏字段不应校验',
-            }),
-            defineField({
-              component: 'input',
-              defaultValue: 'second',
-              field: 'second',
-              validator: () => '隐藏字段不应校验',
-            }),
-          ],
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-41', component: 'section', visible: () => {
+        parentVisibleCalls += 1
+        return false
+      }, slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-42', component: 'input', defaultValue: 'first', field: 'first', validator: () => '隐藏字段不应校验' }),
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-43', component: 'input', defaultValue: 'second', field: 'second', validator: () => '隐藏字段不应校验' }),
+        ],
+      } }),
     ])
     const onSubmit = vi.fn()
 
@@ -629,27 +470,9 @@ describe('useForm', () => {
 
   it('uses field predicates for visibility, disabled, validation skips, and submit output', async () => {
     const fields = createResolvedFieldRef([
-      defineField({
-        field: 'role',
-        component: 'input',
-        defaultValue: 'guest',
-      }),
-      defineField({
-        field: 'adminNote',
-        component: 'input',
-        defaultValue: 'visible for admins',
-        submitWhenHidden: false,
-        visible: values => values.role === 'admin',
-        validator: () => '隐藏时不应校验',
-      }),
-      defineField({
-        field: 'guestNote',
-        component: 'input',
-        defaultValue: 'disabled for guests',
-        disabled: values => values.role === 'guest',
-        submitWhenDisabled: false,
-        validator: () => '禁用时不应校验',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-44', field: 'role', component: 'input', defaultValue: 'guest' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-45', field: 'adminNote', component: 'input', defaultValue: 'visible for admins', submitWhenHidden: false, visible: values => values.role === 'admin', validator: () => '隐藏时不应校验' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-46', field: 'guestNote', component: 'input', defaultValue: 'disabled for guests', disabled: values => values.role === 'guest', submitWhenDisabled: false, validator: () => '禁用时不应校验' }),
     ])
     const onSubmit = vi.fn()
 
@@ -702,16 +525,8 @@ describe('useForm', () => {
       ],
     })
     const rawFields: FormNodeConfig[] = [
-      defineField({
-        component: 'input',
-        defaultValue: 'hidden value',
-        field: 'dynamicHidden',
-      }),
-      defineField({
-        component: 'input',
-        defaultValue: 'disabled value',
-        field: 'dynamicDisabled',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-47', component: 'input', defaultValue: 'hidden value', field: 'dynamicHidden' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-48', component: 'input', defaultValue: 'disabled value', field: 'dynamicDisabled' }),
     ]
     const fields = ref<ResolvedFormNode[]>(rawFields.map(field => runtime.transformField(field)) as ResolvedFormNode[])
 
@@ -725,11 +540,7 @@ describe('useForm', () => {
 
     fields.value = [
       rawFields[0],
-      defineField({
-        component: 'input',
-        defaultValue: 'active value',
-        field: 'active',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-useForm-test-ts-49', component: 'input', defaultValue: 'active value', field: 'active' }),
     ].map(field => runtime.transformField(field)) as ResolvedFormNode[]
     await nextTick()
 

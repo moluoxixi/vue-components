@@ -1,6 +1,6 @@
 import type { DesignerNodeSubgraphTemplate } from '@moluoxixi/config-form-designer'
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
-import * as s from '../material-shared'
+import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'tabs',

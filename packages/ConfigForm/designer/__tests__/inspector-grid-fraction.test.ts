@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveInspectorGridFraction } from '../src/inspector/grid-fraction'
+import { resolveInspectorGridFraction } from '../src/inspector'
 
 describe('resolveInspectorGridFraction', () => {
   it.each([

@@ -9,7 +9,7 @@ import {
   WORKBENCH_CONFIG_TYPE_DECLARATIONS,
   WORKBENCH_MODULES,
   WORKBENCH_TYPE_DECLARATIONS,
-} from '../workspace-editor-language'
+} from '../WorkspaceCodeEditor/utils'
 
 function cursor(source: string): { offset: number, source: string } {
   const offset = source.indexOf('|')
@@ -107,8 +107,8 @@ describe('workbench type declarations', () => {
   it('publishes real defineFields and defineField signatures from headless only', () => {
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export function defineFields<TValues extends ConfigFormValues = ConfigFormValues>(): DefineConfigFormFieldsResult<TValues>')
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export function defineField<TValues extends ConfigFormValues = ConfigFormValues')
-    expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export function defineConfigFormFields')
-    expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export function defineConfigFormField')
+    expect(WORKBENCH_TYPE_DECLARATIONS).not.toContain('export function defineConfigFormFields')
+    expect(WORKBENCH_TYPE_DECLARATIONS).not.toContain('export function defineConfigFormField')
 
     const elementDeclaration = moduleDeclaration('@moluoxixi/config-form-element')
     expect(elementDeclaration).toContain('ElementConfigForm')
@@ -147,7 +147,7 @@ describe('workbench type declarations', () => {
 
   it('declares the runtime component and adapter entrypoints used by source pages', () => {
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export default ElementConfigForm')
-    expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export default antdConfigForm')
+    expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export default AntdConfigForm')
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export const ConfigForm: ConfigFormComponent')
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('labelWidth?: string | number')
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('responsive?: Record<string, unknown>')

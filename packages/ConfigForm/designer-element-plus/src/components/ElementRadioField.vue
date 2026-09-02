@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ElementPlusDesignerOption, ElementPlusOptionSource } from '../types'
+import type { ElementRadioFieldEmits, ElementRadioFieldProps } from '../types'
 import { ElRadio, ElRadioGroup } from 'element-plus'
 import { computed } from 'vue'
 import { elementPlusOptionKey, useElementPlusResolvedOptions } from '../options'
@@ -7,20 +7,14 @@ import ElementOptionState from './ElementOptionState.vue'
 
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps<{
-  modelValue?: string | number | boolean
-  options?: ElementPlusDesignerOption[]
-  optionSource?: ElementPlusOptionSource
-}>()
+const props = defineProps<ElementRadioFieldProps>()
 
 const state = useElementPlusResolvedOptions(
   computed(() => props.optionSource),
   computed(() => props.options),
 )
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string | number | boolean | undefined]
-}>()
+const emit = defineEmits<ElementRadioFieldEmits>()
 
 function updateModelValue(value: string | number | boolean | undefined): void {
   emit('update:modelValue', value)

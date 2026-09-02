@@ -1,8 +1,6 @@
-import type { ConfigFormFlow } from '../src/flow/types'
+import type { ConfigFormFlow } from '../src/flow'
 import { describe, expect, it, vi } from 'vitest'
-import { getConfigFormFlowSemanticHash } from '../src/flow/hash'
-import { ConfigFormFlowInterpreter } from '../src/flow/interpreter'
-import { analyzeConfigFormFlow } from '../src/flow/plan'
+import { analyzeConfigFormFlow, ConfigFormFlowInterpreter, getConfigFormFlowSemanticHash } from '../src/flow'
 
 function flow(overrides: Partial<ConfigFormFlow> = {}): ConfigFormFlow {
   return {

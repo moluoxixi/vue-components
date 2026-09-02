@@ -14,11 +14,11 @@ import {
 import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
 import { PAGE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
-import { createPageFlowEngine } from '../../flow/page-flow-engine'
 import {
   createPreviewSession,
   createWorkbenchPreviewSession,
-} from '../preview-session'
+} from '..'
+import { createPageFlowEngine } from '../../flow'
 
 interface FieldFixture {
   component?: string

@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"按 ConfigForm Designer/Workbench 前端质量清单检查。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"检查 UI、测试、可访问性与回归质量。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"确认 ProjectDocument、RuntimeHost 与包边界未发生兼容性扩张。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 storage 到 root/overlay 的完整数据流及 Runtime 隔离。"}
+{"file":".trellis/tasks/09-02-config-form-workbench-theme-settings/research/community-theme-palettes.md","reason":"复核主题来源与 8 套 contrast 风险均被覆盖。"}

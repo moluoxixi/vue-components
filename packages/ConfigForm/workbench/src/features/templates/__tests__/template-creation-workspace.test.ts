@@ -4,11 +4,11 @@ import type { Component } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref, shallowRef } from 'vue'
-import TemplateCreationWorkspace from '../TemplateCreationWorkspace.vue'
+import { TemplateCreationWorkspace } from '..'
 
 const mocks = vi.hoisted(() => ({
   actualCatalogLoad: undefined as undefined | (() => Promise<unknown>),
-  analyzeCompatibility: vi.fn(),
+  analyzeEligibility: vi.fn(),
   catalogLoad: vi.fn(),
   createPage: vi.fn(),
   createProject: vi.fn(),
@@ -22,9 +22,10 @@ vi.mock('../../../adapters', () => ({
   loadWorkbenchAdapter: mocks.loadAdapter,
 }))
 
-vi.mock('../../../app/workbench-context', () => ({
+vi.mock('../../../app', () => ({
   useWorkbenchController: mocks.useController,
   useWorkbenchUiStore: mocks.useUi,
+  WorkbenchAppearancePopover: { template: '<button data-appearance-popover />' },
 }))
 
 vi.mock('../../../project', async (importOriginal) => {
@@ -32,7 +33,7 @@ vi.mock('../../../project', async (importOriginal) => {
   mocks.actualCatalogLoad = actual.createTemplateCatalogService([actual.builtInTemplateCatalogProvider]).load
   return {
     ...actual,
-    analyzeTemplateCompatibility: mocks.analyzeCompatibility,
+    analyzeTemplateEligibility: mocks.analyzeEligibility,
     createTemplateCatalogService: () => ({ load: mocks.catalogLoad }),
     prepareTemplatePreview: mocks.preparePreview,
   }
@@ -101,8 +102,8 @@ const RuntimeStub = defineComponent({
   },
 })
 
-function compatible() {
-  return { compatible: true, diagnostics: [] }
+function eligible() {
+  return { eligible: true, diagnostics: [] }
 }
 
 function previewFor(template: { manifest: { adapter: string, id: string } }) {
@@ -124,7 +125,6 @@ function mountWorkspace(target: 'page' | 'project' = 'project') {
     props: {
       canClose: true,
       target,
-      theme: 'dark',
     },
     global: {
       stubs: {
@@ -142,7 +142,7 @@ describe('template creation workspace', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="workbench-overlays"></div>'
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
-    mocks.analyzeCompatibility.mockImplementation(compatible)
+    mocks.analyzeEligibility.mockImplementation(eligible)
     mocks.catalogLoad.mockImplementation(() => mocks.actualCatalogLoad!())
     mocks.createPage.mockResolvedValue(true)
     mocks.createProject.mockResolvedValue(true)
@@ -166,7 +166,13 @@ describe('template creation workspace', () => {
     })
     mocks.useUi.mockReturnValue({
       clearMessage: vi.fn(),
+      openAppearanceDrawer: vi.fn(),
       message: ref(''),
+      paletteFamily: ref('catppuccin'),
+      resolvedTheme: ref('dark'),
+      setPaletteFamily: vi.fn(),
+      setThemePreference: vi.fn(),
+      themePreference: ref('system'),
     })
   })
 
@@ -237,17 +243,17 @@ describe('template creation workspace', () => {
     wrapper.unmount()
   })
 
-  it('shows actionable diagnostics and disables creation for an incompatible page template', async () => {
-    mocks.analyzeCompatibility.mockImplementation((template: { manifest: { adapter: string } }) =>
+  it('shows actionable diagnostics and disables creation when page requirements are unmet', async () => {
+    mocks.analyzeEligibility.mockImplementation((template: { manifest: { adapter: string } }) =>
       template.manifest.adapter === 'antd-vue'
         ? {
-            compatible: false,
+            eligible: false,
             diagnostics: [{
               code: 'TEMPLATE_REGISTRY_ADAPTER_MISMATCH',
               message: 'Template adapter antd-vue does not match element-plus.',
             }],
           }
-        : compatible())
+        : eligible())
     const wrapper = mountWorkspace('page')
     await flushPromises()
 

@@ -3,7 +3,7 @@ import {
   clamp,
   rightDockViewportEdge,
   viewportHeight,
-} from '../geometry'
+} from '../utils'
 
 /**
  * 安装 devtools 面板拖拽交互。

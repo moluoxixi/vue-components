@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import type { AntdVueDesignerOption, AntdVueOptionSource } from '../types'
+import type { AntdChoiceReadonlyContentProps } from '../types'
 import { computed } from 'vue'
 import { useAntdVueResolvedOptions } from '../options'
 
-const props = defineProps<{
-  value?: unknown
-  options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
-}>()
+const props = defineProps<AntdChoiceReadonlyContentProps>()
 
 const state = useAntdVueResolvedOptions(
   computed(() => props.optionSource),

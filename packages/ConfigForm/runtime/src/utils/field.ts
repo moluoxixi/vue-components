@@ -1,65 +1,25 @@
-import type { output, ZodTypeAny } from 'zod'
+import type { ZodTypeAny } from 'zod'
 import type {
-  ComponentNodeConfig,
   DefinedFormNodeConfig,
-  FieldCondition,
   FieldConfig,
-  FieldKey,
-  FieldValidator,
   FormValues,
   NormalizedFieldConfig,
-  RenderFunction,
-  RuntimeText,
-  SlotContent,
   ValidateTrigger,
-} from '@/types'
-import { applyFieldDefaults, normalizeValidateOn } from '@/plugins/builtInFieldDefaults'
+} from '../types'
+import type {
+  DefinedComponentNodeConfig,
+  DefinedFieldConfig,
+  DefineFieldComponentNodeConfig,
+  DefineFieldDefaultValueConfig,
+  DefineFieldFactory,
+  DefineFieldSchemaConfig,
+  DefineFieldsFactory,
+  DefineFieldUnknownValueConfig,
+  FormNodeInput,
+} from '../types/field'
+import { applyFieldDefaults, normalizeValidateOn } from '../plugins/defaults'
 
 export { normalizeValidateOn }
-
-/** 从 Vue 组件中提取 props 类型；普通函数不再视作 Vue function component。 */
-export type ExtractComponentProps<C> = C extends abstract new (...args: unknown[]) => { $props: infer P }
-  ? P
-  : C extends (...args: unknown[]) => unknown
-    ? Record<string, unknown>
-    : C extends { $props: infer P }
-      ? P
-      : Record<string, unknown>
-
-type RuntimeResolvable<T> = T extends (...args: infer TArgs) => infer TReturn
-  ? (...args: TArgs) => TReturn
-  : T extends string
-    ? RuntimeText
-    : T extends number | boolean | bigint | symbol | null | undefined
-      ? T
-      : T extends readonly (infer TItem)[]
-        ? RuntimeResolvable<TItem>[]
-        : T extends object
-          ? { [K in keyof T]: RuntimeResolvable<T[K]> }
-          : T
-
-interface ComponentFieldPart<C, TValues extends object = FormValues> {
-  component: C | RenderFunction<[], TValues>
-  props?: RuntimeResolvable<ExtractComponentProps<NoInfer<C>>> & {}
-}
-
-interface ComponentNodeConfigCore<C, TValues extends object = FormValues> extends ComponentFieldPart<C, TValues> {
-  extensions?: ComponentNodeConfig['extensions']
-  span?: number
-  visible?: FieldCondition<TValues>
-  slots?: Record<string, SlotContent>
-}
-
-type FormNodeInput = FieldConfig | ComponentNodeConfig
-
-type DefinedFieldConfig<TConfig> = TConfig & FieldConfig
-type DefinedComponentNodeConfig<TConfig> = TConfig & ComponentNodeConfig
-
-type FieldValueFor<
-  TValues extends object,
-  TField extends FieldKey<TValues>,
-  TFallback,
-> = [FormValues] extends [TValues] ? TFallback : TValues[TField]
 
 /**
  * 将公开字段声明委托给内置默认应用函数，保持默认值来源唯一。
@@ -82,130 +42,6 @@ export function applyFieldTransform(
   allValues: FormValues,
 ): unknown {
   return field.transform ? field.transform(value, allValues) : value
-}
-
-interface FieldConfigBase<
-  TValues extends object = FormValues,
-  TValue = unknown,
-  TField extends FieldKey<TValues> = FieldKey<TValues>,
-> {
-  field: TField
-  extensions?: ComponentNodeConfig['extensions']
-  label?: RuntimeText
-  span?: number
-  valueProp?: string
-  trigger?: string
-  blurTrigger?: string
-  required?: FieldCondition<TValues>
-  requiredMessage?: RuntimeText
-  validateOn?: ValidateTrigger | ValidateTrigger[]
-  validator?: FieldValidator<TValues, TValue>
-  visible?: FieldCondition<TValues>
-  disabled?: FieldCondition<TValues>
-  readonly?: FieldCondition<TValues>
-  transform?: (value: TValue, allValues: TValues) => unknown
-  getValueFromEvent?: (...args: unknown[]) => TValue
-  id?: string
-  submitWhenHidden?: boolean
-  submitWhenDisabled?: boolean
-  slots?: Record<string, SlotContent>
-}
-
-interface SchemaFieldConfigCore<
-  TValues extends object,
-  TSchema extends ZodTypeAny,
-  TField extends FieldKey<TValues> = FieldKey<TValues>,
-> extends FieldConfigBase<TValues, FieldValueFor<TValues, TField, output<TSchema>>, TField> {
-  schema: TSchema
-  defaultValue?: FieldValueFor<TValues, TField, output<TSchema>>
-}
-
-interface DefaultValueFieldConfigCore<
-  TValues extends object,
-  TValue,
-  TField extends FieldKey<TValues> = FieldKey<TValues>,
-> extends FieldConfigBase<TValues, FieldValueFor<TValues, TField, TValue>, TField> {
-  schema?: undefined
-  defaultValue: FieldValueFor<TValues, TField, TValue>
-}
-
-interface UnknownValueFieldConfigCore<
-  TValues extends object = FormValues,
-  TField extends FieldKey<TValues> = FieldKey<TValues>,
-> extends FieldConfigBase<TValues, FieldValueFor<TValues, TField, unknown>, TField> {
-  schema?: undefined
-  defaultValue?: undefined
-}
-
-type ModelSchemaFieldConfigInput<
-  TValues extends object,
-  TSchema extends ZodTypeAny,
-> = {
-  [TField in FieldKey<TValues>]: SchemaFieldConfigCore<TValues, TSchema, TField>
-}[FieldKey<TValues>]
-
-type ModelDefaultValueFieldConfigInput<
-  TValues extends object,
-> = {
-  [TField in FieldKey<TValues>]: DefaultValueFieldConfigCore<TValues, TValues[TField], TField>
-}[FieldKey<TValues>]
-
-type ModelUnknownValueFieldConfigInput<
-  TValues extends object,
-> = {
-  [TField in FieldKey<TValues>]: UnknownValueFieldConfigCore<TValues, TField>
-}[FieldKey<TValues>]
-
-type DefineFieldSchemaConfig<
-  TValues extends object,
-  C,
-  TSchema extends ZodTypeAny,
-  TField extends string = string,
-> = [FormValues] extends [TValues]
-  ? SchemaFieldConfigCore<FormValues, TSchema, TField & FieldKey<FormValues>> & ComponentFieldPart<C, FormValues>
-  : ModelSchemaFieldConfigInput<NoInfer<TValues>, TSchema> & ComponentFieldPart<C, NoInfer<TValues>>
-
-type DefineFieldDefaultValueConfig<
-  TValues extends object,
-  C,
-  TValue,
-  TField extends string = string,
-> = [FormValues] extends [TValues]
-  ? DefaultValueFieldConfigCore<FormValues, TValue, TField & FieldKey<FormValues>> & ComponentFieldPart<C, FormValues>
-  : ModelDefaultValueFieldConfigInput<NoInfer<TValues>> & ComponentFieldPart<C, NoInfer<TValues>>
-
-type DefineFieldUnknownValueConfig<
-  TValues extends object,
-  C,
-  TField extends string = string,
-> = [FormValues] extends [TValues]
-  ? UnknownValueFieldConfigCore<FormValues, TField & FieldKey<FormValues>> & ComponentFieldPart<C, FormValues>
-  : ModelUnknownValueFieldConfigInput<NoInfer<TValues>> & ComponentFieldPart<C, NoInfer<TValues>>
-
-type DefineFieldComponentNodeConfig<
-  TValues extends object,
-  C,
-> = [FormValues] extends [TValues]
-  ? ComponentNodeConfigCore<C, FormValues>
-  : ComponentNodeConfigCore<C, NoInfer<TValues>>
-
-interface DefineFieldFactory<TValues extends object> {
-  <C = unknown, TSchema extends ZodTypeAny = ZodTypeAny, TField extends string = string>(
-    config: DefineFieldSchemaConfig<NoInfer<TValues>, C, TSchema, TField>,
-  ): DefinedFieldConfig<DefineFieldSchemaConfig<TValues, C, TSchema, TField>>
-  <C = unknown, TValue = unknown, TField extends string = string>(
-    config: DefineFieldDefaultValueConfig<NoInfer<TValues>, C, TValue, TField>,
-  ): DefinedFieldConfig<DefineFieldDefaultValueConfig<TValues, C, TValue, TField>>
-  <C = unknown, TField extends string = string>(
-    config: DefineFieldUnknownValueConfig<NoInfer<TValues>, C, TField>,
-  ): DefinedFieldConfig<DefineFieldUnknownValueConfig<TValues, C, TField>>
-  <C = unknown>(
-    config: DefineFieldComponentNodeConfig<NoInfer<TValues>, C>,
-  ): DefinedComponentNodeConfig<DefineFieldComponentNodeConfig<TValues, C>>
-}
-
-export interface DefineFieldsFactory<TValues extends object> {
-  defineField: DefineFieldFactory<TValues>
 }
 
 /**

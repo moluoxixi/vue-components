@@ -1,8 +1,8 @@
 <script lang="ts">
 // 示例元信息由 playground 通过 import.meta.glob 读取，用于生成侧栏和页面标题。
 export const exampleMeta = {
-  name: 'antdConfigForm',
-  title: 'antdConfigForm',
+  name: 'AntdConfigForm',
+  title: 'AntdConfigForm',
   category: '配置表单',
   description: 'Ant Design Vue 轻量配置表单包的布局、容器和联动场景。',
   hidden: true,
@@ -17,7 +17,7 @@ import type {
   DefineConfigFormFieldFactory,
 } from '@moluoxixi/config-form-headless'
 import { defineFields } from '@moluoxixi/config-form-headless'
-import { antdConfigForm } from '@moluoxixi/config-form-antd-vue'
+import { AntdConfigForm } from '@moluoxixi/config-form-antd-vue'
 import {
   AutoComplete as AAutoComplete,
   Button as AButton,
@@ -127,13 +127,14 @@ const layoutGridSubmitted = shallowRef<Partial<AntdKnownValues>>({})
 const containerSubmitted = shallowRef<Partial<AntdKnownValues>>({})
 const linkedSubmitted = shallowRef<Partial<AntdLinkedValues>>({})
 
-// Antd 版本字段矩阵覆盖常见组件，checked 协议由 antdConfigForm 的 adapter 统一处理。
+// Antd 版本字段矩阵覆盖常见组件，checked 协议由 AntdConfigForm 的 adapter 统一处理。
 const layoutInlineFields = createKnownFields('antd-inline', true, defineCommonField)
 const layoutGridFields = createKnownFields('antd-grid', true, defineCommonField)
 const containerFields = [
   defineCommonField({
     cellAttrs: {},
     component: ACard,
+    id: 'antd-container-card',
     span: 24,
     props: {
       class: 'config-form-demo__container-card',
@@ -148,6 +149,7 @@ const containerFields = [
   defineCommonField({
     cellAttrs: {},
     component: ACollapse,
+    id: 'antd-container-collapse',
     span: 24,
     props: {
       class: 'config-form-demo__container-collapse',
@@ -158,6 +160,7 @@ const containerFields = [
       default: defineCommonField({
         cellAttrs: {},
         component: ACollapsePanel,
+        id: 'antd-container-collapse-panel',
         props: {
           header: 'Antd Collapse 容器',
           key: 'profile',
@@ -166,6 +169,7 @@ const containerFields = [
           default: defineCommonField({
             cellAttrs: {},
             component: 'p',
+            id: 'antd-container-collapse-content',
             props: { textContent: 'Collapse 容器承载非字段配置节点' },
           }),
         },
@@ -175,6 +179,7 @@ const containerFields = [
   defineCommonField({
     cellAttrs: {},
     component: ATabs,
+    id: 'antd-container-tabs',
     span: 24,
     props: {
       activeKey: 'base',
@@ -186,6 +191,7 @@ const containerFields = [
         defineCommonField({
           cellAttrs: {},
           component: ATabPane,
+          id: 'antd-container-tab-base',
           props: {
             key: 'base',
             tab: '基础',
@@ -194,6 +200,7 @@ const containerFields = [
             default: defineCommonField({
               cellAttrs: {},
               component: 'p',
+              id: 'antd-container-tab-base-content',
               props: { textContent: 'Tabs 基础容器内容' },
             }),
           },
@@ -201,6 +208,7 @@ const containerFields = [
         defineCommonField({
           cellAttrs: {},
           component: ATabPane,
+          id: 'antd-container-tab-preference',
           props: {
             key: 'preference',
             tab: '偏好',
@@ -209,6 +217,7 @@ const containerFields = [
             default: defineCommonField({
               cellAttrs: {},
               component: 'p',
+              id: 'antd-container-tab-preference-content',
               props: { textContent: 'Tabs 偏好容器内容' },
             }),
           },
@@ -221,6 +230,7 @@ const linkedFields = [
   defineLinkedField({
     component: ASwitch,
     field: 'advanced',
+    id: 'antd-linked-advanced',
     label: '高级模式',
     props: {
       checkedChildren: '启用',
@@ -276,6 +286,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: AInput,
       field: 'input' as AntdFieldKey<TValues>,
+      id: `${prefix}-input`,
       label: withFormItem ? '文本输入' : undefined,
       props: {
         placeholder: `${prefix} 文本输入`,
@@ -287,6 +298,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ATextarea,
       field: 'textarea' as AntdFieldKey<TValues>,
+      id: `${prefix}-textarea`,
       label: withFormItem ? '多行文本' : undefined,
       props: {
         placeholder: `${prefix} 多行文本`,
@@ -299,6 +311,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: AInputPassword,
       field: 'password' as AntdFieldKey<TValues>,
+      id: `${prefix}-password`,
       label: withFormItem ? '密码输入' : undefined,
       props: {
         placeholder: `${prefix} 密码输入`,
@@ -310,6 +323,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: AInputSearch,
       field: 'search' as AntdFieldKey<TValues>,
+      id: `${prefix}-search`,
       label: withFormItem ? '搜索输入' : undefined,
       props: {
         placeholder: `${prefix} 搜索输入`,
@@ -321,6 +335,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: AInputNumber,
       field: 'inputNumber' as AntdFieldKey<TValues>,
+      id: `${prefix}-input-number`,
       label: withFormItem ? '数字输入' : undefined,
       props: {
         max: 99,
@@ -333,6 +348,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: AAutoComplete,
       field: 'autoComplete' as AntdFieldKey<TValues>,
+      id: `${prefix}-auto-complete`,
       label: withFormItem ? '自动完成' : undefined,
       props: {
         options: createFlatOptions(suffix),
@@ -345,6 +361,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ASelect,
       field: 'select' as AntdFieldKey<TValues>,
+      id: `${prefix}-select`,
       label: withFormItem ? '下拉选择' : undefined,
       props: {
         options: createFlatOptions(suffix),
@@ -357,6 +374,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ACascader,
       field: 'cascader' as AntdFieldKey<TValues>,
+      id: `${prefix}-cascader`,
       label: withFormItem ? '级联选择' : undefined,
       props: {
         options: createNestedOptions(suffix),
@@ -369,6 +387,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ATreeSelect,
       field: 'treeSelect' as AntdFieldKey<TValues>,
+      id: `${prefix}-tree-select`,
       label: withFormItem ? '树形选择' : undefined,
       props: {
         placeholder: `${prefix} 树形选择`,
@@ -381,6 +400,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ACheckbox,
       field: 'checkbox' as AntdFieldKey<TValues>,
+      id: `${prefix}-checkbox`,
       label: withFormItem ? '单选勾选' : undefined,
       props: {
         'data-testid': `${prefix}-checkbox`,
@@ -394,6 +414,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ACheckboxGroup,
       field: 'checkboxGroup' as AntdFieldKey<TValues>,
+      id: `${prefix}-checkbox-group`,
       label: withFormItem ? '多选勾选' : undefined,
       props: {
         options: createCheckOptions(suffix),
@@ -405,6 +426,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ASwitch,
       field: 'switchValue' as AntdFieldKey<TValues>,
+      id: `${prefix}-switch`,
       label: withFormItem ? '开关' : undefined,
       props: {
         checkedChildren: '开启',
@@ -417,6 +439,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ARadioGroup,
       field: 'radio' as AntdFieldKey<TValues>,
+      id: `${prefix}-radio`,
       label: withFormItem ? '单选组' : undefined,
       props: {
         options: createRadioOptions(),
@@ -428,6 +451,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ARate,
       field: 'rate' as AntdFieldKey<TValues>,
+      id: `${prefix}-rate`,
       label: withFormItem ? '评分' : undefined,
       props: {
         'data-testid': `${prefix}-rate`,
@@ -438,6 +462,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ASlider,
       field: 'slider' as AntdFieldKey<TValues>,
+      id: `${prefix}-slider`,
       label: withFormItem ? '滑块' : undefined,
       props: {
         max: 100,
@@ -451,6 +476,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ADatePicker,
       field: 'date' as AntdFieldKey<TValues>,
+      id: `${prefix}-date`,
       label: withFormItem ? '日期' : undefined,
       props: {
         placeholder: `${prefix} 日期`,
@@ -463,6 +489,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ARangePicker,
       field: 'range' as AntdFieldKey<TValues>,
+      id: `${prefix}-range`,
       label: withFormItem ? '日期范围' : undefined,
       props: {
         placeholder: [`${prefix} 开始日期`, `${prefix} 结束日期`],
@@ -475,6 +502,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ATimePicker,
       field: 'time' as AntdFieldKey<TValues>,
+      id: `${prefix}-time`,
       label: withFormItem ? '时间' : undefined,
       props: {
         placeholder: `${prefix} 时间`,
@@ -487,6 +515,7 @@ function createKnownFields<TValues extends AntdKnownValues>(
     defineField({
       component: ATimeRangePicker,
       field: 'timeRange' as AntdFieldKey<TValues>,
+      id: `${prefix}-time-range`,
       label: withFormItem ? '时间范围' : undefined,
       props: {
         placeholder: [`${prefix} 开始时间`, `${prefix} 结束时间`],
@@ -504,6 +533,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ARadioGroup,
       field: 'planType',
+      id: 'antd-linked-plan-type',
       label: '方案类型',
       props: {
         options: createRadioOptions(),
@@ -514,6 +544,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: AInput,
       field: 'enterpriseName',
+      id: 'antd-linked-enterprise-name',
       label: '企业名称',
       props: {
         placeholder: '企业模式显示',
@@ -535,6 +566,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ACheckbox,
       field: 'marketing',
+      id: 'antd-linked-marketing',
       label: '营销设置',
       props: {
         'data-testid': 'antd-linked-marketing-checkbox',
@@ -547,6 +579,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ATextarea,
       field: 'marketingNote',
+      id: 'antd-linked-marketing-note',
       label: '营销备注',
       props: {
         placeholder: '勾选后显示',
@@ -559,6 +592,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ASelect,
       field: 'notifyChannel',
+      id: 'antd-linked-notify-channel',
       label: '通知方式',
       props: {
         options: createNotifyOptions(),
@@ -570,6 +604,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ATimePicker,
       field: 'scheduledTime',
+      id: 'antd-linked-scheduled-time',
       label: '预约时间',
       props: {
         valueFormat: 'HH:mm:ss',
@@ -581,6 +616,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: AInputNumber,
       field: 'seatCount',
+      id: 'antd-linked-seat-count',
       label: '席位数',
       props: {
         max: 99,
@@ -592,6 +628,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ATextarea,
       field: 'seatNote',
+      id: 'antd-linked-seat-note',
       label: '席位说明',
       props: {
         placeholder: '席位数达到 5 后显示',
@@ -689,7 +726,7 @@ function submitLinked(values: ConfigFormValues): void {
             />
           </div>
 
-          <antdConfigForm
+          <AntdConfigForm
             v-if="!layoutGridMode"
             v-model="layoutInlineModel"
             data-testid="antd-layout-inline"
@@ -706,9 +743,9 @@ function submitLinked(values: ConfigFormValues): void {
                 </AButton>
               </div>
             </template>
-          </antdConfigForm>
+          </AntdConfigForm>
 
-          <antdConfigForm
+          <AntdConfigForm
             v-else
             v-model="layoutGridModel"
             data-testid="antd-layout-grid-form"
@@ -725,7 +762,7 @@ function submitLinked(values: ConfigFormValues): void {
                 </AButton>
               </div>
             </template>
-          </antdConfigForm>
+          </AntdConfigForm>
 
           <pre class="config-form-demo__preview" data-testid="antd-layout-preview">{{ layoutSubmittedText }}</pre>
         </section>
@@ -733,7 +770,7 @@ function submitLinked(values: ConfigFormValues): void {
 
       <ATabPane key="container" tab="容器">
         <section class="config-form-demo__section" data-testid="antd-container-scenario">
-          <antdConfigForm
+          <AntdConfigForm
             v-model="containerModel"
             data-testid="antd-container-form"
             :fields="containerFields"
@@ -748,7 +785,7 @@ function submitLinked(values: ConfigFormValues): void {
                 </AButton>
               </div>
             </template>
-          </antdConfigForm>
+          </AntdConfigForm>
 
           <pre class="config-form-demo__preview" data-testid="antd-container-preview">{{ containerSubmittedText }}</pre>
         </section>
@@ -756,7 +793,7 @@ function submitLinked(values: ConfigFormValues): void {
 
       <ATabPane key="linked" tab="联动">
         <section class="config-form-demo__section" data-testid="antd-linked-scenario">
-          <antdConfigForm
+          <AntdConfigForm
             v-model="linkedModel"
             data-testid="antd-linked-form"
             :field-span="12"
@@ -772,7 +809,7 @@ function submitLinked(values: ConfigFormValues): void {
                 </AButton>
               </div>
             </template>
-          </antdConfigForm>
+          </AntdConfigForm>
 
           <pre class="config-form-demo__preview" data-testid="antd-linked-preview">{{ linkedSubmittedText }}</pre>
         </section>

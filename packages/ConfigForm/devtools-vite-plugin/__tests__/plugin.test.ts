@@ -3,7 +3,6 @@ import {
   configFormDevtools,
   ConfigFormDevtoolsHttpError,
   ConfigFormDevtoolsPluginError,
-  configFormDevtoolsVitePlugin,
 } from '../index'
 
 describe('configFormDevtools vite plugin', () => {
@@ -13,10 +12,6 @@ describe('configFormDevtools vite plugin', () => {
     expect(plugin.name).toBe('moluoxixi:config-form-devtools')
     expect(plugin.apply).toBe('serve')
     expect(plugin.enforce).toBe('pre')
-  })
-
-  it('exports the explicit vite plugin alias', () => {
-    expect(configFormDevtoolsVitePlugin).toBe(configFormDevtools)
   })
 
   it('exports the public error classes', () => {

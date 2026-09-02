@@ -38,8 +38,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        adapter: resolve(__dirname, 'src/adapter.ts'),
-        client: resolve(__dirname, 'src/client.ts'),
+        adapter: resolve(__dirname, 'src/adapter/index.ts'),
+        client: resolve(__dirname, 'src/client/index.ts'),
         index: resolve(__dirname, 'index.ts'),
       },
       /**

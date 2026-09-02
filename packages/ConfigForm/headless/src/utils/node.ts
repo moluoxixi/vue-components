@@ -4,23 +4,10 @@ import type {
   ConfigFormCondition,
   ConfigFormField,
   ConfigFormNode,
+  ConfigFormResolvedFieldState,
   ConfigFormSlotConfig,
   ConfigFormValues,
 } from '../types'
-
-export interface ConfigFormResolvedFieldState<
-  TValues extends ConfigFormValues = ConfigFormValues,
-  TFieldAttrs = ConfigFormAttrs,
-  TCellAttrs = ConfigFormAttrs,
-  TComponent = Component | string,
-> {
-  field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
-  visible: boolean
-  disabled: boolean
-  readonly: boolean
-  required: boolean
-  validatable: boolean
-}
 
 /** 判断节点是否为真实字段；容器节点没有 field，也不会生成 FormItem。 */
 export function isConfigFormField<
@@ -250,7 +237,7 @@ export function resolveConfigFormCondition<TValues extends ConfigFormValues>(
   return typeof condition === 'function' ? condition(values) : (condition ?? defaultValue)
 }
 
-/** 节点可见性同时兼容原包 visible 语义和轻量版已有 hidden 语义。 */
+/** 节点可见性由当前 `visible` 与 `hidden` 条件共同决定。 */
 export function isConfigFormNodeVisible<
   TValues extends ConfigFormValues,
   TComponent = unknown,

@@ -1,7 +1,7 @@
 import type { DesignerController } from '../src/composables'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
-import { createDesignerDesignSession } from '../src/components/design-session'
+import { createDesignerDesignSession } from '../src/components/DesignerCanvas/services'
 
 function controller(): DesignerController {
   const graph = {

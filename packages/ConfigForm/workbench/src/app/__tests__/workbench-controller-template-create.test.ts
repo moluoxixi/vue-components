@@ -2,21 +2,20 @@
 
 import type { ProjectRepository } from '@moluoxixi/config-form-model'
 import type { VueWrapper } from '@vue/test-utils'
-import type { WorkbenchController } from '../workbench-controller'
-import type { WorkbenchUiStore } from '../workbench-ui-store'
+import type { WorkbenchController, WorkbenchUiStore } from '..'
 import { createMemoryProjectRepository } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
+import { createWorkbenchController, createWorkbenchUiStore } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
 import {
   builtInTemplateCatalogProvider,
-  createBuiltInProject,
   createMemoryProjectRecoveryDraftStore,
+  createPageTransferDocument,
   createTemplateCatalogService,
 } from '../../project'
-import { createWorkbenchController } from '../workbench-controller'
-import { createWorkbenchUiStore } from '../workbench-ui-store'
+import { createBuiltInProjectFixture } from '../../project/__tests__/fixtures'
 
 const mocks = vi.hoisted(() => ({
   createDraftStore: vi.fn(),
@@ -129,7 +128,7 @@ describe('workbench template project creation transaction', () => {
     const repository = durableRepository()
     const adapter = await loadWorkbenchAdapter('element-plus')
     await repository.create({
-      document: createBuiltInProject('element-profile', {
+      document: createBuiltInProjectFixture('element-profile', {
         id: 'existing-project',
         name: 'Existing project',
       }, adapter.componentRegistry.lock),
@@ -177,13 +176,15 @@ describe('workbench template project creation transaction', () => {
     const repository = durableRepository()
     const adapter = await loadWorkbenchAdapter('element-plus')
     await repository.create({
-      document: createBuiltInProject('element-profile', {
+      document: createBuiltInProjectFixture('element-profile', {
         id: 'import-host',
         name: 'Import host',
       }, adapter.componentRegistry.lock),
     })
     const { controller } = await setup(repository)
-    const source = controller.currentProject.value!.pagesById[controller.currentProject.value!.homePageId]!
+    const project = controller.currentProject.value!
+    const source = createPageTransferDocument(project, project.homePageId)
+    expect(source).toBeDefined()
     const analyzed = await controller.prepareJsonImport(JSON.stringify(source), 'page')
     expect(analyzed.success).toBe(true)
     if (!analyzed.success)
@@ -202,19 +203,21 @@ describe('workbench template project creation transaction', () => {
     const repository = durableRepository()
     const adapter = await loadWorkbenchAdapter('element-plus')
     await repository.create({
-      document: createBuiltInProject('element-profile', {
+      document: createBuiltInProjectFixture('element-profile', {
         id: 'stale-import-host',
         name: 'Stale import host',
       }, adapter.componentRegistry.lock),
     })
     const { controller } = await setup(repository)
     const project = controller.currentProject.value!
-    const source = project.pagesById[project.homePageId]!
+    const sourcePage = project.pagesById[project.homePageId]!
+    const source = createPageTransferDocument(project, sourcePage.id)
+    expect(source).toBeDefined()
     const analyzed = await controller.prepareJsonImport(JSON.stringify(source), 'page')
     expect(analyzed.success).toBe(true)
     if (!analyzed.success)
       return
-    await controller.handlePageAction({ type: 'page.rename', pageId: source.id, name: 'Changed after analysis' })
+    await controller.handlePageAction({ type: 'page.rename', pageId: sourcePage.id, name: 'Changed after analysis' })
     const historyPosition = controller.designSession.historyControl.value.history?.position
     const pageId = controller.currentPageId.value
 
@@ -227,7 +230,7 @@ describe('workbench template project creation transaction', () => {
   it('compensates an imported project when activation preparation fails', async () => {
     const repository = durableRepository()
     const adapter = await loadWorkbenchAdapter('element-plus')
-    const source = createBuiltInProject('element-profile', {
+    const source = createBuiltInProjectFixture('element-profile', {
       id: 'imported-project-source',
       name: 'Imported project source',
     }, adapter.componentRegistry.lock)
@@ -249,7 +252,7 @@ describe('workbench template project creation transaction', () => {
     const repository = durableRepository()
     const createProject = vi.spyOn(repository, 'create')
     const adapter = await loadWorkbenchAdapter('element-plus')
-    const source = createBuiltInProject('element-profile', {
+    const source = createBuiltInProjectFixture('element-profile', {
       id: 'multi-page-source',
       name: 'Multi-page source',
     }, adapter.componentRegistry.lock)

@@ -36,11 +36,6 @@
     "./styles": {
       "import": "./dist/components.css"
     },
-    "./AntdConfigForm": {
-      "source": "./src/AntdConfigForm/index.ts",
-      "types": "./dist/src/AntdConfigForm/index.d.ts",
-      "import": "./dist/AntdConfigForm.js"
-    },
     "./ConfigTable": {
       "source": "./src/ConfigTable/index.ts",
       "types": "./dist/src/ConfigTable/index.d.ts",
@@ -55,11 +50,6 @@
       "source": "./src/DateRangePicker/index.ts",
       "types": "./dist/src/DateRangePicker/index.d.ts",
       "import": "./dist/DateRangePicker.js"
-    },
-    "./ElementConfigForm": {
-      "source": "./src/ElementConfigForm/index.ts",
-      "types": "./dist/src/ElementConfigForm/index.d.ts",
-      "import": "./dist/ElementConfigForm.js"
     },
     "./EnterNextContainer": {
       "source": "./src/EnterNextContainer/index.ts",
@@ -95,21 +85,6 @@
       "source": "./src/RequestTreeSelect/index.ts",
       "types": "./dist/src/RequestTreeSelect/index.d.ts",
       "import": "./dist/RequestTreeSelect.js"
-    },
-    "./configForm": {
-      "source": "./src/configForm.ts",
-      "types": "./dist/src/configForm.d.ts",
-      "import": "./dist/configForm.js"
-    },
-    "./element": {
-      "source": "./src/entries/element.ts",
-      "types": "./dist/src/entries/element.d.ts",
-      "import": "./dist/element.js"
-    },
-    "./antd": {
-      "source": "./src/entries/antd.ts",
-      "types": "./dist/src/entries/antd.d.ts",
-      "import": "./dist/antd.js"
     }
   },
   "main": "./dist/index.js",
@@ -129,16 +104,12 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
-    "ant-design-vue": "^4.2.0",
     "element-plus": "^2.9.0",
-    "vue": "^3.5.0",
-    "zod": "^3.23.0"
+    "vue": "^3.5.0"
   },
   "dependencies": {
     "@floating-ui/dom": "catalog:ui",
     "@lucide/vue": "catalog:ui",
-    "@moluoxixi/config-form": "workspace:*",
-    "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/hooks": "workspace:*",
     "dayjs": "catalog:build",
     "sortablejs": "catalog:"
@@ -148,7 +119,6 @@
     "@types/sortablejs": "catalog:",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
-    "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
     "esbuild": "catalog:dev",
     "happy-dom": "catalog:dev",
@@ -157,8 +127,7 @@
     "vite": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:build",
-    "vue-tsc": "catalog:dev",
-    "zod": "catalog:dev"
+    "vue-tsc": "catalog:dev"
   },
   "publishConfig": {
     "access": "public"

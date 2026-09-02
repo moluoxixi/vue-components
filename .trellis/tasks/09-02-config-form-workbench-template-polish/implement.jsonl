@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"加载 Workbench 模板页适用的前端开发清单。"}
+{"file":".trellis/spec/config-form-designer/frontend/directory-structure.md","reason":"保持 Template feature 的 types/components/services 责任边界。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"模板页不得改变 ProjectDocument、Catalog 或 Runtime 当前契约。"}
+{"file":".trellis/spec/config-form-core/frontend/flow-runtime-consistency.md","reason":"保持 Preview Runtime revision、stale guard 与 iframe 生命周期。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核对 Catalog 到 eligibility、preview、create 与展示状态的完整数据流。"}

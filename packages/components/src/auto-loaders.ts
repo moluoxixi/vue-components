@@ -11,11 +11,9 @@ const packageName = '@moluoxixi/components'
 const packageStyles = '@moluoxixi/components/styles'
 
 export const componentNames = [
-  'AntdConfigForm',
   'ConfigTable',
   'CopyText',
   'DateRangePicker',
-  'ElementConfigForm',
   'EnterNextContainer',
   'HeadlessCopyText',
   'HeadlessTable',
@@ -41,7 +39,6 @@ export const autoComponent: AutoComponentResolver = (name) => {
 
 /** Runtime helper preset grouped by public subpath. Types remain explicit imports. */
 export const autoImport = {
-  [`${packageName}/AntdConfigForm`]: ['antdConfigForm'],
   [`${packageName}/CopyText`]: ['ClipboardCopyError', 'copyText'],
   [`${packageName}/HeadlessTable`]: [
     'createHeadlessTableRenderer',
@@ -54,27 +51,5 @@ export const autoImport = {
     'headlessTableRendererKey',
     'provideHeadlessTableRenderer',
     'useHeadlessTable',
-  ],
-  [`${packageName}/configForm`]: [
-    'collectAllConfigFormFields',
-    'collectConfigFormFields',
-    'createConfigFormController',
-    'defineConfigFormField',
-    'defineConfigFormFields',
-    'defineField',
-    'defineFields',
-    'formatConfigFormReadonlyValue',
-    'formatConfigFormZodIssues',
-    'isConfigFormField',
-    'isConfigFormFieldReadonly',
-    'isConfigFormNodeVisible',
-    'isEmptyConfigFormRequiredValue',
-    'normalizeConfigFormValidateOn',
-    'resolveConfigFormCondition',
-    'resolveConfigFormFieldStates',
-    'resolveConfigFormReadonlyRender',
-    'shouldValidateConfigFormOn',
-    'validateConfigFormFieldRules',
-    'withInstall',
   ],
 } satisfies AutoImportPreset

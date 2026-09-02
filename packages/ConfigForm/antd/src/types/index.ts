@@ -1,3 +1,4 @@
+export type * from './binding'
 export type * from './emits'
 export type * from './expose'
 export type * from './props'

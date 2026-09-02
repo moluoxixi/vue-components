@@ -1,1 +1,2 @@
-export * from './use-designer-controller'
+export type * from './types'
+export { useDesignerController } from './use-designer-controller'

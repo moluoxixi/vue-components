@@ -1,7 +1,7 @@
 import type { ComponentContract, PageNode } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { describe, expect, it } from 'vitest'
-import { resolveInspectorCapabilities } from '../src/inspector/capabilities'
+import { resolveInspectorCapabilities } from '../src/inspector'
 
 function field(
   id: string,

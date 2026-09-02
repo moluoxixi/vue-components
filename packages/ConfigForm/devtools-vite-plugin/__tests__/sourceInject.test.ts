@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { transformDefineFieldSource } from '../src/sourceInject'
+import { transformDefineFieldSource } from '../src/source-inject'
 
 const TS_FILE = 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/components/ElementDemoControls.ts'
 const VUE_FILE = 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue'

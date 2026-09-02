@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it, vi } from 'vitest'
-import { createDesignerDragVisualClone } from '../src/components/designer-drag-overlay'
+import { createDesignerDragVisualClone } from '../src/components/DesignerCanvas/utils'
 
 describe('designer drag visual clone', () => {
   it('removes editor metadata, form identity, links, and live handlers', () => {

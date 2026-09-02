@@ -62,46 +62,13 @@ describe('validate utils', () => {
 
   it('validates forms by trigger and respects hidden or disabled submit opt-in', async () => {
     const fields = [
-      defineField({ field: 'plain', component: 'input', defaultValue: 'skip' }),
-      defineField({
-        field: 'requiredOnly',
-        component: 'input',
-        required: true,
-        requiredMessage: '请输入必填字段',
-      }),
-      defineField({
-        field: 'name',
-        component: 'input',
-        schema: z.string().min(2, '姓名至少 2 个字符'),
-        validateOn: 'blur',
-      }),
-      defineField({
-        field: 'hiddenSkipped',
-        component: 'input',
-        visible: () => false,
-        validator: () => '隐藏字段默认跳过',
-      }),
-      defineField({
-        field: 'hiddenKept',
-        component: 'input',
-        visible: () => false,
-        submitWhenHidden: true,
-        validator: () => '隐藏字段参与提交校验',
-      }),
-      defineField({
-        field: 'disabledSkipped',
-        component: 'input',
-        disabled: () => true,
-        submitWhenDisabled: false,
-        validator: () => '禁用字段默认跳过',
-      }),
-      defineField({
-        field: 'disabledKept',
-        component: 'input',
-        disabled: () => true,
-        submitWhenDisabled: true,
-        validator: () => '禁用字段参与提交校验',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-validate-test-ts-1', field: 'plain', component: 'input', defaultValue: 'skip' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-validate-test-ts-2', field: 'requiredOnly', component: 'input', required: true, requiredMessage: '请输入必填字段' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-validate-test-ts-3', field: 'name', component: 'input', schema: z.string().min(2, '姓名至少 2 个字符'), validateOn: 'blur' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-validate-test-ts-4', field: 'hiddenSkipped', component: 'input', visible: () => false, validator: () => '隐藏字段默认跳过' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-validate-test-ts-5', field: 'hiddenKept', component: 'input', visible: () => false, submitWhenHidden: true, validator: () => '隐藏字段参与提交校验' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-validate-test-ts-6', field: 'disabledSkipped', component: 'input', disabled: () => true, submitWhenDisabled: false, validator: () => '禁用字段默认跳过' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-validate-test-ts-7', field: 'disabledKept', component: 'input', disabled: () => true, submitWhenDisabled: true, validator: () => '禁用字段参与提交校验' }),
     ]
 
     const values = {

@@ -5,7 +5,7 @@ import type { Component } from 'vue'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import PreviewDrawer from '../PreviewDrawer.vue'
+import { PreviewDrawer } from '..'
 
 const RuntimeStub = defineComponent({
   name: 'PreviewRuntimeHostFrameStub',

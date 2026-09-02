@@ -5,7 +5,7 @@ import { Search } from '@lucide/vue'
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import { createDesignerNodeId } from '../graph'
-import { DESIGNER_SESSION_KEY } from './design-session'
+import { DESIGNER_SESSION_KEY } from './DesignerCanvas/services'
 
 const props = withDefaults(defineProps<{
   materials: DesignerMaterialDefinition[]

@@ -41,7 +41,6 @@ export default defineConfig({
         'src/types/**',
         'src/**/types/**',
         'src/**/types.ts',
-        'src/runtime/types.ts',
         'src/**/index.ts',
       ],
       // 只包含类型声明的模块没有可执行路径，V8 覆盖率不应统计它们。
@@ -58,7 +57,6 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, 'index.ts'),
         plugins: resolve(__dirname, 'src/plugins/index.ts'),
-        renderer: resolve(__dirname, 'src/renderer-entry.ts'),
       },
       name: 'ConfigForm',
       /**

@@ -9,7 +9,7 @@ export type ConfigFormCondition<TValues extends ConfigFormValues = ConfigFormVal
 export type ConfigFormColumnSpan = number
 export type ConfigFormAttrs = Record<string, unknown>
 /**
- * 字符串组件别名的注册项。
+ * 字符串组件 key 的注册项。
  *
  * 注册项除了真实组件，还可以声明默认 props 和值绑定协议。字段自身显式声明的
  * 绑定配置拥有更高优先级；extensions 等非渲染元数据不会进入这里。
@@ -23,7 +23,7 @@ export interface ConfigFormComponentRegistration<TComponent = Component> {
   getValueFromEvent?: (...args: unknown[]) => unknown
 }
 
-/** 按字符串别名解析真实组件或带默认绑定协议的注册项。 */
+/** 按字符串 key 解析真实组件或带默认绑定协议的注册项。 */
 export type ConfigFormComponentRegistry<TComponent = Component> = Record<
   string,
   TComponent | ConfigFormComponentRegistration<TComponent>
@@ -183,6 +183,8 @@ export interface ConfigFormNodeBase<
   TComponent = Component | string,
   TCellAttrs = ConfigFormAttrs,
 > {
+  /** Stable identity shared by Headless, Runtime, Designer, and Flow. */
+  id: string
   /** 真实渲染的 UI 组件、业务组件或原生标签。 */
   component: TComponent
   /** 透传给真实字段组件的 props。 */

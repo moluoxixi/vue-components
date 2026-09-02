@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import type { DevtoolsStore, StoredNode } from '../src/client/types'
 import { describe, expect, it } from 'vitest'
-import { comparePickNodes, resolvePickedNode } from '../src/client/tree'
+import { comparePickNodes, resolvePickedNode } from '../src/client'
 
 /**
  * 创建树工具测试用节点。

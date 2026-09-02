@@ -2,14 +2,35 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { createWorkbenchUiStore } from '../workbench-ui-store'
+import { createWorkbenchUiStore } from '..'
+
+function installColorScheme(initiallyDark = false) {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>()
+  let matches = initiallyDark
+  const query = {
+    get matches() { return matches },
+    media: '(prefers-color-scheme: dark)',
+    addEventListener: vi.fn((_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.add(listener)),
+    removeEventListener: vi.fn((_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener)),
+    dispatch(nextMatches: boolean) {
+      matches = nextMatches
+      listeners.forEach(listener => listener({ matches } as MediaQueryListEvent))
+    },
+  }
+  vi.stubGlobal('matchMedia', vi.fn(() => query))
+  return query
+}
 
 describe('workbench UI store', () => {
   beforeEach(() => {
     localStorage.clear()
     document.body.innerHTML = '<div id="workbench-overlays" data-theme="dark"></div>'
+    installColorScheme(false)
   })
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
 
   it('owns dialog, preview, mobile navigation, theme, locale, and message state', async () => {
     const ui = createWorkbenchUiStore({ locale: { locale: 'en-US' } })
@@ -19,7 +40,8 @@ describe('workbench UI store', () => {
     ui.openPageManager()
     ui.notify('Saved')
     ui.togglePreview()
-    ui.toggleTheme()
+    ui.setThemePreference('dark')
+    ui.setPaletteFamily('kanagawa')
     ui.toggleLocale()
     ui.selectMobileStudioView('pages')
     await nextTick()
@@ -34,10 +56,52 @@ describe('workbench UI store', () => {
     expect(ui.previewOpen.value).toBe(false)
     expect(ui.mobileStudioView.value).toBe('pages')
     expect(ui.studioLeftView.value).toBe('pages')
-    expect(ui.theme.value).toBe('light')
-    expect(document.getElementById('workbench-overlays')?.dataset.theme).toBe('light')
+    expect(ui.themePreference.value).toBe('dark')
+    expect(ui.resolvedTheme.value).toBe('dark')
+    expect(ui.paletteFamily.value).toBe('kanagawa')
+    expect(document.getElementById('workbench-overlays')?.dataset.theme).toBe('dark')
+    expect(document.getElementById('workbench-overlays')?.dataset.palette).toBe('kanagawa')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(document.documentElement.dataset.palette).toBe('kanagawa')
     expect(ui.localeId.value).toBe('zh-CN')
     expect(document.documentElement.lang).toBe('zh-CN')
+  })
+
+  it('tracks the system scheme only while system mode is selected', async () => {
+    const query = installColorScheme(false)
+    const ui = createWorkbenchUiStore({})
+    expect(ui.resolvedTheme.value).toBe('light')
+    expect(query.addEventListener).toHaveBeenCalledOnce()
+
+    query.dispatch(true)
+    await nextTick()
+    expect(ui.resolvedTheme.value).toBe('dark')
+
+    ui.setThemePreference('light')
+    await nextTick()
+    expect(query.removeEventListener).toHaveBeenCalledOnce()
+    query.dispatch(true)
+    expect(ui.resolvedTheme.value).toBe('light')
+  })
+
+  it('restores and persists application appearance outside project state', async () => {
+    localStorage.setItem('moluoxixi.config-form.workbench.appearance', JSON.stringify({
+      version: 1,
+      themePreference: 'dark',
+      paletteFamily: 'rose-pine',
+    }))
+    const ui = createWorkbenchUiStore({})
+    expect(ui.themePreference.value).toBe('dark')
+    expect(ui.paletteFamily.value).toBe('rose-pine')
+
+    ui.setThemePreference('system')
+    ui.setPaletteFamily('gruvbox')
+    await nextTick()
+    expect(JSON.parse(localStorage.getItem('moluoxixi.config-form.workbench.appearance')!)).toEqual({
+      version: 1,
+      themePreference: 'system',
+      paletteFamily: 'gruvbox',
+    })
   })
 
   it('closes preview expansion and page manager through explicit UI operations', () => {

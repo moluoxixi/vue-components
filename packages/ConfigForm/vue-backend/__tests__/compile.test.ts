@@ -1,22 +1,22 @@
 import type {
+  ConfigFormRendererField,
+  ConfigFormRendererNode,
+} from '@moluoxixi/config-form'
+import type {
   CanonicalPageIR,
   PageCompilation,
   ProjectCompilation,
 } from '@moluoxixi/config-form-compiler'
 import type {
-  ConfigFormRendererField,
-  ConfigFormRendererNode,
-} from '@moluoxixi/config-form/renderer'
-import type {
   VueRuntimeBindingResolver,
   VueRuntimeComponentBinding,
 } from '../index'
 import { performance } from 'node:perf_hooks'
+import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import {
   CANONICAL_PROJECT_IR_VERSION,
   CONFIG_FORM_COMPILER_VERSION,
 } from '@moluoxixi/config-form-compiler'
-import { RuntimeSurface } from '@moluoxixi/config-form/renderer'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
@@ -260,7 +260,7 @@ describe('vue Runtime backend', () => {
       value: 'Ada',
     })).toBe('name:Ada:Configured name')
 
-    const wrapper = mount(RuntimeSurface, {
+    const wrapper = mount(ConfigFormRenderer, {
       props: {
         ...result.artifact.plan.renderer,
         modelValue: { name: 'Ada' },

@@ -2,9 +2,8 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { TemplateCreationTarget } from './project'
 import { nextTick, ref, watch } from 'vue'
-import TemplateCreationWorkspace from './features/templates/TemplateCreationWorkspace.vue'
-import WorkbenchShell from './app/WorkbenchShell.vue'
-import { provideWorkbenchController } from './app/workbench-context'
+import { provideWorkbenchController, WorkbenchAppearanceDrawer, WorkbenchShell } from './app'
+import { TemplateCreationWorkspace } from './features/templates'
 
 const props = defineProps<{
   locale?: DesignerLocaleOptions
@@ -61,16 +60,23 @@ watch(
     :can-close="Boolean(controller.currentProject.value)"
     :locale="controller.localeOptions.value"
     :target="creationTarget"
-    :theme="ui.theme.value"
     @close="closeCreation()"
     @created="closeCreation(true)"
     @toggle-locale="ui.toggleLocale"
-    @toggle-theme="ui.toggleTheme"
   />
   <WorkbenchShell
     v-else
     :creation-return-focus-key="returnFocusKey"
     @create="openCreation"
     @creation-focus-restored="returnFocusKey = undefined"
+  />
+  <WorkbenchAppearanceDrawer
+    :open="ui.appearanceDrawerOpen.value"
+    :locale="controller.localeOptions.value"
+    :palette-family="ui.paletteFamily.value"
+    :theme-preference="ui.themePreference.value"
+    @close="ui.closeAppearanceDrawer"
+    @set-palette-family="ui.setPaletteFamily"
+    @set-theme-preference="ui.setThemePreference"
   />
 </template>

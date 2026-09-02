@@ -1,8 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  title?: string
-  description?: string
-}>()
+import type { AntdSectionProps } from '../types'
+
+defineProps<AntdSectionProps>()
 </script>
 
 <template>

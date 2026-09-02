@@ -3,8 +3,8 @@
 import type { ProjectPath, WorkspaceFile } from '../../project'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { ProjectFileTree } from '..'
 import { buildProjectFileTree, collectProjectTreeDirectoryIds, normalizeProjectPath } from '../../project'
-import ProjectFileTree from '../ProjectFileTree.vue'
 
 function createFiles(): Record<ProjectPath, WorkspaceFile> {
   return {

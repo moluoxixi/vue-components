@@ -1,4 +1,8 @@
+export type * from './component-registry'
+export type * from './controller'
 export type * from './emits'
+export type * from './field'
 export type * from './meta'
+export type * from './node'
 export type * from './props'
 export type * from './slots'

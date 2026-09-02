@@ -22,11 +22,6 @@
       "types": "./dist/src/plugins/index.d.ts",
       "import": "./dist/plugins.js"
     },
-    "./renderer": {
-      "source": "./src/renderer-entry.ts",
-      "types": "./dist/src/renderer-entry.d.ts",
-      "import": "./dist/renderer.js"
-    },
     "./styles": {
       "sass": "./src/styles/index.scss",
       "style": "./src/styles/index.scss",

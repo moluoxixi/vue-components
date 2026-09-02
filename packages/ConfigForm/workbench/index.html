@@ -4,9 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ConfigForm Workbench</title>
+    <script>
+      (() => {
+        const storageKey = 'moluoxixi.config-form.workbench.appearance'
+        const themePreferences = ['system', 'light', 'dark']
+        const paletteFamilies = ['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine']
+        let themePreference = 'system'
+        let paletteFamily = 'catppuccin'
+        try {
+          const raw = localStorage.getItem(storageKey)
+          if (raw) {
+            const value = JSON.parse(raw)
+            const keys = value && typeof value === 'object' && !Array.isArray(value)
+              ? Object.keys(value).sort().join(',')
+              : ''
+            if (
+              keys === 'paletteFamily,themePreference,version'
+              && value.version === 1
+              && themePreferences.includes(value.themePreference)
+              && paletteFamilies.includes(value.paletteFamily)
+            ) {
+              themePreference = value.themePreference
+              paletteFamily = value.paletteFamily
+            }
+          }
+        }
+        catch {}
+        const theme = themePreference === 'system'
+          ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : themePreference
+        document.documentElement.dataset.theme = theme
+        document.documentElement.dataset.palette = paletteFamily
+      })()
+    </script>
   </head>
   <body>
-    <div id="workbench-overlays" class="workbench-overlays" data-theme="dark"></div>
+    <div id="workbench-overlays" class="workbench-overlays"></div>
+    <script>
+      (() => {
+        const overlays = document.getElementById('workbench-overlays')
+        overlays.dataset.theme = document.documentElement.dataset.theme
+        overlays.dataset.palette = document.documentElement.dataset.palette
+      })()
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

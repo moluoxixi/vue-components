@@ -11,8 +11,8 @@ import { nextTick } from 'vue'
 import {
   RUNTIME_HOST_CHANNEL,
   RUNTIME_HOST_PROTOCOL_VERSION,
-} from '../protocol'
-import RuntimeHostApp from '../RuntimeHostApp.vue'
+  RuntimeHostApp,
+} from '..'
 
 const adapterControl = vi.hoisted(() => {
   let release: ((adapter: { runtimeResolver: object }) => void) | undefined
@@ -63,11 +63,11 @@ vi.mock('@moluoxixi/config-form-vue-backend', () => ({
   })),
 }))
 
-vi.mock('@moluoxixi/config-form/renderer', async () => {
+vi.mock('@moluoxixi/config-form', async () => {
   const { defineComponent, h } = await import('vue')
   return {
-    RuntimeSurface: defineComponent({
-      name: 'RuntimeSurfaceStub',
+    ConfigFormRenderer: defineComponent({
+      name: 'ConfigFormRendererStub',
       props: {
         modelValue: {
           type: Object,

@@ -1,0 +1,3 @@
+export {
+  resolveAntdConfigFormFieldBinding,
+} from './bindings'

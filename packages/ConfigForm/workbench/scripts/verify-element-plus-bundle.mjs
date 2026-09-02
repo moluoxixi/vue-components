@@ -4,13 +4,13 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const expectedDynamicStyles = {
-  'src/element-plus-inspector-styles.ts': [
+  'src/adapters/styles/element-plus-inspector.ts': [
     'input',
     'input-number',
     'segmented',
     'switch',
   ],
-  'src/element-plus-runtime-styles.ts': [
+  'src/adapters/styles/element-plus-runtime.ts': [
     'card',
     'checkbox',
     'collapse',
@@ -89,7 +89,7 @@ const output = readdirSync(outputDirectory)
 if (!output.some(file => file.endsWith('.css')))
   throw new Error('Workbench build emitted no component CSS')
 
-for (const entry of ['element-plus-inspector-styles', 'element-plus-runtime-styles']) {
+for (const entry of ['element-plus-inspector', 'element-plus-runtime']) {
   if (!output.some(file => file.startsWith(`${entry}-`) && file.endsWith('.css')))
     throw new Error(`Workbench build emitted no split CSS for ${entry}`)
 }

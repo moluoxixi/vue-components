@@ -37,7 +37,7 @@ function largeProject(nodeCount: number): { document: ProjectDocument, registry:
   return {
     registry,
     document: {
-      schemaVersion: PROJECT_DOCUMENT_VERSION,
+      version: PROJECT_DOCUMENT_VERSION,
       id: 'large-project',
       name: 'Large project',
       homePageId: 'home',

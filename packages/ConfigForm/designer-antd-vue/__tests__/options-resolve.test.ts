@@ -1,4 +1,4 @@
-import type { AntdVueOptionSource } from '../src/options'
+import type { AntdVueOptionSource } from '../index'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
@@ -16,7 +16,7 @@ describe('useAntdVueResolvedOptions', () => {
     let state!: ReturnType<typeof useAntdVueResolvedOptions>
     const wrapper = mount(defineComponent({
       setup() {
-        state = useAntdVueResolvedOptions(source, [{ label: 'Fallback', value: 'fallback' }])
+        state = useAntdVueResolvedOptions(source, [{ label: 'Static', value: 'static' }])
         return () => h('div')
       },
     }), {
@@ -25,7 +25,7 @@ describe('useAntdVueResolvedOptions', () => {
 
     expect(state.value).toEqual({
       status: 'loading',
-      options: [{ label: 'Fallback', value: 'fallback' }],
+      options: [{ label: 'Static', value: 'static' }],
     })
     await flushPromises()
     expect(state.value).toEqual({

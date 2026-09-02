@@ -4,21 +4,14 @@ import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import { normalizeProjectPath } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { createWorkspaceArchive } from '../export/archive'
-import {
-  buildExportSnapshot,
-  createExportFileSet,
-  createExportSession,
-  isExportSnapshotStale,
-  resolveExportSnapshotPath,
-} from '../export/snapshot'
-import { normalizeProjectPath } from '../path'
-import { createBuiltInProject } from '../templates'
+import { buildExportSnapshot, createExportFileSet, createExportSession, createWorkspaceArchive, isExportSnapshotStale, resolveExportSnapshotPath } from '../export'
+import { createBuiltInProjectFixture } from './fixtures'
 
 async function fixture(name = 'Customer app'): Promise<BuildExportSnapshotInput> {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const document = createBuiltInProject('element-profile', {
+  const document = createBuiltInProjectFixture('element-profile', {
     id: 'customer-app',
     name,
   }, adapter.componentRegistry.lock)

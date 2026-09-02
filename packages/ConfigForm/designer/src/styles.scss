@@ -679,7 +679,7 @@
  * Some component libraries set pointer-events/tabindex on their internal
  * control after the form's inert rule has been applied. Guard the entire
  * design Runtime subtree so the editor overlay remains the only interaction
- * surface. Preview uses a separate RuntimeSurface without this class.
+ * surface. Preview uses a separate ConfigFormRenderer without this class.
  */
 .mx-config-form-designer__runtime-surface > form[inert] * {
   pointer-events: none !important;

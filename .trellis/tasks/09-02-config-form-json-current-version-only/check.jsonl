@@ -1,0 +1,10 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/config-form-core/frontend/index.md", "reason": "Core package quality checklist and affected-layer routing."}
+{"file": ".trellis/spec/config-form-core/frontend/architecture-documentation.md", "reason": "Review current-only hard-cut, forbidden migration/alias patterns and architecture gates."}
+{"file": ".trellis/spec/config-form-core/frontend/material-registry.md", "reason": "Review Registry exact identity and component contract behavior."}
+{"file": ".trellis/spec/config-form-core/frontend/quality-guidelines.md", "reason": "Review test/typecheck/build expectations."}
+{"file": ".trellis/spec/config-form-designer/frontend/index.md", "reason": "Designer package quality checklist."}
+{"file": ".trellis/spec/config-form-designer/frontend/state-management.md", "reason": "Review import/template/storage/export state contracts."}
+{"file": ".trellis/tasks/09-02-config-form-json-current-version-only/research/legacy-contract-and-product-audit.md", "reason": "Audit facts and explicitly confirmed scope for review."}
+{"file": ".trellis/spec/config-form-core/frontend/directory-structure.md", "reason": "Verify responsibility folders, local barrels, and absence of flat concern files."}
+{"file": ".trellis/spec/config-form-designer/frontend/directory-structure.md", "reason": "Verify Designer/Workbench folder organization."}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createWorkbenchFlowActionRegistry } from '../flow-actions'
+import { createWorkbenchFlowActionRegistry } from '..'
 
 describe('workbench flow actions', () => {
   it('registers only the safe notify action and reports transient feedback', async () => {

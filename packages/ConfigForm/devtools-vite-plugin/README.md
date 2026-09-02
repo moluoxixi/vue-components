@@ -20,7 +20,6 @@ export default defineConfig({
 ## 公开导出
 
 - `configFormDevtools`
-- `configFormDevtoolsVitePlugin`
 - `ConfigFormDevtoolsPluginError`
 - `ConfigFormDevtoolsHttpError`
 

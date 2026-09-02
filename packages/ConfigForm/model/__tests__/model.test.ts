@@ -25,6 +25,7 @@ import {
   parseRegistryContractSnapshot,
   PROJECT_DOCUMENT_VERSION,
   redoProjectHistory,
+  registryLockFingerprint,
   resolveProjectCommand,
   undoProjectHistory,
 } from '../index'
@@ -53,7 +54,7 @@ function projectDocument(registryLock: RegistryLock = {
   },
 }): ProjectDocument {
   return {
-    schemaVersion: PROJECT_DOCUMENT_VERSION,
+    version: PROJECT_DOCUMENT_VERSION,
     id: 'project',
     name: 'Project',
     homePageId: 'home',
@@ -492,76 +493,71 @@ describe('componentContractRegistry', () => {
     })).toThrowError(/props\[0\]\.path\[1\]: Object member name is not allowed/)
   })
 
-  it('reports recoverable contract migrations and applies a deterministic chain', () => {
+  it('rejects component contract version mismatches without a conversion path', () => {
     const registry = createComponentContractRegistry([{
       ...inputContract,
       version: '3',
     }], {
       adapter: 'element-plus',
       version: '2.9.1',
-      migrations: [
-        {
-          component: 'element.input',
-          fromVersion: '1',
-          toVersion: '2',
-          migrate: node => ({ ...node, props: { ...node.props, clearable: true } }),
-        },
-        {
-          component: 'element.input',
-          fromVersion: '2',
-          toVersion: '3',
-          migrate: node => ({ ...node, props: { ...node.props, placeholder: 'Migrated' } }),
-        },
-      ],
     })
     const previousLock = componentRegistry().lock
     expect(registry.analyzeLock(previousLock)).toMatchObject([{
-      code: 'MODEL_REGISTRY_COMPONENT_MIGRATION_REQUIRED',
+      code: 'MODEL_REGISTRY_COMPONENT_VERSION_MISMATCH',
       path: ['components', 'element.input', 'contractVersion'],
     }, {
       code: 'MODEL_REGISTRY_COMPONENT_MISSING',
       path: ['components', 'element.section'],
     }])
-
-    const migrated = registry.migrateNode(projectDocument().pagesById.home!.graph.nodesById.name!, '1')
-    expect(migrated).toMatchObject({
-      success: true,
-      fromVersion: '1',
-      toVersion: '3',
-      appliedVersions: ['2', '3'],
-      node: { props: { clearable: true, placeholder: 'Migrated' } },
-    })
-  })
-
-  it('rejects ambiguous and non-deterministic component migration chains', () => {
-    expect(() => createComponentContractRegistry([inputContract], {
-      adapter: 'element-plus',
-      version: '2.9.1',
-      migrations: [
-        { component: 'element.input', fromVersion: '0', toVersion: '1', migrate: node => node },
-        { component: 'element.input', fromVersion: '0', toVersion: '2', migrate: node => node },
-      ],
-    })).toThrowError(/Multiple migrations/)
-
-    const registry = createComponentContractRegistry([inputContract], {
-      adapter: 'element-plus',
-      version: '2.9.1',
-      migrations: [{
-        component: 'element.input',
-        fromVersion: '0',
-        toVersion: '1',
-        migrate: node => ({ ...node, props: { ...node.props, nonce: Math.random() } }),
-      }],
-    })
-    expect(registry.migrateNode(projectDocument().pagesById.home!.graph.nodesById.name!, '0'))
-      .toMatchObject({
-        success: false,
-        diagnostics: [{ code: 'MODEL_COMPONENT_MIGRATION_NON_DETERMINISTIC' }],
-      })
   })
 })
 
 describe('projectTransaction', () => {
+  it('preserves the complete current Registry lock and rejects a subset lock', () => {
+    const registry = createComponentContractRegistry([
+      inputContract,
+      sectionContract,
+      { ...inputContract, key: 'element.unused' },
+    ], { adapter: 'element-plus', version: '2.9.1' })
+    const initial = projectDocument(registry.lock)
+    const result = applyProjectTransaction(initial, {
+      id: 'rename-with-complete-registry',
+      label: 'Rename with complete Registry',
+      operations: [{ type: 'page.rename', pageId: 'home', name: 'Landing' }],
+    }, { registry })
+
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    expect(result.document.registryLock).toEqual(registry.lock)
+    expect(result.document.registryLock.components).toHaveProperty('element.unused')
+
+    const subset = structuredClone(registry.lock)
+    delete subset.components['element.unused']
+    subset.fingerprint = registryLockFingerprint(subset.components)
+    const rejected = applyProjectTransaction(projectDocument(subset), {
+      id: 'rename-with-subset-registry',
+      label: 'Rename with subset Registry',
+      operations: [{ type: 'page.rename', pageId: 'home', name: 'Landing' }],
+    }, { registry })
+    expect(rejected).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'PROJECT_REGISTRY_COMPONENT_SET_MISMATCH' }],
+    })
+
+    const unknownComponent = projectDocument(registry.lock)
+    unknownComponent.pagesById.home!.graph.nodesById.name!.component = 'element.unknown'
+    const unknown = applyProjectTransaction(unknownComponent, {
+      id: 'rename-with-unknown-component',
+      label: 'Rename with unknown component',
+      operations: [{ type: 'page.rename', pageId: 'home', name: 'Landing' }],
+    }, { registry })
+    expect(unknown).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'PROJECT_COMPONENT_UNKNOWN' }],
+    })
+  })
+
   it('applies page-owned Flow changes with semantic inverse and rejects dangling field triggers', () => {
     const initial = projectDocument()
     const added = applyProjectTransaction(initial, {
@@ -1023,10 +1019,10 @@ describe('projectTransaction', () => {
     const initial = projectDocument(registry.lock)
     const node = initial.pagesById.home!.graph.nodesById.name!
     node.events = {
-      'legacy.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
-      'legacy.remove': [{ action: 'remove', args: { exact: true } }],
+      'stale.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
+      'stale.remove': [{ action: 'remove', args: { exact: true } }],
     }
-    node.bindings = { legacyValue: { source: 'legacy.value' } }
+    node.bindings = { staleValue: { source: 'stale.value' } }
     const engine = createProjectDomainEngine({ document: initial, registry })
 
     const ordinaryRemoval = engine.execute({
@@ -1038,7 +1034,7 @@ describe('projectTransaction', () => {
           type: 'node.events',
           pageId: 'home',
           nodeId: 'name',
-          events: { 'legacy.keep': node.events['legacy.keep']! },
+          events: { 'stale.keep': node.events['stale.keep']! },
         }],
       }],
     })
@@ -1055,15 +1051,15 @@ describe('projectTransaction', () => {
           pageId: 'home',
           nodeId: 'name',
           property: 'events',
-          key: 'legacy.remove',
+          key: 'stale.remove',
         }],
       }],
     })
     expect(removed.changed).toBe(true)
     expect(removed.diagnostics).toEqual([])
     expect(removed.snapshot.document.pagesById.home?.graph.nodesById.name).toMatchObject({
-      events: { 'legacy.keep': [{ action: 'keep', args: { nested: [1, 2] } }] },
-      bindings: { legacyValue: { source: 'legacy.value' } },
+      events: { 'stale.keep': [{ action: 'keep', args: { nested: [1, 2] } }] },
+      bindings: { staleValue: { source: 'stale.value' } },
     })
 
     const undone = engine.undo()
@@ -1074,21 +1070,21 @@ describe('projectTransaction', () => {
     const redone = engine.redo()
     expect(redone.changed).toBe(true)
     expect(redone.snapshot.document.pagesById.home?.graph.nodesById.name?.events).toEqual({
-      'legacy.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
+      'stale.keep': [{ action: 'keep', args: { nested: [1, 2] } }],
     })
   })
 
   it('keeps stored config removal isolated from ordinary edits and history merging', () => {
     const initial = projectDocument()
     initial.pagesById.home!.graph.nodesById.name!.events = {
-      legacy: [{ action: 'legacy' }],
+      stale: [{ action: 'stale' }],
     }
     const removal = {
       type: 'node.config.remove' as const,
       pageId: 'home',
       nodeId: 'name',
       property: 'events' as const,
-      key: 'legacy',
+      key: 'stale',
     }
 
     const mixed = applyProjectTransaction(initial, {

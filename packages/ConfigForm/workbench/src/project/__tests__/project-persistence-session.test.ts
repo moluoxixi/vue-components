@@ -6,13 +6,12 @@ import type {
   ProjectRepositoryCommitInput,
   ProjectRepositoryCommitResult,
 } from '@moluoxixi/config-form-model'
-import type { ProjectEditorSession, ProjectEditorSessionSnapshot } from '../project-editor-session'
-import type { ProjectRecoveryDraftStore } from '../project-recovery-draft-store'
+import type { ProjectEditorSession, ProjectEditorSessionSnapshot } from '..'
+import type { ProjectRecoveryDraftStore } from '../persistence'
 import { createMemoryProjectRepository } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
-import { createProjectEditorSession } from '../project-editor-session'
-import { createProjectPersistenceSession } from '../project-persistence-session'
-import { createMemoryProjectRecoveryDraftStore } from '../project-recovery-draft-store'
+import { createProjectEditorSession } from '..'
+import { createMemoryProjectRecoveryDraftStore, createProjectPersistenceSession } from '../persistence'
 import { createProjectDocumentFixture } from './fixtures'
 
 class TestClock {

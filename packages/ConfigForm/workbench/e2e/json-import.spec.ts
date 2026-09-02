@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createProject } from './helpers'
+import { createProject, setAppearance } from './helpers'
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page): Promise<void> {
   const width = await page.evaluate(() => ({
@@ -43,14 +43,31 @@ async function chooseJsonImport(workspace: import('@playwright/test').Locator): 
   await expect(workspace.getByRole('navigation', { name: 'Import stages' })).toBeVisible()
 }
 
+async function switchTemplateLanguage(
+  page: import('@playwright/test').Page,
+  workspace: import('@playwright/test').Locator,
+): Promise<void> {
+  const direct = workspace.getByRole('button', { name: 'Switch language' })
+  if (await direct.isVisible()) {
+    await direct.click()
+    return
+  }
+  await workspace.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: 'Switch language' }).click()
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
 test('round-trips an Element Plus Project JSON export through paste and isolated preview', async ({ page }) => {
   await createProject(page, 'element')
+  await setAppearance(page, 'dark', 'rose-pine')
+  await expect(page.locator('.workbench-topbar .revision-state')).toContainText(/v0 · /)
   const source = await exportJson(page, 'project')
-  expect(JSON.parse(source)).toMatchObject({ schemaVersion: 4, registryLock: { adapter: 'element-plus' } })
+  const exportedProject = JSON.parse(source)
+  expect(exportedProject).toMatchObject({ version: 4, registryLock: { adapter: 'element-plus' } })
+  expect(JSON.stringify(exportedProject)).not.toMatch(/"(?:appearance|paletteFamily|resolvedTheme|themePreference)"/)
   await openProjectCreation(page)
   const workspace = page.getByRole('main', { name: 'Create project' })
   await chooseJsonImport(workspace)
@@ -58,8 +75,8 @@ test('round-trips an Element Plus Project JSON export through paste and isolated
   await workspace.getByRole('button', { name: 'Analyze JSON' }).click()
 
   await expect(workspace.getByText('Ready', { exact: true })).toBeVisible()
-  await expect(workspace.getByText('Project schema', { exact: true })).toBeVisible()
-  await expect(workspace.getByText('No migration required', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('Project version', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('v4', { exact: true })).toBeVisible()
   await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
   await expectNoHorizontalOverflow(page)
   const axe = await new AxeBuilder({ page })
@@ -79,7 +96,11 @@ test('imports an Ant Design Vue Page JSON file as one undoable command', async (
   const runtime = page.frameLocator('iframe[data-design-runtime-variant="canvas"]')
   const originalNodeId = await runtime.locator('[data-config-node-id]').first().getAttribute('data-config-node-id')
   const source = await exportJson(page, 'page')
-  expect(JSON.parse(source)).toMatchObject({ graph: { version: 2 } })
+  expect(JSON.parse(source)).toMatchObject({
+    kind: 'config-form-page',
+    version: 1,
+    page: { graph: { version: 2 } },
+  })
   await openPageCreation(page)
   const workspace = page.getByRole('main', { name: 'Create page' })
   await chooseJsonImport(workspace)
@@ -114,7 +135,7 @@ for (const viewport of [
     await expect(workspace.getByRole('button', { name: 'Diagnostics' })).toHaveAttribute('aria-current', 'step')
     await expectNoHorizontalOverflow(page)
 
-    await workspace.getByRole('button', { name: 'Switch language' }).click()
+    await switchTemplateLanguage(page, workspace)
     workspace = page.getByRole('main', { name: '创建项目' })
     await expect(workspace.getByRole('navigation', { name: '导入步骤' })).toBeVisible()
     await expect(workspace.getByRole('button', { name: '来源' })).toBeVisible()

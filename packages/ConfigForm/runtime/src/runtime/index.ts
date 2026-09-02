@@ -1,9 +1,20 @@
 export {
-  createFormRuntime,
-} from './createFormRuntime'
+  applyFieldDefaults,
+  getFieldDefaults,
+  normalizeValidateOn,
+} from '../plugins/defaults'
+export type {
+  FieldDefaultConfig,
+} from '../plugins/defaults'
 export {
+  createFieldPipeline,
+  createFormRuntime,
+  createReadonlyRenderContext,
+  renderReadonlyValue,
+  resolveReadonlyAdapter,
+  resolveReadonlyAdapterKey,
   transformField,
-} from './transform'
+} from './services'
 export type {
   ComponentRegistry,
   ConfigFormComponentRegistration,
@@ -23,11 +34,3 @@ export {
   isContainer,
   isField,
 } from './utils'
-export {
-  applyFieldDefaults,
-  getFieldDefaults,
-  normalizeValidateOn,
-} from '@/plugins/builtInFieldDefaults'
-export type {
-  FieldDefaultConfig,
-} from '@/plugins/builtInFieldDefaults'

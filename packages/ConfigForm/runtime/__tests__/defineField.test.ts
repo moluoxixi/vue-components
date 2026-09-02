@@ -14,74 +14,51 @@ interface RenderContext {
 
 describe('defineField typing', () => {
   it('infers field value from schema', () => {
-    defineField({
-      field: 'name',
-      component: 'input',
-      schema: z.string(),
-      validator: (value) => {
-        expectTypeOf(value).toEqualTypeOf<string>()
-        const text: string = value
-        type ValueIsNumber = IsAssignable<typeof value, number>
-        expectTypeOf(text).toEqualTypeOf<string>()
-        expectTypeOf<ValueIsNumber>().toEqualTypeOf<false>()
-        return value.length > 0 ? undefined : '必填'
-      },
-      transform: (value) => {
-        expectTypeOf(value).toEqualTypeOf<string>()
-        const text: string = value
-        type ValueIsNumber = IsAssignable<typeof value, number>
-        expectTypeOf(text).toEqualTypeOf<string>()
-        expectTypeOf<ValueIsNumber>().toEqualTypeOf<false>()
-        return value.trim()
-      },
-    })
+    defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-1', field: 'name', component: 'input', schema: z.string(), validator: (value) => {
+      expectTypeOf(value).toEqualTypeOf<string>()
+      const text: string = value
+      type ValueIsNumber = IsAssignable<typeof value, number>
+      expectTypeOf(text).toEqualTypeOf<string>()
+      expectTypeOf<ValueIsNumber>().toEqualTypeOf<false>()
+      return value.length > 0 ? undefined : '必填'
+    }, transform: (value) => {
+      expectTypeOf(value).toEqualTypeOf<string>()
+      const text: string = value
+      type ValueIsNumber = IsAssignable<typeof value, number>
+      expectTypeOf(text).toEqualTypeOf<string>()
+      expectTypeOf<ValueIsNumber>().toEqualTypeOf<false>()
+      return value.trim()
+    } })
   })
 
   it('infers field value from defaultValue', () => {
-    defineField({
-      field: 'age',
-      component: 'input',
-      defaultValue: 18,
-      validator: (value) => {
-        expectTypeOf(value).toEqualTypeOf<number>()
-        const count: number = value
-        type ValueIsString = IsAssignable<typeof value, string>
-        expectTypeOf(count).toEqualTypeOf<number>()
-        expectTypeOf<ValueIsString>().toEqualTypeOf<false>()
-        return value > 0 ? undefined : '年龄必须大于 0'
-      },
-    })
+    defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-2', field: 'age', component: 'input', defaultValue: 18, validator: (value) => {
+      expectTypeOf(value).toEqualTypeOf<number>()
+      const count: number = value
+      type ValueIsString = IsAssignable<typeof value, string>
+      expectTypeOf(count).toEqualTypeOf<number>()
+      expectTypeOf<ValueIsString>().toEqualTypeOf<false>()
+      return value > 0 ? undefined : '年龄必须大于 0'
+    } })
   })
 
   it('keeps field value unknown when there is no inference source', () => {
-    defineField({
-      field: 'remark',
-      component: 'input',
-      validator: (value) => {
-        expectTypeOf(value).toEqualTypeOf<unknown>()
-        type ValueIsString = IsAssignable<typeof value, string>
-        expectTypeOf<ValueIsString>().toEqualTypeOf<false>()
-        return undefined
-      },
-    })
+    defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-3', field: 'remark', component: 'input', validator: (value) => {
+      expectTypeOf(value).toEqualTypeOf<unknown>()
+      type ValueIsString = IsAssignable<typeof value, string>
+      expectTypeOf<ValueIsString>().toEqualTypeOf<false>()
+      return undefined
+    } })
   })
 
   it('preserves inferred config types on returned fields', () => {
-    const nameField = defineField({
-      field: 'name',
-      component: 'input',
-      schema: z.string(),
-    })
+    const nameField = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-4', field: 'name', component: 'input', schema: z.string() })
 
     expectTypeOf(nameField.field).toEqualTypeOf<'name'>()
     expectTypeOf(nameField.schema).toMatchTypeOf<z.ZodString>()
     expectTypeOf(nameField.defaultValue).toEqualTypeOf<string | undefined>()
 
-    const ageField = defineField({
-      field: 'age',
-      component: 'input',
-      defaultValue: 18,
-    })
+    const ageField = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-5', field: 'age', component: 'input', defaultValue: 18 })
 
     expectTypeOf(ageField.field).toEqualTypeOf<'age'>()
     expectTypeOf(ageField.defaultValue).toEqualTypeOf<number>()
@@ -105,15 +82,11 @@ describe('defineField typing', () => {
   })
 
   it('accepts render functions as component renderers', () => {
-    defineField({
-      field: 'role',
-      component: (context: RenderContext) => {
-        expectTypeOf(context.values.role).toEqualTypeOf<unknown>()
-        expectTypeOf(context.getValue('role')).toEqualTypeOf<unknown>()
-        return null
-      },
-      defaultValue: 'admin',
-    })
+    defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-6', field: 'role', component: (context: RenderContext) => {
+      expectTypeOf(context.values.role).toEqualTypeOf<unknown>()
+      expectTypeOf(context.getValue('role')).toEqualTypeOf<unknown>()
+      return null
+    }, defaultValue: 'admin' })
   })
 
   it('accepts a field root id separately from control props', () => {
@@ -131,11 +104,7 @@ describe('defineField typing', () => {
   })
 
   it('preserves validateOn arrays that already include submit', () => {
-    const field = defineField({
-      field: 'name',
-      component: 'input',
-      validateOn: ['submit', 'blur'],
-    })
+    const field = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-7', field: 'name', component: 'input', validateOn: ['submit', 'blur'] })
 
     expect(field.validateOn).toEqual(['submit', 'blur'])
   })
@@ -143,13 +112,7 @@ describe('defineField typing', () => {
   it('returns plain field configs without hidden brands or runtime behavior helpers', () => {
     /** 保留字段可见性函数引用，用于断言 defineField 不包装运行时行为。 */
     const visible = (values: Record<string, unknown>) => values.role === 'admin'
-    const field = defineField({
-      disabled: false,
-      field: 'mode',
-      component: 'input',
-      validateOn: ['submit', 'blur'],
-      visible,
-    })
+    const field = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-8', disabled: false, field: 'mode', component: 'input', validateOn: ['submit', 'blur'], visible })
 
     expect(field).toMatchObject({
       component: 'input',
@@ -165,17 +128,13 @@ describe('defineField typing', () => {
   })
 
   it('accepts render functions in slot content with context first', () => {
-    defineField({
-      field: 'host',
-      component: 'div',
-      slots: {
-        default: (context: RenderContext, slotProps: { label: string }) => {
-          expectTypeOf(context.getValue('host')).toEqualTypeOf<unknown>()
-          expectTypeOf(slotProps.label).toEqualTypeOf<string>()
-          return null
-        },
+    defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-9', field: 'host', component: 'div', slots: {
+      default: (context: RenderContext, slotProps: { label: string }) => {
+        expectTypeOf(context.getValue('host')).toEqualTypeOf<unknown>()
+        expectTypeOf(slotProps.label).toEqualTypeOf<string>()
+        return null
       },
-    })
+    } })
   })
 
   it('restricts slot content to field configs, arrays, or render functions', () => {
@@ -199,63 +158,39 @@ describe('defineField typing', () => {
       username: string
     }
 
-    defineField<LoginForm>({
-      field: 'username',
-      component: 'input',
-      defaultValue: '',
-      required: values => values.remember,
-      requiredMessage: '请输入用户名',
-      validator: (value, values) => {
-        expectTypeOf(value).toEqualTypeOf<string>()
-        expectTypeOf(values.age).toEqualTypeOf<number>()
-        expectTypeOf(values.remember).toEqualTypeOf<boolean>()
-        return value === values.username ? undefined : '用户名不一致'
-      },
-      transform: (value, values) => {
-        expectTypeOf(value).toEqualTypeOf<string>()
-        expectTypeOf(values.username).toEqualTypeOf<string>()
-        return value.trim()
-      },
-    })
+    defineField<LoginForm>({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-10', field: 'username', component: 'input', defaultValue: '', required: values => values.remember, requiredMessage: '请输入用户名', validator: (value, values) => {
+      expectTypeOf(value).toEqualTypeOf<string>()
+      expectTypeOf(values.age).toEqualTypeOf<number>()
+      expectTypeOf(values.remember).toEqualTypeOf<boolean>()
+      return value === values.username ? undefined : '用户名不一致'
+    }, transform: (value, values) => {
+      expectTypeOf(value).toEqualTypeOf<string>()
+      expectTypeOf(values.username).toEqualTypeOf<string>()
+      return value.trim()
+    } })
 
-    defineField<LoginForm>({
-      field: 'age',
-      component: 'input',
-      defaultValue: 18,
-      validator: (value) => {
-        expectTypeOf(value).toEqualTypeOf<number>()
-        return value > 0 ? undefined : '年龄必须大于 0'
-      },
-      visible: (values) => {
-        expectTypeOf(values.remember).toEqualTypeOf<boolean>()
-        return values.remember
-      },
-      disabled: (values) => {
-        expectTypeOf(values.username).toEqualTypeOf<string>()
-        return values.username.length === 0
-      },
-    })
+    defineField<LoginForm>({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-11', field: 'age', component: 'input', defaultValue: 18, validator: (value) => {
+      expectTypeOf(value).toEqualTypeOf<number>()
+      return value > 0 ? undefined : '年龄必须大于 0'
+    }, visible: (values) => {
+      expectTypeOf(values.remember).toEqualTypeOf<boolean>()
+      return values.remember
+    }, disabled: (values) => {
+      expectTypeOf(values.username).toEqualTypeOf<string>()
+      return values.username.length === 0
+    } })
 
-    defineField<LoginForm>({
-      field: 'remember',
-      component: 'input',
-      defaultValue: false,
-      transform: (value, values) => {
-        expectTypeOf(value).toEqualTypeOf<boolean>()
-        expectTypeOf(values.username).toEqualTypeOf<string>()
-        return value && values.username.length > 0
-      },
-    })
+    defineField<LoginForm>({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-12', field: 'remember', component: 'input', defaultValue: false, transform: (value, values) => {
+      expectTypeOf(value).toEqualTypeOf<boolean>()
+      expectTypeOf(values.username).toEqualTypeOf<string>()
+      return value && values.username.length > 0
+    } })
 
-    defineField<LoginForm>({
-      field: 'username',
-      component: (context: ConfigFormRenderContext<LoginForm>) => {
-        expectTypeOf(context.values.username).toEqualTypeOf<string>()
-        expectTypeOf(context.getValue('remember')).toEqualTypeOf<boolean>()
-        return null
-      },
-      defaultValue: '',
-    })
+    defineField<LoginForm>({ id: 'fixture-node-packages-ConfigForm-runtime-tests-defineField-test-ts-13', field: 'username', component: (context: ConfigFormRenderContext<LoginForm>) => {
+      expectTypeOf(context.values.username).toEqualTypeOf<string>()
+      expectTypeOf(context.getValue('remember')).toEqualTypeOf<boolean>()
+      return null
+    }, defaultValue: '' })
 
     type MissingIsLoginField = IsAssignable<'missing', FieldKey<LoginForm>>
     type StringIsAgeValue = IsAssignable<string, LoginForm['age']>

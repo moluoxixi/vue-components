@@ -1,0 +1,10 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/config-form-core/frontend/index.md", "reason": "ConfigForm core frontend conventions and quality entry point."}
+{"file": ".trellis/spec/config-form-core/frontend/architecture-documentation.md", "reason": "Current-contract-only policy, exact version gates, public API and architecture scan requirements."}
+{"file": ".trellis/spec/config-form-core/frontend/material-registry.md", "reason": "Registry identity, component contract and exact-match rules."}
+{"file": ".trellis/spec/config-form-core/frontend/quality-guidelines.md", "reason": "Cross-package testing, type safety and quality gates."}
+{"file": ".trellis/spec/config-form-designer/frontend/index.md", "reason": "Designer/workbench state and frontend quality entry point."}
+{"file": ".trellis/spec/config-form-designer/frontend/state-management.md", "reason": "JSON ingress, template, persistence, export and state boundary contracts."}
+{"file": ".trellis/tasks/09-02-config-form-json-current-version-only/research/legacy-contract-and-product-audit.md", "reason": "Code-backed audit and confirmed hard-cut/product-scope decisions."}
+{"file": ".trellis/spec/config-form-core/frontend/directory-structure.md", "reason": "Responsibility-based ConfigForm feature directories and layered barrels."}
+{"file": ".trellis/spec/config-form-designer/frontend/directory-structure.md", "reason": "Designer/Workbench feature folder specialization."}

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   applyPreviewFlowValuePatch,
   PreviewFlowCoordinator,
-} from '../flow-coordinator'
+} from '..'
 
 function actionFlow(
   concurrency: ConfigFormFlowConcurrency,

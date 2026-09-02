@@ -9,14 +9,9 @@ import { defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
-import {
-  ConfigFormRenderer as ConfigFormRendererEntry,
-  RuntimeSurface as RuntimeSurfaceEntry,
-} from '../../renderer-entry'
-import ConfigFormRendererSource from '../ConfigFormRenderer.vue'
+import ConfigFormRendererSource from '../index.vue'
 
 const ConfigFormRenderer = ConfigFormRendererSource as Component
-const RuntimeSurface = RuntimeSurfaceEntry as Component
 
 interface TestValues {
   enabled: boolean
@@ -86,10 +81,6 @@ const SlotLeaf = defineComponent({
 })
 
 describe('config form renderer', () => {
-  it('exports RuntimeSurface as the stable ConfigFormRenderer component', () => {
-    expect(RuntimeSurfaceEntry).toBe(ConfigFormRendererEntry)
-  })
-
   it('synchronizes controlled model replacements without recursive update feedback', async () => {
     const model = ref<TestValues>({ enabled: false, name: 'Ada', status: 'draft' })
     const handleUpdate = vi.fn((values: TestValues) => {
@@ -97,7 +88,7 @@ describe('config form renderer', () => {
     })
     const Host = defineComponent({
       setup: () => () => h(ConfigFormRenderer, {
-        'fields': [defineField<TestValues>({ component: InputStub, field: 'name' })],
+        'fields': [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-1', component: InputStub, field: 'name' })],
         'modelValue': model.value,
         'onUpdate:modelValue': handleUpdate,
       }),
@@ -117,7 +108,7 @@ describe('config form renderer', () => {
     expect(handleUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it('runtimeSurface exposes stable node metadata and editor registration hooks', () => {
+  it('exposes stable node metadata and editor registration hooks', () => {
     const editor: ConfigFormRuntimeEditorBridge<TestValues> = {
       registerNode: vi.fn(),
     }
@@ -132,7 +123,7 @@ describe('config form renderer', () => {
         },
       },
     }]
-    const wrapper = mount(RuntimeSurface, {
+    const wrapper = mount(ConfigFormRenderer, {
       props: {
         editor,
         fields,
@@ -147,17 +138,15 @@ describe('config form renderer', () => {
     expect(section.attributes()).toMatchObject({
       'data-config-node-kind': 'component',
       'data-config-path': 'fields.0',
-      'data-node-id': 'section-node',
     })
     expect(field.attributes()).toMatchObject({
       'data-config-node-kind': 'field',
       'data-config-path': 'fields.0.slots.default',
       'data-config-slot': 'default',
-      'data-node-id': 'name-node',
     })
     expect(editor.registerNode).toHaveBeenCalledTimes(2)
     expect(editor.registerNode).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'name-node', nodeId: 'name-node', path: 'fields.0.slots.default', slot: 'default' }),
+      expect.objectContaining({ nodeId: 'name-node', path: 'fields.0.slots.default', slot: 'default' }),
       expect.any(HTMLElement),
     )
   })
@@ -166,10 +155,10 @@ describe('config form renderer', () => {
     const editor: ConfigFormRuntimeEditorBridge<TestValues> = {
       interceptEvent: vi.fn(),
     }
-    const wrapper = mount(RuntimeSurface, {
+    const wrapper = mount(ConfigFormRenderer, {
       props: {
         editor,
-        fields: [defineField<TestValues>({ component: InputStub, field: 'name' })],
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-2', component: InputStub, field: 'name' })],
         mode: 'design',
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
       },
@@ -186,16 +175,7 @@ describe('config form renderer', () => {
 
   it('同步写回受控模型，并统一处理 Grid、attrs、校验和 expose', async () => {
     const initial: TestValues = { enabled: false, name: 'Ada', status: 'draft' }
-    const fields = [defineField<TestValues>({
-      cellAttrs: { 'data-node-cell': 'name' },
-      component: InputStub,
-      field: 'name',
-      fieldAttrs: { 'data-field-shell': 'name' },
-      label: 'Name',
-      required: true,
-      requiredMessage: 'Name is required',
-      span: 6,
-    })]
+    const fields = [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-3', cellAttrs: { 'data-node-cell': 'name' }, component: InputStub, field: 'name', fieldAttrs: { 'data-field-shell': 'name' }, label: 'Name', required: true, requiredMessage: 'Name is required', span: 6 })]
     const wrapper = mount(ConfigFormRenderer, {
       attrs: {
         'class': 'consumer-form',
@@ -252,11 +232,7 @@ describe('config form renderer', () => {
       props: {
         columns: 24,
         fieldSpan: 24,
-        fields: [defineField<TestValues>({
-          component: InputStub,
-          field: 'name',
-          span: 20,
-        })],
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-4', component: InputStub, field: 'name', span: 20 })],
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'responsive-form',
         responsive: {
@@ -283,11 +259,7 @@ describe('config form renderer', () => {
         breakpoint: 'mobile',
         columns: 24,
         fieldSpan: 12,
-        fields: [defineField<TestValues>({
-          component: InputStub,
-          field: 'name',
-          span: 12,
-        })],
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-5', component: InputStub, field: 'name', span: 12 })],
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'pinned-breakpoint-form',
         responsive: {
@@ -306,10 +278,10 @@ describe('config form renderer', () => {
         columns: 24,
         fieldSpan: 8,
         fields: [
-          defineField<TestValues>({ component: InputStub, field: 'name', span: 24 }),
-          defineField<TestValues>({ component: InputStub, field: 'status', span: 8 }),
-          defineField<TestValues>({ component: InputStub, field: 'summary', span: 8 }),
-          defineField<TestValues>({ component: InputStub, field: 'notes', span: 8 }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-6', component: InputStub, field: 'name', span: 24 }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-7', component: InputStub, field: 'status', span: 8 }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-8', component: InputStub, field: 'summary', span: 8 }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-9', component: InputStub, field: 'notes', span: 8 }),
         ],
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'root-span-form',
@@ -329,7 +301,7 @@ describe('config form renderer', () => {
       props: {
         columns: 30,
         fieldSpan: 28,
-        fields: [defineField<TestValues>({ component: InputStub, field: 'name' })],
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-10', component: InputStub, field: 'name' })],
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'bounded-form',
       },
@@ -342,11 +314,7 @@ describe('config form renderer', () => {
   it('支持 label 左右和上下布局，并保持真实 label/control 结构', async () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
-        fields: [defineField<TestValues>({
-          component: InputStub,
-          field: 'name',
-          label: 'Name',
-        })],
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-11', component: InputStub, field: 'name', label: 'Name' })],
         labelPosition: 'left',
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'layout-form',
@@ -371,11 +339,7 @@ describe('config form renderer', () => {
     const initial: TestValues = { enabled: false, name: 'Ada', status: 'draft' }
     const wrapper = mount(ConfigFormRenderer, {
       props: {
-        fields: [defineField<TestValues>({
-          component: InputStub,
-          field: 'name',
-          validateOn: ['change', 'blur'],
-        })],
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-12', component: InputStub, field: 'name', validateOn: ['change', 'blur'] })],
         modelValue: initial,
       },
       slots: {
@@ -427,14 +391,7 @@ describe('config form renderer', () => {
   })
 
   it('同页实例生成唯一 control/error id，并建立完整 ARIA 关联', async () => {
-    const fields = [defineField<TestValues>({
-      component: InputStub,
-      field: 'name',
-      label: 'Name',
-      props: { 'aria-describedby': 'name-hint' },
-      required: true,
-      requiredMessage: 'Required',
-    })]
+    const fields = [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-13', component: InputStub, field: 'name', label: 'Name', props: { 'aria-describedby': 'name-hint' }, required: true, requiredMessage: 'Required' })]
     const Host = defineComponent({
       setup: () => () => h('div', [
         h(ConfigFormRenderer, { fields, modelValue: { enabled: false, name: '', status: '' } }),
@@ -463,12 +420,7 @@ describe('config form renderer', () => {
   it('无 label 字段仍生成字段壳、错误 DOM 和 ARIA 关联', async () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
-        fields: [defineField<TestValues>({
-          component: InputStub,
-          field: 'name',
-          required: true,
-          requiredMessage: 'Required without label',
-        })],
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-14', component: InputStub, field: 'name', required: true, requiredMessage: 'Required without label' })],
         modelValue: { enabled: false, name: '', status: '' },
       },
     })
@@ -485,18 +437,11 @@ describe('config form renderer', () => {
 
   it('外部替换 v-model 时清理旧错误并拒绝提交旧校验对应的新模型', async () => {
     let releaseValidation!: () => void
-    const fields = [defineField<TestValues>({
-      component: InputStub,
-      field: 'name',
-      label: 'Name',
-      required: true,
-      requiredMessage: 'Required',
-      validator: async () => {
-        await new Promise<void>((resolve) => {
-          releaseValidation = resolve
-        })
-      },
-    })]
+    const fields = [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-15', component: InputStub, field: 'name', label: 'Name', required: true, requiredMessage: 'Required', validator: async () => {
+      await new Promise<void>((resolve) => {
+        releaseValidation = resolve
+      })
+    } })]
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields,
@@ -527,19 +472,10 @@ describe('config form renderer', () => {
   it('inline 使用原生 Flex 且不消费 span/cellAttrs，并递归渲染配置化 slot', () => {
     const { defineField: field } = defineFields<TestValues>()
     const fields = [
-      field({
-        cellAttrs: { 'data-ignored-cell': 'true' },
-        component: InputStub,
-        field: 'name',
-        label: 'Name',
-        span: 3,
-      }),
-      field({
-        component: SlotHost,
-        slots: {
-          default: field({ component: SlotLeaf, props: { text: 'Nested content' } }),
-        },
-      }),
+      field({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-16', cellAttrs: { 'data-ignored-cell': 'true' }, component: InputStub, field: 'name', label: 'Name', span: 3 }),
+      field({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-17', component: SlotHost, slots: {
+        default: field({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-18', component: SlotLeaf, props: { text: 'Nested content' } }),
+      } }),
     ]
     const wrapper = mount(ConfigFormRenderer, {
       props: {
@@ -559,8 +495,8 @@ describe('config form renderer', () => {
   })
 
   it('字段重排时按字段 key 保留组件实例，不按数组位置串状态', async () => {
-    const nameField = defineField<TestValues>({ component: IdentityStub, field: 'name' })
-    const statusField = defineField<TestValues>({ component: IdentityStub, field: 'status' })
+    const nameField = defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-19', component: IdentityStub, field: 'name' })
+    const statusField = defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-20', component: IdentityStub, field: 'status' })
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [nameField, statusField],
@@ -576,21 +512,13 @@ describe('config form renderer', () => {
 
   it('通过 binding resolver 适配组件事件，并优先使用字段 readonlyRender', async () => {
     const fields = [
-      defineField<TestValues>({ component: CheckedStub, field: 'enabled', label: 'Enabled' }),
-      defineField<TestValues>({
-        component: 'RegistryInput',
-        extensions: { 'test.source': 'readonly' },
-        field: 'status',
-        label: 'Status',
-        readonly: true,
-        readonlyRender: ({ componentProps, field, model, value }) => h('strong', {
-          'data-extension': field.extensions?.['test.source'],
-          'data-model-name': model.name,
-          'data-placeholder': componentProps.placeholder,
-          'data-testid': 'readonly-value',
-        }, `Status: ${value}`),
-        props: { placeholder: 'Status placeholder' },
-      }),
+      defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-21', component: CheckedStub, field: 'enabled', label: 'Enabled' }),
+      defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-22', component: 'RegistryInput', extensions: { 'test.source': 'readonly' }, field: 'status', label: 'Status', readonly: true, readonlyRender: ({ componentProps, field, model, value }) => h('strong', {
+        'data-extension': field.extensions?.['test.source'],
+        'data-model-name': model.name,
+        'data-placeholder': componentProps.placeholder,
+        'data-testid': 'readonly-value',
+      }, `Status: ${value}`), props: { placeholder: 'Status placeholder' } }),
     ]
     const wrapper = mount(ConfigFormRenderer, {
       props: {
@@ -627,7 +555,7 @@ describe('config form renderer', () => {
     expect(wrapper.get('[data-testid="readonly-value"]').text()).toBe('Status: active')
   })
 
-  it('resolves registered field and container aliases with binding defaults and direct registrations', async () => {
+  it('resolves registered field and container keys with binding defaults and direct registrations', async () => {
     const registeredChange = vi.fn()
     const wrapper = mount(ConfigFormRenderer, {
       props: {
@@ -645,11 +573,7 @@ describe('config form renderer', () => {
           DirectLeaf: SlotLeaf,
         },
         fields: [
-          defineField<TestValues>({
-            component: 'RegistryChecked',
-            extensions: { designer: { locked: true } },
-            field: 'enabled',
-          }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-23', component: 'RegistryChecked', extensions: { designer: { locked: true } }, field: 'enabled' }),
           { component: 'RegistryLeaf', extensions: { designer: { source: 'palette' } }, props: { text: 'Field override' } },
           { component: 'DirectLeaf', props: { text: 'Direct component' } },
         ],
@@ -675,14 +599,9 @@ describe('config form renderer', () => {
       props: {
         components: { RegistryHost: SlotHost },
         fields: [
-          defineField<TestValues>({
-            component: 'RegistryHost',
-            extensions: { source: 'field' },
-            field: 'status',
-            slots: {
-              default: ({ field }) => h('span', { 'data-testid': 'field-extension' }, String(field.extensions?.source)),
-            },
-          }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-24', component: 'RegistryHost', extensions: { source: 'field' }, field: 'status', slots: {
+            default: ({ field }) => h('span', { 'data-testid': 'field-extension' }, String(field.extensions?.source)),
+          } }),
           {
             component: 'RegistryHost',
             extensions: { source: 'container' },
@@ -704,35 +623,31 @@ describe('config form renderer', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [
-          defineField<TestValues>({
-            component: CheckedStub,
-            field: 'enabled',
-            reactions: [{
-              id: 'enable-details',
-              when: {
-                kind: 'compare',
-                operator: 'eq',
-                left: { kind: 'field', field: 'enabled' },
-                right: { kind: 'literal', value: true },
-              },
-              then: [
-                { kind: 'setValue', target: 'summary', value: { kind: 'literal', value: 'derived' } },
-                { kind: 'setState', target: 'name', state: { disabled: true, required: true } },
-                { kind: 'setProps', target: 'name', props: { placeholder: { kind: 'literal', value: 'Reaction placeholder' } } },
-                { kind: 'setState', target: 'notes', state: { visible: false } },
-                { kind: 'setState', target: 'status', state: { readonly: true } },
-              ],
-              else: [
-                { kind: 'clearValue', target: 'summary' },
-                { kind: 'setState', target: 'name', state: { disabled: false, required: false } },
-                { kind: 'setState', target: 'notes', state: { visible: true } },
-                { kind: 'setState', target: 'status', state: { readonly: false } },
-              ],
-            }],
-          }),
-          defineField<TestValues>({ component: InputStub, field: 'name', props: { placeholder: 'Static placeholder' } }),
-          defineField<TestValues>({ component: InputStub, field: 'notes' }),
-          defineField<TestValues>({ component: InputStub, field: 'status' }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-25', component: CheckedStub, field: 'enabled', reactions: [{
+            id: 'enable-details',
+            when: {
+              kind: 'compare',
+              operator: 'eq',
+              left: { kind: 'field', field: 'enabled' },
+              right: { kind: 'literal', value: true },
+            },
+            then: [
+              { kind: 'setValue', target: 'summary', value: { kind: 'literal', value: 'derived' } },
+              { kind: 'setState', target: 'name', state: { disabled: true, required: true } },
+              { kind: 'setProps', target: 'name', props: { placeholder: { kind: 'literal', value: 'Reaction placeholder' } } },
+              { kind: 'setState', target: 'notes', state: { visible: false } },
+              { kind: 'setState', target: 'status', state: { readonly: true } },
+            ],
+            else: [
+              { kind: 'clearValue', target: 'summary' },
+              { kind: 'setState', target: 'name', state: { disabled: false, required: false } },
+              { kind: 'setState', target: 'notes', state: { visible: true } },
+              { kind: 'setState', target: 'status', state: { readonly: false } },
+            ],
+          }] }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-26', component: InputStub, field: 'name', props: { placeholder: 'Static placeholder' } }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-27', component: InputStub, field: 'notes' }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-28', component: InputStub, field: 'status' }),
         ],
         modelValue: { enabled: false, name: 'Ada', notes: 'Visible', status: 'draft' },
         resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'
@@ -769,8 +684,8 @@ describe('config form renderer', () => {
   })
 
   it('refreshes reactions when the configured field tree changes', async () => {
-    const source = defineField<TestValues>({ component: CheckedStub, field: 'enabled' })
-    const name = defineField<TestValues>({ component: InputStub, field: 'name' })
+    const source = defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-29', component: CheckedStub, field: 'enabled' })
+    const name = defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-30', component: InputStub, field: 'name' })
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [source, name],
@@ -809,15 +724,8 @@ describe('config form renderer', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [
-          defineField<TestValues>({ component: CheckedStub, field: 'enabled' }),
-          defineField<TestValues>({
-            component: InputStub,
-            field: 'name',
-            label: 'Name',
-            readonly: values => values.enabled,
-            required: true,
-            requiredMessage: 'Required',
-          }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-31', component: CheckedStub, field: 'enabled' }),
+          defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-32', component: InputStub, field: 'name', label: 'Name', readonly: values => values.enabled, required: true, requiredMessage: 'Required' }),
         ],
         modelValue: { enabled: false, name: '', status: '' },
         resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'

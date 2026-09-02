@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { collectFlowEventTargets, flowEventTargetKey } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { createBuiltInProject } from '../../project'
-import { collectFlowEventTargets, flowEventTargetKey } from '../event-targets'
+import { createBuiltInProjectFixture } from '../../project/__tests__/fixtures'
 
 describe('flow event targets', () => {
   it.each([
@@ -17,7 +17,7 @@ describe('flow event targets', () => {
     },
   ])('projects $adapterId binding events with user-facing labels and canonical names', async ({ adapterId, events, templateId }) => {
     const adapter = await loadWorkbenchAdapter(adapterId)
-    const project = createBuiltInProject(
+    const project = createBuiltInProjectFixture(
       templateId,
       { id: 'event-project', name: 'Event project' },
       adapter.componentRegistry.lock,
@@ -31,8 +31,12 @@ describe('flow event targets', () => {
     )
     expect(targets.map(target => target.event)).toEqual(events)
     expect(targets.map(target => target.eventLabel)).toEqual(['Value change', 'Value change', 'Value change'])
-    expect(targets.map(target => target.nodeId)).toEqual(['profile-name', 'profile-role', 'profile-active'])
-  })
+    expect(targets.map(target => target.nodeId)).toEqual([
+      'profile-name-node-1',
+      'profile-role-node-2',
+      'profile-active-node-3',
+    ])
+  }, 10_000)
 
   it('uses node and event as a collision-safe selector key', () => {
     expect(flowEventTargetKey({ nodeId: 'a:b', event: 'update:modelValue' }))

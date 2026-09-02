@@ -3,11 +3,11 @@
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { PageManager } from '..'
 import {
   createProjectDocumentFixture,
   duplicateProjectPage,
 } from '../../project/__tests__/fixtures'
-import PageManager from '../PageManager.vue'
 
 function mountManager(project: ProjectDocument) {
   return mount(PageManager, {

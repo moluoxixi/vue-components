@@ -1,27 +1,6 @@
-import type {
-  FormErrors,
-  FormValues,
-  ResolvedBoundNode,
-  ResolvedFormNode,
-  ValidateTrigger,
-} from '@/types'
+import type { FormContext } from '../types'
 import { inject, provide } from 'vue'
-import { ConfigFormError } from '@/errors'
-
-export interface FormContext {
-  values: FormValues
-  errors: FormErrors
-  inline?: boolean
-  labelWidth?: string | number
-  getValue: (field: string) => unknown
-  getValues: () => FormValues
-  isVisible: (field: ResolvedFormNode) => boolean
-  isDisabled: (field: ResolvedBoundNode) => boolean
-  isReadonly?: (field: ResolvedFormNode) => boolean
-  setValue: (field: string, value: unknown) => void
-  setValues: (values: FormValues, replace?: boolean) => void
-  validateField: (field: string, trigger: ValidateTrigger) => Promise<boolean>
-}
+import { ConfigFormError } from '../errors'
 
 export const FORM_CONTEXT_KEY = Symbol.for('moluoxixi.config-form.form-context')
 

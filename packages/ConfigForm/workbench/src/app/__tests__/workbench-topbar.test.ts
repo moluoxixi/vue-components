@@ -4,7 +4,7 @@ import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { createProjectDocumentFixture } from '../../project/__tests__/fixtures'
-import WorkbenchTopbar from '../WorkbenchTopbar.vue'
+import { WorkbenchTopbar } from '../components'
 
 const project = createProjectDocumentFixture({ id: 'app', name: 'Account app' })
 const currentPage = project.pagesById[project.homePageId]!
@@ -27,8 +27,9 @@ describe('workbench topbar', () => {
         project,
         currentPage,
         localeId: 'en-US',
+        paletteFamily: 'catppuccin',
         statusLabel: 'Saved locally',
-        theme: 'dark',
+        themePreference: 'system',
       },
     })
 
@@ -55,14 +56,16 @@ describe('workbench topbar', () => {
 
   it('keeps commands as host events instead of changing workspace state', async () => {
     const wrapper = mount(WorkbenchTopbar, {
+      attachTo: document.body,
       props: {
         project,
         currentPage,
         dirty: true,
         localeId: 'en-US',
+        paletteFamily: 'catppuccin',
         previewOpen: false,
         statusLabel: 'Unsaved',
-        theme: 'light',
+        themePreference: 'light',
       },
     })
 
@@ -83,13 +86,12 @@ describe('workbench topbar', () => {
     await overlays.findAll('[data-save-menu] [role="menuitem"]')[2]!.trigger('click')
     await wrapper.get('button[aria-label="Show preview"]').trigger('click')
     await wrapper.get('[data-create-trigger="topbar-new-page"]').trigger('click')
-    await wrapper.get('button[aria-label="Use dark theme"]').trigger('click')
+    expect(wrapper.get('button[aria-label="Open appearance settings"]')).toBeDefined()
     expect(wrapper.emitted('save')).toHaveLength(1)
     expect(wrapper.emitted('createCheckpoint')).toHaveLength(1)
     expect(wrapper.emitted('openVersions')).toHaveLength(1)
     expect(wrapper.emitted('togglePreview')).toHaveLength(1)
     expect(wrapper.emitted('newPage')).toEqual([['topbar-new-page']])
-    expect(wrapper.emitted('toggleTheme')).toHaveLength(1)
     wrapper.unmount()
   })
 
@@ -100,8 +102,9 @@ describe('workbench topbar', () => {
         project,
         currentPage,
         localeId: 'en-US',
+        paletteFamily: 'catppuccin',
         statusLabel: 'Saved locally',
-        theme: 'light',
+        themePreference: 'system',
       },
     })
 
@@ -126,9 +129,10 @@ describe('workbench topbar', () => {
         busy: true,
         currentPage,
         localeId: 'en-US',
+        paletteFamily: 'catppuccin',
         repositoryRevision: 7,
         statusLabel: 'Saving',
-        theme: 'dark',
+        themePreference: 'dark',
       },
     })
 
@@ -143,6 +147,30 @@ describe('workbench topbar', () => {
     await wrapper.get('button[aria-label="More actions"]').trigger('click')
     const status = overlayRoot().get('[data-mobile-action-menu] [role="status"]')
     expect(status.text()).toBe('v7 · Saving')
+    wrapper.unmount()
+  })
+
+  it('routes appearance through the mobile More menu after restoring focus', async () => {
+    const wrapper = mount(WorkbenchTopbar, {
+      attachTo: document.body,
+      props: {
+        project,
+        currentPage,
+        localeId: 'en-US',
+        paletteFamily: 'rose-pine',
+        statusLabel: 'Saved locally',
+        themePreference: 'system',
+      },
+    })
+
+    const trigger = wrapper.get('button[aria-label="More actions"]')
+    await trigger.trigger('click')
+    const appearance = overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').find(
+      item => item.text() === 'Open appearance settings',
+    )!
+    await appearance.trigger('click')
+    expect(wrapper.emitted('openAppearance')).toHaveLength(1)
+    expect(document.activeElement).toBe(trigger.element)
     wrapper.unmount()
   })
 })

@@ -3,7 +3,7 @@
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
-import WorkbenchCommandTooltip from '../WorkbenchCommandTooltip.vue'
+import { WorkbenchCommandTooltip } from '../components'
 
 describe('workbench command tooltip', () => {
   beforeEach(() => {

@@ -6,11 +6,11 @@ import { Input, InputNumber, Segmented, Select, Switch } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { z } from 'zod'
+import AntdConfigFormSource from '../src/index.vue'
 import {
   ANTD_CONFIG_FORM_COMPONENTS,
   ANTD_CONFIG_FORM_MATERIAL_REGISTRY,
-} from '../src/components'
-import AntdConfigFormSource from '../src/index.vue'
+} from '../src/registries'
 
 const AntdConfigForm = AntdConfigFormSource as Component
 
@@ -72,12 +72,12 @@ const ContainerStub = defineComponent({
 describe('antd config form', () => {
   it('registers default component materials from their named files', () => {
     expect(ANTD_CONFIG_FORM_MATERIAL_REGISTRY.list().map(({ name, source }) => ({ name, source }))).toEqual([
-      { name: 'text', source: './materials/text.ts' },
-      { name: 'textarea', source: './materials/textarea.ts' },
-      { name: 'number', source: './materials/number.ts' },
-      { name: 'boolean', source: './materials/boolean.ts' },
-      { name: 'select', source: './materials/select.ts' },
-      { name: 'segmented', source: './materials/segmented.ts' },
+      { name: 'text', source: '../materials/text.ts' },
+      { name: 'textarea', source: '../materials/textarea.ts' },
+      { name: 'number', source: '../materials/number.ts' },
+      { name: 'boolean', source: '../materials/boolean.ts' },
+      { name: 'select', source: '../materials/select.ts' },
+      { name: 'segmented', source: '../materials/segmented.ts' },
     ])
   })
 
@@ -111,6 +111,7 @@ describe('antd config form', () => {
       defineField<UserForm>({
         component: InputStub,
         field: 'name',
+        id: 'name',
         label: '姓名',
         required: true,
         requiredMessage: '请输入姓名',
@@ -121,6 +122,7 @@ describe('antd config form', () => {
         component: InputStub,
         disabled: values => values.status === 'locked',
         field: 'status',
+        id: 'status',
         label: '状态',
       }),
     ]
@@ -144,11 +146,11 @@ describe('antd config form', () => {
     expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: true })
   })
 
-  it('resolves semantic text aliases and lets consumers override adapter defaults', async () => {
+  it('resolves semantic text keys and lets consumers override adapter defaults', async () => {
     const wrapper = mount(AntdConfigForm, {
       props: {
         components: { text: InputStub },
-        fields: [defineField<UserForm>({ component: 'text', field: 'name', label: '姓名' })],
+        fields: [defineField<UserForm>({ component: 'text', field: 'name', id: 'name', label: '姓名' })],
         modelValue: { name: '', status: 'draft' },
       },
     })
@@ -158,7 +160,7 @@ describe('antd config form', () => {
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ name: 'Ada', status: 'draft' }])
   })
 
-  it('renders adapter defaults for every semantic alias and applies native bindings', async () => {
+  it('renders adapter defaults for every semantic key and applies native bindings', async () => {
     expect(ANTD_CONFIG_FORM_COMPONENTS).toMatchObject({
       text: { component: Input, valueProp: 'value', trigger: 'update:value' },
       textarea: { component: Input.TextArea, valueProp: 'value', trigger: 'update:value' },
@@ -171,8 +173,8 @@ describe('antd config form', () => {
     const wrapper = mount(AntdConfigForm, {
       props: {
         fields: [
-          defineField<SemanticForm>({ component: 'text', field: 'name' }),
-          defineField<SemanticForm>({ component: 'boolean', field: 'enabled' }),
+          defineField<SemanticForm>({ component: 'text', field: 'name', id: 'name' }),
+          defineField<SemanticForm>({ component: 'boolean', field: 'enabled', id: 'enabled' }),
         ],
         modelValue: { enabled: false, name: '' },
       },
@@ -195,6 +197,7 @@ describe('antd config form', () => {
       defineField<SemanticForm>({
         component: 'boolean',
         field: 'enabled',
+        id: 'enabled',
         reactions: [{
           id: 'enable-name',
           when: {
@@ -210,7 +213,7 @@ describe('antd config form', () => {
           ],
         }],
       }),
-      defineField<SemanticForm>({ component: 'text', field: 'name', props: { placeholder: 'Static placeholder' } }),
+      defineField<SemanticForm>({ component: 'text', field: 'name', id: 'name', props: { placeholder: 'Static placeholder' } }),
     ]
     const wrapper = mount(AntdConfigForm, {
       props: { fields, modelValue: { enabled: false, name: 'initial' } },
@@ -233,6 +236,7 @@ describe('antd config form', () => {
     const fields = [defineField<UserForm>({
       component: InputStub,
       field: 'name',
+      id: 'name',
       label: '姓名',
       required: true,
       requiredMessage: '请输入姓名',
@@ -274,6 +278,7 @@ describe('antd config form', () => {
     const fields = [defineField<SwitchForm>({
       component: SwitchStub,
       field: 'enabled',
+      id: 'enabled',
       label: '启用',
     })]
     const wrapper = mount(AntdConfigForm, {
@@ -289,7 +294,7 @@ describe('antd config form', () => {
     expect(wrapper.find('.ant-form').exists()).toBe(false)
   })
 
-  it('uses registered boolean binding defaults for string aliases', async () => {
+  it('uses registered boolean binding defaults for string keys', async () => {
     const wrapper = mount(AntdConfigForm, {
       props: {
         components: {
@@ -299,7 +304,7 @@ describe('antd config form', () => {
             trigger: 'update:checked',
           },
         },
-        fields: [defineField<SwitchForm>({ component: 'boolean', field: 'enabled' })],
+        fields: [defineField<SwitchForm>({ component: 'boolean', field: 'enabled', id: 'enabled' })],
         modelValue: { enabled: false },
       },
     })
@@ -309,16 +314,17 @@ describe('antd config form', () => {
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true }])
   })
 
-  it('递归渲染 slot，并支持表单级 readonlyRender fallback', async () => {
+  it('递归渲染 slot，并在字段无只读适配器时使用表单级 readonlyRender', async () => {
     const { defineField: defineUserField } = defineFields<UserForm>()
     const fields = [
       defineUserField({
         component: ContainerStub,
+        id: 'container',
         slots: {
-          default: defineUserField({ component: OptionStub, props: { label: '说明' } }),
+          default: defineUserField({ component: OptionStub, id: 'description', props: { label: '说明' } }),
         },
       }),
-      defineUserField({ component: InputStub, field: 'status', label: '状态' }),
+      defineUserField({ component: InputStub, field: 'status', id: 'status', label: '状态' }),
     ]
     const wrapper = mount(AntdConfigForm, {
       props: {
@@ -343,6 +349,7 @@ describe('antd config form', () => {
     const fields = [defineField<UserForm>({
       component: InputStub,
       field: 'name',
+      id: 'name',
       required: true,
       requiredMessage: '请输入姓名',
     })]

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import DesignerCanvas from '../src/components/DesignerCanvas.vue'
+import { DesignerCanvas } from '../src/components/DesignerCanvas'
 import { createDesignerRegistry } from '../src/registry'
 
 const registry = createDesignerRegistry([{ name: 'test', materials: [{

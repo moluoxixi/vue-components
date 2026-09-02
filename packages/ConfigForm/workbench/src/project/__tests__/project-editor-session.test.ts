@@ -7,11 +7,11 @@ import type {
 } from '@moluoxixi/config-form-model'
 import { createMemoryProjectRepository, ProjectRepositoryError } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
-import { createProjectEditorSession, openProjectEditorSession } from '../project-editor-session'
+import { createProjectEditorSession, openProjectEditorSession } from '..'
 
 function projectDocument(): ProjectDocument {
   return {
-    schemaVersion: 4,
+    version: 4,
     id: 'project',
     name: 'Project',
     homePageId: 'home',

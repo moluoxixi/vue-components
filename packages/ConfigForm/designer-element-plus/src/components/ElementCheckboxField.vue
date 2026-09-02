@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ElementPlusDesignerOption, ElementPlusOptionSource } from '../types'
+import type { ElementCheckboxFieldEmits, ElementCheckboxFieldProps, ElementPlusDesignerOption } from '../types'
 import { ElCheckbox, ElCheckboxGroup } from 'element-plus'
 import { computed } from 'vue'
 import { elementPlusOptionKey, useElementPlusResolvedOptions } from '../options'
@@ -7,11 +7,7 @@ import ElementOptionState from './ElementOptionState.vue'
 
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps<{
-  modelValue?: Array<string | number>
-  options?: ElementPlusDesignerOption[]
-  optionSource?: ElementPlusOptionSource
-}>()
+const props = defineProps<ElementCheckboxFieldProps>()
 
 const state = useElementPlusResolvedOptions(
   computed(() => props.optionSource),
@@ -21,9 +17,7 @@ const checkboxOptions = computed(() => state.value.options.filter(
   (option): option is ElementPlusDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
 
-const emit = defineEmits<{
-  'update:modelValue': [value: Array<string | number>]
-}>()
+const emit = defineEmits<ElementCheckboxFieldEmits>()
 
 function updateModelValue(value: Array<string | number>): void {
   emit('update:modelValue', value)

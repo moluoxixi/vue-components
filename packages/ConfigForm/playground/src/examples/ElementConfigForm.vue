@@ -133,6 +133,7 @@ const containerFields = [
   defineCommonField({
     cellAttrs: {},
     component: ElCard,
+    id: 'element-container-card',
     span: 24,
     props: {
       bodyClass: 'config-form-demo__container',
@@ -148,6 +149,7 @@ const containerFields = [
   defineCommonField({
     cellAttrs: {},
     component: ElCollapse,
+    id: 'element-container-collapse',
     span: 24,
     props: {
       class: 'config-form-demo__container-collapse',
@@ -158,6 +160,7 @@ const containerFields = [
       default: defineCommonField({
         cellAttrs: {},
         component: ElCollapseItem,
+        id: 'element-container-collapse-item',
         props: {
           name: 'profile',
           title: 'Element Collapse 容器',
@@ -166,6 +169,7 @@ const containerFields = [
           default: defineCommonField({
             cellAttrs: {},
             component: 'p',
+            id: 'element-container-collapse-content',
             props: { textContent: 'Collapse 容器承载非字段配置节点' },
           }),
         },
@@ -175,6 +179,7 @@ const containerFields = [
   defineCommonField({
     cellAttrs: {},
     component: ElTabs,
+    id: 'element-container-tabs',
     span: 24,
     props: {
       class: 'config-form-demo__container-tabs',
@@ -186,6 +191,7 @@ const containerFields = [
         defineCommonField({
           cellAttrs: {},
           component: ElTabPane,
+          id: 'element-container-tab-base',
           props: {
             label: '基础',
             name: 'base',
@@ -194,6 +200,7 @@ const containerFields = [
             default: defineCommonField({
               cellAttrs: {},
               component: 'p',
+              id: 'element-container-tab-base-content',
               props: { textContent: 'Tabs 基础容器内容' },
             }),
           },
@@ -201,6 +208,7 @@ const containerFields = [
         defineCommonField({
           cellAttrs: {},
           component: ElTabPane,
+          id: 'element-container-tab-preference',
           props: {
             label: '偏好',
             name: 'preference',
@@ -209,6 +217,7 @@ const containerFields = [
             default: defineCommonField({
               cellAttrs: {},
               component: 'p',
+              id: 'element-container-tab-preference-content',
               props: { textContent: 'Tabs 偏好容器内容' },
             }),
           },
@@ -221,6 +230,7 @@ const linkedFields = [
   defineLinkedField({
     component: ElSwitch,
     field: 'advanced',
+    id: 'element-linked-advanced',
     label: '高级模式',
     props: {
       activeText: '启用',
@@ -288,6 +298,7 @@ function createStressFields() {
     return defineStressField({
       component: ElInput,
       field,
+      id: `element-stress-${field}`,
       label: `压测 ${number}`,
       props: {
         placeholder: `布局压测字段 ${number}`,
@@ -310,6 +321,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElInput,
       field: 'input' as ElementFieldKey<TValues>,
+      id: `${prefix}-input`,
       label: withFormItem ? '文本输入' : undefined,
       props: {
         placeholder: `${prefix} 文本输入`,
@@ -321,6 +333,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElInput,
       field: 'textarea' as ElementFieldKey<TValues>,
+      id: `${prefix}-textarea`,
       label: withFormItem ? '多行文本' : undefined,
       props: {
         placeholder: `${prefix} 多行文本`,
@@ -334,6 +347,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElInputNumber,
       field: 'inputNumber' as ElementFieldKey<TValues>,
+      id: `${prefix}-input-number`,
       label: withFormItem ? '数字输入' : undefined,
       props: {
         max: 99,
@@ -346,6 +360,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElAutocomplete,
       field: 'autocomplete' as ElementFieldKey<TValues>,
+      id: `${prefix}-autocomplete`,
       label: withFormItem ? '自动完成' : undefined,
       props: {
         fetchSuggestions: (_query: string, callback: (items: ElementOption[]) => void) => callback(createFlatOptions(suffix)),
@@ -359,6 +374,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElSelect,
       field: 'select' as ElementFieldKey<TValues>,
+      id: `${prefix}-select`,
       label: withFormItem ? '下拉选择' : undefined,
       props: {
         placeholder: `${prefix} 下拉选择`,
@@ -370,6 +386,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
           defineField({
             cellAttrs: {},
             component: ElOption,
+            id: `${prefix}-select-option-${String(option.value)}`,
             props: option,
           }),
         ),
@@ -380,6 +397,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElSelectV2,
       field: 'selectV2' as ElementFieldKey<TValues>,
+      id: `${prefix}-select-v2`,
       label: withFormItem ? '虚拟选择' : undefined,
       props: {
         options: createSelectV2Options(suffix),
@@ -393,6 +411,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElCascader,
       field: 'cascader' as ElementFieldKey<TValues>,
+      id: `${prefix}-cascader`,
       label: withFormItem ? '级联选择' : undefined,
       props: {
         options: createNestedOptions(suffix),
@@ -407,6 +426,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElTreeSelect,
       field: 'treeSelect' as ElementFieldKey<TValues>,
+      id: `${prefix}-tree-select`,
       label: withFormItem ? '树形选择' : undefined,
       props: {
         data: createTreeOptions(suffix),
@@ -421,6 +441,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElCheckbox,
       field: 'checkbox' as ElementFieldKey<TValues>,
+      id: `${prefix}-checkbox`,
       label: withFormItem ? '单选勾选' : undefined,
       props: {
         label: `${suffix} 开启`,
@@ -432,6 +453,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElCheckboxGroup,
       field: 'checkboxGroup' as ElementFieldKey<TValues>,
+      id: `${prefix}-checkbox-group`,
       label: withFormItem ? '多选勾选' : undefined,
       props: {
         'data-testid': `${prefix}-checkbox-group`,
@@ -441,6 +463,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
           defineField({
             cellAttrs: {},
             component: ElCheckbox,
+            id: `${prefix}-checkbox-option-${String(option.value)}`,
             props: option,
           }),
         ),
@@ -451,6 +474,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElSwitch,
       field: 'switchValue' as ElementFieldKey<TValues>,
+      id: `${prefix}-switch`,
       label: withFormItem ? '开关' : undefined,
       props: {
         activeText: '开启',
@@ -463,6 +487,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElRadioGroup,
       field: 'radio' as ElementFieldKey<TValues>,
+      id: `${prefix}-radio`,
       label: withFormItem ? '单选组' : undefined,
       props: {
         'data-testid': `${prefix}-radio`,
@@ -472,6 +497,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
           defineField({
             cellAttrs: {},
             component: ElRadio,
+            id: `${prefix}-radio-option-${String(option.value)}`,
             props: option,
           }),
         ),
@@ -482,6 +508,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElRate,
       field: 'rate' as ElementFieldKey<TValues>,
+      id: `${prefix}-rate`,
       label: withFormItem ? '评分' : undefined,
       props: {
         'data-testid': `${prefix}-rate`,
@@ -492,6 +519,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElSlider,
       field: 'slider' as ElementFieldKey<TValues>,
+      id: `${prefix}-slider`,
       label: withFormItem ? '滑块' : undefined,
       props: {
         max: 100,
@@ -504,6 +532,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElColorPicker,
       field: 'color' as ElementFieldKey<TValues>,
+      id: `${prefix}-color`,
       label: withFormItem ? '颜色' : undefined,
       props: {
         predefine: ['#409EFF', '#67C23A', '#E6A23C'],
@@ -516,6 +545,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElDatePicker,
       field: 'date' as ElementFieldKey<TValues>,
+      id: `${prefix}-date`,
       label: withFormItem ? '日期' : undefined,
       props: {
         placeholder: `${prefix} 日期`,
@@ -530,6 +560,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElTimePicker,
       field: 'time' as ElementFieldKey<TValues>,
+      id: `${prefix}-time`,
       label: withFormItem ? '时间' : undefined,
       props: {
         placeholder: `${prefix} 时间`,
@@ -543,6 +574,7 @@ function createKnownFields<TValues extends ElementKnownValues>(
     defineField({
       component: ElTimeSelect,
       field: 'timeSelect' as ElementFieldKey<TValues>,
+      id: `${prefix}-time-select`,
       label: withFormItem ? '时间选择' : undefined,
       props: {
         end: '12:00',
@@ -563,6 +595,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElRadioGroup,
       field: 'planType',
+      id: 'element-linked-plan-type',
       label: '方案类型',
       props: {
         'data-testid': 'element-linked-plan-radio',
@@ -572,6 +605,7 @@ function createLinkedControlFields() {
           defineLinkedField({
             cellAttrs: {},
             component: ElRadio,
+            id: `element-linked-plan-option-${String(option.value)}`,
             props: option,
           }),
         ),
@@ -581,6 +615,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElInput,
       field: 'enterpriseName',
+      id: 'element-linked-enterprise-name',
       label: '企业名称',
       props: {
         placeholder: '企业模式显示',
@@ -602,6 +637,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElCheckbox,
       field: 'marketing',
+      id: 'element-linked-marketing',
       label: '营销设置',
       props: {
         label: '启用营销备注',
@@ -612,6 +648,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElInput,
       field: 'marketingNote',
+      id: 'element-linked-marketing-note',
       label: '营销备注',
       props: {
         placeholder: '勾选后显示',
@@ -625,6 +662,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElSelect,
       field: 'notifyChannel',
+      id: 'element-linked-notify-channel',
       label: '通知方式',
       props: {
         placeholder: '选择通知方式',
@@ -636,6 +674,7 @@ function createLinkedControlFields() {
           defineLinkedField({
             cellAttrs: {},
             component: ElOption,
+            id: `element-linked-notify-option-${String(option.value)}`,
             props: option,
           }),
         ),
@@ -645,6 +684,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElTimeSelect,
       field: 'scheduledTime',
+      id: 'element-linked-scheduled-time',
       label: '预约时间',
       props: {
         end: '12:00',
@@ -660,6 +700,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElInputNumber,
       field: 'seatCount',
+      id: 'element-linked-seat-count',
       label: '席位数',
       props: {
         max: 99,
@@ -671,6 +712,7 @@ function createLinkedControlFields() {
     defineLinkedField({
       component: ElInput,
       field: 'seatNote',
+      id: 'element-linked-seat-note',
       label: '席位说明',
       props: {
         placeholder: '席位数达到 5 后显示',

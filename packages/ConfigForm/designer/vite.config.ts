@@ -42,7 +42,6 @@ export default defineConfig({
         '@moluoxixi/config-form-core',
         '@moluoxixi/config-form-model',
         '@moluoxixi/config-form-vue-backend',
-        '@moluoxixi/config-form/renderer',
         '@moluoxixi/config-form-headless',
         '@moluoxixi/zod3-to-rule',
         'vue',

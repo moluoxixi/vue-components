@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 
 import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
-import type { DesignSurfaceExpose } from '../src/components/types'
+import type { DesignSurfaceExpose } from '../src/components/DesignSurface/types'
 import { createComponentContractRegistry } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
-import DesignSurface from '../src/components/DesignSurface.vue'
+import { DesignSurface } from '../src/components/DesignSurface'
 import { createDesignerRegistry } from '../src/registry'
 
 const registry = createDesignerRegistry([{ name: 'test', materials: [{

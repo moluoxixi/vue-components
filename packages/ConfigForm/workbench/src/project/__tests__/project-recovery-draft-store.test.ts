@@ -2,11 +2,7 @@ import type { ProjectChangeSet, ProjectDocument } from '@moluoxixi/config-form-m
 import { applyProjectTransaction } from '@moluoxixi/config-form-model'
 import { IndexDBStorage } from '@moluoxixi/indexed-db'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createIndexedDBProjectRepository } from '../project-document-repository-indexed-db'
-import {
-  createIndexedDBProjectRecoveryDraftStore,
-  createMemoryProjectRecoveryDraftStore,
-} from '../project-recovery-draft-store'
+import { createIndexedDBProjectRecoveryDraftStore, createIndexedDBProjectRepository, createMemoryProjectRecoveryDraftStore } from '../persistence'
 import { createProjectDocumentFixture } from './fixtures'
 import 'fake-indexeddb/auto'
 

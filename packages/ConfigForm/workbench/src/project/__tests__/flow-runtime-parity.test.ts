@@ -19,7 +19,7 @@ import {
   createPreviewFlowValuePatch,
   PreviewFlowCoordinator,
 } from '../../preview'
-import { createStandaloneFlowRuntimeSource } from '../export/source'
+import { createStandaloneFlowRuntimeSource } from '../export'
 
 type FlowValues = Record<string, unknown>
 type PortableAction = (

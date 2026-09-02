@@ -1,18 +1,13 @@
 <script setup lang="ts">
-import type { AntdVueOptionSource } from '../options'
+import type { AntdOptionSourceSetterEmits, AntdOptionSourceSetterProps, AntdVueOptionSource } from '../types'
 import { Select } from 'ant-design-vue'
 import { useDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import { readAntdVueOptionSource, useAntdVueOptionResolverContext } from '../options'
 
-const props = defineProps<{
-  modelValue?: unknown
-  disabled?: boolean
-}>()
+const props = defineProps<AntdOptionSourceSetterProps>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: AntdVueOptionSource | undefined]
-}>()
+const emit = defineEmits<AntdOptionSourceSetterEmits>()
 
 const context = useAntdVueOptionResolverContext()
 const locale = useDesignerLocale()

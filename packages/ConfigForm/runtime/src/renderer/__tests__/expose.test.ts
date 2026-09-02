@@ -2,7 +2,7 @@ import type { ConfigFormRendererExpose } from '../types'
 import { createConfigFormController } from '@moluoxixi/config-form-headless'
 import { describe, expect, it, vi } from 'vitest'
 import { shallowRef } from 'vue'
-import { createConfigFormRendererExpose } from '../expose'
+import { createConfigFormRendererExpose } from '../services'
 
 interface TestValues {
   age: number

@@ -48,7 +48,7 @@ function fixture() {
     return { nodeId: id, placement: { span: 6 } }
   })
   const document: ProjectDocument = {
-    schemaVersion: PROJECT_DOCUMENT_VERSION,
+    version: PROJECT_DOCUMENT_VERSION,
     id: 'performance-project',
     name: 'Performance project',
     homePageId: 'home',

@@ -1,18 +1,13 @@
 <script setup lang="ts">
-import type { ElementPlusOptionSource } from '../options'
+import type { ElementOptionSourceSetterEmits, ElementOptionSourceSetterProps, ElementPlusOptionSource } from '../types'
 import { ElOption, ElSelect } from 'element-plus'
 import { useDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import { readElementPlusOptionSource, useElementPlusOptionResolverContext } from '../options'
 
-const props = defineProps<{
-  modelValue?: unknown
-  disabled?: boolean
-}>()
+const props = defineProps<ElementOptionSourceSetterProps>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: ElementPlusOptionSource | undefined]
-}>()
+const emit = defineEmits<ElementOptionSourceSetterEmits>()
 
 const context = useElementPlusOptionResolverContext()
 const locale = useDesignerLocale()

@@ -3,7 +3,7 @@ import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererExpose,
   ConfigFormRendererField,
-} from '@moluoxixi/config-form/renderer'
+} from '@moluoxixi/config-form'
 import type {
   AntdConfigFormEmits,
   AntdConfigFormExpose,
@@ -11,10 +11,10 @@ import type {
   AntdConfigFormSlots,
 } from './types'
 import { computed, useTemplateRef } from 'vue'
-import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
-import { resolveAntdConfigFormFieldBinding } from './bindings'
-import { ANTD_CONFIG_FORM_COMPONENTS } from './components'
-import './styles.scss'
+import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form'
+import { resolveAntdConfigFormFieldBinding } from './adapters'
+import { ANTD_CONFIG_FORM_COMPONENTS } from './registries'
+import './styles/index.scss'
 
 defineOptions({
   name: 'AntdConfigForm',

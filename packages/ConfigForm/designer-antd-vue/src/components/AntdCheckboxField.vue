@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AntdVueDesignerOption, AntdVueOptionSource } from '../types'
+import type { AntdCheckboxFieldEmits, AntdCheckboxFieldProps, AntdVueDesignerOption } from '../types'
 import { CheckboxGroup } from 'ant-design-vue'
 import { computed } from 'vue'
 import { useAntdVueResolvedOptions } from '../options'
@@ -7,11 +7,7 @@ import AntdOptionState from './AntdOptionState.vue'
 
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps<{
-  value?: Array<string | number>
-  options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
-}>()
+const props = defineProps<AntdCheckboxFieldProps>()
 
 const state = useAntdVueResolvedOptions(
   computed(() => props.optionSource),
@@ -21,9 +17,7 @@ const checkboxOptions = computed(() => state.value.options.filter(
   (option): option is AntdVueDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
 
-const emit = defineEmits<{
-  'update:value': [value: Array<string | number>]
-}>()
+const emit = defineEmits<AntdCheckboxFieldEmits>()
 </script>
 
 <template>

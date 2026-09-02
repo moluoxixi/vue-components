@@ -82,7 +82,7 @@ describe('ant design vue designer materials', () => {
   it('registers every material and matching locale module', () => {
     const entries = ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.modules.list()
     expect(entries.map(entry => entry.name)).toEqual(expectedKeys.map(key => key.replace('antd.', '')))
-    expect(entries.every(entry => entry.source === `./materials/${entry.name}.ts`)).toBe(true)
+    expect(entries.every(entry => entry.source === `./${entry.name}.ts`)).toBe(true)
     expect(ANTD_VUE_DESIGNER_MATERIALS.map(material => material.key)).toEqual(expectedKeys)
     expect(Object.keys(ANTD_VUE_DESIGNER_MATERIAL_REGISTRY.locales)).toEqual(expectedKeys)
     expect(Object.keys(ANTD_VUE_DESIGNER_ZH_CN.materials ?? {})).toEqual(expectedKeys)

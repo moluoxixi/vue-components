@@ -1,3 +1,2 @@
-export { default } from './src/index.vue'
-export { default as FormComponent } from './src/index.vue'
-export type * from './src/types'
+export { default } from './index.vue'
+export type * from './types'

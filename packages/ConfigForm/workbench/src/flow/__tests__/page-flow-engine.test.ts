@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createPageFlowEngine,
   createWorkbenchPageFlowEngine,
-} from '../page-flow-engine'
+} from '..'
 
 function executionPlan(flow: ConfigFormFlow) {
   const result = analyzeConfigFormFlow(flow)

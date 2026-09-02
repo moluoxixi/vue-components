@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import type { AntdVueResolvedOptionState } from '../options'
+import type { AntdOptionStateProps } from '../types'
 import { CircleAlert, ListX, LoaderCircle } from '@lucide/vue'
 import { computed } from 'vue'
 
-const props = defineProps<{
-  state: AntdVueResolvedOptionState
-}>()
+const props = defineProps<AntdOptionStateProps>()
 
 const visible = computed(() => props.state.status === 'loading'
   || props.state.status === 'error'

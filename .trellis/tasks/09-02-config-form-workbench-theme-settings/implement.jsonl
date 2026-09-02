@@ -1,0 +1,5 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"加载 ConfigForm Designer/Workbench 前端开发清单与适用规范入口。"}
+{"file":".trellis/spec/config-form-designer/frontend/directory-structure.md","reason":"新增 appearance types/services/components 时遵守责任目录与 barrel 规则。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"保持 ProjectDocument、包所有权与当前契约边界不变。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核对偏好存储、DOM、overlay、CSS bridge 与 Runtime iframe 的跨层数据流。"}
+{"file":".trellis/tasks/09-02-config-form-workbench-theme-settings/research/community-theme-palettes.md","reason":"使用已核验的社区主题来源、配对、seed 和对比度风险。"}

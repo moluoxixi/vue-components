@@ -1,17 +1,8 @@
 import type { ComputedRef } from 'vue'
-import type { ResolvedBoundNode } from '@/types'
+import type { FieldBinding, FieldComponentListeners, ResolvedBoundNode } from '../types'
 import { computed } from 'vue'
-import { useFormContext } from '@/composables/useFormContext'
-import { ConfigFormError } from '@/errors'
-
-export type FieldComponentListeners = Record<string, (...args: unknown[]) => Promise<boolean> | void>
-
-export interface FieldBinding {
-  modelValue: ComputedRef<unknown>
-  disabled: ComputedRef<boolean>
-  attrs: ComputedRef<Record<string, unknown>>
-  listeners: ComputedRef<FieldComponentListeners>
-}
+import { ConfigFormError } from '../errors'
+import { useFormContext } from './useFormContext'
 
 /**
  * 从字段组件事件参数中解析需要写回表单的值。

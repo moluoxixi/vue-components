@@ -6,14 +6,13 @@ import type {
 } from '../../project'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { describe, expect, it, vi } from 'vitest'
+import { createWorkbenchDesignSession, createWorkbenchExportService } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { createBuiltInProject } from '../../project'
-import { createWorkbenchDesignSession } from '../workbench-design-session'
-import { createWorkbenchExportService } from '../workbench-export-service'
+import { createBuiltInProjectFixture } from '../../project/__tests__/fixtures'
 
 async function fixture() {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const document = createBuiltInProject('element-profile', {
+  const document = createBuiltInProjectFixture('element-profile', {
     id: 'workbench-services',
     name: 'Workbench services',
   }, adapter.componentRegistry.lock)

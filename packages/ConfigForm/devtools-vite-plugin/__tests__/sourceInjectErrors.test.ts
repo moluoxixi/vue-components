@@ -24,7 +24,7 @@ vi.mock('@babel/parser', () => ({
 
 describe('source injection errors', () => {
   it('throws when an import source location is unavailable during adapter rewriting', async () => {
-    const { transformDefineFieldSource } = await import('../src/sourceInject')
+    const { transformDefineFieldSource } = await import('../src/source-inject')
 
     expect(() => transformDefineFieldSource({
       adapterModuleId: 'virtual:config-form-devtools/config-form',
@@ -73,7 +73,7 @@ describe('source injection errors', () => {
       },
       type: 'File',
     }
-    const { transformDefineFieldSource } = await import('../src/sourceInject')
+    const { transformDefineFieldSource } = await import('../src/source-inject')
 
     expect(() => transformDefineFieldSource({
       adapterModuleId: 'virtual:config-form-devtools/config-form',

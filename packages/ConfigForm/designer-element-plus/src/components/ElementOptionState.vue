@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import type { ElementPlusResolvedOptionState } from '../options'
+import type { ElementOptionStateProps } from '../types'
 import { CircleAlert, ListX, LoaderCircle } from '@lucide/vue'
 import { computed } from 'vue'
 
-const props = defineProps<{
-  state: ElementPlusResolvedOptionState
-}>()
+const props = defineProps<ElementOptionStateProps>()
 
 const visible = computed(() => props.state.status === 'loading'
   || props.state.status === 'error'

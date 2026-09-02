@@ -1,21 +1,24 @@
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
+import { Buffer } from 'node:buffer'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { parse } from '@babel/parser'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { parse as parseSfc } from '@vue/compiler-sfc'
+import { transformWithEsbuild } from 'vite'
 import { describe, expect, it } from 'vitest'
+import { normalizeProjectPath, safeProjectSlug } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { createCanonicalProjectConfigExport } from '../export/config'
-import { createCanonicalProjectSourceExport } from '../export/source'
-import { normalizeProjectPath, safeProjectSlug } from '../path'
-import { createBuiltInProject } from '../templates'
+import { createCanonicalProjectConfigExport, createCanonicalProjectSourceExport } from '../export'
+import { createBuiltInProjectFixture } from './fixtures'
 
 async function fixture(update?: (
   document: ProjectDocument,
   adapter: Awaited<ReturnType<typeof loadWorkbenchAdapter>>,
 ) => void) {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const document = createBuiltInProject('element-profile', {
+  const document = createBuiltInProjectFixture('element-profile', {
     id: 'canonical-config-project',
     name: 'Canonical config project',
   }, adapter.componentRegistry.lock)
@@ -96,7 +99,7 @@ describe('canonical Config export', () => {
     expect(pageFile.content).toContain('lane: "main"')
     expect(pageFile.content).toContain('position: {')
     expect(pageFile.content).toContain('x: 13')
-    expect(projectFile.content).toContain('schemaVersion: 4')
+    expect(projectFile.content).toContain('version: 4')
     expect(projectFile.content).toContain('registryLock: {')
     expect(() => parse(pageFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
     expect(() => parse(projectFile.content, { plugins: ['typescript'], sourceType: 'module' })).not.toThrow()
@@ -117,6 +120,7 @@ describe('canonical standalone Source export', () => {
       'src/main.ts',
       'src/pages/home/Page.vue',
       'src/pages/home/flows.ts',
+      'src/pages/home/validation.ts',
       'src/router.ts',
       'src/styles.css',
       'src/vite-env.d.ts',
@@ -129,9 +133,11 @@ describe('canonical standalone Source export', () => {
     expect(manifest?.kind).toBe('text')
     if (manifest?.kind === 'text') {
       expect(JSON.parse(manifest.content).dependencies).toEqual({
-        'element-plus': '2.9.1',
+        '@moluoxixi/zod3-to-rule': '^0.1.2',
+        'element-plus': '^2.9.1',
         'vue': expect.any(String),
         'vue-router': '4.5.1',
+        'zod': '^3.24.2',
       })
     }
 
@@ -202,5 +208,109 @@ describe('canonical standalone Source export', () => {
 
     expect(page.content).toContain('@tab-change=\'runNodeEvent("event-tabs", "tab-change", $event)\'')
     expect(page.content).not.toContain('runNodeEvent("idle-collapse", "change"')
+  })
+
+  it('executes required, RuleSet, custom-validator, and validateOn semantics in generated source', async () => {
+    const { adapter, compilation } = await fixture((document) => {
+      const name = Object.values(document.pagesById.home!.graph.nodesById)
+        .find(node => node.kind === 'field' && node.field === 'name-field-4')
+      if (!name || name.kind !== 'field')
+        throw new Error('Expected the name field to exist.')
+      name.validateOn = 'blur'
+      name.validation = {
+        version: 1,
+        base: { type: 'string' },
+        rules: [
+          { kind: 'required', message: 'Name is required' },
+          { kind: 'minLength', value: 3, message: 'Name is too short' },
+          { kind: 'custom', key: 'available-name', message: 'Name is unavailable' },
+        ],
+      }
+    })
+    const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
+    const validation = exported.files[normalizeProjectPath('src/pages/home/validation.ts')]
+    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
+    expect(validation?.kind).toBe('text')
+    expect(page?.kind).toBe('text')
+    if (validation?.kind !== 'text' || page?.kind !== 'text')
+      return
+
+    expect(validation.content).toContain('"validateOn": [\n      "blur",\n      "submit"')
+    expect(page.content).toContain('validateOn(field, \'change\')')
+    expect(page.content).toContain('validateOn(field, \'blur\')')
+    expect(page.content).toContain('await validateRequestedFields(fields)')
+    expect(page.content).toContain('fieldErrors["name-field-4"]')
+
+    const transformed = await transformWithEsbuild(validation.content, 'validation.ts', {
+      format: 'esm',
+      loader: 'ts',
+      target: 'es2022',
+    })
+    const ruleRuntime = pathToFileURL(resolve(
+      process.cwd(),
+      '../../zod3-to-rule/dist/index.js',
+    )).href
+    const executable = transformed.code.replaceAll(
+      '@moluoxixi/zod3-to-rule',
+      ruleRuntime,
+    )
+    const runtime = await import(`data:text/javascript;base64,${Buffer.from(executable).toString('base64')}`) as {
+      registerFieldValidator: (key: string, validator: (value: unknown) => string | undefined) => void
+      validateField: (field: string, values: Record<string, unknown>) => Promise<string[]>
+      validateFieldForTrigger: (field: string, trigger: 'blur' | 'change' | 'submit', values: Record<string, unknown>) => Promise<string[] | undefined>
+    }
+    runtime.registerFieldValidator('available-name', value => value === 'taken' ? 'Name is unavailable' : undefined)
+
+    const nameField = 'name-field-4'
+    await expect(runtime.validateField(nameField, { [nameField]: '' })).resolves.toContain('Name is required')
+    await expect(runtime.validateField(nameField, { [nameField]: 'ab' })).resolves.toContain('Name is too short')
+    await expect(runtime.validateField(nameField, { [nameField]: 'taken' })).resolves.toContain('Name is unavailable')
+    await expect(runtime.validateField(nameField, { [nameField]: 'available' })).resolves.toEqual([])
+    await expect(runtime.validateFieldForTrigger(nameField, 'change', { [nameField]: '' })).resolves.toBeUndefined()
+    await expect(runtime.validateFieldForTrigger(nameField, 'blur', { [nameField]: '' })).resolves.toContain('Name is required')
+  })
+
+  it('preserves cascading desktop, tablet, and mobile layout for fields and containers', async () => {
+    const { adapter, compilation } = await fixture((document, activeAdapter) => {
+      const page = document.pagesById.home!
+      page.graph.form = {
+        columns: 24,
+        fieldSpan: 8,
+        responsive: {
+          tablet: { columns: 12, fieldSpan: 6 },
+          mobile: { columns: 4 },
+        },
+      }
+      delete page.graph.root[0]!.placement.span
+      page.graph.root.push({ nodeId: 'responsive-section', placement: {} })
+      page.graph.nodesById['responsive-section'] = {
+        id: 'responsive-section',
+        component: 'element.section',
+        kind: 'layout',
+        props: { title: 'Responsive section' },
+        events: {},
+        bindings: {},
+        slots: { default: [] },
+      }
+      document.registryLock.components['element.section'] = structuredClone(
+        activeAdapter.componentRegistry.lock.components['element.section']!,
+      )
+    })
+    const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
+    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
+    const styles = exported.files[normalizeProjectPath('src/styles.css')]
+    expect(page?.kind).toBe('text')
+    expect(styles?.kind).toBe('text')
+    if (page?.kind !== 'text' || styles?.kind !== 'text')
+      return
+
+    expect(page.content).toContain('--source-columns-desktop: 24; --source-columns-tablet: 12; --source-columns-mobile: 4')
+    expect(page.content).toContain('--source-span-desktop: 8; --source-span-tablet: 6; --source-span-mobile: 4')
+    expect(page.content).toContain('"--source-span-desktop": "8"')
+    expect(page.content).toContain('"--source-span-tablet": "6"')
+    expect(page.content).toContain('"--source-span-mobile": "4"')
+    expect(styles.content).toContain('@media (max-width: 1024px)')
+    expect(styles.content).toContain('@media (max-width: 720px)')
+    expect(styles.content).not.toContain('grid-template-columns: 1fr !important')
   })
 })

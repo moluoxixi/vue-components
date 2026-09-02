@@ -1,6 +1,4 @@
-export * from './components'
 export * from './materials'
 export * from './options'
-export * from './propertyControls'
-export * from './registry'
+export * from './registries'
 export type * from './types'

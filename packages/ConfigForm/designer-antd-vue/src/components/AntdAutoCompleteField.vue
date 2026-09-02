@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AntdVueDesignerOption, AntdVueOptionSource } from '../types'
+import type { AntdAutoCompleteFieldEmits, AntdAutoCompleteFieldProps, AntdAutoCompleteValue, AntdVueDesignerOption } from '../types'
 import { AutoComplete } from 'ant-design-vue'
 import { computed } from 'vue'
 import { useAntdVueResolvedOptions } from '../options'
@@ -7,13 +7,7 @@ import AntdOptionState from './AntdOptionState.vue'
 
 defineOptions({ inheritAttrs: false })
 
-type AutoCompleteValue = string | number
-
-const props = defineProps<{
-  value?: AutoCompleteValue
-  options?: AntdVueDesignerOption[]
-  optionSource?: AntdVueOptionSource
-}>()
+const props = defineProps<AntdAutoCompleteFieldProps>()
 
 const state = useAntdVueResolvedOptions(
   computed(() => props.optionSource),
@@ -23,9 +17,7 @@ const autoCompleteOptions = computed(() => state.value.options.filter(
   (option): option is AntdVueDesignerOption & { value: string | number } => typeof option.value !== 'boolean',
 ))
 
-const emit = defineEmits<{
-  'update:value': [value: AutoCompleteValue]
-}>()
+const emit = defineEmits<AntdAutoCompleteFieldEmits>()
 </script>
 
 <template>
@@ -36,7 +28,7 @@ const emit = defineEmits<{
       :value="value"
       :options="autoCompleteOptions"
       :loading="state.status === 'loading'"
-      @update:value="emit('update:value', $event as AutoCompleteValue)"
+      @update:value="emit('update:value', $event as AntdAutoCompleteValue)"
     />
     <AntdOptionState :state="state" />
   </span>

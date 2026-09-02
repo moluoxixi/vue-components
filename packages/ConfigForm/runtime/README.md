@@ -1,16 +1,16 @@
 # @moluoxixi/config-form
 
-Vue 3 配置化表单运行时。根入口提供面向 schema、低代码和 UI plugin 的 Runtime/Plugin 路线，`@moluoxixi/config-form/renderer` 提供面向轻量 ConfigForm adapter 的受控 Vue DOM renderer。
+Vue 3 配置化表单运行时。`@moluoxixi/config-form` 根入口统一提供面向 schema、低代码和 UI plugin 的 Runtime/Plugin 路线，以及面向轻量 ConfigForm adapter 的受控 Vue DOM renderer。
 
 ## 当前架构
 
-`ConfigFormRenderer` 从 `@moluoxixi/config-form/renderer` 导出。它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
+`ConfigFormRenderer` 从 `@moluoxixi/config-form` 根入口导出。它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
 
 根入口的 `ConfigForm`、runtime plugin 与 `useForm` 属于 Runtime/Plugin 路线，负责组件注册、字段转换和 UI plugin 扩展，后续可继续演进为 Pro/低代码能力。轻量 UI 适配器不依赖这套状态机，两条路线只共享明确的基础契约。
 
-轻量 `ConfigFormRenderer` 及其 UI adapters 同时支持 `validateOn` 的 change/blur 校验触发和独立的 dirty/touched 状态。renderer 发出 `metaChange`，在默认 slot 提供表单 `meta`、在字段 slot 提供字段 `meta`，并暴露 `getMeta`、`getFieldMeta` 和 `setTouched`；原生 form 与字段壳分别带有 `data-dirty` / `data-touched`。这些 API 属于 Headless/Renderer 路线，不会改变下文 Runtime/Plugin 根组件的 Events 与 Expose 契约。
+轻量 `ConfigFormRenderer` 及其 UI adapters 同时支持 `validateOn` 的 change/blur 校验触发和独立的 dirty/touched 状态。renderer 发出 `metaChange`，在默认 slot 提供表单 `meta`、在字段 slot 提供字段 `meta`，并暴露 `getMeta`、`getFieldMeta` 和 `setTouched`；原生 form 与字段壳分别带有 `data-dirty` / `data-touched`。这些 API 属于 Headless/ConfigFormRenderer 路线，不会改变下文 Runtime/Plugin 根组件的 Events 与 Expose 契约。
 
-可序列化 `reactions` 也属于 Headless/Renderer 路线：Core 提供纯协议与稳定 reducer，Renderer 将值、visible/disabled/readonly/required、组件 props 和校验投影到真实 Element Plus / Ant Design Vue 组件。包根导出的旧 `ConfigForm` / `useForm` 仍是独立 Runtime/Plugin 状态机，本版本不执行这套 reaction 协议；迁移或弃用该旧入口需要单独的主版本计划。
+可序列化 `reactions` 属于 Headless/ConfigFormRenderer 路线：Core 提供纯协议与稳定 reducer，Renderer 将值、visible/disabled/readonly/required、组件 props 和校验投影到真实 Element Plus / Ant Design Vue 组件。包根导出的 `ConfigForm` / `useForm` 是独立的 Schema Runtime/Plugin 状态机，不执行这套 reaction 协议。
 
 ## 特性
 
@@ -98,7 +98,7 @@ function onSubmit(values: LoginForm) {
 | `labelWidth`    | `string \| number`                 | -           | 标签宽度，number 自动转 px                                                                |
 | `defaultValues` | `Partial<Record<string, unknown>>` | -           | 表单初始值快照；传泛型后为对应表单类型                                                    |
 | `runtime`       | `FormRuntimeOptions`               | -           | 可选运行时配置，用于组件注册、readonly adapter 和字段转换 adapter；省略时使用内置 runtime |
-| `components`    | `ComponentRegistry`                | -           | 组件别名快捷注册；与 `runtime.components` 合并且当前 prop 优先                            |
+| `components`    | `ComponentRegistry`                | -           | 组件 key 快捷注册；与 `runtime.components` 合并且当前 prop 优先                           |
 
 ## Events
 
@@ -124,6 +124,8 @@ function onSubmit(values: LoginForm) {
 ## Field 配置
 
 `defineField` 会优先从 `schema` 和 `defaultValue` 推导当前字段值类型；没有可推导来源时，字段值默认为 `unknown`。它只返回普通配置对象，不写入 symbol、隐藏属性或 defineProperty 标记。所有字段默认值、组件注册、runtime adapter 转换和 slot 内节点递归处理都由 `ConfigForm` 根组件统一完成。字段配置彼此独立，`validator` 的第二个参数是当前表单 values 快照，可用于必要的跨字段校验。
+
+`required` 只表达必填标识和空值校验，字符串会先 trim 再判断是否为空；格式、长度和跨字段规则继续由 `schema` 或 `validator` 声明。
 
 如果需要把字段配置和业务模型绑定，把表单模型作为 `defineField<TValues>(...)` 的泛型传入。此时 `field` 会被限制为 `TValues` 的字符串 key，并且 `defaultValue`、`validator`、`transform`、`visible`、`disabled` 中的字段值和全量 values 使用同一个模型类型：
 
@@ -240,9 +242,9 @@ defineField({
 3. runtime 恢复用户在原字段上显式声明的顶层配置和 props，确保优先级为 `用户 > runtime adapter > 内置默认值`。
 4. runtime 解析已注册组件，并继续递归转换 slots 内的普通对象配置或 `defineField(...)` 配置。
 
-内置默认值 adapter 写在 `src/plugins/builtInFieldDefaults.ts`，只产出默认配置片段，优先级最低；用户 runtime adapter 写在 `runtime.plugins`，可提供 `getDefaultField(field)`、`transformField(field)`、组件注册和 readonly adapter。
+内置默认值 adapter 写在 `src/plugins/defaults/`，只产出默认配置片段，优先级最低；用户 runtime adapter 写在 `runtime.plugins`，可提供 `getDefaultField(field)`、`transformField(field)`、组件注册和 readonly adapter。
 
-只读展示由 `runtime.readonlyAdapters` 管理。核心在渲染阶段只负责把当前字段节点、当前值和表单快照交给适配器；如果组件名没有注册适配器，就直接回退到原始值文本，不会把 readonly 语义重新塞回组件 props。
+只读展示由 `runtime.readonlyAdapters` 管理。核心在渲染阶段只负责把当前字段节点、当前值和表单快照交给适配器；如果组件名没有注册适配器，就直接使用原始值文本，不会把 readonly 语义重新塞回组件 props。
 
 ```vue
 <script setup lang="ts">
@@ -301,7 +303,7 @@ const fields = computed(() => [
 
 `<ConfigForm>` 的 `runtime` prop 只接收 `FormRuntimeOptions`，组件内部会创建实际 runtime 实例。runtime adapter 测试、底层解析和非组件场景应从 `@moluoxixi/config-form/plugins` 使用 `createFormRuntime(config)`，避免把 adapter 专用能力混入根入口。
 
-`runtime` 和 `runtime.plugins` 都是可选的。无外部 adapter 时仍支持直接传入 Vue 组件、原生标签、校验、递归 slot、提交和 raw readonly fallback；这不是另一个“无插件版”包。
+`runtime` 和 `runtime.plugins` 都是可选的。无外部 adapter 时仍支持直接传入 Vue 组件、原生标签、校验、递归 slot、提交和原始值只读展示；这不是另一个“无插件版”包。
 
 组件注册既可写成 `MyInput` 直接组件，也可写成包含 `component`、`props`、`valueProp`、`trigger`、`blurTrigger` 和 `getValueFromEvent` 的完整注册项。注册项提供默认值，字段自身的显式配置始终优先。
 
@@ -332,7 +334,7 @@ const FunctionalInput = asVueFunctionalComponent(FunctionalInputComponent)
 
 - `components`：注册字符串组件 key 和默认绑定协议，字段中可直接写 `component: 'MyInput'`；大写 key 未注册会抛错，原生标签如 `'input'` 可直接使用。
 - `plugins`：按用户注册顺序收集组件、`getDefaultField(field)`、`transformField(field)` 和 readonly adapter；hook 不接收 values/errors/slot scope。
-- `readonlyAdapters`：注册字符串组件 key 对应的只读展示适配器；与插件注册 key 冲突时显式报错，未注册时回退为 raw value 文本。需要覆盖某个官方 adapter 时，把 override 传给对应 adapter 工厂。
+- `readonlyAdapters`：注册字符串组件 key 对应的只读展示适配器；与插件注册 key 冲突时显式报错，未注册时使用原始值文本。需要覆盖某个官方 adapter 时，把 override 传给对应 adapter 工厂。
 - 字段转换：runtime adapter 可返回新的字段配置或 `undefined`；返回非法值、修改字段 key、重复 adapter 名或重复组件 key 都会直接抛错。
 - 多语言：在上层 Vue 应用中使用 `vue-i18n` 等成熟库生成 `label`、`props.placeholder`、选项文案和校验消息；`ConfigForm` 只消费最终字段配置，不内置 i18n 插件，也不会递归解析 message key。
 

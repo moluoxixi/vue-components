@@ -3,18 +3,23 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve, sep } from 'node:path'
+import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { afterAll, describe, expect, it } from 'vitest'
+import { normalizeProjectPath } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
-import { createCanonicalProjectSourceExport } from '../export/source'
-import { normalizeProjectPath } from '../path'
-import { createBuiltInProject } from '../templates'
+import { createBuiltInProjectFixture } from '../__tests__/fixtures'
+import { createCanonicalProjectSourceExport } from '../export'
 
 const bundledPnpmCli = resolve(dirname(process.execPath), 'node_modules/pnpm/bin/pnpm.mjs')
-const pnpmCli = process.env.npm_execpath || (existsSync(bundledPnpmCli) ? bundledPnpmCli : undefined)
+const corepackPnpmCli = (process.env.PATH ?? '')
+  .split(delimiter)
+  .map(entry => resolve(entry, 'node_modules/corepack/dist/pnpm.js'))
+  .find(existsSync)
+const pnpmCli = process.env.npm_execpath
+  || (existsSync(bundledPnpmCli) ? bundledPnpmCli : corepackPnpmCli)
 const pnpmCommand = pnpmCli ? process.execPath : 'pnpm'
 const pnpmPrefix = pnpmCli ? [pnpmCli] : []
 const temporaryRoots: string[] = []
@@ -51,7 +56,7 @@ async function writeFiles(files: Readonly<Record<string, Readonly<WorkspaceFile>
 async function generatedProject(adapterId: 'antd-vue' | 'element-plus'): Promise<CanonicalProjectSourceExport> {
   const adapter = await loadWorkbenchAdapter(adapterId)
   const templateId = adapterId === 'element-plus' ? 'element-profile' : 'antd-profile'
-  const document = createBuiltInProject(templateId, {
+  const document = createBuiltInProjectFixture(templateId, {
     id: `${templateId}-source-build`,
     name: `${templateId} source build`,
   }, adapter.componentRegistry.lock)

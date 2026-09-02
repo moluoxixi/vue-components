@@ -18,9 +18,9 @@
       "import": "./dist/index.js"
     },
     "./styles": {
-      "sass": "./src/styles.scss",
-      "style": "./src/styles.scss",
-      "default": "./src/styles.scss"
+      "sass": "./src/styles/index.scss",
+      "style": "./src/styles/index.scss",
+      "default": "./src/styles/index.scss"
     }
   },
   "main": "./dist/index.js",

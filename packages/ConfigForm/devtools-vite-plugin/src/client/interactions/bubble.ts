@@ -11,7 +11,7 @@ import {
   rightDockViewportEdge,
   viewportHeight,
   viewportWidth,
-} from '../geometry'
+} from '../utils'
 
 /**
  * 同步浮层按钮和面板位置。

@@ -1,20 +1,20 @@
-import type { RuntimeHostSyncMessage } from '../protocol'
+import type { RuntimeHostSyncMessage } from '..'
 import { compileCanonicalPage } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
-import { loadWorkbenchAdapter } from '../../adapters'
-import { createBuiltInProject } from '../../project'
 import {
   acceptsRuntimeHostMessageEvent,
   isParentToRuntimeHostMessage,
   isRuntimeHostToParentMessage,
   RUNTIME_HOST_CHANNEL,
   RUNTIME_HOST_PROTOCOL_VERSION,
-} from '../protocol'
+} from '..'
+import { loadWorkbenchAdapter } from '../../adapters'
+import { createBuiltInProjectFixture } from '../../project/__tests__/fixtures'
 
 async function syncMessage(): Promise<RuntimeHostSyncMessage> {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const project = createBuiltInProject('element-profile', {
+  const project = createBuiltInProjectFixture('element-profile', {
     id: 'runtime-host-project',
     name: 'Runtime Host project',
   }, adapter.componentRegistry.lock)

@@ -13,7 +13,7 @@ import {
   findAntdVueOptionLabel,
   readAntdVueOptionSource,
   resolveAntdVuePathLabel,
-} from '../src/readonly/options'
+} from '../src/utils'
 
 const AInput = { name: 'AInput' }
 const ASwitch = { name: 'ASwitch' }
@@ -54,10 +54,10 @@ describe('antd vue plugin package', () => {
       plugins: [createAntdVuePlugin()],
     })
 
-    const input = asField(runtime.transformField(defineField({ component: AInput, field: 'name' })))
-    const textarea = asField(runtime.transformField(defineField({ component: ATextarea, field: 'bio' })))
-    const select = asField(runtime.transformField(defineField({ component: ASelect, field: 'role' })))
-    const slider = asField(runtime.transformField(defineField({ component: ASlider, field: 'progress' })))
+    const input = asField(runtime.transformField(defineField({ component: AInput, field: 'name', id: 'name' })))
+    const textarea = asField(runtime.transformField(defineField({ component: ATextarea, field: 'bio', id: 'bio' })))
+    const select = asField(runtime.transformField(defineField({ component: ASelect, field: 'role', id: 'role' })))
+    const slider = asField(runtime.transformField(defineField({ component: ASlider, field: 'progress', id: 'progress' })))
 
     expect(input.valueProp).toBe('value')
     expect(input.trigger).toBe('update:value')
@@ -72,9 +72,9 @@ describe('antd vue plugin package', () => {
       plugins: [createAntdVuePlugin()],
     })
 
-    const stringComponent = asField(runtime.transformField(defineField({ component: 'AInput', field: 'stringName' })))
-    const unnamedObject = asField(runtime.transformField(defineField({ component: {}, field: 'unnamedObject' })))
-    const emptyComponent = asField(runtime.transformField(defineField({ component: null as never, field: 'emptyComponent' })))
+    const stringComponent = asField(runtime.transformField(defineField({ component: 'AInput', field: 'stringName', id: 'stringName' })))
+    const unnamedObject = asField(runtime.transformField(defineField({ component: {}, field: 'unnamedObject', id: 'unnamedObject' })))
+    const emptyComponent = asField(runtime.transformField(defineField({ component: null as never, field: 'emptyComponent', id: 'emptyComponent' })))
 
     expect(stringComponent.valueProp).toBe('value')
     expect(stringComponent.trigger).toBe('update:value')
@@ -89,6 +89,7 @@ describe('antd vue plugin package', () => {
 
     const container = runtime.transformField(defineField({
       component: 'section',
+      id: 'settings-section',
       props: { class: 'settings-section' },
     }))
 
@@ -101,8 +102,8 @@ describe('antd vue plugin package', () => {
       plugins: [createAntdVuePlugin()],
     })
 
-    const switchField = asField(runtime.transformField(defineField({ component: ASwitch, field: 'enabled' })))
-    const checkboxField = asField(runtime.transformField(defineField({ component: ACheckbox, field: 'accepted' })))
+    const switchField = asField(runtime.transformField(defineField({ component: ASwitch, field: 'enabled', id: 'enabled' })))
+    const checkboxField = asField(runtime.transformField(defineField({ component: ACheckbox, field: 'accepted', id: 'accepted' })))
 
     expect(switchField.valueProp).toBe('checked')
     expect(switchField.trigger).toBe('update:checked')
@@ -117,6 +118,7 @@ describe('antd vue plugin package', () => {
     const field = asField(runtime.transformField(defineField({
       component: AInput,
       field: 'custom',
+      id: 'custom',
       trigger: 'change',
       valueProp: 'customValue',
     })))
@@ -137,8 +139,8 @@ describe('antd vue plugin package', () => {
       ],
     })
 
-    const input = asField(runtime.transformField(defineField({ component: AInput, field: 'name' })))
-    const transfer = asField(runtime.transformField(defineField({ component: { name: 'ATransfer' }, field: 'targets' })))
+    const input = asField(runtime.transformField(defineField({ component: AInput, field: 'name', id: 'name' })))
+    const transfer = asField(runtime.transformField(defineField({ component: { name: 'ATransfer' }, field: 'targets', id: 'targets' })))
 
     expect(input.valueProp).toBe('text')
     expect(input.trigger).toBe('change')
@@ -154,12 +156,12 @@ describe('antd vue plugin package', () => {
       plugins: [createAntdVuePlugin({ strict: false })],
     })
 
-    const unknown = asField(looseRuntime.transformField(defineField({ component: AUnknown, field: 'unknown' })))
-    const custom = asField(looseRuntime.transformField(defineField({ component: CustomInput, field: 'custom' })))
+    const unknown = asField(looseRuntime.transformField(defineField({ component: AUnknown, field: 'unknown', id: 'unknown' })))
+    const custom = asField(looseRuntime.transformField(defineField({ component: CustomInput, field: 'custom', id: 'custom' })))
 
     expect(unknown.valueProp).toBe('modelValue')
     expect(custom.trigger).toBe('update:modelValue')
-    expect(() => strictRuntime.transformField(defineField({ component: AUnknown, field: 'unknown' })))
+    expect(() => strictRuntime.transformField(defineField({ component: AUnknown, field: 'unknown', id: 'unknown' })))
       .toThrow(/Unknown Ant Design Vue component binding: AUnknown/)
   })
 
@@ -169,7 +171,7 @@ describe('antd vue plugin package', () => {
     })
 
     const switchField = asField(runtime.transformField(
-      defineField({ component: ASwitch, field: 'enabled' }),
+      defineField({ component: ASwitch, field: 'enabled', id: 'enabled' }),
     ))
 
     expect((switchField.props.style as Record<string, unknown>)?.width).toBe('44px')
@@ -183,6 +185,7 @@ describe('antd vue plugin package', () => {
     const selectField = asField(runtime.transformField(defineField({
       component: ASelect,
       field: 'role',
+      id: 'role',
       props: {
         options: [
           { label: '管理员', value: 'admin' },
@@ -193,6 +196,7 @@ describe('antd vue plugin package', () => {
     const checkboxGroupField = asField(runtime.transformField(defineField({
       component: ACheckboxGroup,
       field: 'permissions',
+      id: 'permissions',
       props: {
         options: [
           { label: '读', value: 'read' },
@@ -204,6 +208,7 @@ describe('antd vue plugin package', () => {
     const radioGroupField = asField(runtime.transformField(defineField({
       component: ARadioGroup,
       field: 'status',
+      id: 'status',
       props: {
         options: [
           { label: '启用', value: 'enabled' },
@@ -214,6 +219,7 @@ describe('antd vue plugin package', () => {
     const switchField = asField(runtime.transformField(defineField({
       component: ASwitch,
       field: 'enabled',
+      id: 'enabled',
       props: {
         checkedChildren: '开启',
         unCheckedChildren: '关闭',
@@ -252,20 +258,7 @@ describe('antd vue plugin package', () => {
     }).text()).toBe('关闭')
     expect(renderReadonly(runtime.readonlyAdapters.ASwitch, {
       field: 'enabled',
-      node: asField(runtime.transformField(defineField({
-        component: ASwitch,
-        field: 'legacyEnabled',
-        props: {
-          activeText: '开',
-          inactiveText: '关',
-        },
-      }))),
-      value: true,
-      values: { legacyEnabled: true },
-    }).text()).toBe('开')
-    expect(renderReadonly(runtime.readonlyAdapters.ASwitch, {
-      field: 'enabled',
-      node: asField(runtime.transformField(defineField({ component: ASwitch, field: 'rawEnabled' }))),
+      node: asField(runtime.transformField(defineField({ component: ASwitch, field: 'rawEnabled', id: 'rawEnabled' }))),
       value: true,
       values: { rawEnabled: true },
     }).text()).toBe('true')
@@ -279,6 +272,7 @@ describe('antd vue plugin package', () => {
     const cascaderField = asField(runtime.transformField(defineField({
       component: ACascader,
       field: 'region',
+      id: 'region',
       props: {
         options: [
           {
@@ -294,6 +288,7 @@ describe('antd vue plugin package', () => {
     const treeSelectField = asField(runtime.transformField(defineField({
       component: ATreeSelect,
       field: 'org',
+      id: 'org',
       props: {
         treeData: [
           {
@@ -387,6 +382,7 @@ describe('antd vue plugin package', () => {
       defineField({
         component: ASwitch,
         field: 'enabled',
+        id: 'enabled',
         props: { style: { width: '60px', color: 'red' } },
       }),
     ))

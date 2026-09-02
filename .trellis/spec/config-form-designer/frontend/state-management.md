@@ -597,7 +597,7 @@ function isExportSnapshotStale(
   bytes.
 - File preview, copy, single-file download, and ZIP use the same pinned
   `ExportFileSet`. Binary files are never coerced through a text getter.
-- Config source preserves `ProjectDocument.schemaVersion`, `registryLock`, page
+- Config source preserves `ProjectDocument.version`, `registryLock`, page
   graph version/props, complete `SlotItem.placement`, node authoring metadata,
   and Flow editor positions. Runtime-compatible numeric `span` may also be
   promoted, but it does not replace relation metadata.
@@ -605,6 +605,18 @@ function isExportSnapshotStale(
   object-key guard in both generation and current Model parsing.
 - Object URLs are revoked on a later task after the anchor click. Synchronous
   revocation is forbidden because browsers may not have consumed the URL yet.
+
+### 9.8 Feature Files and Barrel Rule
+
+Workbench and Designer follow the shared responsibility-based directory spec.
+A feature root contains its `index.ts`, optional `index.vue`, and named concern
+directories such as `types/`, `components/`, `composables/`, `state/`,
+`services/`, `schemas/`, `adapters/`, and `utils/`. Vue props/emits/expose/slots
+live under `types/`; they are not spread across the feature root or declared
+inline. Each present concern directory has one `index.ts`; unused concern
+directories are not created. Package roots re-export feature barrels and do not
+keep old subpath aliases. Architecture scans reject flat concern files,
+duplicate public names, and legacy/deprecated/migration/compat entry points.
 
 ### 9.4 Validation & Error Matrix
 
@@ -955,12 +967,19 @@ interface TemplateCatalogProvider {
   list: () => Promise<readonly unknown[]>
 }
 
+const PROJECT_TEMPLATE_VERSION = 1 as const
+
+interface ProjectTemplateManifest {
+  version: typeof PROJECT_TEMPLATE_VERSION
+  // current manifest fields
+}
+
 interface TemplateCatalogLoadResult {
   templates: ProjectTemplateCatalogEntry[]
   diagnostics: TemplateCatalogDiagnostic[]
 }
 
-interface TemplateIdentityFactory {
+interface ProjectIdentityFactory {
   create: (kind: TemplateIdentityKind, source: string) => string
 }
 
@@ -984,13 +1003,20 @@ createPageFromTemplate(
 - A `TemplateCatalogProvider` is readonly and asynchronous. It returns only a
   JSON-safe manifest plus page seed. The catalog service is the single
   `unknown -> typed` boundary for provider/template ids, dangerous keys,
-  version, category, adapter, Registry requirements, seed schema, duplicate
+  schema version, category, adapter, Registry requirements, seed schema, duplicate
   detection, diagnostics, and stable ordering. UI code must not parse or cast
   provider payloads. One Provider may return at most 256 entries; any array in
   one seed may contain at most 4096 items, and the array-length guard runs
   before recursive JSON-safe traversal. Manifest `order` is a non-negative
   integer.
-- Search, filters, selected template, mobile pane, compatibility state,
+- `manifest.version` is the template wire-format identity and must equal
+  `PROJECT_TEMPLATE_VERSION`. Missing, lower, or higher values are
+  rejected; there is no template migration or shape fallback. The old content
+  revision meaning is removed, and `schemaVersion`, `protocolVersion`, or
+  `storageSchemaVersion` are rejected rather than aliased. Preview and cache
+  identity use a canonical fingerprint of the validated seed instead of a
+  mutable integer revision.
+- Search, filters, selected template, mobile pane, eligibility state,
   preview request identity, and preview Runtime values/touched/validation are
   feature-local transient state. They never enter `ProjectDocument`, the
   active `PreviewSession`, history, selection, persistence revision, recovery
@@ -1027,8 +1053,9 @@ createPageFromTemplate(
 | --- | --- |
 | Provider rejects or returns a non-array / more than 256 entries | Isolate that Provider as `TEMPLATE_PROVIDER_FAILED`; keep other Providers available |
 | Any seed array contains more than 4096 items | Reject that seed as `TEMPLATE_INVALID` before recursive parsing |
+| Manifest version is missing or differs from the current literal | Reject as `TEMPLATE_VERSION_INVALID`; do not infer the format from fields |
 | Manifest order is negative or fractional | Reject as `TEMPLATE_INVALID` |
-| Seed contains a dangerous key, function, cycle, or unsupported identity reference | Reject before compatibility, preview, or creation |
+| Seed contains a dangerous key, function, cycle, or unsupported identity reference | Reject before eligibility analysis, preview, or creation |
 | Adapter / Registry lock is incompatible | Keep the template browsable; publish a diagnostic and disable creation |
 | Persistence preparation fails after Repository create | Preserve the active session, delete the new entity, close staged resources, and report failure |
 | Compensating delete fails | Preserve the entity for recovery and report both activation and rollback failure |
@@ -1047,13 +1074,14 @@ createPageFromTemplate(
 ### 12.6 Tests Required
 
 - Catalog tests cover malformed/non-JSON provider data, dangerous and duplicate
-  ids, provider failure, stable sorting, compatibility diagnostics, and seed
+  ids, exact current version, old/future/missing versions,
+  provider failure, stable sorting, eligibility diagnostics, and seed
   immutability. Boundary tests accept exactly 256 Provider entries and 4096
   seed array items, then reject 257/4097 before deep traversal.
 - Identity tests cover two instances plus two Flows that reuse node, edge, and
   embedded reaction ids, and verify every typed reference after remapping.
 - Component tests cover search/filter/empty recovery, roving selection,
-  mobile Details-to-Catalog Escape, focus restoration, incompatibility, and
+  mobile Details-to-Catalog Escape, focus restoration, ineligibility, and
   stale preview completion order.
 - Controller tests cover activation-preparation compensation, compensation
   failure, preservation of an existing session/adapter, and post-activation
@@ -1093,8 +1121,8 @@ surface compensating-delete failure instead of replacing the original error.
 
 ### 13.1 Scope / Trigger
 
-Apply this contract when changing Workbench Project/Page JSON import, import
-migrations, creation-workspace diagnostics, isolated import preview, or the
+Apply this contract when changing Workbench Project/Page JSON import, strict
+version gates, creation-workspace diagnostics, isolated import preview, or the
 Project/Page JSON export scope. Import is an explicit Workbench ingress; it is
 not Repository compatibility.
 
@@ -1113,6 +1141,15 @@ preflightProjectDocument(
 ): void
 
 createFromJsonImport(prepared: PreparedConfigImport): Promise<boolean>
+
+const PAGE_TRANSFER_VERSION = 1 as const
+
+interface PageTransferDocument {
+  kind: 'config-form-page'
+  version: typeof PAGE_TRANSFER_VERSION
+  registryLock: RegistryLock
+  page: ProjectPage
+}
 ```
 
 `PreparedConfigImport` is the only value allowed to cross from import analysis
@@ -1122,26 +1159,34 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
 ### 13.3 Contracts
 
 - Project creation accepts Project JSON only; page creation accepts one strict
-  `ProjectPage` only. Source, Vue, ZIP, HTML, JavaScript, Workspace Application,
-  and missing/future/unknown versions fail closed without shape guessing.
-- The only migration window is Project v3→v4 Flow ownership and Page Model
-  v1→PageGraph v2 tree flattening. Migration results pass the current strict
-  schema again. Repository, Runtime, Design, Preview, and Command continue to
-  accept the current schema only.
+  `PageTransferDocument` only. Source, bare ProjectPage/PageGraph, Vue, ZIP,
+  HTML, JavaScript, Workspace Application,
+  old, missing, future, and unknown versions fail closed without shape guessing.
+- Project import accepts exactly Project v4. Page import requires
+  `kind: 'config-form-page'`, current Page transfer `version`, a current
+  Registry subset lock, and a `ProjectPage` whose graph is PageGraph v2. Project v3,
+  Page Model v1, and every other non-current shape are rejected; no import
+  migration record, migration UI, migration parser, or migration callback exists.
 - Processing order is source bytes → `JSON.parse` → iterative structure/key
-  guard → version/migration → current schema → adapter/Registry compatibility →
+  guard → exact version gate → current schema → exact adapter/Registry validation →
   fresh identity → current schema → Compiler preview. Raw strings and guarded
   `unknown` values never enter Runtime, Repository, or Project Command.
 - Budgets are 2 MiB UTF-8 source, depth 64, array length 4096, 100000 total
   structural entries, 128 pages, and 4096 nodes. All depths reject
   `__proto__`, `prototype`, and `constructor` with a stable code and JSON path.
 - Depth, array, and total-entry budgets apply to the guarded parsed JSON. Page
-  and node budgets apply after explicit migration to the canonical payload.
-  Do not count arbitrary `pagesById` / `nodesById` keys in opaque metadata, and
-  do count every node in a legacy v1 tree before accepting the migrated page.
-- Project import may run only an available deterministic component migration
-  chain and then rebuild the lock from actually used contracts. Page JSON has
-  no source lock and must exactly match the active project lock and Registry.
+  and node budgets apply after the current schema has parsed the canonical
+  payload. Do not count arbitrary `pagesById` / `nodesById` keys in opaque
+  metadata.
+- Project import requires an exact current Registry lock. Adapter version,
+  aggregate fingerprint, component key set, and every component
+  `contractVersion`/fingerprint must match the active Registry before identity
+  remapping. Do not migrate components or rebuild an incompatible source lock.
+  Page transfer `registryLock.components` contains exactly the distinct
+  components used by `page`; its aggregate fingerprint is computed over that
+  subset. Adapter/version and each component contract/fingerprint must exactly
+  match both the active Registry and corresponding entries in the target
+  project lock. Extra or missing subset keys are invalid.
 - Imported project/page/node/field/reaction/Flow/Flow-node/Flow-edge identities
   are fresh. Only typed references are rewritten. Project resources keep ids,
   URIs, integrity, and opaque metadata inside the new project namespace.
@@ -1161,38 +1206,44 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
   download must not select different revisions. If the selected current Page
   is absent from that pinned snapshot, show an unavailable state and disable
   copy/download rather than exporting an empty file.
+- Current-page JSON export emits `PageTransferDocument` with `version: 1`, never a bare
+  `ProjectPage`. It derives the Registry subset lock from the same pinned
+  project snapshot and selected page used for JSON, Tree, copy, and download.
 
 ### 13.4 Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
 | Source exceeds a byte/structure budget or contains an unsafe key | Stable import diagnostic with an escaped JSON path; no adapter load or preview |
-| Legacy v1 page contains exactly 4096 nodes / 4097 nodes | Accept the budget boundary / reject with `IMPORT_NODE_LIMIT_EXCEEDED` |
+| Project v3 or Page Model v1 is supplied | Reject with `IMPORT_VERSION_UNSUPPORTED` at the version field; no preview or create action |
+| Bare ProjectPage/PageGraph or old/future Page transfer schema is supplied | Reject with format/version diagnostic; do not infer or wrap it |
+| Current PageGraph contains exactly 4096 nodes / 4097 nodes | Accept the budget boundary / reject with `IMPORT_NODE_LIMIT_EXCEEDED` |
 | Opaque metadata contains a property named `nodesById` | Preserve it without adding to the canonical node count |
-| Legacy layout uses only `slots.default` | Preserve and flatten those children exactly once |
 | Generated identity source is already 128 characters | Produce a unique, schema-valid bounded identity |
 | Any candidate page, including a non-home page, fails compilation | Reject before Repository create or Project Command |
-| Dynamic page/node/component/slot key contains punctuation | Escape the key in diagnostic and migration JSON paths |
+| Dynamic page/node/component/slot key contains punctuation | Escape the key in diagnostic JSON paths |
+| Project Registry lock differs from the active Registry in any identity field | Reject as Registry-incompatible; never repair and continue |
+| Page transfer Registry subset contains extra/missing keys or mismatched aggregate fingerprint | Reject as Registry-incompatible before identity remap |
 | Current Page is absent from the pinned export snapshot | Render unavailable status; disable JSON copy/download |
 
 ### 13.5 Good / Base / Bad Cases
 
-- Good: analyze a v1 page with `slots.default`, migrate it, validate the
-  canonical 4096-node budget, remap bounded identities, compile the full host
-  candidate, then submit one `page.add` Command.
+- Good: analyze a current Page transfer envelope, exact-match its Registry
+  subset, validate the PageGraph v2 4096-node budget, remap bounded identities,
+  compile the full host candidate, then submit one `page.add` Command.
 - Base: opaque resource metadata contains strings and keys that resemble Model
   identities; preserve it unchanged and exclude it from page/node budgets.
-- Bad: count every property named `nodesById` before migration, append a UUID to
-  an already maximum-length id, compile only `homePageId`, or let a missing
-  pinned Page download as an empty JSON file.
+- Bad: migrate Project v3/Page v1, rebuild a stale Registry lock, count every
+  property named `nodesById`, append a UUID to an already maximum-length id,
+  compile only `homePageId`, or let a missing pinned Page download as empty JSON.
 
 ### 13.6 Tests Required
 
 - Exact and first-over-limit security boundaries, all unsafe keys, syntax,
-  current/legacy/future versions, Registry failures, identity references, and
-  migration ambiguity. Include v1 default-slot ownership, canonical 4096/4097
-  node budgets, opaque metadata lookalikes, escaped dynamic paths, and a
-  maximum-length source identity.
+  current/old/future Project and Page transfer versions, bare-page rejection,
+  exact Registry subset identity failures, identity
+  references, canonical 4096/4097 node budgets, opaque metadata lookalikes,
+  escaped dynamic paths, and a maximum-length source identity.
 - Property-based Project/Page stringify→prepare→identity-normalized semantic
   round trips over the complete document, plus arbitrary JSON proving no
   non-diagnostic exception escapes.
@@ -1200,7 +1251,7 @@ hash; a prepared project carries only a current, validated `ProjectDocument`.
   page analyze→edit/switch→create with unchanged document/history/selection.
   Final preflight must also reject a non-home-page compiler failure before any
   Repository create or Project Command.
-- Component and browser tests cover paste/file, diagnostics, migrations,
+- Component and browser tests cover paste/file, current-version diagnostics,
   isolated preview, both adapters/locales/themes, 1440/900/390 overflow,
   keyboard focus, and accessible names/live regions. Export tests cover a Page
   disappearing from the pinned snapshot with copy/download disabled.
@@ -1218,7 +1269,7 @@ repository.create({ document })
 Correct:
 
 ```ts
-const canonical = migrateAndValidate(parsed)
+const canonical = validateCurrentContract(parsed)
 assertCanonicalImportBudget(canonical)
 preflightProjectDocument(canonical.document, adapter.registrySnapshot)
 repository.create({ document: canonical.document })

@@ -2,7 +2,7 @@ import type { ReadonlyAdapter } from '../src/runtime'
 import type { NormalizedFieldConfig, NormalizedNodeConfig } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { markRaw } from 'vue'
-import { BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '../src/plugins/builtInFieldDefaults'
+import { BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '../src/plugins/defaults'
 import { createFormRuntime } from '../src/runtime'
 import { defineField } from '../src/utils/field'
 
@@ -20,12 +20,7 @@ function expectResolvedField(node: ReturnType<ReturnType<typeof createFormRuntim
 describe('form runtime', () => {
   it('returns built-in default fragments without mutating field configs or merging user config', () => {
     const runtime = createFormRuntime()
-    const field = defineField({
-      component: 'input',
-      field: 'name',
-      props: { placeholder: 'Name' },
-      trigger: 'input',
-    })
+    const field = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-1', component: 'input', field: 'name', props: { placeholder: 'Name' }, trigger: 'input' })
 
     const defaults = runtime.getFieldDefaults(field)
 
@@ -69,16 +64,11 @@ describe('form runtime', () => {
       ],
     })
 
-    const resolved = runtime.transformField(defineField({
-      component: 'input',
-      field: 'name',
-      props: {
-        style: {
-          width: '80px',
-        },
+    const resolved = runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-2', component: 'input', field: 'name', props: {
+      style: {
+        width: '80px',
       },
-      valueProp: 'customValue',
-    })) as NormalizedFieldConfig
+    }, valueProp: 'customValue' })) as NormalizedFieldConfig
 
     expect(resolved.valueProp).toBe('customValue')
     expect(resolved.trigger).toBe('update:value')
@@ -126,16 +116,11 @@ describe('form runtime', () => {
       ],
     })
 
-    const resolved = runtime.transformField(defineField({
-      component: 'input',
-      field: 'name',
-      props: {
-        style: {
-          width: '80px',
-        },
+    const resolved = runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-3', component: 'input', field: 'name', props: {
+      style: {
+        width: '80px',
       },
-      valueProp: 'customValue',
-    })) as NormalizedFieldConfig
+    }, valueProp: 'customValue' })) as NormalizedFieldConfig
 
     expect(calls).toEqual(['getDefaultField', 'transformField:customValue:80px'])
     expect(resolved.valueProp).toBe('customValue')
@@ -169,14 +154,9 @@ describe('form runtime', () => {
       ],
     })
 
-    const resolved = expectResolvedField(runtime.transformField(defineField({
-      component: 'input',
-      field: 'name',
-      props: {
-        placeholder: 'user placeholder',
-      },
-      valueProp: 'customValue',
-    })))
+    const resolved = expectResolvedField(runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-4', component: 'input', field: 'name', props: {
+      placeholder: 'user placeholder',
+    }, valueProp: 'customValue' })))
 
     expect(resolved.valueProp).toBe('customValue')
     expect(resolved.trigger).toBe('update:value')
@@ -198,10 +178,7 @@ describe('form runtime', () => {
         },
       ],
     })
-    const rawField = defineField({
-      component: 'input',
-      field: 'name',
-    })
+    const rawField = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-5', component: 'input', field: 'name' })
 
     expect(BUILT_IN_FIELD_DEFAULTS_PLUGIN.name).toBe('config-form:built-in-field-defaults')
     expect(runtime.getFieldDefaults(rawField)).toEqual({
@@ -232,7 +209,7 @@ describe('form runtime', () => {
             getDefaultField: () => ({ [key]: value } as never),
           },
         ],
-      }).transformField(defineField({ component: 'input', field: 'name' })))
+      }).transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-6', component: 'input', field: 'name' })))
         .toThrow(`Plugin bad-${key} getDefaultField cannot return "${key}"`)
     }
   })
@@ -244,24 +221,13 @@ describe('form runtime', () => {
       },
     })
 
-    const resolved = runtime.transformField(defineField({
-      component: 'RuntimeInput',
-      field: 'name',
-    })) as NormalizedFieldConfig
-    const container = runtime.transformField(defineField({
-      component: 'section',
-    }))
+    const resolved = runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-7', component: 'RuntimeInput', field: 'name' })) as NormalizedFieldConfig
+    const container = runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-8', component: 'section' }))
 
     expect(resolved.component).toBe(RuntimeInput)
     expect(container).toMatchObject({ component: 'section', props: {} })
-    expect(() => runtime.transformField(defineField({
-      component: 'MissingInput',
-      field: 'missing',
-    }))).toThrow(/Unknown component key: MissingInput/)
-    expect(() => runtime.transformField(defineField({
-      component: 'runtimeInput',
-      field: 'missingLowercase',
-    }))).toThrow(/Unknown component key: runtimeInput/)
+    expect(() => runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-9', component: 'MissingInput', field: 'missing' }))).toThrow(/Unknown component key: MissingInput/)
+    expect(() => runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-10', component: 'runtimeInput', field: 'missingLowercase' }))).toThrow(/Unknown component key: runtimeInput/)
   })
 
   it('applies registration defaults below explicit field bindings and props', () => {
@@ -282,17 +248,10 @@ describe('form runtime', () => {
       },
     })
 
-    const resolved = expectResolvedField(runtime.transformField(defineField({
-      component: 'RuntimeAlias',
-      extensions: { 'test.source': { kind: 'runtime' } },
-      field: 'status',
-      props: {
-        nested: { source: 'field' },
-        placeholder: 'Status',
-      },
-      valueProp: 'selected',
-      trigger: 'select',
-    })))
+    const resolved = expectResolvedField(runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-11', component: 'RuntimeAlias', extensions: { 'test.source': { kind: 'runtime' } }, field: 'status', props: {
+      nested: { source: 'field' },
+      placeholder: 'Status',
+    }, valueProp: 'selected', trigger: 'select' })))
 
     expect(resolved.component).toBe(RuntimeInput)
     expect(resolved.resolvedComponentKey).toBe('RuntimeAlias')
@@ -311,22 +270,19 @@ describe('form runtime', () => {
   it('recursively transforms raw slot configs and preserves render slot functions', () => {
     const runtime = createFormRuntime()
     const renderSlot = () => ({ component: 'input', field: 'late' })
-    const resolved = runtime.transformField(defineField({
-      component: 'section',
-      slots: {
-        default: [
-          {
-            component: 'input',
-            field: 'child',
-          },
-        ],
-        suffix: {
+    const resolved = runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-12', component: 'section', slots: {
+      default: [
+        {
           component: 'input',
-          field: 'suffix',
+          field: 'child',
         },
-        footer: renderSlot,
+      ],
+      suffix: {
+        component: 'input',
+        field: 'suffix',
       },
-    })) as NormalizedNodeConfig
+      footer: renderSlot,
+    } })) as NormalizedNodeConfig
 
     const defaultSlot = resolved.slots?.default as NormalizedFieldConfig[]
     const suffixSlot = resolved.slots?.suffix as NormalizedFieldConfig
@@ -340,10 +296,7 @@ describe('form runtime', () => {
       trigger: 'update:modelValue',
     })
     expect(resolved.slots?.footer).toBe(renderSlot)
-    expect(() => runtime.transformField(defineField({
-      component: 'section',
-      slots: { default: 'plain text' as never },
-    }))).toThrow(/Slot "default" must be a field config, render function, or an array of them/)
+    expect(() => runtime.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-13', component: 'section', slots: { default: 'plain text' as never } }))).toThrow(/Slot "default" must be a field config, render function, or an array of them/)
   })
 
   it('enforces plugin name and component registration conflicts', () => {
@@ -403,7 +356,7 @@ describe('form runtime', () => {
           transformField: () => null as never,
         },
       ],
-    }).transformField(defineField({ component: 'input', field: 'name' })))
+    }).transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-14', component: 'input', field: 'name' })))
       .toThrow(/Plugin bad-return transformField must return a field object or undefined/)
 
     expect(() => createFormRuntime({
@@ -416,7 +369,7 @@ describe('form runtime', () => {
           }),
         },
       ],
-    }).transformField(defineField({ component: 'input', field: 'name' })))
+    }).transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-runtime-test-ts-15', component: 'input', field: 'name' })))
       .toThrow(/Plugin bad-field-key cannot change field key from "name" to "changed"/)
   })
 })

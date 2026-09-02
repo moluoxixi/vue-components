@@ -1,13 +1,7 @@
-import { withConfigFormInstall } from '@moluoxixi/config-form/renderer'
-import AntdConfigFormSource from './src/index.vue'
-
 export {
   ANTD_CONFIG_FORM_COMPONENTS,
   ANTD_CONFIG_FORM_MATERIAL_REGISTRY,
-} from './src/components'
-export type * from './src/types'
-
-export const antdConfigForm = withConfigFormInstall(AntdConfigFormSource)
-export const AntdConfigForm = antdConfigForm
-
-export default antdConfigForm
+  AntdConfigForm,
+} from './src/index'
+export { default } from './src/index'
+export type * from './src/index'

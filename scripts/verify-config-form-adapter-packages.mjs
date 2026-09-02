@@ -160,7 +160,6 @@ const adapters = [
       'ANTD_CONFIG_FORM_COMPONENTS',
       'ANTD_CONFIG_FORM_MATERIAL_REGISTRY',
       'AntdConfigForm',
-      'antdConfigForm',
       'default',
     ],
     name: '@moluoxixi/config-form-antd-vue',
@@ -264,33 +263,41 @@ function verifyPublicContractPackages() {
   }
 }
 
-function verifyRendererPackage() {
+function verifyRuntimePackage() {
   const packageDir = resolve(rootDir, 'packages', 'ConfigForm', 'runtime')
   const manifest = JSON.parse(readFileSync(resolve(packageDir, 'package.json'), 'utf8'))
-  const rendererExport = manifest.exports?.['./renderer']
+  const runtimeExport = manifest.exports?.['.']
 
-  if (!rendererExport?.source || !rendererExport?.import || !rendererExport?.types)
-    fail('@moluoxixi/config-form/renderer must expose source, import, and types conditions')
+  if (Object.hasOwn(manifest.exports ?? {}, './renderer'))
+    fail('@moluoxixi/config-form must not expose the removed renderer subpath')
+  if (!runtimeExport?.source || !runtimeExport?.import || !runtimeExport?.types)
+    fail('@moluoxixi/config-form must expose source, import, and types conditions at the package root')
 
-  const bundlePath = resolve(packageDir, rendererExport.import)
-  const declarationsPath = resolve(packageDir, rendererExport.types)
+  const bundlePath = resolve(packageDir, runtimeExport.import)
+  const declarationsPath = resolve(packageDir, runtimeExport.types)
   if (!existsSync(bundlePath) || !existsSync(declarationsPath))
-    fail('@moluoxixi/config-form/renderer build output or declarations are missing')
+    fail('@moluoxixi/config-form build output or declarations are missing')
 
   const importCheck = `
-    const loaded = await import('@moluoxixi/config-form/renderer')
+    const loaded = await import('@moluoxixi/config-form')
     const expected = [
+      'ConfigForm',
+      'ConfigFormError',
       'ConfigFormRenderer',
-      'RuntimeSurface',
+      'FormLayout',
+      'asVueFunctionalComponent',
       'createConfigFormRendererExpose',
+      'defineField',
+      'defineFields',
       'resolveConfigFormFieldLayout',
       'resolveConfigFormLayout',
       'resolveConfigFormNodeSpan',
+      'useForm',
       'withConfigFormInstall',
     ].sort()
     const actual = Object.keys(loaded).sort()
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-      throw new Error('Unexpected renderer exports: ' + actual.join(','))
+      throw new Error('Unexpected runtime exports: ' + actual.join(','))
     }
   `
   const result = spawnSync(process.execPath, ['--input-type=module', '--eval', importCheck], {
@@ -298,20 +305,19 @@ function verifyRendererPackage() {
     encoding: 'utf8',
   })
   if (result.status !== 0)
-    fail(`@moluoxixi/config-form/renderer package self-reference failed: ${result.stderr || result.stdout}`)
+    fail(`@moluoxixi/config-form package self-reference failed: ${result.stderr || result.stdout}`)
 
-  const consumerDir = mkdtempSync(resolve(packageDir, '.config-form-renderer-smoke-'))
+  const consumerDir = mkdtempSync(resolve(packageDir, '.config-form-runtime-smoke-'))
   try {
     writeFileSync(resolve(consumerDir, 'consumer.ts'), `
       import {
         ConfigFormRenderer,
-        RuntimeSurface,
         createConfigFormRendererExpose,
         resolveConfigFormFieldLayout,
         resolveConfigFormLayout,
         resolveConfigFormNodeSpan,
         withConfigFormInstall,
-      } from '@moluoxixi/config-form/renderer'
+      } from '@moluoxixi/config-form'
       import type {
         ConfigFormBreakpoint,
         ConfigFormComponentRegistration,
@@ -324,11 +330,10 @@ function verifyRendererPackage() {
         ConfigFormRendererComponentProps,
         ConfigFormRendererExpose,
         ConfigFormRendererProps,
-        RuntimeEditorBridge,
-        RuntimeSurfaceProps,
+        ConfigFormRuntimeEditorBridge,
         ConfigFormResponsiveLayout,
         InstallableConfigFormComponent,
-      } from '@moluoxixi/config-form/renderer'
+      } from '@moluoxixi/config-form'
 
       const responsive: ConfigFormResponsiveLayout = { tablet: { columns: 12 } }
       const registration: ConfigFormComponentRegistration = { component: ConfigFormRenderer }
@@ -340,7 +345,6 @@ function verifyRendererPackage() {
       const nodeSpan = resolveConfigFormNodeSpan(12, layout)
       void [
         ConfigFormRenderer,
-        RuntimeSurface,
         components,
         createConfigFormRendererExpose,
         fieldLayout,
@@ -349,16 +353,13 @@ function verifyRendererPackage() {
         withConfigFormInstall,
       ]
       const typedRenderer: ConfigFormRendererComponent = ConfigFormRenderer
-      const typedRuntimeSurface: ConfigFormRendererComponent = RuntimeSurface
       void typedRenderer
-      void typedRuntimeSurface
       type RendererTypes = [
         ConfigFormRendererComponentInstance,
         ConfigFormRendererComponentProps,
         ConfigFormRendererExpose,
         ConfigFormRendererProps,
-        RuntimeEditorBridge,
-        RuntimeSurfaceProps,
+        ConfigFormRuntimeEditorBridge,
         ConfigFormComponentRegistration,
         ConfigFormComponentRegistry,
         InstallableConfigFormComponent<never>,
@@ -395,7 +396,7 @@ function verifyRendererPackage() {
       encoding: 'utf8',
     })
     if (declarationsResult.status !== 0) {
-      fail(`@moluoxixi/config-form/renderer declaration consumer failed: ${declarationsResult.stderr || declarationsResult.stdout}`)
+      fail(`@moluoxixi/config-form declaration consumer failed: ${declarationsResult.stderr || declarationsResult.stdout}`)
     }
 
     const vueTscPath = resolve(packageDir, 'node_modules', 'vue-tsc', 'bin', 'vue-tsc.js')
@@ -404,7 +405,7 @@ function verifyRendererPackage() {
       encoding: 'utf8',
     })
     if (sourceResult.status !== 0)
-      fail(`@moluoxixi/config-form/renderer source consumer failed: ${sourceResult.stderr || sourceResult.stdout}`)
+      fail(`@moluoxixi/config-form source consumer failed: ${sourceResult.stderr || sourceResult.stdout}`)
   }
   finally {
     rmSync(consumerDir, { force: true, recursive: true })
@@ -412,7 +413,7 @@ function verifyRendererPackage() {
 }
 
 verifyPublicContractPackages()
-verifyRendererPackage()
+verifyRuntimePackage()
 
 for (const adapter of adapters) {
   const packageDir = resolve(rootDir, 'packages', 'ConfigForm', adapter.directory)

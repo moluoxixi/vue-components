@@ -31,11 +31,7 @@ describe('asVueFunctionalComponent', () => {
       .toBeCallableWith('update:modelValue', 'Ada')
     expectTypeOf<WrappedInputInstance['$slots']['default']>()
       .toEqualTypeOf<InputSlots['default']>()
-    const typedField = defineField({
-      component: WrappedInput,
-      field: 'typed-name',
-      props: { modelValue: 'typed' },
-    })
+    const typedField = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-src-utils-tests-vueComponent-test-ts-1', component: WrappedInput, field: 'typed-name', props: { modelValue: 'typed' } })
     expectTypeOf(typedField.props?.modelValue).toEqualTypeOf<string | undefined>()
 
     const wrapper = mount(ConfigForm, {

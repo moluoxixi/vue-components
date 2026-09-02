@@ -1,8 +1,6 @@
+import type { PlainRecord } from '../types'
 import { isVNode } from 'vue'
-import { ConfigFormError } from '@/errors'
-
-/** ConfigForm 内部可安全当作普通配置对象读取的记录类型。 */
-export type PlainRecord = Record<string, unknown>
+import { ConfigFormError } from '../errors'
 
 const UNSAFE_RECORD_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 

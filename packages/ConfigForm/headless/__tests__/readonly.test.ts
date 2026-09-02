@@ -9,6 +9,7 @@ describe('readonly helpers', () => {
   const field = {
     component: 'input',
     field: 'name',
+    id: 'name',
     readonly: (values: { locked: boolean, name: string }) => values.locked,
   }
 

@@ -1,7 +1,7 @@
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
-import type { PageProjectionInput } from '../projection-coordinator'
+import type { PageProjectionInput } from '..'
 import { describe, expect, it } from 'vitest'
-import { createPageProjectionCoordinator } from '../projection-coordinator'
+import { createPageProjectionCoordinator } from '..'
 
 function input(overrides: Partial<PageProjectionInput> = {}): PageProjectionInput {
   return {

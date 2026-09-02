@@ -32,11 +32,9 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        AntdConfigForm: resolve(__dirname, 'src/AntdConfigForm/index.ts'),
         ConfigTable: resolve(__dirname, 'src/ConfigTable/index.ts'),
         CopyText: resolve(__dirname, 'src/CopyText/index.ts'),
         DateRangePicker: resolve(__dirname, 'src/DateRangePicker/index.ts'),
-        ElementConfigForm: resolve(__dirname, 'src/ElementConfigForm/index.ts'),
         EnterNextContainer: resolve(__dirname, 'src/EnterNextContainer/index.ts'),
         HeadlessCopyText: resolve(__dirname, 'src/HeadlessCopyText/index.ts'),
         HeadlessTable: resolve(__dirname, 'src/HeadlessTable/index.ts'),
@@ -44,10 +42,7 @@ export default defineConfig({
         RequestCascader: resolve(__dirname, 'src/RequestCascader/index.ts'),
         RequestSelectV2: resolve(__dirname, 'src/RequestSelectV2/index.ts'),
         RequestTreeSelect: resolve(__dirname, 'src/RequestTreeSelect/index.ts'),
-        antd: resolve(__dirname, 'src/entries/antd.ts'),
         [autoLoadersEntryName]: resolve(__dirname, 'auto-loaders.ts'),
-        configForm: resolve(__dirname, 'src/configForm.ts'),
-        element: resolve(__dirname, 'src/entries/element.ts'),
         index: resolve(__dirname, 'index.ts'),
       },
       name: 'MoluoxixiComponents',
@@ -59,17 +54,12 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
-        '@moluoxixi/config-form',
-        '@moluoxixi/config-form/renderer',
-        '@moluoxixi/config-form-headless',
         '@moluoxixi/hooks',
         '@floating-ui/dom',
         /^@tiptap\//,
         'vue',
         'element-plus',
         /^element-plus\//,
-        'ant-design-vue',
-        /^ant-design-vue\//,
         'dayjs',
         /^dayjs\//,
         '@lucide/vue',

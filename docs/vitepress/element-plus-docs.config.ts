@@ -3,8 +3,6 @@ import {
   defineElementPlusDocsProject,
 } from '@moluoxixi/vitepress-theme-element-plus'
 
-const configFormSearchAliases = ['ConfigForm', 'config form', 'config-form'] as const
-
 export default defineElementPlusDocsProject({
   components: [
     {
@@ -19,10 +17,8 @@ export default defineElementPlusDocsProject({
     {
       id: 'forms',
       title: '表单',
-      description: '配置化表单、键盘录入、日期与异步数据选择',
+      description: '键盘录入、日期与异步数据选择',
       items: [
-        { name: 'AntdConfigForm', slug: 'antd-config-form', sidebarText: 'AntdConfigForm Ant Design 配置表单', description: 'Ant Design Vue 字段绑定的配置化表单', icon: 'blocks', searchAliases: configFormSearchAliases },
-        { name: 'ElementConfigForm', slug: 'element-config-form', sidebarText: 'ElementConfigForm Element 配置表单', description: 'Element Plus 字段绑定的配置化表单', icon: 'form-input', searchAliases: configFormSearchAliases },
         { name: 'DateRangePicker', slug: 'date-range-picker', sidebarText: 'DateRangePicker 日期范围', description: '统一输入输出的日期范围选择器', icon: 'calendar-range' },
         { name: 'EnterNextContainer', slug: 'enter-next-container', sidebarText: 'EnterNextContainer 回车跳转', description: '回车顺序跳转的录入容器', icon: 'text-cursor-input' },
         { name: 'RequestSelectV2', slug: 'request-select-v2', sidebarText: 'RequestSelectV2 远程选择器', description: '自动管理请求状态的虚拟选择器', icon: 'list-filter' },

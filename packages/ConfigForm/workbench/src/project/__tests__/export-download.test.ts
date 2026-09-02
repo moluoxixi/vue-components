@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { downloadWorkspaceFile, workspaceFileBlob } from '../export/download'
+import { downloadWorkspaceFile, workspaceFileBlob } from '../export'
 
 afterEach(() => {
   vi.useRealTimers()

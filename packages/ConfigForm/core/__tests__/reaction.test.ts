@@ -1,5 +1,5 @@
-import type { ConfigFormReactionError } from '../src/reaction'
-import type { ConfigFormJsonValue, ConfigFormReaction, ConfigFormReactionCondition, ConfigFormReactionOperand } from '../src/types'
+import type { ConfigFormJsonValue } from '../src/json'
+import type { ConfigFormReaction, ConfigFormReactionCondition, ConfigFormReactionError, ConfigFormReactionOperand } from '../src/reaction'
 import { describe, expect, it } from 'vitest'
 import {
   applyConfigFormReactionList,

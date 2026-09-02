@@ -5,7 +5,7 @@ import type {
   RenderDevtools,
   SetDevtoolsMessage,
 } from '../types'
-import { resolveEventNode } from '../render'
+import { resolveEventNode } from '../components/render'
 import { activateSourceNode } from './activate'
 
 /**

@@ -1,4 +1,4 @@
-import type { ElementPlusOptionSource } from '../src/options'
+import type { ElementPlusOptionSource } from '../index'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
@@ -16,7 +16,7 @@ describe('useElementPlusResolvedOptions', () => {
     let state!: ReturnType<typeof useElementPlusResolvedOptions>
     const wrapper = mount(defineComponent({
       setup() {
-        state = useElementPlusResolvedOptions(source, [{ label: 'Fallback', value: 'fallback' }])
+        state = useElementPlusResolvedOptions(source, [{ label: 'Static', value: 'static' }])
         return () => h('div')
       },
     }), {
@@ -25,7 +25,7 @@ describe('useElementPlusResolvedOptions', () => {
 
     expect(state.value).toEqual({
       status: 'loading',
-      options: [{ label: 'Fallback', value: 'fallback' }],
+      options: [{ label: 'Static', value: 'static' }],
     })
     await flushPromises()
     expect(state.value).toEqual({

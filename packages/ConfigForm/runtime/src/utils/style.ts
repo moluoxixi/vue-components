@@ -1,5 +1,5 @@
 import type { CSSProperties, StyleValue } from 'vue'
-import { ConfigFormError } from '@/errors'
+import { ConfigFormError } from '../errors'
 
 /** 将 labelWidth 统一为 CSS 可消费的宽度字符串。 */
 export function resolveLabelWidth(width?: string | number): string | undefined {

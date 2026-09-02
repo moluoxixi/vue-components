@@ -5,13 +5,13 @@ import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { ExportDialog } from '..'
 import { loadWorkbenchAdapter } from '../../../adapters'
-import { createBuiltInProject } from '../../../project'
-import ExportDialog from '../ExportDialog.vue'
+import { createBuiltInProjectFixture } from '../../../project/__tests__/fixtures'
 
 async function createInput(): Promise<BuildExportSnapshotInput> {
   const adapter = await loadWorkbenchAdapter('element-plus')
-  const project = createBuiltInProject('element-profile', {
+  const project = createBuiltInProjectFixture('element-profile', {
     id: 'export-dialog-project',
     name: 'Export dialog project',
   }, adapter.componentRegistry.lock)
@@ -60,11 +60,11 @@ describe('export dialog', () => {
 
     await root.findAll('.el-tabs__item').find(item => item.text() === 'JSON')!.trigger('click')
     await flushPromises()
-    expect(root.get('.config-json-view').text()).toContain('"schemaVersion": 4')
+    expect(root.get('.config-json-view').text()).toContain('"version": 4')
     await root.findAll('.el-segmented__item').find(item => item.text().includes('Current page'))!.trigger('click')
     await flushPromises()
     expect(root.get('.config-json-view').text()).toContain('"graph"')
-    expect(root.get('.config-json-view').text()).not.toContain('"schemaVersion"')
+    expect(root.get('.config-json-view').text()).not.toContain('"version": 4')
 
     await wrapper.setProps({ currentPageId: 'missing-page' })
     await flushPromises()

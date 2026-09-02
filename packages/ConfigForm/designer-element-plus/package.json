@@ -17,9 +17,8 @@
       "import": "./dist/index.js"
     },
     "./styles": {
-      "sass": "./src/styles.css",
-      "style": "./src/styles.css",
-      "default": "./src/styles.css"
+      "style": "./src/styles/index.css",
+      "default": "./src/styles/index.css"
     }
   },
   "main": "./dist/index.js",

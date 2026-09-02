@@ -1,5 +1,4 @@
 import type {
-  DefinedFormNodeConfig,
   FieldConfig,
   FormNodeConfig,
   ResolvedComponentField,
@@ -8,9 +7,9 @@ import type {
   ResolvedFormNode,
   ResolvedSlotContent,
   SlotContent,
-} from '@/types'
+} from '../types'
 import { isVNode } from 'vue'
-import { ConfigFormError } from '@/errors'
+import { ConfigFormError } from '../errors'
 
 type TraversableFormNode = FormNodeConfig | ResolvedFormNode
 type TraversableSlotContent = SlotContent | ResolvedSlotContent
@@ -41,33 +40,9 @@ export function isFieldConfig(value: unknown): value is FieldConfig {
   )
 }
 
-/** 保持兼容的节点标记入口；当前实现不再写入隐藏属性。 */
-export function markDefinedFormNodeConfig<TConfig extends FormNodeConfig>(
-  value: TConfig,
-): DefinedFormNodeConfig<TConfig> {
-  return value as DefinedFormNodeConfig<TConfig>
-}
-
-/** 判断未知值是否是可被 ConfigForm 处理的节点配置。 */
-export function isDefinedFormNodeConfig(value: unknown): value is DefinedFormNodeConfig {
-  return isFormNodeConfig(value)
-}
-
-/** 保持兼容的已处理节点标记入口；当前实现不再写入隐藏属性。 */
-export function markResolvedFormNodeConfig<TConfig extends ResolvedFormNode>(
-  value: TConfig,
-): TConfig {
-  return value
-}
-
-/** 判断未知值是否是可渲染节点。 */
-export function isResolvedFormNodeConfig(value: unknown): value is ResolvedFormNode {
-  return isFormNodeConfig(value)
-}
-
 /** 判断已解析节点是否同时是真实字段节点。 */
 export function isResolvedFieldConfig(value: unknown): value is ResolvedField | ResolvedComponentField {
-  return isResolvedFormNodeConfig(value) && isFieldConfig(value)
+  return isFieldConfig(value)
 }
 
 /** 已解析节点：有 field 绑定 + 有 label → Field 类型；id 不参与分类。 */

@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import type {
-  DesignerDefaultValueKind,
-  DesignerJsonValue,
-} from '@moluoxixi/config-form-designer'
-import type { FieldNode } from '@moluoxixi/config-form-model'
-import type { ElementPlusDesignerOption } from '../options'
+import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
+import type { ElementChoiceDefaultSetterEmits, ElementChoiceDefaultSetterProps, ElementPlusDesignerOption } from '../types'
 import { DesignerDefaultValueSetter } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import {
@@ -14,16 +10,9 @@ import {
 } from '../options'
 import ElementOptionState from './ElementOptionState.vue'
 
-const props = defineProps<{
-  modelValue?: unknown
-  disabled?: boolean
-  node?: FieldNode
-  kind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>
-}>()
+const props = defineProps<ElementChoiceDefaultSetterProps>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: DesignerJsonValue | undefined]
-}>()
+const emit = defineEmits<ElementChoiceDefaultSetterEmits>()
 
 const staticOptions = computed(() => normalizeElementPlusOptions(props.node?.props?.options as unknown[] | undefined))
 const source = computed(() => readElementPlusOptionSource(props.node?.props?.optionSource))

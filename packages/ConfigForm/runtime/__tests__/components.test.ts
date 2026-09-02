@@ -5,13 +5,12 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, defineComponent, h, inject, markRaw, nextTick, shallowRef } from 'vue'
 import { z } from 'zod'
-import FormComponent from '../src/components/FormComponent/src/index.vue'
-import FormField from '../src/components/FormField/src/index.vue'
-import FormLayout from '../src/components/FormLayout/src/index.vue'
-import FormNode from '../src/components/FormNode/src/index.vue'
-import RecursiveField from '../src/components/RecursiveField/src/index.vue'
-import { useRuntime } from '../src/composables'
-import { VALIDATION_THROTTLE_MS } from '../src/composables/useForm'
+import FormComponent from '../src/components/FormComponent/index.vue'
+import FormField from '../src/components/FormField/index.vue'
+import FormLayout from '../src/components/FormLayout/index.vue'
+import FormNode from '../src/components/FormNode/index.vue'
+import RecursiveField from '../src/components/RecursiveField/index.vue'
+import { useRuntime, VALIDATION_THROTTLE_MS } from '../src/composables'
 import { FORM_CONTEXT_KEY } from '../src/composables/useFormContext'
 import ConfigForm from '../src/index.vue'
 import { createFormRuntime } from '../src/runtime'
@@ -135,10 +134,7 @@ const RuntimeProbe = markRaw(defineComponent({
     const runtime = useRuntime()
 
     return () => {
-      const transformed = runtime.value.transformField(defineField({
-        component: 'input',
-        field: 'runtimeProbe',
-      }))
+      const transformed = runtime.value.transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-1', component: 'input', field: 'runtimeProbe' }))
 
       return h('span', {
         'data-testid': 'runtime-probe',
@@ -174,19 +170,11 @@ describe('config form component', () => {
     }
     const fields: FormNodeConfig[] = [
       {
-        ...defineField({
-          component: CardContainer,
-          props: { title: '基础信息' },
-          slots: {
-            default: [
-              defineField({
-                component: TextInput,
-                field: 'username',
-                label: '用户名',
-              }),
-            ],
-          },
-        }),
+        ...defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-2', component: CardContainer, props: { title: '基础信息' }, slots: {
+          default: [
+            defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-3', component: TextInput, field: 'username', label: '用户名' }),
+          ],
+        } }),
         __source: source,
       } as FormNodeConfig,
     ]
@@ -240,21 +228,11 @@ describe('config form component', () => {
         props: { title: '基础信息' },
         slots: {
           default: [
-            defineField({
-              component: CardContainer,
-              props: { title: '账号信息' },
-              slots: {
-                default: [
-                  defineField({
-                    component: TextInput,
-                    field: 'username',
-                    label: '用户名',
-                    schema: z.string().min(4, '用户名至少 4 个字符'),
-                    validateOn: 'blur',
-                  }),
-                ],
-              },
-            }),
+            defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-4', component: CardContainer, props: { title: '账号信息' }, slots: {
+              default: [
+                defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-5', component: TextInput, field: 'username', label: '用户名', schema: z.string().min(4, '用户名至少 4 个字符'), validateOn: 'blur' }),
+              ],
+            } }),
           ],
         },
       },
@@ -299,14 +277,9 @@ describe('config form component', () => {
       setup() {
         const locale = shallowRef<'zh-CN' | 'en-US'>('zh-CN')
         const fields = computed<FormNodeConfig[]>(() => [
-          defineField({
-            component: TextInput,
-            field: 'username',
-            label: messages[locale.value].label,
-            props: {
-              placeholder: messages[locale.value].placeholder,
-            },
-          }),
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-6', component: TextInput, field: 'username', label: messages[locale.value].label, props: {
+            placeholder: messages[locale.value].placeholder,
+          } }),
         ])
 
         /**
@@ -342,27 +315,12 @@ describe('config form component', () => {
 
   it('applies container visibility to rendered subtrees and submit behavior', async () => {
     const fields = [
-      defineField({
-        component: TextInput,
-        defaultValue: 'guest',
-        field: 'role',
-      }),
-      defineField({
-        component: CardContainer,
-        props: { title: '管理员区域' },
-        visible: values => values.role === 'admin',
-        slots: {
-          default: [
-            defineField({
-              component: TextInput,
-              defaultValue: 'token',
-              field: 'secret',
-              label: '密钥',
-              validator: () => '可见后需要校验',
-            }),
-          ],
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-7', component: TextInput, defaultValue: 'guest', field: 'role' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-8', component: CardContainer, props: { title: '管理员区域' }, visible: values => values.role === 'admin', slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-9', component: TextInput, defaultValue: 'token', field: 'secret', label: '密钥', validator: () => '可见后需要校验' }),
+        ],
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -394,10 +352,7 @@ describe('config form component', () => {
 
   it('applies explicit container span in grid layouts', () => {
     const fields = [
-      defineField({
-        component: LayoutProbe,
-        span: 12,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-10', component: LayoutProbe, span: 12 }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -412,16 +367,8 @@ describe('config form component', () => {
 
   it('preserves Vue string and array styles when adding container grid span', () => {
     const fields = [
-      defineField({
-        component: LayoutProbe,
-        props: { style: 'color: red;' },
-        span: 12,
-      }),
-      defineField({
-        component: LayoutProbe,
-        props: { style: [{ color: 'blue' }, { backgroundColor: 'white' }] },
-        span: 6,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-11', component: LayoutProbe, props: { style: 'color: red;' }, span: 12 }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-12', component: LayoutProbe, props: { style: [{ color: 'blue' }, { backgroundColor: 'white' }] }, span: 6 }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -440,16 +387,12 @@ describe('config form component', () => {
   })
 
   it('lets componentAttrs.style override container span and field props style', () => {
-    const field = createFormRuntime().transformField(defineField({
-      component: LayoutProbe,
-      props: {
-        style: {
-          color: 'blue',
-          gridColumn: 'span 10',
-        },
+    const field = createFormRuntime().transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-13', component: LayoutProbe, props: {
+      style: {
+        color: 'blue',
+        gridColumn: 'span 10',
       },
-      span: 12,
-    }))
+    }, span: 12 }))
 
     const wrapper = mount(FormNode, {
       props: {
@@ -485,14 +428,11 @@ describe('config form component', () => {
   })
 
   it('forwards fallthrough attrs to the rendered node', () => {
-    const field = createFormRuntime().transformField(defineField({
-      component: LayoutProbe,
-      props: {
-        style: {
-          color: 'blue',
-        },
+    const field = createFormRuntime().transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-14', component: LayoutProbe, props: {
+      style: {
+        color: 'blue',
       },
-    }))
+    } }))
 
     const wrapper = mount(FormNode, {
       attrs: {
@@ -523,10 +463,10 @@ describe('config form component', () => {
   })
 
   it('uses built-in field defaults for container span', () => {
-    const resolved = createFormRuntime().transformField(defineField({ component: LayoutProbe }))
+    const resolved = createFormRuntime().transformField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-15', component: LayoutProbe }))
     const wrapper = mount(ConfigForm, {
       props: {
-        fields: [defineField({ component: LayoutProbe })],
+        fields: [defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-16', component: LayoutProbe })],
         defaultValues: {},
       },
     })
@@ -537,13 +477,7 @@ describe('config form component', () => {
 
   it('updates model values and renders blur validation errors', async () => {
     const fields = [
-      defineField({
-        field: 'username',
-        label: '用户名',
-        component: TextInput,
-        schema: z.string().min(2, '用户名至少 2 个字符'),
-        validateOn: 'blur',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-17', field: 'username', label: '用户名', component: TextInput, schema: z.string().min(2, '用户名至少 2 个字符'), validateOn: 'blur' }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -576,13 +510,7 @@ describe('config form component', () => {
 
   it('renders readonly labeled fields as display text inside the normal FormItem layout', () => {
     const fields = [
-      defineField({
-        component: TextInput,
-        defaultValue: 'Ada',
-        field: 'username',
-        label: '用户名',
-        readonly: true,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-18', component: TextInput, defaultValue: 'Ada', field: 'username', label: '用户名', readonly: true }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -600,12 +528,7 @@ describe('config form component', () => {
 
   it('renders readonly component-only fields without adding a form field wrapper', () => {
     const fields = [
-      defineField({
-        component: TextInput,
-        defaultValue: 'Ada',
-        field: 'nickname',
-        readonly: true,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-19', component: TextInput, defaultValue: 'Ada', field: 'nickname', readonly: true }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -623,18 +546,8 @@ describe('config form component', () => {
 
   it('renders required marks and keeps validation error space reserved', async () => {
     const fields = [
-      defineField({
-        field: 'username',
-        label: '用户名',
-        component: TextInput,
-        required: true,
-        requiredMessage: '请输入用户名',
-      }),
-      defineField({
-        field: 'nickname',
-        label: '昵称',
-        component: TextInput,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-20', field: 'username', label: '用户名', component: TextInput, required: true, requiredMessage: '请输入用户名' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-21', field: 'nickname', label: '昵称', component: TextInput }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -658,11 +571,7 @@ describe('config form component', () => {
 
   it('keeps root form context inline and labelWidth reactive after prop updates', async () => {
     const fields = [
-      defineField({
-        component: TextInput,
-        field: 'username',
-        label: '用户名',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-22', component: TextInput, field: 'username', label: '用户名' }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -687,39 +596,11 @@ describe('config form component', () => {
 
   it('submits transformed visible values and respects hidden or disabled submit options', async () => {
     const fields = [
-      defineField({
-        field: 'visible',
-        component: TextInput,
-        defaultValue: 'ok',
-        transform: value => value.toUpperCase(),
-      }),
-      defineField({
-        field: 'hiddenSkipped',
-        component: TextInput,
-        defaultValue: 'skip',
-        visible: () => false,
-      }),
-      defineField({
-        field: 'disabledSkipped',
-        component: TextInput,
-        defaultValue: 'skip',
-        disabled: () => true,
-        submitWhenDisabled: false,
-      }),
-      defineField({
-        field: 'hiddenKept',
-        component: TextInput,
-        defaultValue: 'keep-hidden',
-        submitWhenHidden: true,
-        visible: () => false,
-      }),
-      defineField({
-        field: 'disabledKept',
-        component: TextInput,
-        defaultValue: 'keep-disabled',
-        disabled: () => true,
-        submitWhenDisabled: true,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-23', field: 'visible', component: TextInput, defaultValue: 'ok', transform: value => value.toUpperCase() }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-24', field: 'hiddenSkipped', component: TextInput, defaultValue: 'skip', visible: () => false }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-25', field: 'disabledSkipped', component: TextInput, defaultValue: 'skip', disabled: () => true, submitWhenDisabled: false }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-26', field: 'hiddenKept', component: TextInput, defaultValue: 'keep-hidden', submitWhenHidden: true, visible: () => false }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-27', field: 'disabledKept', component: TextInput, defaultValue: 'keep-disabled', disabled: () => true, submitWhenDisabled: true }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -741,13 +622,7 @@ describe('config form component', () => {
 
   it('exposes the imperative form API', async () => {
     const fields = [
-      defineField({
-        field: 'name',
-        label: '姓名',
-        component: TextInput,
-        defaultValue: '',
-        schema: z.string().min(2, '姓名至少 2 个字符'),
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-28', field: 'name', label: '姓名', component: TextInput, defaultValue: '', schema: z.string().min(2, '姓名至少 2 个字符') }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -814,22 +689,10 @@ describe('config form component', () => {
     } satisfies FormRuntimeOptions
 
     const fields = [
-      defineField({
-        field: 'role',
-        component: TextInput,
-        defaultValue: 'admin',
-      }),
-      defineField({
-        field: 'nickname',
-        component: 'TextInput',
-        visible: values => values.role === 'admin',
-        slots: {
-          prefix: defineField({
-            component: 'SlotLeaf',
-            props: { 'data-role': 'runtime-prefix' },
-          }),
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-29', field: 'role', component: TextInput, defaultValue: 'admin' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-30', field: 'nickname', component: 'TextInput', visible: values => values.role === 'admin', slots: {
+        prefix: defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-31', component: 'SlotLeaf', props: { 'data-role': 'runtime-prefix' } }),
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -863,11 +726,7 @@ describe('config form component', () => {
           },
         },
         defaultValues: { status: 'ready' },
-        fields: [defineField({
-          component: 'StatusControl',
-          extensions: { 'test.source': 'legacy' },
-          field: 'status',
-        })],
+        fields: [defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-32', component: 'StatusControl', extensions: { 'test.source': 'legacy' }, field: 'status' })],
         runtime: {
           components: { StatusControl: TextInput },
         },
@@ -885,9 +744,7 @@ describe('config form component', () => {
 
   it('provides the normalized runtime to rendered field components', () => {
     const fields = [
-      defineField({
-        component: RuntimeProbe,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-33', component: RuntimeProbe }),
     ]
     const runtime = {
       plugins: [
@@ -915,11 +772,7 @@ describe('config form component', () => {
 
 describe('form field component', () => {
   it('renders labelled fields through FormItem and FormComponent composition', () => {
-    const field = resolveTestField(defineField({
-      component: TextInput,
-      field: 'username',
-      label: '用户名',
-    })) as ResolvedField
+    const field = resolveTestField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-34', component: TextInput, field: 'username', label: '用户名' })) as ResolvedField
 
     const wrapper = mount(FormField, {
       props: {
@@ -950,14 +803,7 @@ describe('form field component', () => {
   })
 
   it('emits custom value and blur triggers through the public field contract', async () => {
-    const field = resolveTestField(defineField({
-      blurTrigger: 'focusout',
-      component: CustomControl,
-      field: 'status',
-      label: '状态',
-      trigger: 'commit',
-      valueProp: 'current',
-    })) as ResolvedField
+    const field = resolveTestField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-35', blurTrigger: 'focusout', component: CustomControl, field: 'status', label: '状态', trigger: 'commit', valueProp: 'current' })) as ResolvedField
 
     const setValue = vi.fn()
     const validateField = vi.fn()
@@ -994,13 +840,7 @@ describe('form field component', () => {
   })
 
   it('extracts component values from custom event payloads', async () => {
-    const field = resolveTestField(defineField({
-      component: 'input',
-      field: 'nativeInput',
-      getValueFromEvent: event => ((event as Event).target as HTMLInputElement).value,
-      label: '原生输入',
-      trigger: 'input',
-    })) as ResolvedField
+    const field = resolveTestField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-36', component: 'input', field: 'nativeInput', getValueFromEvent: event => ((event as Event).target as HTMLInputElement).value, label: '原生输入', trigger: 'input' })) as ResolvedField
 
     const setValue = vi.fn()
     const validateField = vi.fn()
@@ -1033,33 +873,14 @@ describe('form field component', () => {
   })
 
   it('renders field slot configs recursively with config-only slots', () => {
-    const field = defineField({
-      component: SlotHost,
-      field: 'choice',
-      slots: {
-        default: [
-          defineField({
-            field: 'choice-first',
-            component: SlotLeaf,
-            props: { role: 'first', text: '第一个选项' },
-          }),
-          defineField({
-            field: 'choice-second',
-            component: SlotLeaf,
-            props: { role: 'second', text: '第二个选项' },
-          }),
-        ],
-        suffix: defineField({
-          field: 'choice-suffix',
-          component: SlotLeaf,
-          props: { role: 'suffix', text: '后缀插槽' },
-        }),
-        footer: defineField({
-          component: SlotLeaf,
-          props: { role: 'footer', text: '底部插槽' },
-        }),
-      },
-    })
+    const field = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-37', component: SlotHost, field: 'choice', slots: {
+      default: [
+        defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-38', field: 'choice-first', component: SlotLeaf, props: { role: 'first', text: '第一个选项' } }),
+        defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-39', field: 'choice-second', component: SlotLeaf, props: { role: 'second', text: '第二个选项' } }),
+      ],
+      suffix: defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-40', field: 'choice-suffix', component: SlotLeaf, props: { role: 'suffix', text: '后缀插槽' } }),
+      footer: defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-41', component: SlotLeaf, props: { role: 'footer', text: '底部插槽' } }),
+    } })
 
     const wrapper = mount(ConfigForm, {
       props: {
@@ -1079,20 +900,9 @@ describe('form field component', () => {
 
   it('tracks real fields from named slot configs through values, validation, and submit', async () => {
     const fields = [
-      defineField({
-        component: SlotHost,
-        field: 'group',
-        slots: {
-          suffix: defineField({
-            component: TextInput,
-            defaultValue: '',
-            field: 'scopedName',
-            label: '插槽姓名',
-            schema: z.string().min(2, '作用域姓名至少 2 个字符'),
-            validateOn: 'blur',
-          }),
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-42', component: SlotHost, field: 'group', slots: {
+        suffix: defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-43', component: TextInput, defaultValue: '', field: 'scopedName', label: '插槽姓名', schema: z.string().min(2, '作用域姓名至少 2 个字符'), validateOn: 'blur' }),
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1128,21 +938,11 @@ describe('form field component', () => {
 
   it('validates real fields rendered inside another field slot', async () => {
     const fields = [
-      defineField({
-        component: SlotHost,
-        field: 'group',
-        slots: {
-          default: [
-            defineField({
-              component: TextInput,
-              field: 'nestedName',
-              label: '嵌套姓名',
-              schema: z.string().min(2, '嵌套姓名至少 2 个字符'),
-              validateOn: 'blur',
-            }),
-          ],
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-44', component: SlotHost, field: 'group', slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-45', component: TextInput, field: 'nestedName', label: '嵌套姓名', schema: z.string().min(2, '嵌套姓名至少 2 个字符'), validateOn: 'blur' }),
+        ],
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1176,10 +976,7 @@ describe('form field component', () => {
         component: SlotHost,
         slots: {
           default: [
-            defineField({
-              component: SlotLeaf,
-              props: { role: 'slot-child', text: '嵌入选项' },
-            }),
+            defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-46', component: SlotLeaf, props: { role: 'slot-child', text: '嵌入选项' } }),
           ],
         },
       },
@@ -1199,18 +996,14 @@ describe('form field component', () => {
 
   it('renders render-function components with form context helpers', async () => {
     const fields = [
-      defineField({
-        component: (context: {
-          getValue: (field: string) => unknown
-          setValue: (field: string, value: unknown) => void
-        }) => h('button', {
-          'data-testid': 'render-component',
-          'onClick': () => context.setValue('nickname', `${String(context.getValue('nickname'))}!`),
-          'type': 'button',
-        }, String(context.getValue('nickname'))),
-        defaultValue: 'Ada',
-        field: 'nickname',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-47', component: (context: {
+        getValue: (field: string) => unknown
+        setValue: (field: string, value: unknown) => void
+      }) => h('button', {
+        'data-testid': 'render-component',
+        'onClick': () => context.setValue('nickname', `${String(context.getValue('nickname'))}!`),
+        'type': 'button',
+      }, String(context.getValue('nickname'))), defaultValue: 'Ada', field: 'nickname' }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1232,18 +1025,13 @@ describe('form field component', () => {
 
   it('forwards slot render args after the shared context', () => {
     const fields = [
-      defineField({
-        component: MultiArgSlotHost,
-        field: 'choice',
-        defaultValue: '初始值',
-        slots: {
-          default: (context: {
-            getValue: (field: string) => unknown
-          }, slotProps: { label: string }, suffix: string) => h('span', {
-            'data-testid': 'slot-render',
-          }, `${String(context.getValue('choice'))}|${slotProps.label}|${suffix}`),
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-48', component: MultiArgSlotHost, field: 'choice', defaultValue: '初始值', slots: {
+        default: (context: {
+          getValue: (field: string) => unknown
+        }, slotProps: { label: string }, suffix: string) => h('span', {
+          'data-testid': 'slot-render',
+        }, `${String(context.getValue('choice'))}|${slotProps.label}|${suffix}`),
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1285,14 +1073,9 @@ describe('form field component', () => {
 
   it('applies grid span to unlabelled field controls', () => {
     const fields = [
-      defineField({
-        component: TextInput,
-        field: 'username',
-        props: {
-          placeholder: '用户名',
-        },
-        span: 8,
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-49', component: TextInput, field: 'username', props: {
+        placeholder: '用户名',
+      }, span: 8 }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1308,21 +1091,13 @@ describe('form field component', () => {
 
   it('does not add an extra wrapper around unlabelled slot fields', () => {
     const fields = [
-      defineField({
-        component: SlotHost,
-        slots: {
-          default: [
-            defineField({
-              component: TextInput,
-              field: 'username',
-              props: {
-                placeholder: '用户名',
-              },
-              span: 8,
-            }),
-          ],
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-50', component: SlotHost, slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-51', component: TextInput, field: 'username', props: {
+            placeholder: '用户名',
+          }, span: 8 }),
+        ],
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1339,11 +1114,7 @@ describe('form field component', () => {
 
 describe('recursive field component', () => {
   it('prunes invisible nodes before dispatching to node components', () => {
-    const field = resolveTestField(defineField({
-      component: TextInput,
-      field: 'hiddenName',
-      label: '隐藏姓名',
-    }))
+    const field = resolveTestField(defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-52', component: TextInput, field: 'hiddenName', label: '隐藏姓名' }))
 
     const wrapper = mount(RecursiveField, {
       props: { field },
@@ -1371,13 +1142,7 @@ describe('recursive field component', () => {
 
 describe('form component component', () => {
   it('binds component-only field values and events through form context actions', async () => {
-    const field = defineField({
-      blurTrigger: 'focusout',
-      component: CustomControl,
-      field: 'status',
-      trigger: 'commit',
-      valueProp: 'current',
-    })
+    const field = defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-53', blurTrigger: 'focusout', component: CustomControl, field: 'status', trigger: 'commit', valueProp: 'current' })
     const setValue = vi.fn()
     const validateField = vi.fn()
 
@@ -1502,34 +1267,14 @@ describe('form layout', () => {
 
   it('overrides parent context inline for child fields', () => {
     const fields = [
-      defineField({
-        field: 'name',
-        component: TextInput,
-        label: '姓名',
-      }),
-      defineField({
-        component: 'FormLayout',
-        props: { inline: true },
-        slots: {
-          default: [
-            defineField({
-              field: 'city',
-              component: TextInput,
-              label: '城市',
-            }),
-            defineField({
-              field: 'district',
-              component: TextInput,
-              label: '区域',
-            }),
-          ],
-        },
-      }),
-      defineField({
-        field: 'email',
-        component: TextInput,
-        label: '邮箱',
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-54', field: 'name', component: TextInput, label: '姓名' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-55', component: 'FormLayout', props: { inline: true }, slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-56', field: 'city', component: TextInput, label: '城市' }),
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-57', field: 'district', component: TextInput, label: '区域' }),
+        ],
+      } }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-58', field: 'email', component: TextInput, label: '邮箱' }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1554,21 +1299,11 @@ describe('form layout', () => {
 
   it('keeps provided validation errors reactive for fields inside FormLayout', async () => {
     const fields = [
-      defineField({
-        component: 'FormLayout',
-        props: { inline: true },
-        slots: {
-          default: [
-            defineField({
-              component: TextInput,
-              field: 'city',
-              label: '城市',
-              schema: z.string().min(2, '城市至少 2 个字符'),
-              validateOn: 'blur',
-            }),
-          ],
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-59', component: 'FormLayout', props: { inline: true }, slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-60', component: TextInput, field: 'city', label: '城市', schema: z.string().min(2, '城市至少 2 个字符'), validateOn: 'blur' }),
+        ],
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {
@@ -1587,38 +1322,18 @@ describe('form layout', () => {
 
   it('supports nested FormLayout with different layout modes', () => {
     const fields = [
-      defineField({
-        field: 'top',
-        component: TextInput,
-        label: '顶层字段',
-      }),
-      defineField({
-        component: 'FormLayout',
-        props: { inline: true },
-        slots: {
-          default: [
-            defineField({
-              field: 'inlineA',
-              component: TextInput,
-              label: '行内A',
-            }),
-            // 嵌套 FormLayout 切回 grid
-            defineField({
-              component: 'FormLayout',
-              props: { inline: false, columns: 3 },
-              slots: {
-                default: [
-                  defineField({
-                    field: 'gridB',
-                    component: TextInput,
-                    label: '网格B',
-                  }),
-                ],
-              },
-            }),
-          ],
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-61', field: 'top', component: TextInput, label: '顶层字段' }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-62', component: 'FormLayout', props: { inline: true }, slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-63', field: 'inlineA', component: TextInput, label: '行内A' }),
+          // 嵌套 FormLayout 切回 grid
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-64', component: 'FormLayout', props: { inline: false, columns: 3 }, slots: {
+            default: [
+              defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-components-test-ts-65', field: 'gridB', component: TextInput, label: '网格B' }),
+            ],
+          } }),
+        ],
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {

@@ -1,33 +1,30 @@
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { createWorkspaceArchive } from '../export/archive'
-import { normalizeProjectPath } from '../path'
+import { normalizeProjectPath } from '..'
+import { createWorkspaceArchive } from '../export'
 import {
-  BUILT_IN_PROJECT_TEMPLATES,
-  createBuiltInProject,
-  createBuiltInProjectPage,
-  createProjectTemplateRegistry,
+  getBuiltInTemplateSeed,
+  instantiateTemplatePage,
+  parseProjectTemplateSeed,
 } from '../templates'
-import { createRegistryLockFixture } from './fixtures'
+import { createBuiltInProjectFixture, createRegistryLockFixture } from './fixtures'
 
 function createProject(templateId: 'antd-profile' | 'element-profile') {
   const adapter = templateId === 'element-profile' ? 'element-plus' : 'antd-vue'
-  return createBuiltInProject(templateId, {
+  return createBuiltInProjectFixture(templateId, {
     id: `${templateId}-fixture`,
     name: `${templateId} fixture`,
   }, createRegistryLockFixture(adapter))
 }
 
 describe('project templates', () => {
-  it('registers deterministic Element Plus and Ant Design Vue templates', () => {
-    expect([...BUILT_IN_PROJECT_TEMPLATES.keys()]).toEqual(['element-profile', 'antd-profile'])
-
+  it('creates deterministic Element Plus and Ant Design Vue template fixtures', () => {
     const element = createProject('element-profile')
     const antd = createProject('antd-profile')
     expect(element.registryLock.adapter).toBe('element-plus')
     expect(antd.registryLock.adapter).toBe('antd-vue')
     expect(element).toMatchObject({
-      schemaVersion: 4,
+      version: 4,
       id: 'element-profile-fixture',
       homePageId: 'home',
       pageOrder: ['home'],
@@ -45,20 +42,29 @@ describe('project templates', () => {
       expect.objectContaining({ component: 'element.input', events: {}, bindings: {} }),
     ]))
     expect(Object.keys(element.pagesById.home!.graph.nodesById)).toEqual([
-      'profile-name',
-      'profile-role',
-      'profile-active',
+      'profile-name-node-1',
+      'profile-role-node-2',
+      'profile-active-node-3',
     ])
     expect(Object.values(element.pagesById.home!.graph.nodesById).map(node =>
-      node.kind === 'field' ? node.field : undefined)).toEqual(['name', 'role', 'active'])
+      node.kind === 'field' ? node.field : undefined)).toEqual([
+      'name-field-4',
+      'role-field-5',
+      'active-field-6',
+    ])
     expect(Object.values(antd.pagesById.home!.graph.nodesById)).toEqual(expect.arrayContaining([
       expect.objectContaining({ component: 'antd.switch' }),
     ]))
   })
 
   it('creates standalone normalized pages without project metadata', () => {
-    const page = createBuiltInProjectPage('element-profile', {
+    const seed = getBuiltInTemplateSeed('element-profile')
+    const parsed = seed && parseProjectTemplateSeed(seed, 'built-in')
+    if (!parsed || 'code' in parsed)
+      throw new Error(parsed?.message ?? 'Template not found.')
+    const page = instantiateTemplatePage({ providerId: 'built-in', ...parsed }, {
       id: 'settings',
+      identityFactory: { create: (_kind, source) => source },
       name: 'Settings',
       route: '/settings',
     })
@@ -68,12 +74,6 @@ describe('project templates', () => {
     expect(Object.values(page.graph.nodesById).map(node =>
       node.kind === 'field' ? node.field : undefined)).toEqual(['name', 'role', 'active'])
     expect(page).not.toHaveProperty('registryLock')
-  })
-
-  it('rejects duplicate or malformed template ids', () => {
-    const template = BUILT_IN_PROJECT_TEMPLATES.get('element-profile')!
-    expect(() => createProjectTemplateRegistry([template, template])).toThrow('already exists')
-    expect(() => createProjectTemplateRegistry([{ ...template, id: '../unsafe' }])).toThrow('invalid template id')
   })
 
   it('archives an explicit readonly generated file set under one safe root', async () => {

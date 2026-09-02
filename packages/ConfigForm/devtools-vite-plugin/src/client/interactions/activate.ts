@@ -5,8 +5,8 @@ import type {
   SetDevtoolsMessage,
   StoredNode,
 } from '../types'
-import { scrollSelectedNodeIntoView } from '../render'
-import { openNodeSource } from '../sourceOpen'
+import { scrollSelectedNodeIntoView } from '../components/render'
+import { openNodeSource } from '../services/source-open'
 
 /**
  * 激活并定位一个源码节点。

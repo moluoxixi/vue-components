@@ -1,11 +1,14 @@
 import type { RegistryContractSnapshot } from '@moluoxixi/config-form-model'
-import type { ProjectTemplateCatalogEntry, TemplateCatalogProvider, TemplateIdentityFactory } from '../templates'
+import type { ProjectIdentityFactory } from '..'
+import type { ProjectTemplateCatalogEntry, TemplateCatalogProvider } from '../templates'
+import { registryLockFingerprint } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
 import {
-  analyzeTemplateCompatibility,
+  analyzeTemplateEligibility,
   builtInTemplateCatalogProvider,
   createTemplateCatalogService,
   filterTemplateCatalog,
+  getProjectTemplateSeedFingerprint,
   instantiateTemplatePage,
   instantiateTemplateProject,
   parseProjectTemplateSeed,
@@ -18,7 +21,7 @@ async function builtIns(): Promise<ProjectTemplateCatalogEntry[]> {
   return result.templates
 }
 
-function deterministicFactory(namespace: string): TemplateIdentityFactory {
+function deterministicFactory(namespace: string): ProjectIdentityFactory {
   let sequence = 0
   return {
     create(kind, source) {
@@ -30,7 +33,7 @@ function deterministicFactory(namespace: string): TemplateIdentityFactory {
 function registrySnapshot(entry: ProjectTemplateCatalogEntry): RegistryContractSnapshot {
   const lock = createRegistryLockFixture(entry.manifest.adapter)
   return {
-    schemaVersion: 1,
+    version: 1,
     adapter: lock.adapter,
     adapterVersion: lock.version,
     fingerprint: lock.fingerprint,
@@ -127,6 +130,30 @@ describe('template catalog', () => {
     })
   })
 
+  it('accepts only the current manifest version and fingerprints seed content', async () => {
+    const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
+    for (const version of [undefined, 0, 2]) {
+      const input = structuredClone({ manifest: source.manifest, page: source.page }) as unknown as {
+        manifest: Record<string, unknown>
+        page: ProjectTemplateCatalogEntry['page']
+      }
+      if (version === undefined)
+        delete input.manifest.version
+      else
+        input.manifest.version = version
+      expect(parseProjectTemplateSeed(input, 'test')).toMatchObject({
+        code: 'TEMPLATE_VERSION_INVALID',
+        path: 'manifest.version',
+      })
+    }
+
+    const first = getProjectTemplateSeedFingerprint(source)
+    expect(getProjectTemplateSeedFingerprint(structuredClone(source))).toBe(first)
+    const changed = structuredClone(source)
+    changed.page.name = 'Changed seed'
+    expect(getProjectTemplateSeedFingerprint(changed)).not.toBe(first)
+  })
+
   it('fails closed on oversized arrays and invalid manifest order', async () => {
     const source = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const maximumProvider = {
@@ -175,19 +202,19 @@ describe('template catalog', () => {
     }
   })
 
-  it('explains adapter, Registry lock, and missing component incompatibility', async () => {
+  it('explains unmet adapter, Registry lock, and component requirements', async () => {
     const template = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
     const registry = registrySnapshot(template)
-    expect(analyzeTemplateCompatibility(template, { registry, target: 'project' })).toEqual({ compatible: true, diagnostics: [] })
-    const incompatible = analyzeTemplateCompatibility(template, {
+    expect(analyzeTemplateEligibility(template, { registry, target: 'project' })).toEqual({ eligible: true, diagnostics: [] })
+    const ineligible = analyzeTemplateEligibility(template, {
       registry,
       target: 'page',
       targetLock: createRegistryLockFixture('antd-vue'),
     })
-    expect(incompatible.compatible).toBe(false)
-    expect(incompatible.diagnostics.map(item => item.code)).toContain('TEMPLATE_REGISTRY_ADAPTER_MISMATCH')
+    expect(ineligible.eligible).toBe(false)
+    expect(ineligible.diagnostics.map(item => item.code)).toContain('TEMPLATE_REGISTRY_ADAPTER_MISMATCH')
 
-    const missing = analyzeTemplateCompatibility(template, {
+    const missing = analyzeTemplateEligibility(template, {
       registry: { ...registry, components: registry.components.slice(1) },
       target: 'project',
     })
@@ -218,6 +245,26 @@ describe('template catalog', () => {
     firstPage.name = 'Changed'
     expect(secondPage.name).toBe('Second')
     expect(JSON.stringify(template)).toBe(seedJson)
+  })
+
+  it('keeps the complete current Registry lock on instantiated projects', async () => {
+    const template = (await builtIns()).find(item => item.manifest.id === 'element-profile')!
+    const registryLock = createRegistryLockFixture('element-plus')
+    registryLock.components['element.input-number'] = {
+      contractVersion: '1',
+      fingerprint: 'fnv1a:element-input-number',
+    }
+    registryLock.fingerprint = registryLockFingerprint(registryLock.components)
+
+    const project = instantiateTemplateProject(template, {
+      identityFactory: deterministicFactory('registry-current'),
+      name: 'Current Registry',
+      registryLock,
+    })
+
+    expect(project.registryLock).toEqual(registryLock)
+    expect(project.registryLock).not.toBe(registryLock)
+    expect(project.registryLock.components).toHaveProperty('element.input-number')
   })
 
   it('keeps readable source prefixes in default generated identities', async () => {

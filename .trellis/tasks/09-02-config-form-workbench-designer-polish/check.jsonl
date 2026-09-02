@@ -1,0 +1,4 @@
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"按设计器前端质量清单检查。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"检查组件、无障碍、视觉与交互回归。"}
+{"file":".trellis/spec/config-form-core/frontend/flow-runtime-consistency.md","reason":"确认 Runtime 行为和 Preview 生命周期无回归。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 adapter、iframe、geometry 和 Workbench 跨层合同。"}

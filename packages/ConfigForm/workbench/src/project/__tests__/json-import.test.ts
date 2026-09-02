@@ -1,10 +1,10 @@
 import type { ConfigFormFlowReactionNodeConfig } from '@moluoxixi/config-form-core'
 import type { ProjectDocument, ProjectPage } from '@moluoxixi/config-form-model'
-import type { ProjectIdentityFactory } from '../identity-remap'
+import type { ProjectIdentityFactory } from '..'
 import {
   createComponentContractRegistry,
-  createProjectRegistryLock,
   createRegistryContractSnapshot,
+  registryLockFingerprint,
 } from '@moluoxixi/config-form-model'
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
@@ -19,7 +19,7 @@ import {
   MAX_IMPORT_PAGES,
   MAX_IMPORT_SOURCE_BYTES,
   MAX_IMPORT_STRUCTURE_ENTRIES,
-  migrateConfigImportPayload,
+  parseConfigImportPayload,
   parseConfigImportSource,
   prepareConfigImport,
 } from '../import'
@@ -115,8 +115,24 @@ function projectIdentityReverse(source: ProjectDocument, imported: ProjectDocume
 async function currentProject(): Promise<ProjectDocument> {
   const adapter = await loadWorkbenchAdapter('element-plus')
   const project = createProjectDocumentFixture()
-  project.registryLock = createProjectRegistryLock(project, adapter.componentRegistry)
+  project.registryLock = structuredClone(adapter.componentRegistry.lock)
   return project
+}
+
+function pageTransfer(project: ProjectDocument, page: ProjectPage) {
+  const keys = new Set(Object.values(page.graph.nodesById).map(node => node.component))
+  const components = Object.fromEntries([...keys].map(key => [key, project.registryLock.components[key]!]))
+  return {
+    kind: 'config-form-page' as const,
+    version: 1 as const,
+    registryLock: {
+      adapter: project.registryLock.adapter,
+      version: project.registryLock.version,
+      fingerprint: registryLockFingerprint(components),
+      components,
+    },
+    page,
+  }
 }
 
 describe('config model JSON import', () => {
@@ -174,13 +190,11 @@ describe('config model JSON import', () => {
     expect(guardCanonicalConfigImportBudgets({
       target: 'project',
       document: { ...project, pagesById },
-      migrations: [],
     })).toEqual([])
     pagesById['page-overflow'] = { ...sourcePage, id: 'page-overflow' }
     expect(guardCanonicalConfigImportBudgets({
       target: 'project',
       document: { ...project, pagesById },
-      migrations: [],
     })[0]?.code).toBe('IMPORT_PAGE_LIMIT_EXCEEDED')
 
     const nodesById = Object.fromEntries(Array.from(
@@ -188,9 +202,9 @@ describe('config model JSON import', () => {
       (_, index) => [`node-${index}`, null],
     )) as unknown as ProjectPage['graph']['nodesById']
     const page = { ...sourcePage, graph: { ...sourcePage.graph, nodesById } }
-    expect(guardCanonicalConfigImportBudgets({ target: 'page', page, migrations: [] })).toEqual([])
+    expect(guardCanonicalConfigImportBudgets({ target: 'page', page, registryLock: project.registryLock })).toEqual([])
     nodesById['node-overflow'] = sourcePage.graph.nodesById[sourcePage.graph.root[0]!.nodeId]!
-    expect(guardCanonicalConfigImportBudgets({ target: 'page', page, migrations: [] })[0]?.code)
+    expect(guardCanonicalConfigImportBudgets({ target: 'page', page, registryLock: project.registryLock })[0]?.code)
       .toBe('IMPORT_NODE_LIMIT_EXCEEDED')
   })
 
@@ -204,46 +218,6 @@ describe('config model JSON import', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects Page v1 node totals after migration to the canonical graph', async () => {
-    const legacyNode = (index: number) => ({
-      id: `legacy-node-${index}`,
-      component: 'element.input',
-      props: {},
-      events: {},
-      bindings: {},
-      children: [] as unknown[],
-      slots: {},
-      kind: 'field' as const,
-      field: `field-${index}`,
-    })
-    const nodes: unknown[] = Array.from({ length: MAX_IMPORT_NODES }, (_, index) => legacyNode(index))
-    nodes[0] = {
-      id: 'legacy-layout',
-      component: 'element.layout',
-      props: {},
-      events: {},
-      bindings: {},
-      children: [legacyNode(MAX_IMPORT_NODES)],
-      slots: {},
-      kind: 'container',
-    }
-    const result = await prepareConfigImport({
-      source: JSON.stringify({
-        id: 'legacy-overflow',
-        name: 'Legacy overflow',
-        version: 1,
-        props: {},
-        form: {},
-        nodes,
-      }),
-      target: 'page',
-    })
-    expect(result).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'IMPORT_NODE_LIMIT_EXCEEDED', path: '$.graph.nodesById' }],
-    })
-  })
-
   it('rejects every unsafe key at any depth with an escaped stable path', () => {
     for (const key of ['__proto__', 'constructor', 'prototype']) {
       const value = JSON.parse(`{"safe-key":{"${key}":true}}`) as unknown
@@ -254,97 +228,15 @@ describe('config model JSON import', () => {
     }
   })
 
-  it('migrates Project v3 Flow ownership and rejects ambiguous ownership', async () => {
-    const project = await currentProject()
-    const v3 = structuredClone(project) as unknown as Record<string, unknown>
-    v3.schemaVersion = 3
-    const migrated = migrateConfigImportPayload(v3, 'project')
-    expect(migrated).toMatchObject({
-      success: true,
-      payload: {
-        target: 'project',
-        migrations: [{ code: 'IMPORT_PROJECT_V3_TO_V4' }],
-      },
-    })
-
-    const ambiguous = structuredClone(v3) as {
-      homePageId: string
-      pageOrder: string[]
-      pagesById: Record<string, { id: string, flows?: unknown[], graph: { flows?: unknown[] } }>
-    }
-    const page = Object.values(ambiguous.pagesById)[0]!
-    const escapedPageId = 'page.with.dot'
-    page.id = escapedPageId
-    ambiguous.homePageId = escapedPageId
-    ambiguous.pageOrder = [escapedPageId]
-    ambiguous.pagesById = { [escapedPageId]: page }
-    page.flows = []
-    page.graph.flows = []
-    expect(migrateConfigImportPayload(ambiguous, 'project')).toMatchObject({
-      success: false,
-      diagnostics: [{
-        code: 'IMPORT_FLOW_OWNERSHIP_AMBIGUOUS',
-        path: `${appendConfigImportPath('$.pagesById', escapedPageId)}.flows`,
-      }],
-    })
-  })
-
-  it('escapes dynamic Model and legacy slot segments in diagnostics', async () => {
+  it('escapes dynamic Model segments in diagnostics', async () => {
     const project = structuredClone(await currentProject())
     const component = Object.keys(project.registryLock.components)[0]!
     project.registryLock.components[component]!.fingerprint = 42 as unknown as string
-    expect(migrateConfigImportPayload(project, 'project')).toMatchObject({
+    expect(parseConfigImportPayload(project, 'project')).toMatchObject({
       success: false,
       diagnostics: [{
         code: 'IMPORT_PROJECT_INVALID',
         path: `${appendConfigImportPath('$.registryLock.components', component)}.fingerprint`,
-      }],
-    })
-
-    const legacy = {
-      id: 'legacy-slots',
-      name: 'Legacy slots',
-      version: 1,
-      props: {},
-      form: {},
-      nodes: [{
-        id: 'layout',
-        component: 'element.layout',
-        props: {},
-        events: {},
-        bindings: {},
-        children: [],
-        slots: {
-          'side.panel': [{
-            id: 'field',
-            component: 'element.input',
-            props: {},
-            events: {},
-            bindings: {},
-            children: [{
-              id: 'invalid-child',
-              component: 'element.input',
-              props: {},
-              events: {},
-              bindings: {},
-              children: [],
-              slots: {},
-              kind: 'field',
-              field: 'invalid-child',
-            }],
-            slots: {},
-            kind: 'field',
-            field: 'field',
-          }],
-        },
-        kind: 'container',
-      }],
-    }
-    expect(migrateConfigImportPayload(legacy, 'page')).toMatchObject({
-      success: false,
-      diagnostics: [{
-        code: 'IMPORT_PAGE_INVALID',
-        path: '$.nodes[0].slots["side.panel"][0]',
       }],
     })
   })
@@ -383,115 +275,34 @@ describe('config model JSON import', () => {
     })
   })
 
-  it('migrates Page Model v1 into a strict PageGraph v2', () => {
-    const legacy = {
-      id: 'legacy',
-      name: 'Legacy page',
-      version: 1,
-      props: {},
-      form: {},
-      nodes: [{
-        id: 'field',
-        component: 'element.input',
-        props: {},
-        events: {},
-        bindings: {},
-        children: [],
-        slots: {},
-        kind: 'field',
-        field: 'name',
-        span: 6,
-      }],
-    }
-    const result = migrateConfigImportPayload(legacy, 'page')
-    expect(result).toMatchObject({
-      success: true,
-      payload: {
-        target: 'page',
-        page: {
-          graph: {
-            version: 2,
-            root: [{ nodeId: 'field', placement: { span: 6 } }],
-          },
-        },
-        migrations: [{ code: 'IMPORT_PAGE_V1_TO_V2' }],
-      },
-    })
-  })
-
-  it('preserves a legacy default slot and rejects only dual default ownership', () => {
-    const field = {
-      id: 'nested-field',
-      component: 'element.input',
-      props: {},
-      events: {},
-      bindings: {},
-      children: [],
-      slots: {},
-      kind: 'field' as const,
-      field: 'nested',
-    }
-    const legacy = {
-      id: 'legacy-default-slot',
-      name: 'Legacy default slot',
-      version: 1,
-      props: {},
-      form: {},
-      nodes: [{
-        id: 'layout',
-        component: 'element.section',
-        props: {},
-        events: {},
-        bindings: {},
-        children: [],
-        slots: { default: [field] },
-        kind: 'container' as const,
-      }],
-    }
-    expect(migrateConfigImportPayload(legacy, 'page')).toMatchObject({
-      success: true,
-      payload: {
-        page: {
-          graph: {
-            nodesById: {
-              'layout': { slots: { default: [{ nodeId: 'nested-field' }] } },
-              'nested-field': { field: 'nested' },
-            },
-          },
-        },
-      },
-    })
-
-    const ambiguous = structuredClone(legacy) as unknown as {
-      nodes: Array<{ children: Array<typeof field> }>
-    }
-    ambiguous.nodes[0]!.children = [{ ...field, id: 'child-field', field: 'child' }]
-    expect(migrateConfigImportPayload(ambiguous, 'page')).toMatchObject({
-      success: false,
-      diagnostics: [{
-        code: 'IMPORT_PAGE_INVALID',
-        path: '$.nodes[0].slots.default',
-      }],
-    })
-  })
-
-  it('fails closed for target mismatches and future versions', async () => {
+  it('fails closed for obsolete, missing, future, and bare documents', async () => {
     const project = await currentProject()
-    expect(migrateConfigImportPayload(project, 'page')).toMatchObject({
+    expect(parseConfigImportPayload(project, 'page')).toMatchObject({
       success: false,
-      diagnostics: [{ code: 'IMPORT_TARGET_MISMATCH' }],
+      diagnostics: [{ code: 'IMPORT_FORMAT_UNSUPPORTED', path: '$.kind' }],
     })
-    expect(migrateConfigImportPayload({ ...project, schemaVersion: 99 }, 'project')).toMatchObject({
+    expect(parseConfigImportPayload({ ...project, version: 3 }, 'project')).toMatchObject({
       success: false,
-      diagnostics: [{ code: 'IMPORT_VERSION_UNSUPPORTED', path: '$.schemaVersion' }],
+      diagnostics: [{ code: 'IMPORT_VERSION_UNSUPPORTED', path: '$.version' }],
     })
-    expect(migrateConfigImportPayload({ id: 'missing-version', name: 'Unknown' }, 'project')).toMatchObject({
+    expect(parseConfigImportPayload({ ...project, version: 99 }, 'project')).toMatchObject({
       success: false,
-      diagnostics: [{ code: 'IMPORT_FORMAT_UNSUPPORTED' }],
+      diagnostics: [{ code: 'IMPORT_VERSION_UNSUPPORTED', path: '$.version' }],
     })
-    expect(migrateConfigImportPayload(project.pagesById[project.homePageId], 'page')).toMatchObject({
-      success: true,
-      payload: { target: 'page', migrations: [] },
+    const missing = structuredClone(project) as unknown as Record<string, unknown>
+    delete missing.version
+    expect(parseConfigImportPayload(missing, 'project')).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'IMPORT_VERSION_UNSUPPORTED', path: '$.version' }],
+    })
+    expect(parseConfigImportPayload(project.pagesById[project.homePageId], 'page')).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'IMPORT_FORMAT_UNSUPPORTED', path: '$.kind' }],
+    })
+    const transfer = pageTransfer(project, project.pagesById[project.homePageId]!)
+    expect(parseConfigImportPayload({ ...transfer, version: 2 }, 'page')).toMatchObject({
+      success: false,
+      diagnostics: [{ code: 'IMPORT_VERSION_UNSUPPORTED', path: '$.version' }],
     })
   })
 
@@ -518,10 +329,17 @@ describe('config model JSON import', () => {
     })
 
     const sourcePage = project.pagesById[project.homePageId]!
+    const transfer = pageTransfer(project, sourcePage)
+    const pageComponents = [...new Set(Object.values(sourcePage.graph.nodesById).map(node => node.component))]
+      .sort((left, right) => left.localeCompare(right))
+    expect(Object.keys(transfer.registryLock.components).sort((left, right) => left.localeCompare(right)))
+      .toEqual(pageComponents)
+    expect(Object.keys(project.registryLock.components).length).toBeGreaterThan(pageComponents.length)
+
     const pageResult = await prepareConfigImport({
       currentProject: project,
       identityFactory: deterministicFactory(),
-      source: JSON.stringify(sourcePage),
+      source: JSON.stringify(transfer),
       target: 'page',
     })
     expect(pageResult.success).toBe(true)
@@ -532,26 +350,48 @@ describe('config model JSON import', () => {
     expect(pageResult.prepared.preview.compilation.page.id).toBe(pageResult.prepared.page.id)
   })
 
-  it('runs deterministic Registry component migrations through the import service', async () => {
+  it('rejects a Project lock that omits an unused active Registry component', async () => {
+    const project = structuredClone(await currentProject())
+    const usedComponents = new Set(Object.values(project.pagesById)
+      .flatMap(page => Object.values(page.graph.nodesById).map(node => node.component)))
+    const omittedComponent = Object.keys(project.registryLock.components)
+      .find(component => !usedComponents.has(component))
+    expect(omittedComponent).toBeDefined()
+    if (!omittedComponent)
+      return
+    delete project.registryLock.components[omittedComponent]
+    project.registryLock.fingerprint = registryLockFingerprint(project.registryLock.components)
+
+    const result = await prepareConfigImport({
+      identityFactory: deterministicFactory(),
+      source: JSON.stringify(project),
+      target: 'project',
+    })
+
+    expect(result).toMatchObject({
+      success: false,
+      diagnostics: [expect.objectContaining({
+        code: 'IMPORT_REGISTRY_INVALID',
+        message: 'Project Registry lock must exactly match the active Registry.',
+        path: '$.registryLock.components',
+      })],
+    })
+  })
+
+  it('rejects Registry component contract drift without converting the document', async () => {
     const adapter = await loadWorkbenchAdapter('element-plus')
     const project = await currentProject()
     const sourceNode = Object.values(project.pagesById[project.homePageId]!.graph.nodesById)
       .find(node => node.kind === 'field')!
     const sourceContract = adapter.componentRegistry.get(sourceNode.component)!
-    const migratedVersion = `${sourceContract.version}-import-test`
+    const currentVersion = `${sourceContract.version}-current-test`
     const componentRegistry = createComponentContractRegistry(
       adapter.componentRegistry.list().map(contract => contract.key === sourceContract.key
-        ? { ...contract, version: migratedVersion }
+        ? { ...contract, version: currentVersion }
         : contract),
       {
         adapter: 'element-plus',
-        version: 'import-test',
-        migrations: [{
-          component: sourceContract.key,
-          fromVersion: sourceContract.version,
-          toVersion: migratedVersion,
-          migrate: node => ({ ...node, label: 'Migrated by import' }),
-        }],
+        version: adapter.componentRegistry.lock.version,
       },
     )
     const result = await prepareConfigImport({
@@ -564,20 +404,15 @@ describe('config model JSON import', () => {
       source: JSON.stringify(project),
       target: 'project',
     })
-    expect(result.success).toBe(true)
-    if (!result.success || result.prepared.target !== 'project')
+    expect(result.success).toBe(false)
+    if (result.success)
       return
-    expect(result.prepared.migrations).toContainEqual(expect.objectContaining({
-      code: 'IMPORT_COMPONENT_MIGRATED',
-      fromVersion: sourceContract.version,
-      toVersion: migratedVersion,
-    }))
-    expect(result.prepared.document.registryLock.components[sourceContract.key]?.contractVersion)
-      .toBe(migratedVersion)
-    expect(Object.values(result.prepared.document.pagesById)
-      .flatMap(page => Object.values(page.graph.nodesById))
-      .filter(node => node.component === sourceContract.key)
-      .every(node => node.kind === 'field' && node.label === 'Migrated by import')).toBe(true)
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'IMPORT_REGISTRY_INVALID',
+        path: `${appendConfigImportPath('$.registryLock.components', sourceContract.key)}.contractVersion`,
+      }),
+    ]))
   })
 
   it('keeps fresh identities within the current 128-character identifier limit', async () => {
@@ -596,7 +431,7 @@ describe('config model JSON import', () => {
 
     const result = await prepareConfigImport({
       currentProject: project,
-      source: JSON.stringify(sourcePage),
+      source: JSON.stringify(pageTransfer(project, sourcePage)),
       target: 'page',
     })
     expect(result.success).toBe(true)
@@ -618,7 +453,7 @@ describe('config model JSON import', () => {
       target: 'project',
     })).resolves.toMatchObject({
       success: false,
-      diagnostics: [{ code: 'IMPORT_REGISTRY_INCOMPATIBLE', path: '$' }],
+      diagnostics: [{ code: 'IMPORT_REGISTRY_INVALID', path: '$' }],
     })
     await expect(prepareConfigImport({
       identityFactory: { create: () => 'duplicate' },
@@ -637,7 +472,7 @@ describe('config model JSON import', () => {
     const result = await prepareConfigImport({
       currentProject: project,
       identityFactory: deterministicFactory(),
-      source: JSON.stringify(sourcePage),
+      source: JSON.stringify(pageTransfer(project, sourcePage)),
       target: 'page',
     })
     expect(result).toMatchObject({
@@ -688,7 +523,7 @@ describe('config model JSON import', () => {
       const result = await prepareConfigImport({
         currentProject: project,
         identityFactory: deterministicFactory(),
-        source: JSON.stringify(sourcePage),
+        source: JSON.stringify(pageTransfer(project, sourcePage)),
         target: 'page',
       })
       expect(result.success).toBe(true)

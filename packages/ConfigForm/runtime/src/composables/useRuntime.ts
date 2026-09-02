@@ -1,7 +1,7 @@
 import type { ComputedRef, InjectionKey } from 'vue'
-import type { FormRuntime, FormRuntimeOptions } from '@/runtime'
+import type { FormRuntime, FormRuntimeOptions } from '../runtime'
 import { computed, inject, provide } from 'vue'
-import { createFormRuntime } from '@/runtime'
+import { createFormRuntime } from '../runtime/services/create'
 
 const runtimeKey: InjectionKey<ComputedRef<FormRuntime>> = Symbol('config-form-runtime')
 const defaultRuntime = createFormRuntime()

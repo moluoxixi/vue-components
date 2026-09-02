@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { z } from 'zod'
-import { useForm } from '@/composables/useForm'
-import { createFormRuntime } from '@/runtime/createFormRuntime'
+import { useForm } from '@/composables/use-form'
+import { createFormRuntime } from '@/runtime'
 import { validateFieldRules } from '../validate'
 
 describe('validateFieldRules async schemas', () => {

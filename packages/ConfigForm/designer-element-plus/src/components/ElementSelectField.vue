@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ElementPlusDesignerOption, ElementPlusOptionSource } from '../types'
+import type { ElementSelectFieldEmits, ElementSelectFieldProps, ElementSelectValue } from '../types'
 import { ElOption, ElSelect } from 'element-plus'
 import { computed } from 'vue'
 import { elementPlusOptionKey, useElementPlusResolvedOptions } from '../options'
@@ -7,25 +7,14 @@ import ElementOptionState from './ElementOptionState.vue'
 
 defineOptions({ inheritAttrs: false })
 
-type ElementSelectValue
-  = | ElementPlusDesignerOption['value']
-    | ElementPlusDesignerOption['value'][]
-    | null
-
-const props = defineProps<{
-  modelValue?: ElementSelectValue
-  options?: ElementPlusDesignerOption[]
-  optionSource?: ElementPlusOptionSource
-}>()
+const props = defineProps<ElementSelectFieldProps>()
 
 const state = useElementPlusResolvedOptions(
   computed(() => props.optionSource),
   computed(() => props.options),
 )
 
-const emit = defineEmits<{
-  'update:modelValue': [value: ElementSelectValue]
-}>()
+const emit = defineEmits<ElementSelectFieldEmits>()
 
 function updateModelValue(value: ElementSelectValue): void {
   emit('update:modelValue', value)

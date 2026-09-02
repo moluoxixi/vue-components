@@ -62,20 +62,4 @@ export const examples = [
     order: 30,
     load: () => import('./examples/PopoverTableSelect.vue'),
   },
-  {
-    name: 'ElementConfigForm',
-    title: 'ElementConfigForm',
-    category: '配置表单',
-    description: 'components 包内置 Element Plus 配置表单的字段写回、条件字段和提交场景。',
-    order: 40,
-    load: () => import('./examples/ElementConfigForm.vue'),
-  },
-  {
-    name: 'antdConfigForm',
-    title: 'antdConfigForm',
-    category: '配置表单',
-    description: 'components 包内置 Ant Design Vue 配置表单的字段写回、checked 协议自动适配和提交场景。',
-    order: 50,
-    load: () => import('./examples/AntdConfigForm.vue'),
-  },
 ] satisfies ExampleDefinition[]

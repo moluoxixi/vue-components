@@ -8,17 +8,16 @@ import process from 'node:process'
 import { Readable } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import {
-  createEditorCommand,
-  createOpenInEditorMiddleware,
-  launchEditor,
-  openInEditor,
-  parseOpenInEditorPayload,
-  resolveAllowedFile,
-} from '../src/openInEditor'
-import {
   OPEN_IN_EDITOR_REQUEST_HEADER,
   OPEN_IN_EDITOR_REQUEST_HEADER_VALUE,
 } from '../src/protocol'
+import { parseOpenInEditorPayload } from '../src/schemas'
+import {
+  createOpenInEditorMiddleware,
+  launchEditor,
+  openInEditor,
+} from '../src/services'
+import { createEditorCommand, resolveAllowedFile } from '../src/utils'
 
 /**
  * 创建可控的编辑器进程启动 mock。
@@ -242,7 +241,7 @@ describe('open in editor helpers', () => {
     mockPosixPathHost()
 
     try {
-      const { resolveAllowedFile: resolveAllowedFileWithPosixHost } = await import('../src/openInEditor')
+      const { resolveAllowedFile: resolveAllowedFileWithPosixHost } = await import('../src/utils')
 
       expect(resolveAllowedFileWithPosixHost({
         allowRoots: ['D:/project-new/Other'],

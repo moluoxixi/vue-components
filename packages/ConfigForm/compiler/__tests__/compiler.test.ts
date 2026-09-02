@@ -58,7 +58,7 @@ function fixture() {
     version: '2.9.1',
   })
   const project: ProjectDocument = {
-    schemaVersion: PROJECT_DOCUMENT_VERSION,
+    version: PROJECT_DOCUMENT_VERSION,
     id: 'project',
     name: 'Project',
     homePageId: 'home',

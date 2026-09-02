@@ -1,5 +1,5 @@
 import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
-import * as shared from '../material-shared'
+import * as shared from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'select',

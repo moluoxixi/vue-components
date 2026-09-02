@@ -1,6 +1,6 @@
 import type { CDPSession, FrameLocator, Locator, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { createProject } from './helpers'
+import { createProject, restoreAppearance, setAppearance } from './helpers'
 
 interface DragGeometry {
   height: number
@@ -355,36 +355,37 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-for (const viewport of [
-  { height: 1000, id: '1440', width: 1440 },
-  { height: 900, id: '900', width: 900 },
-  { height: 844, id: '390', width: 390 },
-] as const) {
-  for (const theme of ['dark', 'light'] as const) {
-    for (const locale of ['en', 'zh'] as const) {
-      test(`matches the ${viewport.id}px ${theme} ${locale} workbench visual contract`, async ({ page }) => {
-        await page.setViewportSize({ height: viewport.height, width: viewport.width })
-        await page.emulateMedia({ reducedMotion: 'reduce' })
-        await createProject(page, 'element')
-        if (viewport.id === '1440')
-          await expectCompactResponsiveFieldsReadable(page)
-        if (theme === 'light')
-          await chooseResponsiveTopbarAction(page, viewport.width, 'Use light theme')
-        if (locale === 'zh')
-          await chooseResponsiveTopbarAction(page, viewport.width, 'Switch to Chinese')
-        await page.keyboard.press('Escape')
-        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-        await page.locator('.workbench-layout').hover({ position: { x: 2, y: 2 } })
-        await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
-        await expect(page.locator('iframe[data-design-runtime-variant="canvas"]')).toBeVisible()
-        await expect(page.locator('.mx-config-form-designer__camera-controls')).toBeVisible()
-        await expect(page.locator('.workbench-app')).toHaveScreenshot(
-          `workbench-${viewport.id}-${theme}-${locale}.png`,
-          { animations: 'disabled' },
-        )
-      })
-    }
-  }
+const visualCases = [
+  ...(['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine'] as const).flatMap(palette =>
+    (['light', 'dark'] as const).map(theme => ({ height: 1000, locale: 'en' as const, palette, theme, width: 1440 }))),
+  { height: 900, locale: 'zh', palette: 'catppuccin', theme: 'light', width: 900 },
+  { height: 900, locale: 'en', palette: 'kanagawa', theme: 'dark', width: 900 },
+  { height: 844, locale: 'en', palette: 'gruvbox', theme: 'light', width: 390 },
+  { height: 844, locale: 'zh', palette: 'rose-pine', theme: 'dark', width: 390 },
+] as const
+
+for (const visualCase of visualCases) {
+  const { height, locale, palette, theme, width } = visualCase
+  test(`matches the ${width}px ${palette} ${theme} ${locale} workbench visual contract`, async ({ page }) => {
+    await page.setViewportSize({ height, width })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await restoreAppearance(page, theme, palette)
+    await createProject(page, 'element')
+    if (width === 1440)
+      await expectCompactResponsiveFieldsReadable(page)
+    if (locale === 'zh')
+      await chooseResponsiveTopbarAction(page, width, 'Switch to Chinese')
+    await page.keyboard.press('Escape')
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await page.locator('.workbench-layout').hover({ position: { x: 2, y: 2 } })
+    await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
+    await expect(page.locator('iframe[data-design-runtime-variant="canvas"]')).toBeVisible()
+    await expect(page.locator('.mx-config-form-designer__camera-controls')).toBeVisible()
+    await expect(page.locator('.workbench-app')).toHaveScreenshot(
+      `workbench-${width}-${palette}-${theme}-${locale}.png`,
+      { animations: 'disabled' },
+    )
+  })
 }
 
 test('provides focus and Escape command hints, including disabled reasons and real shortcuts', async ({ page }) => {
@@ -727,7 +728,7 @@ for (const adapter of [
       const style = getComputedStyle(element)
       return { backgroundColor: style.backgroundColor, color: style.color }
     })
-    await page.getByRole('button', { name: 'Use light theme' }).click()
+    await setAppearance(page, 'light', 'rose-pine')
     expect(await previewInput.evaluate((element) => {
       const style = getComputedStyle(element)
       return { backgroundColor: style.backgroundColor, color: style.color }
@@ -1208,7 +1209,7 @@ test('exports pinned source and config files through the readonly workspace', as
   await page.getByRole('menuitem', { name: 'Export config', exact: true }).click()
   const configDialog = page.getByRole('dialog', { name: 'Config model' })
   await expect(configDialog.getByRole('tree', { name: 'Generated source files' })).toContainText('form.config.ts')
-  await expect(configDialog.locator('.view-lines')).toContainText('schemaVersion: 4')
+  await expect(configDialog.locator('.view-lines')).toContainText('version: 4')
   const [configDownload] = await Promise.all([
     page.waitForEvent('download'),
     configDialog.getByRole('button', { name: 'Download', exact: true }).click(),

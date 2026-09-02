@@ -1,0 +1,9 @@
+export type WorkbenchProjectErrorCode
+  = | 'PROJECT_EXISTS'
+    | 'PROJECT_INVALID'
+    | 'PROJECT_NOT_FOUND'
+    | 'PROJECT_PATH_INVALID'
+    | 'PROJECT_REVISION_CONFLICT'
+    | 'TEMPLATE_DUPLICATE'
+    | 'TEMPLATE_INVALID'
+    | 'TEMPLATE_NOT_FOUND'

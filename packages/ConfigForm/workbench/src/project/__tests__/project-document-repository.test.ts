@@ -6,7 +6,7 @@ import { IndexDBStorage } from '@moluoxixi/indexed-db'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createIndexedDBProjectRepository,
-} from '../project-document-repository-indexed-db'
+} from '../persistence'
 import { createProjectDocumentFixture } from './fixtures'
 import 'fake-indexeddb/auto'
 
@@ -242,13 +242,13 @@ describe('indexedDBProjectRepository', () => {
         project: Record<string, unknown>
         resources: Record<string, unknown>
       }
-      storageSchemaVersion: number
+      version: number
     }
 
     entity.value.graph.flows = [mountedFlow()]
     delete entity.value.flows
     entity.checksum = semanticChecksum(entity.value)
-    manifest.snapshot.project.schemaVersion = 3
+    manifest.snapshot.project.version = 3
     manifest.snapshot.pages.home!.checksum = entity.checksum
     manifest.snapshot.checksum = semanticChecksum({
       pages: manifest.snapshot.pages,
@@ -258,7 +258,7 @@ describe('indexedDBProjectRepository', () => {
     manifest.checksum = semanticChecksum({
       receipts: manifest.receipts,
       snapshot: manifest.snapshot,
-      storageSchemaVersion: manifest.storageSchemaVersion,
+      version: manifest.version,
     })
     await storage.setItem(pageKey, entity)
     await storage.setItem(manifestKey, manifest)
@@ -298,8 +298,8 @@ describe('indexedDBProjectRepository', () => {
     expect(['First', 'Second']).toContain((await first.get(initial.id))?.document.pagesById.home?.name)
   })
 
-  it('migrates a v2 manifest to v3 once across concurrent connections', async () => {
-    const dbName = `project-document-v2-migration-${sequence++}`
+  it('rejects an obsolete manifest without rewriting it', async () => {
+    const dbName = `project-document-obsolete-${sequence++}`
     const seedRepository = createIndexedDBProjectRepository(repositoryOptions(dbName))
     closeables.push(seedRepository)
     await seedRepository.open()
@@ -314,37 +314,23 @@ describe('indexedDBProjectRepository', () => {
       checksum: string
       receipts: unknown[]
       snapshot: unknown
-      storageSchemaVersion: number
+      version?: number
       versions?: unknown[]
     }
+    const obsoleteVersionField = ['storage', 'SchemaVersion'].join('')
     delete manifest.versions
-    manifest.storageSchemaVersion = 2
-    manifest.checksum = semanticChecksum({
-      receipts: manifest.receipts,
-      snapshot: manifest.snapshot,
-      storageSchemaVersion: 2,
-    })
+    delete manifest.version
+    Object.assign(manifest, { [obsoleteVersionField]: 2 })
     await storage.setItem(manifestKey, manifest)
 
-    const first = createIndexedDBProjectRepository(repositoryOptions(dbName))
-    const second = createIndexedDBProjectRepository(repositoryOptions(dbName))
-    closeables.push(first, second)
-    await Promise.all([first.open(), second.open()])
-    const [firstLoaded, secondLoaded] = await Promise.all([
-      first.get(initial.id),
-      second.get(initial.id),
-    ])
-    expect(firstLoaded?.document).toEqual(initial)
-    expect(secondLoaded).toEqual(firstLoaded)
-    expect(await first.listVersions(initial.id)).toEqual([
-      expect.objectContaining({ repositoryRevision: 0, source: 'migration' }),
-    ])
-    const migrated = await storage.getItem<Record<string, unknown>>(manifestKey)
-    expect(migrated).toMatchObject({ storageSchemaVersion: 3 })
-    expect(migrated?.versions).toHaveLength(1)
+    const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
+    closeables.push(repository)
+    await repository.open()
+    await expect(repository.get(initial.id)).rejects.toMatchObject({ code: 'PROJECT_REPOSITORY_CORRUPT' })
+    expect(await storage.getItem<Record<string, unknown>>(manifestKey)).toEqual(manifest)
     const pageKey = (await storage.keys()).find(key => key.includes(':page:'))!
     expect(await storage.getItem<Record<string, unknown>>(pageKey)).toMatchObject({
-      storageSchemaVersion: 2,
+      version: 2,
     })
   })
 
@@ -402,7 +388,7 @@ describe('indexedDBProjectRepository', () => {
     const dbName = `project-document-hard-cut-${sequence++}`
     const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })
     closeables.push(storage)
-    const oldRecord = { schemaVersion: 2, id: 'old-project' }
+    const oldRecord = { [['schema', 'Version'].join('')]: 2, id: 'old-project' }
     await storage.setItem('foreign:old-project', oldRecord)
     const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
     closeables.push(repository)

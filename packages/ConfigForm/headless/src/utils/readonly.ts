@@ -23,7 +23,7 @@ export function isConfigFormFieldReadonly<
     || resolveConfigFormCondition(field.readonly, values, false)
 }
 
-/** 字段 render 优先于表单 fallback；返回 undefined 表示使用原始值展示。 */
+/** 字段 render 优先于表单级 render；返回 undefined 表示使用内置原始值展示。 */
 export function resolveConfigFormReadonlyRender<
   TValues extends ConfigFormValues,
   TComponent = Component | string,
@@ -31,9 +31,9 @@ export function resolveConfigFormReadonlyRender<
   TCellAttrs = ConfigFormAttrs,
 >(
   field: ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>,
-  fallback?: ConfigFormReadonlyRender<TValues, TComponent, TFieldAttrs, TCellAttrs>,
+  formReadonlyRender?: ConfigFormReadonlyRender<TValues, TComponent, TFieldAttrs, TCellAttrs>,
 ): ConfigFormReadonlyRender<TValues, TComponent, TFieldAttrs, TCellAttrs> | undefined {
-  return field.readonlyRender ?? fallback
+  return field.readonlyRender ?? formReadonlyRender
 }
 
 /** 未声明 readonlyRender 时使用的稳定文本格式化，不推断具体 UI 组件语义。 */

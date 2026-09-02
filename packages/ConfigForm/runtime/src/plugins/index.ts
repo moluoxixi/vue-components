@@ -33,6 +33,9 @@ export type {
   ResolvedSlotContent,
   SlotContent,
 } from '../types'
+export type {
+  PlainRecord,
+} from '../types'
 export {
   collectFieldConfigs,
   isFieldConfig,
@@ -40,7 +43,4 @@ export {
 } from '../utils/node'
 export {
   mergeRecords,
-} from '../utils/object'
-export type {
-  PlainRecord,
 } from '../utils/object'

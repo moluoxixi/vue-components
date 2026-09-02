@@ -1,8 +1,8 @@
 import type { ZodIssue, ZodTypeAny } from 'zod'
-import type { FieldCondition, FieldConfig, FieldValidator, FormErrors, FormValues, NormalizedFieldConfig, ValidateTrigger } from '@/types'
-import { applyFieldDefaults } from '@/plugins/builtInFieldDefaults'
-import { shouldValidateOn } from '@/utils/field'
-import { resolveValue } from '@/utils/resolvable'
+import type { FieldCondition, FieldConfig, FieldValidator, FormErrors, FormValues, NormalizedFieldConfig, ValidateTrigger } from '../types'
+import { applyFieldDefaults } from '../plugins/defaults'
+import { shouldValidateOn } from './field'
+import { resolveValue } from './resolvable'
 
 /** 校验单个字段值（纯 Zod 调用）。 */
 export function validateField(

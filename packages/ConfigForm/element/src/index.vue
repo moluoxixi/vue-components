@@ -2,7 +2,7 @@
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererExpose,
-} from '@moluoxixi/config-form/renderer'
+} from '@moluoxixi/config-form'
 import type {
   ElementConfigFormEmits,
   ElementConfigFormExpose,
@@ -10,9 +10,9 @@ import type {
   ElementConfigFormSlots,
 } from './types'
 import { computed, useTemplateRef } from 'vue'
-import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form/renderer'
-import { ELEMENT_CONFIG_FORM_COMPONENTS } from './components'
-import './styles.scss'
+import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form'
+import { ELEMENT_CONFIG_FORM_COMPONENTS } from './registries'
+import './styles/index.scss'
 
 defineOptions({
   name: 'ElementConfigForm',

@@ -25,19 +25,11 @@ const SlotLeaf = markRaw(defineComponent({
 describe('slot field configs', () => {
   it('renders component slot nodes created with defineField without field wrappers', () => {
     const fields = [
-      defineField({
-        component: SlotHost,
-        field: 'choice',
-        label: '选择',
-        slots: {
-          default: [
-            defineField({
-              component: SlotLeaf,
-              props: { role: 'defined-slot-node', text: '插槽节点' },
-            }),
-          ],
-        },
-      }),
+      defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-slotDefineField-test-ts-1', component: SlotHost, field: 'choice', label: '选择', slots: {
+        default: [
+          defineField({ id: 'fixture-node-packages-ConfigForm-runtime-tests-slotDefineField-test-ts-2', component: SlotLeaf, props: { role: 'defined-slot-node', text: '插槽节点' } }),
+        ],
+      } }),
     ]
 
     const wrapper = mount(ConfigForm, {

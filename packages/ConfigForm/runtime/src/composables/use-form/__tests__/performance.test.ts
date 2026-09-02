@@ -1,13 +1,13 @@
-import type { FormValueChange } from '../state'
+import type { FormValueChange } from '../types'
 import type { FormErrors, FormNodeConfig, FormValues, NormalizedFieldConfig, ResolvedFormNode } from '@/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computed, ref, toRaw } from 'vue'
-import { createFormRuntime } from '@/runtime/createFormRuntime'
+import { createFormRuntime } from '@/runtime'
 import { collectFieldConfigs } from '@/utils/node'
 import { useForm } from '../index'
+import { appendValidationListeners, useFormValidation } from '../services/validation'
 import { useFormState } from '../state'
-import { createNodeTopology } from '../topology'
-import { appendValidationListeners, useFormValidation } from '../validation'
+import { createNodeTopology } from '../utils'
 
 function resolveFields(fields: FormNodeConfig[]): ResolvedFormNode[] {
   const runtime = createFormRuntime()

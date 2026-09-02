@@ -3,7 +3,7 @@ import { z } from 'zod'
 import {
   normalizeConfigFormValidateOn,
   validateConfigFormFieldRules,
-} from '../src/validation'
+} from '../index'
 
 describe('config form validation', () => {
   it('always includes submit and preserves explicit interaction triggers', () => {

@@ -1,4 +1,4 @@
-export type ResolvableValue<TValue, TContext> = TValue | ((context: TContext) => TValue)
+import type { ResolvableValue } from '../types'
 
 /**
  * 解析可直接声明或基于上下文派生的配置值。

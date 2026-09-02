@@ -48,10 +48,8 @@ describe('component auto loaders', () => {
       expect(componentsPackageJson.exports).toHaveProperty(subpath)
     }
 
-    expect(autoImport['@moluoxixi/components/AntdConfigForm']).toEqual(['antdConfigForm'])
     expect(autoImport['@moluoxixi/components/CopyText']).toEqual(['ClipboardCopyError', 'copyText'])
     expect(autoImport['@moluoxixi/components/HeadlessTable']).toContain('useHeadlessTable')
     expect(autoImport['@moluoxixi/components/HeadlessTable']).toContain('createHeadlessTableRendererPlugin')
-    expect(autoImport['@moluoxixi/components/configForm']).toContain('defineFields')
   })
 })

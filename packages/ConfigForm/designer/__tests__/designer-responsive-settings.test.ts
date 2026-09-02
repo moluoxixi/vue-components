@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import DesignerResponsiveSettings from '../src/components/DesignerResponsiveSettings.vue'
+import { DesignerResponsiveSettings } from '../src/components/DesignerPropertyPanel'
 
 describe('designer responsive settings fractions', () => {
   it('shows final desktop, tablet, and inherited mobile fractions and refreshes with overrides', async () => {

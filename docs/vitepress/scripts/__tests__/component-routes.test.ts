@@ -54,13 +54,13 @@ describe('component documentation routes', () => {
 
   it('renders escaped search-only aliases inside the indexed page section', () => {
     const route = renderComponentRoute({
-      name: 'AntdConfigForm',
-      slug: 'antd-config-form',
-      description: '配置表单',
-      searchAliases: ['ConfigForm', '<Form>'],
+      name: 'CopyText',
+      slug: 'copy-text',
+      description: '复制文本',
+      searchAliases: ['Copy', '<Button>'],
     })
 
-    expect(route).toContain('<span hidden data-doc-search-aliases>ConfigForm &lt;Form&gt;</span>')
+    expect(route).toContain('<span hidden data-doc-search-aliases>Copy &lt;Button&gt;</span>')
   })
 
   it('creates dynamic route content from optional component source documentation', () => {

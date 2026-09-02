@@ -18,8 +18,6 @@ async function openPlayground(page: Page): Promise<void> {
   await page.goto('/')
   await expect(page.getByRole('menuitem', { name: 'CopyText', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'DateRangePicker', exact: true })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'ElementConfigForm', exact: true })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'antdConfigForm', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'PopoverTableSelect', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'HeadlessTable', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'RichTextEditor', exact: true })).toBeVisible()
@@ -91,7 +89,6 @@ test.describe('components playground 交互', () => {
 
     await page.keyboard.press('Escape')
     await expect(levelInput).toHaveAttribute('aria-expanded', 'false')
-    await levelInput.press('Enter')
     await remarkTextarea.click()
     await expect(remarkTextarea).toBeFocused()
     await remarkTextarea.press('Enter')
@@ -157,42 +154,6 @@ test.describe('components playground 交互', () => {
     expect(consoleProblems).toEqual([])
   })
 
-  test('ElementConfigForm 可以写回字段、展开条件字段并提交预览', async ({ page }) => {
-    await openPlayground(page)
-    await openComponent(page, 'ElementConfigForm')
-
-    const example = page.getByTestId('element-config-form-example')
-
-    await example.getByPlaceholder('请输入 Element 账户名称').fill('Element Cloud')
-    await expect(example.getByPlaceholder('请输入 Element 高级备注')).toBeHidden()
-    await example.getByText('启用高级字段', { exact: true }).click()
-    await expect(example.getByPlaceholder('请输入 Element 高级备注')).toBeVisible()
-    await example.getByPlaceholder('请输入 Element 高级备注').fill('Element 高级配置')
-    await example.getByTestId('element-config-submit').click()
-
-    await expect(example.getByTestId('element-config-preview')).toContainText('"accountName": "Element Cloud"')
-    await expect(example.getByTestId('element-config-preview')).toContainText('"advanced": true')
-    await expect(example.getByTestId('element-config-preview')).toContainText('"advancedNote": "Element 高级配置"')
-  })
-
-  test('antdConfigForm 可以自动适配 checked 协议并提交预览', async ({ page }) => {
-    await openPlayground(page)
-    await openComponent(page, 'antdConfigForm')
-
-    const example = page.getByTestId('antd-config-form-example')
-
-    await example.getByPlaceholder('请输入 Antd 项目名称').fill('Antd Portal')
-    await expect(example.getByPlaceholder('请输入 Antd 发布备注')).toBeHidden()
-    await example.getByText('允许发布', { exact: true }).click()
-    await expect(example.getByPlaceholder('请输入 Antd 发布备注')).toBeVisible()
-    await example.getByPlaceholder('请输入 Antd 发布备注').fill('Antd 发布说明')
-    await example.getByTestId('antd-config-submit').click()
-
-    await expect(example.getByTestId('antd-config-preview')).toContainText('"projectName": "Antd Portal"')
-    await expect(example.getByTestId('antd-config-preview')).toContainText('"publish": true')
-    await expect(example.getByTestId('antd-config-preview')).toContainText('"publishNote": "Antd 发布说明"')
-  })
-
   test('sidebar 可以在各组件示例间切换', async ({ page }) => {
     await openPlayground(page)
 
@@ -203,8 +164,6 @@ test.describe('components playground 交互', () => {
       'PopoverTableSelect',
       'HeadlessTable',
       'RichTextEditor',
-      'ElementConfigForm',
-      'antdConfigForm',
     ]) {
       await openComponent(page, name)
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()

@@ -1,8 +1,6 @@
-import type { ConfigFormReactionError } from '../src/reaction'
-import type { ConfigFormNode } from '../src/types'
+import type { ConfigFormNode, ConfigFormReactionError } from '../index'
 import { describe, expect, it, vi } from 'vitest'
-import { createConfigFormController } from '../src/controller'
-import { applyConfigFormReactions } from '../src/reaction'
+import { applyConfigFormReactions, createConfigFormController } from '../index'
 
 interface ReactionForm {
   enabled: boolean
@@ -16,6 +14,7 @@ function reactionFields(): ConfigFormNode<ReactionForm, string>[] {
     {
       component: 'input',
       field: 'enabled',
+      id: 'enabled',
       reactions: [{
         id: 'enable-mode',
         when: {
@@ -39,6 +38,7 @@ function reactionFields(): ConfigFormNode<ReactionForm, string>[] {
     {
       component: 'input',
       field: 'mode',
+      id: 'mode',
       reactions: [{
         id: 'copy-mode',
         when: {
@@ -51,8 +51,8 @@ function reactionFields(): ConfigFormNode<ReactionForm, string>[] {
         else: [{ kind: 'clearValue', target: 'summary' }],
       }],
     },
-    { component: 'input', field: 'name', required: true, validateOn: 'change' },
-    { component: 'input', field: 'summary' },
+    { component: 'input', field: 'name', id: 'name', required: true, validateOn: 'change' },
+    { component: 'input', field: 'summary', id: 'summary' },
   ]
 }
 
@@ -108,6 +108,7 @@ describe('configForm reactions', () => {
     const fields: ConfigFormNode<Record<string, unknown>, string>[] = [{
       component: 'input',
       field: 'a',
+      id: 'a',
       reactions: [
         {
           id: 'a-to-b',
@@ -138,6 +139,7 @@ describe('configForm reactions', () => {
     const fields: ConfigFormNode<Record<string, unknown>, string>[] = [{
       component: 'input',
       field: 'source',
+      id: 'source',
       reactions: [{
         id: 'prototype-keys',
         when: { kind: 'literal', value: true },

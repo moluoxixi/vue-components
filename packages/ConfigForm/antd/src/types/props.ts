@@ -1,3 +1,4 @@
+import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form'
 import type {
   ConfigFormComponentNode,
   ConfigFormComponentSlot,
@@ -15,7 +16,6 @@ import type {
   ConfigFormSlotConfig,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
-import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form/renderer'
 import type { Component, FormHTMLAttributes, HTMLAttributes } from 'vue'
 
 export type AntdConfigFormFormAttrs = FormHTMLAttributes

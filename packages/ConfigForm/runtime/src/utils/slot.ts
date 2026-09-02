@@ -1,16 +1,8 @@
-import type { ResolvedFormNode, ResolvedSlotContent } from '@/types'
-import { ConfigFormError } from '@/errors'
-import { isFormNodeConfig } from '@/utils/node'
+import type { ResolvedFormNode, ResolvedSlotContent, ResolvedSlotNode } from '../types'
+import { ConfigFormError } from '../errors'
+import { isFormNodeConfig } from './node'
 
-/** 可递归渲染的 slot 节点，包含稳定 key 和已解析字段配置。 */
-export interface ResolvedSlotNode {
-  /** 传给 RecursiveField 的字段或容器配置。 */
-  field: ResolvedFormNode
-  /** 当前 slot 内的稳定渲染 key，不参与业务字段标识。 */
-  key: string
-}
-
-/** 生成节点渲染 key，优先使用业务 field 或显式 id，否则回退到结构路径。 */
+/** 生成节点渲染 key，优先使用业务 field 或显式 id，否则使用结构路径。 */
 export function getResolvedNodeRenderKey(field: ResolvedFormNode, path: string): string {
   if ('field' in field)
     return `field:${field.field}:path:${path}`

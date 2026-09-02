@@ -1,35 +1,9 @@
-export { FormLayout } from './src/components/FormLayout'
-export { useForm } from './src/composables/useForm'
-export type { UseFormOptions } from './src/composables/useForm'
+export { FormLayout } from './src/components'
+export { useForm } from './src/composables'
+export type { UseFormOptions } from './src/composables'
 export { ConfigFormError } from './src/errors'
 export { default as ConfigForm } from './src/index.vue'
-export {
-  ConfigFormRenderer,
-  createConfigFormRendererExpose,
-  RuntimeSurface,
-} from './src/renderer-entry'
-export type {
-  ConfigFormControlBinding,
-  ConfigFormControlBindingResolver,
-  ConfigFormRendererCellAttrs,
-  ConfigFormRendererEmits,
-  ConfigFormRendererExpose,
-  ConfigFormRendererField,
-  ConfigFormRendererFieldAttrs,
-  ConfigFormRendererFormAttrs,
-  ConfigFormRendererLayoutAttrs,
-  ConfigFormRendererNode,
-  ConfigFormRendererProps,
-  ConfigFormRenderMode,
-  ConfigFormRuntimeEditorBridge,
-  ConfigFormRuntimeEventContext,
-  ConfigFormRuntimeEventPayload,
-  ConfigFormRuntimeNodeMetadata,
-  RuntimeEditorBridge,
-  RuntimeEditorEventContext,
-  RuntimeNodeMetadata,
-  RuntimeSurfaceProps,
-} from './src/renderer-entry'
+export * from './src/renderer'
 export type {
   ComponentRegistry,
   ConfigFormComponentRegistration,
@@ -65,7 +39,5 @@ export type {
   SlotContent,
   ValidateTrigger,
 } from './src/types'
-export { asVueFunctionalComponent } from './src/utils'
-export type { AdaptedVueFunctionalComponent } from './src/utils'
-export { defineField } from './src/utils/field'
-export { defineFields } from './src/utils/field'
+export type { AdaptedVueFunctionalComponent } from './src/types'
+export { asVueFunctionalComponent, defineField, defineFields } from './src/utils'

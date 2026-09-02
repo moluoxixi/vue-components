@@ -1,12 +1,12 @@
-import type { WorkspaceFile } from '../types'
+import type { WorkspaceFile } from '..'
 import { describe, expect, it } from 'vitest'
 import {
   buildProjectFileTree,
   collectProjectTreeDirectoryIds,
   flattenVisibleProjectTree,
+  normalizeProjectPath,
   projectFileIconKind,
-} from '../file-tree'
-import { normalizeProjectPath } from '../path'
+} from '..'
 
 function text(content = ''): WorkspaceFile {
   return { content, kind: 'text' }

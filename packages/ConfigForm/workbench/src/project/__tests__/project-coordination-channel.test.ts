@@ -1,6 +1,6 @@
-import type { ProjectCoordinationPort } from '../project-coordination-channel'
+import type { ProjectCoordinationPort } from '../persistence'
 import { describe, expect, it, vi } from 'vitest'
-import { createProjectCoordinationChannel } from '../project-coordination-channel'
+import { createProjectCoordinationChannel } from '../persistence'
 
 class PortHub {
   private readonly listeners = new Set<(message: unknown) => void>()

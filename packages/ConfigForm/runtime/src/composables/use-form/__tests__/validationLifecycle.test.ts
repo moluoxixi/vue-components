@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, effectScope, h, markRaw, nextTick, ref, toRaw } from 'vue'
 import ConfigForm from '@/index.vue'
-import { createFormRuntime } from '@/runtime/createFormRuntime'
+import { createFormRuntime } from '@/runtime'
 import { useForm } from '../index'
 
 function resolveFields(fields: Parameters<ReturnType<typeof createFormRuntime>['transformField']>[0][]): ResolvedFormNode[] {

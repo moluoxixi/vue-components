@@ -16,7 +16,7 @@
 - 字段和容器节点的 `extensions` 非渲染元数据。
 - 可序列化 `reactions` 的稳定值事务，以及字段 state、组件 props 和校验目标投影。
 
-`@moluoxixi/config-form/renderer` 的 Vue renderer 负责原生 `<form>`、Grid/Flex、字段壳、错误 DOM、ARIA 和递归节点渲染。UI 包只保留真实输入组件的值/事件绑定预设与视觉样式。
+`@moluoxixi/config-form` 根入口导出的 Vue renderer 负责原生 `<form>`、Grid/Flex、字段壳、错误 DOM、ARIA 和递归节点渲染。UI 包只保留真实输入组件的值/事件绑定预设与视觉样式。
 
 ```ts
 import { createConfigFormController, defineFields } from '@moluoxixi/config-form-headless'
@@ -70,10 +70,8 @@ const components = createConfigFormComponentRegistry(modules)
 
 ## Readonly
 
-本版不单独暴露 `readPretty`。`readonly` 表示完整展示态：不渲染或绑定编辑组件、跳过校验、仍保留提交值。展示函数优先级为字段 `readonlyRender`、表单 `readonlyRender`、内置原始值 fallback。
+本版不单独暴露 `readPretty`。`readonly` 表示完整展示态：不渲染或绑定编辑组件、跳过校验、仍保留提交值。展示函数优先级为字段 `readonlyRender`、表单 `readonlyRender`、内置原始值展示。
 
 ## 本版边界
 
 本版只支持顶层对象字段，不包含嵌套路径、数组字段管理、异步 reaction、任意脚本表达式或远程 DSL。同步 reaction 的条件、effect 和纯 reducer 由 `@moluoxixi/config-form-core` 提供；Headless 负责把它接入模型、校验和渲染投影。跨字段校验仍可通过字段 `validator(value, values)` 完成；Zod `schema` 的解析结果用于后续 validator，提交值转换需显式配置 `transform`。
-
-`withInstall` 仅保留为兼容入口并已弃用。具体 Vue 组件应使用所属组件包或 `@moluoxixi/config-form/renderer` 提供的安装工具，避免把通用组件发布能力继续放入表单内核。

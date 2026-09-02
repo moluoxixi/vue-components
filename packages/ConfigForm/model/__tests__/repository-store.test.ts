@@ -15,7 +15,7 @@ const NEXT_TIME = '2026-08-30T00:01:00.000Z'
 
 function projectDocument(): ProjectDocument {
   return {
-    schemaVersion: PROJECT_DOCUMENT_VERSION,
+    version: PROJECT_DOCUMENT_VERSION,
     id: 'project',
     name: 'Project',
     homePageId: 'home',
@@ -173,7 +173,7 @@ describe('projectRepository', () => {
     })
     expect(await repository.listVersions(initial.id)).toEqual([
       expect.objectContaining({ repositoryRevision: 1, source: 'autosave', label: 'Release candidate' }),
-      expect.objectContaining({ repositoryRevision: 0, source: 'migration' }),
+      expect.objectContaining({ repositoryRevision: 0, source: 'create' }),
     ])
     expect((await repository.getVersion(initial.id, 0))?.document.pagesById.home?.name).toBe('Home')
 

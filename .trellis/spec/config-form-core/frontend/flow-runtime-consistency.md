@@ -96,7 +96,7 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
   first successful Runtime mount starts a new session and dispatches it once.
 - Canonical Flow plans own the Runtime listener set for `component.event`.
   The Vue backend attaches the referenced registered `nodeId + event` pairs to
-  the Runtime plan; RuntimeSurface listens on the real component and emits the
+  the Runtime plan; ConfigFormRenderer listens on the real component and emits the
   canonical Registry event name. A value-binding event and a Flow listener that
   resolve to the same Vue handler key must be installed once and emitted once.
 - Runtime and generated Source install the union of a node's explicit action
@@ -201,7 +201,7 @@ if (revision !== globalTriggerRevision)
 model.value = result.values
 
 // Also wrong: coupling Runtime identity to every edit revision.
-<RuntimeSurface :key="editVersion" />
+<ConfigFormRenderer :key="editVersion" />
 runTrigger({ kind: 'page.mount' })
 ```
 
@@ -222,7 +222,7 @@ if (result.status === 'committed')
   model.value = applyPreviewFlowValuePatch(model.value, result.valuePatch)
 
 // Runtime identity follows the mounted page session; revision stays a stale-work key.
-<RuntimeSurface :key="runtimeSessionKey" />
+<ConfigFormRenderer :key="runtimeSessionKey" />
 onRuntimeMounted(() => runTrigger({ kind: 'page.mount' }))
 ```
 

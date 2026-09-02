@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDefineField, formatStaticValue, formatValueModel } from '../export/serialization'
+import { formatDefineField, formatStaticValue, formatValueModel } from '../export'
 
 function objectWithUnsafeKey(key: string): Record<string, unknown> {
   const value = Object.create(null) as Record<string, unknown>

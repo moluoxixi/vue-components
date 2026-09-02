@@ -2,7 +2,7 @@ import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import type { VueRuntimeCompileResult } from '@moluoxixi/config-form-vue-backend'
 import { CANONICAL_PROJECT_IR_VERSION, CONFIG_FORM_COMPILER_VERSION } from '@moluoxixi/config-form-compiler'
 import { describe, expect, it, vi } from 'vitest'
-import { createPageRuntimeArtifactCache } from '../page-runtime-cache'
+import { createPageRuntimeArtifactCache } from '..'
 
 function compilation(
   pageId: string,

@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import type {
-  DesignerDefaultValueKind,
-  DesignerJsonValue,
-} from '@moluoxixi/config-form-designer'
-import type { FieldNode } from '@moluoxixi/config-form-model'
+import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
+import type { AntdChoiceDefaultSetterEmits, AntdChoiceDefaultSetterProps } from '../types'
 import { DesignerDefaultValueSetter } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import {
@@ -13,16 +10,9 @@ import {
 } from '../options'
 import AntdOptionState from './AntdOptionState.vue'
 
-const props = defineProps<{
-  modelValue?: unknown
-  disabled?: boolean
-  node?: FieldNode
-  kind: Extract<DesignerDefaultValueKind, 'select' | 'multiselect'>
-}>()
+const props = defineProps<AntdChoiceDefaultSetterProps>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: DesignerJsonValue | undefined]
-}>()
+const emit = defineEmits<AntdChoiceDefaultSetterEmits>()
 
 const staticOptions = computed(() => normalizeAntdVueOptions(props.node?.props?.options as unknown[] | undefined))
 const source = computed(() => readAntdVueOptionSource(props.node?.props?.optionSource))

@@ -5,11 +5,11 @@ import { createDesignerRegistry, DesignerPalette } from '@moluoxixi/config-form-
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
+import { StudioLeftPanel } from '..'
 import {
   createProjectDocumentFixture,
   duplicateProjectPage,
 } from '../../project/__tests__/fixtures'
-import StudioLeftPanel from '../StudioLeftPanel.vue'
 
 const registry = createDesignerRegistry([{ name: 'test', materials: [{
   key: 'test.input',

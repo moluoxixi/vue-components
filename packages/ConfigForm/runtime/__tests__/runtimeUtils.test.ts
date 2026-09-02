@@ -1,34 +1,22 @@
 import type { ComputedRef } from 'vue'
-import type { FormContext } from '../src/composables/useFormContext'
 import type { FormRuntime } from '../src/runtime'
-import type { NormalizedFieldConfig, ResolvedBoundNode, ResolvedFormNode } from '../src/types'
+import type { FormContext, NormalizedFieldConfig, ResolvedBoundNode, ResolvedFormNode } from '../src/types'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, defineComponent, h } from 'vue'
 import { FORM_CONTEXT_KEY, useFormContext } from '../src/composables/useFormContext'
 import { normalizeFormRuntime, provideRuntime, useRuntime } from '../src/composables/useRuntime'
-import { createFormRuntime } from '../src/runtime'
-import {
-  createReadonlyRenderContext,
-  renderReadonlyFallback,
-  resolveReadonlyAdapter,
-  resolveReadonlyAdapterKey,
-} from '../src/runtime/readonly'
-import { hasFieldBinding, isComponent, isContainer, isField } from '../src/runtime/utils'
+import { createFormRuntime, createReadonlyRenderContext, hasFieldBinding, isComponent, isContainer, isField, renderReadonlyValue, resolveReadonlyAdapter, resolveReadonlyAdapterKey } from '../src/runtime'
 import { applyFieldTransform, normalizeField, shouldValidateOn } from '../src/utils/field'
 import {
   assertUniqueFieldConfigs,
   collectFieldConfigs,
-  isDefinedFormNodeConfig,
   isFieldConfig,
   isFormNodeConfig,
   isResolvedComponent,
   isResolvedContainer,
   isResolvedField,
   isResolvedFieldConfig,
-  isResolvedFormNodeConfig,
-  markDefinedFormNodeConfig,
-  markResolvedFormNodeConfig,
 } from '../src/utils/node'
 import { cloneRecordWithChildren, mergeRecords, readPlainRecord } from '../src/utils/object'
 import { getResolvedNodeRenderKey, resolveSlotNodes } from '../src/utils/slot'
@@ -187,13 +175,13 @@ describe('runtime utilities', () => {
   })
 
   it('recognizes plain configs and resolved node shapes without hidden markers', () => {
-    const container = markDefinedFormNodeConfig({ component: 'section', props: {} })
-    const field = markResolvedFormNodeConfig({
+    const container = { component: 'section', props: {} }
+    const field = {
       component: 'input',
       field: 'name',
       label: '姓名',
       props: {},
-    } as ResolvedFormNode)
+    } as ResolvedFormNode
     const componentField = {
       component: 'input',
       field: 'status',
@@ -211,8 +199,6 @@ describe('runtime utilities', () => {
     expect(isFormNodeConfig([])).toBe(false)
     expect(isFormNodeConfig(h('div'))).toBe(false)
     expect(isFieldConfig(field)).toBe(true)
-    expect(isDefinedFormNodeConfig(container)).toBe(true)
-    expect(isResolvedFormNodeConfig(field)).toBe(true)
     expect(isResolvedFieldConfig(field)).toBe(true)
     expect(isResolvedField(field)).toBe(true)
     expect(isResolvedField(identifiedField)).toBe(false)
@@ -311,8 +297,8 @@ describe('runtime utilities', () => {
       values,
     })
 
-    const fallback = renderReadonlyFallback('Ada')
-    expect(fallback).toEqual(expect.objectContaining({
+    const readonlyValue = renderReadonlyValue('Ada')
+    expect(readonlyValue).toEqual(expect.objectContaining({
       children: 'Ada',
       type: 'span',
     }))
@@ -351,10 +337,10 @@ describe('runtime utilities', () => {
       ],
     })
 
-    const fallback = defaultRuntime.getFieldDefaults({ component: 'input', field: 'name' }) as NormalizedFieldConfig
+    const defaults = defaultRuntime.getFieldDefaults({ component: 'input', field: 'name' }) as NormalizedFieldConfig
     const transformed = customRuntime.transformField({ component: 'input', field: 'name' }) as NormalizedFieldConfig
-    expect(fallback.valueProp).toBe('modelValue')
-    expect(fallback).not.toHaveProperty('field')
+    expect(defaults.valueProp).toBe('modelValue')
+    expect(defaults).not.toHaveProperty('field')
     expect(transformed.valueProp).toBe('value')
 
     let injectedRuntime: ComputedRef<FormRuntime> | undefined

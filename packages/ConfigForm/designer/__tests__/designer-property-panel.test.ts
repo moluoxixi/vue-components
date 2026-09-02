@@ -2,7 +2,7 @@ import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-f
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import DesignerPropertyPanel from '../src/components/DesignerPropertyPanel.vue'
+import { DesignerPropertyPanel } from '../src/components/DesignerPropertyPanel'
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
 
@@ -209,8 +209,8 @@ describe('designer property panel adaptive Inspector', () => {
       componentDefinition: inputContract,
     })
     await wrapper.get('[data-property-tab="events"]').trigger('click')
-    const eventInput = wrapper.get('[role="tabpanel"]:not([hidden]) input')
-    ;(eventInput.element as HTMLElement).focus()
+    const eventButton = wrapper.get('[role="tabpanel"]:not([hidden]) button')
+    ;(eventButton.element as HTMLElement).focus()
     await wrapper.setProps({
       node: section,
       nodes: [section],
@@ -302,7 +302,7 @@ describe('designer property panel adaptive Inspector', () => {
     })
 
     await wrapper.get('[data-property-tab="events"]').trigger('click')
-    expect(wrapper.get('[role="tabpanel"]:not([hidden]) input').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[role="tabpanel"]:not([hidden]) button').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-property-tab="properties"]').attributes('aria-selected')).toBe('false')
   })
 
