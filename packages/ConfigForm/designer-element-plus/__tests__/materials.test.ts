@@ -1,7 +1,8 @@
-import type { DesignerMaterialDefinition } from '@moluoxixi/config-form-designer'
 import type { PageGraph } from '@moluoxixi/config-form-model'
+import { defineDesignerFieldMaterial } from '@moluoxixi/config-form-designer'
 import { pageGraphSchema } from '@moluoxixi/config-form-model'
 import { describe, expect, it } from 'vitest'
+import { defineComponent } from 'vue'
 import {
   createElementPlusDesignerRegistry,
   ELEMENT_PLUS_DESIGNER_MATERIAL_REGISTRY,
@@ -148,19 +149,20 @@ describe('element plus designer materials', () => {
   })
 
   it('keeps caller registry layers above provider defaults', () => {
-    const override: DesignerMaterialDefinition = {
+    const override = defineDesignerFieldMaterial({
       key: 'element.input',
-      version: 1,
-      kind: 'field',
       title: 'Override input',
       category: 'Custom',
-      runtime: { component: 'input' },
-      setters: [],
-      createNode: ({ id, field = id }) => ({ id, field, kind: 'field', component: 'element.input' }),
-    }
-    const registry = createElementPlusDesignerRegistry([{ name: 'override', materials: [override] }])
+      component: 'input',
+    })
+    const preview = defineComponent({ name: 'ProjectPreview' })
+    const registry = createElementPlusDesignerRegistry({
+      materials: [override],
+      layers: [{ name: 'custom-components', components: { 'project.preview': preview } }],
+    })
 
     expect(registry.getMaterial('element.input')?.title).toBe('Override input')
+    expect(registry.components['project.preview']).toBe(preview)
     expect(registry.createSubgraph('element.input', { id: 'custom', field: 'custom' }).nodesById.custom)
       .toMatchObject({ component: 'element.input', field: 'custom' })
   })

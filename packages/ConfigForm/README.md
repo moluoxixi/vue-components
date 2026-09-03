@@ -192,13 +192,14 @@ ConfigForm DSL。Core interpreter 与生成的 `flows.ts` 共同固定 `CONFIG_F
 
 Workbench Registry facade 从每个 Designer 物料模块组合四类能力：JSON-safe `ComponentContract`、Vue `RuntimeBinding`、编辑器 `DesignMetadata` 和生成器 `SourceBinding`。只有 `ComponentContract` 进入 Model 的不可变 `RegistryContractSnapshot` 与项目 `registryLock`；Vue Component、图标、render 函数和 source resolver 留在对应 adapter resolver。合同按 `contractVersion + fingerprint` 对实际使用组件做 exact match；`visualEquivalence` 是 Design 能力声明，必须由真实 Runtime specimen、candidate、落地节点与 Preview 的 geometry/computed-style 浏览器测试证明。
 
-三个 `define*` API 都只是带类型的声明 helper，不执行注册：
+声明 helper 不执行注册，其中字段物料 helper 会消除普通字段的重复节点工厂：
 
 | API                                 | 所属层   | 声明内容                                     |
 | ----------------------------------- | -------- | -------------------------------------------- |
 | `defineConfigFormModule`            | Core     | 通用 `{ name, order?, value }` 命名模块      |
 | `defineConfigFormComponentMaterial` | Headless | Vue 组件或 `ConfigFormComponentRegistration` |
 | `defineDesignerMaterialModule`      | Designer | `DesignerMaterialDefinition` 与对应 locale   |
+| `defineDesignerFieldMaterial`       | Designer | 单字段组件、默认值与声明式属性               |
 
 真正执行注册的是对应的 `create*Registry`：
 
@@ -210,6 +211,30 @@ createDesignerMaterialModuleRegistry(modules)
 
 领域 wrapper 保留在 Headless 或 Designer，是为了让 Core 不依赖 Vue 和设计器类型，并允许领域层增加自己的校验。运行时组件物料从 Headless 引入，设计器物料从 Designer 引入。
 
+普通业务字段使用 `defineDesignerFieldMaterial()`，不手写 `kind`、`version` 或 `createNode`。`props` 中的每一项同时声明 Inspector 控件与可选默认值，运行时组件绑定仍可按 Provider 覆盖：
+
+```ts
+const inputMaterial = defineDesignerFieldMaterial({
+  key: 'project.input',
+  title: 'Input',
+  category: 'Fields',
+  component: ElInput,
+  defaultProps: { autocomplete: 'off' },
+  value: { kind: 'text' },
+  props: {
+    placeholder: { label: 'Placeholder', control: 'text', default: '' },
+    clearable: { label: 'Clearable', control: 'boolean', default: true },
+    maxlength: { label: 'Max length', control: 'number', min: 0, step: 1 },
+  },
+})
+
+const registry = createElementPlusDesignerRegistry({
+  materials: [inputMaterial],
+})
+```
+
+`defaultProps` 保存不在 Inspector 暴露的静态默认值；`props` 中的 `default` 同时声明可编辑属性的初始值。该 helper 只覆盖一个字段节点和 `text/textarea/number/boolean/select` 属性。布局、复合子图、专用 option source 或自定义 setter 继续使用底层 `DesignerMaterialDefinition`；高级组件、属性控件和 validator 组合通过 registry 的 `layers` option 传入。
+
 内置物料采用 `src/materials/<name>.ts`：
 
 - 只有四个 UI 适配器聚合入口使用 eager `import.meta.glob`；Core、Headless 和 Designer 注册算法只接收普通模块映射。
@@ -220,7 +245,7 @@ createDesignerMaterialModuleRegistry(modules)
 ### 注册优先级
 
 - Element/Antd 轻量 UI：适配器默认组件在前，调用方 `components` 在后，因此调用方覆盖默认项。
-- Designer：`createDesignerRegistry` 使用 first-wins；两个 Designer adapter 将调用方 layers 放在默认 layer 前，因此调用方仍然优先。
+- Designer：`createDesignerRegistry` 使用 first-wins；两个 Designer adapter 按业务 `materials`、高级 `layers`、Provider 默认 layer 的顺序组合，因此调用方仍然优先。
 - 同一个扫描批次内的重复项必须报错，不能依赖对象覆盖或文件系统顺序。
 
 ## Reaction 边界
@@ -254,7 +279,8 @@ Core、Headless 和 Designer 核心不主动发起网络请求。异步 option p
 | --------------------------------------- | ------------------------------------------------------- |
 | 为轻量表单注册业务组件                  | `components` prop / `ConfigFormComponentRegistry`       |
 | 修改 Schema Runtime 字段转换或 readonly | `FormRuntimePlugin`                                     |
-| 添加业务设计器物料或覆盖内置物料        | 调用方 `DesignerRegistryLayer`，放在默认 layer 之前     |
+| 添加业务设计器物料或覆盖内置物料        | `defineDesignerFieldMaterial` + adapter `materials`     |
+| 注入自定义控件、属性控件或 validator    | adapter registry 的高级 `layers` option                 |
 | 添加内置 UI 物料                        | 对应适配器的 `src/materials/<name>.ts`                  |
 | 提供远程或字典选项                      | 对应 Designer adapter 的 option resolver context/plugin |
 | 添加非渲染业务元数据                    | 节点 `extensions`，使用业务命名空间                     |

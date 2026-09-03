@@ -1,4 +1,5 @@
 export * from './analyze'
+export * from './field-material'
 export * from './modules'
 export * from './registry'
 export * from './runtime'

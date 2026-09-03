@@ -1,39 +1,32 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'input',
   order: 10,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.input',
       source: s.antdSource('text', 'a-input'),
-      version: 1,
-      kind: 'field',
       title: 'Input',
       category: 'Fields',
       icon: s.TypeIcon,
+      component: s.Input,
       runtime: {
-        component: s.Input,
         ...s.valueBinding,
         readonlyProp: 'readonly',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
-      setters: [
-        s.defaultValueSetter('text'),
-        s.placeholderSetter,
-        s.allowClearSetter,
-        s.propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 }),
-      ],
-      createNode: ({ id, field = 'input' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.input',
-        field,
-        label: 'Input',
-        props: { placeholder: '' },
-      }),
-    },
+      value: { kind: 'text' },
+      props: {
+        placeholder: { label: 'Placeholder', control: 'text', default: '' },
+        allowClear: { label: 'Allow clear', control: 'boolean' },
+        maxlength: { label: 'Max length', control: 'number', min: 0, step: 1 },
+      },
+    }),
     locale: {
       title: '输入框',
       category: '字段',

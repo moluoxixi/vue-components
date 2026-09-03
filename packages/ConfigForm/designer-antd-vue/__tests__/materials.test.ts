@@ -1,5 +1,5 @@
-import type { DesignerMaterialDefinition } from '@moluoxixi/config-form-designer'
 import type { FieldNode, PageGraph } from '@moluoxixi/config-form-model'
+import { defineDesignerFieldMaterial } from '@moluoxixi/config-form-designer'
 import { pageGraphSchema } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
@@ -228,20 +228,21 @@ describe('ant design vue designer materials', () => {
   })
 
   it('keeps caller registry layers above provider defaults', () => {
-    const override: DesignerMaterialDefinition = {
+    const override = defineDesignerFieldMaterial({
       key: 'antd.input',
-      version: 1,
-      kind: 'field',
       title: 'Override input',
       category: 'Custom',
-      runtime: { component: 'input' },
-      setters: [],
-      createNode: ({ id, field = id }) => ({ id, field, kind: 'field', component: 'antd.input' }),
-    }
-    const registry = createAntdVueDesignerRegistry([{ name: 'override', materials: [override] }])
+      component: 'input',
+    })
+    const preview = defineComponent({ name: 'ProjectPreview' })
+    const registry = createAntdVueDesignerRegistry({
+      materials: [override],
+      layers: [{ name: 'custom-components', components: { 'project.preview': preview } }],
+    })
 
     expect(registry.rendererNamespace).toBe('mx-antd-config-form')
     expect(registry.getMaterial('antd.input')?.title).toBe('Override input')
+    expect(registry.components['project.preview']).toBe(preview)
     expect(registry.listMaterials()).toHaveLength(expectedKeys.length)
     expect(registry.createSubgraph('antd.input', { id: 'custom', field: 'custom' }).nodesById.custom)
       .toMatchObject({ component: 'antd.input', field: 'custom' })

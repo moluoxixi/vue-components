@@ -100,11 +100,13 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
       import('@moluoxixi/config-form-antd-vue/styles'),
       import('../styles/element-plus-inspector'),
     ])
-    const designerRegistry = adapter.createAntdVueDesignerRegistry([{
-      name: 'workbench-element-plus-inspector',
-      components: inspector.ELEMENT_PLUS_DESIGNER_COMPONENTS,
-      propertyControls: inspector.ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS,
-    }])
+    const designerRegistry = adapter.createAntdVueDesignerRegistry({
+      layers: [{
+        name: 'workbench-element-plus-inspector',
+        components: inspector.ELEMENT_PLUS_DESIGNER_COMPONENTS,
+        propertyControls: inspector.ELEMENT_PLUS_DESIGNER_PROPERTY_CONTROLS,
+      }],
+    })
     const capabilities = adapter.ANTD_VUE_DESIGNER_MATERIAL_REGISTRY
     const runtime = createWorkbenchRuntimeBindings(id, designerRegistry, capabilities)
     return {

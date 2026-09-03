@@ -79,10 +79,14 @@ const publicContractPackages = [
     directory: 'designer',
     exports: [
       'createDesignerMaterialModuleRegistry',
+      'defineDesignerFieldMaterial',
       'defineDesignerMaterialModule',
     ],
     name: '@moluoxixi/config-form-designer',
     types: [
+      'DesignerFieldMaterialOptions',
+      'DesignerFieldMaterialPropertyDefinition',
+      'DesignerFieldMaterialValueDefinition',
       'DesignerMaterialModule',
       'DesignerMaterialModuleMap',
       'DesignerMaterialModuleRegistry',
@@ -112,6 +116,7 @@ const adapters = [
     ],
     name: '@moluoxixi/config-form-designer-antd-vue',
     types: [
+      'AntdVueDesignerRegistryOptions',
       'AntdVueDesignerOption',
       'AntdVueOptionProvider',
       'AntdVueOptionProviderContext',
@@ -144,6 +149,7 @@ const adapters = [
     ],
     name: '@moluoxixi/config-form-designer-element-plus',
     types: [
+      'ElementPlusDesignerRegistryOptions',
       'ElementPlusDesignerOption',
       'ElementPlusOptionProvider',
       'ElementPlusOptionProviderContext',

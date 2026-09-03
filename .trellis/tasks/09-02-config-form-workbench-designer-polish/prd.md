@@ -25,6 +25,7 @@
 11. 表单间距在 Inspector 中使用成熟数字控件，单位固定为 px，用户只能输入 0–64 的数字；持久化值保持规范的 `<number>px` 字符串并由模型 schema 校验。
 12. 表单支持 0–480px 的整数标签宽度；Desktop、Tablet、Mobile 均可配置，Tablet 默认继承 Desktop、Mobile 默认继承 Tablet；设置进入 Project Model、Compiler/Vue backend 与真实 Runtime renderer，仅在左侧标签布局时控制标签列宽。
 13. Desktop、Tablet、Mobile 复用同一个断点布局编辑组件，Columns、Field span、Label width 的顺序、DOM 和样式一致；Tablet/Mobile 仅额外提供 override 开关，在窄 Inspector 中不得溢出或形成重复边框。
+14. 普通字段物料提供高层声明 API，由组件、默认值和属性描述自动生成 Runtime binding、Setter 与节点工厂；业务注册物料时不必创建具名 Registry layer，也不必手写 `createNode`。底层物料和 layer API 继续服务布局、复合子图与高级覆盖。
 
 ## 验收标准
 
@@ -37,6 +38,7 @@
 - [ ] 标签宽度可编辑、持久化、编译并在 Design/Preview Runtime 生效；顶部标签布局不应用固定标签列。
 - [ ] 三个断点的 Columns、Field span、Label width 使用同一组件与视觉结构；响应式标签宽度按 Desktop→Tablet→Mobile 继承并在对应 Runtime 断点生效。
 - [ ] Tablet/Mobile 的 Columns 与 Field span 在窄面板中保持完整可见并按 1–24 整数提交。
+- [ ] 普通字段物料可通过一个声明对象完成注册，生成的节点默认值相互隔离，并继续通过真实 Provider 属性控件编辑；Element Plus 与 Ant Design Vue 使用对称的 `{ materials, layers, optionResolver }` Registry 入口。
 - [ ] 设计器与 Workbench 受影响单测、typecheck、build、E2E、axe、视觉基线、lint 和 `git diff --check` 通过。
 
 ## 范围外

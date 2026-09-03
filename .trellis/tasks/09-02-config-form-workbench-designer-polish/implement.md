@@ -70,6 +70,14 @@
 - [ ] 为 responsive override 增加 labelWidth，并同步 Runtime CSS variable、container query 与 standalone Source export。
 - [ ] 运行 model、runtime、vue-backend、designer、workbench 的相关单测、typecheck、build 和 E2E。
 
+## 6.3 简化字段物料注册
+
+- [ ] 在 Designer Registry 增加字段物料声明类型与 `defineDesignerFieldMaterial()`，自动生成 props/defaultValue setters 和 JSON-safe 独立节点默认值。
+- [ ] 将 Element Plus 与 Ant Design Vue registry factory 收敛为 `{ materials, layers, optionResolver }` 对象参数，并迁移 Workbench 调用点。
+- [ ] 使用两套 Provider 的 Input 内置物料验证高层工厂，同时保留布局和复合物料的底层 factory。
+- [ ] 更新 ConfigForm 架构 README、material registry spec 与独立包 consumer smoke。
+- [ ] 运行 Designer、两套 Designer adapter、Workbench 的 test/typecheck/build，以及 `pnpm test:config-form-packages`、lint 和 `git diff --check`。
+
 ## 7. 评审与回滚
 
 - [ ] 独立确认 diff 未触及 Project Model、History、Command、RuntimeHost schema 或 Runtime styles。

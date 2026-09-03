@@ -119,3 +119,11 @@ workspace surface
 - Desktop、Tablet、Mobile 由一个 `DesignerBreakpointLayoutSettings` 组件渲染相同的三字段结构；`DesignerResponsiveSettings` 只负责编排继承、开关和 form patch。
 - Runtime 为三套标签宽度发射 CSS variables，并与 Columns/Field span 使用相同的 media/container breakpoint 切换。
 - JSON import、page transfer 与 `page.form` transaction 共享同一严格 schema；非法 gap/labelWidth 在模型边界失败。
+
+## 11. 简化字段物料注册
+
+- `defineDesignerFieldMaterial()` 是普通字段物料的高层声明 helper。调用方提供 `key`、标题、分类、Vue 组件、可选值定义和属性描述；Designer 自动生成 `kind: 'field'`、版本、Runtime binding、Setter 列表和节点工厂。
+- 属性描述只覆盖可由 Provider `propertyControls` 稳定承载的 `text/textarea/number/boolean/select`。复杂 options、远程数据源、专用 setter、布局和复合子图继续使用底层 `setters`、`DesignerMaterialDefinition` 与 `createNode`。
+- 默认 field 从 material key 末段推导，默认 label 使用 material title；真实拖拽仍由 Designer controller 提供唯一 field。所有默认 props/defaultValue 在每次节点创建时深克隆，禁止在节点间共享数组或对象。
+- Element Plus 与 Ant Design Vue 的 Designer registry 统一接收 `{ materials, layers, optionResolver }`。`materials` 自动包装为内部 consumer layer 并拥有最高优先级；`layers` 保留 components/propertyControls/validators 等高级扩展。
+- 这是预发布当前契约 hard cut：删除旧的 layer 数组首参形式，不增加 overload、deprecated alias 或运行时形状猜测。
