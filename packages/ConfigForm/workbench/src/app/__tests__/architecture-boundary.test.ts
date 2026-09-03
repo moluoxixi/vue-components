@@ -22,6 +22,7 @@ const responsibilityDirectoryNames = new Set([
   'schemas',
   'services',
   'state',
+  'style',
   'styles',
   'types',
   'utils',

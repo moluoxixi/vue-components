@@ -1,0 +1,48 @@
+.mx-config-form-designer__icon-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  color: var(--mx-designer-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__icon-button:hover:not(:disabled, [aria-disabled="true"]) {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-hover);
+  border-color: var(--mx-designer-control-border);
+}
+
+.mx-config-form-designer__icon-button[aria-pressed="true"] {
+  color: var(--mx-designer-accent);
+  background: var(--mx-designer-accent-soft);
+  border-color: var(--mx-designer-accent-line);
+}
+
+.mx-config-form-designer__icon-button.is-danger:hover:not(:disabled, [aria-disabled="true"]) {
+  color: var(--mx-designer-danger);
+  background: var(--mx-designer-danger-soft);
+  border-color: var(--mx-designer-danger-line);
+}
+
+.mx-config-form-designer__icon-button {
+  font: inherit;
+  letter-spacing: 0;
+}
+
+.mx-config-form-designer__icon-button:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+.mx-config-form-designer__icon-button:disabled,
+.mx-config-form-designer__icon-button[aria-disabled="true"] {
+  color: var(--mx-designer-disabled);
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+

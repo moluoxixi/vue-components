@@ -14,6 +14,7 @@ import { computed } from 'vue'
 import { resolveInspectorGridFraction } from '../../../inspector'
 import { useDesignerLocale } from '../../../locale'
 import DesignerPropertyForm from './DesignerPropertyForm.vue'
+import './DesignerResponsiveSettings/style'
 
 const props = withDefaults(defineProps<{
   modelValue?: ConfigFormResponsiveLayout

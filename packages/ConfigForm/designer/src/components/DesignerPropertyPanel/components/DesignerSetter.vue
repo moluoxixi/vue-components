@@ -10,6 +10,7 @@ import DesignerDefaultValueSetter from './DesignerDefaultValueSetter.vue'
 import DesignerOptionsSetter from './DesignerOptionsSetter.vue'
 import DesignerReactionSetter from './DesignerReactionSetter.vue'
 import DesignerValidationSetter from './DesignerValidationSetter.vue'
+import './DesignerSetter/style'
 
 const props = defineProps<{
   setter: DesignerPropertySetterDefinition

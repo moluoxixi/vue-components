@@ -8,6 +8,7 @@
     "directory": "packages/ConfigForm/designer"
   },
   "sideEffects": [
+    "**/style/index.ts",
     "**/*.scss",
     "**/*.css"
   ],
@@ -21,6 +22,31 @@
       "sass": "./src/styles.scss",
       "style": "./src/styles.scss",
       "default": "./src/styles.scss"
+    },
+    "./design-surface/style": {
+      "sass": "./src/components/DesignSurface/style/index.scss",
+      "style": "./src/components/DesignSurface/style/index.scss",
+      "default": "./src/components/DesignSurface/style/index.scss"
+    },
+    "./designer-canvas/style": {
+      "sass": "./src/components/DesignerCanvas/style/index.scss",
+      "style": "./src/components/DesignerCanvas/style/index.scss",
+      "default": "./src/components/DesignerCanvas/style/index.scss"
+    },
+    "./designer-palette/style": {
+      "sass": "./src/components/DesignerPalette/style/index.scss",
+      "style": "./src/components/DesignerPalette/style/index.scss",
+      "default": "./src/components/DesignerPalette/style/index.scss"
+    },
+    "./designer-material-specimen/style": {
+      "sass": "./src/components/DesignerMaterialSpecimen/style/index.scss",
+      "style": "./src/components/DesignerMaterialSpecimen/style/index.scss",
+      "default": "./src/components/DesignerMaterialSpecimen/style/index.scss"
+    },
+    "./designer-property-panel/style": {
+      "sass": "./src/components/DesignerPropertyPanel/style/index.scss",
+      "style": "./src/components/DesignerPropertyPanel/style/index.scss",
+      "default": "./src/components/DesignerPropertyPanel/style/index.scss"
     }
   },
   "main": "./dist/index.js",

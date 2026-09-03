@@ -14,6 +14,7 @@ import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, markRaw, shallowRef, toRaw, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
 import DesignerSetter from './DesignerSetter.vue'
+import './DesignerPropertyForm/style'
 
 const props = defineProps<{
   entries: DesignerPropertyFormEntry[]

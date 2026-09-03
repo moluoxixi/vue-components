@@ -1,0 +1,27 @@
+.mx-config-form-designer__validation-grid {
+  display: grid;
+  gap: 7px;
+}
+
+.mx-config-form-designer__validation-grid > label {
+  display: grid;
+  gap: 5px;
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.mx-config-form-designer__flag-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 2px;
+  gap: 2px;
+  background: var(--mx-designer-subtle);
+  border-radius: 5px;
+}
+
+.mx-config-form-designer__enum-values > div > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+

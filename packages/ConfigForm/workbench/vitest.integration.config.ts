@@ -6,7 +6,7 @@ export default defineConfig({
     include: ['src/project/__integration__/**/*.test.ts'],
     server: {
       deps: {
-        inline: [/element-plus\/(?:es\/components\/.*\/style\/css|theme-chalk)/],
+        inline: [/element-plus\/(?:es\/components\/.*\/style\/index|theme-chalk)/],
       },
     },
     testTimeout: 300_000,

@@ -1,0 +1,27 @@
+.mx-config-form-designer__setter input:not([type="checkbox"]),
+.mx-config-form-designer__setter textarea,
+.mx-config-form-designer__setter select {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  color: inherit;
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-control-border);
+  border-radius: 4px;
+  font: inherit;
+  letter-spacing: 0;
+}
+
+.mx-config-form-designer__setter input:not([type="checkbox"]):focus-visible,
+.mx-config-form-designer__setter textarea:focus-visible,
+.mx-config-form-designer__setter select:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+.mx-config-form-designer__setter textarea {
+  resize: vertical;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+

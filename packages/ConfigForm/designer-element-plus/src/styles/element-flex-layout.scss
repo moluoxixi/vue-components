@@ -1,0 +1,66 @@
+.mx-element-flex-layout {
+  display: flex;
+  min-width: 0;
+  flex-direction: var(--mx-element-flex-direction);
+  flex-wrap: var(--mx-element-flex-wrap);
+  align-items: var(--mx-element-flex-align);
+  justify-content: var(--mx-element-flex-justify);
+  gap: var(--mx-element-flex-gap);
+}
+
+.mx-element-flex-layout > :not(.mx-config-form-designer__node-list) {
+  min-width: min(100%, var(--mx-element-flex-item-width));
+  flex: 1 1 var(--mx-element-flex-item-width);
+}
+
+.mx-element-flex-layout > .mx-config-form-designer__node-list {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 100%;
+  flex-direction: var(--mx-element-flex-direction);
+  flex-wrap: var(--mx-element-flex-wrap);
+  align-items: var(--mx-element-flex-align);
+  justify-content: var(--mx-element-flex-justify);
+  gap: var(--mx-element-flex-gap);
+}
+
+.mx-element-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
+  min-width: min(100%, var(--mx-element-flex-item-width));
+  flex: 1 1 var(--mx-element-flex-item-width);
+}
+
+.mx-element-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__empty-slot {
+  flex: 1 1 100%;
+}
+
+.mx-element-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
+  flex: 1 1 100%;
+}
+
+.mx-config-form-designer__node-preview-shell .mx-element-flex-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
+  background-repeat: repeat-x;
+  background-size: min(var(--mx-element-flex-item-width), 50%) 100%;
+}
+
+.mx-config-form-designer__node-preview-shell .mx-element-flex-layout.is-column > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
+  background-repeat: repeat-y;
+  background-size: 100% 36px;
+}
+
+.mx-config-form-designer.is-dragging .mx-element-flex-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
+}
+
+.mx-config-form-designer.is-dragging .mx-element-flex-layout.is-column > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
+  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
+}
+
+.mx-element-flex-layout.is-column > :not(.mx-config-form-designer__node-list),
+.mx-element-flex-layout.is-column > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
+  width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+

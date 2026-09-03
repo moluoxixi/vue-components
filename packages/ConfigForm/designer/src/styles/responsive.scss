@@ -1,0 +1,20 @@
+@media (prefers-reduced-motion: reduce) {
+  .mx-config-form-designer__palette-item,
+  .mx-config-form-designer__runtime-surface [data-config-node-state~="candidate"],
+  .mx-config-form-designer__selection-box,
+  .mx-config-form-designer__switch,
+  .mx-config-form-designer__switch > span {
+    transition: none;
+  }
+
+  .mx-config-form-designer__spinner {
+    animation: none;
+  }
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-heading,
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-effect-heading,
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-operand,
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__reaction-prop {
+  grid-template-columns: minmax(0, 1fr);
+}

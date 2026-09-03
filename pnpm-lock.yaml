@@ -685,6 +685,9 @@ importers:
       happy-dom:
         specifier: catalog:dev
         version: 20.9.0
+      sass:
+        specifier: catalog:dev
+        version: 1.99.0
       unplugin-dts:
         specifier: catalog:dev
         version: 1.0.0(@microsoft/api-extractor@7.58.12(@types/node@25.6.0))(@vue/language-core@3.1.8(typescript@5.9.3))(esbuild@0.28.2)(rollup@4.62.4)(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))

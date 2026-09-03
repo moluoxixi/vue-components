@@ -29,6 +29,7 @@ import { Plus, Trash2 } from '@lucide/vue'
 import { computed } from 'vue'
 import { useDesignerLocale } from '../../../locale'
 import DesignerConditionSetter from './DesignerConditionSetter.vue'
+import './DesignerReactionSetter/style'
 
 type ReactionBranch = ConfigFormReactionBranch
 type LiteralKind = Exclude<ConfigFormReactionLiteralKind, 'complex'>

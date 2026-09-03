@@ -21,6 +21,9 @@ responsibility directories the feature actually needs:
 feature-name/
   index.ts                 # feature-level barrel only
   index.vue                # optional rendering/orchestration entry
+  style/                   # optional component-owned side-effect entry
+    index.ts               # imports the component Sass for bundlers
+    index.scss             # Sass entry for manual/on-demand consumers
   components/
     index.ts
   types/
@@ -102,6 +105,11 @@ export * from './composables'
 - Every responsibility directory except `__tests__/` has one `index.ts` when
   it exposes symbols outside that directory. The barrel exports symbols only;
   it contains no business logic or side-effect registration.
+- Package-level shared styling lives in `styles/`. A visual component may use
+  an Element-style singular `style/` directory only for its own side-effect
+  entry: `style/index.ts` imports Sass modules for bundlers and
+  `style/index.scss` forwards the component Sass for manual/on-demand use.
+  Component style entries must not contain unrelated component selectors.
 - Imports from another feature use that feature's public barrel. Imports inside
   a feature use the nearest responsibility barrel unless a direct local import
   is necessary to avoid a cycle or an eager platform-specific dependency.
@@ -129,12 +137,16 @@ export * from './composables'
 | A barrel contains business logic or side effects | Move the logic to its owning module and keep the barrel declarative |
 | Cross-feature code deep-imports another feature implementation | Import the public feature barrel or document the narrow boundary |
 | A proposed directory has no distinct owner or trigger | Do not create it |
+| A component `style/` directory lacks `index.ts` or `index.scss` | Reject it as an incomplete on-demand style entry |
+| A component Sass entry emits unrelated component selectors | Split the shared dependency or move the rule to the owning component |
 | Package-specific spec repeats this contract | Replace the copy with a link and retain only the package exception |
 
 ## 5. Good / Base / Bad Cases
 
 - Good: a renderer exposes contracts through `types/index.ts`, keeps behavior in
   `composables/`, and keeps state in `state/`.
+- Good: a styled component exposes `style/index.scss`; an aggregate package
+  style entry forwards component entries without copying their rules.
 - Good: a Node package separates lifecycle orchestration, repository adapters,
   serialization, and pure filesystem utilities.
 - Base: a small feature has only `index.ts`, its implementation entry, and
@@ -142,6 +154,9 @@ export * from './composables'
 - Bad: `props.ts`, `state.ts`, `service.ts`, `parser.ts`, and `helpers.ts` form a
   flat feature root.
 - Bad: two package specs copy this document and drift independently.
+- Bad: a broad package stylesheet targets `input:focus-visible` below a root
+  class and unintentionally overrides a mature component library's internal
+  input.
 
 ## 6. Tests Required
 
@@ -153,6 +168,9 @@ export * from './composables'
   and reject removed or unintended deep import paths.
 - Directory moves run the owning package's lint, typecheck, unit tests, and any
   package-specific build or public-export checks.
+- Style architecture tests compile each public Sass entry and assert a sentinel
+  selector from another component is absent. Browser tests verify Provider
+  controls keep a single library-owned focus frame.
 - Package-specific specs add assertions for framework entries, generated output,
   platform isolation, or public API stability when those boundaries exist.
 
@@ -191,3 +209,23 @@ renderer/
     index.ts
     load.ts
 ```
+
+Wrong:
+
+~~~scss
+.feature-root input:focus-visible {
+  outline: 2px solid var(--focus);
+}
+~~~
+
+Correct:
+
+~~~scss
+.feature-search__input:focus-visible {
+  outline: 2px solid var(--focus);
+}
+~~~
+
+When `.feature-search__input` is replaced by a mature library component,
+remove this native-control rule and let the library theme own its internal
+focus state.

@@ -38,7 +38,7 @@ import { DesignerCommandHint } from '../DesignerCommandHint'
 import DesignerPalette from '../DesignerPalette.vue'
 import { DesignerPropertyPanel } from '../DesignerPropertyPanel'
 import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
-import '../../styles.scss'
+import './style'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
   readonly: false,

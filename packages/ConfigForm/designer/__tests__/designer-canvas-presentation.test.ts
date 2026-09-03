@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 
 import type { PageGraph } from '@moluoxixi/config-form-model'
-import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { mount } from '@vue/test-utils'
+import { compile } from 'sass'
 import { describe, expect, it } from 'vitest'
 import { DesignerCanvas } from '../src/components/DesignerCanvas'
 import { createDesignerRegistry } from '../src/registry'
@@ -71,7 +71,10 @@ describe('designer canvas presentation', () => {
     expect(wrapper.find('.mx-config-form-designer__canvas-empty').exists()).toBe(false)
     expect(canvas.attributes('aria-describedby')).toBeUndefined()
 
-    const stylesheet = readFileSync(resolve(process.cwd(), 'src/styles.scss'), 'utf8')
+    const stylesheet = compile(
+      resolve(process.cwd(), 'src/components/DesignerCanvas/style/index.scss'),
+      { loadPaths: [resolve(process.cwd(), 'node_modules')] },
+    ).css
     const emptyRule = stylesheet.match(/\.mx-config-form-designer__canvas-empty\s*\{([^}]+)\}/)?.[1]
     expect(emptyRule).toContain('position: absolute;')
     expect(emptyRule).toContain('pointer-events: none;')
@@ -85,7 +88,10 @@ describe('designer canvas presentation', () => {
     expect(wrapper.get('button[aria-label="Zoom in"]').attributes('aria-keyshortcuts')).toBe('Shift+=')
     expect(wrapper.get('button[aria-label="Fit canvas"]').attributes('aria-keyshortcuts')).toBe('Shift+1')
 
-    const stylesheet = readFileSync(resolve(process.cwd(), 'src/styles.scss'), 'utf8')
+    const stylesheet = compile(
+      resolve(process.cwd(), 'src/components/DesignerCanvas/style/index.scss'),
+      { loadPaths: [resolve(process.cwd(), 'node_modules')] },
+    ).css
     const cameraRule = stylesheet.match(/\.mx-config-form-designer__camera-controls\s*\{([^}]+)\}/)?.[1]
     expect(cameraRule).toContain('right: 14px;')
     expect(cameraRule).toContain('bottom: 14px;')

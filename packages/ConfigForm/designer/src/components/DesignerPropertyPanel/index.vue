@@ -23,6 +23,7 @@ import { areDesignerJsonValuesEqual, findDesignNode, walkDesignGraph } from '../
 import { resolveInspectorCapabilities, resolveInspectorGridFraction } from '../../inspector'
 import { useDesignerLocale } from '../../locale'
 import { DesignerPropertyForm, DesignerResponsiveSettings } from './components'
+import './style'
 
 const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()

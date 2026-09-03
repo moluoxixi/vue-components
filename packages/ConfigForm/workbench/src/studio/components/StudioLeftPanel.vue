@@ -11,6 +11,7 @@ import type {
 import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import './StudioLeftPanel/style'
 
 const props = defineProps<StudioLeftPanelProps>()
 
@@ -222,9 +223,11 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
                     native-type="button"
                     class="designer-material-button"
                   >
-                    <component :is="material.icon" v-if="material.icon" :size="16" aria-hidden="true" />
-                    <span v-else class="designer-material-kind" aria-hidden="true">{{ material.kind === 'field' ? 'F' : 'L' }}</span>
-                    <span>{{ materialTitle(material) }}</span>
+                    <span class="mx-config-form-designer__palette-item-summary">
+                      <component :is="material.icon" v-if="material.icon" :size="16" aria-hidden="true" />
+                      <span v-else class="designer-material-kind" aria-hidden="true">{{ material.kind === 'field' ? 'F' : 'L' }}</span>
+                      <span class="mx-config-form-designer__palette-item-name">{{ materialTitle(material) }}</span>
+                    </span>
                   </ElButton>
                 </div>
               </ElCollapseItem>

@@ -1,0 +1,90 @@
+.mx-config-form-designer-property-form,
+.mx-config-form-designer-property-form__row {
+  width: 100%;
+}
+
+.mx-config-form-designer-property-form__cell,
+.mx-config-form-designer-property-form__field,
+.mx-config-form-designer-property-form__control {
+  min-width: 0;
+}
+
+.mx-config-form-designer-property-form__field.is-simple {
+  display: grid;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.mx-config-form-designer-property-form__field.is-custom {
+  display: block;
+}
+
+.mx-config-form-designer-property-form__label {
+  display: block;
+  max-width: 100%;
+  min-height: 17px;
+  padding: 0;
+  overflow: hidden;
+  color: #394657;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer-property-form__field[data-inherited-label]:not([data-hint-label]) > .mx-config-form-designer-property-form__label::after {
+  display: inline;
+  margin-left: 4px;
+  color: var(--mx-designer-muted);
+  content: "· " attr(data-inherited-label);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.mx-config-form-designer-property-form__field[data-hint-label]::before {
+  display: block;
+  max-width: 52%;
+  overflow: hidden;
+  align-self: center;
+  color: var(--mx-designer-muted);
+  content: attr(data-hint-label);
+  direction: ltr;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer-property-form__field[data-hint-label] > .mx-config-form-designer-property-form__label {
+  max-width: 46%;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.mx-config-form-designer-property-form__field:focus-within > .mx-config-form-designer-property-form__label {
+  color: var(--mx-designer-accent);
+}
+
+.mx-config-form-designer-property-form__field.is-simple > .mx-config-form-designer-property-form__control {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+}
+
+.mx-config-form-designer__property-control:not(.is-boolean) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.mx-config-form-designer-property-form__field.is-custom .mx-config-form-designer__setter {
+  width: 100%;
+}
+

@@ -1,0 +1,13 @@
+.mx-config-form-designer__node-preview-shell .el-card,
+.mx-config-form-designer__node-preview-shell .el-card__body,
+.mx-config-form-designer__node-preview-shell .el-tabs__content {
+  overflow: visible;
+}
+
+.mx-config-form-designer__node-preview-shell .el-tabs__content:has(.mx-config-form-designer__node.is-selected:focus-within),
+.mx-config-form-designer__node-preview-shell .el-collapse-item__wrap:has(.mx-config-form-designer__node.is-selected:focus-within) {
+  position: relative;
+  z-index: 70;
+  overflow: visible;
+}
+

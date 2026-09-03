@@ -1,0 +1,62 @@
+.mx-config-form-designer-property-form__label,
+.mx-config-form-designer__setter-label,
+.mx-config-form-designer__responsive-heading {
+  color: var(--mx-designer-text);
+}
+
+.mx-config-form-designer__stepper button,
+.mx-config-form-designer__switch-row,
+.mx-config-form-designer__segmented,
+.mx-config-form-designer__flag-buttons,
+.mx-config-form-designer__mini-button,
+.mx-config-form-designer__command-button.is-secondary {
+  border-color: var(--mx-designer-control-border);
+}
+
+.mx-config-form-designer__switch {
+  background: var(--mx-designer-switch);
+}
+
+.mx-config-form-designer__switch > span {
+  background: var(--mx-designer-overlay);
+}
+
+.mx-config-form-designer__tabs button:hover:not(:disabled),
+.mx-config-form-designer__stepper button:hover:not(:disabled),
+.mx-config-form-designer__switch-row:hover:not(:disabled),
+.mx-config-form-designer__segmented button:hover:not(:disabled),
+.mx-config-form-designer__flag-buttons button:hover:not(:disabled),
+.mx-config-form-designer__mini-button:hover:not(:disabled),
+.mx-config-form-designer__command-button.is-secondary:hover:not(:disabled) {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-hover);
+  border-color: var(--mx-designer-control-border);
+}
+
+.mx-config-form-designer__segmented button.is-active,
+.mx-config-form-designer__flag-buttons button.is-active {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-surface-raised);
+  border-color: var(--mx-designer-accent-line);
+}
+
+.mx-config-form-designer__mini-button.is-danger:hover:not(:disabled) {
+  color: var(--mx-designer-danger);
+  background: var(--mx-designer-danger-soft);
+  border-color: var(--mx-designer-danger-line);
+}
+
+.mx-config-form-designer__add-row:hover:not(:disabled) {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-hover);
+  border-color: var(--mx-designer-accent);
+}
+
+.mx-config-form-designer__command-button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.mx-config-form-designer__property-diagnostics {
+  border-top-color: var(--mx-designer-danger-line);
+}
+

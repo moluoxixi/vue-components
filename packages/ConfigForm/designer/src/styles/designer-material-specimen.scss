@@ -1,0 +1,60 @@
+.mx-config-form-designer__palette-item-preview {
+  position: relative;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  min-width: 0;
+  margin: 0;
+  padding: 1px 3px;
+  overflow: hidden;
+  color: var(--mx-designer-runtime-text);
+  background: var(--mx-designer-runtime-surface);
+  border: 1px solid var(--mx-designer-runtime-border);
+  border-radius: 3px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.mx-config-form-designer__palette-item-preview > form {
+  width: 139%;
+  flex: 0 0 139%;
+  margin: 0;
+  padding: 0;
+  transform: scale(0.72);
+  transform-origin: left center;
+}
+
+.mx-config-form-designer__palette-item-preview [data-config-form-responsive-layout] {
+  align-content: center;
+}
+
+.mx-config-form-designer__palette-item-preview [data-config-node-id] {
+  box-sizing: border-box;
+}
+
+.mx-config-form-designer__palette-item-preview [class$="-config-form__label"],
+.mx-config-form-designer__palette-item-preview [class*="form-item__label"] {
+  display: none !important;
+}
+
+.mx-config-form-designer__palette-item-preview [class*="form-item"] {
+  margin-bottom: 0 !important;
+}
+
+.mx-config-form-designer__palette-item-preview input,
+.mx-config-form-designer__palette-item-preview textarea,
+.mx-config-form-designer__palette-item-preview select,
+.mx-config-form-designer__palette-item-preview [class*="input__wrapper"],
+.mx-config-form-designer__palette-item-preview [class*="picker"] {
+  min-height: 30px !important;
+}
+
+.mx-config-form-designer__palette-preview-unavailable {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--mx-designer-runtime-muted);
+  font-size: 11px;
+}
+

@@ -53,6 +53,7 @@ import {
 } from './services'
 import { createDesignerDragVisualClone } from './utils'
 import { DESIGNER_SESSION_KEY } from './services'
+import './style'
 
 const CANVAS_FRAME_WIDTHS: Record<ConfigFormBreakpoint, number> = {
   desktop: 900,

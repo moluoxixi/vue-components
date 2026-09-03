@@ -20,12 +20,16 @@
 6. 390 像素顶栏保持紧凑图标，五项底部导航保留文字；粗指针关键命中区不小于 44×44 像素。
 7. 所有命令继续使用既有 emit、快捷键、ARIA、disabled reason、Tooltip、focus restoration 和 overlay 约定。
 8. 属性配置中的枚举、布尔、数值等通用模式优先采用与数据类型匹配的成熟组件；不得在 UI 库无关的 Designer 核心倒灌 Element Plus。
+9. Designer 样式按公开组件拆分 Sass 入口，保留兼容的整包样式入口，并允许消费者按需引入单个组件样式；Designer 核心不得用宽泛的原生标签选择器覆盖 Provider 组件内部焦点样式。
+10. Workbench 私有应用中的组件专属样式应跟随组件所有权，只有主题 token、Teleport/overlay、跨包 bridge 和跨组件响应式规则保留在全局入口。
 
 ## 验收标准
 
 - [ ] 1440/900/390、Light/Dark、zh/en 下无文本截断、遮挡、非预期横向滚动或不可辨识的关键动作。
 - [ ] 900 像素四个指定入口有短文字且 Canvas 保持可见；390 像素顶栏、底栏与工具条触控和键盘均可达。
 - [ ] Canvas、selection、drag、resize、camera、drop candidate、Preview 与 Runtime 几何/样式隔离回归通过。
+- [ ] Designer 每个公开视觉组件都有独立 Sass 入口，整包入口保持兼容；按需入口不加载无关组件规则。
+- [ ] 左侧物料搜索等 Element Plus 控件的内部 input 不再命中 Designer 原生控件 focus outline，焦点视觉只由 Element Plus 主题负责。
 - [ ] 设计器与 Workbench 受影响单测、typecheck、build、E2E、axe、视觉基线、lint 和 `git diff --check` 通过。
 
 ## 范围外

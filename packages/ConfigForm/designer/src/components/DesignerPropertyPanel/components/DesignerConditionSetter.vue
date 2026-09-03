@@ -5,6 +5,7 @@ import type {
 } from '../../../condition'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
+import './DesignerConditionSetter/style'
 
 type ConditionMode = 'off' | 'always' | 'never' | 'when' | 'custom'
 type LiteralType = 'text' | 'number' | 'boolean'

@@ -249,7 +249,8 @@ async function expectAllPaletteItems(page: Page, prefix: 'antd' | 'element', exp
         summary: summary ? { height: summary.height, width: summary.width } : undefined,
       }
     })
-    expect(geometry.row.height).toBeGreaterThanOrEqual(44)
+    expect(geometry.row.height).toBeGreaterThanOrEqual(32)
+    expect(geometry.row.height).toBeLessThanOrEqual(36)
     expect(geometry.summary?.height ?? 0).toBeGreaterThan(0)
     expect(geometry.summary?.width ?? 0).toBeGreaterThan(0)
     await expect(material.locator('.mx-config-form-designer__palette-item-name')).not.toHaveText('')
@@ -1100,7 +1101,7 @@ for (const adapter of ['element', 'antd'] as const) {
   })
 }
 
-test('keeps Element Plus Inspector input frames stable while focused', async ({ page }) => {
+test('uses one Element Plus Inspector focus frame', async ({ page }) => {
   await createProject(page, 'element')
   const properties = page.locator('.mx-config-form-designer__properties')
   const controls = [
@@ -1144,9 +1145,38 @@ test('keeps Element Plus Inspector input frames stable while focused', async ({ 
       inputOutlineStyle: 'none',
       wrapperFocused: true,
     })
-    expect(focusState.wrapperShadow).toBe(restingState.wrapperShadow)
+    expect(focusState.wrapperShadow.match(/0px 0px 0px 1px inset/g)).toHaveLength(1)
     expect(focusState.labelColor).not.toBe(restingState.labelColor)
   }
+})
+
+test('lets Element Plus own the material search focus frame', async ({ page }) => {
+  await createProject(page, 'element')
+  const search = page.getByRole('textbox', { name: 'Search materials' })
+  const restingShadow = await search.evaluate(element =>
+    getComputedStyle(element.closest('.el-input__wrapper')!).boxShadow)
+  await search.focus()
+  await search.press('Shift+Tab')
+  await page.keyboard.press('Tab')
+  await page.waitForTimeout(250)
+
+  const state = await search.evaluate((element) => {
+    const wrapper = element.closest('.el-input__wrapper')
+    return {
+      insideDesigner: Boolean(element.closest('.mx-config-form-designer')),
+      inputOutlineStyle: getComputedStyle(element).outlineStyle,
+      wrapperFocused: wrapper?.classList.contains('is-focus') ?? false,
+      wrapperShadow: wrapper ? getComputedStyle(wrapper).boxShadow : 'none',
+    }
+  })
+
+  expect(state).toMatchObject({
+    insideDesigner: true,
+    inputOutlineStyle: 'none',
+    wrapperFocused: true,
+  })
+  expect(state.wrapperShadow.match(/0px 0px 0px 1px inset/g)).toHaveLength(1)
+  expect(state.wrapperShadow).not.toBe(restingShadow)
 })
 
 for (const scenario of [

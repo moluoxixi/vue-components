@@ -1,0 +1,100 @@
+.mx-config-form-designer__dialog textarea {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  resize: vertical;
+  color: inherit;
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-control-border);
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.mx-config-form-designer__dialog textarea:focus-visible,
+.mx-config-form-designer__command-button:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+.mx-config-form-designer__dialog footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mx-config-form-designer__command-button {
+  display: inline-flex;
+  min-height: 32px;
+  padding: 5px 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #fff;
+  background: var(--mx-designer-accent);
+  border: 1px solid var(--mx-designer-accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__command-button.is-secondary {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-surface);
+  border-color: var(--mx-designer-border);
+}
+.mx-config-form-designer__dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  place-items: center;
+  background: rgb(15 23 42 / 46%);
+}
+
+.mx-config-form-designer__dialog {
+  display: grid;
+  width: min(720px, 100%);
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  overflow: auto;
+  background: var(--mx-designer-surface);
+  border: 1px solid var(--mx-designer-separator);
+  border-radius: 6px;
+  box-shadow: 0 16px 42px rgb(15 23 42 / 14%);
+}
+
+.mx-config-form-designer__dialog.is-preview {
+  width: min(960px, 100%);
+}
+
+.mx-config-form-designer__dialog > header {
+  display: flex;
+  min-height: 48px;
+  padding: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--mx-designer-separator);
+}
+
+.mx-config-form-designer__dialog > textarea,
+.mx-config-form-designer__dialog > :not(header, footer, textarea, .mx-config-form-designer__dialog-error) {
+  margin: 14px;
+}
+
+.mx-config-form-designer__dialog > footer {
+  padding: 10px 12px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--mx-designer-separator);
+}
+
+.mx-config-form-designer__dialog-error {
+  margin: 0;
+  padding: 0 14px 10px;
+}
+
+.mx-config-form-designer__command-button {
+  font: inherit;
+  letter-spacing: 0;
+}
+

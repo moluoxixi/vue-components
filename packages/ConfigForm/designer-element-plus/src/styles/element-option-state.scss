@@ -1,0 +1,22 @@
+.mx-element-designer-option-state {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--el-text-color-secondary, #73767a);
+}
+
+.mx-element-designer-option-state.is-error {
+  color: var(--el-color-danger, #f56c6c);
+}
+
+.mx-element-designer-option-state.is-loading svg {
+  animation: mx-element-designer-spin 800ms linear infinite;
+}
+@keyframes mx-element-designer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

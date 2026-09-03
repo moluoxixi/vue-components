@@ -50,6 +50,15 @@
   - `pnpm lint`
   - `git diff --check`
 
+## 6.1 组件级 Sass
+
+- [ ] 将 Designer 单体 `styles.scss` 拆为共享 foundation、公开组件样式和组合入口。
+- [ ] 为每个公开视觉组件增加 Element 风格的 `style/index.scss`，并在 package exports 暴露按需路径。
+- [ ] 保留 `./styles` 完整入口，增加 Sass 编译测试和无关选择器缺席断言。
+- [ ] 删除 Designer 标签级 input/textarea/select focus 覆写，为自有原生控件保留明确的类级键盘焦点。
+- [ ] 将 Workbench 左侧物料面板样式迁到组件 Sass，保留全局主题和 Designer/Provider bridge。
+- [ ] 在真实浏览器以 Tab 聚焦物料搜索，断言 `.el-input__inner` 无 outline 且 Element wrapper 为唯一焦点框。
+
 ## 7. 评审与回滚
 
 - [ ] 独立确认 diff 未触及 Project Model、History、Command、RuntimeHost schema 或 Runtime styles。

@@ -3,6 +3,7 @@ import type { RuleBase, RuleDescriptor, RulePrimitive, RuleSet } from '@moluoxix
 import { Plus, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
+import './DesignerValidationSetter/style'
 
 type BaseType = RuleBase['type']
 type RuleKind = RuleDescriptor['kind']

@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { compile } from 'sass'
 import { describe, expect, it } from 'vitest'
 
 const stylesheetEntry = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
@@ -8,8 +10,11 @@ const stylesheet = stylesheetLayers
   .join('\n')
 const responsiveStylesheet = readFileSync(new URL('../../styles/responsive.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
-const designerStylesheet = readFileSync(new URL('../../../../designer/src/styles.scss', import.meta.url), 'utf8')
-  .replace(/^@use[^\n]+\n+/, '')
+const studioLeftPanelStylesheet = readFileSync(new URL('../../studio/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
+const designerStylesheet = compile(
+  fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)),
+  { loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
+).css
 
 interface CssRule {
   body: string
@@ -63,6 +68,14 @@ describe('workbench theme contract', () => {
       .join('\n')}\n`)
   })
 
+  it('keeps the material panel styles with StudioLeftPanel', async () => {
+    const component = await import('../../studio/components/StudioLeftPanel.vue?raw').then(module => module.default)
+
+    expect(component).toMatch(/import '.\/StudioLeftPanel\/style'/)
+    expect(studioLeftPanelStylesheet).toContain('.designer-material-search')
+    expect(stylesheet).not.toContain('.designer-material-search')
+  })
+
   it('loads only the active adapter implementation and styles', async () => {
     const [entry, adapters, templates] = await Promise.all([
       import('../../main.ts?raw').then(module => module.default),
@@ -72,6 +85,8 @@ describe('workbench theme contract', () => {
 
     expect(entry).not.toMatch(/designer-(?:antd-vue|element-plus)\/styles/)
     expect(entry).not.toMatch(/(?:ant-design-vue|element-plus)\/dist/)
+    expect(entry).toMatch(/import '@moluoxixi\/config-form-designer\/design-surface\/style'/)
+    expect(entry).not.toMatch(/import '@moluoxixi\/config-form-designer\/styles'/)
     expect(adapters).toContain('import(\'@moluoxixi/config-form-designer-antd-vue\')')
     expect(adapters).toContain('import(\'@moluoxixi/config-form-designer-element-plus\')')
     expect(templates).not.toContain('@moluoxixi/config-form-designer-antd-vue')
@@ -87,7 +102,7 @@ describe('workbench theme contract', () => {
 
     expect(elementPlusTheme).toMatch(/@forward 'element-plus\/theme-chalk\/src\/common\/var\.scss' with \(/)
     expect(elementPlusTheme).toMatch(/'base': #a14f68/)
-    expect(elementPlusTheme).toMatch(/'focus-border-color': var\(--el-border-color\)/)
+    expect(elementPlusTheme).not.toContain('$input:')
     expect(viteConfig).toMatch(/ElementPlusResolver\(\{ importStyle: 'sass' \}\)/)
     expect(viteConfig).toMatch(/additionalData: `@use "\$\{elementPlusTheme\}" as \*;`/)
     for (const source of [inspectorStyles, runtimeStyles]) {

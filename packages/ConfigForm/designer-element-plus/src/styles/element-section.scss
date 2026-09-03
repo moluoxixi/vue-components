@@ -1,0 +1,43 @@
+.mx-element-designer-section {
+  padding: 2px 0 0;
+}
+
+.mx-element-designer-section > header {
+  position: relative;
+  margin-bottom: 16px;
+  padding: 0 0 10px 11px;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.mx-element-designer-section > header::before {
+  position: absolute;
+  top: 3px;
+  bottom: 12px;
+  left: 0;
+  width: 2px;
+  background: var(--el-color-primary, #409eff);
+  border-radius: 1px;
+  content: "";
+}
+
+.mx-element-designer-section h3,
+.mx-element-designer-section p {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.mx-element-designer-section h3 {
+  color: var(--el-text-color-primary, #303133);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.mx-element-designer-section p {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 12px;
+  line-height: 18px;
+}
+

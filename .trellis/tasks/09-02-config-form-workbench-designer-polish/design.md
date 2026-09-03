@@ -87,3 +87,24 @@ workspace surface
 ## 8. 回滚
 
 样式、topbar 命令呈现和可选 PropertyPanel 展示按文件职责拆分。若 geometry 或 command 回归，先回滚 Canvas framing/响应式 markup，不改 RuntimeHost 或放宽测试阈值；主题 token 合同保持不回滚。
+
+## 9. Sass 组件边界与按需入口
+
+- `config-form-designer` 为发布包：每个公开视觉组件提供 `<component>/style/index.scss`，共享 token/reset 使用私有 Sass partial，`./styles` 继续作为完整聚合入口。
+- 组件样式入口只加载该组件及其真实子组件依赖；`DesignSurface` 作为组合组件可加载 Palette、Canvas 与 PropertyPanel 的样式。
+- Designer 核心只为自己拥有的 BEM 控件定义 focus 样式，不再使用 `.mx-config-form-designer input:focus-visible`、`textarea:focus-visible` 等标签级规则干预 Provider DOM。
+- `Workbench` 是私有应用，不创建伪发布 API；组件专属样式迁入组件 Sass，主题、overlay、响应式和 Designer/Provider bridge 仍由应用全局入口编排。
+- Element Plus 继续使用 `@forward 'element-plus/theme-chalk/src/common/var.scss' with (...)` 与逐组件 `style/index`，运行时 palette 继续通过 scoped CSS custom properties 切换。
+
+### 发布入口
+
+```text
+@moluoxixi/config-form-designer/styles
+@moluoxixi/config-form-designer/design-surface/style
+@moluoxixi/config-form-designer/designer-canvas/style
+@moluoxixi/config-form-designer/designer-palette/style
+@moluoxixi/config-form-designer/designer-material-specimen/style
+@moluoxixi/config-form-designer/designer-property-panel/style
+```
+
+按需入口必须通过构建测试证明不包含无关组件的哨兵选择器；不能只检查文件存在。

@@ -1,0 +1,301 @@
+.mx-config-form-designer__toolbar,
+.mx-config-form-designer__status {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--mx-designer-surface);
+}
+
+.mx-config-form-designer__toolbar {
+  min-width: 0;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--mx-designer-separator);
+  box-shadow: 0 1px 0 rgb(15 23 42 / 2%);
+}
+
+.mx-config-form-designer__toolbar > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.mx-config-form-designer__toolbar-actions,
+.mx-config-form-designer__sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mx-config-form-designer__toolbar-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.mx-config-form-designer__sidebar-actions {
+  padding-right: 8px;
+  gap: 2px;
+  border-right: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__toolbar-separator {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: var(--mx-designer-border);
+}
+
+.mx-config-form-designer__workspace {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-areas: "palette canvas properties";
+  grid-template-columns: 232px minmax(0, 1fr) 304px;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.mx-config-form-designer__workspace-tabs {
+  display: none;
+}
+
+.mx-config-form-designer__workspace-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mx-config-form-designer__workspace-panel.is-palette {
+  grid-area: palette;
+}
+
+.mx-config-form-designer__workspace-panel.is-canvas {
+  grid-area: canvas;
+}
+
+.mx-config-form-designer__workspace-panel.is-properties {
+  grid-area: properties;
+}
+
+.mx-config-form-designer__workspace-panel[hidden] {
+  display: none;
+}
+
+.mx-config-form-designer[data-workspace-mode="desktop"][data-palette-open="false"][data-properties-open="true"] .mx-config-form-designer__workspace {
+  grid-template-areas: "canvas properties";
+  grid-template-columns: minmax(0, 1fr) 304px;
+}
+
+.mx-config-form-designer[data-workspace-mode="desktop"][data-palette-open="true"][data-properties-open="false"] .mx-config-form-designer__workspace {
+  grid-template-areas: "palette canvas";
+  grid-template-columns: 232px minmax(0, 1fr);
+}
+
+.mx-config-form-designer[data-workspace-mode="desktop"][data-palette-open="false"][data-properties-open="false"] .mx-config-form-designer__workspace {
+  grid-template-areas: "canvas";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mx-config-form-designer__palette,
+.mx-config-form-designer__properties {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--mx-designer-surface);
+}
+
+.mx-config-form-designer__palette {
+  border-right: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__properties {
+  border-left: 1px solid var(--mx-designer-border);
+}
+
+.mx-config-form-designer__canvas {
+  width: 100%;
+  height: 100%;
+}
+.mx-config-form-designer__screen-reader {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mx-config-form-designer__toolbar-actions {
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.mx-config-form-designer__status {
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+  border-top: 1px solid var(--mx-designer-separator);
+}
+.mx-config-form-designer[data-workspace-mode="medium"] .mx-config-form-designer__workspace {
+  position: relative;
+  grid-template-areas: "canvas";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.mx-config-form-designer[data-workspace-mode="medium"] .mx-config-form-designer__workspace-panel.is-palette,
+.mx-config-form-designer[data-workspace-mode="medium"] .mx-config-form-designer__workspace-panel.is-properties {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  inset-block: 0;
+  grid-template-rows: 40px minmax(0, 1fr);
+  background: var(--mx-designer-surface);
+  box-shadow: 0 12px 28px rgb(15 23 42 / 16%);
+}
+
+.mx-config-form-designer[data-workspace-mode="medium"] .mx-config-form-designer__workspace-panel.is-palette {
+  width: min(210px, calc(100% - 280px));
+  inset-inline-start: 0;
+}
+
+.mx-config-form-designer[data-workspace-mode="medium"] .mx-config-form-designer__workspace-panel.is-properties {
+  width: min(304px, calc(100% - 280px));
+  inset-inline-end: 0;
+}
+
+.mx-config-form-designer[data-workspace-mode="medium"] .mx-config-form-designer__workspace-panel[hidden] {
+  display: none;
+}
+
+.mx-config-form-designer__drawer-header {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  padding: 5px 8px 5px 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--mx-designer-separator);
+}
+
+.mx-config-form-designer__drawer-header strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__workspace {
+  grid-template-areas:
+    "tabs"
+    "panel";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 38px minmax(0, 1fr);
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"][data-workspace-navigation="external"] .mx-config-form-designer__workspace {
+  grid-template-areas: "canvas";
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"][data-workspace-navigation="external"] .mx-config-form-designer__workspace-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__workspace-tabs {
+  display: grid;
+  z-index: 2;
+  grid-area: tabs;
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px;
+  gap: 3px;
+  border-bottom: 1px solid var(--mx-designer-separator);
+  background: var(--mx-designer-subtle);
+}
+
+.mx-config-form-designer__workspace-tabs button {
+  min-width: 0;
+  padding: 0 7px;
+  overflow: hidden;
+  color: var(--mx-designer-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__workspace-tabs button[aria-selected="true"] {
+  color: var(--mx-designer-text);
+  border-color: var(--mx-designer-border);
+  background: var(--mx-designer-surface);
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__workspace-panel {
+  grid-area: panel;
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__workspace-panel[hidden] {
+  display: none;
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__toolbar {
+  gap: 8px;
+  padding-inline: 8px;
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__toolbar-actions {
+  max-width: 58vw;
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__palette,
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__properties {
+  border: 0;
+}
+
+.mx-config-form-designer[data-workspace-mode="narrow"] .mx-config-form-designer__canvas-viewport {
+  padding: 12px 12px 58px;
+}
+
+.mx-config-form-designer__workspace-tabs button {
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0;
+}
+
+.mx-config-form-designer__workspace-tabs button:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: 1px;
+}
+
+.mx-config-form-designer__workspace-panel:focus-visible {
+  outline: 2px solid var(--mx-designer-accent);
+  outline-offset: -2px;
+}
+
+.mx-config-form-designer__workspace-tabs button:hover:not(:disabled) {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-hover);
+  border-color: var(--mx-designer-control-border);
+}
+
+.mx-config-form-designer__workspace-tabs button[aria-selected="true"] {
+  color: var(--mx-designer-text);
+  background: var(--mx-designer-surface-raised);
+  border-color: var(--mx-designer-accent-line);
+}

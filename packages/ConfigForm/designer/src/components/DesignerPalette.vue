@@ -6,6 +6,7 @@ import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useDesignerLocale } from '../locale'
 import { createDesignerNodeId } from '../graph'
 import { DESIGNER_SESSION_KEY } from './DesignerCanvas/services'
+import './DesignerPalette/style'
 
 interface DesignerPaletteMaterialBindings {
   'aria-label': string
