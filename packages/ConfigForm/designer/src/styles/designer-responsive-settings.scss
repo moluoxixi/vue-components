@@ -1,80 +1,11 @@
-.mx-config-form-designer__responsive-settings,
-.mx-config-form-designer__responsive-breakpoint,
-.mx-config-form-designer__responsive-fields {
-  display: grid;
-  gap: 8px;
-}
-
 .mx-config-form-designer__responsive-settings {
+  display: grid;
   padding-top: 4px;
   border-top: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer__responsive-heading {
-  padding-top: 7px;
-  color: #394657;
+  padding: 7px 0 4px;
+  color: var(--mx-designer-text);
   font-size: 12px;
 }
-
-.mx-config-form-designer__responsive-breakpoint {
-  padding: 8px 0;
-  background: transparent;
-}
-
-.mx-config-form-designer__responsive-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.mx-config-form-designer__responsive-fields {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.mx-config-form-designer__responsive-switch-row {
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.mx-config-form-designer__responsive-toggle-control {
-  width: 44px;
-  flex: 0 0 44px;
-}
-
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__label,
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter-label-row {
-  display: none;
-}
-
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__field.is-simple,
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter {
-  display: block;
-}
-
-.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__control {
-  min-height: 0;
-}
-
-@container config-form-inspector (max-width: 340px) {
-  .mx-config-form-designer__responsive-fields {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.mx-config-form-designer__responsive-breakpoint.is-resolved {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.mx-config-form-designer__responsive-fraction {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--mx-designer-muted);
-  direction: ltr;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.45;
-}
-

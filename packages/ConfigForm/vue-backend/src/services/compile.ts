@@ -348,6 +348,7 @@ function rendererConfig(
     ...(form.gap === undefined ? {} : { gap: form.gap }),
     ...(form.fieldSpan === undefined ? {} : { fieldSpan: form.fieldSpan }),
     ...(form.labelPosition === undefined ? {} : { labelPosition: form.labelPosition }),
+    ...(form.labelWidth === undefined ? {} : { labelWidth: form.labelWidth }),
     ...(form.responsive === undefined
       ? {}
       : { responsive: structuredClone(form.responsive) as ConfigFormResponsiveLayout }),

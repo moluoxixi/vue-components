@@ -1,8 +1,10 @@
 import type { ConfigFormFieldLayout, ConfigFormLabelPosition } from '../types'
+import { resolveLabelWidth } from '../../utils'
 
 export function resolveConfigFormFieldLayout(
   labelPosition: ConfigFormLabelPosition,
   hasLabel: boolean,
+  labelWidth?: string | number,
 ): ConfigFormFieldLayout {
   if (labelPosition === 'left' && hasLabel) {
     return {
@@ -10,7 +12,7 @@ export function resolveConfigFormFieldLayout(
         alignItems: 'start',
         columnGap: '12px',
         display: 'grid',
-        gridTemplateColumns: 'max-content minmax(0, 1fr)',
+        gridTemplateColumns: `${resolveLabelWidth(labelWidth) ?? 'var(--mx-config-form-active-label-width, max-content)'} minmax(0, 1fr)`,
         minWidth: 0,
         rowGap: '6px',
       },

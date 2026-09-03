@@ -34,7 +34,12 @@ import {
 } from '@moluoxixi/config-form-core'
 import { ruleSetSchema } from '@moluoxixi/zod3-to-rule'
 import { z } from 'zod'
-import { PAGE_GRAPH_VERSION, PROJECT_DOCUMENT_VERSION } from '../constants'
+import {
+  FORM_GAP_MAX_PX,
+  FORM_LABEL_WIDTH_MAX_PX,
+  PAGE_GRAPH_VERSION,
+  PROJECT_DOCUMENT_VERSION,
+} from '../constants'
 
 const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 const safeObjectKeySchema = z.string().refine(key => !FORBIDDEN_OBJECT_KEYS.has(key), 'Object key is not allowed')
@@ -50,6 +55,10 @@ export const modelJsonValueSchema: z.ZodType<ConfigFormJsonValue> = z.lazy(() =>
 ]))
 
 export const modelJsonObjectSchema: z.ZodType<ConfigFormJsonObject> = z.record(safeObjectKeySchema, modelJsonValueSchema)
+
+const formGapSchema = z.string()
+  .regex(/^(?:0|[1-9]\d*)px$/, 'Form gap must be a non-negative integer followed by px')
+  .refine(value => Number.parseInt(value, 10) <= FORM_GAP_MAX_PX, `Form gap must not exceed ${FORM_GAP_MAX_PX}px`)
 
 const reactionOperandSchema: z.ZodType<ConfigFormReactionOperand> = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('field'), field: identifierSchema }).strict(),
@@ -135,17 +144,20 @@ export const formSettingsSchema: z.ZodType<FormSettings> = z.object({
   readonly: z.boolean().optional(),
   inline: z.boolean().optional(),
   columns: z.number().int().min(1).max(24).optional(),
-  gap: z.string().optional(),
+  gap: formGapSchema.optional(),
   fieldSpan: z.number().int().min(1).max(24).optional(),
   labelPosition: z.enum(['left', 'top']).optional(),
+  labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
   responsive: z.object({
     tablet: z.object({
       columns: z.number().int().min(1).max(24).optional(),
       fieldSpan: z.number().int().min(1).max(24).optional(),
+      labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
     }).strict().optional(),
     mobile: z.object({
       columns: z.number().int().min(1).max(24).optional(),
       fieldSpan: z.number().int().min(1).max(24).optional(),
+      labelWidth: z.number().int().min(0).max(FORM_LABEL_WIDTH_MAX_PX).optional(),
     }).strict().optional(),
   }).strict().optional(),
 }).strict()

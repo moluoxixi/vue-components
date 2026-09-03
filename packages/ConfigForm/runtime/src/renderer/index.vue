@@ -51,6 +51,7 @@ import {
   resolveConfigFormCondition,
   resolveConfigFormReadonlyRender,
 } from '@moluoxixi/config-form-headless'
+import { resolveLabelWidth } from '../utils'
 import { resolveConfigFormFieldLayout, resolveConfigFormLayout, resolveConfigFormNodeSpan } from './utils'
 
 defineOptions({
@@ -263,10 +264,19 @@ const ConfigFormTree = defineComponent({
 })
 
 const responsiveLayouts = computed(() => ({
-  desktop: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'desktop'),
-  tablet: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'tablet'),
-  mobile: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'mobile'),
+  desktop: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'desktop', typeof props.labelWidth === 'number' ? props.labelWidth : undefined),
+  tablet: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'tablet', typeof props.labelWidth === 'number' ? props.labelWidth : undefined),
+  mobile: resolveConfigFormLayout(props.columns, props.fieldSpan, props.responsive, 'mobile', typeof props.labelWidth === 'number' ? props.labelWidth : undefined),
 }))
+const responsiveLabelWidths = computed(() => {
+  const desktop = resolveLabelWidth(props.labelWidth) ?? 'max-content'
+  const tablet = resolveLabelWidth(props.responsive?.tablet?.labelWidth) ?? desktop
+  return {
+    desktop,
+    tablet,
+    mobile: resolveLabelWidth(props.responsive?.mobile?.labelWidth) ?? tablet,
+  }
+})
 
 // Design and Preview can render a fixed artboard inside a desktop viewport.
 // Keep the selected presentation breakpoint transient so the same Runtime
@@ -469,6 +479,7 @@ function renderLayout(): VNodeChild {
   const layoutAttrs = props.layoutAttrs
   const inline = props.inline === true
   const layouts = responsiveLayouts.value
+  const labelWidths = responsiveLabelWidths.value
   const style: StyleValue = [
     layoutAttrs.style,
     inline
@@ -482,8 +493,14 @@ function renderLayout(): VNodeChild {
           '--mx-config-form-columns-desktop': layouts.desktop.columns,
           '--mx-config-form-columns-mobile': layouts.mobile.columns,
           '--mx-config-form-columns-tablet': layouts.tablet.columns,
+          '--mx-config-form-label-width-desktop': labelWidths.desktop,
+          '--mx-config-form-label-width-mobile': labelWidths.mobile,
+          '--mx-config-form-label-width-tablet': labelWidths.tablet,
           ...(activePresentationLayout.value
-            ? { '--mx-config-form-active-columns': activePresentationLayout.value.columns }
+            ? {
+                '--mx-config-form-active-columns': activePresentationLayout.value.columns,
+                '--mx-config-form-active-label-width': labelWidths[props.breakpoint ?? 'desktop'],
+              }
             : {}),
           display: 'grid',
           gap: props.gap,

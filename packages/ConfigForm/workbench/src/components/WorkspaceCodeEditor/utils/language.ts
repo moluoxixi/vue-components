@@ -441,6 +441,7 @@ export const form: {
   gap?: string
   inline?: boolean
   labelPosition?: 'left' | 'top'
+  labelWidth?: number
   readonly?: boolean
 }
 export const initialValues: Record<string, unknown>

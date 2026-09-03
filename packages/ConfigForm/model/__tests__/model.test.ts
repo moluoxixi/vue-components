@@ -193,6 +193,43 @@ describe('projectDocument schema', () => {
     expect(result.data.pagesById.home?.graph.nodesById).not.toBe(source.pagesById.home?.graph.nodesById)
   })
 
+  it('accepts canonical pixel form sizes and rejects arbitrary units or ranges', () => {
+    const source = projectDocument()
+    source.pagesById.home!.graph.form = {
+      gap: '16px',
+      labelPosition: 'left',
+      labelWidth: 120,
+      responsive: {
+        tablet: { labelWidth: 96 },
+        mobile: { labelWidth: 72 },
+      },
+    }
+    expect(parseProjectDocument(source).success).toBe(true)
+    for (const form of [
+      { gap: '0px', labelWidth: 0 },
+      { gap: '64px', labelWidth: 480 },
+    ]) {
+      const boundary = projectDocument()
+      boundary.pagesById.home!.graph.form = form
+      expect(parseProjectDocument(boundary).success).toBe(true)
+    }
+
+    for (const form of [
+      { gap: '1rem' },
+      { gap: '-1px' },
+      { gap: '65px' },
+      { labelWidth: -1 },
+      { labelWidth: 481 },
+      { labelWidth: 12.5 },
+      { responsive: { tablet: { labelWidth: 481 } } },
+      { responsive: { mobile: { labelWidth: -1 } } },
+    ]) {
+      const invalid = projectDocument()
+      invalid.pagesById.home!.graph.form = form
+      expect(parseProjectDocument(invalid).success).toBe(false)
+    }
+  })
+
   it('rejects nodes referenced by more than one slot', () => {
     const source = projectDocument()
     const section = source.pagesById.home!.graph.nodesById.section

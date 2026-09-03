@@ -4,7 +4,12 @@ import type {
 import type {
   ProjectTemplateAdapter,
 } from '../types'
-import { PAGE_GRAPH_VERSION } from '@moluoxixi/config-form-model'
+import {
+  FORM_LABEL_WIDTH_DEFAULT_PX,
+  FORM_LABEL_WIDTH_MOBILE_DEFAULT_PX,
+  FORM_LABEL_WIDTH_TABLET_DEFAULT_PX,
+  PAGE_GRAPH_VERSION,
+} from '@moluoxixi/config-form-model'
 
 export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
   const prefix = adapter === 'element-plus' ? 'element' : 'antd'
@@ -16,9 +21,10 @@ export function createProfileGraph(adapter: ProjectTemplateAdapter): PageGraph {
       fieldSpan: 24,
       gap: '16px',
       labelPosition: 'left',
+      labelWidth: FORM_LABEL_WIDTH_DEFAULT_PX,
       responsive: {
-        tablet: { columns: 12, fieldSpan: 12 },
-        mobile: { columns: 1, fieldSpan: 1 },
+        tablet: { columns: 12, fieldSpan: 12, labelWidth: FORM_LABEL_WIDTH_TABLET_DEFAULT_PX },
+        mobile: { columns: 1, fieldSpan: 1, labelWidth: FORM_LABEL_WIDTH_MOBILE_DEFAULT_PX },
       },
     },
     root: [
@@ -79,9 +85,10 @@ export function createBlankGraph(): PageGraph {
       fieldSpan: 24,
       gap: '16px',
       labelPosition: 'left',
+      labelWidth: FORM_LABEL_WIDTH_DEFAULT_PX,
       responsive: {
-        tablet: { columns: 12, fieldSpan: 12 },
-        mobile: { columns: 1, fieldSpan: 1 },
+        tablet: { columns: 12, fieldSpan: 12, labelWidth: FORM_LABEL_WIDTH_TABLET_DEFAULT_PX },
+        mobile: { columns: 1, fieldSpan: 1, labelWidth: FORM_LABEL_WIDTH_MOBILE_DEFAULT_PX },
       },
     },
     root: [],

@@ -156,6 +156,12 @@ function normalizeLayoutValue(value: number | undefined, defaultValue: number): 
     : defaultValue
 }
 
+function normalizeLabelWidth(value: number | undefined, defaultValue?: number): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : defaultValue
+}
+
 function applyLayoutOverride(
   current: StandaloneSourceResolvedLayout,
   override: ResponsiveLayoutOverride | undefined,
@@ -164,6 +170,7 @@ function applyLayoutOverride(
   return {
     columns,
     fieldSpan: Math.min(columns, normalizeLayoutValue(override?.fieldSpan, current.fieldSpan)),
+    labelWidth: normalizeLabelWidth(override?.labelWidth, current.labelWidth),
   }
 }
 
@@ -172,6 +179,7 @@ function resolveSourceLayouts(form: FormSettings): StandaloneSourceResolvedLayou
   const desktop = {
     columns,
     fieldSpan: Math.min(columns, normalizeLayoutValue(form.fieldSpan, 24)),
+    labelWidth: normalizeLabelWidth(form.labelWidth),
   }
   const tablet = applyLayoutOverride(desktop, form.responsive?.tablet)
   return {
@@ -199,12 +207,17 @@ function styleForNode(node: StandaloneSourceNode, layouts: StandaloneSourceResol
   ].join('; ')
 }
 
-function styleForLayout(layouts: StandaloneSourceResolvedLayouts): string {
-  return [
+function styleForLayout(layouts: StandaloneSourceResolvedLayouts, form: FormSettings): string {
+  const styles = [
     `--source-columns-desktop: ${layouts.desktop.columns}`,
     `--source-columns-tablet: ${layouts.tablet.columns}`,
     `--source-columns-mobile: ${layouts.mobile.columns}`,
-  ].join('; ')
+    `--source-label-width-desktop: ${layouts.desktop.labelWidth === undefined ? 'max-content' : `${layouts.desktop.labelWidth}px`}`,
+    `--source-label-width-tablet: ${layouts.tablet.labelWidth === undefined ? 'max-content' : `${layouts.tablet.labelWidth}px`}`,
+    `--source-label-width-mobile: ${layouts.mobile.labelWidth === undefined ? 'max-content' : `${layouts.mobile.labelWidth}px`}`,
+    `gap: ${form.gap ?? '16px'}`,
+  ]
+  return styles.join('; ')
 }
 
 function fieldOptions(node: StandaloneSourceNode): Array<{ label: string, value: unknown }> {
@@ -932,7 +945,7 @@ function renderField(
   const control = optionChildren
     ? `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding} ${blurBinding}${eventBindings}${optionBinding}>${optionChildren}</${safeTag}>`
     : `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding} ${blurBinding}${eventBindings}${optionBinding} />`
-  return `    <div class="source-field" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}"${hiddenAttr}${styleAttr}>${label}\n      ${control}\n      <p v-if='fieldErrors[${field}]?.length' class="source-field-error" role="alert">{{ fieldErrors[${field}].join(', ') }}</p>\n    </div>`
+  return `    <div class="source-field${label ? ' has-label' : ''}" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}"${hiddenAttr}${styleAttr}>${label}\n      ${control}\n      <p v-if='fieldErrors[${field}]?.length' class="source-field-error" role="alert">{{ fieldErrors[${field}].join(', ') }}</p>\n    </div>`
 }
 
 function renderContainer(
@@ -1273,7 +1286,7 @@ onBeforeUnmount(() => flowLifecycle.abort('page-unmounted'))
       <p>Standalone source generated from the committed design model.</p>
     </header>
     <form class="source-form" @submit.prevent="handleSubmit">
-      <div class="source-grid" style="${styleForLayout(layouts)}">
+      <div class="source-grid" data-label-position="${page.form.labelPosition ?? 'left'}" style="${styleForLayout(layouts, page.form)}">
 ${renderNodes(page.root, layouts, registry)}
       </div>
       <button class="source-submit" type="submit">Save</button>
@@ -1296,10 +1309,14 @@ button, input, select, textarea { font: inherit; }
 .source-header h1 { margin: 0; font-size: 32px; }
 .source-header p:last-child { color: #586574; }
 .source-form { padding: 24px; border: 1px solid #d5dce5; border-radius: 8px; background: #fff; }
-.source-grid { --source-active-columns: var(--source-columns-desktop); display: grid; gap: 16px; grid-template-columns: repeat(var(--source-active-columns), minmax(0, 1fr)); }
+.source-grid { --source-active-columns: var(--source-columns-desktop); --source-active-label-width: var(--source-label-width-desktop, max-content); display: grid; grid-template-columns: repeat(var(--source-active-columns), minmax(0, 1fr)); }
 .source-field, .source-layout { --source-active-span: var(--source-span-desktop); grid-column: span var(--source-active-span) / span var(--source-active-span); }
 .source-field { min-width: 0; }
 .source-field-label { display: block; margin-bottom: 6px; color: #3d4b59; font-size: 13px; }
+.source-grid[data-label-position="left"] .source-field.has-label { display: grid; align-items: start; column-gap: 12px; row-gap: 6px; grid-template-columns: var(--source-active-label-width, max-content) minmax(0, 1fr); }
+.source-grid[data-label-position="left"] .source-field.has-label > .source-field-label { margin-bottom: 0; }
+.source-grid[data-label-position="left"] .source-field.has-label > .source-control,
+.source-grid[data-label-position="left"] .source-field.has-label > .source-field-error { grid-column: 2; }
 .source-control { width: 100%; }
 .source-field-error { margin: 6px 0 0; color: #b42318; font-size: 13px; }
 .source-layout { min-width: 0; padding: 14px; border: 1px solid #d5dce5; border-radius: 7px; background: #f8fafc; }
@@ -1308,10 +1325,10 @@ button, input, select, textarea { font: inherit; }
 .source-submit { min-height: 38px; margin-top: 20px; padding: 0 16px; color: #fff; border: 0; border-radius: 5px; background: #1d4ed8; cursor: pointer; }
 .source-validation { margin: 14px 0 0; padding: 10px 12px; color: #92400e; border: 1px solid #fbbf24; border-radius: 5px; background: #fffbeb; }
 .source-result { margin-top: 20px; padding: 16px; overflow: auto; color: #d7f9e4; border-radius: 5px; background: #17212b; }
-@media (max-width: 1024px) { .source-grid { --source-active-columns: var(--source-columns-tablet); } .source-field, .source-layout { --source-active-span: var(--source-span-tablet); } }
-@media (max-width: 720px) { .source-grid { --source-active-columns: var(--source-columns-mobile); } .source-field, .source-layout { --source-active-span: var(--source-span-mobile); } .source-page { width: min(100% - 20px, 920px); padding-top: 24px; } .source-form { padding: 16px; } .source-header h1 { font-size: 26px; } }
-@container source-page (max-width: 1024px) { .source-grid { --source-active-columns: var(--source-columns-tablet); } .source-field, .source-layout { --source-active-span: var(--source-span-tablet); } }
-@container source-page (max-width: 720px) { .source-grid { --source-active-columns: var(--source-columns-mobile); } .source-field, .source-layout { --source-active-span: var(--source-span-mobile); } }
+@media (max-width: 1024px) { .source-grid { --source-active-columns: var(--source-columns-tablet); --source-active-label-width: var(--source-label-width-tablet, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-tablet); } }
+@media (max-width: 720px) { .source-grid { --source-active-columns: var(--source-columns-mobile); --source-active-label-width: var(--source-label-width-mobile, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-mobile); } .source-page { width: min(100% - 20px, 920px); padding-top: 24px; } .source-form { padding: 16px; } .source-header h1 { font-size: 26px; } }
+@container source-page (max-width: 1024px) { .source-grid { --source-active-columns: var(--source-columns-tablet); --source-active-label-width: var(--source-label-width-tablet, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-tablet); } }
+@container source-page (max-width: 720px) { .source-grid { --source-active-columns: var(--source-columns-mobile); --source-active-label-width: var(--source-label-width-mobile, max-content); } .source-field, .source-layout { --source-active-span: var(--source-span-mobile); } }
 `
 }
 

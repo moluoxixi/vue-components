@@ -85,9 +85,10 @@ function pageFixture(): CanonicalPageIR {
     form: {
       columns: 24,
       fieldSpan: 24,
+      labelWidth: 120,
       responsive: {
-        mobile: { columns: 1, fieldSpan: 1 },
-        tablet: { columns: 12, fieldSpan: 12 },
+        mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
+        tablet: { columns: 12, fieldSpan: 12, labelWidth: 96 },
       },
     },
     rootIds: ['section'],
@@ -234,6 +235,11 @@ describe('vue Runtime backend', () => {
     expect(Object.isFrozen(result.artifact)).toBe(true)
     expect(Object.isFrozen(result.artifact.compilationKey)).toBe(true)
     expect(Object.isFrozen(result.artifact.plan)).toBe(true)
+    expect(result.artifact.plan.renderer.labelWidth).toBe(120)
+    expect(result.artifact.plan.renderer.responsive).toEqual({
+      mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
+      tablet: { columns: 12, fieldSpan: 12, labelWidth: 96 },
+    })
 
     const root = result.artifact.plan.renderer.fields[0]!
     const field = nestedField(root)

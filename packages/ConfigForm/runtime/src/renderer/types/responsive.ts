@@ -3,6 +3,7 @@ export type ConfigFormBreakpoint = 'desktop' | 'tablet' | 'mobile'
 export interface ConfigFormResponsiveLayoutOverride {
   columns?: number
   fieldSpan?: number
+  labelWidth?: number
 }
 
 export interface ConfigFormResponsiveLayout {
@@ -13,4 +14,5 @@ export interface ConfigFormResponsiveLayout {
 export interface ConfigFormResolvedLayout {
   columns: number
   fieldSpan: number
+  labelWidth?: number
 }

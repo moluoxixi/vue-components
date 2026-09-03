@@ -1,3 +1,4 @@
+export { default as DesignerBreakpointLayoutSettings } from './DesignerBreakpointLayoutSettings.vue'
 export { default as DesignerConditionSetter } from './DesignerConditionSetter.vue'
 export { default as DesignerDefaultValueSetter } from './DesignerDefaultValueSetter.vue'
 export { default as DesignerOptionsSetter } from './DesignerOptionsSetter.vue'

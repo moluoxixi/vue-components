@@ -3,7 +3,7 @@ import { ConfigFormError } from '../errors'
 
 /** 将 labelWidth 统一为 CSS 可消费的宽度字符串。 */
 export function resolveLabelWidth(width?: string | number): string | undefined {
-  if (!width)
+  if (width === undefined || width === '')
     return undefined
   return typeof width === 'number' ? `${width}px` : width
 }

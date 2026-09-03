@@ -68,7 +68,7 @@ describe('namespace utilities', () => {
 describe('style utilities', () => {
   it('normalizes numeric and string label widths', () => {
     expect(resolveLabelWidth()).toBeUndefined()
-    expect(resolveLabelWidth(0)).toBeUndefined()
+    expect(resolveLabelWidth(0)).toBe('0px')
     expect(resolveLabelWidth(96)).toBe('96px')
     expect(resolveLabelWidth('8rem')).toBe('8rem')
   })

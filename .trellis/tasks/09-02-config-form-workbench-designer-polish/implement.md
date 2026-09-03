@@ -59,6 +59,17 @@
 - [ ] 将 Workbench 左侧物料面板样式迁到组件 Sass，保留全局主题和 Designer/Provider bridge。
 - [ ] 在真实浏览器以 Tab 聚焦物料搜索，断言 `.el-input__inner` 无 outline 且 Element wrapper 为唯一焦点框。
 
+## 6.2 表单尺寸设置
+
+- [ ] 将 Gap setter 改为 0–64 数字控件，并在 Designer 边界完成 number 与规范 px 字符串互转。
+- [ ] 在 FormSettings 严格 schema 中验证 gap px 格式与 labelWidth 0–480 整数。
+- [ ] 将 labelWidth 接入 Vue backend 与 ConfigFormRenderer 左标签 grid。
+- [ ] 为 Workbench 新建模板写入 120px 默认标签宽度，并同步编辑器声明与 Config/Source 导出。
+- [ ] 覆盖 Tablet/Mobile Columns/Field span 的 min/max/整数提交与窄 Inspector 几何。
+- [ ] 抽取 `DesignerBreakpointLayoutSettings`，让三个断点复用 Columns/Field span/Label width 的 DOM、setter 与样式。
+- [ ] 为 responsive override 增加 labelWidth，并同步 Runtime CSS variable、container query 与 standalone Source export。
+- [ ] 运行 model、runtime、vue-backend、designer、workbench 的相关单测、typecheck、build 和 E2E。
+
 ## 7. 评审与回滚
 
 - [ ] 独立确认 diff 未触及 Project Model、History、Command、RuntimeHost schema 或 Runtime styles。

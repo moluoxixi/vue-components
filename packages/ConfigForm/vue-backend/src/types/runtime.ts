@@ -52,6 +52,7 @@ export interface VueRuntimeRendererConfig {
   gap?: string
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
+  labelWidth?: number
   responsive?: ConfigFormResponsiveLayout
 }
 

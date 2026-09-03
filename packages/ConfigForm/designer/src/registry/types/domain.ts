@@ -55,9 +55,11 @@ export interface DesignerPropertySetterDefinition {
   optionsPath?: string[]
   optionSourcePath?: string[]
   valueKind?: DesignerDefaultValueKind
+  integer?: boolean
   min?: number
   max?: number
   step?: number
+  unit?: 'px'
   component?: Component | string
   componentProps?: Record<string, unknown>
 }

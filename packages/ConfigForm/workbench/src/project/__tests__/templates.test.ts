@@ -32,9 +32,11 @@ describe('project templates', () => {
     expect(element.pagesById.home?.graph).toMatchObject({
       version: 2,
       form: {
+        gap: '16px',
+        labelWidth: 120,
         responsive: {
-          mobile: { columns: 1, fieldSpan: 1 },
-          tablet: { columns: 12, fieldSpan: 12 },
+          mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
+          tablet: { columns: 12, fieldSpan: 12, labelWidth: 96 },
         },
       },
     })

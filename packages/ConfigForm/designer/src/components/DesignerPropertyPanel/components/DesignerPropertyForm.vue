@@ -57,9 +57,13 @@ function controlFor(entry: DesignerPropertyFormEntry): DesignerPropertyControlDe
 }
 
 function fieldValue(entry: DesignerPropertyFormEntry): unknown {
-  return controlFor(entry) && entry.value === undefined && entry.inheritedValue !== undefined
+  const value = controlFor(entry) && entry.value === undefined && entry.inheritedValue !== undefined
     ? entry.inheritedValue
     : entry.value
+  if (entry.setter.control !== 'number' || entry.setter.unit !== 'px' || typeof value !== 'string')
+    return value
+  const match = /^(\d+)px$/.exec(value)
+  return match ? Number(match[1]) : value
 }
 
 const projectedModel = computed<Record<string, unknown>>(() => Object.fromEntries(
@@ -110,7 +114,12 @@ function simpleField(
     'disabled': props.readonly,
     ...(setter.control === 'textarea' ? { rows: 3 } : {}),
     ...(setter.control === 'number'
-      ? { min: setter.min, max: setter.max, step: setter.step }
+      ? {
+          min: setter.min,
+          max: setter.max,
+          step: setter.step,
+          ...(setter.integer ? { precision: 0 } : {}),
+        }
       : {}),
     ...(setter.control === 'select' ? { options: setter.options ?? [] } : {}),
     ...(setter.control === 'text' ? { onKeydown: handleTextKeydown } : {}),
@@ -193,10 +202,11 @@ function normalizeValue(setter: DesignerPropertySetterDefinition, value: unknown
     const numeric = typeof value === 'number' ? value : Number(value)
     if (!Number.isFinite(numeric))
       return invalidNumber
-    return Math.min(
+    const constrained = Math.min(
       setter.max ?? Number.POSITIVE_INFINITY,
       Math.max(setter.min ?? Number.NEGATIVE_INFINITY, numeric),
     )
+    return setter.integer ? Math.round(constrained) : constrained
   }
 
   return value
@@ -213,7 +223,7 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
     return
   const value = normalizeValue(entry.setter, payload.value)
   if (value !== invalidNumber)
-    emit('commit', value, entry.setter)
+    emit('commit', entry.setter.unit === 'px' && typeof value === 'number' ? `${value}px` : value, entry.setter)
 }
 </script>
 

@@ -147,6 +147,20 @@ describe('canonical standalone Source export', () => {
       if (file?.kind === 'text')
         expect(parseSfc(file.content).errors).toEqual([])
     }
+
+    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
+    const styles = exported.files[normalizeProjectPath('src/styles.css')]
+    expect(page?.kind).toBe('text')
+    expect(styles?.kind).toBe('text')
+    if (page?.kind === 'text') {
+      expect(page.content).toContain('data-label-position="left"')
+      expect(page.content).toContain('--source-label-width-desktop: 120px')
+      expect(page.content).toContain('--source-label-width-tablet: 96px')
+      expect(page.content).toContain('--source-label-width-mobile: 72px')
+      expect(page.content).toContain('gap: 16px')
+    }
+    if (styles?.kind === 'text')
+      expect(styles.content).toContain('grid-template-columns: var(--source-active-label-width, max-content) minmax(0, 1fr)')
   })
 
   it('rejects a Source resolver from another Registry revision', async () => {

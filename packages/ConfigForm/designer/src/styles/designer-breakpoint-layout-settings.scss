@@ -1,0 +1,68 @@
+.mx-config-form-designer__breakpoint-layout {
+  display: grid;
+  padding: 10px 0;
+  gap: 8px;
+  border-bottom: 1px solid var(--mx-designer-separator);
+}
+
+.mx-config-form-designer__breakpoint-layout:last-child {
+  border-bottom: 0;
+}
+
+.mx-config-form-designer__breakpoint-header {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mx-config-form-designer__responsive-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--mx-designer-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mx-config-form-designer__breakpoint-base {
+  color: var(--mx-designer-muted);
+  font-size: 11px;
+}
+
+.mx-config-form-designer__responsive-toggle-control {
+  width: 44px;
+  flex: 0 0 44px;
+}
+
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__label,
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter-label-row {
+  display: none;
+}
+
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__field.is-simple,
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter {
+  display: block;
+}
+
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__control {
+  min-height: 0;
+}
+
+.mx-config-form-designer__responsive-fraction {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--mx-designer-muted);
+  direction: ltr;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+.mx-config-form-designer__breakpoint-fields,
+.mx-config-form-designer__breakpoint-fields .mx-config-form-designer-property-form {
+  width: 100%;
+  min-width: 0;
+}

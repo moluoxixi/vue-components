@@ -108,3 +108,14 @@ workspace surface
 ```
 
 按需入口必须通过构建测试证明不包含无关组件的哨兵选择器；不能只检查文件存在。
+
+## 10. 表单尺寸设置合同
+
+- `FormSettings.gap` 继续保存字符串以兼容当前 v4 文档，但 schema 收紧为 0–64 范围内的规范 px 值。Designer 通过数字 setter 在控件值与持久化字符串之间转换。
+- `FormSettings.labelWidth?: number` 表示 Desktop 基础 px 宽度，`ResponsiveLayoutOverride.labelWidth?: number` 提供 Tablet/Mobile 覆盖；三者必须是 0–480 的有限整数。新建 Workbench 模板默认写入 120；既有文档缺省时保留 Runtime 的 `max-content` 行为。
+- Canonical compiler 继续克隆完整 `form`，Vue backend 显式将 `labelWidth` 投影到 `ConfigFormRenderer`。
+- Runtime 左标签布局使用 `<labelWidth>px minmax(0, 1fr)`；顶部标签布局继续为单列。
+- Element Plus 的 Gap、Label width、Tablet/Mobile Columns/Field span 均使用 `ElInputNumber`。单位写在字段标题中，不在文本输入中混合解析任意 CSS。
+- Desktop、Tablet、Mobile 由一个 `DesignerBreakpointLayoutSettings` 组件渲染相同的三字段结构；`DesignerResponsiveSettings` 只负责编排继承、开关和 form patch。
+- Runtime 为三套标签宽度发射 CSS variables，并与 Columns/Field span 使用相同的 media/container breakpoint 切换。
+- JSON import、page transfer 与 `page.form` transaction 共享同一严格 schema；非法 gap/labelWidth 在模型边界失败。

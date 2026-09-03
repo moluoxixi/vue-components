@@ -35,6 +35,7 @@ export interface ConfigFormRendererProps<TValues extends ConfigFormValues = Conf
   gap?: string
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
+  labelWidth?: string | number
   responsive?: ConfigFormResponsiveLayout
   layoutAttrs?: ConfigFormRendererLayoutAttrs
   cellAttrs?: ConfigFormRendererCellAttrs

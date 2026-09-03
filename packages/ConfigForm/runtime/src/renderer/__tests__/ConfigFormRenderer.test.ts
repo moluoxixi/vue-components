@@ -236,8 +236,8 @@ describe('config form renderer', () => {
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'responsive-form',
         responsive: {
-          tablet: { columns: 12, fieldSpan: 6 },
-          mobile: { columns: 4, fieldSpan: 4 },
+          tablet: { columns: 12, fieldSpan: 6, labelWidth: 96 },
+          mobile: { columns: 4, fieldSpan: 4, labelWidth: 72 },
         },
       },
     })
@@ -246,11 +246,40 @@ describe('config form renderer', () => {
     expect(rowStyle).toContain('--mx-config-form-columns-desktop: 24')
     expect(rowStyle).toContain('--mx-config-form-columns-tablet: 12')
     expect(rowStyle).toContain('--mx-config-form-columns-mobile: 4')
+    expect(rowStyle).toContain('--mx-config-form-label-width-desktop: max-content')
+    expect(rowStyle).toContain('--mx-config-form-label-width-tablet: 96px')
+    expect(rowStyle).toContain('--mx-config-form-label-width-mobile: 72px')
 
     const cellStyle = wrapper.get('.responsive-form__cell').attributes('style')
     expect(cellStyle).toContain('--mx-config-form-span-desktop: 20')
     expect(cellStyle).toContain('--mx-config-form-span-tablet: 12')
     expect(cellStyle).toContain('--mx-config-form-span-mobile: 4')
+  })
+
+  it('applies a reactive label width only to left-positioned labels', async () => {
+    const wrapper = mount(ConfigFormRenderer, {
+      props: {
+        fields: [defineField<TestValues>({ id: 'label-width-field', component: InputStub, field: 'name', label: 'Name' })],
+        labelPosition: 'left',
+        labelWidth: 120,
+        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        namespace: 'label-width-form',
+      },
+    })
+    const fieldStyle = () => wrapper.get('.label-width-form__field').attributes('style')
+    const rowStyle = () => wrapper.get('.label-width-form__row').attributes('style')
+
+    expect(fieldStyle()).toContain('grid-template-columns: var(--mx-config-form-active-label-width, max-content) minmax(0, 1fr)')
+    expect(rowStyle()).toContain('--mx-config-form-label-width-desktop: 120px')
+    await wrapper.setProps({ labelWidth: 0 })
+    expect(rowStyle()).toContain('--mx-config-form-label-width-desktop: 0px')
+    await wrapper.setProps({ labelWidth: 180 })
+    expect(rowStyle()).toContain('--mx-config-form-label-width-desktop: 180px')
+    await wrapper.setProps({ labelWidth: '8rem' })
+    expect(rowStyle()).toContain('--mx-config-form-label-width-desktop: 8rem')
+    expect(rowStyle()).toContain('--mx-config-form-label-width-tablet: 8rem')
+    await wrapper.setProps({ labelPosition: 'top' })
+    expect(fieldStyle()).not.toContain('grid-template-columns')
   })
 
   it('pins the active presentation breakpoint for fixed Design and Preview artboards', () => {
@@ -259,16 +288,18 @@ describe('config form renderer', () => {
         breakpoint: 'mobile',
         columns: 24,
         fieldSpan: 12,
+        labelWidth: 120,
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-5', component: InputStub, field: 'name', span: 12 })],
         modelValue: { enabled: false, name: 'Ada', status: 'draft' },
         namespace: 'pinned-breakpoint-form',
         responsive: {
-          mobile: { columns: 1, fieldSpan: 1 },
+          mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
         },
       },
     })
 
     expect(wrapper.get('.pinned-breakpoint-form__row').attributes('style')).toContain('--mx-config-form-active-columns: 1')
+    expect(wrapper.get('.pinned-breakpoint-form__row').attributes('style')).toContain('--mx-config-form-active-label-width: 72px')
     expect(wrapper.get('.pinned-breakpoint-form__cell').attributes('style')).toContain('--mx-config-form-active-span: 1')
   })
 
@@ -324,7 +355,7 @@ describe('config form renderer', () => {
     const field = wrapper.get('[data-field="name"]')
     expect(field.classes()).toContain('layout-form__field--label-left')
     expect(field.attributes('data-label-position')).toBe('left')
-    expect(field.attributes('style')).toContain('grid-template-columns: max-content minmax(0, 1fr)')
+    expect(field.attributes('style')).toContain('grid-template-columns: var(--mx-config-form-active-label-width, max-content) minmax(0, 1fr)')
     expect(field.get('.layout-form__label').text()).toBe('Name')
     expect(field.get('.layout-form__control').attributes('style')).toContain('grid-column: 2')
 

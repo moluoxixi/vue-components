@@ -22,6 +22,9 @@
 8. 属性配置中的枚举、布尔、数值等通用模式优先采用与数据类型匹配的成熟组件；不得在 UI 库无关的 Designer 核心倒灌 Element Plus。
 9. Designer 样式按公开组件拆分 Sass 入口，保留兼容的整包样式入口，并允许消费者按需引入单个组件样式；Designer 核心不得用宽泛的原生标签选择器覆盖 Provider 组件内部焦点样式。
 10. Workbench 私有应用中的组件专属样式应跟随组件所有权，只有主题 token、Teleport/overlay、跨包 bridge 和跨组件响应式规则保留在全局入口。
+11. 表单间距在 Inspector 中使用成熟数字控件，单位固定为 px，用户只能输入 0–64 的数字；持久化值保持规范的 `<number>px` 字符串并由模型 schema 校验。
+12. 表单支持 0–480px 的整数标签宽度；Desktop、Tablet、Mobile 均可配置，Tablet 默认继承 Desktop、Mobile 默认继承 Tablet；设置进入 Project Model、Compiler/Vue backend 与真实 Runtime renderer，仅在左侧标签布局时控制标签列宽。
+13. Desktop、Tablet、Mobile 复用同一个断点布局编辑组件，Columns、Field span、Label width 的顺序、DOM 和样式一致；Tablet/Mobile 仅额外提供 override 开关，在窄 Inspector 中不得溢出或形成重复边框。
 
 ## 验收标准
 
@@ -30,6 +33,10 @@
 - [ ] Canvas、selection、drag、resize、camera、drop candidate、Preview 与 Runtime 几何/样式隔离回归通过。
 - [ ] Designer 每个公开视觉组件都有独立 Sass 入口，整包入口保持兼容；按需入口不加载无关组件规则。
 - [ ] 左侧物料搜索等 Element Plus 控件的内部 input 不再命中 Designer 原生控件 focus outline，焦点视觉只由 Element Plus 主题负责。
+- [ ] Gap Inspector 仅接受数字并以 px 持久化；任意单位、负数和超上限值在模型边界被拒绝。
+- [ ] 标签宽度可编辑、持久化、编译并在 Design/Preview Runtime 生效；顶部标签布局不应用固定标签列。
+- [ ] 三个断点的 Columns、Field span、Label width 使用同一组件与视觉结构；响应式标签宽度按 Desktop→Tablet→Mobile 继承并在对应 Runtime 断点生效。
+- [ ] Tablet/Mobile 的 Columns 与 Field span 在窄面板中保持完整可见并按 1–24 整数提交。
 - [ ] 设计器与 Workbench 受影响单测、typecheck、build、E2E、axe、视觉基线、lint 和 `git diff --check` 通过。
 
 ## 范围外

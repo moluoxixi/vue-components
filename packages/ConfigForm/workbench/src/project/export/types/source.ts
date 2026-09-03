@@ -78,6 +78,7 @@ export interface StandaloneSourceProject {
 export interface StandaloneSourceResolvedLayout {
   columns: number
   fieldSpan: number
+  labelWidth?: number
 }
 
 export interface StandaloneSourceResolvedLayouts {

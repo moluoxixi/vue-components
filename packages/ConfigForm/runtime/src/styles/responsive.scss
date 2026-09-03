@@ -4,6 +4,7 @@
 
 [data-config-form-responsive-layout] {
   --mx-config-form-active-columns: var(--mx-config-form-columns-desktop);
+  --mx-config-form-active-label-width: var(--mx-config-form-label-width-desktop, max-content);
 }
 
 [data-config-form-responsive-cell] {
@@ -13,6 +14,7 @@
 @media (max-width: 1024px) {
   [data-config-form-responsive-layout] {
     --mx-config-form-active-columns: var(--mx-config-form-columns-tablet);
+    --mx-config-form-active-label-width: var(--mx-config-form-label-width-tablet, max-content);
   }
 
   [data-config-form-responsive-cell] {
@@ -23,6 +25,7 @@
 @media (max-width: 720px) {
   [data-config-form-responsive-layout] {
     --mx-config-form-active-columns: var(--mx-config-form-columns-mobile);
+    --mx-config-form-active-label-width: var(--mx-config-form-label-width-mobile, max-content);
   }
 
   [data-config-form-responsive-cell] {
@@ -38,6 +41,7 @@
 @container config-form-runtime (max-width: 1024px) {
   [data-config-form-responsive-layout] {
     --mx-config-form-active-columns: var(--mx-config-form-columns-tablet);
+    --mx-config-form-active-label-width: var(--mx-config-form-label-width-tablet, max-content);
   }
 
   [data-config-form-responsive-cell] {
@@ -48,6 +52,7 @@
 @container config-form-runtime (max-width: 720px) {
   [data-config-form-responsive-layout] {
     --mx-config-form-active-columns: var(--mx-config-form-columns-mobile);
+    --mx-config-form-active-label-width: var(--mx-config-form-label-width-mobile, max-content);
   }
 
   [data-config-form-responsive-cell] {

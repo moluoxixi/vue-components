@@ -36,6 +36,7 @@ export interface RegisteredBinding extends ModelJsonObject {
 export interface ResponsiveLayoutOverride {
   columns?: number
   fieldSpan?: number
+  labelWidth?: number
 }
 
 export interface ResponsiveLayout {
@@ -50,6 +51,7 @@ export interface FormSettings {
   gap?: string
   fieldSpan?: number
   labelPosition?: 'left' | 'top'
+  labelWidth?: number
   responsive?: ResponsiveLayout
 }
 

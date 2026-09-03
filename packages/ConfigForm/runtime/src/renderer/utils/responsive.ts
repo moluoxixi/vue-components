@@ -18,10 +18,12 @@ export function resolveConfigFormLayout(
   fieldSpan = 24,
   responsive: ConfigFormResponsiveLayout | undefined,
   breakpoint: ConfigFormBreakpoint,
+  labelWidth?: number,
 ): ConfigFormResolvedLayout {
   const base = {
     columns: normalizeLayoutValue(columns, 24),
     fieldSpan: normalizeLayoutValue(fieldSpan, 24),
+    labelWidth: normalizeLabelWidth(labelWidth),
   }
   if (breakpoint === 'desktop')
     return clampResolvedLayout(base)
@@ -40,6 +42,7 @@ function applyOverride(
   return {
     columns: normalizeLayoutValue(override?.columns, current.columns),
     fieldSpan: normalizeLayoutValue(override?.fieldSpan, current.fieldSpan),
+    labelWidth: normalizeLabelWidth(override?.labelWidth, current.labelWidth),
   }
 }
 
@@ -47,7 +50,14 @@ function clampResolvedLayout(layout: ConfigFormResolvedLayout): ConfigFormResolv
   return {
     columns: layout.columns,
     fieldSpan: Math.min(layout.columns, layout.fieldSpan),
+    ...(layout.labelWidth === undefined ? {} : { labelWidth: layout.labelWidth }),
   }
+}
+
+function normalizeLabelWidth(value: number | undefined, defaultValue?: number): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : defaultValue
 }
 
 function normalizeLayoutValue(value: number | undefined, defaultValue: number): number {

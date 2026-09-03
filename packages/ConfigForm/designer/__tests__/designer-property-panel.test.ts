@@ -494,4 +494,43 @@ describe('designer property panel adaptive Inspector', () => {
 
     expect(wrapper.get('.mx-config-form-designer__setter-hint.is-value').text()).toBe('12 / 24 · 1/2')
   })
+
+  it('edits canonical pixel gap and label width through numeric controls', async () => {
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        graph: graph([], {}, { columns: 8, fieldSpan: 12, gap: '16px', labelPosition: 'left', labelWidth: 120 }),
+        components: {
+          number: { component: NumberControl, trigger: 'change' },
+        },
+        diagnostics: [],
+        propertyControls: {
+          number: { component: 'number' },
+        },
+      },
+    })
+    const gap = wrapper.get('[data-adapter-number][aria-label="Gap (px)"]')
+    const labelWidth = wrapper.get('[data-adapter-number][aria-label="Label width (px)"]')
+    const columns = wrapper.get('[data-adapter-number][aria-label="Columns"]')
+    const fieldSpan = wrapper.get('[data-adapter-number][aria-label="Field span"]')
+
+    expect((gap.element as HTMLInputElement).value).toBe('16')
+    expect((labelWidth.element as HTMLInputElement).value).toBe('120')
+    expect((fieldSpan.element as HTMLInputElement).value).toBe('8')
+    expect(fieldSpan.attributes('max')).toBe('8')
+    expect(gap.attributes()).toMatchObject({ min: '0', max: '64', precision: '0', step: '1' })
+    expect(labelWidth.attributes()).toMatchObject({ min: '0', max: '480', precision: '0', step: '1' })
+
+    ;(gap.element as HTMLInputElement).value = '20'
+    await gap.trigger('change')
+    ;(labelWidth.element as HTMLInputElement).value = '144'
+    await labelWidth.trigger('change')
+    ;(columns.element as HTMLInputElement).value = '6'
+    await columns.trigger('change')
+
+    expect(wrapper.emitted('updateForm')?.slice(-3)).toEqual([
+      [{ gap: '20px' }],
+      [{ labelWidth: 144 }],
+      [{ columns: 6, fieldSpan: 6 }],
+    ])
+  })
 })

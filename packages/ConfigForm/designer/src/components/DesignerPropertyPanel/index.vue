@@ -18,6 +18,7 @@ import type {
 } from './types'
 import { ChevronRight, Trash2, Workflow } from '@lucide/vue'
 import { resolveConfigFormLayout, resolveConfigFormNodeSpan } from '@moluoxixi/config-form'
+import { FORM_GAP_MAX_PX } from '@moluoxixi/config-form-model'
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import { areDesignerJsonValuesEqual, findDesignNode, walkDesignGraph } from '../../graph'
 import { resolveInspectorCapabilities, resolveInspectorGridFraction } from '../../inspector'
@@ -56,12 +57,6 @@ const resolvedLayout = computed(() => resolveConfigFormLayout(
   props.graph.form.responsive,
   props.breakpoint ?? 'desktop',
 ))
-const desktopLayout = computed(() => resolveConfigFormLayout(
-  props.graph.form.columns,
-  props.graph.form.fieldSpan,
-  props.graph.form.responsive,
-  'desktop',
-))
 const fieldOptions = computed(() => {
   const fields: string[] = []
   walkDesignGraph(props.graph, ({ node }) => {
@@ -94,11 +89,6 @@ const spanFractionHint = computed(() => {
     return locale.t('property.mixedWidths', 'Mixed widths')
   return resolveInspectorGridFraction(spans[0]!, resolvedLayout.value.columns).label
 })
-const formFieldSpanHint = computed(() => resolveInspectorGridFraction(
-  desktopLayout.value.fieldSpan,
-  desktopLayout.value.columns,
-).label)
-
 const basePropertySetters = computed<DesignerPropertySetterDefinition[]>(() => {
   if (!props.node || !sectionEditable('properties'))
     return []
@@ -305,7 +295,7 @@ function formSetter(
   label: string,
   control: DesignerPropertySetterDefinition['control'],
   options?: DesignerPropertySetterDefinition['options'],
-  constraints?: Pick<DesignerPropertySetterDefinition, 'min' | 'max' | 'step'>,
+  constraints?: Pick<DesignerPropertySetterDefinition, 'integer' | 'min' | 'max' | 'step' | 'unit'>,
 ): DesignerPropertySetterDefinition {
   return { key, label, path: [key], control, options, ...constraints }
 }
@@ -317,23 +307,7 @@ const formSetters = computed(() => [
     { label: locale.t('option.left', 'Left'), value: 'left' },
     { label: locale.t('option.top', 'Top'), value: 'top' },
   ]),
-  formSetter('columns', locale.t('property.columns', 'Columns'), 'number', undefined, { min: 1, max: 24, step: 1 }),
-  formSetter('gap', locale.t('property.gap', 'Gap'), 'text'),
-  formSetter('fieldSpan', locale.t('property.fieldSpan', 'Field span'), 'number', undefined, { min: 1, max: 24, step: 1 }),
-  {
-    key: 'responsive',
-    label: locale.t('property.responsive', 'Responsive layout'),
-    path: ['responsive'],
-    control: 'custom' as const,
-    component: DesignerResponsiveSettings,
-    componentProps: {
-      columns: props.graph.form.columns,
-      components: props.components,
-      controls: props.propertyControls,
-      fieldSpan: props.graph.form.fieldSpan,
-      showHeading: false,
-    },
-  },
+  formSetter('gap', `${locale.t('property.gap', 'Gap')} (px)`, 'number', undefined, { integer: true, min: 0, max: FORM_GAP_MAX_PX, step: 1, unit: 'px' }),
 ])
 
 function readFormValue(setter: DesignerPropertySetterDefinition): unknown {
@@ -388,7 +362,6 @@ const propertyEntries = computed<Record<PropertyTab, DesignerPropertyFormEntry[]
 const formEntries = computed(() => formSetters.value.map(setter => ({
   setter,
   value: readFormValue(setter),
-  ...(setter.key === 'fieldSpan' ? { hint: formFieldSpanHint.value } : {}),
 })))
 
 const propertyStateIdentity = computed(() => JSON.stringify({
@@ -604,6 +577,13 @@ function handlePropertyTabKeydown(event: KeyboardEvent, tab: PropertyTab): void 
           :controls="propertyControls"
           :readonly="readonly"
           @commit="commitForm"
+        />
+        <DesignerResponsiveSettings
+          :form="graph.form"
+          :components="components"
+          :controls="propertyControls"
+          :readonly="readonly"
+          @update-form="emit('updateForm', $event)"
         />
       </div>
     </template>

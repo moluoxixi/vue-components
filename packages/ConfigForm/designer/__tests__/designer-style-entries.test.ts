@@ -80,6 +80,7 @@ describe('designer component Sass entries', () => {
       ['src/components/DesignerPropertyPanel/components/DesignerPropertyForm.vue', './DesignerPropertyForm/style'],
       ['src/components/DesignerPropertyPanel/components/DesignerSetter.vue', './DesignerSetter/style'],
       ['src/components/DesignerPropertyPanel/components/DesignerResponsiveSettings.vue', './DesignerResponsiveSettings/style'],
+      ['src/components/DesignerPropertyPanel/components/DesignerBreakpointLayoutSettings.vue', './DesignerBreakpointLayoutSettings/style'],
       ['src/components/DesignerPropertyPanel/components/DesignerDefaultValueSetter.vue', './DesignerDefaultValueSetter/style'],
       ['src/components/DesignerPropertyPanel/components/DesignerConditionSetter.vue', './DesignerConditionSetter/style'],
       ['src/components/DesignerPropertyPanel/components/DesignerReactionSetter.vue', './DesignerReactionSetter/style'],

@@ -325,12 +325,11 @@ async function expectInspectorTabGeometry(page: Page, expectedPanelWidth?: numbe
 }
 
 async function expectCompactResponsiveFieldsReadable(page: Page): Promise<void> {
-  const fields = page.locator('.mx-config-form-designer__properties .mx-config-form-designer__responsive-fields')
-  await expect(fields).toHaveCount(2)
+  const fields = page.locator('.mx-config-form-designer__properties .mx-config-form-designer__breakpoint-fields')
+  await expect(fields).toHaveCount(3)
   const geometry = await fields.evaluateAll(elements => elements.map((element) => {
     const setters = [...element.querySelectorAll<HTMLElement>('.mx-config-form-designer-property-form__field')]
     return {
-      columns: getComputedStyle(element).gridTemplateColumns,
       setters: setters.map((setter) => {
         const rect = setter.getBoundingClientRect()
         const label = setter.querySelector<HTMLElement>('.mx-config-form-designer-property-form__label')
@@ -344,9 +343,9 @@ async function expectCompactResponsiveFieldsReadable(page: Page): Promise<void> 
     }
   }))
   for (const row of geometry) {
-    expect(row.setters).toHaveLength(2)
-    expect(row.columns.trim().split(/\s+/)).toHaveLength(1)
+    expect(row.setters).toHaveLength(3)
     expect(row.setters[1]!.top).toBeGreaterThanOrEqual(row.setters[0]!.bottom - 1)
+    expect(row.setters[2]!.top).toBeGreaterThanOrEqual(row.setters[1]!.bottom - 1)
     expect(row.setters.every(setter => setter.labelFits && setter.hintFits)).toBe(true)
   }
 }
@@ -1106,8 +1105,8 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
   const properties = page.locator('.mx-config-form-designer__properties')
   const controls = [
     {
-      control: properties.getByRole('textbox', { name: 'Gap' }),
-      rootSelector: '.el-input.mx-config-form-designer__property-control',
+      control: properties.getByRole('spinbutton', { name: 'Gap (px)' }),
+      rootSelector: '.el-input-number.mx-config-form-designer__property-control',
     },
     {
       control: properties.getByRole('spinbutton', { name: 'Columns' }).first(),
@@ -1147,6 +1146,72 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
     })
     expect(focusState.wrapperShadow.match(/0px 0px 0px 1px inset/g)).toHaveLength(1)
     expect(focusState.labelColor).not.toBe(restingState.labelColor)
+  }
+})
+
+test('edits pixel form sizes and keeps responsive number controls inside the Inspector', async ({ page }) => {
+  await createProject(page, 'element')
+  const properties = page.locator('.mx-config-form-designer__properties')
+  const gap = properties.getByRole('spinbutton', { name: 'Gap (px)' })
+  const desktop = properties.locator('[data-breakpoint="desktop"]')
+  const tablet = properties.locator('[data-breakpoint="tablet"]')
+  const mobile = properties.locator('[data-breakpoint="mobile"]')
+  const labelWidth = desktop.getByRole('spinbutton', { name: 'Label width (px)' })
+  const tabletLabelWidth = tablet.getByRole('spinbutton', { name: 'Label width (px)' })
+  const mobileLabelWidth = mobile.getByRole('spinbutton', { name: 'Label width (px)' })
+
+  await expect(gap).toHaveValue('16')
+  await expect(labelWidth).toHaveValue('120')
+  await gap.fill('20')
+  await gap.press('Enter')
+  await labelWidth.fill('144')
+  await labelWidth.press('Enter')
+  await tabletLabelWidth.fill('96')
+  await tabletLabelWidth.press('Enter')
+  await mobileLabelWidth.fill('72')
+  await mobileLabelWidth.press('Enter')
+  await gap.focus()
+
+  const runtime = designRuntime(page)
+  await expect.poll(() => runtime.locator('[data-config-form-responsive-layout]').evaluate(element =>
+    getComputedStyle(element).gap)).toBe('20px')
+  const runtimeField = runtime.locator('[data-field]').first()
+  await expect.poll(() => runtimeField.evaluate(element => getComputedStyle(element).gridTemplateColumns))
+    .toMatch(/^144px /)
+  await page.getByRole('button', { name: 'Tablet', exact: true }).click()
+  await expect.poll(() => runtimeField.evaluate(element => getComputedStyle(element).gridTemplateColumns))
+    .toMatch(/^96px /)
+  await page.getByRole('button', { name: 'Mobile', exact: true }).click()
+  await expect.poll(() => runtimeField.evaluate(element => getComputedStyle(element).gridTemplateColumns))
+    .toMatch(/^72px /)
+
+  const responsiveNumbers = properties.locator('.mx-config-form-designer__breakpoint-fields .el-input-number')
+  await expect(responsiveNumbers).toHaveCount(9)
+  const geometry = await responsiveNumbers.evaluateAll(elements => elements.map((element) => {
+    const field = element.closest('.mx-config-form-designer-property-form__field')
+    const input = element.querySelector('[role="spinbutton"]')
+    const decrease = element.querySelector('.el-input-number__decrease')
+    const increase = element.querySelector('.el-input-number__increase')
+    const rootRect = element.getBoundingClientRect()
+    const fieldRect = field?.getBoundingClientRect()
+    const decreaseRect = decrease?.getBoundingClientRect()
+    const increaseRect = increase?.getBoundingClientRect()
+    return {
+      ariaMax: input?.getAttribute('aria-valuemax'),
+      ariaMin: input?.getAttribute('aria-valuemin'),
+      fieldRight: fieldRect?.right ?? 0,
+      rootLeft: rootRect.left,
+      rootRight: rootRect.right,
+      decreaseLeft: decreaseRect?.left ?? 0,
+      increaseRight: increaseRect?.right ?? 0,
+    }
+  }))
+  expect(geometry.map(control => control.ariaMax)).toEqual(['24', '24', '480', '24', '12', '480', '24', '1', '480'])
+  expect(geometry.map(control => control.ariaMin)).toEqual(['1', '1', '0', '1', '1', '0', '1', '1', '0'])
+  for (const control of geometry) {
+    expect(control.rootRight).toBeLessThanOrEqual(control.fieldRight + 1)
+    expect(control.decreaseLeft).toBeGreaterThanOrEqual(control.rootLeft - 1)
+    expect(control.increaseRight).toBeLessThanOrEqual(control.rootRight + 1)
   }
 })
 
