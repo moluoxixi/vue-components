@@ -1,3 +1,9 @@
+export { createElementPlusOptionDiagnostics } from '../../options'
+export {
+  renderElementPlusChoiceReadonly,
+  renderElementPlusRawReadonly,
+  renderElementPlusSwitchReadonly,
+} from '../../readonly'
 export {
   ElementCheckboxField,
   ElementFlexLayout,
@@ -5,13 +11,7 @@ export {
   ElementRadioField,
   ElementSection,
   ElementSelectField,
-} from '../../components'
-export { createElementPlusOptionDiagnostics } from '../../options'
-export {
-  renderElementPlusChoiceReadonly,
-  renderElementPlusRawReadonly,
-  renderElementPlusSwitchReadonly,
-} from '../../readonly'
+} from '../components'
 export {
   ElCard,
   ElCollapse,

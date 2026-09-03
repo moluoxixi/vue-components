@@ -74,7 +74,7 @@ describe('designer component Sass entries', () => {
     const components = [
       ['src/components/DesignSurface/index.vue', './style'],
       ['src/components/DesignerCanvas/index.vue', './style'],
-      ['src/components/DesignerPalette.vue', './DesignerPalette/style'],
+      ['src/components/DesignerPalette/index.vue', './style'],
       ['src/components/DesignerMaterialSpecimen.vue', './DesignerMaterialSpecimen/style'],
       ['src/components/DesignerPropertyPanel/index.vue', './style'],
       ['src/components/DesignerPropertyPanel/components/DesignerPropertyForm.vue', './DesignerPropertyForm/style'],

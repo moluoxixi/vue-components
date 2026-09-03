@@ -35,6 +35,11 @@
   ],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
-  "meta": {}
+  "notes": "用户已明确批准本父目标内后续内部重构与拆分，不再逐个子任务重复审批；涉及公共 API、用户行为或跨包依赖方向变化时仍需单独确认。",
+  "meta": {
+    "standingImplementationApproval": {
+      "grantedAt": "2026-09-03",
+      "scope": "父治理目标内保持公共行为和 API 不变的内部结构重构"
+    }
+  }
 }

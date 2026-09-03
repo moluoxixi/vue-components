@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"复核职责目录、私有组件 owner、barrel 和 architecture debt。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"复核 current-contract-only、公开边界和 package smoke。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"复核 adapter material helper 与 registry 公共合同。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"复核 focus、workspace、Runtime isolation 和视觉交互。"}
+{"file":".trellis/tasks/09-03-config-form-designer-structure-governance/research/designer-state-boundaries.md","reason":"复核 command/session/drag/geometry 单一状态源和生命周期清理。"}
+{"file":".trellis/spec/config-form-designer/frontend/overlay-interaction-regression.md","reason":"复核 overlay mode 与浏览器交互回归。"}

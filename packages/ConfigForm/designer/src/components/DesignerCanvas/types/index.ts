@@ -1,6 +1,7 @@
 export type * from './design-session'
 export type * from './drag'
 export type * from './emits'
+export type * from './overlay'
 export type * from './props'
 export type * from './runtime'
 export type * from './slots'

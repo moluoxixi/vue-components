@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
-import type { ProjectCommand } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas/types'
 import type {
@@ -8,7 +7,6 @@ import type {
   DesignSurfaceExpose,
   DesignSurfaceProps,
   DesignSurfaceSlots,
-  DesignerNodeAction,
 } from './types'
 import {
   Monitor,
@@ -20,24 +18,20 @@ import {
   Tablet,
   X,
 } from '@lucide/vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, useId, watch } from 'vue'
+import { computed, onBeforeUnmount, provide, reactive, watch } from 'vue'
 import { useDesignerController } from '../../composables'
 import {
   applyDesignGraphReactions,
   createDesignPreviewModel,
-  createFormCommand,
-  createMoveCommand,
-  createNodePathCommand,
-  createResizeCommand,
-  createStoredConfigRemovalCommand,
   findDesignNode,
 } from '../../graph'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../../locale'
 import { DesignerCanvas } from '../DesignerCanvas'
 import { DesignerCommandHint } from '../DesignerCommandHint'
-import DesignerPalette from '../DesignerPalette.vue'
+import DesignerPalette from '../DesignerPalette'
 import { DesignerPropertyPanel } from '../DesignerPropertyPanel'
 import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
+import { useDesignSurfaceCommands, useDesignSurfaceWorkspace } from './composables'
 import './style'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
@@ -51,212 +45,37 @@ const locale = reactive(createDesignerLocale(props.locale))
 provide(DESIGNER_LOCALE_KEY, locale)
 watch(() => props.locale, value => Object.assign(locale, createDesignerLocale(value)), { deep: true })
 
-type WorkspaceView = 'palette' | 'canvas' | 'properties'
-type SidePanel = Exclude<WorkspaceView, 'canvas'>
+const {
+  activeBreakpoint,
+  activeWorkspaceView,
+  closeMediumPanel,
+  handleRootFocusin,
+  handleWorkspaceTabKeydown,
+  isSidePanelOpen,
+  isWorkspacePanelHidden,
+  mediumPanel,
+  paletteOpen,
+  propertiesOpen,
+  rootRef,
+  selectBreakpoint,
+  selectWorkspaceView,
+  toggleWorkspacePanel,
+  workspaceId,
+  workspaceMode,
+  workspaceViews,
+} = useDesignSurfaceWorkspace({
+  navigation: () => props.workspaceNavigation,
+})
 
-const rootRef = ref<HTMLElement>()
-const activeBreakpoint = ref<ConfigFormBreakpoint>(recommendedBreakpoint())
-const activeWorkspaceView = ref<WorkspaceView>('canvas')
-const workspaceWidth = ref<number>()
-const paletteOpen = ref(true)
-const propertiesOpen = ref(true)
-const mediumPanel = ref<SidePanel>()
-const workspaceId = useId()
-const workspaceViews = [
-  { id: 'palette' as const, label: 'Components' },
-  { id: 'canvas' as const, label: 'Canvas' },
-  { id: 'properties' as const, label: 'Inspector' },
-]
 const breakpoints: Array<{ key: ConfigFormBreakpoint, icon: typeof Monitor }> = [
   { key: 'desktop', icon: Monitor },
   { key: 'tablet', icon: Tablet },
   { key: 'mobile', icon: Smartphone },
 ]
-const workspaceMode = computed(() => {
-  const width = workspaceWidth.value
-  if (!width)
-    return 'desktop' as const
-  if (width <= 720)
-    return 'narrow' as const
-  if (width <= 1100)
-    return 'medium' as const
-  return 'desktop' as const
-})
-let breakpointManuallySelected = false
-let resizeObserver: ResizeObserver | undefined
-let focusedWorkspaceControl: { kind: 'drawer' | 'panel' | 'tab' | 'trigger', view: WorkspaceView } | undefined
-
-function recommendedBreakpoint(): ConfigFormBreakpoint {
-  if (typeof window === 'undefined')
-    return 'desktop'
-  if (window.innerWidth <= 720)
-    return 'mobile'
-  if (window.innerWidth <= 1024)
-    return 'tablet'
-  return 'desktop'
-}
-
-function syncBreakpointToViewport(): void {
-  if (!breakpointManuallySelected)
-    activeBreakpoint.value = recommendedBreakpoint()
-}
-
-function selectBreakpoint(breakpoint: ConfigFormBreakpoint): void {
-  breakpointManuallySelected = true
-  activeBreakpoint.value = breakpoint
-}
-
-function selectWorkspaceView(view: WorkspaceView): void {
-  activeWorkspaceView.value = view
-  if (workspaceMode.value === 'medium' && view !== 'canvas')
-    mediumPanel.value = view
-}
 
 function breakpointTitle(breakpoint: ConfigFormBreakpoint): string {
   return locale.t(`breakpoint.${breakpoint}`, breakpoint[0]!.toUpperCase() + breakpoint.slice(1))
 }
-
-function measureWorkspace(): void {
-  const width = rootRef.value?.getBoundingClientRect().width
-  if (width && width > 0)
-    workspaceWidth.value = width
-}
-
-function isSidePanelOpen(view: SidePanel): boolean {
-  if (workspaceMode.value === 'medium')
-    return mediumPanel.value === view
-  return view === 'palette' ? paletteOpen.value : propertiesOpen.value
-}
-
-function isWorkspacePanelHidden(view: WorkspaceView): boolean {
-  if (workspaceMode.value === 'narrow')
-    return activeWorkspaceView.value !== view
-  if (workspaceMode.value === 'medium')
-    return view === 'canvas' ? false : mediumPanel.value !== view
-  if (view === 'palette')
-    return !paletteOpen.value
-  if (view === 'properties')
-    return !propertiesOpen.value
-  return false
-}
-
-function toggleWorkspacePanel(view: SidePanel): void {
-  if (workspaceMode.value === 'medium') {
-    mediumPanel.value = mediumPanel.value === view ? undefined : view
-    return
-  }
-  if (view === 'palette')
-    paletteOpen.value = !paletteOpen.value
-  else
-    propertiesOpen.value = !propertiesOpen.value
-}
-
-function closeMediumPanel(view: SidePanel): void {
-  if (workspaceMode.value !== 'medium' || mediumPanel.value !== view)
-    return
-  const activeElement = document.activeElement
-  const panel = rootRef.value?.querySelector<HTMLElement>(`[data-workspace-panel="${view}"]`)
-  const restoreFocus = activeElement === document.body
-    || (activeElement instanceof HTMLElement && panel?.contains(activeElement))
-  mediumPanel.value = undefined
-  if (restoreFocus) {
-    void nextTick(() => rootRef.value
-      ?.querySelector<HTMLButtonElement>(`[data-sidebar-trigger="${view}"]`)
-      ?.focus())
-  }
-}
-
-function handleWorkspaceTabKeydown(event: KeyboardEvent, view: WorkspaceView): void {
-  const index = workspaceViews.findIndex(item => item.id === view)
-  let nextIndex = index
-  if (event.key === 'ArrowRight')
-    nextIndex = (index + 1) % workspaceViews.length
-  else if (event.key === 'ArrowLeft')
-    nextIndex = (index - 1 + workspaceViews.length) % workspaceViews.length
-  else if (event.key === 'Home')
-    nextIndex = 0
-  else if (event.key === 'End')
-    nextIndex = workspaceViews.length - 1
-  else
-    return
-  event.preventDefault()
-  activeWorkspaceView.value = workspaceViews[nextIndex]!.id
-  void nextTick(() => rootRef.value
-    ?.querySelector<HTMLButtonElement>(`[data-workspace-tab="${activeWorkspaceView.value}"]`)
-    ?.focus())
-}
-
-function workspaceViewForElement(element: HTMLElement | null): WorkspaceView | undefined {
-  const view = element?.dataset.workspaceTab
-    ?? element?.dataset.sidebarTrigger
-    ?? element?.closest<HTMLElement>('[data-workspace-panel]')?.dataset.workspacePanel
-  return workspaceViews.some(item => item.id === view) ? view as WorkspaceView : undefined
-}
-
-function handleRootFocusin(event: FocusEvent): void {
-  const element = event.target instanceof HTMLElement ? event.target : null
-  const view = workspaceViewForElement(element)
-  if (!view) {
-    focusedWorkspaceControl = undefined
-    return
-  }
-  focusedWorkspaceControl = {
-    kind: element?.dataset.drawerControl
-      ? 'drawer'
-      : element?.dataset.workspaceTab
-        ? 'tab'
-        : element?.dataset.sidebarTrigger
-          ? 'trigger'
-          : 'panel',
-    view,
-  }
-}
-
-watch(workspaceMode, (mode, previousMode) => {
-  if (mode === previousMode)
-    return
-  const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  const focusedView = workspaceViewForElement(activeElement) ?? focusedWorkspaceControl?.view
-  if (mode === 'narrow') {
-    if (props.workspaceNavigation === 'external') {
-      if (focusedView && focusedView !== activeWorkspaceView.value) {
-        void nextTick(() => rootRef.value
-          ?.querySelector<HTMLElement>(`[data-workspace-panel="${activeWorkspaceView.value}"]`)
-          ?.focus())
-      }
-      return
-    }
-    activeWorkspaceView.value = focusedView
-      ?? (previousMode === 'medium' ? mediumPanel.value : undefined)
-      ?? activeWorkspaceView.value
-    return
-  }
-  if (previousMode !== 'narrow')
-    return
-  const view = activeWorkspaceView.value
-  if (mode === 'medium')
-    mediumPanel.value = view === 'canvas' ? undefined : view
-  else if (view === 'palette')
-    paletteOpen.value = true
-  else if (view === 'properties')
-    propertiesOpen.value = true
-}, { flush: 'sync' })
-
-onMounted(() => {
-  syncBreakpointToViewport()
-  window.addEventListener('resize', syncBreakpointToViewport)
-  measureWorkspace()
-  if (typeof ResizeObserver !== 'undefined' && rootRef.value) {
-    resizeObserver = new ResizeObserver(measureWorkspace)
-    resizeObserver.observe(rootRef.value)
-  }
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', syncBreakpointToViewport)
-  resizeObserver?.disconnect()
-})
-
 let lastAcceptedCommandId: string | undefined
 let historyTransitionSequence = 0
 const controller = useDesignerController({
@@ -359,208 +178,37 @@ const selectedComponentDefinition = computed(() => {
   const component = controller.selectedNode.value?.component
   return component ? props.componentRegistry.get(component) : undefined
 })
-const toolbarScope = computed(() => ({
-  breakpoint: activeBreakpoint.value,
-  canUndo: props.historyControl.canUndo,
-  canRedo: props.historyControl.canRedo,
-  canEditSelection: !props.readonly && controller.selectedIds.value.length > 0,
-  readonly: props.readonly,
-  copySelection: () => handleSelectionAction('copy'),
-  removeSelection: () => handleSelectionAction('remove'),
+const {
+  addMaterial,
+  handleAction,
+  handleAddMaterial,
+  handleCanvasSelect,
+  handleMove,
+  handleRedo,
+  handleRemoveStoredConfig,
+  handleResize,
+  handleRootKeydown,
+  handleUndo,
+  handleUpdateForm,
+  handleUpdatePath,
+  handleUpdatePaths,
+  toolbarScope,
+} = useDesignSurfaceCommands({
+  activeBreakpoint,
+  activeWorkspaceView,
+  closeMediumPanel,
+  controller,
+  deletedNotice: () => locale.t('node.deletedUndo', 'Deleted. Undo to restore.'),
+  historyControl: () => props.historyControl,
+  lastAcceptedCommandId: () => lastAcceptedCommandId,
+  mediumPanel,
+  onNotice: (message, action) => emit('notice', message, action),
+  pageId: () => props.pageId,
+  readonly: () => props.readonly,
+  rootRef,
   selectBreakpoint,
-  undo: handleUndo,
-  redo: handleRedo,
-}))
-
-async function focusNode(nodeId?: string): Promise<void> {
-  if (!nodeId)
-    return
-  await nextTick()
-  const target = [...(rootRef.value?.querySelectorAll<HTMLElement>('[data-editor-focus-node-id]') ?? [])]
-    .find(element => element.dataset.editorFocusNodeId === nodeId)
-  target?.focus()
-}
-
-function dispatch(command: ProjectCommand): boolean {
-  const changed = controller.dispatch(command)
-  void focusNode(controller.selectedId.value)
-  return changed
-}
-
-function handleUndo(): boolean {
-  const changed = props.historyControl.undo()
-  if (changed)
-    historyTransitionSequence += 1
-  void focusNode(controller.selectedId.value)
-  return changed
-}
-
-function handleRedo(): boolean {
-  const changed = props.historyControl.redo()
-  if (changed)
-    historyTransitionSequence += 1
-  void focusNode(controller.selectedId.value)
-  return changed
-}
-
-function handleMove(nodeId: string, target: DesignerDropTarget): void {
-  controller.select(nodeId)
-  dispatch(createMoveCommand(props.pageId, nodeId, target))
-}
-
-function handleAddMaterial(materialKey: string, target: DesignerDropTarget): void {
-  if (!controller.addMaterial(materialKey, target))
-    return
-  if (workspaceMode.value === 'narrow')
-    activeWorkspaceView.value = 'canvas'
-  else if (workspaceMode.value === 'medium')
-    mediumPanel.value = 'properties'
-}
-
-function addMaterial(materialKey: string, target?: DesignerDropTarget): boolean {
-  const changed = controller.addMaterial(materialKey, target)
-  if (changed && workspaceMode.value === 'narrow')
-    activeWorkspaceView.value = 'canvas'
-  else if (changed && workspaceMode.value === 'medium')
-    mediumPanel.value = 'properties'
-  return changed
-}
-
-function handleCanvasSelect(nodeId?: string, mode: 'range' | 'replace' | 'toggle' = 'replace'): void {
-  controller.select(nodeId, mode)
-  if (nodeId && workspaceMode.value === 'medium')
-    mediumPanel.value = 'properties'
-}
-
-function handleResize(nodeId: string, span: number): void {
-  controller.select(nodeId)
-  dispatch(createResizeCommand(props.pageId, nodeId, span))
-}
-
-function handleUpdatePath(nodeId: string, path: string[], value: unknown): void {
-  dispatch(createNodePathCommand(controller.graph.value, props.pageId, [nodeId], path, value))
-}
-
-function handleUpdatePaths(nodeIds: string[], path: string[], value: unknown): void {
-  dispatch(createNodePathCommand(controller.graph.value, props.pageId, nodeIds, path, value))
-}
-
-function handleRemoveStoredConfig(nodeId: string, path: string[]): void {
-  dispatch(createStoredConfigRemovalCommand(props.pageId, nodeId, path))
-}
-
-function handleUpdateForm(changes: Record<string, unknown>): void {
-  dispatch(createFormCommand(controller.graph.value, props.pageId, changes))
-}
-
-function handleAction(action: DesignerNodeAction, nodeId: string): void {
-  if (!controller.selectedIds.value.includes(nodeId))
-    controller.select(nodeId)
-  const positionBefore = props.historyControl.history?.position
-  const changed = controller.performNodeAction(action, nodeId)
-  if (changed && action === 'remove')
-    announceDeletionUndo(deletionUndoTarget(positionBefore))
-  void focusNode(controller.selectedId.value)
-}
-
-function handleSelectionAction(action: 'copy' | 'remove'): boolean {
-  const nodeId = controller.selectedId.value
-  if (!nodeId)
-    return false
-  const positionBefore = props.historyControl.history?.position
-  const changed = controller.performNodeAction(action, nodeId)
-  if (changed && action === 'remove')
-    announceDeletionUndo(deletionUndoTarget(positionBefore))
-  void focusNode(controller.selectedId.value)
-  return changed
-}
-
-interface DeletionUndoTarget {
-  entryId?: string
-  position?: number
-  transitionSequence: number
-}
-
-function deletionUndoTarget(positionBefore?: number): DeletionUndoTarget {
-  const history = props.historyControl.history
-  const position = positionBefore === undefined
-    ? undefined
-    : Math.min(positionBefore + 1, history?.limit ?? positionBefore + 1)
-  return {
-    ...(lastAcceptedCommandId ? { entryId: lastAcceptedCommandId } : {}),
-    ...(position === undefined ? {} : { position }),
-    transitionSequence: historyTransitionSequence,
-  }
-}
-
-function announceDeletionUndo(target: DeletionUndoTarget): void {
-  void nextTick(() => {
-    const history = props.historyControl.history
-    const acceptedEntry = history && history.position > 0
-      ? history.entries[history.position - 1]
-      : undefined
-    const acceptedTarget = acceptedEntry
-      ? { ...target, entryId: acceptedEntry.id, position: history?.position }
-      : target
-    emit('notice', locale.t('node.deletedUndo', 'Deleted. Undo to restore.'), () => {
-      if (acceptedTarget.transitionSequence !== historyTransitionSequence)
-        return false
-      const currentHistory = props.historyControl.history
-      if (currentHistory && acceptedTarget.entryId) {
-        const currentEntryId = currentHistory.position > 0
-          ? currentHistory.entries[currentHistory.position - 1]?.id
-          : undefined
-        if (currentEntryId !== acceptedTarget.entryId)
-          return false
-      }
-      else if (acceptedTarget.position !== undefined && currentHistory?.position !== acceptedTarget.position) {
-        return false
-      }
-      return handleUndo()
-    })
-  })
-}
-
-function isTextEditingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement))
-    return false
-  return target.isContentEditable
-    || Boolean(target.closest('[contenteditable="true"]'))
-    || Boolean(target.closest('[data-workspace-panel="properties"]'))
-    || ['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'].includes(target.tagName)
-}
-
-function handleRootKeydown(event: KeyboardEvent): void {
-  if (event.defaultPrevented || event.isComposing || props.readonly || isTextEditingTarget(event.target))
-    return
-  if (event.key === 'Escape' && workspaceMode.value === 'medium' && mediumPanel.value) {
-    event.preventDefault()
-    closeMediumPanel(mediumPanel.value)
-    return
-  }
-  const modifier = event.ctrlKey || event.metaKey
-  if ((event.key === 'Delete' || event.key === 'Backspace') && !modifier && !event.altKey) {
-    event.preventDefault()
-    handleSelectionAction('remove')
-    return
-  }
-  if (!modifier)
-    return
-  if (event.key.toLowerCase() === 'z' && !event.altKey) {
-    event.preventDefault()
-    event.shiftKey ? handleRedo() : handleUndo()
-  }
-  else if (event.key.toLowerCase() === 'y'
-    && event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-    event.preventDefault()
-    handleRedo()
-  }
-  else if (event.key.toLowerCase() === 'd' && !event.shiftKey && !event.altKey) {
-    event.preventDefault()
-    handleSelectionAction('copy')
-  }
-}
-
+  workspaceMode,
+})
 defineExpose<DesignSurfaceExpose>({
   performNodeAction: controller.performNodeAction,
   redo: handleRedo,

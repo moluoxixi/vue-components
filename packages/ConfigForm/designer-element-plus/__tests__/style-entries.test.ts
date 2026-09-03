@@ -22,27 +22,27 @@ describe('element Plus designer component Sass entries', () => {
 
   it.each([
     {
-      entry: 'src/components/ElementSection/style/index.scss',
+      entry: 'src/materials/components/ElementSection/style/index.scss',
       includes: '.mx-element-designer-section',
       excludes: ['.mx-element-flex-layout', '.mx-element-grid-layout'],
     },
     {
-      entry: 'src/components/ElementFlexLayout/style/index.scss',
+      entry: 'src/materials/components/ElementFlexLayout/style/index.scss',
       includes: '.mx-element-flex-layout',
       excludes: ['.mx-element-designer-section', '.mx-element-grid-layout'],
     },
     {
-      entry: 'src/components/ElementGridLayout/style/index.scss',
+      entry: 'src/materials/components/ElementGridLayout/style/index.scss',
       includes: '.mx-element-grid-layout',
       excludes: ['.mx-element-designer-section', '.mx-element-flex-layout'],
     },
     {
-      entry: 'src/components/ElementSelectField/style/index.scss',
+      entry: 'src/materials/components/ElementSelectField/style/index.scss',
       includes: '.mx-element-designer-choice-field',
       excludes: ['.mx-element-designer-option-state', '.mx-element-flex-layout'],
     },
     {
-      entry: 'src/components/ElementOptionState/style/index.scss',
+      entry: 'src/materials/components/ElementOptionState/style/index.scss',
       includes: '.mx-element-designer-option-state',
       excludes: ['.mx-element-designer-choice-field', '.mx-element-grid-layout'],
     },

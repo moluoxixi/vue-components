@@ -9,7 +9,7 @@ import { defineConfig } from 'vite'
 const currentDirectory = dirname(fileURLToPath(import.meta.url))
 const elementPlusTheme = resolve(currentDirectory, 'src/styles/element-plus/theme.scss').replaceAll('\\', '/')
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: process.env.CONFIG_FORM_WORKBENCH_BASE ?? '/',
   build: {
     rollupOptions: {
@@ -23,7 +23,7 @@ export default defineConfig({
     Vue(),
     Components({
       dirs: [],
-      dts: resolve(currentDirectory, 'src/components.d.ts'),
+      dts: command === 'serve' ? resolve(currentDirectory, 'src/components.d.ts') : false,
       resolvers: [ElementPlusResolver({ importStyle: 'sass' })],
     }),
   ],
@@ -39,4 +39,4 @@ export default defineConfig({
       '@': resolve(currentDirectory, 'src'),
     },
   },
-})
+}))

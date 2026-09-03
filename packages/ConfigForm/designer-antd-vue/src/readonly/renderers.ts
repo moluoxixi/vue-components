@@ -1,8 +1,8 @@
 import type { DesignerReadonlyRenderContext } from '@moluoxixi/config-form-designer'
 import type { VNodeChild } from 'vue'
 import { h } from 'vue'
-import { AntdChoiceReadonlyContent } from '../components'
 import { normalizeAntdVueOptions, readAntdVueOptionSource } from '../options'
+import { AntdChoiceReadonlyContent } from './components'
 
 export function renderAntdVueRawReadonly({ value }: DesignerReadonlyRenderContext): string {
   return formatReadonlyValue(value)

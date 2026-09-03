@@ -4,7 +4,8 @@ import type { PageGraph } from '@moluoxixi/config-form-model'
 import { resolve } from 'node:path'
 import { mount } from '@vue/test-utils'
 import { compile } from 'sass'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { DesignerCanvas } from '../src/components/DesignerCanvas'
 import { createDesignerRegistry } from '../src/registry'
 
@@ -96,5 +97,88 @@ describe('designer canvas presentation', () => {
     expect(cameraRule).toContain('right: 14px;')
     expect(cameraRule).toContain('bottom: 14px;')
     expect(cameraRule).not.toContain('left: 50%')
+  })
+
+  it('steps camera controls and isolates shortcuts from editable controls', async () => {
+    const wrapper = mountCanvas()
+    const canvas = wrapper.get('.mx-config-form-designer__canvas')
+    const percent = () => wrapper.get('button[aria-label="Actual size"]').text()
+
+    expect(percent()).toBe('100%')
+    await wrapper.get('button[aria-label="Zoom out"]').trigger('click')
+    expect(percent()).toBe('80%')
+    await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
+    expect(percent()).toBe('100%')
+
+    await canvas.trigger('pointerenter')
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Minus', key: '-' }))
+    await nextTick()
+    expect(percent()).toBe('80%')
+
+    const input = document.createElement('input')
+    document.body.append(input)
+    input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'Equal', key: '+' }))
+    await nextTick()
+    expect(percent()).toBe('80%')
+    input.remove()
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit0', key: '0' }))
+    await nextTick()
+    expect(percent()).toBe('100%')
+  })
+
+  it('pans the viewport while Space is held and cleans pointer state on release', async () => {
+    const wrapper = mountCanvas()
+    const canvas = wrapper.get('.mx-config-form-designer__canvas')
+    const viewport = wrapper.get<HTMLElement>('[data-canvas-camera-viewport]')
+    viewport.element.scrollLeft = 40
+    viewport.element.scrollTop = 30
+    await canvas.trigger('pointerenter')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }))
+    await nextTick()
+    const gesture = wrapper.get('.mx-config-form-designer__camera-gesture-layer')
+    await gesture.trigger('pointerdown', { button: 0, clientX: 100, clientY: 100, pointerId: 21 })
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 80, clientY: 70, pointerId: 21 }))
+    expect(viewport.element.scrollLeft).toBe(60)
+    expect(viewport.element.scrollTop).toBe(60)
+    expect(gesture.classes()).toContain('is-panning')
+
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 21 }))
+    await nextTick()
+    expect(gesture.classes()).not.toContain('is-panning')
+
+    document.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ' }))
+    await nextTick()
+    expect(wrapper.find('.mx-config-form-designer__camera-gesture-layer').exists()).toBe(false)
+  })
+
+  it('ends camera pan on lost capture and releases capture on unmount', async () => {
+    const wrapper = mountCanvas()
+    const canvas = wrapper.get('.mx-config-form-designer__canvas')
+    await canvas.trigger('pointerenter')
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }))
+    await nextTick()
+    const gesture = wrapper.get<HTMLElement>('.mx-config-form-designer__camera-gesture-layer')
+    let capturedPointer: number | undefined
+    gesture.element.setPointerCapture = pointerId => capturedPointer = pointerId
+    gesture.element.hasPointerCapture = pointerId => capturedPointer === pointerId
+    const releasePointerCapture = vi.fn((pointerId: number) => {
+      if (capturedPointer === pointerId)
+        capturedPointer = undefined
+    })
+    gesture.element.releasePointerCapture = releasePointerCapture
+
+    await gesture.trigger('pointerdown', { button: 0, pointerId: 31 })
+    expect(gesture.classes()).toContain('is-panning')
+    gesture.element.dispatchEvent(new PointerEvent('lostpointercapture', { pointerId: 31 }))
+    await nextTick()
+    expect(gesture.classes()).not.toContain('is-panning')
+    expect(releasePointerCapture).toHaveBeenCalledWith(31)
+
+    await gesture.trigger('pointerdown', { button: 0, pointerId: 32 })
+    expect(gesture.classes()).toContain('is-panning')
+    wrapper.unmount()
+    expect(releasePointerCapture).toHaveBeenCalledWith(32)
   })
 })

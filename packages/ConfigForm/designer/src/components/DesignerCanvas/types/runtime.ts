@@ -48,6 +48,12 @@ export interface DesignerRuntimePointerPayload {
   shiftKey: boolean
 }
 
+export interface DesignerRuntimePointerHandlers {
+  cancel?: (payload: DesignerRuntimePointerPayload) => void
+  move?: (payload: DesignerRuntimePointerPayload) => void
+  up?: (payload: DesignerRuntimePointerPayload) => void
+}
+
 export interface DesignerRuntimeHostBridge {
   pointerCancel: (payload: DesignerRuntimePointerPayload) => void
   pointerDown: (payload: DesignerRuntimePointerPayload) => void

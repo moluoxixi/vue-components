@@ -1,3 +1,10 @@
+export { createAntdVueOptionDiagnostics } from '../../options'
+export {
+  renderAntdVueChoiceReadonly,
+  renderAntdVuePasswordReadonly,
+  renderAntdVueRawReadonly,
+  renderAntdVueSwitchReadonly,
+} from '../../readonly'
 export {
   AntdAutoCompleteField,
   AntdCheckboxField,
@@ -6,14 +13,7 @@ export {
   AntdRadioField,
   AntdSection,
   AntdSelectField,
-} from '../../components'
-export { createAntdVueOptionDiagnostics } from '../../options'
-export {
-  renderAntdVueChoiceReadonly,
-  renderAntdVuePasswordReadonly,
-  renderAntdVueRawReadonly,
-  renderAntdVueSwitchReadonly,
-} from '../../readonly'
+} from '../components'
 export {
   Card,
   Collapse,

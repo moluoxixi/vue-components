@@ -1,5 +1,4 @@
 export * from '../defaults'
 export * from '../icons'
 export * from '../runtime'
-export * from '../setters'
-export * from '../source'
+export * from '../services'

@@ -465,48 +465,6 @@
       "reason": "Feature and responsibility index.ts files must contain exports only."
     },
     {
-      "path": "packages/ConfigForm/designer-antd-vue/src/materials/bindings/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-designer-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/designer-antd-vue/src/materials/defaults/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-designer-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/designer-antd-vue/src/materials/setters/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-designer-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/designer-antd-vue/src/materials/source/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-designer-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/designer-element-plus/src/materials/defaults/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-designer-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/designer-element-plus/src/materials/setters/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-designer-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/designer-element-plus/src/materials/source/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-designer-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
       "path": "packages/ConfigForm/runtime/src/errors/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "config-form-runtime-domain-structure-governance",

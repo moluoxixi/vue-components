@@ -13,19 +13,19 @@ import { createStableChunksPlugin } from '../../scripts/vite-chunks'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const playgroundSource = /[\\/]playgrounds[\\/]components-playground[\\/]src[\\/].*(?:\.[jt]sx?|\.vue(?:\?vue.*)?)$/
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: process.env.COMPONENTS_PLAYGROUND_BASE ?? '/',
   plugins: [
     Vue(),
     VueJsx(),
     AutoImport({
-      dts: resolve(__dirname, 'src/auto-imports.d.ts'),
+      dts: command === 'serve' ? resolve(__dirname, 'src/auto-imports.d.ts') : false,
       include: [playgroundSource],
       imports: [autoImport],
       resolvers: [ElementPlusResolver()],
     }),
     Components({
-      dts: resolve(__dirname, 'src/components.d.ts'),
+      dts: command === 'serve' ? resolve(__dirname, 'src/components.d.ts') : false,
       resolvers: [autoComponent, ElementPlusResolver()],
     }),
     createStableChunksPlugin({
@@ -39,4 +39,4 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
-})
+}))

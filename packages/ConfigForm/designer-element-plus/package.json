@@ -24,49 +24,49 @@
       "default": "./src/styles/index.scss"
     },
     "./element-section/style": {
-      "sass": "./src/components/ElementSection/style/index.scss",
-      "style": "./src/components/ElementSection/style/index.scss",
-      "default": "./src/components/ElementSection/style/index.scss"
+      "sass": "./src/materials/components/ElementSection/style/index.scss",
+      "style": "./src/materials/components/ElementSection/style/index.scss",
+      "default": "./src/materials/components/ElementSection/style/index.scss"
     },
     "./element-flex-layout/style": {
-      "sass": "./src/components/ElementFlexLayout/style/index.scss",
-      "style": "./src/components/ElementFlexLayout/style/index.scss",
-      "default": "./src/components/ElementFlexLayout/style/index.scss"
+      "sass": "./src/materials/components/ElementFlexLayout/style/index.scss",
+      "style": "./src/materials/components/ElementFlexLayout/style/index.scss",
+      "default": "./src/materials/components/ElementFlexLayout/style/index.scss"
     },
     "./element-grid-layout/style": {
-      "sass": "./src/components/ElementGridLayout/style/index.scss",
-      "style": "./src/components/ElementGridLayout/style/index.scss",
-      "default": "./src/components/ElementGridLayout/style/index.scss"
+      "sass": "./src/materials/components/ElementGridLayout/style/index.scss",
+      "style": "./src/materials/components/ElementGridLayout/style/index.scss",
+      "default": "./src/materials/components/ElementGridLayout/style/index.scss"
     },
     "./element-checkbox-field/style": {
-      "sass": "./src/components/ElementCheckboxField/style/index.scss",
-      "style": "./src/components/ElementCheckboxField/style/index.scss",
-      "default": "./src/components/ElementCheckboxField/style/index.scss"
+      "sass": "./src/materials/components/ElementCheckboxField/style/index.scss",
+      "style": "./src/materials/components/ElementCheckboxField/style/index.scss",
+      "default": "./src/materials/components/ElementCheckboxField/style/index.scss"
     },
     "./element-radio-field/style": {
-      "sass": "./src/components/ElementRadioField/style/index.scss",
-      "style": "./src/components/ElementRadioField/style/index.scss",
-      "default": "./src/components/ElementRadioField/style/index.scss"
+      "sass": "./src/materials/components/ElementRadioField/style/index.scss",
+      "style": "./src/materials/components/ElementRadioField/style/index.scss",
+      "default": "./src/materials/components/ElementRadioField/style/index.scss"
     },
     "./element-select-field/style": {
-      "sass": "./src/components/ElementSelectField/style/index.scss",
-      "style": "./src/components/ElementSelectField/style/index.scss",
-      "default": "./src/components/ElementSelectField/style/index.scss"
+      "sass": "./src/materials/components/ElementSelectField/style/index.scss",
+      "style": "./src/materials/components/ElementSelectField/style/index.scss",
+      "default": "./src/materials/components/ElementSelectField/style/index.scss"
     },
     "./element-option-state/style": {
-      "sass": "./src/components/ElementOptionState/style/index.scss",
-      "style": "./src/components/ElementOptionState/style/index.scss",
-      "default": "./src/components/ElementOptionState/style/index.scss"
+      "sass": "./src/materials/components/ElementOptionState/style/index.scss",
+      "style": "./src/materials/components/ElementOptionState/style/index.scss",
+      "default": "./src/materials/components/ElementOptionState/style/index.scss"
     },
     "./element-option-source-setter/style": {
-      "sass": "./src/components/ElementOptionSourceSetter/style/index.scss",
-      "style": "./src/components/ElementOptionSourceSetter/style/index.scss",
-      "default": "./src/components/ElementOptionSourceSetter/style/index.scss"
+      "sass": "./src/materials/components/ElementOptionSourceSetter/style/index.scss",
+      "style": "./src/materials/components/ElementOptionSourceSetter/style/index.scss",
+      "default": "./src/materials/components/ElementOptionSourceSetter/style/index.scss"
     },
     "./element-choice-default-setter/style": {
-      "sass": "./src/components/ElementChoiceDefaultSetter/style/index.scss",
-      "style": "./src/components/ElementChoiceDefaultSetter/style/index.scss",
-      "default": "./src/components/ElementChoiceDefaultSetter/style/index.scss"
+      "sass": "./src/materials/components/ElementChoiceDefaultSetter/style/index.scss",
+      "style": "./src/materials/components/ElementChoiceDefaultSetter/style/index.scss",
+      "default": "./src/materials/components/ElementChoiceDefaultSetter/style/index.scss"
     }
   },
   "main": "./dist/index.js",

@@ -2,10 +2,10 @@ import type { FieldNode } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ElCheckbox, ElOption, ElRadio, ElSelect } from 'element-plus'
 import { describe, expect, it, vi } from 'vitest'
-import ElementCheckboxField from '../src/components/ElementCheckboxField.vue'
-import ElementChoiceDefaultSetter from '../src/components/ElementChoiceDefaultSetter.vue'
-import ElementRadioField from '../src/components/ElementRadioField.vue'
-import ElementSelectField from '../src/components/ElementSelectField.vue'
+import ElementCheckboxField from '../src/materials/components/ElementCheckboxField/index.vue'
+import ElementChoiceDefaultSetter from '../src/materials/components/ElementChoiceDefaultSetter/index.vue'
+import ElementRadioField from '../src/materials/components/ElementRadioField/index.vue'
+import ElementSelectField from '../src/materials/components/ElementSelectField/index.vue'
 import {
   createElementPlusOptionResolverContext,
   ELEMENT_PLUS_OPTION_RESOLVER_KEY,

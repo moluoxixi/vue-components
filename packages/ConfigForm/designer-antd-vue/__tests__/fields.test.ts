@@ -2,11 +2,11 @@ import type { FieldNode } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
 import { AutoComplete, CheckboxGroup, RadioGroup, Select } from 'ant-design-vue'
 import { describe, expect, it, vi } from 'vitest'
-import AntdAutoCompleteField from '../src/components/AntdAutoCompleteField.vue'
-import AntdCheckboxField from '../src/components/AntdCheckboxField.vue'
-import AntdChoiceDefaultSetter from '../src/components/AntdChoiceDefaultSetter.vue'
-import AntdRadioField from '../src/components/AntdRadioField.vue'
-import AntdSelectField from '../src/components/AntdSelectField.vue'
+import AntdAutoCompleteField from '../src/materials/components/AntdAutoCompleteField/index.vue'
+import AntdCheckboxField from '../src/materials/components/AntdCheckboxField/index.vue'
+import AntdChoiceDefaultSetter from '../src/materials/components/AntdChoiceDefaultSetter/index.vue'
+import AntdRadioField from '../src/materials/components/AntdRadioField/index.vue'
+import AntdSelectField from '../src/materials/components/AntdSelectField/index.vue'
 import {
   ANTD_VUE_OPTION_RESOLVER_KEY,
   createAntdVueOptionResolverContext,

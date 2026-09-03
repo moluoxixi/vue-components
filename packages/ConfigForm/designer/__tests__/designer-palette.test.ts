@@ -3,7 +3,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { h } from 'vue'
-import DesignerPalette from '../src/components/DesignerPalette.vue'
+import DesignerPalette from '../src/components/DesignerPalette'
 import { createDesignerRegistry } from '../src/registry'
 
 const registry = createDesignerRegistry({ materials: [{
