@@ -12,7 +12,7 @@ import {
   parseExcelRows,
   resolveExcelColumns,
   writeExcelBuffer,
-} from '../src/index'
+} from '../index'
 
 const columns = [
   { label: '姓名', prop: 'name' },

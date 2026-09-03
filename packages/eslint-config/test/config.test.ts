@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createEslintConfig } from '../src/index'
+import createEslintConfig, { createEslintConfig as createEslintConfigNamed } from '../index'
 
 describe('createEslintConfig', () => {
+  it('exports the same factory as named and default exports', () => {
+    expect(createEslintConfig).toBe(createEslintConfigNamed)
+  })
+
   it('merges shared ignores and caller ignores', async () => {
     const configs = await createEslintConfig({
       ignores: ['fixtures/**'],

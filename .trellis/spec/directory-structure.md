@@ -30,6 +30,15 @@ packages/<package>/
   vite.config.ts           # when needed
 ```
 
+When a package builds both the root entry and public subpath entries below
+`src/`, name every output explicitly. A positional tsup entry list derives its
+output tree from the common source ancestor, so moving only the main entry to
+the package root can silently change `dist/node.js` into `dist/src/node.js`.
+
+```text
+tsup --entry.index index.ts --entry.node src/node.ts --format esm --dts
+```
+
 ```text
 feature-name/
   index.ts                 # feature-level barrel only
@@ -173,6 +182,13 @@ interface PackageArchitectureManifest {
   independent consumer tests point to the same root-entry model. Private apps,
   CLI entrypoints, and framework fixtures need narrow manifest exceptions only
   for rules their runtime shape cannot satisfy.
+- Multi-entry builds spanning package root and `src/` use named entries or an
+  equivalent explicit output map. Every emitted JS/declaration path must still
+  match its package export; relying on the build tool's inferred common base is
+  forbidden.
+- Public-root regression tests import the package through its self-reference
+  when available. They do not add cross-feature relative imports merely to
+  reach the package root.
 - A Vue component with one concrete parent belongs below that parent's
   `components/` directory. A component used by only one feature belongs below
   that feature's `components/`. Package-level shared components require at
@@ -216,6 +232,7 @@ interface PackageArchitectureManifest {
 | Root entry forwards `./src` or package retains `src/index.ts` | Emit `package.root-index-explicit-exports` / `package.src-index-forbidden` |
 | Build/source metadata bypasses root entry | Emit `package.build-entry` / `package.source-entry` |
 | main/module/types drift from root export conditions | Emit `package.output-entry` |
+| Moving the root entry nests an existing subpath under `dist/src/` | Configure named build entries and fail the packed-export smoke |
 | Non-public component has no resolvable owner | Emit `component.owner-required` |
 | Single-parent or single-feature component is misplaced | Emit `component.single-parent-location` / `component.single-feature-location` |
 | Live diagnostic has no exact debt/exception | Fail as unknown architecture debt |
@@ -230,6 +247,8 @@ interface PackageArchitectureManifest {
   style entry forwards component entries without copying their rules.
 - Good: `packages/foo/index.ts` explicitly exports `./src/components` and
   `./src/services`; no `src/index.ts` mirrors the package surface.
+- Good: a package builds `{ index: 'index.ts', node: 'src/node.ts' }` and emits
+  `dist/index.*` plus `dist/node.*`, matching both export conditions.
 - Good: `FeatureView/components/FeatureToolbar.vue` has one parent,
   `FeatureView/index.vue`; a shared command hint has callers in two features.
 - Good: a Node package separates lifecycle orchestration, repository adapters,
@@ -241,6 +260,8 @@ interface PackageArchitectureManifest {
 - Bad: two package specs copy this document and drift independently.
 - Bad: `packages/foo/index.ts` contains only `export * from './src'`, while the
   real public surface is hidden behind `src/index.ts`.
+- Bad: `tsup index.ts src/node.ts` changes an established `./node` subpath into
+  `dist/src/node.*` after the root entry moves.
 - Bad: `src/components/PrivateDialog.vue` has one parent but is exported from a
   package-wide components barrel.
 - Bad: a broad package stylesheet targets `input:focus-visible` below a root
@@ -257,6 +278,9 @@ interface PackageArchitectureManifest {
   and reject removed or unintended deep import paths.
 - Directory moves run the owning package's lint, typecheck, unit tests, and any
   package-specific build or public-export checks.
+- Root-entry moves build and inspect every public subpath, then run the packed
+  consumer smoke so JS and declaration output paths are verified from the
+  installed package rather than inferred from source tests.
 - Style architecture tests compile each public Sass entry and assert a sentinel
   selector from another component is absent. Browser tests verify Provider
   controls keep a single library-owned focus frame.
@@ -345,4 +369,16 @@ Correct:
 // packages/foo/index.ts
 export * from './src/components'
 export * from './src/services'
+```
+
+Wrong:
+
+```json
+{ "build": "tsup index.ts src/node.ts --format esm --dts" }
+```
+
+Correct:
+
+```json
+{ "build": "tsup --entry.index index.ts --entry.node src/node.ts --format esm --dts" }
 ```

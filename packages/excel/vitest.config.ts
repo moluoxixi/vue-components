@@ -6,7 +6,7 @@ export default defineConfig({
     alias: [
       {
         find: '@moluoxixi/utils',
-        replacement: fileURLToPath(new URL('../utils/src/index.ts', import.meta.url)),
+        replacement: fileURLToPath(new URL('../utils/index.ts', import.meta.url)),
       },
     ],
   },

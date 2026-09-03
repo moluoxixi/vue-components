@@ -19,7 +19,7 @@ export default defineConfig({
       },
       {
         find: '@moluoxixi/vite-config',
-        replacement: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+        replacement: fileURLToPath(new URL('./index.ts', import.meta.url)),
       },
     ],
   },

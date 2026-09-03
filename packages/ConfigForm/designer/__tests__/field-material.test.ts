@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createDesignerRegistry,
   defineDesignerFieldMaterial,
-} from '../src'
+} from '../index'
 
 describe('designer field material', () => {
   it('derives a field node, runtime binding, and ordered setters from one declaration', () => {

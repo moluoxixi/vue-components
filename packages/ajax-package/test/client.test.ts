@@ -1,7 +1,7 @@
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { AxiosError, AxiosHeaders } from 'axios'
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
-import { BaseApi, BaseHttpClient, createHttpService, HttpResponseError } from '../src/index'
+import { BaseApi, BaseHttpClient, createHttpService, HttpResponseError } from '../index'
 
 function createAdapter(
   handler: (config: InternalAxiosRequestConfig) => unknown,

@@ -8,7 +8,7 @@ import { createFormRuntime } from '@moluoxixi/config-form/plugins'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { createAntdVuePlugin } from '../src'
+import { createAntdVuePlugin } from '../index'
 import {
   findAntdVueOptionLabel,
   readAntdVueOptionSource,

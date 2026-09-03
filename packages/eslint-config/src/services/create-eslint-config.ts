@@ -1,4 +1,4 @@
-import type { EslintConfigOptions, EslintConfigResult, EslintUserConfig } from './types'
+import type { EslintConfigOptions, EslintConfigResult, EslintUserConfig } from '../types'
 import antfu from '@antfu/eslint-config'
 
 const DEFAULT_IGNORES = [
@@ -94,11 +94,5 @@ export function createEslintConfig(
     ...userConfigs,
   )
 }
-
-export type {
-  EslintConfigOptions,
-  EslintConfigResult,
-  EslintUserConfig,
-} from './types'
 
 export default createEslintConfig

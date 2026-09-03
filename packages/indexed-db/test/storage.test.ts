@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createIndexDBStorage, IndexDBStorage, IndexedDBManager } from '../src/index'
+import { createIndexDBStorage, IndexDBStorage, IndexedDBManager } from '../index'
 import 'fake-indexeddb/auto'
 
 const openedStorages: IndexDBStorage[] = []

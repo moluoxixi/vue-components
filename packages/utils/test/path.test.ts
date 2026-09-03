@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readValueByPath } from '../src/index'
+import { readValueByPath } from '../index'
 
 describe('path Utilities', () => {
   it('reads nested values by dot path', () => {

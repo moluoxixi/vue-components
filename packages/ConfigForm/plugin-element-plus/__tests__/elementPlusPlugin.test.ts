@@ -4,7 +4,7 @@ import { createFormRuntime } from '@moluoxixi/config-form/plugins'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { createElementPlusPlugin } from '../src'
+import { createElementPlusPlugin } from '../index'
 import {
   findElementPlusOptionLabel,
   readElementPlusOptionKeys,

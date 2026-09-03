@@ -2,11 +2,11 @@
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import * as ComponentsRoot from '@moluoxixi/components'
 import { describe, expect, it } from 'vitest'
 import * as AutoLoaders from '../../auto-loaders'
 import { autoComponent, autoImport } from '../../auto-loaders'
 import { componentNames } from '../auto-loaders'
-import * as ComponentsRoot from '../index'
 
 const componentsPackageJson = JSON.parse(
   readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),

@@ -1,11 +1,11 @@
 export {
-  configFormDevtools,
-} from './src'
-
-export {
   ConfigFormDevtoolsHttpError,
   ConfigFormDevtoolsPluginError,
-} from './src'
+} from './src/errors'
+
+export {
+  configFormDevtools,
+} from './src/services'
 
 export type {
   ConfigFormDevtoolsPluginOptions,
@@ -14,4 +14,4 @@ export type {
   FieldSourceMeta,
   OpenInEditorPayload,
   SourceInjectionOptions,
-} from './src'
+} from './src/types'

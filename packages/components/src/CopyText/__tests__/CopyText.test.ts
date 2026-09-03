@@ -1,7 +1,7 @@
+import { ClipboardCopyError, CopyText, copyText, HeadlessCopyText } from '@moluoxixi/components'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { h, nextTick } from 'vue'
-import { ClipboardCopyError, CopyText, copyText, HeadlessCopyText } from '../../index'
 
 const writeText = vi.fn<(text: string) => Promise<void>>()
 const execCommand = vi.fn<(command: string) => boolean>()

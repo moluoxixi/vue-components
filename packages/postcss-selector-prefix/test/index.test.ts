@@ -1,7 +1,7 @@
 import postcss from 'postcss'
 import selectorParser from 'postcss-selector-parser'
 import { describe, expect, it } from 'vitest'
-import createSelectorPrefixPlugin, { createSelectorPrefixPlugin as createSelectorPrefixPluginNamed } from '../src/index'
+import createSelectorPrefixPlugin, { createSelectorPrefixPlugin as createSelectorPrefixPluginNamed } from '../index'
 
 const EL_TO_MOLUOXIXI = {
   fromPrefix: 'el-',

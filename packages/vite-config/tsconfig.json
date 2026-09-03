@@ -4,7 +4,7 @@
     "composite": false,
     "baseUrl": ".",
     "paths": {
-      "@moluoxixi/vite-config": ["src/index.ts"],
+      "@moluoxixi/vite-config": ["index.ts"],
       "@moluoxixi/vite-config/addons": ["src/addons/index.ts"],
       "@moluoxixi/vite-config/addons/*": ["src/addons/*"],
       "@moluoxixi/vite-config/config/*": ["src/config/*"],
@@ -14,6 +14,6 @@
     "declaration": true,
     "outDir": "dist"
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["index.ts", "src/**/*", "test/**/*", "tsup.config.ts"],
   "exclude": ["node_modules", "dist", "test/fixtures/**/*"]
 }

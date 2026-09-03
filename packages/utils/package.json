@@ -10,6 +10,7 @@
   "sideEffects": false,
   "exports": {
     ".": {
+      "source": "./index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
@@ -27,7 +28,7 @@
     "dist/**/*.js"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/node.ts --format esm --dts --clean",
+    "build": "tsup --entry.index index.ts --entry.node src/node.ts --format esm --dts --clean",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit"

@@ -1,4 +1,4 @@
-import type { PluginOptions } from '../src/index'
+import type { PluginOptions } from '../index'
 import { describe, expectTypeOf, it } from 'vitest'
 
 describe('core type helpers', () => {

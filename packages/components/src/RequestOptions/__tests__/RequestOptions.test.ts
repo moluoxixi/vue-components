@@ -1,8 +1,8 @@
+import { RequestCascader, RequestSelectV2, RequestTreeSelect } from '@moluoxixi/components'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { RequestCascader, RequestSelectV2, RequestTreeSelect } from '../../index'
 
 interface Option {
   label: string

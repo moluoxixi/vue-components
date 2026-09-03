@@ -21,14 +21,17 @@ describe('vue backend architecture boundary', () => {
     }
     const source = sourceFiles(sourceRoot).map(file => readFileSync(file, 'utf8')).join('\n')
 
-    expect(files).toEqual(['index.ts'])
+    expect(files).toEqual([])
     expect(directories).toEqual(['services', 'state', 'types', 'utils'])
     directories.forEach((directory) => {
       expect(existsSync(resolve(sourceRoot, directory, 'index.ts'))).toBe(true)
     })
     expect(existsSync(resolve(sourceRoot, 'compile.ts'))).toBe(false)
     expect(existsSync(resolve(sourceRoot, 'types.ts'))).toBe(false)
-    expect(readFileSync(resolve(sourceRoot, '../index.ts'), 'utf8').trim()).toBe('export * from \'./src\'')
+    const rootEntry = readFileSync(resolve(sourceRoot, '../index.ts'), 'utf8')
+    expect(rootEntry).toContain('from \'./src/services\'')
+    expect(rootEntry).toContain('from \'./src/types\'')
+    expect(rootEntry).not.toMatch(/from ['"]\.\/src['"]/)
     expect(Object.keys(manifest.exports)).toEqual(['.'])
     expect(source).not.toContain('@moluoxixi/config-form/renderer')
   })

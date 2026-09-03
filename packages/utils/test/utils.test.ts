@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deepClone, isEmpty, isObject, isString } from '../src/index'
+import { deepClone, isEmpty, isObject, isString } from '../index'
 
 describe('core Utilities', () => {
   it('isString', () => {

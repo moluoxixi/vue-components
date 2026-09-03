@@ -1,23 +1,23 @@
 export {
   createHeaderFieldMap,
   resolveExcelColumns,
-} from './columns'
+} from './src/columns'
 export {
   createExcelBlob,
   createExcelWorkbook,
   createExcelWorksheet,
   writeExcelBuffer,
-} from './export'
+} from './src/export'
 export {
   createExcelMatrix,
   formatExcelRows,
-} from './format'
+} from './src/format'
 export {
   mapExcelMatrixToRows,
   parseExcelBlob,
   parseExcelMatrix,
   parseExcelRows,
-} from './import'
+} from './src/import'
 export type {
   ExcelCellAlignment,
   ExcelCellValue,
@@ -33,4 +33,4 @@ export type {
   ExportExcelOptions,
   ParseExcelOptions,
   ResolvedExcelColumn,
-} from './types'
+} from './src/types'
