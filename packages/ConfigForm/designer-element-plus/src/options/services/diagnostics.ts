@@ -7,7 +7,7 @@ import {
   areDesignerJsonValuesEqual,
   designerDiagnostic,
 } from '@moluoxixi/config-form-designer'
-import { normalizeElementPlusOptions, readElementPlusOptionSource } from '../composables'
+import { normalizeElementPlusOptions, readElementPlusOptionSource } from '../utils'
 
 export function createElementPlusOptionDiagnostics(
   context?: ElementPlusOptionResolverContext,

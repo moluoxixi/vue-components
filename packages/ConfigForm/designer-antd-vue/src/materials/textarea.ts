@@ -1,39 +1,32 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'textarea',
   order: 40,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.textarea',
       source: s.antdSource('textarea', 'a-textarea'),
-      version: 1,
-      kind: 'field',
       title: 'Textarea',
       category: 'Fields',
       icon: s.AlignLeft,
+      component: s.Input.TextArea,
       runtime: {
-        component: s.Input.TextArea,
         ...s.valueBinding,
         readonlyProp: 'readonly',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
-      setters: [
-        s.defaultValueSetter('text'),
-        s.placeholderSetter,
-        s.propSetter('rows', 'Rows', 'number', undefined, { min: 1, max: 20, step: 1 }),
-        s.propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 }),
-      ],
-      createNode: ({ id, field = 'textarea' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.textarea',
-        field,
-        label: 'Textarea',
-        props: { rows: 3, placeholder: '' },
-      }),
-    },
+      value: { kind: 'text' },
+      props: {
+        placeholder: { label: 'Placeholder', control: 'text', default: '' },
+        rows: { label: 'Rows', control: 'number', default: 3, min: 1, max: 20, step: 1 },
+        maxlength: { label: 'Max length', control: 'number', min: 0, step: 1 },
+      },
+    }),
     locale: {
       title: '多行输入',
       category: '字段',

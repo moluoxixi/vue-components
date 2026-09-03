@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { DesignerCanvas } from '../src/components/DesignerCanvas'
 import { createDesignerRegistry } from '../src/registry'
 
-const registry = createDesignerRegistry([{ name: 'test', materials: [{
+const registry = createDesignerRegistry({ materials: [{
   key: 'test.input',
   version: 1,
   kind: 'field',
@@ -18,7 +18,7 @@ const registry = createDesignerRegistry([{ name: 'test', materials: [{
   source: { configComponent: 'text', render: 'component', tag: 'input' },
   setters: [],
   createNode: ({ id, field = 'input' }) => ({ id, field, kind: 'field', component: 'test.input' }),
-}] }])
+}] })
 
 const emptyGraph: PageGraph = {
   version: 2,

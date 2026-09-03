@@ -9,7 +9,7 @@ import {
 } from '@moluoxixi/config-form-designer'
 
 const materialModules = import.meta.glob<DesignerMaterialModule>(
-  ['./*.ts', '!./index.ts', '!./registry.ts', '!./shared.ts'],
+  ['./*.ts', '!./index.ts', '!./registry.ts'],
   { eager: true, import: 'default' },
 )
 

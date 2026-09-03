@@ -26,6 +26,7 @@
 12. 表单支持 0–480px 的整数标签宽度；Desktop、Tablet、Mobile 均可配置，Tablet 默认继承 Desktop、Mobile 默认继承 Tablet；设置进入 Project Model、Compiler/Vue backend 与真实 Runtime renderer，仅在左侧标签布局时控制标签列宽。
 13. Desktop、Tablet、Mobile 复用同一个断点布局编辑组件，Columns、Field span、Label width 的顺序、DOM 和样式一致；Tablet/Mobile 仅额外提供 override 开关，在窄 Inspector 中不得溢出或形成重复边框。
 14. 普通字段物料提供高层声明 API，由组件、默认值和属性描述自动生成 Runtime binding、Setter 与节点工厂；业务注册物料时不必创建具名 Registry layer，也不必手写 `createNode`。底层物料和 layer API 继续服务布局、复合子图与高级覆盖。
+15. 物料注册代码按声明、聚合、注册、纯转换和响应式上下文拆分；禁止继续以单个 `shared.ts` 混放 Provider 组件、图标、source binding、setter factory、默认值和 binding 常量。无 Vue 状态或生命周期的注册逻辑不得伪装成 composable/hook。
 
 ## 验收标准
 
@@ -39,6 +40,7 @@
 - [ ] 三个断点的 Columns、Field span、Label width 使用同一组件与视觉结构；响应式标签宽度按 Desktop→Tablet→Mobile 继承并在对应 Runtime 断点生效。
 - [ ] Tablet/Mobile 的 Columns 与 Field span 在窄面板中保持完整可见并按 1–24 整数提交。
 - [ ] 普通字段物料可通过一个声明对象完成注册，生成的节点默认值相互隔离，并继续通过真实 Provider 属性控件编辑；Element Plus 与 Ant Design Vue 使用对称的 `{ materials, layers, optionResolver }` Registry 入口。
+- [ ] 两套 Designer Adapter 的物料共享代码按职责拆分，Core `createDesignerRegistry` 直接接收 `materials/layers/rendererNamespace`；普通字段声明不再重复节点工厂，且所有迁移物料的 Runtime、Setter 顺序和节点默认值保持严格等价。
 - [ ] 设计器与 Workbench 受影响单测、typecheck、build、E2E、axe、视觉基线、lint 和 `git diff --check` 通过。
 
 ## 范围外

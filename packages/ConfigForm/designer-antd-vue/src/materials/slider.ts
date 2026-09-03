@@ -1,40 +1,32 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'slider',
   order: 110,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.slider',
       source: s.antdSource('number', 'a-slider'),
-      version: 1,
-      kind: 'field',
       title: 'Slider',
       category: 'Choices',
       icon: s.SlidersHorizontal,
+      component: s.Slider,
       runtime: {
-        component: s.Slider,
         ...s.valueBinding,
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
-      setters: [
-        s.defaultValueSetter('number'),
-        s.propSetter('min', 'Minimum', 'number'),
-        s.propSetter('max', 'Maximum', 'number'),
-        s.propSetter('step', 'Step', 'number', undefined, { min: 0 }),
-      ],
-      createNode: ({ id, field = 'slider' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.slider',
-        field,
-        label: 'Slider',
-        defaultValue: 0,
-        props: { min: 0, max: 100, step: 1 },
-      }),
-    },
+      value: { kind: 'number', default: 0 },
+      props: {
+        min: { label: 'Minimum', control: 'number', default: 0 },
+        max: { label: 'Maximum', control: 'number', default: 100 },
+        step: { label: 'Step', control: 'number', default: 1, min: 0 },
+      },
+    }),
     locale: {
       title: '滑块',
       category: '选择',

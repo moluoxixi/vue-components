@@ -127,3 +127,27 @@ workspace surface
 - 默认 field 从 material key 末段推导，默认 label 使用 material title；真实拖拽仍由 Designer controller 提供唯一 field。所有默认 props/defaultValue 在每次节点创建时深克隆，禁止在节点间共享数组或对象。
 - Element Plus 与 Ant Design Vue 的 Designer registry 统一接收 `{ materials, layers, optionResolver }`。`materials` 自动包装为内部 consumer layer 并拥有最高优先级；`layers` 保留 components/propertyControls/validators 等高级扩展。
 - 这是预发布当前契约 hard cut：删除旧的 layer 数组首参形式，不增加 overload、deprecated alias 或运行时形状猜测。
+
+## 12. 物料注册目录与职责
+
+```text
+designer/src/registry/
+  services/field-material.ts       # 公开字段 factory 编排
+  utils/field-material.ts          # 私有字段名、默认值与 setter 纯转换
+
+designer-<provider>/src/materials/
+  <material>.ts                    # 单物料声明：runtime/source/setters/defaults/locale
+  registry.ts                      # 仅 glob 聚合与 module registry
+  shared/index.ts                  # 兼容叶子声明的纯 re-export barrel
+  icons/index.ts                   # 图标
+  runtime/index.ts                 # Provider/本地组件与 readonly renderer
+  source/index.ts                  # source binding factory
+  setters/index.ts                 # setter factory 与常用 setter
+  defaults/index.ts                # JSON-safe 默认值 factory
+  bindings/index.ts                # Provider value binding（需要时）
+```
+
+- `createDesignerRegistry()` 统一接收 `{ materials, layers, rendererNamespace }`；direct materials 优先于高级 layers，Provider defaults 始终最后。Provider adapter 不再自行制造 `consumer-materials` layer。
+- 普通字段在能保持 Runtime binding、Setter 顺序、节点默认 label/field/defaultValue/props 严格等价时迁移到 `defineDesignerFieldMaterial()`；复杂 choice、自定义 setter、布局和子图不为追求迁移数量而改语义。
+- 物料叶子保持声明原子，不把一个物料的 runtime/source/setters/locale 拆散到多个 service。
+- 注册、source 和 setter 转换是确定性纯函数，归入 service/utils；只有依赖 `ref/inject/provide` 或组件生命周期的 option context/resolver 使用 composable。

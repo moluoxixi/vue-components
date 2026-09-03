@@ -24,11 +24,9 @@ export function createAntdVueDesignerRegistry(
       ? { ...material, analyze: createAntdVueOptionDiagnostics(options.optionResolver) }
       : material
   ))
-  const consumerLayers: DesignerRegistryLayer[] = options.materials
-    ? [{ name: 'consumer-materials', materials: options.materials }]
-    : []
-  return createDesignerRegistry(
-    [...consumerLayers, ...(options.layers ?? []), { ...antdVueDesignerRegistryLayer, materials }],
-    { rendererNamespace: 'mx-antd-config-form' },
-  )
+  return createDesignerRegistry({
+    materials: options.materials,
+    layers: [...(options.layers ?? []), { ...antdVueDesignerRegistryLayer, materials }],
+    rendererNamespace: 'mx-antd-config-form',
+  })
 }

@@ -97,7 +97,7 @@ describe('designer field material', () => {
     expect(second.props).toEqual({ metadata: { roles: ['admin'] } })
     expect(second.defaultValue).toEqual(['admin'])
 
-    const registry = createDesignerRegistry([{ name: 'project', materials: [material] }])
+    const registry = createDesignerRegistry({ materials: [material] })
     const subgraph = registry.createSubgraph(material.key, { id: 'registered', field: 'profile' })
     expect(() => pageGraphSchema.parse({
       version: 2,
@@ -106,5 +106,23 @@ describe('designer field material', () => {
       root: subgraph.root,
       nodesById: subgraph.nodesById,
     })).not.toThrow()
+  })
+
+  it('prioritizes direct materials above advanced layers and rejects duplicates', () => {
+    const direct = defineDesignerFieldMaterial({
+      key: 'project.input',
+      title: 'Direct input',
+      category: 'Fields',
+      component: 'input',
+    })
+    const layered = { ...direct, title: 'Layered input' }
+    const registry = createDesignerRegistry({
+      materials: [direct],
+      layers: [{ name: 'advanced', materials: [layered] }],
+    })
+
+    expect(registry.getMaterial(direct.key)?.title).toBe('Direct input')
+    expect(() => createDesignerRegistry({ materials: [direct, direct] }))
+      .toThrow(/Duplicate designer material in materials/)
   })
 })

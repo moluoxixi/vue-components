@@ -270,6 +270,8 @@ export interface DesignerRegistryLayer {
 }
 
 export interface DesignerRegistryOptions {
+  layers?: readonly DesignerRegistryLayer[]
+  materials?: Iterable<DesignerMaterialDefinition>
   rendererNamespace?: string
 }
 

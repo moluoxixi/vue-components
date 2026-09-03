@@ -1,40 +1,33 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'search',
   order: 30,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.search',
       source: s.antdSource('text', 'a-input-search'),
-      version: 1,
-      kind: 'field',
       title: 'Search',
       category: 'Fields',
       icon: s.SearchIcon,
+      component: s.Input.Search,
       runtime: {
-        component: s.Input.Search,
         ...s.valueBinding,
         readonlyProp: 'readonly',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
       events: [{ name: 'search', title: 'Search' }],
-      setters: [
-        s.defaultValueSetter('text'),
-        s.placeholderSetter,
-        s.allowClearSetter,
-        s.propSetter('enterButton', 'Search button', 'boolean'),
-      ],
-      createNode: ({ id, field = 'search' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.search',
-        field,
-        label: 'Search',
-        props: { placeholder: '', enterButton: false },
-      }),
-    },
+      value: { kind: 'text' },
+      props: {
+        placeholder: { label: 'Placeholder', control: 'text', default: '' },
+        allowClear: { label: 'Allow clear', control: 'boolean' },
+        enterButton: { label: 'Search button', control: 'boolean', default: false },
+      },
+    }),
     locale: {
       title: '搜索框',
       category: '字段',

@@ -179,6 +179,110 @@ describe('ant design vue designer materials', () => {
     }
   })
 
+  it('keeps factory-backed field setters and node defaults exact', () => {
+    const registry = createAntdVueDesignerRegistry()
+    const expected: Record<string, {
+      constraints?: Record<string, Record<string, number>>
+      node: Record<string, unknown>
+      readonlyProp: string
+      setters: string[]
+      valueKind: string
+    }> = {
+      'antd.input': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'allowClear:boolean', 'maxlength:number'],
+        node: { field: 'input', label: 'Input', props: { placeholder: '' } },
+        readonlyProp: 'readonly',
+        valueKind: 'text',
+        constraints: { maxlength: { min: 0, step: 1 } },
+      },
+      'antd.password': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'allowClear:boolean', 'visibilityToggle:boolean', 'maxlength:number'],
+        node: { field: 'password', label: 'Password', props: { placeholder: '', visibilityToggle: true } },
+        readonlyProp: 'readonly',
+        valueKind: 'text',
+        constraints: { maxlength: { min: 0, step: 1 } },
+      },
+      'antd.search': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'allowClear:boolean', 'enterButton:boolean'],
+        node: { field: 'search', label: 'Search', props: { placeholder: '', enterButton: false } },
+        readonlyProp: 'readonly',
+        valueKind: 'text',
+      },
+      'antd.textarea': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'rows:number', 'maxlength:number'],
+        node: { field: 'textarea', label: 'Textarea', props: { rows: 3, placeholder: '' } },
+        readonlyProp: 'readonly',
+        valueKind: 'text',
+        constraints: { rows: { min: 1, max: 20, step: 1 }, maxlength: { min: 0, step: 1 } },
+      },
+      'antd.input-number': {
+        setters: ['defaultValue:defaultValue', 'min:number', 'max:number', 'step:number', 'controls:boolean'],
+        node: { field: 'number', label: 'Number', props: { step: 1, controls: true } },
+        readonlyProp: 'disabled',
+        valueKind: 'number',
+        constraints: { step: { min: 0 } },
+      },
+      'antd.slider': {
+        setters: ['defaultValue:defaultValue', 'min:number', 'max:number', 'step:number'],
+        node: { field: 'slider', label: 'Slider', defaultValue: 0, props: { min: 0, max: 100, step: 1 } },
+        readonlyProp: 'disabled',
+        valueKind: 'number',
+        constraints: { step: { min: 0 } },
+      },
+      'antd.rate': {
+        setters: ['defaultValue:defaultValue', 'count:number', 'allowHalf:boolean', 'allowClear:boolean'],
+        node: { field: 'rate', label: 'Rate', defaultValue: 0, props: { count: 5, allowHalf: false, allowClear: true } },
+        readonlyProp: 'disabled',
+        valueKind: 'number',
+        constraints: { count: { min: 1, max: 10, step: 1 } },
+      },
+      'antd.date': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'allowClear:boolean', 'format:text'],
+        node: { field: 'date', label: 'Date', props: { valueFormat: 'YYYY-MM-DD', placeholder: '' } },
+        readonlyProp: 'disabled',
+        valueKind: 'date',
+      },
+      'antd.time': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'allowClear:boolean', 'format:text'],
+        node: { field: 'time', label: 'Time', props: { valueFormat: 'HH:mm:ss', placeholder: '' } },
+        readonlyProp: 'disabled',
+        valueKind: 'time',
+      },
+    }
+
+    for (const [key, contract] of Object.entries(expected)) {
+      const material = registry.getMaterial(key)
+      expect(material?.kind).toBe('field')
+      if (!material || material.kind !== 'field')
+        continue
+      expect(material.setters.map(setter => `${setter.key}:${setter.control}`)).toEqual(contract.setters)
+      expect(material.setters[0]).toMatchObject({
+        path: ['defaultValue'],
+        valueKind: contract.valueKind,
+      })
+      expect(material.setters.slice(1).every(setter => setter.path.join('.') === `props.${setter.key}`)).toBe(true)
+      for (const [key, constraints] of Object.entries(contract.constraints ?? {}))
+        expect(material.setters.find(setter => setter.key === key)).toMatchObject(constraints)
+      expect({
+        valueProp: material.runtime.valueProp,
+        trigger: material.runtime.trigger,
+        readonlyProp: material.runtime.readonlyProp,
+        readonlyRender: typeof material.runtime.readonlyRender,
+      }).toEqual({
+        valueProp: 'value',
+        trigger: 'update:value',
+        readonlyProp: contract.readonlyProp,
+        readonlyRender: 'function',
+      })
+      expect(material.createNode({ id: 'node' })).toEqual({
+        id: 'node',
+        kind: 'field',
+        component: key,
+        ...contract.node,
+      })
+    }
+  })
+
   it('renders semantic readonly values against canonical field nodes', async () => {
     const select = fieldNode('antd.select', 'environment')
     const autoComplete = fieldNode('antd.auto-complete', 'project')
@@ -227,21 +331,35 @@ describe('ant design vue designer materials', () => {
     expect(readonlyWrapper.text()).toBe('Project A')
   })
 
-  it('keeps caller registry layers above provider defaults', () => {
+  it('keeps direct materials above advanced layers and provider defaults', () => {
     const override = defineDesignerFieldMaterial({
       key: 'antd.input',
       title: 'Override input',
       category: 'Custom',
       component: 'input',
     })
+    const layered = defineDesignerFieldMaterial({
+      key: 'antd.input',
+      title: 'Layered input',
+      category: 'Custom',
+      component: 'input',
+    })
     const preview = defineComponent({ name: 'ProjectPreview' })
     const registry = createAntdVueDesignerRegistry({
       materials: [override],
-      layers: [{ name: 'custom-components', components: { 'project.preview': preview } }],
+      layers: [{
+        name: 'custom-components',
+        components: { 'project.preview': preview },
+        materials: [layered],
+      }],
+    })
+    const layeredRegistry = createAntdVueDesignerRegistry({
+      layers: [{ name: 'custom-materials', materials: [layered] }],
     })
 
     expect(registry.rendererNamespace).toBe('mx-antd-config-form')
     expect(registry.getMaterial('antd.input')?.title).toBe('Override input')
+    expect(layeredRegistry.getMaterial('antd.input')?.title).toBe('Layered input')
     expect(registry.components['project.preview']).toBe(preview)
     expect(registry.listMaterials()).toHaveLength(expectedKeys.length)
     expect(registry.createSubgraph('antd.input', { id: 'custom', field: 'custom' }).nodesById.custom)

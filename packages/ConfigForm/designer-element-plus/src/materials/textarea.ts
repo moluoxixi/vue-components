@@ -1,34 +1,29 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as shared from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'textarea',
   order: 20,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'element.textarea',
       source: shared.elementSource('textarea', 'el-input', { staticProps: { type: 'textarea' } }),
-      version: 1,
-      kind: 'field',
       title: 'Textarea',
       category: 'Fields',
       icon: shared.AlignLeft,
-      runtime: { component: shared.ElInput, readonlyProp: 'readonly', readonlyRender: shared.renderElementPlusRawReadonly },
-      setters: [
-        shared.defaultValueSetter('text'),
-        shared.placeholderSetter,
-        shared.propSetter('rows', 'Rows', 'number', undefined, { min: 1, max: 20, step: 1 }),
-        shared.propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 }),
-      ],
-      createNode: ({ id, field = 'textarea' }) => ({
-        id,
-        kind: 'field',
-        component: 'element.textarea',
-        field,
-        label: 'Textarea',
-        props: { type: 'textarea', rows: 3, placeholder: '' },
-      }),
-    },
+      component: shared.ElInput,
+      runtime: { readonlyProp: 'readonly', readonlyRender: shared.renderElementPlusRawReadonly },
+      value: { kind: 'text' },
+      defaultProps: { type: 'textarea' },
+      props: {
+        placeholder: { label: 'Placeholder', control: 'text', default: '' },
+        rows: { label: 'Rows', control: 'number', default: 3, min: 1, max: 20, step: 1 },
+        maxlength: { label: 'Max length', control: 'number', min: 0, step: 1 },
+      },
+    }),
     locale: { title: '多行输入', category: '字段', setters: { defaultValue: '默认值', placeholder: '占位文本', rows: '行数', maxlength: '最大长度' } },
   },
 })

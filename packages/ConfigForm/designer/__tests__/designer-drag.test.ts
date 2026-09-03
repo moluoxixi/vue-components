@@ -179,7 +179,7 @@ describe('designer drag controller', () => {
   })
 
   it('creates one registry-backed node identity for candidate and commit projections', () => {
-    const registry = createDesignerRegistry([{ name: 'test', materials: [material] }])
+    const registry = createDesignerRegistry({ materials: [material] })
     const candidate = createDesignerMaterialCandidate(registry, 'element.input', 'candidate-4')
     const committed = createDesignerMaterialCandidate(registry, 'element.input', 'candidate-4')
 

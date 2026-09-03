@@ -1,39 +1,33 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'date',
   order: 130,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.date',
       source: s.antdSource('text', 'a-date-picker'),
-      version: 1,
-      kind: 'field',
       title: 'Date',
       category: 'Date & time',
       icon: s.Calendar,
+      component: s.DatePicker,
       runtime: {
-        component: s.DatePicker,
         ...s.valueBinding,
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
-      setters: [
-        s.defaultValueSetter('date'),
-        s.placeholderSetter,
-        s.allowClearSetter,
-        s.propSetter('format', 'Display format', 'text'),
-      ],
-      createNode: ({ id, field = 'date' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.date',
-        field,
-        label: 'Date',
-        props: { valueFormat: 'YYYY-MM-DD', placeholder: '' },
-      }),
-    },
+      value: { kind: 'date' },
+      defaultProps: { valueFormat: 'YYYY-MM-DD' },
+      props: {
+        placeholder: { label: 'Placeholder', control: 'text', default: '' },
+        allowClear: { label: 'Allow clear', control: 'boolean' },
+        format: { label: 'Display format', control: 'text' },
+      },
+    }),
     locale: {
       title: '日期',
       category: '日期时间',

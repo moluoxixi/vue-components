@@ -7,7 +7,7 @@ import {
   areDesignerJsonValuesEqual,
   designerDiagnostic,
 } from '@moluoxixi/config-form-designer'
-import { normalizeAntdVueOptions, readAntdVueOptionSource } from '../composables'
+import { normalizeAntdVueOptions, readAntdVueOptionSource } from '../utils'
 
 export function createAntdVueOptionDiagnostics(
   context?: AntdVueOptionResolverContext,

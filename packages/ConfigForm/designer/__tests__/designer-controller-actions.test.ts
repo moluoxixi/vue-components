@@ -4,7 +4,7 @@ import { useDesignerController } from '../src/composables/use-designer-controlle
 import { createNodePathCommand } from '../src/graph'
 import { createDesignerRegistry } from '../src/registry'
 
-const registry = createDesignerRegistry([{ name: 'test', materials: [
+const registry = createDesignerRegistry({ materials: [
   {
     key: 'test.input',
     version: 1,
@@ -26,7 +26,7 @@ const registry = createDesignerRegistry([{ name: 'test', materials: [
     slots: [{ name: 'default', title: 'Content', accepts: ['field', 'layout'] }],
     createNode: ({ id }) => ({ id, kind: 'layout', component: 'test.section', slots: { default: [] } }),
   },
-] }])
+] })
 
 const graph: PageGraph = {
   version: 2,

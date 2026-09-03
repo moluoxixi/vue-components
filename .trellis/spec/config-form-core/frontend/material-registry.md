@@ -26,6 +26,12 @@ createDesignerMaterialModuleRegistry(
   modules: DesignerMaterialModuleMap,
 ): DesignerMaterialModuleRegistry
 
+createDesignerRegistry({
+  materials?,
+  layers?,
+  rendererNamespace?,
+}): DesignerRegistry
+
 defineDesignerFieldMaterial({
   key,
   title,
@@ -68,6 +74,9 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 - Every generated node receives a deep clone of default props/defaultValue. The helper never owns global field-name uniqueness; the Designer controller continues to supply the unique field in `DesignerCreateNodeContext`.
 - Provider Designer registries accept one options object with `materials`, advanced `layers`, and provider option resolution. Consumer materials are wrapped in an internal highest-precedence layer so normal callers never invent a layer name.
 - `DesignerMaterialDefinition.createNode` and `DesignerRegistryLayer` remain public low-level contracts for layout materials, subgraphs, custom component registries, validators, and advanced precedence composition.
+- Core `createDesignerRegistry()` directly owns consumer material precedence. Its order is direct `materials`, then advanced `layers` in declaration order; Provider adapters append their default layer last and must not duplicate anonymous consumer-layer assembly.
+- Provider material leaf files stay atomic, but cross-material utilities are separated by responsibility. A `shared.ts` file must not combine icons, Vue components, source binding, setters, defaults, and binding constants.
+- Registry/module/source/setter construction is pure service or utility code. Use a composable only when the implementation actually owns Vue reactive state, injection, or lifecycle.
 
 ## 4. Validation & Error Matrix
 

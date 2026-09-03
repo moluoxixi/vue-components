@@ -1,40 +1,32 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'rate',
   order: 120,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.rate',
       source: s.antdSource('number', 'a-rate'),
-      version: 1,
-      kind: 'field',
       title: 'Rate',
       category: 'Choices',
       icon: s.Star,
+      component: s.Rate,
       runtime: {
-        component: s.Rate,
         ...s.valueBinding,
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
-      setters: [
-        s.defaultValueSetter('number'),
-        s.propSetter('count', 'Count', 'number', undefined, { min: 1, max: 10, step: 1 }),
-        s.propSetter('allowHalf', 'Allow half', 'boolean'),
-        s.allowClearSetter,
-      ],
-      createNode: ({ id, field = 'rate' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.rate',
-        field,
-        label: 'Rate',
-        defaultValue: 0,
-        props: { count: 5, allowHalf: false, allowClear: true },
-      }),
-    },
+      value: { kind: 'number', default: 0 },
+      props: {
+        count: { label: 'Count', control: 'number', default: 5, min: 1, max: 10, step: 1 },
+        allowHalf: { label: 'Allow half', control: 'boolean', default: false },
+        allowClear: { label: 'Allow clear', control: 'boolean', default: true },
+      },
+    }),
     locale: {
       title: '评分',
       category: '选择',

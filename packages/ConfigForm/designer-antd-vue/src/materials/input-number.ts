@@ -1,40 +1,34 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'input-number',
   order: 50,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.input-number',
       source: s.antdSource('number', 'a-input-number'),
-      version: 1,
-      kind: 'field',
       title: 'Number',
       category: 'Fields',
       icon: s.Hash,
+      component: s.InputNumber,
+      defaultField: 'number',
       runtime: {
-        component: s.InputNumber,
         ...s.valueBinding,
         readonlyProp: 'disabled',
         readonlyRender: s.renderAntdVueRawReadonly,
       },
-      setters: [
-        s.defaultValueSetter('number'),
-        s.propSetter('min', 'Minimum', 'number'),
-        s.propSetter('max', 'Maximum', 'number'),
-        s.propSetter('step', 'Step', 'number', undefined, { min: 0 }),
-        s.propSetter('controls', 'Controls', 'boolean'),
-      ],
-      createNode: ({ id, field = 'number' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.input-number',
-        field,
-        label: 'Number',
-        props: { step: 1, controls: true },
-      }),
-    },
+      value: { kind: 'number' },
+      props: {
+        min: { label: 'Minimum', control: 'number' },
+        max: { label: 'Maximum', control: 'number' },
+        step: { label: 'Step', control: 'number', default: 1, min: 0 },
+        controls: { label: 'Controls', control: 'boolean', default: true },
+      },
+    }),
     locale: {
       title: '数字输入',
       category: '字段',

@@ -148,20 +148,120 @@ describe('element plus designer materials', () => {
     }
   })
 
-  it('keeps caller registry layers above provider defaults', () => {
+  it('keeps factory-backed field setters and node defaults exact', () => {
+    const registry = createElementPlusDesignerRegistry()
+    const expected: Record<string, {
+      constraints?: Record<string, Record<string, number>>
+      field: string
+      props: Record<string, unknown>
+      readonlyProp: string
+      setters: string[]
+      valueKind: string
+    }> = {
+      'element.input': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'clearable:boolean', 'maxlength:number'],
+        field: 'input',
+        props: { placeholder: '' },
+        readonlyProp: 'readonly',
+        valueKind: 'text',
+        constraints: { maxlength: { min: 0, step: 1 } },
+      },
+      'element.textarea': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'rows:number', 'maxlength:number'],
+        field: 'textarea',
+        props: { type: 'textarea', rows: 3, placeholder: '' },
+        readonlyProp: 'readonly',
+        valueKind: 'text',
+        constraints: { rows: { min: 1, max: 20, step: 1 }, maxlength: { min: 0, step: 1 } },
+      },
+      'element.input-number': {
+        setters: ['defaultValue:defaultValue', 'min:number', 'max:number', 'step:number', 'controls:boolean'],
+        field: 'number',
+        props: { step: 1, controls: true },
+        readonlyProp: 'disabled',
+        valueKind: 'number',
+        constraints: { step: { min: 0 } },
+      },
+      'element.date': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'clearable:boolean', 'format:text'],
+        field: 'date',
+        props: { type: 'date', valueFormat: 'YYYY-MM-DD', placeholder: '' },
+        readonlyProp: 'readonly',
+        valueKind: 'date',
+      },
+      'element.time': {
+        setters: ['defaultValue:defaultValue', 'placeholder:text', 'clearable:boolean', 'format:text'],
+        field: 'time',
+        props: { valueFormat: 'HH:mm:ss', placeholder: '' },
+        readonlyProp: 'readonly',
+        valueKind: 'time',
+      },
+    }
+
+    for (const [key, contract] of Object.entries(expected)) {
+      const material = registry.getMaterial(key)
+      expect(material?.kind).toBe('field')
+      if (!material || material.kind !== 'field')
+        continue
+      expect(material.setters.map(setter => `${setter.key}:${setter.control}`)).toEqual(contract.setters)
+      expect(material.setters[0]).toMatchObject({
+        path: ['defaultValue'],
+        valueKind: contract.valueKind,
+      })
+      expect(material.setters.slice(1).every(setter => setter.path.join('.') === `props.${setter.key}`)).toBe(true)
+      for (const [key, constraints] of Object.entries(contract.constraints ?? {}))
+        expect(material.setters.find(setter => setter.key === key)).toMatchObject(constraints)
+      const valueProp = material.runtime.valueProp ?? 'modelValue'
+      expect({
+        valueProp,
+        trigger: material.runtime.trigger ?? `update:${valueProp}`,
+        readonlyProp: material.runtime.readonlyProp,
+        readonlyRender: typeof material.runtime.readonlyRender,
+      }).toEqual({
+        valueProp: 'modelValue',
+        trigger: 'update:modelValue',
+        readonlyProp: contract.readonlyProp,
+        readonlyRender: 'function',
+      })
+      expect(material.createNode({ id: 'node' })).toEqual({
+        id: 'node',
+        kind: 'field',
+        component: key,
+        field: contract.field,
+        label: material.title,
+        props: contract.props,
+      })
+    }
+  })
+
+  it('keeps direct materials above advanced layers and provider defaults', () => {
     const override = defineDesignerFieldMaterial({
       key: 'element.input',
       title: 'Override input',
       category: 'Custom',
       component: 'input',
     })
+    const layered = defineDesignerFieldMaterial({
+      key: 'element.input',
+      title: 'Layered input',
+      category: 'Custom',
+      component: 'input',
+    })
     const preview = defineComponent({ name: 'ProjectPreview' })
     const registry = createElementPlusDesignerRegistry({
       materials: [override],
-      layers: [{ name: 'custom-components', components: { 'project.preview': preview } }],
+      layers: [{
+        name: 'custom-components',
+        components: { 'project.preview': preview },
+        materials: [layered],
+      }],
+    })
+    const layeredRegistry = createElementPlusDesignerRegistry({
+      layers: [{ name: 'custom-materials', materials: [layered] }],
     })
 
     expect(registry.getMaterial('element.input')?.title).toBe('Override input')
+    expect(layeredRegistry.getMaterial('element.input')?.title).toBe('Layered input')
     expect(registry.components['project.preview']).toBe(preview)
     expect(registry.createSubgraph('element.input', { id: 'custom', field: 'custom' }).nodesById.custom)
       .toMatchObject({ component: 'element.input', field: 'custom' })

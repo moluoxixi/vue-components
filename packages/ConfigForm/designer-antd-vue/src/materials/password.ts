@@ -1,40 +1,33 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as s from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'password',
   order: 20,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'antd.password',
       source: s.antdSource('text', 'a-input-password'),
-      version: 1,
-      kind: 'field',
       title: 'Password',
       category: 'Fields',
       icon: s.KeyRound,
+      component: s.Input.Password,
       runtime: {
-        component: s.Input.Password,
         ...s.valueBinding,
         readonlyProp: 'readonly',
         readonlyRender: s.renderAntdVuePasswordReadonly,
       },
-      setters: [
-        s.defaultValueSetter('text'),
-        s.placeholderSetter,
-        s.allowClearSetter,
-        s.propSetter('visibilityToggle', 'Visibility toggle', 'boolean'),
-        s.propSetter('maxlength', 'Max length', 'number', undefined, { min: 0, step: 1 }),
-      ],
-      createNode: ({ id, field = 'password' }) => ({
-        id,
-        kind: 'field',
-        component: 'antd.password',
-        field,
-        label: 'Password',
-        props: { placeholder: '', visibilityToggle: true },
-      }),
-    },
+      value: { kind: 'text' },
+      props: {
+        placeholder: { label: 'Placeholder', control: 'text', default: '' },
+        allowClear: { label: 'Allow clear', control: 'boolean' },
+        visibilityToggle: { label: 'Visibility toggle', control: 'boolean', default: true },
+        maxlength: { label: 'Max length', control: 'number', min: 0, step: 1 },
+      },
+    }),
     locale: {
       title: '密码框',
       category: '字段',

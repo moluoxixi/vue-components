@@ -242,6 +242,15 @@ const registry = createElementPlusDesignerRegistry({
 - 注册器拒绝危险名称、重复名称、多点文件名和非法顺序，并按 `order -> name -> source` 确定性排序。
 - 扫描只生成内置默认层，不是业务运行时扩展机制。
 
+Designer 物料代码位置固定如下：
+
+- `designer-element-plus/src/materials/<name>.ts` 与 `designer-antd-vue/src/materials/<name>.ts`：单个物料声明。
+- 两个 Adapter 的 `src/materials/{icons,runtime,source,setters,defaults,bindings}/index.ts`：按职责拆分的跨物料能力；`shared/index.ts` 只做叶子声明的聚合入口。
+- 两个 Adapter 的 `src/materials/registry.ts`：仅负责 glob 聚合、排序、locale 和 capability registry。
+- 两个 Adapter 的 `src/registries/designer-registry.ts`：组合业务 `materials`、高级 `layers` 与 Provider 默认层。
+- `designer/src/registry/services/registry.ts`：Provider 无关的合并与 first-wins 注册算法；校验和子图创建分别位于 `registry/validation` 与 `registry/services/subgraph.ts`。
+- `workbench/src/adapters/services/load.ts`：选择 Provider registry，并将同一 capability registry 接入 Contract、Runtime 和 Source export。
+
 ### 注册优先级
 
 - Element/Antd 轻量 UI：适配器默认组件在前，调用方 `components` 在后，因此调用方覆盖默认项。

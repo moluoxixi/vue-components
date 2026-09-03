@@ -1,35 +1,30 @@
-import { defineDesignerMaterialModule } from '@moluoxixi/config-form-designer'
+import {
+  defineDesignerFieldMaterial,
+  defineDesignerMaterialModule,
+} from '@moluoxixi/config-form-designer'
 import * as shared from './shared'
 
 export default defineDesignerMaterialModule({
   name: 'input-number',
   order: 30,
   value: {
-    material: {
+    material: defineDesignerFieldMaterial({
       key: 'element.input-number',
       source: shared.elementSource('number', 'el-input-number'),
-      version: 1,
-      kind: 'field',
       title: 'Number',
       category: 'Fields',
       icon: shared.Hash,
-      runtime: { component: shared.ElInputNumber, readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusRawReadonly },
-      setters: [
-        shared.defaultValueSetter('number'),
-        shared.propSetter('min', 'Minimum', 'number'),
-        shared.propSetter('max', 'Maximum', 'number'),
-        shared.propSetter('step', 'Step', 'number', undefined, { min: 0 }),
-        shared.propSetter('controls', 'Controls', 'boolean'),
-      ],
-      createNode: ({ id, field = 'number' }) => ({
-        id,
-        kind: 'field',
-        component: 'element.input-number',
-        field,
-        label: 'Number',
-        props: { step: 1, controls: true },
-      }),
-    },
+      component: shared.ElInputNumber,
+      defaultField: 'number',
+      runtime: { readonlyProp: 'disabled', readonlyRender: shared.renderElementPlusRawReadonly },
+      value: { kind: 'number' },
+      props: {
+        min: { label: 'Minimum', control: 'number' },
+        max: { label: 'Maximum', control: 'number' },
+        step: { label: 'Step', control: 'number', default: 1, min: 0 },
+        controls: { label: 'Controls', control: 'boolean', default: true },
+      },
+    }),
     locale: { title: '数字输入', category: '字段', setters: { defaultValue: '默认值', min: '最小值', max: '最大值', step: '步长', controls: '显示控件' } },
   },
 })

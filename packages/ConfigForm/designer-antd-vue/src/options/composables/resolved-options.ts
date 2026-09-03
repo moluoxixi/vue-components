@@ -4,11 +4,7 @@ import type {
   AntdVueOptionSource,
   AntdVueResolvedOptionState,
 } from '../../types'
-import {
-  normalizeDesignerOptions,
-  readDesignerOptionSource,
-  useDesignerResolvedOptions,
-} from '@moluoxixi/config-form-designer'
+import { useDesignerResolvedOptions } from '@moluoxixi/config-form-designer'
 import { useAntdVueOptionResolverContext } from './context'
 
 export function useAntdVueResolvedOptions(
@@ -20,12 +16,4 @@ export function useAntdVueResolvedOptions(
     AntdVueOptionSource,
     AntdVueResolvedOptionState
   >(source, staticOptions, useAntdVueOptionResolverContext())
-}
-
-export function readAntdVueOptionSource(value: unknown): AntdVueOptionSource | undefined {
-  return readDesignerOptionSource(value)
-}
-
-export function normalizeAntdVueOptions(options: readonly unknown[] | undefined): AntdVueDesignerOption[] {
-  return normalizeDesignerOptions(options)
 }

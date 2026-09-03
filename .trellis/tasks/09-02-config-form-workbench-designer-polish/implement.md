@@ -78,6 +78,14 @@
 - [ ] 更新 ConfigForm 架构 README、material registry spec 与独立包 consumer smoke。
 - [ ] 运行 Designer、两套 Designer adapter、Workbench 的 test/typecheck/build，以及 `pnpm test:config-form-packages`、lint 和 `git diff --check`。
 
+## 6.4 物料注册结构收敛
+
+- [ ] 将 Core `createDesignerRegistry` 改为 `{ materials, layers, rendererNamespace }` 对象参数，并迁移所有直接调用。
+- [ ] 将字段物料 factory 的字段名、默认值和 setter 转换拆到私有 `registry/utils`。
+- [ ] 将两套 Adapter 的 `materials/shared.ts` 拆为职责目录下的 `index.ts`，`shared/index.ts` 仅聚合，并保持 glob 只扫描叶子物料。
+- [ ] 迁移可严格等价的普通字段物料到 `defineDesignerFieldMaterial()`，增加 setter 顺序和完整节点默认值矩阵。
+- [ ] 检查 option composable 只保留响应式/注入职责；纯函数继续归属 utils，不新增无状态 hook。
+
 ## 7. 评审与回滚
 
 - [ ] 独立确认 diff 未触及 Project Model、History、Command、RuntimeHost schema 或 Runtime styles。

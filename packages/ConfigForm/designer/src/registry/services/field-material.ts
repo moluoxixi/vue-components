@@ -1,41 +1,14 @@
-import type { ModelJsonObject, ModelJsonValue } from '@moluoxixi/config-form-model'
 import type {
   DesignerFieldMaterialDefinition,
   DesignerFieldMaterialOptions,
-  DesignerFieldMaterialPropertyDefinition,
   DesignerPropertySetterDefinition,
 } from '../types'
-
-function cloneJsonValue<T extends ModelJsonValue>(value: T): T {
-  return structuredClone(value)
-}
-
-function defaultFieldFor(key: string): string {
-  const field = key.split('.').at(-1)?.replace(/\W+/g, '_').replace(/^_+|_+$/g, '')
-  return field || 'field'
-}
-
-function propertySetter(
-  key: string,
-  definition: DesignerFieldMaterialPropertyDefinition,
-): DesignerPropertySetterDefinition {
-  const { default: _default, ...setter } = definition
-  return {
-    ...setter,
-    key,
-    path: ['props', key],
-  }
-}
-
-function propertyDefaults(
-  definitions: Readonly<Record<string, DesignerFieldMaterialPropertyDefinition>>,
-): ModelJsonObject {
-  return Object.fromEntries(Object.entries(definitions).flatMap(([key, definition]) => (
-    definition.default === undefined
-      ? []
-      : [[key, cloneJsonValue(definition.default)]]
-  )))
-}
+import {
+  cloneDesignerJsonValue,
+  createDesignerFieldPropertyDefaults,
+  createDesignerFieldPropertySetter,
+  resolveDesignerDefaultField,
+} from '../utils/field-material'
 
 /** Defines the common one-field material shape without exposing node-factory boilerplate. */
 export function defineDesignerFieldMaterial(
@@ -43,7 +16,7 @@ export function defineDesignerFieldMaterial(
 ): DesignerFieldMaterialDefinition {
   const {
     component,
-    defaultField = defaultFieldFor(options.key),
+    defaultField = resolveDesignerDefaultField(options.key),
     defaultLabel = options.title,
     defaultProps = {},
     props = {},
@@ -55,11 +28,11 @@ export function defineDesignerFieldMaterial(
   } = options
   const initialProps = {
     ...structuredClone(defaultProps),
-    ...propertyDefaults(props),
+    ...createDesignerFieldPropertyDefaults(props),
   }
   const initialDefaultValue = value?.default === undefined
     ? undefined
-    : cloneJsonValue(value.default)
+    : cloneDesignerJsonValue(value.default)
   const generatedSetters: DesignerPropertySetterDefinition[] = [
     ...(value
       ? [{
@@ -70,7 +43,7 @@ export function defineDesignerFieldMaterial(
           valueKind: value.kind,
         }]
       : []),
-    ...Object.entries(props).map(([key, prop]) => propertySetter(key, prop)),
+    ...Object.entries(props).map(([key, prop]) => createDesignerFieldPropertySetter(key, prop)),
     ...setters,
   ]
 
@@ -89,7 +62,7 @@ export function defineDesignerFieldMaterial(
       props: structuredClone(initialProps),
       ...(initialDefaultValue === undefined
         ? {}
-        : { defaultValue: cloneJsonValue(initialDefaultValue) }),
+        : { defaultValue: cloneDesignerJsonValue(initialDefaultValue) }),
     }),
   }
 }

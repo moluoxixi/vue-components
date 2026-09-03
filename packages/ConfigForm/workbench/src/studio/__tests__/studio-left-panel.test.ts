@@ -11,7 +11,7 @@ import {
   duplicateProjectPage,
 } from '../../project/__tests__/fixtures'
 
-const registry = createDesignerRegistry([{ name: 'test', materials: [{
+const registry = createDesignerRegistry({ materials: [{
   key: 'test.input',
   version: 1,
   kind: 'field',
@@ -21,7 +21,7 @@ const registry = createDesignerRegistry([{ name: 'test', materials: [{
   source: { configComponent: 'text', render: 'component', tag: 'input' },
   setters: [],
   createNode: ({ id, field = 'input' }) => ({ id, field, kind: 'field', component: 'test.input' }),
-}] }])
+}] })
 
 function studioProject(): ProjectDocument {
   const base = createProjectDocumentFixture({ id: 'app' })
