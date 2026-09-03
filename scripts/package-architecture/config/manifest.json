@@ -1,0 +1,1512 @@
+{
+  "version": 1,
+  "packageExceptions": [
+    {
+      "package": "packages/ConfigForm/playground",
+      "kind": "private-app",
+      "rules": [
+        "package.root-index-required"
+      ],
+      "reason": "Private Vite playground uses src/main.ts and has no published package surface."
+    },
+    {
+      "package": "packages/ConfigForm/workbench",
+      "kind": "private-app",
+      "rules": [
+        "package.root-index-required"
+      ],
+      "reason": "Private Vite workbench uses src/main.ts and has no published package surface."
+    },
+    {
+      "package": "packages/vitepress-theme-element-plus/fixtures/basic",
+      "kind": "framework",
+      "rules": [
+        "package.src-required"
+      ],
+      "reason": "Private VitePress fixture contains consumer configuration rather than package source."
+    },
+    {
+      "package": "packages/vitepress-theme-element-plus/fixtures/consumer",
+      "kind": "framework",
+      "rules": [
+        "package.src-required"
+      ],
+      "reason": "Private VitePress fixture contains consumer configuration rather than package source."
+    }
+  ],
+  "pathExceptions": [
+    {
+      "path": "packages/vitepress-theme-element-plus/src/upstream",
+      "kind": "third-party",
+      "reason": "Vendored upstream VitePress source is maintained against upstream rather than local ownership rules."
+    }
+  ],
+  "componentExceptions": [
+    {
+      "component": "packages/ai-doc-assistant/src/ui/App.vue",
+      "kind": "framework",
+      "rules": [
+        "component.single-feature-location"
+      ],
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/main.ts"
+      ],
+      "reason": "The published CLI bundles this Vue application through its dedicated UI build script."
+    },
+    {
+      "component": "packages/ConfigForm/playground/src/App.vue",
+      "kind": "framework",
+      "rules": [
+        "component.single-feature-location"
+      ],
+      "owners": [
+        "packages/ConfigForm/playground/src/main.ts"
+      ],
+      "reason": "Private Vite application root component."
+    },
+    {
+      "component": "packages/ConfigForm/playground/src/examples/ConfigForm.vue",
+      "kind": "dynamic",
+      "rules": [
+        "component.owner-required"
+      ],
+      "owners": [
+        "packages/ConfigForm/playground/src/examples"
+      ],
+      "reason": "The playground discovers example entry components dynamically."
+    },
+    {
+      "component": "packages/ConfigForm/workbench/src/App.vue",
+      "kind": "framework",
+      "rules": [
+        "component.single-feature-location"
+      ],
+      "owners": [
+        "packages/ConfigForm/workbench/src/main.ts"
+      ],
+      "reason": "Private Vite application root component."
+    },
+    {
+      "component": "packages/i18n-tool/src/ui/App.vue",
+      "kind": "framework",
+      "rules": [
+        "component.single-feature-location"
+      ],
+      "owners": [
+        "packages/i18n-tool/src/ui/main.ts"
+      ],
+      "reason": "The published CLI bundles this Vue application through its dedicated UI build script."
+    },
+    {
+      "component": "packages/vitepress-theme-element-plus/src/repl/ElementPlusDocsRepl.vue",
+      "kind": "dynamic",
+      "rules": [
+        "component.single-feature-location"
+      ],
+      "owners": [
+        "packages/vitepress-theme-element-plus/src/repl-entry.ts"
+      ],
+      "reason": "VitePress integration resolves this component through the theme runtime rather than a direct Vue parent."
+    }
+  ],
+  "debt": [
+    {
+      "path": "packages/components/src/ConfigTable/src/components/ColumnSettings.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/ConfigTable/components.",
+      "owners": [
+        "packages/components/src/ConfigTable/src/index.vue"
+      ]
+    },
+    {
+      "path": "packages/components/src/ConfigTable/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/ConfigTable/components.",
+      "owners": [
+        "packages/components/src/ConfigTable/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/CopyText/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/CopyText/components.",
+      "owners": [
+        "packages/components/src/CopyText/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/DateRangePicker/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/DateRangePicker/components.",
+      "owners": [
+        "packages/components/src/DateRangePicker/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/EnterNextContainer/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/EnterNextContainer/components.",
+      "owners": [
+        "packages/components/src/EnterNextContainer/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/HeadlessTable/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/HeadlessTable/components.",
+      "owners": [
+        "packages/components/src/HeadlessTable/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/PopoverTableSelect/src/components/PopoverTableSelectBase.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/PopoverTableSelect/components.",
+      "owners": [
+        "packages/components/src/PopoverTableSelect/src/index.vue"
+      ]
+    },
+    {
+      "path": "packages/components/src/PopoverTableSelect/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/PopoverTableSelect/components.",
+      "owners": [
+        "packages/components/src/PopoverTableSelect/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/RequestCascader/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/RequestCascader/components.",
+      "owners": [
+        "packages/components/src/RequestCascader/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/RequestSelectV2/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/RequestSelectV2/components.",
+      "owners": [
+        "packages/components/src/RequestSelectV2/index.ts"
+      ]
+    },
+    {
+      "path": "packages/components/src/RequestTreeSelect/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "components-structure-governance",
+      "reason": "Single-feature component must live under packages/components/src/RequestTreeSelect/components.",
+      "owners": [
+        "packages/components/src/RequestTreeSelect/index.ts"
+      ]
+    },
+    {
+      "path": "packages/ConfigForm/antd/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "config-form-runtime-domain-structure-governance",
+      "reason": "Single-feature component must live under packages/ConfigForm/antd/src/services/components.",
+      "owners": [
+        "packages/ConfigForm/antd/src/services/install.ts"
+      ]
+    },
+    {
+      "path": "packages/ConfigForm/element/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "config-form-runtime-domain-structure-governance",
+      "reason": "Single-feature component must live under packages/ConfigForm/element/src/services/components.",
+      "owners": [
+        "packages/ConfigForm/element/src/services/install.ts"
+      ]
+    },
+    {
+      "path": "packages/rich-text-editor/src/index.vue",
+      "rule": "component.single-feature-location",
+      "targetTask": "rich-text-editor-structure-governance",
+      "reason": "Single-feature component must live under packages/rich-text-editor/src/components.",
+      "owners": [
+        "packages/rich-text-editor/index.ts"
+      ]
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/components/DemoPreview.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/views/ChatView/components.",
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/views/ChatView.vue"
+      ]
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/components/MarkdownContent.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/views/ChatView/components.",
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/views/ChatView.vue"
+      ]
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/components/TypeReference.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/views/DetailView/components.",
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/views/DetailView.vue"
+      ]
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/components/WorkspaceTopbar.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/views/ChatView.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/views/DetailView.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/views/OverviewView.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
+      "owners": [
+        "packages/ai-doc-assistant/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/ConfigForm/playground/src/examples/AntdConfigForm.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "config-form-runtime-domain-structure-governance",
+      "reason": "Single-parent component must live under packages/ConfigForm/playground/src/examples/ConfigForm/components.",
+      "owners": [
+        "packages/ConfigForm/playground/src/examples/ConfigForm.vue"
+      ]
+    },
+    {
+      "path": "packages/ConfigForm/playground/src/examples/ElementConfigForm.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "config-form-runtime-domain-structure-governance",
+      "reason": "Single-parent component must live under packages/ConfigForm/playground/src/examples/ConfigForm/components.",
+      "owners": [
+        "packages/ConfigForm/playground/src/examples/ConfigForm.vue"
+      ]
+    },
+    {
+      "path": "packages/ConfigForm/workbench/src/features/templates/components/TemplateCreationWorkspace.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "config-form-workbench-structure-governance",
+      "reason": "Single-parent component must live under packages/ConfigForm/workbench/src/App/components.",
+      "owners": [
+        "packages/ConfigForm/workbench/src/App.vue"
+      ]
+    },
+    {
+      "path": "packages/ConfigForm/workbench/src/studio/components/PreviewDrawer.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "config-form-workbench-structure-governance",
+      "reason": "Single-parent component must live under packages/ConfigForm/workbench/src/app/components.",
+      "owners": [
+        "packages/ConfigForm/workbench/src/app/index.vue"
+      ]
+    },
+    {
+      "path": "packages/ConfigForm/workbench/src/studio/components/StudioLeftPanel.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "config-form-workbench-structure-governance",
+      "reason": "Single-parent component must live under packages/ConfigForm/workbench/src/app/components.",
+      "owners": [
+        "packages/ConfigForm/workbench/src/app/index.vue"
+      ]
+    },
+    {
+      "path": "packages/i18n-tool/src/ui/components/WorkspaceTabs.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
+      "owners": [
+        "packages/i18n-tool/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/i18n-tool/src/ui/components/WorkspaceTopbar.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
+      "owners": [
+        "packages/i18n-tool/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/i18n-tool/src/ui/views/ChangesView.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
+      "owners": [
+        "packages/i18n-tool/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/i18n-tool/src/ui/views/ResourcesView.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
+      "owners": [
+        "packages/i18n-tool/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/i18n-tool/src/ui/views/TranslateView.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
+      "owners": [
+        "packages/i18n-tool/src/ui/App.vue"
+      ]
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemoSource.vue",
+      "rule": "component.single-parent-location",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Single-parent component must live under packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemo/components.",
+      "owners": [
+        "packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemo.vue"
+      ]
+    },
+    {
+      "path": "packages/ai-provider/src/shared/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "ai-provider-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/ConfigTable/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/CopyText/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/DateRangePicker/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/EnterNextContainer/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/HeadlessCopyText/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/HeadlessTable/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/PopoverTableSelect/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/RequestCascader/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/RequestSelectV2/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/components/src/RequestTreeSelect/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/designer-antd-vue/src/materials/bindings/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-designer-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/designer-antd-vue/src/materials/defaults/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-designer-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/designer-antd-vue/src/materials/setters/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-designer-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/designer-antd-vue/src/materials/source/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-designer-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/designer-element-plus/src/materials/defaults/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-designer-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/designer-element-plus/src/materials/setters/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-designer-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/designer-element-plus/src/materials/source/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-designer-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/runtime/src/errors/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-runtime-domain-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ConfigForm/workbench/src/project/errors/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "config-form-workbench-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/markdown/demo/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/markdown/playground/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/markdown/project/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/markdown/source/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/content/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/playground/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/runtime/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/routes/index.ts",
+      "rule": "feature.index-barrel-only",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature and responsibility index.ts files must contain exports only."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/component-discovery.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/embedding-validation.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/extractor.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/generator.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/index-state.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/indexer.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/knowledge-source.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/meta-extractor.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/orama-store.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/persist.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/qdrant-store.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/retrieval-strategy.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/retriever.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/sfc-transpile.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/type-source.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/types.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/vector-store.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/vector-strategy.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/core/vue-block-extractor.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-doc-assistant/src/ui/preview/compile.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-doc-assistant-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-provider/src/server/error.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-provider-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-provider/src/server/model-factory.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-provider-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ai-provider/src/server/redact.ts",
+      "rule": "feature.root-file",
+      "targetTask": "ai-provider-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/components/src/HeadlessTable/src/core/renderer.ts",
+      "rule": "feature.root-file",
+      "targetTask": "components-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/hooks/src/composables/useBatchOperate/useBatchOperate.ts",
+      "rule": "feature.root-file",
+      "targetTask": "hooks-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/hooks/src/composables/useDetailPage/useDetailPage.ts",
+      "rule": "feature.root-file",
+      "targetTask": "hooks-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/hooks/src/composables/useFormSubmit/useFormSubmit.ts",
+      "rule": "feature.root-file",
+      "targetTask": "hooks-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/hooks/src/composables/useListPage/useListPage.ts",
+      "rule": "feature.root-file",
+      "targetTask": "hooks-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/hooks/src/composables/useRequestOptions/useRequestOptions.ts",
+      "rule": "feature.root-file",
+      "targetTask": "hooks-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/hooks/src/composables/useRequestTable/useRequestTable.ts",
+      "rule": "feature.root-file",
+      "targetTask": "hooks-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/config/loader.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/config/schema.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/config/types.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/analysis.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/identity.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/json.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/operations.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/registry.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/tokens.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/translation.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/core/types.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/atomic-write.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/context.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/error.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/path-guard.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/plugin.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/resource-pattern.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/router.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/i18n-tool/src/server/scanner.ts",
+      "rule": "feature.root-file",
+      "targetTask": "i18n-tool-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/auto-import.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/components.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/devtools.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/i18n.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/layouts.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/markdown.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/pages.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/pwa.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/react.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/tailwindcss.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/unocss.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/vite-ssg.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/vitest.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/vue-router.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/addons/vue.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/auto-import.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/components.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/devtools.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/i18n.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/markdown.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/pages.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/pwa.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/react.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/registry.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/runtime.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/shared.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/tailwindcss.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/unocss.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/vite-ssg.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/vitest.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/vue-layouts.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/vue-router.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vite-config/src/config/base/addons/vue.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vite-config-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/gitee.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/github.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/gitlab.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/local.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/yunxiao.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/lifecycle/cli.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/lifecycle/prepare.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/lifecycle/runtime.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/project/load-config.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/api-client.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/gitee.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/github.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/gitlab.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/local.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/sync.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/node/repository/yunxiao.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/project/config.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/vitepress-theme-element-plus/src/project/types.ts",
+      "rule": "feature.root-file",
+      "targetTask": "vitepress-theme-element-plus-structure-governance",
+      "reason": "Feature root files must move into a responsibility directory."
+    },
+    {
+      "path": "packages/ajax-package/package.json",
+      "rule": "package.build-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Build scripts must use the package root index.ts as the primary entry."
+    },
+    {
+      "path": "packages/eslint-config/package.json",
+      "rule": "package.build-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Build scripts must use the package root index.ts as the primary entry."
+    },
+    {
+      "path": "packages/excel/package.json",
+      "rule": "package.build-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Build scripts must use the package root index.ts as the primary entry."
+    },
+    {
+      "path": "packages/indexed-db/package.json",
+      "rule": "package.build-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Build scripts must use the package root index.ts as the primary entry."
+    },
+    {
+      "path": "packages/postcss-selector-prefix/package.json",
+      "rule": "package.build-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Build scripts must use the package root index.ts as the primary entry."
+    },
+    {
+      "path": "packages/utils/package.json",
+      "rule": "package.build-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Build scripts must use the package root index.ts as the primary entry."
+    },
+    {
+      "path": "packages/vite-config/package.json",
+      "rule": "package.build-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Build scripts must use the package root index.ts as the primary entry."
+    },
+    {
+      "path": "packages/components/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/antd/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/compiler/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/designer-antd-vue/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/designer-element-plus/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/designer/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/devtools-vite-plugin/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/element/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/headless/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/model/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/plugin-antd-vue/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/plugin-element-plus/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ConfigForm/vue-backend/index.ts",
+      "rule": "package.root-index-explicit-exports",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Root index.ts must export named src features instead of forwarding the src root."
+    },
+    {
+      "path": "packages/ajax-package/index.ts",
+      "rule": "package.root-index-required",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Package must expose its source entry from root index.ts."
+    },
+    {
+      "path": "packages/eslint-config/index.ts",
+      "rule": "package.root-index-required",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Package must expose its source entry from root index.ts."
+    },
+    {
+      "path": "packages/excel/index.ts",
+      "rule": "package.root-index-required",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Package must expose its source entry from root index.ts."
+    },
+    {
+      "path": "packages/indexed-db/index.ts",
+      "rule": "package.root-index-required",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Package must expose its source entry from root index.ts."
+    },
+    {
+      "path": "packages/postcss-selector-prefix/index.ts",
+      "rule": "package.root-index-required",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Package must expose its source entry from root index.ts."
+    },
+    {
+      "path": "packages/utils/index.ts",
+      "rule": "package.root-index-required",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Package must expose its source entry from root index.ts."
+    },
+    {
+      "path": "packages/vite-config/index.ts",
+      "rule": "package.root-index-required",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Package must expose its source entry from root index.ts."
+    },
+    {
+      "path": "packages/ajax-package/package.json",
+      "rule": "package.source-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Published package exports[\".\"].source must point to ./index.ts."
+    },
+    {
+      "path": "packages/eslint-config/package.json",
+      "rule": "package.source-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Published package exports[\".\"].source must point to ./index.ts."
+    },
+    {
+      "path": "packages/excel/package.json",
+      "rule": "package.source-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Published package exports[\".\"].source must point to ./index.ts."
+    },
+    {
+      "path": "packages/indexed-db/package.json",
+      "rule": "package.source-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Published package exports[\".\"].source must point to ./index.ts."
+    },
+    {
+      "path": "packages/postcss-selector-prefix/package.json",
+      "rule": "package.source-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Published package exports[\".\"].source must point to ./index.ts."
+    },
+    {
+      "path": "packages/utils/package.json",
+      "rule": "package.source-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Published package exports[\".\"].source must point to ./index.ts."
+    },
+    {
+      "path": "packages/vite-config/package.json",
+      "rule": "package.source-entry",
+      "targetTask": "package-root-entry-governance",
+      "reason": "Published package exports[\".\"].source must point to ./index.ts."
+    },
+    {
+      "path": "packages/ajax-package/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/components/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/antd/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/compiler/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/designer-antd-vue/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/designer-element-plus/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/designer/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/devtools-vite-plugin/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/element/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/headless/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/model/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/plugin-antd-vue/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/plugin-element-plus/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/ConfigForm/vue-backend/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/eslint-config/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/excel/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/indexed-db/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/postcss-selector-prefix/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/utils/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    },
+    {
+      "path": "packages/vite-config/src/index.ts",
+      "rule": "package.src-index-forbidden",
+      "targetTask": "package-root-entry-governance",
+      "reason": "src/index.ts duplicates the package root entry and must be removed."
+    }
+  ]
+}

@@ -49,6 +49,9 @@ jobs:
       - name: Typecheck ConfigForm Workbench
         run: pnpm --filter @config-form/workbench typecheck
 
+      - name: Verify package architecture
+        run: pnpm test:package-architecture
+
       - name: Test
         run: pnpm test
 

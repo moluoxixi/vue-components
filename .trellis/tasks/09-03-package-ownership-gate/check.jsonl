@@ -1,0 +1,2 @@
+{"file":".trellis/spec/directory-structure.md","reason":"核验目录与公共入口规则一致"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核验 manifest、collector、根脚本和各包之间的数据流"}

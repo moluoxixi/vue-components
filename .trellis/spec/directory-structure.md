@@ -12,10 +12,23 @@ of props, state, services, parsers, adapters, and helpers. Package-specific spec
 may add stricter boundaries, but they must link here instead of restating this
 contract.
 
+This contract also owns package-root entries and Vue component ownership for
+every workspace below `packages/`. Run `pnpm test:package-architecture` whenever
+package entries, feature directories, barrels, or component locations change.
+
 ## 2. Signatures
 
 A full TypeScript or Vue feature may use the following layout. Create only the
 responsibility directories the feature actually needs:
+
+```text
+packages/<package>/
+  index.ts                 # single package-level source entry
+  src/                     # all production implementation
+  package.json
+  tsconfig*.json
+  vite.config.ts           # when needed
+```
 
 ```text
 feature-name/
@@ -88,6 +101,35 @@ export type * from './types'
 export * from './composables'
 ```
 
+The architecture manifest is versioned and checked against live diagnostics:
+
+```ts
+interface PackageArchitectureManifest {
+  version: 1
+  pathExceptions: Array<{ path: string, kind: 'generated' | 'third-party', reason: string }>
+  packageExceptions: Array<{
+    package: string
+    kind: 'cli' | 'framework' | 'private-app'
+    rules: string[]
+    reason: string
+  }>
+  componentExceptions: Array<{
+    component: string
+    kind: 'dynamic' | 'framework' | 'public'
+    rules: string[]
+    owners: string[]
+    reason: string
+  }>
+  debt: Array<{
+    path: string
+    rule: string
+    targetTask: string
+    reason: string
+    owners?: string[]
+  }>
+}
+```
+
 ## 3. Contracts
 
 - A feature root contains its public `index.ts`, an optional framework entry,
@@ -124,6 +166,36 @@ export * from './composables'
 - A package-specific exception belongs in that package's spec and must explain
   why the global boundary is insufficient. It supplements this contract rather
   than copying it.
+- Every published package keeps its only package-level source entry at root
+  `index.ts`. The root entry explicitly exports named `src/<feature>` boundaries;
+  `export * from './src'` and a mirrored `src/index.ts` are forbidden.
+- `package.json` source exports, build entries, declaration generation, and
+  independent consumer tests point to the same root-entry model. Private apps,
+  CLI entrypoints, and framework fixtures need narrow manifest exceptions only
+  for rules their runtime shape cannot satisfy.
+- A Vue component with one concrete parent belongs below that parent's
+  `components/` directory. A component used by only one feature belongs below
+  that feature's `components/`. Package-level shared components require at
+  least two independent feature owners.
+- `index.vue` beside a feature `index.ts` is a feature shell, not a single-parent
+  child. Components reachable through explicit root re-exports are public;
+  dynamic/framework ownership that static analysis cannot derive must be
+  declared in the architecture manifest.
+- Architecture debt is an exact, path-level baseline. New diagnostics fail;
+  removed diagnostics make the matching debt entry stale and also fail. Every
+  debt entry names an existing Trellis cleanup task, and the repository-wide
+  governance task cannot finish until debt is empty.
+- Component exceptions match the component path, exact diagnostic rule, and
+  statically resolved owners. Declared dynamic/framework owner paths must exist;
+  an owner or rule drift makes the exception stale instead of widening it.
+- When static analysis emits `component.owner-required` without owners, an
+  exception supplies the semantic framework/dynamic owner instead; every such
+  declared owner must resolve to an existing repository file or directory.
+- Debt cleanup tasks must be descendants of the repository-wide packages
+  governance task, not merely unrelated Trellis tasks with matching names.
+- A composable owns Vue reactivity, injection, listeners, or lifecycle cleanup.
+  A deterministic parser, mapper, serializer, resolver, or geometry algorithm
+  belongs in `services/` or `utils/`, not in a hook-shaped file.
 
 ## 4. Validation & Error Matrix
 
@@ -140,6 +212,15 @@ export * from './composables'
 | A component `style/` directory lacks `index.ts` or `index.scss` | Reject it as an incomplete on-demand style entry |
 | A component Sass entry emits unrelated component selectors | Split the shared dependency or move the rule to the owning component |
 | Package-specific spec repeats this contract | Replace the copy with a link and retain only the package exception |
+| Published package lacks root `index.ts` or `src/` | Emit `package.root-index-required` / `package.src-required` |
+| Root entry forwards `./src` or package retains `src/index.ts` | Emit `package.root-index-explicit-exports` / `package.src-index-forbidden` |
+| Build/source metadata bypasses root entry | Emit `package.build-entry` / `package.source-entry` |
+| main/module/types drift from root export conditions | Emit `package.output-entry` |
+| Non-public component has no resolvable owner | Emit `component.owner-required` |
+| Single-parent or single-feature component is misplaced | Emit `component.single-parent-location` / `component.single-feature-location` |
+| Live diagnostic has no exact debt/exception | Fail as unknown architecture debt |
+| Debt or exception no longer matches live diagnostics | Fail as stale manifest data |
+| Exception kind, owner, or rule is invalid or duplicated | Reject the manifest before reconciliation |
 
 ## 5. Good / Base / Bad Cases
 
@@ -147,6 +228,10 @@ export * from './composables'
   `composables/`, and keeps state in `state/`.
 - Good: a styled component exposes `style/index.scss`; an aggregate package
   style entry forwards component entries without copying their rules.
+- Good: `packages/foo/index.ts` explicitly exports `./src/components` and
+  `./src/services`; no `src/index.ts` mirrors the package surface.
+- Good: `FeatureView/components/FeatureToolbar.vue` has one parent,
+  `FeatureView/index.vue`; a shared command hint has callers in two features.
 - Good: a Node package separates lifecycle orchestration, repository adapters,
   serialization, and pure filesystem utilities.
 - Base: a small feature has only `index.ts`, its implementation entry, and
@@ -154,6 +239,10 @@ export * from './composables'
 - Bad: `props.ts`, `state.ts`, `service.ts`, `parser.ts`, and `helpers.ts` form a
   flat feature root.
 - Bad: two package specs copy this document and drift independently.
+- Bad: `packages/foo/index.ts` contains only `export * from './src'`, while the
+  real public surface is hidden behind `src/index.ts`.
+- Bad: `src/components/PrivateDialog.vue` has one parent but is exported from a
+  package-wide components barrel.
 - Bad: a broad package stylesheet targets `input:focus-visible` below a root
   class and unintentionally overrides a mature component library's internal
   input.
@@ -173,6 +262,15 @@ export * from './composables'
   controls keep a single library-owned focus frame.
 - Package-specific specs add assertions for framework entries, generated output,
   platform isolation, or public API stability when those boundaries exist.
+- `scripts/__tests__/package-architecture.test.mjs` uses TypeScript AST and the
+  Vue SFC parser to cover root entries, re-export-only public reachability,
+  static and literal dynamic imports, barrel traversal, single-parent,
+  single-feature, shared components, exceptions, unknown debt, and stale debt.
+- `pnpm check:package-architecture` must match live diagnostics exactly against
+  `scripts/package-architecture/config/manifest.json`; regex-only import graph
+  checks are not sufficient.
+- The package architecture CLI is read-only and rejects unknown arguments; it
+  never offers a baseline rewrite flag.
 
 ## 7. Wrong vs Correct
 
@@ -229,3 +327,22 @@ Correct:
 When `.feature-search__input` is replaced by a mature library component,
 remove this native-control rule and let the library theme own its internal
 focus state.
+
+Wrong:
+
+```ts
+// packages/foo/index.ts
+export * from './src'
+
+// packages/foo/src/index.ts
+export * from './components'
+export * from './services'
+```
+
+Correct:
+
+```ts
+// packages/foo/index.ts
+export * from './src/components'
+export * from './src/services'
+```

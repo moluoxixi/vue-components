@@ -1,0 +1,2 @@
+{"file":".trellis/spec/directory-structure.md","reason":"仓库级 Feature 根、职责目录、barrel 和类型目录合同"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"collector 与跨包规则避免重复实现"}
