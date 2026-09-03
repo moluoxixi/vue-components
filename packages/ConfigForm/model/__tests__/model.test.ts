@@ -8,6 +8,7 @@ import type {
 import { CONFIG_FORM_FLOW_VERSION } from '@moluoxixi/config-form-core'
 import { describe, expect, it } from 'vitest'
 import {
+  applyProjectCommandDraftTransaction,
   applyProjectDraftTransaction,
   applyProjectHistoryTransaction,
   applyProjectTransaction,
@@ -995,6 +996,83 @@ describe('projectTransaction', () => {
     expect(result.document).toBe(initial)
     expect(result.diagnostics[0]?.code).toBe('PROJECT_FIELD_DUPLICATE')
     expect(initial.pagesById.home?.graph.nodesById).not.toHaveProperty('duplicate')
+  })
+
+  it('allows a command draft intermediate state while the public draft rejects it', () => {
+    const initial = projectDocument()
+    const graph = initial.pagesById.home!.graph
+    graph.root.push({ nodeId: 'dependent', placement: {} })
+    graph.nodesById.dependent = {
+      id: 'dependent',
+      component: 'element.input',
+      kind: 'field',
+      field: 'dependent',
+      props: {},
+      events: {},
+      bindings: {},
+      conditions: {
+        visible: {
+          kind: 'compare',
+          operator: 'eq',
+          left: { kind: 'field', field: 'name' },
+          right: { kind: 'literal', value: 'visible' },
+        },
+      },
+    }
+    const transaction = {
+      id: 'remove-command-draft-field',
+      label: 'Remove command draft field',
+      operations: [{ type: 'node.remove' as const, pageId: 'home', nodeId: 'name' }],
+    }
+
+    const intermediate = applyProjectCommandDraftTransaction(initial, transaction)
+    expect(intermediate.success).toBe(true)
+    if (!intermediate.success)
+      return
+    expect(intermediate.document.pagesById.home?.graph.nodesById).not.toHaveProperty('name')
+    expect(intermediate.document.pagesById.home?.graph.nodesById.dependent).toHaveProperty('conditions')
+
+    const published = applyProjectDraftTransaction(initial, transaction)
+    expect(published).toMatchObject({
+      success: false,
+      document: initial,
+      diagnostics: [expect.objectContaining({
+        code: 'PROJECT_DOCUMENT_INVALID',
+        message: 'Unknown field reference: name',
+      })],
+    })
+  })
+
+  it('merges node change metadata in operation order and reverses mutations in inverse order', () => {
+    const initial = projectDocument()
+    const result = applyProjectTransaction(initial, {
+      id: 'move-and-edit-name',
+      label: 'Move and edit name',
+      operations: [
+        { type: 'node.move', pageId: 'home', nodeId: 'name', target: { parentId: null, index: 1 } },
+        { type: 'node.props', pageId: 'home', nodeId: 'name', props: { placeholder: 'Moved name' } },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+    if (!result.success)
+      return
+    expect(result.changedNodeChanges).toEqual([
+      {
+        kind: 'move',
+        pageId: 'home',
+        nodeId: 'name',
+        before: { parentId: 'section', slot: 'default' },
+        after: { parentId: null, slot: null },
+      },
+      { kind: 'content', pageId: 'home', nodeId: 'section' },
+    ])
+    expect(result.inverse.operations.map(operation => operation.type)).toEqual(['node.props', 'node.move'])
+
+    const undone = applyProjectTransaction(result.document, result.inverse)
+    expect(undone.success).toBe(true)
+    if (undone.success)
+      expect(undone.document).toEqual(initial)
   })
 
   it('does not commit a multi-operation transaction whose final state is unchanged', () => {
