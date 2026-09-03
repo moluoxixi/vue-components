@@ -508,6 +508,34 @@ describe('canonical project compiler', () => {
     })
   })
 
+  it('evicts the least recently used page program at the configured cache limit', () => {
+    const input = fixture()
+    const document = structuredClone(input.snapshot.document) as ProjectDocument
+    addPage(document, 'home', 'billing')
+    addPage(document, 'home', 'settings')
+    const snapshot = createProjectSnapshot(document, 1)
+    const coordinator = createCompileCoordinator({ registry: input.registry, maxCachedPages: 2 })
+    coordinator.acceptSnapshot(snapshot)
+
+    const firstHome = coordinator.compilePage('home')
+    const firstBilling = coordinator.compilePage('billing')
+    const touchedHome = coordinator.compilePage('home')
+    const settings = coordinator.compilePage('settings')
+    const retainedHome = coordinator.compilePage('home')
+    const secondBilling = coordinator.compilePage('billing')
+    expect(firstHome.success && firstBilling.success && touchedHome.success
+      && settings.success && retainedHome.success && secondBilling.success).toBe(true)
+    if (!firstHome.success || !firstBilling.success || !touchedHome.success
+      || !settings.success || !retainedHome.success || !secondBilling.success) {
+      return
+    }
+    expect(touchedHome.compilation.page).toBe(firstHome.compilation.page)
+    expect(retainedHome.compilation.page).toBe(firstHome.compilation.page)
+    expect(secondBilling.compilation.page).not.toBe(firstBilling.compilation.page)
+    expect(() => createCompileCoordinator({ registry: input.registry, maxCachedPages: 0 }))
+      .toThrow('CompileCoordinator maxCachedPages must be a positive integer.')
+  })
+
   it('recompiles only the changed node and its semantic ancestors', () => {
     const input = fixture()
     const initialDocument = structuredClone(input.snapshot.document) as ProjectDocument
