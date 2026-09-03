@@ -4,7 +4,7 @@
 2. [ ] 补 Model draft/final validation、change merge/inverse 与 Compiler cache/diagnostic characterization tests。
 3. [ ] 补 Runtime renderer mode/editor/Flow lifecycle、Headless async validation 与 Runtime validation queue/dispose 回归。
 4. [x] 迁移 Provider wrapper、Runtime error 与 Playground 子示例，清理 5 条 architecture debt；修正 single-parent collector 优先级并清除 2 条假债务。
-5. [ ] 在新 owner 内拆 Playground layout/container/linked/stress 场景；运行 adapter/playground/devtools 验证并提交。
+5. [x] 在新 owner 内拆 Playground layout/container/linked/stress 场景；运行 adapter/playground/devtools 验证并提交。
 6. [ ] 拆 Model transaction engine 的 apply/operations/graph/validation/changes 责任目录；运行 model test/typecheck/build、performance 与 Workbench candidate consumer 回归并提交。
 7. [ ] 拆 Compiler canonical/page/diagnostics/registry/coordinator 责任目录；运行 compiler test/typecheck/build、performance 与 Workbench import/export/design consumer 回归并提交。
 8. [ ] 拆 Runtime renderer controller/guard/editor/Flow/render pipeline；运行 runtime test/typecheck/build、Designer/Workbench unit 与 E2E 并提交。

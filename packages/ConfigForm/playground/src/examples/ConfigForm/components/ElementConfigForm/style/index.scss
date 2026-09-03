@@ -1,0 +1,128 @@
+[data-testid='element-config-form-example'] {
+  max-width: 1080px;
+
+  .config-form-demo__section {
+    padding-top: 8px;
+  }
+
+  .config-form-demo__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .config-form-demo__mode {
+    min-width: 48px;
+    color: var(--el-text-color-regular);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .config-form-demo__stress {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--el-border-color-light);
+  }
+
+  .config-form-demo__stress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    color: var(--el-text-color-regular);
+    font-size: 13px;
+  }
+
+  #element-layout-inline-row {
+    row-gap: 8px;
+  }
+
+  .mx-element-config-form__field {
+    margin-bottom: 12px;
+  }
+
+  #element-layout-inline-row .mx-element-config-form__field {
+    margin-right: 14px;
+    margin-bottom: 10px;
+  }
+
+  .config-form-demo__container-card,
+  .config-form-demo__container-collapse,
+  .config-form-demo__container-tabs {
+    width: 100%;
+  }
+
+  .config-form-demo__container-collapse,
+  .config-form-demo__container-tabs {
+    margin-top: 16px;
+  }
+
+  .config-form-demo__container-card .config-form-demo__container,
+  .config-form-demo__container-collapse .el-collapse-item__content,
+  .config-form-demo__container-tabs .el-tab-pane {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    width: 100%;
+  }
+
+  .config-form-demo__container-collapse .el-collapse-item__content {
+    padding: 14px 0;
+  }
+
+  .config-form-demo__container-card .el-input,
+  .config-form-demo__container-card .el-input-number,
+  .config-form-demo__container-card .el-select,
+  .config-form-demo__container-card .el-select-v2,
+  .config-form-demo__container-card .el-cascader,
+  .config-form-demo__container-card .el-date-editor,
+  .config-form-demo__container-card .el-time-select,
+  .config-form-demo__container-card .el-tree-select,
+  .config-form-demo__container-collapse .el-input,
+  .config-form-demo__container-collapse .el-input-number,
+  .config-form-demo__container-collapse .el-select,
+  .config-form-demo__container-collapse .el-select-v2,
+  .config-form-demo__container-collapse .el-cascader,
+  .config-form-demo__container-collapse .el-date-editor,
+  .config-form-demo__container-collapse .el-time-select,
+  .config-form-demo__container-collapse .el-tree-select,
+  .config-form-demo__container-tabs .el-input,
+  .config-form-demo__container-tabs .el-input-number,
+  .config-form-demo__container-tabs .el-select,
+  .config-form-demo__container-tabs .el-select-v2,
+  .config-form-demo__container-tabs .el-cascader,
+  .config-form-demo__container-tabs .el-date-editor,
+  .config-form-demo__container-tabs .el-time-select,
+  .config-form-demo__container-tabs .el-tree-select {
+    width: 100%;
+  }
+
+  .config-form-demo__container-card .el-textarea,
+  .config-form-demo__container-collapse .el-textarea,
+  .config-form-demo__container-tabs .el-textarea {
+    grid-column: 1 / -1;
+  }
+
+  .config-form-demo__actions {
+    display: flex;
+    gap: 10px;
+    margin: 4px 0 18px 96px;
+  }
+
+  .config-form-demo__actions--plain {
+    margin-left: 0;
+  }
+
+  .config-form-demo__preview {
+    min-height: 96px;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: 6px;
+    background: var(--el-fill-color-lighter);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+}

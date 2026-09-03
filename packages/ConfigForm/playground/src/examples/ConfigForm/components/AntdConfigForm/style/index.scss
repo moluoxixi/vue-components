@@ -1,0 +1,104 @@
+[data-testid='antd-config-form-example'] {
+  max-width: 1080px;
+
+  .config-form-demo__section {
+    padding-top: 8px;
+  }
+
+  .config-form-demo__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .config-form-demo__mode {
+    min-width: 48px;
+    color: rgb(0 0 0 / 65%);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  #antd-layout-inline-row {
+    row-gap: 16px;
+  }
+
+  .config-form-demo__container-card,
+  .config-form-demo__container-collapse,
+  .config-form-demo__container-tabs {
+    width: 100%;
+  }
+
+  .config-form-demo__container-collapse,
+  .config-form-demo__container-tabs {
+    margin-top: 16px;
+  }
+
+  .config-form-demo__container-card .ant-card-body,
+  .config-form-demo__container-collapse .ant-collapse-content-box,
+  .config-form-demo__container-tabs .ant-tabs-tabpane-active {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    width: 100%;
+  }
+
+  .config-form-demo__container-card .ant-card-body::before,
+  .config-form-demo__container-card .ant-card-body::after,
+  .config-form-demo__container-collapse .ant-collapse-content-box::before,
+  .config-form-demo__container-collapse .ant-collapse-content-box::after,
+  .config-form-demo__container-tabs .ant-tabs-tabpane-active::before,
+  .config-form-demo__container-tabs .ant-tabs-tabpane-active::after {
+    display: none;
+    content: none;
+  }
+
+  .config-form-demo__container-card .ant-input,
+  .config-form-demo__container-card .ant-input-number,
+  .config-form-demo__container-card .ant-select,
+  .config-form-demo__container-card .ant-picker,
+  .config-form-demo__container-card .ant-slider,
+  .config-form-demo__container-card .ant-rate,
+  .config-form-demo__container-collapse .ant-input,
+  .config-form-demo__container-collapse .ant-input-number,
+  .config-form-demo__container-collapse .ant-select,
+  .config-form-demo__container-collapse .ant-picker,
+  .config-form-demo__container-collapse .ant-slider,
+  .config-form-demo__container-collapse .ant-rate,
+  .config-form-demo__container-tabs .ant-input,
+  .config-form-demo__container-tabs .ant-input-number,
+  .config-form-demo__container-tabs .ant-select,
+  .config-form-demo__container-tabs .ant-picker,
+  .config-form-demo__container-tabs .ant-slider,
+  .config-form-demo__container-tabs .ant-rate {
+    width: 100%;
+  }
+
+  .config-form-demo__container-card textarea.ant-input,
+  .config-form-demo__container-collapse textarea.ant-input,
+  .config-form-demo__container-tabs textarea.ant-input {
+    grid-column: 1 / -1;
+  }
+
+  .config-form-demo__actions {
+    display: flex;
+    gap: 10px;
+    margin: 4px 0 18px 96px;
+  }
+
+  .config-form-demo__actions--plain {
+    margin-left: 0;
+  }
+
+  .config-form-demo__preview {
+    min-height: 96px;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: #fafafa;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+}
