@@ -19,6 +19,7 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { WorkbenchCommandHint } from '../../components/index'
 import { PreviewRuntimeHostFrame } from '../../runtime-host'
 
 const props = defineProps<PreviewDrawerProps>()
@@ -154,39 +155,47 @@ watch(() => props.open, (open, wasOpen) => {
       </div>
       <div class="preview-toolbar">
         <div class="preview-viewport-switch" role="group" :aria-label="locale.t('preview.viewport', 'Preview viewport')">
-          <button
+          <WorkbenchCommandHint
             v-for="item in viewports"
             :key="item.id"
-            type="button"
-            :aria-label="item.label"
-            :aria-pressed="viewport === item.id"
-            :title="item.label"
-            data-command-hint
-            @click="emit('update:viewport', item.id)"
+            :label="item.label"
           >
-            <component :is="item.icon" :size="15" aria-hidden="true" />
-          </button>
+            <button
+              type="button"
+              :aria-label="item.label"
+              :aria-pressed="viewport === item.id"
+              :title="item.label"
+              @click="emit('update:viewport', item.id)"
+            >
+              <component :is="item.icon" :size="15" aria-hidden="true" />
+            </button>
+          </WorkbenchCommandHint>
         </div>
-        <button type="button" :aria-disabled="submitUnavailableReason ? 'true' : undefined" :data-command-disabled-reason="submitUnavailableReason" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" data-command-hint @click="!submitUnavailableReason && submitForm()">
-          <Send :size="15" aria-hidden="true" />
-        </button>
+        <WorkbenchCommandHint :label="locale.t('preview.submit', 'Submit preview form')" :disabled-reason="submitUnavailableReason">
+          <button type="button" :aria-disabled="submitUnavailableReason ? 'true' : undefined" :title="locale.t('preview.submit', 'Submit preview form')" :aria-label="locale.t('preview.submit', 'Submit preview form')" @click="!submitUnavailableReason && submitForm()">
+            <Send :size="15" aria-hidden="true" />
+          </button>
+        </WorkbenchCommandHint>
         <button v-if="expanded" type="button" class="preview-exit-command" @click="emit('update:expanded', false)">
           {{ locale.t('preview.exit', 'Exit preview') }}
         </button>
-        <button
-          class="preview-expand-button"
-          type="button"
-          :title="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
-          :aria-label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
-          data-command-hint
-          @click="emit('update:expanded', !expanded)"
-        >
-          <Minimize2 v-if="expanded" :size="16" aria-hidden="true" />
-          <Maximize2 v-else :size="16" aria-hidden="true" />
-        </button>
-        <button type="button" :title="locale.t('preview.close', 'Close preview')" :aria-label="locale.t('preview.close', 'Close preview')" data-command-hint @click="emit('close')">
-          <X :size="16" aria-hidden="true" />
-        </button>
+        <WorkbenchCommandHint :label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')">
+          <button
+            class="preview-expand-button"
+            type="button"
+            :title="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
+            :aria-label="expanded ? locale.t('preview.restore', 'Restore preview') : locale.t('preview.expand', 'Expand preview')"
+            @click="emit('update:expanded', !expanded)"
+          >
+            <Minimize2 v-if="expanded" :size="16" aria-hidden="true" />
+            <Maximize2 v-else :size="16" aria-hidden="true" />
+          </button>
+        </WorkbenchCommandHint>
+        <WorkbenchCommandHint :label="locale.t('preview.close', 'Close preview')">
+          <button type="button" :title="locale.t('preview.close', 'Close preview')" :aria-label="locale.t('preview.close', 'Close preview')" @click="emit('close')">
+            <X :size="16" aria-hidden="true" />
+          </button>
+        </WorkbenchCommandHint>
       </div>
       </header>
       <div class="preview-body">

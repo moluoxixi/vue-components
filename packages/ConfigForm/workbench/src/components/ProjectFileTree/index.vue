@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
   padding: 6px 4px;
   overflow: auto;
   color: var(--wb-muted);
-  border-right: 1px solid var(--wb-border);
+  border-right: 1px solid var(--wb-separator);
   background: var(--wb-surface);
   font: 11px/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }

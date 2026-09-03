@@ -3,7 +3,7 @@
   "name": "config-form-workbench-designer-polish",
   "title": "ConfigForm Workbench 设计器视觉精修",
   "description": "精修设计器排版、Canvas framing 与中小屏命令可发现性。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "ai-doc-assistant",

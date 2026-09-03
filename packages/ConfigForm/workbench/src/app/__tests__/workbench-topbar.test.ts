@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 
 import { DOMWrapper, mount } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { WorkbenchCommandHint } from '../../components/index'
 import { createProjectDocumentFixture } from '../../project/__tests__/fixtures'
 import { WorkbenchTopbar } from '../components'
 
@@ -136,18 +137,56 @@ describe('workbench topbar', () => {
       },
     })
 
-    const commandTriggers = wrapper.findAll('[data-command-hint]')
-    expect(commandTriggers.length).toBeGreaterThanOrEqual(8)
-    expect(commandTriggers.every(trigger => Boolean(trigger.attributes('aria-label')))).toBe(true)
-    const save = wrapper.get('button[aria-label="Save options"]')
+    const commandHints = wrapper.findAllComponents(WorkbenchCommandHint)
+    expect(commandHints).toHaveLength(5)
+    expect(commandHints.every(hint => Boolean(hint.props('label')))).toBe(true)
+    const flow = wrapper.get('button[aria-label="Event flow orchestration"]')
+    expect(flow.attributes('aria-expanded')).toBe('false')
+    expect(flow.attributes('title')).toBeUndefined()
+    const save = wrapper.get('button[aria-label^="Save options"]')
     expect(save.attributes('aria-disabled')).toBe('true')
-    expect(save.attributes('data-command-disabled-reason')).toBe('Wait for the current operation to finish')
+    expect(save.attributes('aria-haspopup')).toBe('menu')
+    expect(save.attributes('aria-label')).toContain('Wait for the current operation to finish')
+    expect(save.attributes('title')).toContain('Wait for the current operation to finish')
     expect(save.attributes('disabled')).toBeUndefined()
 
     await wrapper.get('button[aria-label="More actions"]').trigger('click')
     const status = overlayRoot().get('[data-mobile-action-menu] [role="status"]')
     expect(status.text()).toBe('v7 · Saving')
     wrapper.unmount()
+  })
+
+  it('shows the Flow command through the Element Plus tooltip on keyboard focus', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(WorkbenchTopbar, {
+      attachTo: document.body,
+      props: {
+        project,
+        currentPage,
+        localeId: 'en-US',
+        paletteFamily: 'catppuccin',
+        statusLabel: 'Saved locally',
+        themePreference: 'system',
+      },
+    })
+
+    try {
+      const flow = wrapper.get('button[aria-label="Event flow orchestration"]')
+      ;(flow.element as HTMLButtonElement).focus()
+      await vi.advanceTimersByTimeAsync(400)
+      await nextTick()
+      const tooltip = overlayRoot().get('.workbench-command-tooltip')
+      expect(tooltip.text()).toBe('Event flow orchestration')
+      expect(tooltip.attributes('role')).toBe('tooltip')
+      expect(flow.attributes('aria-expanded')).toBe('false')
+      expect(flow.attributes('aria-describedby')).toBeUndefined()
+      expect(flow.element.parentElement?.getAttribute('aria-describedby')).toContain(tooltip.attributes('id'))
+    }
+    finally {
+      wrapper.unmount()
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+    }
   })
 
   it('routes appearance through the mobile More menu after restoring focus', async () => {

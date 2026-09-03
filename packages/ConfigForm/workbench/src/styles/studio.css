@@ -91,11 +91,94 @@
 }
 
 .designer-components-panel .mx-config-form-designer__palette {
+  display: grid;
   min-height: 0;
+  overflow: hidden;
 }
 
 .designer-components-panel .mx-config-form-designer__search {
   display: none;
+}
+
+.designer-material-scrollbar {
+  min-height: 0;
+}
+
+.designer-material-groups {
+  --el-collapse-border-color: transparent;
+
+  padding: 0 6px 8px;
+  border: 0;
+}
+
+.designer-material-groups .el-collapse-item__header {
+  height: 32px;
+  padding: 0 4px;
+  color: var(--wb-muted);
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.designer-material-groups .el-collapse-item__wrap {
+  background: transparent;
+  border: 0;
+}
+
+.designer-material-groups .el-collapse-item__content {
+  padding-bottom: 6px;
+}
+
+.designer-material-category {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-material-list {
+  display: grid;
+  gap: 2px;
+}
+
+.designer-material-button.el-button {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  margin: 0;
+  padding: 0 8px;
+  justify-content: flex-start;
+  gap: 7px;
+  color: var(--wb-text);
+  border: 0;
+}
+
+.designer-material-button.el-button:hover,
+.designer-material-button.el-button:focus-visible,
+.designer-material-button.el-button.is-keyboard-dragging {
+  color: var(--wb-text-strong);
+  background: var(--wb-control-hover);
+}
+
+.designer-material-button.el-button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-material-kind {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  color: var(--wb-muted);
+  background: var(--wb-control-bg);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .designer-layers-scrollbar,
@@ -398,6 +481,7 @@
 
 .workbench-app[data-theme] .embedded-designer.mx-config-form-designer {
   --mx-designer-border: var(--wb-separator);
+  --mx-designer-separator: var(--wb-separator);
   --mx-designer-control-border: var(--wb-control-border);
   --mx-designer-muted: var(--wb-muted);
   --mx-designer-surface: var(--wb-surface);
@@ -451,7 +535,6 @@
   --el-input-text-color: var(--mx-designer-text);
   --el-input-border-color: var(--mx-designer-control-border);
   --el-input-hover-border-color: var(--mx-designer-accent-line);
-  --el-input-focus-border-color: var(--mx-designer-accent);
   --el-input-placeholder-color: var(--mx-designer-disabled);
   --el-switch-off-color: var(--mx-designer-switch);
   --el-switch-on-color: var(--mx-designer-accent);

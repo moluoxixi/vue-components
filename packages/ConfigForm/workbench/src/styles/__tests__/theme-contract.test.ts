@@ -7,6 +7,7 @@ const stylesheet = stylesheetLayers
   .map(layer => readFileSync(new URL(`../../styles/${layer}.css`, import.meta.url), 'utf8'))
   .join('\n')
 const responsiveStylesheet = readFileSync(new URL('../../styles/responsive.css', import.meta.url), 'utf8')
+const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const designerStylesheet = readFileSync(new URL('../../../../designer/src/styles.scss', import.meta.url), 'utf8')
   .replace(/^@use[^\n]+\n+/, '')
 
@@ -75,6 +76,25 @@ describe('workbench theme contract', () => {
     expect(adapters).toContain('import(\'@moluoxixi/config-form-designer-element-plus\')')
     expect(templates).not.toContain('@moluoxixi/config-form-designer-antd-vue')
     expect(templates).not.toContain('@moluoxixi/config-form-designer-element-plus')
+  })
+
+  it('configures Element Plus through its Sass module and component entries', async () => {
+    const [viteConfig, inspectorStyles, runtimeStyles] = await Promise.all([
+      import('../../../vite.config.ts?raw').then(module => module.default),
+      import('../../adapters/styles/element-plus-inspector.ts?raw').then(module => module.default),
+      import('../../adapters/styles/element-plus-runtime.ts?raw').then(module => module.default),
+    ])
+
+    expect(elementPlusTheme).toMatch(/@forward 'element-plus\/theme-chalk\/src\/common\/var\.scss' with \(/)
+    expect(elementPlusTheme).toMatch(/'base': #a14f68/)
+    expect(elementPlusTheme).toMatch(/'focus-border-color': var\(--el-border-color\)/)
+    expect(viteConfig).toMatch(/ElementPlusResolver\(\{ importStyle: 'sass' \}\)/)
+    expect(viteConfig).toMatch(/additionalData: `@use "\$\{elementPlusTheme\}" as \*;`/)
+    for (const source of [inspectorStyles, runtimeStyles]) {
+      expect(source).toContain('/style/index')
+      expect(source).not.toContain('/style/css')
+    }
+    expect(stylesheet).not.toContain('--el-input-focus-border-color:')
   })
   const paletteSelectors = ['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine'].flatMap(palette =>
     ['light', 'dark'].map(theme => `.workbench-app[data-palette="${palette}"][data-theme="${theme}"]`))
@@ -193,6 +213,9 @@ describe('workbench theme contract', () => {
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
     )).toContain('--mx-designer-border: var(--wb-separator);')
+    expect(selectorBlock(
+      '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
+    )).toContain('--mx-designer-separator: var(--wb-separator);')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
     )).toContain('--mx-designer-control-border: var(--wb-control-border);')

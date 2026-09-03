@@ -10,7 +10,7 @@ import type {
 } from '../types'
 import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 const props = defineProps<StudioLeftPanelProps>()
 
@@ -55,6 +55,12 @@ const filteredMaterials = computed(() => {
     .toLocaleLowerCase()
     .includes(query))
 })
+const materialCategories = computed(() => [...new Set(filteredMaterials.value.map(material => locale.value.materialCategory(material)))])
+const expandedMaterialCategories = ref<string[]>([])
+
+watch(materialCategories, categories => {
+  expandedMaterialCategories.value = [...categories]
+}, { immediate: true })
 
 function historyTime(timestamp?: number): string {
   if (timestamp === undefined)
@@ -173,7 +179,7 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
     <ElTabs class="designer-left-tabs" :model-value="activeView" stretch @tab-change="selectViewName">
       <ElTabPane v-for="view in views" :key="view.id" :name="view.id">
         <template #label>
-          <span :data-designer-left-tab="view.id" :aria-label="view.label" :title="view.label" data-command-hint>
+          <span :data-designer-left-tab="view.id" :aria-label="view.label" :title="view.label">
             <component :is="view.icon" :size="14" aria-hidden="true" />
           </span>
         </template>
@@ -198,7 +204,34 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
         :readonly="readonly"
         :show-search="false"
         @add-material="emit('addMaterial', $event)"
-      />
+      >
+        <template #content="{ getMaterialBindings, groups, materialTitle }">
+          <ElScrollbar class="designer-material-scrollbar">
+            <ElCollapse v-model="expandedMaterialCategories" class="designer-material-groups">
+              <ElCollapseItem v-for="[category, entries] in groups" :key="category" :name="category">
+                <template #title>
+                  <span class="designer-material-category">{{ category }}</span>
+                </template>
+                <div class="designer-material-list">
+                  <ElButton
+                    v-for="material in entries"
+                    :key="material.key"
+                    v-bind="getMaterialBindings(material)"
+                    :data-material-row-key="material.key"
+                    text
+                    native-type="button"
+                    class="designer-material-button"
+                  >
+                    <component :is="material.icon" v-if="material.icon" :size="16" aria-hidden="true" />
+                    <span v-else class="designer-material-kind" aria-hidden="true">{{ material.kind === 'field' ? 'F' : 'L' }}</span>
+                    <span>{{ materialTitle(material) }}</span>
+                  </ElButton>
+                </div>
+              </ElCollapseItem>
+            </ElCollapse>
+          </ElScrollbar>
+        </template>
+      </DesignerPalette>
       <ElEmpty v-else :description="locale.t('palette.empty', 'No materials')" :image-size="42" />
     </div>
 
@@ -229,7 +262,7 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
               :data-layer-menu-trigger="layer.id"
               :tabindex="selectedIds.includes(layer.id) ? 0 : -1"
               :aria-label="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
-              data-command-hint
+              :title="locale.t('layer.arrange', 'Arrange {name}', { name: layer.label })"
             ><MoreHorizontal :size="14" aria-hidden="true" /></ElButton>
             <template #dropdown>
               <ElDropdownMenu class="designer-layer-menu" data-layer-action-menu @keydown.capture.esc="focusLayerMenuTrigger(layer.id)">

@@ -42,6 +42,7 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, 
 import { createInsertCommand, createMoveCommand, findDesignNode } from '../../graph'
 import { useDesignerLocale } from '../../locale'
 import { resolveDesignerDesignPolicy } from '../../registry'
+import { DesignerCommandHint } from '../DesignerCommandHint'
 import {
   createDesignerMaterialCandidate,
   resolveDesignerAutoScrollDelta,
@@ -1457,17 +1458,18 @@ onBeforeUnmount(() => {
     @pointerleave="cameraHovered = false"
   >
     <div v-if="showInteractiveToggle" class="mx-config-form-designer__canvas-tools mx-config-form-designer__segmented" role="group" :aria-label="locale.t('canvas.tools', 'Canvas tools')">
-      <button
-        type="button"
-        :class="{ 'is-active': interactive }"
-        :aria-label="locale.t('canvas.linkagePreview', 'Linkage preview')"
-        :title="locale.t('canvas.linkagePreview', 'Linkage preview')"
-        :aria-pressed="Boolean(interactive)"
-        data-command-hint
-        @click.stop="emit('toggleInteractive')"
-      >
-        <Workflow :size="15" aria-hidden="true" />
-      </button>
+      <DesignerCommandHint :renderer="commandHint" :label="locale.t('canvas.linkagePreview', 'Linkage preview')">
+        <button
+          type="button"
+          :class="{ 'is-active': interactive }"
+          :aria-label="locale.t('canvas.linkagePreview', 'Linkage preview')"
+          :title="locale.t('canvas.linkagePreview', 'Linkage preview')"
+          :aria-pressed="Boolean(interactive)"
+          @click.stop="emit('toggleInteractive')"
+        >
+          <Workflow :size="15" aria-hidden="true" />
+        </button>
+      </DesignerCommandHint>
     </div>
 
     <div
@@ -1540,9 +1542,15 @@ onBeforeUnmount(() => {
             data-designer-editor-control
             @keydown="handleNodeToolbarKeydown"
           >
-            <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle" :aria-disabled="readonly ? 'true' : undefined" :data-command-disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined" data-command-hint data-command-shortcut="Space" aria-keyshortcuts="Space" :title="locale.t('node.move', 'Move')" :aria-label="locale.t('node.moveNode', 'Move node')" :aria-pressed="isNodeKeyboardDragging(box.id)" :data-designer-drag-node-id="box.id" @keydown="handleNodeDragHandleKeydown($event, box.id)" @pointerdown="beginNodeDrag($event, box.id)"><GripVertical :size="16" aria-hidden="true" /></button>
-            <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="readonly ? 'true' : undefined" :data-command-disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined" data-command-hint data-command-shortcut="Ctrl/Cmd+D" aria-keyshortcuts="Control+D Meta+D" :title="locale.t('node.copy', 'Copy')" :aria-label="locale.t('node.copyNode', 'Copy node')" @click.stop="!readonly && emit('action', 'copy', box.id)"><Copy :size="15" aria-hidden="true" /></button>
-            <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button is-danger" :aria-disabled="readonly ? 'true' : undefined" :data-command-disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined" data-command-hint data-command-shortcut="Delete" aria-keyshortcuts="Delete Backspace" :title="locale.t('node.delete', 'Delete')" :aria-label="locale.t('node.deleteNode', 'Delete node')" @click.stop="!readonly && emit('action', 'remove', box.id)"><Trash2 :size="15" aria-hidden="true" /></button>
+            <DesignerCommandHint :renderer="commandHint" :label="locale.t('node.moveNode', 'Move node')" shortcut="Space" :disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
+              <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button mx-config-form-designer__drag-handle" :aria-disabled="readonly ? 'true' : undefined" aria-keyshortcuts="Space" :title="locale.t('node.move', 'Move')" :aria-label="locale.t('node.moveNode', 'Move node')" :aria-pressed="isNodeKeyboardDragging(box.id)" :data-designer-drag-node-id="box.id" @keydown="handleNodeDragHandleKeydown($event, box.id)" @pointerdown="beginNodeDrag($event, box.id)"><GripVertical :size="16" aria-hidden="true" /></button>
+            </DesignerCommandHint>
+            <DesignerCommandHint :renderer="commandHint" :label="locale.t('node.copyNode', 'Copy node')" shortcut="Ctrl/Cmd+D" :disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
+              <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="readonly ? 'true' : undefined" aria-keyshortcuts="Control+D Meta+D" :title="locale.t('node.copy', 'Copy')" :aria-label="locale.t('node.copyNode', 'Copy node')" @click.stop="!readonly && emit('action', 'copy', box.id)"><Copy :size="15" aria-hidden="true" /></button>
+            </DesignerCommandHint>
+            <DesignerCommandHint :renderer="commandHint" :label="locale.t('node.deleteNode', 'Delete node')" shortcut="Delete" :disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined">
+              <button data-node-toolbar-button type="button" class="mx-config-form-designer__icon-button is-danger" :aria-disabled="readonly ? 'true' : undefined" aria-keyshortcuts="Delete Backspace" :title="locale.t('node.delete', 'Delete')" :aria-label="locale.t('node.deleteNode', 'Delete node')" @click.stop="!readonly && emit('action', 'remove', box.id)"><Trash2 :size="15" aria-hidden="true" /></button>
+            </DesignerCommandHint>
             <button
               :id="`${nodeActionMenuId}-trigger`"
               data-node-toolbar-button
@@ -1550,10 +1558,8 @@ onBeforeUnmount(() => {
               type="button"
               class="mx-config-form-designer__icon-button"
               :aria-disabled="readonly ? 'true' : undefined"
-              :data-command-disabled-reason="readonly ? locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only') : undefined"
-              data-command-hint
-              :title="locale.t('node.moreActions', 'More actions')"
-              :aria-label="locale.t('node.moreActions', 'More actions')"
+              :title="readonly ? `${locale.t('node.moreActions', 'More actions')} · ${locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only')}` : locale.t('node.moreActions', 'More actions')"
+              :aria-label="readonly ? `${locale.t('node.moreActions', 'More actions')} · ${locale.t('action.readonlyUnavailable', 'Editing is unavailable while the designer is read-only')}` : locale.t('node.moreActions', 'More actions')"
               aria-haspopup="menu"
               :aria-controls="nodeActionMenuId"
               :aria-expanded="nodeActionMenuNodeId === box.id"
@@ -1576,17 +1582,17 @@ onBeforeUnmount(() => {
               <button type="button" role="menuitem" tabindex="-1" :aria-label="locale.t('node.outdentNode', 'Move node out of container')" @click.stop="runNodeAction('outdent', box.id)"><CornerDownLeft :size="15" aria-hidden="true" /><span>{{ locale.t('node.outdent', 'Outdent') }}</span></button>
             </div>
           </div>
-          <button
-            v-if="box.primary && canResize(box.id)"
-            type="button"
-            class="mx-config-form-designer__resize-handle"
-            :aria-label="locale.t('node.resize', 'Resize node')"
-            :title="locale.t('node.resize', 'Resize node')"
-            aria-hidden="false"
-            data-command-hint
-            data-designer-editor-control
-            @pointerdown="beginResize($event, box.id)"
-          />
+          <DesignerCommandHint v-if="box.primary && canResize(box.id)" :renderer="commandHint" :label="locale.t('node.resize', 'Resize node')">
+            <button
+              type="button"
+              class="mx-config-form-designer__resize-handle"
+              :aria-label="locale.t('node.resize', 'Resize node')"
+              :title="locale.t('node.resize', 'Resize node')"
+              aria-hidden="false"
+              data-designer-editor-control
+              @pointerdown="beginResize($event, box.id)"
+            />
+          </DesignerCommandHint>
         </div>
         <span
           v-for="spot in designPolicySpots"
@@ -1613,19 +1619,27 @@ onBeforeUnmount(() => {
       @pointerdown="beginCameraPan"
     />
     <div class="mx-config-form-designer__camera-controls" role="group" :aria-label="locale.t('canvas.camera', 'Canvas zoom and pan')" data-designer-editor-control>
-      <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="camera.scale <= CANVAS_MIN_SCALE ? 'true' : undefined" :data-command-disabled-reason="camera.scale <= CANVAS_MIN_SCALE ? locale.t('canvas.minimumZoom', 'Minimum zoom reached') : undefined" data-command-hint data-command-shortcut="-" aria-keyshortcuts="-" :aria-label="locale.t('canvas.zoomOut', 'Zoom out')" :title="locale.t('canvas.zoomOut', 'Zoom out')" @click="camera.scale > CANVAS_MIN_SCALE && zoomCamera('out')">
-        <ZoomOut :size="16" aria-hidden="true" />
-      </button>
-      <button type="button" class="mx-config-form-designer__camera-percent" data-command-hint data-command-shortcut="0" aria-keyshortcuts="0" :aria-label="locale.t('canvas.actualSize', 'Actual size')" :title="locale.t('canvas.actualSizeHint', 'Actual size (100%)')" @click="resetCamera">
-        {{ cameraPercent }}%
-      </button>
-      <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="camera.scale >= CANVAS_MAX_SCALE ? 'true' : undefined" :data-command-disabled-reason="camera.scale >= CANVAS_MAX_SCALE ? locale.t('canvas.maximumZoom', 'Maximum zoom reached') : undefined" data-command-hint data-command-shortcut="+" aria-keyshortcuts="Shift+=" :aria-label="locale.t('canvas.zoomIn', 'Zoom in')" :title="locale.t('canvas.zoomIn', 'Zoom in')" @click="camera.scale < CANVAS_MAX_SCALE && zoomCamera('in')">
-        <ZoomIn :size="16" aria-hidden="true" />
-      </button>
+      <DesignerCommandHint :renderer="commandHint" :label="locale.t('canvas.zoomOut', 'Zoom out')" shortcut="-" :disabled-reason="camera.scale <= CANVAS_MIN_SCALE ? locale.t('canvas.minimumZoom', 'Minimum zoom reached') : undefined">
+        <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="camera.scale <= CANVAS_MIN_SCALE ? 'true' : undefined" aria-keyshortcuts="-" :aria-label="locale.t('canvas.zoomOut', 'Zoom out')" :title="locale.t('canvas.zoomOut', 'Zoom out')" @click="camera.scale > CANVAS_MIN_SCALE && zoomCamera('out')">
+          <ZoomOut :size="16" aria-hidden="true" />
+        </button>
+      </DesignerCommandHint>
+      <DesignerCommandHint :renderer="commandHint" :label="locale.t('canvas.actualSize', 'Actual size')" shortcut="0">
+        <button type="button" class="mx-config-form-designer__camera-percent" aria-keyshortcuts="0" :aria-label="locale.t('canvas.actualSize', 'Actual size')" :title="locale.t('canvas.actualSizeHint', 'Actual size (100%)')" @click="resetCamera">
+          {{ cameraPercent }}%
+        </button>
+      </DesignerCommandHint>
+      <DesignerCommandHint :renderer="commandHint" :label="locale.t('canvas.zoomIn', 'Zoom in')" shortcut="+" :disabled-reason="camera.scale >= CANVAS_MAX_SCALE ? locale.t('canvas.maximumZoom', 'Maximum zoom reached') : undefined">
+        <button type="button" class="mx-config-form-designer__icon-button" :aria-disabled="camera.scale >= CANVAS_MAX_SCALE ? 'true' : undefined" aria-keyshortcuts="Shift+=" :aria-label="locale.t('canvas.zoomIn', 'Zoom in')" :title="locale.t('canvas.zoomIn', 'Zoom in')" @click="camera.scale < CANVAS_MAX_SCALE && zoomCamera('in')">
+          <ZoomIn :size="16" aria-hidden="true" />
+        </button>
+      </DesignerCommandHint>
       <span class="mx-config-form-designer__camera-separator" aria-hidden="true" />
-      <button type="button" class="mx-config-form-designer__icon-button" :class="{ 'is-active': camera.mode === 'fit' }" data-command-hint data-command-shortcut="Shift+1" aria-keyshortcuts="Shift+1" :aria-label="locale.t('canvas.fit', 'Fit canvas')" :title="locale.t('canvas.fitHint', 'Fit canvas (Shift+1)')" :aria-pressed="camera.mode === 'fit'" @click="fitCamera">
-        <Scan :size="16" aria-hidden="true" />
-      </button>
+      <DesignerCommandHint :renderer="commandHint" :label="locale.t('canvas.fit', 'Fit canvas')" shortcut="Shift+1">
+        <button type="button" class="mx-config-form-designer__icon-button" :class="{ 'is-active': camera.mode === 'fit' }" aria-keyshortcuts="Shift+1" :aria-label="locale.t('canvas.fit', 'Fit canvas')" :title="locale.t('canvas.fitHint', 'Fit canvas (Shift+1)')" :aria-pressed="camera.mode === 'fit'" @click="fitCamera">
+          <Scan :size="16" aria-hidden="true" />
+        </button>
+      </DesignerCommandHint>
     </div>
     <div
       ref="dragOverlayRef"

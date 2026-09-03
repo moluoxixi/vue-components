@@ -327,17 +327,16 @@ async function expectCompactResponsiveFieldsReadable(page: Page): Promise<void> 
   const fields = page.locator('.mx-config-form-designer__properties .mx-config-form-designer__responsive-fields')
   await expect(fields).toHaveCount(2)
   const geometry = await fields.evaluateAll(elements => elements.map((element) => {
-    const setters = [...element.querySelectorAll<HTMLElement>('.mx-config-form-designer__setter')]
+    const setters = [...element.querySelectorAll<HTMLElement>('.mx-config-form-designer-property-form__field')]
     return {
       columns: getComputedStyle(element).gridTemplateColumns,
       setters: setters.map((setter) => {
         const rect = setter.getBoundingClientRect()
-        const label = setter.querySelector<HTMLElement>('.mx-config-form-designer__setter-label')
-        const hint = setter.querySelector<HTMLElement>('.mx-config-form-designer__setter-hint.is-value')
+        const label = setter.querySelector<HTMLElement>('.mx-config-form-designer-property-form__label')
         return {
           bottom: rect.bottom,
           labelFits: !label || label.scrollWidth <= label.clientWidth + 1,
-          hintFits: !hint || hint.scrollWidth <= hint.clientWidth + 1,
+          hintFits: !setter.dataset.hintLabel || Boolean(label && label.scrollWidth <= label.clientWidth + 1),
           top: rect.top,
         }
       }),
@@ -395,6 +394,36 @@ test('provides focus and Escape command hints, including disabled reasons and re
   await undo.focus()
   const tooltip = page.locator('.workbench-command-tooltip:visible')
   await expect(tooltip).toContainText('Undo · Ctrl/Cmd+Z · No operation to undo')
+  await expect(tooltip).toHaveClass(/is-light/)
+  const tooltipColors = await tooltip.evaluate((element) => {
+    const arrow = element.querySelector('.el-popper__arrow')
+    return {
+      arrow: arrow ? getComputedStyle(arrow, '::before').backgroundColor : '',
+      body: getComputedStyle(element).backgroundColor,
+    }
+  })
+  expect(tooltipColors.arrow).toBe(tooltipColors.body)
+  const tooltipId = await tooltip.getAttribute('id')
+  expect(tooltipId).toBeTruthy()
+  expect(await undo.getAttribute('aria-describedby')).toContain(tooltipId)
+  await page.keyboard.press('Escape')
+  await expect(tooltip).toHaveCount(0)
+
+  await undo.evaluate(element => (element as HTMLElement).blur())
+  await undo.focus()
+  await expect(tooltip).toContainText('Undo · Ctrl/Cmd+Z · No operation to undo')
+  const zoomOut = page.getByRole('button', { name: 'Zoom out' })
+  await zoomOut.hover()
+  await expect(tooltip).toHaveCount(1)
+  await expect(tooltip).toHaveText('Zoom out · -')
+
+  for (let attempt = 0; attempt < 8 && await zoomOut.getAttribute('aria-disabled') !== 'true'; attempt += 1)
+    await zoomOut.click()
+  await expect(zoomOut).toHaveAttribute('aria-disabled', 'true')
+  await page.locator('.workbench-layout').hover({ position: { x: 2, y: 2 } })
+  await zoomOut.evaluate(element => (element as HTMLElement).blur())
+  await zoomOut.focus()
+  await expect(tooltip).toHaveText('Zoom out · - · Minimum zoom reached')
   await page.keyboard.press('Escape')
   await expect(tooltip).toHaveCount(0)
 
@@ -410,6 +439,8 @@ test('provides focus and Escape command hints, including disabled reasons and re
 
   await page.getByRole('button', { name: 'Show preview' }).click()
   await expect(page.getByRole('complementary', { name: 'Page preview' })).toBeVisible()
+  await page.waitForTimeout(400)
+  await expect(page.locator('.workbench-command-tooltip:visible')).toHaveCount(0)
   await page.keyboard.press('Tab')
   await page.getByRole('button', { name: 'Mobile preview' }).focus()
   await expect(page.locator('.workbench-command-tooltip:visible')).toHaveText('Mobile preview')
@@ -774,6 +805,27 @@ test('removes stale selection chrome while a pointer drag is active', async ({ p
   await page.mouse.up()
 })
 
+test('edits Flow settings through Element Plus keyboard and numeric controls', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.getByRole('button', { name: 'Event flow orchestration' }).click()
+  const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
+  await flowDialog.getByRole('button', { name: 'Choose an event' }).click()
+  await page.locator('.flow-trigger-popper:visible').getByRole('menuitem').filter({ hasText: 'Form submit' }).click()
+
+  const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
+  const concurrency = flowInspector.locator('[data-flow-control="concurrency"]')
+  await concurrency.getByRole('combobox').focus()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(concurrency).toContainText('Queue')
+
+  const timeout = flowInspector.getByRole('spinbutton', { name: 'Timeout (ms)' })
+  await timeout.fill('1200')
+  await timeout.press('Enter')
+  await expect(timeout).toHaveValue('1200')
+})
+
 for (const adapter of ['element', 'antd'] as const) {
   test(`keeps the ${adapter} 900px canvas active while stable triggers open non-modal sidebars`, async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 900 })
@@ -1031,10 +1083,12 @@ for (const adapter of ['element', 'antd'] as const) {
     await page.getByRole('button', { name: 'Event flow orchestration' }).click()
     const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
     await flowDialog.getByRole('button', { name: 'Choose an event' }).click()
-    await flowDialog.getByRole('menuitem').filter({ hasText: 'Name · Value change' }).click()
+    await page.locator('.flow-trigger-popper:visible').getByRole('menuitem').filter({ hasText: 'Name · Value change' }).click()
 
     const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
-    await expect(flowInspector.getByRole('combobox', { name: 'Event target' })).toHaveValue(/profile-name/)
+    const eventTarget = flowInspector.locator('[data-flow-control="event-target"]')
+    await expect(eventTarget).toContainText('Name · Value change')
+    await expect(eventTarget).toHaveAttribute('data-selected-value', /profile-name/)
 
     await flowDialog.getByRole('button', { name: 'Action', exact: true }).click()
     await flowInspector.getByRole('textbox', { name: 'Node config' }).fill(`{"input":"${adapter}-component-event"}`)
@@ -1045,6 +1099,55 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(page.getByText(`${adapter}-component-event`, { exact: true })).toBeVisible()
   })
 }
+
+test('keeps Element Plus Inspector input frames stable while focused', async ({ page }) => {
+  await createProject(page, 'element')
+  const properties = page.locator('.mx-config-form-designer__properties')
+  const controls = [
+    {
+      control: properties.getByRole('textbox', { name: 'Gap' }),
+      rootSelector: '.el-input.mx-config-form-designer__property-control',
+    },
+    {
+      control: properties.getByRole('spinbutton', { name: 'Columns' }).first(),
+      rootSelector: '.el-input-number.mx-config-form-designer__property-control',
+    },
+  ]
+
+  for (const { control, rootSelector } of controls) {
+    const restingState = await control.evaluate((element) => {
+      const field = element.closest('.mx-config-form-designer-property-form__field')
+      const label = field?.querySelector('.mx-config-form-designer-property-form__label')
+      const wrapper = element.closest('.el-input__wrapper')
+      return {
+        labelColor: label ? getComputedStyle(label).color : '',
+        wrapperShadow: wrapper ? getComputedStyle(wrapper).boxShadow : 'none',
+      }
+    })
+    await control.focus()
+    const focusState = await control.evaluate((element, selector) => {
+      const providerRoot = element.closest(selector)
+      const field = element.closest('.mx-config-form-designer-property-form__field')
+      const label = field?.querySelector('.mx-config-form-designer-property-form__label')
+      const wrapper = element.closest('.el-input__wrapper')
+      return {
+        hasProviderRoot: Boolean(providerRoot),
+        inputOutlineStyle: getComputedStyle(element).outlineStyle,
+        labelColor: label ? getComputedStyle(label).color : '',
+        wrapperFocused: wrapper?.classList.contains('is-focus') ?? false,
+        wrapperShadow: wrapper ? getComputedStyle(wrapper).boxShadow : 'none',
+      }
+    }, rootSelector)
+
+    expect(focusState).toMatchObject({
+      hasProviderRoot: true,
+      inputOutlineStyle: 'none',
+      wrapperFocused: true,
+    })
+    expect(focusState.wrapperShadow).toBe(restingState.wrapperShadow)
+    expect(focusState.labelColor).not.toBe(restingState.labelColor)
+  }
+})
 
 for (const scenario of [
   { adapter: 'element', material: 'element.collapse', trigger: '.el-collapse-item__header' },
@@ -1060,11 +1163,13 @@ for (const scenario of [
     await page.getByRole('tab', { name: 'Events' }).click()
     await page.getByRole('button', { name: 'Configure Expanded items change event flow' }).click()
     const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-    const preferredEvent = flowDialog.getByRole('menuitem').filter({ hasText: 'Expanded items change' })
+    const preferredEvent = page.locator('.flow-trigger-popper:visible').getByRole('menuitem').filter({ hasText: 'Expanded items change' })
     await expect(preferredEvent).toHaveClass(/is-preferred/)
     await preferredEvent.click()
     const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
-    await expect(flowInspector.getByRole('combobox', { name: 'Event target' })).toHaveValue(new RegExp(collapse.nodeId))
+    const eventTarget = flowInspector.locator('[data-flow-control="event-target"]')
+    await expect(eventTarget).toContainText('Expanded items change')
+    await expect(eventTarget).toHaveAttribute('data-selected-value', new RegExp(collapse.nodeId))
 
     await flowDialog.getByRole('button', { name: 'Action', exact: true }).click()
     await flowInspector.getByRole('textbox', { name: 'Node config' })

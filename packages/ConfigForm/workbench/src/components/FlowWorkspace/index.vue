@@ -27,7 +27,7 @@ import {
 import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
 import { createDesignerLocale, useDesignerLocale } from '@moluoxixi/config-form-designer'
 import { Handle, Position, VueFlow } from '@vue-flow/core'
-import { computed, nextTick, ref, shallowRef, useId, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { flowEventTargetKey } from '../../flow'
 import { cloneWorkbenchJson } from '../../utils'
 import '@vue-flow/core/dist/style.css'
@@ -50,8 +50,8 @@ const flowCreatorOpen = ref(false)
 const graphError = ref('')
 const nodeConfigDraft = ref('')
 const draftPositions = shallowRef<Record<string, XYPosition>>({})
-const flowCreatorId = useId()
-const addFlowButton = useTemplateRef<HTMLButtonElement>('addFlowButton')
+const addFlowButton = useTemplateRef<{ $el?: HTMLButtonElement }>('addFlowButton')
+const flowCreator = useTemplateRef<{ handleClose: () => void, handleOpen: () => void }>('flowCreator')
 
 watch(() => props.flows, (flows) => {
   if (!flows.some(flow => flow.id === selectedId.value))
@@ -123,10 +123,10 @@ watch(() => props.initialTrigger, (trigger) => {
   const matchingFlow = props.flows.find(flow => triggersEqual(flow.trigger, trigger))
   if (matchingFlow) {
     selectedId.value = matchingFlow.id
-    flowCreatorOpen.value = false
+    closeFlowCreator()
     return
   }
-  flowCreatorOpen.value = true
+  openFlowCreator()
 }, { immediate: true, deep: true })
 
 watch(selectedNode, (node) => {
@@ -214,7 +214,7 @@ function addFlow(trigger: ConfigFormFlowTrigger): void {
     operations: [{ type: 'flow.add', pageId: props.pageId, flow }],
   })
   selectedId.value = id
-  flowCreatorOpen.value = false
+  closeFlowCreator()
 }
 
 function createTriggerChoice(
@@ -249,42 +249,19 @@ function flowTriggerLabel(trigger: ConfigFormFlowTrigger): string {
   return locale.value.t(`flow.trigger.${trigger.kind === 'page.mount' ? 'mount' : 'submit'}`, trigger.kind)
 }
 
-function toggleFlowCreator(): void {
-  if (props.readonly)
-    return
-  flowCreatorOpen.value = !flowCreatorOpen.value
-}
-
 function openFlowCreator(): void {
   if (props.readonly)
     return
   flowCreatorOpen.value = true
-  void nextTick(() => addFlowButton.value?.focus())
+  void nextTick(() => {
+    addFlowButton.value?.$el?.focus()
+    flowCreator.value?.handleOpen()
+  })
 }
 
-function handleFlowCreatorFocusout(event: FocusEvent): void {
-  const container = event.currentTarget as HTMLElement
-  if (!(event.relatedTarget instanceof Node) || !container.contains(event.relatedTarget))
-    flowCreatorOpen.value = false
-}
-
-function handleTriggerMenuKeydown(event: KeyboardEvent): void {
-  const menu = event.currentTarget as HTMLElement
-  const items = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-  const current = items.indexOf(document.activeElement as HTMLButtonElement)
-  const next = event.key === 'ArrowDown'
-    ? (current + 1) % items.length
-    : event.key === 'ArrowUp'
-      ? (current - 1 + items.length) % items.length
-      : event.key === 'Home'
-        ? 0
-        : event.key === 'End'
-          ? items.length - 1
-          : undefined
-  if (next === undefined)
-    return
-  event.preventDefault()
-  items[next]?.focus()
+function closeFlowCreator(): void {
+  flowCreatorOpen.value = false
+  flowCreator.value?.handleClose()
 }
 
 function removeFlow(id: string): void {
@@ -368,7 +345,7 @@ function updateErrorPolicy(onError: 'failure' | 'end'): void {
   })
 }
 
-function updateTimeout(value: string): void {
+function updateTimeout(value: number | undefined): void {
   const timeoutMs = Number(value)
   if (Number.isInteger(timeoutMs) && timeoutMs >= 0) {
     patchSelected({
@@ -633,51 +610,51 @@ function nodeIcon(node: ConfigFormFlowNode) {
         <strong>{{ locale.t('flow.title', 'Event flows') }}</strong>
         <small v-if="selectedFlow">{{ locale.t('flow.summary', '{nodes} nodes · {edges} edges', { nodes: selectedFlow.nodes.length, edges: selectedFlow.edges.length }) }}</small>
       </div>
-      <div class="flow-create-control" @focusout="handleFlowCreatorFocusout">
-        <button
+      <ElDropdown
+        ref="flowCreator"
+        class="flow-create-control"
+        trigger="click"
+        placement="bottom-end"
+        :disabled="readonly"
+        :show-timeout="0"
+        :hide-timeout="0"
+        :hide-on-click="true"
+        append-to="#workbench-overlays"
+        popper-class="flow-trigger-popper"
+        @command="addFlow"
+        @visible-change="flowCreatorOpen = $event"
+      >
+        <ElButton
           ref="addFlowButton"
-          type="button"
+          native-type="button"
           :disabled="readonly"
           data-testid="add-flow"
-          aria-haspopup="menu"
-          :aria-controls="flowCreatorId"
-          :aria-expanded="flowCreatorOpen"
           :title="locale.t('flow.add', 'Add event flow')"
-          @click="toggleFlowCreator"
-          @keydown.esc.stop="flowCreatorOpen = false"
         >
           <Plus :size="14" aria-hidden="true" />
           <span>{{ locale.t('flow.add', 'Add event flow') }}</span>
-        </button>
-        <div
-          v-if="flowCreatorOpen"
-          :id="flowCreatorId"
-          class="flow-trigger-menu"
-          role="menu"
-          :aria-label="locale.t('flow.chooseEvent', 'Choose event source')"
-          @keydown="handleTriggerMenuKeydown"
-          @keydown.esc.stop="flowCreatorOpen = false; addFlowButton?.focus()"
-        >
-          <section v-for="group in triggerGroups" :key="group.group" role="group" :aria-label="group.label">
-            <strong>{{ group.label }}</strong>
-            <button
-              v-for="choice in group.choices"
-              :key="choice.key"
-              type="button"
-              role="menuitem"
-              :class="{ 'is-preferred': initialTriggerKey === choice.key }"
-              :data-trigger-key="choice.key"
-              @click="addFlow(choice.trigger)"
-            >
-              <Play :size="13" aria-hidden="true" />
-              <span>
-                <b>{{ choice.label }}</b>
-                <code>{{ choice.detail }}</code>
-              </span>
-            </button>
-          </section>
-        </div>
-      </div>
+        </ElButton>
+        <template #dropdown>
+          <ElDropdownMenu class="flow-trigger-menu" :aria-label="locale.t('flow.chooseEvent', 'Choose event source')">
+            <template v-for="group in triggerGroups" :key="group.group">
+              <li class="flow-trigger-group-label" role="presentation">{{ group.label }}</li>
+              <ElDropdownItem
+                v-for="choice in group.choices"
+                :key="choice.key"
+                :command="choice.trigger"
+                :class="{ 'is-preferred': initialTriggerKey === choice.key }"
+                :data-trigger-key="choice.key"
+              >
+                <Play :size="13" aria-hidden="true" />
+                <span>
+                  <b>{{ choice.label }}</b>
+                  <code>{{ choice.detail }}</code>
+                </span>
+              </ElDropdownItem>
+            </template>
+          </ElDropdownMenu>
+        </template>
+      </ElDropdown>
     </header>
 
     <div v-if="flows.length" class="flow-workspace-body">
@@ -776,46 +753,57 @@ function nodeIcon(node: ConfigFormFlowNode) {
           </label>
           <label>
             <span>{{ locale.t('flow.trigger', 'Event source') }}</span>
-            <select :value="selectedFlow.trigger.kind" :disabled="readonly" :aria-label="locale.t('flow.trigger', 'Event source')" @change="updateTrigger(($event.target as HTMLSelectElement).value as ConfigFormFlow['trigger']['kind'])">
-               <option value="page.mount">{{ locale.t('flow.trigger.mount', 'Page mount') }}</option>
-               <option value="form.submit">{{ locale.t('flow.trigger.submit', 'Form submit') }}</option>
-               <option value="field.change" :disabled="!fieldNames?.length">{{ locale.t('flow.trigger.change', 'Field change') }}</option>
-               <option value="component.event" :disabled="!eventTargets?.length">{{ locale.t('flow.trigger.componentEvent', 'Component event') }}</option>
-             </select>
+            <ElSelect data-flow-control="trigger" :model-value="selectedFlow.trigger.kind" :disabled="readonly" :aria-label="locale.t('flow.trigger', 'Event source')" @change="updateTrigger">
+              <ElOption value="page.mount" :label="locale.t('flow.trigger.mount', 'Page mount')" />
+              <ElOption value="form.submit" :label="locale.t('flow.trigger.submit', 'Form submit')" />
+              <ElOption value="field.change" :label="locale.t('flow.trigger.change', 'Field change')" :disabled="!fieldNames?.length" />
+              <ElOption value="component.event" :label="locale.t('flow.trigger.componentEvent', 'Component event')" :disabled="!eventTargets?.length" />
+            </ElSelect>
            </label>
           <label v-if="selectedFlow.trigger.kind === 'field.change'">
             <span>{{ locale.t('flow.field', 'Field') }}</span>
-            <select :value="selectedFlow.trigger.field" :disabled="readonly" :aria-label="locale.t('flow.field', 'Field')" @change="updateTriggerField(($event.target as HTMLSelectElement).value)">
-               <option v-for="field in fieldNames" :key="field" :value="field">{{ field }}</option>
-             </select>
+            <ElSelect data-flow-control="field" :model-value="selectedFlow.trigger.field" :disabled="readonly" :aria-label="locale.t('flow.field', 'Field')" @change="updateTriggerField">
+              <ElOption v-for="field in fieldNames" :key="field" :value="field" :label="field" />
+            </ElSelect>
            </label>
            <label v-if="selectedFlow.trigger.kind === 'component.event'">
              <span>{{ locale.t('flow.eventTarget', 'Event target') }}</span>
-             <select :value="selectedEventTargetValue" :disabled="readonly || !eventTargets?.length" :aria-label="locale.t('flow.eventTarget', 'Event target')" @change="updateTriggerEvent(($event.target as HTMLSelectElement).value)">
-               <option v-if="!selectedEventTarget" value="" disabled>{{ locale.t('flow.eventUnavailable', 'Registered event unavailable') }}</option>
-               <option v-for="target in eventTargets" :key="flowEventTargetKey(target)" :value="flowEventTargetKey(target)">
-                 {{ target.nodeLabel }} · {{ target.eventLabel }} ({{ target.event }})
-               </option>
-             </select>
+             <ElSelect data-flow-control="event-target" :data-selected-value="selectedEventTargetValue" :model-value="selectedEventTargetValue" :disabled="readonly || !eventTargets?.length" :aria-label="locale.t('flow.eventTarget', 'Event target')" @change="updateTriggerEvent">
+               <ElOption v-if="!selectedEventTarget" value="" :label="locale.t('flow.eventUnavailable', 'Registered event unavailable')" disabled />
+               <ElOption
+                 v-for="target in eventTargets"
+                 :key="flowEventTargetKey(target)"
+                 :value="flowEventTargetKey(target)"
+                 :label="`${target.nodeLabel} · ${target.eventLabel} (${target.event})`"
+               />
+             </ElSelect>
            </label>
           <label>
             <span>{{ locale.t('flow.concurrency', 'Concurrency') }}</span>
-            <select :value="selectedFlow.concurrency ?? 'latest'" :disabled="readonly" :aria-label="locale.t('flow.concurrency', 'Concurrency')" @change="updateConcurrency(($event.target as HTMLSelectElement).value)">
-              <option value="latest">{{ locale.t('flow.concurrency.latest', 'Latest') }}</option>
-              <option value="queue">{{ locale.t('flow.concurrency.queue', 'Queue') }}</option>
-              <option value="ignore">{{ locale.t('flow.concurrency.ignore', 'Ignore') }}</option>
-            </select>
+            <ElSelect data-flow-control="concurrency" :model-value="selectedFlow.concurrency ?? 'latest'" :disabled="readonly" :aria-label="locale.t('flow.concurrency', 'Concurrency')" @change="updateConcurrency">
+              <ElOption value="latest" :label="locale.t('flow.concurrency.latest', 'Latest')" />
+              <ElOption value="queue" :label="locale.t('flow.concurrency.queue', 'Queue')" />
+              <ElOption value="ignore" :label="locale.t('flow.concurrency.ignore', 'Ignore')" />
+            </ElSelect>
           </label>
           <label>
             <span>{{ locale.t('flow.onError', 'On error') }}</span>
-            <select :value="selectedFlow.errorPolicy?.onError ?? 'end'" :disabled="readonly" :aria-label="locale.t('flow.onError', 'On error')" @change="updateErrorPolicy(($event.target as HTMLSelectElement).value as 'failure' | 'end')">
-              <option value="end">{{ locale.t('flow.onError.end', 'End') }}</option>
-              <option value="failure">{{ locale.t('flow.onError.failure', 'Failure branch') }}</option>
-            </select>
+            <ElSelect data-flow-control="error-policy" :model-value="selectedFlow.errorPolicy?.onError ?? 'end'" :disabled="readonly" :aria-label="locale.t('flow.onError', 'On error')" @change="updateErrorPolicy">
+              <ElOption value="end" :label="locale.t('flow.onError.end', 'End')" />
+              <ElOption value="failure" :label="locale.t('flow.onError.failure', 'Failure branch')" />
+            </ElSelect>
           </label>
           <label>
             <span>{{ locale.t('flow.timeout', 'Timeout (ms)') }}</span>
-            <input type="number" min="0" step="100" :value="selectedFlow.errorPolicy?.timeoutMs ?? 10000" :disabled="readonly" :aria-label="locale.t('flow.timeout', 'Timeout (ms)')" @change="updateTimeout(($event.target as HTMLInputElement).value)">
+            <ElInputNumber
+              :model-value="selectedFlow.errorPolicy?.timeoutMs ?? 10000"
+              :disabled="readonly"
+              :min="0"
+              :step="100"
+              controls-position="right"
+              :aria-label="locale.t('flow.timeout', 'Timeout (ms)')"
+              @change="updateTimeout"
+            />
           </label>
         </section>
 
@@ -855,33 +843,32 @@ function nodeIcon(node: ConfigFormFlowNode) {
 
 <style scoped>
 .flow-workspace { display: grid; height: 100%; min-height: 0; grid-template-rows: 44px minmax(0, 1fr); color: var(--wb-text); background: var(--wb-surface); }
-.flow-workspace-header { display: flex; min-width: 0; padding: 7px 10px; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--wb-border); }
+.flow-workspace-header { display: flex; min-width: 0; padding: 7px 10px; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--wb-separator); }
 .flow-workspace-header > div:first-child { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
 .flow-workspace-header small { color: var(--wb-muted); font-size: 10px; }
 .flow-workspace button { display: inline-flex; min-height: 28px; padding: 0 8px; align-items: center; justify-content: center; gap: 5px; color: var(--wb-text); border: 1px solid var(--wb-control-border); border-radius: 4px; background: var(--wb-bg); cursor: pointer; white-space: nowrap; }
 .flow-workspace button:hover:not(:disabled), .flow-list-item.is-active { border-color: var(--wb-accent); background: var(--wb-hover); }
 .flow-workspace button:disabled { cursor: default; opacity: .5; }
-.flow-create-control { position: relative; display: flex; flex: 0 0 auto; }
-.flow-trigger-menu { position: absolute; z-index: 30; top: calc(100% + 5px); right: 0; display: grid; box-sizing: border-box; width: min(310px, calc(100vw - 32px)); max-height: min(520px, calc(100vh - 120px)); padding: 5px; overflow: auto; gap: 5px; border: 1px solid var(--wb-control-border); border-radius: 6px; background: var(--wb-elevated); box-shadow: 0 12px 28px rgb(0 0 0 / 24%); }
-.flow-trigger-menu section { display: grid; gap: 2px; }
-.flow-trigger-menu section + section { padding-top: 5px; border-top: 1px solid var(--wb-border); }
-.flow-trigger-menu section > strong { padding: 3px 7px; color: var(--wb-muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
-.flow-trigger-menu button { display: grid; min-width: 0; min-height: 38px; padding: 5px 7px; justify-content: stretch; grid-template-columns: 16px minmax(0, 1fr); text-align: left; border-color: transparent; background: transparent; }
-.flow-trigger-menu button.is-preferred { border-color: color-mix(in srgb, var(--wb-accent) 56%, transparent); background: color-mix(in srgb, var(--wb-accent) 12%, transparent); }
-.flow-trigger-menu button > svg { color: var(--wb-accent); }
-.flow-trigger-menu button > span { display: grid; min-width: 0; gap: 1px; }
+.flow-create-control { display: inline-flex; flex: 0 0 auto; }
+.flow-trigger-menu { box-sizing: border-box; width: min(310px, calc(100vw - 32px)); max-height: min(520px, calc(100vh - 120px)); overflow: auto; }
+.flow-trigger-group-label { padding: 6px 12px 3px; color: var(--wb-muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.flow-trigger-group-label:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--wb-separator); }
+.flow-trigger-menu :deep(.el-dropdown-menu__item) { display: grid; min-width: 0; min-height: 38px; padding: 5px 9px; justify-content: stretch; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; line-height: 1.3; }
+.flow-trigger-menu :deep(.el-dropdown-menu__item.is-preferred) { background: var(--wb-accent-soft); }
+.flow-trigger-menu :deep(.el-dropdown-menu__item > svg) { color: var(--wb-accent); }
+.flow-trigger-menu :deep(.el-dropdown-menu__item > span) { display: grid; min-width: 0; gap: 1px; }
 .flow-trigger-menu b, .flow-trigger-menu code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flow-trigger-menu b { font-size: 11px; font-weight: 600; }
 .flow-trigger-menu code { color: var(--wb-muted); font-size: 9px; }
 .flow-workspace-body { position: relative; display: grid; min-width: 0; min-height: 0; grid-template-columns: 168px minmax(320px, 1fr) 248px; }
-.flow-list { min-width: 0; padding: 6px; overflow: auto; border-right: 1px solid var(--wb-border); }
+.flow-list { min-width: 0; padding: 6px; overflow: auto; border-right: 1px solid var(--wb-separator); }
 .flow-list-item { display: grid; grid-template-columns: minmax(0, 1fr) 28px; margin-bottom: 4px; border: 1px solid transparent; border-radius: 5px; }
 .flow-list-item > button:first-child { display: grid; min-width: 0; min-height: 46px; grid-template-columns: minmax(0, 1fr); justify-items: start; text-align: left; border: 0; background: transparent; }
 .flow-list-item > button:first-child span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flow-list-item > button:first-child small { width: 100%; overflow: hidden; color: var(--wb-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .flow-list-item > button:last-child { width: 24px; min-height: 24px; margin: 4px 3px 0 0; padding: 0; color: var(--wb-muted); border-color: transparent; background: transparent; }
 .flow-editor { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
-.flow-editor-toolbar { display: flex; min-width: 0; min-height: 48px; padding: 7px 9px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--wb-border); }
+.flow-editor-toolbar { display: flex; min-width: 0; min-height: 48px; padding: 7px 9px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--wb-separator); }
 .flow-editor-title { display: grid; min-width: 0; }
 .flow-editor-title strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .flow-editor-title code { color: var(--wb-muted); font-size: 9px; }
@@ -912,29 +899,30 @@ function nodeIcon(node: ConfigFormFlowNode) {
 .flow-node :deep(.vue-flow__handle.is-next) { top: 50%; }
 .flow-node :deep(.vue-flow__handle.is-error) { top: 76%; background: var(--wb-danger); }
 .flow-graph-error { position: absolute; z-index: 5; right: 10px; bottom: 10px; max-width: min(420px, calc(100% - 20px)); margin: 0; padding: 7px 9px; color: #ffd6d6; border: 1px solid color-mix(in srgb, var(--wb-danger) 72%, transparent); border-radius: 5px; background: color-mix(in srgb, var(--wb-danger) 24%, var(--wb-elevated)); font-size: 11px; }
-.flow-inspector { min-width: 0; overflow: auto; border-left: 1px solid var(--wb-border); background: var(--wb-surface); }
-.flow-inspector section { display: grid; padding: 10px; gap: 9px; border-bottom: 1px solid var(--wb-border); }
+.flow-inspector { min-width: 0; overflow: auto; border-left: 1px solid var(--wb-separator); background: var(--wb-surface); }
+.flow-inspector section { display: grid; padding: 10px; gap: 9px; border-bottom: 1px solid var(--wb-separator); }
 .flow-inspector section > header { display: flex; align-items: center; justify-content: space-between; }
 .flow-inspector section > header strong { font-size: 11px; }
 .flow-inspector code { color: var(--wb-muted); font-size: 9px; }
 .flow-inspector label { display: grid; min-width: 0; gap: 4px; color: var(--wb-muted); font-size: 10px; }
-.flow-inspector input, .flow-inspector select, .flow-inspector textarea { box-sizing: border-box; width: 100%; min-width: 0; color: var(--wb-text); border: 1px solid var(--wb-control-border); border-radius: 4px; outline: 0; background: var(--wb-bg); font: inherit; }
-.flow-inspector input, .flow-inspector select { height: 28px; padding: 0 7px; }
+.flow-inspector input, .flow-inspector textarea { box-sizing: border-box; width: 100%; min-width: 0; color: var(--wb-text); border: 1px solid var(--wb-control-border); border-radius: 4px; outline: 0; background: var(--wb-bg); font: inherit; }
+.flow-inspector input { height: 28px; padding: 0 7px; }
 .flow-inspector textarea { min-height: 120px; padding: 7px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; line-height: 1.45; }
-.flow-inspector input:focus, .flow-inspector select:focus, .flow-inspector textarea:focus { border-color: var(--wb-accent); }
+.flow-inspector input:focus, .flow-inspector textarea:focus { border-color: var(--wb-accent); }
+.flow-inspector :deep(.el-select), .flow-inspector :deep(.el-input-number) { width: 100%; }
 .flow-inspector button.is-danger { color: #ffb9b9; border-color: color-mix(in srgb, var(--wb-danger) 70%, transparent); background: color-mix(in srgb, var(--wb-danger) 14%, transparent); }
 .flow-empty { display: grid; min-height: 180px; place-content: center; justify-items: center; gap: 10px; padding: 20px; text-align: center; }
 .flow-empty > svg { color: var(--wb-muted); }
 
 @media (max-width: 900px) {
   .flow-workspace-body { grid-template-columns: 132px minmax(280px, 1fr); }
-  .flow-inspector { position: absolute; z-index: 10; right: 0; bottom: 0; width: min(260px, 80%); max-height: calc(100% - 93px); border-top: 1px solid var(--wb-border); box-shadow: -10px 0 30px rgb(0 0 0 / 22%); }
+  .flow-inspector { position: absolute; z-index: 10; right: 0; bottom: 0; width: min(260px, 80%); max-height: calc(100% - 93px); border-top: 1px solid var(--wb-separator); box-shadow: -10px 0 30px rgb(0 0 0 / 22%); }
   .flow-editor-toolbar { align-items: flex-start; flex-direction: column; }
 }
 
 @media (max-width: 620px) {
   .flow-workspace-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 62px minmax(0, 1fr); }
-  .flow-list { display: flex; min-width: 0; padding: 6px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--wb-border); }
+  .flow-list { display: flex; min-width: 0; padding: 6px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--wb-separator); }
   .flow-list-item { flex: 0 0 138px; margin: 0 4px 0 0; }
   .flow-editor-title { display: none; }
   .flow-node-palette { width: 100%; }

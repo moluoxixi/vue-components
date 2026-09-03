@@ -5,17 +5,21 @@ import type {
   ConfigFormResponsiveLayoutOverride,
 } from '@moluoxixi/config-form'
 import type { FormSettings } from '@moluoxixi/config-form-model'
-import type { DesignerPropertySetterDefinition } from '../../../registry'
+import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
+import type { DesignerPropertyControlRegistry, DesignerPropertySetterDefinition } from '../../../registry'
+import type { DesignerPropertyFormEntry } from '../types'
 import { Monitor, Smartphone, Tablet } from '@lucide/vue'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form'
 import { computed } from 'vue'
 import { resolveInspectorGridFraction } from '../../../inspector'
 import { useDesignerLocale } from '../../../locale'
-import DesignerSetter from './DesignerSetter.vue'
+import DesignerPropertyForm from './DesignerPropertyForm.vue'
 
 const props = withDefaults(defineProps<{
   modelValue?: ConfigFormResponsiveLayout
   columns?: number
+  components?: ConfigFormComponentRegistry
+  controls?: DesignerPropertyControlRegistry
   fieldSpan?: number
   disabled?: boolean
   showHeading?: boolean
@@ -98,6 +102,29 @@ function setter(
   }
 }
 
+function toggleEntry(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): DesignerPropertyFormEntry {
+  return {
+    setter: {
+      key: `${breakpoint}-enabled`,
+      label: locale.t('property.breakpointLayout', '{breakpoint} layout', { breakpoint: title(breakpoint) }),
+      path: ['responsive', breakpoint],
+      control: 'boolean',
+    },
+    value: isEnabled(breakpoint),
+  }
+}
+
+function valueEntry(
+  breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>,
+  key: keyof ConfigFormResponsiveLayoutOverride,
+): DesignerPropertyFormEntry {
+  return {
+    setter: setter(breakpoint, key),
+    value: responsive.value?.[breakpoint]?.[key],
+    ...(key === 'fieldSpan' ? { hint: resolvedFraction(breakpoint) } : {}),
+  }
+}
+
 function toggle(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): void {
   const next = cloneResponsive()
   if (next[breakpoint]) {
@@ -116,6 +143,11 @@ function toggle(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>): void {
     }
   }
   commit(Object.keys(next).length > 0 ? next : undefined)
+}
+
+function commitEnabled(breakpoint: Exclude<ConfigFormBreakpoint, 'desktop'>, value: unknown): void {
+  if (Boolean(value) !== isEnabled(breakpoint))
+    toggle(breakpoint)
 }
 
 function commitValue(
@@ -161,21 +193,20 @@ function commit(value: ConfigFormResponsiveLayout | undefined): void {
       </output>
     </div>
     <div v-for="breakpoint in breakpoints" :key="breakpoint.key" class="mx-config-form-designer__responsive-breakpoint">
-      <button
-        type="button"
-        class="mx-config-form-designer__switch-row is-compact"
-        role="switch"
-        :aria-label="locale.t('property.breakpointLayout', '{breakpoint} layout', { breakpoint: title(breakpoint.key) })"
-        :aria-checked="isEnabled(breakpoint.key)"
-        :disabled="isReadonly"
-        @click="toggle(breakpoint.key)"
-      >
+      <div class="mx-config-form-designer__responsive-switch-row">
         <span class="mx-config-form-designer__responsive-label">
           <component :is="breakpoint.icon" :size="15" aria-hidden="true" />
           {{ title(breakpoint.key) }}
         </span>
-        <span class="mx-config-form-designer__switch" :class="{ 'is-on': isEnabled(breakpoint.key) }" aria-hidden="true"><span /></span>
-      </button>
+        <DesignerPropertyForm
+          class="mx-config-form-designer__responsive-toggle-control"
+          :entries="[toggleEntry(breakpoint.key)]"
+          :components="components"
+          :controls="controls"
+          :readonly="isReadonly"
+          @commit="commitEnabled(breakpoint.key, $event)"
+        />
+      </div>
 
       <output
         class="mx-config-form-designer__responsive-fraction"
@@ -185,16 +216,17 @@ function commit(value: ConfigFormResponsiveLayout | undefined): void {
       </output>
 
       <div v-if="isEnabled(breakpoint.key)" class="mx-config-form-designer__responsive-fields">
-        <DesignerSetter
-          :setter="setter(breakpoint.key, 'columns')"
-          :value="responsive?.[breakpoint.key]?.columns"
+        <DesignerPropertyForm
+          :entries="[valueEntry(breakpoint.key, 'columns')]"
+          :components="components"
+          :controls="controls"
           :readonly="isReadonly"
           @commit="commitValue(breakpoint.key, 'columns', $event)"
         />
-        <DesignerSetter
-          :setter="setter(breakpoint.key, 'fieldSpan')"
-          :value="responsive?.[breakpoint.key]?.fieldSpan"
-          :hint="resolvedFraction(breakpoint.key)"
+        <DesignerPropertyForm
+          :entries="[valueEntry(breakpoint.key, 'fieldSpan')]"
+          :components="components"
+          :controls="controls"
           :readonly="isReadonly"
           @commit="commitValue(breakpoint.key, 'fieldSpan', $event)"
         />

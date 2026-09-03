@@ -2,6 +2,7 @@
 
 .mx-config-form-designer {
   --mx-designer-border: #808a9a;
+  --mx-designer-separator: #d5dbe4;
   --mx-designer-muted: #64748b;
   --mx-designer-surface: var(--mx-designer-overlay-surface, #fff);
   --mx-designer-surface-raised: #fbfcfe;
@@ -37,7 +38,7 @@
   font-size: 13px;
   letter-spacing: 0;
   background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer *,
@@ -64,6 +65,11 @@
   outline-offset: 1px;
 }
 
+.mx-config-form-designer .mx-config-form-designer__property-control:focus-visible,
+.mx-config-form-designer .mx-config-form-designer__property-control :focus-visible {
+  outline: none;
+}
+
 .mx-config-form-designer__toolbar,
 .mx-config-form-designer__status {
   display: flex;
@@ -75,7 +81,7 @@
 .mx-config-form-designer__toolbar {
   min-width: 0;
   justify-content: space-between;
-  border-bottom: 1px solid var(--mx-designer-border);
+  border-bottom: 1px solid var(--mx-designer-separator);
   box-shadow: 0 1px 0 rgb(15 23 42 / 2%);
 }
 
@@ -471,7 +477,7 @@
   right: 14px;
   width: 136px;
   background: color-mix(in srgb, var(--mx-designer-overlay) 96%, transparent);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid var(--mx-designer-separator);
   border-radius: 5px;
   box-shadow: 0 2px 8px var(--mx-designer-shadow);
 }
@@ -516,7 +522,7 @@
   padding: 2px;
   color: var(--mx-designer-text);
   background: color-mix(in srgb, var(--mx-designer-overlay) 96%, transparent);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid var(--mx-designer-separator);
   border-radius: 6px;
   box-shadow: 0 4px 16px var(--mx-designer-shadow);
   align-items: center;
@@ -585,7 +591,7 @@
   padding: 2px;
   color: var(--mx-designer-text);
   background: color-mix(in srgb, var(--mx-designer-overlay) 94%, transparent);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid var(--mx-designer-separator);
   border-radius: 6px;
   box-shadow: 0 2px 6px var(--mx-designer-shadow);
   cursor: default;
@@ -612,7 +618,7 @@
   padding: 4px;
   color: var(--mx-designer-text);
   background: var(--mx-designer-overlay);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid var(--mx-designer-separator);
   border-radius: 6px;
   box-shadow: 0 8px 24px var(--mx-designer-shadow);
 }
@@ -943,7 +949,7 @@
   color: var(--mx-designer-text);
   text-align: left;
   background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid transparent;
   border-radius: 5px;
   cursor: pointer;
 }
@@ -1022,13 +1028,42 @@
   white-space: nowrap;
 }
 
-.mx-config-form-designer-property-form__field[data-inherited-label] > .mx-config-form-designer-property-form__label::after {
+.mx-config-form-designer-property-form__field[data-inherited-label]:not([data-hint-label]) > .mx-config-form-designer-property-form__label::after {
   display: inline;
   margin-left: 4px;
   color: var(--mx-designer-muted);
   content: "· " attr(data-inherited-label);
   font-size: 10px;
   font-weight: 500;
+}
+
+.mx-config-form-designer-property-form__field[data-hint-label]::before {
+  display: block;
+  max-width: 52%;
+  overflow: hidden;
+  align-self: center;
+  color: var(--mx-designer-muted);
+  content: attr(data-hint-label);
+  direction: ltr;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer-property-form__field[data-hint-label] > .mx-config-form-designer-property-form__label {
+  max-width: 46%;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.mx-config-form-designer-property-form__field:focus-within > .mx-config-form-designer-property-form__label {
+  color: var(--mx-designer-accent);
 }
 
 .mx-config-form-designer-property-form__field.is-simple > .mx-config-form-designer-property-form__control {
@@ -1104,7 +1139,7 @@
 
 .mx-config-form-designer__responsive-settings {
   padding-top: 4px;
-  border-top: 1px solid var(--mx-designer-border);
+  border-top: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer__responsive-heading {
@@ -1114,10 +1149,8 @@
 }
 
 .mx-config-form-designer__responsive-breakpoint {
-  padding: 7px;
-  background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-border);
-  border-radius: 5px;
+  padding: 8px 0;
+  background: transparent;
 }
 
 .mx-config-form-designer__responsive-label {
@@ -1128,6 +1161,33 @@
 
 .mx-config-form-designer__responsive-fields {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mx-config-form-designer__responsive-switch-row {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mx-config-form-designer__responsive-toggle-control {
+  width: 44px;
+  flex: 0 0 44px;
+}
+
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__label,
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter-label-row {
+  display: none;
+}
+
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__field.is-simple,
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer__setter {
+  display: block;
+}
+
+.mx-config-form-designer__responsive-toggle-control .mx-config-form-designer-property-form__control {
+  min-height: 0;
 }
 
 @container config-form-inspector (max-width: 340px) {
@@ -1224,7 +1284,7 @@
   font-size: 10px;
   line-height: 1.45;
   background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid transparent;
   border-radius: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1285,7 +1345,10 @@
 
 .mx-config-form-designer__switch-row.is-compact {
   min-height: 30px;
+  padding-inline: 0;
   padding-block: 4px;
+  background: transparent;
+  border-color: transparent;
   font-size: 12px;
 }
 
@@ -1389,7 +1452,6 @@
 .mx-config-form-designer__reaction-row {
   padding: 8px;
   background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-border);
   border-radius: 5px;
 }
 
@@ -1406,7 +1468,7 @@
 
 .mx-config-form-designer__reaction-branch {
   padding-top: 7px;
-  border-top: 1px solid var(--mx-designer-border);
+  border-top: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer__reaction-branch > strong {
@@ -1418,7 +1480,6 @@
 .mx-config-form-designer__reaction-effect {
   padding: 7px;
   background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-border);
   border-radius: 4px;
 }
 
@@ -1442,7 +1503,6 @@
   padding: 8px;
   gap: 7px;
   background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-border);
   border-radius: 5px;
 }
 
@@ -1534,7 +1594,6 @@
   padding: 2px;
   gap: 2px;
   background: var(--mx-designer-subtle);
-  border: 1px solid var(--mx-designer-border);
   border-radius: 5px;
 }
 
@@ -1585,7 +1644,7 @@
 .mx-config-form-designer__status {
   color: var(--mx-designer-muted);
   font-size: 11px;
-  border-top: 1px solid var(--mx-designer-border);
+  border-top: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer__dialog-backdrop {
@@ -1605,9 +1664,9 @@
   padding: 0;
   overflow: auto;
   background: var(--mx-designer-surface);
-  border: 1px solid var(--mx-designer-border);
+  border: 1px solid var(--mx-designer-separator);
   border-radius: 6px;
-  box-shadow: 0 18px 50px rgb(15 23 42 / 22%);
+  box-shadow: 0 16px 42px rgb(15 23 42 / 14%);
 }
 
 .mx-config-form-designer__dialog.is-preview {
@@ -1620,7 +1679,7 @@
   padding: 8px 12px;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--mx-designer-border);
+  border-bottom: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer__dialog > textarea,
@@ -1631,7 +1690,7 @@
 .mx-config-form-designer__dialog > footer {
   padding: 10px 12px;
   justify-content: flex-end;
-  border-top: 1px solid var(--mx-designer-border);
+  border-top: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer__dialog-error {
@@ -1679,7 +1738,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border-bottom: 1px solid var(--mx-designer-border);
+  border-bottom: 1px solid var(--mx-designer-separator);
 }
 
 .mx-config-form-designer__drawer-header strong {
@@ -1717,7 +1776,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 4px;
   gap: 3px;
-  border-bottom: 1px solid var(--mx-designer-border);
+  border-bottom: 1px solid var(--mx-designer-separator);
   background: var(--mx-designer-subtle);
 }
 

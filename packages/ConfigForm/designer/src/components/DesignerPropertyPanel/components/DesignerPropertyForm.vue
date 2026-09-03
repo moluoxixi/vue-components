@@ -50,7 +50,7 @@ function fieldKey(entry: DesignerPropertyFormEntry, index: number): string {
 }
 
 function controlFor(entry: DesignerPropertyFormEntry): DesignerPropertyControlDefinition | undefined {
-  return isSimpleControl(entry.setter.control) && !entry.hint
+  return isSimpleControl(entry.setter.control)
     ? props.controls?.[entry.setter.control]
     : undefined
 }
@@ -93,9 +93,13 @@ function simpleField(
   const inheritedLabel = entry.value === undefined && entry.inheritedValue !== undefined
     ? locale.t('setter.inherited', 'Inherited')
     : undefined
+  const description = [inheritedLabel, entry.hint].filter(Boolean).join(' · ') || undefined
+  const visualHint = entry.hint
+    ? [inheritedLabel, entry.hint].filter(Boolean).join(' · ')
+    : undefined
   const componentProps: Record<string, unknown> = {
     ...control.props,
-    'aria-description': inheritedLabel,
+    'aria-description': description,
     'aria-label': setter.label,
     'class': [
       control.props?.class,
@@ -132,6 +136,7 @@ function simpleField(
       ],
       title: setter.label,
       ...(inheritedLabel ? { 'data-inherited-label': inheritedLabel } : {}),
+      ...(visualHint ? { 'data-hint-label': visualHint } : {}),
     } as ConfigFormRendererField<Record<string, unknown>>['fieldAttrs'],
   }
 }

@@ -7,6 +7,20 @@ import { useDesignerLocale } from '../locale'
 import { createDesignerNodeId } from '../graph'
 import { DESIGNER_SESSION_KEY } from './DesignerCanvas/services'
 
+interface DesignerPaletteMaterialBindings {
+  'aria-label': string
+  'aria-pressed': boolean
+  class: Array<string | Record<string, boolean | undefined>>
+  'data-designer-draggable': true
+  'data-material-key': string
+  'data-material-kind': DesignerMaterialDefinition['kind']
+  disabled: boolean | undefined
+  onClick: (event: MouseEvent) => void
+  onKeydown: (event: KeyboardEvent) => void
+  onPointerdown: (event: PointerEvent) => void
+  title: string
+}
+
 const props = withDefaults(defineProps<{
   materials: DesignerMaterialDefinition[]
   registry?: DesignerRegistry
@@ -20,6 +34,13 @@ const locale = useDesignerLocale()
 
 const emit = defineEmits<{
   addMaterial: [materialKey: string]
+}>()
+defineSlots<{
+  content?: (scope: {
+    getMaterialBindings: (material: DesignerMaterialDefinition) => DesignerPaletteMaterialBindings
+    groups: Array<[string, DesignerMaterialDefinition[]]>
+    materialTitle: (material: DesignerMaterialDefinition) => string
+  }) => unknown
 }>()
 const designSession = inject(DESIGNER_SESSION_KEY, undefined)
 const dragController = designSession?.drag
@@ -201,6 +222,31 @@ function handleMaterialKeydown(material: DesignerMaterialDefinition, event: Keyb
     beginMaterialKeyboardDrag(material.key)
 }
 
+function getMaterialBindings(material: DesignerMaterialDefinition): DesignerPaletteMaterialBindings {
+  return {
+    'aria-label': locale.materialTitle(material),
+    'aria-pressed': isMaterialKeyboardDragging(material.key),
+    'class': [
+      'mx-config-form-designer__palette-command',
+      {
+        'is-disabled': props.readonly,
+        'is-keyboard-dragging': isMaterialKeyboardDragging(material.key),
+      },
+    ],
+    'data-designer-draggable': true,
+    'data-material-key': material.key,
+    'data-material-kind': material.kind,
+    'disabled': props.readonly,
+    'onClick': (event: MouseEvent) => {
+      event.stopPropagation()
+      addMaterial(material.key)
+    },
+    'onKeydown': (event: KeyboardEvent) => handleMaterialKeydown(material, event),
+    'onPointerdown': (event: PointerEvent) => prepareMaterialDrag(material, event),
+    'title': locale.materialTitle(material),
+  }
+}
+
 onBeforeUnmount(() => {
   cancelKeyboardStart()
   dragController?.cancel()
@@ -223,6 +269,12 @@ watch(() => props.readonly, (readonly) => {
       <Search :size="16" aria-hidden="true" />
       <input v-model="query" type="search" :placeholder="locale.t('palette.search', 'Search')" :aria-label="locale.t('palette.searchMaterials', 'Search materials')">
     </div>
+    <slot
+      name="content"
+      :groups="groups"
+      :get-material-bindings="getMaterialBindings"
+      :material-title="locale.materialTitle"
+    >
     <div class="mx-config-form-designer__palette-list">
       <section v-for="[category, entries] in groups" :key="category" class="mx-config-form-designer__palette-group">
         <h2>{{ category }}</h2>
@@ -239,18 +291,9 @@ watch(() => props.readonly, (readonly) => {
             :data-material-kind="material.kind"
           >
             <button
+              v-bind="getMaterialBindings(material)"
               type="button"
               class="mx-config-form-designer__palette-item-action"
-              data-designer-draggable
-              :data-material-key="material.key"
-              :data-material-kind="material.kind"
-              :disabled="readonly"
-              :aria-label="locale.materialTitle(material)"
-              :aria-pressed="isMaterialKeyboardDragging(material.key)"
-              :title="locale.materialTitle(material)"
-              @click.stop="addMaterial(material.key)"
-              @keydown="handleMaterialKeydown(material, $event)"
-              @pointerdown="prepareMaterialDrag(material, $event)"
             />
             <span class="mx-config-form-designer__palette-item-summary" aria-hidden="true">
               <component :is="material.icon" v-if="material.icon" :size="17" aria-hidden="true" />
@@ -264,5 +307,6 @@ watch(() => props.readonly, (readonly) => {
       </section>
       <p v-if="groups.length === 0" class="mx-config-form-designer__empty-state">{{ locale.t('palette.empty', 'No materials') }}</p>
     </div>
+    </slot>
   </aside>
 </template>

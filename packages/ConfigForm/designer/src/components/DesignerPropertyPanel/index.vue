@@ -327,6 +327,8 @@ const formSetters = computed(() => [
     component: DesignerResponsiveSettings,
     componentProps: {
       columns: props.graph.form.columns,
+      components: props.components,
+      controls: props.propertyControls,
       fieldSpan: props.graph.form.fieldSpan,
       showHeading: false,
     },

@@ -2,6 +2,7 @@
 
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { h } from 'vue'
 import DesignerPalette from '../src/components/DesignerPalette.vue'
 import { createDesignerRegistry } from '../src/registry'
 
@@ -43,5 +44,44 @@ describe('designer palette presentation', () => {
 
     expect(wrapper.find('input[type="search"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-material-row-key]')).toHaveLength(1)
+  })
+
+  it('lets an embedding shell replace presentation without taking over material commands', async () => {
+    const wrapper = mount(DesignerPalette, {
+      props: {
+        materials: registry.listMaterials(),
+        registry,
+        showSearch: false,
+      },
+      slots: {
+        content: ({ getMaterialBindings, groups, materialTitle }) => h(
+          'div',
+          { 'data-custom-palette': '' },
+          groups.flatMap(([category, materials]) => [
+            h('h2', category),
+            ...materials.map(material => h(
+              'button',
+              { ...getMaterialBindings(material), 'data-material-row-key': material.key, 'type': 'button' },
+              materialTitle(material),
+            )),
+          ]),
+        ),
+      },
+    })
+
+    const command = wrapper.get('[data-custom-palette] [data-material-key="test.input"]')
+    expect(command.attributes()).toMatchObject({
+      'aria-label': 'A very long customer account identifier field',
+      'aria-pressed': 'false',
+      'data-designer-draggable': 'true',
+      'data-material-kind': 'field',
+      'data-material-row-key': 'test.input',
+    })
+    await command.trigger('click')
+    await command.trigger('keydown', { key: 'Enter' })
+    expect(wrapper.emitted('addMaterial')).toEqual([
+      ['test.input'],
+      ['test.input'],
+    ])
   })
 })

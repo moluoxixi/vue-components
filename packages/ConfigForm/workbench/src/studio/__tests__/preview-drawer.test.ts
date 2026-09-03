@@ -6,6 +6,7 @@ import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { PreviewDrawer } from '..'
+import { WorkbenchCommandHint } from '../../components/index'
 
 const RuntimeStub = defineComponent({
   name: 'PreviewRuntimeHostFrameStub',
@@ -92,10 +93,12 @@ describe('preview drawer', () => {
 
     expect(root.get('[data-preview-results]').text()).toContain('Submit the preview form')
     expect(root.find('[data-runtime-stub]').exists()).toBe(true)
-    expect(root.findAll('[data-command-hint]')).toHaveLength(6)
+    expect(wrapper.findAllComponents(WorkbenchCommandHint)).toHaveLength(6)
     const submit = root.get('button[aria-label="Submit preview form"]')
     expect(submit.attributes('aria-disabled')).toBe('true')
-    expect(submit.attributes('data-command-disabled-reason')).toBe('Preview is not ready to submit')
+    expect(wrapper.findAllComponents(WorkbenchCommandHint)
+      .find(hint => hint.props('label') === 'Submit preview form')
+      ?.props('disabledReason')).toBe('Preview is not ready to submit')
     expect(submit.attributes('disabled')).toBeUndefined()
 
     await wrapper.setProps({ open: false })

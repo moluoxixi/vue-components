@@ -240,7 +240,7 @@ function confirmDelete(): void {
   min-height: 64px;
   padding: 10px 14px 10px 18px;
   grid-template-columns: minmax(0, 1fr) auto;
-  border-bottom: 1px solid var(--wb-border);
+  border-bottom: 1px solid var(--wb-separator);
 }
 
 .page-manager__header span,
@@ -265,7 +265,7 @@ function confirmDelete(): void {
   padding: 10px 14px;
   grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
   gap: 10px;
-  border-bottom: 1px solid var(--wb-border);
+  border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-surface);
 }
 
@@ -311,7 +311,7 @@ function confirmDelete(): void {
   min-height: 34px;
   padding: 0 16px;
   color: var(--wb-muted);
-  border-bottom: 1px solid var(--wb-border);
+  border-bottom: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
   font-size: 11px;
   font-weight: 700;
@@ -321,7 +321,7 @@ function confirmDelete(): void {
 .page-manager__row {
   min-height: 58px;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--wb-border);
+  border-bottom: 1px solid var(--wb-separator);
 }
 
 .page-manager__row label {

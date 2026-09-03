@@ -30,6 +30,7 @@ const forbidden = [
   /app\.use\(\s*ElementPlus\s*\)/,
   /import\s+ElementPlus\s+from\s+['"]element-plus['"]/,
   /element-plus\/dist\/index\.css/,
+  /element-plus\/es\/components\/[a-z0-9-]+\/style\/css/,
 ]
 const sourceFiles = []
 
@@ -38,7 +39,7 @@ function collect(directory) {
     const path = resolve(directory, entry.name)
     if (entry.isDirectory())
       collect(path)
-    else if (/\.(?:css|ts|vue)$/.test(entry.name))
+    else if (/\.(?:css|scss|ts|vue)$/.test(entry.name))
       sourceFiles.push(path)
   }
 }
@@ -71,7 +72,7 @@ if (JSON.stringify(declaredComponents) !== JSON.stringify(usedTemplateComponents
 
 for (const [relativePath, expectedComponents] of Object.entries(expectedDynamicStyles)) {
   const source = readFileSync(resolve(root, relativePath), 'utf8')
-  const actualComponents = [...source.matchAll(/element-plus\/es\/components\/([a-z0-9-]+)\/style\/css/g)]
+  const actualComponents = [...source.matchAll(/element-plus\/es\/components\/([a-z0-9-]+)\/style\/index/g)]
     .map(match => match[1])
     .sort()
   const expected = [...expectedComponents].sort()

@@ -3,8 +3,8 @@ import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ProjectCommandAction, ProjectOperation } from '@moluoxixi/config-form-model'
 import type { EdgeRemoveChange, NodePositionChange } from '@vue-flow/core'
 import { VueFlow } from '@vue-flow/core'
-import { mount } from '@vue/test-utils'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { DOMWrapper, mount } from '@vue/test-utils'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { FlowWorkspace } from '..'
 
 const PAGE_ID = 'home'
@@ -41,6 +41,26 @@ beforeAll(() => {
   Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => 900 })
   Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => 560 })
 })
+
+beforeEach(() => {
+  const overlays = document.createElement('div')
+  overlays.id = 'workbench-overlays'
+  document.body.append(overlays)
+})
+
+afterEach(() => document.body.replaceChildren())
+
+function overlay(): DOMWrapper<HTMLElement> {
+  return new DOMWrapper(document.getElementById('workbench-overlays')!)
+}
+
+function selectControl(wrapper: ReturnType<typeof mount>, id: string) {
+  const control = wrapper.findAllComponents({ name: 'ElSelect' })
+    .find(component => component.attributes('data-flow-control') === id)
+  if (!control)
+    throw new Error(`Expected Element Plus select: ${id}`)
+  return control
+}
 
 describe('flowWorkspace', () => {
   it('uses an explicit locale outside the designer provider and reacts to replacements', async () => {
@@ -81,8 +101,8 @@ describe('flowWorkspace', () => {
   it('creates a valid trigger-to-end flow and projects it through controlled Vue Flow', async () => {
     const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [] } })
     await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
-    expect(wrapper.get('[role="menu"]').attributes('aria-label')).toBe('Choose event source')
-    await wrapper.findAll('[role="menuitem"]').find(button => button.text().includes('Form submit'))!.trigger('click')
+    expect(overlay().get('[role="menu"]').attributes('aria-labelledby')).toBeDefined()
+    await overlay().findAll('[role="menuitem"]').find(button => button.text().includes('Form submit'))!.trigger('click')
     const operation = appliedOperation(wrapper)
     expect(operation.type).toBe('flow.add')
     if (operation.type !== 'flow.add')
@@ -112,12 +132,14 @@ describe('flowWorkspace', () => {
     })
 
     expect(wrapper.get('.flow-list-item.is-active span').text()).toBe('Existing')
-    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(overlay().find('[role="menu"]').isVisible()).toBe(false)
 
     await wrapper.setProps({
       initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'change' },
     })
-    expect(wrapper.find('[role="menu"]').exists()).toBe(true)
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(overlay().get('[role="menu"]').isVisible()).toBe(true)
   })
 
   it('creates a component event flow from the exact registered node event', async () => {
@@ -132,7 +154,7 @@ describe('flowWorkspace', () => {
       },
     })
 
-    const preferred = wrapper.get('[role="menuitem"].is-preferred')
+    const preferred = overlay().get('[role="menuitem"].is-preferred')
     expect(preferred.text()).toContain('Submit · Click')
     await preferred.trigger('click')
 
@@ -159,7 +181,8 @@ describe('flowWorkspace', () => {
 
   it('uses a registered field when selecting a field-change trigger', async () => {
     const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('field-flow')], fieldNames: ['email'] } })
-    await wrapper.get('[aria-label="Event source"]').setValue('field.change')
+    selectControl(wrapper, 'trigger').vm.$emit('change', 'field.change')
+    await wrapper.vm.$nextTick()
     const updated = lastAction(wrapper)
     expect(updated.type).toBe('flow.settings')
     if (updated.type !== 'flow.settings')
@@ -178,7 +201,8 @@ describe('flowWorkspace', () => {
       },
     })
 
-    await wrapper.get('[aria-label="Event source"]').setValue('component.event')
+    selectControl(wrapper, 'trigger').vm.$emit('change', 'component.event')
+    await wrapper.vm.$nextTick()
     const updated = lastAction(wrapper)
     expect(updated.type).toBe('flow.settings')
     if (updated.type !== 'flow.settings')
@@ -186,14 +210,43 @@ describe('flowWorkspace', () => {
     expect(updated.settings.trigger).toEqual({ kind: 'component.event', nodeId: 'submit', event: 'change' })
 
     await wrapper.setProps({ flows: [{ ...createFlow('event-flow'), trigger: updated.settings.trigger } as ConfigFormFlow] })
-    const eventTarget = wrapper.get('[aria-label="Event target"]')
-    expect((eventTarget.element as HTMLSelectElement).value).toContain('submit')
+    expect(String(selectControl(wrapper, 'event-target').props('modelValue'))).toContain('submit')
   })
 
   it('keeps component-event selection unavailable without registry targets', async () => {
     const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('event-flow')] } })
-    const option = wrapper.get('[aria-label="Event source"] option[value="component.event"]')
-    expect(option.attributes('disabled')).toBeDefined()
+    const option = selectControl(wrapper, 'trigger').findAllComponents({ name: 'ElOption' }).find(
+      component => component.props('value') === 'component.event',
+    )
+    expect(option?.props('disabled')).toBe(true)
+  })
+
+  it('preserves readonly and numeric boundaries through Element Plus controls', async () => {
+    const readonlyWrapper = mount(FlowWorkspace, {
+      props: { pageId: PAGE_ID, flows: [createFlow('readonly-flow')], readonly: true },
+    })
+    expect(readonlyWrapper.findAllComponents({ name: 'ElSelect' })
+      .every(control => control.props('disabled') === true)).toBe(true)
+    const readonlyTimeout = readonlyWrapper.getComponent({ name: 'ElInputNumber' })
+    expect(readonlyTimeout.props()).toMatchObject({ disabled: true, min: 0, step: 100 })
+    readonlyTimeout.vm.$emit('change', 1200)
+    await readonlyWrapper.vm.$nextTick()
+    expect(readonlyWrapper.emitted('command')).toBeUndefined()
+
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('timeout-flow')] } })
+    const timeout = wrapper.getComponent({ name: 'ElInputNumber' })
+    timeout.vm.$emit('change', -1)
+    timeout.vm.$emit('change', 12.5)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('command')).toBeUndefined()
+
+    timeout.vm.$emit('change', 1200)
+    await wrapper.vm.$nextTick()
+    const updated = lastAction(wrapper)
+    expect(updated.type).toBe('flow.settings')
+    if (updated.type !== 'flow.settings')
+      return
+    expect(updated.settings.errorPolicy).toEqual({ onError: 'end', timeoutMs: 1200 })
   })
 
   it('keeps both condition branches when adding a node after a condition', async () => {

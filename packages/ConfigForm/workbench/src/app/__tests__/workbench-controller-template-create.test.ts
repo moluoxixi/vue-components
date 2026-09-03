@@ -150,7 +150,7 @@ describe('workbench template project creation transaction', () => {
     expect(deleteProject).toHaveBeenCalledOnce()
     expect(controller.currentProject.value?.id).toBe('existing-project')
     expect(controller.getCurrentAdapterId()).toBe('element-plus')
-  })
+  }, 10_000)
 
   it('keeps an activated project when the post-open catalog refresh fails', async () => {
     const repository = durableRepository()

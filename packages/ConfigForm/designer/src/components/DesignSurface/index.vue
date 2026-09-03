@@ -34,6 +34,7 @@ import {
 } from '../../graph'
 import { createDesignerLocale, DESIGNER_LOCALE_KEY } from '../../locale'
 import { DesignerCanvas } from '../DesignerCanvas'
+import { DesignerCommandHint } from '../DesignerCommandHint'
 import DesignerPalette from '../DesignerPalette.vue'
 import { DesignerPropertyPanel } from '../DesignerPropertyPanel'
 import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
@@ -586,11 +587,11 @@ defineExpose<DesignSurfaceExpose>({
       <strong>{{ locale.t('designer.title', 'Form Designer') }}</strong>
       <div class="mx-config-form-designer__toolbar-controls">
         <div v-if="workspaceMode !== 'narrow'" class="mx-config-form-designer__sidebar-actions" role="group" :aria-label="locale.t('designer.sidebars', 'Designer sidebars')">
-          <button type="button" class="mx-config-form-designer__icon-button" data-command-hint data-sidebar-trigger="palette" :aria-controls="`${workspaceId}-palette-panel`" :aria-expanded="isSidePanelOpen('palette')" :aria-label="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" :title="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" @click="toggleWorkspacePanel('palette')">
+          <button type="button" class="mx-config-form-designer__icon-button" data-sidebar-trigger="palette" :aria-controls="`${workspaceId}-palette-panel`" :aria-expanded="isSidePanelOpen('palette')" :aria-label="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" :title="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" @click="toggleWorkspacePanel('palette')">
             <PanelLeftClose v-if="isSidePanelOpen('palette')" :size="17" aria-hidden="true" />
             <PanelLeftOpen v-else :size="17" aria-hidden="true" />
           </button>
-          <button type="button" class="mx-config-form-designer__icon-button" data-command-hint data-sidebar-trigger="properties" :aria-controls="`${workspaceId}-properties-panel`" :aria-expanded="isSidePanelOpen('properties')" :aria-label="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" :title="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" @click="toggleWorkspacePanel('properties')">
+          <button type="button" class="mx-config-form-designer__icon-button" data-sidebar-trigger="properties" :aria-controls="`${workspaceId}-properties-panel`" :aria-expanded="isSidePanelOpen('properties')" :aria-label="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" :title="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" @click="toggleWorkspacePanel('properties')">
             <PanelRightClose v-if="isSidePanelOpen('properties')" :size="17" aria-hidden="true" />
             <PanelRightOpen v-else :size="17" aria-hidden="true" />
           </button>
@@ -609,7 +610,9 @@ defineExpose<DesignSurfaceExpose>({
       <section :id="`${workspaceId}-palette-panel`" class="mx-config-form-designer__workspace-panel is-palette" data-workspace-panel="palette" :hidden="isWorkspacePanelHidden('palette')" :inert="isWorkspacePanelHidden('palette') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined">
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('palette.materials', 'Materials') }}</strong>
-          <button type="button" class="mx-config-form-designer__icon-button" data-command-hint data-drawer-control="palette" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('palette')"><X :size="17" aria-hidden="true" /></button>
+          <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
+            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="palette" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('palette')"><X :size="17" aria-hidden="true" /></button>
+          </DesignerCommandHint>
         </div>
         <slot name="palette" :materials="registry.listMaterials()" :add-material="addMaterial" :readonly="readonly" :form="controller.graph.value.form">
           <DesignerPalette :materials="registry.listMaterials()" :registry="registry" :form="controller.graph.value.form" :readonly="readonly" @add-material="addMaterial" />
@@ -618,6 +621,7 @@ defineExpose<DesignSurfaceExpose>({
 
       <section :id="`${workspaceId}-canvas-panel`" class="mx-config-form-designer__workspace-panel is-canvas" data-workspace-panel="canvas" tabindex="-1" :hidden="isWorkspacePanelHidden('canvas')" :inert="isWorkspacePanelHidden('canvas') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : undefined">
         <DesignerCanvas
+          :command-hint="commandHint"
           :graph="controller.graph.value"
           :page-id="pageId"
           :registry="registry"
@@ -649,7 +653,9 @@ defineExpose<DesignSurfaceExpose>({
       <section :id="`${workspaceId}-properties-panel`" class="mx-config-form-designer__workspace-panel is-properties" data-workspace-panel="properties" :hidden="isWorkspacePanelHidden('properties')" :inert="isWorkspacePanelHidden('properties') ? true : undefined" :role="workspaceMode === 'narrow' ? 'tabpanel' : workspaceMode === 'medium' ? 'region' : undefined">
         <div v-if="workspaceMode === 'medium'" class="mx-config-form-designer__drawer-header">
           <strong>{{ locale.t('property.properties', 'Properties') }}</strong>
-          <button type="button" class="mx-config-form-designer__icon-button" data-command-hint data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')"><X :size="17" aria-hidden="true" /></button>
+          <DesignerCommandHint :renderer="commandHint" :label="locale.t('action.close', 'Close')">
+            <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')"><X :size="17" aria-hidden="true" /></button>
+          </DesignerCommandHint>
         </div>
         <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition">
           <DesignerPropertyPanel

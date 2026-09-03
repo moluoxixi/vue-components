@@ -2,6 +2,7 @@ import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-f
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { DesignerPropertyPanel } from '../src/components/DesignerPropertyPanel'
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
@@ -12,6 +13,25 @@ const placeholderSetter: DesignerPropertySetterDefinition = {
   path: ['props', 'placeholder'],
   control: 'text',
 }
+
+const NumberControl = defineComponent({
+  inheritAttrs: false,
+  props: {
+    disabled: Boolean,
+    modelValue: Number,
+  },
+  emits: ['change'],
+  setup(props, { attrs, emit }) {
+    return () => h('input', {
+      ...attrs,
+      'data-adapter-number': '',
+      'disabled': props.disabled,
+      'type': 'number',
+      'value': props.modelValue,
+      'onChange': (event: Event) => emit('change', Number((event.currentTarget as HTMLInputElement).value)),
+    })
+  },
+})
 
 function field(
   id: string,
@@ -444,17 +464,23 @@ describe('designer property panel adaptive Inspector', () => {
         nodes: [node],
         material,
         componentDefinition: definition,
+        components: {
+          number: { component: NumberControl, trigger: 'change' },
+        },
         diagnostics: [],
+        propertyControls: {
+          number: { component: 'number' },
+        },
       },
     })
 
-    const hint = () => wrapper.get('.mx-config-form-designer__setter-hint.is-value')
-    expect(hint().text()).toBe('8 / 24 · 1/3')
-    const describedBy = wrapper.get('input[aria-label="Span"]').attributes('aria-describedby')
-    expect(describedBy).toBe(hint().attributes('id'))
+    const hintField = () => wrapper.get('.mx-config-form-designer-property-form__field[data-hint-label]')
+    expect(hintField().attributes('data-hint-label')).toBe('8 / 24 · 1/3')
+    expect(wrapper.get('[data-adapter-number][aria-label="Span"]').attributes('aria-description')).toBe('8 / 24 · 1/3')
+    expect(wrapper.find('.mx-config-form-designer__stepper').exists()).toBe(false)
 
     await wrapper.setProps({ graph: graph([node], { name: 12 }, { columns: 24, fieldSpan: 12 }) })
-    expect(hint().text()).toBe('12 / 24 · 1/2')
+    expect(hintField().attributes('data-hint-label')).toBe('12 / 24 · 1/2')
     expect(JSON.stringify(wrapper.props('graph'))).not.toContain('fraction')
   })
 

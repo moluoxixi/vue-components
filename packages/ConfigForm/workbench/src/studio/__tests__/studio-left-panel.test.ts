@@ -65,11 +65,20 @@ describe('studio left panel', () => {
     const palette = wrapper.getComponent(DesignerPalette)
     expect(palette.props('showSearch')).toBe(false)
     expect(palette.find('.mx-config-form-designer__search').exists()).toBe(false)
+    expect(wrapper.find('.el-scrollbar.designer-material-scrollbar').exists()).toBe(true)
+    expect(wrapper.find('.el-collapse.designer-material-groups').exists()).toBe(true)
+    expect(wrapper.get('.designer-material-category').text()).toBe('Fields')
     await search.setValue('missing')
     expect(wrapper.get('.el-empty').text()).toContain('No materials')
     await search.setValue('Input')
     expect(wrapper.find('[data-specimen-node-id]').exists()).toBe(false)
-    await wrapper.get('[data-material-key="test.input"]').trigger('click')
+    const material = wrapper.get('.el-button[data-material-key="test.input"]')
+    expect(material.attributes()).toMatchObject({
+      'data-designer-draggable': 'true',
+      'data-material-kind': 'field',
+      'data-material-row-key': 'test.input',
+    })
+    await material.trigger('click')
     expect(wrapper.emitted('addMaterial')).toEqual([['test.input']])
   })
 

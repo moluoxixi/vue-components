@@ -1,0 +1,15 @@
+@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+  $colors: (
+    'primary': (
+      'base': #a14f68,
+    ),
+  ),
+  $input: (
+    'focus-border-color': var(--el-border-color),
+  ),
+  $popper: (
+    'border-radius': var(--el-border-radius-base),
+    'bg-color-light': var(--el-bg-color-overlay),
+    'bg-color-dark': var(--el-text-color-primary),
+  ),
+);

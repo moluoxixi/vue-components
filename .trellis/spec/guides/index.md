@@ -24,6 +24,12 @@ These guides help you **ask the right questions before coding**.
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
 
+## Cross-Package Coding Contracts
+
+| Contract | Purpose | When to Use |
+| --- | --- | --- |
+| [Mature Component Library First](../frontend/component-library-selection.md) | Reuse maintained UI interaction primitives before custom state machines | Adding or fixing Tooltip, Popover, Select, Menu, Dialog, Drawer, Tabs, pickers, virtual lists, or drag-and-drop UI |
+
 ---
 
 ## Quick Reference: Thinking Triggers
@@ -50,6 +56,15 @@ These guides help you **ask the right questions before coding**.
 - [ ] Multiple branches update the same derived state from `kind` / `action`
 
 → Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
+
+### When Building Common UI Interactions
+
+- [ ] Does the target package already use a mature component library for this primitive?
+- [ ] Does a maintained repository component already wrap the required behavior?
+- [ ] Am I about to hand-roll focus, keyboard, overlay positioning, outside-click, touch, or ARIA state?
+- [ ] If no library can be used, is the capability gap reproducible and recorded in the task design?
+
+→ Read [Mature Component Library First](../frontend/component-library-selection.md)
 
 ### When Verifying AI Cross-Review Results
 

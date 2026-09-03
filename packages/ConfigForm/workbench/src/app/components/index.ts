@@ -1,5 +1,4 @@
 export { default as WorkbenchAppearanceDrawer } from './WorkbenchAppearanceDrawer.vue'
 export { default as WorkbenchAppearancePanel } from './WorkbenchAppearancePanel.vue'
 export { default as WorkbenchAppearancePopover } from './WorkbenchAppearancePopover.vue'
-export { default as WorkbenchCommandTooltip } from './WorkbenchCommandTooltip.vue'
 export { default as WorkbenchTopbar } from './WorkbenchTopbar.vue'

@@ -19,6 +19,7 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { WorkbenchCommandHint } from '../../components/index'
 import WorkbenchAppearancePopover from './WorkbenchAppearancePopover.vue'
 
 const props = defineProps<WorkbenchTopbarProps>()
@@ -32,6 +33,9 @@ const locale = computed(() => createDesignerLocale(props.locale))
 const pageManagerInOverflow = ref(false)
 const saveUnavailableReason = computed(() => props.configError
   || (props.busy ? locale.value.t('action.busyUnavailable', 'Wait for the current operation to finish') : undefined))
+const saveAccessibleLabel = computed(() => saveUnavailableReason.value
+  ? `${locale.value.t('save.menu', 'Save options')} · ${saveUnavailableReason.value}`
+  : locale.value.t('save.menu', 'Save options'))
 let narrowTopbarQuery: MediaQueryList | undefined
 
 function updatePageManagerPlacement(event: Pick<MediaQueryListEvent, 'matches'> | MediaQueryList): void {
@@ -96,32 +100,33 @@ function chooseExport(mode: WorkbenchExportMode): void {
     </div>
 
     <div class="topbar-actions">
-      <ElButton
-        v-if="project"
-        native-type="button"
-        class="mobile-page-manager-button"
-        :aria-label="locale.t('pages.manage', 'Manage pages')"
-        data-command-hint
-        circle
-        @click="emit('openPages')"
-      >
-        <Files :size="17" aria-hidden="true" />
-      </ElButton>
+      <WorkbenchCommandHint v-if="project" :label="locale.t('pages.manage', 'Manage pages')">
+        <ElButton
+          native-type="button"
+          class="mobile-page-manager-button"
+          :aria-label="locale.t('pages.manage', 'Manage pages')"
+          circle
+          @click="emit('openPages')"
+        >
+          <Files :size="17" aria-hidden="true" />
+        </ElButton>
+      </WorkbenchCommandHint>
       <span v-if="project" class="revision-state" :class="{ 'is-dirty': dirty }" aria-live="polite">
         v{{ repositoryRevision ?? 0 }} · {{ statusLabel }}
       </span>
-        <ElButton native-type="button" class="topbar-secondary-action" :aria-label="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-page" data-command-hint circle @click="emit('newPage', 'topbar-new-page')">
-          <Plus :size="17" aria-hidden="true" />
-        </ElButton>
+        <WorkbenchCommandHint :label="locale.t('pages.new', 'New page')">
+          <ElButton native-type="button" class="topbar-secondary-action" :aria-label="locale.t('pages.new', 'New page')" data-create-trigger="topbar-new-page" circle @click="emit('newPage', 'topbar-new-page')">
+            <Plus :size="17" aria-hidden="true" />
+          </ElButton>
+        </WorkbenchCommandHint>
         <ElDropdown v-if="project" class="save-menu export-menu" :disabled="Boolean(saveUnavailableReason)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseSaveAction">
           <ElButton
             ref="saveTrigger"
             native-type="button"
             :class="{ 'is-command-disabled': Boolean(saveUnavailableReason) }"
-            :aria-label="locale.t('save.menu', 'Save options')"
+            :aria-label="saveAccessibleLabel"
+            :title="saveAccessibleLabel"
             :aria-disabled="saveUnavailableReason ? 'true' : undefined"
-            :data-command-disabled-reason="saveUnavailableReason"
-            data-command-hint
           >
             <Save :size="16" aria-hidden="true" />
             <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
@@ -144,7 +149,7 @@ function chooseExport(mode: WorkbenchExportMode): void {
           </template>
         </ElDropdown>
         <ElDropdown v-if="project" class="export-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseExport">
-          <ElButton ref="exportTrigger" native-type="button" :aria-label="locale.t('action.export', 'Export')" data-command-hint>
+          <ElButton ref="exportTrigger" native-type="button" :aria-label="locale.t('action.export', 'Export')" :title="locale.t('action.export', 'Export')">
             <Download :size="16" aria-hidden="true" />
             <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
           </ElButton>
@@ -155,30 +160,36 @@ function chooseExport(mode: WorkbenchExportMode): void {
             </ElDropdownMenu>
           </template>
         </ElDropdown>
-      <ElButton
+      <WorkbenchCommandHint
         v-if="project"
-        native-type="button"
-        class="topbar-secondary-action"
-        :class="{ 'is-active': flowOpen }"
-        :aria-label="locale.t('flow.dialog.title', 'Event flow orchestration')"
-        :aria-expanded="flowOpen"
-        circle
-        data-command-hint
-        data-flow-workspace-trigger
-        @click="emit('openFlow')"
+        anchor-class="topbar-secondary-action"
+        detached
+        :label="locale.t('flow.dialog.title', 'Event flow orchestration')"
       >
-        <Workflow :size="17" aria-hidden="true" />
-      </ElButton>
-      <ElButton
-        native-type="button"
-        class="topbar-secondary-action"
-        :aria-label="localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese')"
-        circle
-        data-command-hint
-        @click="emit('toggleLocale')"
-      >
-        <Languages :size="17" aria-hidden="true" />
-      </ElButton>
+        <ElButton
+          native-type="button"
+          class="topbar-secondary-action"
+          :class="{ 'is-active': flowOpen }"
+          :aria-label="locale.t('flow.dialog.title', 'Event flow orchestration')"
+          :aria-expanded="flowOpen"
+          circle
+          data-flow-workspace-trigger
+          @click="emit('openFlow')"
+        >
+          <Workflow :size="17" aria-hidden="true" />
+        </ElButton>
+      </WorkbenchCommandHint>
+      <WorkbenchCommandHint :label="localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese')">
+        <ElButton
+          native-type="button"
+          class="topbar-secondary-action"
+          :aria-label="localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese')"
+          circle
+          @click="emit('toggleLocale')"
+        >
+          <Languages :size="17" aria-hidden="true" />
+        </ElButton>
+      </WorkbenchCommandHint>
       <WorkbenchAppearancePopover
         trigger-class="topbar-secondary-action"
         :locale="locale"
@@ -187,20 +198,20 @@ function chooseExport(mode: WorkbenchExportMode): void {
         @set-palette-family="emit('setPaletteFamily', $event)"
         @set-theme-preference="emit('setThemePreference', $event)"
       />
-      <ElButton
-        v-if="project"
-        native-type="button"
-        class="preview-toggle-button"
-        :aria-label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
-        circle
-        data-command-hint
-        @click="emit('togglePreview')"
-      >
-        <PanelRightClose v-if="previewOpen" :size="17" aria-hidden="true" />
-        <PanelRightOpen v-else :size="17" aria-hidden="true" />
-      </ElButton>
+      <WorkbenchCommandHint v-if="project" :label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')">
+        <ElButton
+          native-type="button"
+          class="preview-toggle-button"
+          :aria-label="previewOpen ? locale.t('preview.hide', 'Hide preview') : locale.t('preview.show', 'Show preview')"
+          circle
+          @click="emit('togglePreview')"
+        >
+          <PanelRightClose v-if="previewOpen" :size="17" aria-hidden="true" />
+          <PanelRightOpen v-else :size="17" aria-hidden="true" />
+        </ElButton>
+      </WorkbenchCommandHint>
         <ElDropdown class="mobile-action-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseMobileAction">
-          <ElButton ref="mobileMenuTrigger" native-type="button" :aria-label="locale.t('workbench.moreActions', 'More actions')" data-create-trigger="topbar-mobile-menu" data-command-hint circle><MoreHorizontal :size="18" aria-hidden="true" /></ElButton>
+          <ElButton ref="mobileMenuTrigger" native-type="button" :aria-label="locale.t('workbench.moreActions', 'More actions')" :title="locale.t('workbench.moreActions', 'More actions')" data-create-trigger="topbar-mobile-menu" circle><MoreHorizontal :size="18" aria-hidden="true" /></ElButton>
           <template #dropdown>
             <ElDropdownMenu class="mobile-action-popover" data-mobile-action-menu>
               <ElDropdownItem v-if="project" class="topbar-status-item" disabled>

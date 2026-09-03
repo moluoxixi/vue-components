@@ -29,7 +29,6 @@ const locale = computed(() => createDesignerLocale(props.locale))
         native-type="button"
         :class="['appearance-popover-trigger', triggerClass]"
         circle
-        data-command-hint
         :title="locale.t('appearance.open', 'Open appearance settings')"
         :aria-label="locale.t('appearance.open', 'Open appearance settings')"
       >
