@@ -198,6 +198,9 @@ interface PackageArchitectureManifest {
   `components/` directory. A component used by only one feature belongs below
   that feature's `components/`. Package-level shared components require at
   least two independent feature owners.
+- Single-parent ownership is the more specific terminal rule. Once a component
+  is inside its concrete Vue parent's `components/` directory, do not also
+  require it to move to the broader feature-level `components/` directory.
 - `index.vue` beside a feature `index.ts` is a feature shell, not a single-parent
   child. Components reachable through explicit root re-exports are public;
   dynamic/framework ownership that static analysis cannot derive must be

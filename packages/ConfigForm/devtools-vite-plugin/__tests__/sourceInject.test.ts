@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { transformDefineFieldSource } from '../src/source-inject'
 
 const TS_FILE = 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/components/ElementDemoControls.ts'
-const VUE_FILE = 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue'
+const VUE_FILE = 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ConfigForm/components/ElementConfigForm.vue'
 
 describe('defineField source injection', () => {
   it('injects source metadata into imported defineField object calls', () => {
@@ -185,7 +185,7 @@ describe('defineField source injection', () => {
 
     expect(result?.code).toContain('<template><div /></template>')
     expect(result?.code).toContain('__source')
-    expect(result?.code).toContain('file: "D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue"')
+    expect(result?.code).toContain('file: "D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ConfigForm/components/ElementConfigForm.vue"')
     expect(result?.code).toContain('line: 4')
   })
 

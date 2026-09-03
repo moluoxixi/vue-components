@@ -1,5 +1,5 @@
 import { withConfigFormInstall } from '@moluoxixi/config-form'
-import AntdConfigFormSource from '../index.vue'
+import { AntdConfigFormSource } from './components'
 
 export const AntdConfigForm = withConfigFormInstall(AntdConfigFormSource)
 

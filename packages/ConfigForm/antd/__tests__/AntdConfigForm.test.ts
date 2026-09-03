@@ -6,11 +6,11 @@ import { Input, InputNumber, Segmented, Select, Switch } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { z } from 'zod'
-import AntdConfigFormSource from '../src/index.vue'
 import {
   ANTD_CONFIG_FORM_COMPONENTS,
   ANTD_CONFIG_FORM_MATERIAL_REGISTRY,
 } from '../src/registries'
+import { AntdConfigFormSource } from '../src/services/components'
 
 const AntdConfigForm = AntdConfigFormSource as Component
 

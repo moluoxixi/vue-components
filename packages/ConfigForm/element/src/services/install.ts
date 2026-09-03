@@ -1,5 +1,5 @@
 import { withConfigFormInstall } from '@moluoxixi/config-form'
-import ElementConfigFormSource from '../index.vue'
+import { ElementConfigFormSource } from './components'
 
 export const ElementConfigForm = withConfigFormInstall(ElementConfigFormSource)
 

@@ -2,26 +2,24 @@
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type {
   ConfigFormRendererExpose,
-  ConfigFormRendererField,
 } from '@moluoxixi/config-form'
 import type {
-  AntdConfigFormEmits,
-  AntdConfigFormExpose,
-  AntdConfigFormProps,
-  AntdConfigFormSlots,
-} from './types'
+  ElementConfigFormEmits,
+  ElementConfigFormExpose,
+  ElementConfigFormProps,
+  ElementConfigFormSlots,
+} from '../../../types'
 import { computed, useTemplateRef } from 'vue'
 import { ConfigFormRenderer, createConfigFormRendererExpose } from '@moluoxixi/config-form'
-import { resolveAntdConfigFormFieldBinding } from './adapters'
-import { ANTD_CONFIG_FORM_COMPONENTS } from './registries'
-import './styles/index.scss'
+import { ELEMENT_CONFIG_FORM_COMPONENTS } from '../../../registries'
+import '../../../styles/index.scss'
 
 defineOptions({
-  name: 'AntdConfigForm',
+  name: 'ElementConfigForm',
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<AntdConfigFormProps<TValues>>(), {
+const props = withDefaults(defineProps<ElementConfigFormProps<TValues>>(), {
   cellAttrs: () => ({}),
   columns: 24,
   fieldSpan: 24,
@@ -30,19 +28,15 @@ const props = withDefaults(defineProps<AntdConfigFormProps<TValues>>(), {
   layoutAttrs: () => ({}),
 })
 
-const emit = defineEmits<AntdConfigFormEmits<TValues>>()
-defineSlots<AntdConfigFormSlots<TValues>>()
+const emit = defineEmits<ElementConfigFormEmits<TValues>>()
+defineSlots<ElementConfigFormSlots<TValues>>()
 const model = defineModel<TValues>({ required: true })
 const rendererRef = useTemplateRef<ConfigFormRendererExpose<TValues>>('rendererRef')
-const expose: AntdConfigFormExpose<TValues> = createConfigFormRendererExpose(rendererRef)
+const expose: ElementConfigFormExpose<TValues> = createConfigFormRendererExpose(rendererRef)
 const components = computed(() => ({
-  ...ANTD_CONFIG_FORM_COMPONENTS,
+  ...ELEMENT_CONFIG_FORM_COMPONENTS,
   ...(props.components ?? {}),
 }))
-
-function resolveBinding(field: ConfigFormRendererField<TValues>) {
-  return resolveAntdConfigFormFieldBinding(field)
-}
 
 defineExpose(expose)
 </script>
@@ -53,10 +47,7 @@ defineExpose(expose)
     v-model="model"
     v-bind="{ ...$attrs, ...props }"
     :components="components"
-    default-trigger="update:value"
-    default-value-prop="value"
-    namespace="mx-antd-config-form"
-    :resolve-binding="resolveBinding"
+    namespace="mx-element-config-form"
     @change="emit('change', $event)"
     @error="emit('error', $event)"
     @field-change="emit('fieldChange', $event)"

@@ -3,11 +3,11 @@
   "name": "config-form-runtime-domain-structure-governance",
   "title": "ConfigForm Runtime 与领域结构治理",
   "description": "治理 Model、Compiler、Runtime、Headless 等领域和渲染边界。",
-  "status": "planning",
-  "dev_type": null,
-  "scope": null,
-  "package": "ai-doc-assistant",
-  "priority": "P1",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "ConfigForm Model、Compiler、Runtime、Headless、Antd/Element Runtime adapter 与 Playground",
+  "package": null,
+  "priority": "P0",
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-09-03",
@@ -21,6 +21,8 @@
   "children": [],
   "parent": "09-03-packages-architecture-governance",
   "relatedFiles": [],
-  "notes": "",
-  "meta": {}
+  "notes": "继承父任务 standing approval：保持公共行为、API 与依赖方向不变的内部结构重构无需再次逐批审批。",
+  "meta": {
+    "standingImplementationApproval": true
+  }
 }

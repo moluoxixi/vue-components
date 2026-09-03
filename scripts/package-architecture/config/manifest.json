@@ -111,15 +111,6 @@
   ],
   "debt": [
     {
-      "path": "packages/components/src/ConfigTable/src/components/ColumnSettings.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/ConfigTable/components.",
-      "owners": [
-        "packages/components/src/ConfigTable/src/index.vue"
-      ]
-    },
-    {
       "path": "packages/components/src/ConfigTable/src/index.vue",
       "rule": "component.single-feature-location",
       "targetTask": "components-structure-governance",
@@ -165,15 +156,6 @@
       ]
     },
     {
-      "path": "packages/components/src/PopoverTableSelect/src/components/PopoverTableSelectBase.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/PopoverTableSelect/components.",
-      "owners": [
-        "packages/components/src/PopoverTableSelect/src/index.vue"
-      ]
-    },
-    {
       "path": "packages/components/src/PopoverTableSelect/src/index.vue",
       "rule": "component.single-feature-location",
       "targetTask": "components-structure-governance",
@@ -207,24 +189,6 @@
       "reason": "Single-feature component must live under packages/components/src/RequestTreeSelect/components.",
       "owners": [
         "packages/components/src/RequestTreeSelect/index.ts"
-      ]
-    },
-    {
-      "path": "packages/ConfigForm/antd/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "config-form-runtime-domain-structure-governance",
-      "reason": "Single-feature component must live under packages/ConfigForm/antd/src/services/components.",
-      "owners": [
-        "packages/ConfigForm/antd/src/services/install.ts"
-      ]
-    },
-    {
-      "path": "packages/ConfigForm/element/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "config-form-runtime-domain-structure-governance",
-      "reason": "Single-feature component must live under packages/ConfigForm/element/src/services/components.",
-      "owners": [
-        "packages/ConfigForm/element/src/services/install.ts"
       ]
     },
     {
@@ -297,24 +261,6 @@
       "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
       "owners": [
         "packages/ai-doc-assistant/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/ConfigForm/playground/src/examples/AntdConfigForm.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "config-form-runtime-domain-structure-governance",
-      "reason": "Single-parent component must live under packages/ConfigForm/playground/src/examples/ConfigForm/components.",
-      "owners": [
-        "packages/ConfigForm/playground/src/examples/ConfigForm.vue"
-      ]
-    },
-    {
-      "path": "packages/ConfigForm/playground/src/examples/ElementConfigForm.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "config-form-runtime-domain-structure-governance",
-      "reason": "Single-parent component must live under packages/ConfigForm/playground/src/examples/ConfigForm/components.",
-      "owners": [
-        "packages/ConfigForm/playground/src/examples/ConfigForm.vue"
       ]
     },
     {
@@ -462,12 +408,6 @@
       "path": "packages/components/src/RequestTreeSelect/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/runtime/src/errors/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-runtime-domain-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
     },
     {

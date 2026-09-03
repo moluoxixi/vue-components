@@ -12,8 +12,7 @@ export const exampleMeta = {
 <script setup lang="ts">
 import { ElTabPane, ElTabs } from 'element-plus'
 import { shallowRef } from 'vue'
-import AntdConfigForm from './AntdConfigForm.vue'
-import ElementConfigForm from './ElementConfigForm.vue'
+import { AntdConfigForm, ElementConfigForm } from './ConfigForm/components'
 
 type LibraryTab = 'element' | 'antd'
 

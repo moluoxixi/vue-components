@@ -6,11 +6,11 @@ import { ElCheckbox, ElInput, ElInputNumber, ElSelectV2, ElSwitch } from 'elemen
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 import { z } from 'zod'
-import ElementConfigFormSource from '../src/index.vue'
 import {
   ELEMENT_CONFIG_FORM_COMPONENTS,
   ELEMENT_CONFIG_FORM_MATERIAL_REGISTRY,
 } from '../src/registries'
+import { ElementConfigFormSource } from '../src/services/components'
 
 const ElementConfigForm = ElementConfigFormSource as Component
 

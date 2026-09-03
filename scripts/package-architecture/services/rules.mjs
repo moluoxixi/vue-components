@@ -311,16 +311,18 @@ export function collectComponentOwnershipDiagnostics(repositoryRoot, packages) {
           'Non-public Vue component has no statically resolved owner.',
         )]
       }
-      if (consumers.length === 1
-        && extname(consumers[0]) === '.vue'
-        && !isWithinDirectory(component, expectedChildDirectory(consumers[0]))) {
-        return [diagnostic(
-          'component.single-parent-location',
-          path,
-          pkg.relativeRoot,
-          `Single-parent component must live under ${normalizeRepositoryPath(repositoryRoot, expectedChildDirectory(consumers[0]))}.`,
-          owners,
-        )]
+      if (consumers.length === 1 && extname(consumers[0]) === '.vue') {
+        const childDirectory = expectedChildDirectory(consumers[0])
+        if (!isWithinDirectory(component, childDirectory)) {
+          return [diagnostic(
+            'component.single-parent-location',
+            path,
+            pkg.relativeRoot,
+            `Single-parent component must live under ${normalizeRepositoryPath(repositoryRoot, childDirectory)}.`,
+            owners,
+          )]
+        }
+        return []
       }
 
       const featureRoots = [...new Set(consumers.map(consumer => ownershipRoot(consumer, pkg.sourceRoot)))]

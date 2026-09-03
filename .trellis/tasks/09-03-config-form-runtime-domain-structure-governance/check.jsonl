@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"复核目录职责、无旧 shim、barrel、组件 owner 和热点阈值。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"复核 current-contract-only、公共 API 与 package consumer。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"复核 Runtime/Designer/Workbench interaction isolation。"}
+{"file":".trellis/tasks/09-03-config-form-runtime-domain-structure-governance/research/runtime-domain-boundaries.md","reason":"复核 transaction/compiler/renderer/validation 状态机锚点。"}

@@ -59,7 +59,7 @@ describe('client overlay', () => {
       label: '用户名',
       source: {
         column: 5,
-        file: 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue',
+        file: 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ConfigForm/components/ElementConfigForm.vue',
         id: 'source-1',
         line: 32,
       },
@@ -1507,7 +1507,7 @@ describe('client overlay', () => {
       id: 'node-1',
       source: {
         column: 1,
-        file: 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue',
+        file: 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ConfigForm/components/ElementConfigForm.vue',
         id: 'source-1',
         line: 1,
       },
@@ -1686,7 +1686,7 @@ describe('client overlay', () => {
       id: 'node-1',
       source: {
         column: 1,
-        file: 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ElementConfigForm.vue',
+        file: 'D:/project-new/ConfigForm/packages/ConfigForm/playground/src/examples/ConfigForm/components/ElementConfigForm.vue',
         id: 'source-1',
         line: 1,
       },
