@@ -1,14 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { collectBrowserProblems } from './browser-problems'
+import { coldStartTimeout, openBasicHome } from './page-readiness'
 
 test('built theme renders and searches fixture content in light and dark modes', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
-  await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: 'Basic documentation' })).toBeVisible()
+  await openBasicHome(page)
   await expect(page.getByText('The reusable Element Plus documentation theme is active.')).toBeVisible()
   await expect(page.locator('.logo-container img')).toHaveCount(0)
-  await expect(page.locator('.logo-container')).toContainText('Basic docs')
 
   await page.getByRole('button', { name: 'Search' }).click()
   await page.getByRole('searchbox').fill('Navigation')
@@ -52,8 +51,7 @@ test('built theme renders and searches fixture content in light and dark modes',
 })
 
 test('@visual built theme matches desktop baselines', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: 'Basic documentation' })).toBeVisible()
+  await openBasicHome(page)
   await expect(page).toHaveScreenshot('basic-desktop-light.png', { animations: 'disabled', fullPage: true })
 
   await page.locator('.theme-toggler-content .el-switch__core').click()
@@ -65,7 +63,8 @@ test('renders nested table-of-content links recursively', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
   await page.goto('/guide/')
-  await expect(page.getByRole('heading', { level: 1, name: 'Guide' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Guide' }))
+    .toBeVisible({ timeout: coldStartTimeout })
 
   const tocLinks = page.locator('.toc-content--desktop a[href^="#"]')
   await expect(tocLinks).toHaveText([
@@ -92,7 +91,13 @@ test('fresh consumer enables Demo, Playground, and ApiDocs from public package A
   const browserProblems = collectBrowserProblems(page)
 
   await page.goto('/consumer.html')
-  await expect(page.getByRole('heading', { level: 1, name: 'Reusable content modules' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Reusable content modules' }))
+    .toBeVisible({ timeout: coldStartTimeout })
+  const avatar = page.locator('.doc-contributor-avatar')
+  await expect(avatar).toHaveAttribute('src', '/fixture-author.svg')
+  await expect.poll(() => avatar.evaluate(element => (
+    (element as HTMLImageElement).complete && (element as HTMLImageElement).naturalWidth > 0
+  )), { timeout: coldStartTimeout }).toBe(true)
   const demoButton = page.getByTestId('fixture-demo-button')
   await expect(demoButton).toHaveText('Fixture count: 0')
   await demoButton.click()

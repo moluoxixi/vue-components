@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { collectBrowserProblems } from './browser-problems'
+import { openBasicHome } from './page-readiness'
 
 test('mobile navigation stays accessible without horizontal overflow', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
-  await page.goto('/')
+  await openBasicHome(page)
   await expect(page.locator('.logo-container img')).toHaveCount(0)
-  await expect(page.locator('.logo-container')).toContainText('Basic docs')
   const tocTrigger = page.getByRole('button', { name: 'On this page', exact: true })
   await expect(tocTrigger).toBeVisible()
   await expect(tocTrigger).toHaveAttribute('aria-expanded', 'false')
@@ -55,8 +55,7 @@ test('mobile navigation stays accessible without horizontal overflow', async ({ 
 })
 
 test('@visual built theme matches mobile baselines', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: 'Basic documentation' })).toBeVisible()
+  await openBasicHome(page)
   await expect(page).toHaveScreenshot('basic-mobile-light.png', { animations: 'disabled', fullPage: true })
 
   const toggle = page.getByRole('button', { name: 'Toggle navigation' })

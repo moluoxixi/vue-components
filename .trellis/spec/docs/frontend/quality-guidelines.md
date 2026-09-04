@@ -199,6 +199,13 @@ element-plus-docs preview [--config <path>] [--port <port>]
 - Release-workflow tests assert the Playwright image version, immutable digest, lockfile match, IPC option, and job timeout.
 - Theme CLI regression tests assert that `preview` is accepted, runs preparation first, serves from the resolved docs root, forwards the requested port, and never starts the server after a preparation failure.
 - Theme functional E2E must prove that the consumer URL is not a 404 fallback before asserting Demo, Playground, ApiDocs, responsive navigation, and absence of browser console/runtime errors.
+- Dev-server E2E waits for a positive page-ready signal such as the expected H1
+  and brand before negative assertions. Cold Vite transforms use a bounded,
+  explicit timeout instead of treating an initially empty DOM as a valid
+  `count === 0` result.
+- Offline theme fixtures use same-origin, checked-in assets for contributor
+  avatars. Browser warning/error collection remains strict; tests do not ignore
+  failed requests to fictional external hosts.
 - Theme visual E2E is tagged `@visual`; the full local suite compares strict reviewed OS-specific screenshots, while Linux CI uses `--grep-invert "@visual"` and never creates replacement baselines.
 - Before commit, run lint, typecheck, tests, snapshot validators, docs build, release checks, and package verification in proportion to the change.
 
@@ -282,6 +289,10 @@ const id = `yunxiao:${bytesToHex(sha256(new TextEncoder().encode(login)))}`
 - Preparation-pipeline tests assert successful and failing step logs, duration/provider/path visibility, exit-code propagation, ordering, early stop, and credential redaction.
 - Preview tests assert preparation occurs before serving the existing build, preparation failure prevents server startup, the resolved docs root is used, and an occupied requested port fails without fallback.
 - Linux CI runs the functional theme E2E suite and uploads its Playwright report/test-results on failure. Strict `@visual` screenshot tests remain in the full local suite with reviewed OS-specific baselines.
+- Cold-start fixture tests first await a positive heading/brand signal before
+  asserting absent elements. Contributor avatar coverage verifies the
+  same-origin image completed loading while retaining an empty browser-problem
+  list.
 - Fixture files live under `packages/vitepress-theme-element-plus/test/repository/fixtures/` and use fixed fictional identities/components; they must not import production site config, manifest, or expectation data.
 
 ---

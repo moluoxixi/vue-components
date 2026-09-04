@@ -173,7 +173,7 @@ export const fixtureContent = createElementPlusDocsContent({
     sourceLabel: 'src/FixtureButton.vue',
   }),
   resolveContributors: () => [{
-    avatarUrl: 'https://gitlab.example.test/gitlab/uploads/fixture-author.png',
+    avatarUrl: '/fixture-author.svg',
     contributions: 3,
     id: 'gitlab:fixture-author',
     login: 'fixture-author',
