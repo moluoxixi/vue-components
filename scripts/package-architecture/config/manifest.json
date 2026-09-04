@@ -170,15 +170,6 @@
       ]
     },
     {
-      "path": "packages/rich-text-editor/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "rich-text-editor-structure-governance",
-      "reason": "Single-feature component must live under packages/rich-text-editor/src/components.",
-      "owners": [
-        "packages/rich-text-editor/index.ts"
-      ]
-    },
-    {
       "path": "packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemoSource.vue",
       "rule": "component.single-parent-location",
       "targetTask": "vitepress-theme-element-plus-structure-governance",

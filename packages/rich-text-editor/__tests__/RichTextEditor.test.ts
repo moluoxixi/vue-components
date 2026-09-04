@@ -1,8 +1,8 @@
 import type { Editor } from '@tiptap/core'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { h, nextTick } from 'vue'
-import { RichTextEditor } from '../index'
+import { createApp, h, nextTick } from 'vue'
+import RichTextEditorDefault, { RichTextEditor } from '../index'
 
 async function mountEditor(props: Record<string, unknown> = {}, slots: Record<string, any> = {}) {
   const wrapper = mount(RichTextEditor, { props, slots })
@@ -16,6 +16,15 @@ function getEditor(wrapper: Awaited<ReturnType<typeof mountEditor>>): Editor {
 }
 
 describe('rich text editor', () => {
+  it('keeps the root component and Vue plugin contract stable', () => {
+    const app = createApp({ render: () => null })
+
+    expect(RichTextEditorDefault).toBe(RichTextEditor)
+    expect((RichTextEditor as { name?: string }).name).toBe('RichTextEditor')
+    app.use(RichTextEditor)
+    expect(app.component('RichTextEditor')).toBe(RichTextEditor)
+  })
+
   it('同步外部 HTML，并把编辑结果按 HTML 发出', async () => {
     const wrapper = await mountEditor({ modelValue: '<p>初始内容</p>' })
     const editor = getEditor(wrapper)

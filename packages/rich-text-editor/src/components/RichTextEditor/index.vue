@@ -5,7 +5,7 @@ import type {
   RichTextEditorExpose,
   RichTextEditorProps,
   RichTextEditorSlots,
-} from './types'
+} from '../../types'
 import {
   AlignCenter,
   AlignLeft,
@@ -33,8 +33,8 @@ import TextAlign from '@tiptap/extension-text-align'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { computed, shallowRef, watch } from 'vue'
-import { useRichTextEditorLink, useRichTextEditorToolbar } from './composables'
-import { getOutputHTML, toCssDimension } from './utils'
+import { useRichTextEditorLink, useRichTextEditorToolbar } from '../../composables'
+import { getOutputHTML, toCssDimension } from '../../utils'
 
 defineOptions({ name: 'RichTextEditor' })
 

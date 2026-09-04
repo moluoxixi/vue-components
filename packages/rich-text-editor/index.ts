@@ -1,5 +1,5 @@
 import type { App, Plugin } from 'vue'
-import RichTextEditorSource from './src/index.vue'
+import { RichTextEditorSource } from './src/components'
 
 export type * from './src/types'
 
