@@ -5,16 +5,16 @@ import type {
   GiteeIssueSummary,
   GiteeMetadataExpectation,
   GiteeMetadataSnapshot,
-} from '../../content/repository/providers'
-import type { AtomicFileSystem } from '../utils'
+} from '../../../content/repository/providers'
+import type { AtomicFileSystem } from '../../utils'
 import {
   assertGiteeMetadataSnapshot,
   isExactGiteeProfileUrl,
   isTrustedGiteeAvatarUrl,
-} from '../../content/repository/providers'
-import { writeJsonAtomically } from '../utils'
+} from '../../../content/repository/providers'
+import { writeJsonAtomically } from '../../utils'
+import { collectValidateAndWrite, formatRepositorySyncError } from '../services/sync'
 import { resolveTrustedApiUrl } from './api-client'
-import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
 
 interface GiteeAccountResponse {
   id: number

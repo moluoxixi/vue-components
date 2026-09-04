@@ -43,9 +43,29 @@ const removedFlatModules = [
   'node/lifecycle/runtime.ts',
   'node/project/load-config.ts',
   'node/repository/atomic-write.ts',
+  'node/repository/api-client.ts',
+  'node/repository/gitee.ts',
+  'node/repository/github.ts',
+  'node/repository/gitlab.ts',
+  'node/repository/local.ts',
   'node/repository/project.ts',
+  'node/repository/runtime/index.ts',
+  'node/repository/sync.ts',
+  'node/repository/yunxiao.ts',
   'project/config.ts',
   'project/types.ts',
+] as const
+
+const declarativeBarrels = [
+  'content/repository/providers/index.ts',
+  'markdown/demo/index.ts',
+  'markdown/playground/index.ts',
+  'markdown/project/index.ts',
+  'markdown/source/index.ts',
+  'node/content/index.ts',
+  'node/playground/index.ts',
+  'node/repository/index.ts',
+  'routes/index.ts',
 ] as const
 
 function collectDirectories(directory: string): string[] {
@@ -104,6 +124,22 @@ describe('theme source responsibilities', () => {
     })
 
     expect(importHits).toEqual([])
+  })
+
+  it('keeps every governed feature barrel declarative', () => {
+    const violations = declarativeBarrels.flatMap((path) => {
+      const sourceFile = ts.createSourceFile(
+        path,
+        readFileSync(resolve(sourceRoot, path), 'utf8'),
+        ts.ScriptTarget.Latest,
+        true,
+      )
+      return sourceFile.statements
+        .filter(statement => !ts.isExportDeclaration(statement))
+        .map(statement => `${path}:${statement.getStart(sourceFile)}`)
+    })
+
+    expect(violations).toEqual([])
   })
 
   it('preserves the public node and markdown export surfaces', () => {

@@ -109,7 +109,7 @@ async function requestDefaultBranch(
       break
     }
     case 'yunxiao': {
-      const { yunxiaoRepositoryApiPath } = await import('../yunxiao')
+      const { yunxiaoRepositoryApiPath } = await import('../adapters/yunxiao')
       url = new URL(`${repository.apiBaseUrl}${yunxiaoRepositoryApiPath(repository.apiMode, repository.organizationId, repository.repositoryId)}`)
       headers = {
         'Accept': 'application/json',
@@ -178,7 +178,7 @@ async function collectSelectedSnapshot(
 ): Promise<{ defaultBranch: string, repositoryUrl?: string, snapshot: unknown }> {
   const components = componentSources(project)
   if (repository.provider === 'local') {
-    const { createLocalMetadata } = await import('../local')
+    const { createLocalMetadata } = await import('../adapters/local')
     const repositoryRoot = resolveLocalRepositoryRoot(projectRoot, repository.repositoryRoot)
     const defaultBranch = resolveLocalDefaultBranch(repositoryRoot, repository.defaultBranch)
     const repositoryUrl = repository.url
@@ -194,7 +194,7 @@ async function collectSelectedSnapshot(
     ?? await requestDefaultBranch(repository, environment, fetchImpl)
   switch (repository.provider) {
     case 'github': {
-      const { createGithubMetadata } = await import('../github')
+      const { createGithubMetadata } = await import('../adapters/github')
       return {
         defaultBranch,
         snapshot: await createGithubMetadata({
@@ -211,7 +211,7 @@ async function collectSelectedSnapshot(
       }
     }
     case 'gitee': {
-      const { createGiteeMetadata } = await import('../gitee')
+      const { createGiteeMetadata } = await import('../adapters/gitee')
       return {
         defaultBranch,
         snapshot: await createGiteeMetadata({
@@ -230,7 +230,7 @@ async function collectSelectedSnapshot(
       }
     }
     case 'gitlab': {
-      const { createGitlabMetadata } = await import('../gitlab')
+      const { createGitlabMetadata } = await import('../adapters/gitlab')
       return {
         defaultBranch,
         snapshot: await createGitlabMetadata({
@@ -250,7 +250,7 @@ async function collectSelectedSnapshot(
       }
     }
     case 'yunxiao': {
-      const { createYunxiaoMetadata } = await import('../yunxiao')
+      const { createYunxiaoMetadata } = await import('../adapters/yunxiao')
       return {
         defaultBranch,
         snapshot: await createYunxiaoMetadata({

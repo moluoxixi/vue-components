@@ -5,13 +5,13 @@ import type {
   YunxiaoContributor,
   YunxiaoMetadataExpectation,
   YunxiaoMetadataSnapshot,
-} from '../../content/repository/providers'
-import type { AtomicFileSystem } from '../utils'
+} from '../../../content/repository/providers'
+import type { AtomicFileSystem } from '../../utils'
 import { createHash } from 'node:crypto'
-import { assertYunxiaoMetadataSnapshot, isTrustedYunxiaoAvatarUrl } from '../../content/repository/providers'
-import { writeJsonAtomically } from '../utils'
+import { assertYunxiaoMetadataSnapshot, isTrustedYunxiaoAvatarUrl } from '../../../content/repository/providers'
+import { writeJsonAtomically } from '../../utils'
+import { collectValidateAndWrite, formatRepositorySyncError } from '../services/sync'
 import { resolveTrustedApiUrl } from './api-client'
-import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
 
 interface YunxiaoRepositoryResponse {
   defaultBranch: string

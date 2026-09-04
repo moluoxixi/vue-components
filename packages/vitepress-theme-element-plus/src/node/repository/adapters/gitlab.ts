@@ -5,18 +5,18 @@ import type {
   GitlabIssueSummary,
   GitlabMetadataExpectation,
   GitlabMetadataSnapshot,
-} from '../../content/repository/providers'
-import type { AtomicFileSystem } from '../utils'
+} from '../../../content/repository/providers'
+import type { AtomicFileSystem } from '../../utils'
 import { createHash } from 'node:crypto'
 import {
   assertGitlabMetadataSnapshot,
   isExactGitlabProfileUrl,
   isTrustedGitlabWebUrl,
   resolveGitlabWebBaseUrl,
-} from '../../content/repository/providers'
-import { writeJsonAtomically } from '../utils'
+} from '../../../content/repository/providers'
+import { writeJsonAtomically } from '../../utils'
+import { collectValidateAndWrite, formatRepositorySyncError } from '../services/sync'
 import { resolveTrustedApiUrl } from './api-client'
-import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
 
 interface GitlabProjectResponse {
   default_branch: string | null

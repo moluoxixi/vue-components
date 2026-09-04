@@ -10,7 +10,7 @@ import process from 'node:process'
 import { resolveElementPlusDocsProjectRepository } from '../../../project'
 import { synchronizeElementPlusDocsContent } from '../../content'
 import { synchronizeElementPlusDocsPlaygroundManifests } from '../../playground'
-import { synchronizeElementPlusDocsRepository, validateElementPlusDocsRepository } from '../../repository/runtime'
+import { synchronizeElementPlusDocsRepository, validateElementPlusDocsRepository } from '../../repository'
 
 export class ElementPlusDocsPrepareError extends Error {
   readonly exitCode: number
