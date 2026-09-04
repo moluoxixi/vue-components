@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"执行 feature、state、utils、barrel、根入口与 source files合同。"}
+{"file":".trellis/tasks/09-03-hooks-structure-governance/research/structure-map.md","reason":"使用已核验的六个 hook 响应式职责与目标移动矩阵。"}
+{"file":".trellis/tasks/09-03-hooks-structure-governance/research/contract-map.md","reason":"保持现有 hook 行为、consumer 与新增 characterization。"}
