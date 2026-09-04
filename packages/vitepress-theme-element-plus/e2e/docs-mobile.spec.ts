@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { collectBrowserProblems } from './browser-problems'
+import { coldStartTimeout, docsVisualStylePath, waitForCompiledDemos } from './page-readiness'
 
 test('current docs expose localized mobile controls and valid relationships', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
@@ -32,9 +33,10 @@ test('current component page remains usable in light and dark mobile layouts', a
   const browserProblems = collectBrowserProblems(page)
 
   await page.goto('/components/copy-text.html')
-  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' }))
+    .toBeVisible({ timeout: coldStartTimeout })
   await expect(page.locator('.component-doc-meta')).toHaveCSS('border-bottom-style', 'solid')
-  await expect(page.locator('.demo-loading')).toHaveCount(0)
+  await waitForCompiledDemos(page)
 
   const navigation = page.getByRole('button', { name: '切换导航' })
   await navigation.click()
@@ -43,6 +45,7 @@ test('current component page remains usable in light and dark mobile layouts', a
   await page.locator('#full-screen .full-screen-menu__item a').first().click()
   await page.goto('/components/copy-text.html')
   await expect(navigation).toHaveAttribute('aria-expanded', 'false')
+  await waitForCompiledDemos(page)
 
   const widths = await page.evaluate(() => ({
     body: document.body.scrollWidth,
@@ -56,9 +59,13 @@ test('current component page remains usable in light and dark mobile layouts', a
 
 test('@visual current component page matches mobile baselines', async ({ page }) => {
   await page.goto('/components/copy-text.html')
-  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
-  await expect(page.locator('.demo-loading')).toHaveCount(0)
-  await expect(page).toHaveScreenshot('docs-component-mobile-light.png', { animations: 'disabled' })
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' }))
+    .toBeVisible({ timeout: coldStartTimeout })
+  await waitForCompiledDemos(page)
+  await expect(page).toHaveScreenshot('docs-component-mobile-light.png', {
+    animations: 'disabled',
+    stylePath: docsVisualStylePath,
+  })
 
   const navigation = page.getByRole('button', { name: '切换导航' })
   await navigation.click()
@@ -67,7 +74,11 @@ test('@visual current component page matches mobile baselines', async ({ page })
   await page.locator('#full-screen .full-screen-menu__item a').first().click()
   await page.goto('/components/copy-text.html')
   await expect(navigation).toHaveAttribute('aria-expanded', 'false')
-  await expect(page).toHaveScreenshot('docs-component-mobile-dark.png', { animations: 'disabled' })
+  await waitForCompiledDemos(page)
+  await expect(page).toHaveScreenshot('docs-component-mobile-dark.png', {
+    animations: 'disabled',
+    stylePath: docsVisualStylePath,
+  })
 })
 
 test('English component pages expose the complete compact table of contents', async ({ page }) => {

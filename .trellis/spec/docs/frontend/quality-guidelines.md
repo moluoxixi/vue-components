@@ -68,6 +68,10 @@ element-plus-docs preview [--config <path>] [--port <port>]
 - GitHub/Gitee derive owner and repository from the public HTTPS repository URL. GitLab derives the project path and installation/API roots, including relative installation paths. Local derives the Git root, remote URL, and default branch where available. Yunxiao additionally requires the non-derivable `repositoryId`.
 - Any CI job that executes a local-provider metadata consumer must checkout complete Git history (`fetch-depth: 0`). The local provider intentionally rejects shallow clones rather than publishing incomplete commit and contributor history; jobs that do not read local metadata may retain shallow checkout.
 - A private workspace docs site must not rely on a package bin shim whose target is created only by a later workspace build. Its `predev` / `prebuild` / `preprepare:docs` lifecycle builds the theme first, then invokes the emitted CLI file directly. Published consumers still use the package's normal `element-plus-docs` bin.
+- The VitePress runtime consumes those built workspace package exports. It must
+  not add a global `resolve.conditions: ['source']`: that condition also applies
+  to third-party packages, some of which publish a `source` target without the
+  referenced source files.
 - Component catalogs use `defineComponentPackage` profiles. A profile owns package name, API entry, component/docs/repository source functions, browser loader, and styles; normal component items contain display fields plus an optional profile ID instead of repeating paths.
 - The project config also owns `documentation.componentsRoute`, `documentation.defaultLocale`, and each locale's `sourceDirectory` / `sourceDoc`; source-link and route generation code must consume this contract instead of a second site-local locale table.
 - Project Markdown uses only `elementPlusDocsProjectMarkdownPlugin`. It composes Demo parsing, provider-owned source-line actions, and external Playground projection. Do not expose or restore consumer `resolveSourceHref` / `resolveExternalProjectSource` callbacks.
@@ -135,6 +139,7 @@ element-plus-docs preview [--config <path>] [--port <port>]
 | Yunxiao mapping is missing, member lookup is zero/ambiguous, or the active member's avatar/login/name/IDs are partial or conflicting | Fail synchronization and preserve the previous snapshot |
 | Yunxiao avatar URL is outside the trusted provider origin or contains userinfo/query/fragment | Fail synchronization or reject the generated snapshot |
 | A preparation child step exits non-zero | Emit `FAIL` with the step, duration, and same exit code; do not run later steps |
+| Docs enables a global Vite `source` resolve condition | Remove it and consume the package outputs built by the lifecycle |
 | A locale source directory is empty, missing, outside the docs root, or contains a symbolic link | Fail runtime-content preparation before route generation |
 | A locale authoring file changes during `element-plus-docs dev` | Project the add/change/delete into `.generated/content` and let the Vite watcher update the runtime page |
 | A generated component/utility route is found in an authoring directory or Git index | Reject the path contract; generated routes belong only below `.generated/content/<locale>` |
@@ -194,6 +199,8 @@ element-plus-docs preview [--config <path>] [--port <port>]
 - Runtime-content tests cover full rebuild, stale cleanup, zh/en projection, public assets, Git last-updated frontmatter, symlink/path rejection, and dev add/change/delete synchronization.
 - Docs route tests rebuild the ignored runtime tree before asserting all localized component/utility pages, includes, and search aliases; they never depend on precommitted generated Markdown.
 - Docs integration tests scan every real TS/JS Demo through `elementPlusDocsProjectMarkdownPlugin`; browser compiler import contracts live under `scripts/__tests__`, not a `.vitepress/plugins` pseudo-boundary.
+- Docs source-architecture tests reject a global Vite `source` resolve condition
+  while allowing source-oriented Vitest configuration to remain local to tests.
 - Packed-package tests import `./repository/node`, execute the installed `element-plus-docs` bin in an isolated Git repository, then render a Demo through the packed public `./markdown` entry and assert the generated manifest, rewritten import, dependency, and style data.
 - Root path-contract tests assert Node `>=22.6.0`, offline CI validators, Turbo docs build ordering, and provider-network-free docs test/typecheck task graphs.
 - Release-workflow tests assert the Playwright image version, immutable digest, lockfile match, IPC option, and job timeout.

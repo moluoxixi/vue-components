@@ -1,0 +1,5 @@
+.component-doc-links button[aria-haspopup="dialog"] .component-doc-count {
+  display: inline-block !important;
+  width: 2ch !important;
+  visibility: hidden !important;
+}

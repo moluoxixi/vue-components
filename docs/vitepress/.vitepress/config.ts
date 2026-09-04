@@ -188,9 +188,6 @@ export default defineElementPlusDocs({
           richText: false,
         }),
       ] as VitePressPlugins,
-      resolve: {
-        conditions: ['source'],
-      },
       optimizeDeps: {
         include: ['@lucide/vue', 'element-plus'],
       },

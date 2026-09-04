@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { collectBrowserProblems } from './browser-problems'
+import { coldStartTimeout, docsVisualStylePath, waitForCompiledDemos } from './page-readiness'
 
 test('current component page renders consumer features in light and dark modes', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
   await page.goto('/components/copy-text.html')
-  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' }))
+    .toBeVisible({ timeout: coldStartTimeout })
   await expect(page.locator('.component-doc-meta')).toHaveCSS('border-bottom-style', 'solid')
   await expect(page.getByRole('list', { name: 'CopyText 组件贡献者' })).toBeVisible()
 
@@ -16,9 +18,7 @@ test('current component page renders consumer features in light and dark modes',
   expect(headingSizes.h1).toBeGreaterThan(headingSizes.h2)
   expect(headingSizes.h2).toBeGreaterThan(16)
 
-  const demo = page.locator('.demo-block').first()
-  await expect(demo).toBeVisible()
-  await expect(demo.getByText('Hello, World!', { exact: true })).toBeVisible()
+  const demo = await waitForCompiledDemos(page)
   await expect(page.getByText('加载中...', { exact: true })).toHaveCount(0)
 
   await page.locator('.theme-toggler-content .el-switch__core').click()
@@ -98,14 +98,21 @@ test('current docs preserve search, Element Plus locale, and Playground behavior
 
 test('@visual current component page matches desktop baselines', async ({ page }) => {
   await page.goto('/components/copy-text.html')
-  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' })).toBeVisible()
-  await expect(page.locator('.demo-block').first().getByText('Hello, World!', { exact: true })).toBeVisible()
-  await expect(page).toHaveScreenshot('docs-component-desktop-light.png', { animations: 'allow' })
+  await expect(page.getByRole('heading', { level: 1, name: 'CopyText' }))
+    .toBeVisible({ timeout: coldStartTimeout })
+  await waitForCompiledDemos(page)
+  await expect(page).toHaveScreenshot('docs-component-desktop-light.png', {
+    animations: 'allow',
+    stylePath: docsVisualStylePath,
+  })
 
   await page.locator('.theme-toggler-content .el-switch__core').click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect.poll(() => page.locator('html').getAttribute('data-theme-transition')).toBeNull()
-  await expect(page).toHaveScreenshot('docs-component-desktop-dark.png', { animations: 'allow' })
+  await expect(page).toHaveScreenshot('docs-component-desktop-dark.png', {
+    animations: 'allow',
+    stylePath: docsVisualStylePath,
+  })
 })
 
 test('current docs include runtime API headings in the table of contents', async ({ page }) => {

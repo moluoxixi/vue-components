@@ -159,6 +159,25 @@ function collectClientNodeImportViolations(): string[] {
   return violations.sort()
 }
 
+function hasGlobalSourceResolveCondition(path: string): boolean {
+  const sourceFile = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true)
+  let found = false
+
+  function visit(node: ts.Node): void {
+    if (ts.isPropertyAssignment(node)
+      && node.name.getText(sourceFile) === 'conditions'
+      && ts.isArrayLiteralExpression(node.initializer)
+      && node.initializer.elements.some(element => ts.isStringLiteral(element) && element.text === 'source')) {
+      found = true
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return found
+}
+
 describe('documentation source architecture', () => {
   it('keeps feature roots limited to barrels and responsibility directories', () => {
     const unexpectedFiles = featureRoots.flatMap((root) => {
@@ -203,5 +222,9 @@ describe('documentation source architecture', () => {
 
   it('keeps Node builtins out of the browser theme module graph', () => {
     expect(collectClientNodeImportViolations()).toEqual([])
+  })
+
+  it('consumes built package exports without a global source resolve condition', () => {
+    expect(hasGlobalSourceResolveCondition(join(vitepressRoot, 'config.ts'))).toBe(false)
   })
 })
