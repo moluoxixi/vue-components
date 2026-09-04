@@ -895,3 +895,29 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 37: Components 包结构治理
+
+**Date**: 2026-09-05
+**Task**: Components 包结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+清零 Components 20 条结构债务：锁定 10 个公开安装入口，归位所有组件 feature 与 HeadlessTable renderer，去除冗余 feature/src 和 17 条 deep-import exceptions，同步 AI Doc 源码路径与公共入口 spec；118 单测、7 E2E、architecture/path/packed/lint 全部通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c22c65aa` | (see git log) |
+| `d8a50565` | (see git log) |
+| `94837a43` | (see git log) |
+| `de2d9fc6` | (see git log) |
+| `07f01283` | (see git log) |
+
+### Status
+
+[OK] **Completed**
