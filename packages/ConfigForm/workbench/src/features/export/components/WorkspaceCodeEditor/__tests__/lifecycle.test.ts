@@ -181,6 +181,20 @@ describe('workspace code editor lifecycle', () => {
     vi.unstubAllGlobals()
   })
 
+  it('installs the worker environment when no previous environment exists', () => {
+    const environment = globalThis as typeof globalThis & {
+      MonacoEnvironment?: { getWorker: (moduleId: string, label: string) => Worker }
+    }
+    delete environment.MonacoEnvironment
+
+    installMonacoWorkerEnvironment()
+
+    const installed = (globalThis as typeof globalThis & {
+      MonacoEnvironment?: { getWorker: (moduleId: string, label: string) => Worker }
+    }).MonacoEnvironment
+    expect(installed?.getWorker('module', 'vue')).toBeDefined()
+  })
+
   it('reuses filename models, updates options, emits save, and disposes every owner', async () => {
     const previousWorker = {} as Worker
     const previousGetWorker = vi.fn(() => previousWorker)

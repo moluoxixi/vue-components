@@ -22,11 +22,11 @@ import 'monaco-editor/esm/vs/editor/contrib/parameterHints/browser/parameterHint
 import 'monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2'
 import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController'
 
-let installedEnvironment: MonacoWorkerEnvironment['MonacoEnvironment']
+let installedEnvironment: MonacoWorkerEnvironment['MonacoEnvironment'] | null = null
 
 export function installMonacoWorkerEnvironment(): void {
   const environment = globalThis as MonacoWorkerEnvironment
-  if (environment.MonacoEnvironment === installedEnvironment)
+  if (installedEnvironment && environment.MonacoEnvironment === installedEnvironment)
     return
   const previous = environment.MonacoEnvironment
   const nextEnvironment: NonNullable<MonacoWorkerEnvironment['MonacoEnvironment']> = {
