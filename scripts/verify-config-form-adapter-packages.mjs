@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -207,6 +207,27 @@ const adapters = [
 
 function fail(message) {
   throw new Error(`[ConfigForm adapter package] ${message}`)
+}
+
+function verifyPublishedSourceFiles() {
+  const configFormRoot = resolve(rootDir, 'packages', 'ConfigForm')
+  for (const entry of readdirSync(configFormRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory())
+      continue
+    const packageDir = resolve(configFormRoot, entry.name)
+    const manifestPath = resolve(packageDir, 'package.json')
+    if (!existsSync(manifestPath))
+      continue
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    if (manifest.private === true)
+      continue
+
+    const rootSource = manifest.exports?.['.']?.source
+    if (rootSource !== './index.ts')
+      fail(`${manifest.name} must expose ./index.ts as its package source`)
+    if (!Array.isArray(manifest.files) || !manifest.files.includes('index.ts') || !manifest.files.includes('src'))
+      fail(`${manifest.name} must publish index.ts and src for its source condition`)
+  }
 }
 
 function verifyPublicContractPackages() {
@@ -418,6 +439,7 @@ function verifyRuntimePackage() {
   }
 }
 
+verifyPublishedSourceFiles()
 verifyPublicContractPackages()
 verifyRuntimePackage()
 
