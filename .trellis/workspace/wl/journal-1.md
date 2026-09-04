@@ -747,3 +747,29 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 31: 完成 AI 文档助手结构治理
+
+**Date**: 2026-09-04
+**Task**: 完成 AI 文档助手结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+归位 AI-doc UI 私有组件与 Core domain，拆分 ChatView 会话状态，清零 27 条 architecture debt，并收紧动态加载、向量检索、发布 source 与 E2E 产物边界。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc3b6b85` | (see git log) |
+| `89d5204d` | (see git log) |
+| `cbd0dcce` | (see git log) |
+| `5a30f392` | (see git log) |
+| `b5d9454b` | (see git log) |
+
+### Status
+
+[OK] **Completed**
