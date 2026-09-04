@@ -89,40 +89,7 @@
   ],
   "debt": [
     {
-      "path": "packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemoSource.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Single-parent component must live under packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemo/components.",
-      "owners": [
-        "packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemo.vue"
-      ]
-    },
-    {
       "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/markdown/demo/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/markdown/playground/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/markdown/project/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/markdown/source/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
@@ -141,12 +108,6 @@
     },
     {
       "path": "packages/vitepress-theme-element-plus/src/node/repository/runtime/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/routes/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
@@ -243,18 +204,6 @@
     },
     {
       "path": "packages/vitepress-theme-element-plus/src/node/repository/yunxiao.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/project/config.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/project/types.ts",
       "rule": "feature.root-file",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
       "reason": "Feature root files must move into a responsibility directory."

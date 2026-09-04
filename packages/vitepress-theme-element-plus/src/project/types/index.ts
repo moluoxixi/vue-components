@@ -1,10 +1,4 @@
-export const elementPlusDocsRepositoryProviderIds = [
-  'github',
-  'gitlab',
-  'gitee',
-  'yunxiao',
-  'local',
-] as const
+import type { elementPlusDocsRepositoryProviderIds } from '../constants'
 
 export type ElementPlusDocsRepositoryProviderId = typeof elementPlusDocsRepositoryProviderIds[number]
 

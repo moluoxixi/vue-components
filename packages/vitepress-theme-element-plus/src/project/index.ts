@@ -1,3 +1,4 @@
+export { elementPlusDocsRepositoryProviderIds } from './constants'
 export {
   createElementPlusDocsContentRewrites,
   defineComponentPackage,
@@ -7,8 +8,7 @@ export {
   resolveElementPlusDocsProjectRepository,
   resolveElementPlusDocsRepository,
   resolveElementPlusDocsRepositoryProvider,
-} from './config'
-export { elementPlusDocsRepositoryProviderIds } from './types'
+} from './services'
 export type {
   ElementPlusDocsComponentPackage,
   ElementPlusDocsComponentPackageInput,

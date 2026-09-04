@@ -18,14 +18,14 @@ export type {
   ElementPlusDocsOverviewData,
   ElementPlusDocsOverviewFact,
 } from './src/content/catalog/types'
-export { default as ElementPlusDocsDemo } from './src/content/demo/ElementPlusDocsDemo.vue'
+export { ElementPlusDocsDemo } from './src/content/demo'
 export type {
   ElementPlusDocsDemoCompileOptions,
   ElementPlusDocsDemoCompileResult,
   ElementPlusDocsDemoMessages,
   ElementPlusDocsDemoProps,
   ElementPlusDocsDemoSourceLanguage,
-} from './src/content/demo/types'
+} from './src/content/demo'
 export { createElementPlusDocsContent } from './src/content/integration/create-element-plus-docs-content'
 export type {
   ElementPlusDocsApiResolverInput,

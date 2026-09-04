@@ -2,13 +2,13 @@
 import { Box, Check, ChevronUp, Code2, Copy, ExternalLink, GitBranch, SquareTerminal, Zap } from '@lucide/vue'
 import { ElSegmented } from 'element-plus'
 import type { Component } from 'vue'
-import type { ElementPlusDocsExternalProjectSource } from '../playground/external/vue-project'
-import { indexElementPlusDocsPlaygroundActions } from '../playground/registry'
+import type { ElementPlusDocsExternalProjectSource } from '../../playground/external/vue-project'
+import { indexElementPlusDocsPlaygroundActions } from '../../playground/registry'
 import type {
   ElementPlusDocsPlaygroundAction,
   ElementPlusDocsPlaygroundActionContext,
   ElementPlusDocsPlaygroundKind,
-} from '../playground/types'
+} from '../../playground/types'
 import {
   computed,
   nextTick,
@@ -19,8 +19,8 @@ import {
   shallowRef,
   useId,
 } from 'vue'
-import type { ElementPlusDocsDemoProps, ElementPlusDocsDemoSourceLanguage } from './types'
-import ElementPlusDocsDemoSource from './ElementPlusDocsDemoSource.vue'
+import type { ElementPlusDocsDemoProps, ElementPlusDocsDemoSourceLanguage } from '../types'
+import ElementPlusDocsDemoSource from './components/ElementPlusDocsDemoSource.vue'
 
 const props = defineProps<ElementPlusDocsDemoProps>()
 

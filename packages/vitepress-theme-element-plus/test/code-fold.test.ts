@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { computeFoldRegions, getIndent } from '../src/content/demo/code-fold'
-import ElementPlusDocsDemoSource from '../src/content/demo/ElementPlusDocsDemoSource.vue'
+import ElementPlusDocsDemoSource from '../src/content/demo/ElementPlusDocsDemo/components/ElementPlusDocsDemoSource.vue'
+import { computeFoldRegions, getIndent } from '../src/content/demo/services'
 
 describe('element Plus Demo code folding', () => {
   it('copies the upstream indentation folding rules, including tab stops', () => {

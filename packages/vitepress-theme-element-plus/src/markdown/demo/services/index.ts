@@ -2,9 +2,9 @@ export {
   collectElementPlusDocsDemos,
   createElementPlusDocsDemoId,
   elementPlusDocsDemoPlugin,
-} from './services'
+} from './plugin'
 export type {
   ElementPlusDocsDemoExternalProjectContext,
   ElementPlusDocsDemoSource,
   ElementPlusDocsDemoSourceHrefContext,
-} from './services'
+} from './plugin'

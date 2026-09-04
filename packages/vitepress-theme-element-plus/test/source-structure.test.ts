@@ -20,6 +20,10 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const sourceRoot = resolve(packageRoot, 'src')
 
 const removedFlatModules = [
+  'content/demo/ElementPlusDocsDemo.vue',
+  'content/demo/ElementPlusDocsDemoSource.vue',
+  'content/demo/code-fold.ts',
+  'content/demo/types.ts',
   'markdown/demo.ts',
   'markdown/external-project.ts',
   'markdown/project.ts',
@@ -31,6 +35,8 @@ const removedFlatModules = [
   'node/prepare.ts',
   'node/repository/atomic-write.ts',
   'node/repository/project.ts',
+  'project/config.ts',
+  'project/types.ts',
 ] as const
 
 function collectDirectories(directory: string): string[] {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
-import { computeFoldRegions } from './code-fold'
+import { computeFoldRegions } from '../../services'
 
 const props = defineProps<{
   foldCodeRegion: string

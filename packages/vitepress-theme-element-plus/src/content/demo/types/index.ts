@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
-import type { ElementPlusDocsExternalProjectSource } from '../playground/external/vue-project'
-import type { ElementPlusDocsPlaygroundAction } from '../playground/types'
+import type { ElementPlusDocsExternalProjectSource } from '../../playground/external/vue-project'
+import type { ElementPlusDocsPlaygroundAction } from '../../playground/types'
 
 export interface ElementPlusDocsDemoCompileResult {
   component: Component

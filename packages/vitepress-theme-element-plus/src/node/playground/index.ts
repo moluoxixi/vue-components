@@ -4,7 +4,7 @@ import type {
 } from '../../project/types'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { resolveElementPlusDocsPlaygroundManifest } from '../../project/config'
+import { resolveElementPlusDocsPlaygroundManifest } from '../../project'
 import { writeJsonAtomically } from '../utils'
 
 export function elementPlusDocsPlaygroundManifestsPath(generatedRoot: string): string {
