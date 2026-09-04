@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ProjectVersionSummary } from '@moluoxixi/config-form-model'
-import type { WorkbenchRecoveryDraftSummary } from '../../app'
+import type { WorkbenchRecoveryDraftSummary } from '../../app/types'
 import type { PersistenceDialogEmits, PersistenceDialogProps } from './types'
 import { Check, History, RotateCcw, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
-import { useWorkbenchController } from '../../app'
+import { useWorkbenchController } from '../../app/composables'
 
 const props = defineProps<PersistenceDialogProps>()
 

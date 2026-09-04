@@ -25,7 +25,7 @@ import {
   parseSnapshotManifest,
   readCurrentStoredProjectSnapshot,
   semanticChecksum,
-} from './indexed-db-repository'
+} from './indexed-db-project-codec'
 
 const DRAFT_STORAGE_VERSION = 1 as const
 const DRAFT_PREFIX = 'project-recovery-draft:'
