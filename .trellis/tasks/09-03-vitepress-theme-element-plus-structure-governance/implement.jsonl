@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"Feature 责任、barrel、组件 owner 与 package entry 合同。"}
+{"file":".trellis/spec/vitepress-theme-element-plus/frontend/index.md","reason":"主题包前端规范入口。"}
+{"file":".trellis/spec/vitepress-theme-element-plus/frontend/package-structure.md","reason":"Markdown、Node、repository、lifecycle 与 upstream 边界。"}
