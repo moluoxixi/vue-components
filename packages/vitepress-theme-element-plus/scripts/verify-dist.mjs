@@ -5,6 +5,39 @@ const packageRoot = fileURLToPath(new URL('../', import.meta.url))
 const distRoot = fileURLToPath(new URL('../dist/', import.meta.url))
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const notices = await readFile(new URL('../THIRD_PARTY_NOTICES.md', import.meta.url), 'utf8')
+const expectedExports = {
+  '.': {
+    source: './index.ts',
+    types: './dist/index.d.ts',
+    import: './dist/index.js',
+  },
+  './markdown': {
+    source: './markdown.ts',
+    types: './dist/markdown.d.ts',
+    import: './dist/markdown.js',
+  },
+  './node': {
+    source: './node.ts',
+    types: './dist/node.d.ts',
+    import: './dist/node.js',
+  },
+  './repository': {
+    source: './repository.ts',
+    types: './dist/repository.d.ts',
+    import: './dist/repository.js',
+  },
+  './repository/node': {
+    source: './repository-node.ts',
+    types: './dist/repository-node.d.ts',
+    import: './dist/repository-node.js',
+  },
+  './repl': {
+    source: './src/repl-entry.ts',
+    types: './dist/src/repl-entry.d.ts',
+    import: './dist/repl.js',
+  },
+  './repl.css': './src/repl/styles.css',
+}
 
 async function collectFiles(directory) {
   const files = []
@@ -35,16 +68,8 @@ const browserArtifacts = (await Promise.all(
 )).join('\n')
 const nodeModuleSpecifier = /(?:\bfrom\s*|\bimport\s*\(\s*)["']node:/
 
-if (JSON.stringify(Object.keys(packageJson.exports)) !== JSON.stringify([
-  '.',
-  './markdown',
-  './node',
-  './repository',
-  './repository/node',
-  './repl',
-  './repl.css',
-])) {
-  failures.push('package exports must expose the browser root, markdown, Node lifecycle, repository, Node repository, and REPL entries')
+if (JSON.stringify(packageJson.exports) !== JSON.stringify(expectedExports)) {
+  failures.push('package exports must preserve the exact source, types, and import targets for every public entry')
 }
 if (!jsFiles.some(file => file.endsWith('/markdown.js'))) {
   failures.push('markdown entry is missing')

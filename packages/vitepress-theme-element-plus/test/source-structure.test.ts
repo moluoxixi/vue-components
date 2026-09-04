@@ -88,17 +88,58 @@ function collectTypeScriptFiles(directory: string): string[] {
   })
 }
 
-function declaredRuntimeExports(path: string): string[] {
-  const sourceFile = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true)
+function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
+  return ts.canHaveModifiers(node) && Boolean(ts.getModifiers(node)?.some(modifier => modifier.kind === kind))
+}
+
+function bindingNames(name: ts.BindingName): string[] {
+  if (ts.isIdentifier(name))
+    return [name.text]
+  return name.elements.flatMap(element => (
+    ts.isOmittedExpression(element) ? [] : bindingNames(element.name)
+  ))
+}
+
+function declaredRuntimeExportsFromSource(path: string, source: string): string[] {
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
   return sourceFile.statements.flatMap((statement) => {
-    if (!ts.isExportDeclaration(statement) || statement.isTypeOnly || !statement.exportClause)
+    if (ts.isExportAssignment(statement))
+      return [statement.isExportEquals ? 'export=' : 'default']
+
+    if (ts.isExportDeclaration(statement)) {
+      if (statement.isTypeOnly)
+        return []
+      if (!statement.exportClause)
+        return ['*']
+      if (ts.isNamespaceExport(statement.exportClause))
+        return [statement.exportClause.name.text]
+      return statement.exportClause.elements
+        .filter(element => !element.isTypeOnly)
+        .map(element => element.name.text)
+    }
+
+    if (!hasModifier(statement, ts.SyntaxKind.ExportKeyword)
+      || hasModifier(statement, ts.SyntaxKind.DeclareKeyword)) {
       return []
-    if (!ts.isNamedExports(statement.exportClause))
-      return []
-    return statement.exportClause.elements
-      .filter(element => !element.isTypeOnly)
-      .map(element => element.name.text)
+    }
+    if (ts.isVariableStatement(statement)) {
+      return statement.declarationList.declarations.flatMap(declaration => bindingNames(declaration.name))
+    }
+    if (hasModifier(statement, ts.SyntaxKind.DefaultKeyword))
+      return ['default']
+    if (ts.isFunctionDeclaration(statement)
+      || ts.isClassDeclaration(statement)
+      || ts.isEnumDeclaration(statement)
+      || ts.isModuleDeclaration(statement)
+      || ts.isImportEqualsDeclaration(statement)) {
+      return statement.name ? [statement.name.text] : []
+    }
+    return []
   }).sort()
+}
+
+function declaredRuntimeExports(path: string): string[] {
+  return declaredRuntimeExportsFromSource(path, readFileSync(path, 'utf8'))
 }
 
 describe('theme source responsibilities', () => {
@@ -255,6 +296,31 @@ describe('theme source responsibilities', () => {
       'decodeElementPlusDocsReplState',
       'encodeElementPlusDocsReplState',
       'fetchElementPlusDocsPackageVersions',
+    ])
+  })
+
+  it('detects direct runtime declarations and wildcard exports in REPL entries', () => {
+    expect(declaredRuntimeExportsFromSource('repl-entry.ts', `
+      export const named = 1, { value: alias, nested: { leaf: nested } } = input
+      export function namedFunction() {}
+      export class NamedClass {}
+      export enum NamedEnum { Value }
+      export default function () {}
+      export * from './other'
+      export * as namespace from './namespace'
+      export type { TypeOnly } from './types'
+      export interface LocalTypeOnly {}
+      export declare const declaredOnly: string
+    `)).toEqual([
+      '*',
+      'NamedClass',
+      'NamedEnum',
+      'alias',
+      'default',
+      'named',
+      'namedFunction',
+      'namespace',
+      'nested',
     ])
   })
 

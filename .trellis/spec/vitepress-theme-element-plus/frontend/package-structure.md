@@ -53,7 +53,8 @@ packages/vitepress-theme-element-plus/
   their own Node responsibilities.
 - Shared Node file utilities live in `src/node/utils`. Provider collectors and
   synchronization remain in `src/node/repository`; repository runtime assembly
-  lives in `src/node/repository/runtime`.
+  lives in `src/node/repository/services/runtime.ts` and concrete collectors
+  live in `src/node/repository/adapters`.
 - `repository-node.ts` owns the public `./repository/node` aggregation. The
   internal `src/node/repository/index.ts` exports repository responsibilities
   only and must not re-export lifecycle, playground, project, or utility APIs.
