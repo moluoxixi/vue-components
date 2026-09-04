@@ -848,3 +848,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 35: Rich Text Editor 结构治理
+
+**Date**: 2026-09-04
+**Task**: Rich Text Editor 结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+将 RichTextEditor 公开组件归入 src/components/RichTextEditor，建立纯导出 barrel，锁定命名/默认导出与 Vue plugin 同一对象，修复发布 tarball source files，补中文 README、包级入口 spec 与 packed/browser 门禁；architecture debt 由 84 降至 83。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dafaac6b` | (see git log) |
+
+### Status
+
+[OK] **Completed**
