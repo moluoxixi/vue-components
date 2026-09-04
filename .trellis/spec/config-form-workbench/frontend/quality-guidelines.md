@@ -181,3 +181,62 @@ Required regression coverage:
 - Primary export actions meet 4.5:1 in both themes; non-text borders and focus indicators meet 3:1.
 
 ---
+
+## Responsive Library Controls And Catalog Drawers
+
+Apply this contract when a Workbench feature uses an Element Plus control only
+at one responsive breakpoint or opens a feature-owned catalog in `ElDrawer`.
+
+```ts
+useTemplateViewport(): {
+  isDesktop: ComputedRef<boolean>
+  isMedium: ComputedRef<boolean>
+  isMobile: ComputedRef<boolean>
+}
+```
+
+- A library root that exists only at one breakpoint is conditionally mounted
+  from the shared viewport state. Do not rely on a low-specificity
+  `display: none` rule: a later-loaded library root rule can make the control
+  visible again and create an implicit grid row.
+- At 641–1000px, the template catalog is opened through `ElDrawer`; the inline
+  catalog remains hidden and the Runtime preview owns the remaining width.
+- Drawer open state uses `v-model`. Escape inside the Drawer closes it and the
+  final closed state restores focus to the stable rail trigger.
+- When other Element Plus focus layers can pause the Drawer layer, the Drawer
+  root may capture Escape locally. Keep that handler on the Drawer root so a
+  teleported Select popup outside the Drawer retains ownership of its own
+  Escape event.
+- Appearance and catalog overlays are mutually exclusive. Opening one closes
+  the other before focus moves.
+
+| Condition | Required result |
+| --- | --- |
+| Width is at least 1001px | Show the 280–340px inline catalog; do not mount the mobile segmented control |
+| Width is 641–1000px | Show a 52–56px rail and Runtime detail; browse through the Drawer |
+| Width is at most 640px | Mount `ElSegmented` and show exactly one catalog/detail pane |
+| Drawer closes by Escape, selection, or close button | Remove the overlay and restore the stable trigger |
+| A nested Select popup handles Escape | Close the Select popup without stealing the Drawer trigger contract |
+
+Required browser coverage asserts the three breakpoint geometries, no
+horizontal overflow, Drawer focus confinement and restoration, mobile
+single-pane navigation, axe, and visual sentinels. A source assertion that a
+template contains `ElDrawer` or `ElSegmented` is not sufficient.
+
+Wrong:
+
+```vue
+<ElSegmented class="mobile-only" />
+```
+
+```css
+.mobile-only { display: none; }
+```
+
+Correct:
+
+```vue
+<ElSegmented v-if="isMobile" class="mobile-only" />
+```
+
+---

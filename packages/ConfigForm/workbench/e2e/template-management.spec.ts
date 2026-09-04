@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { createProject, setAppearance } from './helpers'
+import { createProject, restoreAppearance, setAppearance } from './helpers'
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page): Promise<void> {
   const width = await page.evaluate(() => ({
@@ -28,8 +28,14 @@ test.beforeEach(async ({ page }) => {
 
 test('browses, filters, keyboard-selects, and previews the built-in catalog', async ({ page }) => {
   const workspace = page.getByRole('main', { name: 'Create project' })
+  const search = workspace.getByRole('searchbox', { name: 'Search templates' })
   await expect(workspace.getByRole('option')).toHaveCount(4)
-  await workspace.getByRole('searchbox', { name: 'Search templates' }).fill('Ant Design Vue')
+  await search.fill('no-such-template')
+  await expect(workspace.getByText('No templates match these filters', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('No template selected', { exact: true })).toBeVisible()
+  await workspace.getByRole('button', { name: 'Browse templates', exact: true }).click()
+  await expect(search).toBeFocused()
+  await search.fill('Ant Design Vue')
   await expect(workspace.getByRole('option')).toHaveCount(2)
   const first = workspace.getByRole('option').first()
   await first.focus()
@@ -151,7 +157,7 @@ test('keeps long Registry diagnostics and the create action visible at 390px', a
 
   const workspace = page.getByRole('main', { name: 'Create page' })
   await workspace.getByRole('option', { name: /Ant Design Vue profile/ }).click()
-  await workspace.getByRole('tab', { name: 'Details' }).click()
+  await workspace.locator('.template-mobile-panes .el-segmented__item').filter({ hasText: 'Details' }).click()
   const blocked = workspace.getByText('Cannot create with this Registry', { exact: true })
   await expect(blocked).toBeVisible()
   await expect(workspace.locator('.template-eligibility li')).toHaveCount(5)
@@ -180,8 +186,134 @@ test('keeps long Registry diagnostics and the create action visible at 390px', a
   await expectNoHorizontalOverflow(page)
 })
 
+test('keeps the Runtime preview dominant and restores focus after the 900px catalog Drawer closes', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 })
+  const workspace = page.getByRole('main', { name: 'Create project' })
+  const rail = workspace.locator('.template-category-rail')
+  const detail = workspace.locator('.template-detail-pane')
+  const opener = workspace.locator('[data-template-catalog-open]')
+
+  await expect(rail).toBeVisible()
+  await expect(workspace.locator('.template-catalog-pane')).not.toBeVisible()
+  const geometry = await workspace.locator('.template-workspace-layout').evaluate((layout) => {
+    const rail = layout.querySelector<HTMLElement>('.template-category-rail')
+    const detail = layout.querySelector<HTMLElement>('.template-detail-pane')
+    if (!rail || !detail)
+      throw new Error('Template medium layout is incomplete.')
+    return {
+      detailWidth: detail.getBoundingClientRect().width,
+      railWidth: rail.getBoundingClientRect().width,
+    }
+  })
+  expect(geometry.railWidth).toBeGreaterThanOrEqual(52)
+  expect(geometry.railWidth).toBeLessThanOrEqual(56)
+  expect(geometry.detailWidth).toBeGreaterThan(800)
+  await expect(detail.locator('iframe[data-preview-runtime-host]')).toBeVisible()
+
+  await workspace.getByRole('button', { name: 'Open appearance settings', exact: true }).click()
+  await expect(page.locator('.appearance-panel:visible')).toBeVisible()
+  await opener.click()
+  const drawer = page.getByRole('dialog', { name: 'Catalog' })
+  await expect(page.locator('.appearance-panel:visible')).toHaveCount(0)
+  await expect(drawer).toBeVisible()
+  await expect(drawer.getByRole('searchbox', { name: 'Search templates' })).toBeFocused()
+  await expect(page.locator('#workbench-overlays').getByRole('dialog', { name: 'Catalog' })).toBeVisible()
+
+  await drawer.locator('.template-catalog-filters .el-select__wrapper').first().click()
+  const categoryPopup = page.locator('.el-select__popper:visible')
+  await expect(categoryPopup).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(categoryPopup).not.toBeVisible()
+  await expect(drawer).toBeVisible()
+  for (let index = 0; index < 6; index += 1)
+    await page.keyboard.press('Tab')
+  expect(await drawer.evaluate(element => element.contains(document.activeElement))).toBe(true)
+
+  await page.keyboard.press('Escape')
+  await expect(drawer).not.toBeVisible()
+  await expect(opener).toBeFocused()
+
+  await opener.click()
+  await expect(drawer).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(drawer).not.toBeVisible()
+  await expect(workspace.locator('.template-mobile-panes')).toBeVisible()
+
+  await page.setViewportSize({ width: 900, height: 900 })
+  await expect(opener).toBeVisible()
+  await opener.click()
+  await expect(drawer).toBeVisible()
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(drawer).not.toBeVisible()
+  await expect(workspace.locator('.template-catalog-pane')).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+})
+
+test('uses one Element Plus segmented window at 390px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const workspace = page.getByRole('main', { name: 'Create project' })
+  const segmented = workspace.locator('.template-mobile-panes')
+  const details = segmented.locator('.el-segmented__item').filter({ hasText: 'Details' })
+
+  await expect(segmented).toBeVisible()
+  await expect(workspace.locator('.template-catalog-pane')).toBeVisible()
+  await expect(workspace.locator('.template-detail-pane')).not.toBeVisible()
+  await details.click()
+  await expect(workspace.locator('.template-detail-pane')).toBeVisible()
+  await expect(workspace.locator('.template-catalog-pane')).not.toBeVisible()
+  await workspace.locator('.template-mobile-back').click()
+  await expect(workspace.getByRole('radiogroup', { name: 'Template workspace view' })
+    .getByRole('radio', { name: 'Catalog', exact: true })).toBeChecked()
+  await expect(workspace.locator('.template-catalog-pane')).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+})
+
+const templateVisualCases = [
+  { height: 900, locale: 'zh', overlay: true, palette: 'catppuccin', theme: 'light', width: 900 },
+  { height: 900, locale: 'en', overlay: false, palette: 'kanagawa', theme: 'dark', width: 900 },
+  { height: 844, locale: 'en', overlay: false, palette: 'gruvbox', theme: 'light', width: 390 },
+  { height: 844, locale: 'zh', overlay: false, palette: 'rose-pine', theme: 'dark', width: 390 },
+] as const
+
+for (const visualCase of templateVisualCases) {
+  const { height, locale, overlay, palette, theme, width } = visualCase
+  test(`matches the ${width}px ${palette} ${theme} ${locale} template visual contract @visual`, async ({ page }) => {
+    await page.setViewportSize({ height, width })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await restoreAppearance(page, theme, palette)
+    let workspace = page.getByRole('main', { name: 'Create project' })
+
+    if (locale === 'zh') {
+      if (width > 640) {
+        await workspace.getByRole('button', { name: 'Switch language', exact: true }).click()
+      }
+      else {
+        await workspace.getByRole('button', { name: 'More actions', exact: true }).click()
+        await page.getByRole('menuitem', { name: 'Switch language', exact: true }).click()
+      }
+      workspace = page.getByRole('main', { name: '创建项目' })
+    }
+
+    if (overlay) {
+      await workspace.locator('[data-template-catalog-open]').click()
+      await expect(page.locator('.template-catalog-drawer')).toBeVisible()
+    }
+    else if (width === 390 && locale === 'zh') {
+      await workspace.locator('.template-mobile-panes .el-segmented__item').last().click()
+      await expect(workspace.locator('.template-detail-pane')).toBeVisible()
+    }
+
+    await expectNoHorizontalOverflow(page)
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await expect(page).toHaveScreenshot(
+      `template-${width}-${palette}-${theme}-${locale}${overlay ? '-drawer' : ''}.png`,
+      { animations: 'disabled' },
+    )
+  })
+}
+
 for (const viewport of [
-  { width: 1440, height: 1000 },
+  { width: 1440, height: 900 },
   { width: 900, height: 900 },
   { width: 390, height: 844 },
 ]) {
@@ -190,13 +322,20 @@ for (const viewport of [
     const workspace = page.getByRole('main', { name: 'Create project' })
     await expect(workspace).toBeVisible()
     if (viewport.width === 390) {
-      await workspace.getByRole('tab', { name: 'Details' }).click()
+      await workspace.locator('.template-mobile-panes .el-segmented__item').filter({ hasText: 'Details' }).click()
       await expect(workspace.getByRole('button', { name: 'Catalog', exact: true })).toBeVisible()
       await expect(workspace.getByRole('button', { name: 'Create project', exact: true })).toBeVisible()
+    }
+    else if (viewport.width === 900) {
+      await expect(workspace.locator('.template-category-rail')).toBeVisible()
+      await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
     }
     else {
       await expect(workspace.getByRole('option')).toHaveCount(4)
       await expect(workspace.locator('iframe[data-preview-runtime-host]')).toBeVisible()
+      const catalogWidth = await workspace.locator('.template-catalog-pane').evaluate(element => element.getBoundingClientRect().width)
+      expect(catalogWidth).toBeGreaterThanOrEqual(280)
+      expect(catalogWidth).toBeLessThanOrEqual(340)
     }
     await expectNoHorizontalOverflow(page)
   })

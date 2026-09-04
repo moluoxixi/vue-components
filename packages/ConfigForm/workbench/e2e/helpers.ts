@@ -13,10 +13,17 @@ const templateNames: Record<WorkbenchAdapter, RegExp> = {
 export async function createProject(page: Page, adapter: WorkbenchAdapter): Promise<void> {
   const workspace = page.getByRole('main', { name: 'Create project' })
   await expect(workspace).toBeVisible()
-  await workspace.getByRole('option', { name: templateNames[adapter] }).click()
-  const detailsTab = workspace.getByRole('tab', { name: 'Details' })
-  if (await detailsTab.isVisible())
-    await detailsTab.click()
+  const catalogOpener = workspace.locator('[data-template-catalog-open]')
+  if (await catalogOpener.isVisible()) {
+    await catalogOpener.click()
+    const catalog = page.getByRole('dialog', { name: 'Catalog' })
+    await expect(catalog).toBeVisible()
+    await catalog.getByRole('option', { name: templateNames[adapter] }).click()
+    await expect(catalog).not.toBeVisible()
+  }
+  else {
+    await workspace.getByRole('option', { name: templateNames[adapter] }).click()
+  }
   await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create project', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()

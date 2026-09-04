@@ -18,6 +18,17 @@ const mocks = vi.hoisted(() => ({
   useUi: vi.fn(),
 }))
 
+const currentProject = shallowRef({
+  registryLock: {
+    adapter: 'element-plus',
+    components: {},
+    fingerprint: 'element-plus:registry',
+    version: '1',
+  },
+})
+const appearanceDrawerOpen = ref(false)
+const closeAppearanceDrawer = vi.fn()
+
 vi.mock('../../../adapters', () => ({
   loadWorkbenchAdapter: mocks.loadAdapter,
 }))
@@ -105,8 +116,31 @@ const RuntimeStub = defineComponent({
   },
 })
 
+function stubMatchMedia(resolveMatches: (query: string) => boolean): void {
+  vi.stubGlobal('matchMedia', vi.fn((query: string): MediaQueryList => ({
+    matches: resolveMatches(query),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(() => true),
+  })))
+}
+
 function eligible() {
   return { eligible: true, diagnostics: [] }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
 }
 
 function previewFor(template: { manifest: { adapter: string, id: string } }) {
@@ -143,8 +177,9 @@ function mountWorkspace(target: 'page' | 'project' = 'project') {
 
 describe('template creation workspace', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     document.body.innerHTML = '<div id="workbench-overlays"></div>'
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
+    stubMatchMedia(() => false)
     mocks.analyzeEligibility.mockImplementation(eligible)
     mocks.catalogLoad.mockImplementation(() => mocks.actualCatalogLoad!())
     mocks.createPage.mockResolvedValue(true)
@@ -154,21 +189,25 @@ describe('template creation workspace', () => {
       registrySnapshot: { adapter, components: [] },
     }))
     mocks.preparePreview.mockImplementation(previewFor)
+    currentProject.value = {
+      registryLock: {
+        adapter: 'element-plus',
+        components: {},
+        fingerprint: 'element-plus:registry',
+        version: '1',
+      },
+    }
+    appearanceDrawerOpen.value = false
     mocks.useController.mockReturnValue({
       busy: ref(false),
       createPageFromTemplate: mocks.createPage,
       createProjectFromTemplate: mocks.createProject,
-      currentProject: shallowRef({
-        registryLock: {
-          adapter: 'element-plus',
-          components: {},
-          fingerprint: 'element-plus:registry',
-          version: '1',
-        },
-      }),
+      currentProject,
     })
     mocks.useUi.mockReturnValue({
+      appearanceDrawerOpen,
       clearMessage: vi.fn(),
+      closeAppearanceDrawer,
       openAppearanceDrawer: vi.fn(),
       message: ref(''),
       paletteFamily: ref('catppuccin'),
@@ -199,20 +238,28 @@ describe('template creation workspace', () => {
 
     await wrapper.get('input[aria-label="Search templates"]').setValue('no-such-template')
     expect(wrapper.get('[role="status"] strong').text()).toBe('No templates match these filters')
+    expect(wrapper.get('.template-no-selection').text()).toContain('No template selected')
+    await wrapper.get('.template-no-selection button').trigger('click')
+    await flushPromises()
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Search templates')
     await wrapper.get('.template-empty-state button').trigger('click')
     expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
     wrapper.unmount()
   })
 
   it('shows Provider diagnostics with a working catalog retry', async () => {
-    mocks.catalogLoad.mockResolvedValueOnce({
-      diagnostics: [{ code: 'TEMPLATE_PROVIDER_FAILED', message: 'Built-in provider failed.' }],
-      templates: [],
+    mocks.catalogLoad.mockImplementationOnce(async () => {
+      const catalog = await mocks.actualCatalogLoad!() as { diagnostics: unknown[], templates: unknown[] }
+      return {
+        ...catalog,
+        diagnostics: [{ code: 'TEMPLATE_PROVIDER_FAILED', message: 'Built-in provider failed.' }],
+      }
     })
     const wrapper = mountWorkspace()
     await flushPromises()
 
     expect(wrapper.get('.template-provider-error').text()).toContain('Built-in provider failed.')
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
     await wrapper.get('.template-provider-error button').trigger('click')
     await flushPromises()
     expect(mocks.catalogLoad).toHaveBeenCalledTimes(2)
@@ -220,8 +267,61 @@ describe('template creation workspace', () => {
     wrapper.unmount()
   })
 
+  it('keeps catalog loading and fatal failure distinct from filtered empty', async () => {
+    const catalog = deferred<unknown>()
+    mocks.catalogLoad.mockReturnValueOnce(catalog.promise)
+    const wrapper = mountWorkspace()
+    await flushPromises()
+
+    expect(wrapper.get('.template-state').text()).toBe('Loading templates')
+    expect(wrapper.find('.template-empty-state').exists()).toBe(false)
+    catalog.reject(new Error('Catalog offline'))
+    await flushPromises()
+
+    expect(wrapper.get('.template-catalog-fatal').text()).toContain('Template catalog unavailable')
+    expect(wrapper.get('.template-catalog-fatal').text()).toContain('Catalog offline')
+    expect(wrapper.find('.template-empty-state').exists()).toBe(false)
+    await wrapper.get('.template-catalog-fatal button').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(4)
+    wrapper.unmount()
+  })
+
+  it('keys eligibility display status by the current Registry fingerprint', async () => {
+    const wrapper = mountWorkspace('page')
+    await flushPromises()
+
+    const selectedStatus = () => wrapper.get('[data-template-id="element-blank"] .template-catalog-status')
+    expect(selectedStatus().attributes('data-status')).toBe('eligible')
+    expect(wrapper.get('[data-template-id="element-profile"] .template-catalog-status').attributes('data-status')).toBe('pending')
+    const previousAnalyzeCalls = mocks.analyzeEligibility.mock.calls.length
+    const nextAdapter = deferred<{
+      designerRegistry: { rendererNamespace: string }
+      registrySnapshot: { adapter: string, components: never[] }
+    }>()
+    mocks.loadAdapter.mockImplementationOnce(() => nextAdapter.promise)
+    currentProject.value = {
+      registryLock: {
+        ...currentProject.value.registryLock,
+        fingerprint: 'element-plus:registry-v2',
+      },
+    }
+    await flushPromises()
+
+    expect(selectedStatus().attributes('data-status')).toBe('checking')
+    expect(mocks.analyzeEligibility).toHaveBeenCalledTimes(previousAnalyzeCalls)
+    nextAdapter.resolve({
+      designerRegistry: { rendererNamespace: 'mx-element-plus' },
+      registrySnapshot: { adapter: 'element-plus', components: [] },
+    })
+    await flushPromises()
+    expect(selectedStatus().attributes('data-status')).toBe('eligible')
+    expect(mocks.analyzeEligibility).toHaveBeenCalledTimes(previousAnalyzeCalls + 1)
+    wrapper.unmount()
+  })
+
   it('uses roving keyboard selection and restores the selected item from mobile details', async () => {
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+    stubMatchMedia(query => query === '(max-width: 640px)')
     const wrapper = mountWorkspace()
     await flushPromises()
 
@@ -246,6 +346,22 @@ describe('template creation workspace', () => {
     wrapper.unmount()
   })
 
+  it('keeps the catalog Drawer mutually exclusive with appearance settings', async () => {
+    stubMatchMedia(query => query === '(min-width: 641px) and (max-width: 1000px)')
+    const wrapper = mountWorkspace()
+    await flushPromises()
+
+    await wrapper.get('[data-template-catalog-open]').trigger('click')
+    await flushPromises()
+    expect(closeAppearanceDrawer).toHaveBeenCalledTimes(1)
+    expect(wrapper.getComponent({ name: 'ElDrawer' }).props('modelValue')).toBe(true)
+
+    appearanceDrawerOpen.value = true
+    await flushPromises()
+    expect(wrapper.getComponent({ name: 'ElDrawer' }).props('modelValue')).toBe(false)
+    wrapper.unmount()
+  })
+
   it('shows actionable diagnostics and disables creation when page requirements are unmet', async () => {
     mocks.analyzeEligibility.mockImplementation((template: { manifest: { adapter: string } }) =>
       template.manifest.adapter === 'antd-vue'
@@ -262,8 +378,12 @@ describe('template creation workspace', () => {
 
     await wrapper.get('[data-template-id="antd-profile"]').trigger('click')
     await flushPromises()
+    expect(wrapper.get('[data-template-id="antd-profile"] .template-catalog-status').attributes('data-status')).toBe('ineligible')
     expect(wrapper.get('[role="alert"]').text()).toContain('Template adapter antd-vue does not match element-plus.')
     expect(wrapper.get('.template-create-footer button').attributes('disabled')).toBeDefined()
+    await wrapper.get('.template-eligibility button').trigger('click')
+    await flushPromises()
+    expect(document.activeElement?.getAttribute('data-template-id')).toBe('antd-profile')
     wrapper.unmount()
   })
 
@@ -304,6 +424,8 @@ describe('template creation workspace', () => {
     await flushPromises()
 
     await wrapper.get('.template-create-footer button').trigger('click')
+    await wrapper.get('.template-create-footer button').trigger('click')
+    expect(mocks.createProject).toHaveBeenCalledTimes(1)
     const back = wrapper.get('.template-workspace-heading button')
     expect(back.attributes('disabled')).toBeDefined()
     await document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))

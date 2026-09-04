@@ -7,14 +7,19 @@ import type {
 } from '../../../project'
 import type { PreviewRuntimeStateEvent } from '../../../session'
 import type { TemplateCreationWorkspaceEmits, TemplateCreationWorkspaceProps } from '../../../features/templates'
+import type { TemplateEligibilityCacheEntry, TemplateEligibilityDisplayStatus } from './types'
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  File,
+  LayoutGrid,
   Languages,
+  LibraryBig,
   MoreHorizontal,
-  Search,
+  PanelLeftOpen,
   Settings2,
+  Sparkles,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
@@ -28,7 +33,8 @@ import {
 } from '../../../project'
 import WorkbenchAppearancePopover from '../WorkbenchAppearancePopover.vue'
 import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
-import { JsonImportPane } from './components'
+import { JsonImportPane, TemplateCatalogPanel } from './components'
+import { useTemplateViewport } from './composables'
 
 const props = defineProps<TemplateCreationWorkspaceProps>()
 const emit = defineEmits<TemplateCreationWorkspaceEmits>()
@@ -37,11 +43,15 @@ const controller = useWorkbenchController()
 const ui = useWorkbenchUiStore()
 const locale = computed(() => createDesignerLocale(props.locale))
 const catalogService = createTemplateCatalogService([builtInTemplateCatalogProvider])
-const searchInput = useTemplateRef<{ focus?: () => void }>('searchInput')
+const catalogDrawerTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('catalogDrawerTrigger')
+const drawerCatalog = useTemplateRef<{ focusSearch: () => void }>('drawerCatalog')
+const inlineCatalog = useTemplateRef<{ focusSearch: () => void, focusTemplate: (id: string) => void }>('inlineCatalog')
 const mobileActionsTrigger = useTemplateRef<{ $el?: HTMLButtonElement }>('mobileActionsTrigger')
-const workspace = useTemplateRef<HTMLElement>('workspace')
+const { isDesktop, isMedium, isMobile } = useTemplateViewport()
 const templates = shallowRef<ProjectTemplateCatalogEntry[]>([])
 const catalogDiagnostics = ref<string[]>([])
+const catalogFatalError = ref('')
+const catalogDrawerOpen = ref(false)
 const selectedId = ref('')
 const query = ref('')
 const category = ref<ProjectTemplateCategory | 'all'>('all')
@@ -54,11 +64,25 @@ const submitting = ref(false)
 const preview = ref<PreparedTemplatePreview>()
 const previewError = ref('')
 const eligibility = ref<TemplateEligibilityResult>()
+const eligibilityCache = shallowRef<Record<string, TemplateEligibilityCacheEntry>>({})
 let previewRequest = 0
 let disposed = false
 
 const selectedTemplate = computed(() => templates.value.find(template => template.manifest.id === selectedId.value))
 const providerOptions = computed(() => [...new Set(templates.value.map(template => template.providerId))])
+const mobilePaneOptions = computed(() => [
+  { label: locale.value.t('template.catalog', 'Catalog'), value: 'catalog' },
+  { label: locale.value.t('template.details', 'Details'), value: 'details', disabled: !selectedTemplate.value },
+])
+const registryContextFingerprint = computed(() => props.target === 'page'
+  ? controller.currentProject.value?.registryLock.fingerprint ?? 'missing-project-registry'
+  : 'new-project')
+const eligibilityStatuses = computed<Readonly<Record<string, TemplateEligibilityDisplayStatus>>>(() => (
+  Object.fromEntries(templates.value.map(template => [
+    template.manifest.id,
+    eligibilityCache.value[eligibilityCacheKey(template.manifest.id)]?.status ?? 'pending',
+  ]))
+))
 
 function templateName(template: ProjectTemplateCatalogEntry): string {
   return locale.value.t(`template.catalog.${template.manifest.id}.name`, template.manifest.displayName)
@@ -106,51 +130,87 @@ function selectTemplate(id: string): void {
   selectedId.value = id
 }
 
-function itemSelector(id: string): string {
-  return `[data-template-id="${CSS.escape(id)}"]`
+function activateTemplate(id = selectedId.value): void {
+  if (!id)
+    return
+  selectedId.value = id
+  if (isMobile.value)
+    mobilePane.value = 'details'
+  else if (isMedium.value)
+    closeCatalogDrawer()
 }
 
-function focusTemplate(id: string): void {
-  void nextTick(() => workspace.value?.querySelector<HTMLElement>(itemSelector(id))?.focus())
+function eligibilityCacheKey(templateId: string): string {
+  return `${templateId}:${props.target}:${registryContextFingerprint.value}`
 }
 
-function moveSelection(event: KeyboardEvent, currentId: string): void {
-  const ids = filteredTemplates.value.map(template => template.manifest.id)
-  const current = Math.max(0, ids.indexOf(currentId))
-  const next = event.key === 'ArrowDown'
-    ? Math.min(ids.length - 1, current + 1)
-    : event.key === 'ArrowUp'
-      ? Math.max(0, current - 1)
-      : event.key === 'Home'
-        ? 0
-        : event.key === 'End'
-          ? ids.length - 1
-          : undefined
-  if (next === undefined || !ids[next]) {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      mobilePane.value = 'details'
-    }
+function setEligibilityStatus(
+  cacheKey: string,
+  request: number,
+  status: TemplateEligibilityCacheEntry['status'],
+): void {
+  eligibilityCache.value = {
+    ...eligibilityCache.value,
+    [cacheKey]: { request, status },
+  }
+}
+
+function clearCheckingEligibility(cacheKey: string, request: number): void {
+  if (eligibilityCache.value[cacheKey]?.request !== request
+    || eligibilityCache.value[cacheKey]?.status !== 'checking') {
     return
   }
-  event.preventDefault()
-  selectedId.value = ids[next]
-  focusTemplate(ids[next])
+  const next = { ...eligibilityCache.value }
+  delete next[cacheKey]
+  eligibilityCache.value = next
+}
+
+function clearFilters(): void {
+  query.value = ''
+  category.value = 'all'
+  providerId.value = 'all'
+}
+
+function closeCatalogDrawer(): void {
+  catalogDrawerOpen.value = false
+}
+
+function restoreCatalogDrawerFocus(): void {
+  if (isMedium.value)
+    void nextTick(() => catalogDrawerTrigger.value?.$el?.focus())
+}
+
+function openCatalogDrawer(): void {
+  ui.closeAppearanceDrawer()
+  catalogDrawerOpen.value = true
 }
 
 function showCatalog(): void {
+  if (isMedium.value) {
+    openCatalogDrawer()
+    return
+  }
   mobilePane.value = 'catalog'
   if (selectedId.value)
-    focusTemplate(selectedId.value)
+    void nextTick(() => inlineCatalog.value?.focusTemplate(selectedId.value))
+  else
+    void nextTick(() => inlineCatalog.value?.focusSearch())
+}
+
+function handleCatalogDrawerOpened(): void {
+  drawerCatalog.value?.focusSearch()
 }
 
 function chooseMobileAction(action: 'openAppearance' | 'toggleLocale'): void {
   void nextTick(() => {
     mobileActionsTrigger.value?.$el?.focus()
-    if (action === 'openAppearance')
+    if (action === 'openAppearance') {
+      catalogDrawerOpen.value = false
       ui.openAppearanceDrawer()
-    else
+    }
+    else {
       emit('toggleLocale')
+    }
   })
 }
 
@@ -159,7 +219,12 @@ function handleEscape(event: KeyboardEvent): void {
     return
   if (submitting.value || controller.busy.value)
     return
-  if (mobilePane.value === 'details' && matchMedia('(max-width: 640px)').matches) {
+  if (catalogDrawerOpen.value) {
+    event.preventDefault()
+    closeCatalogDrawer()
+    return
+  }
+  if (mobilePane.value === 'details' && isMobile.value) {
     event.preventDefault()
     showCatalog()
     return
@@ -188,16 +253,20 @@ function handleFieldChange(payload: { field: string, values: Record<string, unkn
 async function prepareSelectedTemplate(): Promise<void> {
   const template = selectedTemplate.value
   const request = ++previewRequest
+  const cacheKey = template ? eligibilityCacheKey(template.manifest.id) : ''
   preview.value = undefined
   previewError.value = ''
   eligibility.value = undefined
   if (!template)
     return
+  setEligibilityStatus(cacheKey, request, 'checking')
   loadingPreview.value = true
   try {
     const adapter = await loadWorkbenchAdapter(template.manifest.adapter)
-    if (disposed || request !== previewRequest || selectedId.value !== template.manifest.id)
+    if (disposed || request !== previewRequest || selectedId.value !== template.manifest.id) {
+      clearCheckingEligibility(cacheKey, request)
       return
+    }
     eligibility.value = analyzeTemplateEligibility(template, {
       registry: adapter.registrySnapshot,
       target: props.target,
@@ -205,6 +274,11 @@ async function prepareSelectedTemplate(): Promise<void> {
         ? { targetLock: structuredClone(controller.currentProject.value.registryLock) }
         : {}),
     })
+    setEligibilityStatus(
+      cacheKey,
+      request,
+      eligibility.value.eligible ? 'eligible' : 'ineligible',
+    )
     const prepared = prepareTemplatePreview(template, adapter)
     if (disposed || request !== previewRequest || selectedId.value !== template.manifest.id)
       return
@@ -213,6 +287,7 @@ async function prepareSelectedTemplate(): Promise<void> {
   catch (error) {
     if (disposed || request !== previewRequest)
       return
+    clearCheckingEligibility(cacheKey, request)
     previewError.value = error instanceof Error ? error.message : String(error)
   }
   finally {
@@ -243,11 +318,13 @@ async function createSelected(): Promise<void> {
 async function loadCatalog(): Promise<void> {
   loadingCatalog.value = true
   catalogDiagnostics.value = []
+  catalogFatalError.value = ''
   try {
     const result = await catalogService.load()
     if (disposed)
       return
     templates.value = result.templates
+    eligibilityCache.value = {}
     catalogDiagnostics.value = result.diagnostics.map(diagnostic => diagnostic.message)
     if (!result.templates.some(template => template.manifest.id === selectedId.value))
       selectedId.value = result.templates[0]?.manifest.id ?? ''
@@ -255,7 +332,8 @@ async function loadCatalog(): Promise<void> {
   catch (error) {
     if (!disposed) {
       templates.value = []
-      catalogDiagnostics.value = [error instanceof Error ? error.message : String(error)]
+      eligibilityCache.value = {}
+      catalogFatalError.value = error instanceof Error ? error.message : String(error)
     }
   }
   finally {
@@ -275,13 +353,34 @@ watch(filteredTemplates, (available) => {
   selectedId.value = available[0]?.manifest.id ?? ''
 })
 
+watch(mobilePane, (pane) => {
+  if (pane === 'catalog' && isMobile.value)
+    void nextTick(() => inlineCatalog.value?.focusSearch())
+})
+
+watch(creationMode, (mode) => {
+  if (mode !== 'template')
+    catalogDrawerOpen.value = false
+})
+
+watch(ui.appearanceDrawerOpen, (open) => {
+  if (open)
+    catalogDrawerOpen.value = false
+})
+
+watch(isMedium, (medium) => {
+  if (!medium)
+    catalogDrawerOpen.value = false
+})
+
 onMounted(async () => {
   document.addEventListener('keydown', handleEscape)
   await loadCatalog()
   if (disposed)
     return
   await nextTick()
-  searchInput.value?.focus?.()
+  if (isDesktop.value || isMobile.value)
+    inlineCatalog.value?.focusSearch()
 })
 
 onBeforeUnmount(() => {
@@ -293,7 +392,6 @@ onBeforeUnmount(() => {
 
 <template>
   <main
-    ref="workspace"
     class="template-creation-workspace"
     :class="[`is-mobile-${mobilePane}`, { 'is-json-mode': creationMode === 'json' }]"
     :data-theme="ui.resolvedTheme.value"
@@ -362,63 +460,85 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div v-if="creationMode === 'template'" class="template-mobile-panes" role="tablist" :aria-label="locale.t('template.mobileView', 'Template workspace view')">
-      <button type="button" role="tab" :aria-selected="mobilePane === 'catalog'" @click="showCatalog">{{ locale.t('template.catalog', 'Catalog') }}</button>
-      <button type="button" role="tab" :aria-selected="mobilePane === 'details'" :disabled="!selectedTemplate" @click="mobilePane = 'details'">{{ locale.t('template.details', 'Details') }}</button>
-    </div>
+    <ElSegmented
+      v-if="creationMode === 'template' && isMobile"
+      v-model="mobilePane"
+      class="template-mobile-panes"
+      block
+      :aria-label="locale.t('template.mobileView', 'Template workspace view')"
+      :options="mobilePaneOptions"
+    />
 
     <section v-if="creationMode === 'template'" class="template-workspace-layout">
-      <aside class="template-catalog-pane" :aria-label="locale.t('template.catalog', 'Catalog')">
-        <div class="template-catalog-filters">
-          <ElInput ref="searchInput" v-model="query" type="search" clearable :placeholder="locale.t('template.search', 'Search templates')" :aria-label="locale.t('template.search', 'Search templates')">
-            <template #prefix><Search :size="15" aria-hidden="true" /></template>
-          </ElInput>
-          <div>
-            <ElSelect v-model="category" :aria-label="locale.t('template.category', 'Template category')" append-to="#workbench-overlays">
-              <ElOption value="all" :label="locale.t('template.categoryAll', 'All categories')" />
-              <ElOption value="blank" :label="locale.t('template.categoryBlank', 'Blank')" />
-              <ElOption value="starter" :label="locale.t('template.categoryStarter', 'Starter')" />
-            </ElSelect>
-            <ElSelect v-model="providerId" :aria-label="locale.t('template.provider', 'Template provider')" append-to="#workbench-overlays">
-              <ElOption value="all" :label="locale.t('template.providerAll', 'All providers')" />
-              <ElOption v-for="provider in providerOptions" :key="provider" :value="provider" :label="provider" />
-            </ElSelect>
-          </div>
-        </div>
+      <nav class="template-category-rail" :aria-label="locale.t('template.categoryRail', 'Template categories')">
+        <ElButton
+          native-type="button"
+          text
+          :class="{ 'is-active': category === 'all' }"
+          :aria-pressed="category === 'all'"
+          @click="category = 'all'"
+        >
+          <LayoutGrid :size="17" aria-hidden="true" />
+          <span>{{ locale.t('template.categoryAllShort', 'All') }}</span>
+        </ElButton>
+        <ElButton
+          native-type="button"
+          text
+          :class="{ 'is-active': category === 'blank' }"
+          :aria-pressed="category === 'blank'"
+          @click="category = 'blank'"
+        >
+          <File :size="17" aria-hidden="true" />
+          <span>{{ locale.t('template.categoryBlank', 'Blank') }}</span>
+        </ElButton>
+        <ElButton
+          native-type="button"
+          text
+          :class="{ 'is-active': category === 'starter' }"
+          :aria-pressed="category === 'starter'"
+          @click="category = 'starter'"
+        >
+          <Sparkles :size="17" aria-hidden="true" />
+          <span>{{ locale.t('template.categoryStarter', 'Starter') }}</span>
+        </ElButton>
+        <ElButton
+          ref="catalogDrawerTrigger"
+          data-template-catalog-open
+          class="template-category-browse"
+          native-type="button"
+          text
+          :title="locale.t('template.browse', 'Browse templates')"
+          :aria-label="locale.t('template.browse', 'Browse templates')"
+          @click="openCatalogDrawer"
+        >
+          <PanelLeftOpen :size="17" aria-hidden="true" />
+          <span>{{ locale.t('template.browseShort', 'Browse') }}</span>
+        </ElButton>
+      </nav>
 
-        <p v-if="loadingCatalog" class="template-state" role="status">{{ locale.t('template.loading', 'Loading templates') }}</p>
-        <div v-else-if="filteredTemplates.length" class="template-catalog-list" role="listbox" :aria-label="locale.t('template.available', 'Available templates')">
-          <button
-            v-for="template in filteredTemplates"
-            :key="template.manifest.id"
-            type="button"
-            role="option"
-            class="template-catalog-item"
-            :class="{ 'is-selected': selectedId === template.manifest.id }"
-            :aria-selected="selectedId === template.manifest.id"
-            :data-template-id="template.manifest.id"
-            :tabindex="selectedId === template.manifest.id ? 0 : -1"
-            @click="selectTemplate(template.manifest.id)"
-            @dblclick="mobilePane = 'details'"
-            @keydown="moveSelection($event, template.manifest.id)"
-          >
-            <span class="template-catalog-rail" aria-hidden="true" />
-            <span class="template-catalog-copy">
-              <strong>{{ templateName(template) }}</strong>
-              <span>{{ templateDescription(template) }}</span>
-              <small>{{ template.manifest.adapter }} · {{ template.providerId }}</small>
-            </span>
-          </button>
-        </div>
-        <div v-else class="template-empty-state" role="status">
-          <strong>{{ locale.t('template.noResults', 'No templates match these filters') }}</strong>
-          <span>{{ locale.t('template.noResultsHint', 'Clear search or choose another category or provider.') }}</span>
-          <ElButton native-type="button" @click="query = ''; category = 'all'; providerId = 'all'">{{ locale.t('template.clearFilters', 'Clear filters') }}</ElButton>
-        </div>
-        <div v-if="catalogDiagnostics.length" class="template-provider-error" role="alert">
-          <p v-for="diagnostic in catalogDiagnostics" :key="diagnostic">{{ diagnostic }}</p>
-          <ElButton native-type="button" size="small" @click="loadCatalog">{{ locale.t('template.retryCatalog', 'Retry catalog') }}</ElButton>
-        </div>
+      <aside class="template-catalog-pane" :aria-label="locale.t('template.catalog', 'Catalog')">
+        <TemplateCatalogPanel
+          ref="inlineCatalog"
+          :catalog-diagnostics="catalogDiagnostics"
+          :category="category"
+          :eligibility-statuses="eligibilityStatuses"
+          :fatal-error="catalogFatalError"
+          :filtered-templates="filteredTemplates"
+          :loading="loadingCatalog"
+          :locale="locale"
+          :provider-id="providerId"
+          :provider-options="providerOptions"
+          :query="query"
+          :selected-id="selectedId"
+          :templates="templates"
+          @clear-filters="clearFilters"
+          @retry="loadCatalog"
+          @select="selectTemplate"
+          @show-details="activateTemplate()"
+          @update:category="category = $event"
+          @update:provider-id="providerId = $event"
+          @update:query="query = $event"
+        />
       </aside>
 
       <section class="template-detail-pane" :aria-label="locale.t('template.details', 'Details')">
@@ -446,6 +566,10 @@ onBeforeUnmount(() => {
               <div role="alert">
                 <strong>{{ locale.t('template.ineligible', 'Cannot create with this Registry') }}</strong>
                 <ul><li v-for="diagnostic in eligibility.diagnostics" :key="`${diagnostic.code}:${diagnostic.path}`">{{ diagnostic.message }}</li></ul>
+                <ElButton native-type="button" text size="small" @click="showCatalog">
+                  <PanelLeftOpen :size="14" aria-hidden="true" />
+                  {{ locale.t('template.browse', 'Browse templates') }}
+                </ElButton>
               </div>
             </template>
           </div>
@@ -483,8 +607,60 @@ onBeforeUnmount(() => {
             </ElButton>
           </footer>
         </template>
+        <div v-else class="template-no-selection" role="status">
+          <LibraryBig :size="22" aria-hidden="true" />
+          <strong>{{ locale.t('template.noSelection', 'No template selected') }}</strong>
+          <span>{{ locale.t('template.noSelectionHint', 'Browse the catalog and choose a template to inspect its Registry requirements and Runtime preview.') }}</span>
+          <ElButton native-type="button" @click="showCatalog">
+            <PanelLeftOpen :size="16" aria-hidden="true" />
+            {{ locale.t('template.browse', 'Browse templates') }}
+          </ElButton>
+        </div>
       </section>
     </section>
-    <JsonImportPane v-else :locale="props.locale" :target="target" @created="emit('created')" />
+
+    <ElDrawer
+      v-model="catalogDrawerOpen"
+      class="template-catalog-drawer"
+      modal-class="template-catalog-drawer-overlay"
+      direction="ltr"
+      size="min(88vw, 340px)"
+      append-to="#workbench-overlays"
+      destroy-on-close
+      :lock-scroll="true"
+      :trap-focus="true"
+      :close-on-click-modal="true"
+      :close-on-press-escape="true"
+      :show-close="true"
+      :title="locale.t('template.catalog', 'Catalog')"
+      :aria-label="locale.t('template.catalog', 'Catalog')"
+      @closed="restoreCatalogDrawerFocus"
+      @keydown.esc.capture.stop.prevent="closeCatalogDrawer"
+      @opened="handleCatalogDrawerOpened"
+    >
+      <TemplateCatalogPanel
+        ref="drawerCatalog"
+        :catalog-diagnostics="catalogDiagnostics"
+        :category="category"
+        :eligibility-statuses="eligibilityStatuses"
+        :fatal-error="catalogFatalError"
+        :filtered-templates="filteredTemplates"
+        :loading="loadingCatalog"
+        :locale="locale"
+        :provider-id="providerId"
+        :provider-options="providerOptions"
+        :query="query"
+        :selected-id="selectedId"
+        :templates="templates"
+        @clear-filters="clearFilters"
+        @retry="loadCatalog"
+        @select="selectTemplate"
+        @show-details="activateTemplate()"
+        @update:category="category = $event"
+        @update:provider-id="providerId = $event"
+        @update:query="query = $event"
+      />
+    </ElDrawer>
+    <JsonImportPane v-if="creationMode === 'json'" :locale="props.locale" :target="target" @created="emit('created')" />
   </main>
 </template>

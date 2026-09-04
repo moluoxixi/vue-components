@@ -3,3 +3,5 @@
 {"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"确认模板与项目数据当前契约未变化。"}
 {"file":".trellis/spec/config-form-core/frontend/flow-runtime-consistency.md","reason":"确认 Preview Runtime revision/race 合同无回归。"}
 {"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 Catalog/adapter/eligibility/Runtime/create 跨层数据流。"}
+{"file":".trellis/spec/config-form-workbench/frontend/index.md","reason":"复核 Workbench 包级前端质量清单。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"复核三断点、Drawer、Segmented、axe 与视觉哨兵。"}
