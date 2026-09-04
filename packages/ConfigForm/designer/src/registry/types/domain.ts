@@ -32,6 +32,8 @@ export type DesignerSimpleSetterControl = Extract<
   'text' | 'textarea' | 'number' | 'boolean' | 'select'
 >
 
+export type DesignerPropertyControlKey = DesignerSimpleSetterControl | 'defaultValue'
+
 export type DesignerDefaultValueKind
   = | 'text'
     | 'number'
@@ -74,7 +76,7 @@ export interface DesignerPropertyControlDefinition {
 }
 
 export type DesignerPropertyControlRegistry = Partial<
-  Record<DesignerSimpleSetterControl, DesignerPropertyControlDefinition>
+  Record<DesignerPropertyControlKey, DesignerPropertyControlDefinition>
 >
 
 export interface DesignerMaterialSlotDefinition {

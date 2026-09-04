@@ -159,6 +159,12 @@ function customField(
   const setter = entry.setter.component
     ? { ...entry.setter, component: rawComponent(entry.setter.component) }
     : entry.setter
+  const defaultValueControl = props.controls?.defaultValue
+    ? {
+        ...props.controls.defaultValue,
+        component: rawComponent(props.controls.defaultValue.component),
+      }
+    : undefined
   return {
     id: key,
     field: key,
@@ -167,6 +173,7 @@ function customField(
     trigger: 'commit',
     props: {
       setter,
+      defaultValueControl,
       hint: entry.hint,
       inheritedValue: entry.inheritedValue,
       readonly: props.readonly,

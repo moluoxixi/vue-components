@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { loadWorkbenchAdapter } from '..'
 
 const inspectorComponents = ['text', 'textarea', 'number', 'boolean', 'segmented'] as const
-const inspectorControls = ['text', 'textarea', 'number', 'boolean', 'select'] as const
+const inspectorControls = ['defaultValue', 'text', 'textarea', 'number', 'boolean', 'select'] as const
 
 describe('workbench adapter inspector controls', () => {
   it('uses one Element Plus inspector control set without replacing provider materials', async () => {

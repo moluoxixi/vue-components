@@ -1,9 +1,10 @@
 import type { FieldNode } from '@moluoxixi/config-form-model'
 import { flushPromises, mount } from '@vue/test-utils'
-import { ElCheckbox, ElOption, ElRadio, ElSelect } from 'element-plus'
+import { ElCheckbox, ElDatePicker, ElInput, ElInputNumber, ElOption, ElRadio, ElSelect, ElSwitch, ElTimePicker } from 'element-plus'
 import { describe, expect, it, vi } from 'vitest'
 import ElementCheckboxField from '../src/materials/components/ElementCheckboxField/index.vue'
 import ElementChoiceDefaultSetter from '../src/materials/components/ElementChoiceDefaultSetter/index.vue'
+import ElementDefaultValueSetter from '../src/materials/components/ElementDefaultValueSetter/index.vue'
 import ElementRadioField from '../src/materials/components/ElementRadioField/index.vue'
 import ElementSelectField from '../src/materials/components/ElementSelectField/index.vue'
 import {
@@ -66,7 +67,80 @@ describe('element plus designer fields', () => {
     })
     await flushPromises()
 
-    expect(wrapper.findAll('button').map(button => button.text())).toEqual(expect.arrayContaining(['Playground', 'Production']))
+    expect(wrapper.findAllComponents(ElOption).map(option => option.props('label'))).toEqual(['Playground', 'Production'])
+    expect(wrapper.findComponent(ElSelect).exists()).toBe(true)
+  })
+
+  it('uses Element Plus controls for every default-value kind', async () => {
+    const text = mount(ElementDefaultValueSetter, { props: { kind: 'text', modelValue: 'before' } })
+    text.getComponent(ElInput).vm.$emit('update:modelValue', 'after')
+    await text.vm.$nextTick()
+    await text.get('.el-input__inner').trigger('blur')
+    expect(text.emitted('update:modelValue')).toEqual([['after']])
+
+    const number = mount(ElementDefaultValueSetter, { props: { kind: 'number', modelValue: 1 } })
+    number.getComponent(ElInputNumber).vm.$emit('change', 2)
+    expect(number.emitted('update:modelValue')).toEqual([[2]])
+
+    const boolean = mount(ElementDefaultValueSetter, { props: { kind: 'boolean', modelValue: false } })
+    boolean.getComponent(ElSwitch).vm.$emit('change', true)
+    expect(boolean.emitted('update:modelValue')).toEqual([[true]])
+
+    const select = mount(ElementDefaultValueSetter, {
+      props: {
+        kind: 'select',
+        options: [{ label: 'First', value: 'first' }],
+      },
+    })
+    expect(select.getComponent(ElSelect).props('multiple')).toBe(false)
+    expect(select.findAllComponents(ElOption)).toHaveLength(1)
+    select.getComponent(ElSelect).vm.$emit('update:modelValue', 'first')
+    select.getComponent(ElSelect).vm.$emit('update:modelValue', null)
+    expect(select.emitted('update:modelValue')).toEqual([['first'], [undefined]])
+
+    const multiselect = mount(ElementDefaultValueSetter, {
+      props: {
+        kind: 'multiselect',
+        modelValue: ['first'],
+        options: [{ label: 'First', value: 'first' }],
+      },
+    })
+    expect(multiselect.getComponent(ElSelect).props('multiple')).toBe(true)
+    multiselect.getComponent(ElSelect).vm.$emit('update:modelValue', ['first'])
+    expect(multiselect.emitted('update:modelValue')).toEqual([[['first']]])
+
+    const date = mount(ElementDefaultValueSetter, { props: { kind: 'date', modelValue: '2026-09-04' } })
+    date.getComponent(ElDatePicker).vm.$emit('update:modelValue', '2026-09-05')
+    expect(date.emitted('update:modelValue')).toEqual([['2026-09-05']])
+    const time = mount(ElementDefaultValueSetter, { props: { kind: 'time', modelValue: '09:30:00', disabled: true } })
+    expect(time.getComponent(ElTimePicker).props('disabled')).toBe(true)
+    time.getComponent(ElTimePicker).vm.$emit('update:modelValue', '10:15:30')
+    expect(time.emitted('update:modelValue')).toEqual([['10:15:30']])
+  })
+
+  it('preserves choice values and removes boolean values from multiselect defaults', async () => {
+    const node: FieldNode = {
+      id: 'choice-values',
+      kind: 'field',
+      component: 'element.select',
+      field: 'choiceValues',
+      props: {
+        options: [
+          { label: 'Number one', value: 1 },
+          { label: 'Boolean true', value: true },
+          { label: 'String one', value: '1' },
+        ],
+      },
+      events: {},
+      bindings: {},
+    }
+    const wrapper = mount(ElementChoiceDefaultSetter, { props: { kind: 'select', node } })
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(ElOption).map(option => option.props('value'))).toEqual([1, true, '1'])
+
+    await wrapper.setProps({ kind: 'multiselect' })
+    expect(wrapper.findAllComponents(ElOption).map(option => option.props('value'))).toEqual([1, '1'])
   })
 
   it('resolves dictionary options consistently across select, radio, and checkbox fields', async () => {

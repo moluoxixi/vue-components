@@ -1,6 +1,16 @@
-.mx-config-form-designer__setter input:not([type="checkbox"]),
-.mx-config-form-designer__setter textarea,
-.mx-config-form-designer__setter select {
+.mx-config-form-designer__setter > input:not([type="checkbox"]),
+.mx-config-form-designer__setter > textarea,
+.mx-config-form-designer__setter > select,
+.mx-config-form-designer__stepper > input,
+.mx-config-form-designer__default-value > input,
+.mx-config-form-designer__condition-editor input:not([type="checkbox"]),
+.mx-config-form-designer__condition-editor select,
+.mx-config-form-designer__collection-editor input:not([type="checkbox"]),
+.mx-config-form-designer__collection-editor select,
+.mx-config-form-designer__reaction-editor input:not([type="checkbox"]),
+.mx-config-form-designer__reaction-editor select,
+.mx-config-form-designer__validation-editor input:not([type="checkbox"]),
+.mx-config-form-designer__validation-editor select {
   width: 100%;
   min-height: 34px;
   padding: 7px 9px;
@@ -12,16 +22,25 @@
   letter-spacing: 0;
 }
 
-.mx-config-form-designer__setter input:not([type="checkbox"]):focus-visible,
-.mx-config-form-designer__setter textarea:focus-visible,
-.mx-config-form-designer__setter select:focus-visible {
+.mx-config-form-designer__setter > input:not([type="checkbox"]):focus-visible,
+.mx-config-form-designer__setter > textarea:focus-visible,
+.mx-config-form-designer__setter > select:focus-visible,
+.mx-config-form-designer__stepper > input:focus-visible,
+.mx-config-form-designer__default-value > input:focus-visible,
+.mx-config-form-designer__condition-editor input:not([type="checkbox"]):focus-visible,
+.mx-config-form-designer__condition-editor select:focus-visible,
+.mx-config-form-designer__collection-editor input:not([type="checkbox"]):focus-visible,
+.mx-config-form-designer__collection-editor select:focus-visible,
+.mx-config-form-designer__reaction-editor input:not([type="checkbox"]):focus-visible,
+.mx-config-form-designer__reaction-editor select:focus-visible,
+.mx-config-form-designer__validation-editor input:not([type="checkbox"]):focus-visible,
+.mx-config-form-designer__validation-editor select:focus-visible {
   outline: 2px solid var(--mx-designer-accent);
   outline-offset: 1px;
 }
 
-.mx-config-form-designer__setter textarea {
+.mx-config-form-designer__setter > textarea {
   resize: vertical;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
 }
-

@@ -1,5 +1,6 @@
 export { default as ElementCheckboxField } from './ElementCheckboxField/index.vue'
 export { default as ElementChoiceDefaultSetter } from './ElementChoiceDefaultSetter/index.vue'
+export { default as ElementDefaultValueSetter } from './ElementDefaultValueSetter/index.vue'
 export { default as ElementFlexLayout } from './ElementFlexLayout/index.vue'
 export { default as ElementGridLayout } from './ElementGridLayout/index.vue'
 export { default as ElementOptionSourceSetter } from './ElementOptionSourceSetter/index.vue'

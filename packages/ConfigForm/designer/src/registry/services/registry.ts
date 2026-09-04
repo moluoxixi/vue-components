@@ -5,10 +5,10 @@ import type {
 import type {
   DesignerMaterialDefinition,
   DesignerPropertyControlDefinition,
+  DesignerPropertyControlKey,
   DesignerRegistry,
   DesignerRegistryLayer,
   DesignerRegistryOptions,
-  DesignerSimpleSetterControl,
 } from '../types'
 import { DesignerRegistryError } from '../../graph'
 import {
@@ -85,11 +85,11 @@ function registerValidators(
 }
 
 function registerPropertyControls(
-  target: Map<DesignerSimpleSetterControl, DesignerPropertyControlDefinition>,
+  target: Map<DesignerPropertyControlKey, DesignerPropertyControlDefinition>,
   layer: DesignerRegistryLayer,
 ): void {
   for (const [control, definition] of Object.entries(layer.propertyControls ?? {}) as Array<[
-    DesignerSimpleSetterControl,
+    DesignerPropertyControlKey,
     DesignerPropertyControlDefinition,
   ]>) {
     if (!target.has(control))
@@ -102,7 +102,7 @@ export function createDesignerRegistry(
 ): DesignerRegistry {
   const materials = new Map<string, DesignerMaterialDefinition>()
   const components = new Map<string, ConfigFormComponentRegistry[string]>()
-  const propertyControls = new Map<DesignerSimpleSetterControl, DesignerPropertyControlDefinition>()
+  const propertyControls = new Map<DesignerPropertyControlKey, DesignerPropertyControlDefinition>()
   const validators = new Map<string, NonNullable<DesignerRegistryLayer['validators']>[string]>()
 
   registerMaterials(materials, options.materials, 'materials')

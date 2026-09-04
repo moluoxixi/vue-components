@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { DesignerJsonValue } from '@moluoxixi/config-form-designer'
 import type { ElementChoiceDefaultSetterEmits, ElementChoiceDefaultSetterProps, ElementPlusDesignerOption } from '../../../types'
-import { DesignerDefaultValueSetter } from '@moluoxixi/config-form-designer'
 import { computed } from 'vue'
 import {
   normalizeElementPlusOptions,
@@ -9,6 +8,7 @@ import {
   useElementPlusResolvedOptions,
 } from '../../../options'
 import ElementOptionState from '../ElementOptionState/index.vue'
+import ElementDefaultValueSetter from '../ElementDefaultValueSetter/index.vue'
 
 const props = defineProps<ElementChoiceDefaultSetterProps>()
 
@@ -30,7 +30,7 @@ function updateValue(value: unknown): void {
 
 <template>
   <div class="mx-element-designer-choice-default">
-    <DesignerDefaultValueSetter
+    <ElementDefaultValueSetter
       :model-value="modelValue as DesignerJsonValue"
       :kind="kind"
       :options="setterOptions"

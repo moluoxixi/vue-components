@@ -32,6 +32,7 @@
 - [ ] 少量 enum 保持 segmented；较多/长标签 enum 使用现有 adapter Select；boolean/number 使用 adapter Switch/InputNumber。
 - [ ] 只有测试证明 adapter 映射缺口时才修改 designer adapter；Designer 核心不得 import Element Plus 或 Ant Design Vue。
 - [ ] 保留 inherited value、hint、commit、Enter/Escape、readonly 与 validation 行为。
+- [x] 将 `defaultValue` 接入可选 adapter control；Element Plus 使用真实输入、数字、开关、选择、日期和时间组件，未注册时保留 core fallback。
 
 ## 6. 验证
 
@@ -58,6 +59,7 @@
 - [ ] 删除 Designer 标签级 input/textarea/select focus 覆写，为自有原生控件保留明确的类级键盘焦点。
 - [ ] 将 Workbench 左侧物料面板样式迁到组件 Sass，保留全局主题和 Designer/Provider bridge。
 - [ ] 在真实浏览器以 Tab 聚焦物料搜索，断言 `.el-input__inner` 无 outline 且 Element wrapper 为唯一焦点框。
+- [x] 删除无 JS 消费者的 Element adapter `style/index.ts`；保留 Sass 按需入口，并为 Designer 中实际被 `import './style'` 消费的 TypeScript side-effect 入口建立合同。
 
 ## 6.2 表单尺寸设置
 

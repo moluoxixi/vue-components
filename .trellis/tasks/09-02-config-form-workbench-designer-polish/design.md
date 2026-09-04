@@ -66,6 +66,7 @@ workspace surface
 - `boolean`：adapter Switch。
 - `number`：adapter InputNumber/Stepper，并保留 min/max/step/Enter/Escape 语义。
 - 带继承提示或复合逻辑的 setter 保留 core fallback 与自定义组件，不为了视觉统一改动领域 commit 语义。
+- `defaultValue`：通过可选的 adapter control 渲染 Provider 成熟组件；未注册时保留 core fallback。Workbench 的 Inspector chrome 统一采用 Element Plus control，不随 Preview Provider 切换。
 
 若当前 adapter registry 已满足控件类型，只改样式和测试；不得为了“使用组件库”重写已验证的数据流。
 

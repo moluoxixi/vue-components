@@ -10,6 +10,10 @@ export interface ElementChoiceDefaultSetterEmits {
   'update:modelValue': [value: DesignerJsonValue | undefined]
 }
 
+export interface ElementDefaultValueSetterEmits {
+  'update:modelValue': [value: DesignerJsonValue | undefined]
+}
+
 export interface ElementOptionSourceSetterEmits {
   'update:modelValue': [value: ElementPlusOptionSource | undefined]
 }

@@ -235,6 +235,8 @@ const registry = createElementPlusDesignerRegistry({
 
 `defaultProps` 保存不在 Inspector 暴露的静态默认值；`props` 中的 `default` 同时声明可编辑属性的初始值。该 helper 只覆盖一个字段节点和 `text/textarea/number/boolean/select` 属性。布局、复合子图、专用 option source 或自定义 setter 继续使用底层 `DesignerMaterialDefinition`；高级组件、属性控件和 validator 组合通过 registry 的 `layers` option 传入。
 
+`DesignerPropertyControlRegistry` 除简单属性控件外，还提供可选的 `defaultValue` 适配器槽位。Designer 核心只传递 `modelValue`、`kind`、`options`、`disabled` 并监听 `update:modelValue`；未注册时继续使用核心原生 fallback。Element Plus adapter 注册真实的 `ElInput`、`ElInputNumber`、`ElSwitch`、`ElSelect`、`ElDatePicker` 和 `ElTimePicker`，Workbench 无论预览哪种 Provider 都复用这套 Inspector chrome；Provider 组件及其样式不会倒灌到 UI 库无关的 Designer 核心。
+
 内置物料采用 `src/materials/<name>.ts`：
 
 - 只有四个 UI 适配器聚合入口使用 eager `import.meta.glob`；Core、Headless 和 Designer 注册算法只接收普通模块映射。

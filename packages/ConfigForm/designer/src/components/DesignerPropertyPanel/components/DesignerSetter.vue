@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type { PageNode } from '@moluoxixi/config-form-model'
-import type { DesignerPropertySetterDefinition } from '../../../registry'
+import type { DesignerPropertyControlDefinition, DesignerPropertySetterDefinition } from '../../../registry'
 import { Minus, Plus } from '@lucide/vue'
 import { computed, ref, useId, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
@@ -14,6 +14,7 @@ import './DesignerSetter/style'
 
 const props = defineProps<{
   setter: DesignerPropertySetterDefinition
+  defaultValueControl?: DesignerPropertyControlDefinition
   value: unknown
   inheritedValue?: unknown
   hint?: string
@@ -199,6 +200,16 @@ function reactionValue(value: unknown): ConfigFormReaction[] | undefined {
       :disabled="readonly"
       :node="node"
       v-bind="setter.componentProps"
+      @update:model-value="commitCustom"
+    />
+    <component
+      :is="defaultValueControl.component"
+      v-else-if="setter.control === 'defaultValue' && setter.valueKind && defaultValueControl"
+      v-bind="defaultValueControl.props"
+      :model-value="value"
+      :kind="setter.valueKind"
+      :options="setter.options"
+      :disabled="readonly"
       @update:model-value="commitCustom"
     />
     <DesignerDefaultValueSetter

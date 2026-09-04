@@ -1,0 +1,13 @@
+.mx-element-designer-default-value {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.mx-element-designer-default-value > .el-input,
+.mx-element-designer-default-value > .el-input-number,
+.mx-element-designer-default-value > .el-select,
+.mx-element-designer-default-value > .el-date-editor {
+  width: 100%;
+  min-width: 0;
+}

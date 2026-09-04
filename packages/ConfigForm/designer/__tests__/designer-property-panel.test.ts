@@ -33,6 +33,26 @@ const NumberControl = defineComponent({
   },
 })
 
+const DefaultValueControl = defineComponent({
+  inheritAttrs: false,
+  props: {
+    disabled: Boolean,
+    kind: String,
+    modelValue: null,
+  },
+  emits: ['update:modelValue'],
+  setup(props, { attrs, emit }) {
+    return () => h('input', {
+      ...attrs,
+      'data-adapter-default': '',
+      'disabled': props.disabled,
+      'type': 'text',
+      'value': props.modelValue ?? '',
+      'onInput': (event: Event) => emit('update:modelValue', (event.currentTarget as HTMLInputElement).value),
+    })
+  },
+})
+
 function field(
   id: string,
   component: string,
@@ -140,6 +160,60 @@ afterEach(() => {
 })
 
 describe('designer property panel adaptive Inspector', () => {
+  it('renders default values through the adapter control when registered', async () => {
+    const node = field('name', 'test.input', { defaultValue: 'before' })
+    const setter: DesignerPropertySetterDefinition = {
+      key: 'defaultValue',
+      label: 'Default value',
+      path: ['defaultValue'],
+      control: 'defaultValue',
+      valueKind: 'text',
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.input', [setter]),
+        componentDefinition: contract('test.input', 'field'),
+        diagnostics: [],
+        propertyControls: {
+          defaultValue: {
+            component: DefaultValueControl,
+            props: { 'data-control-source': 'adapter' },
+          },
+        },
+      },
+    })
+
+    const control = wrapper.get('[data-adapter-default]')
+    expect(control.attributes('data-control-source')).toBe('adapter')
+    expect((control.element as HTMLInputElement).value).toBe('before')
+    await control.setValue('after')
+    expect(wrapper.emitted('updatePath')?.at(-1)).toEqual(['name', ['defaultValue'], 'after'])
+  })
+
+  it('keeps the core default-value fallback when no adapter control is registered', () => {
+    const node = field('name', 'test.input', { defaultValue: 'before' })
+    const setter: DesignerPropertySetterDefinition = {
+      key: 'defaultValue',
+      label: 'Default value',
+      path: ['defaultValue'],
+      control: 'defaultValue',
+      valueKind: 'text',
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        graph: graph([node]),
+        node,
+        material: fieldMaterial('test.input', [setter]),
+        componentDefinition: contract('test.input', 'field'),
+        diagnostics: [],
+      },
+    })
+
+    expect(wrapper.get('.mx-config-form-designer__default-value > input').attributes('aria-label')).toBe('Default value')
+  })
+
   it('renders sections from capabilities and restores focus only when the active tab disappears', async () => {
     const scrollIntoView = vi.fn()
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {

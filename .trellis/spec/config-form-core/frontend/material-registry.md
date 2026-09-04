@@ -41,6 +41,15 @@ defineDesignerFieldMaterial({
   props?,
 }): DesignerFieldMaterialDefinition
 
+type DesignerPropertyControlKey = DesignerSimpleSetterControl | 'defaultValue'
+
+interface DesignerDefaultValueControlProps {
+  modelValue?: DesignerJsonValue
+  kind: DesignerDefaultValueKind
+  options?: DesignerSetterOption[]
+  disabled?: boolean
+}
+
 interface DesignerMaterialDefinitionBase {
   events?: Array<{ name: string, title: string }>
   runtime: { valueProp?: string, trigger?: string }
@@ -71,6 +80,8 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 - Public adapter registry constants must be explicitly annotated with Headless/Designer layer types. Do not leak an inferred Core type through an adapter declaration.
 - Ordinary field materials use `defineDesignerFieldMaterial()` when their node is one field with declarative defaults. The helper derives `kind`, version, Runtime binding, prop/default-value setters, and a JSON-safe node factory; it does not reflect arbitrary Vue props.
 - Field property descriptors support only the simple control vocabulary owned by `DesignerPropertyControlRegistry`. Provider-specific or compound setters stay explicit through the helper's additional `setters` option.
+- `DesignerPropertyControlRegistry.defaultValue` is an optional adapter slot for the compound default-value setter. When present, Designer passes `modelValue`, `kind`, `options`, and `disabled`, merges registered control props, and consumes `update:modelValue`; when absent, the UI-library-neutral core `DesignerDefaultValueSetter` remains the fallback.
+- Provider-specific default-value controls use that provider's maintained input, number, switch, select, date, and time primitives. Designer core must not import a UI library, and native-control selectors must target only core-owned DOM instead of descendants inside an adapter component.
 - Every generated node receives a deep clone of default props/defaultValue. The helper never owns global field-name uniqueness; the Designer controller continues to supply the unique field in `DesignerCreateNodeContext`.
 - Provider Designer registries accept one options object with `materials`, advanced `layers`, and provider option resolution. Consumer materials are wrapped in an internal highest-precedence layer so normal callers never invent a layer name.
 - `DesignerMaterialDefinition.createNode` and `DesignerRegistryLayer` remain public low-level contracts for layout materials, subgraphs, custom component registries, validators, and advanced precedence composition.
@@ -80,7 +91,7 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 
 ## 4. Validation & Error Matrix
 
-| Condition | Error code |
+| Condition | Required result / error code |
 |---|---|
 | Missing module name | `CONFIG_FORM_MODULE_NAME_REQUIRED` |
 | Unsafe or malformed module name | `CONFIG_FORM_MODULE_NAME_INVALID` |
@@ -91,6 +102,8 @@ const modules = import.meta.glob<DesignerMaterialModule>(
 | Designer module has no valid material | `DESIGNER_MATERIAL_MODULE_INVALID` |
 | Designer key final segment differs from module name | `DESIGNER_MATERIAL_MODULE_KEY_MISMATCH` |
 | Designer event is empty, unsafe, malformed, or duplicated | `DESIGNER_MATERIAL_EVENT_INVALID` |
+| Adapter omits `propertyControls.defaultValue` | Render the core default-value control without changing the registry contract |
+| Adapter registers `propertyControls.defaultValue` | Render the adapter control and preserve registered props plus value/disabled/options wiring |
 
 Errors must retain source/name context. Do not let malformed runtime input fall through to native `TypeError`.
 
@@ -115,6 +128,8 @@ export default defineDesignerMaterialModule({
 
 Base: a direct Headless component material may omit `order`; unordered entries sort after ordered entries by name.
 
+Base: a Designer adapter may omit `defaultValue`; the core fallback remains valid for UI-library-neutral consumers.
+
 Bad:
 
 ```ts
@@ -132,11 +147,17 @@ export default defineConfigFormComponentMaterial({
 - Designer tests prove material/locale co-location and malformed-value diagnostics.
 - Designer tests prove explicit events merge with generated field binding events by canonical name and reject malformed/duplicate declarations.
 - Designer tests prove the high-level field helper derives setters and Runtime binding, respects binding overrides, produces valid nodes, and deep-clones every default.
+- Designer tests prove a registered `defaultValue` control receives registry props and commits through `update:modelValue`, while an unregistered adapter still renders the core fallback.
+- Provider adapter tests mount every supported default-value kind through real library components and verify value, clear, disabled, option, date, and time wiring. Browser coverage must prove the provider input keeps one library-owned focus frame.
 - Each adapter test asserts exact material names, source paths, order, locale coverage, provider-specific binding triggers, explicit events, and existing caller override precedence.
 - Each Designer adapter test registers a caller material without a named layer and proves it overrides provider defaults; advanced layers remain independently testable through the options object.
 - `pnpm test:config-form-packages` must explicitly build Core and validate Core, Headless, Designer, and adapter JS exports plus independent TypeScript consumers.
 
 ## 7. Wrong vs Correct
+
+Wrong: hard-code a provider input in Designer core, or style every descendant `input` below the generic setter root.
+
+Correct: register the provider default-value component through `propertyControls.defaultValue`, retain the core fallback, and scope native selectors to core-owned elements.
 
 Wrong: maintain a hand-written array beside scanned files, discover Flow events from rendered DOM listeners, silently overwrite duplicate names, or let glob order define palette order.
 

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'sass'
 import { describe, expect, it } from 'vitest'
@@ -18,6 +18,14 @@ describe('element Plus designer component Sass entries', () => {
     expect(css).toContain('.mx-element-grid-layout')
     expect(css).toContain('.mx-element-designer-choice-field')
     expect(css).toContain('.mx-element-designer-option-state')
+    expect(css).toContain('.mx-element-designer-default-value')
+  })
+
+  it('includes the nested default control in the choice setter entry', () => {
+    const css = compileStyle('src/materials/components/ElementChoiceDefaultSetter/style/index.scss')
+
+    expect(css).toContain('.mx-element-designer-choice-default')
+    expect(css).toContain('.mx-element-designer-default-value')
   })
 
   it.each([
@@ -46,6 +54,11 @@ describe('element Plus designer component Sass entries', () => {
       includes: '.mx-element-designer-option-state',
       excludes: ['.mx-element-designer-choice-field', '.mx-element-grid-layout'],
     },
+    {
+      entry: 'src/materials/components/ElementDefaultValueSetter/style/index.scss',
+      includes: '.mx-element-designer-default-value',
+      excludes: ['.mx-element-designer-choice-field', '.mx-element-grid-layout'],
+    },
   ])('$entry excludes unrelated component styles', ({ entry, excludes, includes }) => {
     const css = compileStyle(entry)
 
@@ -60,7 +73,7 @@ describe('element Plus designer component Sass entries', () => {
       sideEffects: string[]
     }
 
-    expect(manifest.sideEffects).toContain('**/style/index.ts')
+    expect(manifest.sideEffects).not.toContain('**/style/index.ts')
     expect(manifest.sideEffects).toContain('**/*.scss')
     for (const component of [
       'element-section',
@@ -72,8 +85,26 @@ describe('element Plus designer component Sass entries', () => {
       'element-option-state',
       'element-option-source-setter',
       'element-choice-default-setter',
+      'element-default-value-setter',
     ]) {
       expect(manifest.exports[`./${component}/style`]?.sass).toMatch(/\/style\/index\.scss$/)
+    }
+
+    for (const component of [
+      'ElementSection',
+      'ElementFlexLayout',
+      'ElementGridLayout',
+      'ElementCheckboxField',
+      'ElementRadioField',
+      'ElementSelectField',
+      'ElementOptionState',
+      'ElementOptionSourceSetter',
+      'ElementChoiceDefaultSetter',
+      'ElementDefaultValueSetter',
+    ]) {
+      const styleDirectory = resolve(packageRoot, 'src/materials/components', component, 'style')
+      expect(existsSync(resolve(styleDirectory, 'index.scss'))).toBe(true)
+      expect(existsSync(resolve(styleDirectory, 'index.ts'))).toBe(false)
     }
   })
 })

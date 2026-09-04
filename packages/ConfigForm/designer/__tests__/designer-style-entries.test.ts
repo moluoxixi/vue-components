@@ -20,6 +20,8 @@ describe('designer component Sass entries', () => {
     expect(css).not.toMatch(/\.mx-config-form-designer input:focus-visible/)
     expect(css).not.toMatch(/\.mx-config-form-designer textarea:focus-visible/)
     expect(css).not.toMatch(/\.mx-config-form-designer select:focus-visible/)
+    expect(css).not.toContain('.mx-config-form-designer__setter input:not([type=checkbox])')
+    expect(css).toContain('.mx-config-form-designer__setter > input:not([type=checkbox])')
     expect(css).toContain('.mx-config-form-designer__search input:focus-visible')
   })
 
