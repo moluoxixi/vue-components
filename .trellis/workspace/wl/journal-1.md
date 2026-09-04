@@ -773,3 +773,30 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 32: 完成 AI Provider 结构治理
+
+**Date**: 2026-09-04
+**Task**: 完成 AI Provider 结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+拆分 AI Provider 的 shared 与 server 职责，锁定三条公开入口和完整 Provider 校验矩阵，清零 4 条 architecture debt，并修复 ConfigForm 拆包后的 browser verifier 入口基线。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `11ce3df3` | (see git log) |
+| `9ae36770` | (see git log) |
+| `4ba63630` | (see git log) |
+| `62c27923` | (see git log) |
+| `a8b12b91` | (see git log) |
+| `9f8b3b10` | (see git log) |
+
+### Status
+
+[OK] **Completed**
