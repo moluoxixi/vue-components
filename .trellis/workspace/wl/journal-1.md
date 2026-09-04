@@ -825,3 +825,26 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 34: ConfigForm 默认值控件与 I18n Tool 结构收口
+
+**Date**: 2026-09-04
+**Task**: ConfigForm 默认值控件与 I18n Tool 结构收口
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+统一属性面板默认值为 Element Plus 适配器控件，删除无消费者的样式 TS wrapper 并固化样式入口合同；完成 I18n Tool 24 条结构债务清零、README/发布 tarball 浏览器应用验证、全门禁与任务归档。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ad635dc7` | (see git log) |
+| `03d6b6a9` | (see git log) |
+
+### Status
+
+[OK] **Completed**
