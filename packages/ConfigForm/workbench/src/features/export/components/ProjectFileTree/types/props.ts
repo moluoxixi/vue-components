@@ -1,5 +1,5 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
-import type { ProjectPath, ProjectTreeNode } from '../../../project'
+import type { ProjectPath, ProjectTreeNode } from '../../../../../project'
 
 export interface ProjectFileTreeProps {
   expandedIds: string[]

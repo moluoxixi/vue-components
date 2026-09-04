@@ -10,7 +10,7 @@ import {
   FolderOpen,
 } from '@lucide/vue'
 import { computed } from 'vue'
-import { projectFileIconKind } from '../../../project'
+import { projectFileIconKind } from '../../../../../project'
 
 defineOptions({ name: 'ProjectFileTreeNode' })
 

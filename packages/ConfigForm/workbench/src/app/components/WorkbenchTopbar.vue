@@ -19,7 +19,7 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
-import { WorkbenchCommandHint } from '../../components/index'
+import WorkbenchCommandHint from './WorkbenchCommandHint/index.vue'
 import WorkbenchAppearancePopover from './WorkbenchAppearancePopover.vue'
 
 const props = defineProps<WorkbenchTopbarProps>()

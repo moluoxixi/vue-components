@@ -1,4 +1,4 @@
-import type { ProjectPageAction } from '../../../project'
+import type { ProjectPageAction } from '../../../../../project'
 
 export interface PageManagerEmits {
   action: [action: ProjectPageAction]

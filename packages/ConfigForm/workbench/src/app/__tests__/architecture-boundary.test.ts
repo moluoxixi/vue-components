@@ -56,7 +56,7 @@ const sourceRootDirectoryEntryExceptions = new Set(['playground/src/examples'])
 const generatedTypeTemplateFiles = new Set(['workbench/src/project/export/services/source.ts'])
 const allowedCurrentDependencyTokens: Readonly<Record<string, readonly string[]>> = {
   'devtools-vite-plugin/src/source-inject/schemas/ast.ts': [['decorators', 'legacy'].join('-')],
-  'workbench/src/components/WorkspaceCodeEditor/index.vue': [
+  'workbench/src/features/export/components/WorkspaceCodeEditor/index.vue': [
     ['depre', 'cated'].join(''),
     ['Depre', 'cated'].join(''),
   ],

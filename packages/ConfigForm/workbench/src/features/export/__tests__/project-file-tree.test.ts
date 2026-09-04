@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 
-import type { ProjectPath, WorkspaceFile } from '../../project'
+import type { ProjectPath, WorkspaceFile } from '../../../project'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { ProjectFileTree } from '..'
-import { buildProjectFileTree, collectProjectTreeDirectoryIds, normalizeProjectPath } from '../../project'
+import { buildProjectFileTree, collectProjectTreeDirectoryIds, normalizeProjectPath } from '../../../project'
+import { ProjectFileTree } from '../components'
 
 function createFiles(): Record<ProjectPath, WorkspaceFile> {
   return {

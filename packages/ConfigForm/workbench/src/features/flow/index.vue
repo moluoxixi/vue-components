@@ -8,7 +8,7 @@ const props = defineProps<FlowDialogProps>()
 
 const emit = defineEmits<FlowDialogEmits>()
 
-const FlowWorkspace = defineAsyncComponent(() => import('../../components/FlowWorkspace').then(module => module.FlowWorkspace))
+const FlowWorkspace = defineAsyncComponent(() => import('./components/FlowWorkspace').then(module => module.FlowWorkspace))
 const locale = computed(() => createDesignerLocale(props.locale))
 const dialogTitle = computed(() => locale.value.t('flow.dialog.title', 'Event flow orchestration'))
 const closeLabel = computed(() => locale.value.t('flow.dialog.close', 'Close event flow orchestration'))

@@ -3,9 +3,8 @@
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { WorkbenchCommandHint } from '../../components/index'
 import { createProjectDocumentFixture } from '../../project/__tests__/fixtures'
-import { WorkbenchTopbar } from '../components'
+import { WorkbenchCommandHint, WorkbenchTopbar } from '../components'
 
 const project = createProjectDocumentFixture({ id: 'app', name: 'Account app' })
 const currentPage = project.pagesById[project.homePageId]!

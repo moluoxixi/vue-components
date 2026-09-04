@@ -6,7 +6,7 @@ import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { PreviewDrawer } from '../../app'
-import { WorkbenchCommandHint } from '../../components/index'
+import { WorkbenchCommandHint } from '../../app/components'
 
 const RuntimeStub = defineComponent({
   name: 'PreviewRuntimeHostFrameStub',

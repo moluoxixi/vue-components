@@ -2,7 +2,7 @@
 import type { PageManagerDialogEmits, PageManagerDialogProps } from './types'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick } from 'vue'
-import { PageManager } from '../../components/index'
+import { PageManager } from './components'
 
 const props = defineProps<PageManagerDialogProps>()
 

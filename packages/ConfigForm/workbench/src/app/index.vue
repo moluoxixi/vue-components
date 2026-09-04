@@ -21,8 +21,7 @@ import {
 } from '@lucide/vue'
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { WorkbenchCommandHint } from '../components/index'
-import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchTopbar } from './components'
+import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
   useWorkbenchDesignSession,

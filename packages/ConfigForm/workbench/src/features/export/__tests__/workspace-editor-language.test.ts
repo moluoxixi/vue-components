@@ -9,7 +9,7 @@ import {
   WORKBENCH_CONFIG_TYPE_DECLARATIONS,
   WORKBENCH_MODULES,
   WORKBENCH_TYPE_DECLARATIONS,
-} from '../WorkspaceCodeEditor/utils'
+} from '../components'
 
 function cursor(source: string): { offset: number, source: string } {
   const offset = source.indexOf('|')

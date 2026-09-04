@@ -1,4 +1,4 @@
-import type { ProjectPath, ProjectTreeNode } from '../../../project'
+import type { ProjectPath, ProjectTreeNode } from '../../../../../project'
 
 export interface ProjectFileTreeEmits {
   'select': [path: ProjectPath]

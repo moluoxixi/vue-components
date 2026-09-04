@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ProjectTreeNode } from '../../project'
+import type { ProjectTreeNode } from '../../../../project'
 import type { ProjectFileTreeEmits, ProjectFileTreeProps } from './types'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
-import { flattenVisibleProjectTree } from '../../project'
+import { flattenVisibleProjectTree } from '../../../../project'
 import { ProjectFileTreeNode } from './components'
 
 const props = defineProps<ProjectFileTreeProps>()

@@ -29,7 +29,7 @@ import {
   watch,
 } from 'vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
-import { ProjectFileTree } from '../../components/index'
+import { ProjectFileTree } from './components'
 import {
   buildProjectFileTree,
   collectProjectTreeDirectoryIds,
@@ -45,7 +45,7 @@ const props = defineProps<ExportDialogProps>()
 
 const emit = defineEmits<ExportDialogEmits>()
 
-const WorkspaceCodeEditor = defineAsyncComponent(() => import('../../components/WorkspaceCodeEditor').then(module => module.WorkspaceCodeEditor))
+const WorkspaceCodeEditor = defineAsyncComponent(() => import('./components/WorkspaceCodeEditor').then(module => module.WorkspaceCodeEditor))
 const DEFAULT_SOURCE_PATH = normalizeProjectPath('src/App.vue')
 const DEFAULT_CONFIG_PATH = normalizeProjectPath('project.config.ts')
 const sourceViewPath = ref<ProjectPath>(DEFAULT_SOURCE_PATH)

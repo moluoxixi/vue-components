@@ -5,7 +5,7 @@ import type { EdgeRemoveChange, NodePositionChange } from '@vue-flow/core'
 import { VueFlow } from '@vue-flow/core'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { FlowWorkspace } from '..'
+import { FlowWorkspace } from '../components'
 
 const PAGE_ID = 'home'
 
