@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 35
+- **Total Sessions**: 36
 - **Last Active**: 2026-09-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~872 | Active |
+| `journal-1.md` | ~897 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 36 | 2026-09-04 | Vite Config 结构治理 | `e7c33bff`, `2a938b9e`, `9e069bcf`, `a23280e4` | `main` |
 | 35 | 2026-09-04 | Rich Text Editor 结构治理 | `dafaac6b` | `main` |
 | 34 | 2026-09-04 | ConfigForm 默认值控件与 I18n Tool 结构收口 | `ad635dc7`, `03d6b6a9` | `main` |
 | 33 | 2026-09-04 | 完成 Hooks 包结构治理 | `8f62fbd5`, `cc438d8a`, `0627a042`, `37a4d7ab` | `main` |

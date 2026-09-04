@@ -870,3 +870,28 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 36: Vite Config 结构治理
+
+**Date**: 2026-09-04
+**Task**: Vite Config 结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+清零 Vite Config 35 条结构债务：锁定 root/addons/15 leaf 与 registry 合同，归位 public addon、types 和 app/lib/base factories，拆分 addon Node adapter/defaults/services/types/utils，修复 package source files；79 单测、覆盖率、五浏览器、architecture/path/packed/lint 全部通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e7c33bff` | (see git log) |
+| `2a938b9e` | (see git log) |
+| `9e069bcf` | (see git log) |
+| `a23280e4` | (see git log) |
+
+### Status
+
+[OK] **Completed**
