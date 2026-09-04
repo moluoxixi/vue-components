@@ -1,8 +1,8 @@
 import type { UserConfigExport } from 'vite'
-import type { AppViteConfigExport } from '../types'
+import type { AppViteConfigExport } from '../../../types'
 import { defineConfig } from 'vite'
-import { getBaseConfig } from './base'
-import { mergeConfigWithUserPlugins } from './merge'
+import { getBaseConfig } from '../../base'
+import { mergeConfigWithUserPlugins } from '../../services'
 
 /**
  * 构建 Web App 应用专用的 Vite 配置文件

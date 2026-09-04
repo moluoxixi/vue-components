@@ -1,0 +1,1 @@
+export { createAppConfig } from './services'

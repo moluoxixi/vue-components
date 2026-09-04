@@ -15,7 +15,7 @@ import type {
   VueAddonOptions,
   VueLayoutsAddonOptions,
   VueRouterAddonOptions,
-} from './addons'
+} from '../addons'
 
 /**
  * All supported addon identifiers (camelCase, matches BaseViteConfigOptions keys)

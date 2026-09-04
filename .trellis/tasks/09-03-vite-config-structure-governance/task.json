@@ -3,7 +3,7 @@
   "name": "vite-config-structure-governance",
   "title": "Vite Config 结构治理",
   "description": "治理 vite-config 的配置工厂、addons、解析与适配职责。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": "backend",
   "scope": "packages/vite-config",
   "package": "vite-config",

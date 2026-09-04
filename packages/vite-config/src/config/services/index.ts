@@ -1,0 +1,1 @@
+export { mergeConfigWithUserPlugins } from './merge'

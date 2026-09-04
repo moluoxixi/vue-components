@@ -1,0 +1,1 @@
+export { getBaseConfig } from './config'

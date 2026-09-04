@@ -30,7 +30,9 @@
     "DESIGN.md",
     "README.md",
     "dist/**/*.d.ts",
-    "dist/**/*.js"
+    "dist/**/*.js",
+    "index.ts",
+    "src"
   ],
   "scripts": {
     "build": "tsup",

@@ -1,5 +1,5 @@
 import type { UserConfig } from 'vite'
-import type { VitestAddonOptions } from '../../../addons/vitest'
+import type { VitestAddonOptions } from '../../../addons'
 import type { AddonName, BaseViteConfigOptions } from '../../../types'
 import { createRequire } from 'node:module'
 import path from 'node:path'

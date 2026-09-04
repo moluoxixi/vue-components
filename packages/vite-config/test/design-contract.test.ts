@@ -29,7 +29,7 @@ describe('vite-config design contract', () => {
   })
 
   it('routes public addon option types through the source addons entry', () => {
-    const source = fs.readFileSync(path.resolve(__dirname, '../src/types.ts'), 'utf-8')
+    const source = fs.readFileSync(path.resolve(__dirname, '../src/types/index.ts'), 'utf-8')
     const optionalAddonImports = [
       '@intlify/unplugin-vue-i18n',
       '@vitejs/plugin-react',
@@ -49,7 +49,7 @@ describe('vite-config design contract', () => {
       expect(source).not.toContain(`from '${specifier}`)
     }
 
-    expect(source).toContain(`from './addons'`)
+    expect(source).toContain(`from '../addons'`)
     expect(source).not.toMatch(/@moluoxixi\/vite-config\/addons/)
   })
 

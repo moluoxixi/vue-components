@@ -2,7 +2,7 @@ import type { ConfigEnv, Plugin, UserConfig, UserConfigExport } from 'vite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { createAppConfig, createLibConfig } from '@moluoxixi/vite-config'
-import { mergeConfigWithUserPlugins } from '@moluoxixi/vite-config/config/merge'
+import { mergeConfigWithUserPlugins } from '@moluoxixi/vite-config/config/services/merge'
 import { build } from 'vite'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

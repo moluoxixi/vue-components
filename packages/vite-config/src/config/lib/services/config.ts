@@ -1,11 +1,11 @@
 import type { LibraryOptions, Rollup, UserConfig, UserConfigExport } from 'vite'
-import type { LibViteConfigExport } from '../types'
+import type { LibViteConfigExport } from '../../../types'
 import path from 'node:path'
 import process from 'node:process'
 import { detectDependencies } from '@moluoxixi/utils/node'
 import { defineConfig, mergeConfig } from 'vite'
-import { getBaseConfig } from './base'
-import { mergeConfigWithUserPlugins } from './merge'
+import { getBaseConfig } from '../../base'
+import { mergeConfigWithUserPlugins } from '../../services'
 
 type ExternalOption = NonNullable<Rollup.RollupOptions['external']>
 type ExternalPredicate = Extract<ExternalOption, (...args: any[]) => any>
