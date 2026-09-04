@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /**
  * AI 文档与调试助手包构建配置。
- * 多入口库：index（聚合）/ plugin（BFF Vite 插件）/ cli（构建命令）/ protocol（前后端共享类型）。
+ * 多入口库：index（聚合）/ api-contract / plugin（BFF Vite 插件）/ cli（构建命令）/ protocol（前后端共享类型）。
  * 所有运行时依赖与 node 内置均 external，保持产物精简、由消费方装 peer/依赖。
  */
 export default defineConfig({

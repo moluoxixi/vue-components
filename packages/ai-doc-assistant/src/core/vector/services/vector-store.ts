@@ -11,8 +11,6 @@ import type { EmbeddingIdentity } from '../../indexing'
  * 外部后端（qdrant）的连接串/密钥经 VectorStoreConfig 注入，作为系统边界显式校验。
  * 仅在 retrieval mode=vector 时才会构建向量存储；content 默认模式完全不触及本层。
  */
-import type { RetrievedChunk } from '../../retrieval/services/retriever'
-
 /** 待入库的单条文档：契约正文 + 预生成示例 + 已编码向量。 */
 export interface VectorDoc {
   component: string
@@ -28,6 +26,22 @@ export interface VectorDoc {
   exampleJs: string
   /** body 的 embedding 向量（维度由远程模型决定，调用方保证一致）。 */
   embedding: number[]
+}
+
+/** 单条向量检索命中。 */
+export interface RetrievedChunk {
+  id: string
+  component: string
+  packageName: string
+  docPath: string
+  source: KnowledgeSourceWire
+  knowledgeKey: string
+  body: string
+  /** 预生成的带类型提示示例骨架（建索引时随文档存入，查询期直接回带）。 */
+  example: string
+  /** JS 版示例骨架（剥离类型，stored-only，供前端切换查看/复制）。 */
+  exampleJs: string
+  score: number
 }
 
 /** 向量检索结果。empty=true 表示无命中超过阈值，上层据此走无依据兜底。 */

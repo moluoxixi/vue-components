@@ -9,10 +9,10 @@ export default defineConfig({
   testMatch: '**/*.e2e.test.ts',
   fullyParallel: false,
   timeout: 60_000,
-  outputDir: './dist/test-results/ai-doc-assistant',
+  outputDir: './.playwright/test-results',
   reporter: [
     ['list'],
-    ['html', { outputFolder: './dist/playwright-report/ai-doc-assistant', open: 'never' }],
+    ['html', { outputFolder: './.playwright/report', open: 'never' }],
   ],
   use: {
     headless: true,

@@ -145,7 +145,7 @@ jobs:
             packages/ConfigForm/workbench/dist/test-results/config-form-workbench
             playgrounds/components-playground/dist/playwright-report/components-playground
             playgrounds/components-playground/dist/test-results/components-playground
-            packages/ai-doc-assistant/dist/playwright-report/ai-doc-assistant
-            packages/ai-doc-assistant/dist/test-results/ai-doc-assistant
+            packages/ai-doc-assistant/.playwright/report
+            packages/ai-doc-assistant/.playwright/test-results
             packages/vitepress-theme-element-plus/.playwright/report
             packages/vitepress-theme-element-plus/.playwright/test-results

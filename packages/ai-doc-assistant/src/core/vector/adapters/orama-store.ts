@@ -1,6 +1,5 @@
 import type { Orama } from '@orama/orama'
-import type { RetrievedChunk } from '../../retrieval/services/retriever'
-import type { VectorDoc, VectorIndexMetadata, VectorSearchResult, VectorStore } from '../services/vector-store'
+import type { RetrievedChunk, VectorDoc, VectorIndexMetadata, VectorSearchResult, VectorStore } from '../services/vector-store'
 /**
  * Orama 向量存储实现（默认后端）：内存 hybrid 索引，BM25 全文 + 向量语义混合检索。
  *
@@ -10,8 +9,8 @@ import type { VectorDoc, VectorIndexMetadata, VectorSearchResult, VectorStore } 
  * 复用 indexer 的 INDEX_SCHEMA 与维度校验，保证与既有持久化快照格式一致。
  */
 import { create, insertMultiple, load, save, search } from '@orama/orama'
+import { NO_MATCH_SCORE_THRESHOLD } from '../../../shared/protocol'
 import { createIndexSchema } from '../../indexing'
-import { NO_MATCH_SCORE_THRESHOLD } from '../../retrieval/services/retriever'
 import { validateEmbeddingVector } from '../validation'
 
 /** 入库文档（example/exampleJs 为 stored-only，不参与检索打分）。 */

@@ -7,9 +7,9 @@
 5. [x] 将 Core 19 个根实现迁入 discovery/extraction/generation/indexing/knowledge/retrieval/vector/preview domain，建立纯 barrels并清理 import。
 6. [x] 核对并保持 root/core public exports、dynamic vector/store 边界、server/context/router/query-handler 调用方向；运行 Core/server 全量测试并提交。
 7. [x] 拆 ChatView transport/history/request state 到单一 composable，SFC 保留模板与 UI 连接；运行 chat/app/demo/browser tests并提交。
-8. [ ] 删除 manifest 中 27 条已消失 debt，运行 live architecture 对账；扫描 P0/P1/P2、logic barrel、owner、deep import和 value/type cycle。
-9. [ ] 运行 package test/typecheck/build/E2E、VitePress API-contract consumer typecheck、全仓 lint/architecture/path/workflow 和 `git diff --check`。
-10. [ ] 独立只读 review；修复后重跑门禁，更新 README/spec/evidence，提交并归档，不 push。
+8. [x] 删除 manifest 中 27 条已消失 debt，运行 live architecture 对账；扫描 P0/P1/P2、logic barrel、owner、deep import和 value/type cycle。
+9. [x] 运行 package test/typecheck/build/E2E、VitePress API-contract consumer typecheck、全仓 lint/architecture/path/workflow 和 `git diff --check`。
+10. [x] 独立只读 review；修复后重跑门禁，更新 README/spec/evidence，提交并归档，不 push。
 
 ## 回滚点
 

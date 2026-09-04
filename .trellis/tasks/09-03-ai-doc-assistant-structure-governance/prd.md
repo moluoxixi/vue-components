@@ -25,15 +25,15 @@
 
 ## 验收标准
 
-- [ ] 27 条目标 debt 删除，architecture unknown/stale 为零。
-- [ ] UI 单父组件位于真实父组件 `components/`，旧 `ui/components`/`ui/views` 私有路径不存在。
-- [ ] Core 根只保留 `index.ts` 与 domain feature 目录，各 domain 的 services/adapters/validation/types 可独立定位。
-- [ ] Core P2 热点按真实职责拆分或具有单一职责证据；ChatView 不再同时拥有 transport state 与大段渲染编排。
-- [ ] CLI commands/options/stdout/stderr/exit、server routes、stream chunk 顺序、index/import/生成结果与 UI 行为不变。
-- [ ] package 根与 `./plugin`、`./protocol`、`./api-contract`、bin 的 source/import/types/build 入口无漂移。
-- [ ] 动态 vector stores、Vite peer 与 Demo preview 保持按需加载，无新增 value cycle 或错误 deep import。
-- [ ] package test/typecheck/build、E2E、consumer typecheck、全仓 lint/architecture/path/workflow 与 `git diff --check` 通过。
-- [ ] README/spec 与最终边界一致；每批独立 commit，不 push；归档时工作树干净。
+- [x] 27 条目标 debt 删除，architecture unknown/stale 为零。
+- [x] UI 单父组件位于真实父组件 `components/`，旧 `ui/components`/`ui/views` 私有路径不存在。
+- [x] Core 根只保留 `index.ts` 与 domain feature 目录，各 domain 的 services/adapters/validation/types 可独立定位。
+- [x] Core P2 热点按真实职责拆分或具有单一职责证据；ChatView 不再同时拥有 transport state 与大段渲染编排。
+- [x] CLI commands/options/stdout/stderr/exit、server routes、stream chunk 顺序、index/import/生成结果与 UI 行为不变。
+- [x] package 根与 `./plugin`、`./protocol`、`./api-contract`、bin 的 source/import/types/build 入口无漂移。
+- [x] 动态 vector stores、Vite peer 与 Demo preview 保持按需加载，无新增 value cycle 或错误 deep import。
+- [x] package test/typecheck/build、E2E、consumer typecheck、全仓 lint/architecture/path/workflow 与 `git diff --check` 通过。
+- [x] README/spec 与最终边界一致；每批独立 commit，不 push；归档时工作树干净。
 
 ## 范围外
 

@@ -37,7 +37,9 @@
     "ai-doc-assistant": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "index.ts",
+    "src"
   ],
   "scripts": {
     "build": "vite build && node scripts/build-ui.mjs",

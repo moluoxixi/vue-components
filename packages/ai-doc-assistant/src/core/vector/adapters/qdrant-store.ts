@@ -1,6 +1,6 @@
-import type { RetrievedChunk } from '../../retrieval/services/retriever'
 import type {
   QdrantConfig,
+  RetrievedChunk,
   VectorDoc,
   VectorIndexMetadata,
   VectorSearchResult,
@@ -18,7 +18,7 @@ import type {
  *
  * 失败语义：HTTP 非 2xx、未 build 即 search 均显式抛错，不静默吞错或伪装无命中。
  */
-import { NO_MATCH_SCORE_THRESHOLD } from '../../retrieval/services/retriever'
+import { NO_MATCH_SCORE_THRESHOLD } from '../../../shared/protocol'
 import { validateEmbeddingVector } from '../validation'
 
 /** 点 payload：随向量存储的可追溯元数据与上下文来源。 */

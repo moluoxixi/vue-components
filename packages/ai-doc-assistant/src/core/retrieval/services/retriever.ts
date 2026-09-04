@@ -1,28 +1,10 @@
 import type { Orama } from '@orama/orama'
-import type { KnowledgeSourceWire } from '../../../shared/protocol'
 import type { EmbeddingIdentitySeed, IndexMeta } from '../../indexing'
+import type { RetrievedChunk } from '../../vector'
 import { create, load, search } from '@orama/orama'
+import { NO_MATCH_SCORE_THRESHOLD } from '../../../shared/protocol'
 import { createIndexSchema, loadIndex, matchesEmbeddingIdentity } from '../../indexing'
 import { validateEmbeddingVector } from '../../vector/validation'
-
-/** 低于该相似度视为无命中，触发上层"无依据兜底"，避免拿不相关语料硬答。 */
-export const NO_MATCH_SCORE_THRESHOLD = 0.3
-
-/** 单条检索命中。 */
-export interface RetrievedChunk {
-  id: string
-  component: string
-  packageName: string
-  docPath: string
-  source: KnowledgeSourceWire
-  knowledgeKey: string
-  body: string
-  /** 预生成的带类型提示示例骨架（建索引时随文档存入，查询期直接回带）。 */
-  example: string
-  /** JS 版示例骨架（剥离类型，stored-only，供前端切换查看/复制）。 */
-  exampleJs: string
-  score: number
-}
 
 /** 检索结果。empty=true 表示无任何命中超过阈值，上层据此走兜底回答。 */
 export interface RetrieveResult {

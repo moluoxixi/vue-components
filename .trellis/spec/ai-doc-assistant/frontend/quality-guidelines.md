@@ -2,7 +2,7 @@
 
 ## 1. Scope / Trigger
 
-Apply this contract when changing `/query`, chat history, AI SDK UI Message Stream data parts, answer rendering, remote embedding, index persistence, or browser E2E coverage in `packages/ai-doc-assistant`. These paths cross server/UI and local/remote data boundaries.
+Apply this contract when changing `/query`, chat history, AI SDK UI Message Stream data parts, answer rendering, remote embedding, index persistence, browser E2E coverage, Core barrels, or package build/publish entries in `packages/ai-doc-assistant`. These paths cross server/UI, local/remote data, and source/build boundaries.
 
 ## 2. Signatures
 
@@ -38,9 +38,15 @@ type QdrantMetadataPayload = {
   sourceHash: string
   embeddingIdentity: EmbeddingIdentity
 }
+
+// Required lazy implementation boundaries.
+import('../../vector/services/vector-strategy')
+import('../adapters/orama-store')
+import('../adapters/qdrant-store')
 ```
 
 Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 20_000`.
+Playwright output remains below `packages/ai-doc-assistant/.playwright/`; published files remain `dist`, `index.ts`, and `src`.
 
 ## 3. Contracts
 
@@ -57,6 +63,11 @@ Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 2
 - `EmbeddingIdentity = { provider, model, endpointFingerprint, dimension }` persists with the index. Identity/source mismatches make it stale; restart hydrate must not re-embed a matching snapshot.
 - Orama schemas and Qdrant collections use the returned vector dimension. Qdrant rebuild is delete-and-recreate; dimension drift never silently degrades to content mode.
 - Qdrant persists `sourceHash` and the complete `EmbeddingIdentity` in a reserved metadata point inside the remote collection. Hydration must retrieve and validate that point; local snapshot/meta files are not sufficient evidence that a remote collection matches. Search must filter to `kind=document` so the metadata point cannot enter retrieval results.
+- `NO_MATCH_SCORE_THRESHOLD` has one owner in `shared/protocol`; vector adapters must not import the legacy retriever for a duplicate constant or result DTO. `RetrievedChunk` belongs to the vector-store result contract.
+- `core/index.ts` exports `splitAnswerSegments` from the browser-safe `vue-block-extractor` implementation. It must not route that export through a barrel that also exposes `sfc-transpile`, because that pulls the TypeScript runtime into the UI main chunk.
+- `VectorStrategy`, `OramaVectorStore`, and `QdrantVectorStore` remain literal dynamic imports. Domain barrels must not turn those edges into eager value exports consumed by the default content path.
+- Playwright reports and traces live under `.playwright/`, outside the publishable `dist`. CI artifact paths must follow the configured output paths.
+- Every package `source` export must exist in the packed tarball. This package publishes `index.ts` and `src` alongside `dist`; browser test reports are never packed.
 
 ## 4. Validation & Error Matrix
 
@@ -73,6 +84,10 @@ Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 2
 | Persisted identity or source hash differs | Index status `stale`; query blocked until rebuild |
 | Qdrant metadata point is missing, malformed, or mismatched | Hydrate fails and the remote collection remains unavailable until rebuild |
 | Model emits raw HTML or unsafe URL | Escape text; do not emit unsafe href |
+| A Core barrel eagerly reaches `sfc-transpile` from the UI path | Reject the build shape; restore a browser-safe selective facade |
+| Vector strategy/store implementation becomes a static import | Reject the change; retain literal dynamic imports and separate chunks |
+| Playwright output resolves below `dist` | Move it to `.playwright/` and update CI artifact paths |
+| Packed source condition target is missing | Include `index.ts` and `src` in `files`; fail packed-source verification |
 
 ## 5. Good / Base / Bad Cases
 
@@ -83,6 +98,10 @@ Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 2
 - Bad: treating EOF or a later user message as proof that a failed/stopped turn completed corrupts future history.
 - Bad: using a fixed embedding dimension or querying an old Qdrant collection after model change mixes incompatible vectors.
 - Bad: accepting local `meta.json` as proof that a remote Qdrant collection has the same source/model can query vectors written by another deployment.
+- Good: the UI build keeps `DemoPreview`, vector strategy, Orama, and Qdrant behind their intended lazy boundaries while the UI main chunk excludes TypeScript.
+- Good: E2E diagnostics are uploaded from `.playwright/` and a pack dry-run contains `dist`, `index.ts`, and `src` without reports.
+- Bad: replacing a selective Core facade with `export * from './preview'` makes browser code evaluate the SFC transpiler and bundle TypeScript.
+- Bad: writing E2E reports below `dist` allows local test output to enter the next package tarball.
 
 ## 6. Tests Required
 
@@ -95,6 +114,9 @@ Shared limits remain `MAX_HISTORY_MESSAGES = 20` and `MAX_HISTORY_CHARACTERS = 2
 - Markdown/Demo tests cover raw HTML, unsafe schemes, incomplete fences, allowlisted imports, and source-only fallback.
 - Browser E2E uses an AI SDK compatible upstream stub and verifies desktop/mobile source, streamed text, demo mount, focus, and overflow behavior.
 - Build, packed Node smoke, and browser-pack checks prove server Provider objects and secrets do not enter UI output.
+- Build output inspection asserts `DemoPreview`, `vector-strategy`, `orama-store`, and `qdrant-store` remain separate chunks and that the UI main chunk does not absorb TypeScript through `sfc-transpile`.
+- Package dry-run/packed smoke asserts `index.ts` and the `src` source targets exist while `.playwright`, `test-results`, and `playwright-report` are absent.
+- Workflow tests assert CI uploads AI-doc diagnostics from the exact `.playwright/report` and `.playwright/test-results` paths and rejects the old `dist` paths.
 
 ## 7. Wrong vs Correct
 
@@ -126,6 +148,24 @@ await qdrant.hydrate(localSnapshot, localMetadata)
 // Correct: retrieve the reserved point and compare sourceHash + every identity field.
 const persisted = await retrieveMetadataPoint(collection)
 assertMatchesPersistedMetadata(persisted, expectedMetadata)
+```
+
+### Lazy Facades And Test Output
+
+```ts
+// Wrong: UI consumers of core now traverse the TypeScript-backed transpiler.
+export { splitAnswerSegments } from './preview'
+
+// Correct: expose only the browser-safe leaf from the shared Core facade.
+export { splitAnswerSegments } from './preview/services/vue-block-extractor'
+```
+
+```ts
+// Wrong: test output sits inside the directory published by package.json.
+outputDir: './dist/test-results'
+
+// Correct: diagnostics stay outside dist and CI uploads this exact path.
+outputDir: './.playwright/test-results'
 ```
 
 ## UI Regression Rules

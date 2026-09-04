@@ -8,7 +8,7 @@
 pnpm exec ai-doc-assistant serve --root . --entries packages/components/index.ts
 ```
 
-面板默认地址为 `http://127.0.0.1:5173/__ai-doc/`。也可以运行 `ai-doc-assistant build-index` 只构建和校验知识库。
+`--entries` 接受逗号分隔的公共入口；没有稳定入口时可改用逗号分隔的 `--globs`。`serve` 还支持 `--host` 与 `--port`，面板默认地址为 `http://127.0.0.1:5173/__ai-doc/`。也可以运行 `ai-doc-assistant build-index` 只构建和校验知识库。
 
 ## Chat 配置
 
@@ -34,6 +34,8 @@ AI_DOC_EMBEDDING_MODEL=gemini-embedding-001
 ```
 
 Embedding 支持 `openai`、`google` 和 `openai-compatible`。使用 `openai-compatible` 时还必须设置 `AI_DOC_EMBEDDING_BASE_URL`。Provider、模型、兼容端点或组件契约发生变化后，现有索引会进入 `stale`，必须全量重建。
+
+Vector 索引默认保存到 `<root>/.ai-doc-index`；可通过 `AI_DOC_INDEX_DIR` 指定其他目录。
 
 面板运行状态会显示当前检索模式和远程 embedding Provider，并持续提示组件契约上传与潜在费用。API key 只在服务端内存中使用，不会进入浏览器请求、响应或公开状态。
 

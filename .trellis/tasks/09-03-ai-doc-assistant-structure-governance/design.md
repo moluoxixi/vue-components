@@ -26,6 +26,8 @@ src/ui/
         index.vue
         components/{DemoPreview.vue,MarkdownContent.vue,index.ts}
         composables/{use-chat-workspace.ts,index.ts}
+        services/{chat-turn-projection.ts,index.ts}
+        types/index.ts
       DetailView/
         index.vue
         components/{TypeReference.vue,index.ts}
@@ -55,20 +57,20 @@ src/core/
   types/index.ts
 ```
 
-每个 domain 及 responsibility 目录均有纯 `index.ts`。`core/index.ts` 聚合 domain/type barrels，保持原符号集合。Server 和测试改用对应 domain barrel；不保留旧根文件。
+每个 domain 及 responsibility 目录均有纯 `index.ts`。`core/index.ts` 保持原符号集合；其中 `splitAnswerSegments` 直接导出纯 answer-block 实现，避免 preview 聚合 barrel 把依赖 TypeScript 的 SFC 转译器带入 UI 主 chunk。Server 和测试优先使用对应 domain barrel，延迟加载实现与单元测试可使用精确责任路径；不保留旧根文件。
 
 ## 4. 依赖方向
 
 - discovery/extraction/generation/indexing/knowledge 为基础 domain。
 - retrieval 可依赖 indexing/knowledge 的 public barrel。
-- vector 可 type-import retrieval contracts，并依赖 indexing；retrieval 只通过 literal dynamic import 加载 vector，避免 value cycle。
+- vector 自有 store/result contracts 并依赖 indexing；legacy retriever 仅 type-import vector result，retrieval strategy 只通过 literal dynamic import 加载 vector，避免 value cycle。
 - vector store adapters 位于 vector/adapters；Qdrant/Orama 的动态 import 与 provider 配置保持不变。
 - preview 只处理 SFC/answer block 的纯转换，不依赖 UI component。
 - UI 可使用 core 根/public domain barrel与 shared protocol；Core 不反向依赖 UI/server。
 
 ## 5. ChatView 状态拆分
 
-`use-chat-workspace.ts` 迁移 transport、`useChat`、pending/abort、question submit/stop/clear、message source/example projection与 focus expose。SFC 保留 props/emits、child component imports、图标与模板/CSS。composable 返回现有 refs/actions，不引入第二份 messages/question 状态。
+`use-chat-workspace.ts` 迁移 transport、`useChat`、pending/abort、question submit/stop/clear、turn projection 与 focus expose；纯 message source/example/answer-block 投影归入 `services/chat-turn-projection.ts`。SFC 保留 props/emits、child component imports、图标与模板/CSS。composable 返回现有 refs/actions，不引入第二份 messages/question 状态。
 
 ## 6. Compatibility 与测试
 

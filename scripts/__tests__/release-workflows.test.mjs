@@ -46,6 +46,10 @@ describe('release workflow topology', () => {
     expect(ciWorkflow).toContain('actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02')
     expect(ciWorkflow).toContain('packages/ConfigForm/playground/dist/playwright-report/config-form-playground')
     expect(ciWorkflow).toContain('playgrounds/components-playground/dist/test-results/components-playground')
+    expect(ciWorkflow).toContain('packages/ai-doc-assistant/.playwright/report')
+    expect(ciWorkflow).toContain('packages/ai-doc-assistant/.playwright/test-results')
+    expect(ciWorkflow).not.toContain('packages/ai-doc-assistant/dist/playwright-report/ai-doc-assistant')
+    expect(ciWorkflow).not.toContain('packages/ai-doc-assistant/dist/test-results/ai-doc-assistant')
   })
 
   it('synchronizes only production GitHub metadata during documentation builds', () => {
