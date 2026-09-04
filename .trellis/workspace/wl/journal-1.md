@@ -952,3 +952,32 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 39: 完成文档审计与 Theme E2E 修复
+
+**Date**: 2026-09-05
+**Task**: 完成文档审计与 Theme E2E 修复
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+恢复 ConfigForm 适配器文档与 API 抽取，修复 AI Doc default-first barrel 发现、docs Vite source condition、独立 fixture 与 Demo 冷启动时序；Theme E2E 17/17、docs build/preview 实机通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6f0b4152` | (see git log) |
+| `e96c4c95` | (see git log) |
+| `f1d0efaa` | (see git log) |
+| `ee7dfdeb` | (see git log) |
+| `93d09112` | (see git log) |
+| `3611018e` | (see git log) |
+| `aa63d628` | (see git log) |
+| `61e771da` | (see git log) |
+
+### Status
+
+[OK] **Completed**
