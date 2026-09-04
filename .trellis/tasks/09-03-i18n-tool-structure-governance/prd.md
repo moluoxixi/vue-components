@@ -26,14 +26,14 @@
 
 ## 验收标准
 
-- [ ] 24 条目标 debt 删除，architecture unknown/stale 为零。
-- [ ] 五个 UI 组件位于 App owner，旧 `ui/components`/`ui/views`/`ui/App.vue` 不存在。
-- [ ] config/core/server feature 根只含入口与责任目录；旧根实现路径不存在。
-- [ ] 浏览器只提交 opaque IDs/tokens；scan/translate/preview/apply、path guard、atomic write与rollback语义不变。
-- [ ] CLI options/stdout/stderr/exit、五个 exports/bin/产物名及所有公共符号不变。
-- [ ] Jiti、AI Provider、Vite/UI 与 browser/server 边界无新增 cycle、错误 eager import或 secret/path 泄漏。
-- [ ] README/spec/evidence 与最终结构一致，P0/P1/P2 扫描有结论。
-- [ ] package/full repository/packed/browser gates与独立 review通过；提交但不 push，保留用户无关改动。
+- [x] 24 条目标 debt 删除，architecture unknown/stale 为零。
+- [x] 五个 UI 组件位于 App owner，旧 `ui/components`/`ui/views`/`ui/App.vue` 不存在。
+- [x] config/core/server feature 根只含入口与责任目录；旧根实现路径不存在。
+- [x] 浏览器只提交 opaque IDs/tokens；scan/translate/preview/apply、path guard、atomic write与rollback语义不变。
+- [x] CLI options/stdout/stderr/exit、五个 exports/bin/产物名及所有公共符号不变。
+- [x] Jiti、AI Provider、Vite/UI 与 browser/server 边界无新增 cycle、错误 eager import或 secret/path 泄漏。
+- [x] README/spec/evidence 与最终结构一致，P0/P1/P2 扫描有结论。
+- [x] package/full repository/packed/browser gates与独立 review通过；提交但不 push，保留用户无关改动。
 
 ## 范围外
 

@@ -86,6 +86,11 @@ export const packedBrowserApplicationAllowlist = Object.freeze({
     mountPath: '/__ai-doc/',
     readySelector: '[data-testid="app-title"]',
   }),
+  '@moluoxixi/i18n-tool': Object.freeze({
+    directory: 'dist/ui',
+    mountPath: '/',
+    readySelector: '.app-shell',
+  }),
 })
 
 export function getPackedBrowserApplications(

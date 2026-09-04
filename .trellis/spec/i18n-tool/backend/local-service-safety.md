@@ -82,6 +82,10 @@ scanId + resource/unit IDs -> translate -> reviewed candidates
 - Preview/apply tests retain path, freshness, overwrite, atomic write, rollback, token, and rescan assertions.
 - Browser E2E uses an AI SDK compatible JSON upstream and covers create, overwrite, stale conflict, invalid output, cancel, dialogs, and mobile overflow.
 - Build and packed browser smoke exclude server exports, `apiKeyEnv`, absolute paths, filesystem imports, and write helpers.
+- Packed browser smoke installs the published tarball, serves its shipped
+  `dist/ui`, waits for `.app-shell`, and scans that installed browser bundle
+  for the same server-only fragments. A workspace-source E2E or a protocol-only
+  browser import cannot replace this release check.
 
 ## 7. Wrong vs Correct
 

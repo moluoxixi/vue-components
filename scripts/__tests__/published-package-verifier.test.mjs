@@ -366,17 +366,24 @@ describe('published package verifier helpers', () => {
     ])
   })
 
-  it('classifies the packed ai-doc browser app and its server-only fragments', () => {
+  it('classifies packed browser apps and their server-only fragments', () => {
     const applications = getPackedBrowserApplications([
       { name: '@moluoxixi/ai-doc-assistant' },
+      { name: '@moluoxixi/i18n-tool' },
     ], {
       '@moluoxixi/ai-doc-assistant': {
         directory: 'dist/ui',
         mountPath: '/__ai-doc/',
         readySelector: '[data-testid="app-title"]',
       },
+      '@moluoxixi/i18n-tool': {
+        directory: 'dist/ui',
+        mountPath: '/',
+        readySelector: '.app-shell',
+      },
     }, {
       '@moluoxixi/ai-doc-assistant': ['ServerContext', 'apiKey'],
+      '@moluoxixi/i18n-tool': ['absolutePath', 'apiKeyEnv'],
     })
 
     expect(applications).toEqual([{
@@ -385,6 +392,12 @@ describe('published package verifier helpers', () => {
       mountPath: '/__ai-doc/',
       readySelector: '[data-testid="app-title"]',
       forbiddenFragments: ['ServerContext', 'apiKey'],
+    }, {
+      packageName: '@moluoxixi/i18n-tool',
+      directory: 'dist/ui',
+      mountPath: '/',
+      readySelector: '.app-shell',
+      forbiddenFragments: ['absolutePath', 'apiKeyEnv'],
     }])
   })
 })

@@ -18,6 +18,18 @@
 pnpm add -D @moluoxixi/i18n-tool
 ```
 
+## 公开入口
+
+| 入口                            | 用途                                                         |
+| ------------------------------- | ------------------------------------------------------------ |
+| `@moluoxixi/i18n-tool`          | JSON adapter、分析、翻译计划与安全变更的核心 API             |
+| `@moluoxixi/i18n-tool/core`     | 与根入口等价的显式 Core 入口                                 |
+| `@moluoxixi/i18n-tool/config`   | `defineConfig`、配置 schema、发现、加载与解析                |
+| `@moluoxixi/i18n-tool/protocol` | browser-safe HTTP/SSE wire types、schema 与 decoder          |
+| `@moluoxixi/i18n-tool/server`   | 扫描、path guard、preview/apply、atomic write 与 Vite plugin |
+
+CLI 通过 `pnpm exec i18n-tool` 使用，不提供 `./cli` import subpath。工作台 UI 随 CLI 打包到 `dist/ui`，不是独立的组件 API。
+
 在项目根目录创建 `i18n-tool.config.ts`：
 
 ```ts
