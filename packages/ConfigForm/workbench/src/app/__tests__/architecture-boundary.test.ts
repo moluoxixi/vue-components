@@ -53,7 +53,10 @@ const sourceRootFileAllowlist: Readonly<Record<string, readonly string[]>> = {
   ],
 }
 const sourceRootDirectoryEntryExceptions = new Set(['playground/src/examples'])
-const generatedTypeTemplateFiles = new Set(['workbench/src/project/export/services/source.ts'])
+const generatedTypeTemplateFiles = new Set([
+  'workbench/src/project/export/services/source-flow.ts',
+  'workbench/src/project/export/services/source-validation.ts',
+])
 const allowedCurrentDependencyTokens: Readonly<Record<string, readonly string[]>> = {
   'devtools-vite-plugin/src/source-inject/schemas/ast.ts': [['decorators', 'legacy'].join('-')],
   'workbench/src/features/export/components/WorkspaceCodeEditor/index.vue': [

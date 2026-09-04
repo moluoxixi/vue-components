@@ -110,23 +110,23 @@ describe('canonical standalone Source export', () => {
   it('generates a complete routed Vue project directly from Canonical IR', async () => {
     const { adapter, compilation } = await fixture()
     const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
-    const paths = Object.keys(exported.files).sort()
+    const paths = Object.keys(exported.files)
 
     expect(exported.entry).toBe(normalizeProjectPath('src/main.ts'))
-    expect(paths).toEqual(expect.arrayContaining([
-      'index.html',
-      'package.json',
-      'src/App.vue',
-      'src/main.ts',
+    expect(paths).toEqual([
       'src/pages/home/Page.vue',
       'src/pages/home/flows.ts',
       'src/pages/home/validation.ts',
+      'index.html',
+      'package.json',
+      'src/App.vue',
       'src/router.ts',
+      'src/main.ts',
       'src/styles.css',
       'src/vite-env.d.ts',
       'tsconfig.json',
       'vite.config.ts',
-    ]))
+    ])
     expect(JSON.stringify(exported.files)).not.toMatch(/@moluoxixi\/config-form/i)
 
     const manifest = exported.files[normalizeProjectPath('package.json')]
@@ -161,6 +161,46 @@ describe('canonical standalone Source export', () => {
     }
     if (styles?.kind === 'text')
       expect(styles.content).toContain('grid-template-columns: var(--source-active-label-width, max-content) minmax(0, 1fr)')
+  })
+
+  it('preserves page order across generated files and router entries', async () => {
+    const { adapter, compilation } = await fixture((document) => {
+      const home = document.pagesById[document.homePageId]!
+      home.route = '/landing'
+      const secondary = {
+        ...structuredClone(home),
+        id: 'secondary',
+        name: 'Secondary',
+        route: '/secondary',
+      }
+      document.pageOrder.push(secondary.id)
+      document.pagesById[secondary.id] = secondary
+    })
+    const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
+
+    expect(Object.keys(exported.files)).toEqual([
+      'src/pages/home/Page.vue',
+      'src/pages/home/flows.ts',
+      'src/pages/home/validation.ts',
+      'src/pages/secondary/Page.vue',
+      'src/pages/secondary/flows.ts',
+      'src/pages/secondary/validation.ts',
+      'index.html',
+      'package.json',
+      'src/App.vue',
+      'src/router.ts',
+      'src/main.ts',
+      'src/styles.css',
+      'src/vite-env.d.ts',
+      'tsconfig.json',
+      'vite.config.ts',
+    ])
+    const router = exported.files[normalizeProjectPath('src/router.ts')]
+    expect(router?.kind).toBe('text')
+    if (router?.kind !== 'text')
+      return
+    expect(router.content).toContain(`{ path: '/', redirect: "/landing" }`)
+    expect(router.content.indexOf('name: "home"')).toBeLessThan(router.content.indexOf('name: "secondary"'))
   })
 
   it('rejects a Source resolver from another Registry revision', async () => {
