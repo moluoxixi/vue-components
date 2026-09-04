@@ -5,13 +5,13 @@ import type {
   GithubIssueSummary,
   GithubMetadataExpectation,
   GithubMetadataSnapshot,
-} from '../../content/repository/providers/github'
+} from '../../content/repository/providers'
 import type { AtomicFileSystem } from '../utils'
 import {
   assertGithubMetadataSnapshot,
   isExactGithubProfileUrl,
   isTrustedGithubAvatarUrl,
-} from '../../content/repository/providers/github'
+} from '../../content/repository/providers'
 import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'

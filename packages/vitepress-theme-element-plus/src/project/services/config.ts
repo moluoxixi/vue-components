@@ -12,7 +12,7 @@ import type {
   ElementPlusDocsRepositoryProviderId,
   ElementPlusDocsResolvedRepository,
 } from '../types'
-import { resolveGitlabWebBaseUrl } from '../../content/repository/providers/gitlab'
+import { resolveGitlabWebBaseUrl } from '../../content/repository/providers'
 import { elementPlusDocsRepositoryProviderIds } from '../constants'
 
 const SAFE_PATH_SEGMENT = /^[\w.@-]+$/

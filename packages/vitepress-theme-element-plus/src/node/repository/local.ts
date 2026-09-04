@@ -4,13 +4,13 @@ import type {
   LocalContributor,
   LocalMetadataExpectation,
   LocalMetadataSnapshot,
-} from '../../content/repository/providers/local'
+} from '../../content/repository/providers'
 import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import process from 'node:process'
-import { assertLocalMetadataSnapshot } from '../../content/repository/providers/local'
+import { assertLocalMetadataSnapshot } from '../../content/repository/providers'
 
 export interface LocalComponentSource {
   name: string

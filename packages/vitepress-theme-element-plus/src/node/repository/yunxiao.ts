@@ -5,10 +5,10 @@ import type {
   YunxiaoContributor,
   YunxiaoMetadataExpectation,
   YunxiaoMetadataSnapshot,
-} from '../../content/repository/providers/yunxiao'
+} from '../../content/repository/providers'
 import type { AtomicFileSystem } from '../utils'
 import { createHash } from 'node:crypto'
-import { assertYunxiaoMetadataSnapshot, isTrustedYunxiaoAvatarUrl } from '../../content/repository/providers/yunxiao'
+import { assertYunxiaoMetadataSnapshot, isTrustedYunxiaoAvatarUrl } from '../../content/repository/providers'
 import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'

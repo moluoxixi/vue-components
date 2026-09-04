@@ -5,7 +5,7 @@ import type {
   GitlabIssueSummary,
   GitlabMetadataExpectation,
   GitlabMetadataSnapshot,
-} from '../../content/repository/providers/gitlab'
+} from '../../content/repository/providers'
 import type { AtomicFileSystem } from '../utils'
 import { createHash } from 'node:crypto'
 import {
@@ -13,7 +13,7 @@ import {
   isExactGitlabProfileUrl,
   isTrustedGitlabWebUrl,
   resolveGitlabWebBaseUrl,
-} from '../../content/repository/providers/gitlab'
+} from '../../content/repository/providers'
 import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'

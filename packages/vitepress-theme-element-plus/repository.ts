@@ -26,44 +26,44 @@ export {
 export type {
   GiteeMetadataExpectation,
   GiteeMetadataSnapshot,
-} from './src/content/repository/providers/gitee'
+} from './src/content/repository/providers'
 export {
   assertGiteeMetadataSnapshot,
   isExactGiteeProfileUrl,
   isTrustedGiteeAvatarUrl,
-} from './src/content/repository/providers/gitee'
+} from './src/content/repository/providers'
 export type {
   GithubMetadataExpectation,
   GithubMetadataSnapshot,
-} from './src/content/repository/providers/github'
+} from './src/content/repository/providers'
 export {
   assertGithubMetadataSnapshot,
   isExactGithubProfileUrl,
   isTrustedGithubAvatarUrl,
-} from './src/content/repository/providers/github'
+} from './src/content/repository/providers'
 export type {
   GitlabMetadataExpectation,
   GitlabMetadataSnapshot,
-} from './src/content/repository/providers/gitlab'
+} from './src/content/repository/providers'
 export {
   assertGitlabMetadataSnapshot,
   isExactGitlabProfileUrl,
   isTrustedGitlabWebUrl,
   resolveGitlabWebBaseUrl,
-} from './src/content/repository/providers/gitlab'
+} from './src/content/repository/providers'
 export type {
   LocalMetadataExpectation,
   LocalMetadataSnapshot,
-} from './src/content/repository/providers/local'
-export { assertLocalMetadataSnapshot } from './src/content/repository/providers/local'
+} from './src/content/repository/providers'
+export { assertLocalMetadataSnapshot } from './src/content/repository/providers'
 export type {
   YunxiaoMetadataExpectation,
   YunxiaoMetadataSnapshot,
-} from './src/content/repository/providers/yunxiao'
+} from './src/content/repository/providers'
 export {
   assertYunxiaoMetadataSnapshot,
   isTrustedYunxiaoAvatarUrl,
-} from './src/content/repository/providers/yunxiao'
+} from './src/content/repository/providers'
 export {
   createRepositoryMetadataProviderRegistry,
   defineRepositoryMetadataProvider,

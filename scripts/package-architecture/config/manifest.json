@@ -89,12 +89,6 @@
   ],
   "debt": [
     {
-      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
       "path": "packages/vitepress-theme-element-plus/src/node/content/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
@@ -111,36 +105,6 @@
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/gitee.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/github.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/gitlab.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/local.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/yunxiao.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
     },
     {
       "path": "packages/vitepress-theme-element-plus/src/node/lifecycle/cli.ts",

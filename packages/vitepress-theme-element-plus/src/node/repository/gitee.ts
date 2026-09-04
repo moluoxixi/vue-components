@@ -5,13 +5,13 @@ import type {
   GiteeIssueSummary,
   GiteeMetadataExpectation,
   GiteeMetadataSnapshot,
-} from '../../content/repository/providers/gitee'
+} from '../../content/repository/providers'
 import type { AtomicFileSystem } from '../utils'
 import {
   assertGiteeMetadataSnapshot,
   isExactGiteeProfileUrl,
   isTrustedGiteeAvatarUrl,
-} from '../../content/repository/providers/gitee'
+} from '../../content/repository/providers'
 import { writeJsonAtomically } from '../utils'
 import { resolveTrustedApiUrl } from './api-client'
 import { collectValidateAndWrite, formatRepositorySyncError } from './sync'
