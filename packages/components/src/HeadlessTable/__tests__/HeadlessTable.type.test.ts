@@ -1,6 +1,6 @@
-import type { HeadlessTableColumn, HeadlessTableModeApi, HeadlessTableProps } from '../../../index'
+import type { HeadlessTableColumn, HeadlessTableModeApi, HeadlessTableProps } from '@moluoxixi/components'
+import { defineHeadlessTableRenderer, useHeadlessTable } from '@moluoxixi/components'
 import { describe, expect, it } from 'vitest'
-import { defineHeadlessTableRenderer, useHeadlessTable } from '../../../index'
 
 interface TypedRow {
   id: number

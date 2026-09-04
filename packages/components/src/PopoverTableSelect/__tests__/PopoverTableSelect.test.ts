@@ -4,9 +4,9 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
+import { PopoverTableSelectBase } from '../components/components'
+import { usePopoverTableSelectBase } from '../composables'
 import { PopoverTableSelect } from '../index'
-import { PopoverTableSelectBase } from '../src/components'
-import { usePopoverTableSelectBase } from '../src/composables'
 
 const selectedRow: PopoverTableRow = {
   code: 'C-009',

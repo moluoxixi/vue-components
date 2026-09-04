@@ -43,25 +43,7 @@ const declarationFinalizerPackages = [
   '@moluoxixi/vitepress-theme-element-plus',
   '@moluoxixi/zod3-to-rule',
 ]
-const componentsDeepImportExceptions = [
-  ['ConfigTable/src/types/emits.ts', '../../../HeadlessTable/src/types'],
-  ['ConfigTable/src/types/props.ts', '../../../HeadlessTable/src/types'],
-  ['ConfigTable/src/types/table.ts', '../../../HeadlessTable/src/types'],
-  ['CopyText/src/types/props.ts', '../../../HeadlessCopyText'],
-  ['CopyText/src/types/slots.ts', '../../../HeadlessCopyText'],
-  ['HeadlessTable/__tests__/HeadlessTable.type.test.ts', '../../../index'],
-  ['PopoverTableSelect/src/types/props.ts', '../../../ConfigTable'],
-  ['PopoverTableSelect/src/types/props.ts', '../../../utils'],
-  ['RequestCascader/src/types/emits.ts', '../../../request/types'],
-  ['RequestCascader/src/types/expose.ts', '../../../request/types'],
-  ['RequestCascader/src/types/props.ts', '../../../request/types'],
-  ['RequestSelectV2/src/types/emits.ts', '../../../request/types'],
-  ['RequestSelectV2/src/types/expose.ts', '../../../request/types'],
-  ['RequestSelectV2/src/types/props.ts', '../../../request/types'],
-  ['RequestTreeSelect/src/types/emits.ts', '../../../request/types'],
-  ['RequestTreeSelect/src/types/expose.ts', '../../../request/types'],
-  ['RequestTreeSelect/src/types/props.ts', '../../../request/types'],
-]
+const componentsDeepImportExceptions = []
 
 function walkFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

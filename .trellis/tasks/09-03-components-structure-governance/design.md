@@ -21,10 +21,8 @@ src/<Feature>/
   index.ts
   components/
     index.ts
-    <Feature>/
-      index.ts
-      index.vue
-      components/       # 仅该公开组件使用的子组件
+    index.vue
+    components/         # 仅该公开组件使用的子组件
   composables/          # 需要时
   services/
     index.ts

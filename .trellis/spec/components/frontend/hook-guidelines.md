@@ -50,4 +50,4 @@ function deactivateListeners(): void {
 - Reactivate while the condition is true and assert exactly one installation.
 - Unmount immediately after mounting and assert no listener remains after pending ticks flush.
 
-**Example**: `packages/components/src/PopoverTableSelect/src/composables/use-popover-table-select-base.ts`.
+**Example**: `packages/components/src/PopoverTableSelect/composables/use-popover-table-select-base.ts`.

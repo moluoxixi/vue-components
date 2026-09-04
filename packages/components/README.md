@@ -43,6 +43,27 @@ export default {
 
 `autoComponent` 只解析公开组件，并从对应组件子入口按需导入，同时加载 `@moluoxixi/components/styles`。`autoImport` 按 `CopyText`、`HeadlessTable` 等最小子入口注入运行时 API，避免一个工具函数把根 barrel 带入首包；TypeScript 类型仍需使用 `import type` 显式导入。
 
+## 源码职责
+
+每个公开组件 feature 使用相同的目录合同：
+
+```text
+src/<Feature>/
+  index.ts            # 只导出公开组件、工具与类型
+  components/
+    index.ts          # 组件实现入口
+    index.vue
+    components/       # 可选：仅主组件使用的私有子组件
+  services/
+    index.ts
+    component.ts      # withInstall 组合
+  composables/        # 需要时
+  types/
+  utils/              # 需要时
+```
+
+跨 feature 的生产代码使用 `#components/*` 私有 imports 或目标 feature barrel，不进入另一个组件的实现目录。10 个公开组件 subpath、Vite build entries、自动加载器名称和 playground manifest 必须保持一一对应。
+
 ## 请求缓存组件
 
 `RequestSelectV2`、`RequestCascader`、`RequestTreeSelect`、`ConfigTable` 和 `PopoverTableSelect` 的 `query` 模式基于 `@moluoxixi/hooks` 与 TanStack Vue Query。宿主应用需要提供唯一 `QueryClient`：

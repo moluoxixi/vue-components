@@ -1,1 +1,1 @@
-export { default as DateRangePickerSource } from './DateRangePicker'
+export { default as DateRangePickerSource } from './index.vue'

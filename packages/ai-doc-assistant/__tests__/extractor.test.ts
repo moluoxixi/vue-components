@@ -310,7 +310,7 @@ describe('extractContracts — real workspace package types', () => {
       [
         {
           exportName: 'PopoverTableSelect',
-          filePath: component('PopoverTableSelect/src/index.vue'),
+          filePath: component('PopoverTableSelect/components/index.vue'),
           packageName: '@moluoxixi/components',
         },
       ],

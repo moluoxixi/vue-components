@@ -7,7 +7,7 @@ const detail: ComponentDetailResponse = {
   name: 'PopoverTableSelect',
   packageName: '@moluoxixi/components',
   description: '',
-  docPath: 'packages/components/src/PopoverTableSelect/src/index.vue',
+  docPath: 'packages/components/src/PopoverTableSelect/components/index.vue',
   props: [
     {
       name: 'columns',

@@ -1,1 +1,1 @@
-export { default as HeadlessCopyTextSource } from './HeadlessCopyText'
+export { default as HeadlessCopyTextSource } from './index.vue'

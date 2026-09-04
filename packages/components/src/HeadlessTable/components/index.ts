@@ -1,1 +1,1 @@
-export { default as HeadlessTableSource } from './HeadlessTable'
+export { default as HeadlessTableSource } from './index.vue'

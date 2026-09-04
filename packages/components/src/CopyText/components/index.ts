@@ -1,1 +1,1 @@
-export { default as CopyTextSource } from './CopyText'
+export { default as CopyTextSource } from './index.vue'

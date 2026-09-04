@@ -1,1 +1,1 @@
-export { default as RequestSelectV2Source } from './RequestSelectV2'
+export { default as RequestSelectV2Source } from './index.vue'

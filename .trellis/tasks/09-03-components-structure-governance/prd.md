@@ -23,12 +23,12 @@
 
 ## 验收标准
 
-- [ ] 20 条目标 debt 全部删除且没有新增 unknown/stale 诊断。
-- [ ] 10 个 feature `index.ts` 与责任 barrel 均只导出，feature 内不存在冗余 `src/`。
-- [ ] 根/10 个 leaf 的 named/default/install 对象身份、组件名和公开工具/type API 不变。
-- [ ] 10 个 package exports、Vite entries、auto-loader names、playground manifest 与 styles entry 保持一致。
-- [ ] HeadlessTable renderer precedence、registry reactivity/plugin injection 与 ConfigTable 复用保持不变。
-- [ ] 组件单测、类型检查、构建、playground E2E、packed browser 与全仓 architecture/path/lint 通过。
+- [x] 20 条目标 debt 全部删除且没有新增 unknown/stale 诊断。
+- [x] 10 个 feature `index.ts` 与责任 barrel 均只导出，feature 内不存在冗余 `src/`。
+- [x] 根/10 个 leaf 的 named/default/install 对象身份、组件名和公开工具/type API 不变。
+- [x] 10 个 package exports、Vite entries、auto-loader names、playground manifest 与 styles entry 保持一致。
+- [x] HeadlessTable renderer precedence、registry reactivity/plugin injection 与 ConfigTable 复用保持不变。
+- [x] 组件单测、类型检查、构建、playground E2E、packed browser 与全仓 architecture/path/lint 通过。
 
 ## 约束
 
