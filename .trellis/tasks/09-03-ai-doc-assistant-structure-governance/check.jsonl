@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"复核 owner、barrel、入口、deep import 与 architecture debt。"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"执行包级 test/typecheck/build/E2E 质量门。"}
+{"file":".trellis/tasks/09-03-ai-doc-assistant-structure-governance/research/structure-map.md","reason":"逐项核对已调研的稳定协议和动态边界。"}
