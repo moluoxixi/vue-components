@@ -8,6 +8,11 @@
     "url": "https://github.com/moluoxixi/vue-components",
     "directory": "packages/ai-doc-assistant"
   },
+  "sideEffects": [
+    "cli.ts",
+    "dist/cli.js",
+    "src/ui/main.ts"
+  ],
   "exports": {
     ".": {
       "source": "./index.ts",

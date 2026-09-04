@@ -21,7 +21,9 @@
   "files": [
     "README.md",
     "dist/**/*.d.ts",
-    "dist/**/*.js"
+    "dist/**/*.js",
+    "index.ts",
+    "src"
   ],
   "scripts": {
     "build": "tsup index.ts --format esm --dts --clean",

@@ -2,6 +2,36 @@
 
 组件库的契约提取、知识库检索和 AI 问答工具。默认使用 `content` 检索；可选的 `vector` 模式使用 Vercel AI SDK 调用远程 embedding Provider。
 
+## 安装
+
+```bash
+pnpm add -D @moluoxixi/ai-doc-assistant vite vue
+```
+
+## 公共入口
+
+| 入口                                       | 用途                                                    |
+| ------------------------------------------ | ------------------------------------------------------- |
+| `@moluoxixi/ai-doc-assistant`              | 契约抽取、索引、服务端上下文和查询编排                  |
+| `@moluoxixi/ai-doc-assistant/plugin`       | `aiDocAssistant` Vite 开发服务器插件                    |
+| `@moluoxixi/ai-doc-assistant/protocol`     | browser-safe 请求、响应、错误码和 UI Message 数据块类型 |
+| `@moluoxixi/ai-doc-assistant/api-contract` | 把抽取结果投影为文档 API 表格的类型与规范化函数         |
+
+Vite 配置可以直接使用独立插件入口：
+
+```ts
+import { aiDocAssistant } from '@moluoxixi/ai-doc-assistant/plugin'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [
+    aiDocAssistant({
+      componentEntries: ['packages/components/index.ts'],
+    }),
+  ],
+})
+```
+
 ## 运行
 
 ```bash
@@ -51,3 +81,11 @@ AI_DOC_QDRANT_API_KEY=
 ```
 
 Qdrant collection 会保存 embedding 身份与组件源哈希。远端 collection 被其他实例以不同 Provider、模型、端点或组件内容重建后，本地索引不会恢复为 ready，需重新构建。
+
+## 开发验证
+
+```bash
+pnpm --filter @moluoxixi/ai-doc-assistant test
+pnpm --filter @moluoxixi/ai-doc-assistant typecheck
+pnpm --filter @moluoxixi/ai-doc-assistant build
+```

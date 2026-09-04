@@ -16,13 +16,21 @@ import {
 const repositoryRoot = resolve(import.meta.dirname, '../..')
 const fixtureRoots = []
 
-function createFixture(files) {
+function createFixture(files, options = {}) {
   const root = mkdtempSync(join(tmpdir(), 'package-architecture-'))
   fixtureRoots.push(root)
-  for (const [path, source] of Object.entries({
+  const sources = {
     'pnpm-workspace.yaml': 'packages:\n  - packages/*\n',
     ...files,
-  })) {
+  }
+  if (options.packageReadmes !== false) {
+    for (const path of Object.keys(sources).filter(path => path.endsWith('/package.json'))) {
+      const readmePath = path.replace(/package\.json$/u, 'README.md')
+      if (!(readmePath in sources))
+        sources[readmePath] = '# Fixture package\n'
+    }
+  }
+  for (const [path, source] of Object.entries(sources)) {
     const target = resolve(root, path)
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, source)
@@ -38,6 +46,8 @@ function packageManifest(name, additions = {}) {
     module: './dist/index.js',
     types: './dist/index.d.ts',
     exports: { '.': { source: './index.ts', types: './dist/index.d.ts', import: './dist/index.js' } },
+    files: ['dist', 'index.ts', 'src'],
+    sideEffects: false,
     scripts: { build: 'vite build' },
     ...additions,
   })
@@ -115,6 +125,63 @@ describe('package architecture collector', () => {
     expect(diagnostics.filter(item => item.package === 'packages/output-bad')).toEqual([
       expect.objectContaining({ rule: 'package.output-entry' }),
     ])
+  })
+
+  it('enforces published source files, README, and explicit side effects', () => {
+    const packageFiles = path => ({
+      [`${path}/index.ts`]: 'export { value } from \'./src/feature\'\n',
+      [`${path}/src/feature/index.ts`]: 'export const value = 1\n',
+    })
+    const root = createFixture({
+      'packages/good/package.json': packageManifest('@fixture/good'),
+      ...packageFiles('packages/good'),
+      'packages/good/README.md': '# Good\n',
+      'packages/missing-index-source/package.json': packageManifest('@fixture/missing-index-source', {
+        files: ['dist', 'src'],
+      }),
+      ...packageFiles('packages/missing-index-source'),
+      'packages/missing-index-source/README.md': '# Missing index source\n',
+      'packages/missing-src/package.json': packageManifest('@fixture/missing-src', {
+        files: ['dist', 'index.ts'],
+      }),
+      ...packageFiles('packages/missing-src'),
+      'packages/missing-src/README.md': '# Missing src\n',
+      'packages/missing-readme/package.json': packageManifest('@fixture/missing-readme'),
+      ...packageFiles('packages/missing-readme'),
+      'packages/missing-side-effects/package.json': packageManifest('@fixture/missing-side-effects', {
+        sideEffects: undefined,
+      }),
+      ...packageFiles('packages/missing-side-effects'),
+      'packages/missing-side-effects/README.md': '# Missing side effects\n',
+      'packages/invalid-side-effects/package.json': packageManifest('@fixture/invalid-side-effects', {
+        sideEffects: [''],
+      }),
+      ...packageFiles('packages/invalid-side-effects'),
+      'packages/invalid-side-effects/README.md': '# Invalid side effects\n',
+      'packages/private/package.json': packageManifest('@fixture/private', {
+        files: undefined,
+        private: true,
+        sideEffects: undefined,
+      }),
+      ...packageFiles('packages/private'),
+    }, { packageReadmes: false })
+    const diagnostics = collectPackageEntryDiagnostics(root, collectPackageInventory(root))
+    const publicationRules = new Set([
+      'package.readme-required',
+      'package.side-effects-explicit',
+      'package.source-files',
+    ])
+    const rulesFor = packagePath => diagnostics
+      .filter(item => item.package === packagePath && publicationRules.has(item.rule))
+      .map(item => item.rule)
+
+    expect(rulesFor('packages/good')).toEqual([])
+    expect(rulesFor('packages/missing-index-source')).toEqual(['package.source-files'])
+    expect(rulesFor('packages/missing-src')).toEqual(['package.source-files'])
+    expect(rulesFor('packages/missing-readme')).toEqual(['package.readme-required'])
+    expect(rulesFor('packages/missing-side-effects')).toEqual(['package.side-effects-explicit'])
+    expect(rulesFor('packages/invalid-side-effects')).toEqual(['package.side-effects-explicit'])
+    expect(rulesFor('packages/private')).toEqual([])
   })
 
   it('keeps barrels declarative and ignores type-only dependencies', () => {

@@ -55,6 +55,25 @@ function packageSourceEntry(manifest) {
   return rootExport && typeof rootExport === 'object' ? rootExport.source : undefined
 }
 
+function normalizedPublishedFiles(manifest) {
+  return new Set((Array.isArray(manifest.files) ? manifest.files : [])
+    .filter(file => typeof file === 'string')
+    .map(file => file.trim().replaceAll('\\', '/').replace(/^\.\//u, '').replace(/\/+$/u, '')))
+}
+
+function publishesRootSourceFiles(manifest) {
+  const files = normalizedPublishedFiles(manifest)
+  return files.has('index.ts') && files.has('src')
+}
+
+function hasExplicitSideEffects(manifest) {
+  if (!Object.hasOwn(manifest, 'sideEffects'))
+    return false
+  return typeof manifest.sideEffects === 'boolean'
+    || (Array.isArray(manifest.sideEffects)
+      && manifest.sideEffects.every(pattern => typeof pattern === 'string' && pattern.trim().length > 0))
+}
+
 function propertyName(node) {
   if (ts.isIdentifier(node) || ts.isStringLiteralLike(node))
     return node.text
@@ -117,6 +136,7 @@ function hasConsistentOutputEntries(manifest) {
 export function collectPackageEntryDiagnostics(repositoryRoot, packages) {
   return packages.flatMap((pkg) => {
     const diagnostics = []
+    const published = pkg.manifest.private !== true
     if (!existsSync(pkg.sourceRoot)) {
       diagnostics.push(diagnostic(
         'package.src-required',
@@ -153,12 +173,38 @@ export function collectPackageEntryDiagnostics(repositoryRoot, packages) {
         'src/index.ts duplicates the package root entry and must be removed.',
       ))
     }
-    if (pkg.manifest.private !== true && packageSourceEntry(pkg.manifest) !== './index.ts') {
+    if (published && packageSourceEntry(pkg.manifest) !== './index.ts') {
       diagnostics.push(diagnostic(
         'package.source-entry',
         `${pkg.relativeRoot}/package.json`,
         pkg.relativeRoot,
         'Published package exports["."].source must point to ./index.ts.',
+      ))
+    }
+    if (published
+      && packageSourceEntry(pkg.manifest) === './index.ts'
+      && !publishesRootSourceFiles(pkg.manifest)) {
+      diagnostics.push(diagnostic(
+        'package.source-files',
+        `${pkg.relativeRoot}/package.json`,
+        pkg.relativeRoot,
+        'Published package files must include index.ts and src when exports["."].source points to ./index.ts.',
+      ))
+    }
+    if (published && !existsSync(resolve(pkg.root, 'README.md'))) {
+      diagnostics.push(diagnostic(
+        'package.readme-required',
+        `${pkg.relativeRoot}/README.md`,
+        pkg.relativeRoot,
+        'Published package must include a package-root README.md.',
+      ))
+    }
+    if (published && !hasExplicitSideEffects(pkg.manifest)) {
+      diagnostics.push(diagnostic(
+        'package.side-effects-explicit',
+        `${pkg.relativeRoot}/package.json`,
+        pkg.relativeRoot,
+        'Published package must declare sideEffects as a boolean or an array of non-empty file patterns.',
       ))
     }
     const invalidBuildConfig = buildConfigUsesSourceRootEntry(pkg)
@@ -174,7 +220,7 @@ export function collectPackageEntryDiagnostics(repositoryRoot, packages) {
         'Build configuration must use the package root index.ts as the primary entry.',
       ))
     }
-    if (pkg.manifest.private !== true && !hasConsistentOutputEntries(pkg.manifest)) {
+    if (published && !hasConsistentOutputEntries(pkg.manifest)) {
       diagnostics.push(diagnostic(
         'package.output-entry',
         `${pkg.relativeRoot}/package.json`,

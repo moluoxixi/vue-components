@@ -188,6 +188,18 @@ interface PackageArchitectureManifest {
   `index.ts` and `src` in its package `files`. A workspace source condition that
   resolves locally but points to files omitted from the published tarball is a
   broken public entry, even when `import` and `types` still work.
+- Every published package has a package-root `README.md`. Chinese is the default
+  authoring language; the README identifies the package responsibility and
+  documents current public usage and public subpaths rather than private deep
+  imports. New package READMEs also include installation and package-level
+  validation commands; existing READMEs may add those sections when materially
+  updated without making prose completeness a static architecture diagnostic.
+- Every published package declares `sideEffects` as a boolean or a list of
+  non-empty file patterns. Inspect every library, CLI, worker, and standalone UI
+  build entry before using `false`: a pure root barrel does not prove that a
+  secondary entry is side-effect free. Prefer exact entry/style patterns when a
+  package contains both tree-shakeable library code and a mounting or
+  registration entry.
 - Multi-entry builds spanning package root and `src/` use named entries or an
   equivalent explicit output map. Every emitted JS/declaration path must still
   match its package export; relying on the build tool's inferred common base is
@@ -248,7 +260,9 @@ interface PackageArchitectureManifest {
 | Root entry forwards `./src` or package retains `src/index.ts` | Emit `package.root-index-explicit-exports` / `package.src-index-forbidden` |
 | Build/source metadata bypasses root entry | Emit `package.build-entry` / `package.source-entry` |
 | main/module/types drift from root export conditions | Emit `package.output-entry` |
-| package source condition points to files omitted from `files` | Include `index.ts` and `src`; fail the ConfigForm package source-files verification |
+| package source condition points to files omitted from `files` | Emit `package.source-files`; include canonical `index.ts` and `src` entries |
+| Published package lacks a package-root README | Emit `package.readme-required`; add a Chinese responsibility and usage entry |
+| Published package omits or malforms `sideEffects` | Emit `package.side-effects-explicit`; inspect every build entry before choosing `false` or exact patterns |
 | Moving the root entry nests an existing subpath under `dist/src/` | Configure named build entries and fail the packed-export smoke |
 | Production build rewrites a tracked auto-import/component declaration | Configure the plugin with `dts: command === 'serve' ? path : false` and verify the committed declaration separately |
 | Non-public component has no resolvable owner | Emit `component.owner-required` |
@@ -268,6 +282,9 @@ interface PackageArchitectureManifest {
   `./src/services`; no `src/index.ts` mirrors the package surface.
 - Good: a package builds `{ index: 'index.ts', node: 'src/node.ts' }` and emits
   `dist/index.*` plus `dist/node.*`, matching both export conditions.
+- Good: a package with a pure library barrel, executable CLI, and standalone UI
+  mount uses exact source/output entry patterns plus styles; the rest of the
+  library remains tree-shakeable.
 - Good: Vite `serve` updates a tracked `components.d.ts`, while `vite build`
   leaves the worktree unchanged and a verifier compares declarations with SFC
   component usage.
@@ -284,6 +301,10 @@ interface PackageArchitectureManifest {
   real public surface is hidden behind `src/index.ts`.
 - Bad: `tsup index.ts src/node.ts` changes an established `./node` subpath into
   `dist/src/node.*` after the root entry moves.
+- Bad: a package declares `sideEffects: false` after reading only its root
+  barrel while a secondary UI entry imports CSS and calls `createApp().mount()`.
+- Bad: a published package relies on a monorepo README and leaves npm consumers
+  without package-local installation and public-entry guidance.
 - Bad: `src/components/PrivateDialog.vue` has one parent but is exported from a
   package-wide components barrel.
 - Bad: an auto-component plugin rewrites `src/components.d.ts` during a
@@ -309,6 +330,12 @@ interface PackageArchitectureManifest {
   source entry and `src`; packed consumer smoke separately verifies the
   installed default runtime and declaration entries. Workspace source
   resolution alone is insufficient because it bypasses package `files`.
+- Architecture fixtures independently reject missing `index.ts`, missing `src`,
+  missing README, absent `sideEffects`, and empty side-effect patterns while
+  exempting `private: true` applications.
+- A `sideEffects` change searches all production and build entries for style
+  imports, application mounts, registrations, global mutation, and polyfills;
+  package tests and builds then verify the selected declaration.
 - Packages with tracked auto-import/component declarations run production build
   and assert those files have no diff. Where practical, a verifier compares the
   declared symbol set with actual SFC tags or the configured auto-import map.

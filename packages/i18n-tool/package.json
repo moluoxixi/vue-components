@@ -8,7 +8,12 @@
     "url": "https://github.com/moluoxixi/vue-components",
     "directory": "packages/i18n-tool"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css",
+    "cli.ts",
+    "dist/cli.js",
+    "src/ui/main.ts"
+  ],
   "exports": {
     ".": {
       "source": "./index.ts",

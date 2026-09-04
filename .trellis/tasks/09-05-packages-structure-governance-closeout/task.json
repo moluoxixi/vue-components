@@ -1,0 +1,31 @@
+{
+  "id": "packages-structure-governance-closeout",
+  "name": "packages-structure-governance-closeout",
+  "title": "Packages 全仓结构治理收尾",
+  "description": "修复完成审计发现的发布合同、ownership collector 与 P2 服务边界缺口，并完成全仓最终门禁。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "components",
+  "priority": "P1",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-09-05",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "09-05-published-package-contracts",
+    "09-05-architecture-collector-residual-rules",
+    "09-05-config-form-large-service-boundaries",
+    "09-05-ai-doc-discovery-boundary"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
