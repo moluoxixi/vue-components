@@ -1,48 +1,10 @@
 import type { EmbeddingModel, LanguageModel } from 'ai'
-import type {
-  AiProviderId,
-  AiRuntimeStatus,
-  EmbeddingProviderId,
-  ModelTargetStatus,
-} from '../shared'
+import type { EmbeddingModelTarget, LanguageModelTarget } from '../types'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogle } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { createAiProviderError } from './error'
-
-interface ModelTargetBase {
-  apiKey: string
-  model: string
-}
-
-interface OpenAIModelTarget extends ModelTargetBase {
-  provider: 'openai'
-}
-
-interface AnthropicModelTarget extends ModelTargetBase {
-  provider: 'anthropic'
-}
-
-interface GoogleModelTarget extends ModelTargetBase {
-  provider: 'google'
-}
-
-interface OpenAICompatibleModelTarget extends ModelTargetBase {
-  baseURL: string
-  provider: 'openai-compatible'
-}
-
-export type LanguageModelTarget
-  = | OpenAIModelTarget
-    | AnthropicModelTarget
-    | GoogleModelTarget
-    | OpenAICompatibleModelTarget
-
-export type EmbeddingModelTarget
-  = | OpenAIModelTarget
-    | GoogleModelTarget
-    | OpenAICompatibleModelTarget
+import { createAiProviderError } from '../services'
 
 function requireText(value: string, field: 'apiKey' | 'model'): string {
   const normalized = value.trim()
@@ -128,29 +90,3 @@ export function createEmbeddingModel(target: EmbeddingModelTarget): EmbeddingMod
       return invalidProvider(target)
   }
 }
-
-function statusOfTarget(
-  target: { model: string, provider: AiProviderId } | null,
-): ModelTargetStatus {
-  if (!target) {
-    return { availability: 'missing', model: null, provider: null }
-  }
-
-  return {
-    availability: 'configured',
-    model: target.model,
-    provider: target.provider,
-  }
-}
-
-export function aiRuntimeStatusOf(config: {
-  chat: LanguageModelTarget | null
-  embedding: EmbeddingModelTarget | null
-}): AiRuntimeStatus {
-  return {
-    chat: statusOfTarget(config.chat),
-    embedding: statusOfTarget(config.embedding),
-  }
-}
-
-export type { AiProviderId, EmbeddingProviderId }

@@ -1,5 +1,5 @@
-import type { AiProviderErrorCode, AiProviderErrorOptions } from '../shared'
-import { AiProviderError } from '../shared'
+import type { AiProviderErrorCode, AiProviderErrorOptions } from '../../shared'
+import { AiProviderError } from '../../shared'
 
 const causes = new WeakMap<AiProviderError, unknown>()
 

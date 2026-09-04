@@ -14,12 +14,8 @@ export {
   isAiProviderId,
   isEmbeddingProviderId,
 } from '../shared'
-export type { CreateAiProviderErrorOptions } from './error'
-export { createAiProviderError, getAiProviderErrorCause } from './error'
-export type { EmbeddingModelTarget, LanguageModelTarget } from './model-factory'
-export {
-  aiRuntimeStatusOf,
-  createEmbeddingModel,
-  createLanguageModel,
-} from './model-factory'
-export { redactSensitiveText } from './redact'
+export { createEmbeddingModel, createLanguageModel } from './adapters'
+export type { CreateAiProviderErrorOptions } from './services'
+export { aiRuntimeStatusOf, createAiProviderError, getAiProviderErrorCause } from './services'
+export type { EmbeddingModelTarget, LanguageModelTarget } from './types'
+export { redactSensitiveText } from './utils'
