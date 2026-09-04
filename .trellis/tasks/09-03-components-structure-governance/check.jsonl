@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"复核 feature src 清理、owner/components、barrel 与 deep import。"}
+{"file":".trellis/spec/components/frontend/index.md","reason":"复核组件行为与公开入口。"}
+{"file":".trellis/spec/components/frontend/hook-guidelines.md","reason":"复核 Popover listener 生命周期未因路径迁移回归。"}
+{"file":".trellis/spec/components/backend/index.md","reason":"复核构建、auto-loader、playground manifest 与 packed 边界。"}

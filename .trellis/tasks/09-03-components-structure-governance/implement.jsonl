@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"Feature 责任目录、组件所有权、纯导出 barrel 与跨 feature import 合同。"}
+{"file":".trellis/spec/components/frontend/index.md","reason":"Components 前端包级规范入口。"}
+{"file":".trellis/spec/components/frontend/hook-guidelines.md","reason":"PopoverTableSelect 延迟 DOM listener 生命周期合同。"}
+{"file":".trellis/spec/components/backend/index.md","reason":"构建、auto-loader、manifest 与发布入口验证。"}
