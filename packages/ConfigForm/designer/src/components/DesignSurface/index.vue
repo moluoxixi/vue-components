@@ -238,10 +238,12 @@ defineExpose<DesignSurfaceExpose>({
           <button type="button" class="mx-config-form-designer__icon-button" data-sidebar-trigger="palette" :aria-controls="`${workspaceId}-palette-panel`" :aria-expanded="isSidePanelOpen('palette')" :aria-label="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" :title="isSidePanelOpen('palette') ? locale.t('designer.hidePalette', 'Hide materials') : locale.t('designer.showPalette', 'Show materials')" @click="toggleWorkspacePanel('palette')">
             <PanelLeftClose v-if="isSidePanelOpen('palette')" :size="17" aria-hidden="true" />
             <PanelLeftOpen v-else :size="17" aria-hidden="true" />
+            <span class="mx-config-form-designer__sidebar-label">{{ locale.t('designer.view.palette', 'Components') }}</span>
           </button>
           <button type="button" class="mx-config-form-designer__icon-button" data-sidebar-trigger="properties" :aria-controls="`${workspaceId}-properties-panel`" :aria-expanded="isSidePanelOpen('properties')" :aria-label="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" :title="isSidePanelOpen('properties') ? locale.t('designer.hideProperties', 'Hide properties') : locale.t('designer.showProperties', 'Show properties')" @click="toggleWorkspacePanel('properties')">
             <PanelRightClose v-if="isSidePanelOpen('properties')" :size="17" aria-hidden="true" />
             <PanelRightOpen v-else :size="17" aria-hidden="true" />
+            <span class="mx-config-form-designer__sidebar-label">{{ locale.t('designer.view.properties', 'Properties') }}</span>
           </button>
         </div>
         <slot name="toolbar" v-bind="toolbarScope" />

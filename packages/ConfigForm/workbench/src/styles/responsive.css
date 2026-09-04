@@ -19,6 +19,14 @@
     display: inline-grid;
   }
 
+  .topbar-command-label {
+    display: inline;
+  }
+
+  .topbar-actions .export-menu > button {
+    min-width: 72px;
+  }
+
   .workbench-app {
     grid-template-rows: 48px minmax(0, 1fr);
   }
@@ -132,10 +140,6 @@
     gap: 6px;
   }
 
-  .workbench-app {
-    grid-template-rows: 48px minmax(0, 1fr) 54px;
-  }
-
   .topbar-actions > .topbar-secondary-action,
   .topbar-actions > .mobile-page-manager-button {
     display: none;
@@ -143,49 +147,6 @@
 
   .mobile-action-menu {
     display: block;
-  }
-
-  .mobile-studio-dock {
-    z-index: 80;
-    display: grid;
-    min-width: 0;
-    grid-row: 3;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    border-top: 1px solid var(--wb-separator);
-    background: var(--wb-elevated);
-    box-shadow: 0 -8px 24px rgb(0 0 0 / 14%);
-  }
-
-  .mobile-studio-dock button {
-    display: grid;
-    min-width: 0;
-    padding: 5px 2px 4px;
-    place-items: center;
-    align-content: center;
-    gap: 2px;
-    color: var(--wb-muted);
-    border: 0;
-    border-top: 2px solid transparent;
-    background: transparent;
-    font-size: 10px;
-  }
-
-  .mobile-studio-dock button[aria-selected="true"] {
-    color: var(--wb-text-strong);
-    border-top-color: var(--wb-accent);
-    background: var(--wb-hover);
-  }
-
-  .mobile-studio-dock span {
-    width: 100%;
-    overflow: hidden;
-    text-align: center;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .workbench-layout {
-    grid-row: 2;
   }
 
   .embedded-designer.mx-config-form-designer {
@@ -271,6 +232,67 @@
   }
 }
 
+@media (max-width: 720px) {
+  .workbench-app {
+    grid-template-rows: 48px minmax(0, 1fr) 54px;
+  }
+
+  .mobile-studio-dock {
+    z-index: 80;
+    display: grid;
+    min-width: 0;
+    grid-row: 3;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: 1px solid var(--wb-separator);
+    background: var(--wb-elevated);
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 14%);
+  }
+
+  .mobile-studio-dock button {
+    display: grid;
+    min-width: 0;
+    padding: 5px 2px 4px;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    color: var(--wb-muted);
+    border: 0;
+    border-top: 2px solid transparent;
+    background: transparent;
+    font-size: 11px;
+  }
+
+  .mobile-studio-dock button[aria-selected="true"] {
+    color: var(--wb-text-strong);
+    border-top-color: var(--wb-accent);
+    background: var(--wb-hover);
+  }
+
+  .mobile-studio-dock span {
+    width: 100%;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workbench-layout {
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar-command-label {
+    display: none;
+  }
+
+  .topbar-actions .export-menu > button {
+    width: 30px;
+    min-width: 30px;
+    padding: 0;
+  }
+}
+
 @media (max-width: 480px) {
   .workbench-topbar {
     padding-inline: 6px;
@@ -288,13 +310,13 @@
     height: 28px;
   }
 
-  .export-menu > button {
+  .topbar-actions .export-menu > button {
     width: 28px;
     min-width: 28px;
     padding: 0;
   }
 
-  .export-menu > button .export-chevron {
+  .topbar-actions .export-menu > button .export-chevron {
     display: none;
   }
 
@@ -317,11 +339,11 @@
   }
 }
 
-@media (max-width: 700px) and (pointer: coarse) {
+@media (max-width: 720px) and (pointer: coarse) {
   .topbar-actions > button,
   .topbar-actions > .mobile-action-menu > button,
   .appearance-palette-option.el-radio,
-  .export-menu > button,
+  .topbar-actions .export-menu > button,
   .mobile-studio-dock button,
   .designer-left-tabs button,
   .manage-pages-button,
@@ -331,15 +353,6 @@
   .mobile-action-popover .el-dropdown-menu__item,
   .project-file-tree .project-file-tree__row {
     min-height: 44px;
-  }
-
-  .topbar-actions > button,
-  .topbar-actions > .mobile-action-menu > button,
-  .template-workspace-actions > .template-mobile-action-menu > button,
-  .export-menu > button {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
   }
 
   .designer-layer-actions .designer-layer-menu-trigger {
@@ -363,5 +376,16 @@
     width: 100%;
     min-height: 44px;
     justify-content: center;
+  }
+}
+
+@media (max-width: 640px) and (pointer: coarse) {
+  .topbar-actions > button,
+  .topbar-actions > .mobile-action-menu > button,
+  .template-workspace-actions > .template-mobile-action-menu > button,
+  .topbar-actions .export-menu > button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 }

@@ -238,7 +238,11 @@ describe('workbench theme contract', () => {
       '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
     )).toContain('--mx-designer-overlay-border: var(--wb-separator);')
     expect(selectorBlock('.workspace-context')).toContain('border: 0;')
+    expect(selectorBlock('.brand-lockup span')).toContain('font-size: 11px;')
+    expect(cssRules(stylesheet).find(rule => rule.selector === '.workspace-context span')?.body)
+      .toContain('font-size: 11px;')
     expect(selectorBlock('.editor-file-meta > small')).toContain('background: var(--wb-hover);')
+    expect(selectorBlock('.editor-file-meta > small')).toContain('font-size: 11px;')
   })
 
   it('keeps provider theme rules in Workbench chrome and out of Runtime surfaces', () => {

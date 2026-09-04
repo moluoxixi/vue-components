@@ -30,18 +30,18 @@
 
 ## 验收标准
 
-- [ ] 1440/900/390、Light/Dark、zh/en 下无文本截断、遮挡、非预期横向滚动或不可辨识的关键动作。
-- [ ] 900 像素四个指定入口有短文字且 Canvas 保持可见；390 像素顶栏、底栏与工具条触控和键盘均可达。
-- [ ] Canvas、selection、drag、resize、camera、drop candidate、Preview 与 Runtime 几何/样式隔离回归通过。
-- [ ] Designer 每个公开视觉组件都有独立 Sass 入口，整包入口保持兼容；按需入口不加载无关组件规则。
-- [ ] 左侧物料搜索等 Element Plus 控件的内部 input 不再命中 Designer 原生控件 focus outline，焦点视觉只由 Element Plus 主题负责。
-- [ ] Gap Inspector 仅接受数字并以 px 持久化；任意单位、负数和超上限值在模型边界被拒绝。
-- [ ] 标签宽度可编辑、持久化、编译并在 Design/Preview Runtime 生效；顶部标签布局不应用固定标签列。
-- [ ] 三个断点的 Columns、Field span、Label width 使用同一组件与视觉结构；响应式标签宽度按 Desktop→Tablet→Mobile 继承并在对应 Runtime 断点生效。
-- [ ] Tablet/Mobile 的 Columns 与 Field span 在窄面板中保持完整可见并按 1–24 整数提交。
-- [ ] 普通字段物料可通过一个声明对象完成注册，生成的节点默认值相互隔离，并继续通过真实 Provider 属性控件编辑；Element Plus 与 Ant Design Vue 使用对称的 `{ materials, layers, optionResolver }` Registry 入口。
-- [ ] 两套 Designer Adapter 的物料共享代码按职责拆分，Core `createDesignerRegistry` 直接接收 `materials/layers/rendererNamespace`；普通字段声明不再重复节点工厂，且所有迁移物料的 Runtime、Setter 顺序和节点默认值保持严格等价。
-- [ ] 设计器与 Workbench 受影响单测、typecheck、build、E2E、axe、视觉基线、lint 和 `git diff --check` 通过。
+- [x] 1440/900/390、Light/Dark、zh/en 下无文本截断、遮挡、非预期横向滚动或不可辨识的关键动作。
+- [x] 900 像素四个指定入口有短文字且 Canvas 保持可见；390 像素顶栏、底栏与工具条触控和键盘均可达。
+- [x] Canvas、selection、drag、resize、camera、drop candidate、Preview 与 Runtime 几何/样式隔离回归通过。
+- [x] Designer 每个公开视觉组件都有独立 Sass 入口，整包入口保持兼容；按需入口不加载无关组件规则。
+- [x] 左侧物料搜索等 Element Plus 控件的内部 input 不再命中 Designer 原生控件 focus outline，焦点视觉只由 Element Plus 主题负责。
+- [x] Gap Inspector 仅接受数字并以 px 持久化；任意单位、负数和超上限值在模型边界被拒绝。
+- [x] 标签宽度可编辑、持久化、编译并在 Design/Preview Runtime 生效；顶部标签布局不应用固定标签列。
+- [x] 三个断点的 Columns、Field span、Label width 使用同一组件与视觉结构；响应式标签宽度按 Desktop→Tablet→Mobile 继承并在对应 Runtime 断点生效。
+- [x] Tablet/Mobile 的 Columns 与 Field span 在窄面板中保持完整可见并按 1–24 整数提交。
+- [x] 普通字段物料可通过一个声明对象完成注册，生成的节点默认值相互隔离，并继续通过真实 Provider 属性控件编辑；Element Plus 与 Ant Design Vue 使用对称的 `{ materials, layers, optionResolver }` Registry 入口。
+- [x] 两套 Designer Adapter 的物料共享代码按职责拆分，Core `createDesignerRegistry` 直接接收 `materials/layers/rendererNamespace`；普通字段声明不再重复节点工厂，且所有迁移物料的 Runtime、Setter 顺序和节点默认值保持严格等价。
+- [x] 设计器与 Workbench 受影响单测、typecheck、build、E2E、axe、视觉基线、lint 和 `git diff --check` 通过。
 
 ## 范围外
 

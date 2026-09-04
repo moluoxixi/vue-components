@@ -99,6 +99,19 @@ describe('designer canvas presentation', () => {
     expect(cameraRule).not.toContain('left: 50%')
   })
 
+  it('draws the Canvas frame without changing the measured sheet border box', () => {
+    const stylesheet = compile(
+      resolve(process.cwd(), 'src/components/DesignerCanvas/style/index.scss'),
+      { loadPaths: [resolve(process.cwd(), 'node_modules')] },
+    ).css
+    const sheetRule = stylesheet.match(/\.mx-config-form-designer__canvas-sheet\s*\{([^}]+)\}/)?.[1]
+    const frameRule = stylesheet.match(/\.mx-config-form-designer__canvas-sheet::before\s*\{([^}]+)\}/)?.[1]
+
+    expect(sheetRule).toContain('border: 1px solid transparent;')
+    expect(frameRule).toContain('border: 1px solid var(--mx-designer-runtime-border);')
+    expect(frameRule).toContain('pointer-events: none;')
+  })
+
   it('steps camera controls and isolates shortcuts from editable controls', async () => {
     const wrapper = mountCanvas()
     const canvas = wrapper.get('.mx-config-form-designer__canvas')

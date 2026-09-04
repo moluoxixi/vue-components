@@ -610,7 +610,7 @@ select:focus-visible {
 
 .brand-lockup span {
   color: var(--wb-accent);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 750;
   text-transform: uppercase;
 }
@@ -642,7 +642,7 @@ select:focus-visible {
 
 .workspace-context span {
   color: var(--wb-small-text);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .workspace-context strong {
@@ -713,7 +713,14 @@ select:focus-visible {
   position: relative;
 }
 
-.export-menu > button {
+.topbar-command-label {
+  display: none;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.topbar-actions .export-menu > button {
   display: inline-flex;
   width: auto;
   min-width: 58px;
@@ -1012,8 +1019,8 @@ select:focus-visible {
   border: 0;
   border-radius: 3px;
   background: var(--wb-hover);
-  font-size: 9px;
-  line-height: 14px;
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .pane-error {

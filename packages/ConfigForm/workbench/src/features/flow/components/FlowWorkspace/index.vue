@@ -313,7 +313,7 @@ function nodeIcon(node: ConfigFormFlowNode) {
 .flow-workspace button:disabled { cursor: default; opacity: .5; }
 .flow-create-control { display: inline-flex; flex: 0 0 auto; }
 .flow-trigger-menu { box-sizing: border-box; width: min(310px, calc(100vw - 32px)); max-height: min(520px, calc(100vh - 120px)); overflow: auto; }
-.flow-trigger-group-label { padding: 6px 12px 3px; color: var(--wb-muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.flow-trigger-group-label { padding: 6px 12px 3px; color: var(--wb-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
 .flow-trigger-group-label:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--wb-separator); }
 .flow-trigger-menu :deep(.el-dropdown-menu__item) { display: grid; min-width: 0; min-height: 38px; padding: 5px 9px; justify-content: stretch; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; line-height: 1.3; }
 .flow-trigger-menu :deep(.el-dropdown-menu__item.is-preferred) { background: var(--wb-accent-soft); }
@@ -321,7 +321,7 @@ function nodeIcon(node: ConfigFormFlowNode) {
 .flow-trigger-menu :deep(.el-dropdown-menu__item > span) { display: grid; min-width: 0; gap: 1px; }
 .flow-trigger-menu b, .flow-trigger-menu code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flow-trigger-menu b { font-size: 11px; font-weight: 600; }
-.flow-trigger-menu code { color: var(--wb-muted); font-size: 9px; }
+.flow-trigger-menu code { color: var(--wb-muted); font-size: 11px; }
 .flow-workspace-body { position: relative; display: grid; min-width: 0; min-height: 0; grid-template-columns: 168px minmax(320px, 1fr) 248px; }
 .flow-list { min-width: 0; padding: 6px; overflow: auto; border-right: 1px solid var(--wb-separator); }
 .flow-list-item { display: grid; grid-template-columns: minmax(0, 1fr) 28px; margin-bottom: 4px; border: 1px solid transparent; border-radius: 5px; }
@@ -333,7 +333,7 @@ function nodeIcon(node: ConfigFormFlowNode) {
 .flow-editor-toolbar { display: flex; min-width: 0; min-height: 48px; padding: 7px 9px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--wb-separator); }
 .flow-editor-title { display: grid; min-width: 0; }
 .flow-editor-title strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.flow-editor-title code { color: var(--wb-muted); font-size: 9px; }
+.flow-editor-title code { color: var(--wb-muted); font-size: 11px; }
 .flow-node-palette { display: flex; min-width: 0; overflow-x: auto; gap: 5px; }
 .flow-node-palette button { flex: 0 0 auto; font-size: 11px; }
 .flow-graph-shell { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--wb-bg); }
@@ -352,7 +352,7 @@ function nodeIcon(node: ConfigFormFlowNode) {
 .flow-node.is-end, .flow-node.is-success { border-left: 3px solid #35a66f; }
 .flow-node.is-failure { border-left: 3px solid var(--wb-danger); }
 .flow-node > div { display: grid; min-width: 0; gap: 1px; }
-.flow-node > div span { color: var(--wb-muted); font-size: 9px; text-transform: uppercase; }
+.flow-node > div span { color: var(--wb-muted); font-size: 11px; text-transform: uppercase; }
 .flow-node > div strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .flow-node > button { width: 22px; min-height: 22px; padding: 0; color: var(--wb-muted); border-color: transparent; background: transparent; }
 .flow-node :deep(.vue-flow__handle) { width: 9px; height: 9px; background: var(--wb-accent); border: 2px solid var(--wb-elevated); }
@@ -365,7 +365,7 @@ function nodeIcon(node: ConfigFormFlowNode) {
 .flow-inspector section { display: grid; padding: 10px; gap: 9px; border-bottom: 1px solid var(--wb-separator); }
 .flow-inspector section > header { display: flex; align-items: center; justify-content: space-between; }
 .flow-inspector section > header strong { font-size: 11px; }
-.flow-inspector code { color: var(--wb-muted); font-size: 9px; }
+.flow-inspector code { color: var(--wb-muted); font-size: 11px; }
 .flow-inspector label { display: grid; min-width: 0; gap: 4px; color: var(--wb-muted); font-size: 10px; }
 .flow-inspector input, .flow-inspector textarea { box-sizing: border-box; width: 100%; min-width: 0; color: var(--wb-text); border: 1px solid var(--wb-control-border); border-radius: 4px; outline: 0; background: var(--wb-bg); font: inherit; }
 .flow-inspector input { height: 28px; padding: 0 7px; }

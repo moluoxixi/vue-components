@@ -34,6 +34,7 @@ describe('workbench topbar', () => {
     })
 
     const trigger = wrapper.get('button[aria-label="Export"]')
+    expect(trigger.get('.topbar-command-label').text()).toBe('Export')
     await trigger.trigger('click')
     const overlays = overlayRoot()
     const items = overlays.findAll('[data-export-menu] [role="menuitem"]')
@@ -71,6 +72,7 @@ describe('workbench topbar', () => {
 
     expect(wrapper.get('.revision-state').text()).toContain('v0 · Unsaved')
     expect(wrapper.get('.revision-state').attributes('aria-live')).toBe('polite')
+    expect(wrapper.get('button[aria-label="Save options"] .topbar-command-label').text()).toBe('Save')
     await wrapper.get('button[aria-label="Save options"]').trigger('click')
     const overlays = overlayRoot()
     const saveItems = overlays.findAll('[data-save-menu] [role="menuitem"]')

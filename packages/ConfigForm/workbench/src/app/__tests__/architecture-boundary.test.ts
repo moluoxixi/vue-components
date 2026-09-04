@@ -345,6 +345,21 @@ describe('workbench production architecture boundary', () => {
     expect(subpathHits).toEqual([])
   })
 
+  it('keeps user-facing ConfigForm navigation and metadata above 9px', () => {
+    const hits = configFormPackageSourceRoots()
+      .filter(({ name }) => name === 'designer' || name === 'workbench')
+      .flatMap(({ sourceRoot }) => collectProductTextFiles(sourceRoot))
+      .filter(path => !normalizedRelative(configFormRoot, path).includes('/__tests__/'))
+      .flatMap((path) => {
+        const source = readFileSync(path, 'utf8')
+        return /\bfont(?:-size)?:\s*9px\b/.test(source)
+          ? [normalizedRelative(configFormRoot, path)]
+          : []
+      })
+
+    expect(hits).toEqual([])
+  })
+
   it('keeps ConfigForm out of the components package public surface', () => {
     const componentsRoot = join(repositoryRoot, 'packages', 'components')
     const removedDirectories = [

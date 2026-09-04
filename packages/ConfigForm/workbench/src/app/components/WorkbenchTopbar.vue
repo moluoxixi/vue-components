@@ -129,6 +129,7 @@ function chooseExport(mode: WorkbenchExportMode): void {
             :aria-disabled="saveUnavailableReason ? 'true' : undefined"
           >
             <Save :size="16" aria-hidden="true" />
+            <span class="topbar-command-label">{{ locale.t('action.save', 'Save') }}</span>
             <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
           </ElButton>
           <template #dropdown>
@@ -151,6 +152,7 @@ function chooseExport(mode: WorkbenchExportMode): void {
         <ElDropdown v-if="project" class="export-menu" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="chooseExport">
           <ElButton ref="exportTrigger" native-type="button" :aria-label="locale.t('action.export', 'Export')" :title="locale.t('action.export', 'Export')">
             <Download :size="16" aria-hidden="true" />
+            <span class="topbar-command-label">{{ locale.t('action.export', 'Export') }}</span>
             <ChevronDown class="export-chevron" :size="13" aria-hidden="true" />
           </ElButton>
           <template #dropdown>

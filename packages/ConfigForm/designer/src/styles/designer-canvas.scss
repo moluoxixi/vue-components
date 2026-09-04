@@ -51,11 +51,21 @@
   padding: 28px;
   color: var(--mx-designer-runtime-text);
   background: var(--mx-designer-canvas-sheet);
-  border: 1px solid var(--mx-designer-runtime-border);
+  border: 1px solid transparent;
   border-radius: 8px;
   box-shadow: 0 12px 30px rgb(15 23 42 / 7%);
   transform-origin: top left;
   will-change: transform;
+}
+
+.mx-config-form-designer__canvas-sheet::before {
+  position: absolute;
+  z-index: 1;
+  border: 1px solid var(--mx-designer-runtime-border);
+  border-radius: inherit;
+  content: "";
+  inset: -1px;
+  pointer-events: none;
 }
 
 .mx-config-form-designer__canvas-sheet[data-sheet-breakpoint="tablet"] {

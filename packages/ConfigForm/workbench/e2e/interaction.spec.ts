@@ -450,8 +450,18 @@ test('keeps status and lower-priority commands reachable without topbar overflow
   await createProject(page, 'element')
   await page.setViewportSize({ width: 900, height: 900 })
   await expectTopbarFits(page)
-  await expect(page.getByRole('button', { name: 'Save options' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Export' })).toBeVisible()
+  const save = page.getByRole('button', { name: 'Save options' })
+  const exportButton = page.getByRole('button', { name: 'Export' })
+  await expect(save).toBeVisible()
+  await expect(exportButton).toBeVisible()
+  await expect(save.locator('.topbar-command-label')).toHaveText('Save')
+  await expect(exportButton.locator('.topbar-command-label')).toHaveText('Export')
+  await expect(save.locator('.topbar-command-label')).toBeVisible()
+  await expect(exportButton.locator('.topbar-command-label')).toBeVisible()
+  const sidebarLabels = page.locator('.mx-config-form-designer__sidebar-label')
+  await expect(sidebarLabels).toHaveText(['Components', 'Properties'])
+  await expect(sidebarLabels.first()).toBeVisible()
+  await expect(sidebarLabels.last()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'New page' })).toBeHidden()
 
@@ -467,13 +477,41 @@ test('keeps status and lower-priority commands reachable without topbar overflow
   await expect(menu.getByRole('menuitem', { name: 'New page' })).toBeVisible()
   await menu.getByRole('menuitem', { name: 'Switch to Chinese' }).click()
   await expect(page.getByRole('button', { name: '更多操作' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).toHaveText('保存')
+  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).toHaveText('导出')
+  await expect(page.locator('.mx-config-form-designer__sidebar-label')).toHaveText(['组件', '属性'])
   await expectTopbarFits(page)
+
+  await page.setViewportSize({ width: 641, height: 844 })
+  await expectTopbarFits(page)
+  await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).toBeVisible()
+  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).toBeVisible()
+  await expect(page.locator('.mobile-studio-dock')).toBeVisible()
+
+  await page.setViewportSize({ width: 640, height: 844 })
+  await expectTopbarFits(page)
+  await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).not.toBeVisible()
+  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).not.toBeVisible()
+  await expect(page.locator('.mobile-studio-dock')).toBeVisible()
 
   await page.setViewportSize({ width: 390, height: 844 })
   await expectTopbarFits(page)
   await expect(page.getByRole('button', { name: '保存选项' })).toBeVisible()
   await expect(page.getByRole('button', { name: '导出' })).toBeVisible()
   await expect(page.getByRole('button', { name: '显示预览' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '保存选项' }).locator('.topbar-command-label')).not.toBeVisible()
+  await expect(page.getByRole('button', { name: '导出' }).locator('.topbar-command-label')).not.toBeVisible()
+  const mobileDockMetrics = await page.locator('.mobile-studio-dock button').evaluateAll(buttons => buttons.map((button) => {
+    const rect = button.getBoundingClientRect()
+    return {
+      fontSize: getComputedStyle(button).fontSize,
+      height: rect.height,
+      width: rect.width,
+    }
+  }))
+  expect(mobileDockMetrics).toHaveLength(5)
+  expect(mobileDockMetrics.every(item => item.fontSize === '11px')).toBe(true)
+  expect(mobileDockMetrics.every(item => item.height >= 44 && item.width >= 44)).toBe(true)
   await page.getByRole('button', { name: '更多操作' }).click()
   await expect(page.getByRole('button', { name: '管理页面' })).toBeHidden()
   await expect(page.locator('[data-mobile-action-menu]').getByRole('menuitem', { name: '管理页面' })).toBeVisible()
@@ -1020,6 +1058,33 @@ test('separates the intrinsic canvas frame from fit, manual zoom, and pan state'
 
   await page.getByRole('button', { name: 'Actual size' }).click()
   await expect(canvas).toHaveAttribute('data-camera-scale', '1')
+  for (const [breakpoint, width] of [['Desktop', 900], ['Tablet', 720], ['Mobile', 390]] as const) {
+    await page.getByRole('button', { name: breakpoint, exact: true }).click()
+    await expect(sheet).toHaveAttribute('data-intrinsic-width', String(width))
+    const frame = await sheet.evaluate((element) => {
+      const runtime = element.querySelector<HTMLElement>('iframe[data-design-runtime-variant="canvas"]')
+      if (!runtime)
+        throw new Error('Canvas Runtime frame is missing.')
+      const sheetRect = element.getBoundingClientRect()
+      const runtimeRect = runtime.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      const pseudo = getComputedStyle(element, '::before')
+      return {
+        expectedInset: Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.paddingLeft),
+        leftInset: runtimeRect.left - sheetRect.left,
+        pointerEvents: pseudo.pointerEvents,
+        pseudoBorderWidth: Number.parseFloat(pseudo.borderLeftWidth),
+        rightInset: sheetRect.right - runtimeRect.right,
+        sheetWidth: sheetRect.width,
+      }
+    })
+    expect(Math.abs(frame.sheetWidth - width)).toBeLessThanOrEqual(1)
+    expect(Math.abs(frame.leftInset - frame.expectedInset)).toBeLessThanOrEqual(1)
+    expect(Math.abs(frame.rightInset - frame.expectedInset)).toBeLessThanOrEqual(1)
+    expect(frame.pointerEvents).toBe('none')
+    expect(frame.pseudoBorderWidth).toBe(1)
+  }
+  await page.getByRole('button', { name: 'Desktop', exact: true }).click()
   await expect.poll(() => viewport.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
 
   await page.getByRole('button', { name: 'Zoom out' }).click()
