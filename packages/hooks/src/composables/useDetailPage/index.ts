@@ -1,1 +1,1 @@
-export { useDetailPage } from './useDetailPage'
+export { useDetailPage } from './state'

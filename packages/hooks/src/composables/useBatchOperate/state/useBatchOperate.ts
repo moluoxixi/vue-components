@@ -1,7 +1,7 @@
-import type { BatchPayload, UseBatchOperateOptions, UseBatchOperateReturn } from '../../types'
+import type { BatchPayload, UseBatchOperateOptions, UseBatchOperateReturn } from '../../../types'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { computed, ref, toValue } from 'vue'
-import { invalidateQueryKeys } from '../../utils'
+import { invalidateQueryKeys } from '../../../utils'
 
 /**
  * 批量操作场景 Hook。

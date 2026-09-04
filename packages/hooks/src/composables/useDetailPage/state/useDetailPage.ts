@@ -1,7 +1,7 @@
-import type { UseDetailPageOptions, UseDetailPageReturn } from '../../types'
+import type { UseDetailPageOptions, UseDetailPageReturn } from '../../../types'
 import { useQuery } from '@tanstack/vue-query'
 import { computed, toValue } from 'vue'
-import { normalizeQueryKey } from '../../utils'
+import { normalizeQueryKey } from '../../../utils'
 
 /**
  * 详情页场景 Hook。

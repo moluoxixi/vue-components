@@ -1,7 +1,7 @@
-import type { ListQueryParams, ListResult, PaginationState, UseListPageOptions, UseListPageReturn } from '../../types'
+import type { ListQueryParams, ListResult, PaginationState, UseListPageOptions, UseListPageReturn } from '../../../types'
 import { useQuery } from '@tanstack/vue-query'
 import { computed, ref, toValue } from 'vue'
-import { normalizeQueryKey } from '../../utils'
+import { normalizeQueryKey } from '../../../utils'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 10

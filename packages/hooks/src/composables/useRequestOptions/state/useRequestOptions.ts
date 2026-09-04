@@ -1,7 +1,7 @@
-import type { UseRequestOptionsOptions, UseRequestOptionsReturn } from '../../types'
+import type { UseRequestOptionsOptions, UseRequestOptionsReturn } from '../../../types'
 import { useQuery } from '@tanstack/vue-query'
 import { computed, toValue } from 'vue'
-import { normalizeQueryKey } from '../../utils'
+import { normalizeQueryKey } from '../../../utils'
 
 /**
  * 请求选项 Hook。

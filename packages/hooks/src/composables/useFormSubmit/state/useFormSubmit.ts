@@ -1,7 +1,7 @@
-import type { SubmitMode, SubmitPayload, UseFormSubmitOptions, UseFormSubmitReturn } from '../../types'
+import type { SubmitMode, SubmitPayload, UseFormSubmitOptions, UseFormSubmitReturn } from '../../../types'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { computed, ref, toValue } from 'vue'
-import { invalidateQueryKeys } from '../../utils'
+import { invalidateQueryKeys } from '../../../utils'
 
 /**
  * 表单提交场景 Hook。

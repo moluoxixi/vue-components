@@ -1,18 +1,12 @@
 import type { Ref } from 'vue'
-import type { UseRequestTableOptions, UseRequestTableReturn } from '../../types'
+import type { UseRequestTableOptions, UseRequestTableReturn } from '../../../types'
 import { useQuery } from '@tanstack/vue-query'
 import { computed, isRef, ref, toValue, watch } from 'vue'
-import { normalizeQueryKey } from '../../utils'
+import { normalizeQueryKey } from '../../../utils'
+import { normalizePositiveInteger } from '../utils'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 10
-
-function normalizePositiveInteger(value: number | undefined, fallback: number): number {
-  if (value === undefined || !Number.isFinite(value))
-    return fallback
-
-  return Math.max(1, Math.trunc(value))
-}
 
 function createWritablePageRef(input: unknown, fallback: number): Ref<number> {
   if (isRef(input))
