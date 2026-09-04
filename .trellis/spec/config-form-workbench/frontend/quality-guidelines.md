@@ -39,6 +39,100 @@ custom candidates.
 
 ---
 
+## Scenario: Workbench Async Infrastructure Ownership
+
+### 1. Scope / Trigger
+
+Apply this contract when changing Monaco worker/bootstrap code, editor lazy loading, or a persistence callback that can
+outlive the project session which created it.
+
+### 2. Signatures
+
+```ts
+installMonacoWorkerEnvironment(): void
+disposeMonacoLanguageFeatures(): void
+onExternalRevision(resolution, message): Promise<void>
+```
+
+The export workspace continues to load `WorkspaceCodeEditor` through a literal dynamic import. Persistence callbacks may
+call controller commands only while their captured `ProjectEditorSession` is still the controller's active session.
+
+### 3. Contracts
+
+- An absent `globalThis.MonacoEnvironment` is an uninitialized state. Never use `undefined === undefined` as proof that
+  the worker router was installed. Record the installed environment only after assigning the router.
+- Reuse the installed router while it remains current. If another integration replaces `MonacoEnvironment`, a later
+  editor mount wraps that new environment and delegates unknown labels to its `getWorker`.
+- Monaco completion providers, hover providers, and TypeScript extra libraries have one singleton disposer owner. Dispose
+  and reset them during HMR or an explicit test teardown, never from one editor instance while another can remain mounted.
+- The Workbench production build checks the entry's complete static module graph, including HTML module preloads and
+  transitive static imports. Monaco markers must exist only outside that initial graph.
+- A delayed external-revision callback validates both controller lifetime and captured session identity immediately before
+  opening a project. Disposing a persistence subscription does not cancel a Promise continuation already queued.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| First editor mount with no Monaco environment | Install the Workbench worker router |
+| Existing environment handles an unknown label | Delegate to its `getWorker` |
+| Environment is replaced after an editor mount | Wrap the replacement on the next install call |
+| Monaco marker is reachable from an entry preload/static import | Fail the Workbench build |
+| Monaco marker exists only in a lazy editor chunk | Pass the lazy-boundary check |
+| External reload resolves for the active session | Open the current project revision |
+| External reload resolves for a superseded session | Ignore it without changing the active project |
+
+### 5. Good / Base / Bad Cases
+
+- Good: worker routing is installed before editor use, global registrations have one service owner, and editor models,
+  mirrors, subscriptions, and observers have explicit instance owners.
+- Base: reopening the export dialog reacquires the same lazy Monaco runtime without adding duplicate providers.
+- Bad: mark an undefined environment as already installed, scan only the entry file instead of its static dependency graph,
+  or let a callback from project A reopen A after project B is active.
+
+### 6. Tests Required
+
+- Happy-DOM tests cover first install without a previous environment, replacement/delegation, provider/extra-lib disposal,
+  model reuse, mirror synchronization, and full editor cleanup.
+- The Workbench build runs `scripts/verify-monaco-bundle.mjs` after Vite and the Element Plus bundle check.
+- Controller tests retain a superseded session callback, switch projects, invoke the callback, and assert the newer project
+  remains active.
+- The readonly export Playwright scenario must finish with no browser errors; this is the real-worker regression gate.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+let installedEnvironment
+if (globalThis.MonacoEnvironment === installedEnvironment)
+  return
+```
+
+Correct:
+
+```ts
+let installedEnvironment: MonacoEnvironment | null = null
+if (installedEnvironment && globalThis.MonacoEnvironment === installedEnvironment)
+  return
+```
+
+Wrong:
+
+```ts
+if (resolution === 'reload')
+  await openProject(capturedSession.snapshot.document.id)
+```
+
+Correct:
+
+```ts
+if (resolution === 'reload' && projectSession.value === capturedSession)
+  await openProject(capturedSession.snapshot.document.id)
+```
+
+---
+
 ## Dialog Focus From Ephemeral Menus
 
 Workbench dialogs capture `document.activeElement` when their `open` prop becomes true and restore that element after

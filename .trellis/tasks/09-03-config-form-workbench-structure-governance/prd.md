@@ -29,14 +29,14 @@
 
 ## 验收标准
 
-- [ ] 4 条目标 debt 删除，architecture unknown/stale 为零。
-- [ ] Workbench 不存在 P0/P1 混合职责生产热点；P2 RuntimeHost/IndexedDB 按真实生命周期拆分。
-- [ ] 单父/单 feature 组件全部位于真实 owner 的 `components/`，全局 component barrel 只保留至少两个 feature 使用者。
-- [ ] Source export 的文件集合与内容、portable Flow parity、validation runtime 和模板真实构建结果不变。
-- [ ] App controller 的项目切换、创建/导入、页面命令、保存/版本/恢复与 session callback 顺序不变。
-- [ ] Flow、Monaco、RuntimeHost、IndexedDB 的用户可观察行为、协议、geometry 和持久化语义不变。
-- [ ] package exports、README/spec、类型声明和 consumer import 无漂移，无错误 deep import 或 value cycle。
-- [ ] Workbench 440+ unit、typecheck、build、templates 2/2、E2E 72/72、ConfigForm package smoke、全仓 lint/typecheck/architecture/path/workflow 和 `git diff --check` 通过。
+- [x] 4 条目标 debt 删除，architecture unknown/stale 为零。
+- [x] Workbench 不存在 P0/P1 混合职责生产热点；P2 RuntimeHost/IndexedDB 按真实生命周期拆分。
+- [x] 单父/单 feature 组件全部位于真实 owner 的 `components/`，全局 component barrel 只保留至少两个 feature 使用者。
+- [x] Source export 的文件集合与内容、portable Flow parity、validation runtime 和模板真实构建结果不变。
+- [x] App controller 的项目切换、创建/导入、页面命令、保存/版本/恢复与 session callback 顺序不变。
+- [x] Flow、Monaco、RuntimeHost、IndexedDB 的用户可观察行为、协议、geometry 和持久化语义不变。
+- [x] package exports、README/spec、类型声明和 consumer import 无漂移，无错误 deep import 或 value cycle。
+- [x] Workbench 440+ unit、typecheck、build、templates 2/2、E2E 72/72、ConfigForm package smoke、全仓 lint/typecheck/architecture/path/workflow 和 `git diff --check` 通过。
 - [ ] 每批独立 commit，不 push；任务归档时工作树干净。
 
 ## 范围外

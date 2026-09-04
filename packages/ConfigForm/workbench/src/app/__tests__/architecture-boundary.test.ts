@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { basename, join, relative } from 'node:path'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -71,6 +71,18 @@ function collectProductTextFiles(directory: string): string[] {
     if (entry.isDirectory())
       return ignoredDirectories.has(entry.name) ? [] : collectProductTextFiles(path)
     return entry.isFile() && productTextFile.test(entry.name) ? [path] : []
+  })
+}
+
+function collectProductionTextFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) {
+      return ignoredDirectories.has(entry.name) || entry.name.startsWith('__')
+        ? []
+        : collectProductionTextFiles(path)
+    }
+    return entry.isFile() && /\.(?:[cm]?[jt]sx?|vue)$/.test(entry.name) ? [path] : []
   })
 }
 
@@ -482,6 +494,32 @@ describe('workbench production architecture boundary', () => {
     }
     expect(shell).not.toContain('compileCanonicalProject')
     expect(shell).not.toContain('compileCanonicalPageRuntime')
+  })
+
+  it('passes app services into lazy features without a reverse app import', () => {
+    const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
+    const persistence = readFileSync(new URL('../../features/persistence/index.vue', import.meta.url), 'utf8')
+    const appRoot = join(configFormRoot, 'workbench/src/app')
+    const featureAppImports = collectProductionTextFiles(join(configFormRoot, 'workbench/src/features'))
+      .flatMap((path) => {
+        const source = readFileSync(path, 'utf8')
+        const specifiers = [
+          ...source.matchAll(/\bfrom\s*['"]([^'"]+)['"]/g),
+          ...source.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g),
+        ].map(match => match[1]!)
+        return specifiers.flatMap((specifier) => {
+          if (!specifier.startsWith('.'))
+            return []
+          const target = resolve(dirname(path), specifier)
+          return target === appRoot || target.startsWith(`${appRoot}${sep}`)
+            ? [`${normalizedRelative(configFormRoot, path)} -> ${specifier}`]
+            : []
+        })
+      })
+
+    expect(shell).toContain(':controller="controller"')
+    expect(persistence).toContain('const controller = props.controller')
+    expect(featureAppImports).toEqual([])
   })
 
   it('delegates Preview runtime state and lifecycle to PreviewSession', () => {

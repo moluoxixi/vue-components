@@ -531,6 +531,7 @@ watch(recoveryDrafts, (drafts) => {
     />
 
     <PersistenceDialog
+      :controller="controller"
       :mode="persistenceDialogMode"
       @close="persistenceDialogMode = undefined"
     />

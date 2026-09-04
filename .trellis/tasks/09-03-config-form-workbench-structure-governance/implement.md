@@ -11,7 +11,7 @@
 9. [x] 拆 IndexedDB repository serialization/retention/CRUD 边界并提交。
 10. [x] 拆 RuntimeHost sync/geometry/design bridge/protocol dispatch；运行 protocol/host/frame 和 E2E 并提交。
 11. [x] 扫描 P0/P1/P2、logic barrel、owner、deep import、value/type cycle；确认 CSS/locale 大文件仍为单一职责。
-12. [ ] 运行 Workbench 440+ unit、typecheck、build、templates 2/2、E2E 72/72、ConfigForm package smoke、全仓 lint/typecheck/architecture/path/workflow 和 `git diff --check`。
+12. [x] 运行 Workbench 440+ unit、typecheck、build、templates 2/2、E2E 72/72、ConfigForm package smoke、全仓 lint/typecheck/architecture/path/workflow 和 `git diff --check`。
 13. [ ] 独立只读 review；修复后重跑门禁，更新 README/spec，归档任务，不 push。
 
 ## 回滚点

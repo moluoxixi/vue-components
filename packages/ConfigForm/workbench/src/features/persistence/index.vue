@@ -1,18 +1,16 @@
 <script setup lang="ts">
 import type { ProjectVersionSummary } from '@moluoxixi/config-form-model'
-import type { WorkbenchRecoveryDraftSummary } from '../../app/types'
-import type { PersistenceDialogEmits, PersistenceDialogProps } from './types'
+import type { PersistenceDialogEmits, PersistenceDialogProps, PersistenceRecoveryDraftSummary } from './types'
 import { Check, History, RotateCcw, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
-import { useWorkbenchController } from '../../app/composables'
 
 const props = defineProps<PersistenceDialogProps>()
 
 const emit = defineEmits<PersistenceDialogEmits>()
 
-const controller = useWorkbenchController()
+const controller = props.controller
 const versions = ref<ProjectVersionSummary[]>([])
-const drafts = ref<WorkbenchRecoveryDraftSummary[]>([])
+const drafts = ref<PersistenceRecoveryDraftSummary[]>([])
 const selectedRevision = ref<number>()
 const selectedSource = ref('')
 const checkpointLabel = ref('')
