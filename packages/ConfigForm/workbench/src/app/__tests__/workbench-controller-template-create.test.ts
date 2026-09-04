@@ -19,6 +19,7 @@ import { createBuiltInProjectFixture } from '../../project/__tests__/fixtures'
 
 const mocks = vi.hoisted(() => ({
   createDraftStore: vi.fn(),
+  externalReloads: [] as Array<() => unknown>,
   openRepository: vi.fn(),
 }))
 
@@ -27,6 +28,19 @@ vi.mock('../../project', async (importOriginal) => {
   return {
     ...actual,
     createIndexedDBProjectRecoveryDraftStore: mocks.createDraftStore,
+    createProjectPersistenceSession: (...args: Parameters<typeof actual.createProjectPersistenceSession>) => {
+      const [options] = args
+      mocks.externalReloads.push(() => options.onExternalRevision?.('reload', {
+        committedAt: '2026-09-04T00:00:00.000Z',
+        kind: 'revision',
+        projectId: options.editor.snapshot.document.id,
+        repositoryRevision: options.editor.snapshot.repositoryRevision + 1,
+        sequence: 1,
+        sourceSessionId: 'stale-session',
+        version: 1,
+      }))
+      return actual.createProjectPersistenceSession(...args)
+    },
     openDefaultProjectRepository: mocks.openRepository,
   }
 })
@@ -75,6 +89,7 @@ async function elementTemplate() {
 }
 
 beforeEach(() => {
+  mocks.externalReloads.length = 0
   mocks.createDraftStore.mockImplementation(() => durableDraftStore())
 })
 
@@ -291,5 +306,33 @@ describe('workbench template project creation transaction', () => {
     })).toBe(false)
     expect(createProject).not.toHaveBeenCalled()
     expect(controller.currentProject.value).toBeUndefined()
+  })
+
+  it('ignores an external reload callback from a superseded project session', async () => {
+    const repository = durableRepository()
+    const adapter = await loadWorkbenchAdapter('element-plus')
+    await repository.create({
+      document: createBuiltInProjectFixture('element-profile', {
+        id: 'project-a',
+        name: 'Project A',
+      }, adapter.componentRegistry.lock),
+    })
+    await repository.create({
+      document: createBuiltInProjectFixture('element-profile', {
+        id: 'project-b',
+        name: 'Project B',
+      }, adapter.componentRegistry.lock),
+    })
+    const { controller } = await setup(repository)
+    const reloadSupersededProject = mocks.externalReloads[0]!
+    const initialProjectId = controller.currentProject.value!.id
+    const targetProjectId = initialProjectId === 'project-a' ? 'project-b' : 'project-a'
+
+    await controller.requestOpenProject(targetProjectId)
+    expect(controller.currentProject.value?.id).toBe(targetProjectId)
+    await reloadSupersededProject()
+    await flushPromises()
+
+    expect(controller.currentProject.value?.id).toBe(targetProjectId)
   })
 })

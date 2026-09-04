@@ -5,7 +5,7 @@
 3. [x] 迁移 3 个 single-parent debt 组件与 4 个单 feature UI；移动测试并清理全局 component barrel。
 4. [x] 将 `WorkbenchProjectError` 实现移出 barrel，清零 4 条 manifest debt并提交 ownership 批次。
 5. [x] 拆 Source generator 的 canonical/Flow/validation/Vue/project-files 生成责任；运行 export/parity/templates 并提交。
-6. [ ] 拆 Workbench controller 的 binding/creation/page/persistence/recovery/lifecycle，保持单一 state owner并提交。
+6. [x] 拆 Workbench controller 的 binding/creation/page/persistence/recovery/lifecycle，保持单一 state owner并提交。
 7. [ ] 拆 FlowWorkspace command/persistence 与 VueFlow projection；清理 Flow/Preview 错位 owner和 type-only barrel 环并提交。
 8. [ ] 拆 WorkspaceCodeEditor worker/language/declarations/model lifecycle并提交。
 9. [ ] 拆 IndexedDB repository serialization/retention/CRUD 边界并提交。

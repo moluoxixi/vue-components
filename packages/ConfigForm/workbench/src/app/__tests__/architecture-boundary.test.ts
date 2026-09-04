@@ -483,16 +483,18 @@ describe('workbench production architecture boundary', () => {
 
   it('delegates Preview runtime state and lifecycle to PreviewSession', () => {
     const controller = readFileSync(new URL('../services/controller.ts', import.meta.url), 'utf8')
+    const projectBinding = readFileSync(new URL('../services/controller-project-binding.ts', import.meta.url), 'utf8')
     const previewSession = readFileSync(new URL('../../session/services/preview.ts', import.meta.url), 'utf8')
+    const controllerOrchestration = `${controller}\n${projectBinding}`
 
     expect(controller).toContain('createWorkbenchPreviewSession')
-    expect(controller).toContain('previewSession.accept')
+    expect(projectBinding).toContain('previewSession.accept')
     expect(controller).toContain('previewSession.dispose')
-    expect(controller).not.toContain('createPageProjectionCoordinator')
-    expect(controller).not.toContain('lastRuntimePreview')
-    expect(controller).not.toContain('reconcilePreviewModel')
-    expect(controller).not.toContain('projectionCoordinator')
-    expect(controller).not.toContain('pageFlowEngine')
+    expect(controllerOrchestration).not.toContain('createPageProjectionCoordinator')
+    expect(controllerOrchestration).not.toContain('lastRuntimePreview')
+    expect(controllerOrchestration).not.toContain('reconcilePreviewModel')
+    expect(controllerOrchestration).not.toContain('projectionCoordinator')
+    expect(controllerOrchestration).not.toContain('pageFlowEngine')
     expect(previewSession).toContain('createPageProjectionCoordinator')
     expect(previewSession).toContain('lastReadyPreview')
     expect(previewSession).toContain('handleRuntimeMounted')
