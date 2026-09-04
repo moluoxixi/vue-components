@@ -66,6 +66,11 @@ Playwright output remains below `packages/ai-doc-assistant/.playwright/`; publis
 - `NO_MATCH_SCORE_THRESHOLD` has one owner in `shared/protocol`; vector adapters must not import the legacy retriever for a duplicate constant or result DTO. `RetrievedChunk` belongs to the vector-store result contract.
 - `core/index.ts` exports `splitAnswerSegments` from the browser-safe `vue-block-extractor` implementation. It must not route that export through a barrel that also exposes `sfc-transpile`, because that pulls the TypeScript runtime into the UI main chunk.
 - `VectorStrategy`, `OramaVectorStore`, and `QdrantVectorStore` remain literal dynamic imports. Domain barrels must not turn those edges into eager value exports consumed by the default content path.
+- Component-entry discovery scopes cycle detection by physical symbol, package,
+  and public export name. A default-first barrel such as
+  `export { default, NamedComponent }` must trace both paths to the same SFC;
+  candidate deduplication then prefers the PascalCase public name. A component
+  exported only as `default` remains discoverable as `default`.
 - Playwright reports and traces live under `.playwright/`, outside the publishable `dist`. CI artifact paths must follow the configured output paths.
 - Every package `source` export must exist in the packed tarball. This package publishes `index.ts` and `src` alongside `dist`; browser test reports are never packed.
 
@@ -86,6 +91,7 @@ Playwright output remains below `packages/ai-doc-assistant/.playwright/`; publis
 | Model emits raw HTML or unsafe URL | Escape text; do not emit unsafe href |
 | A Core barrel eagerly reaches `sfc-transpile` from the UI path | Reject the build shape; restore a browser-safe selective facade |
 | Vector strategy/store implementation becomes a static import | Reject the change; retain literal dynamic imports and separate chunks |
+| A default export reaches an SFC before its named alias | Continue resolving the named public path; do not let the default path occupy its cycle key |
 | Playwright output resolves below `dist` | Move it to `.playwright/` and update CI artifact paths |
 | Packed source condition target is missing | Include `index.ts` and `src` in `files`; fail packed-source verification |
 
@@ -112,6 +118,8 @@ Playwright output remains below `packages/ai-doc-assistant/.playwright/`; publis
 - Vector tests cover dynamic dimensions, count/empty-vector errors, abort, Orama/Qdrant mismatch, persistence, restart hydrate, and stale identity.
 - Qdrant tests assert the reserved metadata point persists `schemaVersion`, `sourceHash`, and every embedding identity field; hydrate rejects missing/mismatched payloads, and search sends a `kind=document` filter.
 - Markdown/Demo tests cover raw HTML, unsafe schemes, incomplete fences, allowlisted imports, and source-only fallback.
+- Component-discovery tests cover default-first plus named exports that resolve
+  to one SFC, default-only entries, local aliases, and workspace re-exports.
 - Browser E2E uses an AI SDK compatible upstream stub and verifies desktop/mobile source, streamed text, demo mount, focus, and overflow behavior.
 - Build, packed Node smoke, and browser-pack checks prove server Provider objects and secrets do not enter UI output.
 - Build output inspection asserts `DemoPreview`, `vector-strategy`, `orama-store`, and `qdrant-store` remain separate chunks and that the UI main chunk does not absorb TypeScript through `sfc-transpile`.

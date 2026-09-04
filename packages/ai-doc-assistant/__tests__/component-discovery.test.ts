@@ -33,12 +33,14 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'ai-doc-discovery-'))
 
   const uiDir = join(root, 'packages', 'ui')
+  const aliasedDir = join(uiDir, 'src', 'ElementLikeForm')
   const localDir = join(uiDir, 'src', 'LocalButton')
   const formDir = join(root, 'packages', 'form')
 
   await writePackage(uiDir, '@scope/ui')
   await writePackage(formDir, '@scope/form')
 
+  await mkdir(aliasedDir, { recursive: true })
   await mkdir(join(localDir, 'src'), { recursive: true })
   await mkdir(join(uiDir, 'src', 'Internal', 'src'), { recursive: true })
   await mkdir(join(formDir, 'src', 'components', 'Internal', 'src'), { recursive: true })
@@ -47,11 +49,20 @@ beforeEach(async () => {
   await writeFile(join(uiDir, 'index.ts'), `export * from './src'\n`, 'utf8')
   await writeFile(join(uiDir, 'src', 'index.ts'), [
     `export { default as DirectButton } from './DirectButton.vue'`,
+    `export { default, ElementLikeForm } from './ElementLikeForm'`,
     `export { LocalButton } from './LocalButton'`,
     `export { RemoteForm } from '@scope/form'`,
     '',
   ].join('\n'), 'utf8')
   await writeFile(join(uiDir, 'src', 'DirectButton.vue'), SFC, 'utf8')
+  await writeFile(join(aliasedDir, 'index.ts'), `export { default, ElementLikeForm } from './install'\n`, 'utf8')
+  await writeFile(join(aliasedDir, 'install.ts'), [
+    `import ElementLikeFormSource from './index.vue'`,
+    `export const ElementLikeForm = withInstall(ElementLikeFormSource)`,
+    `export default ElementLikeForm`,
+    '',
+  ].join('\n'), 'utf8')
+  await writeFile(join(aliasedDir, 'index.vue'), SFC, 'utf8')
   await writeFile(join(localDir, 'index.ts'), [
     `import LocalButtonSource from './src/index.vue'`,
     `export const LocalButton = withInstall(LocalButtonSource)`,
@@ -85,11 +96,24 @@ describe('component discovery（公共入口扫描）', () => {
 
     expect(components.map(c => c.exportName).sort()).toEqual([
       'DirectButton',
+      'ElementLikeForm',
       'LocalButton',
       'RemoteForm',
     ])
     expect(components.every(c => c.packageName === '@scope/ui')).toBe(true)
     expect(components.map(c => c.filePath).join('\n')).not.toContain('Internal')
+  })
+
+  it('default 排在命名导出前时仍保留同一 SFC 的公开组件名', async () => {
+    const components = await discoverComponentSources({
+      root,
+      componentEntries: ['packages/ui/index.ts'],
+    })
+
+    expect(components.filter(component => (
+      component.filePath.replaceAll('\\', '/').endsWith('ElementLikeForm/index.vue')
+    )))
+      .toEqual([expect.objectContaining({ exportName: 'ElementLikeForm' })])
   })
 
   it('未配置且多个 package public entry 都导出组件时直接 FAIL，要求显式配置入口', async () => {
@@ -137,5 +161,22 @@ describe('component discovery（公共入口扫描）', () => {
       exportName: 'OnlyButton',
       packageName: '@scope/single-ui',
     })
+  })
+
+  it('仅有 default 的公共入口仍能发现组件', async () => {
+    const packageDir = join(root, 'packages', 'default-only')
+    await writePackage(packageDir, '@scope/default-only')
+    await mkdir(join(packageDir, 'src'), { recursive: true })
+    await writeFile(join(packageDir, 'index.ts'), `export { default } from './src/index.vue'\n`, 'utf8')
+    await writeFile(join(packageDir, 'src', 'index.vue'), SFC, 'utf8')
+
+    const components = await discoverComponentSources({
+      root,
+      componentEntries: ['packages/default-only/index.ts'],
+    })
+
+    expect(components).toEqual([
+      expect.objectContaining({ exportName: 'default', packageName: '@scope/default-only' }),
+    ])
   })
 })

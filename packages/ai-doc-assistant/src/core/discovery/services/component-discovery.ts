@@ -289,7 +289,7 @@ async function resolveExpressionToSfc(
   const unwrapped = unwrapExpression(expr)
 
   if (ts.isIdentifier(unwrapped)) {
-    const localKey = `${normalizePath(sourceFile.fileName)}#local#${unwrapped.text}#${packageName}`
+    const localKey = `${normalizePath(sourceFile.fileName)}#local#${unwrapped.text}#${packageName}#${exportName ?? '<anonymous>'}`
     if (!seen.has(localKey)) {
       const initializer = findVariableInitializer(sourceFile, unwrapped.text)
       if (initializer) {
@@ -374,7 +374,7 @@ async function resolveExportFromFile(
   packageName: string,
   seen: Set<string>,
 ): Promise<ExportCandidate[]> {
-  const key = `${normalizePath(filePath)}#${requestedName}#${packageName}`
+  const key = `${normalizePath(filePath)}#${requestedName}#${packageName}#${publicName ?? '<anonymous>'}`
   if (seen.has(key))
     return []
   seen.add(key)
