@@ -128,7 +128,7 @@ describe('local Git documentation metadata', () => {
       repositoryRoot: cloneRoot,
       repositoryUrl: 'https://github.test/example/repository',
     })).toThrow('requires complete history')
-  })
+  }, 15_000)
 
   it('scans the configured default branch instead of the checked-out branch', () => {
     const repositoryRoot = createFixtureRepository()

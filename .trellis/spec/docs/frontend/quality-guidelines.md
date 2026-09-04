@@ -197,6 +197,9 @@ element-plus-docs preview [--config <path>] [--port <port>]
 - Project-config tests assert URL/default inference, package-profile path derivation, strict configured-provider overrides, and that only the selected provider token getter is read.
 - Project Markdown tests cover multi-package manifests, root import alias/type-only preservation, direct dependency versions from a real temporary docs root, package.json-hidden packages, private root/subpath exports, undeclared hoisted packages, profile styles, provider line-link routes, and absent manifest exports/subpaths.
 - Runtime-content tests cover full rebuild, stale cleanup, zh/en projection, public assets, Git last-updated frontmatter, symlink/path rejection, and dev add/change/delete synchronization.
+- Local repository integration tests that create and clone real Git repositories
+  use an explicit bounded I/O timeout. Keep the rejection and snapshot
+  assertions intact; do not apply the larger budget to pure unit tests.
 - Docs route tests rebuild the ignored runtime tree before asserting all localized component/utility pages, includes, and search aliases; they never depend on precommitted generated Markdown.
 - Docs integration tests scan every real TS/JS Demo through `elementPlusDocsProjectMarkdownPlugin`; browser compiler import contracts live under `scripts/__tests__`, not a `.vitepress/plugins` pseudo-boundary.
 - Docs source-architecture tests reject a global Vite `source` resolve condition
