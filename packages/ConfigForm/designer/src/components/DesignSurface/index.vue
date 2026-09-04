@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
 import type { DesignerDropTarget } from '../../graph'
-import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas/types'
+import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas'
 import type {
   DesignSurfaceEmits,
   DesignSurfaceExpose,
