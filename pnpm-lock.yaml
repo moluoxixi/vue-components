@@ -428,6 +428,18 @@ importers:
       '@moluoxixi/components':
         specifier: workspace:*
         version: link:../../packages/components
+      '@moluoxixi/config-form':
+        specifier: workspace:*
+        version: link:../../packages/ConfigForm/runtime
+      '@moluoxixi/config-form-antd-vue':
+        specifier: workspace:*
+        version: link:../../packages/ConfigForm/antd
+      '@moluoxixi/config-form-element':
+        specifier: workspace:*
+        version: link:../../packages/ConfigForm/element
+      '@moluoxixi/config-form-headless':
+        specifier: workspace:*
+        version: link:../../packages/ConfigForm/headless
       '@moluoxixi/rich-text-editor':
         specifier: workspace:*
         version: link:../../packages/rich-text-editor
@@ -437,12 +449,18 @@ importers:
       '@tanstack/vue-query':
         specifier: catalog:data
         version: 5.101.0(vue@3.5.33(typescript@5.9.3))
+      ant-design-vue:
+        specifier: catalog:ui
+        version: 4.2.6(vue@3.5.33(typescript@5.9.3))
       element-plus:
         specifier: catalog:ui
         version: 2.13.7(typescript@5.9.3)(vue@3.5.33(typescript@5.9.3))
       vue:
         specifier: catalog:build
         version: 3.5.33(typescript@5.9.3)
+      zod:
+        specifier: catalog:dev
+        version: 3.25.76
     devDependencies:
       '@types/markdown-it':
         specifier: 'catalog:'

@@ -6,9 +6,10 @@
   "scripts": {
     "build:workspace-ai-doc": "pnpm --filter @moluoxixi/ai-doc-assistant build",
     "build:workspace-components": "pnpm --filter @moluoxixi/components build",
+    "build:workspace-config-form-adapters": "pnpm -r --filter @moluoxixi/config-form-antd-vue... --filter @moluoxixi/config-form-element... build",
     "build:workspace-rich-text-editor": "pnpm --filter @moluoxixi/rich-text-editor build",
     "build:workspace-theme": "pnpm --filter @moluoxixi/vitepress-theme-element-plus build",
-    "build:workspace-content-packages": "pnpm build:workspace-components && pnpm build:workspace-ai-doc && pnpm build:workspace-rich-text-editor",
+    "build:workspace-content-packages": "pnpm build:workspace-components && pnpm build:workspace-config-form-adapters && pnpm build:workspace-ai-doc && pnpm build:workspace-rich-text-editor",
     "build:workspace-packages": "pnpm build:workspace-content-packages && pnpm build:workspace-theme",
     "predev": "pnpm build:workspace-theme",
     "dev": "node ../../packages/vitepress-theme-element-plus/dist/element-plus-docs.js dev",
@@ -31,11 +32,17 @@
     "@lucide/vue": "catalog:ui",
     "@moluoxixi/ai-doc-assistant": "workspace:*",
     "@moluoxixi/components": "workspace:*",
+    "@moluoxixi/config-form": "workspace:*",
+    "@moluoxixi/config-form-antd-vue": "workspace:*",
+    "@moluoxixi/config-form-element": "workspace:*",
+    "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/rich-text-editor": "workspace:*",
     "@moluoxixi/vitepress-theme-element-plus": "workspace:*",
     "@tanstack/vue-query": "catalog:data",
+    "ant-design-vue": "catalog:ui",
     "element-plus": "catalog:ui",
-    "vue": "catalog:build"
+    "vue": "catalog:build",
+    "zod": "catalog:dev"
   },
   "devDependencies": {
     "@types/markdown-it": "catalog:",
