@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"执行 feature/responsibility、owner、barrel、types 与入口合同。"}
+{"file":".trellis/spec/i18n-tool/backend/local-service-safety.md","reason":"保持 config/HTTP/opaque IDs/path/preview/apply/atomic rollback 安全协议。"}
+{"file":".trellis/tasks/09-03-i18n-tool-structure-governance/research/structure-map.md","reason":"使用已核验的24条 debt、目标结构和依赖方向。"}
+{"file":".trellis/tasks/09-03-i18n-tool-structure-governance/research/contract-map.md","reason":"保持 unit/E2E/CLI/packed 安全测试边界。"}
