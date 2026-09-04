@@ -27,18 +27,28 @@
 
 ## 验收标准
 
-- [ ] `pnpm -C docs/vitepress preview` 能启动已构建文档，不再报告缺少默认分支。
-- [ ] HeadlessTable 中英文页面无 `Failed to resolve component: Cell`。
-- [ ] 主题 consumer E2E 访问 `/content.html` 时确认真实页面路径、Demo、Playground 和 ApiDocs 均可用。
-- [ ] 根 `test:e2e` 和 CI browser job 包含主题 E2E。
-- [ ] 英文 Utilities 页面不存在中文正文回退，英文侧栏不出现无英文来源的详情项。
-- [ ] 各 repository provider 的导航标识与当前 provider 一致。
-- [ ] 主题与文档的类型检查、单测、构建和 E2E 全部通过。
-- [ ] `.generated` 和 Playwright 运行产物保持未跟踪，现有 ConfigForm 改动保持原样。
-- [ ] `docs/vitepress/.vitepress` 与主题包 Node/Markdown 源码可按目录直接定位职责，内部导入通过当前 feature barrel，npm 公开入口和运行行为保持不变。
+- [x] `pnpm -C docs/vitepress preview` 能启动已构建文档，不再报告缺少默认分支。
+- [x] HeadlessTable 中英文页面无 `Failed to resolve component: Cell`。
+- [x] 主题 consumer E2E 访问 `/content.html` 时确认真实页面路径、Demo、Playground 和 ApiDocs 均可用。
+- [x] 根 `test:e2e` 和 CI browser job 包含主题 E2E。
+- [x] 英文 Utilities 页面不存在中文正文回退，英文侧栏不出现无英文来源的详情项。
+- [x] 各 repository provider 的导航标识与当前 provider 一致。
+- [x] 主题与文档的类型检查、单测、构建和 E2E 全部通过。
+- [x] `.generated` 和 Playwright 运行产物保持未跟踪，现有 ConfigForm 改动保持原样。
+- [x] `docs/vitepress/.vitepress` 与主题包 Node/Markdown 源码可按目录直接定位职责，内部导入通过当前 feature barrel，npm 公开入口和运行行为保持不变。
 
 ## 范围外
 
 - 不重写浏览器端 SFC 编译器，也不在本轮完成 `vue3-sfc-loader` 的架构替换。
 - 不修改仓库 provider 的 API 数据契约、同步策略或失败语义。
 - 不为缺少英文来源的中文 README 自动机器翻译。
+
+## 验收证据
+
+- Docs：11 个测试文件、52 项测试通过；typecheck 与 Local provider 生产 build 通过，生成 26 个组件路由、8 个工具路由和 13 个 API 契约。
+- Theme：31 个测试文件、227 项测试及 consumer build 通过；完整 Playwright 17/17 通过，四张 Windows 明暗基线已逐张复核并再次严格通过。
+- Preview：`pnpm -C docs/vitepress preview --port 5322` 完成 prepare 后启动；`/components/copy-text.html` HTTP 200，浏览器渲染 `CopyText` 且无 console/page error。
+- AI Doc：公共入口发现器修复后 28 个测试文件、223 项测试通过；`ElementConfigForm` 与 `AntdConfigForm` 均从各自根入口生成命名契约。
+- Root/CI wiring：release/path 检查 35 + 8 项通过；根 `test:e2e` 和 browser CI 均包含 Theme functional E2E 与失败产物上传。
+- `.generated`、`.playwright` 和 VitePress cache 由 `.gitignore` 管理且未跟踪；两个既有 ConfigForm 用户改动未纳入本任务提交。
+- 最终独立只读复核无 findings。
