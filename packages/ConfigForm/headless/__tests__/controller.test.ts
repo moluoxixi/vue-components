@@ -294,6 +294,77 @@ describe('createConfigFormController', () => {
     expect(controller.getErrors()).toEqual({ name: ['Restored error'] })
   })
 
+  it('keeps validating active until overlapping field requests settle and only commits the latest result', async () => {
+    let model: UserForm = { age: 18, name: 'Ada' }
+    const releases: Array<(message?: string) => void> = []
+    const onValidatingChange = vi.fn()
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [{
+        component: 'input',
+        field: 'name',
+        id: 'name',
+        validator: () => new Promise<string | undefined>((resolve) => {
+          releases.push(resolve)
+        }),
+      }],
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+      onValidatingChange,
+    })
+
+    const first = controller.validateField('name')
+    const second = controller.validateField('name')
+    expect(controller.getValidating()).toBe(true)
+    expect(controller.isFieldValidating('name')).toBe(true)
+    expect(onValidatingChange).toHaveBeenCalledTimes(1)
+    expect(onValidatingChange).toHaveBeenLastCalledWith(true)
+
+    releases[0]!('Stale error')
+    await expect(first).resolves.toBe(false)
+    expect(controller.getValidating()).toBe(true)
+    expect(controller.isFieldValidating('name')).toBe(true)
+    expect(onValidatingChange).toHaveBeenCalledTimes(1)
+    expect(controller.getErrors()).toEqual({})
+
+    releases[1]!('Latest error')
+    await expect(second).resolves.toBe(false)
+    expect(controller.getErrors()).toEqual({ name: ['Latest error'] })
+    expect(controller.getValidating()).toBe(false)
+    expect(controller.isFieldValidating('name')).toBe(false)
+    expect(onValidatingChange.mock.calls).toEqual([[true], [false]])
+  })
+
+  it('invalidates active field validation when the field tree is refreshed', async () => {
+    let model: UserForm = { age: 18, name: 'Ada' }
+    let releaseValidation!: () => void
+    const controller = createConfigFormController<UserForm>({
+      fields: () => [{
+        component: 'input',
+        field: 'name',
+        id: 'name',
+        validator: async () => {
+          await new Promise<void>((resolve) => {
+            releaseValidation = resolve
+          })
+          return 'Stale field error'
+        },
+      }],
+      model: {
+        read: () => model,
+        write: values => model = values,
+      },
+    })
+
+    const pending = controller.validateField('name')
+    controller.refreshReactions()
+    releaseValidation()
+
+    await expect(pending).resolves.toBe(false)
+    expect(controller.getErrors()).toEqual({})
+  })
+
   it('does not submit a model that replaced the validated snapshot', async () => {
     let model: UserForm = { age: 18, name: 'Ada' }
     let releaseValidation!: () => void

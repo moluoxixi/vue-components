@@ -1,68 +1,36 @@
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
-import type { Component } from 'vue'
 import type {
   ConfigFormAttrs,
   ConfigFormCondition,
   ConfigFormController,
   ConfigFormControllerOptions,
-  ConfigFormErrors,
   ConfigFormFieldChangeRequest,
-  ConfigFormFieldMeta,
-  ConfigFormFieldSelector,
   ConfigFormFieldValue,
-  ConfigFormMeta,
-  ConfigFormNode,
-  ConfigFormResolvedFieldState,
-  ConfigFormValidateTrigger,
   ConfigFormValues,
 } from '../types'
+import type {
+  ControllerFieldState,
+  ControllerNode,
+} from '../types/controller-internal'
 import {
-  shouldValidateConfigFormOn,
-  validateConfigFormFieldRules,
-} from '../schemas'
+  resolveControllerFieldStates,
+} from './controller-field-state'
+import { createControllerMetaService } from './controller-meta'
+import { createControllerResetService } from './controller-reset'
+import { createControllerSubmitService } from './controller-submit'
+import { createControllerValidationService } from './controller-validation'
 import {
-  collectAllConfigFormFields,
-  resolveConfigFormFieldStates,
-} from '../utils'
+  createInitialControllerValues,
+  createResetControllerValues,
+  setConfigFormValue,
+  shallowEqualControllerValues,
+} from './controller-values'
 import { applyConfigFormReactions } from './reactions'
-
-type ControllerNode<TValues extends ConfigFormValues> = ConfigFormNode<
-  TValues,
-  Component | string,
-  unknown,
-  unknown
->
-
-type ControllerFieldState<TValues extends ConfigFormValues> = ConfigFormResolvedFieldState<
-  TValues,
-  unknown,
-  unknown
->
-
-interface ControllerValidationResult<TValues extends ConfigFormValues> {
-  states: ControllerFieldState<TValues>[]
-  status: 'invalid' | 'stale' | 'valid'
-}
 
 /** 创建与具体 UI 组件库无关的 ConfigForm 状态、校验和提交控制器。 */
 export function createConfigFormController<TValues extends ConfigFormValues = ConfigFormValues>(
   options: ConfigFormControllerOptions<TValues>,
 ): ConfigFormController<TValues> {
-  let errors: ConfigFormErrors = {}
-  let valuesRevision = 0
-  let validationRequestId = 0
-  let activeValidationCount = 0
-  const activeFieldValidationCounts = new Map<string, number>()
-  const latestFieldRequest = new Map<string, number>()
-  const touchedFields = new Set<string>()
-  const initialValues = createInitialValues()
-  let reactionProjection = applyConfigFormReactions(readFields(), initialValues)
-
-  if (!shallowEqual(options.model.read(), reactionProjection.values))
-    options.model.write({ ...reactionProjection.values })
-
-  let lastMeta = createMeta()
-
   function readFields(): ControllerNode<TValues>[] {
     return options.fields?.() ?? []
   }
@@ -71,67 +39,55 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     return options.readonly?.()
   }
 
-  function createInitialValues(): TValues {
-    const values = { ...options.model.read() }
-    const defaults: ConfigFormValues = {}
+  const initialValues = createInitialControllerValues(
+    options.model.read(),
+    readFields(),
+    options.defaultValues,
+  )
+  let reactionProjection = applyConfigFormReactions(readFields(), initialValues)
 
-    collectAllConfigFormFields(readFields()).forEach((field) => {
-      if (field.defaultValue !== undefined)
-        setConfigFormValue(defaults, field.field, field.defaultValue)
-    })
-    Object.entries(defaults).forEach(([field, value]) => {
-      if (!Object.hasOwn(values, field))
-        setConfigFormValue(values, field, value)
-    })
-    Object.entries(options.defaultValues ?? {}).forEach(([field, value]) => {
-      setConfigFormValue(values, field, value)
-    })
+  if (!shallowEqualControllerValues(options.model.read(), reactionProjection.values))
+    options.model.write({ ...reactionProjection.values })
 
-    return values
+  function createResetValues(): TValues {
+    return createResetControllerValues(initialValues, readFields())
   }
+
+  const meta = createControllerMetaService({
+    onMetaChange: options.onMetaChange,
+    readFields,
+    readResetValues: createResetValues,
+    readValues: options.model.read,
+  })
+
+  function getFieldStates(
+    values: TValues,
+    projection?: ConfigFormReactionProjection<TValues>,
+  ): ControllerFieldState<TValues>[] {
+    const fields = readFields()
+    reactionProjection = projection ?? applyConfigFormReactions(fields, values)
+    return resolveControllerFieldStates(
+      fields,
+      reactionProjection,
+      readFormReadonly(),
+    )
+  }
+
+  const validation = createControllerValidationService({
+    getFieldStates,
+    onErrorsChange: options.onErrorsChange,
+    onValidatingChange: options.onValidatingChange,
+    readValues: options.model.read,
+  })
 
   function getValues(): TValues {
     return { ...options.model.read() }
-  }
-
-  function getMeta(): ConfigFormMeta {
-    return cloneMeta(createMeta())
-  }
-
-  function getFieldMeta(field: string): ConfigFormFieldMeta {
-    const values = options.model.read()
-    const resetValues = createResetValues()
-    return {
-      dirty: isFieldDirty(field, values, resetValues),
-      touched: touchedFields.has(field),
-    }
-  }
-
-  function refreshMeta(): ConfigFormMeta {
-    return commitMeta()
-  }
-
-  function refreshReactions(): void {
-    const values = options.model.read()
-    const projection = applyConfigFormReactions(readFields(), values)
-    reactionProjection = projection
-    invalidateValidation()
-    if (!shallowEqual(values, projection.values)) {
-      options.model.write(projection.values)
-      options.onChange?.(projection.values)
-    }
-    commitMeta()
-    scheduleReactionValidation(projection.validate, undefined, projection)
   }
 
   function getValue<TField extends string>(
     field: TField,
   ): ConfigFormFieldValue<TValues, TField> {
     return options.model.read()[field]
-  }
-
-  function getErrors(): ConfigFormErrors {
-    return cloneErrors(errors)
   }
 
   function getReactionProps(field: string): ConfigFormAttrs {
@@ -142,41 +98,47 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
     return { ...(reactionProjection.states[field] ?? {}) }
   }
 
-  function getValidating(): boolean {
-    return activeValidationCount > 0
-  }
-
-  function isFieldValidating(field: string): boolean {
-    return (activeFieldValidationCounts.get(field) ?? 0) > 0
-  }
-
-  function commitErrors(nextErrors: ConfigFormErrors): void {
-    if (equalErrors(errors, nextErrors))
-      return
-
-    errors = cloneErrors(nextErrors)
-    options.onErrorsChange?.(getErrors())
-  }
-
-  function invalidateValidation(): void {
-    valuesRevision += 1
-    latestFieldRequest.clear()
-  }
-
-  function commitValues(values: TValues, fieldsToClear?: string[]): ConfigFormReactionProjection<TValues> {
+  function refreshReactions(): void {
+    const values = options.model.read()
     const projection = applyConfigFormReactions(readFields(), values)
     reactionProjection = projection
-    invalidateValidation()
-    if (fieldsToClear === undefined) {
-      commitErrors({})
+    validation.invalidate()
+    if (!shallowEqualControllerValues(values, projection.values)) {
+      options.model.write(projection.values)
+      options.onChange?.(projection.values)
     }
-    else {
-      const nextErrors = { ...errors }
-      fieldsToClear.forEach(field => delete nextErrors[field])
-      commitErrors(nextErrors)
-    }
+    meta.commitMeta()
+    scheduleReactionValidation(projection.validate, undefined, projection)
+  }
+
+  function commitValues(
+    values: TValues,
+    fieldsToClear?: string[],
+  ): ConfigFormReactionProjection<TValues> {
+    const projection = applyConfigFormReactions(readFields(), values)
+    reactionProjection = projection
+    validation.invalidate()
+    validation.clearErrors(fieldsToClear)
     options.model.write(projection.values)
-    commitMeta()
+    meta.commitMeta()
+    options.onChange?.(projection.values)
+    return projection
+  }
+
+  function commitFieldValue(
+    field: string,
+    value: unknown,
+  ): ConfigFormReactionProjection<TValues> {
+    const values = { ...options.model.read() }
+    setConfigFormValue(values, field, value)
+
+    const projection = applyConfigFormReactions(readFields(), values)
+    reactionProjection = projection
+    validation.invalidate()
+    validation.clearFieldError(field)
+    options.model.write(projection.values)
+    meta.commitMeta()
+    options.onFieldChange?.({ field, value: projection.values[field], values: projection.values })
     options.onChange?.(projection.values)
     return projection
   }
@@ -187,21 +149,6 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   ): void {
     const projection = commitFieldValue(field, value)
     scheduleReactionValidation(projection.validate, undefined, projection)
-  }
-
-  function commitFieldValue(field: string, value: unknown): ConfigFormReactionProjection<TValues> {
-    const values = { ...options.model.read() }
-    setConfigFormValue(values, field, value)
-
-    const projection = applyConfigFormReactions(readFields(), values)
-    reactionProjection = projection
-    invalidateValidation()
-    clearFieldError(field)
-    options.model.write(projection.values)
-    commitMeta()
-    options.onFieldChange?.({ field, value: projection.values[field], values: projection.values })
-    options.onChange?.(projection.values)
-    return projection
   }
 
   function setValues(values: Partial<TValues>, replace?: false): void
@@ -217,7 +164,7 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
 
   function applyFieldChange(request: ConfigFormFieldChangeRequest<TValues>): void {
     const projection = commitFieldValue(request.field, request.value)
-    void validateField(request.field, 'change', projection)
+    void validation.validateField(request.field, 'change', projection)
     scheduleReactionValidation(projection.validate, request.field, projection)
   }
 
@@ -228,413 +175,47 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   ): void {
     fields
       .filter(field => field !== excludedField)
-      .forEach(field => void validateField(field, 'change', projection))
+      .forEach(field => void validation.validateField(field, 'change', projection))
   }
 
-  function setTouched(): void
-  function setTouched(touched: boolean): void
-  function setTouched(fields: ConfigFormFieldSelector<TValues>, touched?: boolean): void
-  function setTouched(
-    fieldsOrTouched?: ConfigFormFieldSelector<TValues> | boolean,
-    touched = true,
-  ): void {
-    const allFields = fieldsOrTouched === undefined || typeof fieldsOrTouched === 'boolean'
-    const nextTouched = typeof fieldsOrTouched === 'boolean' ? fieldsOrTouched : touched
-    const fieldNames = allFields
-      ? Object.keys(createMeta().fields)
-      : normalizeFieldNames(fieldsOrTouched)
-
-    if (allFields && !nextTouched) {
-      touchedFields.clear()
-    }
-    else {
-      fieldNames?.forEach(field => nextTouched ? touchedFields.add(field) : touchedFields.delete(field))
-    }
-
-    commitMeta()
-  }
-
-  function beginValidation(fieldNames: string[]): void {
-    const wasValidating = getValidating()
-    activeValidationCount += fieldNames.length
-    fieldNames.forEach((field) => {
-      activeFieldValidationCounts.set(field, (activeFieldValidationCounts.get(field) ?? 0) + 1)
-    })
-    if (!wasValidating && getValidating())
-      options.onValidatingChange?.(true)
-  }
-
-  function finishValidation(fieldNames: string[]): void {
-    fieldNames.forEach((field) => {
-      const count = (activeFieldValidationCounts.get(field) ?? 1) - 1
-      if (count <= 0)
-        activeFieldValidationCounts.delete(field)
-      else
-        activeFieldValidationCounts.set(field, count)
-    })
-    activeValidationCount = Math.max(0, activeValidationCount - fieldNames.length)
-    if (!getValidating())
-      options.onValidatingChange?.(false)
-  }
-
-  async function validateField(
-    fieldName: string,
-    trigger: ConfigFormValidateTrigger = 'submit',
-    projection?: ConfigFormReactionProjection<TValues>,
-  ): Promise<boolean> {
-    const values = getValues()
-    const states = getFieldStates(values, projection)
-    const state = states.find(item => item.field.field === fieldName)
-    const requestId = ++validationRequestId
-    const revision = valuesRevision
-    latestFieldRequest.set(fieldName, requestId)
-
-    if (!state || !shouldValidateField(state, trigger)) {
-      clearFieldError(fieldName)
-      return true
-    }
-
-    beginValidation([fieldName])
-    try {
-      const fieldErrors = await validateConfigFormFieldRules(values[fieldName], values, state.field)
-      const current = latestFieldRequest.get(fieldName) === requestId
-        && valuesRevision === revision
-        && shallowEqual(options.model.read(), values)
-      if (!current)
-        return false
-
-      const nextErrors = { ...errors }
-      if (fieldErrors.length > 0)
-        nextErrors[fieldName] = fieldErrors
-      else
-        delete nextErrors[fieldName]
-      commitErrors(nextErrors)
-      return fieldErrors.length === 0
-    }
-    finally {
-      finishValidation([fieldName])
-    }
-  }
-
-  async function validate(): Promise<boolean> {
-    return (await validateValues(getValues())).status === 'valid'
-  }
-
-  async function validateValues(values: TValues): Promise<ControllerValidationResult<TValues>> {
-    const states = getFieldStates(values)
-    const revision = valuesRevision
-    const requestId = ++validationRequestId
-    const activeStates = states.filter(state => shouldValidateField(state, 'submit'))
-    const fieldNames = states.map(state => state.field.field)
-
-    fieldNames.forEach(field => latestFieldRequest.set(field, requestId))
-    beginValidation(activeStates.map(state => state.field.field))
-    try {
-      const results = await Promise.all(activeStates.map(async (state): Promise<[string, string[]]> => [
-        state.field.field,
-        await validateConfigFormFieldRules(
-          values[state.field.field],
-          values,
-          state.field,
-        ),
-      ]))
-
-      const current = valuesRevision === revision
-        && fieldNames.every(field => latestFieldRequest.get(field) === requestId)
-        && shallowEqual(options.model.read(), values)
-      if (!current)
-        return { states, status: 'stale' }
-
-      const nextErrors: ConfigFormErrors = {}
-      results.forEach(([field, fieldErrors]) => {
-        if (fieldErrors.length > 0)
-          nextErrors[field] = fieldErrors
-      })
-      commitErrors(nextErrors)
-      return {
-        states,
-        status: Object.keys(nextErrors).length === 0 ? 'valid' : 'invalid',
-      }
-    }
-    finally {
-      finishValidation(activeStates.map(state => state.field.field))
-    }
-  }
-
-  function clearValidate(fields?: ConfigFormFieldSelector<TValues>): void {
-    valuesRevision += 1
-    latestFieldRequest.clear()
-    const fieldNames = normalizeFieldNames(fields)
-    if (fieldNames === undefined) {
-      commitErrors({})
-      return
-    }
-
-    const nextErrors = { ...errors }
-    fieldNames.forEach(field => delete nextErrors[field])
-    commitErrors(nextErrors)
-  }
-
-  function setErrors(nextErrors: ConfigFormErrors): void {
-    valuesRevision += 1
-    latestFieldRequest.clear()
-    commitErrors(nextErrors)
-  }
-
-  function clearFieldError(field: string): void {
-    if (!(field in errors))
-      return
-    const nextErrors = { ...errors }
-    delete nextErrors[field]
-    commitErrors(nextErrors)
-  }
-
-  function resetFields(fields?: ConfigFormFieldSelector<TValues>): void {
-    const fieldNames = normalizeFieldNames(fields)
-    if (fieldNames === undefined) {
-      touchedFields.clear()
-      commitValues(createResetValues())
-      return
-    }
-
-    fieldNames.forEach(field => touchedFields.delete(field))
-    const values = { ...options.model.read() }
-    const resetValues = createResetValues()
-    fieldNames.forEach((field) => {
-      if (Object.hasOwn(resetValues, field))
-        setConfigFormValue(values, field, resetValues[field])
-      else
-        delete values[field]
-    })
-    commitValues(values, fieldNames)
-  }
-
-  async function submit(): Promise<boolean> {
-    const values = getValues()
-    const touchedFieldNames = getFieldStates(values)
-      .filter(state => state.visible && !state.disabled && !state.readonly)
-      .map(state => state.field.field)
-    if (touchedFieldNames.length > 0)
-      setTouched(touchedFieldNames)
-
-    const result = await validateValues(values)
-    if (result.status === 'stale')
-      return false
-    if (result.status === 'invalid') {
-      options.onError?.(getErrors())
-      return false
-    }
-    if (!shallowEqual(options.model.read(), values))
-      return false
-
-    const submittedValues = Object.fromEntries(
-      result.states
-        .filter(isFieldSubmittable)
-        .map(({ field }) => [
-          field.field,
-          field.transform ? field.transform(values[field.field], values) : values[field.field],
-        ]),
-    ) as TValues
-    options.onSubmit?.(submittedValues)
-    return true
-  }
-
-  function getFieldStates(
-    values: TValues,
-    projection?: ConfigFormReactionProjection<TValues>,
-  ): ControllerFieldState<TValues>[] {
-    const fields = readFields()
-    reactionProjection = projection ?? applyConfigFormReactions(fields, values)
-    const states = resolveConfigFormFieldStates(
-      fields,
-      reactionProjection.values,
-      readFormReadonly(),
-      reactionProjection.states,
-    )
-    assertUniqueFields(states)
-    return states
-  }
-
-  function shouldValidateField(
-    state: ControllerFieldState<TValues>,
-    trigger: ConfigFormValidateTrigger,
-  ): boolean {
-    const { field } = state
-    if (!field.required && !field.schema && !field.validator)
-      return false
-    if (state.readonly)
-      return false
-    if (!state.visible && !(trigger === 'submit' && field.submitWhenHidden))
-      return false
-    if (state.disabled && !(trigger === 'submit' && field.submitWhenDisabled))
-      return false
-    return shouldValidateConfigFormOn(field.validateOn, trigger)
-  }
-
-  function isFieldSubmittable(state: ControllerFieldState<TValues>): boolean {
-    if (!state.visible && !state.field.submitWhenHidden)
-      return false
-    if (state.disabled && !state.field.submitWhenDisabled)
-      return false
-    return true
-  }
-
-  function createResetValues(): TValues {
-    const values = { ...initialValues }
-    collectAllConfigFormFields(readFields()).forEach((field) => {
-      if (!Object.hasOwn(values, field.field) && field.defaultValue !== undefined)
-        setConfigFormValue(values, field.field, field.defaultValue)
-    })
-    return values
-  }
-
-  function createMeta(): ConfigFormMeta {
-    const values = options.model.read()
-    const resetValues = createResetValues()
-    const fieldNames = new Set([
-      ...Object.keys(values),
-      ...Object.keys(resetValues),
-      ...collectAllConfigFormFields(readFields()).map(field => field.field),
-      ...touchedFields,
-    ])
-    const fields: ConfigFormMeta['fields'] = Object.fromEntries(
-      [...fieldNames].map(field => [field, {
-        dirty: isFieldDirty(field, values, resetValues),
-        touched: touchedFields.has(field),
-      }]),
-    )
-
-    return {
-      dirty: Object.values(fields).some(field => field.dirty),
-      fields,
-      touched: Object.values(fields).some(field => field.touched),
-    }
-  }
-
-  function commitMeta(): ConfigFormMeta {
-    const nextMeta = createMeta()
-    if (!equalMeta(lastMeta, nextMeta)) {
-      lastMeta = nextMeta
-      options.onMetaChange?.(cloneMeta(nextMeta))
-    }
-    return cloneMeta(nextMeta)
-  }
+  const resetFields = createControllerResetService({
+    clearTouched: meta.clearTouched,
+    commitValues,
+    createResetValues,
+    readValues: options.model.read,
+  })
+  const submit = createControllerSubmitService({
+    getErrors: validation.getErrors,
+    getFieldStates,
+    getValues,
+    onError: options.onError,
+    onSubmit: options.onSubmit,
+    readValues: options.model.read,
+    setTouched: meta.setTouched,
+    validateValues: validation.validateValues,
+  })
 
   return {
     applyFieldChange,
-    clearValidate,
-    getFieldMeta,
-    getErrors,
-    getMeta,
+    clearValidate: validation.clearValidate,
+    getErrors: validation.getErrors,
+    getFieldMeta: meta.getFieldMeta,
+    getMeta: meta.getMeta,
     getReactionProps,
     getReactionState,
-    getValidating,
+    getValidating: validation.getValidating,
     getValue,
     getValues,
-    isFieldValidating,
-    refreshMeta,
+    isFieldValidating: validation.isFieldValidating,
+    refreshMeta: meta.refreshMeta,
     refreshReactions,
     resetFields,
+    setErrors: validation.setErrors,
+    setTouched: meta.setTouched,
     setValue,
     setValues,
-    setErrors,
-    setTouched,
     submit,
-    validate,
-    validateField,
+    validate: validation.validate,
+    validateField: validation.validateField,
   }
-}
-
-function cloneMeta(meta: ConfigFormMeta): ConfigFormMeta {
-  return {
-    dirty: meta.dirty,
-    fields: Object.fromEntries(
-      Object.entries(meta.fields).map(([field, fieldMeta]) => [
-        field,
-        { ...fieldMeta },
-      ]),
-    ),
-    touched: meta.touched,
-  }
-}
-
-function equalMeta(
-  left: ConfigFormMeta,
-  right: ConfigFormMeta,
-): boolean {
-  const leftFields = Object.keys(left.fields)
-  const rightFields = Object.keys(right.fields)
-  return left.dirty === right.dirty
-    && left.touched === right.touched
-    && leftFields.length === rightFields.length
-    && leftFields.every((field) => {
-      const leftMeta = left.fields[field]
-      const rightMeta = right.fields[field]
-      return leftMeta?.dirty === rightMeta?.dirty
-        && leftMeta?.touched === rightMeta?.touched
-    })
-}
-
-function isFieldDirty(
-  field: string,
-  values: ConfigFormValues,
-  resetValues: ConfigFormValues,
-): boolean {
-  const hasValue = Object.hasOwn(values, field)
-  const hasResetValue = Object.hasOwn(resetValues, field)
-  return hasValue !== hasResetValue
-    || (hasValue && !Object.is(values[field], resetValues[field]))
-}
-
-function assertUniqueFields<TValues extends ConfigFormValues>(
-  states: ControllerFieldState<TValues>[],
-): void {
-  const names = new Set<string>()
-  states.forEach(({ field }) => {
-    if (names.has(field.field))
-      throw new Error(`ConfigForm field "${field.field}" is declared more than once.`)
-    names.add(field.field)
-  })
-}
-
-function normalizeFieldNames<TValues extends ConfigFormValues>(
-  fields?: ConfigFormFieldSelector<TValues>,
-): string[] | undefined {
-  if (fields === undefined)
-    return undefined
-  return Array.isArray(fields) ? fields : [fields]
-}
-
-function cloneErrors(errors: ConfigFormErrors): ConfigFormErrors {
-  return Object.fromEntries(
-    Object.entries(errors).map(([field, messages]) => [field, [...messages]]),
-  )
-}
-
-function equalErrors(left: ConfigFormErrors, right: ConfigFormErrors): boolean {
-  const leftFields = Object.keys(left)
-  const rightFields = Object.keys(right)
-  return leftFields.length === rightFields.length && leftFields.every((field) => {
-    const leftMessages = left[field]
-    const rightMessages = right[field]
-    return rightMessages !== undefined
-      && leftMessages.length === rightMessages.length
-      && leftMessages.every((message, index) => message === rightMessages[index])
-  })
-}
-
-function shallowEqual<TValues extends ConfigFormValues>(left: TValues, right: TValues): boolean {
-  const leftKeys = Object.keys(left)
-  const rightKeys = Object.keys(right)
-  return leftKeys.length === rightKeys.length
-    && leftKeys.every(key => Object.is(left[key], right[key]))
-}
-
-function setConfigFormValue(values: ConfigFormValues, field: string, value: unknown): void {
-  Object.defineProperty(values, field, {
-    configurable: true,
-    enumerable: true,
-    value,
-    writable: true,
-  })
 }
