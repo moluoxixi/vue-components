@@ -37,7 +37,7 @@
 - [x] Flow、Monaco、RuntimeHost、IndexedDB 的用户可观察行为、协议、geometry 和持久化语义不变。
 - [x] package exports、README/spec、类型声明和 consumer import 无漂移，无错误 deep import 或 value cycle。
 - [x] Workbench 440+ unit、typecheck、build、templates 2/2、E2E 72/72、ConfigForm package smoke、全仓 lint/typecheck/architecture/path/workflow 和 `git diff --check` 通过。
-- [ ] 每批独立 commit，不 push；任务归档时工作树干净。
+- [x] 每批独立 commit，不 push；任务归档时工作树干净。
 
 ## 范围外
 
