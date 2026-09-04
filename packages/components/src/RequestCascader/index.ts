@@ -1,8 +1,2 @@
-import { withInstall } from '../utils'
-import RequestCascaderSource from './src/index.vue'
-
-export const RequestCascader = withInstall(RequestCascaderSource)
-
-export type * from './src/types'
-
-export default RequestCascader
+export { default, RequestCascader } from './services'
+export type * from './types'

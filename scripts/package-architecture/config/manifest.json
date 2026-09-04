@@ -98,33 +98,6 @@
       ]
     },
     {
-      "path": "packages/components/src/CopyText/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/CopyText/components.",
-      "owners": [
-        "packages/components/src/CopyText/index.ts"
-      ]
-    },
-    {
-      "path": "packages/components/src/DateRangePicker/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/DateRangePicker/components.",
-      "owners": [
-        "packages/components/src/DateRangePicker/index.ts"
-      ]
-    },
-    {
-      "path": "packages/components/src/EnterNextContainer/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/EnterNextContainer/components.",
-      "owners": [
-        "packages/components/src/EnterNextContainer/index.ts"
-      ]
-    },
-    {
       "path": "packages/components/src/HeadlessTable/src/index.vue",
       "rule": "component.single-feature-location",
       "targetTask": "components-structure-governance",
@@ -143,33 +116,6 @@
       ]
     },
     {
-      "path": "packages/components/src/RequestCascader/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/RequestCascader/components.",
-      "owners": [
-        "packages/components/src/RequestCascader/index.ts"
-      ]
-    },
-    {
-      "path": "packages/components/src/RequestSelectV2/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/RequestSelectV2/components.",
-      "owners": [
-        "packages/components/src/RequestSelectV2/index.ts"
-      ]
-    },
-    {
-      "path": "packages/components/src/RequestTreeSelect/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/RequestTreeSelect/components.",
-      "owners": [
-        "packages/components/src/RequestTreeSelect/index.ts"
-      ]
-    },
-    {
       "path": "packages/vitepress-theme-element-plus/src/content/demo/ElementPlusDocsDemoSource.vue",
       "rule": "component.single-parent-location",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
@@ -185,30 +131,6 @@
       "reason": "Feature and responsibility index.ts files must contain exports only."
     },
     {
-      "path": "packages/components/src/CopyText/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/DateRangePicker/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/EnterNextContainer/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/HeadlessCopyText/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
       "path": "packages/components/src/HeadlessTable/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "components-structure-governance",
@@ -216,24 +138,6 @@
     },
     {
       "path": "packages/components/src/PopoverTableSelect/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/RequestCascader/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/RequestSelectV2/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/RequestTreeSelect/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "components-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
