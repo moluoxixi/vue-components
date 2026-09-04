@@ -76,17 +76,6 @@
       "reason": "Private Vite application root component."
     },
     {
-      "component": "packages/i18n-tool/src/ui/App.vue",
-      "kind": "framework",
-      "rules": [
-        "component.single-feature-location"
-      ],
-      "owners": [
-        "packages/i18n-tool/src/ui/main.ts"
-      ],
-      "reason": "The published CLI bundles this Vue application through its dedicated UI build script."
-    },
-    {
       "component": "packages/vitepress-theme-element-plus/src/repl/ElementPlusDocsRepl.vue",
       "kind": "dynamic",
       "rules": [
@@ -187,51 +176,6 @@
       "reason": "Single-feature component must live under packages/rich-text-editor/src/components.",
       "owners": [
         "packages/rich-text-editor/index.ts"
-      ]
-    },
-    {
-      "path": "packages/i18n-tool/src/ui/components/WorkspaceTabs.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
-      "owners": [
-        "packages/i18n-tool/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/i18n-tool/src/ui/components/WorkspaceTopbar.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
-      "owners": [
-        "packages/i18n-tool/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/i18n-tool/src/ui/views/ChangesView.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
-      "owners": [
-        "packages/i18n-tool/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/i18n-tool/src/ui/views/ResourcesView.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
-      "owners": [
-        "packages/i18n-tool/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/i18n-tool/src/ui/views/TranslateView.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Single-parent component must live under packages/i18n-tool/src/ui/App/components.",
-      "owners": [
-        "packages/i18n-tool/src/ui/App.vue"
       ]
     },
     {

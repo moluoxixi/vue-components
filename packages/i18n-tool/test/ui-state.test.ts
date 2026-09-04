@@ -1,6 +1,6 @@
 import type { SanitizedConfigResponse, ScanResponse } from '../protocol'
 import { describe, expect, it } from 'vitest'
-import { createInitialState, reduceWorkbenchState } from '../src/ui/state'
+import { createInitialState, reduceWorkbenchState } from '../src/ui/App/state'
 
 const config: SanitizedConfigResponse = {
   ai: {

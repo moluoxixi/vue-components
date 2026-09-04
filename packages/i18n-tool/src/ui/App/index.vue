@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { WorkbenchAction, WorkbenchView } from './state'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { protectedTokensEqual } from '../core/tokens'
+import { protectedTokensEqual } from '../../core'
 import {
   ApiError,
   applyPreview,
@@ -9,16 +9,18 @@ import {
   getConfig,
   scanWorkspace,
   streamTranslation,
-} from './api'
+} from './services'
 import {
   createInitialState,
   reduceWorkbenchState,
 } from './state'
-import ChangesView from './views/ChangesView.vue'
-import ResourcesView from './views/ResourcesView.vue'
-import TranslateView from './views/TranslateView.vue'
-import WorkspaceTopbar from './components/WorkspaceTopbar.vue'
-import WorkspaceTabs from './components/WorkspaceTabs.vue'
+import {
+  ChangesView,
+  ResourcesView,
+  TranslateView,
+  WorkspaceTabs,
+  WorkspaceTopbar,
+} from './components'
 
 const state = ref(createInitialState())
 let translationController: AbortController | undefined

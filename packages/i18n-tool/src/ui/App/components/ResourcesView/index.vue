@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { RequestStatus } from '../state'
-import type { SanitizedConfigResponse, ScanResponse } from '../../shared/protocol'
+import type { RequestStatus } from '../../state'
+import type { SanitizedConfigResponse, ScanResponse } from '../../../../shared/protocol'
 import { computed } from 'vue'
 import { FolderSearch, Languages, Rows3 } from '@lucide/vue'
 

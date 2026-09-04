@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { CandidateState, RequestStatus } from '../state'
-import type { I18nDiagnostic, TranslationUnit } from '../../core'
-import type { SanitizedConfigResponse, ScanResponse, ScanUnitGapWire } from '../../shared/protocol'
+import type { CandidateState, RequestStatus } from '../../state'
+import type { I18nDiagnostic, TranslationUnit } from '../../../../core'
+import type { SanitizedConfigResponse, ScanResponse, ScanUnitGapWire } from '../../../../shared/protocol'
 import { computed } from 'vue'
 import { Eye, RotateCcw, Sparkles, Square } from '@lucide/vue'
 

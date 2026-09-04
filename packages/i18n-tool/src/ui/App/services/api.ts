@@ -6,7 +6,7 @@ import type {
   ScanResponse,
   TranslateRequest,
   TranslateSseEvent,
-} from '../shared/protocol'
+} from '../../../shared/protocol'
 import {
   decodeApplyResponse,
   decodeConfigResponse,
@@ -16,7 +16,7 @@ import {
   decodeTranslateSseEvent,
   I18N_TOOL_API_PREFIX,
   I18N_TOOL_PRIVATE_HEADER,
-} from '../shared/protocol'
+} from '../../../shared/protocol'
 
 export class ApiError extends Error {
   readonly code?: string

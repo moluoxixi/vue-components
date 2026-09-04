@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { streamTranslation } from '../src/ui/api'
+import { streamTranslation } from '../src/ui/App/services'
 
 function streamFrom(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()

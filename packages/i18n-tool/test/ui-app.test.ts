@@ -3,11 +3,11 @@ import type { PreviewResponse, SanitizedConfigResponse, ScanResponse, TranslateS
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as api from '../src/ui/api'
-import App from '../src/ui/App.vue'
+import App from '../src/ui/App/index.vue'
+import * as api from '../src/ui/App/services'
 
-vi.mock('../src/ui/api', async importOriginal => ({
-  ...(await importOriginal<typeof import('../src/ui/api')>()),
+vi.mock('../src/ui/App/services', async importOriginal => ({
+  ...(await importOriginal<typeof import('../src/ui/App/services')>()),
   applyPreview: vi.fn(),
   createPreview: vi.fn(),
   getConfig: vi.fn(),

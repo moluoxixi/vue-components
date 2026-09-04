@@ -1,12 +1,12 @@
 import type {
   I18nDiagnostic,
   TranslationCandidate,
-} from '../core'
+} from '../../../core'
 import type {
   PreviewResponse,
   SanitizedConfigResponse,
   ScanResponse,
-} from '../shared/protocol'
+} from '../../../shared/protocol'
 
 export type WorkbenchView = 'changes' | 'resources' | 'translate'
 export type RequestStatus = 'cancelled' | 'error' | 'idle' | 'loading' | 'ready'

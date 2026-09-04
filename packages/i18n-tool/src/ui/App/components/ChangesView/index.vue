@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { RequestStatus } from '../state'
-import type { PreviewResponse } from '../../shared/protocol'
+import type { RequestStatus } from '../../state'
+import type { PreviewResponse } from '../../../../shared/protocol'
 import { computed, nextTick, ref } from 'vue'
 import { Check, FileDiff, RefreshCw } from '@lucide/vue'
 

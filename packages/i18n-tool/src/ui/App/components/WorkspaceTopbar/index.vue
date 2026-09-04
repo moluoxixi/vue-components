@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { RequestStatus } from '../state'
-import type { SanitizedConfigResponse } from '../../shared/protocol'
+import type { RequestStatus } from '../../state'
+import type { SanitizedConfigResponse } from '../../../../shared/protocol'
 import { Languages, RefreshCw, Wifi, WifiOff } from '@lucide/vue'
 
 defineProps<{

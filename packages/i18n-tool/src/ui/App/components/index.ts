@@ -1,0 +1,5 @@
+export { default as ChangesView } from './ChangesView'
+export { default as ResourcesView } from './ResourcesView'
+export { default as TranslateView } from './TranslateView'
+export { default as WorkspaceTabs } from './WorkspaceTabs'
+export { default as WorkspaceTopbar } from './WorkspaceTopbar'

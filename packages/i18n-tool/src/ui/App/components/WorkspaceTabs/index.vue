@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WorkbenchView } from '../state'
+import type { WorkbenchView } from '../../state'
 import { nextTick, ref } from 'vue'
 
 const props = defineProps<{
