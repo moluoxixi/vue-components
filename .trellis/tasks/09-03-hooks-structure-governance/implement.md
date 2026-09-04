@@ -3,7 +3,7 @@
 1. [x] 锁定根 runtime/type exports、Vite entry、产物名、source files 与 components consumer。
 2. [x] 补根 exact runtime surface、分页归一化边界与 RequestTable ref/watch characterization并提交。
 3. [x] 将六个 hook 迁入 feature `state/`，将 RequestTable 纯归一化迁入私有 `utils/`，更新纯 barrels与测试 import并提交。
-4. [ ] 删除 manifest 6 条 debt，补中文 README 与 package source files，运行 architecture/package门禁并提交。
+4. [x] 删除 manifest 6 条 debt，补中文 README 与 package source files，运行 architecture/package门禁并提交。
 5. [ ] 扫描 P0/P1/P2、barrel 逻辑、composable/state 证据、deep import、公共 API 与 value/type cycle。
 6. [ ] 运行 package test/typecheck/coverage/build、components consumer tests/typecheck/build、architecture/path/workflow、packed Node/browser smoke、全仓 lint 与 `git diff --check`。
 7. [ ] 独立只读 review；修复后重跑门禁，更新 spec/evidence，提交并归档，不 push。

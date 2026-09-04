@@ -376,42 +376,6 @@
       "reason": "Feature root files must move into a responsibility directory."
     },
     {
-      "path": "packages/hooks/src/composables/useBatchOperate/useBatchOperate.ts",
-      "rule": "feature.root-file",
-      "targetTask": "hooks-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/hooks/src/composables/useDetailPage/useDetailPage.ts",
-      "rule": "feature.root-file",
-      "targetTask": "hooks-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/hooks/src/composables/useFormSubmit/useFormSubmit.ts",
-      "rule": "feature.root-file",
-      "targetTask": "hooks-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/hooks/src/composables/useListPage/useListPage.ts",
-      "rule": "feature.root-file",
-      "targetTask": "hooks-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/hooks/src/composables/useRequestOptions/useRequestOptions.ts",
-      "rule": "feature.root-file",
-      "targetTask": "hooks-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/hooks/src/composables/useRequestTable/useRequestTable.ts",
-      "rule": "feature.root-file",
-      "targetTask": "hooks-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
       "path": "packages/i18n-tool/src/config/loader.ts",
       "rule": "feature.root-file",
       "targetTask": "i18n-tool-structure-governance",
