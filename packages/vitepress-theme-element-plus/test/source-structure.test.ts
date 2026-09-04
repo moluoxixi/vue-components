@@ -1,9 +1,12 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import * as rootEntry from '../index'
 import * as markdownEntry from '../markdown'
 import * as nodeEntry from '../node'
+import * as repositoryEntry from '../repository'
 import * as repositoryNodeEntry from '../repository-node'
 import * as repositoryFeature from '../src/node/repository'
 
@@ -50,6 +53,19 @@ function collectTypeScriptFiles(directory: string): string[] {
   })
 }
 
+function declaredRuntimeExports(path: string): string[] {
+  const sourceFile = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true)
+  return sourceFile.statements.flatMap((statement) => {
+    if (!ts.isExportDeclaration(statement) || statement.isTypeOnly || !statement.exportClause)
+      return []
+    if (!ts.isNamedExports(statement.exportClause))
+      return []
+    return statement.exportClause.elements
+      .filter(element => !element.isTypeOnly)
+      .map(element => element.name.text)
+  }).sort()
+}
+
 describe('theme source responsibilities', () => {
   it.each(['markdown', 'node'] as const)('keeps the %s feature root limited to its barrel', (feature) => {
     const entries = sourceEntries(feature)
@@ -87,6 +103,107 @@ describe('theme source responsibilities', () => {
       'elementPlusDocsProjectMarkdownPlugin',
       'formatSfcTypeScript',
       'sfcTs2js',
+    ])
+  })
+
+  it('preserves the root, repository, and REPL runtime export surfaces', () => {
+    expect(Object.keys(rootEntry).sort()).toEqual([
+      'ElementPlusDocsApiDocs',
+      'ElementPlusDocsApiTable',
+      'ElementPlusDocsCommitTimeline',
+      'ElementPlusDocsComponentMeta',
+      'ElementPlusDocsComponentOverview',
+      'ElementPlusDocsContributors',
+      'ElementPlusDocsDemo',
+      'ElementPlusDocsOverviewCard',
+      'ElementPlusDocsOverviewHome',
+      'ElementPlusDocsPlayground',
+      'ElementPlusDocsTypeCell',
+      'consumeElementPlusDocsPlaygroundSession',
+      'createComponentPaths',
+      'createElementPlusDocsCodeSandboxAdapter',
+      'createElementPlusDocsCodeSandboxParameters',
+      'createElementPlusDocsCodeSandboxPayload',
+      'createElementPlusDocsContent',
+      'createElementPlusDocsContentRewrites',
+      'createElementPlusDocsExternalProject',
+      'createElementPlusDocsPlaygroundActions',
+      'createElementPlusDocsPlaygroundRegistry',
+      'createElementPlusDocsPlaygroundSession',
+      'createElementPlusDocsSessionPlaygroundAdapter',
+      'createElementPlusDocsSfcCompiler',
+      'createElementPlusDocsStackBlitzAdapter',
+      'createElementPlusDocsStackBlitzProject',
+      'createElementPlusDocsTheme',
+      'createElementPlusPlaygroundAdapter',
+      'createElementPlusPlaygroundUrl',
+      'createGiteeRepositoryMetadataActions',
+      'createGithubRepositoryMetadataActions',
+      'createGitlabRepositoryMetadataActions',
+      'createRepositoryMetadataProviderRegistry',
+      'createYunxiaoRepositoryMetadataActions',
+      'defineComponentPackage',
+      'defineElementPlusDocs',
+      'defineElementPlusDocsProject',
+      'defineRepositoryMetadataProvider',
+      'elementPlusDocsPlaygroundKinds',
+      'elementPlusDocsPlaygroundSessionQuery',
+      'elementPlusDocsTheme',
+      'openElementPlusDocsCodeSandbox',
+      'openElementPlusDocsStackBlitz',
+      'renderComponentPage',
+      'repositoryMetadataProviderSupports',
+      'resolveElementPlusDocsPlaygroundManifest',
+      'resolveElementPlusDocsProject',
+      'resolveElementPlusDocsProjectRepository',
+      'resolveElementPlusDocsRepository',
+      'resolveElementPlusDocsRepositoryProvider',
+      'resolveRepositoryComponentMeta',
+      'resolveRepositoryContributors',
+    ])
+    expect(Object.keys(repositoryEntry).sort()).toEqual([
+      'assertGiteeMetadataSnapshot',
+      'assertGithubMetadataSnapshot',
+      'assertGitlabMetadataSnapshot',
+      'assertLocalMetadataSnapshot',
+      'assertYunxiaoMetadataSnapshot',
+      'createElementPlusDocsRepositoryRuntime',
+      'createGiteeRepositoryMetadataActions',
+      'createGithubRepositoryMetadataActions',
+      'createGitlabRepositoryMetadataActions',
+      'createRepositoryMetadataProviderRegistry',
+      'createYunxiaoRepositoryMetadataActions',
+      'defineRepositoryMetadataProvider',
+      'elementPlusDocsRepositorySnapshotId',
+      'giteeMetadataProvider',
+      'githubMetadataProvider',
+      'gitlabMetadataProvider',
+      'isExactGiteeProfileUrl',
+      'isExactGithubProfileUrl',
+      'isExactGitlabProfileUrl',
+      'isTrustedGiteeAvatarUrl',
+      'isTrustedGithubAvatarUrl',
+      'isTrustedGitlabWebUrl',
+      'isTrustedYunxiaoAvatarUrl',
+      'localMetadataProvider',
+      'repositoryMetadataProviderSupports',
+      'repositoryMetadataProviders',
+      'resolveElementPlusDocsRepositorySnapshotFile',
+      'resolveGitlabWebBaseUrl',
+      'resolveRepositoryComponentMeta',
+      'resolveRepositoryContributors',
+      'resolveRepositoryMetadata',
+      'yunxiaoMetadataProvider',
+    ])
+    expect(declaredRuntimeExports(resolve(sourceRoot, 'repl-entry.ts'))).toEqual([
+      'ElementPlusDocsRepl',
+      'createElementPlusDocsCdnUrl',
+      'createElementPlusDocsCompilerUrl',
+      'createElementPlusDocsReplImportMap',
+      'createElementPlusDocsReplStore',
+      'decodeElementPlusDocsReplState',
+      'encodeElementPlusDocsReplState',
+      'fetchElementPlusDocsPackageVersions',
     ])
   })
 
