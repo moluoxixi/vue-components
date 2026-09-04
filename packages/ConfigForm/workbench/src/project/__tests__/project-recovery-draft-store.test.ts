@@ -30,9 +30,9 @@ function rename(document: ProjectDocument, name: string): ProjectDocument {
   return result.document
 }
 
-function capture(document: ProjectDocument, editVersion: number) {
+function capture(document: ProjectDocument, editVersion: number, baseRepositoryRevision = 0) {
   return {
-    baseRepositoryRevision: 0,
+    baseRepositoryRevision,
     changeSet: {
       ...EMPTY_CHANGE_SET,
       pageIds: [document.homePageId],
@@ -104,6 +104,49 @@ describe('projectRecoveryDraftStore', () => {
     await expect(store.get('project:session-a')).resolves.toMatchObject({
       document: { id: initial.id },
       editVersion: 1,
+    })
+  })
+
+  it('keeps formal snapshot entities reachable from a durable recovery draft during pruning', async () => {
+    const dbName = `recovery-draft-prune-${sequence++}`
+    let currentTime = '2026-01-01T00:00:00.000Z'
+    const repository = createIndexedDBProjectRepository({ dbName, now: () => currentTime, receiptLimit: 1 })
+    const store = createIndexedDBProjectRecoveryDraftStore({ dbName })
+    closeables.push(repository, store)
+    await Promise.all([repository.open(), store.open()])
+    const initial = createProjectDocumentFixture()
+    const created = await repository.create({ document: initial })
+    currentTime = '2026-01-02T00:00:00.000Z'
+    const draftBaseDocument = rename(initial, 'Draft base')
+    const draftBase = await repository.commit({
+      commandId: 'create-draft-base',
+      document: draftBaseDocument,
+      expectedRepositoryRevision: created.repositoryRevision,
+      id: initial.id,
+      metadata: { source: 'autosave' },
+    })
+    await store.put(capture(draftBase.project.document, 2, draftBase.project.repositoryRevision))
+    currentTime = '2026-01-03T00:00:00.000Z'
+    const current = await repository.commit({
+      commandId: 'advance-after-draft',
+      document: rename(initial, 'Current project'),
+      expectedRepositoryRevision: draftBase.project.repositoryRevision,
+      id: initial.id,
+      metadata: { source: 'autosave' },
+    })
+
+    await repository.pruneVersions(initial.id, {
+      keepDailyForDays: 0,
+      keepLatestAutosaves: 0,
+      now: '2026-02-01T00:00:00.000Z',
+    })
+
+    await expect(repository.listVersions(initial.id)).resolves.toMatchObject([
+      { repositoryRevision: current.project.repositoryRevision },
+    ])
+    await expect(store.get('project:session-a')).resolves.toMatchObject({
+      baseRepositoryRevision: draftBase.project.repositoryRevision,
+      document: { pagesById: { home: { name: 'Draft base' } } },
     })
   })
 

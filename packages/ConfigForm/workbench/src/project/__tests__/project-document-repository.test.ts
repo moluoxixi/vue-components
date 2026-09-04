@@ -1,11 +1,20 @@
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ProjectDocument } from '@moluoxixi/config-form-model'
-import { CONFIG_FORM_FLOW_VERSION, getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
+import { CONFIG_FORM_FLOW_VERSION } from '@moluoxixi/config-form-core'
 import { applyProjectTransaction } from '@moluoxixi/config-form-model'
 import { IndexDBStorage } from '@moluoxixi/indexed-db'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createIndexedDBProjectRepository,
+  createSnapshotManifest,
+  isStoredRecord,
+  loadStoredProjectSnapshot,
+  parseSnapshotManifest,
+  parseStoredEntity,
+  projectManifestKey,
+  readCurrentStoredProjectSnapshot,
+  semanticChecksum,
+  snapshotReferenceKeys,
 } from '../persistence'
 import { createProjectDocumentFixture } from './fixtures'
 import 'fake-indexeddb/auto'
@@ -50,10 +59,6 @@ function mountedFlow(): ConfigFormFlow {
   }
 }
 
-function semanticChecksum(value: unknown): string {
-  return `fnv1a:${getConfigFormJsonSemanticHash(value)}`
-}
-
 describe('indexedDBProjectRepository', () => {
   it('stores manifest and versioned page entities as separate records', async () => {
     const dbName = `project-document-entities-${sequence++}`
@@ -76,6 +81,28 @@ describe('indexedDBProjectRepository', () => {
       expect.stringContaining(':page:'),
     ]))
     expect(keys.filter(key => key.includes('project-document:'))).toHaveLength(2)
+  })
+
+  it('keeps the stored snapshot codec reachable through the persistence barrel', async () => {
+    const dbName = `project-document-public-codec-${sequence++}`
+    const repository = createIndexedDBProjectRepository(repositoryOptions(dbName))
+    closeables.push(repository)
+    await repository.open()
+    const created = await repository.create({ document: projectDocument() })
+    const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })
+    closeables.push(storage)
+    const snapshot = await readCurrentStoredProjectSnapshot(storage, created.document.id)
+
+    expect(projectManifestKey(created.document.id)).toContain(':manifest')
+    expect(isStoredRecord(snapshot)).toBe(true)
+    expect(parseSnapshotManifest(snapshot)).toEqual(snapshot)
+    expect(createSnapshotManifest(created, snapshot).snapshot).toEqual(snapshot)
+    expect(snapshotReferenceKeys(snapshot!)).toEqual(expect.arrayContaining([
+      snapshot!.pages.home!.key,
+    ]))
+    const entity = await storage.getItem(snapshot!.pages.home!.key)
+    expect(parseStoredEntity(entity, snapshot!.pages.home!)).toMatchObject({ projectId: created.document.id })
+    await expect(loadStoredProjectSnapshot(storage, snapshot!)).resolves.toEqual(created)
   })
 
   it('commits atomically with CAS and replays a commit receipt', async () => {
@@ -364,6 +391,59 @@ describe('indexedDBProjectRepository', () => {
     await storage.setItem(pageKey, { ...entity, revision: Number(entity?.revision) + 1 })
 
     await expect(repository.get(initial.id)).rejects.toMatchObject({ code: 'PROJECT_REPOSITORY_CORRUPT' })
+  })
+
+  it('prunes unreachable versions while retaining the current and labeled snapshots', async () => {
+    const dbName = `project-document-retention-${sequence++}`
+    let currentTime = '2026-01-01T00:00:00.000Z'
+    const repository = createIndexedDBProjectRepository({
+      dbName,
+      now: () => currentTime,
+      receiptLimit: 1,
+    })
+    closeables.push(repository)
+    await repository.open()
+    const initial = projectDocument()
+    const created = await repository.create({ document: initial })
+    currentTime = '2026-01-02T00:00:00.000Z'
+    const first = await repository.commit({
+      commandId: 'retention-first',
+      document: rename(initial, 'First retained candidate'),
+      expectedRepositoryRevision: created.repositoryRevision,
+      id: initial.id,
+      metadata: { source: 'autosave' },
+    })
+    currentTime = '2026-01-03T00:00:00.000Z'
+    const second = await repository.commit({
+      commandId: 'retention-second',
+      document: rename(initial, 'Current version'),
+      expectedRepositoryRevision: first.project.repositoryRevision,
+      id: initial.id,
+      metadata: { source: 'autosave' },
+    })
+    await repository.setVersionLabel({
+      projectId: initial.id,
+      revision: first.project.repositoryRevision,
+      label: 'Keep this version',
+      expectedRepositoryRevision: second.project.repositoryRevision,
+    })
+
+    await repository.pruneVersions(initial.id, {
+      keepDailyForDays: 0,
+      keepLatestAutosaves: 0,
+      now: '2026-02-01T00:00:00.000Z',
+    })
+
+    await expect(repository.listVersions(initial.id)).resolves.toMatchObject([
+      { repositoryRevision: second.project.repositoryRevision },
+      { repositoryRevision: first.project.repositoryRevision, label: 'Keep this version' },
+    ])
+    const storage = new IndexDBStorage({ dbName, storeName: 'workspace-projects' })
+    closeables.push(storage)
+    const pageKeys = (await storage.keys()).filter(key => key.includes(':page:'))
+    expect(pageKeys.some(key => key.endsWith(':0'))).toBe(false)
+    expect(pageKeys.some(key => key.endsWith(':1'))).toBe(true)
+    expect(pageKeys.some(key => key.endsWith(':2'))).toBe(true)
   })
 
   it('rejects invalid persistence metadata before writing any records', async () => {
