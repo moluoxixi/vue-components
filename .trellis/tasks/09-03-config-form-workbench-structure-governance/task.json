@@ -3,10 +3,10 @@
   "name": "config-form-workbench-structure-governance",
   "title": "ConfigForm Workbench 结构治理",
   "description": "治理 Workbench 的应用编排、Feature 私有组件与大型控制器。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
-  "package": "ai-doc-assistant",
+  "package": "config-form-workbench",
   "priority": "P1",
   "creator": "wl",
   "assignee": "wl",
@@ -21,6 +21,8 @@
   "children": [],
   "parent": "09-03-packages-architecture-governance",
   "relatedFiles": [],
-  "notes": "",
-  "meta": {}
+  "notes": "继承父任务 standing implementation approval；保持行为、协议和视觉不变的内部治理无需逐批确认。",
+  "meta": {
+    "standingImplementationApproval": true
+  }
 }

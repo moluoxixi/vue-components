@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"全仓责任目录、barrel、组件 owner、公开入口与架构 debt 合同。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"Workbench/Designer/RuntimeHost geometry、focus、theme isolation 与 E2E 合同。"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"Runtime renderer/validation ownership 与 geometry 不下沉约束。"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"ConfigForm current-contract-only、README、跨包与 package smoke 合同。"}
+{"file":".trellis/tasks/09-03-config-form-workbench-structure-governance/research/workbench-boundaries.md","reason":"Workbench debt、热点、owner、行为锚点和优先测试缺口。"}
