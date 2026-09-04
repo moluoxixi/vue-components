@@ -7,7 +7,7 @@ import type {
   ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
 import type { ComputedRef } from 'vue'
-import type { PreviewFlowCoordinator } from '../../preview'
+import type { PreviewFlowDispatchResult } from './flow'
 
 export interface PageFlowEngineSyncInput {
   pageKey: string
@@ -37,7 +37,7 @@ export interface WorkbenchPageFlowEngineOptions extends Omit<PageFlowEngineOptio
 export interface PageFlowEngine {
   readonly projection: ComputedRef<ConfigFormReactionProjection<Record<string, unknown>>>
   clear: () => void
-  dispatch: (input: PageFlowEngineDispatchInput) => ReturnType<PreviewFlowCoordinator['dispatch']>
+  dispatch: (input: PageFlowEngineDispatchInput) => Promise<PreviewFlowDispatchResult>
   dispose: () => void
   sync: (input: PageFlowEngineSyncInput) => void
 }

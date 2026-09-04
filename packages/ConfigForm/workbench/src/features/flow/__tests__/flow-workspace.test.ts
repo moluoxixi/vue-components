@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
-import type { ProjectCommandAction, ProjectOperation } from '@moluoxixi/config-form-model'
-import type { EdgeRemoveChange, NodePositionChange } from '@vue-flow/core'
+import type { ProjectCommand, ProjectCommandAction, ProjectOperation } from '@moluoxixi/config-form-model'
+import type { Connection, EdgeRemoveChange, NodePositionChange } from '@vue-flow/core'
 import { VueFlow } from '@vue-flow/core'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -10,10 +10,14 @@ import { FlowWorkspace } from '../components'
 const PAGE_ID = 'home'
 
 function lastAction(wrapper: ReturnType<typeof mount>): ProjectCommandAction {
-  const command = wrapper.emitted('command')?.at(-1)?.[0] as { actions: ProjectCommandAction[] } | undefined
+  const command = lastCommand(wrapper)
   if (!command?.actions[0])
     throw new Error('Expected a ProjectCommand action.')
   return command.actions[0]
+}
+
+function lastCommand(wrapper: ReturnType<typeof mount>): ProjectCommand | undefined {
+  return wrapper.emitted('command')?.at(-1)?.[0] as ProjectCommand | undefined
 }
 
 function appliedOperation(wrapper: ReturnType<typeof mount>): ProjectOperation {
@@ -103,6 +107,10 @@ describe('flowWorkspace', () => {
     await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
     expect(overlay().get('[role="menu"]').attributes('aria-labelledby')).toBeDefined()
     await overlay().findAll('[role="menuitem"]').find(button => button.text().includes('Form submit'))!.trigger('click')
+    const command = lastCommand(wrapper)
+    expect(command).toMatchObject({ label: 'Add flow' })
+    expect(command?.id).toMatch(/^flow-[a-z0-9]+-1$/)
+    expect(command?.actions).toHaveLength(1)
     const operation = appliedOperation(wrapper)
     expect(operation.type).toBe('flow.add')
     if (operation.type !== 'flow.add')
@@ -266,6 +274,76 @@ describe('flowWorkspace', () => {
     const action = updated.nodes.find(node => node.type === 'action')!
     expect(updated.edges.filter(edge => edge.target === action.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
     expect(updated.edges.filter(edge => edge.source === action.id).map(edge => edge.condition)).toEqual(['next'])
+  })
+
+  it('replaces one source handle edge with a valid controlled connection', async () => {
+    const flow = createFlow('connect-flow')
+    flow.nodes.splice(1, 0, { id: 'action', type: 'action', ref: 'notify', config: {} })
+    flow.edges.push({ id: 'action-end', source: 'action', target: 'end', condition: 'next' })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow] } })
+    const connection: Connection = {
+      source: 'trigger',
+      sourceHandle: 'next',
+      target: 'action',
+      targetHandle: 'input',
+    }
+
+    wrapper.getComponent(VueFlow).vm.$emit('connect', connection)
+    await wrapper.vm.$nextTick()
+
+    const updated = lastAction(wrapper)
+    expect(updated.type).toBe('flow.edges')
+    if (updated.type !== 'flow.edges')
+      return
+    expect(updated.edges).toContainEqual(expect.objectContaining({ source: 'trigger', target: 'action', condition: 'next' }))
+    expect(updated.edges).not.toContainEqual(expect.objectContaining({ source: 'trigger', target: 'end' }))
+  })
+
+  it('rejects deleting a node whose outgoing branches have different targets', async () => {
+    const flow = createFlow('branch-delete-flow')
+    flow.nodes.splice(1, 0, { id: 'condition', type: 'condition', config: { condition: { kind: 'literal', value: true } } }, { id: 'action', type: 'action', ref: 'notify', config: {} })
+    flow.edges = [
+      { id: 'trigger-condition', source: 'trigger', target: 'condition', condition: 'next' },
+      { id: 'condition-true', source: 'condition', target: 'end', condition: 'true' },
+      { id: 'condition-false', source: 'condition', target: 'action', condition: 'false' },
+      { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
+    ]
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow] } })
+
+    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'condition', type: 'remove' }])
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('command')).toBeUndefined()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Reconnect branching paths')
+  })
+
+  it('commits object node config and increments update command ids', async () => {
+    const flow = createFlow('config-flow')
+    flow.nodes.splice(1, 0, { id: 'action', type: 'action', ref: 'notify', config: {} })
+    flow.edges = [
+      { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
+      { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
+    ]
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow] } })
+    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'action', selected: true, type: 'select' }])
+    await wrapper.vm.$nextTick()
+    await wrapper.get('textarea').setValue('{"input":{"kind":"literal","value":"saved"}}')
+    await wrapper.get('textarea').trigger('blur')
+
+    const first = lastCommand(wrapper)!
+    expect(first.label).toBe('Update flow')
+    expect(first.id).toMatch(/^flow-[a-z0-9]+-1$/)
+    expect(lastAction(wrapper)).toMatchObject({
+      type: 'flow.node',
+      nodeId: 'action',
+      node: { config: { input: { kind: 'literal', value: 'saved' } } },
+    })
+
+    const timeout = wrapper.getComponent({ name: 'ElInputNumber' })
+    timeout.vm.$emit('change', 1200)
+    await wrapper.vm.$nextTick()
+    expect(lastCommand(wrapper)?.id).toMatch(/^flow-[a-z0-9]+-2$/)
+    expect(lastCommand(wrapper)?.label).toBe('Update flow')
   })
 
   it('commits a node position only through a controlled model update', async () => {

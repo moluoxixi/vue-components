@@ -12,12 +12,9 @@ import type {
 } from '../types'
 import { ConfigFormFlowInterpreter } from '@moluoxixi/config-form-core'
 import { computed, shallowRef } from 'vue'
-import {
-  applyPreviewFlowValuePatch,
-  createWorkbenchFlowActionRegistry,
-  PreviewFlowCoordinator,
-} from '../../preview'
 import { cloneWorkbenchJson } from '../../utils'
+import { createWorkbenchFlowActionRegistry } from './flow-actions'
+import { applyPreviewFlowValuePatch, PreviewFlowCoordinator } from './flow-coordinator'
 
 export function createPageFlowEngine(options: PageFlowEngineOptions): PageFlowEngine {
   const coordinator = new PreviewFlowCoordinator(new ConfigFormFlowInterpreter(options.actions))

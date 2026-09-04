@@ -18,7 +18,7 @@ import {
   applyPreviewFlowValuePatch,
   createPreviewFlowValuePatch,
   PreviewFlowCoordinator,
-} from '../../preview'
+} from '../../flow'
 import { createStandaloneFlowRuntimeSource } from '../export'
 
 type FlowValues = Record<string, unknown>
