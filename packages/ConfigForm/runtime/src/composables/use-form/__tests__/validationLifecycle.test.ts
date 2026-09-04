@@ -338,6 +338,47 @@ describe('field validation lifecycle', () => {
     expect(validator.mock.calls.map(([value]) => value)).toEqual(['first', 'first', 'second'])
   })
 
+  it('runs different triggers in FIFO order with their own queued snapshots', async () => {
+    vi.useFakeTimers()
+    const snapshots: string[] = []
+    const releases: Array<() => void> = []
+    const form = useForm({
+      defaultValues: { name: 'first' },
+      fields: ref(resolveFields([{
+        component: 'input',
+        field: 'name',
+        validateOn: ['submit', 'change', 'blur'],
+        validator: (_value, values) => {
+          snapshots.push(values.name as string)
+          return new Promise<void>((resolve) => {
+            releases.push(resolve)
+          })
+        },
+      }])),
+    })
+
+    const change = form.validateSingleField('name', 'change')
+    await vi.advanceTimersByTimeAsync(16)
+    expect(snapshots).toEqual(['first'])
+
+    form.setValue('name', 'second')
+    const submit = form.validate()
+    form.setValue('name', 'third')
+    const blur = form.validateSingleField('name', 'blur')
+
+    releases[0]!()
+    await expect(change).resolves.toBe(true)
+    await vi.waitFor(() => expect(snapshots).toEqual(['first', 'second']))
+
+    releases[1]!()
+    await expect(submit).resolves.toBe(true)
+    await vi.advanceTimersByTimeAsync(16)
+    expect(snapshots).toEqual(['first', 'second', 'third'])
+
+    releases[2]!()
+    await expect(blur).resolves.toBe(true)
+  })
+
   it('incrementally refreshes merged snapshots after cross-field and direct writes', async () => {
     vi.useFakeTimers()
     const snapshots: Array<Record<string, unknown>> = []

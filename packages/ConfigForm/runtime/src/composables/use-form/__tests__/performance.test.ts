@@ -5,7 +5,8 @@ import { computed, ref, toRaw } from 'vue'
 import { createFormRuntime } from '@/runtime'
 import { collectFieldConfigs } from '@/utils/node'
 import { useForm } from '../index'
-import { appendValidationListeners, useFormValidation } from '../services/validation'
+import { useFormValidation } from '../services/validation'
+import { appendValidationListeners } from '../services/validation-queue'
 import { useFormState } from '../state'
 import { createNodeTopology } from '../utils'
 
@@ -301,6 +302,29 @@ describe('useForm performance invariants', () => {
 
     expect(merged).toBe(listeners)
     expect(merged).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
+  })
+
+  it('disposes validation state idempotently without restoring retention', () => {
+    const setValueChangeRetention = vi.fn()
+    const validation = useFormValidation({
+      clearFieldError: vi.fn(),
+      errors: ref<FormErrors>({}),
+      fieldConfigMap: computed(() => new Map()),
+      fields: computed(() => []),
+      getFieldRevision: () => 0,
+      getValueChangesSince: () => undefined,
+      getValuesRevision: () => 0,
+      nodeTopology: computed(() => createNodeTopology([])),
+      setValueChangeRetention,
+      values: {},
+    })
+
+    validation.dispose()
+    validation.dispose()
+    validation.invalidate()
+
+    expect(setValueChangeRetention).toHaveBeenCalledOnce()
+    expect(setValueChangeRetention).toHaveBeenCalledWith(undefined)
   })
 
   it('evaluates field collection and topology once during initialization', () => {
