@@ -90,7 +90,8 @@ test('renders nested table-of-content links recursively', async ({ page }) => {
 test('fresh consumer enables Demo, Playground, and ApiDocs from public package APIs', async ({ page }) => {
   const browserProblems = collectBrowserProblems(page)
 
-  await page.goto('/consumer.html')
+  await page.goto('/content.html')
+  await expect(page).toHaveURL(/\/content\.html$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Reusable content modules' }))
     .toBeVisible({ timeout: coldStartTimeout })
   const avatar = page.locator('.doc-contributor-avatar')
