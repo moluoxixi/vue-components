@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFile
 import { dirname, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { docsProject, getLocalizedComponents } from '../.vitepress/catalog'
-import { docsLocales } from '../.vitepress/site/config'
+import { docsProject, getLocalizedComponents } from '../.vitepress/catalog/index.ts'
+import { docsLocales } from '../.vitepress/site/config/index.ts'
 import {
   createComponentRouteLocaleOptions,
   createComponentRoutePaths,

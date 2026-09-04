@@ -1,2 +1,2 @@
-export * from './components'
-export * from './utilities'
+export * from './components.ts'
+export * from './utilities.ts'

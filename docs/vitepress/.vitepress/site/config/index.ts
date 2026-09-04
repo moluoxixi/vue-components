@@ -1,1 +1,1 @@
-export * from './docs-site'
+export * from './docs-site.ts'

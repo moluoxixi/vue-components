@@ -5,11 +5,9 @@ import {
 import {
   elementPlusDocsRepositorySnapshotId,
   repositoryMetadataProviders,
-  resolveElementPlusDocsRepositorySnapshotFile,
 } from '@moluoxixi/vitepress-theme-element-plus/repository'
 import projectConfig from '../../../element-plus-docs.config.ts'
 import { docsSite } from '../config'
-import { repositoryMetadataSnapshotPath } from '../utils'
 
 const providerLabels: Readonly<Record<string, string>> = {
   gitee: 'Gitee',
@@ -27,12 +25,6 @@ export const docsRepository = resolveElementPlusDocsProjectRepository(
 export const docsRepositoryProvider = repositoryMetadataProviders.get(docsRepository.provider)
 export const docsRepositoryLabel = providerLabels[docsRepository.provider] ?? docsRepositoryProvider.platform
 export { elementPlusDocsRepositorySnapshotId }
-
-export function docsRepositorySnapshotPath(): string {
-  return repositoryMetadataSnapshotPath(
-    resolveElementPlusDocsRepositorySnapshotFile(projectConfig, docsRepository.provider),
-  )
-}
 
 function repositoryDefaultBranchEnvironment(): string | undefined {
   const viteEnvironment = import.meta.env?.VITE_DOCS_REPOSITORY_DEFAULT_BRANCH

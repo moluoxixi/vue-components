@@ -7,8 +7,8 @@ import type {
   LocalizedDocUtility,
   LocalizedDocUtilityGroup,
 } from '../manifests'
-import { localePath as createLocalePath, defaultDocsLocale, docsLocales } from '../../site/config'
-import { componentGroups, utilityGroups } from '../manifests'
+import { localePath as createLocalePath, defaultDocsLocale, docsLocales } from '../../site/config/index.ts'
+import { componentGroups, utilityGroups } from '../manifests/index.ts'
 
 export type { DocsLocale } from '../../site/config'
 

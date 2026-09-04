@@ -1,8 +1,9 @@
 // @vitest-environment node
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 const docsRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -27,6 +28,12 @@ const removedFlatModules = [
   'theme/content.test.ts',
 ] as const
 
+const nodeLifecycleEntries = [
+  'scripts/generate-component-routes.mts',
+  'scripts/generate-utility-routes.mts',
+  'scripts/extract-api.mts',
+] as const
+
 function collectTypeScriptFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name)
@@ -45,6 +52,111 @@ function collectResponsibilityDirectories(directory: string): string[] {
     const path = join(directory, entry.name)
     return [path, ...collectResponsibilityDirectories(path)]
   })
+}
+
+function runtimeSpecifiers(path: string): string[] {
+  const sourceFile = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true)
+  const specifiers: string[] = []
+
+  function visit(node: ts.Node): void {
+    if (ts.isImportDeclaration(node)) {
+      const importsOnlyTypes = node.importClause?.isTypeOnly
+        || Boolean(node.importClause
+          && !node.importClause.name
+          && node.importClause.namedBindings
+          && ts.isNamedImports(node.importClause.namedBindings)
+          && node.importClause.namedBindings.elements.every(element => element.isTypeOnly))
+      if (!importsOnlyTypes && ts.isStringLiteral(node.moduleSpecifier))
+        specifiers.push(node.moduleSpecifier.text)
+    }
+    else if (ts.isExportDeclaration(node) && !node.isTypeOnly && node.moduleSpecifier) {
+      const exportsOnlyTypes = Boolean(
+        node.exportClause && ts.isNamedExports(node.exportClause)
+        && node.exportClause.elements.every(element => element.isTypeOnly),
+      )
+      if (!exportsOnlyTypes && ts.isStringLiteral(node.moduleSpecifier))
+        specifiers.push(node.moduleSpecifier.text)
+    }
+    else if (ts.isCallExpression(node)
+      && node.expression.kind === ts.SyntaxKind.ImportKeyword
+      && ts.isStringLiteral(node.arguments[0])) {
+      specifiers.push(node.arguments[0].text)
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return specifiers
+}
+
+function collectNodeRuntimeImportViolations(): string[] {
+  const pending = nodeLifecycleEntries.map(entry => join(docsRoot, entry))
+  const visited = new Set<string>()
+  const violations: string[] = []
+
+  while (pending.length > 0) {
+    const path = pending.pop()!
+    if (visited.has(path))
+      continue
+    visited.add(path)
+
+    for (const specifier of runtimeSpecifiers(path).filter(specifier => specifier.startsWith('.'))) {
+      const location = `${relative(docsRoot, path).replaceAll('\\', '/')}: ${specifier}`
+      if (!/\.(?:[cm]?[jt]s|json)$/.test(specifier)) {
+        violations.push(location)
+        continue
+      }
+
+      const dependency = resolve(dirname(path), specifier)
+      if (!existsSync(dependency)) {
+        violations.push(`${location} (missing)`)
+        continue
+      }
+      if (/\.[cm]?[jt]s$/.test(dependency) && !visited.has(dependency))
+        pending.push(dependency)
+    }
+  }
+
+  return violations.sort()
+}
+
+function resolveLocalModule(importer: string, specifier: string): string | undefined {
+  const target = resolve(dirname(importer), specifier)
+  const candidates = [
+    target,
+    `${target}.ts`,
+    `${target}.mts`,
+    join(target, 'index.ts'),
+    join(target, 'index.mts'),
+  ]
+  return candidates.find(candidate => existsSync(candidate) && statSync(candidate).isFile())
+}
+
+function collectClientNodeImportViolations(): string[] {
+  const pending = [join(vitepressRoot, 'theme/index.ts')]
+  const visited = new Set<string>()
+  const violations: string[] = []
+
+  while (pending.length > 0) {
+    const path = pending.pop()!
+    if (visited.has(path))
+      continue
+    visited.add(path)
+
+    for (const specifier of runtimeSpecifiers(path)) {
+      if (specifier.startsWith('node:')) {
+        violations.push(`${relative(docsRoot, path).replaceAll('\\', '/')}: ${specifier}`)
+        continue
+      }
+      if (!specifier.startsWith('.'))
+        continue
+      const dependency = resolveLocalModule(path, specifier)
+      if (dependency && /\.[cm]?[jt]s$/.test(dependency) && !visited.has(dependency))
+        pending.push(dependency)
+    }
+  }
+
+  return violations.sort()
 }
 
 describe('documentation source architecture', () => {
@@ -83,5 +195,13 @@ describe('documentation source architecture', () => {
     })
 
     expect(importHits).toEqual([])
+  })
+
+  it('keeps Node lifecycle runtime imports directly resolvable by native ESM', () => {
+    expect(collectNodeRuntimeImportViolations()).toEqual([])
+  })
+
+  it('keeps Node builtins out of the browser theme module graph', () => {
+    expect(collectClientNodeImportViolations()).toEqual([])
   })
 })

@@ -1,1 +1,1 @@
-export * from './generated-paths'
+export * from './generated-paths.ts'

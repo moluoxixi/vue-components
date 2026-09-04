@@ -1,11 +1,11 @@
 import type { DocsLocale } from '../.vitepress/site/config'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { getDocsMessages } from '../.vitepress/catalog'
+import { getDocsMessages } from '../.vitepress/catalog/index.ts'
 import {
   defaultDocsLocale,
   getDocsLocaleConfig,
-} from '../.vitepress/site/config'
+} from '../.vitepress/site/config/index.ts'
 
 export interface ComponentRoute {
   docsSourcePath?: string

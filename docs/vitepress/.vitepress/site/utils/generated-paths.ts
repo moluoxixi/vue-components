@@ -31,7 +31,3 @@ export function ensureDocsGeneratedTypeDeclarations(): void {
       writeFileSync(declaration, '// Generated during the documentation lifecycle.\nexport {}\n', 'utf8')
   }
 }
-
-export function repositoryMetadataSnapshotPath(snapshotFile: string): string {
-  return resolve(docsGeneratedRepositoryDirectory, snapshotFile)
-}
