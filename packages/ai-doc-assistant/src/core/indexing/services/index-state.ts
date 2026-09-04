@@ -1,5 +1,5 @@
 import type { EmbeddingProviderId } from '@moluoxixi/ai-provider/shared'
-import type { ComponentContract } from './types'
+import type { ComponentContract } from '../../types'
 import { createHash } from 'node:crypto'
 
 export interface EmbeddingIdentity {

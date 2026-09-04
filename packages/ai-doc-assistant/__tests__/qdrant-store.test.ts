@@ -1,5 +1,5 @@
 import type { AddressInfo, Server } from 'node:net'
-import type { VectorDoc, VectorIndexMetadata } from '../src/core/vector-store'
+import type { VectorDoc, VectorIndexMetadata } from '../src/core/vector'
 import { Buffer } from 'node:buffer'
 /**
  * QdrantVectorStore 真实 HTTP 往返测试。
@@ -13,7 +13,7 @@ import { Buffer } from 'node:buffer'
  */
 import { createServer } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { QdrantVectorStore } from '../src/core/qdrant-store'
+import { QdrantVectorStore } from '../src/core/vector/adapters/qdrant-store'
 
 const TEST_VECTOR_DIMENSION = 4
 

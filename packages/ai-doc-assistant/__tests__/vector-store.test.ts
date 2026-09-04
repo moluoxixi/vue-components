@@ -1,6 +1,6 @@
-import type { VectorDoc, VectorIndexMetadata } from '../src/core/vector-store'
+import type { VectorDoc, VectorIndexMetadata } from '../src/core/vector'
 import { describe, expect, it } from 'vitest'
-import { createVectorStore, VECTOR_STORE_KINDS } from '../src/core/vector-store'
+import { createVectorStore, VECTOR_STORE_KINDS } from '../src/core/vector'
 
 const TEST_VECTOR_DIMENSION = 3
 const METADATA: VectorIndexMetadata = {

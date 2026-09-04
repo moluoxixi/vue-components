@@ -1,7 +1,7 @@
-import type { IndexMeta } from '../src/core/indexer'
+import type { IndexMeta } from '../src/core/indexing'
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
-import { IndexStateManager } from '../src/core/index-state'
+import { IndexStateManager } from '../src/core/indexing'
 
 const META: IndexMeta = {
   builtAt: '2026-01-01T00:00:00.000Z',

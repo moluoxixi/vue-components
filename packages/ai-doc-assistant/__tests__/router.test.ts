@@ -1,4 +1,4 @@
-import type { RetrievalStrategy, StrategyResult } from '../src/core/retrieval-strategy'
+import type { RetrievalStrategy, StrategyResult } from '../src/core/retrieval'
 import type { ServerContext } from '../src/server/context'
 import type { AiDocUIMessage } from '../src/shared/protocol'
 // @vitest-environment node

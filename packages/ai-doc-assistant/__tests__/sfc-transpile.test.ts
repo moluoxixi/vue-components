@@ -3,7 +3,7 @@
  * 保证双码语义一致、template 原样保留、无 ts script 时不伪造降级（返回 undefined）。
  */
 import { describe, expect, it } from 'vitest'
-import { transpileSfcToJs } from '../src/core/sfc-transpile'
+import { transpileSfcToJs } from '../src/core/preview'
 
 describe('transpileSfcToJs', () => {
   it('剥离 lang="ts"、类型注解、import type 并保留 template', () => {

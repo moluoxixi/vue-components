@@ -17,7 +17,7 @@ import type {
 import type { ServerContext } from './context'
 import { Buffer } from 'node:buffer'
 import { pipeUIMessageStreamToResponse, validateUIMessages } from 'ai'
-import { contractToDetail } from '../core/knowledge-source'
+import { contractToDetail } from '../core/knowledge'
 import {
   API_PREFIX,
   ERROR_STATUS,

@@ -2,7 +2,7 @@
 import { Buffer } from 'node:buffer'
 import { resolve } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { createMetaChecker, extractContract, extractContracts, extractContractWithChecker } from '../src/core/extractor'
+import { createMetaChecker, extractContract, extractContracts, extractContractWithChecker } from '../src/core/extraction'
 
 /**
  * Extractor 端到端测试（vue-component-meta 引擎）。

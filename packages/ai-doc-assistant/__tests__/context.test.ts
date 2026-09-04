@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { readMeta } from '../src/core/persist'
+import { readMeta } from '../src/core/indexing'
 import { ServerContext } from '../src/server/context'
 
 // 实际抽取契约的用例必须用包内 fixture 工作区：vue-component-meta 需被分析 SFC 落在 tsconfig

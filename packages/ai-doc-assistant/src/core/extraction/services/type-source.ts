@@ -1,4 +1,4 @@
-import type { TypeDefInfo, TypeFieldDef } from './types'
+import type { TypeDefInfo, TypeFieldDef } from '../../types'
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'

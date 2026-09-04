@@ -2,7 +2,7 @@ import type {
   RetrievalStrategy,
   StrategyChunk,
   StrategyResult,
-} from '../src/core/retrieval-strategy'
+} from '../src/core/retrieval'
 import type { AiDocUIMessage } from '../src/shared/protocol'
 // @vitest-environment node
 import {

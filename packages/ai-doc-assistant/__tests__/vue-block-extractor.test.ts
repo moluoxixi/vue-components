@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { extractVueBlocks, PREVIEW_ALLOWED_MODULES, splitAnswerSegments } from '../src/core/vue-block-extractor'
+import { extractVueBlocks, PREVIEW_ALLOWED_MODULES, splitAnswerSegments } from '../src/core/preview'
 
 const VUE_OK = '```vue\n<script setup lang="ts">\nimport { PopoverTableSelect } from \'@moluoxixi/components\'\nconst columns = [{ field: \'name\' }]\n</script>\n<template>\n  <PopoverTableSelect :columns="columns" />\n</template>\n```'
 const VUE_ELEMENT_PLUS = '```vue\n<script setup lang="ts">\nimport { ElButton } from \'element-plus\'\n</script>\n<template><ElButton /></template>\n```'

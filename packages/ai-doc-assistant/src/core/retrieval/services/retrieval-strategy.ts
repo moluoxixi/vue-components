@@ -1,9 +1,9 @@
 import type { EmbeddingModel } from 'ai'
-import type { KnowledgeSourceWire } from '../shared/protocol'
-import type { ExampleCode } from './generator'
-import type { EmbeddingIdentity, EmbeddingIdentitySeed, IndexMeta } from './index-state'
-import type { ComponentContract } from './types'
-import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
+import type { KnowledgeSourceWire } from '../../../shared/protocol'
+import type { ExampleCode } from '../../generation'
+import type { EmbeddingIdentity, EmbeddingIdentitySeed, IndexMeta } from '../../indexing'
+import type { ComponentContract } from '../../types'
+import type { VectorStoreConfig, VectorStoreKind } from '../../vector'
 /**
  * 检索策略抽象层：把「问题 → 命中的组件契约」这一步抽象为可替换策略。
  *
@@ -15,7 +15,7 @@ import type { VectorStoreConfig, VectorStoreKind } from './vector-store'
  *
  * 切换入口：环境变量 AI_DOC_RETRIEVAL_MODE 或 plugin/Context options.mode，默认 content。
  */
-import { renderExample, renderSearchableDoc } from './generator'
+import { renderExample, renderSearchableDoc } from '../../generation'
 
 /** 检索模式。content=结构化关键词 topK（默认）；vector=向量语义检索（可选增强）。 */
 export type RetrievalMode = 'content' | 'vector'
@@ -235,7 +235,7 @@ export async function createStrategy(
   if (mode === 'vector') {
     if (!options.embeddingModel || !options.embeddingIdentity)
       throw new Error('vector retrieval requires an explicit embedding provider configuration')
-    const { VectorStrategy } = await import('./vector-strategy')
+    const { VectorStrategy } = await import('../../vector/services/vector-strategy')
     return new VectorStrategy(
       options.embeddingModel,
       options.embeddingIdentity,

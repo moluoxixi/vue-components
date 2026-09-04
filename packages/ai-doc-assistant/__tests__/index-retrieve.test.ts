@@ -5,9 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MockEmbeddingModelV3 } from 'ai/test'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { buildIndex } from '../src/core/indexer'
-import { loadIndex, persistIndex, readMeta } from '../src/core/persist'
-import { Retriever } from '../src/core/retriever'
+import { buildIndex, loadIndex, persistIndex, readMeta } from '../src/core/indexing'
+import { Retriever } from '../src/core/retrieval/services/retriever'
 
 /**
  * 索引 + 持久化 + 检索集成测试。

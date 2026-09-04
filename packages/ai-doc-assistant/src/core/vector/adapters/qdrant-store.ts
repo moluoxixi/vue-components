@@ -1,11 +1,11 @@
-import type { RetrievedChunk } from './retriever'
+import type { RetrievedChunk } from '../../retrieval/services/retriever'
 import type {
   QdrantConfig,
   VectorDoc,
   VectorIndexMetadata,
   VectorSearchResult,
   VectorStore,
-} from './vector-store'
+} from '../services/vector-store'
 /**
  * Qdrant 向量存储实现（外部后端）：通过 Qdrant REST API 做向量检索。
  *
@@ -18,8 +18,8 @@ import type {
  *
  * 失败语义：HTTP 非 2xx、未 build 即 search 均显式抛错，不静默吞错或伪装无命中。
  */
-import { validateEmbeddingVector } from './embedding-validation'
-import { NO_MATCH_SCORE_THRESHOLD } from './retriever'
+import { NO_MATCH_SCORE_THRESHOLD } from '../../retrieval/services/retriever'
+import { validateEmbeddingVector } from '../validation'
 
 /** 点 payload：随向量存储的可追溯元数据与上下文来源。 */
 interface QdrantDocumentPayload {

@@ -46,7 +46,7 @@ export default defineConfig({
         'dist/**',
         'index.ts',
         'cli.ts',
-        'src/core/types.ts',
+        'src/core/types/index.ts',
         'src/server/plugin.ts',
       ],
     },

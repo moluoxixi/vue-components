@@ -1,6 +1,6 @@
 import type { ComponentContract } from '../src/core/types'
 import { describe, expect, it } from 'vitest'
-import { ContentStrategy } from '../src/core/retrieval-strategy'
+import { ContentStrategy } from '../src/core/retrieval'
 
 function contract(name: string, description: string, propNames: string[] = []): ComponentContract {
   return {

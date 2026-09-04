@@ -1,7 +1,7 @@
 // @vitest-environment node
 import type { ComponentDetailResponse, KnowledgeImportPayload } from '../src/shared/protocol'
 import { describe, expect, it } from 'vitest'
-import { componentDetailToContract, contractToDetail, importExternalContract, validateKnowledgeImportPayload } from '../src/core/knowledge-source'
+import { componentDetailToContract, contractToDetail, importExternalContract, validateKnowledgeImportPayload } from '../src/core/knowledge'
 import { KNOWLEDGE_IMPORT_PROTOCOL, KNOWLEDGE_IMPORT_PROTOCOL_VERSION } from '../src/shared/protocol'
 
 function payload(name = 'DemoButton'): ComponentDetailResponse {

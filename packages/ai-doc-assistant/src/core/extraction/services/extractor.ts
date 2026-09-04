@@ -1,6 +1,6 @@
+import type { ComponentContract, EmitDef, ModelDef, PropDef, SlotDef, TypeDefInfo, TypeFieldDef } from '../../types'
 import type { MetaChecker } from './meta-extractor'
 import type { TypeSourceResolutionContext } from './type-source'
-import type { ComponentContract, EmitDef, ModelDef, PropDef, SlotDef, TypeDefInfo, TypeFieldDef } from './types'
 import { existsSync, readFileSync } from 'node:fs'
 import { basename, dirname, resolve as resolvePath } from 'node:path'
 import process from 'node:process'

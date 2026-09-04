@@ -1,5 +1,5 @@
-import type { KnowledgeSourceWire } from '../shared/protocol'
-import type { EmbeddingIdentity } from './index-state'
+import type { KnowledgeSourceWire } from '../../../shared/protocol'
+import type { EmbeddingIdentity } from '../../indexing'
 /**
  * 向量存储抽象层（ADR-0007 扩展缝）：把「向量索引与检索」从具体后端解耦。
  *
@@ -11,7 +11,7 @@ import type { EmbeddingIdentity } from './index-state'
  * 外部后端（qdrant）的连接串/密钥经 VectorStoreConfig 注入，作为系统边界显式校验。
  * 仅在 retrieval mode=vector 时才会构建向量存储；content 默认模式完全不触及本层。
  */
-import type { RetrievedChunk } from './retriever'
+import type { RetrievedChunk } from '../../retrieval/services/retriever'
 
 /** 待入库的单条文档：契约正文 + 预生成示例 + 已编码向量。 */
 export interface VectorDoc {
@@ -105,14 +105,14 @@ export async function createVectorStore(
   config?: VectorStoreConfig,
 ): Promise<VectorStore> {
   if (kind === 'orama') {
-    const { OramaVectorStore } = await import('./orama-store')
+    const { OramaVectorStore } = await import('../adapters/orama-store')
     return new OramaVectorStore()
   }
   if (kind === 'qdrant') {
     // qdrant 连接配置缺失即时序/配置错误，显式抛错不静默回落内存后端
     if (!config?.qdrant)
       throw new Error('qdrant vector store requires connection config (url + collection)')
-    const { QdrantVectorStore } = await import('./qdrant-store')
+    const { QdrantVectorStore } = await import('../adapters/qdrant-store')
     return new QdrantVectorStore(config.qdrant)
   }
   throw new Error(`invalid vector store: ${String(kind)} (expected ${VECTOR_STORE_KINDS.join(' | ')})`)

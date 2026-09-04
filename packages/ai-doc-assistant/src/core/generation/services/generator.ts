@@ -1,4 +1,4 @@
-import type { ComponentContract, PropDef, TypeDefInfo } from './types'
+import type { ComponentContract, PropDef, TypeDefInfo } from '../../types'
 
 /**
  * 把组件契约渲染为「可检索正文」：自然语言化的公共契约描述。

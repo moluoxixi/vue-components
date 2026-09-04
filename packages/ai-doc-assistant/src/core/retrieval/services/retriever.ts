@@ -1,11 +1,9 @@
 import type { Orama } from '@orama/orama'
-import type { KnowledgeSourceWire } from '../shared/protocol'
-import type { EmbeddingIdentitySeed, IndexMeta } from './index-state'
+import type { KnowledgeSourceWire } from '../../../shared/protocol'
+import type { EmbeddingIdentitySeed, IndexMeta } from '../../indexing'
 import { create, load, search } from '@orama/orama'
-import { validateEmbeddingVector } from './embedding-validation'
-import { matchesEmbeddingIdentity } from './index-state'
-import { createIndexSchema } from './indexer'
-import { loadIndex } from './persist'
+import { createIndexSchema, loadIndex, matchesEmbeddingIdentity } from '../../indexing'
+import { validateEmbeddingVector } from '../../vector/validation'
 
 /** 低于该相似度视为无命中，触发上层"无依据兜底"，避免拿不相关语料硬答。 */
 export const NO_MATCH_SCORE_THRESHOLD = 0.3

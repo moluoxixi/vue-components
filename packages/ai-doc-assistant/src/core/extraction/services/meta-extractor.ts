@@ -4,7 +4,7 @@ import type {
   PropertyMeta,
   PropertyMetaSchema,
 } from 'vue-component-meta'
-import type { EmitDef, ExposeDef, PropDef, SlotDef, TypeDefInfo, TypeFieldDef } from './types'
+import type { EmitDef, ExposeDef, PropDef, SlotDef, TypeDefInfo, TypeFieldDef } from '../../types'
 import { createChecker } from 'vue-component-meta'
 
 /**

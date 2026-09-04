@@ -1,17 +1,17 @@
 import type { EmbeddingModel } from 'ai'
-import type { EmbeddingIdentitySeed, IndexMeta } from './index-state'
+import type { EmbeddingIdentitySeed, IndexMeta } from '../../indexing'
 import type {
   RetrievalStrategy,
   StrategyChunk,
   StrategyMeta,
   StrategyResult,
-} from './retrieval-strategy'
-import type { ComponentContract } from './types'
+} from '../../retrieval'
+import type { ComponentContract } from '../../types'
 import type { VectorDoc, VectorStore, VectorStoreConfig, VectorStoreKind } from './vector-store'
 import { embed, embedMany } from 'ai'
-import { validateEmbeddingBatch, validateEmbeddingVector } from './embedding-validation'
-import { renderExample, renderSearchableDoc } from './generator'
-import { matchesEmbeddingIdentity, sourceHashOf } from './index-state'
+import { renderExample, renderSearchableDoc } from '../../generation'
+import { matchesEmbeddingIdentity, sourceHashOf } from '../../indexing'
+import { validateEmbeddingBatch, validateEmbeddingVector } from '../validation'
 import { createVectorStore } from './vector-store'
 
 const DEFAULT_TOP_K = 5

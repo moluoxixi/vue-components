@@ -12,11 +12,11 @@ export { renderExample, renderExampleSkeleton, renderSearchableDoc } from './src
 
 export { splitAnswerSegments } from './src/core'
 // ── core：契约抽取 ──────────────────────────────────────────────
-export { extractContract, extractContracts } from './src/core/extractor'
+export { extractContract, extractContracts } from './src/core/extraction'
 
 // ── core：抽取状态机 ────────────────────────────────────────────
-export { IndexStateManager } from './src/core/index-state'
-export type { IndexMeta, IndexStatus, IndexStatusSnapshot } from './src/core/index-state'
+export { IndexStateManager } from './src/core/indexing'
+export type { IndexMeta, IndexStatus, IndexStatusSnapshot } from './src/core/indexing'
 
 // ── core：领域类型 ──────────────────────────────────────────────
 export type {

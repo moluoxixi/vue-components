@@ -1,6 +1,6 @@
-import type { ComponentDetailResponse, KnowledgeImportPayload, KnowledgeImportResult } from '../shared/protocol'
-import type { ComponentContract } from './types'
-import { KNOWLEDGE_IMPORT_PROTOCOL, KNOWLEDGE_IMPORT_PROTOCOL_VERSION } from '../shared/protocol'
+import type { ComponentDetailResponse, KnowledgeImportPayload, KnowledgeImportResult } from '../../../shared/protocol'
+import type { ComponentContract } from '../../types'
+import { KNOWLEDGE_IMPORT_PROTOCOL, KNOWLEDGE_IMPORT_PROTOCOL_VERSION } from '../../../shared/protocol'
 
 export type KnowledgeSource = 'internal' | 'external'
 

@@ -1,5 +1,5 @@
 import type { LanguageModel, ToolSet } from 'ai'
-import type { RetrievalStrategy, StrategyChunk } from '../core/retrieval-strategy'
+import type { RetrievalStrategy, StrategyChunk } from '../core/retrieval'
 import type { AiDocUIMessage, ExampleBlock, SourceRef } from '../shared/protocol'
 import {
   convertToModelMessages,
@@ -7,8 +7,7 @@ import {
   streamText,
   toUIMessageStream,
 } from 'ai'
-import { transpileSfcToJs } from '../core/sfc-transpile'
-import { extractVueBlocks, PREVIEW_ALLOWED_MODULES } from '../core/vue-block-extractor'
+import { extractVueBlocks, PREVIEW_ALLOWED_MODULES, transpileSfcToJs } from '../core/preview'
 
 export interface QueryDeps {
   model: LanguageModel | null

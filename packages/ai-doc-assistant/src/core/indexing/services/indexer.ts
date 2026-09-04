@@ -1,11 +1,11 @@
 import type { Orama } from '@orama/orama'
 import type { EmbeddingModel } from 'ai'
+import type { ComponentContract } from '../../types'
 import type { EmbeddingIdentitySeed, IndexMeta } from './index-state'
-import type { ComponentContract } from './types'
 import { create, insertMultiple, save } from '@orama/orama'
 import { embedMany } from 'ai'
-import { validateEmbeddingBatch } from './embedding-validation'
-import { renderExample, renderSearchableDoc } from './generator'
+import { renderExample, renderSearchableDoc } from '../../generation'
+import { validateEmbeddingBatch } from '../../vector/validation'
 
 export type { EmbeddingIdentity, EmbeddingIdentitySeed, IndexMeta } from './index-state'
 
