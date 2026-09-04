@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"复核目录、barrel、types、public entry 与 architecture debt。"}
+{"file":".trellis/spec/vite-config/backend/index.md","reason":"复核 consumer-root dynamic import、addon runtime 与 error contracts。"}
+{"file":".trellis/spec/vite-config/frontend/index.md","reason":"复核公开 addon subpath、fixture 和 browser 行为。"}
