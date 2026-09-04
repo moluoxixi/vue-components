@@ -54,8 +54,7 @@ table.setPageSize(20)
 import { useBatchOperate, useFormSubmit } from '@moluoxixi/hooks'
 
 const form = useFormSubmit({
-  create: values => createUser(values),
-  update: (id, values) => updateUser(id, values),
+  submit: ({ mode, id, values }) => (mode === 'create' ? createUser(values) : updateUser(id!, values)),
   invalidateKeys: ['users'],
 })
 
@@ -63,7 +62,7 @@ await form.submit({ name: 'Alice' })
 await form.submit({ name: 'Bob' }, 'user-2')
 
 const batch = useBatchOperate({
-  operate: ids => disableUsers(ids),
+  operate: ({ keys }) => disableUsers(keys),
   invalidateKeys: ['users'],
 })
 

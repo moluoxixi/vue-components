@@ -98,6 +98,24 @@ describe('useRequestTable', () => {
     unmount()
   })
 
+  it('resets current page after a deep params mutation', async () => {
+    const params = ref({ filters: { status: 'active' } })
+    const { result, unmount } = withSetup(() => useRequestTable<Row, { filters: { status: string } }>({
+      queryKey: 'deep-params-table',
+      query: vi.fn(),
+      params,
+      enabled: false,
+      defaultCurrentPage: 4,
+    }))
+
+    expect(result.currentPage.value).toBe(4)
+    params.value.filters.status = 'disabled'
+    await nextTick()
+    expect(result.currentPage.value).toBe(1)
+
+    unmount()
+  })
+
   it('reuses external page refs and tracks getter inputs with internal refs', async () => {
     const currentPage = ref(3)
     const pageSizeSource = ref(25)

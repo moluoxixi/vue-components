@@ -61,6 +61,48 @@ describe('useBatchOperate', () => {
     unmount()
   })
 
+  it('等待查询失效完成后再清空选择并调用 onSuccess', async () => {
+    let resolveInvalidation!: () => void
+    const invalidation = new Promise<void>((resolve) => {
+      resolveInvalidation = resolve
+    })
+    const order: string[] = []
+    let selectionAtSuccess: number[] | undefined
+    let readSelection = (): number[] => []
+    const { QueryClient } = await import('@tanstack/vue-query')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(async () => {
+      order.push('invalidate:start')
+      await invalidation
+      order.push('invalidate:end')
+    })
+    const { result, unmount } = withSetup(
+      () => useBatchOperate<number, number>({
+        operate: async () => 1,
+        invalidateKeys: ['rows'],
+        onSuccess: () => {
+          selectionAtSuccess = readSelection()
+          order.push('success')
+        },
+      }),
+      queryClient,
+    )
+    readSelection = () => result.selectedKeys.value
+
+    result.setSelection([1, 2])
+    const operation = result.execute()
+    await waitFor(() => order.includes('invalidate:start'))
+    expect(result.selectedKeys.value).toEqual([1, 2])
+    expect(order).toEqual(['invalidate:start'])
+
+    resolveInvalidation()
+    await operation
+    expect(result.selectedKeys.value).toEqual([])
+    expect(selectionAtSuccess).toEqual([])
+    expect(order).toEqual(['invalidate:start', 'invalidate:end', 'success'])
+    unmount()
+  })
+
   it('clearSelectionOnSuccess 为 false 时保留选中集合', async () => {
     const operate = vi.fn(async (): Promise<number> => 1)
     const { result, unmount } = withSetup(() => useBatchOperate<number, number>({ operate, clearSelectionOnSuccess: false }))

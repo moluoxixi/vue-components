@@ -26,13 +26,13 @@
 
 ## 验收标准
 
-- [ ] 6 条目标 debt 删除，architecture unknown/stale 为零。
-- [ ] 每个 hook feature 根只含纯 `index.ts` 与责任目录；旧实现路径不存在。
-- [ ] 六个 hook 仍有真实响应式状态证据；纯分页归一化位于私有 utils，公共 API 未扩大。
-- [ ] 根运行时导出仍精确为六个 hook与两个 query-key utils，公开类型集合不变。
-- [ ] 查询、watch、mutation、selection、分页、error 与 callback 顺序测试通过。
-- [ ] README、package exports、Vite entry、声明与 packed source files 一致。
-- [ ] package/consumer/full repository gates与独立 review 通过，提交但不 push；归档时仅允许用户的无关改动留在工作树。
+- [x] 6 条目标 debt 删除，architecture unknown/stale 为零。
+- [x] 每个 hook feature 根只含纯 `index.ts` 与责任目录；旧实现路径不存在。
+- [x] 六个 hook 仍有真实响应式状态证据；纯分页归一化位于私有 utils，公共 API 未扩大。
+- [x] 根运行时导出仍精确为六个 hook与两个 query-key utils，公开类型集合不变。
+- [x] 查询、watch、mutation、selection、分页、error 与 callback 顺序测试通过。
+- [x] README、package exports、Vite entry、声明与 packed source files 一致。
+- [x] package/consumer/full repository gates与独立 review 通过，提交但不 push；归档时仅允许用户的无关改动留在工作树。
 
 ## 范围外
 

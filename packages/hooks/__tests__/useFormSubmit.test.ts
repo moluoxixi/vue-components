@@ -45,6 +45,37 @@ describe('useFormSubmit', () => {
     unmount()
   })
 
+  it('等待查询失效完成后再调用 onSuccess', async () => {
+    let resolveInvalidation!: () => void
+    const invalidation = new Promise<void>((resolve) => {
+      resolveInvalidation = resolve
+    })
+    const order: string[] = []
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(async () => {
+      order.push('invalidate:start')
+      await invalidation
+      order.push('invalidate:end')
+    })
+    const { result, unmount } = withSetup(
+      () => useFormSubmit<FormValues, number>({
+        submit: async () => 1,
+        invalidateKeys: ['rows'],
+        onSuccess: () => order.push('success'),
+      }),
+      queryClient,
+    )
+
+    const submission = result.submit({ name: 'ordered' })
+    await waitFor(() => order.includes('invalidate:start'))
+    expect(order).toEqual(['invalidate:start'])
+
+    resolveInvalidation()
+    await submission
+    expect(order).toEqual(['invalidate:start', 'invalidate:end', 'success'])
+    unmount()
+  })
+
   it('提交失败时抛出错误、进入错误态并回调 onError', async () => {
     const submit = vi.fn(async (): Promise<number> => {
       throw new Error('fail')
