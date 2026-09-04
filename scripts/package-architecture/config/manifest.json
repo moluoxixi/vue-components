@@ -244,12 +244,6 @@
       ]
     },
     {
-      "path": "packages/ai-provider/src/shared/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "ai-provider-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
       "path": "packages/components/src/ConfigTable/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "components-structure-governance",
@@ -374,24 +368,6 @@
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ai-provider/src/server/error.ts",
-      "rule": "feature.root-file",
-      "targetTask": "ai-provider-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/ai-provider/src/server/model-factory.ts",
-      "rule": "feature.root-file",
-      "targetTask": "ai-provider-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/ai-provider/src/server/redact.ts",
-      "rule": "feature.root-file",
-      "targetTask": "ai-provider-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
     },
     {
       "path": "packages/components/src/HeadlessTable/src/core/renderer.ts",
