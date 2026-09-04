@@ -83,6 +83,10 @@ describe('published package verifier helpers', () => {
       .toEqual(['.', './shared'])
     expect(browserJavaScriptEntrypointExclusions['@moluoxixi/ai-provider'])
       .toEqual(['./server'])
+    expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/config-form-antd-vue'])
+      .toEqual(['.'])
+    expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/config-form-element'])
+      .toEqual(['.'])
     expect(browserJavaScriptEntrypointAllowlist['@moluoxixi/i18n-tool'])
       .toEqual(['./protocol'])
     expect(browserJavaScriptEntrypointExclusions['@moluoxixi/i18n-tool'])
@@ -91,11 +95,9 @@ describe('published package verifier helpers', () => {
       '.',
       './auto-loaders',
       './playground-manifest',
-      './AntdConfigForm',
       './ConfigTable',
       './CopyText',
       './DateRangePicker',
-      './ElementConfigForm',
       './EnterNextContainer',
       './HeadlessCopyText',
       './HeadlessTable',
@@ -103,9 +105,6 @@ describe('published package verifier helpers', () => {
       './RequestCascader',
       './RequestSelectV2',
       './RequestTreeSelect',
-      './configForm',
-      './element',
-      './antd',
     ])
     expect(browserJavaScriptEntrypointExclusions['@moluoxixi/vitepress-theme-element-plus'])
       .toEqual(['.', './markdown', './node', './repository/node'])
