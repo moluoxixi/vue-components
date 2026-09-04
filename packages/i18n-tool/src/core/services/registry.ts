@@ -1,7 +1,5 @@
-import type { I18nDiagnostic, LocaleAdapter, LocaleAdapterId } from './types'
-import { genericJsonAdapter } from './adapters/generic-json'
-import { i18nextJsonAdapter } from './adapters/i18next-json'
-import { vueI18nJsonAdapter } from './adapters/vue-i18n-json'
+import type { I18nDiagnostic, LocaleAdapter, LocaleAdapterId } from '../types'
+import { genericJsonAdapter, i18nextJsonAdapter, vueI18nJsonAdapter } from '../adapters'
 
 export interface LocaleAdapterRegistry {
   get: (id: LocaleAdapterId) => LocaleAdapter | undefined

@@ -1,4 +1,4 @@
-import type { I18nToolCliOverrides, ResolvedI18nToolConfig } from './types'
+import type { I18nToolCliOverrides, ResolvedI18nToolConfig } from '../types'
 import { dirname, isAbsolute, resolve } from 'node:path'
 import process from 'node:process'
 import { z } from 'zod'

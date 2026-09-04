@@ -1,0 +1,5 @@
+export { genericJsonAdapter } from './generic-json'
+export { i18nextJsonAdapter } from './i18next-json'
+export type { SemanticsResolver } from './json-adapter'
+export { createJsonLocaleAdapter } from './json-adapter'
+export { vueI18nJsonAdapter } from './vue-i18n-json'

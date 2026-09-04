@@ -1,18 +1,10 @@
-export type { LoadConfigOptions } from './loader'
+export type { ResolveConfigOptions } from './schemas'
+export { i18nToolConfigSchema, resolveI18nToolConfig } from './schemas'
+export type { LoadConfigOptions } from './services'
 export {
   DEFAULT_CONFIG_FILES,
   defineConfig,
   findConfigPath,
   loadI18nToolConfig,
-} from './loader'
-export type { ResolveConfigOptions } from './schema'
-export { i18nToolConfigSchema, resolveI18nToolConfig } from './schema'
-export type {
-  I18nToolAiConfigInput,
-  I18nToolCliOverrides,
-  I18nToolConfigInput,
-  I18nToolLimitsInput,
-  I18nToolResourceConfigInput,
-  I18nToolServerConfigInput,
-  ResolvedI18nToolConfig,
-} from './types'
+} from './services'
+export type * from './types'

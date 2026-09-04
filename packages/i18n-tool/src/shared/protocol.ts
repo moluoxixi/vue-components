@@ -1,7 +1,7 @@
 import type { AiProviderId } from '@moluoxixi/ai-provider/shared'
 import type { ChangeOperation, I18nDiagnostic, TranslationCandidate, TranslationUnit } from '../core'
 import { z } from 'zod'
-import { I18N_DIAGNOSTIC_CODES } from '../core/types'
+import { I18N_DIAGNOSTIC_CODES } from '../core/constants'
 
 export const I18N_TOOL_API_PREFIX = '/__i18n-tool/api'
 export const I18N_TOOL_PRIVATE_HEADER = 'x-i18n-tool-request'

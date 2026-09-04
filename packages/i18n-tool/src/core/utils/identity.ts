@@ -1,4 +1,4 @@
-import type { LocaleAdapterId, TranslationUnit } from './types'
+import type { LocaleAdapterId, TranslationUnit } from '../types'
 
 function encodeSegments(segments: readonly string[]): string {
   return segments.map(segment => `${segment.length}:${segment}`).join('|')

@@ -7,9 +7,8 @@ import type {
   RoundTripResult,
   TranslationCandidate,
   TranslationGap,
-} from './types'
-import { createJsonPointer, createUnitId } from './identity'
-import { cloneJson, getJsonPath, serializeJson, setJsonPath } from './json'
+} from '../types'
+import { cloneJson, createJsonPointer, createUnitId, getJsonPath, serializeJson, setJsonPath } from '../utils'
 
 export interface ChangePlanOptions {
   allowOverwrite?: boolean

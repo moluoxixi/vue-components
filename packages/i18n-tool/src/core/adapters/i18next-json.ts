@@ -1,5 +1,5 @@
 import type { I18nextSemanticsOptions, TranslationUnitSemantics } from '../types'
-import { createFamilyIdentity } from '../identity'
+import { createFamilyIdentity } from '../utils'
 import { createJsonLocaleAdapter } from './json-adapter'
 
 function resolveI18nextSemantics(

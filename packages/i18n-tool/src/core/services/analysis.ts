@@ -4,8 +4,8 @@ import type {
   TranslationBatchPlan,
   TranslationGap,
   TranslationUnit,
-} from './types'
-import { createFamilyIdentity, createMessageIdentity } from './identity'
+} from '../types'
+import { createFamilyIdentity, createMessageIdentity } from '../utils'
 
 export const DEFAULT_TRANSLATION_BATCH_MAX_UNITS = 50
 export const DEFAULT_TRANSLATION_BATCH_MAX_CHARACTERS = 20_000

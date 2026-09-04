@@ -5,10 +5,10 @@ import type {
   TranslationCandidate,
   TranslationUnit,
   TranslationValidationResult,
-} from './types'
+} from '../types'
 import { generateText } from 'ai'
 import { z } from 'zod'
-import { extractProtectedTokens, protectedTokensEqual } from './tokens'
+import { extractProtectedTokens, protectedTokensEqual } from '../utils'
 
 const outputSchema = z.object({
   targetLocale: z.string().min(1),

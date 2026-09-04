@@ -1,4 +1,4 @@
-import type { I18nextSemanticsOptions, JsonKeyStyle, LocaleAdapterId, LocaleLayout } from '../core'
+import type { I18nextSemanticsOptions, JsonKeyStyle, LocaleAdapterId, LocaleLayout } from '../../core'
 
 interface I18nToolAiConfigBase {
   apiKeyEnv: string

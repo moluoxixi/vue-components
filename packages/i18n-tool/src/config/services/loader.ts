@@ -1,9 +1,9 @@
-import type { I18nToolCliOverrides, I18nToolConfigInput, ResolvedI18nToolConfig } from './types'
+import type { I18nToolCliOverrides, I18nToolConfigInput, ResolvedI18nToolConfig } from '../types'
 import { existsSync } from 'node:fs'
 import { dirname, isAbsolute, resolve } from 'node:path'
 import process from 'node:process'
 import { createJiti } from 'jiti'
-import { resolveI18nToolConfig } from './schema'
+import { resolveI18nToolConfig } from '../schemas'
 
 export const DEFAULT_CONFIG_FILES = [
   'i18n-tool.config.ts',

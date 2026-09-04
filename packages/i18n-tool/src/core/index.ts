@@ -1,41 +1,40 @@
-export { genericJsonAdapter } from './adapters/generic-json'
-export { i18nextJsonAdapter } from './adapters/i18next-json'
-export { vueI18nJsonAdapter } from './adapters/vue-i18n-json'
-export type { TranslationBatchLimits } from './analysis'
+export { genericJsonAdapter, i18nextJsonAdapter, vueI18nJsonAdapter } from './adapters'
+export { I18N_DIAGNOSTIC_CODES, LOCALE_ADAPTER_IDS } from './constants'
+export type { TranslationBatchLimits } from './services'
 export {
   analyzeTranslationGaps,
   DEFAULT_TRANSLATION_BATCH_MAX_CHARACTERS,
   DEFAULT_TRANSLATION_BATCH_MAX_UNITS,
   planTranslationBatches,
-} from './analysis'
-export {
-  createFamilyIdentity,
-  createJsonPointer,
-  createMessageIdentity,
-  createUnitId,
-} from './identity'
-export type { ChangePlanOptions } from './operations'
+} from './services'
+export type { ChangePlanOptions } from './services'
 export {
   applyOperationsAndValidate,
   planChangeOperations,
-} from './operations'
-export type { LocaleAdapterRegistry } from './registry'
+} from './services'
+export type { LocaleAdapterRegistry } from './services'
 export {
   createLocaleAdapterRegistry,
   defaultLocaleAdapterRegistry,
-} from './registry'
-export {
-  extractProtectedTokens,
-  protectedTokensEqual,
-} from './tokens'
+} from './services'
 export type {
   TranslationRequest,
   TranslationRequestEntry,
-} from './translation'
+} from './services'
 export {
   createTranslationRequest,
   selectRetryUnits,
   translateBatch,
   validateTranslationOutput,
-} from './translation'
-export * from './types'
+} from './services'
+export type * from './types'
+export {
+  createFamilyIdentity,
+  createJsonPointer,
+  createMessageIdentity,
+  createUnitId,
+} from './utils'
+export {
+  extractProtectedTokens,
+  protectedTokensEqual,
+} from './utils'

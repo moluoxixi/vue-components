@@ -13,8 +13,7 @@ import type {
   TranslationUnit,
   TranslationUnitSemantics,
 } from '../types'
-import { createJsonPointer, createUnitId } from '../identity'
-import { isJsonObject, parseJsonSource } from '../json'
+import { createJsonPointer, createUnitId, isJsonObject, parseJsonSource } from '../utils'
 
 export type SemanticsResolver = (
   path: readonly string[],

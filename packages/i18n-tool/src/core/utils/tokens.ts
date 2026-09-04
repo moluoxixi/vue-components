@@ -1,4 +1,4 @@
-import type { ProtectedToken } from './types'
+import type { ProtectedToken } from '../types'
 
 interface TokenMatch extends ProtectedToken {
   index: number

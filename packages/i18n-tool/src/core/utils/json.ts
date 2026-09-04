@@ -1,4 +1,4 @@
-import type { I18nDiagnostic, JsonFormatMetadata, JsonObject, JsonValue } from './types'
+import type { I18nDiagnostic, JsonFormatMetadata, JsonObject, JsonValue } from '../types'
 
 export function isJsonObject(value: unknown): value is JsonObject {
   if (typeof value !== 'object' || value === null || Array.isArray(value))

@@ -1,10 +1,4 @@
-export const LOCALE_ADAPTER_IDS = [
-  'generic-json',
-  'i18next-json',
-  'vue-i18n-json',
-] as const
-
-export type LocaleAdapterId = typeof LOCALE_ADAPTER_IDS[number]
+export type LocaleAdapterId = 'generic-json' | 'i18next-json' | 'vue-i18n-json'
 export type LocaleLayout = 'locale-first' | 'locale-per-file'
 export type JsonKeyStyle = 'flat' | 'nested'
 export type DiagnosticSeverity = 'error' | 'warning'
@@ -14,29 +8,26 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive
 export interface JsonArray extends Array<JsonValue> {}
 export interface JsonObject { [key: string]: JsonValue }
 
-export const I18N_DIAGNOSTIC_CODES = [
-  'ADAPTER_NOT_FOUND',
-  'AMBIGUOUS_KEY',
-  'BATCH_LIMIT_EXCEEDED',
-  'DUPLICATE_RESULT',
-  'FAMILY_INCOMPLETE',
-  'INVALID_JSON',
-  'LOCALE_REQUIRED',
-  'MISSING_RESULT',
-  'MIXED_KEY_STYLE',
-  'MODEL_OUTPUT_INVALID',
-  'OVERWRITE_REQUIRED',
-  'ROOT_NOT_OBJECT',
-  'ROUND_TRIP_MISMATCH',
-  'TARGET_PLAN_INVALID',
-  'TARGET_LOCALE_MISMATCH',
-  'TOKEN_MISMATCH',
-  'UNEXPECTED_RESULT',
-  'UNSUPPORTED_LAYOUT',
-  'UNSUPPORTED_LEAF',
-] as const
-
-export type I18nDiagnosticCode = typeof I18N_DIAGNOSTIC_CODES[number]
+export type I18nDiagnosticCode
+  = | 'ADAPTER_NOT_FOUND'
+    | 'AMBIGUOUS_KEY'
+    | 'BATCH_LIMIT_EXCEEDED'
+    | 'DUPLICATE_RESULT'
+    | 'FAMILY_INCOMPLETE'
+    | 'INVALID_JSON'
+    | 'LOCALE_REQUIRED'
+    | 'MISSING_RESULT'
+    | 'MIXED_KEY_STYLE'
+    | 'MODEL_OUTPUT_INVALID'
+    | 'OVERWRITE_REQUIRED'
+    | 'ROOT_NOT_OBJECT'
+    | 'ROUND_TRIP_MISMATCH'
+    | 'TARGET_PLAN_INVALID'
+    | 'TARGET_LOCALE_MISMATCH'
+    | 'TOKEN_MISMATCH'
+    | 'UNEXPECTED_RESULT'
+    | 'UNSUPPORTED_LAYOUT'
+    | 'UNSUPPORTED_LEAF'
 
 export interface I18nDiagnostic {
   code: I18nDiagnosticCode
