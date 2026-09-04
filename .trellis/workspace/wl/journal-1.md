@@ -713,3 +713,37 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 30: ConfigForm Workbench 结构治理
+
+**Date**: 2026-09-04
+**Task**: ConfigForm Workbench 结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 Workbench 私有组件归位及 Source、controller、Flow、Monaco、IndexedDB、RuntimeHost 职责拆分；补齐关键 characterization、修复 Monaco 首装与过期 session 回调，并通过 458 unit、2 套模板、72 E2E、ConfigForm smoke 和全仓门禁。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `eb250888` | (see git log) |
+| `6a43effb` | (see git log) |
+| `094d9301` | (see git log) |
+| `ea36e3e0` | (see git log) |
+| `8eb68a3a` | (see git log) |
+| `acd45d10` | (see git log) |
+| `1bb0fe9b` | (see git log) |
+| `f5edde7e` | (see git log) |
+| `e9fd101d` | (see git log) |
+| `39d0edc0` | (see git log) |
+| `a16b22ab` | (see git log) |
+| `4877768b` | (see git log) |
+| `7fdf2315` | (see git log) |
+
+### Status
+
+[OK] **Completed**
