@@ -33,16 +33,27 @@ Manifest 中每个 `targetTask` 均对应父任务下的真实子任务。子任
 
 ## 验收标准
 
-- [ ] `packages/**/package.json` 对应包均满足根 `index.ts` + `src/` 合同，例外均有可执行 manifest 证据。
-- [ ] 不存在 `export * from './src'` 或重复包级 `src/index.ts`。
-- [ ] 组件所有权门禁覆盖静态 import、动态 import、barrel 和显式例外；未解决债务归零。
-- [ ] P0/P1 巨型行为文件完成职责拆分，公开 API 和用户可观察行为保持不变。
-- [ ] README、Trellis spec、package exports、声明与实际目录一致。
-- [ ] 全仓 lint/typecheck/unit/build/architecture tests 通过；ConfigForm package smoke、Workbench templates/build/E2E 通过。
-- [ ] 所有批次已提交但未 push，最终工作树干净。
+- [x] `packages/**/package.json` 对应包均满足根 `index.ts` + `src/` 合同，例外均有可执行 manifest 证据。
+- [x] 不存在 `export * from './src'` 或重复包级 `src/index.ts`。
+- [x] 组件所有权门禁覆盖静态 import、动态 import、barrel 和显式例外；未解决债务归零。
+- [x] P0/P1 巨型行为文件完成职责拆分，公开 API 和用户可观察行为保持不变。
+- [x] README、Trellis spec、package exports、声明与实际目录一致。
+- [x] packages 范围 lint/typecheck/unit/build/architecture tests 通过；ConfigForm package smoke、Workbench templates/build/E2E 通过。完整 docs-theme E2E 的既有失败继续由 `09-02-docs-audit-fixes` 持有。
+- [x] 所有治理批次已提交但未 push；工作树仅保留四个任务外的用户并行改动。
 
 ## 范围外
 
 - `packages/` 之外的 docs、playgrounds 和应用，除非它们是包移动后的必要消费者或验证入口。
 - 与目录治理无关的 UI 重设计、业务功能和协议扩展。
 - 直接维护 `dist/`、coverage、缓存和其他生成产物。
+
+## 最终证据
+
+- 13/13 子任务完成并归档；架构债务递减链为 `145 → 118 → 114 → 108 → 84 → 83 → 48 → 28 → 0`。
+- `pnpm test:package-architecture`：11 项测试通过，33 个包、0 条 tracked debt；`pnpm test:path-contracts`：8 项通过。
+- `pnpm build`：29/29；`pnpm typecheck`：67/67；packages-only 测试：56/56；Vite Config：79 项测试通过。
+- `pnpm test:config-form-packages`：12 个 ConfigForm 包构建并通过公共边界检查。
+- `node scripts/verify-published-packages.mjs --browser`：28 个可发布包、23 个浏览器 JS entry、3 个样式 entry、8 批浏览器消费构建通过。
+- 子任务归档记录：Workbench unit 458 项、templates 2/2、E2E 72/72；ConfigForm Playground E2E 8/8；Components Playground E2E 7/7；AI Doc E2E 2/2；I18n Tool E2E 5/5。
+- `pnpm lint` 与 `git diff --check` 通过；独立只读复核未发现未处理的结构或公共 API 回归。
+- 根 `pnpm test` 仅失败于 docs 已登记的 ConfigForm family route 缺失；Theme 完整 E2E 9/17，其余 Demo 冷启动、搜索物料、假头像网络和截图基线均已归属 `09-02-docs-audit-fixes`。
