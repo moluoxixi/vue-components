@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 28
-- **Last Active**: 2026-09-02
+- **Total Sessions**: 29
+- **Last Active**: 2026-09-04
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~683 | Active |
+| `journal-1.md` | ~715 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 29 | 2026-09-04 | 完成 ConfigForm Runtime 与领域结构治理 | `623deb5e`, `2b28a90a`, `a288d580`, `0b040f7e`, `0eb01725`, `553eae9f`, `798d34e3`, `aceeee20`, `e3f19ad6`, `286992c4` | `main` |
 | 28 | 2026-09-02 | 全局目录结构规范与 Spec 去重 | `5af97f6b`, `c77ca835`, `97611e8d` | `main` |
 | 27 | 2026-09-02 | 完成 ConfigForm JSON 导入与 Workbench 生产体验收口 | `97ec69b5` | `main` |
 | 26 | 2026-09-01 | 完成 ConfigForm 独立模板管理 | `2f316a7b` | `main` |

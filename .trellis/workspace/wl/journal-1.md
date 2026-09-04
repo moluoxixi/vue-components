@@ -682,3 +682,34 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 29: 完成 ConfigForm Runtime 与领域结构治理
+
+**Date**: 2026-09-04
+**Task**: 完成 ConfigForm Runtime 与领域结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+清理 Runtime/domain 架构债务，拆分 Playground、Model transaction、Compiler、Renderer、Headless controller 与 Runtime validation，修复 ConfigForm source-condition 打包文件并补中文 README、状态边界 spec、全量门禁和发布包验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `623deb5e` | (see git log) |
+| `2b28a90a` | (see git log) |
+| `a288d580` | (see git log) |
+| `0b040f7e` | (see git log) |
+| `0eb01725` | (see git log) |
+| `553eae9f` | (see git log) |
+| `798d34e3` | (see git log) |
+| `aceeee20` | (see git log) |
+| `e3f19ad6` | (see git log) |
+| `286992c4` | (see git log) |
+
+### Status
+
+[OK] **Completed**
