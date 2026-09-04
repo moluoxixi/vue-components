@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"执行 package、feature root、barrel、types 与责任目录合同。"}
+{"file":".trellis/spec/ai-provider/backend/provider-contracts.md","reason":"保持 browser-safe/server-only Provider 公共契约与验证语义。"}
+{"file":".trellis/tasks/09-03-ai-provider-structure-governance/research/structure-map.md","reason":"使用已核验的 debt、职责与目标移动矩阵。"}
+{"file":".trellis/tasks/09-03-ai-provider-structure-governance/research/contract-map.md","reason":"保持 consumer、entry、validation、error 与 redaction 测试契约。"}
