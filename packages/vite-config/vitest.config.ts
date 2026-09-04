@@ -14,6 +14,10 @@ export default defineConfig({
         replacement: `${fileURLToPath(new URL('./src/config', import.meta.url))}/$1`,
       },
       {
+        find: /^@moluoxixi\/vite-config\/addons\/(.*)$/,
+        replacement: `${fileURLToPath(new URL('./src/addons', import.meta.url))}/$1`,
+      },
+      {
         find: '@moluoxixi/vite-config/addons',
         replacement: fileURLToPath(new URL('./src/addons/index.ts', import.meta.url)),
       },

@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { inspectViteFeatures } from '@moluoxixi/vite-config'
+import { viteFeatures } from '@moluoxixi/vite-config/config/base/addons/registry'
 import {
   createAddonContext,
   defineFeature,
@@ -44,6 +45,36 @@ beforeEach(() => {
 })
 
 describe('addon runtime helpers', () => {
+  it('keeps the concrete registry order and dependency metadata stable', () => {
+    expect(viteFeatures.map(feature => ({
+      dependsOn: feature.dependsOn ?? [],
+      name: feature.name,
+      requires: feature.requires ?? [],
+      triggers: feature.triggers,
+    }))).toEqual([
+      { dependsOn: [], name: 'vue', requires: ['@vitejs/plugin-vue'], triggers: ['vue', '@vitejs/plugin-vue'] },
+      { dependsOn: [], name: 'react', requires: ['@vitejs/plugin-react'], triggers: ['react', '@vitejs/plugin-react'] },
+      { dependsOn: [], name: 'unocss', requires: ['unocss'], triggers: ['unocss'] },
+      { dependsOn: [], name: 'tailwindcss', requires: [], triggers: ['@tailwindcss/vite', '@tailwindcss/postcss'] },
+      { dependsOn: [], name: 'vueRouter', requires: ['unplugin-vue-router'], triggers: ['unplugin-vue-router'] },
+      { dependsOn: [], name: 'vueLayouts', requires: ['vite-plugin-vue-layouts'], triggers: ['vite-plugin-vue-layouts'] },
+      { dependsOn: [], name: 'autoImport', requires: ['unplugin-auto-import'], triggers: ['unplugin-auto-import'] },
+      { dependsOn: [], name: 'components', requires: ['unplugin-vue-components'], triggers: ['unplugin-vue-components'] },
+      { dependsOn: [], name: 'pages', requires: ['vite-plugin-pages'], triggers: ['vite-plugin-pages'] },
+      { dependsOn: [], name: 'i18n', requires: ['@intlify/unplugin-vue-i18n'], triggers: ['@intlify/unplugin-vue-i18n'] },
+      { dependsOn: [], name: 'devtools', requires: ['vite-plugin-vue-devtools'], triggers: ['vite-plugin-vue-devtools'] },
+      { dependsOn: [], name: 'pwa', requires: ['vite-plugin-pwa'], triggers: ['vite-plugin-pwa'] },
+      {
+        dependsOn: [],
+        name: 'markdown',
+        requires: ['unplugin-vue-markdown', '@shikijs/markdown-it', 'markdown-it-link-attributes'],
+        triggers: ['unplugin-vue-markdown', 'vite-plugin-vue-markdown', 'vite-plugin-md'],
+      },
+      { dependsOn: [], name: 'vitest', requires: [], triggers: ['vitest'] },
+      { dependsOn: [], name: 'viteSsg', requires: ['vite-ssg'], triggers: ['vite-ssg'] },
+    ])
+  })
+
   it('extracts package names from bare and scoped specifiers', () => {
     expect(getPackageName('vite-plugin-pwa')).toBe('vite-plugin-pwa')
     expect(getPackageName('unplugin-vue-router/vite')).toBe('unplugin-vue-router')
