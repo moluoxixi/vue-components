@@ -7,7 +7,7 @@
 - [x] 实现 composable 职责分析，复核并迁移无状态候选。
 - [x] 运行 33 包全量架构检查，处理 unknown/stale 结果。
 - [x] 运行 lint、typecheck、unit、build、consumer smoke 与 `git diff --check`，更新 spec。
-- [ ] 独立提交并归档子任务。
+- [x] 独立提交并归档子任务。
 
 验证以 `pnpm test:package-architecture` 和 `pnpm exec vitest run scripts/__tests__/package-architecture.test.mjs` 为核心，并补跑受生产代码移动影响的所属包测试。
 
