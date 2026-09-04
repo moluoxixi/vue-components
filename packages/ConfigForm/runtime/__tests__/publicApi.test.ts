@@ -1,6 +1,11 @@
 import type * as PublicApi from '../index'
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { ConfigFormError } from '../index'
+import {
+  ConfigFormError,
+  ConfigFormRenderer,
+  createConfigFormRendererExpose,
+  withConfigFormInstall,
+} from '../index'
 
 describe('public api', () => {
   it('exposes defineField and defineFields helpers', () => {
@@ -111,5 +116,17 @@ describe('public api', () => {
     expect(error).toBeInstanceOf(ConfigFormError)
     expect(error.code).toBe('CONFIG_FORM_TEST')
     expect(error.context).toEqual({ field: 'name' })
+  })
+
+  it('keeps the renderer value and type contracts on the package root', () => {
+    type RendererProps = PublicApi.ConfigFormRendererProps<{ name: string }>
+    type RendererExpose = PublicApi.ConfigFormRendererExpose<{ name: string }>
+
+    expect(ConfigFormRenderer).toBeDefined()
+    expect(createConfigFormRendererExpose).toBeTypeOf('function')
+    expect(withConfigFormInstall).toBeTypeOf('function')
+    expectTypeOf<RendererProps['mode']>().toEqualTypeOf<PublicApi.ConfigFormRenderMode | undefined>()
+    expectTypeOf<RendererProps['editor']>().toEqualTypeOf<PublicApi.ConfigFormRuntimeEditorBridge<{ name: string }> | undefined>()
+    expectTypeOf<RendererExpose['scrollToField']>().toBeFunction()
   })
 })

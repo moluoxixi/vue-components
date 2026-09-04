@@ -94,6 +94,52 @@ describe('configFormRenderer design and preview modes', () => {
     expect(cleanups[0]).toHaveBeenCalledTimes(1)
   })
 
+  it('cleans old registrations before registering nodes with a replacement editor bridge', async () => {
+    const firstCleanup = vi.fn()
+    const secondCleanup = vi.fn()
+    const firstRegister = vi.fn(() => firstCleanup)
+    const secondRegister = vi.fn(() => secondCleanup)
+    const wrapper = mount(ConfigFormRenderer as Component, {
+      props: {
+        editor: { registerNode: firstRegister },
+        fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
+        mode: 'design',
+        modelValue: { name: 'Ada' },
+      },
+    })
+
+    expect(firstRegister).toHaveBeenCalledOnce()
+    await wrapper.setProps({ editor: { registerNode: secondRegister } })
+    expect(firstCleanup).toHaveBeenCalledOnce()
+    expect(secondRegister).toHaveBeenCalledOnce()
+
+    wrapper.unmount()
+    expect(secondCleanup).toHaveBeenCalledOnce()
+  })
+
+  it('restores configured tabindex after mounted design mode transitions', async () => {
+    const wrapper = mount(ConfigFormRenderer as Component, {
+      props: {
+        fields: [defineField<SurfaceValues>({
+          component: Input,
+          field: 'name',
+          id: 'name-node',
+          props: { tabindex: 3 },
+        })],
+        mode: 'preview',
+        modelValue: { name: 'Ada' },
+      },
+    })
+    const input = wrapper.get('[data-testid="surface-input"]')
+    expect(input.attributes('tabindex')).toBe('3')
+
+    await wrapper.setProps({ mode: 'design' })
+    expect(input.attributes('tabindex')).toBe('-1')
+
+    await wrapper.setProps({ mode: 'preview' })
+    expect(input.attributes('tabindex')).toBe('3')
+  })
+
   it('merges design attributes onto the real node cell without replacing runtime layout classes', () => {
     const wrapper = mount(ConfigFormRenderer as Component, {
       props: {
@@ -187,6 +233,29 @@ describe('configFormRenderer design and preview modes', () => {
       expect.objectContaining({ event: 'click', metadata: expect.objectContaining({ nodeId: 'name-node' }) }),
       expect.objectContaining({ event: 'update:modelValue', metadata: expect.objectContaining({ nodeId: 'name-node' }) }),
     ])
+  })
+
+  it('does not broadcast canonical Flow component events in design mode', async () => {
+    const interceptEvent = vi.fn()
+    const wrapper = mount(ConfigFormRenderer as Component, {
+      props: {
+        editor: { interceptEvent },
+        fields: [defineField<SurfaceValues>({
+          component: Input,
+          extensions: { 'mx.low-code': { flowEvents: ['click', 'update:modelValue'] } },
+          field: 'name',
+          id: 'name-node',
+        })],
+        mode: 'design',
+        modelValue: { name: 'Ada' },
+      },
+    })
+
+    const input = wrapper.get('[data-testid="surface-input"]')
+    await input.trigger('click')
+    await input.setValue('Grace')
+    expect(interceptEvent).toHaveBeenCalled()
+    expect(wrapper.emitted('runtimeEvent')).toBeUndefined()
   })
 
   it('normalizes existing Vue listener keys to canonical component event names', async () => {

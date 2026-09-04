@@ -1,3 +1,5 @@
-export * from './services'
+export { ConfigFormRenderer } from './services/component'
+export { createConfigFormRendererExpose } from './services/expose'
+export { withConfigFormInstall } from './services/install'
 export type * from './types'
 export * from './utils'

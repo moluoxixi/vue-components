@@ -85,16 +85,18 @@ runtime/src/renderer/
     runtime-flow-events.ts
     binding.ts
     metadata.ts
-  renderers/
-    layout.ts
-    node.ts
-    field.ts
-    component.ts
-    slots.ts
+    renderer-pipeline.ts
+    renderer-layout.ts
+    renderer-node.ts
+    renderer-field.ts
+    renderer-component.ts
+    renderer-slots.ts
   types/
 ```
 
 Facade 保留 props/emits/model/slots/expose 与 `<form>` 模板，只组装 controller、editor bridge、guard 和 tree renderer。Design guard 独占 tabindex snapshot、MutationObserver 与 mode teardown；editor bridge 独占 registration generation/cleanup 和 event interception；Flow service 保留 `design intercept -> configured listener -> preview runtimeEvent` 顺序。Runtime host 的 geometry 与 hit testing不迁入 renderer。
+
+渲染流水线是无 Vue 生命周期状态的 VNode 工厂，按全局允许的责任目录归入 `services/renderer-*.ts`；不新增未被目录合同认可的 `renderers/` 顶层责任类型。递归由 pipeline 注入回调，避免 `slots -> node` 的模块循环。
 
 ## 6. Headless 与 Runtime Validation
 

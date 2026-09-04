@@ -7,7 +7,7 @@
 5. [x] 在新 owner 内拆 Playground layout/container/linked/stress 场景；运行 adapter/playground/devtools 验证并提交。
 6. [x] 拆 Model transaction engine 的 apply/operations/graph/validation/changes 责任目录；运行 model test/typecheck/build、performance 与 Workbench candidate consumer 回归并提交。
 7. [x] 拆 Compiler canonical/page/diagnostics/registry/coordinator 责任目录；运行 compiler test/typecheck/build、performance 与 Workbench import/export/design consumer 回归并提交。
-8. [ ] 拆 Runtime renderer controller/guard/editor/Flow/render pipeline；运行 runtime test/typecheck/build、Designer/Workbench unit 与 E2E 并提交。
+8. [x] 拆 Runtime renderer controller/guard/editor/Flow/render pipeline；运行 runtime test/typecheck/build、Designer/Workbench unit 与 E2E 并提交。
 9. [ ] 拆 Headless controller 与 Runtime `useFormValidation` 的 lifecycle/queue/policy/submit 职责；运行 headless/runtime test/typecheck/build 与 adapter consumer 回归并提交。
 10. [ ] 扫描目标包 P0/P1/P2 热点、logic barrel、组件 owner、深导入和循环依赖；确认 package exports/README/spec 一致。
 11. [ ] 运行 `pnpm test:config-form-packages`、Playground/Workbench E2E、`pnpm lint`、`pnpm typecheck`、architecture/path/workflow tests 与 `git diff --check`。
