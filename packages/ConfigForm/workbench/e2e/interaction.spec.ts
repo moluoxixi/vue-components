@@ -1147,6 +1147,52 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
     expect(focusState.wrapperShadow.match(/0px 0px 0px 1px inset/g)).toHaveLength(1)
     expect(focusState.labelColor).not.toBe(restingState.labelColor)
   }
+
+  const nameNode = designRuntime(page).locator('[data-config-node-id^="profile-name-"]')
+  await selectCanvasNode(page, nameNode, nameNode.locator('input').first())
+  const labelControl = properties.getByRole('textbox', { name: 'Label', exact: true })
+  const defaultValueControl = properties.getByRole('textbox', { name: 'Default value', exact: true })
+  const geometry = await Promise.all([labelControl, defaultValueControl].map(control => control.evaluate((element) => {
+    const field = element.closest('.mx-config-form-designer-property-form__field')
+    const root = element.closest('.el-input')
+    return {
+      fieldHeight: field?.getBoundingClientRect().height ?? 0,
+      rootClass: root?.className ?? '',
+    }
+  })))
+  expect(Math.abs(geometry[0]!.fieldHeight - geometry[1]!.fieldHeight)).toBeLessThanOrEqual(1)
+  expect(geometry[1]!.rootClass).toContain('mx-config-form-designer__property-control')
+
+  const restingLabelColor = await defaultValueControl.evaluate((element) => {
+    const label = element.closest('.mx-config-form-designer-property-form__field')
+      ?.querySelector('.mx-config-form-designer__setter-label')
+    return label ? getComputedStyle(label).color : ''
+  })
+  await defaultValueControl.click()
+  await page.waitForTimeout(250)
+  const defaultValueFocus = await page.evaluate(() => {
+    const element = document.querySelector<HTMLInputElement>(
+      '.mx-config-form-designer-property-form__field[data-field$=":defaultValue"] .el-input__inner',
+    )
+    if (!element)
+      return undefined
+    const field = element.closest('.mx-config-form-designer-property-form__field')
+    const label = field?.querySelector('.mx-config-form-designer__setter-label')
+    const wrapper = element.closest('.el-input__wrapper')
+    return {
+      inputOutlineStyle: getComputedStyle(element).outlineStyle,
+      labelColor: label ? getComputedStyle(label).color : '',
+      wrapperFocused: wrapper?.classList.contains('is-focus') ?? false,
+      wrapperShadow: wrapper ? getComputedStyle(wrapper).boxShadow : 'none',
+    }
+  })
+  expect(defaultValueFocus).toBeDefined()
+  expect(defaultValueFocus!).toMatchObject({
+    inputOutlineStyle: 'none',
+    wrapperFocused: true,
+  })
+  expect(defaultValueFocus!.wrapperShadow.match(/0px 0px 0px 1px inset/g)).toHaveLength(1)
+  expect(defaultValueFocus!.labelColor).not.toBe(restingLabelColor)
 })
 
 test('edits pixel form sizes and keeps responsive number controls inside the Inspector', async ({ page }) => {

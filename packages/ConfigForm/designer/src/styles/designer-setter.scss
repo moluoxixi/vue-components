@@ -24,6 +24,10 @@
   gap: 8px;
 }
 
+.mx-config-form-designer__setter:focus-within > .mx-config-form-designer__setter-label-row .mx-config-form-designer__setter-label {
+  color: var(--mx-designer-accent);
+}
+
 .mx-config-form-designer__setter-hint {
   color: var(--mx-designer-muted);
   font-size: 11px;
@@ -191,4 +195,3 @@
   outline: 2px solid var(--mx-designer-accent);
   outline-offset: 1px;
 }
-

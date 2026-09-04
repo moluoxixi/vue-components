@@ -58,6 +58,7 @@ function updateValue(value: unknown): void {
   <div class="mx-element-designer-default-value">
     <ElInput
       v-if="kind === 'text'"
+      class="mx-config-form-designer__property-control is-text"
       :model-value="draft"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -67,6 +68,7 @@ function updateValue(value: unknown): void {
     />
     <ElInputNumber
       v-else-if="kind === 'number'"
+      class="mx-config-form-designer__property-control is-number"
       :model-value="numberValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -74,6 +76,7 @@ function updateValue(value: unknown): void {
     />
     <ElSwitch
       v-else-if="kind === 'boolean'"
+      class="mx-config-form-designer__property-control is-boolean"
       :model-value="booleanValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -81,6 +84,7 @@ function updateValue(value: unknown): void {
     />
     <ElSelect
       v-else-if="kind === 'select' || kind === 'multiselect'"
+      class="mx-config-form-designer__property-control is-select"
       :model-value="kind === 'multiselect' ? multipleValue : singleValue"
       :disabled="disabled"
       :multiple="kind === 'multiselect'"
@@ -96,6 +100,7 @@ function updateValue(value: unknown): void {
     </ElSelect>
     <ElDatePicker
       v-else-if="kind === 'date'"
+      class="mx-config-form-designer__property-control is-date"
       :model-value="stringValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -105,6 +110,7 @@ function updateValue(value: unknown): void {
     />
     <ElTimePicker
       v-else
+      class="mx-config-form-designer__property-control is-time"
       :model-value="stringValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
