@@ -14,7 +14,7 @@ Feature `index.vue` 只负责 dialog/workspace composition；Vue state、watcher
 
 ## 2. Component Ownership 与 Debt
 
-- `src/App/components/TemplateCreationWorkspace/`：`App.vue` 唯一子组件；其内部仍通过 templates feature barrel 消费 catalog/import services。
+- `src/app/components/TemplateCreationWorkspace/`：根 `App.vue` 唯一子组件归入现有 app feature；其内部仍通过 templates feature barrel 消费 catalog/import services。
 - `src/app/components/{PreviewDrawer,StudioLeftPanel}/`：`app/index.vue` 的单父 shell 子组件。
 - `features/flow/components/FlowWorkspace/`、`features/pages/components/PageManager/`、`features/export/components/{ProjectFileTree,WorkspaceCodeEditor}/`：单 feature UI。
 - `project/errors/workbench-project-error.ts` 持有错误类，`errors/index.ts` 只 export。

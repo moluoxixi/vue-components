@@ -10,7 +10,7 @@ const stylesheet = stylesheetLayers
   .join('\n')
 const responsiveStylesheet = readFileSync(new URL('../../styles/responsive.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
-const studioLeftPanelStylesheet = readFileSync(new URL('../../studio/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
+const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
 const designerStylesheet = compile(
   fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)),
   { loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
@@ -69,9 +69,9 @@ describe('workbench theme contract', () => {
   })
 
   it('keeps the material panel styles with StudioLeftPanel', async () => {
-    const component = await import('../../studio/components/StudioLeftPanel.vue?raw').then(module => module.default)
+    const component = await import('../../app/components/StudioLeftPanel/index.vue?raw').then(module => module.default)
 
-    expect(component).toMatch(/import '.\/StudioLeftPanel\/style'/)
+    expect(component).toMatch(/import '.\/style'/)
     expect(studioLeftPanelStylesheet).toContain('.designer-material-search')
     expect(stylesheet).not.toContain('.designer-material-search')
   })

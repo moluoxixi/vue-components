@@ -7,11 +7,11 @@ import type {
   StudioLeftPanelProps,
   StudioLeftView,
   StudioLayerAction,
-} from '../types'
+} from '../../../studio'
 import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import './StudioLeftPanel/style'
+import './style'
 
 const props = defineProps<StudioLeftPanelProps>()
 

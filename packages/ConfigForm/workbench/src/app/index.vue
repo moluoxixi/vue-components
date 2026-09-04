@@ -22,9 +22,7 @@ import {
 import { DesignSurface } from '@moluoxixi/config-form-designer'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { WorkbenchCommandHint } from '../components/index'
-import { DesignRuntimeHostFrame } from '../runtime-host'
-import { PreviewDrawer, StudioLeftPanel } from '../studio'
-import { WorkbenchTopbar } from './components'
+import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchTopbar } from './components'
 import {
   useWorkbenchController,
   useWorkbenchDesignSession,

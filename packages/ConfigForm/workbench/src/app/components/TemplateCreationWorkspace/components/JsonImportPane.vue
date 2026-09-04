@@ -3,9 +3,9 @@ import type { UploadFile, UploadInstance } from 'element-plus'
 import type {
   ConfigImportDiagnostic,
   PreparedConfigImport,
-} from '../../../project'
-import type { PreviewRuntimeStateEvent } from '../../../session'
-import type { JsonImportPaneEmits, JsonImportPaneProps } from '../types'
+} from '../../../../project'
+import type { PreviewRuntimeStateEvent } from '../../../../session'
+import type { JsonImportPaneEmits, JsonImportPaneProps } from '../../../../features/templates'
 import {
   CheckCircle2,
   FileJson2,
@@ -17,9 +17,9 @@ import {
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { getConfigFormJsonSemanticHash } from '@moluoxixi/config-form-core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
-import { useWorkbenchController, useWorkbenchUiStore } from '../../../app'
-import { MAX_IMPORT_SOURCE_BYTES } from '../../../project'
-import { PreviewRuntimeHostFrame } from '../../../runtime-host'
+import { useWorkbenchController, useWorkbenchUiStore } from '../../../composables'
+import { MAX_IMPORT_SOURCE_BYTES } from '../../../../project'
+import PreviewRuntimeHostFrame from '../../PreviewRuntimeHostFrame/index.vue'
 
 const props = defineProps<JsonImportPaneProps>()
 const emit = defineEmits<JsonImportPaneEmits>()

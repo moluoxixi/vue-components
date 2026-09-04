@@ -264,33 +264,6 @@
       ]
     },
     {
-      "path": "packages/ConfigForm/workbench/src/features/templates/components/TemplateCreationWorkspace.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "config-form-workbench-structure-governance",
-      "reason": "Single-parent component must live under packages/ConfigForm/workbench/src/App/components.",
-      "owners": [
-        "packages/ConfigForm/workbench/src/App.vue"
-      ]
-    },
-    {
-      "path": "packages/ConfigForm/workbench/src/studio/components/PreviewDrawer.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "config-form-workbench-structure-governance",
-      "reason": "Single-parent component must live under packages/ConfigForm/workbench/src/app/components.",
-      "owners": [
-        "packages/ConfigForm/workbench/src/app/index.vue"
-      ]
-    },
-    {
-      "path": "packages/ConfigForm/workbench/src/studio/components/StudioLeftPanel.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "config-form-workbench-structure-governance",
-      "reason": "Single-parent component must live under packages/ConfigForm/workbench/src/app/components.",
-      "owners": [
-        "packages/ConfigForm/workbench/src/app/index.vue"
-      ]
-    },
-    {
       "path": "packages/i18n-tool/src/ui/components/WorkspaceTabs.vue",
       "rule": "component.single-parent-location",
       "targetTask": "i18n-tool-structure-governance",
@@ -408,12 +381,6 @@
       "path": "packages/components/src/RequestTreeSelect/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/ConfigForm/workbench/src/project/errors/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "config-form-workbench-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
     },
     {

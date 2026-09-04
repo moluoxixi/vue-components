@@ -4,7 +4,7 @@ import type { Component } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref, shallowRef } from 'vue'
-import { TemplateCreationWorkspace } from '..'
+import TemplateCreationWorkspace from '../../../app/components/TemplateCreationWorkspace/index.vue'
 
 const mocks = vi.hoisted(() => ({
   actualCatalogLoad: undefined as undefined | (() => Promise<unknown>),
@@ -22,10 +22,13 @@ vi.mock('../../../adapters', () => ({
   loadWorkbenchAdapter: mocks.loadAdapter,
 }))
 
-vi.mock('../../../app', () => ({
+vi.mock('../../../app/composables', () => ({
   useWorkbenchController: mocks.useController,
   useWorkbenchUiStore: mocks.useUi,
-  WorkbenchAppearancePopover: { template: '<button data-appearance-popover />' },
+}))
+
+vi.mock('../../../app/components/WorkbenchAppearancePopover.vue', () => ({
+  default: { template: '<button data-appearance-popover />' },
 }))
 
 vi.mock('../../../project', async (importOriginal) => {

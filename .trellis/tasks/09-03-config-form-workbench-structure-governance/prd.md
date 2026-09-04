@@ -6,7 +6,7 @@
 
 ## 背景
 
-- Architecture manifest 有 4 条本任务精确债务：`TemplateCreationWorkspace.vue`、`PreviewDrawer.vue`、`StudioLeftPanel.vue` 的 single-parent location，以及 `project/errors/index.ts` 的 logic barrel。
+- Architecture manifest 有 4 条本任务精确债务：`TemplateCreationWorkspace.vue`、`PreviewDrawer.vue`、`StudioLeftPanel.vue` 的 single-parent location，以及 `project/errors/index.ts` 的 logic barrel；根 `App.vue` 的私有组件归入现有 `src/app/components` feature。
 - `project/export/services/source.ts` 1591 行，混合 canonical mapping、portable Flow/validation runtime、Vue page、router/Vite/package 文件生成。
 - `app/services/controller.ts` 1088 行，混合 session 装配、项目加载/创建/导入、页面命令、保存/版本、恢复草稿和 DOM lifecycle。
 - `components/FlowWorkspace/index.vue` 932 行、`components/WorkspaceCodeEditor/index.vue` 851 行，且都只有一个 feature owner。

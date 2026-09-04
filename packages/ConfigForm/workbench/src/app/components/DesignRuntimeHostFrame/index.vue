@@ -8,17 +8,17 @@ import type {
   DesignRuntimeHostFrameEmits,
   DesignRuntimeHostFrameProps,
   RuntimeHostGeometryPayload,
-} from '../types'
+} from '../../../runtime-host'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { cloneWorkbenchJson } from '../../utils'
+import { cloneWorkbenchJson } from '../../../utils'
 import {
   acceptsRuntimeHostMessageEvent,
   isRuntimeHostToParentMessage,
-} from '../schemas'
+} from '../../../runtime-host'
 import {
   RUNTIME_HOST_CHANNEL,
   RUNTIME_HOST_PROTOCOL_VERSION,
-} from '../constants'
+} from '../../../runtime-host'
 
 const props = defineProps<DesignRuntimeHostFrameProps>()
 

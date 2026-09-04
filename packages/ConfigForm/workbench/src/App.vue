@@ -2,8 +2,7 @@
 import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { TemplateCreationTarget } from './project'
 import { nextTick, ref, watch } from 'vue'
-import { provideWorkbenchController, WorkbenchAppearanceDrawer, WorkbenchShell } from './app'
-import { TemplateCreationWorkspace } from './features/templates'
+import { provideWorkbenchController, TemplateCreationWorkspace, WorkbenchAppearanceDrawer, WorkbenchShell } from './app'
 
 const props = defineProps<{
   locale?: DesignerLocaleOptions

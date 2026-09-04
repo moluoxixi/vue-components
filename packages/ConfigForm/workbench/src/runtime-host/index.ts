@@ -1,4 +1,3 @@
-export * from './components'
 export * from './constants'
 export { default as RuntimeHostApp } from './index.vue'
 export * from './schemas'

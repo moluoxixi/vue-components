@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { PreviewRuntimeIdentity } from '../../session'
+import type { PreviewRuntimeIdentity } from '../../../session'
 import type {
   PreviewDrawerEmits,
   PreviewDrawerProps,
   PreviewViewport,
-} from '../types'
+} from '../../../studio'
 import {
   Check,
   Clipboard,
@@ -19,8 +19,8 @@ import {
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { WorkbenchCommandHint } from '../../components/index'
-import { PreviewRuntimeHostFrame } from '../../runtime-host'
+import { WorkbenchCommandHint } from '../../../components/index'
+import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
 
 const props = defineProps<PreviewDrawerProps>()
 

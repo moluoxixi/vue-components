@@ -4,7 +4,8 @@ import type { PageCompilation } from '@moluoxixi/config-form-compiler'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { PreviewRuntimeHostFrame, RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '..'
+import { RUNTIME_HOST_CHANNEL, RUNTIME_HOST_PROTOCOL_VERSION } from '..'
+import { PreviewRuntimeHostFrame } from '../../app'
 
 const hostId = '11111111-1111-4111-8111-111111111111'
 

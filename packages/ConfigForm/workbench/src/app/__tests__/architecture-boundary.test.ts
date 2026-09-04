@@ -441,7 +441,7 @@ describe('workbench production architecture boundary', () => {
   })
 
   it('keeps Preview inside an iframe RuntimeHost with a data-only protocol', () => {
-    const drawer = readFileSync(new URL('../../studio/components/PreviewDrawer.vue', import.meta.url), 'utf8')
+    const drawer = readFileSync(new URL('../components/PreviewDrawer/index.vue', import.meta.url), 'utf8')
     const host = readFileSync(new URL('../../runtime-host/index.vue', import.meta.url), 'utf8')
     const protocol = readFileSync(new URL('../../runtime-host/types/protocol.ts', import.meta.url), 'utf8')
 
@@ -534,7 +534,7 @@ describe('workbench production architecture boundary', () => {
     const app = readFileSync(new URL('../../App.vue', import.meta.url), 'utf8')
     const shell = readFileSync(new URL('../index.vue', import.meta.url), 'utf8')
     const uiStore = readFileSync(new URL('../state/ui-store.ts', import.meta.url), 'utf8')
-    const workspace = readFileSync(new URL('../../features/templates/components/TemplateCreationWorkspace.vue', import.meta.url), 'utf8')
+    const workspace = readFileSync(new URL('../components/TemplateCreationWorkspace/index.vue', import.meta.url), 'utf8')
 
     expect(app).toContain('TemplateCreationWorkspace')
     expect(app).toContain('ref<\'create\' | \'designer\'>')

@@ -6,7 +6,7 @@ import type {
   TemplateEligibilityResult,
 } from '../../../project'
 import type { PreviewRuntimeStateEvent } from '../../../session'
-import type { TemplateCreationWorkspaceEmits, TemplateCreationWorkspaceProps } from '../types'
+import type { TemplateCreationWorkspaceEmits, TemplateCreationWorkspaceProps } from '../../../features/templates'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -19,15 +19,16 @@ import {
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { loadWorkbenchAdapter } from '../../../adapters'
-import { useWorkbenchController, useWorkbenchUiStore, WorkbenchAppearancePopover } from '../../../app'
+import { useWorkbenchController, useWorkbenchUiStore } from '../../composables'
 import {
   analyzeTemplateEligibility,
   builtInTemplateCatalogProvider,
   createTemplateCatalogService,
   prepareTemplatePreview,
 } from '../../../project'
-import { PreviewRuntimeHostFrame } from '../../../runtime-host'
-import JsonImportPane from './JsonImportPane.vue'
+import WorkbenchAppearancePopover from '../WorkbenchAppearancePopover.vue'
+import PreviewRuntimeHostFrame from '../PreviewRuntimeHostFrame/index.vue'
+import { JsonImportPane } from './components'
 
 const props = defineProps<TemplateCreationWorkspaceProps>()
 const emit = defineEmits<TemplateCreationWorkspaceEmits>()

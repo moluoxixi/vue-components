@@ -1,9 +1,9 @@
 # ConfigForm Workbench 结构治理实施计划
 
-1. [ ] 锁定 Workbench package/build entries、Project/RuntimeHost/Flow/template 协议、Source export 文件集合和 controller return contract。
+1. [x] 锁定 Workbench package/build entries、Project/RuntimeHost/Flow/template 协议、Source export 文件集合和 controller return contract。
 2. [ ] 补 `DesignRuntimeHostFrame` geometry/revision、App shell 接线和 Monaco model/disposal characterization。
 3. [ ] 迁移 3 个 single-parent debt 组件与 4 个单 feature UI；移动测试并清理全局 component barrel。
-4. [ ] 将 `WorkbenchProjectError` 实现移出 barrel，清零 4 条 manifest debt并提交 ownership 批次。
+4. [x] 将 `WorkbenchProjectError` 实现移出 barrel，清零 4 条 manifest debt并提交 ownership 批次。
 5. [ ] 拆 Source generator 的 canonical/Flow/validation/Vue/project-files 生成责任；运行 export/parity/templates 并提交。
 6. [ ] 拆 Workbench controller 的 binding/creation/page/persistence/recovery/lifecycle，保持单一 state owner并提交。
 7. [ ] 拆 FlowWorkspace command/persistence 与 VueFlow projection；清理 Flow/Preview 错位 owner和 type-only barrel 环并提交。

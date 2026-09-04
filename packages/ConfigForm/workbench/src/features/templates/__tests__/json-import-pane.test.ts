@@ -4,7 +4,7 @@ import type { Component } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref, shallowRef } from 'vue'
-import { JsonImportPane } from '..'
+import JsonImportPane from '../../../app/components/TemplateCreationWorkspace/components/JsonImportPane.vue'
 import { createWorkbenchLocaleOptions } from '../../../locale'
 import { MAX_IMPORT_SOURCE_BYTES } from '../../../project'
 
@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   useUi: vi.fn(),
 }))
 
-vi.mock('../../../app', () => ({
+vi.mock('../../../app/composables', () => ({
   useWorkbenchController: mocks.useController,
   useWorkbenchUiStore: mocks.useUi,
 }))

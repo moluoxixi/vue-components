@@ -2,7 +2,7 @@
 
 ## Architecture Debt
 
-- `features/templates/components/TemplateCreationWorkspace.vue` -> `src/App/components/`，唯一 parent 为 `src/App.vue`。
+- `features/templates/components/TemplateCreationWorkspace.vue` -> `src/app/components/`，唯一 parent 为根 `src/App.vue`。
 - `studio/components/PreviewDrawer.vue`、`StudioLeftPanel.vue` -> `src/app/components/`，唯一 parent 为 `src/app/index.vue`。
 - `project/errors/index.ts` 含 `WorkbenchProjectError` 实现，应改为 export-only。
 

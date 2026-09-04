@@ -5,7 +5,7 @@ import { createDesignerRegistry, DesignerPalette } from '@moluoxixi/config-form-
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
-import { StudioLeftPanel } from '..'
+import { StudioLeftPanel } from '../../app'
 import {
   createProjectDocumentFixture,
   duplicateProjectPage,
