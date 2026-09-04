@@ -227,6 +227,44 @@ describe('runtime host app', () => {
     postMessage.mockRestore()
   })
 
+  it('forwards field changes and component events through the child protocol', async () => {
+    const postMessage = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {})
+    const wrapper = mount(RuntimeHostApp)
+    dispatchParentMessage({
+      type: 'sync',
+      sequence: 1,
+      adapter: 'element-plus',
+      compilation: compilation(),
+      mode: 'preview',
+      locale: 'en-US',
+      runtimeState: { values: { name: 'Ada' }, touched: [], validation: {} },
+      reactionProjection: { values: {}, props: {}, states: {}, validate: [] },
+      runtimeSessionKey: 'project:element-plus:home',
+    })
+    adapterControl.release()
+    await vi.waitFor(() => expect(postMessage.mock.calls.some(([payload]) => (payload as { type?: string }).type === 'ready')).toBe(true))
+    const renderer = wrapper.getComponent({ name: 'ConfigFormRendererStub' })
+    const values = { name: 'Grace' }
+
+    renderer.vm.$emit('fieldChange', { field: 'name', values })
+    renderer.vm.$emit('runtimeEvent', { event: 'click', metadata: { nodeId: 'submit' } })
+    values.name = 'Changed after emit'
+    await nextTick()
+
+    expect(postMessage.mock.calls.map(([payload]) => payload)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'fieldChange',
+        payload: { field: 'name', values: { name: 'Grace' } },
+      }),
+      expect.objectContaining({
+        type: 'runtimeEvent',
+        payload: { event: 'click', nodeId: 'submit' },
+      }),
+    ]))
+    wrapper.unmount()
+    postMessage.mockRestore()
+  })
+
   it('drops a submission result when a newer structural sync changes its identity', async () => {
     let resolveSubmit: ((valid: boolean) => void) | undefined
     runtimeController.submit.mockReset()

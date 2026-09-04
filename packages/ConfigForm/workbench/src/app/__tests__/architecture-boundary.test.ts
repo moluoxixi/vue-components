@@ -446,13 +446,16 @@ describe('workbench production architecture boundary', () => {
   it('keeps Preview inside an iframe RuntimeHost with a data-only protocol', () => {
     const drawer = readFileSync(new URL('../components/PreviewDrawer/index.vue', import.meta.url), 'utf8')
     const host = readFileSync(new URL('../../runtime-host/index.vue', import.meta.url), 'utf8')
+    const hostProtocol = readFileSync(new URL('../../runtime-host/composables/use-runtime-host-protocol.ts', import.meta.url), 'utf8')
     const protocol = readFileSync(new URL('../../runtime-host/types/protocol.ts', import.meta.url), 'utf8')
 
     expect(drawer).toContain('PreviewRuntimeHostFrame')
     expect(drawer).not.toContain('RuntimeSurface')
     expect(drawer).not.toContain('VueRuntimeCompileSuccess')
-    expect(host).toContain('compileCanonicalPageRuntime')
-    expect(host).toContain('loadWorkbenchRuntimeAdapter')
+    expect(host).not.toContain('compileCanonicalPageRuntime')
+    expect(host).not.toContain('loadWorkbenchRuntimeAdapter')
+    expect(hostProtocol).toContain('compileCanonicalPageRuntime')
+    expect(hostProtocol).toContain('loadWorkbenchRuntimeAdapter')
     expect(protocol).toContain('compilation: PageCompilation')
     expect(protocol).not.toContain(`from '${['@moluoxixi/config-form', 'renderer'].join('/')}'`)
   })
