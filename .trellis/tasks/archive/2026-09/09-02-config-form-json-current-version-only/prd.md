@@ -41,21 +41,21 @@ ConfigForm 仍处于开发阶段，不保留任何旧版本、deprecated alias�
 
 ## 验收标准
 
-- [ ] 导入 Project v3 时在分析阶段失败，不产生预览或创建入口。
-- [ ] 导入 Page Model v1 时在分析阶段失败，不产生预览或创建入口。
-- [ ] Project v4 与 PageGraph v2 的导入、预览和创建回归通过。
-- [ ] Current Page JSON 导出/导入只使用 `PageTransferDocument version: 1`，裸 Page 或旧/未来 envelope 被拒绝。
-- [ ] 模板 Provider 只接受 current manifest `version: 1`，旧/未来/缺失 version 或携带非统一版本字段均被拒绝，预览/缓存使用规范化内容指纹。
-- [ ] 产品 UI 不再出现“迁移记录”“无需迁移”或任何旧版本兼容提示。
-- [ ] 源码、测试、文档与规格中不再存在 Project v3→v4、Page v1→v2 的迁移合同。
-- [ ] Project v4 的 Registry adapter/version/fingerprint、组件 key 集合、contractVersion/fingerprint 与当前 Registry 完整精确匹配，否则拒绝导入。
-- [ ] ConfigForm 生产源码与公共 exports 中不存在 legacy/deprecated/migration alias、fallback 或兼容入口；当前协议和必要的当前层间投影不被误删。
-- [ ] 所有 feature 都能通过职责目录定位类型、组件、状态、服务、schema、adapter 与工具；feature/职责目录各有唯一 `index.ts`，根目录不存在平铺的 props/expose/state/service/helper 文件，package root 不包含旧 alias/subpath 转发。
-- [ ] 旧 IndexedDB manifest 不会被迁移成当前格式，并有确定性的开发态拒绝/reset 行为。
-- [ ] Source export 的 required/Zod/custom validation、`validateOn`、tablet/mobile responsive overrides 与 Preview/Config export 语义一致。
-- [ ] Architecture tests 防止旧契约、公共迁移 API 和兼容别名重新进入任一 ConfigForm 包。
-- [ ] 定向单测、Workbench 全量单测、typecheck、build 与 JSON Import E2E 通过。
-- [ ] 根 ConfigForm package gate 与 Workbench CI/浏览器门禁覆盖本次跨包 hard cut 和 Source 导出回归。
+- [x] 导入 Project v3 时在分析阶段失败，不产生预览或创建入口。
+- [x] 导入 Page Model v1 时在分析阶段失败，不产生预览或创建入口。
+- [x] Project v4 与 PageGraph v2 的导入、预览和创建回归通过。
+- [x] Current Page JSON 导出/导入只使用 `PageTransferDocument version: 1`，裸 Page 或旧/未来 envelope 被拒绝。
+- [x] 模板 Provider 只接受 current manifest `version: 1`，旧/未来/缺失 version 或携带非统一版本字段均被拒绝，预览/缓存使用规范化内容指纹。
+- [x] 产品 UI 不再出现“迁移记录”“无需迁移”或任何旧版本兼容提示。
+- [x] 源码、测试、当前文档与规格中不再存在 Project v3→v4、Page v1→v2 的可执行迁移合同；归档历史保留。
+- [x] Project v4 的 Registry adapter/version/fingerprint、组件 key 集合、contractVersion/fingerprint 与当前 Registry 完整精确匹配，否则拒绝导入。
+- [x] ConfigForm 生产源码与公共 exports 中不存在 legacy/deprecated/migration alias、fallback 或兼容入口；当前协议和必要的当前层间投影不被误删。
+- [x] 所有 feature 都能通过职责目录定位类型、组件、状态、服务、schema、adapter 与工具；feature/职责目录各有唯一 `index.ts`，根目录不存在平铺的 props/expose/state/service/helper 文件，package root 不包含旧 alias/subpath 转发。
+- [x] 旧 IndexedDB manifest 不会被迁移成当前格式，并有确定性的开发态拒绝/reset 行为。
+- [x] Source export 的 required/Zod/custom validation、`validateOn`、tablet/mobile responsive overrides 与 Preview/Config export 语义一致。
+- [x] Architecture tests 防止旧契约、公共迁移 API 和兼容别名重新进入任一 ConfigForm 包。
+- [x] 定向单测、Workbench 全量单测、typecheck、build 与 JSON Import E2E 通过。
+- [x] 根 ConfigForm package gate 与 Workbench CI/浏览器门禁覆盖本次跨包 hard cut 和 Source 导出回归。
 
 ## 产品定位与范围外
 
