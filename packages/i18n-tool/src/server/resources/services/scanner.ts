@@ -1,7 +1,7 @@
-import type { ResolvedI18nToolConfig } from '../config'
-import type { ResourceDocument, TranslationUnit } from '../core'
-import type { ScanResourceWire, ScanResponse } from '../shared/protocol'
-import type { PathGuard } from './path-guard'
+import type { ResolvedI18nToolConfig } from '../../../config'
+import type { ResourceDocument, TranslationUnit } from '../../../core'
+import type { ScanResourceWire, ScanResponse } from '../../../shared/protocol'
+import type { PathGuard } from '../../filesystem'
 import { Buffer } from 'node:buffer'
 import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
@@ -10,8 +10,8 @@ import { relative, resolve } from 'node:path'
 import {
   analyzeTranslationGaps,
   defaultLocaleAdapterRegistry,
-} from '../core'
-import { I18nToolError } from './error'
+} from '../../../core'
+import { I18nToolError } from '../../errors'
 import { globToRegExp, parseResourceIdentity, staticPatternRoot } from './resource-pattern'
 
 export interface ScannedResource {

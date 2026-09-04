@@ -24,15 +24,12 @@ vi.mock('../src/config', () => ({
   loadI18nToolConfig: controls.loadConfig,
 }))
 
-vi.mock('../src/server/context', () => ({
+vi.mock('../src/server', () => ({
   ServerContext: class ServerContext {
     constructor(options: unknown) {
       controls.contextOptions.push(options)
     }
   },
-}))
-
-vi.mock('../src/server/plugin', () => ({
   i18nToolServerPlugin: (context: unknown) => {
     controls.pluginContexts.push(context)
     return { name: 'i18n-tool-test-plugin' }

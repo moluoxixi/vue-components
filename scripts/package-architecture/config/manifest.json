@@ -320,54 +320,6 @@
       "reason": "Feature root files must move into a responsibility directory."
     },
     {
-      "path": "packages/i18n-tool/src/server/atomic-write.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/i18n-tool/src/server/context.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/i18n-tool/src/server/error.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/i18n-tool/src/server/path-guard.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/i18n-tool/src/server/plugin.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/i18n-tool/src/server/resource-pattern.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/i18n-tool/src/server/router.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/i18n-tool/src/server/scanner.ts",
-      "rule": "feature.root-file",
-      "targetTask": "i18n-tool-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
       "path": "packages/vite-config/src/addons/auto-import.ts",
       "rule": "feature.root-file",
       "targetTask": "vite-config-structure-governance",

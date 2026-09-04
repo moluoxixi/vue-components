@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite'
-import type { ServerContext } from './context'
+import type { ServerContext } from '../../runtime'
 import { dispatch } from './router'
 
 export function i18nToolServerPlugin(context: ServerContext): Plugin {

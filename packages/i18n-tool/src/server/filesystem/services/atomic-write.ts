@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, open, rename, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import process from 'node:process'
-import { I18nToolError } from './error'
+import { I18nToolError } from '../../errors'
 
 const TRANSIENT_WINDOWS_CODES = new Set(['EACCES', 'EBUSY', 'EPERM'])
 

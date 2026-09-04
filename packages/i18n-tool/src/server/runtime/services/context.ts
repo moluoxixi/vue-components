@@ -1,7 +1,7 @@
 import type { LanguageModelTarget } from '@moluoxixi/ai-provider/server'
 import type { LanguageModel } from 'ai'
-import type { ResolvedI18nToolConfig } from '../config'
-import type { LocaleAdapter, ResourceDocument, TranslationCandidate, TranslationUnit } from '../core'
+import type { ResolvedI18nToolConfig } from '../../../config'
+import type { LocaleAdapter, ResourceDocument, TranslationCandidate, TranslationUnit } from '../../../core'
 import type {
   ApplyResponse,
   PreviewFileWire,
@@ -11,9 +11,9 @@ import type {
   ScanResponse,
   TranslateRequest,
   TranslateSseEvent,
-} from '../shared/protocol'
-import type { PathGuard } from './path-guard'
-import type { ScanSnapshot } from './scanner'
+} from '../../../shared/protocol'
+import type { PathGuard } from '../../filesystem'
+import type { ScanSnapshot } from '../../resources'
 import { Buffer } from 'node:buffer'
 import { randomUUID } from 'node:crypto'
 import { readFile, rm } from 'node:fs/promises'
@@ -28,12 +28,10 @@ import {
   planTranslationBatches,
   translateBatch,
   validateTranslationOutput,
-} from '../core'
-import { writeTextAtomically } from './atomic-write'
-import { I18nToolError } from './error'
-import { createPathGuard } from './path-guard'
-import { targetRelativePath } from './resource-pattern'
-import { hashContent, scanWorkspace } from './scanner'
+} from '../../../core'
+import { I18nToolError } from '../../errors'
+import { createPathGuard, writeTextAtomically } from '../../filesystem'
+import { hashContent, scanWorkspace, targetRelativePath } from '../../resources'
 
 type AtomicWriter = typeof writeTextAtomically
 

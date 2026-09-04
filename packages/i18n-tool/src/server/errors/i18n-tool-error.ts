@@ -1,4 +1,4 @@
-import type { I18nToolErrorCode } from '../shared/protocol'
+import type { I18nToolErrorCode } from '../../shared/protocol'
 
 export class I18nToolError extends Error {
   readonly code: I18nToolErrorCode

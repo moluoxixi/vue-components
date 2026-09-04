@@ -1,6 +1,6 @@
-import type { ResolvedI18nToolConfig } from '../config'
+import type { ResolvedI18nToolConfig } from '../../../config'
 import { isAbsolute } from 'node:path'
-import { I18nToolError } from './error'
+import { I18nToolError } from '../../errors'
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

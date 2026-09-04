@@ -1,7 +1,7 @@
 import { lstat, realpath } from 'node:fs/promises'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
-import { I18nToolError } from './error'
+import { I18nToolError } from '../../errors'
 
 function normalizeForComparison(value: string): string {
   const normalized = resolve(value)

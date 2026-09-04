@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { ErrorResponse, TranslateSseEvent } from '../shared/protocol'
-import type { ServerContext } from './context'
+import type { ErrorResponse, TranslateSseEvent } from '../../../shared/protocol'
+import type { ServerContext } from '../../runtime'
 import { Buffer } from 'node:buffer'
 import { ZodError } from 'zod'
 import {
@@ -9,8 +9,8 @@ import {
   I18N_TOOL_PRIVATE_HEADER,
   previewRequestSchema,
   translateRequestSchema,
-} from '../shared/protocol'
-import { asI18nToolError, I18nToolError } from './error'
+} from '../../../shared/protocol'
+import { asI18nToolError, I18nToolError } from '../../errors'
 
 function sendJson(response: ServerResponse, status: number, value: unknown): void {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })

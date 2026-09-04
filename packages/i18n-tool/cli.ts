@@ -5,8 +5,7 @@ import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createServer } from 'vite'
 import { loadI18nToolConfig } from './src/config'
-import { ServerContext } from './src/server/context'
-import { i18nToolServerPlugin } from './src/server/plugin'
+import { i18nToolServerPlugin, ServerContext } from './src/server'
 
 const USAGE = `Usage: i18n-tool [options]
 
