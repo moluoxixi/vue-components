@@ -5,6 +5,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import WorkspaceCodeEditor from '../index.vue'
+import { disposeMonacoLanguageFeatures, installMonacoWorkerEnvironment } from '../services'
 
 const mocks = vi.hoisted(() => ({
   addCommand: vi.fn(),
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   editorLayout: vi.fn(),
   editorSetModel: vi.fn(),
   editorUpdateOptions: vi.fn(),
+  languageDisposers: [] as ReturnType<typeof vi.fn>[],
   models: [] as Array<Record<string, any>>,
   observe: vi.fn(),
   saveCommand: undefined as undefined | (() => void),
@@ -49,9 +51,13 @@ vi.mock('monaco-editor/esm/vs/language/json/monaco.contribution', () => ({}))
 vi.mock('monaco-editor/esm/vs/language/typescript/monaco.contribution', () => ({}))
 
 vi.mock('monaco-editor/esm/vs/editor/editor.api', () => {
-  const disposable = () => ({ dispose: vi.fn() })
+  const disposable = () => {
+    const dispose = vi.fn()
+    mocks.languageDisposers.push(dispose)
+    return { dispose }
+  }
   const typeScriptDefaults = {
-    addExtraLib: vi.fn(),
+    addExtraLib: vi.fn(disposable),
     setCompilerOptions: vi.fn(),
     setEagerModelSync: vi.fn(),
   }
@@ -144,6 +150,7 @@ function createModel(value: string, language: string, uri: { toString: () => str
 describe('workspace code editor lifecycle', () => {
   beforeEach(() => {
     mocks.changeDisposers.length = 0
+    mocks.languageDisposers.length = 0
     mocks.models.length = 0
     mocks.saveCommand = undefined
     mocks.createModel.mockImplementation(createModel)
@@ -168,11 +175,18 @@ describe('workspace code editor lifecycle', () => {
   afterEach(() => {
     mountedWrapper?.unmount()
     mountedWrapper = undefined
+    disposeMonacoLanguageFeatures()
+    delete (globalThis as typeof globalThis & { MonacoEnvironment?: unknown }).MonacoEnvironment
     vi.clearAllMocks()
     vi.unstubAllGlobals()
   })
 
   it('reuses filename models, updates options, emits save, and disposes every owner', async () => {
+    const previousWorker = {} as Worker
+    const previousGetWorker = vi.fn(() => previousWorker)
+    ;(globalThis as typeof globalThis & {
+      MonacoEnvironment?: { getWorker: (moduleId: string, label: string) => Worker }
+    }).MonacoEnvironment = { getWorker: previousGetWorker }
     const wrapper = mount(WorkspaceCodeEditor, {
       props: {
         filename: 'src/App.vue',
@@ -182,6 +196,23 @@ describe('workspace code editor lifecycle', () => {
     })
     mountedWrapper = wrapper
     const firstModel = mocks.models[0]!
+    const workerEnvironment = (globalThis as typeof globalThis & {
+      MonacoEnvironment: { getWorker: (moduleId: string, label: string) => Worker }
+    }).MonacoEnvironment
+    expect(workerEnvironment.getWorker('module', 'css')).toBe(previousWorker)
+    expect(previousGetWorker).toHaveBeenCalledWith('module', 'css')
+    expect(workerEnvironment.getWorker('module', 'vue')).not.toBe(previousWorker)
+    const replacementWorker = {} as Worker
+    const replacementGetWorker = vi.fn(() => replacementWorker)
+    ;(globalThis as typeof globalThis & {
+      MonacoEnvironment: { getWorker: (moduleId: string, label: string) => Worker }
+    }).MonacoEnvironment = { getWorker: replacementGetWorker }
+    installMonacoWorkerEnvironment()
+    const replacedEnvironment = (globalThis as typeof globalThis & {
+      MonacoEnvironment: { getWorker: (moduleId: string, label: string) => Worker }
+    }).MonacoEnvironment
+    expect(replacedEnvironment.getWorker('module', 'css')).toBe(replacementWorker)
+    expect(replacementGetWorker).toHaveBeenCalledWith('module', 'css')
     expect(mocks.createModel).toHaveBeenCalledOnce()
     expect(mocks.editorSetModel).toHaveBeenLastCalledWith(firstModel)
     expect(mocks.observe).toHaveBeenCalledOnce()
@@ -217,6 +248,9 @@ describe('workspace code editor lifecycle', () => {
     expect(mocks.editorDispose).toHaveBeenCalledOnce()
     expect(firstModel.dispose).toHaveBeenCalledOnce()
     expect(secondModel.dispose).toHaveBeenCalledOnce()
+    expect(mocks.languageDisposers).toHaveLength(5)
+    disposeMonacoLanguageFeatures()
+    mocks.languageDisposers.forEach(dispose => expect(dispose).toHaveBeenCalledOnce())
   })
 
   it('disposes the Vue TypeScript mirror with its source model', () => {
@@ -234,6 +268,9 @@ describe('workspace code editor lifecycle', () => {
     expect(mocks.models).toHaveLength(2)
     expect(mirrorModel.getLanguageId()).toBe('typescript')
     expect(mirrorModel.uri.toString()).toBe('inmemory://config-form-workbench/src/App.vue.ts')
+
+    sourceModel.setValue('<script setup lang="ts">\nconst next = 2\n</script>\n')
+    expect(mirrorModel.setValue).toHaveBeenLastCalledWith(expect.stringContaining('const next = 2'))
 
     wrapper.unmount()
     mountedWrapper = undefined

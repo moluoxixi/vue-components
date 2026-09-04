@@ -59,7 +59,7 @@ const generatedTypeTemplateFiles = new Set([
 ])
 const allowedCurrentDependencyTokens: Readonly<Record<string, readonly string[]>> = {
   'devtools-vite-plugin/src/source-inject/schemas/ast.ts': [['decorators', 'legacy'].join('-')],
-  'workbench/src/features/export/components/WorkspaceCodeEditor/index.vue': [
+  'workbench/src/features/export/components/WorkspaceCodeEditor/services/language-features.ts': [
     ['depre', 'cated'].join(''),
     ['Depre', 'cated'].join(''),
   ],

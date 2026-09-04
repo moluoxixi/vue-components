@@ -7,7 +7,7 @@
 5. [x] 拆 Source generator 的 canonical/Flow/validation/Vue/project-files 生成责任；运行 export/parity/templates 并提交。
 6. [x] 拆 Workbench controller 的 binding/creation/page/persistence/recovery/lifecycle，保持单一 state owner并提交。
 7. [x] 拆 FlowWorkspace command/persistence 与 VueFlow projection；清理 Flow/Preview 错位 owner和 type-only barrel 环并提交。
-8. [ ] 拆 WorkspaceCodeEditor worker/language/declarations/model lifecycle并提交。
+8. [x] 拆 WorkspaceCodeEditor worker/language/declarations/model lifecycle并提交。
 9. [ ] 拆 IndexedDB repository serialization/retention/CRUD 边界并提交。
 10. [ ] 拆 RuntimeHost sync/geometry/design bridge/protocol dispatch；运行 protocol/host/frame 和 E2E 并提交。
 11. [ ] 扫描 P0/P1/P2、logic barrel、owner、deep import、value/type cycle；确认 CSS/locale 大文件仍为单一职责。
