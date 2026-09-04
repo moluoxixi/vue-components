@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/config-form-workbench/frontend/index.md","reason":"加载 Workbench 前端目录与质量合同。"}
+{"file":".trellis/spec/config-form-designer/frontend/index.md","reason":"加载 Designer 响应式、Runtime 隔离与组件样式合同。"}
+{"file":".trellis/spec/frontend/component-library-selection.md","reason":"确保 Workbench chrome 成熟组件库优先。"}
