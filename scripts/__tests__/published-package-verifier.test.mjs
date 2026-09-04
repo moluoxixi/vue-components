@@ -9,6 +9,7 @@ import {
   createBrowserViteConfigSource,
   createNodeSmokeSource,
   createPackedConsumerManifest,
+  createPnpmInvocation,
   createTypeSmokeSource,
   getBrowserBundleForbiddenFragments,
   getBrowserConsumerSpecifiers,
@@ -204,6 +205,19 @@ describe('published package verifier helpers', () => {
   it('uses the platform executable name when pnpm is resolved from PATH', () => {
     expect(getPnpmCommandName('win32')).toBe('pnpm.cmd')
     expect(getPnpmCommandName('linux')).toBe('pnpm')
+  })
+
+  it('executes pnpm through Node and rejects the unsafe Windows command shim fallback', () => {
+    expect(createPnpmInvocation('win32', 'C:/node/node.exe', 'C:/node/pnpm.mjs')).toEqual({
+      argsPrefix: ['C:/node/pnpm.mjs'],
+      command: 'C:/node/node.exe',
+    })
+    expect(() => createPnpmInvocation('win32', 'C:/node/node.exe', undefined))
+      .toThrow(/pnpm JavaScript CLI/u)
+    expect(createPnpmInvocation('linux', '/usr/bin/node', undefined)).toEqual({
+      argsPrefix: [],
+      command: 'pnpm',
+    })
   })
 
   it('declares the browser bundler in the isolated packed consumer', () => {

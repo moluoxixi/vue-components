@@ -10,9 +10,11 @@ contract and the package-specific contracts that contain real project rules.
 | Guide | Description | Status |
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
+| [Runtime State Boundaries](./runtime-state-boundaries.md) | Renderer, Headless controller, validation queue, stale result, and disposal contracts | Ready |
 
 ## Pre-Development Checklist
 
 - Read [Repository Directory Structure](../../directory-structure.md) before creating or moving modules.
+- Read [Runtime State Boundaries](./runtime-state-boundaries.md) before changing renderer, controller, validation, or Flow event lifecycles.
 - Read each package-specific contract relevant to the files and behavior being changed.
 - Run the validation commands required by those contracts.

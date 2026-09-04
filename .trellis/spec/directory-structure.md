@@ -182,6 +182,10 @@ interface PackageArchitectureManifest {
   independent consumer tests point to the same root-entry model. Private apps,
   CLI entrypoints, and framework fixtures need narrow manifest exceptions only
   for rules their runtime shape cannot satisfy.
+- A published package with `exports["."].source: "./index.ts"` includes both
+  `index.ts` and `src` in its package `files`. A workspace source condition that
+  resolves locally but points to files omitted from the published tarball is a
+  broken public entry, even when `import` and `types` still work.
 - Multi-entry builds spanning package root and `src/` use named entries or an
   equivalent explicit output map. Every emitted JS/declaration path must still
   match its package export; relying on the build tool's inferred common base is
@@ -240,6 +244,7 @@ interface PackageArchitectureManifest {
 | Root entry forwards `./src` or package retains `src/index.ts` | Emit `package.root-index-explicit-exports` / `package.src-index-forbidden` |
 | Build/source metadata bypasses root entry | Emit `package.build-entry` / `package.source-entry` |
 | main/module/types drift from root export conditions | Emit `package.output-entry` |
+| package source condition points to files omitted from `files` | Include `index.ts` and `src`; fail the ConfigForm package source-files verification |
 | Moving the root entry nests an existing subpath under `dist/src/` | Configure named build entries and fail the packed-export smoke |
 | Production build rewrites a tracked auto-import/component declaration | Configure the plugin with `dts: command === 'serve' ? path : false` and verify the committed declaration separately |
 | Non-public component has no resolvable owner | Emit `component.owner-required` |
@@ -295,6 +300,10 @@ interface PackageArchitectureManifest {
 - Root-entry moves build and inspect every public subpath, then run the packed
   consumer smoke so JS and declaration output paths are verified from the
   installed package rather than inferred from source tests.
+- Source-condition validation checks that the package `files` includes the root
+  source entry and `src`; packed consumer smoke separately verifies the
+  installed default runtime and declaration entries. Workspace source
+  resolution alone is insufficient because it bypasses package `files`.
 - Packages with tracked auto-import/component declarations run production build
   and assert those files have no diff. Where practical, a verifier compares the
   declared symbol set with actual SFC tags or the configured auto-import map.

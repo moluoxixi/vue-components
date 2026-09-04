@@ -14,12 +14,12 @@ import {
   createBrowserViteConfigSource,
   createNodeSmokeSource,
   createPackedConsumerManifest,
+  createPnpmInvocation,
   createTypeSmokeSource,
   getBrowserBundleForbiddenFragments,
   getBrowserConsumerSpecifiers,
   getNodeRuntimeSpecifiers,
   getPackedBrowserApplications,
-  getPnpmCommandName,
   getPublicSpecifier,
   getTypedJavaScriptEntrypoints,
 } from './published-package-verifier.mjs'
@@ -31,10 +31,17 @@ const workspaceManifest = parse(await readFile(resolve(workspaceRoot, 'pnpm-work
 const browserBundlerVersion = browserMode ? workspaceManifest.catalogs?.dev?.vite : undefined
 if (browserMode && typeof browserBundlerVersion !== 'string')
   throw new Error('pnpm-workspace.yaml must define catalogs.dev.vite for the packed browser consumer.')
-const bundledPnpmCli = resolve(dirname(process.execPath), 'node_modules/pnpm/bin/pnpm.mjs')
-const pnpmCli = process.env.npm_execpath || (existsSync(bundledPnpmCli) ? bundledPnpmCli : undefined)
-const pnpmCommand = pnpmCli ? process.execPath : getPnpmCommandName(process.platform)
-const pnpmPrefix = pnpmCli ? [pnpmCli] : []
+const bundledPnpmCli = [
+  resolve(dirname(process.execPath), 'node_modules/pnpm/bin/pnpm.mjs'),
+  resolve(dirname(process.execPath), 'node_modules/pnpm/bin/pnpm.cjs'),
+  resolve(dirname(process.execPath), 'node_modules/corepack/dist/pnpm.js'),
+].find(candidate => existsSync(candidate))
+const pnpmCli = process.env.npm_execpath || bundledPnpmCli
+const { argsPrefix: pnpmPrefix, command: pnpmCommand } = createPnpmInvocation(
+  process.platform,
+  process.execPath,
+  pnpmCli,
+)
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {

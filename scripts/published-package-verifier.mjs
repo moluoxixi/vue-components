@@ -128,6 +128,24 @@ export function getPnpmCommandName(platform) {
   return platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 }
 
+export function createPnpmInvocation(platform, execPath, pnpmCli) {
+  if (pnpmCli) {
+    return {
+      argsPrefix: [pnpmCli],
+      command: execPath,
+    }
+  }
+  if (platform === 'win32') {
+    throw new Error(
+      'Unable to locate a pnpm JavaScript CLI. Run the verifier through pnpm or install Corepack next to Node.js.',
+    )
+  }
+  return {
+    argsPrefix: [],
+    command: getPnpmCommandName(platform),
+  }
+}
+
 export function getTypedJavaScriptEntrypoints(manifest) {
   if (!isRecord(manifest?.exports))
     return []

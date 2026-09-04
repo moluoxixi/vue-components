@@ -27,15 +27,15 @@
 
 ## 验收标准
 
-- [ ] 5 条目标 architecture debt 全部删除，unknown/stale diagnostics 为零。
-- [ ] 目标包不存在 P0/P1 生产热点；P2 controller/validation 文件按真实状态与生命周期职责拆分，不做平均切行。
-- [ ] Model transaction 的原子 rollback、inverse 顺序、evolving draft、final validation、Registry lock 与 change-set 语义不变。
-- [ ] Compiler canonical/incremental/coordinator 结果、诊断、cache key 与 committed/draft 隔离不变。
-- [ ] Runtime renderer 的受控 model、Design inertness、editor registration、slot/path、binding precedence 与 Flow event 顺序不变。
-- [ ] Provider wrapper、Playground 场景、Headless controller 和 Runtime validation 的用户可观察行为不变。
-- [ ] 所有公开 package exports、声明、README 架构事实与 consumer import 保持一致。
-- [ ] 相关包 test/typecheck/build、`pnpm test:config-form-packages`、Playground/Workbench E2E、全仓 lint/typecheck/architecture/path/workflow tests 与 `git diff --check` 通过。
-- [ ] 每个实施阶段已独立 commit，不 push，最终工作树干净。
+- [x] 5 条目标 architecture debt 全部删除，unknown/stale diagnostics 为零。
+- [x] 目标包不存在 P0/P1 生产热点；P2 controller/validation 文件按真实状态与生命周期职责拆分，不做平均切行。
+- [x] Model transaction 的原子 rollback、inverse 顺序、evolving draft、final validation、Registry lock 与 change-set 语义不变。
+- [x] Compiler canonical/incremental/coordinator 结果、诊断、cache key 与 committed/draft 隔离不变。
+- [x] Runtime renderer 的受控 model、Design inertness、editor registration、slot/path、binding precedence 与 Flow event 顺序不变。
+- [x] Provider wrapper、Playground 场景、Headless controller 和 Runtime validation 的用户可观察行为不变。
+- [x] 所有公开 package exports、声明、README 架构事实与 consumer import 保持一致。
+- [x] 相关包 test/typecheck/build、`pnpm test:config-form-packages`、Playground/Workbench E2E、全仓 lint/typecheck/architecture/path/workflow tests 与 `git diff --check` 通过。
+- [x] 每个实施阶段已独立 commit，不 push，最终工作树干净。
 
 ## 范围外
 
