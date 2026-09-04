@@ -800,3 +800,28 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 33: 完成 Hooks 包结构治理
+
+**Date**: 2026-09-04
+**Task**: 完成 Hooks 包结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+将六个 Vue Query hook 归入 feature state，抽出 RequestTable 私有纯函数，锁定分页、deep watch 与 mutation 顺序，清零 6 条 debt，并补齐中文 README 与 source 发布闭环。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8f62fbd5` | (see git log) |
+| `cc438d8a` | (see git log) |
+| `0627a042` | (see git log) |
+| `37a4d7ab` | (see git log) |
+
+### Status
+
+[OK] **Completed**
