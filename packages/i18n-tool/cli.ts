@@ -118,10 +118,16 @@ export async function runCli(args = process.argv.slice(2)): Promise<void> {
   server.printUrls()
 }
 
-const entry = process.argv[1] ? pathToFileURL(process.argv[1]).href : undefined
-if (entry === import.meta.url) {
-  runCli().catch((error) => {
+export async function runCliEntry(args = process.argv.slice(2)): Promise<void> {
+  try {
+    await runCli(args)
+  }
+  catch (error) {
     console.error(`[i18n-tool] ${error instanceof Error ? error.message : String(error)}`)
     process.exitCode = 1
-  })
+  }
 }
+
+const entry = process.argv[1] ? pathToFileURL(process.argv[1]).href : undefined
+if (entry === import.meta.url)
+  void runCliEntry()

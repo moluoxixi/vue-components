@@ -1,7 +1,7 @@
 # I18n Tool 结构治理实施计划
 
-1. [ ] 锁定 exports/bin/build、CLI、HTTP/wire、安全写入、UI workflow 与 dynamic config 边界。
-2. [ ] 补 CLI help/success/invalid/config-error stdout/stderr/exit characterization并提交。
+1. [x] 锁定 exports/bin/build、CLI、HTTP/wire、安全写入、UI workflow 与 dynamic config 边界。
+2. [x] 补 CLI help/success/invalid/config-error stdout/stderr/exit characterization并提交。
 3. [ ] 归位 App、五个单父组件及 App 私有 api/state，更新测试/import，运行 UI unit/build/E2E并提交。
 4. [ ] 迁移 config schemas/services/types 与 Core constants/services/utils/types/adapters，保持 public symbols/Jiti/protocol边界并提交。
 5. [ ] 迁移 server runtime/resources/filesystem/http/errors，保持 scan/translate/preview/apply/atomic rollback行为并提交。

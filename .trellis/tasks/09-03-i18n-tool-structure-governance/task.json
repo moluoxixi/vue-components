@@ -3,7 +3,7 @@
   "name": "i18n-tool-structure-governance",
   "title": "I18n Tool 结构治理",
   "description": "治理 i18n-tool 的 CLI、UI、扫描、转换与持久化职责。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": "backend",
   "scope": "packages/i18n-tool",
   "package": "i18n-tool",
