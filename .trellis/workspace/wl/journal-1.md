@@ -921,3 +921,34 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 38: 完成 Packages 全仓结构治理
+
+**Date**: 2026-09-05
+**Task**: 完成 Packages 全仓结构治理
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 VitePress Theme 最后一批职责拆分与公共入口门禁，清零全仓 33 包架构债务；补修 docs Node 24 原生 ESM 导入和浏览器 Node builtin 泄漏，完成父子任务归档。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4f6390d4` | (see git log) |
+| `4ba63bd4` | (see git log) |
+| `6d64eb50` | (see git log) |
+| `a1dd96a1` | (see git log) |
+| `3e3251e0` | (see git log) |
+| `c00b2955` | (see git log) |
+| `6f0b4152` | (see git log) |
+| `b311bd62` | (see git log) |
+| `1ec60bf2` | (see git log) |
+| `26f45e6a` | (see git log) |
+
+### Status
+
+[OK] **Completed**
