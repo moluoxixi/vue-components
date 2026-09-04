@@ -3,7 +3,7 @@
   "name": "hooks-structure-governance",
   "title": "Hooks 包结构治理",
   "description": "治理 hooks 包的响应式组合逻辑与纯工具边界。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": "frontend",
   "scope": "packages/hooks",
   "package": "hooks",

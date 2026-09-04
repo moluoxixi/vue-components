@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useRequestTable } from '../src/composables'
 import { createTestQueryClient, waitFor, withSetup } from './test-utils'
 
@@ -94,6 +94,67 @@ describe('useRequestTable', () => {
     await waitFor(() => query.mock.calls.at(-1)?.[0].status === 'disabled')
 
     expect(query).toHaveBeenLastCalledWith({ status: 'disabled', currentPage: 4, pageSize: 20 })
+
+    unmount()
+  })
+
+  it('reuses external page refs and tracks getter inputs with internal refs', async () => {
+    const currentPage = ref(3)
+    const pageSizeSource = ref(25)
+    const { result, unmount } = withSetup(() => useRequestTable<Row>({
+      queryKey: 'external-page-state',
+      query: vi.fn(),
+      enabled: false,
+      currentPage,
+      pageSize: () => pageSizeSource.value,
+      defaultPageSize: 15,
+    }))
+
+    expect(result.currentPage).toBe(currentPage)
+    expect(result.currentPage.value).toBe(3)
+    expect(result.pageSize.value).toBe(15)
+
+    result.setCurrentPage(4)
+    expect(currentPage.value).toBe(4)
+
+    pageSizeSource.value = 30
+    await nextTick()
+    expect(result.pageSize.value).toBe(30)
+
+    unmount()
+  })
+
+  it('normalizes invalid and fractional pagination values', () => {
+    const { result, unmount } = withSetup(() => useRequestTable<Row>({
+      queryKey: 'normalized-page-state',
+      query: vi.fn(),
+      enabled: false,
+      defaultCurrentPage: Number.NaN,
+      defaultPageSize: Number.POSITIVE_INFINITY,
+    }))
+
+    expect(result.currentPage.value).toBe(1)
+    expect(result.pageSize.value).toBe(10)
+
+    for (const value of [Number.NaN, Number.NEGATIVE_INFINITY, 0, -3]) {
+      result.setCurrentPage(value)
+      expect(result.currentPage.value).toBe(1)
+    }
+    result.setCurrentPage(2.9)
+    expect(result.currentPage.value).toBe(2)
+
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      result.setPageSize(value)
+      expect(result.pageSize.value).toBe(10)
+      expect(result.currentPage.value).toBe(1)
+    }
+    for (const value of [0, -5]) {
+      result.setPageSize(value)
+      expect(result.pageSize.value).toBe(1)
+      expect(result.currentPage.value).toBe(1)
+    }
+    result.setPageSize(20.8)
+    expect(result.pageSize.value).toBe(20)
 
     unmount()
   })
