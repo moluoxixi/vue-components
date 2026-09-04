@@ -5,7 +5,7 @@
  * 原地替换成 DemoPreview 实时预览，不可渲染的仅展示源码 + 原因；后端 query-handler 复用
  * extractVueBlocks 产出 example 事件的 blocks（兼容旧前端）。
  *
- * 可渲染判定：可渲染 demo 由 src/ui/preview/compile.ts 在浏览器内用 vue3-sfc-loader 编译挂载，
+ * 可渲染判定：可渲染 demo 由 src/ui/preview/services/compile.ts 在浏览器内用 vue3-sfc-loader 编译挂载，
  * 其 moduleCache 注入了 `vue`、`element-plus` 与 `@moluoxixi/components`（含样式副作用）。示例若 import
  * 白名单外的依赖，loader 的 getFile 会抛「未预期的模块请求」导致编译失败、预览空白。
  * 因此做两道判定：
@@ -14,7 +14,7 @@
  *    从源头杜绝编译失败（防御点在系统边界——解析 LLM 不可信输出，符合「边界校验」）。
  */
 
-/** 运行时预览可解析的依赖白名单（与 src/ui/preview/compile.ts 的 moduleCache 对齐）。 */
+/** 运行时预览可解析的依赖白名单（与 src/ui/preview/services/compile.ts 的 moduleCache 对齐）。 */
 export const PREVIEW_ALLOWED_MODULES: readonly string[] = [
   'vue',
   'element-plus',
@@ -64,7 +64,7 @@ function parseImportSpecifiers(source: string): string[] {
 
 /**
  * 判断一个模块说明符是否在预览白名单内。
- * 白名单必须与 preview/compile.ts 的 moduleCache 精确对齐；子路径 import 运行时无法解析。
+ * 白名单必须与 preview/services/compile.ts 的 moduleCache 精确对齐；子路径 import 运行时无法解析。
  */
 function isAllowedSpecifier(spec: string): boolean {
   if (spec.startsWith('.') || spec.startsWith('/'))

@@ -7,10 +7,10 @@
 import { Download } from '@lucide/vue'
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
 import { computed, ref, shallowRef } from 'vue'
-import type {ComponentListItem} from '../../shared/protocol'
-import {fetchComponentDetail} from '../api'
-import {exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat} from '../export'
-import { restoreFocusIfLost } from '../focus'
+import type { ComponentListItem } from '../../../../shared/protocol'
+import { fetchComponentDetail } from '../../../api'
+import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat } from '../../../export'
+import { restoreFocusIfLost } from '../../../focus'
 
 const props = withDefaults(defineProps<{ components: ComponentListItem[], loading?: boolean, error?: string }>(), {
   loading: false,

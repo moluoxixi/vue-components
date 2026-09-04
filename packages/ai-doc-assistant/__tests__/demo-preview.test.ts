@@ -26,7 +26,7 @@ function okResult(render?: () => unknown) {
 
 // 动态导入被测组件（确保 mock 在其依赖解析前生效）。
 async function mountDemo(props?: Partial<{ ts: string, js: string, renderable: boolean, reason: string }>) {
-  const { default: DemoPreview } = await import('../src/ui/components/DemoPreview.vue')
+  const { default: DemoPreview } = await import('../src/ui/App/components/ChatView/components/DemoPreview.vue')
   return mount(DemoPreview, {
     props: {
       ts: 'TS_SOURCE',

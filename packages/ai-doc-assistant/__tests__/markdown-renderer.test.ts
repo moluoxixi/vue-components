@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import MarkdownContent from '../src/ui/components/MarkdownContent.vue'
+import MarkdownContent from '../src/ui/App/components/ChatView/components/MarkdownContent.vue'
 import { renderMarkdown } from '../src/ui/markdown'
 
 describe('markdown renderer', () => {

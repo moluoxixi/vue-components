@@ -10,7 +10,7 @@ import { ServerContext } from '../src/server/context'
 // 实际抽取契约的用例必须用包内 fixture 工作区：vue-component-meta 需被分析 SFC 落在 tsconfig
 // program 内（临时目录无法解析 vue 类型）。fixture 工作区含 demo 包 + tsconfig，可被 checker 解析。
 const FIXTURE_ROOT = resolve(__dirname, 'fixtures', 'ctx-workspace')
-const COMPONENT_PACKAGE_ROOT = resolve(__dirname, '../../components')
+const CONFIG_FORM_ANTD_PACKAGE_ROOT = resolve(__dirname, '../../ConfigForm/antd')
 
 // 一个最小可解析的 SFC：驱动契约抽取 → content 策略关键词检索态构建。
 const SFC = `<script setup lang="ts">
@@ -133,9 +133,9 @@ describe('serverContext（默认 content 策略，关键词 topK）', () => {
 
   it('package discovery root 不限制兄弟 workspace 包的类型闭包', async () => {
     const ctx = new ServerContext({
-      componentGlobs: ['src/AntdConfigForm/src/index.vue'],
+      componentGlobs: ['src/services/components/AntdConfigForm/index.vue'],
       env: {},
-      root: COMPONENT_PACKAGE_ROOT,
+      root: CONFIG_FORM_ANTD_PACKAGE_ROOT,
     })
     await ctx.buildIndex()
 

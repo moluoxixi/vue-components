@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import WorkspaceTopbar from '../src/ui/components/WorkspaceTopbar.vue'
+import WorkspaceTopbar from '../src/ui/App/components/WorkspaceTopbar/index.vue'
 
 describe('workspace topbar', () => {
   it('按标准 tablist 键盘模型切换视图并移动焦点', async () => {

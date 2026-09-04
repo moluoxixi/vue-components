@@ -120,7 +120,7 @@ describe('detail view', () => {
   })
 
   it('prop 类型通过 tooltip 展示展开后的字段明细', async () => {
-    const { default: DetailView } = await import('../src/ui/views/DetailView.vue')
+    const { default: DetailView } = await import('../src/ui/App/components/DetailView/index.vue')
     const wrapper = mount(DetailView, {
       props: { name: 'PopoverTableSelect' },
       global: {
@@ -156,7 +156,7 @@ describe('detail view', () => {
       }))
       .mockResolvedValueOnce({ ...detail, name: 'CopyText' })
 
-    const { default: DetailView } = await import('../src/ui/views/DetailView.vue')
+    const { default: DetailView } = await import('../src/ui/App/components/DetailView/index.vue')
     const wrapper = mount(DetailView, {
       props: { name: 'PopoverTableSelect' },
       global: { stubs: { ElDropdown: true } },

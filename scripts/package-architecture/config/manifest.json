@@ -43,17 +43,6 @@
   ],
   "componentExceptions": [
     {
-      "component": "packages/ai-doc-assistant/src/ui/App.vue",
-      "kind": "framework",
-      "rules": [
-        "component.single-feature-location"
-      ],
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/main.ts"
-      ],
-      "reason": "The published CLI bundles this Vue application through its dedicated UI build script."
-    },
-    {
       "component": "packages/ConfigForm/playground/src/App.vue",
       "kind": "framework",
       "rules": [
@@ -198,69 +187,6 @@
       "reason": "Single-feature component must live under packages/rich-text-editor/src/components.",
       "owners": [
         "packages/rich-text-editor/index.ts"
-      ]
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/components/DemoPreview.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/views/ChatView/components.",
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/views/ChatView.vue"
-      ]
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/components/MarkdownContent.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/views/ChatView/components.",
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/views/ChatView.vue"
-      ]
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/components/TypeReference.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/views/DetailView/components.",
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/views/DetailView.vue"
-      ]
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/components/WorkspaceTopbar.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/views/ChatView.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/views/DetailView.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/App.vue"
-      ]
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/views/OverviewView.vue",
-      "rule": "component.single-parent-location",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Single-parent component must live under packages/ai-doc-assistant/src/ui/App/components.",
-      "owners": [
-        "packages/ai-doc-assistant/src/ui/App.vue"
       ]
     },
     {
@@ -559,12 +485,6 @@
     },
     {
       "path": "packages/ai-doc-assistant/src/core/vue-block-extractor.ts",
-      "rule": "feature.root-file",
-      "targetTask": "ai-doc-assistant-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/ai-doc-assistant/src/ui/preview/compile.ts",
       "rule": "feature.root-file",
       "targetTask": "ai-doc-assistant-structure-governance",
       "reason": "Feature root files must move into a responsibility directory."

@@ -15,8 +15,10 @@ import { createMetaChecker, extractContract, extractContracts, extractContractWi
 const FIXTURES_TSCONFIG = resolve(__dirname, '../tsconfig.fixtures.json')
 const WORKSPACE_ROOT = resolve(__dirname, '../../..')
 const COMPONENTS_TSCONFIG = resolve(WORKSPACE_ROOT, 'packages/components/tsconfig.app.json')
+const CONFIG_FORM_ANTD_TSCONFIG = resolve(WORKSPACE_ROOT, 'packages/ConfigForm/antd/tsconfig.app.json')
 const fx = (rel: string): string => resolve(__dirname, 'fixtures', rel)
 const component = (rel: string): string => resolve(WORKSPACE_ROOT, 'packages/components/src', rel)
+const antdConfigForm = (rel: string): string => resolve(WORKSPACE_ROOT, 'packages/ConfigForm/antd/src', rel)
 let fixtureChecker: ReturnType<typeof createMetaChecker> | undefined
 
 function extractFixtureContract(
@@ -294,13 +296,18 @@ describe('extractContracts — real workspace package types', () => {
   let contracts: Awaited<ReturnType<typeof extractContracts>>
 
   beforeAll(async () => {
-    contracts = await extractContracts(
+    const antdContracts = await extractContracts(
       [
         {
           exportName: 'AntdConfigForm',
-          filePath: component('AntdConfigForm/src/index.vue'),
-          packageName: '@moluoxixi/components',
+          filePath: antdConfigForm('services/components/AntdConfigForm/index.vue'),
+          packageName: '@moluoxixi/config-form-antd-vue',
         },
+      ],
+      CONFIG_FORM_ANTD_TSCONFIG,
+    )
+    const componentContracts = await extractContracts(
+      [
         {
           exportName: 'PopoverTableSelect',
           filePath: component('PopoverTableSelect/src/index.vue'),
@@ -309,6 +316,7 @@ describe('extractContracts — real workspace package types', () => {
       ],
       COMPONENTS_TSCONFIG,
     )
+    contracts = [...antdContracts, ...componentContracts]
   })
 
   it('展开 ConfigForm 泛型 emit payload 的字段与依赖定义', () => {

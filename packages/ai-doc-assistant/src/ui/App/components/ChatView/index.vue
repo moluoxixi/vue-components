@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { AiDocUIMessage, ExampleBlock, IndexState, SourceRef } from '../../shared/protocol'
+import type { AiDocUIMessage, ExampleBlock, IndexState, SourceRef } from '../../../../shared/protocol'
 import { useChat } from '@ai-sdk/vue'
 import { ArrowDown, MessageSquarePlus, Square } from '@lucide/vue'
 import { DefaultChatTransport } from 'ai'
 import { ElTooltip } from 'element-plus'
 import { computed, defineAsyncComponent, nextTick, onUnmounted, reactive, ref, useTemplateRef, watch } from 'vue'
-import { splitAnswerSegments } from '../../core'
-import { API_PREFIX } from '../../shared/protocol'
-import { buildChatRequestMessages } from '../chat-history'
-import MarkdownContent from '../components/MarkdownContent.vue'
+import { splitAnswerSegments } from '../../../../core'
+import { API_PREFIX } from '../../../../shared/protocol'
+import { buildChatRequestMessages } from '../../../chat-history'
+import { MarkdownContent } from './components'
 
 const DemoPreview = defineAsyncComponent(() =>
-  import('../components/DemoPreview.vue').then(module => module.default),
+  import('./components/DemoPreview.vue').then(module => module.default),
 )
 
 type TurnStatus = 'streaming' | 'done' | 'stopped' | 'error'

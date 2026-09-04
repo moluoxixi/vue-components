@@ -86,7 +86,7 @@ describe('knowledge export entry points', () => {
   })
 
   it('总览卡片主体使用独立按钮打开详情', async () => {
-    const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
+    const { default: OverviewView } = await import('../src/ui/App/components/OverviewView/index.vue')
     const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
     const openButton = wrapper.find('[data-testid="component-open"]')
 
@@ -98,7 +98,7 @@ describe('knowledge export entry points', () => {
   })
 
   it('总览卡片只显示一个导出按钮，点击后下拉选择普通 JSON 且不打开详情', async () => {
-    const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
+    const { default: OverviewView } = await import('../src/ui/App/components/OverviewView/index.vue')
     const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
 
     expect(wrapper.findAll('[data-testid="card-export-trigger"]')).toHaveLength(1)
@@ -120,7 +120,7 @@ describe('knowledge export entry points', () => {
 
   it('总览卡片 JSON 导出详情加载失败时展示错误条', async () => {
     fetchComponentDetail.mockRejectedValueOnce(new Error('详情加载失败'))
-    const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
+    const { default: OverviewView } = await import('../src/ui/App/components/OverviewView/index.vue')
     const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
 
     await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
@@ -133,7 +133,7 @@ describe('knowledge export entry points', () => {
   })
 
   it('总览卡片导出下拉选项键盘触发不会冒泡打开详情', async () => {
-    const { default: OverviewView } = await import('../src/ui/views/OverviewView.vue')
+    const { default: OverviewView } = await import('../src/ui/App/components/OverviewView/index.vue')
     const wrapper = mount(OverviewView, { props: { components }, global: { stubs: dropdownStubs } })
 
     await wrapper.find('[data-testid="card-export-trigger"]').trigger('click')
@@ -144,7 +144,7 @@ describe('knowledge export entry points', () => {
   })
 
   it('详情页只显示一个导出按钮，点击后下拉选择普通 JSON', async () => {
-    const { default: DetailView } = await import('../src/ui/views/DetailView.vue')
+    const { default: DetailView } = await import('../src/ui/App/components/DetailView/index.vue')
     const wrapper = mount(DetailView, {
       props: { name: 'DemoButton' },
       global: {

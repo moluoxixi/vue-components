@@ -13,7 +13,7 @@
 import { computed, nextTick, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import type { Component } from 'vue'
 import { Code2, Copy } from '@lucide/vue'
-import { compileSfc } from '../preview'
+import { compileSfc } from '../../../../preview'
 
 const props = withDefaults(defineProps<{
   ts: string

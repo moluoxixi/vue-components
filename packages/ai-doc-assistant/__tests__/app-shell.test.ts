@@ -2,7 +2,7 @@ import type { ComponentListItem, HealthResponse, IndexStatusResponse } from '../
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import WorkspaceTopbar from '../src/ui/components/WorkspaceTopbar.vue'
+import WorkspaceTopbar from '../src/ui/App/components/WorkspaceTopbar/index.vue'
 
 const readyHealth: HealthResponse = {
   ok: true,
@@ -40,7 +40,7 @@ vi.mock('../src/ui/api', () => ({
   buildIndex: () => buildIndexMock(),
 }))
 
-vi.mock('../src/ui/views/ChatView.vue', () => ({
+vi.mock('../src/ui/App/components/ChatView/index.vue', () => ({
   default: defineComponent({
     name: 'ChatView',
     props: { question: String, indexReady: Boolean, indexState: String },
@@ -57,7 +57,7 @@ vi.mock('../src/ui/views/ChatView.vue', () => ({
   }),
 }))
 
-vi.mock('../src/ui/views/DetailView.vue', () => ({
+vi.mock('../src/ui/App/components/DetailView/index.vue', () => ({
   default: defineComponent({
     name: 'DetailView',
     props: { name: String },
@@ -83,7 +83,7 @@ describe('app shell', () => {
   })
 
   it('默认展示 AI 对话，并将知识库作为保留 Chat 挂载的一级视图', async () => {
-    const { default: App } = await import('../src/ui/App.vue')
+    const { default: App } = await import('../src/ui/App/index.vue')
     const wrapper = mount(App)
     await flushPromises()
 
@@ -116,7 +116,7 @@ describe('app shell', () => {
       resolveBuild = resolve
     }))
 
-    const { default: App } = await import('../src/ui/App.vue')
+    const { default: App } = await import('../src/ui/App/index.vue')
     const wrapper = mount(App)
     await flushPromises()
 
@@ -130,7 +130,7 @@ describe('app shell', () => {
   })
 
   it('点击 AI 来源后直接打开对应知识库详情', async () => {
-    const { default: App } = await import('../src/ui/App.vue')
+    const { default: App } = await import('../src/ui/App/index.vue')
     const wrapper = mount(App)
     await flushPromises()
 
@@ -146,7 +146,7 @@ describe('app shell', () => {
     fetchHealthMock.mockImplementationOnce(() => new Promise<HealthResponse>((resolve) => {
       resolveHealth = resolve
     }))
-    const { default: App } = await import('../src/ui/App.vue')
+    const { default: App } = await import('../src/ui/App/index.vue')
     const wrapper = mount(App)
     await flushPromises()
 
@@ -170,7 +170,7 @@ describe('app shell', () => {
         },
       },
     }
-    const { default: App } = await import('../src/ui/App.vue')
+    const { default: App } = await import('../src/ui/App/index.vue')
     const wrapper = mount(App)
     await flushPromises()
 
@@ -181,7 +181,7 @@ describe('app shell', () => {
 
   it('组件列表失败时在知识库内显示错误并可重试', async () => {
     fetchComponentsMock.mockRejectedValueOnce(new Error('组件列表离线'))
-    const { default: App } = await import('../src/ui/App.vue')
+    const { default: App } = await import('../src/ui/App/index.vue')
     const wrapper = mount(App)
     await flushPromises()
 

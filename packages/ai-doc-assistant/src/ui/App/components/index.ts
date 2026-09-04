@@ -1,0 +1,5 @@
+export { default as ChatView } from './ChatView/index.vue'
+export { default as DetailView } from './DetailView/index.vue'
+export { default as OverviewView } from './OverviewView/index.vue'
+export { default as WorkspaceTopbar } from './WorkspaceTopbar/index.vue'
+export type { WorkspaceView } from './WorkspaceTopbar/index.vue'

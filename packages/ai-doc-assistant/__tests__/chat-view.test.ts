@@ -7,7 +7,7 @@ import { defineComponent, h, ref } from 'vue'
 const fetchMock = vi.fn<typeof fetch>()
 const requestBodies: Array<Record<string, unknown>> = []
 
-vi.mock('../src/ui/components/DemoPreview.vue', () => ({
+vi.mock('../src/ui/App/components/ChatView/components/DemoPreview.vue', () => ({
   default: defineComponent({
     name: 'DemoPreviewStub',
     props: {
@@ -90,7 +90,7 @@ function failOnce(message: string): void {
 }
 
 async function mountChat(question = 'EnterNextContainer 怎么用？', onOpenSource = vi.fn()) {
-  const { default: ChatView } = await import('../src/ui/views/ChatView.vue')
+  const { default: ChatView } = await import('../src/ui/App/components/ChatView/index.vue')
   const Host = defineComponent({
     setup() {
       const value = ref(question)
@@ -120,7 +120,7 @@ describe('chat view', () => {
   })
 
   it('keeps the ask panel after the answer area and disables it while the index builds', async () => {
-    const { default: ChatView } = await import('../src/ui/views/ChatView.vue')
+    const { default: ChatView } = await import('../src/ui/App/components/ChatView/index.vue')
     const wrapper = mount(ChatView, {
       props: {
         'question': 'Button 怎么用？',

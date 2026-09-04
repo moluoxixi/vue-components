@@ -2,8 +2,8 @@
 
 1. [x] 锁定 package exports/build entries、CLI command/output、HTTP/stream、Core index/生成与 UI workflow 契约。
 2. [x] 补 CLI build-index/serve/unknown/error characterization，运行 CLI 定向测试并提交。
-3. [ ] 归位 App、ChatView、DetailView 的 7 个单父组件；保持 DemoPreview 动态加载并移动相关测试/import。
-4. [ ] 将 UI preview compiler 归入 `preview/services`，清理旧 `ui/components`/`ui/views`，运行 UI unit/build/E2E 并提交。
+3. [x] 归位 App、ChatView、DetailView 的 7 个单父组件；保持 DemoPreview 动态加载并移动相关测试/import。
+4. [x] 将 UI preview compiler 归入 `preview/services`，清理旧 `ui/components`/`ui/views`，运行 UI unit/build/E2E 并提交。
 5. [ ] 将 Core 19 个根实现迁入 discovery/extraction/generation/indexing/knowledge/retrieval/vector/preview domain，建立纯 barrels并清理 import。
 6. [ ] 核对并保持 root/core public exports、dynamic vector/store 边界、server/context/router/query-handler 调用方向；运行 Core/server 全量测试并提交。
 7. [ ] 拆 ChatView transport/history/request state 到单一 composable，SFC 保留模板与 UI 连接；运行 chat/app/demo/browser tests并提交。

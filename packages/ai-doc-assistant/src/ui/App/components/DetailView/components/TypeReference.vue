@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ElPopover } from 'element-plus'
 import { ref, useTemplateRef } from 'vue'
-import { restoreFocusIfLost } from '../focus'
+import { restoreFocusIfLost } from '../../../../focus'
 
 defineProps<{ text: string, content: string }>()
 

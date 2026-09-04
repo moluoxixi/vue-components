@@ -8,11 +8,11 @@
 import { ArrowLeft, Download, MessageSquare } from '@lucide/vue'
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import type { ComponentDetailResponse } from '../../shared/protocol'
-import { fetchComponentDetail } from '../api'
-import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat } from '../export'
-import TypeReference from '../components/TypeReference.vue'
-import { restoreFocusIfLost } from '../focus'
+import type { ComponentDetailResponse } from '../../../../shared/protocol'
+import { fetchComponentDetail } from '../../../api'
+import { exportComponentDetail, KNOWLEDGE_EXPORT_FORMATS, type KnowledgeExportFormat } from '../../../export'
+import { restoreFocusIfLost } from '../../../focus'
+import { TypeReference } from './components'
 
 const props = defineProps<{ name: string }>()
 const emit = defineEmits<{ (e: 'back'): void, (e: 'ask', name: string): void }>()

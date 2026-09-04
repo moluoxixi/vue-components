@@ -5,13 +5,10 @@
  * 双视图工作区外壳：Chat 始终挂载，知识库作为同级视图承载总览与详情。
  */
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
-import type { ComponentListItem, HealthResponse, IndexState } from '../shared/protocol'
-import { buildIndex, fetchComponents, fetchHealth, fetchStatus, importKnowledge } from './api'
-import { readKnowledgeImportFile } from './export'
-import WorkspaceTopbar, { type WorkspaceView } from './components/WorkspaceTopbar.vue'
-import ChatView from './views/ChatView.vue'
-import DetailView from './views/DetailView.vue'
-import OverviewView from './views/OverviewView.vue'
+import type { ComponentListItem, HealthResponse, IndexState } from '../../shared/protocol'
+import { buildIndex, fetchComponents, fetchHealth, fetchStatus, importKnowledge } from '../api'
+import { readKnowledgeImportFile } from '../export'
+import { ChatView, DetailView, OverviewView, WorkspaceTopbar, type WorkspaceView } from './components'
 
 type KnowledgeView = 'overview' | 'detail'
 type RequestStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
