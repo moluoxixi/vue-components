@@ -6,7 +6,7 @@ import type {
   HeadlessTableColumnVisibilityState,
   HeadlessTableMode,
   HeadlessTableRendererConfig,
-} from '../../../HeadlessTable/src/types'
+} from '../../../HeadlessTable'
 
 export type ConfigTableRow = Record<string, any>
 export type ConfigTableColumnWidthState = Record<string, number>

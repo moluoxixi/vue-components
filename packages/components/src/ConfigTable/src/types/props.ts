@@ -7,7 +7,7 @@ import type {
   HeadlessTableRendererMap,
   HeadlessTableRendererRegistry,
   HeadlessTableRowKey,
-} from '../../../HeadlessTable/src/types'
+} from '../../../HeadlessTable'
 import type { ConfigTablePaginationProps } from './pagination'
 import type {
   ConfigTableColumn,

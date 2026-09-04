@@ -1,7 +1,7 @@
-import type { HeadlessTableModeChange } from '../src/types'
+import type { HeadlessTableModeChange } from '../index'
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import { useHeadlessTableMode } from '../src/composables'
+import { useHeadlessTableMode } from '../index'
 
 describe('useHeadlessTableMode', () => {
   it('reports effective mode transitions and ignores no-op mutations', () => {

@@ -1,7 +1,4 @@
-import { withInstall } from '../utils'
-import HeadlessTableSource from './src/index.vue'
-
-export { useHeadlessTable, useHeadlessTableMode } from './src/composables'
+export { useHeadlessTable, useHeadlessTableMode } from './composables'
 export {
   createHeadlessTableRenderer,
   createHeadlessTableRendererPlugin,
@@ -11,15 +8,12 @@ export {
   normalizeHeadlessTableRendererOptions,
   provideHeadlessTableRenderer,
   resolveHeadlessTableRenderer,
-} from './src/core'
-export type * from './src/types'
+} from './services'
+export { default, HeadlessTable } from './services'
+export type * from './types'
 export {
   getHeadlessTableColumnId,
   getHeadlessTableColumnLabel,
   getHeadlessTableRawValue,
   projectHeadlessTableColumns,
-} from './src/utils'
-
-export const HeadlessTable = withInstall(HeadlessTableSource)
-
-export default HeadlessTable
+} from './utils'

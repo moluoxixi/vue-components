@@ -15,19 +15,19 @@ import type {
   HeadlessTableRowKey,
   HeadlessTableSlots,
   HeadlessTableEmptyComponent,
-} from './types'
+} from '../../types'
 import { computed, defineComponent, inject, markRaw, onBeforeUpdate, shallowRef } from 'vue'
 import {
   getHeadlessTableColumnId,
   getHeadlessTableColumnLabel,
   getHeadlessTableRawValue,
-} from './utils'
+} from '../../utils'
 import {
   headlessTableRenderer,
   headlessTableRendererKey,
   resolveHeadlessTableRenderer,
-} from './core'
-import { useHeadlessTableMode } from './composables'
+} from '../../services/renderer'
+import { useHeadlessTableMode } from '../../composables'
 
 defineOptions({ name: 'HeadlessTable' })
 

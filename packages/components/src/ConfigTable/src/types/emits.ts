@@ -3,7 +3,7 @@ import type {
   HeadlessTableColumnOrderState,
   HeadlessTableColumnVisibilityState,
   HeadlessTableModeChange,
-} from '../../../HeadlessTable/src/types'
+} from '../../../HeadlessTable'
 import type { ConfigTablePageChangeParams } from './pagination'
 import type {
   ConfigTableCellParams,

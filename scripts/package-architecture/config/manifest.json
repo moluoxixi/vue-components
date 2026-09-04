@@ -98,15 +98,6 @@
       ]
     },
     {
-      "path": "packages/components/src/HeadlessTable/src/index.vue",
-      "rule": "component.single-feature-location",
-      "targetTask": "components-structure-governance",
-      "reason": "Single-feature component must live under packages/components/src/HeadlessTable/components.",
-      "owners": [
-        "packages/components/src/HeadlessTable/index.ts"
-      ]
-    },
-    {
       "path": "packages/components/src/PopoverTableSelect/src/index.vue",
       "rule": "component.single-feature-location",
       "targetTask": "components-structure-governance",
@@ -126,12 +117,6 @@
     },
     {
       "path": "packages/components/src/ConfigTable/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/HeadlessTable/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "components-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
@@ -195,12 +180,6 @@
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/components/src/HeadlessTable/src/core/renderer.ts",
-      "rule": "feature.root-file",
-      "targetTask": "components-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
     },
     {
       "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/gitee.ts",
