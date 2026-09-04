@@ -25,14 +25,14 @@
 
 ## 验收标准
 
-- [ ] 4 条目标 debt 删除，architecture unknown/stale 为零。
-- [ ] shared/server feature 根只含纯 `index.ts` 与责任目录，旧 server 根实现路径不存在。
-- [ ] root 与 `./shared` 运行时符号集合等价，且都不暴露 target、factory、status factory、cause 或 redaction。
-- [ ] `./server` 保持原公开符号集合，Provider/model/baseURL 校验与 SDK model metadata 不变。
-- [ ] shared 不依赖 server；server adapters/services/utils 依赖方向无 emitted-value cycle。
-- [ ] README、package exports、Vite entries、声明与实现一致。
-- [ ] package test/typecheck/coverage/build、consumer builds、architecture、packed smoke、全仓 lint 与 `git diff --check` 通过。
-- [ ] 独立只读 review 无阻断项，所有批次已提交但未 push，归档时工作树干净。
+- [x] 4 条目标 debt 删除，architecture unknown/stale 为零。
+- [x] shared/server feature 根只含纯 `index.ts` 与责任目录，旧 server 根实现路径不存在。
+- [x] root 与 `./shared` 运行时符号集合等价，且都不暴露 target、factory、status factory、cause 或 redaction。
+- [x] `./server` 保持原公开符号集合，Provider/model/baseURL 校验与 SDK model metadata 不变。
+- [x] shared 不依赖 server；server adapters/services/utils 依赖方向无 emitted-value cycle。
+- [x] README、package exports、Vite entries、声明与实现一致。
+- [x] package test/typecheck/coverage/build、consumer builds、architecture、packed smoke、全仓 lint 与 `git diff --check` 通过。
+- [x] 独立只读 review 无阻断项，所有批次已提交但未 push，归档时工作树干净。
 
 ## 范围外
 

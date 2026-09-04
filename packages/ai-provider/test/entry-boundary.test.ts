@@ -43,6 +43,20 @@ describe('browser-safe shared entry', () => {
   })
 
   it('exposes model factories without the removed transport API', () => {
+    expect(Object.keys(server).sort()).toEqual([
+      'AI_PROVIDER_ERROR_CODES',
+      'AI_PROVIDER_IDS',
+      'AiProviderError',
+      'EMBEDDING_PROVIDER_IDS',
+      'aiRuntimeStatusOf',
+      'createAiProviderError',
+      'createEmbeddingModel',
+      'createLanguageModel',
+      'getAiProviderErrorCause',
+      'isAiProviderId',
+      'isEmbeddingProviderId',
+      'redactSensitiveText',
+    ])
     expect(server).toHaveProperty('createLanguageModel')
     expect(server).toHaveProperty('createEmbeddingModel')
     expect(server).toHaveProperty('aiRuntimeStatusOf')
