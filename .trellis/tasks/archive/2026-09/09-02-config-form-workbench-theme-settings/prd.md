@@ -24,13 +24,13 @@
 
 ## 验收标准
 
-- [ ] 12 组偏好组合都可选择和恢复；`system` 在模拟系统 Light/Dark 变化时实时解析，显式模式保持稳定。
-- [ ] 桌面 Popover 与移动 Drawer 可通过鼠标、键盘和触屏操作，当前模式/配色清晰，Escape 与焦点恢复正确。
-- [ ] 刷新、新项目和项目切换均保持全局偏好；项目序列化、历史、导出和恢复结果无主题字段。
-- [ ] Workbench、模板创建页和 `#workbench-overlays` 的 `data-theme` / `data-palette` 与解析结果一致，无首绘主题闪烁。
-- [ ] 8 个实际视觉状态通过主题 contract 与 axe；两套 Provider 的 Design/Preview computed-style 指纹在所有壳主题切换前后不变。
-- [ ] 视觉基线覆盖 4 配色 × 2 resolved scheme，并以少量 900/390、中英文哨兵避免重复笛卡尔截图。
-- [ ] Workbench 单测、typecheck、build、Element Plus bundle guard、E2E、根 lint 与 `git diff --check` 通过。
+- [x] 12 组偏好组合都可选择和恢复；`system` 在模拟系统 Light/Dark 变化时实时解析，显式模式保持稳定。
+- [x] 桌面 Popover 与移动 Drawer 可通过鼠标、键盘和触屏操作，当前模式/配色清晰，Escape 与焦点恢复正确。
+- [x] 刷新、新项目和项目切换均保持全局偏好；项目序列化、历史、导出和恢复结果无主题字段。
+- [x] Workbench、模板创建页和 `#workbench-overlays` 的 `data-theme` / `data-palette` 与解析结果一致，无首绘主题闪烁。
+- [x] 8 个实际视觉状态通过主题 contract 与 axe；两套 Provider 的 Design/Preview computed-style 指纹在所有壳主题切换前后不变。
+- [x] 视觉基线覆盖 4 配色 × 2 resolved scheme，并以少量 900/390、中英文哨兵避免重复笛卡尔截图。
+- [x] Workbench 单测、typecheck、build、Element Plus bundle guard、E2E、根 lint 与 `git diff --check` 通过。
 
 ## 范围外
 

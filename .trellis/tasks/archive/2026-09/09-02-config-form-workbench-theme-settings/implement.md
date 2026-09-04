@@ -57,3 +57,11 @@
 - [x] 独立检查 localStorage 只保存应用偏好，项目序列化/历史/导出/恢复无 appearance 字段。
 - [x] 独立检查 RuntimeHost schema 和 runtime-host styles 未改变。
 - [x] 若首绘、contrast 或 Runtime 隔离任一门禁失败，不启动后续设计器子任务。
+
+## 8. 实际验证（2026-09-05）
+
+- 实现提交：`a892f54d`；后续 Designer 与模板提交未改变 appearance 存储或 RuntimeHost 协议。
+- `pnpm --filter @config-form/workbench test`：51 个测试文件、461 个测试通过，其中 theme contract 参数化覆盖 8 套 resolved 主题。
+- `pnpm --filter @config-form/workbench typecheck`、`build`：通过 Element Plus 按需 bundle guard 与 Monaco lazy-boundary 校验。
+- `pnpm --filter @config-form/workbench test:e2e`：78 个 Chromium 场景通过，包含 8 套 axe、system 模拟、Popover/Drawer 焦点恢复和双 Provider Runtime 样式隔离。
+- `pnpm lint`、`git diff --check`：通过。
