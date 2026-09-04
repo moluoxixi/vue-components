@@ -67,7 +67,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        'element-plus-docs': resolve(__dirname, 'src/node/lifecycle/cli.ts'),
+        'element-plus-docs': resolve(__dirname, 'src/node/lifecycle/adapters/cli.ts'),
         'index': resolve(__dirname, 'index.ts'),
         'markdown': resolve(__dirname, 'markdown.ts'),
         'node': resolve(__dirname, 'node.ts'),

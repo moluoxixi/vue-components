@@ -1,2 +1,2 @@
-export { loadElementPlusDocsProject } from './load-config'
-export type { LoadedElementPlusDocsProject } from './load-config'
+export { loadElementPlusDocsProject } from './services'
+export type { LoadedElementPlusDocsProject } from './services'

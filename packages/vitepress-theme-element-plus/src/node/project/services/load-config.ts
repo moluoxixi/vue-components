@@ -1,10 +1,10 @@
-import type { ElementPlusDocsProject, ElementPlusDocsProjectInput } from '../../project'
+import type { ElementPlusDocsProject, ElementPlusDocsProjectInput } from '../../../project'
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, isAbsolute, resolve } from 'node:path'
 import process from 'node:process'
 import { createJiti } from 'jiti'
-import { resolveElementPlusDocsProject } from '../../project'
+import { resolveElementPlusDocsProject } from '../../../project'
 
 const CONFIG_NAMES = [
   'element-plus-docs.config.ts',

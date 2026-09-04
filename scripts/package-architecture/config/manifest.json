@@ -89,46 +89,10 @@
   ],
   "debt": [
     {
-      "path": "packages/vitepress-theme-element-plus/src/node/content/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/node/playground/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
       "path": "packages/vitepress-theme-element-plus/src/node/repository/runtime/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
       "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/node/lifecycle/cli.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/node/lifecycle/prepare.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/node/lifecycle/runtime.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vitepress-theme-element-plus/src/node/project/load-config.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vitepress-theme-element-plus-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
     },
     {
       "path": "packages/vitepress-theme-element-plus/src/node/repository/api-client.ts",

@@ -5,7 +5,7 @@ import {
   elementPlusDocsCliUsage,
   redactElementPlusDocsCliError,
   runElementPlusDocsCli,
-} from './index'
+} from '..'
 
 async function main(): Promise<void> {
   if (process.argv.slice(2).some(argument => argument === '--help' || argument === '-h')) {

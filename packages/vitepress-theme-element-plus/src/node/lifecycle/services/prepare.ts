@@ -1,16 +1,16 @@
 import type { Buffer } from 'node:buffer'
 import type { SpawnSyncReturns } from 'node:child_process'
-import type { ElementPlusDocsPrepareCommand } from '../../project'
-import type { LoadedElementPlusDocsProject } from '../project'
+import type { ElementPlusDocsPrepareCommand } from '../../../project'
+import type { LoadedElementPlusDocsProject } from '../../project'
 import { spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import process from 'node:process'
-import { resolveElementPlusDocsProjectRepository } from '../../project'
-import { synchronizeElementPlusDocsContent } from '../content'
-import { synchronizeElementPlusDocsPlaygroundManifests } from '../playground'
-import { synchronizeElementPlusDocsRepository, validateElementPlusDocsRepository } from '../repository/runtime'
+import { resolveElementPlusDocsProjectRepository } from '../../../project'
+import { synchronizeElementPlusDocsContent } from '../../content'
+import { synchronizeElementPlusDocsPlaygroundManifests } from '../../playground'
+import { synchronizeElementPlusDocsRepository, validateElementPlusDocsRepository } from '../../repository/runtime'
 
 export class ElementPlusDocsPrepareError extends Error {
   readonly exitCode: number

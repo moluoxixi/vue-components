@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { build, createServer, serve } from 'vitepress'
-import { watchElementPlusDocsContent } from '../content'
-import { loadElementPlusDocsProject } from '../project'
+import { watchElementPlusDocsContent } from '../../content'
+import { loadElementPlusDocsProject } from '../../project'
 import { prepareElementPlusDocs } from './prepare'
 
 interface CliArguments {

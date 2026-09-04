@@ -2,5 +2,5 @@ export {
   elementPlusDocsContentRoot,
   synchronizeElementPlusDocsContent,
   watchElementPlusDocsContent,
-} from './services'
-export type { ElementPlusDocsContentOptions } from './services'
+} from './content'
+export type { ElementPlusDocsContentOptions } from './content'

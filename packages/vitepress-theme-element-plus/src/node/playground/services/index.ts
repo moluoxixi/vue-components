@@ -2,4 +2,4 @@ export {
   elementPlusDocsPlaygroundManifestsPath,
   readElementPlusDocsPlaygroundManifests,
   synchronizeElementPlusDocsPlaygroundManifests,
-} from './services'
+} from './manifests'
