@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 
 const COMPONENT_EXCEPTION_KINDS = new Set(['dynamic', 'framework', 'public'])
+const IMPORT_EXCEPTION_KINDS = new Set(['cycle', 'lazy', 'platform'])
 const PACKAGE_EXCEPTION_KINDS = new Set(['cli', 'framework', 'private-app'])
 const PATH_EXCEPTION_KINDS = new Set(['generated', 'third-party'])
 const PACKAGES_GOVERNANCE_TASK_ID = 'packages-architecture-governance'
@@ -85,6 +86,7 @@ export function validatePackageArchitectureManifest(manifest, repositoryRoot) {
   assertArray(manifest.packageExceptions, 'packageExceptions')
   assertArray(manifest.pathExceptions, 'pathExceptions')
   assertArray(manifest.componentExceptions, 'componentExceptions')
+  assertArray(manifest.importExceptions, 'importExceptions')
   assertArray(manifest.debt, 'debt')
   const tasks = repositoryRoot
     ? collectTasks(resolve(repositoryRoot, '.trellis/tasks'))
@@ -117,6 +119,17 @@ export function validatePackageArchitectureManifest(manifest, repositoryRoot) {
     exception.owners.forEach((owner, ownerIndex) => (
       assertRepositoryPath(repositoryRoot, owner, `componentExceptions[${index}].owners[${ownerIndex}]`)
     ))
+  }
+  for (const [index, exception] of manifest.importExceptions.entries()) {
+    assertString(exception.importer, `importExceptions[${index}].importer`)
+    assertString(exception.target, `importExceptions[${index}].target`)
+    assertString(exception.rule, `importExceptions[${index}].rule`)
+    assertEnum(exception.kind, IMPORT_EXCEPTION_KINDS, `importExceptions[${index}].kind`)
+    assertString(exception.reason, `importExceptions[${index}].reason`)
+    if (!exception.rule.startsWith('feature.'))
+      throw new Error(`Package architecture manifest importExceptions[${index}].rule must be a feature.* rule.`)
+    assertRepositoryPath(repositoryRoot, exception.importer, `importExceptions[${index}].importer`)
+    assertRepositoryPath(repositoryRoot, exception.target, `importExceptions[${index}].target`)
   }
   for (const [index, exception] of manifest.pathExceptions.entries()) {
     assertString(exception.path, `pathExceptions[${index}].path`)
@@ -155,6 +168,11 @@ export function validatePackageArchitectureManifest(manifest, repositoryRoot) {
       rule,
     ]))
   )), 'componentExceptions rules')
+  assertUnique(manifest.importExceptions.map(exception => JSON.stringify([
+    exception.rule,
+    exception.importer,
+    exception.target,
+  ])), 'importExceptions')
   assertUnique(manifest.debt.map(debt => JSON.stringify([
     debt.rule,
     debt.path,

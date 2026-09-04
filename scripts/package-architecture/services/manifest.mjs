@@ -27,6 +27,13 @@ function matchesComponentException(diagnostic, exception) {
     && ownersMatch(diagnostic, exception)
 }
 
+function matchesImportException(diagnostic, exception) {
+  return diagnostic.path === exception.importer
+    && diagnostic.rule === exception.rule
+    && diagnostic.owners?.length === 1
+    && diagnostic.owners[0] === exception.target
+}
+
 function isExcepted(diagnostic, manifest) {
   const pathException = manifest.pathExceptions.some(exception => (
     diagnostic.path === exception.path || diagnostic.path.startsWith(`${exception.path}/`)
@@ -38,6 +45,10 @@ function isExcepted(diagnostic, manifest) {
   ))
   if (packageException)
     return true
+  if (diagnostic.rule.startsWith('feature.')
+    && manifest.importExceptions.some(exception => matchesImportException(diagnostic, exception))) {
+    return true
+  }
   return diagnostic.rule.startsWith('component.')
     && manifest.componentExceptions.some(exception => matchesComponentException(diagnostic, exception))
 }
@@ -46,6 +57,7 @@ export function reconcilePackageArchitectureDiagnostics(diagnostics, manifest) {
   const usedPathExceptions = new Set()
   const usedPackageExceptions = new Set()
   const usedComponentExceptions = new Set()
+  const usedImportExceptions = new Set()
   for (const diagnostic of diagnostics) {
     manifest.pathExceptions.forEach((exception, index) => {
       if (diagnostic.path === exception.path || diagnostic.path.startsWith(`${exception.path}/`))
@@ -58,6 +70,10 @@ export function reconcilePackageArchitectureDiagnostics(diagnostics, manifest) {
     manifest.componentExceptions.forEach((exception, index) => {
       if (diagnostic.rule.startsWith('component.') && matchesComponentException(diagnostic, exception))
         usedComponentExceptions.add(`${index}:${diagnostic.rule}`)
+    })
+    manifest.importExceptions.forEach((exception, index) => {
+      if (diagnostic.rule.startsWith('feature.') && matchesImportException(diagnostic, exception))
+        usedImportExceptions.add(index)
     })
   }
   const active = diagnostics.filter(diagnostic => !isExcepted(diagnostic, manifest))
@@ -89,6 +105,16 @@ export function reconcilePackageArchitectureDiagnostics(diagnostics, manifest) {
           reason: exception.reason,
           rule,
         }))),
+      ...manifest.importExceptions.flatMap((exception, index) => (
+        usedImportExceptions.has(index)
+          ? []
+          : [{
+              owners: [exception.target],
+              path: exception.importer,
+              reason: exception.reason,
+              rule: exception.rule,
+            }]
+      )),
     ],
     staleDebt: [...debtByKey.entries()]
       .filter(([key]) => !diagnosticsByKey.has(key))

@@ -5,9 +5,10 @@ import type { ConfigFormEmits, ConfigFormExpose, ConfigFormProps } from './types
 import RecursiveField from './components/RecursiveField'
 import { useForm } from './composables/use-form'
 import { provideFormContext } from './composables/useFormContext'
-import { provideNamespace, useBem } from './composables/useNamespace'
+import { provideNamespace } from './composables/useNamespace'
 import { normalizeFormRuntime, provideRuntime } from './composables/useRuntime'
 import { getResolvedNodeRenderKey } from './utils/slot'
+import { createConfigFormBem } from './utils/bem'
 import { resolveLabelWidth } from './utils/style'
 
 /**
@@ -23,7 +24,7 @@ const emit = defineEmits<ConfigFormEmits<T>>()
 
 const namespaceRef = computed(() => props.namespace)
 provideNamespace(namespaceRef)
-const { b } = useBem(namespaceRef)
+const { b } = createConfigFormBem(() => namespaceRef.value)
 
 const rawFields = computed(() => props.fields)
 const defaultValues = computed(() => props.defaultValues)

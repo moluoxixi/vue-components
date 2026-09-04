@@ -16,12 +16,6 @@ export type {
   ReadonlyAdapterRegistry,
   ReadonlyRenderContext,
 } from '../runtime'
-export {
-  hasFieldBinding,
-  isComponent,
-  isContainer,
-  isField,
-} from '../runtime/utils'
 export type {
   FieldConfig,
   FormNodeConfig,
@@ -36,6 +30,12 @@ export type {
 export type {
   PlainRecord,
 } from '../types'
+export {
+  hasFieldBinding,
+  isComponent,
+  isContainer,
+  isField,
+} from '../utils/node'
 export {
   collectFieldConfigs,
   isFieldConfig,

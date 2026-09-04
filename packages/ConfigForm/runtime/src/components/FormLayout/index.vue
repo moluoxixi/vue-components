@@ -2,7 +2,8 @@
 import type { FormLayoutProps } from './types/props'
 import { provide } from 'vue'
 import { FORM_CONTEXT_KEY } from '../../composables/useFormContext'
-import { useBem, useNamespace } from '../../composables/useNamespace'
+import { useNamespace } from '../../composables/useNamespace'
+import { createConfigFormBem } from '../../utils/bem'
 import { useFormLayout } from './composables'
 
 /**
@@ -22,7 +23,7 @@ const props = withDefaults(defineProps<FormLayoutProps>(), {
   inline: null,
 })
 const ns = useNamespace()
-const { b } = useBem(ns)
+const { b } = createConfigFormBem(() => ns.value)
 
 const { layoutCtx, layoutStyle } = useFormLayout(props)
 

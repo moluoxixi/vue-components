@@ -3,7 +3,7 @@
   "name": "architecture-collector-residual-rules",
   "title": "架构 Collector 残余规则补齐",
   "description": "补齐跨 feature 深导入、共享组件 owner 与无状态 composable 自动审计。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "components",

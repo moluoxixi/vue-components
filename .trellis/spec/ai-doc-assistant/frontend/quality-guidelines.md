@@ -40,7 +40,7 @@ type QdrantMetadataPayload = {
 }
 
 // Required lazy implementation boundaries.
-import('../../vector/services/vector-strategy')
+import('../../vector')
 import('../adapters/orama-store')
 import('../adapters/qdrant-store')
 ```
@@ -65,7 +65,7 @@ Playwright output remains below `packages/ai-doc-assistant/.playwright/`; publis
 - Qdrant persists `sourceHash` and the complete `EmbeddingIdentity` in a reserved metadata point inside the remote collection. Hydration must retrieve and validate that point; local snapshot/meta files are not sufficient evidence that a remote collection matches. Search must filter to `kind=document` so the metadata point cannot enter retrieval results.
 - `NO_MATCH_SCORE_THRESHOLD` has one owner in `shared/protocol`; vector adapters must not import the legacy retriever for a duplicate constant or result DTO. `RetrievedChunk` belongs to the vector-store result contract.
 - `core/index.ts` exports `splitAnswerSegments` from the browser-safe `vue-block-extractor` implementation. It must not route that export through a barrel that also exposes `sfc-transpile`, because that pulls the TypeScript runtime into the UI main chunk.
-- `VectorStrategy`, `OramaVectorStore`, and `QdrantVectorStore` remain literal dynamic imports. Domain barrels must not turn those edges into eager value exports consumed by the default content path.
+- `VectorStrategy`, `OramaVectorStore`, and `QdrantVectorStore` remain behind literal dynamic imports. The retrieval strategy loads `../../vector` only inside the vector branch; domain barrels must not turn those edges into eager value imports consumed by the default content path.
 - Component-entry discovery scopes cycle detection by physical symbol, package,
   and public export name. A default-first barrel such as
   `export { default, NamedComponent }` must trace both paths to the same SFC;

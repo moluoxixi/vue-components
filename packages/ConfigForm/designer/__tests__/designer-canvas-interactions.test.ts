@@ -10,9 +10,9 @@ import {
   useDesignerCanvasNodeDrag,
   useDesignerCanvasOverlayState,
   useDesignerCanvasResize,
-  useDesignerCanvasSelection,
 } from '../src/components/DesignerCanvas/composables'
 import { createDesignerDragController } from '../src/components/DesignerCanvas/services'
+import { createDesignerCanvasSelection } from '../src/components/DesignerCanvas/services/canvas-selection'
 
 const graph: PageGraph = {
   version: 2,
@@ -50,7 +50,7 @@ function mountInteractions() {
     & ReturnType<typeof useDesignerCanvasNodeDrag>
     & ReturnType<typeof useDesignerCanvasOverlayState>
     & ReturnType<typeof useDesignerCanvasResize>
-    & ReturnType<typeof useDesignerCanvasSelection>
+    & ReturnType<typeof createDesignerCanvasSelection>
   const Harness = defineComponent({
     setup() {
       const menu = useDesignerCanvasMenu({
@@ -68,7 +68,7 @@ function mountInteractions() {
         runtimeNodeGeometryById: () => undefined,
         stopCanvasAutoScroll: vi.fn(),
       })
-      const selection = useDesignerCanvasSelection({
+      const selection = createDesignerCanvasSelection({
         beginNodeKeyboard: nodeDrag.beginNodeKeyboard,
         candidateId: () => dragController.session.value?.source.candidateId,
         focusNode: vi.fn(),

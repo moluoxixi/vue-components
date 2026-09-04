@@ -1,7 +1,7 @@
 import type { DesignerRuntimeNodeGeometry } from '../types'
 import type { DesignerCanvasEmits } from '../types/emits'
 
-interface UseDesignerCanvasSelectionOptions {
+interface DesignerCanvasSelectionOptions {
   beginNodeKeyboard: (nodeId: string) => void
   candidateId: () => string | undefined
   focusNode: (nodeId: string) => void | Promise<void>
@@ -13,7 +13,7 @@ interface UseDesignerCanvasSelectionOptions {
   selectedId: () => string | undefined
 }
 
-export function useDesignerCanvasSelection(options: UseDesignerCanvasSelectionOptions) {
+export function createDesignerCanvasSelection(options: DesignerCanvasSelectionOptions) {
   function nodeIdFromEvent(event: Event): string | undefined {
     const target = event.target instanceof Element
       ? event.target.closest<HTMLElement>('[data-config-node-id]')

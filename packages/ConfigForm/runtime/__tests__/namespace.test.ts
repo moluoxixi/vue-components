@@ -1,14 +1,15 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { computed, defineComponent, h, ref } from 'vue'
-import { provideNamespace, useBem, useNamespace } from '../src/composables/useNamespace'
+import { provideNamespace, useNamespace } from '../src/composables/useNamespace'
+import { createConfigFormBem } from '../src/utils/bem'
 import { mergeStyle, mergeStyleValues, readStyleValue, resolveLabelWidth } from '../src/utils/style'
 
 const NamespaceConsumer = defineComponent({
   name: 'NamespaceConsumer',
   setup() {
     const ns = useNamespace()
-    const { b, e, m } = useBem(ns)
+    const { b, e, m } = createConfigFormBem(() => ns.value)
 
     return () => h('div', {
       class: [b('form'), e('form', 'label'), m('form', 'inline')],

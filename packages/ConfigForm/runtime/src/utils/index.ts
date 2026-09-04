@@ -1,4 +1,5 @@
 export type { AdaptedVueFunctionalComponent, PlainRecord, ResolvableValue, ResolvedSlotNode } from '../types'
+export { createConfigFormBem } from './bem'
 export * from './field'
 export * from './node'
 export * from './object'

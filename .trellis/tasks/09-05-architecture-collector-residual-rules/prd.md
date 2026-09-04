@@ -20,12 +20,12 @@
 
 ## 验收标准
 
-- [ ] 三类新规则均进入 `collectPackageArchitectureDiagnostics` 并具有稳定 rule id。
-- [ ] fixtures 覆盖静态导入、动态字面量导入、barrel reachability、owner 数量和 composable 语义。
-- [ ] 现有 33 个包通过检查且无未知、陈旧 debt/exception。
-- [ ] 对 `useBem` 的最终归属有代码证据和测试，不以猜测移动公开 API。
-- [ ] package architecture CLI 保持只读并拒绝未知参数。
-- [ ] lint、相关 unit、typecheck 与 `git diff --check` 通过。
+- [x] 三类新规则均进入 `collectPackageArchitectureDiagnostics` 并具有稳定 rule id。
+- [x] fixtures 覆盖静态导入、动态字面量导入、barrel reachability、owner 数量和 composable 语义。
+- [x] 现有 33 个包通过检查且无未知、陈旧 debt/exception。
+- [x] 对 `useBem` 的最终归属有代码证据和测试，不以猜测移动公开 API。
+- [x] package architecture CLI 保持只读并拒绝未知参数。
+- [x] lint、相关 unit、typecheck 与 `git diff --check` 通过。
 
 ## 范围外
 

@@ -2,7 +2,8 @@
 import type { CSSProperties } from 'vue'
 import { computed } from 'vue'
 import { useFormContext } from '../../composables/useFormContext'
-import { useBem, useNamespace } from '../../composables/useNamespace'
+import { useNamespace } from '../../composables/useNamespace'
+import { createConfigFormBem } from '../../utils/bem'
 import { resolveLabelWidth } from '../../utils/style'
 
 /**
@@ -30,7 +31,7 @@ defineSlots<{
 
 const ctx = useFormContext()
 const ns = useNamespace()
-const { b, e, m } = useBem(ns)
+const { b, e, m } = createConfigFormBem(() => ns.value)
 
 /** 当前字段的校验错误；错误集合由表单控制器统一维护。 */
 const error = computed(() => ctx.errors[props.field])

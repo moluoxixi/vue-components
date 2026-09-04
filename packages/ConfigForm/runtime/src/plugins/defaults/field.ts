@@ -9,7 +9,7 @@ import type {
   FieldDefaultConfig,
 } from './types'
 import { ConfigFormError } from '../../errors'
-import { hasFieldBinding } from '../../runtime/utils'
+import { hasFieldBinding } from '../../utils/node'
 
 export const BUILT_IN_FIELD_DEFAULTS_PLUGIN_NAME = 'config-form:built-in-field-defaults'
 

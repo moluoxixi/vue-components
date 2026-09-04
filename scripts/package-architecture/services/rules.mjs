@@ -4,10 +4,11 @@ import ts from 'typescript'
 import {
   isWithinDirectory,
   normalizeRepositoryPath,
-  SOURCE_MODULE_EXTENSIONS,
   walkDirectories,
   walkFiles,
 } from '../utils/index.mjs'
+import { collectComposableOwnershipDiagnostics } from './composable-ownership.mjs'
+import { collectFeatureImportDiagnostics } from './feature-imports.mjs'
 import {
   collectConcreteConsumers,
   createModuleGraph,
@@ -15,40 +16,13 @@ import {
   moduleReaches,
   parseModule,
 } from './module-graph.mjs'
-
-export const RESPONSIBILITY_DIRECTORIES = new Set([
-  'adapters',
-  'components',
-  'composables',
-  'constants',
-  'defaults',
-  'errors',
-  'features',
-  'interactions',
-  'materials',
-  'options',
-  'protocol',
-  'readonly',
-  'registries',
-  'schemas',
-  'services',
-  'state',
-  'style',
-  'styles',
-  'types',
-  'utils',
-  'validation',
-])
-
-function diagnostic(rule, path, packagePath, message, owners) {
-  return {
-    rule,
-    path,
-    package: packagePath,
-    message,
-    ...(owners?.length ? { owners: [...owners].sort() } : {}),
-  }
-}
+import {
+  diagnostic,
+  isExplicitFeatureDirectory,
+  isProductionModule,
+  nearestArchitecturalFeatureRoot,
+  RESPONSIBILITY_DIRECTORIES,
+} from './rule-utils.mjs'
 
 function packageSourceEntry(manifest) {
   const rootExport = manifest.exports?.['.']
@@ -232,14 +206,6 @@ export function collectPackageEntryDiagnostics(repositoryRoot, packages) {
   })
 }
 
-function isProductionModule(file) {
-  const normalized = file.replaceAll('\\', '/')
-  return SOURCE_MODULE_EXTENSIONS.includes(extname(file))
-    && !normalized.includes('/__tests__/')
-    && !/\.(?:spec|test)\.[cm]?[jt]sx?$/u.test(file)
-    && !file.endsWith('.d.ts')
-}
-
 function hasRuntimeExport(sourceFile) {
   return sourceFile.statements.some((statement) => {
     if (ts.isExportDeclaration(statement))
@@ -264,6 +230,14 @@ export function collectFeatureStructureDiagnostics(repositoryRoot, packages) {
     const directories = walkDirectories(pkg.sourceRoot)
     for (const directory of directories) {
       const entry = resolve(directory, 'index.ts')
+      if (isExplicitFeatureDirectory(directory) && !existsSync(entry)) {
+        diagnostics.push(diagnostic(
+          'feature.index-required',
+          normalizeRepositoryPath(repositoryRoot, entry),
+          pkg.relativeRoot,
+          'Directories directly below features/ must expose an index.ts feature entry.',
+        ))
+      }
       if (basename(directory) !== 'style'
         && existsSync(entry)
         && parseModule(entry).barrel === false) {
@@ -372,6 +346,21 @@ export function collectComponentOwnershipDiagnostics(repositoryRoot, packages) {
       }
 
       const featureRoots = [...new Set(consumers.map(consumer => ownershipRoot(consumer, pkg.sourceRoot)))]
+      const packageComponents = resolve(pkg.sourceRoot, 'components')
+      if (dirname(component) === packageComponents) {
+        const sharedFeatureRoots = [...new Set(consumers
+          .map(consumer => nearestArchitecturalFeatureRoot(consumer, pkg.sourceRoot))
+          .filter(Boolean))]
+        if (sharedFeatureRoots.length < 2) {
+          return [diagnostic(
+            'component.shared-feature-owners',
+            path,
+            pkg.relativeRoot,
+            'Package-level shared components require at least two independent feature owners.',
+            owners,
+          )]
+        }
+      }
       if (featureRoots.length === 1) {
         const featureComponents = resolve(featureRoots[0], 'components')
         if (!isWithinDirectory(component, featureComponents)) {
@@ -393,6 +382,8 @@ export function collectPackageArchitectureDiagnostics(repositoryRoot, packages) 
   return [
     ...collectPackageEntryDiagnostics(repositoryRoot, packages),
     ...collectFeatureStructureDiagnostics(repositoryRoot, packages),
+    ...collectFeatureImportDiagnostics(repositoryRoot, packages),
+    ...collectComposableOwnershipDiagnostics(repositoryRoot, packages),
     ...collectComponentOwnershipDiagnostics(repositoryRoot, packages),
   ].sort((left, right) => (
     left.rule.localeCompare(right.rule)

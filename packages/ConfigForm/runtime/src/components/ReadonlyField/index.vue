@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ReadonlyFieldProps } from './types/props'
 import FormItem from '../FormItem'
-import { useBem, useNamespace } from '../../composables/useNamespace'
+import { useNamespace } from '../../composables/useNamespace'
+import { createConfigFormBem } from '../../utils/bem'
 import { useReadonlyField } from './composables'
 
 /**
@@ -13,7 +14,7 @@ defineOptions({ name: 'ReadonlyField' })
 
 const props = defineProps<ReadonlyFieldProps>()
 const ns = useNamespace()
-const { e } = useBem(ns)
+const { e } = createConfigFormBem(() => ns.value)
 
 const {
   componentAttrs,

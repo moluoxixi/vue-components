@@ -235,7 +235,7 @@ export async function createStrategy(
   if (mode === 'vector') {
     if (!options.embeddingModel || !options.embeddingIdentity)
       throw new Error('vector retrieval requires an explicit embedding provider configuration')
-    const { VectorStrategy } = await import('../../vector/services/vector-strategy')
+    const { VectorStrategy } = await import('../../vector')
     return new VectorStrategy(
       options.embeddingModel,
       options.embeddingIdentity,

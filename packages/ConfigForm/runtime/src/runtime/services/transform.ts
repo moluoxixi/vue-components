@@ -21,8 +21,7 @@ import type {
 import { isConfigFormComponentRegistration } from '@moluoxixi/config-form-headless'
 import { ConfigFormError } from '../../errors'
 import { applyFieldDefaults, BUILT_IN_FIELD_DEFAULTS_PLUGIN } from '../../plugins/defaults'
-import { cloneRecordWithChildren, isFormNodeConfig, mergeRecords, readPlainRecord } from '../../utils'
-import { hasFieldBinding } from '../utils'
+import { cloneRecordWithChildren, hasFieldBinding, isFormNodeConfig, mergeRecords, readPlainRecord } from '../../utils'
 
 type PipelineNode = NormalizedFieldConfig | NormalizedNodeConfig
 type PluginField = DefinedFormNodeConfig | NormalizedNodeConfig

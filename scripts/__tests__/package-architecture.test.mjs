@@ -6,6 +6,8 @@ import { validatePackageArchitectureManifest } from '../package-architecture/con
 import { runPackageArchitectureCli, verifyPackageArchitecture } from '../package-architecture/index.mjs'
 import {
   collectComponentOwnershipDiagnostics,
+  collectComposableOwnershipDiagnostics,
+  collectFeatureImportDiagnostics,
   collectFeatureStructureDiagnostics,
   collectPackageEntryDiagnostics,
   collectPackageInventory,
@@ -206,30 +208,168 @@ describe('package architecture collector', () => {
     }))
   })
 
+  it('rejects cross-feature implementation imports but allows public and parent boundaries', () => {
+    const root = createFixture({
+      'packages/ui/package.json': packageManifest('@fixture/ui'),
+      'packages/ui/index.ts': 'export * from \'./src/features/feature-a\'\nexport * from \'./src/features/feature-b\'\n',
+      'packages/ui/src/features/feature-a/index.ts': 'export * from \'./services\'\n',
+      'packages/ui/src/features/feature-a/services/index.ts': 'export * from \'./ancestor-shared\'\nexport * from \'./consumer\'\n',
+      'packages/ui/src/features/feature-a/services/consumer.ts': [
+        'import { publicValue } from \'../../feature-b\'',
+        'import { privateValue } from \'../../feature-b/services/private\'',
+        'const lazyValue = import(\'../../feature-b/services/lazy\')',
+        'import { localValue } from \'./local\'',
+        'import { sharedValue } from \'../../../services/shared\'',
+        'export { lazyValue, localValue, privateValue, publicValue, sharedValue }',
+        '',
+      ].join('\n'),
+      'packages/ui/src/features/feature-a/child/index.ts': 'export * from \'./services\'\n',
+      'packages/ui/src/features/feature-a/child/services/index.ts': 'export * from \'./consumer\'\n',
+      'packages/ui/src/features/feature-a/child/services/consumer.ts': [
+        'import { ancestorShared } from \'../../services\'',
+        'import { ancestorPrivate } from \'../../services/ancestor-private\'',
+        'import { invalidAncestorEntry } from \'../../defaults\'',
+        'export { ancestorPrivate, ancestorShared, invalidAncestorEntry }',
+        '',
+      ].join('\n'),
+      'packages/ui/src/features/feature-a/defaults/index.ts': 'export const invalidAncestorEntry = true\n',
+      'packages/ui/src/features/feature-a/services/ancestor-shared.ts': 'export const ancestorShared = true\n',
+      'packages/ui/src/features/feature-a/services/ancestor-private.ts': 'export const ancestorPrivate = true\n',
+      'packages/ui/src/features/feature-a/services/local.ts': 'export const localValue = 0\n',
+      'packages/ui/src/features/feature-b/index.ts': 'export { publicValue } from \'./services\'\n',
+      'packages/ui/src/features/feature-b/services/index.ts': 'export const publicValue = 1\n',
+      'packages/ui/src/features/feature-b/services/private.ts': 'export const privateValue = 2\n',
+      'packages/ui/src/features/feature-b/services/lazy.ts': 'export const lazyValue = 3\n',
+      'packages/ui/src/features/feature-c/services/consumer.ts': 'export { privateValue } from \'../../feature-b/services/private\'\n',
+      'packages/ui/src/features/services/worker.ts': 'export const worker = true\n',
+      'packages/ui/src/services/shared.ts': 'export const sharedValue = 4\n',
+    })
+    const packages = collectPackageInventory(root)
+    const diagnostics = collectFeatureImportDiagnostics(root, packages)
+
+    expect(diagnostics).toHaveLength(5)
+    expect(diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        rule: 'feature.cross-feature-deep-import',
+        path: 'packages/ui/src/features/feature-a/services/consumer.ts',
+        owners: ['packages/ui/src/features/feature-b/services/private.ts'],
+      }),
+      expect.objectContaining({
+        rule: 'feature.cross-feature-deep-import',
+        path: 'packages/ui/src/features/feature-a/services/consumer.ts',
+        owners: ['packages/ui/src/features/feature-b/services/lazy.ts'],
+      }),
+      expect.objectContaining({
+        rule: 'feature.cross-feature-deep-import',
+        path: 'packages/ui/src/features/feature-a/child/services/consumer.ts',
+        owners: ['packages/ui/src/features/feature-a/services/ancestor-private.ts'],
+      }),
+      expect.objectContaining({
+        rule: 'feature.cross-feature-deep-import',
+        path: 'packages/ui/src/features/feature-a/child/services/consumer.ts',
+        owners: ['packages/ui/src/features/feature-a/defaults/index.ts'],
+      }),
+      expect.objectContaining({
+        rule: 'feature.cross-feature-deep-import',
+        path: 'packages/ui/src/features/feature-c/services/consumer.ts',
+        owners: ['packages/ui/src/features/feature-b/services/private.ts'],
+      }),
+    ]))
+    expect(collectFeatureStructureDiagnostics(root, packages)).toContainEqual(expect.objectContaining({
+      rule: 'feature.index-required',
+      path: 'packages/ui/src/features/feature-c/index.ts',
+    }))
+    expect(collectFeatureStructureDiagnostics(root, packages)).toContainEqual(expect.objectContaining({
+      rule: 'feature.index-required',
+      path: 'packages/ui/src/features/services/index.ts',
+    }))
+  })
+
+  it('requires exported composables to own Vue state while following local wrappers', () => {
+    const root = createFixture({
+      'packages/ui/package.json': packageManifest('@fixture/ui'),
+      'packages/ui/index.ts': 'export * from \'./src/composables\'\n',
+      'packages/ui/src/composables/index.ts': 'export * from \'./reactive\'\nexport * from \'./pure\'\nexport * from \'./wrapper\'\n',
+      'packages/ui/src/composables/reactive.ts': [
+        'import { computed as makeComputed } from \'vue\'',
+        'export function useReactive() { return makeComputed(() => 1) }',
+        '',
+      ].join('\n'),
+      'packages/ui/src/composables/namespace.ts': [
+        'import * as Vue from \'vue\'',
+        'export function useNamespaceReactive() { return Vue.inject(\'value\') }',
+        '',
+      ].join('\n'),
+      'packages/ui/src/composables/wrapper.ts': [
+        'import { useNamespaceReactive } from \'./namespace\'',
+        'export function useWrapper() { return useNamespaceReactive() }',
+        '',
+      ].join('\n'),
+      'packages/ui/src/composables/bridge/index.ts': 'export { useNamespaceReactive } from \'../namespace\'\n',
+      'packages/ui/src/composables/barrel-wrapper.ts': [
+        'import { useNamespaceReactive } from \'./bridge\'',
+        'export function useBarrelWrapper() { return useNamespaceReactive() }',
+        '',
+      ].join('\n'),
+      'packages/ui/src/composables/pure.ts': [
+        'import type { ComputedRef } from \'vue\'',
+        'import { toRaw } from \'vue\'',
+        'const useListedPure = () => 1',
+        'export function usePure(value: ComputedRef<string>) { return value.value }',
+        'export function useOnlyToRaw(value: object) { return toRaw(value) }',
+        'export { useListedPure }',
+        '',
+      ].join('\n'),
+      'packages/ui/src/composables/nested/services/validation.ts': 'export function useServiceOnly() { return 1 }\n',
+    })
+    const diagnostics = collectComposableOwnershipDiagnostics(root, collectPackageInventory(root))
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        rule: 'composable.vue-ownership-required',
+        path: 'packages/ui/src/composables/pure.ts',
+        message: expect.stringContaining('useListedPure, useOnlyToRaw, usePure'),
+      }),
+    ])
+  })
+
   it('distinguishes public re-exports from private imports and resolves barrels and import()', () => {
     const root = createFixture({
       'packages/ui/package.json': packageManifest('@fixture/ui'),
-      'packages/ui/index.ts': 'import PublicView from \'./src/PublicView.vue\'\nexport { PublicView }\nexport * from \'./src/feature-a\'\nexport * from \'./src/feature-b\'\n',
+      'packages/ui/index.ts': 'import PublicView from \'./src/PublicView.vue\'\nexport { PublicView }\nexport { default as PublicShared } from \'./src/components/PublicShared.vue\'\nexport * from \'./src/feature-a\'\nexport * from \'./src/feature-b\'\n',
       'packages/ui/src/PublicView.vue': '<template><div /></template>\n',
       'packages/ui/src/feature-a/index.ts': 'export { default as FeatureA } from \'./index.vue\'\n',
-      'packages/ui/src/feature-a/index.vue': `<script setup lang="ts">\nimport CorrectChild from './components/CorrectChild.vue'\nimport NestedParent from './components/NestedParent.vue'\nimport MisplacedChild from '../components/MisplacedChild.vue'\nimport Shared from '../components/Shared.vue'\nconst LazyChild = () => import('./components/LazyChild.vue')\nvoid [CorrectChild, NestedParent, MisplacedChild, Shared, LazyChild]\n</script>`,
+      'packages/ui/src/feature-a/index.vue': `<script setup lang="ts">\nimport CorrectChild from './components/CorrectChild.vue'\nimport NestedParent from './components/NestedParent.vue'\nimport SecondOwner from './components/SecondOwner.vue'\nimport MisplacedChild from '../components/MisplacedChild.vue'\nimport OneFeatureShared from '../components/OneFeatureShared.vue'\nimport Shared from '../components/Shared.vue'\nconst LazyChild = () => import('./components/LazyChild.vue')\nvoid [CorrectChild, NestedParent, SecondOwner, MisplacedChild, OneFeatureShared, Shared, LazyChild]\n</script>`,
       'packages/ui/src/feature-a/components/CorrectChild.vue': '<template><div /></template>\n',
       'packages/ui/src/feature-a/components/LazyChild.vue': '<template><div /></template>\n',
       'packages/ui/src/feature-a/components/NestedParent.vue': `<script setup lang="ts">\nimport NestedChild from './NestedParent/components/NestedChild.vue'\nvoid NestedChild\n</script>`,
+      'packages/ui/src/feature-a/components/SecondOwner.vue': `<script setup lang="ts">\nimport OneFeatureShared from '../../components/OneFeatureShared.vue'\nvoid OneFeatureShared\n</script>`,
       'packages/ui/src/feature-a/components/NestedParent/components/NestedChild.vue': '<template><div /></template>\n',
       'packages/ui/src/feature-b/index.ts': 'export { default as FeatureB } from \'./index.vue\'\n',
       'packages/ui/src/feature-b/index.vue': `<script setup lang="ts">\nimport Shared from '../components/Shared.vue'\nvoid Shared\n</script>`,
       'packages/ui/src/components/MisplacedChild.vue': '<template><div /></template>\n',
+      'packages/ui/src/components/OneFeatureShared.vue': '<template><div /></template>\n',
+      'packages/ui/src/components/PublicShared.vue': '<template><div /></template>\n',
       'packages/ui/src/components/Shared.vue': '<template><div /></template>\n',
     })
     const packages = collectPackageInventory(root)
     const diagnostics = collectComponentOwnershipDiagnostics(root, packages)
 
-    expect(diagnostics).toEqual([expect.objectContaining({
-      rule: 'component.single-parent-location',
-      path: 'packages/ui/src/components/MisplacedChild.vue',
-      owners: ['packages/ui/src/feature-a/index.vue'],
-    })])
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        rule: 'component.single-parent-location',
+        path: 'packages/ui/src/components/MisplacedChild.vue',
+        owners: ['packages/ui/src/feature-a/index.vue'],
+      }),
+      expect.objectContaining({
+        rule: 'component.shared-feature-owners',
+        path: 'packages/ui/src/components/OneFeatureShared.vue',
+        owners: [
+          'packages/ui/src/feature-a/components/SecondOwner.vue',
+          'packages/ui/src/feature-a/index.vue',
+        ],
+      }),
+    ])
   })
 
   it('rejects unknown diagnostics and stale debt or exceptions', () => {
@@ -259,6 +399,7 @@ describe('package architecture collector', () => {
         owners: ['packages/a/src/main.ts'],
         reason: 'fixture',
       }],
+      importExceptions: [],
       debt: [{
         rule: 'feature.root-file',
         path: 'packages/a/src/old.ts',
@@ -292,6 +433,7 @@ describe('package architecture collector', () => {
         owners: ['packages/a/scripts/build.mjs'],
         reason: 'fixture',
       }],
+      importExceptions: [],
       debt: [],
     }
 
@@ -301,6 +443,62 @@ describe('package architecture collector', () => {
       path: diagnostic.path,
       rule: diagnostic.rule,
     })])
+  })
+
+  it('requires feature import exceptions to match one exact importer and target', () => {
+    const root = createFixture({
+      'packages/a/src/feature-a/consumer.ts': 'export const consumer = true\n',
+      'packages/a/src/feature-b/other.ts': 'export const other = true\n',
+      'packages/a/src/feature-b/private.ts': 'export const value = true\n',
+    })
+    const diagnostic = {
+      rule: 'feature.cross-feature-deep-import',
+      path: 'packages/a/src/feature-a/consumer.ts',
+      package: 'packages/a',
+      owners: ['packages/a/src/feature-b/private.ts'],
+      message: 'deep import',
+    }
+    const importException = {
+      importer: diagnostic.path,
+      target: diagnostic.owners[0],
+      kind: 'lazy',
+      rule: diagnostic.rule,
+      reason: 'Preserves a lazy boundary.',
+    }
+    const manifest = {
+      version: 1,
+      packageExceptions: [],
+      pathExceptions: [],
+      componentExceptions: [],
+      importExceptions: [importException],
+      debt: [],
+    }
+
+    expect(validatePackageArchitectureManifest(manifest, root)).toBe(manifest)
+    expect(reconcilePackageArchitectureDiagnostics([diagnostic], manifest)).toMatchObject({
+      staleExceptions: [],
+      unknown: [],
+    })
+
+    const wrongTargetManifest = {
+      ...manifest,
+      importExceptions: [{
+        ...importException,
+        target: 'packages/a/src/feature-b/other.ts',
+      }],
+    }
+    expect(reconcilePackageArchitectureDiagnostics([diagnostic], wrongTargetManifest)).toMatchObject({
+      staleExceptions: [expect.objectContaining({
+        owners: ['packages/a/src/feature-b/other.ts'],
+        path: diagnostic.path,
+        rule: diagnostic.rule,
+      })],
+      unknown: [diagnostic],
+    })
+    expect(() => validatePackageArchitectureManifest({
+      ...manifest,
+      importExceptions: [{ ...importException, target: 'packages/a/src/missing.ts' }],
+    }, root)).toThrow(/points to missing path/u)
   })
 
   it('accepts existing declared owners when static analysis cannot resolve an owner', () => {
@@ -327,6 +525,7 @@ describe('package architecture collector', () => {
       packageExceptions: [],
       pathExceptions: [],
       componentExceptions: [componentException],
+      importExceptions: [],
       debt: [],
     }
 
@@ -350,12 +549,28 @@ describe('package architecture collector', () => {
       packageExceptions: [],
       pathExceptions: [],
       componentExceptions: [],
+      importExceptions: [],
       debt: [],
     }
     expect(() => validatePackageArchitectureManifest({
       ...baseManifest,
       pathExceptions: [{ path: 'packages/vendor', kind: 'other', reason: 'fixture' }],
     })).toThrow(/unsupported value/u)
+    const importException = {
+      importer: 'packages/a/src/feature-a/index.ts',
+      target: 'packages/a/src/feature-b/private.ts',
+      kind: 'lazy',
+      rule: 'feature.cross-feature-deep-import',
+      reason: 'fixture',
+    }
+    expect(() => validatePackageArchitectureManifest({
+      ...baseManifest,
+      importExceptions: [{ ...importException, kind: 'other' }],
+    })).toThrow(/unsupported value/u)
+    expect(() => validatePackageArchitectureManifest({
+      ...baseManifest,
+      importExceptions: [importException, { ...importException }],
+    })).toThrow(/duplicate entry/u)
 
     const debt = {
       rule: 'feature.root-file',
@@ -430,6 +645,7 @@ describe('package architecture collector', () => {
       packageExceptions: [],
       pathExceptions: [],
       componentExceptions: [],
+      importExceptions: [],
       debt: [],
     })
     const root = createFixture({

@@ -30,8 +30,8 @@ import {
   useDesignerCanvasOverlayState,
   useDesignerCanvasResize,
   useDesignerCanvasRuntime,
-  useDesignerCanvasSelection,
 } from './composables'
+import { createDesignerCanvasSelection } from './services/canvas-selection'
 import './style'
 
 const slots = defineSlots<DesignerCanvasSlots>()
@@ -265,7 +265,7 @@ const {
   handleCanvasKeydown,
   handleCanvasPointerDown,
   handleCanvasSelectStart,
-} = useDesignerCanvasSelection({
+} = createDesignerCanvasSelection({
   beginNodeKeyboard,
   candidateId: () => candidateId.value,
   focusNode: focusEditorNode,

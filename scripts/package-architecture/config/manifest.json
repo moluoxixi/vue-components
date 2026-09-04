@@ -87,5 +87,42 @@
       "reason": "VitePress integration resolves this component through the theme runtime rather than a direct Vue parent."
     }
   ],
+  "importExceptions": [
+    {
+      "importer": "packages/ConfigForm/runtime/src/runtime/index.ts",
+      "target": "packages/ConfigForm/runtime/src/plugins/defaults/index.ts",
+      "kind": "cycle",
+      "rule": "feature.cross-feature-deep-import",
+      "reason": "Runtime re-exports built-in defaults through the public runtime contract; importing the plugins facade would cycle back through runtime."
+    },
+    {
+      "importer": "packages/ConfigForm/runtime/src/runtime/services/transform.ts",
+      "target": "packages/ConfigForm/runtime/src/plugins/defaults/index.ts",
+      "kind": "cycle",
+      "rule": "feature.cross-feature-deep-import",
+      "reason": "The runtime pipeline consumes the built-in defaults implementation; the public plugins facade re-exports runtime and would create a cycle."
+    },
+    {
+      "importer": "packages/ai-doc-assistant/src/core/index.ts",
+      "target": "packages/ai-doc-assistant/src/core/preview/services/vue-block-extractor.ts",
+      "kind": "lazy",
+      "rule": "feature.cross-feature-deep-import",
+      "reason": "The browser-safe Core facade exports the Vue block extractor directly so it does not eagerly load the TypeScript-backed SFC transpiler from the preview barrel."
+    },
+    {
+      "importer": "packages/ai-doc-assistant/src/core/indexing/services/indexer.ts",
+      "target": "packages/ai-doc-assistant/src/core/vector/validation/index.ts",
+      "kind": "cycle",
+      "rule": "feature.cross-feature-deep-import",
+      "reason": "Index construction uses the pure vector validation sub-boundary; importing the vector facade would cycle through VectorStrategy back to indexing."
+    },
+    {
+      "importer": "packages/ai-doc-assistant/src/core/retrieval/services/retriever.ts",
+      "target": "packages/ai-doc-assistant/src/core/vector/validation/index.ts",
+      "kind": "cycle",
+      "rule": "feature.cross-feature-deep-import",
+      "reason": "Snapshot retrieval uses the pure vector validation sub-boundary; importing the vector facade would load VectorStrategy and cycle through indexing."
+    }
+  ],
   "debt": []
 }

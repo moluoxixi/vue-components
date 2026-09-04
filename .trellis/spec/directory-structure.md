@@ -129,6 +129,13 @@ interface PackageArchitectureManifest {
     owners: string[]
     reason: string
   }>
+  importExceptions: Array<{
+    importer: string
+    target: string
+    kind: 'cycle' | 'lazy' | 'platform'
+    rule: 'feature.cross-feature-deep-import'
+    reason: string
+  }>
   debt: Array<{
     path: string
     rule: string
@@ -166,6 +173,17 @@ interface PackageArchitectureManifest {
 - Imports from another feature use that feature's public barrel. Imports inside
   a feature use the nearest responsibility barrel unless a direct local import
   is necessary to avoid a cycle or an eager platform-specific dependency.
+- Cross-feature analysis treats top-level/nested domain directories and direct
+  children of `features/` as feature roots. A directory below `components/`,
+  `composables/`, `services/`, or another responsibility directory remains part
+  of that owner rather than becoming a feature merely because it has an
+  `index.ts`. Child features may consume their ancestor's shared responsibility
+  barrels without routing back through the ancestor facade.
+- A runtime import between sibling or outward feature roots resolves through
+  the target feature `index.ts`; static re-exports and literal dynamic imports
+  are both checked. A necessary lazy/cycle/platform edge uses one exact
+  `importExceptions` record matching rule, importer, and resolved target. Broad
+  package or directory exceptions must not hide dependency edges.
 - Framework-required entries such as `index.vue`, VitePress config/theme
   entries, CLI entries, and package export files orchestrate current feature
   barrels. Reusable implementation stays in responsibility directories.
@@ -230,6 +248,12 @@ interface PackageArchitectureManifest {
 - Component exceptions match the component path, exact diagnostic rule, and
   statically resolved owners. Declared dynamic/framework owner paths must exist;
   an owner or rule drift makes the exception stale instead of widening it.
+- Import exceptions match one importer path, one resolved target path, and one
+  `feature.*` rule. The required `cycle`, `lazy`, or `platform` kind is an
+  audited reason classification constrained by the manifest schema; static
+  reconciliation does not claim it can infer architectural intent from an edge.
+  Missing paths, duplicate identities, unmatched targets, and obsolete edges
+  fail manifest validation or reconciliation.
 - When static analysis emits `component.owner-required` without owners, an
   exception supplies the semantic framework/dynamic owner instead; every such
   declared owner must resolve to an existing repository file or directory.
@@ -238,18 +262,25 @@ interface PackageArchitectureManifest {
 - A composable owns Vue reactivity, injection, listeners, or lifecycle cleanup.
   A deterministic parser, mapper, serializer, resolver, or geometry algorithm
   belongs in `services/` or `utils/`, not in a hook-shaped file.
+- Composable ownership is checked per exported `use*` function in the nearest
+  `composables/` responsibility. Vue runtime API aliases, namespace calls,
+  external composables, and local composables reached through barrels count as
+  ownership; `Ref`/`ComputedRef` types, `.value`, `toRaw`, `toValue`, `unref`,
+  and `nextTick` alone do not. A nested `services/` or `utils/`
+  responsibility is evaluated by its own role instead of its ancestor path.
 
 ## 4. Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
 | Feature root mixes props, state, services, parsers, and helpers | Move each file into its owning responsibility directory |
+| Direct child of `features/` lacks `index.ts` | Emit `feature.index-required`; add the feature entry before exposing or importing it |
 | Public Vue contracts are inline or flat at feature root | Move type-only declarations under `types/` and export them from `types/index.ts` |
 | Runtime defaults or factories live under `types/` | Move them to the responsibility matching their runtime behavior |
 | One responsibility is split across unrelated directories | Merge it under one canonical responsibility directory |
 | An externally consumed responsibility directory lacks `index.ts` | Add the local barrel before exposing it |
 | A barrel contains business logic or side effects | Move the logic to its owning module and keep the barrel declarative |
-| Cross-feature code deep-imports another feature implementation | Import the public feature barrel or document the narrow boundary |
+| Cross-feature code deep-imports another feature implementation | Emit `feature.cross-feature-deep-import`; use the feature barrel or an exact `importExceptions` edge |
 | A proposed directory has no distinct owner or trigger | Do not create it |
 | A component imports `./style` but `style/index.ts` is missing | Reject it as a broken JS side-effect entry |
 | A package exports component Sass but `style/index.scss` is missing | Reject it as a broken manual/on-demand style entry |
@@ -267,6 +298,10 @@ interface PackageArchitectureManifest {
 | Production build rewrites a tracked auto-import/component declaration | Configure the plugin with `dts: command === 'serve' ? path : false` and verify the committed declaration separately |
 | Non-public component has no resolvable owner | Emit `component.owner-required` |
 | Single-parent or single-feature component is misplaced | Emit `component.single-parent-location` / `component.single-feature-location` |
+| Package-level shared component has consumers from fewer than two features | Emit `component.shared-feature-owners` after the more specific single-parent rule |
+| Exported `use*` function in a composables responsibility has no Vue ownership | Emit `composable.vue-ownership-required`; move pure behavior to services or utils |
+| Import exception kind, importer, target, or rule is invalid or duplicated | Reject the manifest before reconciliation |
+| Exact import exception no longer matches a live dependency edge | Fail as a stale exception |
 | Live diagnostic has no exact debt/exception | Fail as unknown architecture debt |
 | Debt or exception no longer matches live diagnostics | Fail as stale manifest data |
 | Exception kind, owner, or rule is invalid or duplicated | Reject the manifest before reconciliation |
@@ -290,6 +325,10 @@ interface PackageArchitectureManifest {
   component usage.
 - Good: `FeatureView/components/FeatureToolbar.vue` has one parent,
   `FeatureView/index.vue`; a shared command hint has callers in two features.
+- Good: a vector strategy is loaded with `await import('../../vector')` so the
+  target feature barrel remains lazy and the default content path stays light.
+- Good: a pure Canvas event-handler factory lives in its owner `services/`, while a
+  composable importing `computed as makeComputed` remains in `composables/`.
 - Good: a Node package separates lifecycle orchestration, repository adapters,
   serialization, and pure filesystem utilities.
 - Base: a small feature has only `index.ts`, its implementation entry, and
@@ -307,6 +346,10 @@ interface PackageArchitectureManifest {
   without package-local installation and public-entry guidance.
 - Bad: `src/components/PrivateDialog.vue` has one parent but is exported from a
   package-wide components barrel.
+- Bad: `feature-a` imports `feature-b/services/private` or dynamically imports
+  the same leaf instead of using `feature-b/index.ts`.
+- Bad: `useBem(ref)` only reads `ref.value` and formats strings but remains in a
+  `composables/` directory because its name starts with `use`.
 - Bad: an auto-component plugin rewrites `src/components.d.ts` during a
   multi-entry production build.
 - Bad: a broad package stylesheet targets `input:focus-visible` below a root
@@ -348,6 +391,13 @@ interface PackageArchitectureManifest {
   Vue SFC parser to cover root entries, re-export-only public reachability,
   static and literal dynamic imports, barrel traversal, single-parent,
   single-feature, shared components, exceptions, unknown debt, and stale debt.
+- Cross-feature fixtures cover public feature barrels, same-feature imports,
+  ancestor shared responsibilities, static and literal dynamic deep imports,
+  exact import exceptions, wrong targets, invalid kinds, duplicates, and stale
+  edges.
+- Composable fixtures cover aliased/namespaced Vue APIs, local barrel wrappers,
+  external `use*` calls, type-only refs, value reads, pure unwrapping calls, and
+  nested non-composable responsibilities.
 - `pnpm check:package-architecture` must match live diagnostics exactly against
   `scripts/package-architecture/config/manifest.json`; regex-only import graph
   checks are not sufficient.
@@ -427,6 +477,24 @@ Correct:
 // packages/foo/index.ts
 export * from './src/components'
 export * from './src/services'
+```
+
+Wrong:
+
+```ts
+// composables/useBem.ts
+export function useBem(namespace: ComputedRef<string>) {
+  return (block: string) => `${namespace.value}-${block}`
+}
+```
+
+Correct:
+
+```ts
+// utils/bem.ts
+export function createBem(namespace: () => string) {
+  return (block: string) => `${namespace()}-${block}`
+}
 ```
 
 Wrong:

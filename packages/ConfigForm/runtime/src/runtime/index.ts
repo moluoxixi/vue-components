@@ -7,6 +7,12 @@ export type {
   FieldDefaultConfig,
 } from '../plugins/defaults'
 export {
+  hasFieldBinding,
+  isComponent,
+  isContainer,
+  isField,
+} from '../utils/node'
+export {
   createFieldPipeline,
   createFormRuntime,
   createReadonlyRenderContext,
@@ -28,9 +34,3 @@ export type {
   ReadonlyAdapterRegistry,
   ReadonlyRenderContext,
 } from './types'
-export {
-  hasFieldBinding,
-  isComponent,
-  isContainer,
-  isField,
-} from './utils'
