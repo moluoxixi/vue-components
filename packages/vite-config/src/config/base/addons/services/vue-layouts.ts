@@ -1,7 +1,7 @@
-import type { VueLayoutsAddonOptions } from '../../../addons'
-import type { ViteFeature } from './runtime'
+import type { VueLayoutsAddonOptions } from '../../../../addons'
+import type { ViteFeature } from '../types'
+import { callDefaultFactory } from './plugin-factory'
 import { defineFeature } from './runtime'
-import { callDefaultFactory } from './shared'
 
 type VueLayoutsModule = typeof import('vite-plugin-vue-layouts')
 

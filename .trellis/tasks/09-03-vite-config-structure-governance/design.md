@@ -31,8 +31,8 @@ src/
         types/{index.ts,domain.ts}
         adapters/{index.ts,context.ts}
         defaults/{index.ts,patterns.ts}
-        utils/{index.ts,options.ts,plugins.ts}
-        services/{index.ts,config.ts,registry.ts,runtime.ts,<feature>.ts}
+        utils/{index.ts,options.ts,specifier.ts}
+        services/{index.ts,config.ts,plugin-factory.ts,registry.ts,runtime.ts,<feature>.ts}
   types/index.ts
 ```
 

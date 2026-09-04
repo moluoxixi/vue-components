@@ -1,7 +1,8 @@
 import type { PluginOption } from 'vite'
-import type { VueAddonOptions } from '../../../addons'
+import type { VueAddonOptions } from '../../../../addons'
+import { createVueIncludePatterns } from '../defaults'
+import { mergeAddonOptions } from '../utils'
 import { defineFeature } from './runtime'
-import { createVueIncludePatterns, mergeAddonOptions } from './shared'
 
 type VueModule = typeof import('@vitejs/plugin-vue')
 interface VueMacrosModule {

@@ -82,6 +82,24 @@ Addon feature 不使用全局数值 `order`。registry 声明顺序是无依赖 
 未知依赖、重复 feature 名称和循环依赖都必须直接失败。`requires` 只表示 npm 包依赖，
 不承担 addon 之间的执行顺序。
 
+## 源码所有权
+
+```text
+src/addons/services/                  # 公开 define*AddonOptions identity helpers
+src/config/{app,lib}/services/        # App / Library 配置工厂
+src/config/base/services/             # 基础配置工厂
+src/config/services/                  # 跨工厂配置合并
+src/config/base/addons/
+  adapters/                           # consumer-root 依赖探测与动态 import
+  defaults/                           # include pattern 等稳定默认值
+  services/                           # feature、registry 与配置编排
+  types/                              # addon runtime type-only contracts
+  utils/                              # option merge 与纯 specifier 工具
+```
+
+每个目录的 `index.ts` 只做导出。公开 addon 源码虽然归入 `services`，tsup 仍显式将它们映射为
+`dist/addons/index` 与 `dist/addons/<name>`，因此目录调整不得改变 package exports 或声明路径。
+
 ## 失败语义
 
 - 找不到目标 root 的 `package.json` 时直接抛错。

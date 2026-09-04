@@ -1,8 +1,8 @@
 import type tailwindPostcssFactory from '@tailwindcss/postcss'
 import type tailwindViteFactory from '@tailwindcss/vite'
-import type { TailwindCssAddonOptions } from '../../../addons'
+import type { TailwindCssAddonOptions } from '../../../../addons'
+import { callDefaultFactory } from './plugin-factory'
 import { defineFeature } from './runtime'
-import { callDefaultFactory } from './shared'
 
 interface TailwindViteModule {
   default: typeof tailwindViteFactory

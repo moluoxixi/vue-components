@@ -54,23 +54,27 @@ describe('vite-config design contract', () => {
   })
 
   it('keeps runtime addon modules on the source addons entry', () => {
-    const addonsRoot = path.resolve(__dirname, '../src/config/base/addons')
+    const addonsRoot = path.resolve(__dirname, '../src/config/base/addons/services')
     const files = fs.readdirSync(addonsRoot)
       .filter(file => file.endsWith('.ts'))
-      .filter(file => !['index.ts', 'runtime.ts', 'shared.ts', 'registry.ts'].includes(file))
+      .filter(file => !['config.ts', 'index.ts', 'plugin-factory.ts', 'registry.ts', 'runtime.ts'].includes(file))
+
+    expect(files).toHaveLength(15)
 
     for (const file of files) {
       const source = fs.readFileSync(path.join(addonsRoot, file), 'utf-8')
-      expect(source, file).toContain(`from '../../../addons'`)
+      expect(source, file).toContain(`from '../../../../addons'`)
       expect(source, file).not.toMatch(/@moluoxixi\/vite-config/)
     }
   })
 
   it('uses concrete addon option types instead of Record-based config casts', () => {
-    const addonsRoot = path.resolve(__dirname, '../src/config/base/addons')
+    const addonsRoot = path.resolve(__dirname, '../src/config/base/addons/services')
     const files = fs.readdirSync(addonsRoot)
       .filter(file => file.endsWith('.ts'))
-      .filter(file => !['runtime.ts', 'shared.ts', 'registry.ts'].includes(file))
+      .filter(file => !['config.ts', 'index.ts', 'plugin-factory.ts', 'registry.ts', 'runtime.ts'].includes(file))
+
+    expect(files).toHaveLength(15)
 
     for (const file of files) {
       const source = fs.readFileSync(path.join(addonsRoot, file), 'utf-8')

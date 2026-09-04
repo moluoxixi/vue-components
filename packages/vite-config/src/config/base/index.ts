@@ -1,3 +1,3 @@
 export { inspectViteFeatures } from './addons'
-export type { ViteFeatureInspection, ViteFeatureInspectionResult } from './addons/runtime'
+export type { ViteFeatureInspection, ViteFeatureInspectionResult } from './addons/types'
 export { getBaseConfig } from './services'

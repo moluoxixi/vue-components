@@ -1,7 +1,8 @@
-import type { ComponentsAddonOptions } from '../../../addons'
-import type { AddonContext } from './runtime'
+import type { ComponentsAddonOptions } from '../../../../addons'
+import type { AddonContext } from '../types'
+import { createSourceIncludePatterns, hasMarkdownAddon } from '../defaults'
+import { mergeAddonOptions } from '../utils'
 import { defineFeature } from './runtime'
-import { createSourceIncludePatterns, hasMarkdownAddon, mergeAddonOptions } from './shared'
 
 type ComponentsModule = typeof import('unplugin-vue-components/vite')
 type ElementPlusResolverModule = typeof import('unplugin-vue-components/resolvers')

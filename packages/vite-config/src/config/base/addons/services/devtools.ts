@@ -1,6 +1,6 @@
-import type { DevtoolsAddonOptions } from '../../../addons'
+import type { DevtoolsAddonOptions } from '../../../../addons'
+import { callDefaultFactory } from './plugin-factory'
 import { defineFeature } from './runtime'
-import { callDefaultFactory } from './shared'
 
 type DevtoolsModule = typeof import('vite-plugin-vue-devtools')
 

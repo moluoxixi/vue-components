@@ -1,7 +1,7 @@
 import type { UserConfig } from 'vite'
-import type { PwaAddonOptions } from '../../../addons'
+import type { PwaAddonOptions } from '../../../../addons'
+import { mergeAddonOptions } from '../utils'
 import { defineFeature } from './runtime'
-import { mergeAddonOptions } from './shared'
 
 interface VitePwaModule {
   VitePWA: (options?: PwaAddonOptions) => unknown

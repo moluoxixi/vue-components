@@ -23,12 +23,12 @@
 
 ## 验收标准
 
-- [ ] 35 条目标 debt 全部删除且没有新增 unknown/stale 诊断。
-- [ ] `.`, `./addons`, `./addons/*` 的符号、声明、JS 产物路径和 helper identity 不变。
-- [ ] concrete registry 的顺序、triggers、requires、依赖检查与错误文本保持不变。
-- [ ] consumer-root dynamic import、feature inspection、addon merge、user plugin precedence 和真实 fixture 输出保持不变。
-- [ ] `index.ts` 均为纯导出，types 只含类型；没有旧路径 shim、deep import 或 cycle。
-- [ ] 包级 test/coverage/typecheck/build/browser fixture 与全仓 architecture/path/packed/lint 通过。
+- [x] 35 条目标 debt 全部删除且没有新增 unknown/stale 诊断。
+- [x] `.`, `./addons`, `./addons/*` 的符号、声明、JS 产物路径和 helper identity 不变。
+- [x] concrete registry 的顺序、triggers、requires、依赖检查与错误文本保持不变。
+- [x] consumer-root dynamic import、feature inspection、addon merge、user plugin precedence 和真实 fixture 输出保持不变。
+- [x] `index.ts` 均为纯导出，types 只含类型；没有旧路径 shim、deep import 或 cycle。
+- [x] 包级 test/coverage/typecheck/build/browser fixture 与全仓 architecture/path/packed/lint 通过。
 
 ## 约束
 

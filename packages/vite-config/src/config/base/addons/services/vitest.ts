@@ -1,6 +1,6 @@
-import type { VitestAddonOptions } from '../../../addons'
+import type { VitestAddonOptions } from '../../../../addons'
+import { mergeAddonOptions } from '../utils'
 import { defineFeature } from './runtime'
-import { mergeAddonOptions } from './shared'
 
 export const vitestFeature = defineFeature<VitestAddonOptions>({
   name: 'vitest',

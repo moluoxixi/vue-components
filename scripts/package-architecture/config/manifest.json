@@ -239,12 +239,6 @@
       "reason": "Feature and responsibility index.ts files must contain exports only."
     },
     {
-      "path": "packages/vite-config/src/config/base/addons/index.ts",
-      "rule": "feature.index-barrel-only",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature and responsibility index.ts files must contain exports only."
-    },
-    {
       "path": "packages/vitepress-theme-element-plus/src/content/repository/providers/index.ts",
       "rule": "feature.index-barrel-only",
       "targetTask": "vitepress-theme-element-plus-structure-governance",
@@ -302,114 +296,6 @@
       "path": "packages/components/src/HeadlessTable/src/core/renderer.ts",
       "rule": "feature.root-file",
       "targetTask": "components-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/auto-import.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/components.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/devtools.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/i18n.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/markdown.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/pages.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/pwa.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/react.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/registry.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/runtime.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/shared.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/tailwindcss.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/unocss.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/vite-ssg.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/vitest.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/vue-layouts.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/vue-router.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
-      "reason": "Feature root files must move into a responsibility directory."
-    },
-    {
-      "path": "packages/vite-config/src/config/base/addons/vue.ts",
-      "rule": "feature.root-file",
-      "targetTask": "vite-config-structure-governance",
       "reason": "Feature root files must move into a responsibility directory."
     },
     {

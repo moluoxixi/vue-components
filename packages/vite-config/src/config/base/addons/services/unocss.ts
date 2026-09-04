@@ -1,8 +1,9 @@
-import type { UnoCssAddonOptions } from '../../../addons'
-import type { AddonContext } from './runtime'
+import type { UnoCssAddonOptions } from '../../../../addons'
+import type { AddonContext } from '../types'
 import fs from 'node:fs'
+import { mergeAddonOptions } from '../utils'
+import { callDefaultFactory } from './plugin-factory'
 import { defineFeature } from './runtime'
-import { callDefaultFactory, mergeAddonOptions } from './shared'
 
 const UNO_CONFIG_FILES = [
   'uno.config.ts',

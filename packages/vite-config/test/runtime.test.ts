@@ -2,17 +2,16 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { inspectViteFeatures } from '@moluoxixi/vite-config'
-import { viteFeatures } from '@moluoxixi/vite-config/config/base/addons/registry'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createAddonContext } from '../src/config/base/addons/adapters'
 import {
-  createAddonContext,
+  callDefaultFactory,
   defineFeature,
-  getPackageName,
-  isObjectOption,
   resolveFeatureConfig,
   resolveFeatureOrder,
-} from '@moluoxixi/vite-config/config/base/addons/runtime'
-import { callDefaultFactory, mergeAddonOptions } from '@moluoxixi/vite-config/config/base/addons/shared'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+  viteFeatures,
+} from '../src/config/base/addons/services'
+import { getPackageName, isObjectOption, mergeAddonOptions } from '../src/config/base/addons/utils'
 
 let mockDeps: Record<string, string> = {}
 let mockRuntimeDeps: Record<string, string> = {}

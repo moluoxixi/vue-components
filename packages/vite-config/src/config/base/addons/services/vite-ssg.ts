@@ -1,6 +1,7 @@
-import type { ViteSsgAddonOptions } from '../../../addons'
+import type { ViteSsgAddonOptions } from '../../../../addons'
+import { VUE_I18N_PATTERN } from '../defaults'
+import { mergeAddonOptions } from '../utils'
 import { defineFeature } from './runtime'
-import { mergeAddonOptions, VUE_I18N_PATTERN } from './shared'
 
 type ViteSsgResolvedConfig = ViteSsgAddonOptions & {
   ssgOptions?: {

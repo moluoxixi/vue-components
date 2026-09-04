@@ -105,8 +105,12 @@ export default createAppConfig({
 当前提供 `addons/vue`、`addons/react`、`addons/auto-import`、`addons/components`、
 `addons/vue-router`、`addons/markdown`、`addons/i18n`、`addons/devtools`、
 `addons/layouts`、`addons/pwa`、`addons/tailwindcss`、`addons/unocss` 与
-`addons/vite-ssg` 与 `addons/pages`。这些子入口继续保留给需要按 addon 拆分导入的场景；也可以从
+`addons/vite-ssg`、`addons/vitest` 与 `addons/pages`。这些子入口继续保留给需要按 addon 拆分导入的场景；也可以从
 `@moluoxixi/vite-config/addons` 一次性导入所有 addon helper/type。
+
+源码中，公开 helper 位于 `src/addons/services`，但构建会显式保持
+`dist/addons/<name>.{js,d.ts}`。`src/config/base/addons` 按 `adapters`、`defaults`、
+`services`、`types` 和 `utils` 分工；这些是包内实现目录，不是新的公开 subpath。
 
 主入口和 `addons/pwa` 的 PWA 类型都来自 `vite-plugin-pwa` 官方导出。本仓库只把它作为
 devDependency 用于开发期类型检查和声明文件构建；发布包不会把 devDependency 安装到
@@ -124,6 +128,10 @@ Tailwind CSS 只会在安装 `@tailwindcss/vite` 或 `@tailwindcss/postcss` 时�
 
 - **实践方法**：根据上一步依赖检测的结果，利用动态 `import()` 加载相关的 Vite 插件。如果不包含某个依赖，则完全不要去进行该环境配置的解析和插件实例化。
 - **优势**：大幅提升 Vite Server 的启动速度，并防止未安装依赖抛出不必要的错误。
+
+插件解析始终以调用方 `viteConfig.root` 的 `package.json` 创建 resolver，不能改为从
+`@moluoxixi/vite-config` 自身的安装位置解析。这样 monorepo 子项目、条件导出和插件 subpath
+都会使用目标项目实际安装的版本。
 
 ## 3. 模块化与配置合并（Merge Config）
 

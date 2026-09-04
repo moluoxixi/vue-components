@@ -1,6 +1,7 @@
-import type { PagesAddonOptions } from '../../../addons'
+import type { PagesAddonOptions } from '../../../../addons'
+import { mergeAddonOptions } from '../utils'
+import { callDefaultFactory } from './plugin-factory'
 import { defineFeature } from './runtime'
-import { callDefaultFactory, mergeAddonOptions } from './shared'
 
 type PagesModule = typeof import('vite-plugin-pages')
 

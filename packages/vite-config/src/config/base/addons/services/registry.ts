@@ -1,4 +1,4 @@
-import type { ViteFeature } from './runtime'
+import type { ViteFeature } from '../types'
 import { autoImportFeature } from './auto-import'
 import { componentsFeature } from './components'
 import { devtoolsFeature } from './devtools'

@@ -1,6 +1,8 @@
-import type { VueRouterAddonOptions } from '../../../addons'
+import type { VueRouterAddonOptions } from '../../../../addons'
+import { hasMarkdownAddon } from '../defaults'
+import { mergeAddonOptions } from '../utils'
+import { callDefaultFactory } from './plugin-factory'
 import { defineFeature } from './runtime'
-import { callDefaultFactory, hasMarkdownAddon, mergeAddonOptions } from './shared'
 
 type VueRouterModule = typeof import('unplugin-vue-router/vite')
 

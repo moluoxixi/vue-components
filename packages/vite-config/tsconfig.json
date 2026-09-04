@@ -7,7 +7,6 @@
       "@moluoxixi/vite-config": ["index.ts"],
       "@moluoxixi/vite-config/addons": ["src/addons/index.ts"],
       "@moluoxixi/vite-config/addons/*": ["src/addons/services/*"],
-      "@moluoxixi/vite-config/config/*": ["src/config/*"],
       "vite": ["node_modules/vite"]
     },
     "types": ["node"],

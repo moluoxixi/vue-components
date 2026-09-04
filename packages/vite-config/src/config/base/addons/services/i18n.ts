@@ -1,6 +1,6 @@
-import type { I18nAddonOptions } from '../../../addons'
+import type { I18nAddonOptions } from '../../../../addons'
+import { mergeAddonOptions } from '../utils'
 import { defineFeature } from './runtime'
-import { mergeAddonOptions } from './shared'
 
 type I18nModule = typeof import('@intlify/unplugin-vue-i18n/vite')
 

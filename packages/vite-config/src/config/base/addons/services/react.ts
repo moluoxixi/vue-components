@@ -1,6 +1,6 @@
-import type { ReactAddonOptions } from '../../../addons'
+import type { ReactAddonOptions } from '../../../../addons'
+import { callDefaultFactory } from './plugin-factory'
 import { defineFeature } from './runtime'
-import { callDefaultFactory } from './shared'
 
 type ReactModule = typeof import('@vitejs/plugin-react')
 

@@ -2,8 +2,8 @@ import type { ConfigEnv, UserConfig, UserConfigExport } from 'vite'
 import os from 'node:os'
 import path from 'node:path'
 import { createAppConfig } from '@moluoxixi/vite-config'
-import { getAddonsConfig } from '@moluoxixi/vite-config/config/base/addons'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getAddonsConfig } from '../src/config/base/addons'
 
 let mockDeps: Record<string, string> = {}
 let mockRuntimeDeps: Record<string, string> = {}
@@ -96,8 +96,8 @@ vi.mock('@moluoxixi/utils/node', async (importOriginal) => {
   }
 })
 
-vi.mock('@moluoxixi/vite-config/config/base/addons/runtime', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@moluoxixi/vite-config/config/base/addons/runtime')>()
+vi.mock('../src/config/base/addons/adapters', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/config/base/addons/adapters')>()
   return {
     ...actual,
     createAddonContext(options: Parameters<typeof actual.createAddonContext>[0]) {

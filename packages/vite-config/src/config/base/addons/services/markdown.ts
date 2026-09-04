@@ -1,7 +1,8 @@
 import type linkAttributes from 'markdown-it-link-attributes'
-import type { MarkdownAddonOptions } from '../../../addons'
+import type { MarkdownAddonOptions } from '../../../../addons'
+import { HTTP_URL_PATTERN } from '../defaults'
+import { mergeAddonOptions } from '../utils'
 import { defineFeature } from './runtime'
-import { HTTP_URL_PATTERN, mergeAddonOptions } from './shared'
 
 type MarkdownModule = typeof import('unplugin-vue-markdown/vite')
 type ShikiModule = typeof import('@shikijs/markdown-it')
