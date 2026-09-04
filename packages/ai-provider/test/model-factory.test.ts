@@ -47,7 +47,9 @@ describe('aI SDK model factory', () => {
 
   it.each([
     [{ provider: 'openai', apiKey: '', model: 'gpt-test' }, 'apiKey'],
+    [{ provider: 'openai', apiKey: '   ', model: 'gpt-test' }, 'apiKey'],
     [{ provider: 'openai', apiKey: 'secret', model: '' }, 'model'],
+    [{ provider: 'openai', apiKey: 'secret', model: '   ' }, 'model'],
     [{
       provider: 'openai-compatible',
       apiKey: 'secret',
@@ -60,6 +62,24 @@ describe('aI SDK model factory', () => {
       baseURL: 'https://user:password@relay.example/v1',
       model: 'relay-test',
     }, 'baseURL'],
+    [{
+      provider: 'openai-compatible',
+      apiKey: 'secret',
+      baseURL: 'ftp://relay.example/v1',
+      model: 'relay-test',
+    }, 'baseURL'],
+    [{
+      provider: 'openai-compatible',
+      apiKey: 'secret',
+      baseURL: 'https://relay.example/v1?tenant=test',
+      model: 'relay-test',
+    }, 'baseURL'],
+    [{
+      provider: 'openai-compatible',
+      apiKey: 'secret',
+      baseURL: 'https://relay.example/v1#models',
+      model: 'relay-test',
+    }, 'baseURL'],
   ] satisfies Array<[LanguageModelTarget, string]>)('rejects invalid model target field %s', (target, field) => {
     expect(() => createLanguageModel(target)).toThrowError(AiProviderError)
     expect(() => createLanguageModel(target)).toThrow(field)
@@ -68,6 +88,25 @@ describe('aI SDK model factory', () => {
   it('rejects unsupported providers at runtime', () => {
     const invalid = { provider: 'unknown', apiKey: 'secret', model: 'test' } as unknown as LanguageModelTarget
     expect(() => createLanguageModel(invalid)).toThrow('Unsupported AI provider')
+  })
+
+  it.each([
+    [{ provider: 'openai', apiKey: ' ', model: 'embed-test' }, 'apiKey'],
+    [{ provider: 'google', apiKey: 'secret', model: ' ' }, 'model'],
+    [{
+      provider: 'openai-compatible',
+      apiKey: 'secret',
+      baseURL: 'https://relay.example/v1?tenant=test',
+      model: 'embed-test',
+    }, 'baseURL'],
+  ] satisfies Array<[EmbeddingModelTarget, string]>)('rejects invalid embedding target field %s', (target, field) => {
+    expect(() => createEmbeddingModel(target)).toThrowError(AiProviderError)
+    expect(() => createEmbeddingModel(target)).toThrow(field)
+  })
+
+  it('rejects unsupported embedding providers at runtime', () => {
+    const invalid = { provider: 'anthropic', apiKey: 'secret', model: 'embed-test' } as unknown as EmbeddingModelTarget
+    expect(() => createEmbeddingModel(invalid)).toThrow('Unsupported AI provider')
   })
 
   it('projects secret-free runtime status', () => {

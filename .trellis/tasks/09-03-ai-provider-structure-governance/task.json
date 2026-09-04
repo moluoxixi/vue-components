@@ -3,7 +3,7 @@
   "name": "ai-provider-structure-governance",
   "title": "AI Provider 结构治理",
   "description": "治理 ai-provider 的 provider、传输、类型与测试边界。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": "backend",
   "scope": "packages/ai-provider",
   "package": "ai-provider",

@@ -1,7 +1,7 @@
 # AI Provider 结构治理实施计划
 
-1. [ ] 锁定 `.`, `./shared`, `./server` 符号集合、Vite entries、产物名与全仓 consumer。
-2. [ ] 补 root/shared 等价、server-only 负向导出与 compatible/embedding validation characterization，运行定向测试并提交。
+1. [x] 锁定 `.`, `./shared`, `./server` 符号集合、Vite entries、产物名与全仓 consumer。
+2. [x] 补 root/shared 等价、server-only 负向导出与 compatible/embedding validation characterization，运行定向测试并提交。
 3. [ ] 将 shared types/constants/validation/error 归入责任目录，使 `src/shared/index.ts` 成为纯 barrel；运行 entry/error tests并提交。
 4. [ ] 将 server target、SDK adapter、runtime status、error cause、redaction 归入 types/adapters/services/utils，清理旧根文件；运行 factory/error/redaction tests并提交。
 5. [ ] 删除 manifest 中 4 条已消失 debt，新增中文 README，核对 exports/build/declaration/source files并提交。
