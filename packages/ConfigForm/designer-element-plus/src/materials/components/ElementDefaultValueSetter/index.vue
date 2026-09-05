@@ -10,7 +10,7 @@ import {
   ElSwitch,
   ElTimePicker,
 } from 'element-plus'
-import { computed, ref, useAttrs, watch } from 'vue'
+import { computed, normalizeClass, ref, useAttrs, watch } from 'vue'
 import { useDesignerLocale } from '@moluoxixi/config-form-designer'
 
 defineOptions({ inheritAttrs: false })
@@ -21,6 +21,21 @@ const attrs = useAttrs()
 const locale = useDesignerLocale()
 const draft = ref('')
 const draftTouched = ref(false)
+
+const forwardedAttrs = computed(() => {
+  const { class: _class, ...rest } = attrs
+  return rest
+})
+
+const propertyControlClass = computed(() => {
+  const inherited = normalizeClass(attrs.class).split(/\s+/)
+  const controlKind = props.kind === 'multiselect' ? 'select' : props.kind
+  return [...new Set([
+    ...inherited.filter(className => className && className !== 'is-default-value'),
+    'mx-config-form-designer__property-control',
+    `is-${controlKind}`,
+  ])]
+})
 
 const numberValue = computed(() => typeof props.modelValue === 'number' ? props.modelValue : undefined)
 const booleanValue = computed(() => props.modelValue === true)
@@ -61,9 +76,9 @@ function updateValue(value: unknown): void {
   <div class="mx-element-designer-default-value">
     <ElInput
       v-if="kind === 'text'"
-      v-bind="attrs"
+      v-bind="forwardedAttrs"
       :id="props.id"
-      class="mx-config-form-designer__property-control is-text"
+      :class="propertyControlClass"
       :model-value="draft"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -73,9 +88,9 @@ function updateValue(value: unknown): void {
     />
     <ElInputNumber
       v-else-if="kind === 'number'"
-      v-bind="attrs"
+      v-bind="forwardedAttrs"
       :id="props.id"
-      class="mx-config-form-designer__property-control is-number"
+      :class="propertyControlClass"
       :model-value="numberValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -83,9 +98,9 @@ function updateValue(value: unknown): void {
     />
     <ElSwitch
       v-else-if="kind === 'boolean'"
-      v-bind="attrs"
+      v-bind="forwardedAttrs"
       :id="props.id"
-      class="mx-config-form-designer__property-control is-boolean"
+      :class="propertyControlClass"
       :model-value="booleanValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -93,9 +108,9 @@ function updateValue(value: unknown): void {
     />
     <ElSelect
       v-else-if="kind === 'select' || kind === 'multiselect'"
-      v-bind="attrs"
+      v-bind="forwardedAttrs"
       :id="props.id"
-      class="mx-config-form-designer__property-control is-select"
+      :class="propertyControlClass"
       :model-value="kind === 'multiselect' ? multipleValue : singleValue"
       :disabled="disabled"
       :multiple="kind === 'multiselect'"
@@ -111,9 +126,9 @@ function updateValue(value: unknown): void {
     </ElSelect>
     <ElDatePicker
       v-else-if="kind === 'date'"
-      v-bind="attrs"
+      v-bind="forwardedAttrs"
       :id="props.id"
-      class="mx-config-form-designer__property-control is-date"
+      :class="propertyControlClass"
       :model-value="stringValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"
@@ -123,9 +138,9 @@ function updateValue(value: unknown): void {
     />
     <ElTimePicker
       v-else
-      v-bind="attrs"
+      v-bind="forwardedAttrs"
       :id="props.id"
-      class="mx-config-form-designer__property-control is-time"
+      :class="propertyControlClass"
       :model-value="stringValue"
       :disabled="disabled"
       :aria-label="locale.t('default.value', 'Default value')"

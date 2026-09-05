@@ -73,6 +73,12 @@ describe('element plus designer fields', () => {
 
   it('uses Element Plus controls for every default-value kind', async () => {
     const text = mount(ElementDefaultValueSetter, {
+      attrs: {
+        class: [
+          'mx-config-form-designer__property-control',
+          { 'consumer-control': true, 'is-default-value': true },
+        ],
+      },
       props: { id: 'default-value-control', kind: 'text', modelValue: 'before' },
     })
     await text.vm.$nextTick()
@@ -80,6 +86,10 @@ describe('element plus designer fields', () => {
       'mx-config-form-designer__property-control',
       'is-text',
     ]))
+    expect(text.getComponent(ElInput).classes()).not.toContain('is-default-value')
+    expect(text.getComponent(ElInput).classes()).toContain('consumer-control')
+    expect(text.getComponent(ElInput).classes()
+      .filter(className => className === 'mx-config-form-designer__property-control')).toHaveLength(1)
     expect(text.get('.el-input__inner').attributes('id')).toBe('default-value-control')
     expect(text.attributes('id')).toBeUndefined()
     text.getComponent(ElInput).vm.$emit('update:modelValue', 'after')
@@ -88,11 +98,18 @@ describe('element plus designer fields', () => {
     expect(text.emitted('update:modelValue')).toEqual([['after']])
 
     const number = mount(ElementDefaultValueSetter, { props: { kind: 'number', modelValue: 1 } })
-    expect(number.getComponent(ElInputNumber).classes()).toContain('mx-config-form-designer__property-control')
+    expect(number.getComponent(ElInputNumber).classes()).toEqual(expect.arrayContaining([
+      'mx-config-form-designer__property-control',
+      'is-number',
+    ]))
     number.getComponent(ElInputNumber).vm.$emit('change', 2)
     expect(number.emitted('update:modelValue')).toEqual([[2]])
 
     const boolean = mount(ElementDefaultValueSetter, { props: { kind: 'boolean', modelValue: false } })
+    expect(boolean.getComponent(ElSwitch).classes()).toEqual(expect.arrayContaining([
+      'mx-config-form-designer__property-control',
+      'is-boolean',
+    ]))
     boolean.getComponent(ElSwitch).vm.$emit('change', true)
     expect(boolean.emitted('update:modelValue')).toEqual([[true]])
 
@@ -103,6 +120,10 @@ describe('element plus designer fields', () => {
       },
     })
     expect(select.getComponent(ElSelect).props('multiple')).toBe(false)
+    expect(select.getComponent(ElSelect).classes()).toEqual(expect.arrayContaining([
+      'mx-config-form-designer__property-control',
+      'is-select',
+    ]))
     expect(select.findAllComponents(ElOption)).toHaveLength(1)
     select.getComponent(ElSelect).vm.$emit('update:modelValue', 'first')
     select.getComponent(ElSelect).vm.$emit('update:modelValue', null)
@@ -116,13 +137,26 @@ describe('element plus designer fields', () => {
       },
     })
     expect(multiselect.getComponent(ElSelect).props('multiple')).toBe(true)
+    expect(multiselect.getComponent(ElSelect).classes()).toEqual(expect.arrayContaining([
+      'mx-config-form-designer__property-control',
+      'is-select',
+    ]))
+    expect(multiselect.getComponent(ElSelect).classes()).not.toContain('is-multiselect')
     multiselect.getComponent(ElSelect).vm.$emit('update:modelValue', ['first'])
     expect(multiselect.emitted('update:modelValue')).toEqual([[['first']]])
 
     const date = mount(ElementDefaultValueSetter, { props: { kind: 'date', modelValue: '2026-09-04' } })
+    expect(date.get('.el-date-editor').classes()).toEqual(expect.arrayContaining([
+      'mx-config-form-designer__property-control',
+      'is-date',
+    ]))
     date.getComponent(ElDatePicker).vm.$emit('update:modelValue', '2026-09-05')
     expect(date.emitted('update:modelValue')).toEqual([['2026-09-05']])
     const time = mount(ElementDefaultValueSetter, { props: { kind: 'time', modelValue: '09:30:00', disabled: true } })
+    expect(time.get('.el-date-editor').classes()).toEqual(expect.arrayContaining([
+      'mx-config-form-designer__property-control',
+      'is-time',
+    ]))
     expect(time.getComponent(ElTimePicker).props('disabled')).toBe(true)
     time.getComponent(ElTimePicker).vm.$emit('update:modelValue', '10:15:30')
     expect(time.emitted('update:modelValue')).toEqual([['10:15:30']])

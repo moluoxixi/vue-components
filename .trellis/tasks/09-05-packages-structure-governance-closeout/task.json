@@ -27,7 +27,8 @@
     "09-05-package-cycle-architecture-gate",
     "09-05-workbench-style-ownership",
     "09-05-workspace-package-cycle-gate",
-    "09-05-workbench-shell-style-ownership"
+    "09-05-workbench-shell-style-ownership",
+    "09-05-element-default-value-style-parity"
   ],
   "parent": null,
   "relatedFiles": [],
