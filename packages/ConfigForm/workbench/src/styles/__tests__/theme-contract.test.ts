@@ -1,14 +1,28 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { compile } from 'sass'
 import { describe, expect, it } from 'vitest'
 
 const stylesheetEntry = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
-const stylesheetLayers = ['shell', 'studio', 'features', 'templates', 'responsive'] as const
+const stylesheetLayers = [
+  { importPath: './shell.css', source: new URL('../shell.css', import.meta.url) },
+  { importPath: './studio.css', source: new URL('../studio.css', import.meta.url) },
+  { importPath: './feature-surfaces.css', source: new URL('../feature-surfaces.css', import.meta.url) },
+  { importPath: '../features/persistence/style/index.css', source: new URL('../../features/persistence/style/index.css', import.meta.url) },
+  { importPath: '../features/flow/style/index.css', source: new URL('../../features/flow/style/index.css', import.meta.url) },
+  { importPath: '../features/export/style/index.css', source: new URL('../../features/export/style/index.css', import.meta.url) },
+  { importPath: '../features/pages/style/index.css', source: new URL('../../features/pages/style/index.css', import.meta.url) },
+  { importPath: '../app/style/index.css', source: new URL('../../app/style/index.css', import.meta.url) },
+  { importPath: '../app/components/TemplateCreationWorkspace/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/style/index.css', import.meta.url) },
+  { importPath: '../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', import.meta.url) },
+  { importPath: '../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', import.meta.url) },
+  { importPath: './responsive.css', source: new URL('../responsive.css', import.meta.url) },
+] as const
 const stylesheet = stylesheetLayers
-  .map(layer => readFileSync(new URL(`../../styles/${layer}.css`, import.meta.url), 'utf8'))
+  .map(layer => readFileSync(layer.source, 'utf8'))
   .join('\n')
 const responsiveStylesheet = readFileSync(new URL('../../styles/responsive.css', import.meta.url), 'utf8')
+const runtimeHostStylesheet = readFileSync(new URL('../../runtime-host/styles/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
 const designerStylesheet = compile(
@@ -64,8 +78,51 @@ function contrast(foreground: string, background: string): number {
 describe('workbench theme contract', () => {
   it('composes scoped style layers in stable cascade order', () => {
     expect(stylesheetEntry).toBe(`${stylesheetLayers
-      .map(layer => `@import url(./${layer}.css);`)
+      .map(layer => `@import url(${layer.importPath});`)
       .join('\n')}\n`)
+  })
+
+  it('keeps feature styles with their concrete owners', () => {
+    expect(existsSync(new URL('../features.css', import.meta.url))).toBe(false)
+    expect(existsSync(new URL('../templates.css', import.meta.url))).toBe(false)
+
+    const ownerContracts = [
+      ['../../features/export/style/index.css', '.export-preview-dialog', '.persistence-dialog'],
+      ['../../features/persistence/style/index.css', '.persistence-dialog', '.flow-workspace-dialog'],
+      ['../../features/flow/style/index.css', '.flow-workspace-dialog', '.export-preview-dialog'],
+      ['../../features/pages/style/index.css', '.page-manager-dialog-shell', '.export-preview-dialog'],
+      ['../../app/style/index.css', '.workbench-message', '.export-preview-dialog'],
+      ['../../app/components/TemplateCreationWorkspace/style/index.css', '.template-creation-workspace', '.json-import-pane'],
+      ['../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', '.template-catalog-panel', '.json-import-pane'],
+      ['../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', '.json-import-pane', '.template-catalog-item'],
+    ] as const
+
+    for (const [path, includes, excludes] of ownerContracts) {
+      const source = readFileSync(new URL(path, import.meta.url), 'utf8')
+      expect(source).toContain(includes)
+      expect(source).not.toContain(excludes)
+    }
+
+    for (const orphan of ['.mobile-surface-tabs', '.empty-workbench', '.template-dialog', '.template-list', '.persistence-empty'])
+      expect(stylesheet).not.toContain(orphan)
+
+    for (const ownedSelector of [
+      '.persistence-dialog',
+      '.version-history-layout',
+      '.recovery-draft-list',
+      '.flow-workspace-dialog',
+      '.page-manager-dialog-shell',
+      '.export-preview-dialog',
+      '.export-dialog-footer',
+      '.source-file-layout',
+      '.source-code-pane',
+      '.dialog-action',
+      '.project-file-tree',
+      '.workspace-recovery-notice',
+      '.template-workspace',
+    ]) {
+      expect(responsiveStylesheet).not.toContain(ownedSelector)
+    }
   })
 
   it('keeps the material panel styles with StudioLeftPanel', async () => {
@@ -267,19 +324,18 @@ describe('workbench theme contract', () => {
     expect(selectorBlock('.export-preview-body')).toContain('background: var(--wb-editor-surface);')
     expect(selectorBlock('.export-menu-popover .el-dropdown-menu__item')).toContain('white-space: nowrap;')
     expect(stylesheet).toContain('@media (max-width: 480px)')
-    expect(stylesheet).toContain('.export-menu-popover .el-dropdown-menu__item,')
-    expect(stylesheet).toContain('.mobile-action-popover .el-dropdown-menu__item,')
+    for (const selector of [
+      '.export-menu-popover .el-dropdown-menu__item',
+      '.mobile-action-popover .el-dropdown-menu__item',
+      '.project-file-tree .project-file-tree__row',
+    ]) {
+      expect(cssRules(stylesheet).some(rule => rule.selector.split(',')
+        .some(item => item.trim() === selector) && rule.body.includes('min-height: 44px;'))).toBe(true)
+    }
     expect(stylesheet).toContain('.export-menu > button .export-chevron')
-    expect(selectorBlock('.preview-stage')).toContain('container-name: preview-runtime;')
-    expect(selectorBlock('.preview-stage')).toContain('container-type: inline-size;')
-    expect(stylesheet).toContain('@container preview-runtime (max-width: 1024px) {')
-    expect(stylesheet).toContain('--mx-config-form-active-columns: var(--mx-config-form-columns-tablet);')
-    expect(stylesheet).toContain('--mx-config-form-active-span: var(--mx-config-form-span-tablet);')
-    expect(stylesheet).toContain('@container preview-runtime (max-width: 720px) {')
-    expect(stylesheet).toContain('--mx-config-form-active-columns: var(--mx-config-form-columns-mobile);')
-    expect(stylesheet).toContain('--mx-config-form-active-span: var(--mx-config-form-span-mobile);')
-    expect(stylesheet).toContain('@container preview-runtime (max-width: 520px) {')
-    expect(stylesheet).toContain('.page-preview-form [class*="config-form__row--grid"] {\n    gap: 12px 6px !important;')
+    expect(stylesheet).not.toContain('@container preview-runtime')
+    expect(runtimeHostStylesheet).toContain('.page-preview-form')
+    expect(runtimeHostStylesheet).toContain('@media (max-width: 700px)')
     expect(designerStylesheet).not.toContain('.mx-config-form-designer__canvas-sheet [class*="config-form__row--grid"]')
   })
 

@@ -1,0 +1,34 @@
+.page-manager-dialog-shell {
+  overflow: hidden;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+  box-shadow: 0 20px 56px rgb(0 0 0 / 28%);
+}
+
+.page-manager-dialog-shell .el-dialog__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.page-manager-dialog-shell .el-dialog__body {
+  padding: 0;
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .page-manager-dialog-shell {
+  color: var(--wb-text);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+@media (max-width: 700px) {
+
+  .page-manager-dialog-shell {
+    width: 100% !important;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+}

@@ -1,0 +1,219 @@
+.persistence-dialog {
+  overflow: hidden;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+  box-shadow: 0 20px 56px rgb(0 0 0 / 28%);
+}
+
+.persistence-dialog .el-dialog__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.persistence-dialog .el-dialog__title {
+  color: var(--wb-text-strong);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.persistence-dialog {
+  display: flex;
+  max-height: min(760px, calc(100vh - 32px));
+  min-height: 0;
+  flex-direction: column;
+}
+
+.persistence-dialog--versions,
+.persistence-dialog--recovery {
+  height: min(760px, calc(100vh - 32px));
+}
+
+.persistence-dialog .el-dialog__body {
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0;
+  overflow: hidden;
+}
+
+.checkpoint-form {
+  display: grid;
+  width: min(520px, 100%);
+  padding: 24px;
+  gap: 10px;
+}
+
+.checkpoint-form .el-input,
+.version-label-editor .el-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.checkpoint-form footer,
+.version-inspector footer {
+  display: flex;
+  margin-top: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.version-history-layout {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+
+.version-history-layout > nav {
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+  border-right: 1px solid var(--wb-separator);
+}
+
+.version-history-layout > nav > .el-button {
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 4px;
+  margin-left: 0;
+  justify-content: flex-start;
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+}
+
+.version-history-layout > nav > .el-button.is-active {
+  border-color: var(--wb-accent-line);
+  background: var(--wb-active);
+}
+
+.version-history-layout nav span,
+.version-history-layout nav strong,
+.version-history-layout nav small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-history-layout nav small {
+  margin-top: 3px;
+  color: var(--wb-muted);
+  font-size: 10px;
+}
+
+.version-inspector {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 14px;
+  gap: 12px;
+}
+
+.version-label-editor > div {
+  display: grid;
+  margin-top: 6px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+}
+
+.version-inspector pre {
+  min-width: 0;
+  min-height: 220px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  color: var(--wb-code-text, var(--wb-text));
+  border: 1px solid var(--wb-separator);
+  border-radius: 4px;
+  background: var(--wb-code-bg, var(--wb-surface));
+  font: 12px/1.55 Consolas, "Courier New", monospace;
+}
+
+.version-inspector footer p {
+  margin: 0 auto 0 0;
+  color: var(--wb-muted);
+  font-size: 11px;
+}
+
+.recovery-draft-list {
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.recovery-draft-list article {
+  display: flex;
+  padding: 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.recovery-draft-list article strong,
+.recovery-draft-list article span,
+.recovery-draft-list article small {
+  display: block;
+}
+
+.recovery-draft-list article span,
+.recovery-draft-list article small {
+  margin-top: 4px;
+  color: var(--wb-muted);
+  font-size: 11px;
+}
+
+.recovery-draft-list article > div:last-child {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .persistence-dialog {
+  color: var(--wb-text);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .persistence-dialog .el-dialog__title {
+  color: var(--wb-text-strong);
+}
+
+@media (max-width: 700px) {
+  .persistence-dialog {
+    width: 100% !important;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .version-history-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(130px, 34vh) minmax(0, 1fr);
+  }
+  .version-history-layout > nav {
+    border-right: 0;
+    border-bottom: 1px solid var(--wb-separator);
+  }
+  .version-label-editor > div {
+    grid-template-columns: 1fr auto;
+  }
+  .version-label-editor > div button:last-child {
+    grid-column: 1 / -1;
+  }
+  .version-inspector footer,
+.recovery-draft-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .version-inspector footer p {
+    margin: 0;
+  }
+  .recovery-draft-list article > div:last-child button {
+    flex: 1 1 0;
+  }
+}

@@ -113,29 +113,11 @@ background transition at the narrowest owner instead of delaying axe or exemptin
 }
 ```
 
-Preview responsiveness must follow the actual Runtime stage's inline size, not only the browser viewport or the outer
-scroll pane. A viewport selector can make `.preview-stage` narrower than `.preview-canvas`, so the stage owns the named
-inline-size container. Container rules must reuse the Runtime renderer's variables rather than inventing a second layout:
-
-```css
-.preview-stage {
-  container-name: preview-runtime;
-  container-type: inline-size;
-}
-
-@container preview-runtime (max-width: 1024px) {
-  .page-preview-form [data-config-form-responsive-layout] {
-    --mx-config-form-active-columns: var(--mx-config-form-columns-tablet);
-  }
-
-  .page-preview-form [data-config-form-responsive-cell] {
-    --mx-config-form-active-span: var(--mx-config-form-span-tablet);
-  }
-}
-```
-
-Use the same 1024px tablet and 720px mobile thresholds as Runtime. Designer-owned narrow Canvas adaptations continue to
-follow `data-workspace-mode="narrow"`, which is derived from the Designer root width.
+Preview Runtime renders inside `PreviewRuntimeHostFrame`'s iframe. Its responsive layout follows that document's viewport
+and the Runtime renderer's own 1024px/720px media contracts. Parent Workbench CSS cannot target `.page-preview-form` or
+its descendants across the iframe boundary; do not add dead parent container queries that imply otherwise. The host owns
+the explicit desktop/tablet/mobile iframe width, while Designer-owned narrow Canvas adaptations continue to follow
+`data-workspace-mode="narrow"`, which is derived from the Designer root width.
 
 An overlay Preview must also be isolated from editor chrome. `.editor-pane` establishes a stacking context, while the
 Preview is a higher sibling layer. Raising only the Preview's `z-index` is not sufficient because Designer selection,
@@ -151,7 +133,7 @@ Required regression coverage:
 - At 1440px, 900px, and 390px, Workbench root width does not overflow; narrow Designer Canvas and Preview runtime grids do
   not overflow their own containers.
 - At 900px, select a Canvas node before opening Preview, then interact with a real Preview provider control. The test must
-  prove that the active columns/span equal the stage's mobile variables, all cells remain inside the stage, and Designer
-  node actions do not intercept the Preview control.
+  prove that the iframe Runtime uses the selected viewport width, all cells remain inside its document, and Designer node
+  actions do not intercept the Preview control.
 
 ---

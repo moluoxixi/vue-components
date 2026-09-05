@@ -2,31 +2,24 @@
   .workbench-topbar {
     grid-template-columns: auto minmax(120px, 1fr) auto;
   }
-
   .revision-state {
     display: none;
   }
-
   .topbar-actions > .topbar-secondary-action {
     display: none;
   }
-
   .mobile-action-menu {
     display: block;
   }
-
   .topbar-actions .mobile-page-manager-button {
     display: inline-grid;
   }
-
   .topbar-command-label {
     display: inline;
   }
-
   .topbar-actions .export-menu > button {
     min-width: 72px;
   }
-
   .workbench-app {
     grid-template-rows: 48px minmax(0, 1fr);
   }
@@ -34,56 +27,16 @@
 }
 
 @media (max-width: 700px) {
-  .persistence-dialog {
-    width: 100% !important;
-    height: 100%;
-    max-height: none;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .version-history-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(130px, 34vh) minmax(0, 1fr);
-  }
-
-  .version-history-layout > nav {
-    border-right: 0;
-    border-bottom: 1px solid var(--wb-separator);
-  }
-
-  .version-label-editor > div {
-    grid-template-columns: 1fr auto;
-  }
-
-  .version-label-editor > div button:last-child {
-    grid-column: 1 / -1;
-  }
-
-  .version-inspector footer,
-  .recovery-draft-list article {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .version-inspector footer p {
-    margin: 0;
-  }
-
-  .recovery-draft-list article > div:last-child button {
-    flex: 1 1 0;
-  }
 
   .workbench-layout,
-  .workbench-layout.is-preview-collapsed,
-  .workbench-layout.is-preview-expanded {
+.workbench-layout.is-preview-collapsed,
+.workbench-layout.is-preview-expanded {
     display: block;
     min-height: 0;
   }
 
   .editor-pane,
-  .preview-pane {
+.preview-pane {
     width: 100%;
     height: 100%;
     border-right: 0;
@@ -141,7 +94,7 @@
   }
 
   .topbar-actions > .topbar-secondary-action,
-  .topbar-actions > .mobile-page-manager-button {
+.topbar-actions > .mobile-page-manager-button {
     display: none;
   }
 
@@ -173,70 +126,12 @@
   .preview-canvas {
     padding: 10px;
   }
-
-  .template-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .template-dialog,
-  .page-manager-dialog-shell,
-  .flow-workspace-dialog {
-    width: 100% !important;
-    height: 100%;
-    max-height: none;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .export-preview-dialog {
-    width: 100% !important;
-    height: 100%;
-    max-height: none;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .export-dialog-footer {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .export-dialog-footer > div {
-    width: 100%;
-  }
-
-  .source-file-layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 34px minmax(0, 1fr);
-  }
-
-  .source-file-layout > .source-file-tabs {
-    display: block;
-  }
-
-  .source-file-layout > .project-file-tree,
-  .source-code-pane {
-    grid-row: 2;
-    border-right: 0;
-  }
-
-  .source-file-layout .is-mobile-hidden {
-    display: none;
-  }
-
-  .dialog-action {
-    flex: 1 1 0;
-    justify-content: center;
-  }
 }
 
 @media (max-width: 720px) {
   .workbench-app {
     grid-template-rows: 48px minmax(0, 1fr) 54px;
   }
-
   .mobile-studio-dock {
     z-index: 80;
     display: grid;
@@ -247,7 +142,6 @@
     background: var(--wb-elevated);
     box-shadow: 0 -8px 24px rgb(0 0 0 / 14%);
   }
-
   .mobile-studio-dock button {
     display: grid;
     min-width: 0;
@@ -261,13 +155,11 @@
     background: transparent;
     font-size: 11px;
   }
-
   .mobile-studio-dock button[aria-selected="true"] {
     color: var(--wb-text-strong);
     border-top-color: var(--wb-accent);
     background: var(--wb-hover);
   }
-
   .mobile-studio-dock span {
     width: 100%;
     overflow: hidden;
@@ -275,7 +167,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-
   .workbench-layout {
     grid-row: 2;
   }
@@ -285,7 +176,6 @@
   .topbar-command-label {
     display: none;
   }
-
   .topbar-actions .export-menu > button {
     width: 30px;
     min-width: 30px;
@@ -298,28 +188,23 @@
     padding-inline: 6px;
     gap: 4px;
   }
-
   .topbar-actions {
     gap: 1px;
   }
-
   .topbar-actions > button,
-  .topbar-actions > .mobile-action-menu > button,
-  .pane-header button {
+.topbar-actions > .mobile-action-menu > button,
+.pane-header button {
     width: 28px;
     height: 28px;
   }
-
   .topbar-actions .export-menu > button {
     width: 28px;
     min-width: 28px;
     padding: 0;
   }
-
   .topbar-actions .export-menu > button .export-chevron {
     display: none;
   }
-
   .workspace-context {
     padding-inline: 6px;
   }
@@ -327,13 +212,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .workbench-command-tooltip,
-  .workbench-command-tooltip * {
+.workbench-command-tooltip * {
     transition: none !important;
     animation: none !important;
   }
-
   .preview-stage,
-  .is-spinning {
+.is-spinning {
     transition: none;
     animation: none;
   }
@@ -341,49 +225,30 @@
 
 @media (max-width: 720px) and (pointer: coarse) {
   .topbar-actions > button,
-  .topbar-actions > .mobile-action-menu > button,
-  .appearance-palette-option.el-radio,
-  .topbar-actions .export-menu > button,
-  .mobile-studio-dock button,
-  .designer-left-tabs button,
-  .manage-pages-button,
-  .designer-layers button,
-  .designer-pages button,
-  .export-menu-popover .el-dropdown-menu__item,
-  .mobile-action-popover .el-dropdown-menu__item,
-  .project-file-tree .project-file-tree__row {
+.topbar-actions > .mobile-action-menu > button,
+.appearance-palette-option.el-radio,
+.topbar-actions .export-menu > button,
+.mobile-studio-dock button,
+.designer-left-tabs button,
+.manage-pages-button,
+.designer-layers button,
+.designer-pages button,
+.export-menu-popover .el-dropdown-menu__item,
+.mobile-action-popover .el-dropdown-menu__item {
     min-height: 44px;
   }
-
   .designer-layer-actions .designer-layer-menu-trigger {
     width: 44px;
   }
-
   .designer-layer-menu button {
     width: 100%;
-  }
-
-  .workspace-recovery-notice {
-    top: 56px;
-    right: 8px;
-    bottom: auto;
-    left: 8px;
-    width: auto;
-    max-width: none;
-  }
-
-  .workspace-recovery-notice__actions .el-button {
-    width: 100%;
-    min-height: 44px;
-    justify-content: center;
   }
 }
 
 @media (max-width: 640px) and (pointer: coarse) {
   .topbar-actions > button,
-  .topbar-actions > .mobile-action-menu > button,
-  .template-workspace-actions > .template-mobile-action-menu > button,
-  .topbar-actions .export-menu > button {
+.topbar-actions > .mobile-action-menu > button,
+.topbar-actions .export-menu > button {
     width: 44px;
     min-width: 44px;
     height: 44px;

@@ -1,0 +1,2 @@
+{"file":".trellis/spec/directory-structure.md","reason":"约束组件/feature 专属样式归入真实 owner 且聚合入口不承担业务规则。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"约束 Workbench theme、Runtime 隔离、响应式与视觉 E2E。"}

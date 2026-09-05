@@ -1,5 +1,12 @@
 @import url(./shell.css);
 @import url(./studio.css);
-@import url(./features.css);
-@import url(./templates.css);
+@import url(./feature-surfaces.css);
+@import url(../features/persistence/style/index.css);
+@import url(../features/flow/style/index.css);
+@import url(../features/export/style/index.css);
+@import url(../features/pages/style/index.css);
+@import url(../app/style/index.css);
+@import url(../app/components/TemplateCreationWorkspace/style/index.css);
+@import url(../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css);
+@import url(../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css);
 @import url(./responsive.css);

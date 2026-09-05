@@ -4,6 +4,27 @@ These contracts apply to `packages/ConfigForm/workbench`. Read them before
 changing Monaco language services, dialog focus behavior, or accessibility
 gates.
 
+## Workbench Stylesheet Ownership
+
+- `src/styles/index.css` is the synchronous cascade manifest used by the main
+  Workbench entry. It imports styles only and keeps `responsive.css` last.
+- A feature or component selector family lives beside its owner under
+  `style/index.css`. `src/styles/` keeps only shell/studio/responsive and truly
+  cross-feature surface rules; it must not become a second home for dialogs,
+  template catalog, JSON import, or notification CSS.
+- Mixed selector rules are split by owner without changing declarations or
+  specificity. Async Vue loading must not become the trigger for critical
+  dialog/workspace CSS, because it can produce an unstyled first frame.
+- `PreviewRuntimeHostFrame` is an iframe boundary. Parent Workbench styles may
+  size the iframe element but cannot target Runtime descendants inside it.
+
+Required regression coverage composes every owner stylesheet in exact cascade
+order, rejects removed aggregate/orphan selectors, checks representative
+include/exclude families, builds both Workbench entries, and runs desktop,
+tablet, and mobile visual baselines.
+
+---
+
 ## Monaco Vue SFC Language Services
 
 The workbench keeps the visible `src/App.vue` model on the `vue` language so template HTML, folding, and embedded

@@ -24,7 +24,8 @@
     "09-05-config-form-large-service-boundaries",
     "09-05-ai-doc-discovery-boundary",
     "09-05-config-form-sass-entry-default-control",
-    "09-05-package-cycle-architecture-gate"
+    "09-05-package-cycle-architecture-gate",
+    "09-05-workbench-style-ownership"
   ],
   "parent": null,
   "relatedFiles": [],

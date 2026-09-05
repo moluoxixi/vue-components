@@ -1,0 +1,2 @@
+{"file":".trellis/spec/directory-structure.md","reason":"复核每个 CSS 文件的 owner、入口和遗留 selector 清理。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"复核层叠、主题、断点、Runtime iframe 与视觉回归。"}

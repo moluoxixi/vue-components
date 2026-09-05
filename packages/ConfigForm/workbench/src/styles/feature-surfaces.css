@@ -1,0 +1,13 @@
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .workbench-topbar,
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .pane-header,
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .designer-left-panel {
+  color: var(--wb-muted);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .export-menu-popover {
+  color: var(--wb-text);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}

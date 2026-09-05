@@ -1,0 +1,403 @@
+.json-import-pane {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: 38px minmax(0, 1fr) 58px;
+  background: var(--wb-bg);
+  overflow: hidden;
+}
+
+.json-import-stage-nav {
+  display: grid;
+  padding: 4px 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  border-bottom: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+.json-import-stage-nav button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--wb-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 11px;
+}
+
+.json-import-stage-nav button span {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-control-border);
+  border-radius: 50%;
+  font: 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.json-import-stage-nav button[aria-current="step"] {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-accent-soft);
+}
+
+.json-import-stage-nav button[aria-current="step"] span {
+  color: var(--wb-action-text);
+  border-color: var(--wb-action-bg);
+  background: var(--wb-action-bg);
+}
+
+.json-import-layout {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.6fr);
+  overflow: hidden;
+}
+
+.json-import-source,
+.json-import-inspection,
+.json-import-diagnostics,
+.json-import-preview {
+  min-width: 0;
+  min-height: 0;
+}
+
+.json-import-source {
+  display: grid;
+  padding: 12px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  border-right: 1px solid var(--wb-separator);
+  background: var(--wb-surface);
+}
+
+.json-import-source > header,
+.json-import-diagnostics > header,
+.json-import-preview > header {
+  display: flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.json-import-panel-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: var(--wb-accent);
+}
+
+.json-import-pane h2,
+.json-import-pane h3 {
+  margin: 0;
+  color: var(--wb-text-strong);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.json-import-textarea,
+.json-import-textarea .el-textarea,
+.json-import-textarea .el-textarea__inner {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.json-import-textarea .el-textarea__inner {
+  padding: 12px;
+  color: var(--wb-text);
+  border-radius: 4px;
+  background: var(--wb-editor-surface);
+  font: 11px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre;
+  overflow: auto;
+}
+
+.json-import-source > footer,
+.json-import-footer,
+.json-import-footer > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.json-import-source > footer {
+  justify-content: flex-end;
+}
+
+.json-import-pane .el-button--primary {
+  --el-button-text-color: var(--wb-action-text);
+  --el-button-bg-color: var(--wb-action-bg);
+  --el-button-border-color: var(--wb-action-bg);
+  --el-button-hover-text-color: var(--wb-action-text);
+  --el-button-hover-bg-color: var(--wb-action-bg);
+  --el-button-hover-border-color: var(--wb-accent-line);
+  --el-button-active-text-color: var(--wb-action-text);
+  --el-button-active-bg-color: var(--wb-action-bg);
+  --el-button-active-border-color: var(--wb-accent-line);
+}
+
+.json-import-upload {
+  display: grid;
+  min-height: 0;
+  align-content: center;
+  gap: 12px;
+}
+
+.json-import-upload .el-upload,
+.json-import-upload .el-upload-dragger {
+  width: 100%;
+}
+
+.json-import-upload .el-upload-dragger {
+  display: grid;
+  min-height: 180px;
+  padding: 24px;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: var(--wb-muted);
+  border-color: var(--wb-control-border);
+  border-radius: 4px;
+  background: var(--wb-editor-surface);
+}
+
+.json-import-upload strong {
+  color: var(--wb-text-strong);
+  font-size: 12px;
+}
+
+.json-import-file-meta {
+  display: flex;
+  min-width: 0;
+  padding: 10px;
+  align-items: center;
+  gap: 9px;
+  color: var(--wb-accent);
+  border: 0;
+  background: var(--wb-elevated);
+}
+
+.json-import-file-meta span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.json-import-file-meta strong,
+.json-import-file-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.json-import-file-meta small {
+  color: var(--wb-muted);
+  font: 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.json-import-inspection {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.8fr) minmax(320px, 1.2fr);
+  overflow: hidden;
+}
+
+.json-import-diagnostics,
+.json-import-preview {
+  display: grid;
+  padding: 12px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.json-import-diagnostics {
+  border-right: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+.json-import-preview {
+  background: var(--wb-editor-surface);
+}
+
+.json-import-preview .preview-runtime-host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  border: 0;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.json-import-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--wb-positive);
+  font-size: 10px;
+}
+
+.json-import-error-summary,
+.json-import-report,
+.json-import-empty {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.json-import-error-summary > strong {
+  color: var(--wb-danger);
+  font-size: 12px;
+}
+
+.json-import-error-summary ul {
+  display: grid;
+  margin: 9px 0 0;
+  padding: 0;
+  gap: 7px;
+  list-style: none;
+}
+
+.json-import-error-summary li {
+  display: grid;
+  min-width: 0;
+  padding: 8px;
+  gap: 3px;
+  border-left: 2px solid var(--wb-danger);
+  background: var(--wb-danger-soft);
+}
+
+.json-import-error-summary code {
+  color: var(--wb-accent);
+  font: 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.json-import-error-summary li > span,
+.json-import-error-summary p {
+  margin: 0;
+  color: var(--wb-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.json-import-report dl {
+  display: grid;
+  margin: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--wb-separator);
+}
+
+.json-import-report dl > div {
+  min-width: 0;
+  padding: 7px 8px;
+  border-right: 1px solid var(--wb-separator);
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.json-import-report dt {
+  color: var(--wb-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.json-import-report dd {
+  margin: 3px 0 0;
+  color: var(--wb-text-strong);
+  font: 10px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.json-import-empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: var(--wb-muted);
+  font-size: 11px;
+}
+
+.json-import-footer {
+  padding: 8px 12px;
+  justify-content: space-between;
+  border-top: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+.json-import-footer p,
+.json-import-footer > span {
+  min-width: 0;
+  margin: 0;
+  color: var(--wb-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.json-import-footer p[role="alert"] {
+  color: var(--wb-danger);
+}
+
+@media (max-width: 1000px) {
+
+  .json-import-layout {
+    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .json-import-inspection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .json-import-diagnostics,
+.json-import-preview {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .json-import-inspection .is-mobile-hidden {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+
+  .json-import-pane {
+    grid-template-rows: 38px minmax(0, 1fr) auto;
+  }
+
+  .json-import-layout {
+    display: block;
+  }
+
+  .json-import-source,
+.json-import-inspection {
+    width: 100%;
+    height: 100%;
+    border-right: 0;
+  }
+
+  .json-import-layout > .is-mobile-hidden,
+.json-import-inspection > .is-mobile-hidden {
+    display: none;
+  }
+
+  .json-import-footer {
+    min-height: 62px;
+  }
+
+  .json-import-footer > span,
+.json-import-footer > p {
+    max-width: 48%;
+  }
+}

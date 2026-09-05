@@ -1,0 +1,103 @@
+.flow-workspace-dialog {
+  overflow: hidden;
+  color: var(--wb-text);
+  border: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+  box-shadow: 0 20px 56px rgb(0 0 0 / 28%);
+}
+
+.flow-workspace-dialog .el-dialog__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--wb-separator);
+}
+
+.flow-workspace-dialog .el-dialog__title {
+  color: var(--wb-text-strong);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.flow-workspace-dialog {
+  display: flex;
+  height: min(820px, calc(100vh - 32px));
+  min-height: 0;
+  flex-direction: column;
+}
+
+.flow-workspace-dialog .el-dialog__body,
+.flow-workspace-dialog-body {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  background: var(--wb-surface);
+}
+
+.flow-workspace-dialog .el-dialog__body {
+  display: flex;
+  padding: 0;
+}
+
+.flow-workspace-dialog-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.flow-workspace-dialog-header h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--wb-text-strong);
+  font-size: 15px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-workspace-dialog-header > .el-button {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--wb-muted);
+}
+
+.flow-workspace-dialog-header > .el-button:hover {
+  color: var(--wb-text-strong);
+  background: var(--wb-hover);
+}
+
+.flow-workspace-dialog-body {
+  display: flex;
+}
+
+.flow-workspace-dialog-body > * {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .flow-workspace-dialog {
+  color: var(--wb-text);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .flow-workspace-dialog .el-dialog__title {
+  color: var(--wb-text-strong);
+}
+
+@media (max-width: 700px) {
+
+  .flow-workspace-dialog {
+    width: 100% !important;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+}
