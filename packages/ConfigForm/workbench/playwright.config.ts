@@ -16,7 +16,7 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: 'dist/playwright-report/config-form-workbench' }],
   ],
   use: {
-    actionTimeout: 10_000,
+    actionTimeout: process.env.CI ? 30_000 : 10_000,
     baseURL: serverUrl,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',

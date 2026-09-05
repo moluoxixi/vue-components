@@ -27,11 +27,11 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
   await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
   await workspace.getByRole('button', { name: 'Create project', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
-  await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled()
+  await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled({ timeout: 15_000 })
   await expect(page
     .frameLocator('iframe[data-design-runtime-variant="canvas"]')
     .locator('[data-config-node-id^="profile-name-"]'))
-    .toBeVisible()
+    .toBeVisible({ timeout: 15_000 })
 }
 
 const appearanceLabels: Record<WorkbenchPalette | WorkbenchThemeMode, string> = {

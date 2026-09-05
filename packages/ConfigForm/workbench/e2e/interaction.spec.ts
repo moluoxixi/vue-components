@@ -104,6 +104,9 @@ async function runtimeNodeSignature(node: Locator): Promise<{
 
 async function visibleBox(locator: Locator, options: { timeout?: number } = {}): Promise<DragGeometry & { x: number, y: number }> {
   await expect(locator).toBeVisible({ timeout: options.timeout })
+  await expect.poll(async () => Boolean(await locator.boundingBox()), {
+    timeout: options.timeout,
+  }).toBe(true)
   const box = await locator.boundingBox()
   expect(box).not.toBeNull()
   return box!
@@ -111,6 +114,9 @@ async function visibleBox(locator: Locator, options: { timeout?: number } = {}):
 
 async function attachedBox(locator: Locator): Promise<DragGeometry & { x: number, y: number }> {
   await locator.waitFor({ state: 'attached' })
+  await expect.poll(async () => Boolean(await locator.boundingBox()), {
+    timeout: 30_000,
+  }).toBe(true)
   const box = await locator.boundingBox()
   expect(box).not.toBeNull()
   return box!
