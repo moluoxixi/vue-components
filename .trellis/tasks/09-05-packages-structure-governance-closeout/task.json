@@ -28,7 +28,8 @@
     "09-05-workbench-style-ownership",
     "09-05-workspace-package-cycle-gate",
     "09-05-workbench-shell-style-ownership",
-    "09-05-element-default-value-style-parity"
+    "09-05-element-default-value-style-parity",
+    "09-05-headless-slot-attrs-inference"
   ],
   "parent": null,
   "relatedFiles": [],

@@ -161,7 +161,7 @@ declare module '@moluoxixi/config-form-headless' {
     defaultValue?: unknown
     field: ConfigFormFieldKey<TValues> | string
     label?: string
-    slots?: ConfigFormFieldSlots<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    slots?: ConfigFormFieldSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>
     fieldAttrs?: TFieldAttrs
     required?: ConfigFormCondition<TValues>
     requiredMessage?: string
@@ -185,7 +185,7 @@ declare module '@moluoxixi/config-form-headless' {
     TFieldAttrs = ConfigFormAttrs,
     TCellAttrs = ConfigFormAttrs,
   > extends ConfigFormNodeBase<TValues, TComponent, TCellAttrs> {
-    slots?: ConfigFormComponentSlots<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    slots?: ConfigFormComponentSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>
   }
   export type ConfigFormNode<
     TValues extends ConfigFormValues = ConfigFormValues,
@@ -282,16 +282,18 @@ declare module '@moluoxixi/config-form-headless' {
     props?: Partial<TComponent extends { new (...args: any[]): { $props: infer TProps } } ? TProps : Record<string, unknown>> & Record<string, unknown>
   }
   export type ConfigFormFieldInput<TValues extends ConfigFormValues, TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs> = Omit<ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>, 'component' | 'props'> & ConfigFormComponentPart<TComponent>
+  export type ConfigFormComponentNodeInput<TValues extends ConfigFormValues, TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs> = Omit<ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>, 'component' | 'props'> & ConfigFormComponentPart<TComponent>
   export interface DefineConfigFormFieldFactory<TValues extends ConfigFormValues> {
-    <TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
-    <TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(field: ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    <TComponent = unknown, TFieldAttrs extends object = ConfigFormAttrs, TCellAttrs extends object = ConfigFormAttrs>(field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs> & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
+    <TComponent = unknown, TFieldAttrs extends object = ConfigFormAttrs, TCellAttrs extends object = ConfigFormAttrs>(field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs> & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
   }
   export interface DefineConfigFormFieldsResult<TValues extends ConfigFormValues> {
     defineField: DefineConfigFormFieldFactory<TValues>
   }
   export type DefineFieldFactory<TValues extends ConfigFormValues> = DefineConfigFormFieldFactory<TValues>
   export type DefineFieldsResult<TValues extends ConfigFormValues> = DefineConfigFormFieldsResult<TValues>
-  export function defineField<TValues extends ConfigFormValues = ConfigFormValues, TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  export function defineField<TValues extends ConfigFormValues = ConfigFormValues, TComponent = unknown, TFieldAttrs extends object = ConfigFormAttrs, TCellAttrs extends object = ConfigFormAttrs>(field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs> & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
+  export function defineField<TValues extends ConfigFormValues = ConfigFormValues, TComponent = unknown, TFieldAttrs extends object = ConfigFormAttrs, TCellAttrs extends object = ConfigFormAttrs>(field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs> & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
   export function defineFields<TValues extends ConfigFormValues = ConfigFormValues>(): DefineConfigFormFieldsResult<TValues>
 }
 declare module '@moluoxixi/config-form' {

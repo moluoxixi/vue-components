@@ -19,8 +19,8 @@ import { markRaw } from 'vue'
 export function defineField<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = unknown,
-  TFieldAttrs = ConfigFormAttrs,
-  TCellAttrs = ConfigFormAttrs,
+  TFieldAttrs extends object = ConfigFormAttrs,
+  TCellAttrs extends object = ConfigFormAttrs,
 >(
   field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
 ): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
@@ -28,8 +28,8 @@ export function defineField<
 export function defineField<
   TValues extends ConfigFormValues = ConfigFormValues,
   TComponent = unknown,
-  TFieldAttrs = ConfigFormAttrs,
-  TCellAttrs = ConfigFormAttrs,
+  TFieldAttrs extends object = ConfigFormAttrs,
+  TCellAttrs extends object = ConfigFormAttrs,
 >(
   field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
 ): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
@@ -44,21 +44,25 @@ export function defineField(
 export function defineFields<TValues extends ConfigFormValues = ConfigFormValues>(): DefineConfigFormFieldsResult<TValues> {
   function defineBoundField<
     TComponent = unknown,
-    TFieldAttrs = ConfigFormAttrs,
-    TCellAttrs = ConfigFormAttrs,
+    TFieldAttrs extends object = ConfigFormAttrs,
+    TCellAttrs extends object = ConfigFormAttrs,
   >(
     field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
   ): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
     & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
   function defineBoundField<
     TComponent = unknown,
-    TFieldAttrs = ConfigFormAttrs,
-    TCellAttrs = ConfigFormAttrs,
+    TFieldAttrs extends object = ConfigFormAttrs,
+    TCellAttrs extends object = ConfigFormAttrs,
   >(
     field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
   ): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
     & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
-  function defineBoundField<TComponent, TFieldAttrs, TCellAttrs>(
+  function defineBoundField<
+    TComponent,
+    TFieldAttrs extends object,
+    TCellAttrs extends object,
+  >(
     field:
       | ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
       | ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,

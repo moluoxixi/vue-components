@@ -70,11 +70,19 @@ export type ConfigFormComponentNodeInput<
     & ConfigFormComponentPart<TComponent>
 
 export interface DefineConfigFormFieldFactory<TValues extends ConfigFormValues> {
-  <TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(
+  <
+    TComponent = unknown,
+    TFieldAttrs extends object = ConfigFormAttrs,
+    TCellAttrs extends object = ConfigFormAttrs,
+  >(
     field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
   ): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
     & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
-  <TComponent = unknown, TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(
+  <
+    TComponent = unknown,
+    TFieldAttrs extends object = ConfigFormAttrs,
+    TCellAttrs extends object = ConfigFormAttrs,
+  >(
     field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>,
   ): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>
     & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>

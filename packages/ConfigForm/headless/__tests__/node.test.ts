@@ -64,28 +64,63 @@ describe('collectConfigFormFields', () => {
   })
 
   it('accepts specifically typed readonly fields inside heterogeneous component slots', () => {
+    interface NamedCellAttrs {
+      region?: string
+    }
+
+    interface NamedFieldAttrs {
+      compact?: boolean
+    }
+
     const Container = defineComponent(() => () => h('section'))
+    const Description = defineComponent({
+      props: { label: { default: '', type: String } },
+      setup: props => () => h('span', props.label),
+    })
     const Input = defineComponent({
       props: { modelValue: { default: '', type: String } },
       setup: () => () => h('input'),
     })
     const { defineField } = defineFields<AccountForm>()
+    const typedAttrsField = defineField<typeof Input, NamedFieldAttrs, NamedCellAttrs>({
+      cellAttrs: { region: 'main' },
+      component: Input,
+      field: 'name',
+      fieldAttrs: { compact: true },
+      id: 'typed-name',
+    })
+    const exactFieldAttrs: NamedFieldAttrs | undefined = typedAttrsField.fieldAttrs
+    const exactCellAttrs: NamedCellAttrs | undefined = typedAttrsField.cellAttrs
     const nodes = [defineField({
       component: Container,
       id: 'container',
       slots: {
-        default: [defineField({
-          component: Input,
-          field: 'name',
-          id: 'name',
-          readonlyRender: ({ value }) => {
-            const exactValue: string = value
-            return exactValue
-          },
-        })],
+        default: [
+          defineField({
+            component: Description,
+            id: 'description',
+            props: { label: 'Account name' },
+          }),
+          defineField({
+            component: Input,
+            field: 'name',
+            id: 'name',
+            readonlyRender: ({ value }) => {
+              const exactValue: string = value
+              return exactValue
+            },
+          }),
+        ],
       },
     })]
 
     expect(collectAllConfigFormFields(nodes).map(field => field.field)).toEqual(['name'])
+    expect(exactFieldAttrs).toEqual({ compact: true })
+    expect(exactCellAttrs).toEqual({ region: 'main' })
+
+    if (false) {
+      // @ts-expect-error Attribute generics must be object-shaped.
+      defineField<typeof Input, string>({ component: Input, field: 'name', id: 'invalid-attrs' })
+    }
   })
 })

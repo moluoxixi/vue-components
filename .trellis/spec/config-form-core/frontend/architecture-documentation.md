@@ -22,6 +22,76 @@ Before finishing a cross-package ConfigForm task, verify:
 4. New terminology distinguishes Runtime plugins, Designer adapters, lightweight UI packages, and Vue plugins.
 5. `pnpm test:config-form-packages` covers any new public package boundary.
 
+## Scenario: Headless Nested Slot Attr Inference
+
+### 1. Scope / Trigger
+
+Apply this contract when changing Headless `defineField`/`defineFields`, node attrs generics, or runtime slot node types.
+
+### 2. Signatures
+
+```ts
+interface DefineConfigFormFieldFactory<TValues extends ConfigFormValues> {
+  <
+    TComponent = unknown,
+    TFieldAttrs extends object = ConfigFormAttrs,
+    TCellAttrs extends object = ConfigFormAttrs,
+  >(field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormFieldInput<
+    TValues,
+    TComponent,
+    TFieldAttrs,
+    TCellAttrs
+  >
+}
+```
+
+### 3. Contracts
+
+- Omitted `fieldAttrs` and `cellAttrs` keep the `ConfigFormAttrs` defaults; generic inference must not narrow either type to `undefined`.
+- A component slot may contain heterogeneous component and field nodes created by the same bound `defineFields<TValues>()` factory.
+- Explicit custom attrs remain inferred when provided and may use a named interface without an index signature; they must still be object-shaped.
+- Runtime behavior remains identity-like: the helper marks components and recursively copies slots but does not add attrs or hidden metadata.
+- Workbench Monaco declarations mirror the public constraints in the same change.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Slot array mixes a component node and a field node without attrs | Compile with `ConfigFormAttrs` defaults |
+| Caller supplies named custom field/cell attrs interfaces | Preserve their exact property types |
+| Caller attempts a primitive attrs type | Fail the generic constraint |
+| Runtime receives nested slot nodes | Preserve node order and collect only bound fields |
+
+### 5. Good / Base / Bad Cases
+
+- Good: one `defineFields<AccountForm>()` factory creates a container whose default slot contains a description component and a typed name field.
+- Base: a single field without attrs uses `ConfigFormAttrs` for both attrs parameters.
+- Bad: unconstrained attrs generics infer `undefined` from omitted optional properties and make sibling slot nodes mutually incompatible.
+
+### 6. Tests Required
+
+- Headless unit/type tests compile and collect a heterogeneous slot array containing both component and field nodes.
+- Element and Ant adapter typechecks consume the public built declarations without casts.
+- Workbench declaration tests verify the embedded Monaco surface stays synchronized.
+- Root `pnpm typecheck` runs after rebuilding dependency declarations.
+
+### 7. Wrong vs Correct
+
+Wrong:
+
+```ts
+<TFieldAttrs = ConfigFormAttrs, TCellAttrs = ConfigFormAttrs>(field: Field<...>) => Field<...>
+```
+
+Correct:
+
+```ts
+<
+  TFieldAttrs extends object = ConfigFormAttrs,
+  TCellAttrs extends object = ConfigFormAttrs,
+>(field: Field<...>) => Field<...>
+```
+
 ## Current-Contract-Only Development Policy
 
 ### 1. Scope / Trigger

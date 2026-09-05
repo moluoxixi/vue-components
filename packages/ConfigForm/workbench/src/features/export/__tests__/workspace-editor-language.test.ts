@@ -107,6 +107,9 @@ describe('workbench type declarations', () => {
   it('publishes real defineFields and defineField signatures from headless only', () => {
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export function defineFields<TValues extends ConfigFormValues = ConfigFormValues>(): DefineConfigFormFieldsResult<TValues>')
     expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export function defineField<TValues extends ConfigFormValues = ConfigFormValues')
+    expect(WORKBENCH_TYPE_DECLARATIONS).toContain('TFieldAttrs extends object = ConfigFormAttrs')
+    expect(WORKBENCH_TYPE_DECLARATIONS).toContain('export type ConfigFormComponentNodeInput')
+    expect(WORKBENCH_TYPE_DECLARATIONS).toContain('field: ConfigFormComponentNodeInput<TValues')
     expect(WORKBENCH_TYPE_DECLARATIONS).not.toContain('export function defineConfigFormFields')
     expect(WORKBENCH_TYPE_DECLARATIONS).not.toContain('export function defineConfigFormField')
 
@@ -132,8 +135,8 @@ describe('workbench type declarations', () => {
     expect(headlessDeclaration).toContain('export function defineFields')
     expect(headlessDeclaration).toContain('export interface DefineConfigFormFieldFactory')
     expect(headlessDeclaration).toContain('required?: ConfigFormCondition<TValues>')
-    expect(headlessDeclaration).toContain('slots?: ConfigFormFieldSlots<TValues, TComponent, TFieldAttrs, TCellAttrs>')
-    expect(headlessDeclaration).toContain('slots?: ConfigFormComponentSlots<TValues, TComponent, TFieldAttrs, TCellAttrs>')
+    expect(headlessDeclaration).toContain('slots?: ConfigFormFieldSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>')
+    expect(headlessDeclaration).toContain('slots?: ConfigFormComponentSlots<TValues, Component | string, TFieldAttrs, TCellAttrs>')
     expect(headlessDeclaration).toContain('export type ConfigFormComponentSlot')
     expect(headlessDeclaration).toContain('export type ConfigFormFieldSlot')
     expect(headlessDeclaration).toContain('export type ConfigFormColumnSpan = number')

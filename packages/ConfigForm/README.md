@@ -270,7 +270,7 @@ Reaction 派生状态不会修改 PageGraph 字段定义或导出 JSON。
 
 ## Slot 边界
 
-Headless runtime slots 面向 Vue，允许配置节点、数组、组件和 render function。Design slots 是 PageGraph 中可序列化的 `SlotItem[]`，同时受 material 的 `accepts`、`materials`、`min`、`max` 约束。
+Headless runtime slots 面向 Vue，允许配置节点、数组、组件和 render function。`defineFields<TValues>()` 的字段/单元 attrs 泛型约束为对象，并默认使用 `ConfigFormAttrs`；未显式提供 attrs 时异构 slot 子节点共享该缺省边界，不会因某个节点省略 attrs 而反向推导成 `undefined`。Design slots 是 PageGraph 中可序列化的 `SlotItem[]`，同时受 material 的 `accepts`、`materials`、`min`、`max` 约束。
 
 需要特定 provider 的结构物料通过 Designer Registry 声明 `allowedParents: [{ material, slot }]`。例如 `element.tab-pane` 只能位于 `element.tabs.default`，`element.collapse-item` 只能位于 `element.collapse.default`。该约束是 Registry 能力，不写入 Config Model；文档分析、Design Runtime 投影、Designer command 和 Model Operation 共用它。非法历史节点会被诊断并从 live projection 中省略，避免在 Vue Runtime 中挂载到缺少 provider 的位置。
 
