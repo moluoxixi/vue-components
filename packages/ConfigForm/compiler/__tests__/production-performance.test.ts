@@ -19,6 +19,7 @@ const NODE_COUNT = 2_000
 const describePerformance = process.env.CI && process.env.npm_lifecycle_event !== 'test:performance'
   ? describe.skip
   : describe
+const performanceBudgetMultiplier = Number(process.env.CI_PERFORMANCE_BUDGET_MULTIPLIER ?? 1)
 
 function fixture() {
   const contract: ComponentContract = {
@@ -95,7 +96,7 @@ describePerformance('page compilation production budget', () => {
     if (!result.success)
       return
     expect(Object.keys(result.compilation.page.nodesById)).toHaveLength(NODE_COUNT)
-    expect(duration).toBeLessThan(750)
+    expect(duration).toBeLessThan(750 * performanceBudgetMultiplier)
   })
 
   it('keeps a single-node 2000-node page update within one frame and preserves unrelated IR', () => {
@@ -143,7 +144,7 @@ describePerformance('page compilation production budget', () => {
 
     durations.sort((left, right) => left - right)
     const p95 = durations[Math.floor(durations.length * 0.95) - 1]!
-    expect(p95).toBeLessThan(16.7)
+    expect(p95).toBeLessThan(16.7 * performanceBudgetMultiplier)
   })
 
   it('keeps a 2000-node drag candidate transaction, snapshot, and compile within one frame', () => {
@@ -185,6 +186,6 @@ describePerformance('page compilation production budget', () => {
 
     durations.sort((left, right) => left - right)
     const p95 = durations[Math.floor(durations.length * 0.95) - 1]!
-    expect(p95).toBeLessThan(16.7)
+    expect(p95).toBeLessThan(16.7 * performanceBudgetMultiplier)
   })
 })

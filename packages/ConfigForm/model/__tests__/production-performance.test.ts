@@ -66,6 +66,7 @@ function largeProject(nodeCount: number): { document: ProjectDocument, registry:
 const describePerformance = process.env.CI && process.env.npm_lifecycle_event !== 'test:performance'
   ? describe.skip
   : describe
+const performanceBudgetMultiplier = Number(process.env.CI_PERFORMANCE_BUDGET_MULTIPLIER ?? 1)
 
 describePerformance('project model production performance budgets', () => {
   it.each([
@@ -108,7 +109,7 @@ describePerformance('project model production performance budgets', () => {
     }
     durations.sort((left, right) => left - right)
     const p95 = durations[Math.floor(durations.length * 0.95) - 1]!
-    expect(p95).toBeLessThan(p95BudgetMs)
+    expect(p95).toBeLessThan(p95BudgetMs * performanceBudgetMultiplier)
     expect(document.pagesById.home?.graph.nodesById[`field-${Math.floor(nodeCount / 2)}`]).toMatchObject({
       props: { placeholder: `Field ${Math.floor(nodeCount / 2)}` },
     })
@@ -146,7 +147,7 @@ describePerformance('project model production performance budgets', () => {
     }
     durations.sort((left, right) => left - right)
     const p95 = durations[Math.floor(durations.length * 0.95) - 1]!
-    expect(p95).toBeLessThan(16)
+    expect(p95).toBeLessThan(16 * performanceBudgetMultiplier)
     expect(document.pagesById.home?.graph.root[1000]?.nodeId).toBe('field-1000')
   })
 
@@ -208,7 +209,7 @@ describePerformance('project model production performance budgets', () => {
     }
     durations.sort((left, right) => left - right)
     const p95 = durations[Math.floor(durations.length * 0.95) - 1]!
-    expect(p95).toBeLessThan(16)
+    expect(p95).toBeLessThan(16 * performanceBudgetMultiplier)
     expect(document.pagesById.home?.graph.nodesById).not.toHaveProperty('candidate-0')
   })
 })
