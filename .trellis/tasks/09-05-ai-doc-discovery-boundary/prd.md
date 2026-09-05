@@ -14,11 +14,11 @@
 
 ## 验收标准
 
-- [ ] 三层职责通过明确 service 边界组合，原公开入口不变。
-- [ ] entries、globs、auto、workspace package、barrel/re-export、循环 export 和缺失模块测试通过。
-- [ ] `ai-doc-assistant` lint、typecheck、unit、build 通过。
-- [ ] package architecture 与 `git diff --check` 通过。
-- [ ] 现有服务端消费者无需改用新的公共入口。
+- [x] 三层职责通过明确 service 边界组合，原公开入口不变。
+- [x] entries、globs、auto、workspace package、barrel/re-export、循环 export 和缺失模块测试通过。
+- [x] `ai-doc-assistant` lint、typecheck、unit、build 通过。
+- [x] package architecture 与 `git diff --check` 通过。
+- [x] 现有服务端消费者无需改用新的公共入口。
 
 ## 范围外
 

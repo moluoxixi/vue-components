@@ -146,6 +146,48 @@ describe('component discovery（公共入口扫描）', () => {
     })).rejects.toThrow(/cannot resolve module ".\/MissingButton"/)
   })
 
+  it('循环 export star 会终止并保留同一 barrel 的非循环组件', async () => {
+    const uiDir = join(root, 'packages', 'ui')
+    await writeFile(join(uiDir, 'index.ts'), `export * from './src/cycle-star-a'\n`, 'utf8')
+    await writeFile(join(uiDir, 'src', 'cycle-star-a.ts'), [
+      `export * from './cycle-star-b'`,
+      `export { default as StarButton } from './StarButton.vue'`,
+      '',
+    ].join('\n'), 'utf8')
+    await writeFile(join(uiDir, 'src', 'cycle-star-b.ts'), `export * from './cycle-star-a'\n`, 'utf8')
+    await writeFile(join(uiDir, 'src', 'StarButton.vue'), SFC, 'utf8')
+
+    const components = await discoverComponentSources({
+      root,
+      componentEntries: ['packages/ui/index.ts'],
+    })
+
+    expect(components).toEqual([
+      expect.objectContaining({ exportName: 'StarButton', packageName: '@scope/ui' }),
+    ])
+  })
+
+  it('循环命名 re-export 会终止并继续解析同一模块的非循环组件', async () => {
+    const uiDir = join(root, 'packages', 'ui')
+    await writeFile(join(uiDir, 'index.ts'), `export { CyclicButton, NamedButton } from './src/cycle-named-a'\n`, 'utf8')
+    await writeFile(join(uiDir, 'src', 'cycle-named-a.ts'), [
+      `export { CyclicButton } from './cycle-named-b'`,
+      `export { default as NamedButton } from './NamedButton.vue'`,
+      '',
+    ].join('\n'), 'utf8')
+    await writeFile(join(uiDir, 'src', 'cycle-named-b.ts'), `export { CyclicButton } from './cycle-named-a'\n`, 'utf8')
+    await writeFile(join(uiDir, 'src', 'NamedButton.vue'), SFC, 'utf8')
+
+    const components = await discoverComponentSources({
+      root,
+      componentEntries: ['packages/ui/index.ts'],
+    })
+
+    expect(components).toEqual([
+      expect.objectContaining({ exportName: 'NamedButton', packageName: '@scope/ui' }),
+    ])
+  })
+
   it('未配置且只有一个 package public entry 导出组件时可自动识别', async () => {
     const singleRoot = join(root, 'single')
     const packageDir = join(singleRoot, 'packages', 'single-ui')

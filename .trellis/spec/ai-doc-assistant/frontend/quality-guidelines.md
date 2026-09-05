@@ -71,6 +71,11 @@ Playwright output remains below `packages/ai-doc-assistant/.playwright/`; publis
   `export { default, NamedComponent }` must trace both paths to the same SFC;
   candidate deduplication then prefers the PascalCase public name. A component
   exported only as `default` remains discoverable as `default`.
+- Component discovery keeps three private service owners: `component-discovery.ts`
+  selects and combines entries/globs/auto strategies, `workspace-resolution.ts`
+  resolves workspace packages/files/modules, and `component-export-resolution.ts`
+  traverses TypeScript exports and deduplicates SFC candidates. Only
+  `component-discovery.ts` is re-exported through the discovery service barrel.
 - Playwright reports and traces live under `.playwright/`, outside the publishable `dist`. CI artifact paths must follow the configured output paths.
 - Every package `source` export must exist in the packed tarball. This package publishes `index.ts` and `src` alongside `dist`; browser test reports are never packed.
 
@@ -119,7 +124,8 @@ Playwright output remains below `packages/ai-doc-assistant/.playwright/`; publis
 - Qdrant tests assert the reserved metadata point persists `schemaVersion`, `sourceHash`, and every embedding identity field; hydrate rejects missing/mismatched payloads, and search sends a `kind=document` filter.
 - Markdown/Demo tests cover raw HTML, unsafe schemes, incomplete fences, allowlisted imports, and source-only fallback.
 - Component-discovery tests cover default-first plus named exports that resolve
-  to one SFC, default-only entries, local aliases, and workspace re-exports.
+  to one SFC, default-only entries, local aliases, workspace re-exports, and
+  star/named export cycles that still return a non-cyclic SFC from the same barrel.
 - Browser E2E uses an AI SDK compatible upstream stub and verifies desktop/mobile source, streamed text, demo mount, focus, and overflow behavior.
 - Build, packed Node smoke, and browser-pack checks prove server Provider objects and secrets do not enter UI output.
 - Build output inspection asserts `DemoPreview`, `vector-strategy`, `orama-store`, and `qdrant-store` remain separate chunks and that the UI main chunk does not absorb TypeScript through `sfc-transpile`.

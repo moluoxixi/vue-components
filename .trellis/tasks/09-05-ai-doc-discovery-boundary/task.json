@@ -3,7 +3,7 @@
   "name": "ai-doc-discovery-boundary",
   "title": "AI 文档组件发现服务拆分",
   "description": "拆分 component-discovery 的路径解析、AST 遍历与策略编排职责。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "ai-doc-assistant",
