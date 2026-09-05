@@ -981,3 +981,28 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 40: Workbench 样式与 ConfigForm 治理收口
+
+**Date**: 2026-09-05
+**Task**: Workbench 样式与 ConfigForm 治理收口
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+完成 Workbench Shell 样式所有权拆分；修复 Element Plus 默认值控件重复 class 与视觉不一致；修复 Headless defineFields 异构 slot attrs 类型推导，并同步 Monaco 声明与 ConfigForm 文档/spec。全仓 lint/typecheck/test/build、Workbench unit/template/E2E、架构门禁、packed Node/browser exports 全部通过；33 包 0 debt，用户既有 release workflow 最终状态保持。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `659f7921` | (see git log) |
+| `f9bc37a0` | (see git log) |
+| `a53e9f0d` | (see git log) |
+| `4c3e3f39` | (see git log) |
+
+### Status
+
+[OK] **Completed**
