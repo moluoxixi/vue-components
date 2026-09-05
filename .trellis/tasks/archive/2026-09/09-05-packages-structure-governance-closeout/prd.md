@@ -34,13 +34,13 @@
 
 ## 验收标准
 
-- [ ] 十一个子任务均完成验证、独立提交并归档。
-- [ ] 所有发布包的源码条件、发布文件、README 和 `sideEffects` 合同可由自动测试验证。
-- [ ] 架构 collector 自动覆盖剩余的目录与所有权合同，且现有生产代码无未知诊断。
-- [ ] 三个 P2 服务文件按真实职责拆分，原公共入口和运行时行为保持稳定。
-- [ ] 全仓 lint、typecheck、unit、build、package architecture 与 packed consumer 验证通过。
-- [ ] ConfigForm Workbench、Designer、package smoke 和 E2E 门禁保持通过。
-- [ ] `git diff --check` 通过，工作树仅保留用户原有的无关修改。
+- [x] 十一个子任务均完成验证、独立提交并归档。
+- [x] 所有发布包的源码条件、发布文件、README 和 `sideEffects` 合同可由自动测试验证。
+- [x] 架构 collector 自动覆盖剩余的目录与所有权合同，且现有生产代码无未知诊断。
+- [x] 三个 P2 服务文件按真实职责拆分，原公共入口和运行时行为保持稳定。
+- [x] 全仓 lint、typecheck、unit、build、package architecture 与 packed consumer 验证通过。
+- [x] ConfigForm Workbench、Designer、package smoke 和 E2E 门禁保持通过。
+- [x] `git diff --check` 通过，工作树仅保留用户原有的无关修改。
 
 ## 范围外
 

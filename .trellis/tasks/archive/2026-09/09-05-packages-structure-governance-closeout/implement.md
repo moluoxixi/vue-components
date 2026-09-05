@@ -13,8 +13,8 @@
 - [x] 完成并归档 `workbench-shell-style-ownership`。
 - [x] 完成并归档 `element-default-value-style-parity`。
 - [x] 完成并归档 `headless-slot-attrs-inference`。
-- [ ] 运行全仓集成门禁并核对无新增架构债务。
-- [ ] 更新必要的 `.trellis/spec/` 合同并归档父任务。
+- [x] 运行全仓集成门禁并核对无新增架构债务。
+- [x] 更新必要的 `.trellis/spec/` 合同并归档父任务。
 
 ## 最终验证
 
@@ -37,6 +37,15 @@ git diff --check
 
 ## 复核点
 
-- 用户原有 release workflow 修改未进入本任务提交。
+- 用户原有 release workflow 修改保持最终状态；本次收口未再新增 release 行为改动。
 - `packages/` 下不存在未被子任务解释的新大文件或所有权诊断。
 - package exports、README、spec 和实际实现保持一致。
+
+## 验证结果
+
+- `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build` 全部通过。
+- `pnpm test:package-architecture`：19 项测试通过，33 包、0 tracked debt。
+- `pnpm test:config-form-workbench`：476 项测试通过；模板集成 2 项通过。
+- Workbench build 与 E2E：79 项浏览器测试通过，含主题视觉、axe、响应式、焦点和 Monaco。
+- `pnpm test:pack`：29 个包、58 个 public JavaScript entries 通过；`pnpm test:pack:browser`：23 个 JS entries、3 个 stylesheet entries 和 8 批浏览器应用通过。
+- `git diff --check` 通过。release workflow 的用户既有 token 删除修改保持在最终工作树中，本次收口未再新增 release 行为改动。
