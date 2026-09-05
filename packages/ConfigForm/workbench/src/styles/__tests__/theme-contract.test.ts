@@ -5,26 +5,33 @@ import { describe, expect, it } from 'vitest'
 
 const stylesheetEntry = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
 const stylesheetLayers = [
+  { importPath: './foundation.css', source: new URL('../foundation.css', import.meta.url) },
+  { importPath: './theme.css', source: new URL('../theme.css', import.meta.url) },
   { importPath: './shell.css', source: new URL('../shell.css', import.meta.url) },
+  { importPath: '../app/components/WorkbenchCommandHint/style/index.css', source: new URL('../../app/components/WorkbenchCommandHint/style/index.css', import.meta.url) },
+  { importPath: '../app/components/WorkbenchAppearancePopover/style/index.css', source: new URL('../../app/components/WorkbenchAppearancePopover/style/index.css', import.meta.url) },
+  { importPath: '../app/components/WorkbenchAppearancePanel/style/index.css', source: new URL('../../app/components/WorkbenchAppearancePanel/style/index.css', import.meta.url) },
+  { importPath: '../app/components/WorkbenchAppearanceDrawer/style/index.css', source: new URL('../../app/components/WorkbenchAppearanceDrawer/style/index.css', import.meta.url) },
+  { importPath: '../app/components/WorkbenchTopbar/style/index.css', source: new URL('../../app/components/WorkbenchTopbar/style/index.css', import.meta.url) },
+  { importPath: '../app/style/index.css', source: new URL('../../app/style/index.css', import.meta.url) },
+  { importPath: '../app/components/PreviewDrawer/style/index.css', source: new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url) },
   { importPath: './studio.css', source: new URL('../studio.css', import.meta.url) },
-  { importPath: './feature-surfaces.css', source: new URL('../feature-surfaces.css', import.meta.url) },
   { importPath: '../features/persistence/style/index.css', source: new URL('../../features/persistence/style/index.css', import.meta.url) },
   { importPath: '../features/flow/style/index.css', source: new URL('../../features/flow/style/index.css', import.meta.url) },
   { importPath: '../features/export/style/index.css', source: new URL('../../features/export/style/index.css', import.meta.url) },
   { importPath: '../features/pages/style/index.css', source: new URL('../../features/pages/style/index.css', import.meta.url) },
-  { importPath: '../app/style/index.css', source: new URL('../../app/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/TemplateCatalogPanel/style/index.css', import.meta.url) },
   { importPath: '../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', source: new URL('../../app/components/TemplateCreationWorkspace/components/JsonImportPane/style/index.css', import.meta.url) },
-  { importPath: './responsive.css', source: new URL('../responsive.css', import.meta.url) },
 ] as const
 const stylesheet = stylesheetLayers
   .map(layer => readFileSync(layer.source, 'utf8'))
   .join('\n')
-const responsiveStylesheet = readFileSync(new URL('../../styles/responsive.css', import.meta.url), 'utf8')
 const runtimeHostStylesheet = readFileSync(new URL('../../runtime-host/styles/index.css', import.meta.url), 'utf8')
 const elementPlusTheme = readFileSync(new URL('../element-plus/theme.scss', import.meta.url), 'utf8')
 const studioLeftPanelStylesheet = readFileSync(new URL('../../app/components/StudioLeftPanel/style/index.scss', import.meta.url), 'utf8')
+const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.meta.url), 'utf8')
+const previewDrawerStylesheet = readFileSync(new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url), 'utf8')
 const designerStylesheet = compile(
   fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)),
   { loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
@@ -85,8 +92,19 @@ describe('workbench theme contract', () => {
   it('keeps feature styles with their concrete owners', () => {
     expect(existsSync(new URL('../features.css', import.meta.url))).toBe(false)
     expect(existsSync(new URL('../templates.css', import.meta.url))).toBe(false)
+    expect(existsSync(new URL('../feature-surfaces.css', import.meta.url))).toBe(false)
+    expect(existsSync(new URL('../responsive.css', import.meta.url))).toBe(false)
 
     const ownerContracts = [
+      ['../../styles/foundation.css', ':root', '--wb-bg:'],
+      ['../../styles/theme.css', '--wb-bg', '.workbench-topbar {'],
+      ['../../styles/shell.css', '.workbench-app', '.workbench-topbar'],
+      ['../../app/components/WorkbenchCommandHint/style/index.css', '.workbench-command-tooltip', '.workbench-topbar'],
+      ['../../app/components/WorkbenchAppearancePopover/style/index.css', '.workbench-appearance-popover', '.appearance-panel'],
+      ['../../app/components/WorkbenchAppearancePanel/style/index.css', '.appearance-panel', '.appearance-drawer-shell'],
+      ['../../app/components/WorkbenchAppearanceDrawer/style/index.css', '.appearance-drawer-shell', '.appearance-panel {'],
+      ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-drawer-shell'],
+      ['../../app/components/PreviewDrawer/style/index.css', '.preview-drawer-shell', '.workbench-topbar'],
       ['../../features/export/style/index.css', '.export-preview-dialog', '.persistence-dialog'],
       ['../../features/persistence/style/index.css', '.persistence-dialog', '.flow-workspace-dialog'],
       ['../../features/flow/style/index.css', '.flow-workspace-dialog', '.export-preview-dialog'],
@@ -103,26 +121,10 @@ describe('workbench theme contract', () => {
       expect(source).not.toContain(excludes)
     }
 
-    for (const orphan of ['.mobile-surface-tabs', '.empty-workbench', '.template-dialog', '.template-list', '.persistence-empty'])
+    for (const orphan of ['.mobile-surface-tabs', '.empty-workbench', '.template-dialog', '.template-list', '.persistence-empty', '.editor-file-meta', '.pane-error', '.appearance-swatch i', '.is-spinning'])
       expect(stylesheet).not.toContain(orphan)
-
-    for (const ownedSelector of [
-      '.persistence-dialog',
-      '.version-history-layout',
-      '.recovery-draft-list',
-      '.flow-workspace-dialog',
-      '.page-manager-dialog-shell',
-      '.export-preview-dialog',
-      '.export-dialog-footer',
-      '.source-file-layout',
-      '.source-code-pane',
-      '.dialog-action',
-      '.project-file-tree',
-      '.workspace-recovery-notice',
-      '.template-workspace',
-    ]) {
-      expect(responsiveStylesheet).not.toContain(ownedSelector)
-    }
+    expect(studioLeftPanelStylesheet).toContain('@media (max-width: 700px)')
+    expect(studioLeftPanelStylesheet).toContain('.designer-pages button')
   })
 
   it('keeps the material panel styles with StudioLeftPanel', async () => {
@@ -225,7 +227,13 @@ describe('workbench theme contract', () => {
     expect(selectorBlock(
       '.template-catalog-item.is-selected .template-catalog-copy span',
     )).toContain('color: var(--wb-small-text);')
-    expect(stylesheet).toContain('.topbar-actions button:hover:not(:disabled, [aria-disabled="true"]),')
+    for (const selector of [
+      '.topbar-actions button:hover:not(:disabled, [aria-disabled="true"])',
+      '.pane-header button:hover:not(:disabled, [aria-disabled="true"])',
+    ]) {
+      expect(cssRules(stylesheet).some(rule => rule.selector === selector
+        && rule.body.includes('background: var(--wb-hover);'))).toBe(true)
+    }
     expect(stylesheet).toContain('.export-stale .el-button')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer .mx-config-form-designer__properties .el-segmented',
@@ -298,8 +306,6 @@ describe('workbench theme contract', () => {
     expect(selectorBlock('.brand-lockup span')).toContain('font-size: 11px;')
     expect(cssRules(stylesheet).find(rule => rule.selector === '.workspace-context span')?.body)
       .toContain('font-size: 11px;')
-    expect(selectorBlock('.editor-file-meta > small')).toContain('background: var(--wb-hover);')
-    expect(selectorBlock('.editor-file-meta > small')).toContain('font-size: 11px;')
   })
 
   it('keeps provider theme rules in Workbench chrome and out of Runtime surfaces', () => {
@@ -341,7 +347,6 @@ describe('workbench theme contract', () => {
 
   it('keeps Preview as an overlay that cannot resize the Design surface', () => {
     const rules = cssRules(stylesheet)
-    const previewRule = rules.find(rule => rule.selector === '.preview-pane')
     const overlayRule = rules.find(
       rule => rule.selector === '.workbench-overlays > .preview-drawer-overlay',
     )
@@ -352,19 +357,18 @@ describe('workbench theme contract', () => {
     expect(rules.some(rule => rule.selector === '.editor-pane' && rule.body.includes('isolation: isolate;'))).toBe(true)
     expect(overlayRule?.body).toContain('top: 48px !important;')
     expect(overlayRule?.body).toContain('height: auto !important;')
-    expect(previewRule?.body).toContain('position: static;')
+    expect(rules.some(rule => rule.selector === '.preview-pane'
+      && rule.body.includes('position: static;'))).toBe(true)
     expect(expandedRule?.body).toContain('box-shadow: none;')
   })
 
   it('keeps compact desktop Preview as an overlay and reserves replacement mode for mobile', () => {
-    const compactStart = responsiveStylesheet.indexOf('@media (max-width: 900px)')
-    const mobileStart = responsiveStylesheet.indexOf('@media (max-width: 700px)')
-    const narrowStart = responsiveStylesheet.indexOf('@media (max-width: 480px)')
-    const compactRules = responsiveStylesheet.slice(compactStart, mobileStart)
-    const mobileRules = responsiveStylesheet.slice(mobileStart, narrowStart)
+    const appMobileStart = appStylesheet.indexOf('@media (max-width: 700px)')
+    const previewMobileStart = previewDrawerStylesheet.indexOf('@media (max-width: 700px)')
 
-    expect(compactRules).not.toContain('show-mobile-preview')
-    expect(mobileRules).toContain('.workbench-layout.show-mobile-preview .editor-pane')
-    expect(mobileRules).toContain('.workbench-layout.show-mobile-preview .preview-pane')
+    expect(appStylesheet.slice(0, appMobileStart)).not.toContain('show-mobile-preview')
+    expect(previewDrawerStylesheet.slice(0, previewMobileStart)).not.toContain('show-mobile-preview')
+    expect(appStylesheet.slice(appMobileStart)).toContain('.workbench-layout.show-mobile-preview .editor-pane')
+    expect(previewDrawerStylesheet.slice(previewMobileStart)).toContain('.workbench-layout.show-mobile-preview .preview-pane')
   })
 })

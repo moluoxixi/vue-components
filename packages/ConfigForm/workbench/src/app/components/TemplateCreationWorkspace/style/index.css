@@ -1,3 +1,7 @@
+.template-mobile-action-menu {
+  display: none;
+}
+
 .template-creation-workspace {
   --el-color-primary: var(--wb-action-bg);
   display: grid;

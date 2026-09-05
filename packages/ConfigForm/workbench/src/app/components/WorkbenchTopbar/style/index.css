@@ -1,0 +1,328 @@
+.workbench-topbar {
+  display: grid;
+  min-width: 0;
+  padding: 0 10px;
+  grid-template-columns: auto minmax(150px, 260px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+.brand-lockup {
+  display: grid;
+  min-width: 92px;
+  gap: 0;
+  line-height: 1.05;
+}
+
+.brand-lockup span {
+  color: var(--wb-accent);
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.brand-lockup strong {
+  color: var(--wb-text-strong);
+  font-size: 14px;
+}
+
+.workspace-context {
+  display: grid;
+  min-width: 0;
+  height: 32px;
+  padding: 4px 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: var(--wb-surface);
+  line-height: 1.1;
+}
+
+.workspace-context span,
+.workspace-context strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-context span {
+  color: var(--wb-small-text);
+  font-size: 11px;
+}
+
+.workspace-context strong {
+  color: var(--wb-text-strong);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.topbar-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.topbar-actions .is-command-disabled {
+  color: var(--wb-disabled);
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.mobile-action-menu {
+  display: none;
+}
+
+.mobile-action-menu {
+  position: relative;
+}
+
+.mobile-action-popover {
+  display: grid;
+  width: 208px;
+  padding: 5px;
+  gap: 2px;
+}
+
+.mobile-action-popover .el-dropdown-menu__item {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  justify-content: flex-start;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.mobile-action-popover .topbar-status-item {
+  height: auto;
+  min-height: 34px;
+  color: var(--wb-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.topbar-actions .mobile-page-manager-button {
+  display: none;
+}
+
+.export-menu {
+  position: relative;
+}
+
+.topbar-command-label {
+  display: none;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.topbar-actions .export-menu > button {
+  display: inline-flex;
+  width: auto;
+  min-width: 58px;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.export-menu-popover {
+  display: grid;
+  width: 184px;
+  padding: 4px;
+}
+
+.export-menu-popover .el-dropdown-menu__item {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 8px;
+  align-items: center;
+  gap: 8px;
+  color: var(--wb-text);
+  text-align: left;
+  white-space: nowrap;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.export-menu-popover .el-dropdown-menu__item:not(.is-disabled):hover,
+.export-menu-popover .el-dropdown-menu__item:not(.is-disabled):focus {
+  color: var(--wb-text-strong);
+  background: var(--wb-hover);
+}
+
+.export-menu-popover .el-dropdown-menu__item.is-disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.topbar-actions button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  color: var(--wb-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.topbar-actions button:hover:not(:disabled, [aria-disabled="true"]) {
+  color: var(--wb-text-strong);
+  border-color: var(--wb-control-border);
+  background: var(--wb-hover);
+}
+
+.topbar-actions > button.is-active {
+  color: var(--wb-accent);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-hover);
+}
+
+.topbar-actions button:disabled {
+  color: var(--wb-disabled);
+  cursor: default;
+  opacity: 0.82;
+}
+
+.revision-state {
+  margin-right: 4px;
+  color: var(--wb-positive);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.revision-state.is-dirty {
+  color: var(--wb-warning);
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .workbench-topbar {
+  color: var(--wb-muted);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .export-menu-popover {
+  color: var(--wb-text);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+@media (max-width: 900px) {
+  .workbench-topbar {
+    grid-template-columns: auto minmax(120px, 1fr) auto;
+  }
+  .revision-state {
+    display: none;
+  }
+  .topbar-actions > .topbar-secondary-action {
+    display: none;
+  }
+  .mobile-action-menu {
+    display: block;
+  }
+  .topbar-actions .mobile-page-manager-button {
+    display: inline-grid;
+  }
+  .topbar-command-label {
+    display: inline;
+  }
+  .topbar-actions .export-menu > button {
+    min-width: 72px;
+  }
+
+}
+
+@media (max-width: 700px) {
+
+  .brand-lockup span {
+    display: none;
+  }
+
+  .brand-lockup {
+    min-width: 0;
+  }
+
+  .workbench-topbar {
+    grid-template-columns: auto minmax(80px, 1fr) auto;
+    gap: 6px;
+  }
+
+  .topbar-actions > .topbar-secondary-action,
+.topbar-actions > .mobile-page-manager-button {
+    display: none;
+  }
+
+  .mobile-action-menu {
+    display: block;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar-command-label {
+    display: none;
+  }
+  .topbar-actions .export-menu > button {
+    width: 30px;
+    min-width: 30px;
+    padding: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .workbench-topbar {
+    padding-inline: 6px;
+    gap: 4px;
+  }
+  .topbar-actions {
+    gap: 1px;
+  }
+  .topbar-actions > button,
+.topbar-actions > .mobile-action-menu > button {
+    width: 28px;
+    height: 28px;
+  }
+  .topbar-actions .export-menu > button {
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
+  }
+  .topbar-actions .export-menu > button .export-chevron {
+    display: none;
+  }
+  .workspace-context {
+    padding-inline: 6px;
+  }
+}
+
+@media (max-width: 720px) and (pointer: coarse) {
+  .topbar-actions > button,
+.topbar-actions > .mobile-action-menu > button,
+.topbar-actions .export-menu > button,
+.export-menu-popover .el-dropdown-menu__item,
+.mobile-action-popover .el-dropdown-menu__item {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) and (pointer: coarse) {
+  .topbar-actions > button,
+.topbar-actions > .mobile-action-menu > button,
+.topbar-actions .export-menu > button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+}

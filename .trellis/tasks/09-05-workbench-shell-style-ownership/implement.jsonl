@@ -1,0 +1,2 @@
+{"file":".trellis/spec/directory-structure.md","reason":"约束组件专属样式归入真实 owner，聚合层不承载业务规则。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"约束 Workbench CSS 同步层叠、主题、iframe 与视觉门禁。"}

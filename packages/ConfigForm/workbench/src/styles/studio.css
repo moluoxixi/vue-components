@@ -421,3 +421,19 @@
   margin: 8px 0 0;
   font-size: 13px;
 }
+
+@media (max-width: 700px) {
+
+  .embedded-designer.mx-config-form-designer {
+    min-height: 0;
+  }
+
+  .embedded-designer .mx-config-form-designer__toolbar {
+    min-height: 44px;
+    padding-inline: 8px;
+  }
+
+  .embedded-designer .mx-config-form-designer__toolbar > strong {
+    max-width: 112px;
+  }
+}

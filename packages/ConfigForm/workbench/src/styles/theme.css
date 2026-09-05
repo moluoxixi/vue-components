@@ -1,0 +1,319 @@
+.workbench-app,
+.template-creation-workspace,
+.workbench-overlays,
+:root {
+  --wb-bg: #1e1e2e;
+  --wb-border: #9399b2;
+  --wb-control-border: #9399b2;
+  --wb-separator: #585b70;
+  --wb-elevated: #181825;
+  --wb-hover: #45475a;
+  --wb-muted: #bac2de;
+  --wb-small-text: #bac2de;
+  --wb-surface: #313244;
+  --wb-surface-raised: #45475a;
+  --wb-text: #cdd6f4;
+  --wb-text-strong: #f5e0dc;
+  --wb-accent: #cba6f7;
+  --wb-action-bg: #7136a8;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #45405d;
+  --wb-accent-line: #cba6f7;
+  --wb-focus: #e5c7ff;
+  --wb-positive: #a6e3a1;
+  --wb-warning: #f9e2af;
+  --wb-danger: #f38ba8;
+  --wb-danger-soft: #4a2938;
+  --wb-disabled: #a6adc8;
+  --wb-editor-surface: #242437;
+}
+
+.workbench-app,
+.template-creation-workspace,
+.workbench-overlays {
+  --el-color-primary: var(--wb-accent);
+  --el-color-primary-light-3: color-mix(in srgb, var(--wb-accent) 70%, var(--wb-surface));
+  --el-color-primary-light-5: color-mix(in srgb, var(--wb-accent) 50%, var(--wb-surface));
+  --el-color-primary-light-7: color-mix(in srgb, var(--wb-accent) 30%, var(--wb-surface));
+  --el-color-primary-light-8: color-mix(in srgb, var(--wb-accent) 20%, var(--wb-surface));
+  --el-color-primary-light-9: var(--wb-accent-soft);
+  --el-color-primary-dark-2: var(--wb-action-bg);
+  --el-color-success: var(--wb-positive);
+  --el-color-warning: var(--wb-warning);
+  --el-color-danger: var(--wb-danger);
+  --el-border-color: var(--wb-control-border);
+  --el-border-color-light: var(--wb-separator);
+  --el-border-color-lighter: var(--wb-separator);
+  --el-border-color-hover: var(--wb-accent-line);
+  --el-bg-color: var(--wb-surface-raised);
+  --el-bg-color-overlay: var(--wb-surface-raised);
+  --el-fill-color: var(--wb-hover);
+  --el-fill-color-light: var(--wb-hover);
+  --el-fill-color-blank: var(--wb-surface-raised);
+  --el-text-color-primary: var(--wb-text-strong);
+  --el-text-color-regular: var(--wb-text);
+  --el-text-color-secondary: var(--wb-muted);
+  --el-text-color-placeholder: var(--wb-disabled);
+}
+
+.workbench-app .el-segmented,
+.template-creation-workspace .el-segmented,
+.workbench-overlays .el-segmented {
+  --el-segmented-color: var(--wb-text);
+  --el-segmented-bg-color: var(--wb-hover);
+  --el-segmented-item-hover-color: var(--wb-text-strong);
+  --el-segmented-item-hover-bg-color: var(--wb-hover);
+  --el-segmented-item-active-bg-color: var(--wb-accent-soft);
+  --el-segmented-item-selected-color: var(--wb-action-text);
+  --el-segmented-item-selected-bg-color: var(--wb-action-bg);
+  --el-segmented-item-selected-disabled-bg-color: var(--wb-disabled);
+  --el-segmented-item-disabled-color: var(--wb-disabled);
+}
+
+:root[data-palette="catppuccin"][data-theme="light"],
+.workbench-app[data-palette="catppuccin"][data-theme="light"],
+.template-creation-workspace[data-palette="catppuccin"][data-theme="light"],
+.workbench-overlays[data-palette="catppuccin"][data-theme="light"] {
+  --wb-bg: #eff1f5;
+  --wb-border: #73768a;
+  --wb-control-border: #73768a;
+  --wb-separator: #bcc0cc;
+  --wb-elevated: #ffffff;
+  --wb-hover: #dce0e8;
+  --wb-muted: #5c5f77;
+  --wb-small-text: #5c5f77;
+  --wb-surface: #e6e9ef;
+  --wb-surface-raised: #ffffff;
+  --wb-text: #4c4f69;
+  --wb-text-strong: #303446;
+  --wb-accent: #8839ef;
+  --wb-action-bg: #7130c7;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #e7d9fa;
+  --wb-accent-line: #7130c7;
+  --wb-focus: #7130c7;
+  --wb-positive: #237014;
+  --wb-warning: #805200;
+  --wb-danger: #c20e35;
+  --wb-danger-soft: #f7d7df;
+  --wb-disabled: #686b7e;
+  --wb-editor-surface: #e9ebf1;
+  color-scheme: light;
+}
+
+:root[data-palette="catppuccin"][data-theme="dark"],
+.workbench-app[data-palette="catppuccin"][data-theme="dark"],
+.template-creation-workspace[data-palette="catppuccin"][data-theme="dark"],
+.workbench-overlays[data-palette="catppuccin"][data-theme="dark"] {
+  --wb-bg: #1e1e2e;
+  --wb-border: #9399b2;
+  --wb-control-border: #9399b2;
+  --wb-separator: #585b70;
+  --wb-elevated: #181825;
+  --wb-hover: #45475a;
+  --wb-muted: #bac2de;
+  --wb-small-text: #bac2de;
+  --wb-surface: #313244;
+  --wb-surface-raised: #45475a;
+  --wb-text: #cdd6f4;
+  --wb-text-strong: #f5e0dc;
+  --wb-accent: #cba6f7;
+  --wb-action-bg: #7136a8;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #45405d;
+  --wb-accent-line: #cba6f7;
+  --wb-focus: #e5c7ff;
+  --wb-positive: #a6e3a1;
+  --wb-warning: #f9e2af;
+  --wb-danger: #f38ba8;
+  --wb-danger-soft: #4a2938;
+  --wb-disabled: #a6adc8;
+  --wb-editor-surface: #242437;
+  color-scheme: dark;
+}
+
+:root[data-palette="kanagawa"][data-theme="light"],
+.workbench-app[data-palette="kanagawa"][data-theme="light"],
+.template-creation-workspace[data-palette="kanagawa"][data-theme="light"],
+.workbench-overlays[data-palette="kanagawa"][data-theme="light"] {
+  --wb-bg: #dcd5ac;
+  --wb-border: #625e57;
+  --wb-control-border: #625e57;
+  --wb-separator: #c4bd96;
+  --wb-elevated: #f2ecbc;
+  --wb-hover: #d5cea3;
+  --wb-muted: #625e57;
+  --wb-small-text: #545464;
+  --wb-surface: #e5ddb0;
+  --wb-surface-raised: #f2ecbc;
+  --wb-text: #545464;
+  --wb-text-strong: #363646;
+  --wb-accent: #a82f44;
+  --wb-action-bg: #8f2538;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #e7c4bd;
+  --wb-accent-line: #9b293d;
+  --wb-focus: #8f2538;
+  --wb-positive: #47642f;
+  --wb-warning: #66531d;
+  --wb-danger: #94263a;
+  --wb-danger-soft: #e9c5bc;
+  --wb-disabled: #68645c;
+  --wb-editor-surface: #d6d0ac;
+  color-scheme: light;
+}
+
+:root[data-palette="kanagawa"][data-theme="dark"],
+.workbench-app[data-palette="kanagawa"][data-theme="dark"],
+.template-creation-workspace[data-palette="kanagawa"][data-theme="dark"],
+.workbench-overlays[data-palette="kanagawa"][data-theme="dark"] {
+  --wb-bg: #16161d;
+  --wb-border: #85839a;
+  --wb-control-border: #85839a;
+  --wb-separator: #4a4a5f;
+  --wb-elevated: #121218;
+  --wb-hover: #363646;
+  --wb-muted: #a6a28d;
+  --wb-small-text: #a6a28d;
+  --wb-surface: #1f1f28;
+  --wb-surface-raised: #2a2a37;
+  --wb-text: #dcd7ba;
+  --wb-text-strong: #f2ecbc;
+  --wb-accent: #e46876;
+  --wb-action-bg: #9d3444;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #493039;
+  --wb-accent-line: #e46876;
+  --wb-focus: #f08a96;
+  --wb-positive: #98bb6c;
+  --wb-warning: #e6c384;
+  --wb-danger: #ff7a87;
+  --wb-danger-soft: #4b252c;
+  --wb-disabled: #a6a28d;
+  --wb-editor-surface: #1a1a22;
+  color-scheme: dark;
+}
+
+:root[data-palette="gruvbox"][data-theme="light"],
+.workbench-app[data-palette="gruvbox"][data-theme="light"],
+.template-creation-workspace[data-palette="gruvbox"][data-theme="light"],
+.workbench-overlays[data-palette="gruvbox"][data-theme="light"] {
+  --wb-bg: #ebdbb2;
+  --wb-border: #71665c;
+  --wb-control-border: #71665c;
+  --wb-separator: #d5c4a1;
+  --wb-elevated: #fbf1c7;
+  --wb-hover: #dfcfaa;
+  --wb-muted: #665c54;
+  --wb-small-text: #665c54;
+  --wb-surface: #f2e5bc;
+  --wb-surface-raised: #fbf1c7;
+  --wb-text: #654735;
+  --wb-text-strong: #3c3836;
+  --wb-accent: #854c72;
+  --wb-action-bg: #74375f;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #ead1da;
+  --wb-accent-line: #7a4167;
+  --wb-focus: #74375f;
+  --wb-positive: #53641f;
+  --wb-warning: #795000;
+  --wb-danger: #a93636;
+  --wb-danger-soft: #f0cfc4;
+  --wb-disabled: #6f665e;
+  --wb-editor-surface: #e3d3ad;
+  color-scheme: light;
+}
+
+:root[data-palette="gruvbox"][data-theme="dark"],
+.workbench-app[data-palette="gruvbox"][data-theme="dark"],
+.template-creation-workspace[data-palette="gruvbox"][data-theme="dark"],
+.workbench-overlays[data-palette="gruvbox"][data-theme="dark"] {
+  --wb-bg: #282828;
+  --wb-border: #bdae93;
+  --wb-control-border: #bdae93;
+  --wb-separator: #665c54;
+  --wb-elevated: #1d2021;
+  --wb-hover: #504945;
+  --wb-muted: #bdae93;
+  --wb-small-text: #bdae93;
+  --wb-surface: #32302f;
+  --wb-surface-raised: #3c3836;
+  --wb-text: #d4be98;
+  --wb-text-strong: #fbf1c7;
+  --wb-accent: #d3869b;
+  --wb-action-bg: #8c3f70;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #4e3641;
+  --wb-accent-line: #d3869b;
+  --wb-focus: #e3a0b2;
+  --wb-positive: #b8c77a;
+  --wb-warning: #e3bd6b;
+  --wb-danger: #f07c73;
+  --wb-danger-soft: #4f2d2c;
+  --wb-disabled: #a89984;
+  --wb-editor-surface: #242322;
+  color-scheme: dark;
+}
+
+:root[data-palette="rose-pine"][data-theme="light"],
+.workbench-app[data-palette="rose-pine"][data-theme="light"],
+.template-creation-workspace[data-palette="rose-pine"][data-theme="light"],
+.workbench-overlays[data-palette="rose-pine"][data-theme="light"] {
+  --wb-bg: #faf4ed;
+  --wb-border: #797593;
+  --wb-control-border: #797593;
+  --wb-separator: #dfdad9;
+  --wb-elevated: #ffffff;
+  --wb-hover: #f2e9e1;
+  --wb-muted: #6e6a86;
+  --wb-small-text: #625e79;
+  --wb-surface: #fffaf3;
+  --wb-surface-raised: #ffffff;
+  --wb-text: #464261;
+  --wb-text-strong: #26233a;
+  --wb-accent: #a14f68;
+  --wb-action-bg: #923a58;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #f1d9dd;
+  --wb-accent-line: #963f5c;
+  --wb-focus: #923a58;
+  --wb-positive: #4f746d;
+  --wb-warning: #80510e;
+  --wb-danger: #9f3857;
+  --wb-danger-soft: #f4d9dd;
+  --wb-disabled: #706c87;
+  --wb-editor-surface: #f5eee8;
+  color-scheme: light;
+}
+
+:root[data-palette="rose-pine"][data-theme="dark"],
+.workbench-app[data-palette="rose-pine"][data-theme="dark"],
+.template-creation-workspace[data-palette="rose-pine"][data-theme="dark"],
+.workbench-overlays[data-palette="rose-pine"][data-theme="dark"] {
+  --wb-bg: #191724;
+  --wb-border: #908caa;
+  --wb-control-border: #908caa;
+  --wb-separator: #403d52;
+  --wb-elevated: #13111d;
+  --wb-hover: #393552;
+  --wb-muted: #b5b1cc;
+  --wb-small-text: #b5b1cc;
+  --wb-surface: #1f1d2e;
+  --wb-surface-raised: #26233a;
+  --wb-text: #e0def4;
+  --wb-text-strong: #fffaf3;
+  --wb-accent: #eb6f92;
+  --wb-action-bg: #994461;
+  --wb-action-text: #ffffff;
+  --wb-accent-soft: #4a2d40;
+  --wb-accent-line: #eb6f92;
+  --wb-focus: #f29ab3;
+  --wb-positive: #9ccbc2;
+  --wb-warning: #f6c177;
+  --wb-danger: #f28aa8;
+  --wb-danger-soft: #4b293a;
+  --wb-disabled: #908caa;
+  --wb-editor-surface: #171521;
+  color-scheme: dark;
+}

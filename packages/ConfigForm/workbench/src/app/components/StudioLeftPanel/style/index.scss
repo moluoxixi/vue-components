@@ -474,3 +474,35 @@
   color: var(--wb-muted);
   font-size: 11px;
 }
+
+:is(.workbench-app, .workbench-overlays)[data-theme="light"] .designer-left-panel {
+  color: var(--wb-muted);
+  border-color: var(--wb-separator);
+  background: var(--wb-elevated);
+}
+
+@media (max-width: 700px) {
+
+  .designer-left-panel {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .designer-left-tabs {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) and (pointer: coarse) {
+  .designer-left-tabs button,
+.manage-pages-button,
+.designer-layers button,
+.designer-pages button {
+    min-height: 44px;
+  }
+  .designer-layer-actions .designer-layer-menu-trigger {
+    width: 44px;
+  }
+  .designer-layer-menu button {
+    width: 100%;
+  }
+}

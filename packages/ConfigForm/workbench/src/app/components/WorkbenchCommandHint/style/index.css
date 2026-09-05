@@ -1,0 +1,27 @@
+.workbench-overlays .workbench-passive-tooltip {
+  pointer-events: none !important;
+}
+
+.workbench-overlays .workbench-command-tooltip {
+  max-width: min(280px, calc(100vw - 16px));
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.workbench-command-hint-anchor {
+  display: inline-flex;
+}
+
+.workbench-command-hint-anchor > button.is-active {
+  color: var(--wb-accent);
+  border-color: var(--wb-accent-line);
+  background: var(--wb-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workbench-command-tooltip,
+.workbench-command-tooltip * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
