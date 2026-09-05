@@ -1006,3 +1006,25 @@ README 同时展示组件文档和 GitHub Pages 上的 ConfigForm 可视化设�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 41: 发布最新 ConfigForm Workbench 到 GitHub Pages
+
+**Date**: 2026-09-06
+**Task**: 发布最新 ConfigForm Workbench 到 GitHub Pages
+**Package**: ai-doc-assistant
+**Branch**: `main`
+
+### Summary
+
+将 Pages 的 ConfigForm 远程入口硬切为最新 Workbench，移除旧 Playground 发布路径；修复非根 base 下 Monaco 产物校验，补充 Pages artifact 校验、规范和 README 说明。完成 lint、Workbench 477 项测试、发布流程 10 项、架构 19 项、typecheck 与 build:pages 验证。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5fbf2537` | (see git log) |
+
+### Status
+
+[OK] **Completed**

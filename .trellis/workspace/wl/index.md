@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 40
-- **Last Active**: 2026-09-05
+- **Total Sessions**: 41
+- **Last Active**: 2026-09-06
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1008 | Active |
+| `journal-1.md` | ~1030 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 41 | 2026-09-06 | 发布最新 ConfigForm Workbench 到 GitHub Pages | `5fbf2537` | `main` |
 | 40 | 2026-09-05 | Workbench 样式与 ConfigForm 治理收口 | `659f7921`, `f9bc37a0`, `a53e9f0d`, `4c3e3f39` | `main` |
 | 39 | 2026-09-05 | 完成文档审计与 Theme E2E 修复 | `6f0b4152`, `e96c4c95`, `f1d0efaa`, `ee7dfdeb`, `93d09112`, `3611018e`, `aa63d628`, `61e771da` | `main` |
 | 38 | 2026-09-05 | 完成 Packages 全仓结构治理 | `4f6390d4`, `4ba63bd4`, `6d64eb50`, `a1dd96a1`, `3e3251e0`, `c00b2955`, `6f0b4152`, `b311bd62`, `1ec60bf2`, `26f45e6a` | `main` |
