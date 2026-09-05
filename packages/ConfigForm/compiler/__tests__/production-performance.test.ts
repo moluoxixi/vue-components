@@ -16,6 +16,9 @@ import { describe, expect, it } from 'vitest'
 import { createCompileCoordinator } from '../index'
 
 const NODE_COUNT = 2_000
+const describePerformance = process.env.CI && process.env.npm_lifecycle_event !== 'test:performance'
+  ? describe.skip
+  : describe
 
 function fixture() {
   const contract: ComponentContract = {
@@ -78,7 +81,7 @@ function fixture() {
   }
 }
 
-describe('page compilation production budget', () => {
+describePerformance('page compilation production budget', () => {
   it('compiles a 2000-node active page without assembling a project program', () => {
     const input = fixture()
     const coordinator = createCompileCoordinator({ registry: input.registry })
