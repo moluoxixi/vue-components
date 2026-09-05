@@ -7,7 +7,7 @@
 ## 背景
 
 - 当前 33 个受治理包已通过包根入口架构检查，不存在重复的 `src/index.ts` 总入口或已登记架构债务。
-- 完成审计仍发现四类独立缺口：发布包元数据、架构 collector 覆盖、ConfigForm Workbench 两个 P2 服务边界、AI 文档组件发现服务边界。
+- 完成审计与最终门禁复核共形成十一个独立交付：发布合同、ownership collector、包内/跨包循环门禁、两个 P2 服务边界、AI 文档发现边界、ConfigForm Sass 入口、Workbench 两级样式所有权、Element 默认值控件一致性，以及 Headless 异构 slot attrs 推导。
 - 本任务作为父任务，只维护来源需求、子任务映射和最终集成验收，不直接承载生产代码实现。
 
 ## 子任务
@@ -16,6 +16,13 @@
 2. `09-05-architecture-collector-residual-rules`：补齐跨 feature 深导入、共享组件 owner 和无状态 composable 规则。
 3. `09-05-config-form-large-service-boundaries`：拆分 Workbench 导出源码与 Monaco language features 的独立职责。
 4. `09-05-ai-doc-discovery-boundary`：拆分 AI 文档组件发现服务的工作区解析、AST 遍历和策略编排。
+5. `09-05-config-form-sass-entry-default-control`：移除无意义样式 TypeScript 入口并统一默认值属性控件结构。
+6. `09-05-package-cycle-architecture-gate`：增加包内生产模块循环门禁并修复 Runtime 真实环。
+7. `09-05-workbench-style-ownership`：拆分 Workbench feature、template 与子组件样式所有权。
+8. `09-05-workspace-package-cycle-gate`：增加 workspace manifest 运行时依赖循环门禁。
+9. `09-05-workbench-shell-style-ownership`：拆分 Shell 的 foundation、theme、Appearance、Topbar 与 Preview owner。
+10. `09-05-element-default-value-style-parity`：统一 Element 默认值控件与普通属性控件的 class 和视觉样式。
+11. `09-05-headless-slot-attrs-inference`：修复 `defineFields<T>()` 在异构 slot 数组中的 attrs 泛型推导。
 
 ## 需求
 
@@ -27,7 +34,7 @@
 
 ## 验收标准
 
-- [ ] 四个子任务均完成验证、独立提交并归档。
+- [ ] 十一个子任务均完成验证、独立提交并归档。
 - [ ] 所有发布包的源码条件、发布文件、README 和 `sideEffects` 合同可由自动测试验证。
 - [ ] 架构 collector 自动覆盖剩余的目录与所有权合同，且现有生产代码无未知诊断。
 - [ ] 三个 P2 服务文件按真实职责拆分，原公共入口和运行时行为保持稳定。

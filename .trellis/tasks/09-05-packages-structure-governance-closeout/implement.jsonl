@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/directory-structure.md","reason":"全仓包根入口、责任目录、组件所有权、composable 与发布合同的最终验收基准。"}
+{"file":".trellis/spec/ai-doc-assistant/frontend/quality-guidelines.md","reason":"核验 AI 文档 discovery 与构建边界。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"核验 ConfigForm Workbench unit/build/E2E 与 Monaco 边界。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"核验 Designer Inspector、组件所有权与样式边界。"}

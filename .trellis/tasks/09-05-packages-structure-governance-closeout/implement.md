@@ -2,10 +2,17 @@
 
 ## 执行清单
 
-- [ ] 完成并归档 `published-package-contracts`。
-- [ ] 完成并归档 `architecture-collector-residual-rules`。
-- [ ] 完成并归档 `config-form-large-service-boundaries`。
-- [ ] 完成并归档 `ai-doc-discovery-boundary`。
+- [x] 完成并归档 `published-package-contracts`。
+- [x] 完成并归档 `architecture-collector-residual-rules`。
+- [x] 完成并归档 `config-form-large-service-boundaries`。
+- [x] 完成并归档 `ai-doc-discovery-boundary`。
+- [x] 完成并归档 `config-form-sass-entry-default-control`。
+- [x] 完成并归档 `package-cycle-architecture-gate`。
+- [x] 完成并归档 `workbench-style-ownership`。
+- [x] 完成并归档 `workspace-package-cycle-gate`。
+- [x] 完成并归档 `workbench-shell-style-ownership`。
+- [x] 完成并归档 `element-default-value-style-parity`。
+- [x] 完成并归档 `headless-slot-attrs-inference`。
 - [ ] 运行全仓集成门禁并核对无新增架构债务。
 - [ ] 更新必要的 `.trellis/spec/` 合同并归档父任务。
 
@@ -17,8 +24,12 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm test:package-architecture
+pnpm test:config-form-workbench
+pnpm test:config-form-workbench-templates
+pnpm --filter @config-form/workbench build
+pnpm --filter @config-form/workbench test:e2e
 pnpm test:pack
-pnpm --filter @moluoxixi/config-form-workbench test:e2e
+pnpm test:pack:browser
 git diff --check
 ```
 
