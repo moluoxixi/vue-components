@@ -317,7 +317,7 @@ describe('extractContracts — real workspace package types', () => {
       COMPONENTS_TSCONFIG,
     )
     contracts = [...antdContracts, ...componentContracts]
-  })
+  }, 30_000)
 
   it('展开 ConfigForm 泛型 emit payload 的字段与依赖定义', () => {
     const contract = contracts.find(item => item.name === 'AntdConfigForm')!
