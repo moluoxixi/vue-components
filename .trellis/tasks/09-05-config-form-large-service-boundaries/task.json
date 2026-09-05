@@ -3,7 +3,7 @@
   "name": "config-form-large-service-boundaries",
   "title": "ConfigForm P2 服务职责拆分",
   "description": "拆分 source-page 与 Monaco language-features 的独立职责并保持行为。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "config-form-workbench",

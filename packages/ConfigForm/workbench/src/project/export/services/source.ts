@@ -9,7 +9,9 @@ import type { StandaloneSourceProject } from '../types/source'
 import { normalizeProjectPath } from '../../utils'
 import { canonicalSourcePage, createCanonicalSourceRegistry, textFile } from './source-canonical'
 import { createStandaloneFlowRuntimeSource } from './source-flow'
-import { appSource, assertPortableNode, collectSourceLibraries } from './source-page'
+import { collectSourceLibraries } from './source-libraries'
+import { appSource } from './source-page'
+import { assertPortableNode } from './source-portability'
 import {
   canonicalProjectPackage,
   mainSource,

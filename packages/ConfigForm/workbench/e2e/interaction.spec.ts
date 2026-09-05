@@ -116,6 +116,25 @@ async function attachedBox(locator: Locator): Promise<DragGeometry & { x: number
   return box!
 }
 
+async function runMonacoAction(page: Page, lineText: string, column: number, action: string): Promise<void> {
+  const payload = JSON.stringify({ action, column, lineText })
+  await page.evaluate(`(async () => {
+    const { action, column, lineText } = ${payload}
+    const monaco = await import('/@id/monaco-editor/esm/vs/editor/editor.api')
+    const editor = monaco.editor.getEditors().at(-1)
+    if (!editor)
+      throw new Error('No Monaco editor is mounted.')
+    const model = editor.getModel()
+    const match = model?.findMatches(lineText, false, false, false, null, true)[0]
+    if (!match)
+      throw new Error('Unable to locate Monaco line: ' + lineText)
+    editor.updateOptions({ readOnly: false })
+    editor.setPosition({ column, lineNumber: match.range.startLineNumber })
+    editor.focus()
+    editor.trigger('playwright', action, {})
+  })()`)
+}
+
 async function selectCanvasNode(page: Page, node: Locator, hitTarget: Locator = node): Promise<void> {
   const nodeId = await node.getAttribute('data-config-node-id')
   expect(nodeId).toBeTruthy()
@@ -1526,5 +1545,55 @@ test('exports pinned source and config files through the readonly workspace', as
     configDialog.getByRole('button', { name: 'Download', exact: true }).click(),
   ])
   expect(configDownload.suggestedFilename()).toBe('project.config.ts')
+  expect(browserErrors).toEqual([])
+})
+
+test('provides real Monaco completion and hover for Vue and Config source', async ({ page }) => {
+  const browserErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning')
+      browserErrors.push(message.text())
+  })
+  page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
+  await createProject(page, 'element')
+
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Export source', exact: true }).click()
+  const sourceDialog = page.getByRole('dialog', { name: 'Generated Vue source' })
+  await sourceDialog.getByRole('treeitem', { name: 'Page.vue', exact: true }).click()
+  const sourceEditor = sourceDialog.getByRole('region', { name: 'Code viewer' })
+  await expect(sourceEditor.locator('.view-lines')).toContainText('const model = reactive')
+
+  await runMonacoAction(page, 'import { onBeforeUnmount', 10, 'editor.action.triggerSuggest')
+  const sourceSuggestions = page.locator('.suggest-widget.visible')
+  await expect(async () => {
+    await runMonacoAction(page, 'import { onBeforeUnmount', 10, 'editor.action.triggerSuggest')
+    await expect(sourceSuggestions).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 20_000 })
+  await expect(sourceSuggestions).toContainText('computed')
+  await page.keyboard.press('Escape')
+
+  await runMonacoAction(page, 'const model = reactive', 17, 'editor.action.showHover')
+  await expect(page.locator('.monaco-hover:visible')).toContainText('reactive')
+
+  await sourceDialog.getByRole('button', { name: 'Close export' }).click()
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Export config', exact: true }).click()
+  const configDialog = page.getByRole('dialog', { name: 'Config model' })
+  await configDialog.getByRole('treeitem', { name: 'form.config.ts', exact: true }).click()
+  const configEditor = configDialog.getByRole('region', { name: 'Code viewer' })
+  await expect(configEditor.locator('.view-lines')).toContainText('import { defineFields }')
+
+  await runMonacoAction(page, 'import { defineFields }', 10, 'editor.action.triggerSuggest')
+  const configSuggestions = page.locator('.suggest-widget.visible')
+  await expect(async () => {
+    await runMonacoAction(page, 'import { defineFields }', 10, 'editor.action.triggerSuggest')
+    await expect(configSuggestions).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 20_000 })
+  await expect(configSuggestions).toContainText('ConfigFormComponentRegistry')
+  await page.keyboard.press('Escape')
+
+  await runMonacoAction(page, 'import { defineFields }', 12, 'editor.action.showHover')
+  await expect(page.locator('.monaco-hover:visible')).toContainText('defineFields')
   expect(browserErrors).toEqual([])
 })

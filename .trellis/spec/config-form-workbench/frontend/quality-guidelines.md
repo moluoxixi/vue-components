@@ -31,11 +31,32 @@ Required contracts:
   language-service workers provide diagnostics and semantic features but do not provide syntax tokenization.
 - Vue SFC boundary rules must accept attributes on `<template>` as well as `<script>` and `<style>`, otherwise the
   template falls back to the outer plain-text tokenizer and loses HTML highlighting.
+- `WorkspaceCodeEditor/services/language-features.ts` owns only singleton installation, warm-up, and reverse-order
+  disposal. TypeScript worker/mirror/provider behavior belongs to `typescript-language-features.ts`; Vue language
+  registration and the HTML service definition belong to `vue-language-definition.ts`.
 
 Regression coverage must assert worker routing for `vue`, exact mirror offsets/newlines, named-import module detection,
 declaration isolation, manifest module merging, and real-browser completion/Hover for both Vue Source and TypeScript
 Config models. Config checks must also prove that worker-provided exports and field properties are visible without duplicate
-custom candidates.
+custom candidates. Lifecycle coverage must also prove reverse disposal, configure-after-dispose, and the pinned `tsMode`
+retry when Monaco reports `TypeScript not registered!`.
+
+---
+
+## Source Export Service Boundaries
+
+The export facade keeps generation order and error semantics stable while private services own recursive graph concerns:
+
+- `source.ts` orchestrates the frozen project file set and remains the only production caller of page source generation.
+- `source-page.ts` generates one page's Vue source and delegates layout serialization, Registry lookup, portability
+  validation, and dependency collection.
+- `source-portability.ts` recursively validates every nested node, event, binding, action, and source reference before
+  source generation.
+- `source-libraries.ts` recursively collects libraries and rejects conflicting declarations for the same package.
+- `source-registry.ts` centralizes component lookup and retains the public export error wording.
+
+Regression coverage must include invalid nested components/events/bindings/actions/sources, dependencies that appear only
+in child nodes, nested library conflicts, canonical Source snapshots, and byte-stable generated project/page files.
 
 ---
 

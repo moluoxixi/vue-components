@@ -14,11 +14,11 @@
 
 ## 验收标准
 
-- [ ] 两个入口文件只承担外观编排，独立职责位于命名清晰的同 owner service 模块。
-- [ ] 导出源码、可移植性错误、依赖收集、补全、hover、Vue mirror、provider disposal 行为测试通过。
-- [ ] Workbench unit、typecheck、build 和 E2E 通过。
-- [ ] package architecture、lint 与 `git diff --check` 通过。
-- [ ] 公共 API、页面协议和 UI 无可观察变化。
+- [x] 两个入口文件只承担外观编排，独立职责位于命名清晰的同 owner service 模块。
+- [x] 导出源码、可移植性错误、依赖收集、补全、hover、Vue mirror、provider disposal 行为测试通过。
+- [x] Workbench unit、typecheck、build 和 E2E 通过。
+- [x] package architecture、lint 与 `git diff --check` 通过。
+- [x] 公共 API、页面协议和 UI 无可观察变化。
 
 ## 范围外
 

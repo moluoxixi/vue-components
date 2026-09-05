@@ -5,25 +5,40 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import WorkspaceCodeEditor from '../index.vue'
-import { disposeMonacoLanguageFeatures, installMonacoWorkerEnvironment } from '../services'
+import {
+  configureLanguageFeatures,
+  disposeMonacoLanguageFeatures,
+  installMonacoWorkerEnvironment,
+  warmTypeScriptWorker,
+} from '../services'
 
 const mocks = vi.hoisted(() => ({
   addCommand: vi.fn(),
   changeDisposers: [] as ReturnType<typeof vi.fn>[],
+  completionProviders: [] as Array<{ language: string, provider: Record<string, any> }>,
   createEditor: vi.fn(),
   createModel: vi.fn(),
   cursorDispose: vi.fn(),
   disconnect: vi.fn(),
+  disposalOrder: [] as number[],
   editorDispose: vi.fn(),
   editorLayout: vi.fn(),
   editorSetModel: vi.fn(),
   editorUpdateOptions: vi.fn(),
+  getTypeScriptWorker: vi.fn(),
+  hoverProviders: [] as Array<{ language: string, provider: Record<string, any> }>,
   languageDisposers: [] as ReturnType<typeof vi.fn>[],
   models: [] as Array<Record<string, any>>,
   observe: vi.fn(),
   saveCommand: undefined as undefined | (() => void),
   setModelLanguage: vi.fn(),
+  setupTypeScript: vi.fn(),
   setTheme: vi.fn(),
+  typeScriptWorker: {
+    getCompletionEntryDetails: vi.fn(),
+    getCompletionsAtPosition: vi.fn(),
+    getQuickInfoAtPosition: vi.fn(),
+  },
 }))
 let mountedWrapper: VueWrapper | undefined
 
@@ -49,10 +64,12 @@ vi.mock('monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController',
 vi.mock('monaco-editor/esm/vs/language/html/monaco.contribution', () => ({}))
 vi.mock('monaco-editor/esm/vs/language/json/monaco.contribution', () => ({}))
 vi.mock('monaco-editor/esm/vs/language/typescript/monaco.contribution', () => ({}))
+vi.mock('monaco-editor/esm/vs/language/typescript/tsMode', () => ({ setupTypeScript: mocks.setupTypeScript }))
 
 vi.mock('monaco-editor/esm/vs/editor/editor.api', () => {
   const disposable = () => {
-    const dispose = vi.fn()
+    const index = mocks.languageDisposers.length
+    const dispose = vi.fn(() => mocks.disposalOrder.push(index))
     mocks.languageDisposers.push(dispose)
     return { dispose }
   }
@@ -91,12 +108,18 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api', () => {
         registerHTMLLanguageService: vi.fn(),
       },
       register: vi.fn(),
-      registerCompletionItemProvider: vi.fn(disposable),
-      registerHoverProvider: vi.fn(disposable),
+      registerCompletionItemProvider: vi.fn((language: string, provider: Record<string, any>) => {
+        mocks.completionProviders.push({ language, provider })
+        return disposable()
+      }),
+      registerHoverProvider: vi.fn((language: string, provider: Record<string, any>) => {
+        mocks.hoverProviders.push({ language, provider })
+        return disposable()
+      }),
       setLanguageConfiguration: vi.fn(),
       setMonarchTokensProvider: vi.fn(),
       typescript: {
-        getTypeScriptWorker: vi.fn(() => Promise.resolve(async () => ({}))),
+        getTypeScriptWorker: mocks.getTypeScriptWorker,
         ModuleKind: { ESNext: 99 },
         ModuleResolutionKind: { NodeJs: 2 },
         ScriptTarget: { Latest: 99 },
@@ -124,7 +147,20 @@ function createModel(value: string, language: string, uri: { toString: () => str
       disposeListeners.forEach(listener => listener())
     }),
     getLanguageId: () => currentLanguage,
+    getOffsetAt: ({ column, lineNumber }: { column: number, lineNumber: number }) => {
+      const lines = currentValue.split('\n')
+      return lines.slice(0, lineNumber - 1).reduce((total, line) => total + line.length + 1, 0) + column - 1
+    },
+    getPositionAt: (offset: number) => {
+      const lines = currentValue.slice(0, offset).split('\n')
+      return { column: lines.at(-1)!.length + 1, lineNumber: lines.length }
+    },
     getValue: () => currentValue,
+    getWordUntilPosition: ({ column, lineNumber }: { column: number, lineNumber: number }) => {
+      const prefix = currentValue.split('\n')[lineNumber - 1]!.slice(0, column - 1)
+      const word = prefix.match(/[\w$]+$/)?.[0] ?? ''
+      return { endColumn: column, startColumn: column - word.length, word }
+    },
     isDisposed: () => disposed,
     onDidChangeContent: vi.fn((listener: () => void) => {
       contentListeners.add(listener)
@@ -150,10 +186,33 @@ function createModel(value: string, language: string, uri: { toString: () => str
 describe('workspace code editor lifecycle', () => {
   beforeEach(() => {
     mocks.changeDisposers.length = 0
+    mocks.completionProviders.length = 0
+    mocks.disposalOrder.length = 0
+    mocks.hoverProviders.length = 0
     mocks.languageDisposers.length = 0
     mocks.models.length = 0
     mocks.saveCommand = undefined
     mocks.createModel.mockImplementation(createModel)
+    mocks.getTypeScriptWorker.mockReset()
+    mocks.getTypeScriptWorker.mockResolvedValue(async () => mocks.typeScriptWorker)
+    mocks.setupTypeScript.mockReset()
+    mocks.typeScriptWorker.getCompletionEntryDetails.mockReset()
+    mocks.typeScriptWorker.getCompletionEntryDetails.mockResolvedValue({
+      displayParts: [{ text: 'const alpha: number' }],
+      documentation: [{ text: 'Alpha value.' }],
+      kind: 'const',
+      name: 'alpha',
+    })
+    mocks.typeScriptWorker.getCompletionsAtPosition.mockReset()
+    mocks.typeScriptWorker.getCompletionsAtPosition.mockResolvedValue({
+      entries: [{ kind: 'const', name: 'alpha', sortText: '11' }],
+    })
+    mocks.typeScriptWorker.getQuickInfoAtPosition.mockReset()
+    mocks.typeScriptWorker.getQuickInfoAtPosition.mockResolvedValue({
+      displayParts: [{ text: 'const alpha: number' }],
+      documentation: [{ text: 'Alpha value.' }],
+      textSpan: { length: 5, start: 31 },
+    })
     mocks.setModelLanguage.mockImplementation((model, language) => model.setLanguage(language))
     mocks.addCommand.mockImplementation((_key, command) => {
       mocks.saveCommand = command
@@ -265,6 +324,57 @@ describe('workspace code editor lifecycle', () => {
     expect(mocks.languageDisposers).toHaveLength(5)
     disposeMonacoLanguageFeatures()
     mocks.languageDisposers.forEach(dispose => expect(dispose).toHaveBeenCalledOnce())
+    expect(mocks.disposalOrder).toEqual([4, 3, 2, 1, 0])
+  })
+
+  it('reconfigures providers after global disposal', () => {
+    configureLanguageFeatures()
+    expect(mocks.languageDisposers).toHaveLength(5)
+
+    disposeMonacoLanguageFeatures()
+    configureLanguageFeatures()
+
+    expect(mocks.languageDisposers).toHaveLength(10)
+    mocks.languageDisposers.slice(0, 5).forEach(dispose => expect(dispose).toHaveBeenCalledOnce())
+    mocks.languageDisposers.slice(5).forEach(dispose => expect(dispose).not.toHaveBeenCalled())
+  })
+
+  it('initializes the TypeScript mode after a missed one-shot language event', async () => {
+    const model = createModel('const value = 1', 'typescript', { toString: () => 'inmemory://worker.ts' })
+    mocks.getTypeScriptWorker.mockReset()
+    mocks.getTypeScriptWorker
+      .mockRejectedValueOnce('TypeScript not registered!')
+      .mockResolvedValueOnce(async () => mocks.typeScriptWorker)
+
+    await warmTypeScriptWorker(model as never)
+
+    expect(mocks.setupTypeScript).toHaveBeenCalledOnce()
+    expect(mocks.getTypeScriptWorker).toHaveBeenCalledTimes(2)
+  })
+
+  it('serves Vue script completion details and hover through the TypeScript mirror', async () => {
+    configureLanguageFeatures()
+    const source = '<script setup lang="ts">\nconst alpha = 1\n</script>\n'
+    const model = createModel(source, 'vue', { toString: () => 'inmemory://source.vue' })
+    const position = model.getPositionAt(source.indexOf('alpha') + 5)
+    const token = { isCancellationRequested: false }
+    const completionProvider = mocks.completionProviders.find(item => item.language === 'vue')!.provider
+    const hoverProvider = mocks.hoverProviders.find(item => item.language === 'vue')!.provider
+
+    const completion = await completionProvider.provideCompletionItems(model, position, {}, token)
+    expect(completion.suggestions[0]).toMatchObject({ label: 'alpha' })
+    await expect(completionProvider.resolveCompletionItem(completion.suggestions[0], token)).resolves.toMatchObject({
+      detail: 'const alpha: number',
+      documentation: { value: 'Alpha value.' },
+    })
+    await expect(hoverProvider.provideHover(model, position, token)).resolves.toMatchObject({
+      contents: [
+        { value: '```typescript\nconst alpha: number\n```' },
+        { value: 'Alpha value.' },
+      ],
+    })
+
+    model.dispose()
   })
 
   it('disposes the Vue TypeScript mirror with its source model', () => {
