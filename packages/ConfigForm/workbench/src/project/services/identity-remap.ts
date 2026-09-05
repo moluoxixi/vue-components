@@ -263,7 +263,6 @@ export function remapProjectPageIdentity(
               id: requireMapped(flows, flow.id, 'flow'),
               trigger: {
                 ...structuredClone(flow.trigger),
-                ...(flow.trigger.field ? { field: requireMapped(fields, flow.trigger.field, 'field') } : {}),
                 ...(flow.trigger.nodeId ? { nodeId: requireMapped(nodes, flow.trigger.nodeId, 'node') } : {}),
               },
               nodes: flow.nodes.map(node => remapFlowNode(node, {

@@ -328,6 +328,13 @@ interface SlotItem {
   or creates one from that event source, and all edits still commit through
   Project Transactions. Workbench does not expose a second action-string event
   model beside Flow.
+- Form-level Flow events are authored from the no-selection Form property panel.
+  It exposes exactly `page.mount` (shown as Form load) and `form.submit` (shown
+  as Form submit); each row opens a Flow dialog locked to that trigger. A Flow
+  dialog never offers a trigger switch or a page-wide Flow list.
+- The current Flow trigger union is `page.mount | form.submit | component.event`;
+  `field.change` is rejected as an unsupported historical shape at current
+  schema/compiler boundaries. Do not migrate, delete, or execute it.
 - Design Runtime nodes register geometry by stable `nodeId`; ancestry path and
   slot are mutable traversal metadata, not registration identity. Candidate
   moves between nested slots must update the registration without allowing an

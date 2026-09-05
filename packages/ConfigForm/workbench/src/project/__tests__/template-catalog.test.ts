@@ -320,7 +320,7 @@ describe('template catalog', () => {
       version: 1,
       id: 'role-change',
       name: 'Role change',
-      trigger: { kind: 'field.change', field: 'role' },
+      trigger: { kind: 'component.event', nodeId: role.id, event: 'update:modelValue' },
       nodes: [
         { id: 'trigger', type: 'trigger' },
         {
@@ -376,7 +376,7 @@ describe('template catalog', () => {
     expect(fields).not.toContain('role')
     expect(JSON.stringify(remapped)).not.toContain('"nodeId":"profile-name"')
     const [flow, secondaryFlow] = remapped.flows!
-    expect(fields).toContain(flow!.trigger.field)
+    expect(flow!.trigger.kind).toBe('component.event')
     const mappedName = Object.values(remapped.graph.nodesById).find(node => node.kind === 'field' && node.label === 'Name')
     const mappedRole = Object.values(remapped.graph.nodesById).find(node => node.kind === 'field' && node.label === 'Role')
     if (mappedName?.kind !== 'field' || mappedRole?.kind !== 'field')

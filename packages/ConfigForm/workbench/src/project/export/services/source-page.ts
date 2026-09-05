@@ -359,7 +359,6 @@ async function runTrigger(trigger: FlowTrigger): Promise<void> {
 function runFieldChange(field: string): void {
   applyRuntimeProjection()
   void validateOn(field, 'change')
-  void runTrigger({ kind: 'field.change', field })
 }
 
 async function runNodeEvent(nodeId: string, eventName: string, payload: unknown): Promise<void> {

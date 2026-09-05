@@ -58,20 +58,13 @@ function overlay(): DOMWrapper<HTMLElement> {
   return new DOMWrapper(document.getElementById('workbench-overlays')!)
 }
 
-function selectControl(wrapper: ReturnType<typeof mount>, id: string) {
-  const control = wrapper.findAllComponents({ name: 'ElSelect' })
-    .find(component => component.attributes('data-flow-control') === id)
-  if (!control)
-    throw new Error(`Expected Element Plus select: ${id}`)
-  return control
-}
-
 describe('flowWorkspace', () => {
   it('uses an explicit locale outside the designer provider and reacts to replacements', async () => {
     const wrapper = mount(FlowWorkspace, {
       props: {
         pageId: PAGE_ID,
         flows: [],
+        initialTrigger: { kind: 'form.submit' },
         locale: {
           locale: 'zh-CN',
           messages: {
@@ -103,10 +96,10 @@ describe('flowWorkspace', () => {
   })
 
   it('creates a valid trigger-to-end flow and projects it through controlled Vue Flow', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [], initialTrigger: { kind: 'form.submit' } } })
     await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
-    expect(overlay().get('[role="menu"]').attributes('aria-labelledby')).toBeDefined()
-    await overlay().findAll('[role="menuitem"]').find(button => button.text().includes('Form submit'))!.trigger('click')
+    expect(wrapper.emitted('command')).toBeUndefined()
+    await wrapper.get('[data-testid="add-condition"]').trigger('click')
     const command = lastCommand(wrapper)
     expect(command).toMatchObject({ label: 'Add flow' })
     expect(command?.id).toMatch(/^flow-[a-z0-9]+-1$/)
@@ -120,11 +113,13 @@ describe('flowWorkspace', () => {
 
     const vueFlow = wrapper.getComponent(VueFlow)
     expect(vueFlow.props('applyDefault')).toBe(false)
-    expect((vueFlow.props('nodes') as Array<{ id: string }>).map(node => node.id)).toEqual(['flow-1-trigger', 'flow-1-end'])
+    expect((vueFlow.props('nodes') as Array<{ id: string }>).map(node => node.id)).toEqual(['flow-1-trigger', 'flow-1-condition-1', 'flow-1-end'])
     expect(created).toMatchObject({ name: 'On Form submit', trigger: { kind: 'form.submit' } })
-    expect(created.edges).toEqual([{ id: 'flow-1-next', source: 'flow-1-trigger', target: 'flow-1-end', condition: 'next' }])
-    expect(wrapper.get('.flow-list-item small').text()).toBe('Form submit')
+    expect(created.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'flow-1-trigger', target: 'flow-1-condition-1', condition: 'next' }),
+    ]))
     expect(wrapper.get('[data-node-id="flow-1-trigger"] strong').text()).toBe('Form submit')
+    expect(wrapper.get('[data-flow-control="locked-trigger"] code').text()).toBe('form.submit')
   })
 
   it('focuses an existing event handler or opens event-first creation for an unhandled inspector event', async () => {
@@ -139,15 +134,15 @@ describe('flowWorkspace', () => {
       },
     })
 
-    expect(wrapper.get('.flow-list-item.is-active span').text()).toBe('Existing')
-    expect(overlay().find('[role="menu"]').isVisible()).toBe(false)
+    expect(wrapper.get('.flow-editor-title code').text()).toBe('Submit · Click')
+    expect(wrapper.get('[data-flow-control="locked-trigger"] code').text()).toBe('submit:click')
 
     await wrapper.setProps({
       initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'change' },
     })
     await wrapper.vm.$nextTick()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    expect(overlay().get('[role="menu"]').isVisible()).toBe(true)
+    expect(wrapper.get('.flow-empty').text()).toContain('No flow configured')
+    expect(overlay().find('[role="menu"]').exists()).toBe(false)
   })
 
   it('creates a component event flow from the exact registered node event', async () => {
@@ -162,9 +157,8 @@ describe('flowWorkspace', () => {
       },
     })
 
-    const preferred = overlay().get('[role="menuitem"].is-preferred')
-    expect(preferred.text()).toContain('Submit · Click')
-    await preferred.trigger('click')
+    await wrapper.get('[data-testid="create-first-flow"]').trigger('click')
+    await wrapper.get('[data-testid="add-condition"]').trigger('click')
 
     const operation = appliedOperation(wrapper)
     expect(operation.type).toBe('flow.add')
@@ -177,7 +171,7 @@ describe('flowWorkspace', () => {
   })
 
   it('keeps condition branches explicit when adding a condition node', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
     await wrapper.get('[data-testid="add-condition"]').trigger('click')
     const updated = lastAction(wrapper)
     expect(updated.type).toBe('flow.graph')
@@ -187,51 +181,68 @@ describe('flowWorkspace', () => {
     expect(updated.edges.filter(edge => edge.source === condition.id).map(edge => edge.condition).sort()).toEqual(['false', 'true'])
   })
 
-  it('uses a registered field when selecting a field-change trigger', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('field-flow')], fieldNames: ['email'] } })
-    selectControl(wrapper, 'trigger').vm.$emit('change', 'field.change')
-    await wrapper.vm.$nextTick()
-    const updated = lastAction(wrapper)
-    expect(updated.type).toBe('flow.settings')
-    if (updated.type !== 'flow.settings')
-      return
-    expect(updated.settings.trigger).toEqual({ kind: 'field.change', field: 'email' })
-  })
-
-  it('uses a registered node event when selecting a component-event trigger', async () => {
+  it('locks the trigger context and does not expose a trigger selector', async () => {
     const wrapper = mount(FlowWorkspace, {
       props: {
         pageId: PAGE_ID,
-        flows: [createFlow('event-flow')],
+        flows: [{ ...createFlow('event-flow'), trigger: { kind: 'component.event', nodeId: 'submit', event: 'change' } } as ConfigFormFlow],
         eventTargets: [
           { nodeId: 'submit', nodeLabel: 'Submit', component: 'element.input', event: 'change', eventLabel: 'Change' },
         ],
+        initialTrigger: { kind: 'component.event', nodeId: 'submit', event: 'change' },
       },
     })
 
-    selectControl(wrapper, 'trigger').vm.$emit('change', 'component.event')
-    await wrapper.vm.$nextTick()
-    const updated = lastAction(wrapper)
-    expect(updated.type).toBe('flow.settings')
-    if (updated.type !== 'flow.settings')
-      return
-    expect(updated.settings.trigger).toEqual({ kind: 'component.event', nodeId: 'submit', event: 'change' })
-
-    await wrapper.setProps({ flows: [{ ...createFlow('event-flow'), trigger: updated.settings.trigger } as ConfigFormFlow] })
-    expect(String(selectControl(wrapper, 'event-target').props('modelValue'))).toContain('submit')
+    expect(wrapper.find('[data-flow-control="trigger"]').exists()).toBe(false)
+    expect(wrapper.find('[data-flow-control="event-target"]').exists()).toBe(false)
+    expect(wrapper.get('[data-flow-control="locked-trigger"] strong').text()).toBe('Submit · Change')
   })
 
-  it('keeps component-event selection unavailable without registry targets', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('event-flow')] } })
-    const option = selectControl(wrapper, 'trigger').findAllComponents({ name: 'ElOption' }).find(
-      component => component.props('value') === 'component.event',
-    )
-    expect(option?.props('disabled')).toBe(true)
+  it('uses Element Plus text controls for flow inspector fields', async () => {
+    const flow = createFlow('text-controls-flow')
+    flow.nodes.splice(1, 0, { id: 'action', type: 'action', ref: 'notify', config: {} })
+    flow.edges = [
+      { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
+      { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
+    ]
+    const wrapper = mount(FlowWorkspace, {
+      props: {
+        pageId: PAGE_ID,
+        flows: [flow],
+        initialTrigger: { kind: 'form.submit' },
+      },
+    })
+
+    const nameControl = wrapper.get('[data-flow-control="name"]')
+    expect(nameControl.findComponent({ name: 'ElInput' }).exists()).toBe(true)
+    expect(nameControl.find('.el-input__wrapper').exists()).toBe(true)
+
+    wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'action', selected: true, type: 'select' }])
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[aria-label="Node ID"]').element.tagName).toBe('INPUT')
+    expect(wrapper.get('[aria-label="Action ref"]').element.tagName).toBe('INPUT')
+    expect(wrapper.get('[aria-label="Node config"]').element.tagName).toBe('TEXTAREA')
+  })
+
+  it('blocks editing when the current trigger has duplicate flows', async () => {
+    const wrapper = mount(FlowWorkspace, {
+      props: {
+        pageId: PAGE_ID,
+        flows: [createFlow('first'), createFlow('second')],
+        initialTrigger: { kind: 'form.submit' },
+      },
+    })
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('multiple flows')
+    expect(wrapper.get('[data-testid="add-condition"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="add-condition"]').trigger('click')
+    expect(wrapper.emitted('command')).toBeUndefined()
   })
 
   it('preserves readonly and numeric boundaries through Element Plus controls', async () => {
     const readonlyWrapper = mount(FlowWorkspace, {
-      props: { pageId: PAGE_ID, flows: [createFlow('readonly-flow')], readonly: true },
+      props: { pageId: PAGE_ID, flows: [createFlow('readonly-flow')], initialTrigger: { kind: 'form.submit' }, readonly: true },
     })
     expect(readonlyWrapper.findAllComponents({ name: 'ElSelect' })
       .every(control => control.props('disabled') === true)).toBe(true)
@@ -241,7 +252,7 @@ describe('flowWorkspace', () => {
     await readonlyWrapper.vm.$nextTick()
     expect(readonlyWrapper.emitted('command')).toBeUndefined()
 
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('timeout-flow')] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow('timeout-flow')], initialTrigger: { kind: 'form.submit' } } })
     const timeout = wrapper.getComponent({ name: 'ElInputNumber' })
     timeout.vm.$emit('change', -1)
     timeout.vm.$emit('change', 12.5)
@@ -265,7 +276,7 @@ describe('flowWorkspace', () => {
       { id: 'condition-true', source: 'condition', target: 'end', condition: 'true' },
       { id: 'condition-false', source: 'condition', target: 'end', condition: 'false' },
     ]
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
     await wrapper.get('[data-testid="add-action"]').trigger('click')
     const updated = lastAction(wrapper)
     expect(updated.type).toBe('flow.graph')
@@ -280,7 +291,7 @@ describe('flowWorkspace', () => {
     const flow = createFlow('connect-flow')
     flow.nodes.splice(1, 0, { id: 'action', type: 'action', ref: 'notify', config: {} })
     flow.edges.push({ id: 'action-end', source: 'action', target: 'end', condition: 'next' })
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
     const connection: Connection = {
       source: 'trigger',
       sourceHandle: 'next',
@@ -308,7 +319,7 @@ describe('flowWorkspace', () => {
       { id: 'condition-false', source: 'condition', target: 'action', condition: 'false' },
       { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
     ]
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
 
     wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'condition', type: 'remove' }])
     await wrapper.vm.$nextTick()
@@ -324,7 +335,7 @@ describe('flowWorkspace', () => {
       { id: 'trigger-action', source: 'trigger', target: 'action', condition: 'next' },
       { id: 'action-end', source: 'action', target: 'end', condition: 'next' },
     ]
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [flow], initialTrigger: { kind: 'form.submit' } } })
     wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{ id: 'action', selected: true, type: 'select' }])
     await wrapper.vm.$nextTick()
     await wrapper.get('textarea').setValue('{"input":{"kind":"literal","value":"saved"}}')
@@ -347,7 +358,7 @@ describe('flowWorkspace', () => {
   })
 
   it('commits a node position only through a controlled model update', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
     wrapper.getComponent(VueFlow).vm.$emit('nodesChange', [{
       id: 'trigger',
       type: 'position',
@@ -377,7 +388,7 @@ describe('flowWorkspace', () => {
   })
 
   it('rejects an edge deletion that would leave the trigger as a dead end', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
     const change: EdgeRemoveChange = {
       id: 'next',
       type: 'remove',
@@ -394,8 +405,13 @@ describe('flowWorkspace', () => {
   })
 
   it('emits a semantic remove operation for one flow', async () => {
-    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()] } })
+    const wrapper = mount(FlowWorkspace, { props: { pageId: PAGE_ID, flows: [createFlow()], initialTrigger: { kind: 'form.submit' } } })
     await wrapper.get('[aria-label="Delete flow"]').trigger('click')
+    const popconfirm = wrapper.findComponent({ name: 'ElPopconfirm' })
+    expect(popconfirm.exists()).toBe(true)
+    popconfirm.vm.$emit('confirm', new MouseEvent('click'))
+    await wrapper.vm.$nextTick()
     expect(appliedOperation(wrapper)).toEqual({ type: 'flow.remove', pageId: PAGE_ID, flowId: 'existing' })
+    expect(wrapper.emitted('close')).toHaveLength(1)
   })
 })

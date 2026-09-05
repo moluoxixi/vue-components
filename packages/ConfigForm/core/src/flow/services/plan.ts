@@ -23,12 +23,10 @@ export function analyzeConfigFormFlow(input: unknown): ConfigFormFlowPlanResult 
     diagnostics.push({ code: 'FLOW_VERSION_UNSUPPORTED', message: `Unsupported flow version: ${String(flow.version)}`, path: 'version' })
   if (!isNonEmptyString(flow.id) || !isNonEmptyString(flow.name))
     diagnostics.push({ code: 'FLOW_ID_NAME_REQUIRED', message: 'Flow id and name are required.' })
-  if (!isRecord(flow.trigger) || !['page.mount', 'form.submit', 'field.change', 'component.event'].includes(flow.trigger.kind as string))
+  if (!isRecord(flow.trigger) || !['page.mount', 'form.submit', 'component.event'].includes(flow.trigger.kind as string))
     diagnostics.push({ code: 'FLOW_TRIGGER_INVALID', message: 'Flow trigger is invalid.', path: 'trigger' })
-  if (flow.trigger?.kind === 'field.change' && !isNonEmptyString(flow.trigger.field))
-    diagnostics.push({ code: 'FLOW_TRIGGER_FIELD_REQUIRED', message: 'field.change triggers require a field.', path: 'trigger.field' })
-  if (flow.trigger?.kind !== 'field.change' && flow.trigger?.field !== undefined)
-    diagnostics.push({ code: 'FLOW_TRIGGER_FIELD_UNEXPECTED', message: 'Only field.change triggers may specify a field.', path: 'trigger.field' })
+  if (isRecord(flow.trigger) && Object.hasOwn(flow.trigger, 'field'))
+    diagnostics.push({ code: 'FLOW_TRIGGER_FIELD_UNSUPPORTED', message: 'field.change triggers are no longer supported.', path: 'trigger.field' })
   if (flow.trigger?.kind === 'component.event') {
     if (!isNonEmptyString(flow.trigger.nodeId))
       diagnostics.push({ code: 'FLOW_TRIGGER_NODE_REQUIRED', message: 'component.event triggers require a nodeId.', path: 'trigger.nodeId' })
@@ -221,6 +219,12 @@ function reachableNodes(triggerId: string, outgoing: Map<string, ConfigFormFlowE
     }
   }
   return reachable
+}
+
+export function getConfigFormFlowTriggerKey(trigger: ConfigFormFlow['trigger']): string {
+  if (trigger.kind === 'component.event')
+    return JSON.stringify([trigger.kind, trigger.nodeId ?? '', trigger.event ?? ''])
+  return JSON.stringify([trigger.kind])
 }
 
 function failure(flow: ConfigFormFlow, diagnostics: ConfigFormFlowDiagnostic[]): ConfigFormFlowPlanFailure {

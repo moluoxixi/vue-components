@@ -53,7 +53,6 @@ const {
   currentGraph,
   currentPage,
   currentPageId,
-  designerFieldNames,
   flowEventTargets,
   designerLayers,
   dirty,
@@ -217,7 +216,7 @@ function showExportDialog(mode: 'source' | 'config'): void {
   openExportPreview(mode)
 }
 
-function showFlowDialog(trigger?: ConfigFormFlowTrigger): void {
+function showFlowDialog(trigger: ConfigFormFlowTrigger): void {
   openFlowWorkspace(trigger)
 }
 
@@ -270,7 +269,6 @@ watch(recoveryDrafts, (drafts) => {
       :config-error="configError"
       :current-page="currentPage"
       :dirty="dirty"
-      :flow-open="flowWorkspaceOpen"
       :locale="localeOptions"
       :locale-id="localeId"
       :palette-family="paletteFamily"
@@ -282,7 +280,6 @@ watch(recoveryDrafts, (drafts) => {
       @create-checkpoint="showPersistenceDialog('checkpoint')"
       @new-page="requestCreation('page', $event)"
       @open-appearance="openAppearanceDrawer"
-      @open-flow="showFlowDialog()"
       @open-pages="showPageManager"
       @open-versions="showPersistenceDialog('versions')"
       @save="saveProject"
@@ -316,6 +313,7 @@ watch(recoveryDrafts, (drafts) => {
             :key="`${currentProject.registryLock.adapter}-${currentPageId}`"
             class="embedded-designer"
             :graph="currentGraph"
+            :flows="currentPage?.flows ?? []"
             :page-id="currentPageId"
             :component-registry="componentRegistry"
             :command-hint="WorkbenchCommandHint"
@@ -327,6 +325,7 @@ watch(recoveryDrafts, (drafts) => {
             :runtime-renderer="designRuntime.artifact.plan.renderer"
             workspace-navigation="external"
             @configure-event="showComponentEventFlow"
+            @configure-flow="showFlowDialog"
             @notice="handleDesignerNotice"
             @selection-set-change="selectedDesignerIds = $event"
            >
@@ -505,8 +504,7 @@ watch(recoveryDrafts, (drafts) => {
     />
 
     <FlowDialog
-      v-if="flowDialogLoaded"
-      :field-names="designerFieldNames"
+      v-if="flowDialogLoaded && flowWorkspaceOpen && flowInitialTrigger"
       :event-targets="flowEventTargets"
       :flows="currentPage?.flows ?? []"
       :initial-trigger="flowInitialTrigger"

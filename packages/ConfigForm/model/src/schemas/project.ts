@@ -30,6 +30,7 @@ import type {
 import {
   analyzeConfigFormFlow,
   CONFIG_FORM_FLOW_VERSION,
+  getConfigFormFlowTriggerKey,
   getConfigFormJsonSemanticHash,
 } from '@moluoxixi/config-form-core'
 import { ruleSetSchema } from '@moluoxixi/zod3-to-rule'
@@ -123,8 +124,7 @@ export const flowSchema: z.ZodType<ConfigFormFlow> = z.object({
   id: identifierSchema,
   name: z.string().trim().min(1).max(160),
   trigger: z.object({
-    kind: z.enum(['page.mount', 'form.submit', 'field.change', 'component.event']),
-    field: identifierSchema.optional(),
+    kind: z.enum(['page.mount', 'form.submit', 'component.event']),
     nodeId: identifierSchema.optional(),
     event: identifierSchema.optional(),
   }).strict(),
@@ -638,23 +638,18 @@ function validateProjectPageContent(
   page: Pick<ProjectPage, 'graph' | 'flows'>,
   context: z.RefinementCtx,
 ): void {
-  const fields = new Set(Object.values(page.graph.nodesById)
-    .filter(node => node.kind === 'field')
-    .map(node => node.field))
   const flowIds = new Set<string>()
+  const flowTriggers = new Map<string, string[]>()
   page.flows?.forEach((flow, index) => {
     if (flowIds.has(flow.id)) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: `Duplicate flow id: ${flow.id}`, path: ['flows', index, 'id'] })
       return
     }
     flowIds.add(flow.id)
-    if (flow.trigger.kind === 'field.change' && (!flow.trigger.field || !fields.has(flow.trigger.field))) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Flow field.change trigger references an unknown field: ${flow.trigger.field ?? '<missing>'}`,
-        path: ['flows', index, 'trigger', 'field'],
-      })
-    }
+    const triggerKey = getConfigFormFlowTriggerKey(flow.trigger)
+    const triggerFlows = flowTriggers.get(triggerKey) ?? []
+    triggerFlows.push(flow.id)
+    flowTriggers.set(triggerKey, triggerFlows)
     if (flow.trigger.kind === 'component.event') {
       const target = flow.trigger.nodeId ? page.graph.nodesById[flow.trigger.nodeId] : undefined
       if (!target) {
@@ -678,6 +673,15 @@ function validateProjectPageContent(
       message: diagnostic.message,
       path: ['flows', index, ...(diagnostic.path ? [diagnostic.path] : [])],
     }))
+  })
+  flowTriggers.forEach((flowIdsForTrigger, triggerKey) => {
+    if (flowIdsForTrigger.length < 2)
+      return
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Duplicate flow trigger ${triggerKey} is not allowed: ${flowIdsForTrigger.join(', ')}.`,
+      path: ['flows'],
+    })
   })
 }
 

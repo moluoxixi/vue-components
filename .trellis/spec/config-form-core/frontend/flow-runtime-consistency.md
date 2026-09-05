@@ -62,6 +62,14 @@ Core execution statuses are `success`, `end`, `ignored`, `aborted`,
   a stale generation. Preview values remain Preview-session state and cross
   the engine through explicit read/write ports so a Flow-owned patch is
   applied to the latest values.
+- Flow authoring enters from a concrete Inspector event or the Form property
+  surface. A FlowWorkspace receives one locked trigger and at most one matching
+  Flow; it must not expose a global trigger selector or silently switch to a
+  different event. `page.mount` and `form.submit` are entered from Form events,
+  while component events are entered from the selected node.
+- The current Flow trigger union is `page.mount | form.submit | component.event`.
+  `field.change` is unsupported at current schema/compiler boundaries; there is
+  no migration or runtime compatibility path.
 - Core and generated Source publish the same
   `CONFIG_FORM_FLOW_RUNTIME_VERSION`. Generated `flows.ts` embeds that version
   and is executed in parity tests; a version string match without observable
@@ -176,7 +184,7 @@ queued entries behind.
   synchronous reactions, and the allowed condition/action event-Flow cases.
 - Generated project integration: install, type-check, and build Element Plus
   and Ant Design Vue complete exports and pure Source exports.
-- Browser verification: observe `page.mount`, `field.change`, and
+- Browser verification: observe `page.mount`, `component.event`, and
   `form.submit` updates through the real Renderer; filter console warnings and
   errors from an operation timestamp.
 - Preview lifecycle tests: a same-page revision keeps one Runtime instance and

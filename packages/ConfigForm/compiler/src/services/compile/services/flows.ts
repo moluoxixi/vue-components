@@ -6,7 +6,7 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { NodeId, PageGraph, PageId, RegistryContractComponentSnapshot } from '@moluoxixi/config-form-model'
 import type { CanonicalFlowIR, SemanticCompilerDiagnostic } from '../../../types'
-import { analyzeConfigFormFlow, getConfigFormFlowSemanticHash } from '@moluoxixi/config-form-core'
+import { analyzeConfigFormFlow, getConfigFormFlowSemanticHash, getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
 import { withoutFlowPositions } from '../../../utils'
 
 export function compileFlows(
@@ -17,6 +17,23 @@ export function compileFlows(
   registry: ReadonlyMap<string, RegistryContractComponentSnapshot>,
 ): CanonicalFlowIR[] {
   const declaredReactionCapabilities = collectGraphReactionCapabilities(graph)
+  const flowIdsByTrigger = new Map<string, string[]>()
+  for (const flow of flows) {
+    const triggerKey = getConfigFormFlowTriggerKey(flow.trigger)
+    const ids = flowIdsByTrigger.get(triggerKey) ?? []
+    ids.push(flow.id)
+    flowIdsByTrigger.set(triggerKey, ids)
+  }
+  for (const [triggerKey, flowIds] of flowIdsByTrigger) {
+    if (flowIds.length < 2)
+      continue
+    diagnostics.push({
+      code: 'COMPILER_FLOW_TRIGGER_DUPLICATE',
+      message: `Duplicate flow trigger ${triggerKey} is not allowed: ${flowIds.join(', ')}.`,
+      pageId,
+      path: ['flows'],
+    })
+  }
   return flows.flatMap((flow) => {
     const semanticFlow = withoutFlowPositions(flow)
     const result = analyzeConfigFormFlow(semanticFlow)
@@ -100,14 +117,6 @@ function diagnoseFlowCapabilityConflict(
   const hasBranchOrAction = flow.nodes.some(node => node.type === 'condition' || node.type === 'action')
   if (!hasReaction || hasBranchOrAction)
     return undefined
-  if (flow.trigger.kind === 'field.change') {
-    return {
-      code: 'COMPILER_FLOW_SYNC_REACTION_REDUNDANT',
-      message: `Flow "${flow.id}" contains only synchronous form updates for field.change. Use a declarative reaction instead.`,
-      pageId,
-      path: ['flows', flow.id],
-    }
-  }
   if (flow.trigger.kind !== 'component.event' || !flow.trigger.nodeId || !flow.trigger.event)
     return undefined
   const node = graph.nodesById[flow.trigger.nodeId]

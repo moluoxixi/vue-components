@@ -199,6 +199,26 @@ Required regression coverage:
 
 ---
 
+## Element Plus Inspector Text Controls
+
+Workbench inspector fields that edit user-facing text or JSON must use the
+Element Plus `ElInput` component, including the Flow inspector's event-flow
+name, node ID, action ref, and node config fields. Do not add a parallel native
+`input`/`textarea` border or focus rule for those controls: Element Plus owns
+the wrapper, focus state, and `--el-input-*` theme tokens. Feature-specific
+text-area behavior belongs on `ElInput` props or the component's inner
+`.el-textarea__inner` selector.
+
+Required regression coverage:
+
+- Flow inspector text fields render the Element Plus wrapper and inner control.
+- The event-flow name uses the same wrapper/focus structure as other Workbench
+  inspector text controls in both light and dark themes.
+- No feature stylesheet targets native Flow inspector text controls with a
+  competing border or focus treatment.
+
+---
+
 ## Automated Accessibility Gate
 
 Workbench production changes must run `pnpm --filter @config-form/workbench test:e2e`. The Playwright suite uses

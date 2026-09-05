@@ -4,9 +4,8 @@ import type { FlowEventTarget } from '../../../../../flow'
 
 export interface FlowWorkspaceProps {
   eventTargets?: FlowEventTarget[]
-  fieldNames?: string[]
   flows: ConfigFormFlow[]
-  initialTrigger?: ConfigFormFlowTrigger
+  initialTrigger: ConfigFormFlowTrigger
   locale?: DesignerLocaleOptions
   pageId: string
   readonly?: boolean

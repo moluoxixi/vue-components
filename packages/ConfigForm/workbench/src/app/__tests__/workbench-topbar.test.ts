@@ -97,7 +97,7 @@ describe('workbench topbar', () => {
     wrapper.unmount()
   })
 
-  it('restores the stable mobile trigger before opening a dialog workspace', async () => {
+  it('does not expose a global flow workspace action', async () => {
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
       props: {
@@ -112,14 +112,10 @@ describe('workbench topbar', () => {
 
     const trigger = wrapper.get('button[aria-label="More actions"]')
     await trigger.trigger('click')
-    const flow = overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').find(
-      item => item.text() === 'Event flow orchestration',
-    )!
-    ;(flow.element as HTMLButtonElement).focus()
-    await flow.trigger('click')
-
-    expect(wrapper.emitted('openFlow')).toHaveLength(1)
-    expect(document.activeElement).toBe(trigger.element)
+    expect(overlayRoot().findAll('[data-mobile-action-menu] [role="menuitem"]').some(
+      item => item.text().includes('Event flow orchestration'),
+    )).toBe(false)
+    expect(wrapper.emitted('openFlow')).toBeUndefined()
     wrapper.unmount()
   })
 
@@ -139,11 +135,8 @@ describe('workbench topbar', () => {
     })
 
     const commandHints = wrapper.findAllComponents(WorkbenchCommandHint)
-    expect(commandHints).toHaveLength(5)
+    expect(commandHints).toHaveLength(4)
     expect(commandHints.every(hint => Boolean(hint.props('label')))).toBe(true)
-    const flow = wrapper.get('button[aria-label="Event flow orchestration"]')
-    expect(flow.attributes('aria-expanded')).toBe('false')
-    expect(flow.attributes('title')).toBeUndefined()
     const save = wrapper.get('button[aria-label^="Save options"]')
     expect(save.attributes('aria-disabled')).toBe('true')
     expect(save.attributes('aria-haspopup')).toBe('menu')
@@ -157,7 +150,7 @@ describe('workbench topbar', () => {
     wrapper.unmount()
   })
 
-  it('shows the Flow command through the Element Plus tooltip on keyboard focus', async () => {
+  it('shows a command through the Element Plus tooltip on keyboard focus', async () => {
     vi.useFakeTimers()
     const wrapper = mount(WorkbenchTopbar, {
       attachTo: document.body,
@@ -172,16 +165,14 @@ describe('workbench topbar', () => {
     })
 
     try {
-      const flow = wrapper.get('button[aria-label="Event flow orchestration"]')
+      const flow = wrapper.get('button[aria-label="New page"]')
       ;(flow.element as HTMLButtonElement).focus()
       await vi.advanceTimersByTimeAsync(400)
       await nextTick()
       const tooltip = overlayRoot().get('.workbench-command-tooltip')
-      expect(tooltip.text()).toBe('Event flow orchestration')
+      expect(tooltip.text()).toBe('New page')
       expect(tooltip.attributes('role')).toBe('tooltip')
-      expect(flow.attributes('aria-expanded')).toBe('false')
-      expect(flow.attributes('aria-describedby')).toBeUndefined()
-      expect(flow.element.parentElement?.getAttribute('aria-describedby')).toContain(tooltip.attributes('id'))
+      expect(flow.attributes('aria-describedby')).toContain(tooltip.attributes('id'))
     }
     finally {
       wrapper.unmount()

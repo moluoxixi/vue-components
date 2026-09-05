@@ -3,10 +3,9 @@ import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 import type { FlowEventTarget } from '../../../flow'
 
 export interface FlowDialogProps {
-  fieldNames?: string[]
   eventTargets?: FlowEventTarget[]
   flows: ConfigFormFlow[]
-  initialTrigger?: ConfigFormFlowTrigger
+  initialTrigger: ConfigFormFlowTrigger
   locale?: DesignerLocaleOptions
   open: boolean
   pageId: string

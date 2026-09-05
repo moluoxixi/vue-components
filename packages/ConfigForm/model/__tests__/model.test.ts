@@ -31,12 +31,12 @@ import {
   undoProjectHistory,
 } from '../index'
 
-function pageFlow(id = 'mounted', field?: string): ConfigFormFlow {
+function pageFlow(id = 'mounted', nodeId?: string): ConfigFormFlow {
   return {
     version: CONFIG_FORM_FLOW_VERSION,
     id,
     name: id,
-    trigger: field ? { kind: 'field.change', field } : { kind: 'page.mount' },
+    trigger: nodeId ? { kind: 'component.event', nodeId, event: 'change' } : { kind: 'page.mount' },
     nodes: [
       { id: 'trigger', type: 'trigger' },
       { id: 'success', type: 'success' },
@@ -156,7 +156,7 @@ const inputContract: ComponentContract = {
   version: '1',
   kind: 'field',
   props: [{ key: 'placeholder', path: ['props', 'placeholder'] }],
-  events: [],
+  events: [{ name: 'change' }],
   bindings: [],
   slots: [],
   allowedParents: [],
@@ -320,7 +320,7 @@ describe('projectDocument schema', () => {
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined()
   })
 
-  it('owns flows at the page boundary and validates their field references against the page graph', () => {
+  it('owns flows at the page boundary and validates component event references against the page graph', () => {
     const source = projectDocument()
     source.pagesById.home!.flows = [pageFlow('name-change', 'name')]
     expect(parseProjectDocument(source).success).toBe(true)
@@ -331,8 +331,8 @@ describe('projectDocument schema', () => {
     if (!missing.success) {
       expect(missing.diagnostics).toEqual(expect.arrayContaining([
         expect.objectContaining({
-          message: expect.stringContaining('unknown field'),
-          path: ['pagesById', 'home', 'flows', 0, 'trigger', 'field'],
+          message: expect.stringContaining('unknown node'),
+          path: ['pagesById', 'home', 'flows', 0, 'trigger', 'nodeId'],
         }),
       ]))
     }
@@ -361,6 +361,39 @@ describe('projectDocument schema', () => {
     expect(invalid.success).toBe(false)
     if (!invalid.success)
       expect(invalid.diagnostics.some(item => item.message.includes('unknown node'))).toBe(true)
+  })
+
+  it('rejects duplicate flow triggers within one page', () => {
+    const source = projectDocument()
+    source.pagesById.home!.flows = [
+      {
+        ...pageFlow('first-click'),
+        trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
+      },
+      {
+        ...pageFlow('second-click'),
+        trigger: { kind: 'component.event', nodeId: 'name', event: 'change' },
+      },
+    ]
+
+    const result = parseProjectDocument(source)
+    expect(result.success).toBe(false)
+    if (!result.success)
+      expect(result.diagnostics.some(item => item.message.includes('Duplicate flow trigger'))).toBe(true)
+  })
+
+  it('rejects the removed field.change trigger without migrating it', () => {
+    const source = projectDocument() as unknown as Record<string, unknown>
+    const pages = source.pagesById as Record<string, Record<string, unknown>>
+    pages.home!.flows = [{
+      ...pageFlow('legacy-field-change'),
+      trigger: { kind: 'field.change', field: 'name' },
+    }]
+
+    const result = parseProjectDocument(source as unknown as ProjectDocument)
+    expect(result.success).toBe(false)
+    if (!result.success)
+      expect(JSON.stringify(result.diagnostics)).toContain('field.change')
   })
 })
 
@@ -596,7 +629,7 @@ describe('projectTransaction', () => {
     })
   })
 
-  it('applies page-owned Flow changes with semantic inverse and rejects dangling field triggers', () => {
+  it('applies page-owned Flow changes with semantic inverse and rejects dangling component event triggers', () => {
     const initial = projectDocument()
     const added = applyProjectTransaction(initial, {
       id: 'add-name-flow',
@@ -616,7 +649,7 @@ describe('projectTransaction', () => {
     })
     expect(dangling.success).toBe(false)
     expect(dangling.document).toBe(added.document)
-    expect(dangling.diagnostics[0]?.message).toContain('unknown field')
+    expect(dangling.diagnostics[0]?.message).toContain('unknown node')
 
     const undone = applyProjectTransaction(added.document, added.inverse)
     expect(undone.success).toBe(true)

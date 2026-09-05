@@ -44,11 +44,11 @@ const closeLabel = computed(() => locale.value.t('flow.dialog.close', 'Close eve
       <FlowWorkspace
         :flows="flows"
         :initial-trigger="initialTrigger"
-        :field-names="fieldNames"
         :event-targets="eventTargets"
         :locale="props.locale"
         :page-id="pageId"
         :readonly="readonly"
+        @close="emit('close')"
         @command="emit('command', $event)"
       />
     </div>

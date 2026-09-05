@@ -61,7 +61,7 @@
   min-height: 42px;
   padding: 7px 8px;
   align-items: center;
-  grid-template-columns: 18px minmax(0, 1fr) 16px;
+  grid-template-columns: 18px minmax(0, 1fr) auto 16px;
   gap: 7px;
   color: var(--mx-designer-text);
   text-align: left;
@@ -98,6 +98,99 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mx-config-form-designer__event-flows small,
+.mx-config-form-designer__form-events small {
+  justify-self: end;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__event-flows .is-configured,
+.mx-config-form-designer__form-events .is-configured {
+  color: var(--mx-designer-accent);
+}
+
+.mx-config-form-designer__event-flows .is-conflict,
+.mx-config-form-designer__form-events .is-conflict {
+  color: var(--mx-designer-danger);
+}
+
+.mx-config-form-designer__event-flows .is-unconfigured,
+.mx-config-form-designer__form-events .is-unconfigured {
+  color: var(--mx-designer-muted);
+}
+
+.mx-config-form-designer__form-events {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--mx-designer-separator);
+}
+
+.mx-config-form-designer__form-events > header {
+  min-height: 24px;
+  color: var(--mx-designer-text);
+  font-size: 12px;
+}
+
+.mx-config-form-designer__form-events > button {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 7px 8px;
+  align-items: center;
+  grid-template-columns: 18px minmax(0, 1fr) auto 16px;
+  gap: 7px;
+  color: var(--mx-designer-text);
+  text-align: left;
+  background: var(--mx-designer-surface);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.mx-config-form-designer__form-events > button:hover:not(:disabled),
+.mx-config-form-designer__form-events > button:focus-visible {
+  background: var(--mx-designer-hover);
+  border-color: var(--mx-designer-accent);
+  outline: 0;
+}
+
+.mx-config-form-designer__form-events > button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.mx-config-form-designer__form-events > button > svg {
+  color: var(--mx-designer-accent);
+}
+
+.mx-config-form-designer__form-events > button > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mx-config-form-designer__form-events strong,
+.mx-config-form-designer__form-events code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-config-form-designer__form-events strong {
+  font-size: 12px;
+}
+
+.mx-config-form-designer__form-events code {
+  color: var(--mx-designer-muted);
+  font-size: 10px;
 }
 
 .mx-config-form-designer__event-flows strong {

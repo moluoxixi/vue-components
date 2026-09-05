@@ -4,100 +4,48 @@ import type {
 } from '@moluoxixi/config-form-core'
 import type { ProjectCommand, ProjectCommandAction } from '@moluoxixi/config-form-model'
 import type {
-  FlowTriggerChoice,
-  FlowTriggerGroup,
   FlowWorkspaceProps,
 } from '../types'
 import type { FlowEditAction } from '../types/edit-action'
-import { analyzeConfigFormFlow } from '@moluoxixi/config-form-core'
+import { analyzeConfigFormFlow, getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
 import { createDesignerLocale, useDesignerLocale } from '@moluoxixi/config-form-designer'
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { flowEventTargetKey } from '../../../../../flow'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../../../../../utils'
 import { useFlowGraph } from './use-flow-graph'
 
 export function useFlowWorkspace(options: {
   emit: (event: 'command', command: ProjectCommand) => void
+  onClose: () => void
   props: Readonly<FlowWorkspaceProps>
 }) {
-  const { emit, props } = options
+  const { emit, onClose, props } = options
   let commandSequence = 0
   const inheritedLocale = useDesignerLocale()
   const locale = computed(() => props.locale ? createDesignerLocale(props.locale) : inheritedLocale)
   const selectedId = ref<string>()
-  const flowCreatorOpen = ref(false)
+  const draftFlow = shallowRef<ConfigFormFlow>()
+  const draftCommitted = ref(false)
   const graphError = ref('')
-  const addFlowButton = useTemplateRef<{ $el?: HTMLButtonElement }>('addFlowButton')
-  const flowCreator = useTemplateRef<{ handleClose: () => void, handleOpen: () => void }>('flowCreator')
 
-  watch(() => props.flows, (flows) => {
-    if (!flows.some(flow => flow.id === selectedId.value))
-      selectedId.value = flows[0]?.id
-  }, { immediate: true, deep: true })
-
-  const selectedFlow = computed(() => props.flows.find(flow => flow.id === selectedId.value))
-  const selectedEventTarget = computed(() => {
-    const trigger = selectedFlow.value?.trigger
-    if (trigger?.kind !== 'component.event')
-      return undefined
-    return props.eventTargets?.find(target => target.nodeId === trigger.nodeId && target.event === trigger.event)
-  })
-  const selectedEventTargetValue = computed(() => selectedEventTarget.value
-    ? flowEventTargetKey(selectedEventTarget.value)
+  const lockedTrigger = computed(() => props.initialTrigger)
+  const scopedFlows = computed(() => props.flows.filter(flow => triggersEqual(flow.trigger, props.initialTrigger)))
+  const flows = computed(() => draftFlow.value ? [draftFlow.value] : scopedFlows.value)
+  const triggerConflict = computed(() => scopedFlows.value.length > 1)
+  const triggerConflictMessage = computed(() => triggerConflict.value
+    ? locale.value.t('flow.triggerConflict', 'This event has multiple flows configured. Remove the duplicate flow before editing.')
     : '')
-  const triggerChoices = computed<FlowTriggerChoice[]>(() => {
-    const choices: FlowTriggerChoice[] = [
-      createTriggerChoice(
-        { kind: 'page.mount' },
-        'lifecycle',
-        locale.value.t('flow.trigger.mount', 'Page mount'),
-        'page.mount',
-      ),
-      createTriggerChoice(
-        { kind: 'form.submit' },
-        'form',
-        locale.value.t('flow.trigger.submit', 'Form submit'),
-        'form.submit',
-      ),
-    ]
-    for (const field of [...new Set(props.fieldNames ?? [])]) {
-      choices.push(createTriggerChoice(
-        { kind: 'field.change', field },
-        'field',
-        `${field} · ${locale.value.t('flow.trigger.change', 'Field change')}`,
-        'field.change',
-      ))
-    }
-    for (const target of props.eventTargets ?? []) {
-      choices.push(createTriggerChoice(
-        { kind: 'component.event', nodeId: target.nodeId, event: target.event },
-        'component',
-        `${target.nodeLabel} · ${target.eventLabel}`,
-        target.event,
-      ))
-    }
-    return choices
-  })
-  const triggerGroups = computed(() => (['lifecycle', 'form', 'field', 'component'] as const)
-    .map(group => ({
-      group,
-      label: locale.value.t(`flow.triggerGroup.${group}`, group[0]!.toUpperCase() + group.slice(1)),
-      choices: triggerChoices.value.filter(choice => choice.group === group),
-    }))
-    .filter(group => group.choices.length > 0))
-  const initialTriggerKey = computed(() => props.initialTrigger ? triggerKey(props.initialTrigger) : '')
 
-  watch(() => props.initialTrigger, (trigger) => {
-    if (!trigger)
-      return
-    const matchingFlow = props.flows.find(flow => triggersEqual(flow.trigger, trigger))
-    if (matchingFlow) {
-      selectedId.value = matchingFlow.id
-      closeFlowCreator()
-      return
+  watch([scopedFlows, draftFlow], ([nextFlows, draft]) => {
+    if (draft && nextFlows.some(flow => flow.id === draft.id)) {
+      draftFlow.value = undefined
+      draftCommitted.value = false
+      nextFlows = scopedFlows.value
     }
-    openFlowCreator()
+    if (!nextFlows.some(flow => flow.id === selectedId.value))
+      selectedId.value = nextFlows[0]?.id
   }, { immediate: true, deep: true })
+
+  const selectedFlow = computed(() => flows.value.find(flow => flow.id === selectedId.value) ?? flows.value[0])
 
   function emitCommand(label: string, action: ProjectCommandAction): void {
     emit('command', {
@@ -108,15 +56,29 @@ export function useFlowWorkspace(options: {
   }
 
   function commitSelectedFlow(candidate: ConfigFormFlow, action: FlowEditAction): boolean {
-    if (props.readonly)
+    if (props.readonly || triggerConflict.value)
       return false
+    if (!triggersEqual(candidate.trigger, lockedTrigger.value)) {
+      graphError.value = locale.value.t('flow.triggerLocked', 'The event source is locked to the entry event.')
+      return false
+    }
     const analyzed = analyzeConfigFormFlow(candidate)
     if (!analyzed.success) {
       graphError.value = analyzed.diagnostics[0]?.message ?? locale.value.t('flow.invalid', 'Flow is invalid')
       return false
     }
     graphError.value = ''
-    emitCommand('Update flow', action)
+    if (draftFlow.value?.id === candidate.id && !draftCommitted.value) {
+      draftFlow.value = candidate
+      draftCommitted.value = true
+      emitCommand('Add flow', {
+        type: 'operation.apply',
+        operations: [{ type: 'flow.add', pageId: props.pageId, flow: candidate }],
+      })
+    }
+    else {
+      emitCommand('Update flow', action)
+    }
     return true
   }
 
@@ -129,7 +91,10 @@ export function useFlowWorkspace(options: {
     }
   }
 
-  function addFlow(trigger: ConfigFormFlowTrigger): void {
+  function addFlow(): void {
+    const trigger = lockedTrigger.value
+    if (scopedFlows.value.length > 0 || draftFlow.value)
+      return
     const ids = new Set(props.flows.map(flow => flow.id))
     let index = props.flows.length + 1
     while (ids.has(`flow-${index}`)) index += 1
@@ -147,67 +112,40 @@ export function useFlowWorkspace(options: {
       ],
       edges: [{ id: `${id}-next`, source: `${id}-trigger`, target: `${id}-end`, condition: 'next' }],
     }
-    emitCommand('Add flow', {
-      type: 'operation.apply',
-      operations: [{ type: 'flow.add', pageId: props.pageId, flow }],
-    })
+    draftFlow.value = flow
+    draftCommitted.value = false
     selectedId.value = id
-    closeFlowCreator()
-  }
-
-  function createTriggerChoice(
-    trigger: ConfigFormFlowTrigger,
-    group: FlowTriggerGroup,
-    label: string,
-    detail: string,
-  ): FlowTriggerChoice {
-    return { detail, group, key: triggerKey(trigger), label, trigger }
-  }
-
-  function triggerKey(trigger: ConfigFormFlowTrigger): string {
-    if (trigger.kind === 'field.change')
-      return JSON.stringify([trigger.kind, trigger.field ?? ''])
-    if (trigger.kind === 'component.event')
-      return JSON.stringify([trigger.kind, trigger.nodeId ?? '', trigger.event ?? ''])
-    return JSON.stringify([trigger.kind])
   }
 
   function triggersEqual(left: ConfigFormFlowTrigger, right: ConfigFormFlowTrigger): boolean {
-    return triggerKey(left) === triggerKey(right)
+    return getConfigFormFlowTriggerKey(left) === getConfigFormFlowTriggerKey(right)
   }
 
   function flowTriggerLabel(trigger: ConfigFormFlowTrigger): string {
-    const choice = triggerChoices.value.find(candidate => triggersEqual(candidate.trigger, trigger))
-    if (choice)
-      return choice.label
-    if (trigger.kind === 'field.change')
-      return `${trigger.field ?? locale.value.t('flow.eventUnavailable', 'Registered event unavailable')} · ${locale.value.t('flow.trigger.change', 'Field change')}`
-    if (trigger.kind === 'component.event')
-      return `${trigger.nodeId ?? '?'} · ${trigger.event ?? locale.value.t('flow.eventUnavailable', 'Registered event unavailable')}`
-    return locale.value.t(`flow.trigger.${trigger.kind === 'page.mount' ? 'mount' : 'submit'}`, trigger.kind)
-  }
-
-  function openFlowCreator(): void {
-    if (props.readonly)
-      return
-    flowCreatorOpen.value = true
-    void nextTick(() => {
-      addFlowButton.value?.$el?.focus()
-      flowCreator.value?.handleOpen()
-    })
-  }
-
-  function closeFlowCreator(): void {
-    flowCreatorOpen.value = false
-    flowCreator.value?.handleClose()
+    if (trigger.kind === 'component.event') {
+      const target = props.eventTargets?.find(candidate => candidate.nodeId === trigger.nodeId && candidate.event === trigger.event)
+      return target
+        ? `${target.nodeLabel} · ${target.eventLabel}`
+        : `${trigger.nodeId ?? '?'} · ${trigger.event ?? locale.value.t('flow.eventUnavailable', 'Registered event unavailable')}`
+    }
+    return trigger.kind === 'page.mount'
+      ? locale.value.t('flow.trigger.mount', 'Form load')
+      : locale.value.t('flow.trigger.submit', 'Form submit')
   }
 
   function removeFlow(id: string): void {
+    if (draftFlow.value?.id === id) {
+      draftFlow.value = undefined
+      draftCommitted.value = false
+      selectedId.value = undefined
+      return
+    }
     if (!props.readonly) {
       emitCommand('Remove flow', {
         type: 'operation.apply',
         operations: [{ type: 'flow.remove', pageId: props.pageId, flowId: id }],
       })
+      onClose()
     }
   }
 
@@ -222,52 +160,6 @@ export function useFlowWorkspace(options: {
       flowId: candidate.id,
       settings: selectedFlowSettings(candidate),
     })
-  }
-
-  function updateTrigger(kind: ConfigFormFlow['trigger']['kind']): void {
-    if (kind === 'field.change') {
-      const field = selectedFlow.value?.trigger.field ?? props.fieldNames?.[0]
-      if (!field) {
-        graphError.value = locale.value.t('flow.fieldRequired', 'Select a registered field first')
-        return
-      }
-      patchSelected({ trigger: { kind, field } })
-      return
-    }
-    if (kind === 'component.event') {
-      const target = selectedEventTarget.value ?? props.eventTargets?.[0]
-      if (!target) {
-        graphError.value = locale.value.t('flow.eventRequired', 'Select a registered component event first')
-        return
-      }
-      patchSelected({ trigger: { kind, nodeId: target.nodeId, event: target.event } })
-      return
-    }
-    patchSelected({ trigger: { kind } })
-  }
-
-  function updateTriggerField(field: string): void {
-    if (selectedFlow.value?.trigger.kind === 'field.change' && field)
-      patchSelected({ trigger: { kind: 'field.change', field } })
-  }
-
-  function updateTriggerEvent(value: string): void {
-    if (selectedFlow.value?.trigger.kind !== 'component.event' || !value)
-      return
-    try {
-      const parsed = JSON.parse(value) as unknown
-      if (!Array.isArray(parsed) || parsed.length !== 2 || typeof parsed[0] !== 'string' || typeof parsed[1] !== 'string')
-        throw new TypeError('Invalid component event target')
-      const target = props.eventTargets?.find(candidate => candidate.nodeId === parsed[0] && candidate.event === parsed[1])
-      if (!target) {
-        graphError.value = locale.value.t('flow.eventRequired', 'Select a registered component event first')
-        return
-      }
-      patchSelected({ trigger: { kind: 'component.event', nodeId: target.nodeId, event: target.event } })
-    }
-    catch {
-      graphError.value = locale.value.t('flow.eventRequired', 'Select a registered component event first')
-    }
   }
 
   function updateConcurrency(value: string): void {
@@ -302,32 +194,25 @@ export function useFlowWorkspace(options: {
     graphError,
     locale,
     pageId: () => props.pageId,
-    readonly: () => !!props.readonly,
+    readonly: () => !!props.readonly || triggerConflict.value,
     selectedFlow,
   })
 
   return {
     ...graph,
     addFlow,
-    closeFlowCreator,
-    flowCreatorOpen,
     flowTriggerLabel,
     graphError,
-    initialTriggerKey,
+    lockedTrigger,
+    triggerConflict,
+    triggerConflictMessage,
     locale,
-    openFlowCreator,
     patchSelected,
     removeFlow,
-    selectedEventTarget,
-    selectedEventTargetValue,
     selectedFlow,
     selectedId,
-    triggerGroups,
     updateConcurrency,
     updateErrorPolicy,
     updateTimeout,
-    updateTrigger,
-    updateTriggerEvent,
-    updateTriggerField,
   }
 }

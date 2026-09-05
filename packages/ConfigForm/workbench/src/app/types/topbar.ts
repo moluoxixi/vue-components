@@ -11,7 +11,6 @@ export interface WorkbenchTopbarProps {
   configError?: string
   currentPage?: ProjectPage
   dirty?: boolean
-  flowOpen?: boolean
   locale?: DesignerLocaleOptions
   localeId: WorkbenchLocaleId
   paletteFamily: WorkbenchPaletteFamily
@@ -25,7 +24,6 @@ export interface WorkbenchTopbarEmits {
   export: [mode: WorkbenchExportMode]
   newPage: [focusKey: string]
   openAppearance: []
-  openFlow: []
   openPages: []
   openVersions: []
   createCheckpoint: []

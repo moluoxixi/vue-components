@@ -117,7 +117,7 @@ export function createWorkbenchUiStore(options: Readonly<WorkbenchUiStoreOptions
     flowWorkspaceOpen.value = false
   }
 
-  function openFlowWorkspace(trigger?: ConfigFormFlowTrigger): void {
+  function openFlowWorkspace(trigger: ConfigFormFlowTrigger): void {
     flowInitialTrigger.value = trigger
     flowDialogLoaded.value = true
     flowWorkspaceOpen.value = true

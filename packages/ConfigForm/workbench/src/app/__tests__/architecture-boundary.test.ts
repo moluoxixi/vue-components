@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const configFormRoot = fileURLToPath(new URL('../../../../', import.meta.url))
 const repositoryRoot = fileURLToPath(new URL('../../../../../../', import.meta.url))
+const workbenchSourceRoot = fileURLToPath(new URL('../../', import.meta.url))
 const ignoredDirectories = new Set(['coverage', 'dist', 'node_modules'])
 const productTextFile = /\.(?:[cm]?[jt]sx?|css|html|json|md|scss|vue)$/
 const responsibilityDirectoryNames = new Set([
@@ -116,6 +117,26 @@ function configFormPackageSourceRoots(): Array<{ name: string, sourceRoot: strin
 }
 
 describe('workbench production architecture boundary', () => {
+  it('uses Element Plus instead of native editable form controls', () => {
+    const violations = collectProductionTextFiles(workbenchSourceRoot)
+      .filter(path => path.endsWith('.vue'))
+      .flatMap((path) => {
+        const source = readFileSync(path, 'utf8')
+        const template = source.match(/<template>([\s\S]*?)<\/template>/)?.[1] ?? ''
+        return [...template.matchAll(/<(input|textarea|select)(?=[\s/>])/gi)].map(match => ({
+          control: match[1]!.toLowerCase(),
+          file: normalizedRelative(workbenchSourceRoot, path),
+          line: template.slice(0, match.index).split('\n').length,
+        }))
+      })
+
+    expect(violations).toEqual([])
+
+    const flowWorkspace = readFileSync(new URL('../../features/flow/components/FlowWorkspace/index.vue', import.meta.url), 'utf8')
+    expect(flowWorkspace).not.toContain('.flow-inspector input')
+    expect(flowWorkspace).not.toContain('.flow-inspector textarea')
+  })
+
   it('keeps ProjectEditorSession as the only production editing owner', () => {
     const source = readFileSync(new URL('../services/controller.ts', import.meta.url), 'utf8')
     const forbidden = [
@@ -626,6 +647,8 @@ describe('workbench production architecture boundary', () => {
 
     expect(shell).not.toContain('event-editor')
     expect(shell).toContain('@configure-event="showComponentEventFlow"')
+    expect(shell).toContain('@configure-flow="showFlowDialog"')
+    expect(shell).not.toContain('@open-flow="showFlowDialog()"')
     expect(shell).not.toContain('@model-operation')
     expect(dialog).toContain(':initial-trigger="initialTrigger"')
   })

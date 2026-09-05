@@ -864,12 +864,14 @@ test('removes stale selection chrome while a pointer drag is active', async ({ p
 
 test('edits Flow settings through Element Plus keyboard and numeric controls', async ({ page }) => {
   await createProject(page, 'element')
-  await page.getByRole('button', { name: 'Event flow orchestration' }).click()
+  await page.getByRole('button', { name: 'Configure Form submit event flow' }).click()
   const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-  await flowDialog.getByRole('button', { name: 'Choose an event' }).click()
-  await page.locator('.flow-trigger-popper:visible').getByRole('menuitem').filter({ hasText: 'Form submit' }).click()
+  await flowDialog.getByTestId('add-flow').click()
 
   const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
+  const flowName = flowInspector.locator('[data-flow-control="name"]')
+  await expect(flowName.locator('.el-input')).toHaveCount(1)
+  await expect(flowName.locator('.el-input__wrapper')).toBeVisible()
   const concurrency = flowInspector.locator('[data-flow-control="concurrency"]')
   await concurrency.getByRole('combobox').focus()
   await page.keyboard.press('ArrowDown')
@@ -1164,15 +1166,17 @@ for (const adapter of ['element', 'antd'] as const) {
   test(`runs a ${adapter} component event flow from the real Preview Runtime node`, async ({ page }) => {
     await createProject(page, adapter)
 
-    await page.getByRole('button', { name: 'Event flow orchestration' }).click()
+    await page.getByRole('tab', { name: 'Layers' }).click()
+    await page.getByRole('button', { name: 'Name', exact: true }).click()
+    await page.getByRole('tab', { name: 'Events' }).click()
+    await page.getByRole('button', { name: 'Configure Value change event flow' }).click()
     const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-    await flowDialog.getByRole('button', { name: 'Choose an event' }).click()
-    await page.locator('.flow-trigger-popper:visible').getByRole('menuitem').filter({ hasText: 'Name · Value change' }).click()
+    await expect(flowDialog.locator('[data-flow-control="trigger"]')).toHaveCount(0)
+    await expect(flowDialog.locator('.flow-workspace-header')).toContainText('Name · Value change')
+    await flowDialog.getByTestId('add-flow').click()
+    await expect(flowDialog.locator('[data-flow-control="locked-trigger"]')).toContainText('Name · Value change')
 
     const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
-    const eventTarget = flowInspector.locator('[data-flow-control="event-target"]')
-    await expect(eventTarget).toContainText('Name · Value change')
-    await expect(eventTarget).toHaveAttribute('data-selected-value', /profile-name/)
 
     await flowDialog.getByRole('button', { name: 'Action', exact: true }).click()
     await flowInspector.getByRole('textbox', { name: 'Node config' }).fill(`{"input":"${adapter}-component-event"}`)
@@ -1183,6 +1187,18 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(page.getByText(`${adapter}-component-event`, { exact: true })).toBeVisible()
   })
 }
+
+test('opens the form submit flow from the form property surface', async ({ page }) => {
+  await createProject(page, 'element')
+  await page.getByRole('button', { name: 'Configure Form submit event flow' }).click()
+
+  const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
+  await expect(flowDialog.locator('[data-flow-control="trigger"]')).toHaveCount(0)
+  await expect(flowDialog.locator('.flow-workspace-header')).toContainText('Form submit')
+  await flowDialog.getByTestId('add-flow').click()
+  await expect(flowDialog.locator('[data-flow-control="locked-trigger"] code')).toHaveText('form.submit')
+  await flowDialog.getByRole('button', { name: 'Close event flow orchestration' }).click()
+})
 
 test('uses one Element Plus Inspector focus frame', async ({ page }) => {
   await createProject(page, 'element')
@@ -1388,13 +1404,11 @@ for (const scenario of [
     await page.getByRole('tab', { name: 'Events' }).click()
     await page.getByRole('button', { name: 'Configure Expanded items change event flow' }).click()
     const flowDialog = page.getByRole('dialog', { name: 'Event flow orchestration' })
-    const preferredEvent = page.locator('.flow-trigger-popper:visible').getByRole('menuitem').filter({ hasText: 'Expanded items change' })
-    await expect(preferredEvent).toHaveClass(/is-preferred/)
-    await preferredEvent.click()
+    await expect(flowDialog.locator('[data-flow-control="trigger"]')).toHaveCount(0)
+    await expect(flowDialog.locator('.flow-workspace-header')).toContainText('Expanded items change')
+    await flowDialog.getByTestId('add-flow').click()
+    await expect(flowDialog.locator('[data-flow-control="locked-trigger"]')).toContainText('Expanded items change')
     const flowInspector = flowDialog.getByRole('complementary', { name: 'Event flow inspector' })
-    const eventTarget = flowInspector.locator('[data-flow-control="event-target"]')
-    await expect(eventTarget).toContainText('Expanded items change')
-    await expect(eventTarget).toHaveAttribute('data-selected-value', new RegExp(collapse.nodeId))
 
     await flowDialog.getByRole('button', { name: 'Action', exact: true }).click()
     await flowInspector.getByRole('textbox', { name: 'Node config' })

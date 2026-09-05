@@ -97,7 +97,6 @@ export interface PreviewSession {
   dispatch: (
     triggerOrKind: ConfigFormFlowTrigger['kind'] | ConfigFormFlowTrigger,
     values?: Record<string, unknown>,
-    field?: string,
   ) => ReturnType<PageFlowEngine['dispatch']> | undefined
   dispose: () => void
   getCompilation: () => PageCompilation | undefined

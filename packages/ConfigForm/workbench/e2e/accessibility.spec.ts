@@ -119,7 +119,7 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(page.getByRole('tablist', { name: 'Designer navigation' })).toHaveCount(1)
 
     await page.getByRole('tab', { name: 'Layers' }).click()
-    await page.getByRole('treeitem').first().click()
+    await page.locator('[data-layer-id^="profile-name-"] .designer-layer-select').click()
     await page.getByRole('button', { name: /Arrange/ }).first().click()
     await expect(page.getByRole('menu')).toBeVisible()
     await expectNoAccessibilityViolations(page, `${adapter} mobile layers menu`)
@@ -132,8 +132,8 @@ for (const adapter of ['element', 'antd'] as const) {
     await expect(page.getByRole('complementary', { name: 'Properties' })).toBeVisible({ timeout: 10_000 })
     await expectNoAccessibilityViolations(page, `${adapter} mobile inspector`)
 
-    await page.getByRole('button', { name: 'More actions' }).click()
-    await page.getByRole('menuitem', { name: 'Event flow orchestration' }).click()
+    await page.getByRole('tab', { name: 'Events' }).click()
+    await page.getByRole('button', { name: 'Configure Value change event flow' }).click()
     await expect(page.getByRole('dialog', { name: 'Event flow orchestration' })).toBeVisible()
     await expectNoAccessibilityViolations(page, `${adapter} mobile flow dialog`)
 

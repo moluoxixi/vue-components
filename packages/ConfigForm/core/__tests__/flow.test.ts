@@ -90,13 +90,13 @@ describe('config form flow core', () => {
 
   it('rejects invalid trigger fields, concurrency, and timeout policy before execution', () => {
     const invalid = analyzeConfigFormFlow(flow({
-      trigger: { kind: 'form.submit', field: 'name' },
+      trigger: { kind: 'form.submit', field: 'name' } as never,
       concurrency: 'parallel' as ConfigFormFlow['concurrency'],
       errorPolicy: { onError: 'retry' as 'failure', timeoutMs: -1 },
     }))
     expect(invalid.success).toBe(false)
     expect(invalid.diagnostics.map(diagnostic => diagnostic.code)).toEqual(expect.arrayContaining([
-      'FLOW_TRIGGER_FIELD_UNEXPECTED',
+      'FLOW_TRIGGER_FIELD_UNSUPPORTED',
       'FLOW_CONCURRENCY_INVALID',
       'FLOW_ERROR_POLICY_INVALID',
       'FLOW_TIMEOUT_INVALID',

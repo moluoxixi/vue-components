@@ -292,19 +292,7 @@ describe('canonical project compiler', () => {
     })
   })
 
-  it('diagnoses synchronous Flow updates that belong to field reactions or bindings', () => {
-    const fieldChange = fixture()
-    updateSnapshot(fieldChange, (document) => {
-      document.pagesById.home!.flows = [synchronousFlow('field-sync', {
-        kind: 'field.change',
-        field: 'name',
-      })]
-    })
-    expect(compileCanonicalProject(fieldChange)).toMatchObject({
-      success: false,
-      diagnostics: [{ code: 'COMPILER_FLOW_SYNC_REACTION_REDUNDANT' }],
-    })
-
+  it('diagnoses synchronous Flow updates that duplicate bindings', () => {
     const bindingEvent = fixture()
     updateSnapshot(bindingEvent, (document) => {
       document.pagesById.home!.flows = [synchronousFlow('binding-sync', {

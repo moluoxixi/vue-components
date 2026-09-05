@@ -1,3 +1,4 @@
+import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
 import { mount } from '@vue/test-utils'
@@ -572,6 +573,36 @@ describe('designer property panel adaptive Inspector', () => {
     })
 
     expect(wrapper.get('.mx-config-form-designer__setter-hint.is-value').text()).toBe('12 / 24 · 1/2')
+  })
+
+  it('exposes locked form load and submit flow entry points with status', async () => {
+    const flow: ConfigFormFlow = {
+      version: 1,
+      id: 'form-submit',
+      name: 'Submit flow',
+      trigger: { kind: 'form.submit' },
+      nodes: [
+        { id: 'trigger', type: 'trigger' },
+        { id: 'end', type: 'end' },
+      ],
+      edges: [{ id: 'next', source: 'trigger', target: 'end', condition: 'next' }],
+    }
+    const wrapper = mount(DesignerPropertyPanel, {
+      props: {
+        graph: graph([], {}),
+        flows: [flow],
+        diagnostics: [],
+      },
+    })
+
+    const events = wrapper.findAll('.mx-config-form-designer__form-events > button')
+    expect(events).toHaveLength(2)
+    expect(events[0]!.text()).toContain('Not orchestrated')
+    expect(events[1]!.text()).toContain('Configured')
+    expect(events[1]!.text()).toContain('2 nodes')
+
+    await events[1]!.trigger('click')
+    expect(wrapper.emitted('configureFlow')).toEqual([[{ kind: 'form.submit' }]])
   })
 
   it('edits canonical pixel gap and label width through numeric controls', async () => {

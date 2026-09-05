@@ -306,9 +306,10 @@ defineExpose<DesignSurfaceExpose>({
             <button type="button" class="mx-config-form-designer__icon-button" data-drawer-control="properties" :aria-label="locale.t('action.close', 'Close')" :title="locale.t('action.close', 'Close')" @click="closeMediumPanel('properties')"><X :size="17" aria-hidden="true" /></button>
           </DesignerCommandHint>
         </div>
-        <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition">
+        <slot name="properties" :graph="controller.graph.value" :node="controller.selectedNode.value" :nodes="controller.selectedNodes.value" :material="controller.selectedMaterial.value" :diagnostics="controller.diagnostics.value" :component-definition="selectedComponentDefinition" :flows="flows ?? []">
           <DesignerPropertyPanel
             :graph="controller.graph.value"
+            :flows="flows ?? []"
             :node="controller.selectedNode.value"
             :nodes="controller.selectedNodes.value"
             :material="controller.selectedMaterial.value"
@@ -322,6 +323,7 @@ defineExpose<DesignSurfaceExpose>({
             :property-controls="registry.propertyControls"
             :readonly="readonly"
             @configure-event="emit('configureEvent', $event.nodeId, $event.eventName)"
+            @configure-flow="emit('configureFlow', $event)"
             @remove-stored-config="handleRemoveStoredConfig"
             @update-path="handleUpdatePath"
             @update-paths="handleUpdatePaths"

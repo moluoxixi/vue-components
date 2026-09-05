@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { DesignerPropertyPanelEmits, DesignerPropertyPanelProps } from './types'
+import type { ConfigFormFlowTrigger } from '@moluoxixi/config-form-core'
 import { ChevronRight, Trash2, Workflow } from '@lucide/vue'
+import { computed } from 'vue'
+import { getConfigFormFlowTriggerKey } from '@moluoxixi/config-form-core'
 import { useDesignerLocale } from '../../locale'
 import { DesignerPropertyForm, DesignerResponsiveSettings } from './components'
 import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
@@ -8,6 +11,37 @@ import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composabl
 const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()
 const locale = useDesignerLocale()
+
+const formFlowEvents = computed(() => [
+  {
+    label: locale.t('flow.trigger.mount', 'Form load'),
+    code: 'page.mount',
+    trigger: { kind: 'page.mount' } as ConfigFormFlowTrigger,
+  },
+  {
+    label: locale.t('flow.trigger.submit', 'Form submit'),
+    code: 'form.submit',
+    trigger: { kind: 'form.submit' } as ConfigFormFlowTrigger,
+  },
+].map(event => ({
+  ...event,
+  flows: (props.flows ?? []).filter(flow => getConfigFormFlowTriggerKey(flow.trigger) === getConfigFormFlowTriggerKey(event.trigger)),
+})))
+
+function flowState(trigger: ConfigFormFlowTrigger): { count: number, nodes: number, duplicate: boolean } {
+  const flows = (props.flows ?? []).filter(flow => getConfigFormFlowTriggerKey(flow.trigger) === getConfigFormFlowTriggerKey(trigger))
+  return {
+    count: flows.length,
+    nodes: flows[0]?.nodes.length ?? 0,
+    duplicate: flows.length > 1,
+  }
+}
+
+function eventLabel(eventName: string): string {
+  const binding = projection.value.commonBindings.find(candidate => candidate.trigger === eventName)
+    ?? props.componentDefinition?.bindings.find(candidate => candidate.trigger === eventName)
+  return binding ? locale.t('flow.trigger.valueChange', 'Value change') : resolveMaterialEventTitle(eventName)
+}
 
 const {
   commitBinding,
@@ -131,14 +165,17 @@ const {
             :key="event.name"
             type="button"
             :disabled="sectionReadonly(tab.id)"
-            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: resolveMaterialEventTitle(event.name) })"
+            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: eventLabel(event.name) })"
             @click="configureEvent(event.name)"
           >
             <Workflow :size="15" aria-hidden="true" />
             <span>
-              <strong>{{ resolveMaterialEventTitle(event.name) }}</strong>
+              <strong>{{ eventLabel(event.name) }}</strong>
               <code>{{ event.name }}</code>
             </span>
+            <small v-if="flowState({ kind: 'component.event', nodeId: node.id, event: event.name }).duplicate" class="is-conflict">{{ locale.t('flow.status.conflict', 'Conflict') }}</small>
+            <small v-else-if="flowState({ kind: 'component.event', nodeId: node.id, event: event.name }).count" class="is-configured">{{ locale.t('flow.status.configured', 'Configured · {nodes} nodes', { nodes: flowState({ kind: 'component.event', nodeId: node.id, event: event.name }).nodes }) }}</small>
+            <small v-else class="is-unconfigured">{{ locale.t('flow.status.unconfigured', 'Not orchestrated') }}</small>
             <ChevronRight :size="15" aria-hidden="true" />
           </button>
         </div>
@@ -184,6 +221,24 @@ const {
           :readonly="readonly"
           @update-form="emit('updateForm', $event)"
         />
+        <section class="mx-config-form-designer__form-events" :aria-label="locale.t('flow.formEvents', 'Form events')">
+          <header><strong>{{ locale.t('flow.formEvents', 'Form events') }}</strong></header>
+          <button
+            v-for="event in formFlowEvents"
+            :key="event.code"
+            type="button"
+            :disabled="readonly"
+            :aria-label="locale.t('property.eventFlow.openNamed', 'Configure {event} event flow', { event: event.label })"
+            @click="emit('configureFlow', event.trigger)"
+          >
+            <Workflow :size="15" aria-hidden="true" />
+            <span><strong>{{ event.label }}</strong><code>{{ event.code }}</code></span>
+            <small v-if="event.flows.length > 1" class="is-conflict">{{ locale.t('flow.status.conflict', 'Conflict') }}</small>
+            <small v-else-if="event.flows.length" class="is-configured">{{ locale.t('flow.status.configured', 'Configured · {nodes} nodes', { nodes: event.flows[0]!.nodes.length }) }}</small>
+            <small v-else class="is-unconfigured">{{ locale.t('flow.status.unconfigured', 'Not orchestrated') }}</small>
+            <ChevronRight :size="15" aria-hidden="true" />
+          </button>
+        </section>
       </div>
     </template>
 

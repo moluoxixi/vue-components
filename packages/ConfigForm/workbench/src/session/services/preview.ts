@@ -258,7 +258,6 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
   function dispatch(
     triggerOrKind: ConfigFormFlowTrigger['kind'] | ConfigFormFlowTrigger,
     nextValues = getRuntimeModel(),
-    field?: string,
   ): ReturnType<PageFlowEngine['dispatch']> | undefined {
     const current = projection.value
     if (disposed || !current)
@@ -268,7 +267,7 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     const capturedRevisionKey = current.current.revisionKey
     const signal = current.signal
     const trigger: ConfigFormFlowTrigger = typeof triggerOrKind === 'string'
-      ? { kind: triggerOrKind, ...(field ? { field } : {}) }
+      ? { kind: triggerOrKind }
       : triggerOrKind
 
     return flowEngine.dispatch({
@@ -299,7 +298,7 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     if (disposed || !projection.value)
       return undefined
     updateRuntimeModel(payload.values)
-    return dispatch('field.change', payload.values, payload.field)
+    return undefined
   }
 
   function handleRuntimeEvent(payload: {

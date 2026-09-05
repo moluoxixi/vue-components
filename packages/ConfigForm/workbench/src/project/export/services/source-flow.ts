@@ -6,7 +6,7 @@ export function createStandaloneFlowRuntimeSource(plans: readonly ConfigFormFlow
   const serialized = scriptJson(plans, 2)
   return `export const FLOW_RUNTIME_VERSION = ${CONFIG_FORM_FLOW_RUNTIME_VERSION} as const
 
-export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'field.change' | 'component.event', field?: string, nodeId?: string, event?: string }
+export type FlowTrigger = { kind: 'page.mount' | 'form.submit' | 'component.event', nodeId?: string, event?: string }
 export type FlowValues = Record<string, unknown>
 export type FlowAction = (input: unknown, context: { flowId: string, nodeId: string, values: FlowValues, outputs: Readonly<Record<string, unknown>>, signal: AbortSignal }) => unknown | Promise<unknown>
 export type GeneratedFlowNode = { id: string, type: string, ref?: string, config?: Record<string, unknown>, outgoing: GeneratedFlowEdge[], incoming: GeneratedFlowEdge[] }
@@ -470,7 +470,6 @@ export async function runFlows(trigger: FlowTrigger, input: FlowValues = {}, sig
   for (const flow of flowPlans) {
     if (
       flow.trigger.kind !== trigger.kind
-      || (flow.trigger.field && flow.trigger.field !== trigger.field)
       || (flow.trigger.nodeId && flow.trigger.nodeId !== trigger.nodeId)
       || (flow.trigger.event && flow.trigger.event !== trigger.event)
     )

@@ -54,7 +54,7 @@ function actionFlow(
     version: 1,
     id: options.id ?? 'preview-flow',
     name: 'Preview flow',
-    trigger: { kind: 'field.change', field: 'request' },
+    trigger: { kind: 'component.event', nodeId: 'request-field', event: 'update:modelValue' },
     concurrency,
     nodes,
     edges,
@@ -168,7 +168,7 @@ describe('preview flow coordinator', () => {
 
     await expect(coordinator.dispatch({
       plans: flows.map(executionPlan),
-      trigger: { kind: 'field.change', field: 'request' },
+      trigger: { kind: 'component.event', nodeId: 'request-field', event: 'update:modelValue' },
       values: { request: 'start' },
       revision: 1,
     })).resolves.toMatchObject({

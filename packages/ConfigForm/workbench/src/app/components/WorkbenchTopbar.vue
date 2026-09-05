@@ -15,7 +15,6 @@ import {
   BookmarkPlus,
   Save,
   Settings2,
-  Workflow,
 } from '@lucide/vue'
 import { createDesignerLocale } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
@@ -52,14 +51,13 @@ onMounted(() => {
 
 onBeforeUnmount(() => narrowTopbarQuery?.removeEventListener('change', updatePageManagerPlacement))
 
-type MobileAction = 'newPage' | 'openAppearance' | 'openFlow' | 'openPages' | 'toggleLocale'
+type MobileAction = 'newPage' | 'openAppearance' | 'openPages' | 'toggleLocale'
 
 function chooseMobileAction(action: MobileAction): void {
   void nextTick(() => {
     mobileMenuTrigger.value?.$el?.focus()
     switch (action) {
       case 'newPage': emit('newPage', 'topbar-mobile-menu'); break
-      case 'openFlow': emit('openFlow'); break
       case 'openPages': emit('openPages'); break
       case 'toggleLocale': emit('toggleLocale'); break
       case 'openAppearance': emit('openAppearance'); break
@@ -162,25 +160,6 @@ function chooseExport(mode: WorkbenchExportMode): void {
             </ElDropdownMenu>
           </template>
         </ElDropdown>
-      <WorkbenchCommandHint
-        v-if="project"
-        anchor-class="topbar-secondary-action"
-        detached
-        :label="locale.t('flow.dialog.title', 'Event flow orchestration')"
-      >
-        <ElButton
-          native-type="button"
-          class="topbar-secondary-action"
-          :class="{ 'is-active': flowOpen }"
-          :aria-label="locale.t('flow.dialog.title', 'Event flow orchestration')"
-          :aria-expanded="flowOpen"
-          circle
-          data-flow-workspace-trigger
-          @click="emit('openFlow')"
-        >
-          <Workflow :size="17" aria-hidden="true" />
-        </ElButton>
-      </WorkbenchCommandHint>
       <WorkbenchCommandHint :label="localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese')">
         <ElButton
           native-type="button"
@@ -221,7 +200,6 @@ function chooseExport(mode: WorkbenchExportMode): void {
               </ElDropdownItem>
               <ElDropdownItem v-if="project && pageManagerInOverflow" command="openPages"><Files :size="15" aria-hidden="true" /><span>{{ locale.t('pages.manage', 'Manage pages') }}</span></ElDropdownItem>
               <ElDropdownItem command="newPage"><Plus :size="15" aria-hidden="true" /><span>{{ locale.t('pages.new', 'New page') }}</span></ElDropdownItem>
-              <ElDropdownItem v-if="project" command="openFlow"><Workflow :size="15" aria-hidden="true" /><span>{{ locale.t('flow.dialog.title', 'Event flow orchestration') }}</span></ElDropdownItem>
               <ElDropdownItem command="toggleLocale"><Languages :size="15" aria-hidden="true" /><span>{{ localeId === 'zh-CN' ? locale.t('locale.switchToEnglish', 'Switch to English') : locale.t('locale.switchToChinese', 'Switch to Chinese') }}</span></ElDropdownItem>
               <ElDropdownItem command="openAppearance"><Settings2 :size="15" aria-hidden="true" /><span>{{ locale.t('appearance.open', 'Open appearance settings') }}</span></ElDropdownItem>
             </ElDropdownMenu>

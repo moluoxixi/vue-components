@@ -409,15 +409,19 @@ describe('preview session', () => {
     const fieldChange = actionFlow({
       actionInput: { $field: 'name' },
       input: 'field-change',
-      trigger: { kind: 'field.change', field: 'name' },
+      trigger: { kind: 'component.event', nodeId: 'name', event: 'update:modelValue' },
     })
     accept(session, {
       compilation: compilation({ plans: [fieldChange] }),
     })
 
-    await expect(session.handleFieldChange({
+    await session.handleFieldChange({
       field: 'name',
       values: { name: 'Latest value' },
+    })
+    await expect(session.handleRuntimeEvent({
+      nodeId: 'name',
+      event: 'update:modelValue',
     })).resolves.toMatchObject({ status: 'committed' })
 
     expect(execute.mock.calls[0]?.[0]).toBe('Latest value')

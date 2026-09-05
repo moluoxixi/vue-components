@@ -177,10 +177,10 @@ tabpanel；Workbench 传入 `workspace-navigation="external"` 后，移动端底
 或 Export 弹窗时，菜单会先把焦点交回稳定触发器，弹窗关闭后再恢复到该触发器。
 
 页面事件流程由当前 `ProjectPage.flows` 唯一持有，视觉 `PageGraph` 不保存流程。Core 只保存 JSON-safe 的
-`page.mount | form.submit | field.change | component.event -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
+`page.mount | form.submit | component.event -> condition/reaction/action -> terminal` DAG，并先编译为确定性的
 `ConfigFormFlowExecutionPlan`，Workbench 再注入显式的 `ConfigFormFlowActionRegistry`。
 默认工作台只提供无网络副作用的 `notify` action；业务应用应在宿主边界注册自己的
-受控 action。Workbench 的页面级 `PageFlowEngine` 独立拥有 action registry、当前 execution plans、Flow projection、调度器、trace/error 边界和跨 page/revision stale generation；`PreviewSession` 先接收真实 Runtime 的最新 values，再把 `field.change`、`component.event`、`form.submit` 和 `page.mount` 转为稳定 trigger，通过同一 values 端口应用 Flow-owned patch。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
+受控 action。Workbench 的页面级 `PageFlowEngine` 独立拥有 action registry、当前 execution plans、Flow projection、调度器、trace/error 边界和跨 page/revision stale generation；`PreviewSession` 先接收真实 Runtime 的最新 values，再把 `component.event`、`form.submit` 和 `page.mount` 转为稳定 trigger，通过同一 values 端口应用 Flow-owned patch。Flow 的运行值、输出、trace、AbortController 和并发状态都是 Preview
 瞬态状态，不写回页面结构。ConfigForm Flow 的 trigger、字段引用、排序和 ID 唯一性都以所属页面为边界；切页会清空 projection 并使旧异步结果失效，同页删除 Flow 会裁剪其 projection。未来跨页自动化使用独立 Project Workflow，而不是把同一 Flow 再存到 ProjectDocument root。Source 导出会把流程逻辑展开到 `src/flows.ts`，仍不依赖
 ConfigForm DSL。Core interpreter 与生成的 `flows.ts` 共同固定 `CONFIG_FORM_FLOW_RUNTIME_VERSION`，并通过实际加载执行的并发、timeout、failure edge、model order 与 value patch 矩阵证明等价，而不是只比较模板字符串。Semantic Compiler 同时拒绝 Flow reaction 与同步 binding/reaction 对同一 value/state/prop/validate 能力的重复写入；纯同步联动应回归声明式 reaction，包含 condition/action 的分支与副作用 Flow 保持可用。
 

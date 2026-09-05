@@ -19,7 +19,6 @@ export class PreviewFlowCoordinator {
       return emptyResult('stale')
 
     const matchingPlans = input.plans.filter(plan => plan.trigger.kind === input.trigger.kind
-      && (!plan.trigger.field || plan.trigger.field === input.trigger.field)
       && (!plan.trigger.nodeId || plan.trigger.nodeId === input.trigger.nodeId)
       && (!plan.trigger.event || plan.trigger.event === input.trigger.event))
     if (matchingPlans.length === 0)

@@ -3,8 +3,9 @@
 ## 1. 适用范围与触发条件
 
 本合同适用于仓库内所有前端界面。新增、替换或修复下列通用交互原语时
-必须执行：Tooltip、Popover、Select、Combobox、Dropdown、Menu、Dialog、
-Drawer、Tabs、Tree、DatePicker、ColorPicker、Toast、虚拟列表和拖拽排序。
+必须执行：Input、Textarea、InputNumber、Tooltip、Popover、Select、Combobox、
+Dropdown、Menu、Dialog、Drawer、Tabs、Tree、DatePicker、ColorPicker、Toast、
+虚拟列表和拖拽排序。
 
 目标是复用经过维护和真实使用验证的交互状态机，避免项目自行承担浮层定位、
 键盘导航、焦点恢复、触屏行为和无障碍语义中的重复缺陷。
@@ -32,6 +33,12 @@ Drawer、Tabs、Tree、DatePicker、ColorPicker、Toast、虚拟列表和拖拽�
 - Tooltip、Popover 和菜单默认由成熟库负责 hover/focus/touch 触发、显示隐藏、
   屏幕边界碰撞与销毁清理；Select/Combobox 默认由成熟库负责选中、搜索、键盘
   移动和无障碍关系。
+- 当目标应用已经选定成熟组件库时，用户可编辑的 Input、Textarea 和
+  InputNumber 必须使用该库的对应组件，统一继承尺寸、禁用态、校验态、主题
+  token 和 focus ring。不得在同一 Inspector/Form 中混用原生输入框，再通过
+  feature CSS 仿造组件库边框和聚焦样式。框架无关底层包允许保留显式的原生
+  fallback，但必须集中管理样式、可访问性与回归测试，且不能泄漏到已绑定
+  Provider 的应用层。
 - 一个交互触发器只能由一个 overlay primitive 拥有。Dropdown、Popover、Menu、
   Select 或其他 disclosure 组件的 trigger 不得再被 Tooltip 包裹，也不得把同一
   按钮同时注册给两个浮层；部分成熟库会在 Tooltip 销毁时清理
@@ -53,6 +60,7 @@ Drawer、Tabs、Tree、DatePicker、ColorPicker、Toast、虚拟列表和拖拽�
 | 条件 | 必须结果 |
 | --- | --- |
 | 当前包已有成熟组件满足需求 | 复用它；拒绝平行手写实现 |
+| 已绑定组件库的表单/Inspector 出现原生 Input/Textarea/Select | 替换为组件库控件，并增加生产模板静态门禁 |
 | 仓库共享组件满足需求且依赖方向合法 | 复用共享组件，不复制源码 |
 | 候选库缺少必要无障碍或移动端行为 | 评估下一个候选或限定自定义边界，不静默降级 |
 | 引入新依赖会显著增加包体或破坏 SSR | 记录数据并选择已有库、按需加载方案或原生控件 |
@@ -72,6 +80,8 @@ Drawer、Tabs、Tree、DatePicker、ColorPicker、Toast、虚拟列表和拖拽�
   Escape、Teleport、边界碰撞和卸载清理。
 - Bad：因为现有组件默认样式不完全一致，就用 `div` 和点击事件重做 Select、
   Dialog 或 Dropdown。
+- Bad：同一 Inspector 的 Select/InputNumber 使用 Element Plus，却给名称字段
+  使用原生 `input` 并单独维护 border/focus CSS。
 - Bad：在 `ElDropdown`、`ElPopover` 或自定义 disclosure trigger 外再套
   `ElTooltip`，让两个浮层同时写入并清理同一组 ARIA 属性。
 
@@ -89,6 +99,9 @@ Drawer、Tabs、Tree、DatePicker、ColorPicker、Toast、虚拟列表和拖拽�
   管理，且不会被另一个浮层清理。
 - 回归测试必须调用真实组件行为；仅检查源码包含某个组件名、CSS 文本或静态
   快照，不能证明交互合同成立。
+- 已绑定单一组件库的应用包应增加生产模板静态门禁，拒绝新增原生
+  `input`/`textarea`/`select`；组件测试和浏览器测试仍需验证真实组件 wrapper、
+  聚焦与主题行为，静态门禁不能替代交互测试。
 - 自定义实现除上述测试外，还必须覆盖设计记录中的每个候选能力缺口。
 
 ## 7. Wrong vs Correct
