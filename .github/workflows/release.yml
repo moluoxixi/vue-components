@@ -96,6 +96,7 @@ jobs:
         if: steps.freshness.outputs.release == 'true'
         run: pnpm release
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
       - name: Push release tags

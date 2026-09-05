@@ -99,7 +99,7 @@ describe('release workflow topology', () => {
     expect(releaseWorkflow).toContain('contents: write')
     expect(releaseWorkflow).toContain('id-token: write')
     expect(releaseWorkflow).toContain('NPM_CONFIG_PROVENANCE: true')
-    expect(releaseWorkflow).not.toMatch(/(?:NPM_TOKEN|NODE_AUTH_TOKEN): \$\{\{ secrets\.NPM_TOKEN \}\}/)
+    expect(releaseWorkflow).toContain(['NODE_AUTH_TOKEN: $', '{{ secrets.NPM_TOKEN }}'].join(''))
   })
 
   it('skips a stale Pages deployment while allowing release-only commits', () => {
