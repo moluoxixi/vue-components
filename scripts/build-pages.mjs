@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import {
+  copyFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -101,6 +102,7 @@ function collectHtmlUrls(html) {
 }
 
 function verifyPagesOutput(basePath) {
+  const configFormBase = appendBasePath(basePath, 'config-form-playground')
   const requiredEntries = [
     'index.html',
     '404.html',
@@ -109,6 +111,8 @@ function verifyPagesOutput(basePath) {
     'components/copy-text.html',
     'components-playground/index.html',
     'config-form-playground/index.html',
+    'config-form-playground/designer.html',
+    'config-form-playground/runtime-host.html',
     'vue-playground/index.html',
     'vue-playground/runtime/moluoxixi-components.js',
     'vue-playground/runtime/moluoxixi-components.css',
@@ -117,6 +121,17 @@ function verifyPagesOutput(basePath) {
   const missingEntries = requiredEntries.filter(entry => !existsSync(resolve(pagesOutput, entry)))
   if (missingEntries.length > 0) {
     throw new Error(`Pages artifact is missing: ${missingEntries.join(', ')}`)
+  }
+
+  const workbenchEntry = readFileSync(resolve(pagesOutput, 'config-form-playground/designer.html'), 'utf8')
+  if (!workbenchEntry.includes('<title>ConfigForm Workbench</title>')
+    || !workbenchEntry.includes(`${configFormBase}assets/`)) {
+    throw new Error('ConfigForm designer entry is not the current Workbench build.')
+  }
+
+  const runtimeHostEntry = readFileSync(resolve(pagesOutput, 'config-form-playground/runtime-host.html'), 'utf8')
+  if (!runtimeHostEntry.includes(`${configFormBase}assets/`)) {
+    throw new Error('ConfigForm Workbench runtime host entry has an invalid Pages asset path.')
   }
 
   const invalidUrls = []
@@ -144,11 +159,11 @@ const configFormPlaygroundBase = appendBasePath(pagesBase, 'config-form-playgrou
 const vuePlaygroundBase = appendBasePath(pagesBase, 'vue-playground')
 
 runPnpm(['build'])
-runPnpm(['--filter', '@config-form/components-playground', 'build'], {
+runPnpm(['--filter', '@moluoxixi/components-playground', 'build'], {
   COMPONENTS_PLAYGROUND_BASE: componentsPlaygroundBase,
 })
-runPnpm(['--filter', '@config-form/playground', 'build'], {
-  CONFIG_FORM_PLAYGROUND_BASE: configFormPlaygroundBase,
+runPnpm(['--filter', '@config-form/workbench', 'build'], {
+  CONFIG_FORM_WORKBENCH_BASE: configFormPlaygroundBase,
 })
 runPnpm(['--filter', '@moluoxixi/vue-playground', 'build'], {
   VUE_PLAYGROUND_BASE: vuePlaygroundBase,
@@ -163,9 +178,19 @@ copyOutput(
   resolve(repositoryRoot, 'playgrounds/components-playground/dist'),
   resolve(pagesOutput, 'components-playground'),
 )
+const configFormWorkbenchOutput = resolve(repositoryRoot, 'packages/ConfigForm/workbench/dist')
+const configFormPlaygroundOutput = resolve(pagesOutput, 'config-form-playground')
 copyOutput(
-  resolve(repositoryRoot, 'packages/ConfigForm/playground/dist'),
-  resolve(pagesOutput, 'config-form-playground'),
+  configFormWorkbenchOutput,
+  configFormPlaygroundOutput,
+)
+copyFileSync(
+  resolve(configFormWorkbenchOutput, 'index.html'),
+  resolve(configFormPlaygroundOutput, 'designer.html'),
+)
+copyFileSync(
+  resolve(configFormWorkbenchOutput, 'runtime-host.html'),
+  resolve(configFormPlaygroundOutput, 'runtime-host.html'),
 )
 copyOutput(
   resolve(repositoryRoot, 'playgrounds/vue-playground/dist'),

@@ -8,6 +8,7 @@ const pagesWorkflow = readFileSync(resolve(workflowDirectory, 'pages.yml'), 'utf
 const releaseWorkflow = readFileSync(resolve(workflowDirectory, 'release.yml'), 'utf8')
 const pnpmLockfile = readFileSync(resolve(import.meta.dirname, '../../pnpm-lock.yaml'), 'utf8')
 const workflowValidator = readFileSync(resolve(import.meta.dirname, '../validate-workflows.mjs'), 'utf8')
+const pagesBuilder = readFileSync(resolve(import.meta.dirname, '../build-pages.mjs'), 'utf8')
 const rootManifest = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../package.json'), 'utf8'))
 const githubTokenEnvironment = ['GITHUB_TOKEN: $', '{{ github.token }}'].join('')
 const aiDocAssistantManifest = JSON.parse(readFileSync(
@@ -107,6 +108,18 @@ describe('release workflow topology', () => {
     expect(pagesWorkflow).toContain('id: freshness')
     expect(pagesWorkflow).toContain('grep -v \'\\[skip ci\\]\'')
     expect(pagesWorkflow).toContain('if: needs.build-pages.outputs.deploy == \'true\'')
+  })
+
+  it('publishes the current ConfigForm Workbench as the only remote designer', () => {
+    expect(pagesBuilder).toContain('runPnpm([\'--filter\', \'@moluoxixi/components-playground\', \'build\']')
+    expect(pagesBuilder).not.toContain('runPnpm([\'--filter\', \'@config-form/components-playground\', \'build\']')
+    expect(pagesBuilder).toContain(`runPnpm(['--filter', '@config-form/workbench', 'build']`)
+    expect(pagesBuilder).toContain('CONFIG_FORM_WORKBENCH_BASE: configFormPlaygroundBase')
+    expect(pagesBuilder).not.toContain(`runPnpm(['--filter', '@config-form/playground', 'build']`)
+    expect(pagesBuilder).toContain(`resolve(repositoryRoot, 'packages/ConfigForm/workbench/dist')`)
+    expect(pagesBuilder).toContain(`resolve(configFormPlaygroundOutput, 'designer.html')`)
+    expect(pagesBuilder).toContain(`'config-form-playground/runtime-host.html'`)
+    expect(pagesBuilder).toContain('ConfigForm designer entry is not the current Workbench build.')
   })
 
   it('versions and publishes changed packages without a release PR', () => {

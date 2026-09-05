@@ -16,6 +16,8 @@
 - 当前合同移除 `field.change`；旧数据在 Model/Compiler 边界失败，不迁移、不删除、不执行。
 - 组件绑定事件以“值变化”等业务文案展示，底层事件名作为辅助标识。
 - 非法旧 trigger、重复 trigger 和不可编辑流程在属性面板诊断区明确显示。
+- GitHub Pages 的 `/config-form-playground/` 和 `/config-form-playground/designer.html`
+  只发布当前 Workbench；旧独立 Designer/Playground 不进入远程设计器产物。
 
 ## 验收标准
 
@@ -26,9 +28,13 @@
 - [x] 删除流程后返回原事件面板，状态恢复为未编排。
 - [x] `field.change` 在当前 schema、编译、运行时和导出路径中被拒绝或移除，不保留历史兼容分支。
 - [x] Workbench、Designer、Core、Model、Compiler 相关 unit/typecheck/build/E2E 通过。
+- [x] Pages 产物中的 `designer.html`、`index.html`、`runtime-host.html` 和 assets
+  来自同一次最新 Workbench 构建，并使用 `/vue-components/config-form-playground/`
+  子路径。
 
 ## 范围外
 
 - 不新增跨页面流程或新的 Flow 节点类型。
 - 不改变 Flow 执行器的 concurrency、errorPolicy、projection 和 RuntimeHost 协议语义。
 - 不自动修复、合并或删除历史项目数据。
+- 不保留旧 `playground/designer.html` 实现、重定向兼容层或迁移逻辑。

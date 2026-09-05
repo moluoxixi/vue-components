@@ -43,3 +43,13 @@ FlowDialog 标题栏使用 Element Plus 确认气泡包裹“删除流程”按�
 - Runtime component event listener 仍只安装 Canonical IR 引用的 `{ nodeId, event }`，一次组件 emit 只产生一次 Flow dispatch。
 - Flow 运行时不增加新的全局 trigger revision；page-scoped engine 与现有 concurrency 语义保持不变。
 - 表单 `page.mount` 只在 mounted Runtime session dispatch 一次，`form.submit` 仍从真实 Renderer submit 事件进入。
+
+## Pages 发布
+
+- `scripts/build-pages.mjs` 使用 `CONFIG_FORM_WORKBENCH_BASE` 以
+  `/vue-components/config-form-playground/` 为 base 构建 Workbench。
+- `dist/pages/config-form-playground/` 完整复制 Workbench 的 `dist`，不混入旧
+  `@config-form/playground` 产物。
+- `designer.html` 直接复制同次构建的 `index.html`，因此指定远程 URL 与目录入口
+  使用同一 Workbench JS/CSS；`runtime-host.html` 和 assets 由同一目录提供。
+- Pages 产物校验拒绝缺少上述入口、错误 base path 或非 Workbench 标题的构建。

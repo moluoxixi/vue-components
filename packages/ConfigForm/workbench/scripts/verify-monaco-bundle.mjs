@@ -1,10 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const outputRoot = resolve(root, 'dist')
 const assetsRoot = resolve(outputRoot, 'assets')
+const basePath = normalizeBasePath(process.env.CONFIG_FORM_WORKBENCH_BASE ?? '/')
 const html = readFileSync(resolve(outputRoot, 'index.html'), 'utf8')
 const scriptTags = [...html.matchAll(/<script\b([^>]*)>/gi)]
 const entryTag = scriptTags.find(([, attributes]) => /\btype=["']module["']/i.test(attributes ?? ''))
@@ -13,7 +15,7 @@ const entrySource = /\bsrc=["']([^"']+)["']/i.exec(entryTag?.[1] ?? '')?.[1]
 if (!entrySource)
   throw new Error('Workbench build has no module entry script.')
 
-const entryFile = entrySource.replace(/^\/+/, '')
+const entryFile = outputPath(entrySource)
 const monacoMarkers = [
   'MonacoEnvironment',
   'inmemory://config-form-workbench/',
@@ -27,7 +29,7 @@ for (const [, attributes] of [...html.matchAll(/<link\b([^>]*)>/gi)]) {
     continue
   const href = /\bhref=["']([^"']+)["']/i.exec(attributes ?? '')?.[1]
   if (href?.endsWith('.js'))
-    initialJavaScript.add(href.replace(/^\/+/, ''))
+    initialJavaScript.add(outputPath(href))
 }
 
 const pending = [...initialJavaScript]
@@ -44,7 +46,9 @@ while (pending.length) {
     const specifier = match[1]
     if (!specifier?.endsWith('.js') || (!specifier.startsWith('.') && !specifier.startsWith('/')))
       continue
-    const dependency = relative(outputRoot, resolve(outputRoot, dirname(file), specifier)).replaceAll('\\', '/')
+    const dependency = specifier.startsWith('/')
+      ? outputPath(specifier)
+      : relative(outputRoot, resolve(outputRoot, dirname(file), specifier)).replaceAll('\\', '/')
     if (!initialJavaScript.has(dependency)) {
       initialJavaScript.add(dependency)
       pending.push(dependency)
@@ -66,3 +70,16 @@ const asyncJavaScript = readdirSync(assetsRoot)
 
 if (!asyncJavaScript.some(source => source.includes('inmemory://config-form-workbench/')))
   throw new Error('Workbench build emitted no async WorkspaceCodeEditor chunk.')
+
+function normalizeBasePath(value) {
+  const withLeadingSlash = value.startsWith('/') ? value : `/${value}`
+  return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`
+}
+
+function outputPath(url) {
+  if (!url.startsWith('/'))
+    return url.replace(/^\.\//, '')
+  if (!url.startsWith(basePath))
+    throw new Error(`Workbench asset URL is outside configured base ${basePath}: ${url}`)
+  return url.slice(basePath.length)
+}

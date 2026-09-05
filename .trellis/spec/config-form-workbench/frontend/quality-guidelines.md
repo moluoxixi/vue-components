@@ -219,6 +219,30 @@ Required regression coverage:
 
 ---
 
+## GitHub Pages Workbench Artifact
+
+The published ConfigForm designer URL is backed by the current Workbench build,
+not the historical standalone `@config-form/playground` designer. The Pages
+builder must pass `/vue-components/config-form-playground/` as
+`CONFIG_FORM_WORKBENCH_BASE`, copy the complete Workbench `dist` directory to
+`dist/pages/config-form-playground`, and expose `designer.html` as a byte-equivalent
+copy of the Workbench `index.html`. `runtime-host.html` and all referenced assets
+must come from that same build directory.
+
+Do not keep a compatibility overlay that mixes old Playground assets with the
+Workbench bundle. The artifact verifier must fail when the Workbench filter is
+missing, a package filter matches no project, the designer title is stale, or a
+generated URL escapes the Pages base path.
+
+Required regression coverage:
+
+- Pages builder source uses the real package names for every playground filter.
+- The generated designer and runtime-host entries contain the configured base
+  path and Workbench title.
+- The final Pages artifact contains no historical standalone Designer entry.
+
+---
+
 ## Automated Accessibility Gate
 
 Workbench production changes must run `pnpm --filter @config-form/workbench test:e2e`. The Playwright suite uses

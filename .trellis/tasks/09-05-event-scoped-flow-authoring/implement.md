@@ -8,6 +8,7 @@
 - [x] 增加事件入口、锁定上下文、空 draft、删除、重复 trigger、旧 trigger 拒绝的 unit/E2E 回归。
 - [x] 运行 Designer/Core/Model/Compiler/Workbench unit、typecheck、build、E2E 与 package smoke。
 - [x] 更新相关 spec，独立提交并归档任务。
+- [x] 将 Pages 的 ConfigForm 远程目录硬切到最新 Workbench，并验证完整 Pages artifact。
 
 ## 验证命令
 
