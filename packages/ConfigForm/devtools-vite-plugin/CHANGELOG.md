@@ -1,5 +1,13 @@
 # @moluoxixi/config-form-devtools-vite-plugin
 
+## 0.2.3
+
+### Patch Changes
+
+- Automatically release packages changed in b0d4a5d86281.
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.4
+
 ## 0.2.2
 
 ### Patch Changes

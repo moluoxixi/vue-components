@@ -1,5 +1,13 @@
 # @moluoxixi/vite-config
 
+## 0.0.42
+
+### Patch Changes
+
+- Automatically release packages changed in b0d4a5d86281.
+- Updated dependencies
+  - @moluoxixi/utils@0.1.3
+
 ## 0.0.41
 
 ### Patch Changes

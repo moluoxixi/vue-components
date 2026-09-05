@@ -1,4 +1,4 @@
-# @moluoxixi/ai-doc-assistant
+# @moluoxixi/i18n-tool
 
 ## 1.0.0
 
@@ -10,15 +10,3 @@
 
 - Updated dependencies [0d8abf8]
   - @moluoxixi/ai-provider@1.0.0
-
-## 0.1.2
-
-### Patch Changes
-
-- Automatically release packages changed in 2c31e9a8f75f.
-
-## 0.1.1
-
-### Patch Changes
-
-- Automatically release packages changed in 12fb7e116a5e.

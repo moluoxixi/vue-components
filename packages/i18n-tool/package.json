@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/i18n-tool",
   "type": "module",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "本地国际化资源扫描、AI 翻译与安全写回工具",
   "repository": {
     "type": "git",

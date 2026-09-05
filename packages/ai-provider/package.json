@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/ai-provider",
   "type": "module",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "基于 Vercel AI SDK 的共享 AI Provider 与模型工厂",
   "repository": {
     "type": "git",

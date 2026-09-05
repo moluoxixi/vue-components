@@ -1,5 +1,13 @@
 # @moluoxixi/components
 
+## 0.4.1
+
+### Patch Changes
+
+- Automatically release packages changed in b0d4a5d86281.
+- Updated dependencies
+  - @moluoxixi/hooks@0.2.2
+
 ## 0.4.0
 
 ### Minor Changes

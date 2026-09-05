@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/vitepress-theme-element-plus",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Reusable Element Plus-style custom VitePress documentation theme",
   "license": "MIT",
   "repository": {

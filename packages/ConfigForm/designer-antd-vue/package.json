@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/config-form-designer-antd-vue",
   "type": "module",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/moluoxixi/vue-components",
@@ -37,8 +37,8 @@
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
-    "@moluoxixi/config-form-designer": "^0.1.5",
-    "@moluoxixi/config-form-model": "^0.1.0",
+    "@moluoxixi/config-form-designer": "^0.1.6",
+    "@moluoxixi/config-form-model": "^0.1.1",
     "ant-design-vue": "^4.2.0",
     "vue": "^3.5.0"
   },
