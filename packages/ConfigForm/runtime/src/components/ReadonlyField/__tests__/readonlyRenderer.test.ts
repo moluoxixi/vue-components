@@ -3,7 +3,7 @@ import type { ConfigFormExpose } from '@/types'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, onMounted, onUnmounted } from 'vue'
-import ConfigForm from '@/index.vue'
+import ConfigForm from '@/components/ConfigForm/index.vue'
 
 describe('readonly field renderer identity', () => {
   it('updates readonly values without remounting the adapter subtree', async () => {

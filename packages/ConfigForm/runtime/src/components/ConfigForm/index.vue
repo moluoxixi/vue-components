@@ -1,15 +1,15 @@
 <script setup lang="ts" generic="T extends object = Record<string, unknown>">
 import { computed } from 'vue'
 import type { CSSProperties } from 'vue'
-import type { ConfigFormEmits, ConfigFormExpose, ConfigFormProps } from './types'
-import RecursiveField from './components/RecursiveField'
-import { useForm } from './composables/use-form'
-import { provideFormContext } from './composables/useFormContext'
-import { provideNamespace } from './composables/useNamespace'
-import { normalizeFormRuntime, provideRuntime } from './composables/useRuntime'
-import { getResolvedNodeRenderKey } from './utils/slot'
-import { createConfigFormBem } from './utils/bem'
-import { resolveLabelWidth } from './utils/style'
+import type { ConfigFormEmits, ConfigFormExpose, ConfigFormProps } from '../../types'
+import RecursiveField from '../RecursiveField'
+import { useForm } from '../../composables/use-form'
+import { provideFormContext } from '../../composables/useFormContext'
+import { provideNamespace } from '../../composables/useNamespace'
+import { normalizeFormRuntime, provideRuntime } from '../../composables/useRuntime'
+import { getResolvedNodeRenderKey } from '../../utils/slot'
+import { createConfigFormBem } from '../../utils/bem'
+import { resolveLabelWidth } from '../../utils/style'
 
 /**
  * ConfigForm 根组件负责注入命名空间和 runtime，并把声明式节点树连接到无头表单控制器。

@@ -1,3 +1,4 @@
+export { default as ConfigForm } from './ConfigForm'
 export { default as FormComponent } from './FormComponent'
 export { default as FormField } from './FormField'
 export { default as FormItem } from './FormItem'

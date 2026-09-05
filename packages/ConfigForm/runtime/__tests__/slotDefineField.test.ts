@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, markRaw } from 'vue'
-import ConfigForm from '../src/index.vue'
+import ConfigForm from '../src/components/ConfigForm/index.vue'
 import { defineField } from '../src/utils/field'
 
 const SlotHost = markRaw(defineComponent({

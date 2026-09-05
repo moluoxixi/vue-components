@@ -1,19 +1,7 @@
-import type { VNode } from 'vue'
-import type { ConfigFormProps, FormErrors } from './src/types'
-import ConfigFormComponent from './src/index.vue'
-
-export { FormLayout } from './src/components'
+export { ConfigForm, FormLayout } from './src/components'
 export { useForm } from './src/composables'
 export type { UseFormOptions } from './src/composables'
 export { ConfigFormError } from './src/errors'
-export const ConfigForm = ConfigFormComponent as unknown as {
-  <T extends object = Record<string, unknown>>(
-    props: ConfigFormProps<T> & {
-      onError?: (errors: FormErrors) => unknown
-      onSubmit?: (values: T) => unknown
-    },
-  ): VNode
-}
 export * from './src/renderer'
 export type {
   ComponentRegistry,

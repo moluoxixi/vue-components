@@ -2,7 +2,7 @@ import type { ConfigFormExpose, ResolvedFormNode } from '@/types'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, effectScope, h, markRaw, nextTick, ref, toRaw } from 'vue'
-import ConfigForm from '@/index.vue'
+import ConfigForm from '@/components/ConfigForm/index.vue'
 import { createFormRuntime } from '@/runtime'
 import { useForm } from '../index'
 
