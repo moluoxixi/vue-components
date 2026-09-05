@@ -9,6 +9,7 @@ import {
 } from '../utils/index.mjs'
 import { collectComposableOwnershipDiagnostics } from './composable-ownership.mjs'
 import { collectFeatureImportDiagnostics } from './feature-imports.mjs'
+import { collectModuleCycleDiagnostics } from './module-cycles.mjs'
 import {
   collectConcreteConsumers,
   createModuleGraph,
@@ -385,6 +386,7 @@ export function collectPackageArchitectureDiagnostics(repositoryRoot, packages) 
     ...collectFeatureImportDiagnostics(repositoryRoot, packages),
     ...collectComposableOwnershipDiagnostics(repositoryRoot, packages),
     ...collectComponentOwnershipDiagnostics(repositoryRoot, packages),
+    ...collectModuleCycleDiagnostics(repositoryRoot, packages),
   ].sort((left, right) => (
     left.rule.localeCompare(right.rule)
     || left.path.localeCompare(right.path)

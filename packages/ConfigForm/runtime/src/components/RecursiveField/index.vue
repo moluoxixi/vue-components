@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RecursiveFieldProps } from './types/props'
+import { provideRecursiveFieldRenderer } from '../FormNode/composables'
 import { useRecursiveField } from './composables'
 
 /**
@@ -17,6 +18,7 @@ defineOptions({ name: 'RecursiveField' })
 
 const props = defineProps<RecursiveFieldProps>()
 
+provideRecursiveFieldRenderer()
 const { visible, resolvedComponent } = useRecursiveField(props)
 </script>
 

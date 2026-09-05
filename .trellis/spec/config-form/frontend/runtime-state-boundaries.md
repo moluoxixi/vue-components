@@ -47,6 +47,10 @@ Design intercept -> configured listener -> renderer listener -> Preview runtimeE
 - A `runtimeEvent` is emitted only in Preview and only for canonical Flow
   subscriptions. Slot recursion preserves path, slot name, key, visibility,
   and ancestor-cycle checks.
+- Legacy `ConfigForm` recursion keeps dispatch ownership in `RecursiveField`.
+  The component provides its own renderer identity to descendant `FormNode`
+  instances; `FormNode` consumes it only for configured node slots and must not
+  statically import `RecursiveField` back into the node renderer.
 
 ### Headless Controller
 
@@ -114,6 +118,9 @@ Design intercept -> configured listener -> renderer listener -> Preview runtimeE
   Preview-only Flow events, and listener normalization.
 - Renderer integration tests cover attrs precedence, layout, keys, nested slot
   paths, binding precedence, reactions, readonly rendering, and public expose.
+- Legacy Runtime tests cover RecursiveField dispatch, configured nested slots,
+  direct FormNode mounts without injection warnings, and the package-local
+  module-cycle architecture gate.
 - Headless tests cover overlapping validating counters, latest-result ownership,
   reaction refresh invalidation, reset/meta order, stale submit snapshots, and
   hidden/disabled submission filters.

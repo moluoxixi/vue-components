@@ -393,6 +393,7 @@ describe('config form component', () => {
         gridColumn: 'span 10',
       },
     }, span: 12 }))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const wrapper = mount(FormNode, {
       props: {
@@ -421,10 +422,13 @@ describe('config form component', () => {
         },
       },
     })
+    const warnings = warn.mock.calls.flat().join('\n')
+    warn.mockRestore()
 
     const style = wrapper.get('[data-testid="layout-probe"]').attributes('style')
     expect(style).toContain('grid-column: span 6')
     expect(style).toContain('color: green')
+    expect(warnings).not.toContain('config-form-recursive-field-renderer')
   })
 
   it('forwards fallthrough attrs to the rendered node', () => {

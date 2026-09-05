@@ -9,6 +9,8 @@ import {
   collectComposableOwnershipDiagnostics,
   collectFeatureImportDiagnostics,
   collectFeatureStructureDiagnostics,
+  collectModuleCycleDiagnostics,
+  collectPackageArchitectureDiagnostics,
   collectPackageEntryDiagnostics,
   collectPackageInventory,
   parseModule,
@@ -206,6 +208,105 @@ describe('package architecture collector', () => {
       path: 'packages/ui/src/feature/index.ts',
       rule: 'feature.index-barrel-only',
     }))
+  })
+
+  it('detects stable two-node, three-node, and self dependency cycles once per component', () => {
+    const root = createFixture({
+      'packages/ui/package.json': packageManifest('@fixture/ui'),
+      'packages/ui/index.ts': 'export * from \'./src/two-a\'\n',
+      'packages/ui/src/self.ts': 'import \'./self\'\n',
+      'packages/ui/src/three-a.ts': 'import \'./three-b\'\n',
+      'packages/ui/src/three-b.ts': 'import \'./three-c\'\n',
+      'packages/ui/src/three-c.ts': 'import \'./three-a\'\n',
+      'packages/ui/src/two-a.ts': 'import \'./two-b\'\nimport \'./two-b\'\n',
+      'packages/ui/src/two-b.ts': 'import \'./two-a\'\n',
+    })
+    const packages = collectPackageInventory(root)
+    const diagnostics = collectModuleCycleDiagnostics(root, packages)
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        rule: 'module.circular-dependency',
+        path: 'packages/ui/src/self.ts',
+        message: 'Production module dependency cycle detected: packages/ui/src/self.ts imports itself.',
+      }),
+      expect.objectContaining({
+        rule: 'module.circular-dependency',
+        path: 'packages/ui/src/three-a.ts',
+        owners: ['packages/ui/src/three-b.ts', 'packages/ui/src/three-c.ts'],
+      }),
+      expect.objectContaining({
+        rule: 'module.circular-dependency',
+        path: 'packages/ui/src/two-a.ts',
+        owners: ['packages/ui/src/two-b.ts'],
+      }),
+    ])
+    expect(collectModuleCycleDiagnostics(root, packages)).toEqual(diagnostics)
+    expect(collectPackageArchitectureDiagnostics(root, packages)
+      .filter(item => item.rule === 'module.circular-dependency')).toEqual(diagnostics)
+
+    const trackedCycle = diagnostics[2]
+    const reconciliation = reconcilePackageArchitectureDiagnostics([trackedCycle], {
+      version: 1,
+      packageExceptions: [],
+      pathExceptions: [],
+      componentExceptions: [],
+      importExceptions: [],
+      debt: [{
+        path: trackedCycle.path,
+        rule: trackedCycle.rule,
+        owners: trackedCycle.owners,
+        targetTask: 'fixture-cycle-cleanup',
+        reason: 'Fixture cycle is tracked by its complete SCC identity.',
+      }],
+    })
+    expect(reconciliation.unknown).toEqual([])
+    expect(reconciliation.staleDebt).toEqual([])
+  })
+
+  it('includes dynamic imports and runtime re-exports while excluding type-only cycles', () => {
+    const root = createFixture({
+      'packages/ui/package.json': packageManifest('@fixture/ui'),
+      'packages/ui/index.ts': 'export * from \'./src/barrel-a\'\n',
+      'packages/ui/src/barrel-a.ts': 'export * from \'./barrel-b\'\n',
+      'packages/ui/src/barrel-b.ts': 'import \'./barrel-a\'\n',
+      'packages/ui/src/dynamic-a.ts': 'export const load = () => import(\'./dynamic-b\')\n',
+      'packages/ui/src/dynamic-b.ts': 'import \'./dynamic-a\'\n',
+      'packages/ui/src/type-a.ts': 'import type { TypeB } from \'./type-b\'\nexport interface TypeA { value: TypeB }\n',
+      'packages/ui/src/type-b.ts': 'export type { TypeA } from \'./type-a\'\nexport interface TypeB { value: string }\n',
+    })
+
+    expect(collectModuleCycleDiagnostics(root, collectPackageInventory(root))).toEqual([
+      expect.objectContaining({
+        path: 'packages/ui/src/barrel-a.ts',
+        owners: ['packages/ui/src/barrel-b.ts'],
+      }),
+      expect.objectContaining({
+        path: 'packages/ui/src/dynamic-a.ts',
+        owners: ['packages/ui/src/dynamic-b.ts'],
+      }),
+    ])
+  })
+
+  it('excludes test, declaration, and out-of-source-root nodes from production cycles', () => {
+    const root = createFixture({
+      'packages/ui/package.json': packageManifest('@fixture/ui'),
+      'packages/ui/index.ts': 'export * from \'./src/main\'\n',
+      'packages/ui/outside.ts': 'import \'./src/main\'\n',
+      'packages/ui/src/__tests__/cycle.ts': 'import \'../main\'\n',
+      'packages/ui/src/cycle.d.ts': 'import \'./main\'\n',
+      'packages/ui/src/cycle.test.ts': 'import \'./main\'\n',
+      'packages/ui/src/main.ts': [
+        `import './__tests__/cycle'`,
+        `import './cycle.d'`,
+        `import './cycle.test'`,
+        `import '../outside'`,
+        'export const value = true',
+        '',
+      ].join('\n'),
+    })
+
+    expect(collectModuleCycleDiagnostics(root, collectPackageInventory(root))).toEqual([])
   })
 
   it('rejects cross-feature implementation imports but allows public and parent boundaries', () => {

@@ -266,6 +266,12 @@ interface PackageArchitectureManifest {
   ownership; `Ref`/`ComputedRef` types, `.value`, `toRaw`, `toValue`, `unref`,
   and `nextTick` alone do not. A nested `services/` or `utils/`
   responsibility is evaluated by its own role instead of its ancestor path.
+- The production module graph rejects `module.circular-dependency` strongly
+  connected components within each package `src/`. Runtime imports, runtime
+  re-exports, and string-literal dynamic imports form edges; type-only imports,
+  tests, declarations, and targets outside the package source root do not.
+  Nodes and SCC members use stable repository-relative ordering. Bare workspace
+  imports and tool-specific aliases are not resolved by this package-local gate.
 
 ## 4. Validation & Error Matrix
 
@@ -297,6 +303,7 @@ interface PackageArchitectureManifest {
 | Single-parent or single-feature component is misplaced | Emit `component.single-parent-location` / `component.single-feature-location` |
 | Package-level shared component has consumers from fewer than two features | Emit `component.shared-feature-owners` after the more specific single-parent rule |
 | Exported `use*` function in a composables responsibility has no Vue ownership | Emit `composable.vue-ownership-required`; move pure behavior to services or utils |
+| Production modules form a package-local runtime SCC or self-loop | Emit one stable `module.circular-dependency` diagnostic for the complete component; fix the dependency direction instead of adding a broad exception |
 | Import exception kind, importer, target, or rule is invalid or duplicated | Reject the manifest before reconciliation |
 | Exact import exception no longer matches a live dependency edge | Fail as a stale exception |
 | Live diagnostic has no exact debt/exception | Fail as unknown architecture debt |
@@ -326,6 +333,9 @@ interface PackageArchitectureManifest {
   target feature barrel remains lazy and the default content path stays light.
 - Good: a pure Canvas event-handler factory lives in its owner `services/`, while a
   composable importing `computed as makeComputed` remains in `composables/`.
+- Good: recursive Vue rendering receives its renderer through an internal
+  provide/inject contract instead of statically importing back into the
+  dispatcher that already depends on it.
 - Good: a Node package separates lifecycle orchestration, repository adapters,
   serialization, and pure filesystem utilities.
 - Base: a small feature has only `index.ts`, its implementation entry, and
@@ -349,6 +359,8 @@ interface PackageArchitectureManifest {
   `composables/` directory because its name starts with `use`.
 - Bad: an auto-component plugin rewrites `src/components.d.ts` during a
   multi-entry production build.
+- Bad: `RecursiveRenderer` imports `NodeRenderer` while `NodeRenderer` statically
+  imports `RecursiveRenderer` for nested slots.
 - Bad: a broad package stylesheet targets `input:focus-visible` below a root
   class and unintentionally overrides a mature component library's internal
   input.
@@ -395,6 +407,10 @@ interface PackageArchitectureManifest {
 - Composable fixtures cover aliased/namespaced Vue APIs, local barrel wrappers,
   external `use*` calls, type-only refs, value reads, pure unwrapping calls, and
   nested non-composable responsibilities.
+- Module-cycle fixtures cover stable two-node/three-node SCCs, self-loops,
+  duplicate edges, runtime re-exports, literal dynamic imports, type-only edges,
+  production filtering, source-root boundaries, aggregate collector wiring, and
+  debt identity reconciliation.
 - `pnpm check:package-architecture` must match live diagnostics exactly against
   `scripts/package-architecture/config/manifest.json`; regex-only import graph
   checks are not sufficient.

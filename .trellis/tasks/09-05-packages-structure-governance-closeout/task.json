@@ -3,7 +3,7 @@
   "name": "packages-structure-governance-closeout",
   "title": "Packages 全仓结构治理收尾",
   "description": "修复完成审计发现的发布合同、ownership collector 与 P2 服务边界缺口，并完成全仓最终门禁。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "components",
@@ -23,7 +23,8 @@
     "09-05-architecture-collector-residual-rules",
     "09-05-config-form-large-service-boundaries",
     "09-05-ai-doc-discovery-boundary",
-    "09-05-config-form-sass-entry-default-control"
+    "09-05-config-form-sass-entry-default-control",
+    "09-05-package-cycle-architecture-gate"
   ],
   "parent": null,
   "relatedFiles": [],

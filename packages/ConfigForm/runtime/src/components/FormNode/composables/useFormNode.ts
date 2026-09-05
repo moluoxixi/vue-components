@@ -10,7 +10,7 @@ import { cloneVNode, computed, h, isVNode, mergeProps } from 'vue'
 import { useFormContext } from '../../../composables/useFormContext'
 import { getResolvedNodeRenderKey } from '../../../utils/slot'
 import { mergeStyleValues, readStyleValue } from '../../../utils/style'
-import RecursiveField from '../../RecursiveField'
+import { useRecursiveFieldRenderer } from './useRecursiveFieldRenderer'
 
 /**
  * 组装单个 ConfigForm 节点的 render 上下文。
@@ -20,6 +20,7 @@ import RecursiveField from '../../RecursiveField'
  */
 export function useFormNode(props: FormNodeProps): UseFormNodeResult {
   const ctx = useFormContext()
+  const recursiveFieldRenderer = useRecursiveFieldRenderer()
 
   /** 容器节点在 grid 模式下使用 runtime 已补齐的 span。 */
   const containerStyle = computed(() => {
@@ -108,7 +109,10 @@ export function useFormNode(props: FormNodeProps): UseFormNodeResult {
     if (typeof content === 'function')
       return content(context, ...args) as VNodeChild
 
-    return h(RecursiveField, {
+    if (!recursiveFieldRenderer)
+      throw new Error('ConfigForm recursive field renderer is unavailable.')
+
+    return h(recursiveFieldRenderer, {
       field: content,
       key: getResolvedNodeRenderKey(content, `${slotName}.${path}`),
     })
