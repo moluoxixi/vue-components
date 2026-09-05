@@ -72,6 +72,18 @@ describe('project model production performance budgets', () => {
     const { document, registry } = largeProject(nodeCount)
     const durations: number[] = []
     let current = document
+    for (let index = 0; index < 5; index += 1) {
+      applyProjectTransaction(current, {
+        id: `warmup-${index}`,
+        label: 'Warm up transaction',
+        operations: [{
+          type: 'node.props',
+          pageId: 'home',
+          nodeId: `field-${Math.floor(nodeCount / 2)}`,
+          props: { placeholder: `Warmup ${index}` },
+        }],
+      }, { registry })
+    }
     for (let index = 0; index < 20; index += 1) {
       const startedAt = performance.now()
       const result = applyProjectTransaction(current, {
@@ -101,6 +113,18 @@ describe('project model production performance budgets', () => {
   it('keeps a 2000-node drag draft below the 16ms p95 frame budget', () => {
     const { document, registry } = largeProject(2000)
     const durations: number[] = []
+    for (let index = 0; index < 5; index += 1) {
+      applyProjectDraftTransaction(document, {
+        id: `warmup-move-${index}`,
+        label: 'Warm up drag candidate',
+        operations: [{
+          type: 'node.move',
+          pageId: 'home',
+          nodeId: 'field-1000',
+          target: { parentId: null, index: 1001 + (index % 2) },
+        }],
+      }, { registry })
+    }
     for (let index = 0; index < 20; index += 1) {
       const startedAt = performance.now()
       const result = applyProjectDraftTransaction(document, {
@@ -125,6 +149,31 @@ describe('project model production performance budgets', () => {
   it('keeps a 2000-node palette insertion draft below the 16ms p95 frame budget', () => {
     const { document, registry } = largeProject(2000)
     const durations: number[] = []
+    for (let index = 0; index < 5; index += 1) {
+      applyProjectDraftTransaction(document, {
+        id: `warmup-insert-${index}`,
+        label: 'Warm up palette candidate',
+        operations: [{
+          type: 'node.insert',
+          pageId: 'home',
+          target: { parentId: null, index: 1000 },
+          subgraph: {
+            root: [{ nodeId: `warmup-candidate-${index}`, placement: {} }],
+            nodesById: {
+              [`warmup-candidate-${index}`]: {
+                id: `warmup-candidate-${index}`,
+                component: 'element.input',
+                kind: 'field',
+                field: `warmup_candidate_${index}`,
+                props: { placeholder: 'Warmup' },
+                events: {},
+                bindings: {},
+              },
+            },
+          },
+        }],
+      }, { registry })
+    }
     for (let index = 0; index < 20; index += 1) {
       const startedAt = performance.now()
       const result = applyProjectDraftTransaction(document, {
