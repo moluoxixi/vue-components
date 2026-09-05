@@ -17,6 +17,7 @@ import {
   moduleReaches,
   parseModule,
 } from './module-graph.mjs'
+import { collectPackageCycleDiagnostics } from './package-cycles.mjs'
 import {
   diagnostic,
   isExplicitFeatureDirectory,
@@ -387,6 +388,7 @@ export function collectPackageArchitectureDiagnostics(repositoryRoot, packages) 
     ...collectComposableOwnershipDiagnostics(repositoryRoot, packages),
     ...collectComponentOwnershipDiagnostics(repositoryRoot, packages),
     ...collectModuleCycleDiagnostics(repositoryRoot, packages),
+    ...collectPackageCycleDiagnostics(repositoryRoot, packages),
   ].sort((left, right) => (
     left.rule.localeCompare(right.rule)
     || left.path.localeCompare(right.path)

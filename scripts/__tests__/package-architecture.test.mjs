@@ -11,6 +11,7 @@ import {
   collectFeatureStructureDiagnostics,
   collectModuleCycleDiagnostics,
   collectPackageArchitectureDiagnostics,
+  collectPackageCycleDiagnostics,
   collectPackageEntryDiagnostics,
   collectPackageInventory,
   parseModule,
@@ -307,6 +308,77 @@ describe('package architecture collector', () => {
     })
 
     expect(collectModuleCycleDiagnostics(root, collectPackageInventory(root))).toEqual([])
+  })
+
+  it('detects stable workspace dependency cycles and ignores external and dev-only edges', () => {
+    const root = createFixture({
+      'packages/a/package.json': packageManifest('@fixture/a', {
+        dependencies: { '@fixture/b': 'workspace:*', 'external': '^1.0.0' },
+        peerDependencies: { '@fixture/b': 'workspace:*' },
+      }),
+      'packages/b/package.json': packageManifest('@fixture/b', {
+        peerDependencies: { '@fixture/a': 'workspace:*' },
+      }),
+      'packages/c/package.json': packageManifest('@fixture/c', {
+        optionalDependencies: { '@fixture/d': 'workspace:*' },
+      }),
+      'packages/d/package.json': packageManifest('@fixture/d', {
+        dependencies: { '@fixture/e': 'workspace:*' },
+      }),
+      'packages/e/package.json': packageManifest('@fixture/e', {
+        peerDependencies: { '@fixture/c': 'workspace:*' },
+      }),
+      'packages/self/package.json': packageManifest('@fixture/self', {
+        dependencies: { '@fixture/self': 'workspace:*' },
+      }),
+      'packages/tool-a/package.json': packageManifest('@fixture/tool-a', {
+        devDependencies: { '@fixture/tool-b': 'workspace:*' },
+      }),
+      'packages/tool-b/package.json': packageManifest('@fixture/tool-b', {
+        devDependencies: { '@fixture/tool-a': 'workspace:*' },
+      }),
+    })
+    const packages = collectPackageInventory(root)
+    const diagnostics = collectPackageCycleDiagnostics(root, packages)
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        rule: 'package.circular-dependency',
+        path: 'packages/a/package.json',
+        owners: ['packages/b/package.json'],
+      }),
+      expect.objectContaining({
+        rule: 'package.circular-dependency',
+        path: 'packages/c/package.json',
+        owners: ['packages/d/package.json', 'packages/e/package.json'],
+      }),
+      expect.objectContaining({
+        rule: 'package.circular-dependency',
+        path: 'packages/self/package.json',
+        message: 'Workspace package dependency cycle detected: @fixture/self depends on itself.',
+      }),
+    ])
+    expect(collectPackageCycleDiagnostics(root, packages)).toEqual(diagnostics)
+    expect(collectPackageArchitectureDiagnostics(root, packages)
+      .filter(item => item.rule === 'package.circular-dependency')).toEqual(diagnostics)
+
+    const trackedCycle = diagnostics[0]
+    const reconciliation = reconcilePackageArchitectureDiagnostics([trackedCycle], {
+      version: 1,
+      packageExceptions: [],
+      pathExceptions: [],
+      componentExceptions: [],
+      importExceptions: [],
+      debt: [{
+        path: trackedCycle.path,
+        rule: trackedCycle.rule,
+        owners: trackedCycle.owners,
+        targetTask: 'fixture-package-cycle-cleanup',
+        reason: 'Fixture package cycle is tracked by its complete SCC identity.',
+      }],
+    })
+    expect(reconciliation.unknown).toEqual([])
+    expect(reconciliation.staleDebt).toEqual([])
   })
 
   it('rejects cross-feature implementation imports but allows public and parent boundaries', () => {

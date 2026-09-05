@@ -1,0 +1,1 @@
+{"file":".trellis/spec/directory-structure.md","reason":"复核 package graph 范围、SCC identity、测试矩阵与零 cycle 结果。"}

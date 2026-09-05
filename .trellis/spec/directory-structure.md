@@ -272,6 +272,11 @@ interface PackageArchitectureManifest {
   tests, declarations, and targets outside the package source root do not.
   Nodes and SCC members use stable repository-relative ordering. Bare workspace
   imports and tool-specific aliases are not resolved by this package-local gate.
+- The workspace package graph rejects `package.circular-dependency` SCCs built
+  from internal `dependencies`, `peerDependencies`, and `optionalDependencies`.
+  External packages and `devDependencies` do not form runtime package edges.
+  Duplicate declarations across dependency fields collapse to one edge, and
+  package SCC identity uses stable repository-relative `package.json` paths.
 
 ## 4. Validation & Error Matrix
 
@@ -304,6 +309,7 @@ interface PackageArchitectureManifest {
 | Package-level shared component has consumers from fewer than two features | Emit `component.shared-feature-owners` after the more specific single-parent rule |
 | Exported `use*` function in a composables responsibility has no Vue ownership | Emit `composable.vue-ownership-required`; move pure behavior to services or utils |
 | Production modules form a package-local runtime SCC or self-loop | Emit one stable `module.circular-dependency` diagnostic for the complete component; fix the dependency direction instead of adding a broad exception |
+| Workspace runtime package manifests form an SCC or self dependency | Emit one stable `package.circular-dependency` diagnostic for the complete package component; fix the package direction instead of adding a broad exception |
 | Import exception kind, importer, target, or rule is invalid or duplicated | Reject the manifest before reconciliation |
 | Exact import exception no longer matches a live dependency edge | Fail as a stale exception |
 | Live diagnostic has no exact debt/exception | Fail as unknown architecture debt |
@@ -336,6 +342,8 @@ interface PackageArchitectureManifest {
 - Good: recursive Vue rendering receives its renderer through an internal
   provide/inject contract instead of statically importing back into the
   dispatcher that already depends on it.
+- Good: workspace adapters depend inward on runtime/core contracts; runtime
+  packages never depend back on provider adapters.
 - Good: a Node package separates lifecycle orchestration, repository adapters,
   serialization, and pure filesystem utilities.
 - Base: a small feature has only `index.ts`, its implementation entry, and
@@ -361,6 +369,8 @@ interface PackageArchitectureManifest {
   multi-entry production build.
 - Bad: `RecursiveRenderer` imports `NodeRenderer` while `NodeRenderer` statically
   imports `RecursiveRenderer` for nested slots.
+- Bad: package A declares package B as a runtime dependency while package B
+  reaches back to A through a dependency, peer, or optional dependency.
 - Bad: a broad package stylesheet targets `input:focus-visible` below a root
   class and unintentionally overrides a mature component library's internal
   input.
@@ -411,6 +421,9 @@ interface PackageArchitectureManifest {
   duplicate edges, runtime re-exports, literal dynamic imports, type-only edges,
   production filtering, source-root boundaries, aggregate collector wiring, and
   debt identity reconciliation.
+- Package-cycle fixtures cover dependencies/peers/optional dependencies,
+  two-node/three-node SCCs, self dependencies, duplicate fields, external/dev
+  exclusions, stable aggregate wiring, and debt identity reconciliation.
 - `pnpm check:package-architecture` must match live diagnostics exactly against
   `scripts/package-architecture/config/manifest.json`; regex-only import graph
   checks are not sufficient.
