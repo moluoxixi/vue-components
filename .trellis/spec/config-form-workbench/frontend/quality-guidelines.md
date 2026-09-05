@@ -240,6 +240,9 @@ Required regression coverage:
 - The generated designer and runtime-host entries contain the configured base
   path and Workbench title.
 - The final Pages artifact contains no historical standalone Designer entry.
+- Changesets `ignore` entries must name existing workspace packages; removing or
+  renaming a private playground requires updating `.changeset/config.json` in the
+  same change, otherwise `changeset version` fails before publishing.
 
 ---
 

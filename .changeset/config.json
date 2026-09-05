@@ -6,8 +6,7 @@
   "commit": false,
   "fixed": [],
   "ignore": [
-    "@config-form/playground",
-    "@config-form/components-playground"
+    "@config-form/playground"
   ],
   "linked": [],
   "updateInternalDependencies": "patch"

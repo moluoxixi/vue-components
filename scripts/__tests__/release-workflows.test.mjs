@@ -9,6 +9,7 @@ const releaseWorkflow = readFileSync(resolve(workflowDirectory, 'release.yml'), 
 const pnpmLockfile = readFileSync(resolve(import.meta.dirname, '../../pnpm-lock.yaml'), 'utf8')
 const workflowValidator = readFileSync(resolve(import.meta.dirname, '../validate-workflows.mjs'), 'utf8')
 const pagesBuilder = readFileSync(resolve(import.meta.dirname, '../build-pages.mjs'), 'utf8')
+const changesetConfig = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../.changeset/config.json'), 'utf8'))
 const rootManifest = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../package.json'), 'utf8'))
 const githubTokenEnvironment = ['GITHUB_TOKEN: $', '{{ github.token }}'].join('')
 const aiDocAssistantManifest = JSON.parse(readFileSync(
@@ -139,5 +140,10 @@ describe('release workflow topology', () => {
     }
 
     expect(releaseWorkflow).not.toContain('changesets/action')
+  })
+
+  it('keeps Changesets ignore entries aligned with current workspace packages', () => {
+    expect(changesetConfig.ignore).toEqual(['@config-form/playground'])
+    expect(changesetConfig.ignore).not.toContain('@config-form/components-playground')
   })
 })
