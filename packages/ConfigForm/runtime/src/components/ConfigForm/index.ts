@@ -1,1 +1,1 @@
-export { default } from './services/component'
+export { ConfigForm as default } from './services'
