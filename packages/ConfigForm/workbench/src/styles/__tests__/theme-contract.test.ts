@@ -71,7 +71,7 @@ describe('workbench theme contract', () => {
   it('keeps the material panel styles with StudioLeftPanel', async () => {
     const component = await import('../../app/components/StudioLeftPanel/index.vue?raw').then(module => module.default)
 
-    expect(component).toMatch(/import '.\/style'/)
+    expect(component).toMatch(/import '.\/style\/index\.scss'/)
     expect(studioLeftPanelStylesheet).toContain('.designer-material-search')
     expect(stylesheet).not.toContain('.designer-material-search')
   })
@@ -96,8 +96,8 @@ describe('workbench theme contract', () => {
   it('configures Element Plus through its Sass module and component entries', async () => {
     const [viteConfig, inspectorStyles, runtimeStyles] = await Promise.all([
       import('../../../vite.config.ts?raw').then(module => module.default),
-      import('../../adapters/styles/element-plus-inspector.ts?raw').then(module => module.default),
-      import('../../adapters/styles/element-plus-runtime.ts?raw').then(module => module.default),
+      import('../../adapters/services/element-plus-inspector.ts?raw').then(module => module.default),
+      import('../../adapters/services/element-plus-runtime.ts?raw').then(module => module.default),
     ])
 
     expect(elementPlusTheme).toMatch(/@forward 'element-plus\/theme-chalk\/src\/common\/var\.scss' with \(/)

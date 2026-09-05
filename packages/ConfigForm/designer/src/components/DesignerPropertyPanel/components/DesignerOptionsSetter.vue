@@ -3,7 +3,6 @@ import type { DesignerJsonValue } from '../../../graph'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from '@lucide/vue'
 import { ref, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
-import './DesignerOptionsSetter/style'
 
 type OptionValueType = 'text' | 'number' | 'boolean' | 'complex'
 

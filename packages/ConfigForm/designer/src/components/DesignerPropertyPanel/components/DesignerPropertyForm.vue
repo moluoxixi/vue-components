@@ -14,7 +14,6 @@ import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, markRaw, shallowRef, toRaw, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
 import DesignerSetter from './DesignerSetter.vue'
-import './DesignerPropertyForm/style'
 
 const props = defineProps<{
   entries: DesignerPropertyFormEntry[]
@@ -51,8 +50,10 @@ function fieldKey(entry: DesignerPropertyFormEntry, index: number): string {
 }
 
 function controlFor(entry: DesignerPropertyFormEntry): DesignerPropertyControlDefinition | undefined {
-  return isSimpleControl(entry.setter.control)
-    ? props.controls?.[entry.setter.control]
+  if (isSimpleControl(entry.setter.control))
+    return props.controls?.[entry.setter.control]
+  return entry.setter.control === 'defaultValue' && entry.setter.valueKind
+    ? props.controls?.defaultValue
     : undefined
 }
 
@@ -95,6 +96,7 @@ function simpleField(
 ): ConfigFormRendererField<Record<string, unknown>> {
   const { setter } = entry
   const key = fieldKey(entry, index)
+  const controlClass = setter.control === 'defaultValue' ? 'default-value' : setter.control
   const inheritedLabel = entry.value === undefined && entry.inheritedValue !== undefined
     ? locale.t('setter.inherited', 'Inherited')
     : undefined
@@ -109,7 +111,7 @@ function simpleField(
     'class': [
       control.props?.class,
       'mx-config-form-designer__property-control',
-      `is-${setter.control}`,
+      `is-${controlClass}`,
     ],
     'disabled': props.readonly,
     ...(setter.control === 'textarea' ? { rows: 3 } : {}),
@@ -122,6 +124,9 @@ function simpleField(
         }
       : {}),
     ...(setter.control === 'select' ? { options: setter.options ?? [] } : {}),
+    ...(setter.control === 'defaultValue'
+      ? { kind: setter.valueKind, options: setter.options ?? [] }
+      : {}),
     ...(setter.control === 'text' ? { onKeydown: handleTextKeydown } : {}),
     ...(['text', 'textarea'].includes(setter.control)
       ? { onBlur: () => commitTextDraft(entry, index) }
@@ -142,7 +147,7 @@ function simpleField(
       class: [
         'mx-config-form-designer-property-form__field',
         'is-simple',
-        `is-control-${setter.control}`,
+        `is-control-${controlClass}`,
       ],
       title: setter.label,
       ...(inheritedLabel ? { 'data-inherited-label': inheritedLabel } : {}),
@@ -159,12 +164,6 @@ function customField(
   const setter = entry.setter.component
     ? { ...entry.setter, component: rawComponent(entry.setter.component) }
     : entry.setter
-  const defaultValueControl = props.controls?.defaultValue
-    ? {
-        ...props.controls.defaultValue,
-        component: rawComponent(props.controls.defaultValue.component),
-      }
-    : undefined
   return {
     id: key,
     field: key,
@@ -173,7 +172,6 @@ function customField(
     trigger: 'commit',
     props: {
       setter,
-      defaultValueControl,
       hint: entry.hint,
       inheritedValue: entry.inheritedValue,
       readonly: props.readonly,

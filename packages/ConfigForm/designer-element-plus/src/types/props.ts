@@ -27,6 +27,7 @@ export interface ElementChoiceDefaultSetterProps {
 export interface ElementDefaultValueSetterProps {
   modelValue?: DesignerJsonValue
   disabled?: boolean
+  id?: string
   kind: DesignerDefaultValueKind
   options?: DesignerSetterOption[]
 }

@@ -6,7 +6,7 @@ import {
   AntdLayoutScenario,
   AntdLinkedScenario,
 } from './AntdConfigForm/components'
-import './AntdConfigForm/style'
+import './AntdConfigForm/style/index.scss'
 
 type ScenarioTab = 'layout' | 'container' | 'linked'
 

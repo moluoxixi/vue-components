@@ -72,11 +72,16 @@ describe('element plus designer fields', () => {
   })
 
   it('uses Element Plus controls for every default-value kind', async () => {
-    const text = mount(ElementDefaultValueSetter, { props: { kind: 'text', modelValue: 'before' } })
+    const text = mount(ElementDefaultValueSetter, {
+      props: { id: 'default-value-control', kind: 'text', modelValue: 'before' },
+    })
+    await text.vm.$nextTick()
     expect(text.getComponent(ElInput).classes()).toEqual(expect.arrayContaining([
       'mx-config-form-designer__property-control',
       'is-text',
     ]))
+    expect(text.get('.el-input__inner').attributes('id')).toBe('default-value-control')
+    expect(text.attributes('id')).toBeUndefined()
     text.getComponent(ElInput).vm.$emit('update:modelValue', 'after')
     await text.vm.$nextTick()
     await text.get('.el-input__inner').trigger('blur')

@@ -32,7 +32,6 @@ import {
   useDesignerCanvasRuntime,
 } from './composables'
 import { createDesignerCanvasSelection } from './services/canvas-selection'
-import './style'
 
 const slots = defineSlots<DesignerCanvasSlots>()
 const props = defineProps<DesignerCanvasProps>()

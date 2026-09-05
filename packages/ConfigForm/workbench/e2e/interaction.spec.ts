@@ -1249,7 +1249,7 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
 
   const restingLabelColor = await defaultValueControl.evaluate((element) => {
     const label = element.closest('.mx-config-form-designer-property-form__field')
-      ?.querySelector('.mx-config-form-designer__setter-label')
+      ?.querySelector('.mx-config-form-designer-property-form__label')
     return label ? getComputedStyle(label).color : ''
   })
   await defaultValueControl.click()
@@ -1261,7 +1261,7 @@ test('uses one Element Plus Inspector focus frame', async ({ page }) => {
     if (!element)
       return undefined
     const field = element.closest('.mx-config-form-designer-property-form__field')
-    const label = field?.querySelector('.mx-config-form-designer__setter-label')
+    const label = field?.querySelector('.mx-config-form-designer-property-form__label')
     const wrapper = element.closest('.el-input__wrapper')
     return {
       inputOutlineStyle: getComputedStyle(element).outlineStyle,

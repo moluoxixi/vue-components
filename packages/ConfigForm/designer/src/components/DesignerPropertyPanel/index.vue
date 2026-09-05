@@ -4,7 +4,6 @@ import { ChevronRight, Trash2, Workflow } from '@lucide/vue'
 import { useDesignerLocale } from '../../locale'
 import { DesignerPropertyForm, DesignerResponsiveSettings } from './components'
 import { useDesignerPropertyEntries, useDesignerPropertyTabs } from './composables'
-import './style'
 
 const props = defineProps<DesignerPropertyPanelProps>()
 const emit = defineEmits<DesignerPropertyPanelEmits>()

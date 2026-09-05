@@ -9,7 +9,6 @@ import { createDesignPreviewModel } from '../graph'
 import { useDesignerLocale } from '../locale'
 import { resolveDesignerDesignPolicy } from '../registry'
 import { createDesignerMaterialCandidate } from './DesignerCanvas'
-import './DesignerMaterialSpecimen/style'
 
 const props = defineProps<{
   form?: FormSettings

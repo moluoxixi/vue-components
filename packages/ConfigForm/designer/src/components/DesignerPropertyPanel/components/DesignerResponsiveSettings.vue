@@ -19,7 +19,6 @@ import { computed } from 'vue'
 import { resolveInspectorGridFraction } from '../../../inspector'
 import { useDesignerLocale } from '../../../locale'
 import DesignerBreakpointLayoutSettings from './DesignerBreakpointLayoutSettings.vue'
-import './DesignerResponsiveSettings/style'
 
 type LayoutKey = 'columns' | 'fieldSpan' | 'labelWidth'
 type ResponsiveBreakpoint = Exclude<ConfigFormBreakpoint, 'desktop'>

@@ -5,7 +5,6 @@ import type {
 } from '../../../registry'
 import { computed, ref, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
-import './DesignerDefaultValueSetter/style'
 
 const props = defineProps<{
   modelValue: unknown

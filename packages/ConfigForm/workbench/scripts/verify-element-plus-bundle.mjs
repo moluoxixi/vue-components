@@ -4,13 +4,13 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const expectedDynamicStyles = {
-  'src/adapters/styles/element-plus-inspector.ts': [
+  'src/adapters/services/element-plus-inspector.ts': [
     'input',
     'input-number',
     'segmented',
     'switch',
   ],
-  'src/adapters/styles/element-plus-runtime.ts': [
+  'src/adapters/services/element-plus-runtime.ts': [
     'card',
     'checkbox',
     'collapse',

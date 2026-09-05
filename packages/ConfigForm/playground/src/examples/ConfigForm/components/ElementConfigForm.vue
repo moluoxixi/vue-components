@@ -6,7 +6,7 @@ import {
   ElementLayoutScenario,
   ElementLinkedScenario,
 } from './ElementConfigForm/components'
-import './ElementConfigForm/style'
+import './ElementConfigForm/style/index.scss'
 
 type ScenarioTab = 'layout' | 'container' | 'linked'
 

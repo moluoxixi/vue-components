@@ -61,7 +61,8 @@ describe('designer component Sass entries', () => {
       sideEffects: string[]
     }
 
-    expect(manifest.sideEffects).toContain('**/style/index.ts')
+    expect(manifest.sideEffects).not.toContain('**/style/index.ts')
+    expect(manifest.sideEffects).toContain('**/*.scss')
     for (const component of [
       'design-surface',
       'designer-canvas',
@@ -73,32 +74,28 @@ describe('designer component Sass entries', () => {
     }
   })
 
-  it('keeps styled Vue components connected to their own style modules', () => {
-    const components = [
-      ['src/components/DesignSurface/index.vue', './style'],
-      ['src/components/DesignerCanvas/index.vue', './style'],
-      ['src/components/DesignerPalette/index.vue', './style'],
-      ['src/components/DesignerMaterialSpecimen.vue', './DesignerMaterialSpecimen/style'],
-      ['src/components/DesignerPropertyPanel/index.vue', './style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerPropertyForm.vue', './DesignerPropertyForm/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerSetter.vue', './DesignerSetter/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerResponsiveSettings.vue', './DesignerResponsiveSettings/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerBreakpointLayoutSettings.vue', './DesignerBreakpointLayoutSettings/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerDefaultValueSetter.vue', './DesignerDefaultValueSetter/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerConditionSetter.vue', './DesignerConditionSetter/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerReactionSetter.vue', './DesignerReactionSetter/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerOptionsSetter.vue', './DesignerOptionsSetter/style'],
-      ['src/components/DesignerPropertyPanel/components/DesignerValidationSetter.vue', './DesignerValidationSetter/style'],
-    ] as const
+  it('keeps component style entries Sass-only for manual and on-demand imports', () => {
+    const styleDirectories = [
+      'src/components/DesignSurface/style',
+      'src/components/DesignerCanvas/style',
+      'src/components/DesignerPalette/style',
+      'src/components/DesignerMaterialSpecimen/style',
+      'src/components/DesignerPropertyPanel/style',
+      'src/components/DesignerPropertyPanel/components/DesignerPropertyForm/style',
+      'src/components/DesignerPropertyPanel/components/DesignerSetter/style',
+      'src/components/DesignerPropertyPanel/components/DesignerResponsiveSettings/style',
+      'src/components/DesignerPropertyPanel/components/DesignerBreakpointLayoutSettings/style',
+      'src/components/DesignerPropertyPanel/components/DesignerDefaultValueSetter/style',
+      'src/components/DesignerPropertyPanel/components/DesignerConditionSetter/style',
+      'src/components/DesignerPropertyPanel/components/DesignerReactionSetter/style',
+      'src/components/DesignerPropertyPanel/components/DesignerOptionsSetter/style',
+      'src/components/DesignerPropertyPanel/components/DesignerValidationSetter/style',
+    ]
 
-    for (const [component, styleImport] of components) {
-      const componentPath = resolve(packageRoot, component)
-      expect(readFileSync(componentPath, 'utf8')).toContain(`import '${styleImport}'`)
-      const styleDirectory = component.endsWith('/index.vue')
-        ? resolve(componentPath, '../style')
-        : resolve(componentPath, `../${component.split('/').at(-1)!.replace(/\.vue$/, '')}/style`)
+    for (const directory of styleDirectories) {
+      const styleDirectory = resolve(packageRoot, directory)
       expect(existsSync(resolve(styleDirectory, 'index.scss'))).toBe(true)
-      expect(existsSync(resolve(styleDirectory, 'index.ts'))).toBe(true)
+      expect(existsSync(resolve(styleDirectory, 'index.ts'))).toBe(false)
     }
   })
 })

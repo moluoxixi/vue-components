@@ -1,0 +1,5 @@
+{"file":".trellis/spec/directory-structure.md","reason":"约束发布包根入口、责任目录、Sass-only 组件样式入口与无意义 barrel。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"约束 provider defaultValue control 注册、fallback 与真实组件库控件。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"约束 Inspector 字段布局、主题隔离与 focus frame。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"约束 Workbench Element Plus 样式加载、E2E 与可访问性门禁。"}
+{"file":".trellis/spec/frontend/component-library-selection.md","reason":"要求属性控件优先复用 Element Plus 公开组件。"}

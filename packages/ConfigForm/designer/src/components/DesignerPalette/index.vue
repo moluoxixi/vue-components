@@ -7,7 +7,6 @@ import { computed, inject, ref } from 'vue'
 import { useDesignerLocale } from '../../locale'
 import { DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
 import { useDesignerPaletteDrag } from './composables'
-import './style'
 
 const props = withDefaults(defineProps<{
   materials: DesignerMaterialDefinition[]

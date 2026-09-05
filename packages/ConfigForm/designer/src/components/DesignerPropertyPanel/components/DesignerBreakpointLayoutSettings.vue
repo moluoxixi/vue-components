@@ -7,7 +7,6 @@ import type {
 } from '../../../registry'
 import type { DesignerPropertyFormEntry } from '../types'
 import DesignerPropertyForm from './DesignerPropertyForm.vue'
-import './DesignerBreakpointLayoutSettings/style'
 
 defineOptions({ name: 'DesignerBreakpointLayoutSettings' })
 

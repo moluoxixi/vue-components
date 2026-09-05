@@ -22,7 +22,8 @@
     "09-05-published-package-contracts",
     "09-05-architecture-collector-residual-rules",
     "09-05-config-form-large-service-boundaries",
-    "09-05-ai-doc-discovery-boundary"
+    "09-05-ai-doc-discovery-boundary",
+    "09-05-config-form-sass-entry-default-control"
   ],
   "parent": null,
   "relatedFiles": [],

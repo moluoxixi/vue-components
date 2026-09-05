@@ -1,8 +1,0 @@
-import '../../../../../styles/foundation.scss'
-import '../../../../../styles/native-property-controls.scss'
-import '../../../../../styles/designer-setter.scss'
-import '../../../../../styles/designer-default-value-setter.scss'
-import '../../../../../styles/editor-controls.scss'
-import '../../../../../styles/designer-reaction-setter.scss'
-import '../../../../../styles/designer-validation-setter.scss'
-import '../../../../../styles/property-refinements.scss'

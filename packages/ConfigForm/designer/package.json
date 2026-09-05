@@ -8,7 +8,6 @@
     "directory": "packages/ConfigForm/designer"
   },
   "sideEffects": [
-    "**/style/index.ts",
     "**/*.scss",
     "**/*.css"
   ],

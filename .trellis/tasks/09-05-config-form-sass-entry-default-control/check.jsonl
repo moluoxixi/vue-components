@@ -1,0 +1,4 @@
+{"file":".trellis/spec/directory-structure.md","reason":"复核样式入口与 adapter services 的目录所有权。"}
+{"file":".trellis/spec/config-form-core/frontend/material-registry.md","reason":"复核 defaultValue 注册/fallback 合同和 provider 控件事件。"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"复核 Inspector 字段几何、label 关联、focus frame 与主题隔离。"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"复核 Workbench 构建、可访问性和完整 E2E。"}

@@ -98,7 +98,7 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
       import('ant-design-vue/dist/reset.css'),
       import('@moluoxixi/config-form-designer-antd-vue/styles'),
       import('@moluoxixi/config-form-antd-vue/styles'),
-      import('../styles/element-plus-inspector'),
+      import('./element-plus-inspector'),
     ])
     const designerRegistry = adapter.createAntdVueDesignerRegistry({
       layers: [{
@@ -119,7 +119,7 @@ async function createWorkbenchAdapter(id: WorkbenchAdapterId): Promise<Workbench
 
   const [adapter] = await Promise.all([
     import('@moluoxixi/config-form-designer-element-plus'),
-    import('../styles/element-plus-inspector'),
+    import('./element-plus-inspector'),
     import('@moluoxixi/config-form-designer-element-plus/styles'),
     import('@moluoxixi/config-form-element/styles'),
   ])
@@ -152,7 +152,7 @@ async function createWorkbenchRuntimeAdapter(id: WorkbenchAdapterId): Promise<Wo
 
   const [adapter] = await Promise.all([
     import('@moluoxixi/config-form-designer-element-plus'),
-    import('../styles/element-plus-runtime'),
+    import('./element-plus-runtime'),
     import('@moluoxixi/config-form-designer-element-plus/styles'),
     import('@moluoxixi/config-form-element/styles'),
   ])

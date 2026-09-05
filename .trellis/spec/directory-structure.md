@@ -44,7 +44,6 @@ feature-name/
   index.ts                 # feature-level barrel only
   index.vue                # optional rendering/orchestration entry
   style/                   # optional component-owned style entry
-    index.ts               # optional: imports Sass when JS components use `import './style'`
     index.scss             # Sass entry for manual/on-demand consumers
   components/
     index.ts
@@ -164,11 +163,10 @@ interface PackageArchitectureManifest {
   it exposes symbols outside that directory. The barrel exports symbols only;
   it contains no business logic or side-effect registration.
 - Package-level shared styling lives in `styles/`. A visual component may use
-  an Element-style singular `style/` directory only for its own style entry.
-  `style/index.ts` exists only when a JS/TS/Vue consumer imports `./style` as a
-  bundler side effect; `style/index.scss` forwards the component Sass for
-  manual/on-demand use. A Sass-only package export with no JS consumer must not
-  add an unused `style/index.ts` for directory symmetry.
+  an Element-style singular `style/` directory only for its own Sass entry.
+  Published library components keep `style/index.scss` as the manual/on-demand
+  entry and do not add a TypeScript side-effect wrapper. Private applications
+  that own their bundling may import `./style/index.scss` explicitly.
   Component style entries must not contain unrelated component selectors.
 - Imports from another feature use that feature's public barrel. Imports inside
   a feature use the nearest responsibility barrel unless a direct local import
@@ -282,9 +280,8 @@ interface PackageArchitectureManifest {
 | A barrel contains business logic or side effects | Move the logic to its owning module and keep the barrel declarative |
 | Cross-feature code deep-imports another feature implementation | Emit `feature.cross-feature-deep-import`; use the feature barrel or an exact `importExceptions` edge |
 | A proposed directory has no distinct owner or trigger | Do not create it |
-| A component imports `./style` but `style/index.ts` is missing | Reject it as a broken JS side-effect entry |
 | A package exports component Sass but `style/index.scss` is missing | Reject it as a broken manual/on-demand style entry |
-| `style/index.ts` has no JS/TS/Vue consumer and is not a build entry | Delete it and remove the redundant sideEffects pattern |
+| A component style directory contains `index.ts` only to import Sass | Delete the wrapper, import SCSS explicitly in a private app, and remove the redundant sideEffects pattern |
 | A component Sass entry emits unrelated component selectors | Split the shared dependency or move the rule to the owning component |
 | Package-specific spec repeats this contract | Replace the copy with a link and retain only the package exception |
 | Published package lacks root `index.ts` or `src/` | Emit `package.root-index-required` / `package.src-required` |
@@ -310,9 +307,9 @@ interface PackageArchitectureManifest {
 
 - Good: a renderer exposes contracts through `types/index.ts`, keeps behavior in
   `composables/`, and keeps state in `state/`.
-- Good: a styled component exposes `style/index.scss`; an aggregate package
-  style entry forwards component entries without copying their rules. It adds
-  `style/index.ts` only when the component imports that JS side-effect entry.
+- Good: a published styled component exposes `style/index.scss`; an aggregate
+  package style entry forwards component entries without copying their rules.
+  A private app imports the SCSS file explicitly when it owns the bundle.
 - Good: `packages/foo/index.ts` explicitly exports `./src/components` and
   `./src/services`; no `src/index.ts` mirrors the package surface.
 - Good: a package builds `{ index: 'index.ts', node: 'src/node.ts' }` and emits

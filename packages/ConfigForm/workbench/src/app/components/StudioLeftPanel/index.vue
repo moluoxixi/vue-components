@@ -11,7 +11,7 @@ import type {
 import { Blocks, Check, ChevronDown, ChevronUp, Files, History, IndentDecrease, IndentIncrease, Layers3, MoreHorizontal, RotateCcw, Search, Settings2 } from '@lucide/vue'
 import { createDesignerLocale, DesignerPalette } from '@moluoxixi/config-form-designer'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import './style'
+import './style/index.scss'
 
 const props = defineProps<StudioLeftPanelProps>()
 

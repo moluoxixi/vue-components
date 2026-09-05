@@ -32,7 +32,6 @@ import DesignerPalette from '../DesignerPalette'
 import { DesignerPropertyPanel } from '../DesignerPropertyPanel'
 import { createDesignerDesignSession, createDesignerMaterialCandidate, DESIGNER_SESSION_KEY } from '../DesignerCanvas/services'
 import { useDesignSurfaceCommands, useDesignSurfaceWorkspace } from './composables'
-import './style'
 
 const props = withDefaults(defineProps<DesignSurfaceProps>(), {
   readonly: false,
