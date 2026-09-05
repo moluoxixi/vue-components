@@ -63,7 +63,11 @@ function largeProject(nodeCount: number): { document: ProjectDocument, registry:
   }
 }
 
-describe('project model production performance budgets', () => {
+const describePerformance = process.env.CI && process.env.npm_lifecycle_event !== 'test:performance'
+  ? describe.skip
+  : describe
+
+describePerformance('project model production performance budgets', () => {
   it.each([
     { nodeCount: 100, p95BudgetMs: 4 },
     { nodeCount: 500, p95BudgetMs: 8 },

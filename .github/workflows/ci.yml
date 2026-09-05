@@ -55,6 +55,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test performance budgets
+        run: pnpm test:performance
+
       - name: Test ConfigForm Workbench
         run: pnpm test:config-form-workbench
 
