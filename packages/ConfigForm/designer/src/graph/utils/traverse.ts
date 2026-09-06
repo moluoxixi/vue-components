@@ -1,5 +1,6 @@
 import type { ModelJsonValue, PageGraph, PageNode, SlotItem } from '@moluoxixi/config-form-model'
 import type { DesignerJsonObject, DesignerJsonValue, DesignNodeLocation, DesignNodeVisit } from '../types'
+import { cloneConfigFormJsonValue } from '@moluoxixi/config-form-core'
 
 function visitSequence(
   graph: PageGraph,
@@ -129,9 +130,7 @@ function isJsonValue(value: unknown, ancestors: WeakSet<object>): value is Desig
   return valid
 }
 
-export function cloneDesignerJsonValue<T extends DesignerJsonValue>(value: T): T {
-  return structuredClone(value)
-}
+export { cloneConfigFormJsonValue as cloneDesignerJsonValue }
 
 export function areDesignerJsonValuesEqual(left: unknown, right: unknown): boolean {
   if (Object.is(left, right))

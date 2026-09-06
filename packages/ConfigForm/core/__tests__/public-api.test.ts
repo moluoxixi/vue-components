@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyConfigFormReactionList,
+  cloneConfigFormJsonValue,
   createConfigFormReaction,
   createConfigFormReactionEffect,
   evaluateConfigFormReactionCondition,
@@ -28,5 +29,13 @@ describe('config-form-core reaction API', () => {
       when: { kind: 'literal', value: true },
       then: [createConfigFormReactionEffect('setState', 'status')],
     })
+  })
+
+  it('exports a defensive JSON clone shared by higher layers', () => {
+    const source = { nested: { values: ['before'] } }
+    const copy = cloneConfigFormJsonValue(source)
+
+    copy.nested.values[0] = 'after'
+    expect(source.nested.values).toEqual(['before'])
   })
 })

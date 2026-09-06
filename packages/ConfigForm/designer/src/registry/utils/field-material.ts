@@ -1,12 +1,11 @@
-import type { ModelJsonObject, ModelJsonValue } from '@moluoxixi/config-form-model'
+import type { ModelJsonObject } from '@moluoxixi/config-form-model'
 import type {
   DesignerFieldMaterialPropertyDefinition,
   DesignerPropertySetterDefinition,
 } from '../types'
+import { cloneConfigFormJsonValue } from '@moluoxixi/config-form-core'
 
-export function cloneDesignerJsonValue<T extends ModelJsonValue>(value: T): T {
-  return structuredClone(value)
-}
+export const cloneDesignerJsonValue = cloneConfigFormJsonValue
 
 export function resolveDesignerDefaultField(key: string): string {
   const field = key.split('.').at(-1)?.replace(/\W+/g, '_').replace(/^_+|_+$/g, '')
