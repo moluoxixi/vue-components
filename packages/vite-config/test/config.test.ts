@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite'
-import { getBaseConfig } from '@moluoxixi/vite-config'
+import { getBaseConfig, inspectViteFeatures } from '@moluoxixi/vite-config'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // 全局拦截通过引用暴露给测试动态改写的对象，高度控制模拟环境
@@ -64,7 +64,13 @@ describe('dynamic Dependency Evaluator (Unit)', () => {
   it('should fail loudly when an auto-enabled addon misses its runtime plugin package', async () => {
     mockDeps = { vue: '^3.3.0' }
 
-    await expect(getBaseConfig()).rejects.toThrow(/@vitejs\/plugin-vue/)
+    await expect(getBaseConfig({ vue: true })).rejects.toThrow(/@vitejs\/plugin-vue/)
+
+    const inspection = inspectViteFeatures({ vue: undefined })
+    expect(inspection.features.find(feature => feature.name === 'vue')).toMatchObject({
+      enabled: false,
+      reason: 'dependency-missing',
+    })
   })
 
   it('should respect explicit false over detected dependencies', async () => {

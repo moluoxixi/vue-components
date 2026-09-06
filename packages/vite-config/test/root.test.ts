@@ -41,6 +41,6 @@ describe('root aware vite config resolution', () => {
       vue: '^3.0.0',
     })
 
-    await expect(getBaseConfig({ viteConfig: { root } })).rejects.toThrow(/@vitejs\/plugin-vue/)
+    await expect(getBaseConfig({ viteConfig: { root }, vue: true })).rejects.toThrow(/@vitejs\/plugin-vue/)
   })
 })

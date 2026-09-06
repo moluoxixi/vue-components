@@ -95,13 +95,13 @@ function resolveLibEntry(root: string, entry: LibraryOptions['entry']): LibraryO
 export function createLibConfig(config: LibViteConfigExport = {}): UserConfigExport {
   return defineConfig(async (env) => {
     const userOptions = typeof config === 'function' ? await config(env) : config
-    const viteConfigExt = userOptions.viteConfig || {}
-    const root = typeof viteConfigExt.root === 'string' ? viteConfigExt.root : process.cwd()
+    const rawViteConfigExt = userOptions.viteConfig || {}
+    const root = path.resolve(typeof rawViteConfigExt.root === 'string' ? rawViteConfigExt.root : process.cwd())
+    const viteConfigExt = { ...rawViteConfigExt, root }
     const normalizedOptions = {
       ...userOptions,
       viteConfig: {
         ...viteConfigExt,
-        root,
       },
     }
     const baseConfig = await getBaseConfig(normalizedOptions)

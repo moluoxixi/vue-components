@@ -25,6 +25,7 @@
   和 `optionalDependencies`，避免把纯开发工具误写进库的运行时契约。
 - 调用方 Rollup external 规则与默认依赖规则取并集，不能关闭库模式的依赖 external。
 - `runtimeDeps` 只表达真实运行时依赖，不用于 Vite 插件自动启用判断。
+- Vue/React runtime 包不会单独触发编译 addon；自动触发分别绑定 `@vitejs/plugin-vue` 与 `@vitejs/plugin-react`，需要时可通过 `vue: true` / `react: true` 显式启用并接受严格依赖校验。
 
 ## 可观测性
 

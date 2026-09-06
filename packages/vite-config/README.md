@@ -17,8 +17,8 @@
 
 ## 依赖检测约定
 
-- 自动启用依据目标项目 `package.json` 中真实声明的 addon 依赖图。
-- `dependencies`、`devDependencies`、`peerDependencies` 与 `optionalDependencies` 都可以触发 addon 自动启用。
+- 自动启用依据目标项目 `package.json` 中真实声明的 addon 依赖图；Vue/React 只有声明对应 Vite compiler plugin 时才自动启用，单独声明 runtime 包不会隐式开启编译插件。
+- `dependencies`、`devDependencies`、`peerDependencies` 与 `optionalDependencies` 都可以作为 addon 触发来源；Vue/React 的 runtime 包例外，只有对应 compiler plugin 才会自动启用。
 - Vite 插件、测试框架和构建工具通常属于 build-time addon，放在 `devDependencies` 也必须能被识别。
 - 显式传入 `true` 或对象配置时，仍会严格校验对应 addon 依赖；缺失时直接失败，不做回退。
 
@@ -123,7 +123,7 @@ Tailwind CSS 只会在安装 `@tailwindcss/vite` 或 `@tailwindcss/postcss` 时�
 
 ## 1. 自动化的依赖侦测（Read Package）
 
-- **实践方法**：放弃手动配置每个特性开关，利用读取并解析 `viteConfig.root` 下的 `package.json`，自动侦测项目中是否使用 `vue`、`react`、`@tailwindcss/vite`、`@tailwindcss/postcss`、`unocss` 等常用前端技术栈。
+- **实践方法**：放弃手动配置每个特性开关，利用读取并解析 `viteConfig.root` 下的 `package.json`，自动侦测项目中是否使用 `@vitejs/plugin-vue`、`@vitejs/plugin-react`、`@tailwindcss/vite`、`@tailwindcss/postcss`、`unocss` 等常用构建技术栈。
 - **优势**：减少模板化项目初始化的心智负担，开发者一旦安装对应依赖该功能自动就绪。
 
 ## 2. 动态按需加载配置模块

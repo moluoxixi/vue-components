@@ -51,8 +51,8 @@ describe('addon runtime helpers', () => {
       requires: feature.requires ?? [],
       triggers: feature.triggers,
     }))).toEqual([
-      { dependsOn: [], name: 'vue', requires: ['@vitejs/plugin-vue'], triggers: ['vue', '@vitejs/plugin-vue'] },
-      { dependsOn: [], name: 'react', requires: ['@vitejs/plugin-react'], triggers: ['react', '@vitejs/plugin-react'] },
+      { dependsOn: [], name: 'vue', requires: ['@vitejs/plugin-vue'], triggers: ['@vitejs/plugin-vue'] },
+      { dependsOn: [], name: 'react', requires: ['@vitejs/plugin-react'], triggers: ['@vitejs/plugin-react'] },
       { dependsOn: [], name: 'unocss', requires: ['unocss'], triggers: ['unocss'] },
       { dependsOn: [], name: 'tailwindcss', requires: [], triggers: ['@tailwindcss/vite', '@tailwindcss/postcss'] },
       { dependsOn: [], name: 'vueRouter', requires: ['unplugin-vue-router'], triggers: ['unplugin-vue-router'] },
@@ -244,10 +244,10 @@ describe('addon runtime helpers', () => {
 
     expect(inspection.root).toBe(root)
     expect(vue).toMatchObject({
-      enabled: true,
-      matchedTriggers: ['vue'],
-      missingRequires: ['@vitejs/plugin-vue'],
-      reason: 'dependency-detected',
+      enabled: false,
+      matchedTriggers: [],
+      missingRequires: [],
+      reason: 'dependency-missing',
     })
     expect(react).toMatchObject({
       enabled: true,
@@ -270,7 +270,7 @@ describe('addon runtime helpers', () => {
 
     expect(vue).toMatchObject({
       enabled: true,
-      matchedTriggers: ['vue', '@vitejs/plugin-vue'],
+      matchedTriggers: ['@vitejs/plugin-vue'],
       missingRequires: [],
       reason: 'dependency-detected',
     })

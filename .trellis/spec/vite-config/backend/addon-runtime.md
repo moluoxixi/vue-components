@@ -91,6 +91,9 @@ isFeatureEnabled(name: AddonName): boolean
   Pages, Layouts, and SSG configurations.
 - Package coverage, typecheck, build, and browser fixtures run after ownership
   changes.
+- Trigger tests distinguish runtime framework packages from compiler plugin
+  packages; a runtime-only manifest stays inspection-disabled until the caller
+  explicitly enables the compiler addon.
 
 ## 7. Wrong vs Correct
 

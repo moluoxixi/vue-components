@@ -282,6 +282,6 @@ describe('real consumer project integration', () => {
       },
     }))
 
-    await expect(resolveConfig(createAppConfig({ viteConfig: { root } }))).rejects.toThrow(/@vitejs\/plugin-vue/)
+    await expect(resolveConfig(createAppConfig({ viteConfig: { root }, vue: true }))).rejects.toThrow(/@vitejs\/plugin-vue/)
   })
 })

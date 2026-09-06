@@ -86,6 +86,17 @@ describe('vite Pipeline Integration Build', () => {
     })
   })
 
+  it('lib Mode: normalizes a relative consumer root before resolving entry', async () => {
+    const relativeRoot = path.relative(process.cwd(), path.resolve(__dirname, 'fixtures/lib'))
+    const config = await resolveConfig(createLibConfig({
+      viteConfig: { root: relativeRoot },
+    }))
+
+    expect(config.root).toBe(path.resolve(relativeRoot))
+    const library = config.build?.lib
+    expect(typeof library === 'object' && library ? library.entry : undefined).toBe(path.resolve(relativeRoot, 'src/index.ts'))
+  })
+
   it('uses Vite merge semantics for user arrays and functions', async () => {
     const fixturePath = path.resolve(__dirname, 'fixtures/lib')
     const aliases = [{ find: '@', replacement: path.resolve(fixturePath, 'custom-src') }]

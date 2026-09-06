@@ -111,7 +111,7 @@ describe('vite-config design contract', () => {
 
     expect(vue).toMatchObject({
       enabled: true,
-      matchedTriggers: ['vue', '@vitejs/plugin-vue'],
+      matchedTriggers: ['@vitejs/plugin-vue'],
       missingRequires: [],
       reason: 'dependency-detected',
     })

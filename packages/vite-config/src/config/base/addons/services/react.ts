@@ -7,7 +7,7 @@ type ReactModule = typeof import('@vitejs/plugin-react')
 export const reactFeature = defineFeature<ReactAddonOptions>({
   name: 'react',
   requires: ['@vitejs/plugin-react'],
-  triggers: ['react', '@vitejs/plugin-react'],
+  triggers: ['@vitejs/plugin-react'],
   async setup(ctx, options) {
     return {
       plugins: [
