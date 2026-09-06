@@ -80,13 +80,16 @@ interface CanonicalNodeBase {
   reactions?: PageNode['reactions']
 }
 
-export interface CanonicalFieldNodeIR extends CanonicalNodeBase {
-  kind: 'field'
+export interface CanonicalFieldDescriptor {
   field: string
   label?: string
   defaultValue?: ModelJsonValue
   validation?: FieldNode['validation']
   validateOn?: ValidateTrigger | ValidateTrigger[]
+}
+
+export interface CanonicalFieldNodeIR extends CanonicalNodeBase, CanonicalFieldDescriptor {
+  kind: 'field'
 }
 
 export interface CanonicalLayoutNodeIR extends CanonicalNodeBase {
