@@ -1,12 +1,12 @@
 import type { Editor } from '@tiptap/core'
 import type { Ref } from 'vue'
-import { nextTick, shallowRef, useTemplateRef } from 'vue'
+import { nextTick, shallowRef } from 'vue'
 import { normalizeHref } from '../utils'
 
 export function useRichTextEditorLink(editor: Ref<Editor | null | undefined>) {
   const linkPanelVisible = shallowRef(false)
   const linkHref = shallowRef('')
-  const linkInputRef = useTemplateRef<HTMLInputElement>('linkInputRef')
+  const linkInputRef = shallowRef<HTMLInputElement | null>(null)
 
   async function openLinkPanel(): Promise<void> {
     const editorInstance = editor.value
@@ -44,10 +44,16 @@ export function useRichTextEditorLink(editor: Ref<Editor | null | undefined>) {
     closeLinkPanel()
   }
 
+  function setLinkInputRef(element: unknown): void {
+    linkInputRef.value = element instanceof HTMLInputElement ? element : null
+  }
+
   return {
     applyLink,
     closeLinkPanel,
     linkHref,
+    linkInputRef,
+    setLinkInputRef,
     linkPanelVisible,
     openLinkPanel,
     removeLink,

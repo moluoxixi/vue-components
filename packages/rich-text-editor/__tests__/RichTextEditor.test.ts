@@ -1,8 +1,10 @@
 import type { Editor } from '@tiptap/core'
+import { Extension } from '@tiptap/core'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { createApp, h, nextTick } from 'vue'
 import RichTextEditorDefault, { RichTextEditor } from '../index'
+import { normalizeHref } from '../src/utils'
 
 async function mountEditor(props: Record<string, unknown> = {}, slots: Record<string, any> = {}) {
   const wrapper = mount(RichTextEditor, { props, slots })
@@ -84,5 +86,48 @@ describe('rich text editor', () => {
     await nextTick()
 
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([''])
+  })
+
+  it('工具栏撤销按钮执行历史命令', async () => {
+    const wrapper = await mountEditor({ modelValue: '<p>history</p>' })
+    const editor = getEditor(wrapper)
+    editor.commands.selectAll()
+    editor.commands.toggleBold()
+    await nextTick()
+
+    await wrapper.get('button[aria-label="撤销"]').trigger('click')
+    expect(editor.getHTML()).toBe('<p>history</p>')
+  })
+
+  it('规范化链接时拒绝协议相对外链', () => {
+    expect(normalizeHref('//attacker.example')).toBe('')
+    expect(normalizeHref('/docs')).toBe('/docs')
+    expect(normalizeHref('example.com')).toBe('https://example.com')
+    expect(normalizeHref('javascript:alert(1)')).toBe('')
+  })
+
+  it('通过链接面板写入链接并支持关闭', async () => {
+    const wrapper = await mountEditor({ modelValue: '<p>链接文本</p>' })
+    const editor = getEditor(wrapper)
+    editor.commands.selectAll()
+    await wrapper.get('button[aria-label="链接"]').trigger('click')
+    await nextTick()
+
+    const input = wrapper.get('input[aria-label="链接地址"]')
+    await input.setValue('example.com')
+    await wrapper.get('form.mx-rich-text-editor__link-panel').trigger('submit')
+    await nextTick()
+
+    expect(editor.getHTML()).toContain('href="https://example.com"')
+    expect(wrapper.find('input[aria-label="链接地址"]').exists()).toBe(false)
+  })
+
+  it('追加自定义 TipTap 扩展而不改变默认能力', async () => {
+    const extension = Extension.create({ name: 'testExtension' })
+    const wrapper = await mountEditor({ extensions: [extension] })
+    const editor = getEditor(wrapper)
+
+    expect(editor.extensionManager.extensions.some(item => item.name === 'testExtension')).toBe(true)
+    expect(wrapper.get('button[aria-label="粗体"]').exists()).toBe(true)
   })
 })

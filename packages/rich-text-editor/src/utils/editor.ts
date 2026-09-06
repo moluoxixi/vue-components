@@ -12,7 +12,9 @@ export function getOutputHTML(editor: Editor): string {
 
 export function normalizeHref(value: string): string {
   const href = value.trim()
-  if (!href || /^(?:https?:|mailto:|tel:|#|\/)/i.test(href))
+  if (!href || /^\/\//.test(href))
+    return ''
+  if (/^(?:https?:|mailto:|tel:|#|\/(?!\/))/i.test(href))
     return href
   if (/^[a-z][a-z\d+.-]*:/i.test(href))
     return ''
