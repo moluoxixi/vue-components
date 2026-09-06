@@ -1,5 +1,13 @@
 # @moluoxixi/config-form-vue-backend
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/zod3-to-rule@0.1.3
+  - @moluoxixi/config-form-compiler@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

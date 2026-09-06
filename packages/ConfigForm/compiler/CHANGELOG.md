@@ -1,5 +1,11 @@
 # @moluoxixi/config-form-compiler
 
+## 0.1.2
+
+### Patch Changes
+
+- @moluoxixi/config-form-model@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

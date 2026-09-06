@@ -1,5 +1,11 @@
 # @moluoxixi/zod3-to-rule
 
+## 0.1.3
+
+### Patch Changes
+
+- Retry publishing the package with a new patch version.
+
 ## 0.1.2
 
 ### Patch Changes
