@@ -99,7 +99,12 @@ describe('release workflow topology', () => {
     expect(releaseWorkflow).toContain('contents: write')
     expect(releaseWorkflow).toContain('id-token: write')
     expect(releaseWorkflow).toContain('NPM_CONFIG_PROVENANCE: true')
-    expect(releaseWorkflow).toContain(['NODE_AUTH_TOKEN: $', '{{ secrets.NPM_TOKEN }}'].join(''))
+    expect(releaseWorkflow).toContain('name: Setup npm for Trusted Publishing')
+    expect(releaseWorkflow).toContain('npm install --global npm@latest')
+    expect(releaseWorkflow).toContain('npm --version')
+    expect(releaseWorkflow).not.toContain('registry-url: https://registry.npmjs.org')
+    expect(releaseWorkflow).not.toContain('NODE_AUTH_TOKEN:')
+    expect(releaseWorkflow).not.toContain('NPM_TOKEN')
   })
 
   it('skips a stale Pages deployment while allowing release-only commits', () => {

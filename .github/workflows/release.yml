@@ -62,7 +62,15 @@ jobs:
         with:
           cache: pnpm
           node-version-file: .node-version
-          registry-url: https://registry.npmjs.org
+
+      - name: Setup npm for Trusted Publishing
+        if: steps.freshness.outputs.release == 'true'
+        shell: bash
+        run: |
+          npm install --global npm@latest
+          npm_version="$(npm --version)"
+          node -e "const [major, minor, patch] = process.argv[1].split('.').map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)" "$npm_version"
+          echo "Using npm $npm_version for OIDC Trusted Publishing."
 
       - name: Install dependencies
         if: steps.freshness.outputs.release == 'true'
@@ -96,7 +104,6 @@ jobs:
         if: steps.freshness.outputs.release == 'true'
         run: pnpm release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
       - name: Push release tags
