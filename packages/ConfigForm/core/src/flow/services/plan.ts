@@ -1,3 +1,4 @@
+import type { ConfigFormJsonValue } from '../../json'
 import type {
   ConfigFormFlow,
   ConfigFormFlowDiagnostic,
@@ -8,6 +9,7 @@ import type {
   ConfigFormFlowPlanNode,
   ConfigFormFlowPlanResult,
 } from '../types'
+import { cloneConfigFormJsonValue } from '../../json'
 import { CONFIG_FORM_FLOW_PLAN_VERSION, CONFIG_FORM_FLOW_VERSION } from '../constants'
 
 const NODE_TYPES = new Set(['trigger', 'condition', 'reaction', 'action', 'success', 'failure', 'end'])
@@ -261,7 +263,5 @@ function isJsonSafe(value: unknown, seen = new Set<object>()): boolean {
 }
 
 function cloneJson<T>(value: T): T {
-  if (typeof structuredClone === 'function')
-    return structuredClone(value)
-  return JSON.parse(JSON.stringify(value)) as T
+  return cloneConfigFormJsonValue(value as ConfigFormJsonValue) as T
 }

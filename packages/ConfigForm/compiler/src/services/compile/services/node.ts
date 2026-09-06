@@ -8,7 +8,7 @@ import type {
   RegistryContractComponentSnapshot,
   SlotName,
 } from '@moluoxixi/config-form-model'
-import type { CanonicalNodeIR, CanonicalNodePlacement, SemanticCompilerDiagnostic } from '../../../types'
+import type { CanonicalFieldNodeIR, CanonicalNodeIR, CanonicalNodePlacement, SemanticCompilerDiagnostic } from '../../../types'
 import type { CompilePageContext } from '../types'
 import { clone, mergeComponentProps, semanticHash } from '../../../utils'
 
@@ -68,15 +68,7 @@ export function compileNodeShallow(
   }
   const common = compileNodeBase(node, component, placement, context.flowEvents.get(node.id))
   if (node.kind === 'field') {
-    const semanticNode = {
-      ...common,
-      kind: 'field',
-      field: node.field,
-      ...(node.label === undefined ? {} : { label: node.label }),
-      ...(node.defaultValue === undefined ? {} : { defaultValue: clone(node.defaultValue) }),
-      ...(node.validation === undefined ? {} : { validation: clone(node.validation) }),
-      ...(node.validateOn === undefined ? {} : { validateOn: clone(node.validateOn) }),
-    }
+    const semanticNode = compileFieldSemanticNode(node, common)
     return { ...semanticNode, subtreeHash: semanticHash(semanticNode) } as CanonicalNodeIR
   }
 
@@ -143,15 +135,7 @@ export function compileNode(
 
   const common = compileNodeBase(node, component, placement, context.flowEvents.get(node.id))
   if (node.kind === 'field') {
-    const semanticNode = {
-      ...common,
-      kind: 'field',
-      field: node.field,
-      ...(node.label === undefined ? {} : { label: node.label }),
-      ...(node.defaultValue === undefined ? {} : { defaultValue: clone(node.defaultValue) }),
-      ...(node.validation === undefined ? {} : { validation: clone(node.validation) }),
-      ...(node.validateOn === undefined ? {} : { validateOn: clone(node.validateOn) }),
-    }
+    const semanticNode = compileFieldSemanticNode(node, common)
     const compiled = {
       ...semanticNode,
       subtreeHash: semanticHash(semanticNode),
@@ -182,6 +166,21 @@ export function compileNode(
   } as CanonicalNodeIR
   context.nodesById[node.id] = compiled
   return compiled
+}
+
+function compileFieldSemanticNode(
+  node: Extract<PageNode, { kind: 'field' }>,
+  common: ReturnType<typeof compileNodeBase>,
+): Omit<CanonicalFieldNodeIR, 'subtreeHash'> {
+  return {
+    ...common,
+    kind: 'field',
+    field: node.field,
+    ...(node.label === undefined ? {} : { label: node.label }),
+    ...(node.defaultValue === undefined ? {} : { defaultValue: clone(node.defaultValue) }),
+    ...(node.validation === undefined ? {} : { validation: clone(node.validation) }),
+    ...(node.validateOn === undefined ? {} : { validateOn: clone(node.validateOn) }),
+  }
 }
 
 function compileNodeBase(

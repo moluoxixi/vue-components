@@ -1,3 +1,5 @@
+import type { ConfigFormJsonValue } from '../types'
+
 /** Serialize JSON-compatible data with deterministic object-key ordering. */
 export function stableConfigFormJsonStringify(value: unknown): string {
   if (Array.isArray(value))
@@ -7,6 +9,13 @@ export function stableConfigFormJsonStringify(value: unknown): string {
     return `{${Object.keys(object).sort().map(key => `${JSON.stringify(key)}:${stableConfigFormJsonStringify(object[key])}`).join(',')}}`
   }
   return JSON.stringify(value)
+}
+
+/** Create a defensive copy of a JSON-compatible value. */
+export function cloneConfigFormJsonValue<T extends ConfigFormJsonValue>(value: T): T {
+  if (typeof structuredClone === 'function')
+    return structuredClone(value)
+  return JSON.parse(JSON.stringify(value)) as T
 }
 
 /** Fast deterministic identity for cache keys. It is not a cryptographic integrity hash. */
