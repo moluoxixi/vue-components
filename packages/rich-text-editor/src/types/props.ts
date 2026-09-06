@@ -1,3 +1,4 @@
+import type { Extension } from '@tiptap/core'
 import type {
   RichTextEditorAutofocus,
   RichTextEditorDimension,
@@ -22,4 +23,6 @@ export interface RichTextEditorProps {
   autofocus?: RichTextEditorAutofocus
   /** Accessible name for the editable surface. */
   ariaLabel?: string
+  /** Additional TipTap extensions appended after the defaults when the editor is created. */
+  extensions?: Extension[]
 }
