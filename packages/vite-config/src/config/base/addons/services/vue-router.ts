@@ -12,7 +12,7 @@ export const vueRouterFeature = defineFeature<VueRouterAddonOptions>({
   triggers: ['unplugin-vue-router'],
   async setup(ctx, options) {
     const extensions: string[] = []
-    if (ctx.hasAddonDep('vue')) {
+    if (ctx.isFeatureEnabled('vue')) {
       extensions.push('.vue')
     }
     if (hasMarkdownAddon(ctx)) {

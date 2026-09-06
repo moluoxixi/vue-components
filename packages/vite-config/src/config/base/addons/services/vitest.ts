@@ -4,7 +4,7 @@ import { defineFeature } from './runtime'
 
 export const vitestFeature = defineFeature<VitestAddonOptions>({
   name: 'vitest',
-  triggers: ['vitest'],
+  triggers: [],
   setup(_ctx, options) {
     const defaultOptions = {
       environment: 'jsdom',

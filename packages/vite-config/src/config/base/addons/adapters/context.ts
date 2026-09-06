@@ -1,4 +1,4 @@
-import type { BaseViteConfigOptions } from '../../../../types'
+import type { AddonName, BaseViteConfigOptions } from '../../../../types'
 import type { AddonContext } from '../types'
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -7,7 +7,10 @@ import { pathToFileURL } from 'node:url'
 import { detectDependencies } from '@moluoxixi/utils/node'
 import { getPackageName } from '../utils'
 
-export function createAddonContext(options: BaseViteConfigOptions = {}): AddonContext {
+export function createAddonContext(
+  options: BaseViteConfigOptions = {},
+  featureStates: ReadonlyMap<AddonName, boolean> = new Map(),
+): AddonContext {
   const rootValue = options.viteConfig?.root
   const root = path.resolve(typeof rootValue === 'string' ? rootValue : process.cwd())
   const { addonDeps, deps, runtimeDeps } = detectDependencies(root)
@@ -18,6 +21,9 @@ export function createAddonContext(options: BaseViteConfigOptions = {}): AddonCo
   const hasAddonDep = (name: string) => Boolean(addonDeps[name])
   const hasDep = (name: string) => Boolean(deps[name])
   const hasRuntimeDep = (name: string) => Boolean(runtimeDeps[name])
+  const isFeatureEnabled = (name: AddonName) => featureStates.has(name)
+    ? featureStates.get(name) === true
+    : hasAddonDep(name)
 
   const requireDeps = (owner: string, requiredDeps: string[]) => {
     const missing = requiredDeps.filter(dep => !hasAddonDep(dep))
@@ -55,6 +61,7 @@ export function createAddonContext(options: BaseViteConfigOptions = {}): AddonCo
     hasAnyAddonDep: (names: string[]) => names.some(hasAddonDep),
     hasAnyDep: (names: string[]) => names.some(hasDep),
     hasAnyRuntimeDep: (names: string[]) => names.some(hasRuntimeDep),
+    isFeatureEnabled,
     hasDep,
     hasRuntimeDep,
     importRequired,

@@ -10,6 +10,8 @@
 - `getBaseConfig()`：只解析基础别名与自动装配的 addon 配置。
 - `inspectViteFeatures()`：只做 feature 决策分析，不加载任何插件模块。
 
+`vitest` 不会因为目标项目声明了 `vitest` 而自动启用。需要在 App 或 Library 配置中显式写入 `vitest: true`（或传入原生选项），避免测试配置意外进入构建配置。
+
 `createAppConfig` 使用 `AppViteConfigOptions`，`createLibConfig` 使用
 `LibViteConfigOptions`。库入口只属于 Library 配置，避免不同场景静默接收无效字段。
 

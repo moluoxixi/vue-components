@@ -34,7 +34,7 @@ export const componentsFeature = defineFeature<ComponentsAddonOptions, Component
   triggers: ['unplugin-vue-components'],
   createState(ctx) {
     const extensions: string[] = []
-    if (ctx.hasAddonDep('vue')) {
+    if (ctx.isFeatureEnabled('vue')) {
       extensions.push('vue')
     }
     if (ctx.hasAddonDep('svelte')) {

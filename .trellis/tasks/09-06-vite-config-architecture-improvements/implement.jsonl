@@ -1,1 +1,3 @@
 {"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/vite-config/backend/addon-runtime.md", "reason": "addon runtime 状态、依赖检测与合并契约"}
+{"file": ".trellis/spec/vite-config/frontend/public-addon-entries.md", "reason": "公开类型与导出入口契约"}

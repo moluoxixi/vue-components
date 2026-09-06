@@ -68,6 +68,7 @@ Tailwind CSS 的自动启用只绑定官方集成入口 `@tailwindcss/vite` 或
 ## 场景边界
 
 - `getBaseConfig`：只提供路径别名和 addon 合并能力，不改变运行时代码语义。
+- `vitest`：只在显式启用时提供测试配置；devDependency 仅作为可用包信息，不作为自动触发条件。
 - `createAppConfig`：面向 Web App；Vite 原生配置通过 `viteConfig` 传入，应用身份和部署策略由调用方或具体 addon 负责。
 - `createLibConfig`：面向库构建，始终 external 掉依赖包和依赖子路径，避免打包业务依赖；库入口可通过顶层 `entry` 覆盖，默认值仍为 `src/index.ts`。
 - `pwa`：只提供中性的注册策略默认值，不内置应用名、图标、静态资源路径等业务语义配置。

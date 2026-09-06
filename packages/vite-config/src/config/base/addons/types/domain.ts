@@ -13,6 +13,7 @@ export interface AddonContext {
   hasAnyAddonDep: (names: string[]) => boolean
   hasAnyDep: (names: string[]) => boolean
   hasAnyRuntimeDep: (names: string[]) => boolean
+  isFeatureEnabled: (name: AddonName) => boolean
   importRequired: <T = unknown>(owner: string, specifier: string) => Promise<T>
   requireDeps: (owner: string, deps: string[]) => void
   resolvePath: (...segments: string[]) => string

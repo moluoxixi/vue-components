@@ -22,6 +22,13 @@ interface ViteFeature<TOptions, TState> {
   createState?: (ctx: AddonContext, options?: TOptions) => TState
   setup: (ctx: AddonContext, options: TOptions | undefined, state: TState) => UserConfig | Promise<UserConfig>
 }
+
+`AddonContext` exposes both dependency detection and resolved feature state:
+
+```ts
+hasAddonDep(name: string): boolean
+isFeatureEnabled(name: AddonName): boolean
+```
 ```
 
 ## 3. Contracts
@@ -42,12 +49,19 @@ interface ViteFeature<TOptions, TState> {
   replace generated plugins only when their non-empty `name` matches.
 - Library externalization covers dependencies, optional dependencies, peer
   dependencies, and their subpaths, then unions the caller external rule.
+- Cross-addon defaults use `isFeatureEnabled`; package detection remains for
+  module availability and optional runtime enhancements. Explicitly disabled
+  framework addons must not leak into another addon’s generated defaults.
+- The `vitest` feature has no dependency trigger and is configured only when
+  explicitly enabled, so a Vitest devDependency cannot add `test` to App/Lib
+  build configuration automatically.
 
 ## 4. Validation & Error Matrix
 
 | Condition | Required result |
 | --- | --- |
 | Explicit addon value is `false` | Disabled even when a trigger exists |
+| Framework addon is explicitly disabled while another addon is enabled | Dependent defaults observe the disabled feature state |
 | Explicit addon value is `true`, object, or supported string | Enabled, then validate `requires` |
 | Required package is absent | Throw `[ViteConfig] <owner> requires missing package(s)` with checked root |
 | Dynamic import fails | Clear its cache entry and throw owner/specifier/root context with `cause` |

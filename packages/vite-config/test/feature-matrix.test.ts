@@ -100,8 +100,11 @@ vi.mock('../src/config/base/addons/adapters', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/config/base/addons/adapters')>()
   return {
     ...actual,
-    createAddonContext(options: Parameters<typeof actual.createAddonContext>[0]) {
-      const context = actual.createAddonContext(options)
+    createAddonContext(
+      options: Parameters<typeof actual.createAddonContext>[0],
+      featureStates: Parameters<typeof actual.createAddonContext>[1],
+    ) {
+      const context = actual.createAddonContext(options, featureStates)
       return {
         ...context,
         importRequired: (_owner: string, specifier: string) => import(specifier),
@@ -217,6 +220,25 @@ describe('vite addon matrix', () => {
       resolver: 'react',
       exclude: ['**/components/**', '**/__tests__/**'],
     })
+  })
+
+  it('does not infer disabled framework features into dependent addon defaults', async () => {
+    const root = path.resolve(os.tmpdir(), 'moluoxixi-feature-disabled-vue')
+    mockRuntimeDeps = {
+      '@vitejs/plugin-vue': '^6.0.0',
+      'unplugin-auto-import': '^21.0.0',
+      'vue': '^3.5.0',
+    }
+
+    const config = await getAddonsConfig({
+      autoImport: true,
+      viteConfig: { root },
+      vue: false,
+    })
+    const autoImportPlugin = flattenPlugins(config).find(plugin => plugin.name === 'auto-import')
+
+    expect(autoImportPlugin?.options?.vueTemplate).toBe(false)
+    expect(autoImportPlugin?.options?.imports).not.toContain('vue')
   })
 
   it('keeps user plugins and removes generated plugins with the same name', async () => {

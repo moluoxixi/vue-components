@@ -69,7 +69,7 @@ describe('addon runtime helpers', () => {
         requires: ['unplugin-vue-markdown', '@shikijs/markdown-it', 'markdown-it-link-attributes'],
         triggers: ['unplugin-vue-markdown', 'vite-plugin-vue-markdown', 'vite-plugin-md'],
       },
-      { dependsOn: [], name: 'vitest', requires: [], triggers: ['vitest'] },
+      { dependsOn: [], name: 'vitest', requires: [], triggers: [] },
       { dependsOn: [], name: 'viteSsg', requires: ['vite-ssg'], triggers: ['vite-ssg'] },
     ])
   })
@@ -288,5 +288,14 @@ describe('addon runtime helpers', () => {
       matchedTriggers: [],
       reason: 'dependency-missing',
     })
+  })
+
+  it('exposes explicit feature state separately from package detection', () => {
+    const root = path.resolve(os.tmpdir(), 'moluoxixi-runtime-feature-state')
+    mockDeps = { vue: '^3.5.0' }
+    const ctx = createAddonContext({ viteConfig: { root } }, new Map([['vue', false]]))
+
+    expect(ctx.hasAddonDep('vue')).toBe(true)
+    expect(ctx.isFeatureEnabled('vue')).toBe(false)
   })
 })

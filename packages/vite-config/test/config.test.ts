@@ -74,4 +74,21 @@ describe('dynamic Dependency Evaluator (Unit)', () => {
 
     expect(config.plugins).toBeUndefined()
   })
+
+  it('should not auto-enable Vitest from a detected devDependency', async () => {
+    mockDeps = { vitest: '^4.0.0' }
+
+    const config = await getBaseConfig()
+
+    expect((config as { test?: unknown }).test).toBeUndefined()
+  })
+
+  it('should configure Vitest when explicitly enabled', async () => {
+    const config = await getBaseConfig({ vitest: true })
+
+    expect((config as { test?: unknown }).test).toMatchObject({
+      environment: 'jsdom',
+      include: ['test/**/*.test.ts'],
+    })
+  })
 })

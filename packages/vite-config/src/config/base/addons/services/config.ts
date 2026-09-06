@@ -22,11 +22,12 @@ export function inspectViteFeatures(options: BaseViteConfigOptions = {}): ViteFe
  * 基于目标 root 的依赖图解析 Vite feature，并按 addon 依赖顺序合并配置片段。
  */
 export async function getAddonsConfig(options: BaseViteConfigOptions = {}): Promise<UserConfig> {
-  const ctx = createAddonContext(options)
-  const inspections = viteFeatures.map(feature => inspectFeature(ctx, feature, options[feature.name]))
+  const inspectionContext = createAddonContext(options)
+  const inspections = viteFeatures.map(feature => inspectFeature(inspectionContext, feature, options[feature.name]))
   const enabledFeatures = new Set(
     inspections.filter(inspection => inspection.enabled).map(inspection => inspection.name),
   )
+  const ctx = createAddonContext(options, new Map(inspections.map(inspection => [inspection.name, inspection.enabled])))
   let combinedConfig: UserConfig = {}
 
   for (const [index, feature] of viteFeatures.entries()) {

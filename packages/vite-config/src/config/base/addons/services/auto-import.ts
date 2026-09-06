@@ -43,7 +43,7 @@ function applyPresetImports(ctx: AddonContext, state: AutoImportState): void {
   ] as const satisfies readonly AutoImportPreset[]
 
   for (const preset of presets) {
-    if (ctx.hasAddonDep(preset)) {
+    if ((preset === 'vue' || preset === 'react') ? ctx.isFeatureEnabled(preset) : ctx.hasAddonDep(preset)) {
       state.imports.push(preset)
     }
   }
@@ -57,7 +57,7 @@ function applyPresetImports(ctx: AddonContext, state: AutoImportState): void {
  * 将 unplugin-vue-router 的自动导入能力接入 auto-import。
  */
 async function applyVueRouterAutoImports(ctx: AddonContext, state: AutoImportState): Promise<void> {
-  if (!ctx.hasAddonDep('unplugin-vue-router')) {
+  if (!ctx.isFeatureEnabled('vueRouter')) {
     return
   }
 
@@ -117,7 +117,7 @@ export const autoImportFeature = defineFeature<AutoImportAddonOptions, AutoImpor
       imports: state.imports,
       include: state.include,
       ...(state.resolvers.length > 0 ? { resolvers: state.resolvers } : {}),
-      vueTemplate: ctx.hasAddonDep('vue'),
+      vueTemplate: ctx.isFeatureEnabled('vue'),
     } satisfies AutoImportDefaultOptions
     const autoImportOptions = mergeAddonOptions(options, defaultOptions)
 

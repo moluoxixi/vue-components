@@ -10,8 +10,8 @@ export const pagesFeature = defineFeature<PagesAddonOptions>({
   requires: ['vite-plugin-pages'],
   triggers: ['vite-plugin-pages'],
   async setup(ctx, options) {
-    const react = ctx.hasAnyAddonDep(['react', '@vitejs/plugin-react'])
-    const vue = ctx.hasAnyAddonDep(['vue', '@vitejs/plugin-vue'])
+    const react = ctx.isFeatureEnabled('react')
+    const vue = ctx.isFeatureEnabled('vue')
     const defaultOptions: PagesAddonOptions = {
       dirs: 'src/pages',
       exclude: ['**/components/**', '**/__tests__/**'],

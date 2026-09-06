@@ -99,7 +99,6 @@ describe('real consumer project integration', () => {
       'components',
       'i18n',
       'devtools',
-      'vitest',
     ]))
 
     const { jsOutput, outDir } = await buildAppFixture('real-app')
