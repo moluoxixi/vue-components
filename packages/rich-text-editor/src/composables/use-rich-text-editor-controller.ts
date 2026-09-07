@@ -1,106 +1,73 @@
-import type { Editor } from '@tiptap/core'
-import type {
-  RichTextEditorAutofocus,
-  RichTextEditorEmits,
-  RichTextEditorProps,
-} from '../types'
+import type { RichTextEditorAutofocus, RichTextEditorEmits, RichTextEditorProps } from '../types'
 import { useEditor } from '@tiptap/vue-3'
-import { computed, shallowRef, watch } from 'vue'
-import { createRichTextEditorExtensions } from '../services'
+import { computed, watch } from 'vue'
+import { createRichTextEditorExtensions, syncEditorContent } from '../services'
 import { getOutputHTML } from '../utils'
 
-export function useRichTextEditorController(
-  props: Readonly<RichTextEditorProps>,
-  emit: RichTextEditorEmits,
-) {
-  const toolbarVersion = shallowRef(0)
+export function useRichTextEditorController(props: Readonly<RichTextEditorProps>, emit: RichTextEditorEmits) {
   const editable = computed(() => !props.disabled && !props.readonly)
-
   const editor = useEditor({
     autofocus: props.autofocus,
-    content: props.modelValue,
+    // Parse controlled input after the instance exists, including the initial error path.
+    content: '',
     editable: editable.value,
     extensions: createRichTextEditorExtensions({
       extensions: props.extensions,
       placeholder: () => props.placeholder ?? '',
     }),
-    editorProps: {
-      attributes: createEditorAttributes(props),
-    },
-    onBlur: ({ editor: editorInstance, event }) => emit('blur', event, editorInstance),
-    onFocus: ({ editor: editorInstance, event }) => emit('focus', event, editorInstance),
-    onSelectionUpdate: () => {
-      toolbarVersion.value += 1
-    },
-    onTransaction: () => {
-      toolbarVersion.value += 1
-    },
-    onUpdate: ({ editor: editorInstance }) => {
-      const value = getOutputHTML(editorInstance)
-      emit('update:modelValue', value)
-      emit('change', value, editorInstance)
+    editorProps: { attributes: createEditorAttributes(props) },
+    onBlur: ({ editor: instance, event }) => emit('blur', event, instance),
+    onFocus: ({ editor: instance, event }) => emit('focus', event, instance),
+    onUpdate: ({ editor: instance }) => {
+      const html = getOutputHTML(instance)
+      emit('update:modelValue', html)
+      if (props.jsonValue !== undefined)
+        emit('update:jsonValue', instance.getJSON())
+      emit('change', html, instance)
     },
   })
 
-  watch(
-    () => props.modelValue,
-    (value) => {
-      const editorInstance = editor.value
-      if (!editorInstance || value === getOutputHTML(editorInstance))
-        return
-      editorInstance.commands.setContent(value || '', { emitUpdate: false })
-    },
-  )
+  watch([editor, () => props.jsonValue ?? props.modelValue ?? ''], ([instance, value]) => {
+    if (!instance || instance.isDestroyed)
+      return
+    try {
+      syncEditorContent(instance, value)
+    }
+    catch (error) {
+      emit('contentError', error instanceof Error ? error : new Error(String(error)))
+    }
+  }, { immediate: true, deep: true })
 
-  watch(editable, (value) => {
-    editor.value?.setEditable(value)
-  })
+  watch([editor, editable], ([instance, value]) => {
+    if (instance && !instance.isDestroyed)
+      instance.setEditable(value, false)
+  }, { immediate: true })
 
   watch(
-    () => [props.ariaLabel, props.disabled, props.readonly, props.placeholder] as const,
-    () => {
-      const editorInstance = editor.value
-      if (!editorInstance)
+    [editor, () => props.ariaLabel, () => props.disabled, () => props.readonly, () => props.placeholder],
+    ([instance]) => {
+      if (!instance || instance.isDestroyed)
         return
-      editorInstance.setOptions({ editorProps: { attributes: createEditorAttributes(props) } })
-      editorInstance.view.dispatch(editorInstance.state.tr)
+      instance.setOptions({ editorProps: { attributes: createEditorAttributes(props) } })
+      instance.view.dispatch(instance.state.tr)
     },
     { immediate: true },
   )
 
   function focus(position: RichTextEditorAutofocus = 'end'): void {
-    editor.value?.commands.focus(position)
+    if (editor.value && !editor.value.isDestroyed)
+      editor.value.commands.focus(position)
   }
 
-  function clearContent(): void {
-    editor.value?.commands.clearContent()
-  }
-
-  function canUndo(instance: Editor): boolean {
-    return instance.can().chain().focus().undo().run()
-  }
-
-  function canRedo(instance: Editor): boolean {
-    return instance.can().chain().focus().redo().run()
-  }
-
-  return {
-    canRedo,
-    canUndo,
-    clearContent,
-    editable,
-    editor,
-    focus,
-    toolbarVersion,
-  }
+  return { editable, editor, focus }
 }
 
 function createEditorAttributes(props: Readonly<RichTextEditorProps>): Record<string, string> {
   return {
-    'aria-disabled': String(props.disabled),
-    'aria-label': props.ariaLabel ?? '',
+    'aria-disabled': String(props.disabled ?? false),
+    'aria-label': props.ariaLabel ?? '富文本编辑器',
     'aria-multiline': 'true',
-    'aria-readonly': String(props.readonly),
+    'aria-readonly': String(props.readonly ?? false),
     'class': 'mx-rich-text-editor__content',
     'role': 'textbox',
   }

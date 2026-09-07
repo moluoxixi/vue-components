@@ -125,6 +125,9 @@ jobs:
       - name: Test packed packages in Chromium
         run: pnpm test:pack:browser
 
+      - name: Verify rich text editor consumer compatibility
+        run: pnpm --filter @moluoxixi/rich-text-editor test:consumer
+
       - name: Test AI doc assistant
         run: pnpm --filter @moluoxixi/ai-doc-assistant e2e
 
@@ -148,6 +151,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
           path: |
+            packages/rich-text-editor/.playwright/consumer-report
             packages/ConfigForm/playground/dist/playwright-report/config-form-playground
             packages/ConfigForm/playground/dist/test-results/config-form-playground
             packages/ConfigForm/workbench/dist/playwright-report/config-form-workbench
