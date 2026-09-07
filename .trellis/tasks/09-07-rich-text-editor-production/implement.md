@@ -5,4 +5,5 @@
 - [x] 行为和错误回归、中英文文档。
 - [x] 包 lint/typecheck/test/build。
 - [x] 架构检查、真实消费者浏览器与版本矩阵。
-- [ ] 独立复核、规范与验证记录、提交合并 main 并清理 worktree。
+- [x] 独立复核、规范与验证记录、提交合并 main、删除分支和 worktree 注册。
+- [ ] worktree 残留目录清理：Git 删除目录失败；进一步的 PowerShell 删除被自动审批拒绝（blocked by policy），未绕过。

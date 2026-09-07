@@ -39,3 +39,14 @@
 - 不承诺未来未测试的 TipTap 版本；已验证完整同版本元组 3.29.0/3.29.2/3.31.3。
 - 本地验证 Chromium 桌面/移动视口及 axe；不是对所有浏览器、真实设备或原生 IME 的普遍认证。
 - 本次没有运行不相关包的全仓构建/测试；CI 中保留现有全仓门禁。
+
+
+## 合并与清理
+
+- 工作提交：a5e876f5。
+- 合并提交：e3f4fcee。
+- main 合并后再次运行 59 个单测和构建，均通过。
+- 分支及 worktree 注册已删除；诊断报告已复制到 main 的 .playwright/consumer-report。
+- 文件系统残留目录：D:/project-new/vue-component.worktrees/rich-text-editor-production。
+  Git 清理返回 Function not implemented；后续 PowerShell 删除被自动审批拒绝（blocked by policy）。
+  没有绕过拒绝，清理残留不影响 main 上代码和测试结果。
