@@ -12,15 +12,15 @@
   "assignee": "wl",
   "createdAt": "2026-09-06",
   "completedAt": null,
-  "branch": "codex/config-form-architecture-rewrite",
+  "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "0c4b5f8b",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "notes": "代码及全量验证已完成并合入 main（e94ddfbc）。Git worktree 与临时分支已清除；磁盘残留目录的递归删除被自动审批以 blocked by policy 拒绝，保留待清理状态。",
   "meta": {}
 }

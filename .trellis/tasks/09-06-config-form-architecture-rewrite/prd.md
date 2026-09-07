@@ -19,7 +19,8 @@
 - [x] Core、Runtime、Compiler、Designer、Workbench 相关测试、类型检查和构建通过。
 - [x] 清除旧模板链路、FormContext、specimen、本地 Canvas renderer bridge 与 DOM clone fallback。
 - [x] Preview 与生成 Source 的字段、Flow 状态和异步校验生命周期行为一致。
-- [ ] 完成提交、合并到 main，并删除独立 worktree。
+- [x] 完成提交、合并到 main，并注销 Git worktree 与删除临时分支。
+- [ ] 删除 worktree 的磁盘残留目录；递归删除被自动审批以 `blocked by policy` 拒绝。
 
 ## 边界
 

@@ -25,6 +25,10 @@
 - 初次并行浏览器验证遇到 Vite 依赖重新优化引起的页面刷新；缓存生成后串行完整重跑 80 项全部通过，没有改动截图基线或放宽断言。
 - registry 的 `@moluoxixi/zod3-to-rule@0.1.3` 被 pnpm 发布信任检查拒绝。本地集成测试改为安装当前仓库规则包的真实 `.tgz`，其余依赖继续接受正常信任检查；未修改生成工程的依赖版本声明，也未关闭 registry 信任策略。registry 发布问题不在本次本地重构中处理。
 
-## 待收尾
+## 合并与清理
 
-- 合并最新 main，检查合并状态，归档任务并删除 worktree。
+- 实现提交：`0c4b5f8b`；main 合并提交：`e94ddfbc`。
+- 同步最新 main 时没有冲突；合并后的 frozen-lockfile 安装和架构门禁通过。
+- main 工作区重新完成 18 个构建任务，预览地址为 `http://127.0.0.1:4360`。
+- Git worktree 已注销，临时分支 `codex/config-form-architecture-rewrite` 已删除。
+- 磁盘目录 `D:/project-new/vue-component.worktrees/config-form-architecture-rewrite` 仍有残留。Git 删除目录时返回 `Function not implemented`；随后在核实绝对路径后尝试 PowerShell 删除，自动审批以 `blocked by policy` 拒绝。未绕过审批，任务保留待清理状态。
