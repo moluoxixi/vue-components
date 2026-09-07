@@ -11,6 +11,7 @@ contract and the package-specific contracts that contain real project rules.
 | --- | --- | --- |
 | [Repository Directory Structure](../../directory-structure.md) | Responsibility-based feature folders and public boundaries | Ready |
 | [Public Entry](./public-entry.md) | Component, Vue plugin, styles, and packed source contract | Ready |
+| [Production Contracts](./production-contracts.md) | Commands, models, subscriptions, links and installed-consumer verification | Ready |
 
 ## Pre-Development Checklist
 
@@ -18,6 +19,7 @@ contract and the package-specific contracts that contain real project rules.
 - Read [Public Entry](./public-entry.md) before changing component exports, installation, package files, or styles.
 - Read each package-specific contract relevant to the files and behavior being changed.
 - Run the validation commands required by those contracts.
+- Read [Production Contracts](./production-contracts.md) for editor behavior and browser checks.
 
 ## Implementation Boundaries
 

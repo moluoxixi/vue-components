@@ -34,6 +34,7 @@
     "postbuild": "pnpm -w finalize:declarations --manifest \"$npm_package_json\"",
     "dev": "vite build --watch",
     "test": "vitest run",
+    "test:consumer": "node scripts/verify-consumer.mjs",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "peerDependencies": {
@@ -48,6 +49,7 @@
     "@lucide/vue": "catalog:ui"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@tiptap/core": "catalog:ui",
     "@tiptap/extension-placeholder": "catalog:ui",
     "@tiptap/extension-text-align": "catalog:ui",

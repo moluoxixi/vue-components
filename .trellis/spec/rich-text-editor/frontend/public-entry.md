@@ -15,6 +15,10 @@ interface RichTextEditorExpose {
   editor: Editor | null
   focus: (position?: RichTextEditorAutofocus) => void
   clearContent: () => void
+  commands: RichTextEditorCommands
+  state: RichTextEditorState
+  getHTML: () => string
+  getJSON: () => JSONContent | null
 }
 ```
 
@@ -27,7 +31,7 @@ import '@moluoxixi/rich-text-editor/styles'
 
 ## 3. Contracts
 
-- `src/components/RichTextEditor/index.vue` owns the TipTap editor behavior.
+- `src/components/RichTextEditor/index.vue` composes the editor controller and private child views.
   `src/components/RichTextEditor/index.ts` and `src/components/index.ts` are
   export-only barrels.
 - The named export, default export, and component registered by
@@ -69,6 +73,8 @@ import '@moluoxixi/rich-text-editor/styles'
 - Packed Node/type/browser smoke verifies runtime, declarations, source files,
   and the stylesheet entry from the installed tarball.
 - Package architecture must report no Rich Text Editor ownership debt.
+- Run package test:consumer for real tarball Node/SSR/types/CSS/browser verification
+  across the exact versions listed in [Production Contracts](./production-contracts.md).
 
 ## 7. Wrong vs Correct
 
