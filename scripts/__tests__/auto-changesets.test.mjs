@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   findPackagesNeedingChangesets,
+  findVersionReleaseCommit,
   isReleaseOnlyChangeSet,
   normalizeManifestForChangeDetection,
   renderPatchChangeset,
@@ -121,6 +122,19 @@ describe('normalizeManifestForChangeDetection', () => {
       dependencies: { defu: '^6.1.4' },
       peerDependencies: {},
     })
+  })
+})
+
+describe('automatic changeset release baselines', () => {
+  it('keeps post-release changes when the current package tag is missing', () => {
+    const packageInfo = {
+      name: '@moluoxixi/config-form-designer',
+      relativeDirectory: 'packages/ConfigForm/designer',
+      version: '0.1.6',
+    }
+    const releaseCommit = '0db21475519e3d92e901c25e0faa84df142fd5f9'
+
+    expect(findVersionReleaseCommit(packageInfo, 'HEAD')).toBe(releaseCommit)
   })
 })
 

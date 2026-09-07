@@ -268,10 +268,29 @@ function changelogContainsVersion(packageInfo, head) {
   return changelog.split(/\r?\n/).some(line => line.trim() === `## ${packageInfo.version}`)
 }
 
-function resolvePackageBase(packageInfo, fallbackBase) {
+// A changelog entry can predate post-release source changes when a package tag
+// was never pushed; the version bump commit is the reliable release boundary.
+export function findVersionReleaseCommit(packageInfo, head) {
+  const manifestPath = `${packageInfo.relativeDirectory}/package.json`
+  return runGit([
+    'log',
+    '-1',
+    '--format=%H',
+    '-S',
+    `"version": "${packageInfo.version}"`,
+    head,
+    '--',
+    manifestPath,
+  ], { allowFailure: true }) || undefined
+}
+
+function resolvePackageBase(packageInfo, fallbackBase, versionReleaseCommit) {
   const currentTag = `${packageInfo.name}@${packageInfo.version}`
   if (refExists(currentTag))
     return currentTag
+
+  if (versionReleaseCommit)
+    return versionReleaseCommit
 
   const latestTag = getLatestPackageTag(packageInfo.name)
   if (latestTag)
@@ -322,10 +341,14 @@ function collectPackagesNeedingChangesets({
       continue
 
     const currentTag = `${packageInfo.name}@${packageInfo.version}`
-    if (!refExists(currentTag) && changelogContainsVersion(packageInfo, head))
+    const currentTagExists = refExists(currentTag)
+    const versionReleaseCommit = currentTagExists
+      ? undefined
+      : findVersionReleaseCommit(packageInfo, head)
+    if (!currentTagExists && changelogContainsVersion(packageInfo, head) && !versionReleaseCommit)
       continue
 
-    const base = resolvePackageBase(packageInfo, fallbackBase)
+    const base = resolvePackageBase(packageInfo, fallbackBase, versionReleaseCommit)
     const changedFiles = collectChangedFiles(base, head, packageInfo.relativeDirectory)
     const [changedPackage] = findPackagesNeedingChangesets({
       packages: [packageInfo],
