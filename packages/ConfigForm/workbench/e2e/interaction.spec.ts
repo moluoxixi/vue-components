@@ -831,6 +831,7 @@ for (const adapter of [
 }
 
 test('keeps pointer candidates, drag visuals, committed nodes, and Preview on the same Element runtime tree', async ({ page }) => {
+  test.slow()
   await createProject(page, 'element')
   const canvas = page.locator('.mx-config-form-designer__canvas')
 

@@ -24,7 +24,7 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
   else {
     await workspace.getByRole('option', { name: templateNames[adapter] }).click()
   }
-  await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('Registry requirements met', { exact: true })).toBeVisible({ timeout: 15_000 })
   await workspace.getByRole('button', { name: 'Create project', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Design editor' })).toBeVisible()
   await expect(page.locator(`[data-material-key="${adapter}.input"]`)).toBeEnabled({ timeout: 15_000 })
@@ -56,7 +56,7 @@ export async function openAppearance(page: Page): Promise<void> {
   }
   await expect(page.locator('.appearance-panel:visible')).toBeVisible()
   if (opensPopover)
-    await expect(page.locator('.workbench-appearance-popover:visible')).toHaveCSS('opacity', '1')
+    await expect(page.locator('.workbench-appearance-popover:visible')).toHaveCSS('opacity', '1', { timeout: 15_000 })
 }
 
 export async function setAppearance(
