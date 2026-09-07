@@ -30,6 +30,10 @@ defineVueAddonOptions(options: VueAddonOptions): VueAddonOptions
   function object.
 - tsup explicitly maps source services back to `dist/addons/index` and
   `dist/addons/<name>`; internal directory names never leak into public paths.
+- Declaration output uses NodeNext-compatible `.js` specifiers for relative
+  imports and exports. A successful tsup build alone is insufficient because
+  `experimentalDts` can emit extensionless forwarding declarations that fail
+  Node16 ESM resolution after packing.
 - The root source condition points to `index.ts`, so the published `files`
   includes both `index.ts` and `src` alongside built JS/declarations.
 - Option types come from each installed plugin's public type contract rather
@@ -43,6 +47,7 @@ defineVueAddonOptions(options: VueAddonOptions): VueAddonOptions
 | Import a leaf at runtime | Exactly one runtime helper export |
 | TypeScript consumes root or leaf | Resolve the same plugin-native option type |
 | Packed consumer imports every non-wildcard entry | Runtime and declaration resolution succeed |
+| `attw --profile esm-only` checks the packed root and addon entries | Node16 ESM and bundler resolutions are `OK` |
 | Source condition is selected | Root `index.ts` and all referenced `src` files exist in tarball |
 
 ## 5. Good / Base / Bad Cases
@@ -59,7 +64,8 @@ defineVueAddonOptions(options: VueAddonOptions): VueAddonOptions
 - Type tests cover representative native plugin options and invalid keys.
 - Build output retains `dist/index` plus `dist/addons/index` and all 15 leaf
   JS/declaration pairs.
-- Packed Node/type smoke validates installed exports.
+- Packed Node/type smoke validates installed exports, and `attw` validates the
+  root, aggregate addon, and wildcard addon entries under Node16 ESM.
 
 ## 7. Wrong vs Correct
 
@@ -73,4 +79,16 @@ Correct:
 
 ```ts
 entry[`addons/${name}`] = `src/addons/services/${name}.ts`
+```
+
+Wrong:
+
+```ts
+experimentalDts: true
+```
+
+Correct:
+
+```ts
+dts: { resolve: true }
 ```

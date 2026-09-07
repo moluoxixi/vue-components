@@ -10,7 +10,7 @@ const addonEntries = Object.fromEntries(
 
 export default defineConfig({
   clean: true,
-  experimentalDts: true,
+  dts: { resolve: true },
   entry: {
     'index': 'index.ts',
     'addons/index': 'src/addons/index.ts',
