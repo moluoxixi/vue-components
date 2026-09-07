@@ -47,12 +47,15 @@ describe('createConfigFormRendererExpose', () => {
     const replacementGetErrors = vi.spyOn(replacement, 'getErrors')
     const replacementGetValidating = vi.spyOn(replacement, 'getValidating')
     const replacementResetFields = vi.spyOn(replacement, 'resetFields')
+    const replacementSetErrors = vi.spyOn(replacement, 'setErrors')
     const replacementSubmit = vi.spyOn(replacement, 'submit')
     const replacementValidateField = vi.spyOn(replacement, 'validateField')
     rendererRef.value = { ...replacement, scrollToField }
 
     expose.setValues({ age: 31 }, false)
     expect(expose.getValues()).toEqual({ age: 31, name: 'Lin' })
+    expose.setErrors({ name: ['Invalid'] })
+    expect(replacementSetErrors).toHaveBeenCalledWith({ name: ['Invalid'] })
     expose.clearValidate('name')
     expect(expose.getErrors()).toEqual({})
     expect(expose.getValidating()).toBe(false)
