@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { ConfigFormComponentRegistry, ConfigFormFieldChangePayload } from '@moluoxixi/config-form-headless'
-import type { ConfigFormRendererField } from '@moluoxixi/config-form'
+import type { ConfigFormComponentRegistry, ConfigFormFieldChangePayload, ConfigFormField } from '@moluoxixi/config-form-headless'
 import type { PageNode } from '@moluoxixi/config-form-model'
 import type {
   DesignerPropertyControlDefinition,
@@ -10,7 +9,8 @@ import type {
   DesignerSimpleSetterControl,
 } from '../../../registry'
 import type { DesignerPropertyFormEntry } from '../types'
-import { ConfigFormRenderer } from '@moluoxixi/config-form'
+import type { Component } from 'vue'
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { computed, markRaw, shallowRef, toRaw, watch } from 'vue'
 import { useDesignerLocale } from '../../../locale'
 import DesignerSetter from './DesignerSetter.vue'
@@ -24,6 +24,7 @@ const props = defineProps<{
   fieldOptions?: string[]
   reactionIds?: string[]
   validatorOptions?: string[]
+  renderer: Component
 }>()
 
 const emit = defineEmits<{
@@ -32,6 +33,8 @@ const emit = defineEmits<{
 
 const locale = useDesignerLocale()
 const model = shallowRef<Record<string, unknown>>({})
+const modelPort = createConfigFormModel(model)
+const formRenderer = computed(() => rawComponent(props.renderer))
 const simpleControls = new Set<DesignerSetterControl>(['text', 'textarea', 'number', 'boolean', 'select'])
 const propertySetterComponent = markRaw(DesignerSetter)
 
@@ -93,7 +96,7 @@ function simpleField(
   entry: DesignerPropertyFormEntry,
   index: number,
   control: DesignerPropertyControlDefinition,
-): ConfigFormRendererField<Record<string, unknown>> {
+): ConfigFormField {
   const { setter } = entry
   const key = fieldKey(entry, index)
   const controlClass = setter.control === 'defaultValue' ? 'default-value' : setter.control
@@ -152,14 +155,14 @@ function simpleField(
       title: setter.label,
       ...(inheritedLabel ? { 'data-inherited-label': inheritedLabel } : {}),
       ...(visualHint ? { 'data-hint-label': visualHint } : {}),
-    } as ConfigFormRendererField<Record<string, unknown>>['fieldAttrs'],
+    } as Record<string, unknown>,
   }
 }
 
 function customField(
   entry: DesignerPropertyFormEntry,
   index: number,
-): ConfigFormRendererField<Record<string, unknown>> {
+): ConfigFormField {
   const key = fieldKey(entry, index)
   const setter = entry.setter.component
     ? { ...entry.setter, component: rawComponent(entry.setter.component) }
@@ -186,7 +189,7 @@ function customField(
   }
 }
 
-const fields = computed<ConfigFormRendererField<Record<string, unknown>>[]>(() => props.entries.map((entry, index) => {
+const fields = computed<ConfigFormField[]>(() => props.entries.map((entry, index) => {
   const control = controlFor(entry)
   return control ? simpleField(entry, index, control) : customField(entry, index)
 }))
@@ -233,8 +236,9 @@ function handleFieldChange(payload: ConfigFormFieldChangePayload<Record<string, 
 </script>
 
 <template>
-  <ConfigFormRenderer
-    v-model="model"
+  <component
+    :is="formRenderer"
+    :model="modelPort"
     :components="components"
     :fields="fields"
     :columns="1"

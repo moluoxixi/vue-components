@@ -6,7 +6,6 @@ import type {
   ProjectCommand,
   SlotItem,
 } from '@moluoxixi/config-form-model'
-import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 
 export type DesignerJsonValue = import('@moluoxixi/config-form-model').ModelJsonValue
 export type DesignerJsonObject = import('@moluoxixi/config-form-model').ModelJsonObject
@@ -44,5 +43,4 @@ export type DesignerDropTarget
 export interface DesignCommandPreview {
   command: ProjectCommand
   graph: PageGraph
-  renderer?: VueRuntimeRendererConfig
 }

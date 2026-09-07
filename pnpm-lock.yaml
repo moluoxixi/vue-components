@@ -589,9 +589,6 @@ importers:
       '@lucide/vue':
         specifier: catalog:ui
         version: 1.28.0(vue@3.5.33(typescript@5.9.3))
-      '@moluoxixi/config-form':
-        specifier: workspace:*
-        version: link:../runtime
       '@moluoxixi/config-form-core':
         specifier: workspace:*
         version: link:../core
@@ -601,13 +598,13 @@ importers:
       '@moluoxixi/config-form-model':
         specifier: workspace:*
         version: link:../model
-      '@moluoxixi/config-form-vue-backend':
-        specifier: workspace:*
-        version: link:../vue-backend
       '@moluoxixi/zod3-to-rule':
         specifier: workspace:*
         version: link:../../zod3-to-rule
     devDependencies:
+      '@moluoxixi/config-form':
+        specifier: workspace:*
+        version: link:../runtime
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -976,6 +973,10 @@ importers:
         version: 2.2.12(typescript@5.9.3)
 
   packages/ConfigForm/runtime:
+    dependencies:
+      '@moluoxixi/config-form-core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@moluoxixi/config-form-headless':
         specifier: workspace:*
@@ -1032,6 +1033,9 @@ importers:
         specifier: workspace:*
         version: link:../../zod3-to-rule
     devDependencies:
+      '@moluoxixi/config-form-headless':
+        specifier: workspace:*
+        version: link:../headless
       '@vitejs/plugin-vue':
         specifier: catalog:dev
         version: 5.2.4(vite@6.4.2(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.49.2)(yaml@2.9.0))(vue@3.5.33(typescript@5.9.3))
@@ -1129,6 +1133,12 @@ importers:
       '@axe-core/playwright':
         specifier: 'catalog:'
         version: 4.13.0(playwright-core@1.60.0)
+      '@moluoxixi/config-form-headless':
+        specifier: workspace:*
+        version: link:../headless
+      '@moluoxixi/zod3-to-rule':
+        specifier: workspace:*
+        version: link:../../zod3-to-rule
       '@types/node':
         specifier: catalog:type
         version: 25.6.0

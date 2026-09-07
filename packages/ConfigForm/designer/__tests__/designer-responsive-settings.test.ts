@@ -1,3 +1,4 @@
+import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
@@ -63,7 +64,10 @@ const baseForm = {
 describe('designer responsive settings', () => {
   it('renders three matching breakpoint sections and refreshes inherited values', async () => {
     const wrapper = mount(DesignerResponsiveSettings, {
-      props: { form: baseForm },
+      props: {
+        renderer: ConfigFormRenderer,
+        form: baseForm,
+      },
     })
 
     const outputs = () => wrapper.findAll('.mx-config-form-designer__responsive-fraction').map(item => item.text())
@@ -114,6 +118,7 @@ describe('designer responsive settings', () => {
     }
     const wrapper = mount(DesignerResponsiveSettings, {
       props: {
+        renderer: ConfigFormRenderer,
         components,
         controls,
         form,

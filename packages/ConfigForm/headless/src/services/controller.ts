@@ -66,9 +66,12 @@ export function createConfigFormController<TValues extends ConfigFormValues = Co
   ): ControllerFieldState<TValues>[] {
     const fields = readFields()
     reactionProjection = projection ?? applyConfigFormReactions(fields, values)
+    const states = { ...reactionProjection.states }
+    for (const [field, state] of Object.entries(options.reactionStates?.() ?? {}))
+      states[field] = { ...states[field], ...state }
     return resolveControllerFieldStates(
       fields,
-      reactionProjection,
+      { ...reactionProjection, states },
       readFormReadonly(),
     )
   }

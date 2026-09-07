@@ -163,6 +163,19 @@ describe('canonical standalone Source export', () => {
       expect(styles.content).toContain('grid-template-columns: var(--source-active-label-width, max-content) minmax(0, 1fr)')
   })
 
+  it('projects form-level readonly into generated field state', async () => {
+    const { adapter, compilation } = await fixture((document) => {
+      document.pagesById.home!.graph.form.readonly = true
+    })
+    const exported = createCanonicalProjectSourceExport(compilation, adapter.sourceResolver)
+    const page = exported.files[normalizeProjectPath('src/pages/home/Page.vue')]
+    expect(page?.kind).toBe('text')
+    if (page?.kind === 'text') {
+      expect(page.content).toContain('const formReadonly = ref(true)')
+      expect(page.content).toContain('state.readonly = true')
+    }
+  })
+
   it('preserves page order across generated files and router entries', async () => {
     const { adapter, compilation } = await fixture((document) => {
       const home = document.pagesById[document.homePageId]!

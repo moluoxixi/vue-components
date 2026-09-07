@@ -25,6 +25,7 @@ const antdFields = [
 ] satisfies AntdConfigFormProps<UserForm>['fields']
 
 const antdProps = {
+  model: { read: () => ({ status: '' }), write: (_values: UserForm) => {} },
   cellAttrs: { class: 'default-cell' },
   fields: antdFields,
   formAttrs: { autocomplete: 'off' },

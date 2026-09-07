@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ElementLinkedValues } from '../types'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
@@ -13,12 +14,13 @@ const submittedText = computed(() => JSON.stringify(submitted.value, null, 2))
 function submit(values: ConfigFormValues): void {
   submitted.value = values as ElementLinkedValues
 }
+const modelPort = createConfigFormModel(model)
 </script>
 
 <template>
   <section class="config-form-demo__section" data-testid="element-linked-scenario">
     <ElementConfigForm
-      v-model="model"
+      :model="modelPort"
       data-testid="element-linked-form"
       :field-span="12"
       :fields="elementLinkedFields"

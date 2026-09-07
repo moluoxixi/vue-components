@@ -5,7 +5,7 @@ import type {
   ConfigFormBreakpoint,
   ConfigFormResponsiveLayout,
   ConfigFormResponsiveLayoutOverride,
-} from '@moluoxixi/config-form'
+} from '@moluoxixi/config-form-core'
 import type { Component } from 'vue'
 import type {
   DesignerPropertyControlRegistry,
@@ -14,7 +14,7 @@ import type {
 import type { DesignerPropertyFormEntry } from '../types'
 import { FORM_LABEL_WIDTH_MAX_PX } from '@moluoxixi/config-form-model'
 import { Monitor, Smartphone, Tablet } from '@lucide/vue'
-import { resolveConfigFormLayout } from '@moluoxixi/config-form'
+import { resolveConfigFormLayout } from '@moluoxixi/config-form-core'
 import { computed } from 'vue'
 import { resolveInspectorGridFraction } from '../../../inspector'
 import { useDesignerLocale } from '../../../locale'
@@ -34,6 +34,7 @@ const props = withDefaults(defineProps<{
   labelWidth?: number
   showHeading?: boolean
   readonly?: boolean
+  renderer: Component
 }>(), {
   showHeading: true,
 })
@@ -251,6 +252,7 @@ function commitValue(
       :fraction-aria="resolvedWidthAria(breakpoint.key, breakpoint.key !== 'desktop' && !isEnabled(breakpoint.key))"
       :icon="breakpoint.icon"
       :readonly="isReadonly"
+      :renderer="renderer"
       :title="title(breakpoint.key)"
       :toggle-entry="breakpoint.key === 'desktop' ? undefined : toggleEntry(breakpoint.key)"
       :data-breakpoint="breakpoint.key"

@@ -9,7 +9,7 @@
 `formAttrs` 只接收原生 form attributes，不能传 `labelCol` / `wrapperCol`。`layoutAttrs` / `cellAttrs` 分别传给原生布局和 grid cell div；布局由 `columns`、`gap`、`fieldSpan` 和字段 `span` 控制。
 
 ```ts
-import { defineFields } from '@moluoxixi/config-form-headless'
+import { createConfigFormModel, defineFields } from '@moluoxixi/config-form-headless'
 import { Input as AInput } from 'ant-design-vue'
 import { z } from 'zod'
 

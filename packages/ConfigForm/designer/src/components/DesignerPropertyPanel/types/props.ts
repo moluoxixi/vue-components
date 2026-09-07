@@ -1,11 +1,13 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ConfigFormComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-form-model'
+import type { Component } from 'vue'
 import type { DesignerDiagnostic } from '../../../graph'
 import type { DesignerMaterialDefinition, DesignerPropertyControlRegistry } from '../../../registry'
+import type { ConfigFormBreakpoint } from '../../DesignerCanvas/types'
 
 export interface DesignerPropertyPanelProps {
+  renderer: Component
   graph: PageGraph
   flows?: ConfigFormFlow[]
   node?: PageNode

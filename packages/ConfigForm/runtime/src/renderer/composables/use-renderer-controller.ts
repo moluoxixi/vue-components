@@ -5,14 +5,13 @@ import type {
   ConfigFormNode,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
-import type { Component, Ref, ShallowRef } from 'vue'
+import type { Component } from 'vue'
 import type { ConfigFormRendererEmits, ConfigFormRendererProps } from '../types'
 import type { RendererControllerState } from '../types/internal'
 import { createConfigFormController } from '@moluoxixi/config-form-headless'
-import { shallowRef, toRaw, watch } from 'vue'
+import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 
 interface UseRendererControllerOptions<TValues extends ConfigFormValues> {
-  controlledModel: Ref<TValues>
   emit: ConfigFormRendererEmits<TValues>
   props: Readonly<ConfigFormRendererProps<TValues>>
 }
@@ -27,8 +26,12 @@ type ControllerNode<TValues extends ConfigFormValues> = ConfigFormNode<
 export function useRendererController<TValues extends ConfigFormValues>(
   options: UseRendererControllerOptions<TValues>,
 ): RendererControllerState<TValues> {
-  const { controlledModel, emit, props } = options
-  const model: ShallowRef<TValues> = shallowRef(controlledModel.value)
+  const { emit, props } = options
+  const model = computed<TValues>({
+    get: () => props.model.read(),
+    set: values => props.model.write(values),
+  })
+  let writingModel = false
   const errors = shallowRef<ConfigFormErrors>({})
   const meta = shallowRef<ConfigFormMeta>({ dirty: false, fields: {}, touched: false })
 
@@ -46,10 +49,15 @@ export function useRendererController<TValues extends ConfigFormValues>(
     // attribute and slot callback types are never invoked at this boundary.
     fields: () => props.fields as unknown as ControllerNode<TValues>[],
     model: {
-      read: () => model.value,
+      read: () => props.model.read(),
       write: (values) => {
-        model.value = values
-        controlledModel.value = values
+        writingModel = true
+        try {
+          props.model.write(values)
+        }
+        finally {
+          writingModel = false
+        }
       },
     },
     onChange: values => emit('change', values),
@@ -62,20 +70,24 @@ export function useRendererController<TValues extends ConfigFormValues>(
     onMetaChange: updateMeta,
     onSubmit: values => emit('submit', values),
     readonly: () => props.readonly,
+    reactionStates: () => props.reactionProjection?.states,
   })
 
   meta.value = controller.getMeta()
 
-  watch(controlledModel, (values) => {
-    if (toRaw(values) === toRaw(model.value))
+  watch(model, () => {
+    if (writingModel)
       return
-
-    model.value = values
     controller.clearValidate()
     controller.refreshReactions()
-  })
+  }, { deep: true, flush: 'sync' })
 
   watch(() => props.fields, controller.refreshReactions, { deep: true })
+  watch([() => props.readonly, () => props.reactionProjection?.states], () => {
+    controller.clearValidate()
+    controller.refreshReactions()
+  }, { deep: true, flush: 'sync' })
+  onBeforeUnmount(() => controller.clearValidate())
 
   watch(() => props.reactionProjection?.validate, (fields) => {
     for (const field of fields ?? [])

@@ -5,9 +5,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { compileCanonicalProject } from '@moluoxixi/config-form-compiler'
 import { createProjectSnapshot } from '@moluoxixi/config-form-model'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { normalizeProjectPath } from '..'
 import { loadWorkbenchAdapter } from '../../adapters'
 import { createBuiltInProjectFixture } from '../__tests__/fixtures'
@@ -23,6 +24,7 @@ const pnpmCli = process.env.npm_execpath
 const pnpmCommand = pnpmCli ? process.execPath : 'pnpm'
 const pnpmPrefix = pnpmCli ? [pnpmCli] : []
 const temporaryRoots: string[] = []
+let rulesTarball: string
 
 async function runPnpm(args: string[], cwd: string): Promise<void> {
   await new Promise<void>((resolvePromise, rejectPromise) => {
@@ -69,6 +71,13 @@ async function generatedProject(adapterId: 'antd-vue' | 'element-plus'): Promise
   return createCanonicalProjectSourceExport(result.compilation, adapter.sourceResolver)
 }
 
+beforeAll(async () => {
+  const root = await mkdtemp(join(tmpdir(), 'config-form-rules-package-'))
+  temporaryRoots.push(root)
+  rulesTarball = resolve(root, 'rules.tgz')
+  await runPnpm(['pack', '--out', rulesTarball], fileURLToPath(new URL('../../../../../zod3-to-rule/', import.meta.url)))
+})
+
 afterAll(async () => {
   await Promise.all(temporaryRoots.map(root => rm(root, {
     force: true,
@@ -87,7 +96,13 @@ describe('canonical exported projects', () => {
       temporaryRoots.push(root)
       await writeFiles(exported.files, root)
 
-      await runPnpm(['install', '--ignore-scripts', '--no-lockfile', '--trust-policy-ignore-after', '10080'], root)
+      // Exercise this checkout's published package files, without registry state deciding which implementation is tested.
+      const packagePath = resolve(root, 'package.json')
+      const manifest = JSON.parse(await readFile(packagePath, 'utf8'))
+      expect(manifest.dependencies['@moluoxixi/zod3-to-rule']).toBe('^0.1.2')
+      manifest.pnpm = { overrides: { '@moluoxixi/zod3-to-rule': `file:${rulesTarball.replaceAll('\\', '/')}` } }
+      await writeFile(packagePath, JSON.stringify(manifest, null, 2))
+      await runPnpm(['install', '--ignore-scripts', '--no-lockfile'], root)
       await runPnpm(['run', 'typecheck'], root)
       await runPnpm(['run', 'build'], root)
 

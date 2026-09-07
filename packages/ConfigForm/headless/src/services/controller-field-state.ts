@@ -31,7 +31,7 @@ export function shouldValidateControllerField<TValues extends ConfigFormValues>(
   trigger: ConfigFormValidateTrigger,
 ): boolean {
   const { field } = state
-  if (!field.required && !field.schema && !field.validator)
+  if (!state.required && !field.schema && !field.validator)
     return false
   if (state.readonly)
     return false

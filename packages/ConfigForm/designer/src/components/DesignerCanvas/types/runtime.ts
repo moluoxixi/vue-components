@@ -1,7 +1,7 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
-import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
+import type { ConfigFormBreakpoint, ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
-import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
+
+export type { ConfigFormBreakpoint } from '@moluoxixi/config-form-core'
 
 export interface DesignerRuntimeRect {
   bottom: number
@@ -74,7 +74,6 @@ export interface DesignerRuntimeSlotScope {
   model: Record<string, unknown>
   reactionProps: ConfigFormReactionProjection['props']
   reactionStates: ConfigFormReactionProjection['states']
-  renderer: VueRuntimeRendererConfig
 }
 
 export interface DesignerDragVisualSlotScope extends DesignerRuntimeSlotScope {

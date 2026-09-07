@@ -4,10 +4,10 @@
 
 ## 运行路径
 
-ConfigForm 当前提供两条职责明确的运行路径：
+ConfigForm 当前只有一条表单执行链，提供两种输入入口：
 
-1. **Headless / ConfigFormRenderer 路径**：`@moluoxixi/config-form-headless` 管理字段、校验、状态和 reaction 事务，`@moluoxixi/config-form` 根入口导出的 `ConfigFormRenderer` 负责 Vue DOM，Element Plus、Ant Design Vue 和 Designer 都基于这条路径。
-2. **Schema Runtime / Plugin 路径**：`@moluoxixi/config-form` 根入口提供 schema 转换、字段 pipeline 和 runtime plugin 生命周期。这条路径不执行 Headless reaction 协议。
+1. **Headless / ConfigFormRenderer 路径**：`@moluoxixi/config-form-headless` 管理字段、校验、状态和 reaction 事务，`@moluoxixi/config-form` 根入口导出的 `ConfigFormRenderer` 负责 Vue DOM，Element Plus、Ant Design Vue 和 Workbench RuntimeHost 都基于这条路径。宿主通过同步 model.read/write 端口持有唯一值源。
+2. **ConfigForm / Plugin 预处理入口**：组件注册、字段转换与 readonly adapters 先投影为 Headless 字段，再进入同一 ConfigFormRenderer。旧 useForm/RecursiveField 模板与独立校验队列已移除。
 
 ## 依赖方向
 
@@ -28,7 +28,7 @@ flowchart TD
   Designer["config-form-designer"] --> Core
   Designer --> Model
   Designer --> Headless
-  Designer --> Renderer
+  Designer --> HostContract["Designer Runtime Host contract"]
   DesignerElement["designer-element-plus"] --> Designer
   DesignerAntd["designer-antd-vue"] --> Designer
   Workbench["config-form-workbench (private app)"] --> IndexedDB["indexed-db"]
@@ -49,7 +49,7 @@ flowchart TD
 | 语义编译器       | [`@moluoxixi/config-form-compiler`](./compiler/)                                                 | RegistryContractSnapshot、CanonicalProjectIR、CanonicalFieldDescriptor、稳定语义哈希、Flow Execution Plan 与 Runtime/Source backend 共享输入      |
 | 表单内核         | [`@moluoxixi/config-form-headless`](./headless/)                                                 | Vue 字段/节点协议、controller、校验、dirty/touched、readonly、runtime slots、reaction 事务、组件注册特化                                          |
 | Vue 渲染         | [`@moluoxixi/config-form`](./runtime/) 的 `ConfigFormRenderer`                                   | 原生 form、Grid/Flex、字段壳、ARIA、递归节点/slot 和 readonly 渲染；由 Runtime 包根入口导出                                                       |
-| Schema Runtime   | [`@moluoxixi/config-form`](./runtime/)                                                           | schema 转换、组件解析、字段 pipeline、runtime plugin 和 `ConfigForm` 根组件                                                                       |
+| Schema Runtime   | [`@moluoxixi/config-form`](./runtime/)                                                           | schema 字段转换、组件解析和 runtime plugin；转换结果必须进入同一 ConfigFormRenderer，不再维护独立表单状态机                                       |
 | 轻量 UI          | [`config-form-element`](./element/)、[`config-form-antd-vue`](./antd/)                           | 真实 UI 组件、语义组件 key、值事件绑定和样式                                                                                                      |
 | Runtime plugin   | [`plugin-element-plus`](./plugin-element-plus/)、[`plugin-antd-vue`](./plugin-antd-vue/)         | Schema Runtime 的默认字段和 readonly adapter；传给 `runtime.plugins`，不是 Vue `app.use()` 插件                                                   |
 | 可视化设计器     | [`config-form-designer`](./designer/)                                                            | PageGraph 画布、选择/拖拽/overlay、属性面板与 ProjectCommand 桥接；history 属于 ProjectDomainEngine                                               |
@@ -81,7 +81,7 @@ Component Registry
   -> ProjectSnapshot / ProjectPage { PageGraph, flows }
   -> ProjectCommand -> OperationBatch -> AppliedTransaction
   -> CompileCoordinator -> PageCompilation
-       -> CanonicalPageIR -> Vue Runtime Backend -> Design canvas
+  -> CanonicalPageIR -> Designer Runtime Host -> Design canvas
        -> iframe RuntimeHost -> adapter resolver -> Preview Runtime
   -> lazy ProjectCompilation
        -> CanonicalProjectIR -> Source Backend -> standalone Vue Source
@@ -148,7 +148,7 @@ Workbench chrome 统一使用 Element Plus 提供 Button、Tooltip、Dropdown、
 
 父文档弹层统一挂载到 `#workbench-overlays`。该 root 镜像 Workbench Light/Dark token、z-index 和 Topbar 下方的布局边界；Preview Drawer 与 stage 不在 iframe 几何采样期间移动坐标系。Design/Preview Runtime 仍分别在同源 iframe 内加载 Element 或 Ant adapter、Provider CSS 与自己的 Teleport target，Workbench 的 Element Plus 样式和父文档 popper 不进入 Runtime realm。
 
-Canvas camera、selection、resize、drag candidate/visual、Registry specimen、schema-driven Inspector setter、Flow 画布、RuntimeHost bridge 和 Monaco model 继续由领域组件拥有。它们可以在外壳使用成熟组件，但不得为组件化引入第二份 Model、History、Selection、Flow 或 Runtime 状态，也不得建立 `BaseButton`、`BaseTabs` 等二次通用 UI 框架。
+Canvas camera、selection、resize、drag candidate/visual、schema-driven Inspector setter、Flow 画布、RuntimeHost bridge 和 Monaco model 继续由领域组件拥有。它们可以在外壳使用成熟组件，但不得为组件化引入第二份 Model、History、Selection、Flow 或 Runtime 状态，也不得建立 `BaseButton`、`BaseTabs` 等二次通用 UI 框架。
 
 打开 Source 导出弹窗时，Workbench 才按需组装当前不可拆分 `ProjectCompilation` 和 generator version
 创建一次不可变 `ExportSnapshot`。层级文件树、只读 Monaco、单文件下载和项目 ZIP 全部读取该快照；
@@ -190,7 +190,7 @@ ConfigForm DSL。Core interpreter 与生成的 `flows.ts` 共同固定 `CONFIG_F
 
 ## 物料注册器分层
 
-Workbench Registry facade 从每个 Designer 物料模块组合四类能力：JSON-safe `ComponentContract`、Vue `RuntimeBinding`、编辑器 `DesignMetadata` 和生成器 `SourceBinding`。只有 `ComponentContract` 进入 Model 的不可变 `RegistryContractSnapshot` 与项目 `registryLock`；Vue Component、图标、render 函数和 source resolver 留在对应 adapter resolver。合同按 `contractVersion + fingerprint` 对实际使用组件做 exact match；`visualEquivalence` 是 Design 能力声明，必须由真实 Runtime specimen、candidate、落地节点与 Preview 的 geometry/computed-style 浏览器测试证明。
+Workbench Registry facade 从每个 Designer 物料模块组合四类能力：JSON-safe `ComponentContract`、Vue `RuntimeBinding`、编辑器 `DesignMetadata` 和生成器 `SourceBinding`。只有 `ComponentContract` 进入 Model 的不可变 `RegistryContractSnapshot` 与项目 `registryLock`；Vue Component、图标、render 函数和 source resolver 留在对应 adapter resolver。合同按 `contractVersion + fingerprint` 对实际使用组件做 exact match；`visualEquivalence` 是 Design 能力声明，必须由真实 Runtime candidate、落地节点与 Preview 的 geometry/computed-style 浏览器测试证明。
 
 声明 helper 不执行注册，其中字段物料 helper 会消除普通字段的重复节点工厂：
 
@@ -264,7 +264,7 @@ Designer 物料代码位置固定如下：
 - Core 定义可序列化条件、effect、配置 helper 和纯执行器。
 - Headless 将 reaction 接入值事务、字段状态、组件 props 和校验目标。
 - Designer 负责文档校验、可视化编辑、引用诊断和隔离的预演模型。
-- Schema Runtime 路径不执行 Headless reaction；Renderer 路径执行。
+- ConfigForm 的 plugin 预处理与 Renderer 共用 Headless reaction 执行器。
 
 Reaction 派生状态不会修改 PageGraph 字段定义或导出 JSON。
 
@@ -322,3 +322,13 @@ pnpm --filter <package-name> typecheck
 # Playground 构建
 pnpm --filter @config-form/playground build
 ```
+
+## 当前重构合同
+
+表单使用必传同步 `model: { read, write }`，由 `createConfigFormModel(ref)` 连接宿主值源；移除基于 `modelValue/update:modelValue` 的表单同步镜像。组件自己的值事件绑定保持由 Registry 声明。
+
+`CanonicalFieldDescriptor.validateOn` 在 Compiler 中归一化为含 submit 的去重数组，完整/增量编译共享同一构造器。Core 的校验触发与响应式布局规则也被 Headless、Plugin 和 Source 复用。持久化 Model 保留编辑事实，Vue/Zod 实例只在 backend/preprocessor 中生成。
+
+Designer 的生产依赖已移除 Runtime 与 Vue backend；画布只保留 graph/command/geometry/pointer Host 插槽，Inspector renderer 由 Workbench 注入。Vue resolver 位于 `workbench/src/adapters/services/runtime-resolver.ts`。旧 specimen 组件和样式入口已移除，当前四个 built-in catalog 模板保持有效。
+
+`scripts/__tests__/config-form-boundaries.test.mjs` 基于 TypeScript AST/Vue module graph 检查层间依赖，`field-runtime-parity.test.ts` 实际执行生成 Page 与 Preview，覆盖默认值、值事件、blur 校验、reaction、disabled 与 readonly。

@@ -1,8 +1,11 @@
-export { ConfigForm, FormLayout } from './src/components'
-export { useForm } from './src/composables'
-export type { UseFormOptions } from './src/composables'
+export { ConfigForm } from './src/components'
+export type { ConfigFormProps } from './src/components/ConfigForm'
 export { ConfigFormError } from './src/errors'
 export * from './src/renderer'
+export type {
+  ConfigFormRendererEmits as ConfigFormEmits,
+  ConfigFormRendererExpose as ConfigFormExpose,
+} from './src/renderer'
 export type {
   ComponentRegistry,
   ConfigFormComponentRegistration,
@@ -12,9 +15,6 @@ export type {
   ReadonlyRenderContext,
 } from './src/runtime'
 export type {
-  ConfigFormEmits,
-  ConfigFormExpose,
-  ConfigFormProps,
   FieldCondition,
   FieldConfig,
   FieldKey,

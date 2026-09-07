@@ -3,7 +3,6 @@ import { onBeforeUnmount, watch } from 'vue'
 
 interface UseDesignerCanvasNodeDragOptions {
   activeSession: () => DesignerDragSession | undefined
-  clearDragOverlay: () => void
   closeNodeActionMenu: () => void
   dragController: DesignerDragController | undefined
   readonly: () => boolean
@@ -137,7 +136,6 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
       return
     options.dragController?.cancel()
     cleanupNodeDrag()
-    options.clearDragOverlay()
   })
 
   onBeforeUnmount(cleanupNodeDrag)

@@ -17,9 +17,10 @@ import {
   CANONICAL_PROJECT_IR_VERSION,
   CONFIG_FORM_COMPILER_VERSION,
 } from '@moluoxixi/config-form-compiler'
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, shallowRef } from 'vue'
 import { compileCanonicalPageRuntime } from '../index'
 
 const RuntimeField = defineComponent({
@@ -126,6 +127,7 @@ function pageFixture(): CanonicalPageIR {
         field: 'name',
         label: 'Name',
         defaultValue: 'Ada',
+        validateOn: ['submit'],
         validation: {
           version: 1,
           base: { type: 'string' },
@@ -269,7 +271,7 @@ describe('vue Runtime backend', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         ...result.artifact.plan.renderer,
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef<Record<string, unknown>>({ name: 'Ada' })),
       },
     })
     expect(wrapper.find('[data-runtime-layout]').exists()).toBe(true)
@@ -439,6 +441,7 @@ describe('vue Runtime backend', () => {
         events: {},
         bindings: {},
         field: id,
+        validateOn: ['submit'],
       }
     }
 

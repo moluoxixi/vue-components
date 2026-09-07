@@ -10,12 +10,9 @@ function collectFieldValidation(
 ): Record<string, StandaloneSourceFieldValidation> {
   for (const node of nodes) {
     if (node.kind === 'field') {
-      const configured = node.validateOn === undefined
-        ? []
-        : Array.isArray(node.validateOn) ? node.validateOn : [node.validateOn]
       target[node.field] = {
         ...(node.validation === undefined ? {} : { validation: structuredClone(node.validation) }),
-        validateOn: [...new Set([...configured, 'submit' as const])],
+        validateOn: [...node.validateOn],
       }
     }
     else {

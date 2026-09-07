@@ -10,6 +10,7 @@ import type {
   ConfigFormFieldSlotContent,
   ConfigFormFieldSlotContext,
   ConfigFormFieldSlots,
+  ConfigFormModelAdapter,
   ConfigFormNode,
   ConfigFormProps,
   ConfigFormReadonlyRender,
@@ -101,6 +102,7 @@ export interface ElementConfigFormProps<TValues extends ConfigFormValues = Confi
     ElementConfigFormCellAttrs,
     ElementConfigFormFieldAttrs
   > {
+  model: ConfigFormModelAdapter<TValues>
   /** 原生 CSS Grid 的列数。 */
   columns?: number
   /** 原生 Grid/Flex 的间距。 */

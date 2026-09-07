@@ -1,10 +1,10 @@
 import type { Component } from 'vue'
 import type { ElementConfigFormExpose } from '../src/types'
-import { defineField, defineFields } from '@moluoxixi/config-form-headless'
+import { createConfigFormModel, defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ElCheckbox, ElInput, ElInputNumber, ElSelectV2, ElSwitch } from 'element-plus'
 import { describe, expect, it } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, ref, shallowRef } from 'vue'
 import { z } from 'zod'
 import {
   ELEMENT_CONFIG_FORM_COMPONENTS,
@@ -81,7 +81,7 @@ describe('element config form', () => {
       props: {
         fields: [],
         formAttrs: { 'data-form-attrs': 'true', 'id': 'form-attrs-id' },
-        modelValue: { name: '', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })),
       },
     })
 
@@ -118,7 +118,7 @@ describe('element config form', () => {
       }),
     ]
     const wrapper = mount(ElementConfigForm, {
-      props: { fields, modelValue: { name: '', status: 'draft' } },
+      props: { fields, model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })) },
     })
 
     expect(wrapper.find('form.mx-element-config-form').exists()).toBe(true)
@@ -144,13 +144,13 @@ describe('element config form', () => {
       props: {
         components: { text: InputStub },
         fields: [defineField<UserForm>({ component: 'text', field: 'name', id: 'name', label: '姓名' })],
-        modelValue: { name: '', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })),
       },
     })
 
     await wrapper.get<HTMLInputElement>('[data-testid="input-stub"]').setValue('Ada')
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'name', value: 'Ada' })
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ name: 'Ada', status: 'draft' }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ name: 'Ada', status: 'draft' }])
   })
 
   it('renders adapter defaults for every semantic key and applies native bindings', async () => {
@@ -168,7 +168,7 @@ describe('element config form', () => {
           defineField<SemanticForm>({ component: 'text', field: 'name', id: 'name' }),
           defineField<SemanticForm>({ component: 'boolean', field: 'enabled', id: 'enabled' }),
         ],
-        modelValue: { enabled: false, name: '' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: '' })),
       },
     })
 
@@ -181,7 +181,7 @@ describe('element config form', () => {
       [expect.objectContaining({ field: 'name', value: 'Ada' })],
       [expect.objectContaining({ field: 'enabled', value: true })],
     ])
-    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([{ enabled: true, name: 'Ada' }])
+    expect(wrapper.emitted('change')!.at(-1)).toEqual([{ enabled: true, name: 'Ada' }])
   })
 
   it('applies reactions through real Element Plus bindings', async () => {
@@ -208,13 +208,13 @@ describe('element config form', () => {
       defineField<SemanticForm>({ component: 'text', field: 'name', id: 'name', props: { placeholder: 'Static placeholder' } }),
     ]
     const wrapper = mount(ElementConfigForm, {
-      props: { fields, modelValue: { enabled: false, name: 'initial' } },
+      props: { fields, model: createConfigFormModel(shallowRef({ enabled: false, name: 'initial' })) },
     })
 
     wrapper.getComponent(ElSwitch).vm.$emit('update:modelValue', true)
     await flushPromises()
 
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true, name: 'linked' }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ enabled: true, name: 'linked' }])
     expect(wrapper.getComponent(ElInput).props()).toMatchObject({
       disabled: true,
       modelValue: 'linked',
@@ -235,8 +235,8 @@ describe('element config form', () => {
     })]
     const Host = defineComponent({
       setup: () => () => h('div', [
-        h(ElementConfigForm, { fields, modelValue: { name: '', status: 'draft' } }),
-        h(ElementConfigForm, { fields, modelValue: { name: '', status: 'draft' } }),
+        h(ElementConfigForm, { fields, model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })) }),
+        h(ElementConfigForm, { fields, model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })) }),
       ]),
     })
     const wrapper = mount(Host)
@@ -280,13 +280,13 @@ describe('element config form', () => {
         return () => h('div', [
           h(ElementConfigForm, {
             fields,
-            'modelValue': first.value,
-            'onUpdate:modelValue': (value: unknown) => first.value = value as CheckboxForm,
+            model: createConfigFormModel(first),
+            onChange: (value: unknown) => first.value = value as CheckboxForm,
           }),
           h(ElementConfigForm, {
             fields,
-            'modelValue': second.value,
-            'onUpdate:modelValue': (value: unknown) => second.value = value as CheckboxForm,
+            model: createConfigFormModel(second),
+            onChange: (value: unknown) => second.value = value as CheckboxForm,
           }),
         ])
       },
@@ -314,7 +314,7 @@ describe('element config form', () => {
       defineField<UserForm>({ component: InputStub, field: 'status', id: 'status', label: '状态' }),
     ]
     const wrapper = mount(ElementConfigForm, {
-      props: { fields, inline: true, modelValue: { name: 'Ada', status: 'draft' } },
+      props: { fields, inline: true, model: createConfigFormModel(shallowRef({ name: 'Ada', status: 'draft' })) },
     })
 
     expect(wrapper.get('.mx-element-config-form__row').classes()).toContain('mx-element-config-form__row--inline')
@@ -346,7 +346,7 @@ describe('element config form', () => {
       }),
     ]
     const wrapper = mount(ElementConfigForm, {
-      props: { fields, modelValue: { name: 'Ada', status: 'draft' } },
+      props: { fields, model: createConfigFormModel(shallowRef({ name: 'Ada', status: 'draft' })) },
     })
 
     expect(wrapper.find('[data-testid="container-stub"]').exists()).toBe(true)
@@ -368,7 +368,7 @@ describe('element config form', () => {
       requiredMessage: '请输入姓名',
     })]
     const wrapper = mount(ElementConfigForm, {
-      props: { fields, modelValue: initial },
+      props: { fields, model: createConfigFormModel(shallowRef(initial)) },
     })
     const form = wrapper.vm as unknown as ElementConfigFormExpose<UserForm>
 

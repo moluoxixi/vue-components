@@ -1,4 +1,5 @@
 export * from './component'
 export * from './field'
+export * from './model'
 export * from './node'
 export * from './readonly'

@@ -5,18 +5,11 @@ import type {
   ConfigFormValidateTrigger,
   ConfigFormValues,
 } from '../types'
+import { normalizeConfigFormValidateOn } from '@moluoxixi/config-form-core'
 import { resolveConfigFormCondition } from '../utils'
 
 /** 规范化校验触发配置；submit 始终启用，避免交互配置绕过提交校验。 */
-export function normalizeConfigFormValidateOn(
-  validateOn?: ConfigFormValidateTrigger | ConfigFormValidateTrigger[],
-): ConfigFormValidateTrigger[] {
-  const triggers = validateOn === undefined
-    ? []
-    : Array.isArray(validateOn) ? validateOn : [validateOn]
-
-  return [...new Set<ConfigFormValidateTrigger>([...triggers, 'submit'])]
-}
+export { normalizeConfigFormValidateOn }
 
 export function shouldValidateConfigFormOn(
   validateOn: ConfigFormValidateTrigger | ConfigFormValidateTrigger[] | undefined,

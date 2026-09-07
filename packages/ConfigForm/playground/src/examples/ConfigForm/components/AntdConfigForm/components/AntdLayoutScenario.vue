@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { AntdKnownValues } from '../types'
 import { defineFields } from '@moluoxixi/config-form-headless'
@@ -28,6 +29,8 @@ function submitInline(values: ConfigFormValues): void {
 function submitGrid(values: ConfigFormValues): void {
   gridSubmitted.value = values as AntdKnownValues
 }
+const inlineModelPort = createConfigFormModel(inlineModel)
+const gridModelPort = createConfigFormModel(gridModel)
 </script>
 
 <template>
@@ -44,7 +47,7 @@ function submitGrid(values: ConfigFormValues): void {
 
     <AntdConfigForm
       v-if="!gridMode"
-      v-model="inlineModel"
+      :model="inlineModelPort"
       data-testid="antd-layout-inline"
       :field-span="12"
       :fields="inlineFields"
@@ -63,7 +66,7 @@ function submitGrid(values: ConfigFormValues): void {
 
     <AntdConfigForm
       v-else
-      v-model="gridModel"
+      :model="gridModelPort"
       data-testid="antd-layout-grid-form"
       :field-span="12"
       :fields="gridFields"

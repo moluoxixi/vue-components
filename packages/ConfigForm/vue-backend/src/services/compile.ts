@@ -185,9 +185,7 @@ function compileField(
     ...(node.defaultValue === undefined
       ? {}
       : { defaultValue: structuredClone(node.defaultValue) }),
-    ...(node.validateOn === undefined
-      ? {}
-      : { validateOn: [...(Array.isArray(node.validateOn) ? node.validateOn : [node.validateOn])] }),
+    validateOn: [...node.validateOn],
     ...(required === undefined ? {} : { required }),
     ...(validation?.requiredMessage === undefined
       ? {}

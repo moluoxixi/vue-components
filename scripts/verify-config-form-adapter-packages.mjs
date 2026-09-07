@@ -311,7 +311,6 @@ function verifyRuntimePackage() {
       'ConfigForm',
       'ConfigFormError',
       'ConfigFormRenderer',
-      'FormLayout',
       'asVueFunctionalComponent',
       'createConfigFormRendererExpose',
       'defineField',
@@ -319,7 +318,6 @@ function verifyRuntimePackage() {
       'resolveConfigFormFieldLayout',
       'resolveConfigFormLayout',
       'resolveConfigFormNodeSpan',
-      'useForm',
       'withConfigFormInstall',
     ].sort()
     const actual = Object.keys(loaded).sort()

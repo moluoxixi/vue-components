@@ -1,10 +1,9 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
 import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
-import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 import type { Component } from 'vue'
 import type { DesignCommandPreview } from '../../../graph'
 import type { DesignerRegistry } from '../../../registry'
+import type { ConfigFormBreakpoint } from './runtime'
 
 export interface DesignerCanvasProps {
   commandHint?: Component
@@ -21,5 +20,4 @@ export interface DesignerCanvasProps {
   model?: Record<string, unknown>
   reactionProps?: ConfigFormReactionProjection['props']
   reactionStates?: ConfigFormReactionProjection['states']
-  runtimeRenderer: VueRuntimeRendererConfig
 }

@@ -182,6 +182,7 @@ const {
         <DesignerPropertyForm
           v-else-if="tab.id === 'bindings'"
           :entries="propertyEntries.bindings"
+          :renderer="renderer"
           :components="components"
           :controls="propertyControls"
           :readonly="sectionReadonly(tab.id)"
@@ -190,6 +191,7 @@ const {
         <DesignerPropertyForm
           v-else
           :entries="propertyEntries[tab.id]"
+          :renderer="renderer"
           :components="components"
           :controls="propertyControls"
           :readonly="sectionReadonly(tab.id)"
@@ -209,6 +211,7 @@ const {
       <div class="mx-config-form-designer__property-fields">
         <DesignerPropertyForm
           :entries="formEntries"
+          :renderer="renderer"
           :components="components"
           :controls="propertyControls"
           :readonly="readonly"
@@ -219,6 +222,7 @@ const {
           :components="components"
           :controls="propertyControls"
           :readonly="readonly"
+          :renderer="renderer"
           @update-form="emit('updateForm', $event)"
         />
         <section class="mx-config-form-designer__form-events" :aria-label="locale.t('flow.formEvents', 'Form events')">

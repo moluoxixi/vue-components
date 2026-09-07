@@ -2,11 +2,10 @@ import type { PageGraph, PageNode } from '@moluoxixi/config-form-model'
 import type { ComputedRef, CSSProperties, Ref } from 'vue'
 import type { DesignerMaterialDefinition } from '../../../registry'
 import type { DesignerCanvasDesignPolicySpot, DesignerCanvasOverlayBox, DesignerCanvasProps, DesignerDragSession, DesignerDragVisualSlotScope, DesignerRuntimeGeometrySnapshot, DesignerRuntimeNodeGeometry, DesignerRuntimeRect, DesignerRuntimeSlotScope } from '../types'
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed } from 'vue'
 import { findDesignNode } from '../../../graph'
 import { resolveDesignerDesignPolicy } from '../../../registry'
 import { resolveDesignerDragOverlayPosition, resolveDesignerDragVisualHeight } from '../services'
-import { createDesignerDragVisualClone } from '../utils'
 
 interface UseDesignerCanvasOverlayOptions {
   activeSession: () => DesignerDragSession | undefined
@@ -15,9 +14,7 @@ interface UseDesignerCanvasOverlayOptions {
   candidateNode: () => PageNode | undefined
   elementVersion: Ref<number>
   externalGeometry: Ref<DesignerRuntimeGeometrySnapshot | undefined>
-  hasRuntimeSlot: () => boolean
   materialTitle: (material: DesignerMaterialDefinition) => string
-  nodeElements: Map<string, HTMLElement>
   projectedGraph: () => PageGraph
   registry: () => DesignerCanvasProps['registry']
   runtimeNodeGeometryById: (nodeId: string) => DesignerRuntimeNodeGeometry | undefined
@@ -26,16 +23,10 @@ interface UseDesignerCanvasOverlayOptions {
   selectedSet: () => Set<string>
   selectionOverlayVisible: () => boolean
   sheetRef: Ref<HTMLElement | undefined>
-  dragOverlayRef: Ref<HTMLElement | undefined>
   controlledAdapterMessage: () => string
 }
 
 export function useDesignerCanvasOverlay(options: UseDesignerCanvasOverlayOptions) {
-  const dragOverlayStyle = ref<CSSProperties>()
-  const dragOverlayHtml = ref('')
-  const dragVisualMetrics = ref<{ canvasWidth: number, height: number, width: number }>()
-  let dragOverlayFrame: number | undefined
-
   function nodeLabel(nodeId: string): string {
     const node = findDesignNode(options.projectedGraph(), nodeId)?.node
     if (!node)
@@ -122,7 +113,7 @@ export function useDesignerCanvasOverlay(options: UseDesignerCanvasOverlayOption
     const session = options.activeSession()
     const id = options.candidateId()
     const geometry = id ? options.runtimeNodeGeometryById(id) : undefined
-    if (!options.hasRuntimeSlot() || !session?.active || session.input !== 'pointer' || !geometry || geometry.rect.width <= 0)
+    if (!session?.active || session.input !== 'pointer' || !geometry || geometry.rect.width <= 0)
       return undefined
     const height = resolveDesignerDragVisualHeight(geometry.rect.height, options.candidateNode()?.kind)
     const position = resolveDesignerDragOverlayPosition(
@@ -147,84 +138,19 @@ export function useDesignerCanvasOverlay(options: UseDesignerCanvasOverlayOption
     }
   })
 
-  const effectiveDragOverlayStyle = computed(() => options.hasRuntimeSlot()
-    ? hostedDragVisual.value?.style
-    : dragOverlayStyle.value)
+  const effectiveDragOverlayStyle = computed(() => hostedDragVisual.value?.style)
 
   const dragVisualSlotScope = computed<DesignerDragVisualSlotScope | undefined>(() => {
-    const metrics = options.hasRuntimeSlot()
-      ? hostedDragVisual.value?.metrics
-      : dragVisualMetrics.value
+    const metrics = hostedDragVisual.value?.metrics
     return metrics ? { ...options.runtimeSlotScope.value, ...metrics } : undefined
   })
 
-  function clearDragOverlay(): void {
-    if (dragOverlayFrame !== undefined)
-      window.cancelAnimationFrame(dragOverlayFrame)
-    dragOverlayFrame = undefined
-    dragOverlayStyle.value = undefined
-    dragOverlayHtml.value = ''
-    dragVisualMetrics.value = undefined
-  }
-
-  function updateDragOverlay(): void {
-    dragOverlayFrame = undefined
-    const session = options.activeSession()
-    const id = options.candidateId()
-    const geometry = id ? options.runtimeNodeGeometryById(id) : undefined
-    if (!session?.active || session.input !== 'pointer' || !geometry || !options.dragOverlayRef.value || geometry.rect.width <= 0) {
-      clearDragOverlay()
-      return
-    }
-    const height = resolveDesignerDragVisualHeight(geometry.rect.height, options.candidateNode()?.kind)
-    const position = resolveDesignerDragOverlayPosition(
-      session.position,
-      session.pointerOffset,
-      { width: geometry.rect.width, height },
-    )
-    if (!options.hasRuntimeSlot()) {
-      const source = options.nodeElements.get(id ?? '')
-      if (!source) {
-        clearDragOverlay()
-        return
-      }
-      dragOverlayHtml.value = createDesignerDragVisualClone(source).outerHTML
-    }
-    dragVisualMetrics.value = {
-      canvasWidth: options.externalGeometry.value?.viewport.width
-        ?? options.sheetRef.value?.clientWidth
-        ?? geometry.rect.width,
-      height,
-      width: geometry.rect.width,
-    }
-    dragOverlayStyle.value = {
-      height: `${height}px`,
-      left: `${position.x}px`,
-      top: `${position.y}px`,
-      width: `${geometry.rect.width}px`,
-    }
-  }
-
-  function scheduleDragOverlay(): void {
-    if (dragOverlayFrame !== undefined)
-      return
-    void nextTick(() => {
-      if (dragOverlayFrame === undefined)
-        dragOverlayFrame = window.requestAnimationFrame(updateDragOverlay)
-    })
-  }
-
-  onBeforeUnmount(clearDragOverlay)
-
   return {
-    clearDragOverlay,
     collapsedCandidateIndicator,
     designPolicySpots,
-    dragOverlayHtml,
     dragVisualSlotScope,
     effectiveDragOverlayStyle,
     nodeLabel,
     overlayBoxes,
-    scheduleDragOverlay,
   }
 }

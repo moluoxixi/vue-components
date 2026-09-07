@@ -2,6 +2,7 @@
 
 import type { PageGraph, ProjectCommand } from '@moluoxixi/config-form-model'
 import type { DesignSurfaceExpose } from '../src/components/DesignSurface/types'
+import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { createComponentContractRegistry } from '@moluoxixi/config-form-model'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
@@ -67,6 +68,7 @@ function mountSurface() {
   const redo = vi.fn(() => true)
   const wrapper = mount(DesignSurface, {
     props: {
+      renderer: ConfigFormRenderer,
       commandControl: { execute, preview: () => undefined },
       componentRegistry,
       graph,
@@ -79,7 +81,6 @@ function mountSurface() {
       },
       pageId: 'home',
       registry,
-      runtimeRenderer: { fields: [] },
     },
     slots: {
       properties: () => h('button', { 'data-test': 'setter-button' }, 'Setter action'),

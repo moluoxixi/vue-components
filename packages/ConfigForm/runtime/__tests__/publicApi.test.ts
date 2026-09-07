@@ -1,6 +1,7 @@
 import type * as PublicApi from '../index'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import {
+  ConfigForm,
   ConfigFormError,
   ConfigFormRenderer,
   createConfigFormRendererExpose,
@@ -8,125 +9,23 @@ import {
 } from '../index'
 
 describe('public api', () => {
-  it('exposes defineField and defineFields helpers', () => {
-    type HasDefineField = 'defineField' extends keyof typeof PublicApi ? true : false
-    type HasDefineFields = 'defineFields' extends keyof typeof PublicApi ? true : false
-    type HasDefineFieldFor = 'defineFieldFor' extends keyof typeof PublicApi ? true : false
-    type HasFormRuntimeLocale = 'FormRuntimeLocale' extends keyof typeof PublicApi ? true : false
-    type HasFormRuntimeDebugEvent = 'FormRuntimeDebugEvent' extends keyof typeof PublicApi ? true : false
-    type HasFormRuntimeConflictStrategy = 'FormRuntimeConflictStrategy' extends keyof typeof PublicApi ? true : false
-    type HasFormRuntimePluginContext = 'FormRuntimePluginContext' extends keyof typeof PublicApi ? true : false
-    type HasFormDevtoolsBridge = 'FormDevtoolsBridge' extends keyof typeof PublicApi ? true : false
-    type HasFormRuntimeContext = 'FormRuntimeContext' extends keyof typeof PublicApi ? true : false
-    type HasCreateRuntimeContextInput = 'CreateRuntimeContextInput' extends keyof typeof PublicApi ? true : false
-    type HasFormRuntimeTransformContext = 'FormRuntimeTransformContext' extends keyof typeof PublicApi ? true : false
-    type HasFormRuntimeTransformContextInput = 'FormRuntimeTransformContextInput' extends keyof typeof PublicApi ? true : false
-    type HasRuntimeOptionsExtensions = 'extensions' extends keyof PublicApi.FormRuntimeOptions ? true : false
-    type HasRuntimeOptionsPlugins = 'plugins' extends keyof PublicApi.FormRuntimeOptions ? true : false
-    type HasRuntimeOptionsExpression = 'expression' extends keyof PublicApi.FormRuntimeOptions ? true : false
-    type HasConfigFormModelValue = 'modelValue' extends keyof PublicApi.ConfigFormProps ? true : false
-    type HasConfigFormDefaultValues = 'defaultValues' extends keyof PublicApi.ConfigFormProps ? true : false
-    type HasFieldConfigPlugins = 'plugins' extends keyof PublicApi.FieldConfig ? true : false
-    type HasExpr = 'expr' extends keyof typeof PublicApi ? true : false
-    type HasIsExpressionToken = 'isExpressionToken' extends keyof typeof PublicApi ? true : false
-    type HasIsFormRuntime = 'isFormRuntime' extends keyof typeof PublicApi ? true : false
-    type HasUseBem = 'useBem' extends keyof typeof PublicApi ? true : false
-    type HasUseNamespace = 'useNamespace' extends keyof typeof PublicApi ? true : false
-    type HasNormalizeField = 'normalizeField' extends keyof typeof PublicApi ? true : false
-    type HasNormalizeValidateOn = 'normalizeValidateOn' extends keyof typeof PublicApi ? true : false
-    type HasShouldValidateOn = 'shouldValidateOn' extends keyof typeof PublicApi ? true : false
-    type HasApplyFieldTransform = 'applyFieldTransform' extends keyof typeof PublicApi ? true : false
-    type HasAssertComponentNodeConfig = 'assertComponentNodeConfig' extends keyof typeof PublicApi ? true : false
-    type HasCollectFieldConfigs = 'collectFieldConfigs' extends keyof typeof PublicApi ? true : false
-    type HasIsFieldConfig = 'isFieldConfig' extends keyof typeof PublicApi ? true : false
-    type HasIsFormNodeConfig = 'isFormNodeConfig' extends keyof typeof PublicApi ? true : false
-    type HasCreateFormRuntime = 'createFormRuntime' extends keyof typeof PublicApi ? true : false
-    type HasCreateRuntimeToken = 'createRuntimeToken' extends keyof typeof PublicApi ? true : false
-    type HasIsRuntimeToken = 'isRuntimeToken' extends keyof typeof PublicApi ? true : false
-    type HasSlotPrimitive = 'SlotPrimitive' extends keyof typeof PublicApi ? true : false
-    type HasSlotRenderable = 'SlotRenderable' extends keyof typeof PublicApi ? true : false
-    type HasSlotRenderFn = 'SlotRenderFn' extends keyof typeof PublicApi ? true : false
-    type HasNormalizeFormRuntime = 'normalizeFormRuntime' extends keyof typeof PublicApi ? true : false
-    type HasProvideRuntime = 'provideRuntime' extends keyof typeof PublicApi ? true : false
-    type HasUseRuntime = 'useRuntime' extends keyof typeof PublicApi ? true : false
-    type HasConfigFormError = 'ConfigFormError' extends keyof typeof PublicApi ? true : false
-    type RuntimeProp = NonNullable<PublicApi.ConfigFormProps['runtime']>
-    type RuntimePropAcceptsOptions = PublicApi.FormRuntimeOptions extends RuntimeProp ? true : false
-    type EmitsUpdateModelValue = PublicApi.ConfigFormEmits extends {
-      (e: 'update:modelValue', values: Record<string, unknown>): void
-    } ? true : false
-    type UseFormHasRuntime = 'runtime' extends keyof PublicApi.UseFormOptions ? true : false
-    type UseFormHasInitialValues = 'initialValues' extends keyof PublicApi.UseFormOptions ? true : false
-    type UseFormHasDefaultValues = 'defaultValues' extends keyof PublicApi.UseFormOptions ? true : false
-    type TokenLikeConditionAllowed = { readonly __configFormToken: 'legacy' } extends PublicApi.FieldCondition ? true : false
+  it('exposes the canonical Renderer entry and field helpers', () => {
+    type RendererProps = PublicApi.ConfigFormProps<{ name: string }>
+    type RendererExpose = PublicApi.ConfigFormExpose<{ name: string }>
 
-    expectTypeOf<HasDefineField>().toEqualTypeOf<true>()
-    expectTypeOf<HasDefineFields>().toEqualTypeOf<true>()
-    expectTypeOf<HasDefineFieldFor>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormRuntimeLocale>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormRuntimeDebugEvent>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormRuntimeConflictStrategy>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormRuntimePluginContext>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormDevtoolsBridge>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormRuntimeContext>().toEqualTypeOf<false>()
-    expectTypeOf<HasCreateRuntimeContextInput>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormRuntimeTransformContext>().toEqualTypeOf<false>()
-    expectTypeOf<HasFormRuntimeTransformContextInput>().toEqualTypeOf<false>()
-    expectTypeOf<HasRuntimeOptionsExtensions>().toEqualTypeOf<false>()
-    expectTypeOf<HasRuntimeOptionsPlugins>().toEqualTypeOf<true>()
-    expectTypeOf<HasRuntimeOptionsExpression>().toEqualTypeOf<false>()
-    expectTypeOf<HasConfigFormModelValue>().toEqualTypeOf<false>()
-    expectTypeOf<HasConfigFormDefaultValues>().toEqualTypeOf<true>()
-    expectTypeOf<HasFieldConfigPlugins>().toEqualTypeOf<false>()
-    expectTypeOf<HasExpr>().toEqualTypeOf<false>()
-    expectTypeOf<HasIsExpressionToken>().toEqualTypeOf<false>()
-    expectTypeOf<HasIsFormRuntime>().toEqualTypeOf<false>()
-    expectTypeOf<HasUseBem>().toEqualTypeOf<false>()
-    expectTypeOf<HasUseNamespace>().toEqualTypeOf<false>()
-    expectTypeOf<HasNormalizeField>().toEqualTypeOf<false>()
-    expectTypeOf<HasNormalizeValidateOn>().toEqualTypeOf<false>()
-    expectTypeOf<HasShouldValidateOn>().toEqualTypeOf<false>()
-    expectTypeOf<HasApplyFieldTransform>().toEqualTypeOf<false>()
-    expectTypeOf<HasAssertComponentNodeConfig>().toEqualTypeOf<false>()
-    expectTypeOf<HasCollectFieldConfigs>().toEqualTypeOf<false>()
-    expectTypeOf<HasIsFieldConfig>().toEqualTypeOf<false>()
-    expectTypeOf<HasIsFormNodeConfig>().toEqualTypeOf<false>()
-    expectTypeOf<HasCreateFormRuntime>().toEqualTypeOf<false>()
-    expectTypeOf<HasCreateRuntimeToken>().toEqualTypeOf<false>()
-    expectTypeOf<HasIsRuntimeToken>().toEqualTypeOf<false>()
-    expectTypeOf<HasSlotPrimitive>().toEqualTypeOf<false>()
-    expectTypeOf<HasSlotRenderable>().toEqualTypeOf<false>()
-    expectTypeOf<HasSlotRenderFn>().toEqualTypeOf<false>()
-    expectTypeOf<HasNormalizeFormRuntime>().toEqualTypeOf<false>()
-    expectTypeOf<HasProvideRuntime>().toEqualTypeOf<false>()
-    expectTypeOf<HasUseRuntime>().toEqualTypeOf<false>()
-    expectTypeOf<HasConfigFormError>().toEqualTypeOf<true>()
-    expectTypeOf<RuntimePropAcceptsOptions>().toEqualTypeOf<true>()
-    expectTypeOf<EmitsUpdateModelValue>().toEqualTypeOf<false>()
-    expectTypeOf<UseFormHasRuntime>().toEqualTypeOf<false>()
-    expectTypeOf<UseFormHasInitialValues>().toEqualTypeOf<false>()
-    expectTypeOf<UseFormHasDefaultValues>().toEqualTypeOf<true>()
-    expectTypeOf<TokenLikeConditionAllowed>().toEqualTypeOf<false>()
-  })
-
-  it('exports a runtime error class with code and context', () => {
-    const error = new ConfigFormError('CONFIG_FORM_TEST', 'test message', { field: 'name' })
-
-    expect(error).toBeInstanceOf(Error)
-    expect(error).toBeInstanceOf(ConfigFormError)
-    expect(error.code).toBe('CONFIG_FORM_TEST')
-    expect(error.context).toEqual({ field: 'name' })
-  })
-
-  it('keeps the renderer value and type contracts on the package root', () => {
-    type RendererProps = PublicApi.ConfigFormRendererProps<{ name: string }>
-    type RendererExpose = PublicApi.ConfigFormRendererExpose<{ name: string }>
-
+    expect(ConfigForm).toBeDefined()
     expect(ConfigFormRenderer).toBeDefined()
     expect(createConfigFormRendererExpose).toBeTypeOf('function')
     expect(withConfigFormInstall).toBeTypeOf('function')
-    expectTypeOf<RendererProps['mode']>().toEqualTypeOf<PublicApi.ConfigFormRenderMode | undefined>()
-    expectTypeOf<RendererProps['editor']>().toEqualTypeOf<PublicApi.ConfigFormRuntimeEditorBridge<{ name: string }> | undefined>()
+    expectTypeOf<RendererProps['fields']>().not.toBeNever()
+    expectTypeOf<RendererProps['defaultValues']>().toEqualTypeOf<Partial<{ name: string }> | undefined>()
     expectTypeOf<RendererExpose['scrollToField']>().toBeFunction()
+  })
+
+  it('exports the current runtime error contract', () => {
+    const error = new ConfigFormError('CONFIG_FORM_TEST', 'test message', { field: 'name' })
+    expect(error).toBeInstanceOf(Error)
+    expect(error.code).toBe('CONFIG_FORM_TEST')
+    expect(error.context).toEqual({ field: 'name' })
   })
 })

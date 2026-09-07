@@ -1,0 +1,4 @@
+{"file":".trellis/spec/directory-structure.md","reason":"按职责保持模块与包的公开边界"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"同步模型、插件预处理和单一执行链"}
+{"file":".trellis/spec/config-form-core/frontend/architecture-documentation.md","reason":"同步当前架构文档并移除旧语义"}
+{"file":".trellis/spec/config-form-core/frontend/form-layout-settings.md","reason":"统一布局与字段语义"}

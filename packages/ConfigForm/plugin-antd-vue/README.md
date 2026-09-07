@@ -7,10 +7,14 @@ adapter 不直接引入 `ant-design-vue`，只读取组件对象上的 `name`。
 ```vue
 <script setup lang="ts">
 import type { FormRuntimeOptions } from '@moluoxixi/config-form'
-import { ConfigForm, defineField } from '@moluoxixi/config-form'
+import { ConfigForm } from '@moluoxixi/config-form'
+import { createConfigFormModel, defineField } from '@moluoxixi/config-form-headless'
+import { shallowRef } from 'vue'
 import { createAntdVuePlugin } from '@moluoxixi/config-form-plugin-antd-vue'
 import Input from 'ant-design-vue/es/input'
 import Switch from 'ant-design-vue/es/switch'
+
+const model = createConfigFormModel(shallowRef<Record<string, unknown>>({}))
 
 const runtime = {
   plugins: [createAntdVuePlugin()],
@@ -18,11 +22,13 @@ const runtime = {
 
 const fields = [
   defineField({
+    id: 'name',
     field: 'name',
     component: Input,
     props: { placeholder: '请输入姓名' },
   }),
   defineField({
+    id: 'enabled',
     field: 'enabled',
     component: Switch,
     defaultValue: true,
@@ -31,7 +37,7 @@ const fields = [
 </script>
 
 <template>
-  <ConfigForm :fields="fields" :runtime="runtime" />
+  <ConfigForm :model="model" :fields="fields" :runtime="runtime" />
 </template>
 ```
 

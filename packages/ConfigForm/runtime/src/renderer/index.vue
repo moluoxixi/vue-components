@@ -37,12 +37,11 @@ const props = withDefaults(defineProps<ConfigFormRendererProps<TValues>>(), {
 })
 
 const emit = defineEmits<ConfigFormRendererEmits<TValues>>()
-const controlledModel = defineModel<TValues>({ required: true })
 const attrs = useAttrs()
 const formRef = useTemplateRef<HTMLFormElement>('formRef')
 const formId = useId()
 
-const controller = useRendererController({ controlledModel, emit, props })
+const controller = useRendererController({ emit, props })
 const { meta, model, resetFields, submit } = controller
 const editorBridge = useRuntimeEditorBridge({ props })
 const designGuard = useDesignInteractionGuard({

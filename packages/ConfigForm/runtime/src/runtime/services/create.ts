@@ -5,15 +5,12 @@ import type {
   FormRuntimePlugin,
   ReadonlyAdapterRegistry,
 } from '../types'
-import FormLayout from '../../components/FormLayout'
 import { ConfigFormError } from '../../errors'
 import { assertSafeRecordKey } from '../../utils/object'
 import { createFieldPipeline } from './transform'
 
 /** 内置组件注册表；用户 components 可以覆盖内置 key，插件不能覆盖用户 key。 */
-const BUILT_IN_COMPONENTS: ComponentRegistry = {
-  FormLayout,
-}
+const BUILT_IN_COMPONENTS: ComponentRegistry = {}
 
 /** 创建表单运行时实例，合并组件注册和字段生命周期插件。 */
 export function createFormRuntime(runtimeConfig: FormRuntimeOptions = {}): FormRuntime {

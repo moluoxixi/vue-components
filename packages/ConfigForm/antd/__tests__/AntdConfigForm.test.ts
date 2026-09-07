@@ -1,10 +1,10 @@
 import type { Component } from 'vue'
 import type { AntdConfigFormExpose } from '../src/types'
-import { defineField, defineFields } from '@moluoxixi/config-form-headless'
+import { createConfigFormModel, defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
 import { Input, InputNumber, Segmented, Select, Switch } from 'ant-design-vue'
 import { describe, expect, it } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, shallowRef } from 'vue'
 import { z } from 'zod'
 import {
   ANTD_CONFIG_FORM_COMPONENTS,
@@ -92,7 +92,7 @@ describe('antd config form', () => {
       props: {
         fields: [],
         formAttrs: { 'data-form-attrs': 'true', 'id': 'form-attrs-id' },
-        modelValue: { name: '', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })),
       },
     })
 
@@ -127,7 +127,7 @@ describe('antd config form', () => {
       }),
     ]
     const wrapper = mount(AntdConfigForm, {
-      props: { fields, modelValue: { name: '', status: 'locked' } },
+      props: { fields, model: createConfigFormModel(shallowRef({ name: '', status: 'locked' })) },
     })
 
     expect(wrapper.find('form.mx-antd-config-form').exists()).toBe(true)
@@ -151,13 +151,13 @@ describe('antd config form', () => {
       props: {
         components: { text: InputStub },
         fields: [defineField<UserForm>({ component: 'text', field: 'name', id: 'name', label: '姓名' })],
-        modelValue: { name: '', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })),
       },
     })
 
     await wrapper.get<HTMLInputElement>('[data-testid="antd-input-stub"]').setValue('Ada')
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'name', value: 'Ada' })
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ name: 'Ada', status: 'draft' }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ name: 'Ada', status: 'draft' }])
   })
 
   it('renders adapter defaults for every semantic key and applies native bindings', async () => {
@@ -176,7 +176,7 @@ describe('antd config form', () => {
           defineField<SemanticForm>({ component: 'text', field: 'name', id: 'name' }),
           defineField<SemanticForm>({ component: 'boolean', field: 'enabled', id: 'enabled' }),
         ],
-        modelValue: { enabled: false, name: '' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: '' })),
       },
     })
 
@@ -189,7 +189,7 @@ describe('antd config form', () => {
       [expect.objectContaining({ field: 'name', value: 'Ada' })],
       [expect.objectContaining({ field: 'enabled', value: true })],
     ])
-    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([{ enabled: true, name: 'Ada' }])
+    expect(wrapper.emitted('change')!.at(-1)).toEqual([{ enabled: true, name: 'Ada' }])
   })
 
   it('applies reactions through real Ant Design Vue bindings', async () => {
@@ -216,13 +216,13 @@ describe('antd config form', () => {
       defineField<SemanticForm>({ component: 'text', field: 'name', id: 'name', props: { placeholder: 'Static placeholder' } }),
     ]
     const wrapper = mount(AntdConfigForm, {
-      props: { fields, modelValue: { enabled: false, name: 'initial' } },
+      props: { fields, model: createConfigFormModel(shallowRef({ enabled: false, name: 'initial' })) },
     })
 
     wrapper.getComponent(Switch).vm.$emit('change', true)
     await flushPromises()
 
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true, name: 'linked' }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ enabled: true, name: 'linked' }])
     expect(wrapper.getComponent(Input).props()).toMatchObject({
       disabled: true,
       placeholder: 'Reaction placeholder',
@@ -243,8 +243,8 @@ describe('antd config form', () => {
     })]
     const Host = defineComponent({
       setup: () => () => h('div', [
-        h(AntdConfigForm, { fields, modelValue: { name: '', status: 'draft' } }),
-        h(AntdConfigForm, { fields, modelValue: { name: '', status: 'draft' } }),
+        h(AntdConfigForm, { fields, model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })) }),
+        h(AntdConfigForm, { fields, model: createConfigFormModel(shallowRef({ name: '', status: 'draft' })) }),
       ]),
     })
     const wrapper = mount(Host)
@@ -282,14 +282,14 @@ describe('antd config form', () => {
       label: '启用',
     })]
     const wrapper = mount(AntdConfigForm, {
-      props: { fields, modelValue: { enabled: false } },
+      props: { fields, model: createConfigFormModel(shallowRef({ enabled: false })) },
     })
 
     expect(wrapper.get('.mx-antd-config-form__row').classes()).toContain('mx-antd-config-form__row--grid')
     expect(wrapper.find('.mx-antd-config-form__cell').exists()).toBe(true)
     expect(wrapper.find('.ant-form').exists()).toBe(false)
     await wrapper.get('[data-testid="antd-switch-stub"]').trigger('click')
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ enabled: true }])
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
     expect(wrapper.find('.ant-form').exists()).toBe(false)
   })
@@ -305,13 +305,13 @@ describe('antd config form', () => {
           },
         },
         fields: [defineField<SwitchForm>({ component: 'boolean', field: 'enabled', id: 'enabled' })],
-        modelValue: { enabled: false },
+        model: createConfigFormModel(shallowRef({ enabled: false })),
       },
     })
 
     await wrapper.get('[data-testid="antd-switch-stub"]').trigger('click')
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ enabled: true }])
   })
 
   it('递归渲染 slot，并在字段无只读适配器时使用表单级 readonlyRender', async () => {
@@ -329,7 +329,7 @@ describe('antd config form', () => {
     const wrapper = mount(AntdConfigForm, {
       props: {
         fields,
-        modelValue: { name: 'Ada', status: 'enabled' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada', status: 'enabled' })),
         readonly: true,
         readonlyRender: ({ value }: { value: unknown }) => h('em', { 'data-testid': 'antd-readonly' }, `状态:${value}`),
       },
@@ -354,7 +354,7 @@ describe('antd config form', () => {
       requiredMessage: '请输入姓名',
     })]
     const wrapper = mount(AntdConfigForm, {
-      props: { fields, modelValue: initial },
+      props: { fields, model: createConfigFormModel(shallowRef(initial)) },
     })
     const form = wrapper.vm as unknown as AntdConfigFormExpose<UserForm>
 

@@ -5,7 +5,7 @@ import type {
   ConfigFormMeta,
   ConfigFormValues,
 } from '@moluoxixi/config-form-headless'
-import type { Component, ComputedRef, ShallowRef, VNodeChild } from 'vue'
+import type { Component, ComputedRef, Ref, ShallowRef, VNodeChild } from 'vue'
 import type {
   ConfigFormComponentRegistration,
   ConfigFormControlBinding,
@@ -27,7 +27,7 @@ export interface RendererControllerState<TValues extends ConfigFormValues>
   extends ConfigFormController<TValues> {
   errors: ShallowRef<ConfigFormErrors>
   meta: ShallowRef<ConfigFormMeta>
-  model: ShallowRef<TValues>
+  model: Ref<TValues>
   resolveReactionProps: (field: string) => ConfigFormAttrs
   resolveReactionState: (
     field: string,

@@ -1,4 +1,4 @@
-import type { ConfigFormReaction } from '@moluoxixi/config-form-core'
+import type { ConfigFormReaction, ConfigFormValidateTrigger } from '@moluoxixi/config-form-core'
 import type { Component, VNodeChild } from 'vue'
 import type { ZodTypeAny } from 'zod'
 import type { ConfigFormFieldMeta, ConfigFormMeta } from './meta'
@@ -35,7 +35,7 @@ export type ConfigFormComponentRegistry<TComponent = Component> = Record<
  * 并使用命名空间避免不同扩展之间发生 key 冲突。
  */
 export type ConfigFormExtensions = Record<string, unknown>
-export type ConfigFormValidateTrigger = 'submit' | 'blur' | 'change'
+export type { ConfigFormValidateTrigger } from '@moluoxixi/config-form-core'
 export type ConfigFormFieldValidatorResult = string | string[] | void | null | undefined
 
 export interface ConfigFormErrors {
