@@ -122,7 +122,7 @@ The raw `editor: Editor | null` and Editor event arguments remain compatibility 
 
 `toolbar` replaces default controls. `toolbar-before` and `toolbar-after` append controls while retaining the defaults. All receive `{ editor, disabled, readonly, commands, state, openLinkPanel }`.
 
-```vue
+```html
 <RichTextEditor v-model="content" :toolbar-items="['undo', 'redo', 'bold']">
   <template #toolbar-after="{ commands, state }">
     <button type="button" :disabled="!state.editable" @click="commands.clearContent()">Clear</button>

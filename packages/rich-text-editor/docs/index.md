@@ -120,7 +120,7 @@ const document = ref<JSONContent>({ type: 'doc', content: [{ type: 'paragraph' }
 
 `toolbar` 替换默认内容；`toolbar-before` / `toolbar-after` 在默认内容两侧追加工具。三个插槽共享 `{ editor, disabled, readonly, commands, state, openLinkPanel }`。
 
-```vue
+```html
 <RichTextEditor v-model="content" :toolbar-items="['undo', 'redo', 'bold', 'italic']">
   <template #toolbar-after="{ commands, state }">
     <button type="button" :disabled="!state.editable" @click="commands.clearContent()">清空</button>
