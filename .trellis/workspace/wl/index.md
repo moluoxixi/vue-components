@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 41
-- **Last Active**: 2026-09-06
+- **Total Sessions**: 42
+- **Last Active**: 2026-09-07
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1030 | Active |
+| `journal-1.md` | ~1053 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 42 | 2026-09-07 | 完成富文本编辑器 P1/P2 生产契约 | `a5e876f5`, `e3f4fcee` | `main` |
 | 41 | 2026-09-06 | 发布最新 ConfigForm Workbench 到 GitHub Pages | `5fbf2537` | `main` |
 | 40 | 2026-09-05 | Workbench 样式与 ConfigForm 治理收口 | `659f7921`, `f9bc37a0`, `a53e9f0d`, `4c3e3f39` | `main` |
 | 39 | 2026-09-05 | 完成文档审计与 Theme E2E 修复 | `6f0b4152`, `e96c4c95`, `f1d0efaa`, `ee7dfdeb`, `93d09112`, `3611018e`, `aa63d628`, `61e771da` | `main` |
