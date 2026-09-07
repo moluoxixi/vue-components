@@ -5,32 +5,19 @@ focus migration, theme isolation, and runtime preview boundaries.
 
 ## Designer Drag Preview And Panel Visibility
 
-The Design canvas must project a drag candidate into a `ProjectDraftSnapshot`, then render it through the same
-`ConfigFormRenderer` and Component Registry used after commit. Candidate opacity and editor feedback belong to the editor
+The Design canvas must project a drag candidate into a `ProjectDraftSnapshot`, then pass it to the required Runtime Host
+slot. The host renders it with the same backend and Component Registry used after commit. Candidate opacity and editor feedback belong to the editor
 bridge or overlay; do not replace the candidate with a hand-built input, card, or size approximation. Pointer up submits
 one semantic command. Pointer cancel, readonly teardown, and unmount discard the projection without changing host state.
 
-The pointer-following drag visual is a sanitized clone of the rendered candidate DOM. Its width, height, and pointer
-offset come from that measured candidate. Do not mount a second business component tree inside the fixed overlay. Empty
+The pointer-following drag visual is supplied by the required `dragVisual` host slot. Its width, height, and pointer
+offset come from the host's measured candidate geometry. Designer does not clone Runtime DOM or own a fallback renderer. Empty
 container hit areas and append positions are geometry-only overlays; they must not add a persistent trailing cell or
 placeholder to Runtime layout.
 
-`DesignerMaterialSpecimen` may lazily mount a visible palette item through `ConfigFormRenderer` with events intercepted by an
-editor bridge. A material that cannot form a legal standalone projection must use its explicit unavailable/design-policy
-state. It must not silently fall back to a fabricated control that suggests different props or dimensions. The specimen
-root must carry both `aria-hidden="true"` and native `inert`; `aria-hidden` alone leaves real descendant inputs focusable
-and creates an invalid accessibility tree.
-
-```vue
-<ConfigFormRenderer
-  v-if="projection"
-  v-model="specimenModel"
-  :fields="projection.fields"
-  :components="projection.components"
-  :editor="editorBridge"
-  mode="design"
-/>
-```
+The palette contains Registry icons and labels. Runtime specimens and their public style entry have been removed.
+A material that cannot form a legal projection uses its explicit unavailable/design-policy state. The drag overlay
+is both `aria-hidden` and `inert`; its geometry and content are owned by the same host integration.
 
 Workspace mode must be derived from the Designer root width observed by `ResizeObserver`, not from the browser viewport:
 

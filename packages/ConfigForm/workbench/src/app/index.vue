@@ -20,6 +20,7 @@ import {
   Undo2,
 } from '@lucide/vue'
 import { DesignSurface } from '@moluoxixi/config-form-designer'
+import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { DesignRuntimeHostFrame, PreviewDrawer, StudioLeftPanel, WorkbenchCommandHint, WorkbenchTopbar } from './components'
 import {
@@ -321,8 +322,8 @@ watch(recoveryDrafts, (drafts) => {
             :history-control="designerHistoryControl"
             :locale="localeOptions"
             :readonly="busy"
+            :renderer="ConfigFormRenderer"
             :registry="registry"
-            :runtime-renderer="designRuntime.artifact.plan.renderer"
             workspace-navigation="external"
             @configure-event="showComponentEventFlow"
             @configure-flow="showFlowDialog"

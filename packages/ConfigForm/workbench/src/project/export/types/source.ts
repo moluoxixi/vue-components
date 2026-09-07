@@ -1,3 +1,4 @@
+import type { CanonicalFieldDescriptor } from '@moluoxixi/config-form-compiler'
 import type { ConfigFormFlowExecutionPlan, ConfigFormReaction } from '@moluoxixi/config-form-core'
 import type {
   ConditionExpression,
@@ -5,7 +6,6 @@ import type {
   FieldNode,
   FormSettings,
   ModelJsonObject,
-  ModelJsonValue,
   RegisteredBinding,
   RegisteredEventAction,
   ValidateTrigger,
@@ -33,13 +33,8 @@ export interface StandaloneSourceNodeBase {
   reactions?: ConfigFormReaction[]
 }
 
-export interface StandaloneSourceFieldNode extends StandaloneSourceNodeBase {
+export interface StandaloneSourceFieldNode extends StandaloneSourceNodeBase, CanonicalFieldDescriptor {
   kind: 'field'
-  field: string
-  label?: string
-  defaultValue?: ModelJsonValue
-  validation?: NonNullable<FieldNode['validation']>
-  validateOn?: ValidateTrigger | ValidateTrigger[]
 }
 
 export interface StandaloneSourceLayoutNode extends StandaloneSourceNodeBase {

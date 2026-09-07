@@ -24,4 +24,26 @@ describe('config-form designer architecture boundary', () => {
 
     expect(violations).toEqual([])
   })
+
+  it('keeps concrete Runtime renderers outside Designer production code', () => {
+    const violations = sourceFiles(sourceRoot).flatMap((path) => {
+      const source = readFileSync(path, 'utf8')
+      return /(?:ConfigFormRenderer|ConfigFormRendererField|ConfigFormRuntimeEditorBridge)\b/.test(source)
+        ? [path]
+        : []
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps Vue backend adapters outside the Designer package', () => {
+    const violations = sourceFiles(sourceRoot).flatMap((path) => {
+      const source = readFileSync(path, 'utf8')
+      return /@moluoxixi\/config-form-vue-backend|@moluoxixi\/config-form['"/]/.test(source)
+        ? [path]
+        : []
+    })
+
+    expect(violations).toEqual([])
+  })
 })

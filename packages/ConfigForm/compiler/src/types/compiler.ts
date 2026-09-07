@@ -85,7 +85,7 @@ export interface CanonicalFieldDescriptor {
   label?: string
   defaultValue?: ModelJsonValue
   validation?: FieldNode['validation']
-  validateOn?: ValidateTrigger | ValidateTrigger[]
+  validateOn: ValidateTrigger[]
 }
 
 export interface CanonicalFieldNodeIR extends CanonicalNodeBase, CanonicalFieldDescriptor {

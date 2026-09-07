@@ -33,7 +33,6 @@ const graph: PageGraph = {
 }
 
 function mountInteractions() {
-  const clearDragOverlay = vi.fn()
   const readonly = ref(false)
   const selectedIds = ref<string[]>([])
   const onResize = vi.fn()
@@ -61,7 +60,6 @@ function mountInteractions() {
       })
       const nodeDrag = useDesignerCanvasNodeDrag({
         activeSession: () => dragController.session.value,
-        clearDragOverlay,
         closeNodeActionMenu: menu.closeNodeActionMenu,
         dragController,
         readonly: () => readonly.value,
@@ -99,7 +97,6 @@ function mountInteractions() {
   })
   const wrapper = mount(Harness)
   return {
-    clearDragOverlay,
     dragController,
     interactions,
     onResize,
@@ -230,7 +227,6 @@ describe('designer canvas interactions', () => {
     context.readonly.value = true
     await nextTick()
     expect(cancel).toHaveBeenCalledTimes(2)
-    expect(context.clearDragOverlay).toHaveBeenCalledTimes(1)
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(22)
     context.wrapper.unmount()
   })

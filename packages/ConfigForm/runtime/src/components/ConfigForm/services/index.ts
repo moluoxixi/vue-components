@@ -1,1 +1,1 @@
-export { default as ConfigForm } from './component'
+export { ConfigForm } from './component'

@@ -20,6 +20,7 @@ const props = defineProps<{
   fractionAria: string
   icon: Component
   readonly?: boolean
+  renderer: Component
   title: string
   toggleEntry?: DesignerPropertyFormEntry
 }>()
@@ -48,6 +49,7 @@ function commitEntry(value: unknown, setter: DesignerPropertySetterDefinition): 
         :components="components"
         :controls="controls"
         :readonly="readonly"
+        :renderer="renderer"
         @commit="emit('toggle', $event)"
       />
       <span v-else class="mx-config-form-designer__breakpoint-base">{{ baseLabel }}</span>
@@ -64,6 +66,7 @@ function commitEntry(value: unknown, setter: DesignerPropertySetterDefinition): 
       :components="components"
       :controls="controls"
       :readonly="readonly"
+      :renderer="renderer"
       @commit="commitEntry"
     />
   </section>

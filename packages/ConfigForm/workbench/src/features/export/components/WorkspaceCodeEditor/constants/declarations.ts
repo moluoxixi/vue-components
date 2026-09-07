@@ -295,6 +295,11 @@ declare module '@moluoxixi/config-form-headless' {
   export function defineField<TValues extends ConfigFormValues = ConfigFormValues, TComponent = unknown, TFieldAttrs extends object = ConfigFormAttrs, TCellAttrs extends object = ConfigFormAttrs>(field: ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormFieldInput<TValues, TComponent, TFieldAttrs, TCellAttrs> & ConfigFormField<TValues, TComponent, TFieldAttrs, TCellAttrs>
   export function defineField<TValues extends ConfigFormValues = ConfigFormValues, TComponent = unknown, TFieldAttrs extends object = ConfigFormAttrs, TCellAttrs extends object = ConfigFormAttrs>(field: ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs>): ConfigFormComponentNodeInput<TValues, TComponent, TFieldAttrs, TCellAttrs> & ConfigFormComponentNode<TValues, TComponent, TFieldAttrs, TCellAttrs>
   export function defineFields<TValues extends ConfigFormValues = ConfigFormValues>(): DefineConfigFormFieldsResult<TValues>
+  export interface ConfigFormModelAdapter<TValues extends ConfigFormValues = ConfigFormValues> {
+    read: () => TValues
+    write: (values: TValues) => void
+  }
+  export function createConfigFormModel<TValues extends ConfigFormValues>(source: { value: TValues }): ConfigFormModelAdapter<TValues>
 }
 declare module '@moluoxixi/config-form' {
   export {
@@ -304,6 +309,7 @@ declare module '@moluoxixi/config-form' {
   import type { Component } from 'vue'
   import type { ConfigFormNode, ConfigFormValues } from '@moluoxixi/config-form-headless'
   export interface ConfigFormProps<TValues extends ConfigFormValues = ConfigFormValues> {
+    model: { read: () => TValues, write: (values: TValues) => void }
     namespace?: string
     inline?: boolean
     columns?: number
@@ -319,10 +325,8 @@ declare module '@moluoxixi/config-form' {
     new <TValues extends ConfigFormValues = ConfigFormValues>(): { $props: ConfigFormProps<TValues> }
   }
   export const ConfigForm: ConfigFormComponent
-  export const FormLayout: Component
   export const ConfigFormRenderer: Component
   export const ConfigFormError: typeof Error
-  export function useForm<TValues extends ConfigFormValues = ConfigFormValues>(): Record<string, unknown>
 }
 `
 

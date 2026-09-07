@@ -171,10 +171,11 @@ export function createWorkbenchDesignSession(
       { compilation: projection.compilation },
       adapter.runtimeResolver,
     )
+    if (!result.success)
+      return undefined
     return {
       command,
       graph: projection.graph,
-      ...(result.success ? { renderer: result.artifact.plan.renderer } : {}),
     }
   }
 

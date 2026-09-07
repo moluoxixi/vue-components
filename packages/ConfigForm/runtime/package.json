@@ -57,6 +57,9 @@
     "vue": "^3.5.0",
     "zod": "^3.23.0"
   },
+  "dependencies": {
+    "@moluoxixi/config-form-core": "workspace:*"
+  },
   "devDependencies": {
     "@moluoxixi/config-form-headless": "workspace:*",
     "@vitejs/plugin-vue": "catalog:dev",

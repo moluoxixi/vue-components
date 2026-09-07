@@ -52,7 +52,6 @@ function mountCanvas(graph: PageGraph = emptyGraph) {
       graph,
       pageId: 'home',
       registry,
-      runtimeRenderer: { fields: [] },
     },
     slots: {
       runtime: '<div data-test-runtime />',

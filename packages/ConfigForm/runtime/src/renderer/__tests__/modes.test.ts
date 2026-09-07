@@ -1,9 +1,9 @@
 import type { Component } from 'vue'
 import type { ConfigFormRuntimeEventContext, ConfigFormRuntimeNodeMetadata } from '../types'
-import { defineField } from '@moluoxixi/config-form-headless'
+import { createConfigFormModel, defineField } from '@moluoxixi/config-form-headless'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, shallowRef } from 'vue'
 import { ConfigFormRenderer } from '../index'
 
 interface SurfaceValues {
@@ -44,7 +44,7 @@ describe('configFormRenderer design and preview modes', () => {
     const wrapper = mount(ConfigFormRenderer as Component, {
       props: {
         fields,
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -79,7 +79,7 @@ describe('configFormRenderer design and preview modes', () => {
         fields: [
           defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' }),
         ],
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -104,7 +104,7 @@ describe('configFormRenderer design and preview modes', () => {
         editor: { registerNode: firstRegister },
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
         mode: 'design',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -127,7 +127,7 @@ describe('configFormRenderer design and preview modes', () => {
           props: { tabindex: 3 },
         })],
         mode: 'preview',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
     const input = wrapper.get('[data-testid="surface-input"]')
@@ -152,7 +152,7 @@ describe('configFormRenderer design and preview modes', () => {
         },
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
         mode: 'design',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -174,12 +174,12 @@ describe('configFormRenderer design and preview modes', () => {
         editor,
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
         mode: 'design',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
     await wrapper.get('[data-testid="surface-input"]').setValue('Grace')
-    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(wrapper.emitted('change')).toBeUndefined()
     expect(intercepted[0]).toMatchObject({
       event: 'update:modelValue',
       metadata: { nodeId: 'name-node', path: 'fields.0' },
@@ -190,11 +190,11 @@ describe('configFormRenderer design and preview modes', () => {
         editor: { interceptEvent: () => false },
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
         mode: 'design',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
     await allowWrapper.get('[data-testid="surface-input"]').setValue('Grace')
-    expect(allowWrapper.emitted('update:modelValue')).toEqual([[{ name: 'Grace' }]])
+    expect(allowWrapper.emitted('change')).toEqual([[{ name: 'Grace' }]])
   })
 
   it('does not broadcast component events without a canonical Flow subscription', async () => {
@@ -202,7 +202,7 @@ describe('configFormRenderer design and preview modes', () => {
       props: {
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
         mode: 'preview',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -220,7 +220,7 @@ describe('configFormRenderer design and preview modes', () => {
           id: 'name-node',
         })],
         mode: 'preview',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -247,7 +247,7 @@ describe('configFormRenderer design and preview modes', () => {
           id: 'name-node',
         })],
         mode: 'design',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -269,7 +269,7 @@ describe('configFormRenderer design and preview modes', () => {
           props: { onClick },
         }],
         mode: 'preview',
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
       },
     })
 
@@ -284,7 +284,7 @@ describe('configFormRenderer design and preview modes', () => {
     const wrapper = mount(ConfigFormRenderer as Component, {
       props: {
         fields: [defineField<SurfaceValues>({ component: Input, field: 'name', id: 'name-node' })],
-        modelValue: { name: 'Ada' },
+        model: createConfigFormModel(shallowRef({ name: 'Ada' })),
         reactionProjection: {
           values: { name: 'Ada' },
           props: { name: { placeholder: 'Generated by flow' } },

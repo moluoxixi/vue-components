@@ -1,4 +1,4 @@
-import type { FormSettings, ResponsiveLayoutOverride } from '@moluoxixi/config-form-model'
+import type { FormSettings } from '@moluoxixi/config-form-model'
 import type {
   StandaloneSourceLayoutNode,
   StandaloneSourceNode,
@@ -6,55 +6,19 @@ import type {
   StandaloneSourceResolvedLayout,
   StandaloneSourceResolvedLayouts,
 } from '../types/source'
+import { resolveConfigFormLayout, resolveConfigFormNodeSpan } from '@moluoxixi/config-form-core'
 import { resolveSourceComponentDefinition } from './source-registry'
 
-function normalizeLayoutValue(value: number | undefined, defaultValue: number): number {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? Math.min(24, Math.max(1, Math.floor(value)))
-    : defaultValue
-}
-
-function normalizeLabelWidth(value: number | undefined, defaultValue?: number): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? Math.max(0, Math.floor(value))
-    : defaultValue
-}
-
-function applyLayoutOverride(
-  current: StandaloneSourceResolvedLayout,
-  override: ResponsiveLayoutOverride | undefined,
-): StandaloneSourceResolvedLayout {
-  const columns = normalizeLayoutValue(override?.columns, current.columns)
-  return {
-    columns,
-    fieldSpan: Math.min(columns, normalizeLayoutValue(override?.fieldSpan, current.fieldSpan)),
-    labelWidth: normalizeLabelWidth(override?.labelWidth, current.labelWidth),
-  }
-}
-
 export function resolveSourceLayouts(form: FormSettings): StandaloneSourceResolvedLayouts {
-  const columns = normalizeLayoutValue(form.columns, 24)
-  const desktop = {
-    columns,
-    fieldSpan: Math.min(columns, normalizeLayoutValue(form.fieldSpan, 24)),
-    labelWidth: normalizeLabelWidth(form.labelWidth),
-  }
-  const tablet = applyLayoutOverride(desktop, form.responsive?.tablet)
   return {
-    desktop,
-    tablet,
-    mobile: applyLayoutOverride(tablet, form.responsive?.mobile),
+    desktop: resolveConfigFormLayout(form.columns, form.fieldSpan, form.responsive, 'desktop', form.labelWidth),
+    tablet: resolveConfigFormLayout(form.columns, form.fieldSpan, form.responsive, 'tablet', form.labelWidth),
+    mobile: resolveConfigFormLayout(form.columns, form.fieldSpan, form.responsive, 'mobile', form.labelWidth),
   }
 }
 
-export function resolveSourceNodeSpan(
-  node: StandaloneSourceNode,
-  layout: StandaloneSourceResolvedLayout,
-): number {
-  const span = typeof node.placement.span === 'number'
-    ? node.placement.span
-    : layout.fieldSpan
-  return Math.min(layout.columns, normalizeLayoutValue(span, layout.fieldSpan))
+export function resolveSourceNodeSpan(node: StandaloneSourceNode, layout: StandaloneSourceResolvedLayout): number {
+  return resolveConfigFormNodeSpan(typeof node.placement.span === 'number' ? node.placement.span : undefined, layout)
 }
 
 export function sourceNodeStyle(

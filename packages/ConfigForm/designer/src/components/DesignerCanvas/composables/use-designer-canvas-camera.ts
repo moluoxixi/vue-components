@@ -1,6 +1,6 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
 import type { CSSProperties, Ref } from 'vue'
-import type { DesignerCanvasCamera } from '../types'
+import type { ConfigFormBreakpoint, DesignerCanvasCamera } from '../types'
+
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 const CANVAS_FRAME_WIDTHS: Record<ConfigFormBreakpoint, number> = {

@@ -1,4 +1,4 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
+import type { ConfigFormBreakpoint } from '../../DesignerCanvas/types'
 import type { DesignSurfaceExpose } from '../types'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 

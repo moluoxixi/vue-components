@@ -1,6 +1,5 @@
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ComponentContractRegistry, PageGraph } from '@moluoxixi/config-form-model'
-import type { VueRuntimeRendererConfig } from '@moluoxixi/config-form-vue-backend'
 import type { Component } from 'vue'
 import type { DesignerLocaleOptions } from '../../../locale'
 import type { DesignerRegistry } from '../../../registry'
@@ -17,6 +16,6 @@ export interface DesignSurfaceProps {
   pageId: string
   readonly?: boolean
   registry: DesignerRegistry
-  runtimeRenderer: VueRuntimeRendererConfig
+  renderer: Component
   workspaceNavigation?: 'external' | 'internal'
 }

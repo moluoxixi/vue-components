@@ -10,6 +10,7 @@ import type {
 } from '@moluoxixi/config-form-model'
 import type { CanonicalFieldNodeIR, CanonicalNodeIR, CanonicalNodePlacement, SemanticCompilerDiagnostic } from '../../../types'
 import type { CompilePageContext } from '../types'
+import { normalizeConfigFormValidateOn } from '@moluoxixi/config-form-core'
 import { clone, mergeComponentProps, semanticHash } from '../../../utils'
 
 export function resolveCanonicalPlacement(
@@ -179,7 +180,7 @@ function compileFieldSemanticNode(
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.defaultValue === undefined ? {} : { defaultValue: clone(node.defaultValue) }),
     ...(node.validation === undefined ? {} : { validation: clone(node.validation) }),
-    ...(node.validateOn === undefined ? {} : { validateOn: clone(node.validateOn) }),
+    validateOn: normalizeConfigFormValidateOn(node.validateOn),
   }
 }
 

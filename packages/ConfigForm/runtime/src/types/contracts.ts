@@ -1,7 +1,5 @@
-import type { ConfigFormComponentRegistry as HeadlessComponentRegistry } from '@moluoxixi/config-form-headless'
 import type { Component, VNodeChild } from 'vue'
 import type { ZodType, ZodTypeAny, ZodTypeDef } from 'zod'
-import type { FormRuntimeOptions } from '../runtime'
 
 /** 表单值的标准存储结构。 */
 export type FormValues = Record<string, unknown>
@@ -209,62 +207,6 @@ export type ResolvedFormNode = ResolvedField | ResolvedComponentField | Resolved
 
 /** 类型化表单模型中可用的字符串 key。 */
 export type FieldKey<T extends object> = Extract<keyof T, string>
-
-/** ConfigForm Vue 组件接收的 props。 */
-export interface ConfigFormProps<T extends object = FormValues> {
-  /** CSS 类名前缀，默认 "cf"。 */
-  namespace?: string
-  /** 在适配样式支持时以内联模式渲染字段。 */
-  inline?: boolean
-  /** grid 列数（仅非 inline 模式生效），默认 24。 */
-  columns?: number
-  /** 网格间距，默认 "8px 8px"。 */
-  gap?: string
-  /** 表单字段配置。 */
-  fields: FormNodeConfig[]
-  /** 传递给字段布局的 label 宽度。 */
-  labelWidth?: string | number
-  /** 表单初始值；仅在创建和 reset 时作为默认快照使用，不参与双向同步。 */
-  defaultValues?: Partial<T>
-  /** 表单运行时配置，用于组件注册和字段 runtime adapter 生命周期。 */
-  runtime?: FormRuntimeOptions
-  /** 便捷组件注册入口；与 runtime.components 合并，当前项优先。 */
-  components?: HeadlessComponentRegistry<Exclude<FieldConfig['component'], string>>
-}
-
-/** ConfigForm 对外发出的事件。 */
-export interface ConfigFormEmits<T extends object = FormValues> {
-  (e: 'submit', values: T): void
-  (e: 'error', errors: FormErrors): void
-}
-
-/** ConfigForm 通过模板 ref 暴露的方法。 */
-export interface ConfigFormExpose<T extends object = FormValues> {
-  /** 执行整表校验，并按结果触发 submit/error 事件。 */
-  submit: () => Promise<boolean>
-  /** 按 submit 触发时机校验全部字段。 */
-  validate: () => Promise<boolean>
-  /** 按指定触发时机校验单个字段。 */
-  validateField: (field: FieldKey<T> | string, trigger?: ValidateTrigger) => Promise<boolean>
-  /** 重置字段值为默认值并清空校验错误。 */
-  reset: () => void
-  /** 设置单个字段值并清除该字段校验错误。 */
-  setValue: {
-    <K extends FieldKey<T>>(field: K, value: T[K]): void
-    (field: string, value: unknown): void
-  }
-  /** 合并或替换表单值，并清除被写入字段的错误。 */
-  setValues: (values: Partial<T>, replace?: boolean) => void
-  /** 读取单个字段值。 */
-  getValue: {
-    <K extends FieldKey<T>>(field: K): T[K]
-    (field: string): unknown
-  }
-  /** 获取表单值的浅拷贝快照（保留 Date/Dayjs 等实例） */
-  getValues: () => T
-  /** 清除指定字段的校验错误；不传字段时清除全部 */
-  clearValidate: (field?: FieldKey<T> | string) => void
-}
 
 /** 按字段名索引的校验错误。 */
 export interface FormErrors {

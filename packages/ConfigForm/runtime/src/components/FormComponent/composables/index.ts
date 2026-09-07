@@ -1,1 +1,0 @@
-export { useFormComponent } from './useFormComponent'

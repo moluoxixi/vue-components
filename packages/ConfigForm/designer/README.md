@@ -40,7 +40,7 @@ export const designerRegistry = createDesignerRegistry({
 })
 ```
 
-`DesignSurface` 是完整工作区入口，接收受控的 `graph`、命令/历史控制器、组件合同 registry、设计器 registry 和 Vue runtime renderer。需要单独组合界面时，也可以使用 `DesignerCanvas`、`DesignerPalette` 与 `DesignerPropertyPanel`。
+`DesignSurface` 接收受控 `graph`、命令/历史控制器、组件合同 registry、设计器 registry，以及用于属性编辑的 `renderer` 组件。画布真实渲染通过 `runtime` 与 `dragVisual` 插槽由宿主提供；插槽只有图、模型、命令和 geometry/pointer bridge，不传递 Vue RuntimePlan。Workbench 在这些插槽中使用独立 iframe RuntimeHost。Designer 生产依赖不包含 Runtime 或 Vue backend；响应式规则来自 Core。
 
 ## 样式
 
@@ -50,7 +50,7 @@ export const designerRegistry = createDesignerRegistry({
 import '@moluoxixi/config-form-designer/styles'
 ```
 
-包同时提供 `design-surface/style`、`designer-canvas/style`、`designer-palette/style`、`designer-material-specimen/style` 和 `designer-property-panel/style` Sass 入口，供按需构建使用。
+包同时提供 `design-surface/style`、`designer-canvas/style`、`designer-palette/style` 和 `designer-property-panel/style` Sass 入口。宿主负责所注入属性 renderer 的样式。
 
 ## 开发验证
 

@@ -11,7 +11,7 @@
 
 ```vue
 <script setup lang="ts">
-import { defineFields } from '@moluoxixi/config-form-headless'
+import { createConfigFormModel, defineFields } from '@moluoxixi/config-form-headless'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
 import '@moluoxixi/config-form-element/styles'
 import { ElInput, ElTag } from 'element-plus'
@@ -38,10 +38,17 @@ const fields = [
     readonlyRender: ({ value }) => h(ElTag, null, () => value || '-'),
   }),
 ]
+const modelPort = createConfigFormModel(model)
 </script>
 
 <template>
-  <ElementConfigForm v-model="model" :fields="fields" :form-attrs="{ autocomplete: 'off' }" :columns="12" gap="16px" />
+  <ElementConfigForm
+    :model="modelPort"
+    :fields="fields"
+    :form-attrs="{ autocomplete: 'off' }"
+    :columns="12"
+    gap="16px"
+  />
 </template>
 ```
 

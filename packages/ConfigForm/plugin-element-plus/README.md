@@ -10,9 +10,13 @@ Element Plus 的 ConfigForm runtime adapter。它只负责组件级只读展示�
 ```vue
 <script setup lang="ts">
 import type { FormRuntimeOptions } from '@moluoxixi/config-form'
-import { ConfigForm, defineField } from '@moluoxixi/config-form'
+import { ConfigForm } from '@moluoxixi/config-form'
+import { createConfigFormModel, defineField } from '@moluoxixi/config-form-headless'
+import { shallowRef } from 'vue'
 import { createElementPlusPlugin } from '@moluoxixi/config-form-plugin-element-plus'
 import { ElSelectV2 } from 'element-plus'
+
+const model = createConfigFormModel(shallowRef<Record<string, unknown>>({}))
 
 const runtime = {
   plugins: [createElementPlusPlugin()],
@@ -20,6 +24,7 @@ const runtime = {
 
 const fields = [
   defineField({
+    id: 'role',
     field: 'role',
     component: ElSelectV2,
     readonly: true,
@@ -34,7 +39,7 @@ const fields = [
 </script>
 
 <template>
-  <ConfigForm :fields="fields" :runtime="runtime" />
+  <ConfigForm :model="model" :fields="fields" :runtime="runtime" />
 </template>
 ```
 

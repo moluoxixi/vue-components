@@ -309,9 +309,11 @@ describe('form runtime', () => {
       plugins: [{ components: { RuntimeInput: AlternateInput }, name: 'ui' }],
     })).toThrow(/Component key conflict: RuntimeInput/)
 
-    expect(() => createFormRuntime({
-      plugins: [{ components: { FormLayout: AlternateInput }, name: 'built-in-conflict' }],
-    })).toThrow(/Component key conflict: FormLayout/)
+    const pluginRuntime = createFormRuntime({
+      plugins: [{ components: { PluginInput: AlternateInput }, name: 'plugin-components' }],
+    })
+    expect(pluginRuntime.transformField(defineField({ id: 'fixture-plugin-input', component: 'PluginInput', field: 'name' })).component)
+      .toBe(AlternateInput)
 
     const unsafeComponents = Object.fromEntries([['__proto__', RuntimeInput]])
     expect(() => createFormRuntime({ components: unsafeComponents }))

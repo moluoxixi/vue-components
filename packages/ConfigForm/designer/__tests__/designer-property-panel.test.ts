@@ -1,6 +1,7 @@
 import type { ConfigFormFlow } from '@moluoxixi/config-form-core'
 import type { ComponentContract, PageGraph, PageNode } from '@moluoxixi/config-form-model'
 import type { DesignerMaterialDefinition, DesignerPropertySetterDefinition } from '../src/registry'
+import { ConfigFormRenderer } from '@moluoxixi/config-form'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
@@ -172,6 +173,7 @@ describe('designer property panel adaptive Inspector', () => {
     }
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([node]),
         node,
         material: fieldMaterial('test.input', [setter]),
@@ -209,6 +211,7 @@ describe('designer property panel adaptive Inspector', () => {
     }
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([node]),
         node,
         material: fieldMaterial('test.input', [setter]),
@@ -246,6 +249,7 @@ describe('designer property panel adaptive Inspector', () => {
     const wrapper = mount(DesignerPropertyPanel, {
       attachTo: document.body,
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([input, section]),
         node: input,
         nodes: [input],
@@ -366,6 +370,7 @@ describe('designer property panel adaptive Inspector', () => {
     ])
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([first, second]),
         node: first,
         nodes: [first, second],
@@ -393,6 +398,7 @@ describe('designer property panel adaptive Inspector', () => {
     const definition = contract('test.switch', 'field', { events: [{ name: 'change' }] })
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([node]),
         node,
         nodes: [node],
@@ -413,6 +419,7 @@ describe('designer property panel adaptive Inspector', () => {
     })
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([node]),
         node,
         nodes: [node],
@@ -442,6 +449,7 @@ describe('designer property panel adaptive Inspector', () => {
     const definition = contract('test.input', 'field', { events: [{ name: 'keep' }] })
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([node]),
         node,
         nodes: [node],
@@ -479,6 +487,7 @@ describe('designer property panel adaptive Inspector', () => {
     const secondContract = contract('test.second', 'field')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([first, second]),
         node: first,
         nodes: [first, second],
@@ -514,6 +523,7 @@ describe('designer property panel adaptive Inspector', () => {
     const secondContract = contract('test.second', 'field')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([first, second]),
         node: first,
         nodes: [first, second],
@@ -539,6 +549,7 @@ describe('designer property panel adaptive Inspector', () => {
     const definition = contract('test.input', 'field')
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([node], { name: 8 }, { columns: 24, fieldSpan: 12 }),
         node,
         nodes: [node],
@@ -567,6 +578,7 @@ describe('designer property panel adaptive Inspector', () => {
   it('shows the form field span fraction when no node is selected', () => {
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([], {}, { columns: 24, fieldSpan: 12 }),
         diagnostics: [],
       },
@@ -589,6 +601,7 @@ describe('designer property panel adaptive Inspector', () => {
     }
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([], {}),
         flows: [flow],
         diagnostics: [],
@@ -608,6 +621,7 @@ describe('designer property panel adaptive Inspector', () => {
   it('edits canonical pixel gap and label width through numeric controls', async () => {
     const wrapper = mount(DesignerPropertyPanel, {
       props: {
+        renderer: ConfigFormRenderer,
         graph: graph([], {}, { columns: 8, fieldSpan: 12, gap: '16px', labelPosition: 'left', labelWidth: 120 }),
         components: {
           number: { component: NumberControl, trigger: 'change' },

@@ -14,13 +14,11 @@ import type {
   WorkbenchRuntimeAdapter,
 } from '../types'
 import {
-  createDesignerVueRuntimeResolver,
-} from '@moluoxixi/config-form-designer'
-import {
   createComponentContractRegistry,
   createRegistryContractSnapshot,
 } from '@moluoxixi/config-form-model'
 import { WORKBENCH_SOURCE_LIBRARY_VERSIONS } from '../constants'
+import { createWorkbenchVueRuntimeResolver } from './runtime-resolver'
 
 const adapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchAdapter>>()
 const runtimeAdapterPromises = new Map<WorkbenchAdapterId, Promise<WorkbenchRuntimeAdapter>>()
@@ -86,7 +84,7 @@ function createWorkbenchRuntimeBindings(
   return {
     componentRegistry,
     registrySnapshot,
-    runtimeResolver: createDesignerVueRuntimeResolver(designerRegistry, registrySnapshot, capabilities),
+    runtimeResolver: createWorkbenchVueRuntimeResolver(designerRegistry, registrySnapshot, capabilities),
   }
 }
 

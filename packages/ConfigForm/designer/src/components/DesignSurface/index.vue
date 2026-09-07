@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
+import type { ConfigFormBreakpoint } from '../DesignerCanvas/types'
 import type { DesignerDropTarget } from '../../graph'
 import type { DesignerDragAnnouncement, DesignerDragSource } from '../DesignerCanvas'
 import type {
@@ -281,7 +281,6 @@ defineExpose<DesignSurfaceExpose>({
           :candidate-preview="commandControl.preview"
           :interactive="false"
           :model="runtimeProjection.values"
-          :runtime-renderer="runtimeRenderer"
           :reaction-props="runtimeProjection.props"
           :reaction-states="runtimeProjection.states"
           @select="handleCanvasSelect"
@@ -290,11 +289,11 @@ defineExpose<DesignSurfaceExpose>({
           @action="handleAction"
           @resize="handleResize"
         >
-          <template v-if="slots.runtime" #runtime="scope">
+          <template #runtime="scope">
             <slot name="runtime" v-bind="scope" />
           </template>
           <template #dragVisual="scope">
-            <slot v-if="slots.dragVisual" name="dragVisual" v-bind="scope" />
+            <slot name="dragVisual" v-bind="scope" />
           </template>
         </DesignerCanvas>
       </section>
@@ -322,6 +321,7 @@ defineExpose<DesignSurfaceExpose>({
             :validator-options="registry.listValidators()"
             :property-controls="registry.propertyControls"
             :readonly="readonly"
+            :renderer="renderer"
             @configure-event="emit('configureEvent', $event.nodeId, $event.eventName)"
             @configure-flow="emit('configureFlow', $event)"
             @remove-stored-config="handleRemoveStoredConfig"

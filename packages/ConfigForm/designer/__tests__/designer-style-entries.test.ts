@@ -38,11 +38,6 @@ describe('designer component Sass entries', () => {
       excludes: ['.mx-config-form-designer__canvas-sheet', '.mx-config-form-designer__property-heading'],
     },
     {
-      entry: 'src/components/DesignerMaterialSpecimen/style/index.scss',
-      includes: '.mx-config-form-designer__palette-item-preview',
-      excludes: ['.mx-config-form-designer__palette-item {', '.mx-config-form-designer__canvas-sheet'],
-    },
-    {
       entry: 'src/components/DesignerPropertyPanel/style/index.scss',
       includes: '.mx-config-form-designer__property-heading',
       excludes: ['.mx-config-form-designer__palette-item {', '.mx-config-form-designer__canvas-sheet'],
@@ -67,7 +62,6 @@ describe('designer component Sass entries', () => {
       'design-surface',
       'designer-canvas',
       'designer-palette',
-      'designer-material-specimen',
       'designer-property-panel',
     ]) {
       expect(manifest.exports[`./${component}/style`]?.sass).toMatch(/\/style\/index\.scss$/)
@@ -79,7 +73,6 @@ describe('designer component Sass entries', () => {
       'src/components/DesignSurface/style',
       'src/components/DesignerCanvas/style',
       'src/components/DesignerPalette/style',
-      'src/components/DesignerMaterialSpecimen/style',
       'src/components/DesignerPropertyPanel/style',
       'src/components/DesignerPropertyPanel/components/DesignerPropertyForm/style',
       'src/components/DesignerPropertyPanel/components/DesignerSetter/style',

@@ -1,0 +1,5 @@
+{"file":".trellis/spec/directory-structure.md","reason":"检查跨包依赖、公开入口和模块职责目录"}
+{"file":".trellis/spec/config-form/frontend/runtime-state-boundaries.md","reason":"核验唯一模型端口、插件投影、校验生命周期和 Source 执行一致性"}
+{"file":".trellis/spec/config-form-core/frontend/flow-runtime-consistency.md","reason":"核验 Flow 投影和异步执行合同"}
+{"file":".trellis/spec/config-form-designer/frontend/quality-guidelines.md","reason":"核验 Host 插槽、拖拽与已删除模板边界"}
+{"file":".trellis/spec/config-form-workbench/frontend/quality-guidelines.md","reason":"执行 Workbench E2E、可访问性和生成工程验证"}

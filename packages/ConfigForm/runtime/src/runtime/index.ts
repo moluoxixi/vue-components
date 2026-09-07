@@ -16,6 +16,7 @@ export {
   createFieldPipeline,
   createFormRuntime,
   createReadonlyRenderContext,
+  projectRuntimeFields,
   renderReadonlyValue,
   resolveReadonlyAdapter,
   resolveReadonlyAdapterKey,

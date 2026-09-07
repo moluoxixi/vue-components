@@ -37,11 +37,6 @@
       "style": "./src/components/DesignerPalette/style/index.scss",
       "default": "./src/components/DesignerPalette/style/index.scss"
     },
-    "./designer-material-specimen/style": {
-      "sass": "./src/components/DesignerMaterialSpecimen/style/index.scss",
-      "style": "./src/components/DesignerMaterialSpecimen/style/index.scss",
-      "default": "./src/components/DesignerMaterialSpecimen/style/index.scss"
-    },
     "./designer-property-panel/style": {
       "sass": "./src/components/DesignerPropertyPanel/style/index.scss",
       "style": "./src/components/DesignerPropertyPanel/style/index.scss",
@@ -69,14 +64,13 @@
   },
   "dependencies": {
     "@lucide/vue": "catalog:ui",
-    "@moluoxixi/config-form": "workspace:*",
     "@moluoxixi/config-form-core": "workspace:*",
     "@moluoxixi/config-form-headless": "workspace:*",
     "@moluoxixi/config-form-model": "workspace:*",
-    "@moluoxixi/config-form-vue-backend": "workspace:*",
     "@moluoxixi/zod3-to-rule": "workspace:*"
   },
   "devDependencies": {
+    "@moluoxixi/config-form": "workspace:*",
     "@vitejs/plugin-vue": "catalog:dev",
     "@vue/test-utils": "catalog:dev",
     "happy-dom": "catalog:dev",

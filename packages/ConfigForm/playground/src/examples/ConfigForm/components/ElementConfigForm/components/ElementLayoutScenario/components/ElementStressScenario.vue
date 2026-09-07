@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createConfigFormModel } from '@moluoxixi/config-form-headless'
 import type { ConfigFormValues } from '@moluoxixi/config-form-headless'
 import type { ElementStressValues } from '../../../types'
 import { ElementConfigForm } from '@moluoxixi/config-form-element'
@@ -20,6 +21,7 @@ const submittedText = computed(() => JSON.stringify({
 function submit(values: ConfigFormValues): void {
   submitted.value = values as ElementStressValues
 }
+const modelPort = createConfigFormModel(model)
 </script>
 
 <template>
@@ -29,7 +31,7 @@ function submit(values: ConfigFormValues): void {
       <span data-testid="element-layout-stress-count">{{ elementStressFields.length }} fields</span>
     </div>
     <ElementConfigForm
-      v-model="model"
+      :model="modelPort"
       data-testid="element-layout-stress-form"
       :field-span="6"
       :fields="elementStressFields"

@@ -69,14 +69,14 @@ vi.mock('@moluoxixi/config-form', async () => {
     ConfigFormRenderer: defineComponent({
       name: 'ConfigFormRendererStub',
       props: {
-        modelValue: {
+        model: {
           type: Object,
           required: true,
         },
       },
       setup(props, { expose }) {
         expose(runtimeController)
-        return () => h('pre', { 'data-runtime-model': '' }, JSON.stringify(props.modelValue))
+        return () => h('pre', { 'data-runtime-model': '' }, JSON.stringify(props.model.read()))
       },
     }),
   }

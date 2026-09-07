@@ -30,7 +30,6 @@ const props = withDefaults(defineProps<ElementConfigFormProps<TValues>>(), {
 
 const emit = defineEmits<ElementConfigFormEmits<TValues>>()
 defineSlots<ElementConfigFormSlots<TValues>>()
-const model = defineModel<TValues>({ required: true })
 const rendererRef = useTemplateRef<ConfigFormRendererExpose<TValues>>('rendererRef')
 const expose: ElementConfigFormExpose<TValues> = createConfigFormRendererExpose(rendererRef)
 const components = computed(() => ({
@@ -44,7 +43,6 @@ defineExpose(expose)
 <template>
   <ConfigFormRenderer
     ref="rendererRef"
-    v-model="model"
     v-bind="{ ...$attrs, ...props }"
     :components="components"
     namespace="mx-element-config-form"

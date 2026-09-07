@@ -70,7 +70,7 @@ function canonicalSourceNode(
       ...(node.label === undefined ? {} : { label: node.label }),
       ...(node.defaultValue === undefined ? {} : { defaultValue: structuredClone(node.defaultValue) }),
       ...(node.validation === undefined ? {} : { validation: structuredClone(node.validation) }),
-      ...(node.validateOn === undefined ? {} : { validateOn: structuredClone(node.validateOn) }),
+      validateOn: [...node.validateOn],
     }
   }
 

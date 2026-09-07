@@ -26,6 +26,7 @@ const elementFields = [
 ] satisfies ElementConfigFormProps<UserForm>['fields']
 
 const elementProps = {
+  model: { read: () => ({ name: '', status: '' }), write: (_values: UserForm) => {} },
   cellAttrs: { class: 'default-cell' },
   fields: elementFields,
   formAttrs: { autocomplete: 'off' },

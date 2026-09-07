@@ -32,7 +32,6 @@ const props = withDefaults(defineProps<AntdConfigFormProps<TValues>>(), {
 
 const emit = defineEmits<AntdConfigFormEmits<TValues>>()
 defineSlots<AntdConfigFormSlots<TValues>>()
-const model = defineModel<TValues>({ required: true })
 const rendererRef = useTemplateRef<ConfigFormRendererExpose<TValues>>('rendererRef')
 const expose: AntdConfigFormExpose<TValues> = createConfigFormRendererExpose(rendererRef)
 const components = computed(() => ({
@@ -50,7 +49,6 @@ defineExpose(expose)
 <template>
   <ConfigFormRenderer
     ref="rendererRef"
-    v-model="model"
     v-bind="{ ...$attrs, ...props }"
     :components="components"
     default-trigger="update:value"

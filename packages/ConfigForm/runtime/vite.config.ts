@@ -68,7 +68,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['@moluoxixi/config-form-headless', 'vue', 'zod'],
+      external: ['@moluoxixi/config-form-core', '@moluoxixi/config-form-headless', 'vue', 'zod'],
       output: {
         globals: {
           vue: 'Vue',

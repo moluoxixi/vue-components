@@ -34,6 +34,8 @@
     "zod": "catalog:dev"
   },
   "devDependencies": {
+    "@moluoxixi/config-form-headless": "workspace:*",
+    "@moluoxixi/zod3-to-rule": "workspace:*",
     "@axe-core/playwright": "catalog:",
     "@types/node": "catalog:type",
     "@vitejs/plugin-vue": "catalog:dev",

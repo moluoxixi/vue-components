@@ -49,15 +49,8 @@ function collectInitialValues(
 ): void {
   for (const node of nodes) {
     if (node.kind === 'field' && node.field) {
-      const definition = componentDefinition(node, registry)
-      const defaultValue = node.defaultValue !== undefined
-        ? node.defaultValue
-        : definition.binding.defaultValue
-      values[node.field] = defaultValue !== undefined
-        ? structuredClone(defaultValue)
-        : definition.binding.configComponent === 'boolean'
-          ? false
-          : definition.binding.configComponent === 'number' ? 0 : ''
+      if (node.defaultValue !== undefined)
+        values[node.field] = structuredClone(node.defaultValue)
     }
     if (node.kind === 'layout')
       Object.values(node.slots).forEach(children => collectInitialValues(children, values, registry))
@@ -91,10 +84,7 @@ function renderField(
   const safeTag = escapeHtml(source.tag)
   const nodeId = quote(node.id)
   const valueProp = definition.binding.valueProp ?? 'modelValue'
-  const modelDirective = valueProp === 'modelValue'
-    ? 'v-model'
-    : `v-model:${kebabCase(valueProp)}`
-  const updateEvent = `update:${kebabCase(valueProp)}`
+  const updateEvent = kebabCase(definition.binding.trigger ?? `update:${valueProp}`)
   const label = node.label
     ? `\n      <label class="source-field-label">${escapeHtml(node.label)}</label>`
     : ''
@@ -108,11 +98,11 @@ function renderField(
   const eventBindings = sourceEventBindings(node, [updateEvent, blurEvent])
   const updateBinding = `@${updateEvent}='handleFieldUpdate(${nodeId}, ${field}, ${quote(definition.binding.trigger ?? `update:${valueProp}`)}, $event)'`
   const blurBinding = `@${blurEvent}='handleFieldBlur(${nodeId}, ${field}, ${quote(definition.binding.blurTrigger ?? 'blur')}, $event)'`
-  const modelBinding = `${modelDirective}='model[fieldModelKeys[${field}]]'`
+  const modelBinding = `:${kebabCase(valueProp)}='model[fieldModelKeys[${field}]]' v-if='!fieldStates[${field}]?.readonly'`
   const control = optionChildren
     ? `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding} ${blurBinding}${eventBindings}${optionBinding}>${optionChildren}</${safeTag}>`
     : `<${safeTag} class="source-control" v-bind='fieldProps[${field}]' ${modelBinding} ${updateBinding} ${blurBinding}${eventBindings}${optionBinding} />`
-  return `    <div class="source-field${label ? ' has-label' : ''}" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}"${hiddenAttr}${styleAttr}>${label}\n      ${control}\n      <p v-if='fieldErrors[${field}]?.length' class="source-field-error" role="alert">{{ fieldErrors[${field}].join(', ') }}</p>\n    </div>`
+  return `    <div class="source-field${label ? ' has-label' : ''}" data-node-id="${safeId}" data-component="${escapeHtml(node.component)}" data-source-tag="${safeTag}"${hiddenAttr}${styleAttr}>${label}\n      ${control}\n      <span v-else aria-readonly="true">{{ model[fieldModelKeys[${field}]] }}</span>\n      <p v-if='!fieldStates[${field}]?.readonly && fieldErrors[${field}]?.length' class="source-field-error" role="alert">{{ fieldErrors[${field}].join(', ') }}</p>\n    </div>`
 }
 
 function renderContainer(
@@ -168,9 +158,10 @@ export function appSource(
   const fieldConditions: Record<string, StandaloneSourceNode['conditions']> = {}
   const nodeConditions: Record<string, StandaloneSourceNode['conditions']> = {}
   const nodeEvents: Record<string, StandaloneSourceNode['events']> = {}
+  const fieldAncestors: Record<string, string[]> = {}
   const runtimeReactions: ConfigFormReaction[] = []
   const layouts = resolveSourceLayouts(page.form)
-  const collectProps = (nodes: StandaloneSourceNode[]): void => {
+  const collectProps = (nodes: StandaloneSourceNode[], ancestors: string[] = []): void => {
     nodes.forEach((node) => {
       nodeEvents[node.id] = node.events
       if (node.reactions)
@@ -181,12 +172,8 @@ export function appSource(
         const target = node.field
         props[target] = sourceProps(node, registry)
         options[target] = fieldOptions(node)
-        const definition = componentDefinition(node, registry)
-        const valueBinding = definition.bindings.find(binding => binding.valueProp === (definition.binding.valueProp ?? 'modelValue'))
-        const bindingSource = valueBinding ? node.bindings[valueBinding.name]?.source.trim() : undefined
-        fieldModelKeys[target] = bindingSource && Object.hasOwn(initialValues, bindingSource)
-          ? bindingSource
-          : target
+        fieldModelKeys[target] = target
+        fieldAncestors[target] = ancestors
         fieldConditions[target] = node.conditions
         const requiredRule = node.validation?.rules.find(rule => rule.kind === 'required')
         fieldRequiredMessages[target] = requiredRule?.message ?? 'Required'
@@ -202,7 +189,7 @@ export function appSource(
         nodeConditions[node.id] = node.conditions
       }
       if (node.kind === 'layout')
-        Object.values(node.slots).forEach(collectProps)
+        Object.values(node.slots).forEach(children => collectProps(children, [...ancestors, node.id]))
     })
   }
   collectProps(page.root)
@@ -218,9 +205,11 @@ const fieldOptions = ${scriptJson(options, 2)} as Record<string, Array<{ label: 
 const fieldModelKeys = ${scriptJson(fieldModelKeys, 2)} as Record<string, string>
 const fieldRequiredMessages = ${scriptJson(fieldRequiredMessages, 2)} as Record<string, string>
 const fieldConditions = ${scriptJson(fieldConditions, 2)} as Record<string, Record<string, unknown> | undefined>
+const fieldAncestors = ${scriptJson(fieldAncestors, 2)} as Record<string, string[]>
 const nodeProps = ${scriptJson(nodeProps, 2)} as Record<string, Record<string, unknown>>
 const nodeStyles = ${scriptJson(nodeStyles, 2)} as Record<string, Record<string, string>>
 const nodeConditions = ${scriptJson(nodeConditions, 2)} as Record<string, Record<string, unknown> | undefined>
+const formReadonly = ref(${page.form.readonly === true})
 const nodeEvents = ${scriptJson(nodeEvents, 2)} as Record<string, Record<string, Array<{ action: string, [key: string]: unknown }>>>
 const runtimeReactions = ${scriptJson(runtimeReactions, 2)} as Array<{ when: unknown, then: Array<Record<string, unknown>>, else?: Array<Record<string, unknown>>, enabled?: boolean }>
 const fieldStates = reactive<Record<string, Record<string, boolean>>>({})
@@ -230,6 +219,7 @@ const fieldErrors = reactive<Record<string, string[]>>({})
 const submitted = ref('')
 const flowLifecycle = new AbortController()
 const validationGeneration: Record<string, number> = Object.create(null)
+let validationRevision = 0
 
 registerFlowAction('notify', async (input, context) => {
   if (context.signal.aborted)
@@ -240,6 +230,7 @@ registerFlowAction('notify', async (input, context) => {
 })
 
 function applyRuntimeProjection(): void {
+  validationRevision += 1
   const before = { ...model }
   const reactionValues = { ...model }
   const reactionProjection = projectRuntimeReactions(runtimeReactions, reactionValues)
@@ -256,13 +247,17 @@ function applyRuntimeProjection(): void {
     delete fieldStates[key]
 
   for (const [field, conditions] of Object.entries(fieldConditions)) {
-    if (!conditions)
-      continue
     const state: Record<string, boolean> = {}
+    if (formReadonly.value)
+      state.readonly = true
+    if (!conditions) {
+      fieldStates[field] = state
+      continue
+    }
     if (conditions.visible !== undefined)
       state.visible = evaluateRuntimeCondition(conditions.visible, model)
     if (conditions.hidden !== undefined)
-      state.visible = !evaluateRuntimeCondition(conditions.hidden, model)
+      state.visible = state.visible !== false && !evaluateRuntimeCondition(conditions.hidden, model)
     for (const key of ['disabled', 'readonly', 'required'] as const) {
       if (conditions[key] !== undefined)
         state[key] = evaluateRuntimeCondition(conditions[key], model)
@@ -283,7 +278,12 @@ function applyRuntimeProjection(): void {
       fieldStates[target] = { ...(fieldStates[target] ?? {}), ...nextState }
   }
 
-  for (const [field, state] of Object.entries(fieldStates)) {
+  for (const field of Object.keys(fieldModelKeys)) {
+    const state = fieldStates[field] ?? (fieldStates[field] = {})
+    state.visible = state.visible !== false && !(fieldAncestors[field] ?? []).some(id => nodeHidden[id])
+    state.readonly = formReadonly.value || state.readonly === true
+    if (state.visible === false || state.readonly || state.disabled)
+      delete fieldErrors[field]
     const nextProps = fieldProps[field] ?? (fieldProps[field] = {})
     if (state.disabled !== undefined)
       nextProps.disabled = state.disabled
@@ -304,7 +304,19 @@ function currentValidationValues(): Record<string, unknown> {
 }
 
 function valueMissing(value: unknown): boolean {
-  return value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0)
+  return value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0) || (Array.isArray(value) && value.length === 0)
+}
+
+function fieldActive(field: string): boolean {
+  const state = fieldStates[field]
+  return state?.visible !== false && state?.readonly !== true && state?.disabled !== true
+}
+
+function setFieldErrors(field: string, errors: string[]): void {
+  if (errors.length)
+    fieldErrors[field] = errors
+  else
+    delete fieldErrors[field]
 }
 
 function withRequiredError(field: string, errors: string[], values: Record<string, unknown>): string[] {
@@ -314,26 +326,48 @@ function withRequiredError(field: string, errors: string[], values: Record<strin
 }
 
 async function validateOn(field: string, trigger: GeneratedValidationTrigger): Promise<boolean> {
+  const revision = validationRevision
   const generation = (validationGeneration[field] ?? 0) + 1
   validationGeneration[field] = generation
+  if (!fieldActive(field)) {
+    delete fieldErrors[field]
+    return true
+  }
   const values = currentValidationValues()
+  const snapshot = JSON.stringify(values)
   const result = await validateFieldForTrigger(field, trigger, values)
+  if (flowLifecycle.signal.aborted || validationRevision !== revision || validationGeneration[field] !== generation
+    || snapshot !== JSON.stringify(currentValidationValues()) || !fieldActive(field))
+    return false
   if (result === undefined)
     return true
   const errors = withRequiredError(field, result, values)
-  if (validationGeneration[field] !== generation)
-    return errors.length === 0
-  fieldErrors[field] = errors
+  setFieldErrors(field, errors)
   return errors.length === 0
 }
 
 async function validateRequestedFields(fields: readonly string[]): Promise<boolean> {
-  const targets = [...new Set(fields)]
+  const revision = validationRevision
+  const targets = [...new Set(fields)].filter(fieldActive)
+  const generations = Object.fromEntries(targets.map((field) => {
+    const generation = (validationGeneration[field] ?? 0) + 1
+    validationGeneration[field] = generation
+    return [field, generation]
+  }))
+  for (const field of fields) {
+    if (!fieldActive(field))
+      delete fieldErrors[field]
+  }
   const values = currentValidationValues()
+  const snapshot = JSON.stringify(values)
   const result = await validateFields(targets, values)
+  if (flowLifecycle.signal.aborted || validationRevision !== revision
+    || snapshot !== JSON.stringify(currentValidationValues())
+    || targets.some(field => validationGeneration[field] !== generations[field] || !fieldActive(field)))
+    return false
   for (const field of targets)
-    fieldErrors[field] = withRequiredError(field, result[field] ?? [], values)
-  return targets.every(field => fieldErrors[field]?.length === 0)
+    setFieldErrors(field, withRequiredError(field, result[field] ?? [], values))
+  return targets.every(field => !fieldErrors[field]?.length)
 }
 
 async function runTrigger(trigger: FlowTrigger): Promise<void> {
@@ -382,6 +416,9 @@ async function runNodeEvent(nodeId: string, eventName: string, payload: unknown)
 }
 
 function handleFieldUpdate(nodeId: string, field: string, eventName: string, payload: unknown): void {
+  model[fieldModelKeys[field]] = payload
+  delete fieldErrors[field]
+  validationGeneration[field] = (validationGeneration[field] ?? 0) + 1
   runFieldChange(field)
   void runNodeEvent(nodeId, eventName, payload)
 }
@@ -392,13 +429,14 @@ function handleFieldBlur(nodeId: string, field: string, eventName: string, paylo
 }
 
 async function handleSubmit(): Promise<void> {
+  submitted.value = ''
   applyRuntimeProjection()
   const fields = [...new Set([...Object.keys(fieldValidation), ...flowValidation.value])]
-  if (!await validateRequestedFields(fields)) {
-    submitted.value = ''
+  if (!await validateRequestedFields(fields))
     return
-  }
-  submitted.value = JSON.stringify(model, null, 2)
+  submitted.value = JSON.stringify(Object.fromEntries(Object.keys(fieldModelKeys)
+    .filter(field => fieldStates[field]?.visible !== false && !fieldStates[field]?.disabled)
+    .map(field => [field, model[fieldModelKeys[field]]])), null, 2)
   void runTrigger({ kind: 'form.submit' })
 }
 
@@ -407,6 +445,11 @@ onMounted(() => {
   void runTrigger({ kind: 'page.mount' })
 })
 onBeforeUnmount(() => flowLifecycle.abort('page-unmounted'))
+defineExpose({
+  getValues: () => ({ ...model }),
+  getErrors: () => ({ ...fieldErrors }),
+  submit: handleSubmit,
+})
 </script>
 
 <template>

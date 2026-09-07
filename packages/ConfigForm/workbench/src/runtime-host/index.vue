@@ -26,6 +26,7 @@ const {
   submitValues,
   updateModel,
 } = protocol
+const model = { read: () => modelValue.value, write: updateModel }
 const {
   designEditor,
   handleDesignPointerDown,
@@ -53,7 +54,7 @@ const {
       <ConfigFormRenderer
         :key="runtimeSessionKey"
         ref="renderer"
-        :model-value="modelValue"
+        :model="model"
         :class="runtimeMode === 'design' ? 'page-design-form' : 'page-preview-form'"
         :mode="runtimeMode"
         :breakpoint="runtimeMode === 'design' ? design?.breakpoint : undefined"
@@ -63,7 +64,6 @@ const {
         :namespace="namespace"
         :reaction-projection="reactionProjection"
         v-bind="active.artifact.plan.renderer"
-        @update:model-value="updateModel"
         @submit="submitValues"
         @field-change="fieldChange"
         @errors-change="postRuntimeState"

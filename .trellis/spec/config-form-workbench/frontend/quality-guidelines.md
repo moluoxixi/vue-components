@@ -265,8 +265,8 @@ Required regression coverage:
 
 - The full axe scenario matrix reports zero violations without exclusions.
 - Provider controls remain readable immediately after light/dark switching, not only after animations settle.
-- Palette specimen containers are both `aria-hidden` and `inert`, so their real Runtime controls never enter the
-  accessibility or focus tree.
+- Host drag visual containers are both `aria-hidden` and `inert`, so their Runtime controls never enter the
+  accessibility or focus tree. Palette items only contain icons and names.
 - Primary export actions meet 4.5:1 in both themes; non-text borders and focus indicators meet 3:1.
 
 ---

@@ -1,3 +1,4 @@
+import type { ConfigFormReactionProjection } from '@moluoxixi/config-form-core'
 import type { Component } from 'vue'
 import type {
   ConfigFormFieldChangePayload,
@@ -17,7 +18,7 @@ import type {
 export interface ConfigFormModelAdapter<TValues extends ConfigFormValues = ConfigFormValues> {
   /** Controller operations always read the latest host model, including reactive replacements. */
   read: () => TValues
-  /** Write the complete next model back to the host. */
+  /** Synchronously commit the complete next model. read() must see it before write() returns. */
   write: (values: TValues) => void
 }
 
@@ -30,6 +31,8 @@ export interface ConfigFormControllerOptions<TValues extends ConfigFormValues = 
   defaultValues?: Partial<TValues>
   /** Read the current form-level readonly condition. */
   readonly?: () => ConfigFormCondition<TValues> | undefined
+  /** Host Flow state overlays participate in the same validation and submission policy. */
+  reactionStates?: () => ConfigFormReactionProjection<TValues>['states'] | undefined
   onFieldChange?: (payload: ConfigFormFieldChangePayload<TValues>) => void
   onChange?: (values: TValues) => void
   onErrorsChange?: (errors: ConfigFormErrors) => void

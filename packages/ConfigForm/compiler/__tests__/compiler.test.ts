@@ -577,6 +577,10 @@ describe('canonical project compiler', () => {
     expect(after.compilation.page.nodesById.section).not.toBe(before.compilation.page.nodesById.section)
     expect(after.compilation.page.nodesById.other).toBe(before.compilation.page.nodesById.other)
     expect(after.compilation.page.nodesById.name?.props.placeholder).toBe('Changed')
+    const full = compileCanonicalPage({ snapshot: next, registry: input.registry, pageId: 'home' })
+    expect(full.success).toBe(true)
+    if (full.success)
+      expect(after.compilation.page).toEqual(full.compilation.page)
   })
 
   it('updates only moved nodes and affected containers for structural changes', () => {

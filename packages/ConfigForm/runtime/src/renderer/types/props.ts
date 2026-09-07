@@ -1,5 +1,6 @@
 import type {
   ConfigFormCondition,
+  ConfigFormModelAdapter,
   ConfigFormReactionProjection,
   ConfigFormReadonlyRender,
   ConfigFormValues,
@@ -19,6 +20,8 @@ import type {
 import type { ConfigFormBreakpoint, ConfigFormResponsiveLayout } from './responsive'
 
 export interface ConfigFormRendererProps<TValues extends ConfigFormValues = ConfigFormValues> {
+  /** read() must access Vue reactive state; write() must commit synchronously. */
+  model: ConfigFormModelAdapter<TValues>
   fields: ConfigFormRendererNode<TValues>[]
   components?: ConfigFormComponentRegistry
   defaultValues?: Partial<TValues>

@@ -1,8 +1,8 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
 import type { ProjectCommand } from '@moluoxixi/config-form-model'
 import type { ComputedRef, Ref } from 'vue'
 import type { DesignerController } from '../../../composables'
 import type { DesignerDropTarget } from '../../../graph'
+import type { ConfigFormBreakpoint } from '../../DesignerCanvas/types'
 import type { DesignerNodeAction, DesignSurfaceProps } from '../types'
 import { computed, nextTick } from 'vue'
 import {

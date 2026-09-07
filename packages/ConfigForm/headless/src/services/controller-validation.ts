@@ -101,7 +101,7 @@ export function createControllerValidationService<TValues extends ConfigFormValu
 
     beginValidation([fieldName])
     try {
-      const fieldErrors = await validateConfigFormFieldRules(values[fieldName], values, state.field)
+      const fieldErrors = await validateConfigFormFieldRules(values[fieldName], values, { ...state.field, required: state.required })
       const current = latestFieldRequest.get(fieldName) === requestId
         && valuesRevision === revision
         && shallowEqualControllerValues(options.readValues(), values)
@@ -140,7 +140,7 @@ export function createControllerValidationService<TValues extends ConfigFormValu
         await validateConfigFormFieldRules(
           values[state.field.field],
           values,
-          state.field,
+          { ...state.field, required: state.required },
         ),
       ]))
 

@@ -9,18 +9,13 @@ import type {
   DesignerRuntimeSlotScope,
 } from './types'
 import { Workflow } from '@lucide/vue'
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { createInsertCommand, createMoveCommand, findDesignNode } from '../../graph'
 import { useDesignerLocale } from '../../locale'
 import { DesignerCommandHint } from '../DesignerCommandHint'
 import { createDesignerMaterialCandidate } from './services'
 import { DESIGNER_SESSION_KEY } from './services'
-import {
-  DesignerCanvasCameraControls,
-  DesignerCanvasDragVisual,
-  DesignerCanvasOverlay,
-  DesignerCanvasRuntime,
-} from './components'
+import { DesignerCanvasCameraControls, DesignerCanvasDragVisual, DesignerCanvasOverlay } from './components'
 import {
   useDesignerCanvasCamera,
   useDesignerCanvasDropTargets,
@@ -33,7 +28,7 @@ import {
 } from './composables'
 import { createDesignerCanvasSelection } from './services/canvas-selection'
 
-const slots = defineSlots<DesignerCanvasSlots>()
+defineSlots<DesignerCanvasSlots>()
 const props = defineProps<DesignerCanvasProps>()
 const emit = defineEmits<DesignerCanvasEmits>()
 
@@ -43,8 +38,6 @@ const dragController = designSession?.drag
 const canvasRef = ref<HTMLElement>()
 const cameraViewportRef = ref<HTMLElement>()
 const sheetRef = ref<HTMLElement>()
-const dragVisualRef = useTemplateRef<{ getElement: () => HTMLElement | undefined }>('dragVisual')
-const dragOverlayRef = computed(() => dragVisualRef.value?.getElement())
 const emptyCanvasDescriptionId = useId()
 const elementVersion = ref(0)
 let unregisterDropResolver: (() => void) | undefined
@@ -69,10 +62,8 @@ const {
   intrinsicFrameWidth,
   maxScale: CANVAS_MAX_SCALE,
   minScale: CANVAS_MIN_SCALE,
-  observeRuntimeElement,
   resetCamera,
   spacePressed,
-  unobserveRuntimeElement,
   updateCameraPan,
   zoomCamera,
 } = useDesignerCanvasCamera({
@@ -84,8 +75,6 @@ const {
   },
   onScaleChange: () => {
     elementVersion.value += 1
-    if (activeSession.value?.active && activeSession.value.input === 'pointer')
-      scheduleDragOverlay()
   },
   sheetRef,
 })
@@ -149,14 +138,8 @@ const activeCandidatePreview = computed(() => {
 const projectedGraph = computed(() => activeCandidatePreview.value?.graph ?? props.graph)
 const showEmptyCanvas = computed(() => projectedGraph.value.root.length === 0 && !candidateActive.value)
 
-const renderer = computed(() => {
-  return activeCandidatePreview.value?.renderer ?? props.runtimeRenderer
-})
-
 const {
-  editorBridge,
   externalGeometry,
-  nodeElements,
   pointerHandlers: runtimePointerHandlers,
   runtimeHostBridge,
   runtimeLayoutRect,
@@ -166,15 +149,10 @@ const {
   surfaceModel,
 } = useDesignerCanvasRuntime({
   cameraScale: () => camera.scale,
-  candidateId: () => candidateId.value,
-  candidateUsesFallback: () => candidateUsesFallback.value,
   elementVersion,
   focusNode: focusEditorNode,
-  graph: () => props.graph,
-  hasRuntimeSlot: () => Boolean(slots.runtime),
   interactive: () => Boolean(props.interactive),
   model: () => props.model,
-  observeElement: observeRuntimeElement,
   onGeometryChange: () => {
     elementVersion.value += 1
   },
@@ -185,13 +163,10 @@ const {
       emit('select', nodeId)
   },
   onUpdateField: (field, value) => emit('updateField', field, value),
-  projectedGraph: () => projectedGraph.value,
   publishGeometry: snapshot => designSession?.publishGeometry(snapshot),
-  registry: () => props.registry,
   selectedId: () => props.selectedId,
   selectedIds: () => props.selectedIds,
   sheetRef,
-  unobserveElement: unobserveRuntimeElement,
 })
 
 const runtimeSlotScope = computed<DesignerRuntimeSlotScope>(() => ({
@@ -206,7 +181,6 @@ const runtimeSlotScope = computed<DesignerRuntimeSlotScope>(() => ({
   model: surfaceModel.value,
   reactionProps: props.reactionProps ?? {},
   reactionStates: props.reactionStates ?? {},
-  renderer: renderer.value,
 }))
 
 const {
@@ -252,7 +226,6 @@ const {
   isNodeKeyboardDragging,
 } = useDesignerCanvasNodeDrag({
   activeSession: () => activeSession.value,
-  clearDragOverlay: () => clearDragOverlay(),
   closeNodeActionMenu,
   dragController,
   readonly: () => Boolean(props.readonly),
@@ -298,27 +271,21 @@ const {
 })
 
 const {
-  clearDragOverlay,
   collapsedCandidateIndicator,
   designPolicySpots,
-  dragOverlayHtml,
   dragVisualSlotScope,
   effectiveDragOverlayStyle,
   nodeLabel,
   overlayBoxes,
-  scheduleDragOverlay,
 } = useDesignerCanvasOverlay({
   activeSession: () => activeSession.value,
   cameraScale: () => camera.scale,
   candidateId: () => candidateId.value,
   candidateNode: () => candidateNode.value,
   controlledAdapterMessage: () => locale.t('node.controlledAdapter', 'Controlled design adapter active'),
-  dragOverlayRef,
   elementVersion,
   externalGeometry,
-  hasRuntimeSlot: () => Boolean(slots.runtime),
   materialTitle: material => locale.materialTitle(material),
-  nodeElements,
   projectedGraph: () => projectedGraph.value,
   registry: () => props.registry,
   runtimeNodeGeometryById,
@@ -339,14 +306,9 @@ function handleOverlayAction(...args: DesignerCanvasEmits['action']): void {
   emit('action', ...args)
 }
 
-watch([activeSession, elementVersion], ([session]) => {
-  if (session?.active) {
+watch(activeSession, (session) => {
+  if (session?.active)
     closeNodeActionMenu()
-  }
-  if (session?.active && session.input === 'pointer')
-    scheduleDragOverlay()
-  else
-    clearDragOverlay()
 }, { flush: 'post' })
 
 onMounted(() => {
@@ -360,7 +322,6 @@ unregisterKeyboardTargets = dragController?.registerKeyboardTargets(keyboardDrop
 onBeforeUnmount(() => {
   unregisterDropResolver?.()
   unregisterKeyboardTargets?.()
-  clearDragOverlay()
   designSession?.publishCandidate(undefined)
   designSession?.publishGeometry(undefined)
 })
@@ -415,16 +376,7 @@ onBeforeUnmount(() => {
           @selectstart="handleCanvasSelectStart"
           @keydown.capture="handleCanvasKeydown"
         >
-          <slot name="runtime" v-bind="runtimeSlotScope">
-            <DesignerCanvasRuntime
-              v-model="surfaceModel"
-              :renderer="renderer"
-              :namespace="registry.rendererNamespace"
-              :breakpoint="breakpoint"
-              :editor="editorBridge"
-              :interactive="Boolean(interactive)"
-            />
-          </slot>
+          <slot name="runtime" v-bind="runtimeSlotScope" />
 
           <div v-if="showEmptyCanvas" :id="emptyCanvasDescriptionId" class="mx-config-form-designer__canvas-empty">
             {{ locale.t('canvas.emptyGuide', 'Drag or click a component on the left to add a field') }}
@@ -475,12 +427,10 @@ onBeforeUnmount(() => {
       @zoom-out="zoomCamera('out')"
     />
     <DesignerCanvasDragVisual
-      ref="dragVisual"
-      :html="dragOverlayHtml"
+      v-if="dragVisualSlotScope"
       :overlay-style="effectiveDragOverlayStyle"
-      :use-slot="Boolean(slots.runtime && dragVisualSlotScope)"
     >
-      <slot v-if="slots.runtime && dragVisualSlotScope" name="dragVisual" v-bind="dragVisualSlotScope" />
+      <slot name="dragVisual" v-bind="dragVisualSlotScope" />
     </DesignerCanvasDragVisual>
   </main>
 </template>

@@ -1,8 +1,5 @@
-import type { ConfigFormRuntimeEditorBridge, ConfigFormRuntimeNodeMetadata } from '@moluoxixi/config-form'
-import type { PageGraph } from '@moluoxixi/config-form-model'
 import type { Ref } from 'vue'
 import type {
-  DesignerCanvasProps,
   DesignerRuntimeGeometrySnapshot,
   DesignerRuntimeHostBridge,
   DesignerRuntimeNodeGeometry,
@@ -11,41 +8,20 @@ import type {
   DesignerRuntimeRect,
 } from '../types'
 import { computed, ref } from 'vue'
-import { findDesignNode } from '../../../graph'
-import { resolveDesignerDesignPolicy } from '../../../registry'
 
 interface UseDesignerCanvasRuntimeOptions {
   cameraScale: () => number
-  candidateId: () => string | undefined
-  candidateUsesFallback: () => boolean
   elementVersion: Ref<number>
   focusNode: (nodeId: string) => void | Promise<void>
-  graph: () => PageGraph
-  hasRuntimeSlot: () => boolean
   interactive: () => boolean
   model: () => Record<string, unknown> | undefined
-  observeElement: (element: HTMLElement) => void
   onGeometryChange: () => void
   onSelect: (nodeId: string, mode?: 'range' | 'replace' | 'toggle') => void
   onUpdateField: (field: string, value: unknown) => void
-  projectedGraph: () => PageGraph
   publishGeometry: (snapshot: DesignerRuntimeGeometrySnapshot) => void
-  registry: () => DesignerCanvasProps['registry']
   selectedId: () => string | undefined
   selectedIds: () => string[] | undefined
   sheetRef: Ref<HTMLElement | undefined>
-  unobserveElement: (element: HTMLElement) => void
-}
-
-function domRectValue(rect: DOMRect): DesignerRuntimeRect {
-  return {
-    bottom: rect.bottom,
-    height: rect.height,
-    left: rect.left,
-    right: rect.right,
-    top: rect.top,
-    width: rect.width,
-  }
 }
 
 function finiteRect(rect: DesignerRuntimeRect): boolean {
@@ -54,7 +30,6 @@ function finiteRect(rect: DesignerRuntimeRect): boolean {
 }
 
 export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOptions) {
-  const nodeElements = new Map<string, HTMLElement>()
   const externalGeometry = ref<DesignerRuntimeGeometrySnapshot>()
   const externalGeometryAnchor = ref<{ left: number, scale: number, top: number }>()
   const pointerHandlers: DesignerRuntimePointerHandlers = {}
@@ -97,28 +72,12 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
     }
   }
 
-  function localNodeGeometry(): DesignerRuntimeNodeGeometry[] {
-    return [...nodeElements.entries()].map(([nodeId, element], order) => {
-      const location = findDesignNode(options.graph(), nodeId)
-      return {
-        depth: location?.path.length ?? 0,
-        nodeId,
-        order,
-        path: location?.path.join('.') ?? nodeId,
-        rect: domRectValue(element.getBoundingClientRect()),
-        ...(location?.slot ? { slot: location.slot } : {}),
-      }
-    })
-  }
-
   function runtimeNodeGeometry(): DesignerRuntimeNodeGeometry[] {
     void options.elementVersion.value
-    return options.hasRuntimeSlot()
-      ? (externalGeometry.value?.nodes.map(node => ({
-          ...node,
-          rect: currentExternalRect(node.rect),
-        })) ?? [])
-      : localNodeGeometry()
+    return externalGeometry.value?.nodes.map(node => ({
+      ...node,
+      rect: currentExternalRect(node.rect),
+    })) ?? []
   }
 
   function runtimeNodeGeometryById(nodeId: string): DesignerRuntimeNodeGeometry | undefined {
@@ -126,12 +85,8 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
   }
 
   function runtimeLayoutRect(): DesignerRuntimeRect | undefined {
-    if (options.hasRuntimeSlot()) {
-      const rect = externalGeometry.value?.layoutRect
-      return rect ? currentExternalRect(rect) : undefined
-    }
-    const row = options.sheetRef.value?.querySelector<HTMLElement>('[data-config-form-responsive-layout]')
-    return row ? domRectValue(row.getBoundingClientRect()) : undefined
+    const rect = externalGeometry.value?.layoutRect
+    return rect ? currentExternalRect(rect) : undefined
   }
 
   function updateRuntimeGeometry(snapshot: DesignerRuntimeGeometrySnapshot): void {
@@ -172,53 +127,8 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
     updateGeometry: updateRuntimeGeometry,
   }
 
-  const editorBridge = computed<ConfigFormRuntimeEditorBridge<Record<string, unknown>>>(() => {
-    const selection = selectedSet()
-    const primary = options.selectedId()
-    const dragCandidateId = options.candidateId()
-    return {
-      registerNode: (metadata, element) => {
-        nodeElements.set(metadata.nodeId, element)
-        options.observeElement(element)
-        options.onGeometryChange()
-        return () => {
-          if (nodeElements.get(metadata.nodeId) === element)
-            nodeElements.delete(metadata.nodeId)
-          options.unobserveElement(element)
-          options.onGeometryChange()
-        }
-      },
-      getNodeAttrs: (metadata: ConfigFormRuntimeNodeMetadata<Record<string, unknown>>) => {
-        const graphNode = findDesignNode(options.projectedGraph(), metadata.nodeId)
-        const states = [
-          selection.has(metadata.nodeId) ? 'selected' : '',
-          primary === metadata.nodeId ? 'primary' : '',
-          dragCandidateId === metadata.nodeId ? 'candidate' : '',
-          dragCandidateId === metadata.nodeId && options.candidateUsesFallback() ? 'visual-source' : '',
-        ].filter(Boolean).join(' ')
-        return {
-          'data-config-node-state': states || undefined,
-          'data-designer-draggable': dragCandidateId === metadata.nodeId ? undefined : '',
-          'data-designer-span': graphNode?.placement.span,
-          'data-focus-node-id': metadata.nodeId,
-          'data-material': graphNode?.node.component,
-          'data-node-kind': graphNode?.node.kind,
-          'role': 'presentation',
-        }
-      },
-      interceptEvent: ({ metadata }) => {
-        const node = findDesignNode(options.projectedGraph(), metadata.nodeId)?.node
-        const material = node ? options.registry().getMaterial(node.component) : undefined
-        const policy = resolveDesignerDesignPolicy(material?.designPolicy)
-        return policy.interaction === 'blocked' || !options.interactive()
-      },
-    }
-  })
-
   return {
-    editorBridge,
     externalGeometry,
-    nodeElements,
     pointerHandlers,
     runtimeHostBridge,
     runtimeLayoutRect,

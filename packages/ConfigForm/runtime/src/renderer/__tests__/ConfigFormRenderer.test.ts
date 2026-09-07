@@ -5,10 +5,10 @@ import type {
   ConfigFormRendererField,
   ConfigFormRuntimeEditorBridge,
 } from '../types'
-import { defineField, defineFields } from '@moluoxixi/config-form-headless'
+import { createConfigFormModel, defineField, defineFields } from '@moluoxixi/config-form-headless'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick, ref } from 'vue'
+import { defineComponent, h, nextTick, ref, shallowRef } from 'vue'
 import ConfigFormRendererSource from '../index.vue'
 
 const ConfigFormRenderer = ConfigFormRendererSource as Component
@@ -81,6 +81,28 @@ const SlotLeaf = defineComponent({
 })
 
 describe('config form renderer', () => {
+  it('commits consecutive synchronous writes to the host model and observes external overrides', async () => {
+    const values = shallowRef({ name: 'Ada', status: 'draft' })
+    const wrapper = mount(ConfigFormRenderer, { props: {
+      model: createConfigFormModel(values),
+      fields: [
+        { id: 'name', field: 'name', component: InputStub },
+        { id: 'status', field: 'status', component: InputStub },
+      ],
+    } })
+    const form = wrapper.vm as unknown as ConfigFormRendererExpose<typeof values.value>
+    form.setValue('name', 'Grace')
+    form.setValue('status', 'ready')
+    expect(values.value).toEqual({ name: 'Grace', status: 'ready' })
+    expect(form.getMeta().dirty).toBe(true)
+    form.setErrors({ name: ['old error'] })
+    values.value = { name: 'External', status: 'override' }
+    expect(form.getErrors()).toEqual({})
+    expect(form.getValues()).toEqual(values.value)
+    await nextTick()
+    expect(wrapper.get('input').element.value).toBe('External')
+  })
+
   it('synchronizes controlled model replacements without recursive update feedback', async () => {
     const model = ref<TestValues>({ enabled: false, name: 'Ada', status: 'draft' })
     const handleUpdate = vi.fn((values: TestValues) => {
@@ -88,9 +110,9 @@ describe('config form renderer', () => {
     })
     const Host = defineComponent({
       setup: () => () => h(ConfigFormRenderer, {
-        'fields': [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-1', component: InputStub, field: 'name' })],
-        'modelValue': model.value,
-        'onUpdate:modelValue': handleUpdate,
+        fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-1', component: InputStub, field: 'name' })],
+        model: createConfigFormModel(model),
+        onChange: handleUpdate,
       }),
     })
     const wrapper = mount(Host)
@@ -128,7 +150,7 @@ describe('config form renderer', () => {
         editor,
         fields,
         mode: 'design',
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'surface-form',
       },
     })
@@ -160,17 +182,17 @@ describe('config form renderer', () => {
         editor,
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-2', component: InputStub, field: 'name' })],
         mode: 'design',
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
       },
     })
 
     await wrapper.get('[data-testid="renderer-input"]').setValue('Grace')
-    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(wrapper.emitted('change')).toBeUndefined()
     expect(editor.interceptEvent).toHaveBeenCalledWith(expect.objectContaining({ event: 'update:modelValue' }))
 
     vi.mocked(editor.interceptEvent!).mockReturnValue(false)
     await wrapper.get('[data-testid="renderer-input"]').setValue('Lin')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ enabled: false, name: 'Lin', status: 'draft' }])
+    expect(wrapper.emitted('change')?.at(-1)).toEqual([{ enabled: false, name: 'Lin', status: 'draft' }])
   })
 
   it('同步写回受控模型，并统一处理 Grid、attrs、校验和 expose', async () => {
@@ -188,7 +210,7 @@ describe('config form renderer', () => {
         fields,
         formAttrs: { autocomplete: 'off', id: 'form-attrs-id' },
         gap: '8px',
-        modelValue: initial,
+        model: createConfigFormModel(shallowRef(initial)),
         namespace: 'test-form',
         layoutAttrs: { 'data-layout': 'root' },
       },
@@ -216,7 +238,7 @@ describe('config form renderer', () => {
     form.setValue('name', '')
     expect(form.getValue('name')).toBe('')
     expect(form.getValues()).toEqual({ ...initial, name: '' })
-    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([{ ...initial, name: '' }])
+    expect(wrapper.emitted('change')!.at(-1)).toEqual([{ ...initial, name: '' }])
     expect(await form.validate()).toBe(false)
     expect(form.getErrors()).toEqual({ name: ['Name is required'] })
 
@@ -233,7 +255,7 @@ describe('config form renderer', () => {
         columns: 24,
         fieldSpan: 24,
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-4', component: InputStub, field: 'name', span: 20 })],
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'responsive-form',
         responsive: {
           tablet: { columns: 12, fieldSpan: 6, labelWidth: 96 },
@@ -262,7 +284,7 @@ describe('config form renderer', () => {
         fields: [defineField<TestValues>({ id: 'label-width-field', component: InputStub, field: 'name', label: 'Name' })],
         labelPosition: 'left',
         labelWidth: 120,
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'label-width-form',
       },
     })
@@ -290,7 +312,7 @@ describe('config form renderer', () => {
         fieldSpan: 12,
         labelWidth: 120,
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-5', component: InputStub, field: 'name', span: 12 })],
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'pinned-breakpoint-form',
         responsive: {
           mobile: { columns: 1, fieldSpan: 1, labelWidth: 72 },
@@ -314,7 +336,7 @@ describe('config form renderer', () => {
           defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-8', component: InputStub, field: 'summary', span: 8 }),
           defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-9', component: InputStub, field: 'notes', span: 8 }),
         ],
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'root-span-form',
       },
     })
@@ -333,7 +355,7 @@ describe('config form renderer', () => {
         columns: 30,
         fieldSpan: 28,
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-10', component: InputStub, field: 'name' })],
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'bounded-form',
       },
     })
@@ -347,7 +369,7 @@ describe('config form renderer', () => {
       props: {
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-11', component: InputStub, field: 'name', label: 'Name' })],
         labelPosition: 'left',
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'layout-form',
       },
     })
@@ -371,7 +393,7 @@ describe('config form renderer', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-12', component: InputStub, field: 'name', validateOn: ['change', 'blur'] })],
-        modelValue: initial,
+        model: createConfigFormModel(shallowRef(initial)),
       },
       slots: {
         default: ({ meta }: { meta: { dirty: boolean, touched: boolean } }) => h('output', {
@@ -410,7 +432,7 @@ describe('config form renderer', () => {
     await nextTick()
     expect(form.getMeta()).toMatchObject({ dirty: false, touched: false })
 
-    await wrapper.setProps({ modelValue: { ...initial, name: 'External' } })
+    await wrapper.setProps({ model: createConfigFormModel(shallowRef({ ...initial, name: 'External' })) })
     expect(form.getMeta()).toMatchObject({ dirty: true, touched: false })
     expect(wrapper.emitted('metaChange')!.at(-1)![0]).toMatchObject({ dirty: true, touched: false })
 
@@ -425,8 +447,8 @@ describe('config form renderer', () => {
     const fields = [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-13', component: InputStub, field: 'name', label: 'Name', props: { 'aria-describedby': 'name-hint' }, required: true, requiredMessage: 'Required' })]
     const Host = defineComponent({
       setup: () => () => h('div', [
-        h(ConfigFormRenderer, { fields, modelValue: { enabled: false, name: '', status: '' } }),
-        h(ConfigFormRenderer, { fields, modelValue: { enabled: false, name: '', status: '' } }),
+        h(ConfigFormRenderer, { fields, model: createConfigFormModel(shallowRef({ enabled: false, name: '', status: '' })) }),
+        h(ConfigFormRenderer, { fields, model: createConfigFormModel(shallowRef({ enabled: false, name: '', status: '' })) }),
       ]),
     })
     const wrapper = mount(Host)
@@ -452,7 +474,7 @@ describe('config form renderer', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-14', component: InputStub, field: 'name', required: true, requiredMessage: 'Required without label' })],
-        modelValue: { enabled: false, name: '', status: '' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: '', status: '' })),
       },
     })
     const form = wrapper.vm as unknown as ConfigFormRendererExpose<TestValues>
@@ -476,7 +498,7 @@ describe('config form renderer', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields,
-        modelValue: { enabled: false, name: '', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: '', status: 'draft' })),
       },
     })
     const form = wrapper.vm as unknown as ConfigFormRendererExpose<TestValues>
@@ -489,11 +511,11 @@ describe('config form renderer', () => {
     expect(form.getErrors()).toEqual({ name: ['Restored'] })
     expect(wrapper.emitted('errorsChange')?.at(-1)).toEqual([{ name: ['Restored'] }])
 
-    await wrapper.setProps({ modelValue: { enabled: false, name: 'Grace', status: 'published' } })
+    await wrapper.setProps({ model: createConfigFormModel(shallowRef({ enabled: false, name: 'Grace', status: 'published' })) })
     expect(form.getErrors()).toEqual({})
 
     const pending = form.submit()
-    await wrapper.setProps({ modelValue: { enabled: false, name: 'Lin', status: 'archived' } })
+    await wrapper.setProps({ model: createConfigFormModel(shallowRef({ enabled: false, name: 'Lin', status: 'archived' })) })
     releaseValidation()
 
     await expect(pending).resolves.toBe(false)
@@ -512,7 +534,7 @@ describe('config form renderer', () => {
       props: {
         fields,
         inline: true,
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
         namespace: 'inline-form',
         layoutAttrs: { 'data-layout': 'inline' },
       },
@@ -531,7 +553,7 @@ describe('config form renderer', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [nameField, statusField],
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
       },
     })
 
@@ -560,7 +582,7 @@ describe('config form renderer', () => {
           },
         },
         fields,
-        modelValue: { enabled: false, name: 'Ada', status: 'active' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'active' })),
         reactionProjection: {
           props: { status: { placeholder: 'Reaction placeholder' } },
           states: {},
@@ -576,7 +598,7 @@ describe('config form renderer', () => {
     expect(wrapper.get('[data-testid="renderer-checked"]').text()).toBe('false')
     await wrapper.get('[data-testid="renderer-checked"]').trigger('click')
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true, name: 'Ada', status: 'active' }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ enabled: true, name: 'Ada', status: 'active' }])
     expect(wrapper.findAll('[data-testid="renderer-input"]')).toHaveLength(0)
     expect(wrapper.get('[data-testid="readonly-value"]').attributes()).toMatchObject({
       'data-extension': 'readonly',
@@ -608,7 +630,7 @@ describe('config form renderer', () => {
           { component: 'RegistryLeaf', extensions: { designer: { source: 'palette' } }, props: { text: 'Field override' } },
           { component: 'DirectLeaf', props: { text: 'Direct component' } },
         ],
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
       },
     })
 
@@ -622,7 +644,7 @@ describe('config form renderer', () => {
     await wrapper.get('[data-testid="renderer-checked"]').trigger('click')
     expect(registeredChange).toHaveBeenCalledWith(true)
     expect(wrapper.emitted('fieldChange')![0][0]).toMatchObject({ field: 'enabled', value: true })
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ enabled: true, name: 'Ada', status: 'draft' }])
+    expect(wrapper.emitted('change')![0]).toEqual([{ enabled: true, name: 'Ada', status: 'draft' }])
   })
 
   it('exposes extensions to configured field and container slot contexts without forwarding them', () => {
@@ -641,7 +663,7 @@ describe('config form renderer', () => {
             },
           },
         ],
-        modelValue: { enabled: false, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', status: 'draft' })),
       },
     })
 
@@ -680,7 +702,7 @@ describe('config form renderer', () => {
           defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-27', component: InputStub, field: 'notes' }),
           defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-28', component: InputStub, field: 'status' }),
         ],
-        modelValue: { enabled: false, name: 'Ada', notes: 'Visible', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: 'Ada', notes: 'Visible', status: 'draft' })),
         resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'
           ? { trigger: 'change', valueProp: 'checked' }
           : undefined,
@@ -694,7 +716,7 @@ describe('config form renderer', () => {
     await wrapper.get('[data-testid="renderer-checked"]').trigger('click')
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([{
+    expect(wrapper.emitted('change')![0]).toEqual([{
       enabled: true,
       name: 'Ada',
       notes: 'Visible',
@@ -720,7 +742,7 @@ describe('config form renderer', () => {
     const wrapper = mount(ConfigFormRenderer, {
       props: {
         fields: [source, name],
-        modelValue: { enabled: true, name: 'Ada', status: 'draft' },
+        model: createConfigFormModel(shallowRef({ enabled: true, name: 'Ada', status: 'draft' })),
         resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'
           ? { trigger: 'change', valueProp: 'checked' }
           : undefined,
@@ -742,7 +764,7 @@ describe('config form renderer', () => {
     })
     await nextTick()
 
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{
+    expect(wrapper.emitted('change')?.at(-1)).toEqual([{
       enabled: true,
       name: 'Ada',
       status: 'draft',
@@ -758,7 +780,7 @@ describe('config form renderer', () => {
           defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-31', component: CheckedStub, field: 'enabled' }),
           defineField<TestValues>({ id: 'fixture-node-packages-ConfigForm-runtime-src-renderer-tests-ConfigFormRenderer-test-ts-32', component: InputStub, field: 'name', label: 'Name', readonly: values => values.enabled, required: true, requiredMessage: 'Required' }),
         ],
-        modelValue: { enabled: false, name: '', status: '' },
+        model: createConfigFormModel(shallowRef({ enabled: false, name: '', status: '' })),
         resolveBinding: (field: ConfigFormRendererField<TestValues>) => field.field === 'enabled'
           ? { trigger: 'change', valueProp: 'checked' }
           : undefined,

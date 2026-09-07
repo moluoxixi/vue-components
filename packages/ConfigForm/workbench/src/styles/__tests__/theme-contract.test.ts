@@ -34,7 +34,7 @@ const appStylesheet = readFileSync(new URL('../../app/style/index.css', import.m
 const previewDrawerStylesheet = readFileSync(new URL('../../app/components/PreviewDrawer/style/index.css', import.meta.url), 'utf8')
 const designerStylesheet = compile(
   fileURLToPath(new URL('../../../../designer/src/styles.scss', import.meta.url)),
-  { loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
+  { charset: false, loadPaths: [fileURLToPath(new URL('../../../../designer/node_modules', import.meta.url))] },
 ).css
 
 interface CssRule {
@@ -84,7 +84,7 @@ function contrast(foreground: string, background: string): number {
 
 describe('workbench theme contract', () => {
   it('composes scoped style layers in stable cascade order', () => {
-    expect(stylesheetEntry).toBe(`${stylesheetLayers
+    expect(stylesheetEntry.replaceAll('\r\n', '\n')).toBe(`${stylesheetLayers
       .map(layer => `@import url(${layer.importPath});`)
       .join('\n')}\n`)
   })
@@ -258,10 +258,7 @@ describe('workbench theme contract', () => {
       '.mx-config-form-designer__palette-item:focus-within',
       designerStylesheet,
     )).toContain('outline: 2px solid color-mix(in srgb, var(--mx-designer-accent) 32%, transparent);')
-    expect(selectorBlock(
-      '.mx-config-form-designer__palette-item-preview',
-      designerStylesheet,
-    )).toContain('background: var(--mx-designer-runtime-surface);')
+    expect(designerStylesheet).not.toContain('.mx-config-form-designer__palette-item-preview')
     expect(selectorBlock(
       '.workbench-app[data-theme] .embedded-designer.mx-config-form-designer',
     )).toContain('--mx-designer-selection-bg: var(--wb-action-bg);')

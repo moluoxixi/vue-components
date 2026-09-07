@@ -1,367 +1,60 @@
 # @moluoxixi/config-form
 
-Vue 3 配置化表单运行时。`@moluoxixi/config-form` 根入口统一提供面向 schema、低代码和 UI plugin 的 Runtime/Plugin 路线，以及面向轻量 ConfigForm adapter 的受控 Vue DOM renderer。
+Vue 3 配置化表单。所有表单只通过 Headless controller 和 ConfigFormRenderer 执行；ConfigForm 是带字段预处理的薄组件。
 
-## 当前架构
-
-`ConfigFormRenderer` 从 `@moluoxixi/config-form` 根入口导出。它消费 `@moluoxixi/config-form-headless` 字段协议，统一生成原生 `<form>`、CSS Grid/Flex、字段壳、错误 DOM、ARIA、递归 slots、readonly 和 expose API。`config-form-element`、`config-form-antd-vue` 以及 `@moluoxixi/components` 中的轻量 ConfigForm 都只在它上面提供 UI 绑定预设与样式，不再使用 UI 库 Form/FormItem/Row/Col。
-
-根入口的 `ConfigForm`、runtime plugin 与 `useForm` 属于 Runtime/Plugin 路线，负责组件注册、字段转换和 UI plugin 扩展，后续可继续演进为 Pro/低代码能力。轻量 UI 适配器不依赖这套状态机，两条路线只共享明确的基础契约。
-
-轻量 `ConfigFormRenderer` 及其 UI adapters 同时支持 `validateOn` 的 change/blur 校验触发和独立的 dirty/touched 状态。renderer 发出 `metaChange`，在默认 slot 提供表单 `meta`、在字段 slot 提供字段 `meta`，并暴露 `getMeta`、`getFieldMeta` 和 `setTouched`；原生 form 与字段壳分别带有 `data-dirty` / `data-touched`。这些 API 属于 Headless/ConfigFormRenderer 路线，不会改变下文 Runtime/Plugin 根组件的 Events 与 Expose 契约。
-
-可序列化 `reactions` 属于 Headless/ConfigFormRenderer 路线：Core 提供纯协议与稳定 reducer，Renderer 将值、visible/disabled/readonly/required、组件 props 和校验投影到真实 Element Plus / Ant Design Vue 组件。包根导出的 `ConfigForm` / `useForm` 是独立的 Schema Runtime/Plugin 状态机，不执行这套 reaction 协议。
-
-## 特性
-
-- 配置驱动：通过 `fields` 数组声明表单字段。
-- UI 组件库无关：支持 Vue 对象组件、显式包装的 Vue 函数组件、ConfigForm render function、原生标签和 runtime 组件注册。
-- Zod + 自定义校验：字段支持 `schema`，也支持读取全量 values 的 `validator`。
-- 初始值快照：通过 `defaultValues` 提供初始值，内部值通过表单 ref API 读取和修改。
-- 只读展示：字段级 `readonly` 与 `readonlyAdapters` 分离，核心只负责状态和渲染分派，具体展示值由 runtime adapter 提供。
-- 灵活布局：内置 24 栅格和 inline 模式，并包含基础移动端适配。
-- 可发布样式：SCSS 使用命名空间变量，便于在业务侧覆盖。
-
-## 安装
-
-```bash
-pnpm add @moluoxixi/config-form zod
-```
-
-## 快速开始
+## 使用
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue'
-import { z } from 'zod'
-import { ConfigForm, defineFields, type ConfigFormExpose } from '@moluoxixi/config-form'
-import MyInput from './MyInput.vue'
+import { shallowRef } from 'vue'
+import { ConfigForm } from '@moluoxixi/config-form'
+import { createConfigFormModel, defineFields } from '@moluoxixi/config-form-headless'
+import { ElInput } from 'element-plus'
+import { createElementPlusPlugin } from '@moluoxixi/config-form-plugin-element-plus'
 
-interface LoginForm {
-  username: string
-  password: string
-  confirm: string
-}
-
-const formRef = ref<ConfigFormExpose<LoginForm>>()
-const defaultValues: Partial<LoginForm> = { username: 'Ada', password: '', confirm: '' }
-const { defineField } = defineFields<LoginForm>()
-
+const values = shallowRef({ name: '' })
+const model = createConfigFormModel(values)
+const { defineField } = defineFields<typeof values.value>()
 const fields = [
-  defineField({
-    field: 'username',
-    label: '用户名',
-    required: true,
-    requiredMessage: '请输入用户名',
-    schema: z.string().min(2, '至少 2 个字符'),
-    span: 12,
-    component: MyInput,
-    props: { placeholder: '请输入' },
-    validateOn: ['blur', 'change'],
-  }),
-  defineField({
-    field: 'password',
-    label: '密码',
-    schema: z.string().min(6, '至少 6 个字符'),
-    span: 12,
-    component: MyInput,
-    props: { type: 'password' },
-  }),
-  defineField({
-    field: 'confirm',
-    label: '确认密码',
-    component: MyInput,
-    span: 12,
-    validator: (value, values) => (value === values.password ? undefined : '两次密码不一致'),
-  }),
+  defineField({ id: 'name', field: 'name', component: ElInput, label: '姓名', required: true, validateOn: ['blur'] }),
 ]
-
-function onSubmit(values: LoginForm) {
-  console.log('提交', values)
-}
+const runtime = { plugins: [createElementPlusPlugin()] }
 </script>
 
 <template>
-  <ConfigForm ref="formRef" :default-values="defaultValues" :fields="fields" label-width="80px" @submit="onSubmit" />
+  <ConfigForm :model="model" :fields="fields" :runtime="runtime" />
 </template>
 ```
 
-## ConfigForm Props
+## 模型合同
 
-| Prop            | Type                               | Default     | Description                                                                               |
-| --------------- | ---------------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `namespace`     | `string`                           | `'cf'`      | 运行时 CSS 类名前缀                                                                       |
-| `inline`        | `boolean`                          | `false`     | 行内布局模式                                                                              |
-| `columns`       | `number`                           | `24`        | 非 inline 模式下的 grid 列数                                                              |
-| `gap`           | `string`                           | `'8px 8px'` | 布局行列间距                                                                              |
-| `fields`        | `FormNodeConfig[]`                 | -           | 字段/容器配置数组；`defineField` 返回纯配置                                               |
-| `labelWidth`    | `string \| number`                 | -           | 标签宽度，number 自动转 px                                                                |
-| `defaultValues` | `Partial<Record<string, unknown>>` | -           | 表单初始值快照；传泛型后为对应表单类型                                                    |
-| `runtime`       | `FormRuntimeOptions`               | -           | 可选运行时配置，用于组件注册、readonly adapter 和字段转换 adapter；省略时使用内置 runtime |
-| `components`    | `ComponentRegistry`                | -           | 组件 key 快捷注册；与 `runtime.components` 合并且当前 prop 优先                           |
+`model` 是必传的同步 `{ read, write }` 端口。可以使用 `createConfigFormModel(ref)`，也可以连接 Vue 响应式 store；`read()` 必须读取响应式状态，`write(next)` 返回前必须能读到新值。异步请求和审核在调用写入前完成。表单不维护模型镜像，不通过 `update:modelValue` 等待父组件确认。
 
-## Events
+`change`、`fieldChange`、`metaChange`、`errorsChange`、`submit`、`error` 是通知事件。`defaultValues` 定义 reset 基线，`resetFields()` 重置；`setValue`、`setValues`、`getValues`、`validateField`、`validate` 和 `submit` 都使用同一个模型端口。
 
-| Event    | Payload                   | Description                                    |
-| -------- | ------------------------- | ---------------------------------------------- |
-| `submit` | `Record<string, unknown>` | 校验通过后提交的字段值；传泛型后为对应表单类型 |
-| `error`  | `FormErrors`              | 校验失败时的错误信息                           |
+## 两个入口
 
-## Expose
+- `ConfigFormRenderer` 消费 Headless 字段节点，提供原生 form、响应式 Grid/Flex、ARIA、嵌套 slots、readonly、校验和 reaction。
+- `ConfigForm` 在进入 Renderer 前执行 `runtime.plugins`，合并组件绑定默认值、转换字段、解析嵌套节点，并将 readonly adapter 接为字段 `readonlyRender`。它没有第二套状态机。
 
-| Method                           | Returns                   | Description                                           |
-| -------------------------------- | ------------------------- | ----------------------------------------------------- |
-| `submit()`                       | `Promise<boolean>`        | 校验通过后触发 `submit`                               |
-| `validate()`                     | `Promise<boolean>`        | 校验整个表单                                          |
-| `validateField(field, trigger?)` | `Promise<boolean>`        | 校验指定字段                                          |
-| `reset()`                        | `void`                    | 重置为 `defaultValues` 初始快照和字段默认值并清空错误 |
-| `setValue(field, value)`         | `void`                    | 设置单个字段值                                        |
-| `setValues(values, replace?)`    | `void`                    | 批量设置字段值                                        |
-| `getValue(field)`                | `unknown`                 | 获取单个字段值；传泛型后可按字段 key 推导             |
-| `getValues()`                    | `Record<string, unknown>` | 获取浅拷贝快照；传泛型后为对应表单类型                |
-| `clearValidate(field?)`          | `void`                    | 清除指定字段错误；不传则清除全部                      |
+所有节点必须有稳定 `id`。组件与 slot 函数使用 Vue/Headless 当前合同；slot 上下文包含 `model`、`meta`、`slotProps`，字段 slot 另有 `field`、`value`、`setValue`。不再提供旧 FormLayout、RecursiveField、FormContext 或 useForm 模板链路。
 
-## Field 配置
+## 插件
 
-`defineField` 会优先从 `schema` 和 `defaultValue` 推导当前字段值类型；没有可推导来源时，字段值默认为 `unknown`。它只返回普通配置对象，不写入 symbol、隐藏属性或 defineProperty 标记。所有字段默认值、组件注册、runtime adapter 转换和 slot 内节点递归处理都由 `ConfigForm` 根组件统一完成。字段配置彼此独立，`validator` 的第二个参数是当前表单 values 快照，可用于必要的跨字段校验。
+`runtime` 接受 `FormRuntimeOptions`，可配置 `components`、`plugins` 与 `readonlyAdapters`。`getDefaultField`、`transformField` 只处理字段配置，不拥有表单值、校验队列或提交行为。字段显式配置优先于注册默认值；未知组件 key、重复插件名及冲突注册会抛出带 code/context 的 `ConfigFormError`。
 
-`required` 只表达必填标识和空值校验，字符串会先 trim 再判断是否为空；格式、长度和跨字段规则继续由 `schema` 或 `validator` 声明。
+底层纯预处理 API 从 `@moluoxixi/config-form/plugins` 导入。单独调用 `transformField` 不会执行校验或 reaction。
 
-如果需要把字段配置和业务模型绑定，把表单模型作为 `defineField<TValues>(...)` 的泛型传入。此时 `field` 会被限制为 `TValues` 的字符串 key，并且 `defaultValue`、`validator`、`transform`、`visible`、`disabled` 中的字段值和全量 values 使用同一个模型类型：
+## 样式与验证
 
-```ts
-interface LoginForm {
-  username: string
-  remember: boolean
-}
-
-const fields = [
-  defineField<LoginForm>({
-    field: 'username',
-    component: MyInput,
-    defaultValue: '',
-    validator: (value, values) => (values.remember && value.length === 0 ? '请输入用户名' : undefined),
-  }),
-]
-```
-
-如果想先把模型类型绑定到一个局部工厂，再从里面解构 `defineField` 复用同一份模型约束，可以先调用 `defineFields<TValues>()`：
-
-```ts
-const { defineField: defineLoginField } = defineFields<LoginForm>()
-
-const fields = [
-  defineLoginField({
-    field: 'username',
-    component: MyInput,
-    defaultValue: '',
-    validator: (value, values) => (values.remember && value.length === 0 ? '请输入用户名' : undefined),
-  }),
-  defineLoginField({
-    field: 'remember',
-    component: MySwitch,
-    defaultValue: false,
-  }),
-] as const
-```
-
-同一个表单内所有真实字段的 `field` 必须唯一；重复字段名会直接抛错，避免值、校验错误、显隐和禁用状态被覆盖。
-
-| Key                  | Type                                                       | Default               | Description                                                                               |
-| -------------------- | ---------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------- |
-| `field`              | `string`                                                   | -                     | 字段名，作为 values 的 key                                                                |
-| `label`              | `RuntimeText`                                              | -                     | 字段标签字符串                                                                            |
-| `required`           | `boolean \| (values) => boolean`                           | `false`               | 是否显示必填标识并执行空值校验                                                            |
-| `requiredMessage`    | `RuntimeText`                                              | `必填`                | 必填校验失败时展示的错误文案                                                              |
-| `schema`             | `ZodTypeAny`                                               | -                     | 字段 Zod 校验                                                                             |
-| `validator`          | `(value, values) => string \| string[] \| void \| Promise` | -                     | 自定义校验，可访问全量 values                                                             |
-| `span`               | `number`                                                   | `24`                  | 非 inline 模式下的 24 栅格跨度                                                            |
-| `component`          | `Component \| Function \| string`                          | -                     | 实际渲染组件                                                                              |
-| `props`              | `Record<string, unknown>`                                  | -                     | 传给组件的 props                                                                          |
-| `extensions`         | `Record<string, unknown>`                                  | -                     | 供 designer/adapter/plugin 消费的非渲染元数据，不透传给组件或 DOM                         |
-| `defaultValue`       | `unknown`                                                  | `undefined`           | 默认值；会参与 `defineField` 字段值推导                                                   |
-| `valueProp`          | `string`                                                   | `'modelValue'`        | 注入组件的值 prop                                                                         |
-| `trigger`            | `string`                                                   | `'update:modelValue'` | 接收组件值变化的事件名                                                                    |
-| `getValueFromEvent`  | `(...args) => unknown`                                     | 第一个事件参数        | 从组件事件参数中提取字段值；原生 `input` 可从 `event.target.value` 取值                   |
-| `blurTrigger`        | `string`                                                   | `'blur'`              | blur 校验事件名                                                                           |
-| `validateOn`         | `'submit' \| 'blur' \| 'change' \| array`                  | `'submit'`            | 校验触发时机，始终包含 submit                                                             |
-| `visible`            | `boolean \| (values) => boolean`                           | -                     | 动态显隐                                                                                  |
-| `disabled`           | `boolean \| (values) => boolean`                           | -                     | 动态禁用                                                                                  |
-| `readonly`           | `boolean \| (values) => boolean`                           | -                     | 动态只读；只读字段跳过校验但仍参与提交                                                    |
-| `transform`          | `(value, values) => unknown`                               | -                     | submit 前转换值                                                                           |
-| `submitWhenHidden`   | `boolean`                                                  | `false`               | 隐藏字段是否仍提交                                                                        |
-| `submitWhenDisabled` | `boolean`                                                  | `false`               | 禁用字段是否仍提交                                                                        |
-| `slots`              | `Record<string, SlotContent>`                              | -                     | 传给组件的插槽；仅支持普通对象配置、由 `defineField` 创建的容器组件节点或真实字段节点数组 |
-
-`slots` 中的对象配置可以是普通 config，也可以通过 `defineField(...)` 创建。`ConfigForm` 会统一递归处理这些配置，并按是否存在 `field` 区分语义：没有 `field` 的节点是容器/子组件，只渲染组件本体和插槽；存在 `field` 的节点是真实表单字段，会绑定表单值、校验、label 和错误展示。Radio / Checkbox 这类子组件通常不需要 `field`：
-
-slot 内容与顶层 `fields` 采用同一声明模式，支持节点配置、节点数组或 ConfigForm render function，不直接接收文本或 VNode。需要展示简单文本时，可用 render function，也可用普通节点配置承载文本 props，例如原生 `span` 的 `textContent`。
-
-```ts
-defineField({
-  field: 'gender',
-  label: '性别',
-  required: true,
-  requiredMessage: '请选择性别',
-  component: RadioGroup,
-  slots: {
-    default: [
-      defineField({
-        component: Radio,
-        props: { value: 'male' },
-        slots: {
-          default: defineField({
-            component: 'span',
-            props: { textContent: '男' },
-          }),
-        },
-      }),
-      defineField({
-        component: Radio,
-        props: { value: 'female' },
-        slots: {
-          default: defineField({
-            component: 'span',
-            props: { textContent: '女' },
-          }),
-        },
-      }),
-    ],
-  },
-})
-```
-
-## DIY Runtime
-
-`runtime` 是表单的开放扩展边界。这里的 transform 指字段配置转换管线，不是字段提交值的 `transform(value, values)`。字段始终是普通配置对象，`ConfigForm` 根组件会在渲染、校验和提交前统一递归处理顶层字段和 slots 内字段。处理后的字段再交给内部组件消费，表单状态通过 context provide 下发 `values`、`errors`、`getValue`、`setValue`、`visibilityMap`、`disabledMap` 等能力。
-
-字段处理管线固定为：
-
-1. `getFieldDefaults(field)` 按内置默认 adapter、用户 runtime adapter 的注册顺序收集默认配置片段，不合并用户字段声明。
-2. `transformField(field)` 合并默认片段与用户字段后，再按用户注册顺序执行 adapter `transformField(field)`。
-3. runtime 恢复用户在原字段上显式声明的顶层配置和 props，确保优先级为 `用户 > runtime adapter > 内置默认值`。
-4. runtime 解析已注册组件，并继续递归转换 slots 内的普通对象配置或 `defineField(...)` 配置。
-
-内置默认值 adapter 写在 `src/plugins/defaults/`，只产出默认配置片段，优先级最低；用户 runtime adapter 写在 `runtime.plugins`，可提供 `getDefaultField(field)`、`transformField(field)`、组件注册和 readonly adapter。
-
-只读展示由 `runtime.readonlyAdapters` 管理。核心在渲染阶段只负责把当前字段节点、当前值和表单快照交给适配器；如果组件名没有注册适配器，就直接使用原始值文本，不会把 readonly 语义重新塞回组件 props。
-
-```vue
-<script setup lang="ts">
-import { computed } from 'vue'
-import type { FormRuntimeOptions } from '@moluoxixi/config-form'
-import { ConfigForm, defineField } from '@moluoxixi/config-form'
-import { useI18n } from 'vue-i18n'
-import MyInput from './MyInput.vue'
-
-const { t } = useI18n()
-
-const runtimeOptions = {
-  components: {
-    MyInput: {
-      component: MyInput,
-      props: { clearable: true },
-      valueProp: 'value',
-      trigger: 'update:value',
-      blurTrigger: 'blur',
-    },
-  },
-  plugins: [
-    {
-      name: 'audit',
-      transformField: field =>
-        'field' in field
-          ? {
-              ...field,
-              props: {
-                ...field.props,
-                'data-field': field.field,
-              },
-            }
-          : undefined,
-    },
-  ],
-} satisfies FormRuntimeOptions
-
-const fields = computed(() => [
-  defineField({
-    field: 'username',
-    label: t('field.username'),
-    component: 'MyInput',
-    props: {
-      placeholder: t('field.username.placeholder'),
-    },
-    visible: values => values.role !== 'guest',
-  }),
-])
-</script>
-
-<template>
-  <ConfigForm :fields="fields" :runtime="runtimeOptions" />
-</template>
-```
-
-`<ConfigForm>` 的 `runtime` prop 只接收 `FormRuntimeOptions`，组件内部会创建实际 runtime 实例。runtime adapter 测试、底层解析和非组件场景应从 `@moluoxixi/config-form/plugins` 使用 `createFormRuntime(config)`，避免把 adapter 专用能力混入根入口。
-
-`runtime` 和 `runtime.plugins` 都是可选的。无外部 adapter 时仍支持直接传入 Vue 组件、原生标签、校验、递归 slot、提交和原始值只读展示；这不是另一个“无插件版”包。
-
-组件注册既可写成 `MyInput` 直接组件，也可写成包含 `component`、`props`、`valueProp`、`trigger`、`blurTrigger` 和 `getValueFromEvent` 的完整注册项。注册项提供默认值，字段自身的显式配置始终优先。
-
-普通函数保留为 ConfigForm render function，它的第一个参数是 `RenderContext`。Vue 函数组件必须显式包装，避免两种函数协议在运行时无法区分：
-
-```ts
-import type { FunctionalComponent } from 'vue'
-import { asVueFunctionalComponent } from '@moluoxixi/config-form'
-import { h } from 'vue'
-
-interface FunctionalInputProps {
-  modelValue?: string
-}
-
-type FunctionalInputEmits = Record<'update:modelValue', [value: string]>
-
-const FunctionalInputComponent: FunctionalComponent<FunctionalInputProps, FunctionalInputEmits> = (props, { emit }) => {
-  return h('input', {
-    value: props.modelValue,
-    onInput: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).value),
-  })
-}
-
-const FunctionalInput = asVueFunctionalComponent(FunctionalInputComponent)
-```
-
-扩展点：
-
-- `components`：注册字符串组件 key 和默认绑定协议，字段中可直接写 `component: 'MyInput'`；大写 key 未注册会抛错，原生标签如 `'input'` 可直接使用。
-- `plugins`：按用户注册顺序收集组件、`getDefaultField(field)`、`transformField(field)` 和 readonly adapter；hook 不接收 values/errors/slot scope。
-- `readonlyAdapters`：注册字符串组件 key 对应的只读展示适配器；与插件注册 key 冲突时显式报错，未注册时使用原始值文本。需要覆盖某个官方 adapter 时，把 override 传给对应 adapter 工厂。
-- 字段转换：runtime adapter 可返回新的字段配置或 `undefined`；返回非法值、修改字段 key、重复 adapter 名或重复组件 key 都会直接抛错。
-- 多语言：在上层 Vue 应用中使用 `vue-i18n` 等成熟库生成 `label`、`props.placeholder`、选项文案和校验消息；`ConfigForm` 只消费最终字段配置，不内置 i18n 插件，也不会递归解析 message key。
-
-## 错误
-
-运行时和 runtime adapter 契约错误会抛出 `ConfigFormError`。它携带稳定 `code` 和结构化 `context`，方便调用方按错误码处理，而不是依赖字符串消息。
-
-## 样式
-
-默认命名空间是 `cf`。如果只使用默认样式：
+默认命名空间为 `mx-config-form`，默认 columns/fieldSpan 为 24、gap 为 16px。布局规则来自 Core，Designer、Renderer 与 Source 共用。
 
 ```ts
 import '@moluoxixi/config-form/styles'
 ```
 
-自定义命名空间时，运行时 prop 和 SCSS 变量需要保持一致：
-
-```scss
-@use '@moluoxixi/config-form/styles' with (
-  $namespace: 'my-form'
-);
+```bash
+pnpm --filter @moluoxixi/config-form test
+pnpm --filter @moluoxixi/config-form typecheck
+pnpm test:config-form-packages
 ```
-
-```vue
-<ConfigForm namespace="my-form" />
-```
-
-## License
-
-MIT

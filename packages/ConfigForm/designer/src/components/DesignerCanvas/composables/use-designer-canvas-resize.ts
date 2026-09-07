@@ -1,8 +1,8 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
 import type { PageGraph } from '@moluoxixi/config-form-model'
-import type { DesignerRuntimePointerHandlers, DesignerRuntimeRect } from '../types'
+import type { ConfigFormBreakpoint, DesignerRuntimePointerHandlers, DesignerRuntimeRect } from '../types'
+
 import type { DesignerCanvasEmits } from '../types/emits'
-import { resolveConfigFormLayout } from '@moluoxixi/config-form'
+import { resolveConfigFormLayout } from '@moluoxixi/config-form-core'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { findDesignNode } from '../../../graph'
 

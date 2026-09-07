@@ -1,0 +1,1 @@
+export { normalizeConfigFormValidateOn } from './policy'

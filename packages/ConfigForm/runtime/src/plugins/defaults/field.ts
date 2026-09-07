@@ -8,6 +8,7 @@ import type {
   DefaultedNodeConfig,
   FieldDefaultConfig,
 } from './types'
+import { normalizeConfigFormValidateOn } from '@moluoxixi/config-form-core'
 import { ConfigFormError } from '../../errors'
 import { hasFieldBinding } from '../../utils/node'
 
@@ -38,10 +39,7 @@ export function getFieldDefaults(field: FormNodeConfig): FieldDefaultConfig {
 
 /** 将校验触发配置规范化为数组，并保证 submit 触发始终存在。 */
 export function normalizeValidateOn(on?: ValidateTrigger | ValidateTrigger[]): ValidateTrigger[] {
-  if (!on)
-    return ['submit']
-  const arr = Array.isArray(on) ? on : [on]
-  return arr.includes('submit') ? arr : [...arr, 'submit']
+  return normalizeConfigFormValidateOn(on)
 }
 
 /** 合并内置默认片段和当前字段配置，供 runtime 内部生成完整可消费字段。 */

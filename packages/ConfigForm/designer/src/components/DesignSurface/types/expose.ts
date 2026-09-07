@@ -1,5 +1,5 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
 import type { DesignerSelectionMode } from '../../../composables'
+import type { ConfigFormBreakpoint } from '../../DesignerCanvas/types'
 import type { DesignerNodeAction } from './domain'
 
 export interface DesignSurfaceExpose {

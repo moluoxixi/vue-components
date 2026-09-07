@@ -1,5 +1,4 @@
-import type { ConfigFormBreakpoint } from '@moluoxixi/config-form'
-import type { DesignerDragVisualSlotScope, DesignerRuntimeSlotScope } from '../../DesignerCanvas/types'
+import type { ConfigFormBreakpoint, DesignerDragVisualSlotScope, DesignerRuntimeSlotScope } from '../../DesignerCanvas/types'
 import type { DesignerPaletteScope, DesignerPropertiesScope } from './domain'
 
 export interface DesignSurfaceToolbarScope {
@@ -19,6 +18,6 @@ export interface DesignSurfaceSlots {
   toolbar?: (scope: DesignSurfaceToolbarScope) => unknown
   palette?: (scope: DesignerPaletteScope) => unknown
   properties?: (scope: DesignerPropertiesScope) => unknown
-  runtime?: (scope: DesignerRuntimeSlotScope) => unknown
-  dragVisual?: (scope: DesignerDragVisualSlotScope) => unknown
+  runtime: (scope: DesignerRuntimeSlotScope) => unknown
+  dragVisual: (scope: DesignerDragVisualSlotScope) => unknown
 }
