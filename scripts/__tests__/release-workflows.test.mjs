@@ -100,7 +100,8 @@ describe('release workflow topology', () => {
     expect(releaseWorkflow).toContain('id-token: write')
     expect(releaseWorkflow).toContain('NPM_CONFIG_PROVENANCE: true')
     expect(releaseWorkflow).toContain('name: Setup npm for Trusted Publishing')
-    expect(releaseWorkflow).toContain('npm install --global npm@latest')
+    expect(releaseWorkflow).toContain('npm install --global npm@11')
+    expect(releaseWorkflow).not.toContain('npm install --global npm@latest')
     expect(releaseWorkflow).toContain('npm --version')
     expect(releaseWorkflow).not.toContain('registry-url: https://registry.npmjs.org')
     expect(releaseWorkflow).not.toContain('NODE_AUTH_TOKEN:')
@@ -131,6 +132,8 @@ describe('release workflow topology', () => {
   it('versions and publishes changed packages without a release PR', () => {
     const orderedSteps = [
       '- name: Create patch changesets for changed packages',
+      '- name: Detect pending changesets',
+      '- name: Setup npm for Trusted Publishing',
       '- name: Version packages',
       '- name: Commit release metadata',
       '- name: Publish packages',
@@ -145,6 +148,9 @@ describe('release workflow topology', () => {
     }
 
     expect(releaseWorkflow).not.toContain('changesets/action')
+    expect(releaseWorkflow).toContain('find .changeset -maxdepth 1 -type f -name \'*.md\' -print -quit')
+    const pendingReleaseCondition = 'if: steps.freshness.outputs.release == \'true\' && steps.changesets.outputs.release == \'true\''
+    expect(releaseWorkflow.split(pendingReleaseCondition)).toHaveLength(6)
   })
 
   it('keeps Changesets ignore entries aligned with current workspace packages', () => {

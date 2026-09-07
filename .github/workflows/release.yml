@@ -63,15 +63,6 @@ jobs:
           cache: pnpm
           node-version-file: .node-version
 
-      - name: Setup npm for Trusted Publishing
-        if: steps.freshness.outputs.release == 'true'
-        shell: bash
-        run: |
-          npm install --global npm@latest
-          npm_version="$(npm --version)"
-          node -e "const [major, minor, patch] = process.argv[1].split('.').map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)" "$npm_version"
-          echo "Using npm $npm_version for OIDC Trusted Publishing."
-
       - name: Install dependencies
         if: steps.freshness.outputs.release == 'true'
         run: pnpm install --frozen-lockfile
@@ -82,12 +73,34 @@ jobs:
         env:
           AUTO_CHANGESET_HEAD: HEAD
 
-      - name: Version packages
+      - name: Detect pending changesets
         if: steps.freshness.outputs.release == 'true'
+        id: changesets
+        shell: bash
+        run: |
+          if find .changeset -maxdepth 1 -type f -name '*.md' -print -quit | grep -q .; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "release=false" >> "$GITHUB_OUTPUT"
+          echo "No pending changesets; skipping version and publish."
+
+      - name: Setup npm for Trusted Publishing
+        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
+        shell: bash
+        run: |
+          npm install --global npm@11
+          npm_version="$(npm --version)"
+          node -e "const [major, minor, patch] = process.argv[1].split('.').map(Number); if (major !== 11 || minor < 5 || (minor === 5 && patch < 1)) process.exit(1)" "$npm_version"
+          echo "Using npm $npm_version for OIDC Trusted Publishing."
+
+      - name: Version packages
+        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
         run: pnpm version-packages
 
       - name: Commit release metadata
-        if: steps.freshness.outputs.release == 'true'
+        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
         run: |
           if git diff --quiet; then
             echo "No release metadata changed."
@@ -101,11 +114,11 @@ jobs:
           git push origin HEAD:main
 
       - name: Publish packages
-        if: steps.freshness.outputs.release == 'true'
+        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
         run: pnpm release
         env:
           NPM_CONFIG_PROVENANCE: true
 
       - name: Push release tags
-        if: steps.freshness.outputs.release == 'true'
+        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
         run: git push origin --tags
