@@ -1,28 +1,25 @@
-import type { Extension } from '@tiptap/core'
-import type {
-  RichTextEditorAutofocus,
-  RichTextEditorDimension,
-} from './shared'
+import type { Extensions, JSONContent } from '@tiptap/core'
+import type { RichTextEditorCommandId } from './commands'
+import type { RichTextEditorAutofocus, RichTextEditorDimension } from './shared'
 
 export interface RichTextEditorProps {
-  /** HTML content controlled through v-model. Empty content is emitted as an empty string. */
+  /** HTML input. Empty HTML output is ''. Ignored as input while jsonValue is defined. */
   modelValue?: string
-  /** Placeholder rendered while the document is empty. */
+  /** JSON source of truth when defined; bind using v-model:json-value. */
+  jsonValue?: JSONContent
   placeholder?: string
-  /** Disable editing and toolbar commands. */
+  /** Disable user editing and high-level commands. */
   disabled?: boolean
-  /** Render selectable, non-editable content without the toolbar. */
+  /** Selectable content without toolbar; high-level mutation commands are disabled. */
   readonly?: boolean
-  /** Show the built-in toolbar or the toolbar slot. */
   showToolbar?: boolean
-  /** Minimum height of the editable surface. Numbers are interpreted as pixels. */
   minHeight?: RichTextEditorDimension
-  /** Maximum height of the editable surface. Numbers are interpreted as pixels. */
   maxHeight?: RichTextEditorDimension
-  /** Initial cursor position when the editor is created. */
+  /** Creation only. */
   autofocus?: RichTextEditorAutofocus
-  /** Accessible name for the editable surface. */
   ariaLabel?: string
-  /** Additional TipTap extensions appended after the defaults when the editor is created. */
-  extensions?: Extension[]
+  /** Creation only. Additional extensions, nodes and marks with unique names. */
+  extensions?: Extensions
+  /** Ordered subset of default toolbar commands. Omit for all commands. */
+  toolbarItems?: readonly RichTextEditorCommandId[]
 }

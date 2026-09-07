@@ -1,0 +1,6 @@
+body { margin: 0; background: #f5f7f6; color: #202924; font-family: system-ui, sans-serif; }
+main { width: min(900px, calc(100% - 32px)); margin: 24px auto; }
+h1 { margin: 0 0 20px; font-size: 24px; }
+.settings { display: flex; gap: 24px; margin-bottom: 16px; }
+.settings label { display: flex; gap: 6px; align-items: center; }
+pre { overflow-wrap: anywhere; white-space: pre-wrap; border-top: 1px solid #c9d3cc; margin-top: 24px; padding-top: 16px; font-size: 13px; }

@@ -1,10 +1,12 @@
 import type { Editor } from '@tiptap/core'
 import { Extension } from '@tiptap/core'
-import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createApp, h, nextTick } from 'vue'
 import RichTextEditorDefault, { RichTextEditor } from '../index'
 import { normalizeHref } from '../src/utils'
+
+enableAutoUnmount(afterEach)
 
 async function mountEditor(props: Record<string, unknown> = {}, slots: Record<string, any> = {}) {
   const wrapper = mount(RichTextEditor, { props, slots })
@@ -115,7 +117,7 @@ describe('rich text editor', () => {
 
     const input = wrapper.get('input[aria-label="链接地址"]')
     await input.setValue('example.com')
-    await wrapper.get('form.mx-rich-text-editor__link-panel').trigger('submit')
+    await wrapper.get('button[aria-label="应用链接"]').trigger('click')
     await nextTick()
 
     expect(editor.getHTML()).toContain('href="https://example.com"')
