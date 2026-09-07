@@ -31,4 +31,5 @@
 - 同步最新 main 时没有冲突；合并后的 frozen-lockfile 安装和架构门禁通过。
 - main 工作区重新完成 18 个构建任务，预览地址为 `http://127.0.0.1:4360`。
 - Git worktree 已注销，临时分支 `codex/config-form-architecture-rewrite` 已删除。
-- 磁盘目录 `D:/project-new/vue-component.worktrees/config-form-architecture-rewrite` 仍有残留。Git 删除目录时返回 `Function not implemented`；随后在核实绝对路径后尝试 PowerShell 删除，自动审批以 `blocked by policy` 拒绝。未绕过审批，任务保留待清理状态。
+- 磁盘目录 `D:/project-new/vue-component.worktrees/config-form-architecture-rewrite` 已删除，`Test-Path` 确认为 `False`。先前删除被审批阻止；用户明确授权后，通过审批执行，确认相关预览进程退出并清除占用文件后完成目录清理。
+- 清理后恢复 `http://127.0.0.1:4360` 预览服务，HTTP 检查返回 200。全部验收项完成。

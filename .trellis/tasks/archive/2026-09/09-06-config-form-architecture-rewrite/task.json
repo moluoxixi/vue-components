@@ -3,7 +3,7 @@
   "name": "config-form-architecture-rewrite",
   "title": "配置化表单与设计器架构重构",
   "description": "移除旧模板与平行表单状态机，统一同步模型端口、字段校验语义和设计器宿主边界，完成生成 Source 对比测试。",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": "config-form",
@@ -11,7 +11,7 @@
   "creator": "wl",
   "assignee": "wl",
   "createdAt": "2026-09-06",
-  "completedAt": null,
+  "completedAt": "2026-09-07",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "代码及全量验证已完成并合入 main（e94ddfbc）。Git worktree 与临时分支已清除；磁盘残留目录的递归删除被自动审批以 blocked by policy 拒绝，保留待清理状态。",
+  "notes": "代码及全量验证已完成并合入 main（e94ddfbc）。Git worktree、临时分支和磁盘残留目录均已清除；用户授权后的删除通过审批执行，路径不存在，预览服务已恢复。全部验收项完成。",
   "meta": {}
 }
