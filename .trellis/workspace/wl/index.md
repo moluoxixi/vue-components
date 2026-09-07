@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 43
+- **Total Sessions**: 44
 - **Last Active**: 2026-09-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1083 | Active |
+| `journal-1.md` | ~1109 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 44 | 2026-09-07 | 完成 ConfigForm worktree 清理与任务归档 | `0c4b5f8b` | `main` |
 | 43 | 2026-09-07 | 配置化表单与设计器重构收尾 | `0c4b5f8b` | `main` |
 | 42 | 2026-09-07 | 完成富文本编辑器 P1/P2 生产契约 | `a5e876f5`, `e3f4fcee` | `main` |
 | 41 | 2026-09-06 | 发布最新 ConfigForm Workbench 到 GitHub Pages | `5fbf2537` | `main` |
