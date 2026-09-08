@@ -1,5 +1,13 @@
 # @moluoxixi/config-form-headless
 
+## 0.2.6
+
+### Patch Changes
+
+- Automatically release packages changed in 8a0a9f830270.
+- Updated dependencies
+  - @moluoxixi/config-form-core@0.2.6
+
 ## 0.2.5
 
 ### Patch Changes

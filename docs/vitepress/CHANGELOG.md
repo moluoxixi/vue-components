@@ -1,5 +1,16 @@
 # @moluoxixi/docs
 
+## 0.1.18
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/config-form@0.2.5
+  - @moluoxixi/config-form-antd-vue@0.2.5
+  - @moluoxixi/config-form-element@0.2.6
+  - @moluoxixi/config-form-headless@0.2.6
+  - @moluoxixi/rich-text-editor@0.1.4
+
 ## 0.1.17
 
 ### Patch Changes

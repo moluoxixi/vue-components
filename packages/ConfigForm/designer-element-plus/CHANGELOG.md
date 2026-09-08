@@ -1,5 +1,14 @@
 # @moluoxixi/config-form-designer-element-plus
 
+## 0.1.6
+
+### Patch Changes
+
+- Automatically release packages changed in 8a0a9f830270.
+- Updated dependencies
+  - @moluoxixi/config-form-designer@0.1.7
+  - @moluoxixi/config-form-model@0.1.3
+
 ## 0.1.5
 
 ### Patch Changes

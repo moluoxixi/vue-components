@@ -1,5 +1,12 @@
 # @moluoxixi/config-form-model
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @moluoxixi/config-form-core@0.2.6
+
 ## 0.1.2
 
 ### Patch Changes

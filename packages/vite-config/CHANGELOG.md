@@ -1,5 +1,11 @@
 # @moluoxixi/vite-config
 
+## 0.0.43
+
+### Patch Changes
+
+- Automatically release packages changed in 8a0a9f830270.
+
 ## 0.0.42
 
 ### Patch Changes
