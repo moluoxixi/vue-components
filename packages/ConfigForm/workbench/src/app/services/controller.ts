@@ -19,6 +19,7 @@ import type {
 } from '../types'
 import {
   createDesignerLocale,
+  findDesignNode,
   walkDesignGraph,
 } from '@moluoxixi/config-form-designer'
 import { computed, ref, shallowRef } from 'vue'
@@ -92,14 +93,50 @@ export function createWorkbenchController(
     const graph = currentGraph.value
     if (!graph)
       return entries
-    walkDesignGraph(graph, ({ node, path }) => entries.push({
-      id: node.id,
-      label: node.kind === 'field'
-        ? node.label ?? node.field
-        : registry.value.getMaterial(node.component)?.title ?? node.component,
-      component: node.component,
-      depth: path.filter(segment => segment === 'slots').length,
-    }))
+    walkDesignGraph(graph, ({ node, path }) => {
+      const location = findDesignNode(graph, node.id)
+      const sequence = location?.sequence ?? []
+      const previous = sequence[location ? location.index - 1 : -1]
+      const previousNode = previous ? graph.nodesById[previous.nodeId] : undefined
+      const previousMaterial = previousNode ? registry.value.getMaterial(previousNode.component) : undefined
+      const material = registry.value.getMaterial(node.component)
+      const parentLocation = location?.parent ? findDesignNode(graph, location.parent.id) : undefined
+      const parentMaterial = location?.parent ? registry.value.getMaterial(location.parent.component) : undefined
+      const sourceSlot = parentMaterial?.kind === 'layout'
+        ? parentMaterial.slots.find(slot => slot.name === location?.slot)
+        : undefined
+      const canLeaveParent = sequence.length > (sourceSlot?.min ?? 0)
+      const indentSlot = previousMaterial?.kind === 'layout'
+        ? previousMaterial.slots.find(slot => (!slot.accepts || slot.accepts.includes(node.kind))
+          && (!slot.materials || slot.materials.includes(node.component))
+          && (slot.max === undefined || slot.max > 0))
+        : undefined
+      const outdentParent = parentLocation?.parent
+      const outdentMaterial = outdentParent ? registry.value.getMaterial(outdentParent.component) : undefined
+      const outdentSlot = outdentMaterial?.kind === 'layout'
+        ? outdentMaterial.slots.find(slot => slot.name === parentLocation?.slot)
+        : undefined
+      const label = node.kind === 'field'
+        ? node.label?.trim() || node.field
+        : registry.value.getMaterial(node.component)?.title?.trim() || node.component
+      entries.push({
+        canIndent: canLeaveParent && previousNode?.kind === 'layout' && Boolean(indentSlot
+          && (indentSlot.max === undefined || (previousNode.slots[indentSlot.name]?.length ?? 0) < indentSlot.max)
+          && (!material?.allowedParents || material.allowedParents.some(parent => parent.material === previousNode.component && parent.slot === indentSlot.name))),
+        canMoveAfter: location ? location.index < sequence.length - 1 : false,
+        canMoveBefore: location ? location.index > 0 : false,
+        canOutdent: canLeaveParent && Boolean(parentLocation)
+          && (!material?.allowedParents || material.allowedParents.some(parent => parent.material === outdentParent?.component && parent.slot === parentLocation?.slot))
+          && (!outdentParent || Boolean(outdentSlot
+            && (!outdentSlot.accepts || outdentSlot.accepts.includes(node.kind))
+            && (!outdentSlot.materials || outdentSlot.materials.includes(node.component))
+            && (outdentSlot.max === undefined || (outdentParent.slots[outdentSlot.name]?.length ?? 0) < outdentSlot.max))),
+        id: node.id,
+        label,
+        component: node.component,
+        depth: path.filter(segment => segment === 'slots').length,
+      })
+    })
     return entries
   })
   const designerFieldNames = computed<string[]>(() => {

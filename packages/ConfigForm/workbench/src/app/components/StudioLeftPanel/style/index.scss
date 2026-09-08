@@ -80,13 +80,16 @@
 
 .designer-components-panel {
   display: grid;
+  min-width: 0;
   min-height: 0;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
 .designer-material-search {
-  width: calc(100% - 12px);
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
   margin: 6px;
 }
 
@@ -446,6 +449,11 @@
 .designer-pages button > span {
   grid-template-columns: 14px minmax(0, 1fr) auto;
   gap: 6px;
+}
+
+.designer-layers .designer-layer-select,
+.designer-pages button {
+  display: block;
 }
 
 .designer-history-list button > span {

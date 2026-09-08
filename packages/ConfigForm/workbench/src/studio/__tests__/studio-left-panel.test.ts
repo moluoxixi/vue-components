@@ -93,7 +93,7 @@ describe('studio left panel', () => {
           limit: 100,
           position: 1,
         },
-        layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 1 }],
+        layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 1, canMoveBefore: true, canMoveAfter: false, canIndent: false, canOutdent: true }],
         materials: registry.listMaterials(),
         registry,
         selectedIds: ['field'],
@@ -103,6 +103,7 @@ describe('studio left panel', () => {
     await wrapper.get('[data-designer-left-tab="layers"]').trigger('click')
     const layer = wrapper.get('[role="treeitem"]')
     expect(layer.attributes('aria-selected')).toBe('true')
+    expect(layer.text()).toContain('Name')
     await layer.get('.designer-layer-select').trigger('click', { ctrlKey: true })
     expect(layer.text()).not.toContain('test.input')
     const menuTrigger = layer.get('.designer-layer-menu-trigger')
@@ -115,6 +116,7 @@ describe('studio left panel', () => {
     expect(wrapper.emitted('arrangeLayer')).toEqual([['moveBefore', 'field']])
 
     await wrapper.get('[data-designer-left-tab="pages"]').trigger('click')
+    expect(wrapper.get('[data-page-id="page-a"]').text()).toContain('Page A')
     await wrapper.findAll('.designer-pages button')[1]!.trigger('click')
     await wrapper.get('.manage-pages-button').trigger('click')
     expect(wrapper.emitted('selectPage')).toEqual([['page-b']])
@@ -162,8 +164,8 @@ describe('studio left panel', () => {
         currentPageId: 'page-a',
         form: {},
         layers: [
-          { id: 'field-a', label: 'First', component: 'test.input', depth: 0 },
-          { id: 'field-b', label: 'Second', component: 'test.input', depth: 1 },
+          { id: 'field-a', label: 'First', component: 'test.input', depth: 0, canMoveBefore: false, canMoveAfter: true, canIndent: false, canOutdent: false },
+          { id: 'field-b', label: 'Second', component: 'test.input', depth: 1, canMoveBefore: true, canMoveAfter: false, canIndent: false, canOutdent: true },
         ],
         materials: registry.listMaterials(),
         registry,
@@ -197,7 +199,7 @@ describe('studio left panel', () => {
         project,
         currentPageId: 'page-a',
         form: {},
-        layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 0 }],
+        layers: [{ id: 'field', label: 'Name', component: 'test.input', depth: 0, canMoveBefore: false, canMoveAfter: true, canIndent: true, canOutdent: false }],
         materials: registry.listMaterials(),
         registry,
         selectedIds: ['field'],
@@ -211,7 +213,8 @@ describe('studio left panel', () => {
     await nextTick()
     const menu = overlayRoot().get('[data-layer-action-menu]')
     const items = menu.findAll('[role="menuitem"]')
-    expect(items).toHaveLength(4)
+    expect(items).toHaveLength(2)
+    expect(items.map(item => item.text())).not.toContain('Outdent')
     expect(trigger.attributes('aria-haspopup')).toBe('menu')
     ;(items[0]!.element as HTMLElement).focus()
     await items[0]!.trigger('keydown', { code: 'ArrowDown', key: 'ArrowDown' })

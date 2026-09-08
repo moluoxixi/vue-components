@@ -14,6 +14,10 @@ export type StudioLeftView = 'components' | 'history' | 'layers' | 'pages'
 export type StudioLayerAction = 'indent' | 'moveAfter' | 'moveBefore' | 'outdent'
 
 export interface StudioLayerEntry {
+  canIndent: boolean
+  canMoveAfter: boolean
+  canMoveBefore: boolean
+  canOutdent: boolean
   component: string
   depth: number
   id: string

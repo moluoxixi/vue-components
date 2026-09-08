@@ -85,7 +85,19 @@ function selectViewName(view: string | number): void {
 }
 
 function runLayerAction(action: StudioLayerAction, nodeId: string): void {
+  const layer = props.layers.find(item => item.id === nodeId)
+  const allowed = action === 'indent'
+    ? layer?.canIndent
+    : action === 'outdent'
+      ? layer?.canOutdent
+      : action === 'moveBefore' ? layer?.canMoveBefore : layer?.canMoveAfter
+  if (props.readonly || !allowed)
+    return
   emit('arrangeLayer', action, nodeId)
+}
+
+function hasLayerActions(layer: StudioLeftPanelProps['layers'][number]): boolean {
+  return !props.readonly && (layer.canIndent || layer.canOutdent || layer.canMoveBefore || layer.canMoveAfter)
 }
 
 function focusLayerMenuTrigger(nodeId: string): void {
@@ -138,7 +150,7 @@ function handleLayerKeydown(event: KeyboardEvent, nodeId: string): void {
     if (!action)
       return
     event.preventDefault()
-    emit('arrangeLayer', action, nodeId)
+    runLayerAction(action, nodeId)
     return
   }
   if (event.key === 'Enter' || event.key === ' ') {
@@ -252,12 +264,12 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
         :class="{ 'is-selected': selectedIds.includes(layer.id) }"
         @keydown="handleLayerKeydown($event, layer.id)"
       >
-        <ElButton text native-type="button" tabindex="-1" class="designer-layer-select" :style="{ paddingLeft: `${10 + layer.depth * 16}px` }" @click="selectLayer(layer.id, $event)">
+        <ElButton text native-type="button" tabindex="-1" class="designer-layer-select" :style="{ paddingLeft: `${10 + layer.depth * 16}px` }" :title="layer.label" @click="selectLayer(layer.id, $event)">
           <Layers3 :size="13" aria-hidden="true" />
           <span>{{ layer.label }}</span>
         </ElButton>
         <div class="designer-layer-actions">
-          <ElDropdown trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="runLayerAction($event, layer.id)" @visible-change="restoreLayerMenuFocus($event, layer.id)">
+          <ElDropdown v-if="hasLayerActions(layer)" trigger="click" placement="bottom-end" :show-timeout="0" :hide-timeout="0" append-to="#workbench-overlays" @command="runLayerAction($event, layer.id)" @visible-change="restoreLayerMenuFocus($event, layer.id)">
             <ElButton
               text
               native-type="button"
@@ -269,10 +281,10 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
             ><MoreHorizontal :size="14" aria-hidden="true" /></ElButton>
             <template #dropdown>
               <ElDropdownMenu class="designer-layer-menu" data-layer-action-menu @keydown.capture.esc="focusLayerMenuTrigger(layer.id)">
-                <ElDropdownItem command="moveBefore"><ChevronUp :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveUp', 'Move up') }}</span></ElDropdownItem>
-                <ElDropdownItem command="moveAfter"><ChevronDown :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveDown', 'Move down') }}</span></ElDropdownItem>
-                <ElDropdownItem command="indent"><IndentIncrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.indent', 'Indent') }}</span></ElDropdownItem>
-                <ElDropdownItem command="outdent"><IndentDecrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.outdent', 'Outdent') }}</span></ElDropdownItem>
+                <ElDropdownItem v-if="layer.canMoveBefore" command="moveBefore"><ChevronUp :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveUp', 'Move up') }}</span></ElDropdownItem>
+                <ElDropdownItem v-if="layer.canMoveAfter" command="moveAfter"><ChevronDown :size="14" aria-hidden="true" /><span>{{ locale.t('layer.moveDown', 'Move down') }}</span></ElDropdownItem>
+                <ElDropdownItem v-if="layer.canIndent" command="indent"><IndentIncrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.indent', 'Indent') }}</span></ElDropdownItem>
+                <ElDropdownItem v-if="layer.canOutdent" command="outdent"><IndentDecrease :size="14" aria-hidden="true" /><span>{{ locale.t('layer.outdent', 'Outdent') }}</span></ElDropdownItem>
               </ElDropdownMenu>
             </template>
           </ElDropdown>

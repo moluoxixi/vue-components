@@ -1512,6 +1512,33 @@ test('supports keyboard and touch material drops without a second editable model
   await expect(designRuntime(page).locator(`[data-config-node-id="${date.nodeId}"]`)).toHaveCount(0)
 })
 
+test('keeps left-panel names readable and hides unavailable layer actions', async ({ page }) => {
+  await createProject(page, 'element')
+  const search = page.locator('.designer-material-search')
+  const panel = page.locator('.designer-components-panel')
+  const searchBox = await visibleBox(search)
+  const panelBox = await visibleBox(panel)
+  expect(Math.abs(searchBox.x - panelBox.x - 6)).toBeLessThanOrEqual(1)
+  expect(Math.abs(panelBox.x + panelBox.width - searchBox.x - searchBox.width - 6)).toBeLessThanOrEqual(1)
+
+  await page.getByRole('tab', { name: 'Layers' }).click()
+  const firstLayer = page.getByRole('treeitem').first()
+  const layerName = firstLayer.locator('.designer-layer-select > span > span')
+  await expect(layerName).toHaveText('Name')
+  expect((await visibleBox(layerName)).width).toBeGreaterThan(80)
+  await firstLayer.locator('[aria-haspopup="menu"]').click()
+  await expect(page.getByRole('menuitem', { name: 'Move down', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Move up', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Outdent', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Indent', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('tab', { name: 'Pages', exact: true }).click()
+  const pageName = page.locator('.designer-pages button > span > span').first()
+  await expect(pageName).not.toHaveText('')
+  expect((await visibleBox(pageName)).width).toBeGreaterThan(80)
+})
+
 test('keeps the layer action menu inside the viewport at the scroll boundary', async ({ page }) => {
   await createProject(page, 'element')
   const inputMaterial = page.locator('[data-material-key="element.input"]')
