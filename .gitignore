@@ -1,6 +1,7 @@
 # 其他用户配置
 typings
 .qoder
+.assets
 .trae
 .codebuddy
 .mcp.json
