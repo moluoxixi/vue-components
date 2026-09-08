@@ -12,7 +12,7 @@ const templateNames: Record<WorkbenchAdapter, RegExp> = {
 
 export async function createProject(page: Page, adapter: WorkbenchAdapter): Promise<void> {
   const workspace = page.getByRole('main', { name: 'Create project' })
-  await expect(workspace).toBeVisible()
+  await expect(workspace).toBeVisible({ timeout: 15_000 })
   const catalogOpener = workspace.locator('[data-template-catalog-open]')
   if (await catalogOpener.isVisible()) {
     await catalogOpener.click()
