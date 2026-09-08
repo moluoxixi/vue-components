@@ -70,7 +70,8 @@ describe('release workflow topology', () => {
   })
 
   it('limits concurrency around resource-heavy integration tests', () => {
-    expect(rootManifest.scripts.test).toContain('--concurrency=2')
+    expect(rootManifest.scripts.test).toContain('--concurrency=1')
+    expect(rootManifest.scripts.test).not.toContain('--concurrency=2')
     expect(rootManifest.scripts.test).toContain('--filter=!@moluoxixi/vite-config')
     expect(rootManifest.scripts.test).toContain('turbo run test --filter=@moluoxixi/vite-config --concurrency=1')
     expect(aiDocAssistantManifest.scripts.test).toContain('--no-file-parallelism --maxWorkers=1')
