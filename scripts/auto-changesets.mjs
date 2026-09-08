@@ -274,14 +274,14 @@ export function findVersionReleaseCommit(packageInfo, head) {
   const manifestPath = `${packageInfo.relativeDirectory}/package.json`
   return runGit([
     'log',
-    '-1',
+    '--reverse',
     '--format=%H',
     '-S',
     `"version": "${packageInfo.version}"`,
     head,
     '--',
     manifestPath,
-  ], { allowFailure: true }) || undefined
+  ], { allowFailure: true }).split(/\r?\n/).find(Boolean)
 }
 
 function resolvePackageBase(packageInfo, fallbackBase, versionReleaseCommit) {

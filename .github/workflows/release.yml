@@ -84,10 +84,10 @@ jobs:
           fi
 
           echo "release=false" >> "$GITHUB_OUTPUT"
-          echo "No pending changesets; skipping version and publish."
+          echo "No pending changesets; skipping versioning."
 
       - name: Setup npm for Trusted Publishing
-        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
+        if: steps.freshness.outputs.release == 'true' && (steps.changesets.outputs.release == 'true' || github.event_name == 'workflow_dispatch')
         shell: bash
         run: |
           npm install --global npm@11
@@ -114,11 +114,11 @@ jobs:
           git push origin HEAD:main
 
       - name: Publish packages
-        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
+        if: steps.freshness.outputs.release == 'true' && (steps.changesets.outputs.release == 'true' || github.event_name == 'workflow_dispatch')
         run: pnpm release
         env:
           NPM_CONFIG_PROVENANCE: true
 
       - name: Push release tags
-        if: steps.freshness.outputs.release == 'true' && steps.changesets.outputs.release == 'true'
+        if: steps.freshness.outputs.release == 'true' && (steps.changesets.outputs.release == 'true' || github.event_name == 'workflow_dispatch')
         run: git push origin --tags
