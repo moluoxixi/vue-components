@@ -27,6 +27,8 @@ import { computed, ref, shallowRef } from 'vue'
 import { projectSnapshotFromEditorSession } from '../../project'
 import { createPageRuntimeArtifactCache } from './page-runtime-cache'
 
+const CANDIDATE_CACHE_LIMIT = 128
+
 function compilerDiagnostics(
   diagnostics: ReadonlyArray<{
     code: string
@@ -54,11 +56,28 @@ export function createWorkbenchDesignSession(
   const runtime = shallowRef<VueRuntimeCompileSuccess>()
   const selectedIds = ref<string[]>([])
   const artifactCache = createPageRuntimeArtifactCache()
+  // Drop-target validation previews the same candidate commands many times per
+  // drag frame; memoize projections per document revision so repeated commands
+  // skip the resolve/apply/compile pipeline entirely.
+  const candidateCache = new Map<string, CandidateProjection | null>()
   let coordinator: CompileCoordinator | undefined
+
+  function candidateCacheKey(command: ProjectCommand): string | undefined {
+    const snapshot = options.getSnapshot()
+    if (!snapshot)
+      return undefined
+    try {
+      return `${snapshot.editVersion}:${options.getPageId()}:${JSON.stringify(command)}`
+    }
+    catch {
+      return undefined
+    }
+  }
 
   function configure(adapter: WorkbenchAdapter): void {
     coordinator?.clear()
     artifactCache.clear()
+    candidateCache.clear()
     coordinator = createCompileCoordinator({ registry: adapter.registrySnapshot })
     compilation.value = undefined
     runtime.value = undefined
@@ -119,6 +138,35 @@ export function createWorkbenchDesignSession(
     if (!snapshot || !adapter || !pageId)
       return undefined
 
+    const cacheKey = candidateCacheKey(command)
+    if (cacheKey !== undefined) {
+      const cached = candidateCache.get(cacheKey)
+      if (cached !== undefined) {
+        candidateCache.delete(cacheKey)
+        candidateCache.set(cacheKey, cached)
+        return cached ?? undefined
+      }
+    }
+
+    const projection = computeCandidate(snapshot, adapter, pageId, command)
+    if (cacheKey !== undefined) {
+      candidateCache.set(cacheKey, projection ?? null)
+      while (candidateCache.size > CANDIDATE_CACHE_LIMIT) {
+        const oldest = candidateCache.keys().next().value
+        if (oldest === undefined)
+          break
+        candidateCache.delete(oldest)
+      }
+    }
+    return projection
+  }
+
+  function computeCandidate(
+    snapshot: ProjectEditorSessionSnapshot,
+    adapter: WorkbenchAdapter,
+    pageId: string,
+    command: ProjectCommand,
+  ): CandidateProjection | undefined {
     try {
       const base = snapshot.document as ProjectDocument
       const resolution = resolveProjectCommand(base, command, { registry: adapter.componentRegistry })
@@ -145,7 +193,7 @@ export function createWorkbenchDesignSession(
       )
       const graph = draft.document.pagesById[pageId]?.graph
       return publication.compilation && graph
-        ? { compilation: publication.compilation, graph }
+        ? { compilation: publication.compilation, graph, runtime: publication.runtime }
         : undefined
     }
     catch {
@@ -164,14 +212,7 @@ export function createWorkbenchDesignSession(
 
   function preview(command: ProjectCommand): DesignCommandPreview | undefined {
     const projection = candidate(command)
-    const adapter = options.getAdapter()
-    if (!projection || !adapter)
-      return undefined
-    const result = compileCanonicalPageRuntime(
-      { compilation: projection.compilation },
-      adapter.runtimeResolver,
-    )
-    if (!result.success)
+    if (!projection || !projection.runtime.success)
       return undefined
     return {
       command,
@@ -234,6 +275,7 @@ export function createWorkbenchDesignSession(
   function clear(): void {
     coordinator?.clear()
     artifactCache.clear()
+    candidateCache.clear()
     compilation.value = undefined
     runtime.value = undefined
     selectedIds.value = []

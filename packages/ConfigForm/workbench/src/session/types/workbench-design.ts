@@ -60,4 +60,5 @@ export interface WorkbenchDesignSession {
 export interface CandidateProjection {
   compilation: PageCompilation
   graph: PageGraph
+  runtime: VueRuntimeCompileResult
 }

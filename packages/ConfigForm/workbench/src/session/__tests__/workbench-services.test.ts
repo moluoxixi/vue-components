@@ -116,6 +116,45 @@ describe('workbench service boundaries', () => {
     expect(design.runtime.value).toBeUndefined()
   })
 
+  it('memoizes candidate projections per document revision', async () => {
+    const { adapter, document, snapshot } = await fixture()
+    let current = snapshot
+    const design = createWorkbenchDesignSession({
+      getAdapter: () => adapter,
+      getPageId: () => 'home',
+      getProjectSession: () => undefined,
+      getSnapshot: () => current,
+      setDiagnostic: () => {},
+    })
+    design.configure(adapter)
+    design.accept(current, 'home')
+
+    const field = Object.values(document.pagesById.home!.graph.nodesById)
+      .find(node => node.kind === 'field')!
+    const command: ProjectCommand = {
+      id: 'candidate-cache',
+      label: 'Candidate cache',
+      actions: [{
+        type: 'node.patch',
+        pageId: 'home',
+        nodeId: field.id,
+        patch: { set: { label: 'Cached label' } },
+      }],
+    }
+
+    const first = design.getCompilation(command)
+    expect(first).toBeDefined()
+    // Same revision + same command must hit the memoized projection.
+    expect(design.getCompilation(command)).toBe(first)
+    expect(design.commandControl.preview(command)?.graph).toBe(design.commandControl.preview(command)?.graph)
+
+    current = { ...snapshot, editVersion: snapshot.editVersion + 1 }
+    design.accept(current, 'home')
+    const recomputed = design.getCompilation(command)
+    expect(recomputed).toBeDefined()
+    expect(recomputed).not.toBe(first)
+  })
+
   it('jumps through the engine history with undo and redo instead of replacing snapshots', async () => {
     const { adapter, snapshot } = await fixture()
     let current: ProjectEditorSessionSnapshot = {

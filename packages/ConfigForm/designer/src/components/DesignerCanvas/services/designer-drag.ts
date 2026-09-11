@@ -106,6 +106,45 @@ export function createDesignerDragController(
   const announcement = shallowRef<DesignerDragAnnouncement>()
   let resolver: DesignerDropTargetResolver | undefined
   let keyboardTargetsResolver: DesignerKeyboardDropTargetsResolver | undefined
+  let resolveFrame: number | undefined
+  let pendingResolvePoint: DesignerPointerPosition | undefined
+
+  function canScheduleResolve(): boolean {
+    return typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
+  }
+
+  function cancelScheduledResolve(): void {
+    if (resolveFrame !== undefined && canScheduleResolve())
+      window.cancelAnimationFrame(resolveFrame)
+    resolveFrame = undefined
+    pendingResolvePoint = undefined
+  }
+
+  function applyResolvedTarget(current: DesignerDragSession, point: DesignerPointerPosition): boolean {
+    const target = resolver?.(point, current.source, current.target)
+    if (current.active && sameTarget(current.target, target)) {
+      session.value = { ...current, position: point }
+      return true
+    }
+    session.value = { ...current, active: true, position: point, target }
+    return true
+  }
+
+  // Drop-target resolution can be expensive (it may trigger candidate
+  // compilation), so mid-drag resolutions are coalesced to one per frame.
+  function scheduleResolve(point: DesignerPointerPosition): void {
+    pendingResolvePoint = point
+    if (resolveFrame !== undefined)
+      return
+    resolveFrame = window.requestAnimationFrame(() => {
+      resolveFrame = undefined
+      const pending = pendingResolvePoint
+      pendingResolvePoint = undefined
+      const current = session.value
+      if (pending && current?.active && current.input === 'pointer')
+        applyResolvedTarget(current, pending)
+    })
+  }
 
   function begin(
     source: DesignerDragSource,
@@ -138,13 +177,13 @@ export function createDesignerDragController(
       return false
     }
 
-    const target = resolver?.(point, current.source, current.target)
-    if (current.active && sameTarget(current.target, target)) {
-      session.value = { ...current, position: point }
-      return true
-    }
+    // Resolve immediately on the activation transition so the drag visual and
+    // first target appear without a frame of latency; defer subsequent moves.
+    if (!current.active || !canScheduleResolve())
+      return applyResolvedTarget(current, point)
 
-    session.value = { ...current, active: true, position: point, target }
+    session.value = { ...current, position: point }
+    scheduleResolve(point)
     return true
   }
 
@@ -167,6 +206,7 @@ export function createDesignerDragController(
   }
 
   function commitCurrent(): boolean {
+    cancelScheduledResolve()
     const completed = session.value
     session.value = undefined
     if (!completed?.active || !completed.target)
@@ -183,7 +223,13 @@ export function createDesignerDragController(
     const current = session.value
     if (!current)
       return
-    move(point)
+    cancelScheduledResolve()
+    const active = current.active
+      || Math.hypot(point.x - current.origin.x, point.y - current.origin.y) >= 4
+    if (active)
+      applyResolvedTarget(current, point)
+    else
+      session.value = { ...current, position: point }
     commitCurrent()
   }
 
@@ -199,6 +245,7 @@ export function createDesignerDragController(
     finish,
     finishKeyboard: commitCurrent,
     cancel: () => {
+      cancelScheduledResolve()
       const current = session.value
       session.value = undefined
       if (current)

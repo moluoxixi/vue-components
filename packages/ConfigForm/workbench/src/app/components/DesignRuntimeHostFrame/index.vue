@@ -60,6 +60,19 @@ let loaded = false
 let parentSequence = 0
 let lastChildSequence = -1
 let lastGeometry: { payload: RuntimeHostGeometryPayload, revision: string } | undefined
+let geometryRefreshFrame: number | undefined
+// Compilations are immutable per revision; cache the proxy-free clone so
+// repeated syncs (candidate churn during drags) do not re-clone the page.
+const compilationCloneCache = new WeakMap<object, unknown>()
+
+function cloneCompilation<T extends object>(current: T): T {
+  const cached = compilationCloneCache.get(current)
+  if (cached)
+    return cached as T
+  const clone = cloneWorkbenchJson(current)
+  compilationCloneCache.set(current, clone as object)
+  return clone
+}
 
 function postMessage(message: Record<string, unknown>): void {
   if (!loaded)
@@ -81,7 +94,7 @@ function syncRuntime(): void {
     revision: revision.value,
     type: 'sync',
     adapter: props.adapter,
-    compilation: cloneWorkbenchJson(current),
+    compilation: cloneCompilation(current),
     mode: 'design',
     design: {
       breakpoint: props.breakpoint,
@@ -261,8 +274,31 @@ watch(() => props.cameraScale, () => {
   })
 }, { flush: 'post' })
 
-onMounted(() => window.addEventListener('message', handleMessage))
-onBeforeUnmount(() => window.removeEventListener('message', handleMessage))
+// Node rects are translated into parent coordinates when the geometry message
+// arrives; ancestor scrolling or window resizing invalidates that translation,
+// so re-project the last payload against the fresh frame rect.
+function scheduleGeometryRefresh(): void {
+  if (props.variant !== 'canvas' || !lastGeometry || geometryRefreshFrame !== undefined)
+    return
+  geometryRefreshFrame = window.requestAnimationFrame(() => {
+    geometryRefreshFrame = undefined
+    if (lastGeometry)
+      emitGeometry(lastGeometry.payload, lastGeometry.revision)
+  })
+}
+
+onMounted(() => {
+  window.addEventListener('message', handleMessage)
+  window.addEventListener('scroll', scheduleGeometryRefresh, true)
+  window.addEventListener('resize', scheduleGeometryRefresh)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('message', handleMessage)
+  window.removeEventListener('scroll', scheduleGeometryRefresh, true)
+  window.removeEventListener('resize', scheduleGeometryRefresh)
+  if (geometryRefreshFrame !== undefined)
+    window.cancelAnimationFrame(geometryRefreshFrame)
+})
 </script>
 
 <template>

@@ -117,6 +117,75 @@ describe('designer drag controller', () => {
     })
   })
 
+  it('coalesces mid-drag target resolution to one resolver pass per animation frame', () => {
+    const frames: FrameRequestCallback[] = []
+    const raf = vi.spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback)
+        return frames.length
+      })
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    try {
+      const resolver = vi.fn((point: { x: number, y: number }) => ({ parentId: null, index: Math.round(point.x) }))
+      const controller = createDesignerDragController({ commitMaterial: vi.fn(), commitNode: vi.fn() })
+      controller.registerResolver(resolver)
+      controller.beginMaterial('element.input', 'candidate-raf', { x: 0, y: 0 })
+
+      controller.move({ x: 10, y: 0 })
+      expect(resolver).toHaveBeenCalledTimes(1)
+      expect(controller.session.value?.target).toEqual({ parentId: null, index: 10 })
+
+      controller.move({ x: 20, y: 0 })
+      controller.move({ x: 30, y: 0 })
+      expect(resolver).toHaveBeenCalledTimes(1)
+      expect(controller.session.value?.position).toEqual({ x: 30, y: 0 })
+
+      frames.splice(0).forEach(callback => callback(0))
+      expect(resolver).toHaveBeenCalledTimes(2)
+      expect(resolver).toHaveBeenLastCalledWith(
+        { x: 30, y: 0 },
+        { type: 'material', materialKey: 'element.input', candidateId: 'candidate-raf' },
+        { parentId: null, index: 10 },
+      )
+      expect(controller.session.value?.target).toEqual({ parentId: null, index: 30 })
+    }
+    finally {
+      raf.mockRestore()
+      caf.mockRestore()
+    }
+  })
+
+  it('resolves the final drop target synchronously on finish even with a pending frame', () => {
+    const frames: FrameRequestCallback[] = []
+    const raf = vi.spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback)
+        return frames.length
+      })
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    try {
+      const commitMaterial = vi.fn()
+      const controller = createDesignerDragController({ commitMaterial, commitNode: vi.fn() })
+      controller.registerResolver(point => ({ parentId: null, index: Math.round(point.x) }))
+      controller.beginMaterial('element.input', 'candidate-finish', { x: 0, y: 0 })
+
+      controller.move({ x: 10, y: 0 })
+      controller.move({ x: 40, y: 0 })
+      controller.finish({ x: 50, y: 0 })
+
+      expect(commitMaterial).toHaveBeenCalledOnce()
+      expect(commitMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({ candidateId: 'candidate-finish' }),
+        { parentId: null, index: 50 },
+      )
+      expect(controller.session.value).toBeUndefined()
+    }
+    finally {
+      raf.mockRestore()
+      caf.mockRestore()
+    }
+  })
+
   it('keeps the pointer inside the measured overlay bounds', () => {
     expect(resolveDesignerDragOverlayPosition(
       { x: 100, y: 80 },
