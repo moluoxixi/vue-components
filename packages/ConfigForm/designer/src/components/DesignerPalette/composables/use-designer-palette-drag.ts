@@ -72,6 +72,25 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
     window.removeEventListener('pointermove', handlePointerMove)
     window.removeEventListener('pointerup', handlePointerUp)
     window.removeEventListener('pointercancel', handlePointerCancel)
+    window.removeEventListener('keydown', handlePointerDragEscape, true)
+  }
+
+  function handlePointerDragEscape(event: KeyboardEvent): void {
+    if (event.key !== 'Escape')
+      return
+    event.preventDefault()
+    event.stopPropagation()
+    options.dragController?.cancel()
+    cleanupPointerDrag()
+    dragActivated = false
+    // The pointer is still down; swallow the click that fires on release so
+    // the cancelled drag does not add the material.
+    suppressClick = true
+    window.addEventListener('pointerup', () => {
+      window.setTimeout(() => {
+        suppressClick = false
+      }, 0)
+    }, { once: true })
   }
 
   function handlePointerLostCapture(event: PointerEvent): void {
@@ -123,6 +142,7 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
     window.addEventListener('pointermove', handlePointerMove, { passive: false })
     window.addEventListener('pointerup', handlePointerUp)
     window.addEventListener('pointercancel', handlePointerCancel)
+    window.addEventListener('keydown', handlePointerDragEscape, true)
   }
 
   function addMaterial(materialKey: string): void {

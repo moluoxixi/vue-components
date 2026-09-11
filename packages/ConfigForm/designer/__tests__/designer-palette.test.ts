@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
 
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
-import { h } from 'vue'
+import { describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { createDesignerDragController } from '../src/components/DesignerCanvas/services'
 import DesignerPalette from '../src/components/DesignerPalette'
+import { useDesignerPaletteDrag } from '../src/components/DesignerPalette/composables'
 import { createDesignerRegistry } from '../src/registry'
 
 const registry = createDesignerRegistry({ materials: [{
@@ -83,5 +85,47 @@ describe('designer palette presentation', () => {
       ['test.input'],
       ['test.input'],
     ])
+  })
+
+  it('cancels an active pointer material drag with Escape and swallows the release click', async () => {
+    const onAddMaterial = vi.fn()
+    const dragController = createDesignerDragController({
+      commitMaterial: vi.fn(),
+      commitNode: vi.fn(),
+    })
+    const cancel = vi.spyOn(dragController, 'cancel')
+    const [material] = registry.listMaterials()
+    const Harness = defineComponent({
+      setup() {
+        const drag = useDesignerPaletteDrag({
+          dragController,
+          materialTitle: () => material!.title,
+          onAddMaterial,
+          readonly: () => false,
+        })
+        return () => h('button', drag.getMaterialBindings(material!))
+      },
+    })
+    const wrapper = mount(Harness, { attachTo: document.body })
+    const command = wrapper.get('button')
+
+    command.element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 31 }))
+    cancel.mockClear()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(cancel).toHaveBeenCalledTimes(1)
+
+    // The listener leaves with the session, so a second Escape is a no-op.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(cancel).toHaveBeenCalledTimes(1)
+
+    // Releasing the pointer right after Escape must not add the material.
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 31 }))
+    await command.trigger('click')
+    expect(onAddMaterial).not.toHaveBeenCalled()
+
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await command.trigger('click')
+    expect(onAddMaterial).toHaveBeenCalledWith('test.input')
+    wrapper.unmount()
   })
 })

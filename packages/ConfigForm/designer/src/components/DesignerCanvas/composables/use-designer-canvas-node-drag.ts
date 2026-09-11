@@ -31,6 +31,16 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
     window.removeEventListener('pointermove', handleNodeDragMove)
     window.removeEventListener('pointerup', handleNodeDragEnd)
     window.removeEventListener('pointercancel', handleNodeDragCancel)
+    window.removeEventListener('keydown', handleNodeDragEscape, true)
+  }
+
+  function handleNodeDragEscape(event: KeyboardEvent): void {
+    if (event.key !== 'Escape')
+      return
+    event.preventDefault()
+    event.stopPropagation()
+    options.dragController?.cancel()
+    cleanupNodeDrag()
   }
 
   function handleNodeLostPointerCapture(event: PointerEvent): void {
@@ -75,6 +85,7 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
     window.addEventListener('pointermove', handleNodeDragMove, { passive: false })
     window.addEventListener('pointerup', handleNodeDragEnd)
     window.addEventListener('pointercancel', handleNodeDragCancel)
+    window.addEventListener('keydown', handleNodeDragEscape, true)
   }
 
   function beginNodeKeyboard(nodeId: string): void {

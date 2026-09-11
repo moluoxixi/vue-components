@@ -231,6 +231,25 @@ describe('designer canvas interactions', () => {
     context.wrapper.unmount()
   })
 
+  it('cancels an active pointer node drag with Escape', () => {
+    const context = mountInteractions()
+    const handle = document.createElement('button')
+    const cancel = vi.spyOn(context.dragController, 'cancel')
+    handle.addEventListener('pointerdown', event => context.interactions.beginNodeDrag(event, 'field'))
+
+    handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 23 }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }))
+    expect(cancel).not.toHaveBeenCalled()
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(cancel).toHaveBeenCalledTimes(1)
+
+    // The listener is removed with the session, so a second Escape is a no-op.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(cancel).toHaveBeenCalledTimes(1)
+    context.wrapper.unmount()
+  })
+
   it('clears resize handlers without committing on readonly and unmount', async () => {
     const context = mountInteractions()
     const handle = document.createElement('button')

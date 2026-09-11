@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 import type { WorkbenchDialogFocus } from '../types'
-import { nextTick, watch } from 'vue'
+import { nextTick, onScopeDispose, watch } from 'vue'
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
@@ -11,26 +11,67 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ')
 
+interface DialogFocusEntry {
+  dialog: Ref<HTMLElement | null>
+  returnFocus: HTMLElement | undefined
+}
+
+// Stacked so nested dialogs restore focus into the dialog below them when the
+// original trigger has already left the document.
+const dialogFocusEntries: DialogFocusEntry[] = []
+
+function focusableElements(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)]
+    .filter(element => !element.closest('[inert], [aria-hidden="true"]'))
+}
+
+function removeEntry(entry: DialogFocusEntry): void {
+  const index = dialogFocusEntries.indexOf(entry)
+  if (index >= 0)
+    dialogFocusEntries.splice(index, 1)
+}
+
 export function useWorkbenchDialogFocus(
   open: () => boolean,
   dialog: Ref<HTMLElement | null>,
   close: () => void,
 ): WorkbenchDialogFocus {
-  let returnFocus: HTMLElement | undefined
+  let entry: DialogFocusEntry | undefined
 
   watch(open, async (opened) => {
     if (opened) {
-      returnFocus = document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : undefined
+      entry = {
+        dialog,
+        returnFocus: document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : undefined,
+      }
+      dialogFocusEntries.push(entry)
       await nextTick()
-      dialog.value?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus()
+      if (dialog.value)
+        focusableElements(dialog.value)[0]?.focus()
       return
     }
+    const closing = entry
+    entry = undefined
+    if (!closing)
+      return
+    removeEntry(closing)
     await nextTick()
-    returnFocus?.focus()
-    returnFocus = undefined
+    if (closing.returnFocus?.isConnected) {
+      closing.returnFocus.focus()
+      return
+    }
+    const fallback = dialogFocusEntries.at(-1)?.dialog.value
+    if (fallback)
+      focusableElements(fallback)[0]?.focus()
   }, { immediate: true })
+
+  onScopeDispose(() => {
+    if (entry)
+      removeEntry(entry)
+    entry = undefined
+  })
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
@@ -41,7 +82,7 @@ export function useWorkbenchDialogFocus(
     if (event.key !== 'Tab' || !dialog.value)
       return
 
-    const focusable = [...dialog.value.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)]
+    const focusable = focusableElements(dialog.value)
     if (focusable.length === 0)
       return
     const first = focusable[0]!
