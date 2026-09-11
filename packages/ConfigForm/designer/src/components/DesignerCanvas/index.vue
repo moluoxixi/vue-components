@@ -88,6 +88,13 @@ function candidateForDragSource(source: DesignerDragSource | undefined) {
   return createDesignerMaterialCandidate(props.registry, source.materialKey, source.candidateId)
 }
 
+// Bridges iframe-armed node drags to the node-drag composable created below.
+let runtimeNodeDragHooks: {
+  begin: (nodeId: string, point: { x: number, y: number }, pointerId: number) => void
+  cancel: (pointerId: number) => void
+  finish: (point: { x: number, y: number }, pointerId: number) => void
+} | undefined
+
 function nodeForDragSource(source: DesignerDragSource | undefined): PageNode | undefined {
   if (!source)
     return undefined
@@ -148,8 +155,11 @@ const {
   selectedSet,
   surfaceModel,
 } = useDesignerCanvasRuntime({
+  beginNodeDragFromRuntime: (nodeId, point, pointerId) => runtimeNodeDragHooks?.begin(nodeId, point, pointerId),
   cameraScale: () => camera.scale,
+  cancelNodeDragFromRuntime: pointerId => runtimeNodeDragHooks?.cancel(pointerId),
   elementVersion,
+  finishNodeDragFromRuntime: (point, pointerId) => runtimeNodeDragHooks?.finish(point, pointerId),
   focusNode: focusEditorNode,
   interactive: () => Boolean(props.interactive),
   model: () => props.model,
@@ -221,6 +231,9 @@ const {
 const {
   beginNodeDrag,
   beginNodeKeyboard,
+  beginRuntimeNodeDrag,
+  cancelRuntimeNodeDrag,
+  finishRuntimeNodeDrag,
   handleActiveDragKeydown,
   handleNodeDragHandleKeydown,
   isNodeKeyboardDragging,
@@ -232,6 +245,11 @@ const {
   runtimeNodeGeometryById,
   stopCanvasAutoScroll,
 })
+runtimeNodeDragHooks = {
+  begin: beginRuntimeNodeDrag,
+  cancel: cancelRuntimeNodeDrag,
+  finish: finishRuntimeNodeDrag,
+}
 const {
   handleCanvasClick,
   handleCanvasKeydown,

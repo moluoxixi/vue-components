@@ -123,12 +123,21 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     if (!point || !viewport || !session?.active || session.input !== 'pointer')
       return
     const delta = resolveDesignerAutoScrollDelta(point, viewport.getBoundingClientRect())
-    if (delta.x !== 0 || delta.y !== 0) {
-      viewport.scrollBy(delta.x, delta.y)
-      options.onGeometryChange()
-      options.dragController?.move(point)
-    }
-    autoScrollFrame = window.requestAnimationFrame(runCanvasAutoScroll)
+    // Stop the frame loop while the pointer rests outside the edge bands; the
+    // next pointer move reschedules it through resolveDropTarget.
+    if (delta.x === 0 && delta.y === 0)
+      return
+    const { scrollLeft, scrollTop } = viewport
+    viewport.scrollBy(delta.x, delta.y)
+    // At the scroll bounds the scroll is a no-op: rescheduling would spin the
+    // resolve/geometry pipeline at full speed for as long as the pointer sits
+    // in the edge band, freezing the page.
+    if (viewport.scrollLeft === scrollLeft && viewport.scrollTop === scrollTop)
+      return
+    options.onGeometryChange()
+    options.dragController?.move(point)
+    if (autoScrollFrame === undefined)
+      autoScrollFrame = window.requestAnimationFrame(runCanvasAutoScroll)
   }
 
   function stopCanvasAutoScroll(): void {

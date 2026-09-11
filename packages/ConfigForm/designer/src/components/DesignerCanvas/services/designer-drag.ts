@@ -34,6 +34,18 @@ export function resolveDesignerDragOverlayPosition(
   }
 }
 
+/**
+ * setPointerCapture throws NotFoundError once the pointer is already released
+ * (fast clicks, synthetic events). Capture only backs the lostpointercapture
+ * safety net, so a failed capture must not abort the drag start.
+ */
+export function captureDesignerPointer(target: HTMLElement | undefined, pointerId: number): void {
+  try {
+    target?.setPointerCapture?.(pointerId)
+  }
+  catch {}
+}
+
 export function resolveDesignerDragVisualHeight(
   measuredHeight: number,
   kind?: 'field' | 'layout',

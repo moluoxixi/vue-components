@@ -10,8 +10,11 @@ import type {
 import { computed, ref } from 'vue'
 
 interface UseDesignerCanvasRuntimeOptions {
+  beginNodeDragFromRuntime: (nodeId: string, point: { x: number, y: number }, pointerId: number) => void
   cameraScale: () => number
+  cancelNodeDragFromRuntime: (pointerId: number) => void
   elementVersion: Ref<number>
+  finishNodeDragFromRuntime: (point: { x: number, y: number }, pointerId: number) => void
   focusNode: (nodeId: string) => void | Promise<void>
   interactive: () => boolean
   model: () => Record<string, unknown> | undefined
@@ -105,6 +108,11 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
     options.onGeometryChange()
   }
 
+  // Pointer downs inside the iframe arm a pending node drag; crossing the
+  // activation distance hands the session to the canvas node-drag composable,
+  // whose drag overlay then receives the native pointer stream.
+  let armedNodeDrag: { nodeId: string, pointerId: number, x: number, y: number } | undefined
+
   function handleRuntimePointerDown(payload: DesignerRuntimePointerPayload): void {
     if (payload.button !== 0)
       return
@@ -114,16 +122,46 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
         payload.shiftKey ? 'range' : (payload.ctrlKey || payload.metaKey) ? 'toggle' : 'replace',
       )
       void options.focusNode(payload.nodeId)
+      if (!options.interactive() && !payload.shiftKey && !payload.ctrlKey && !payload.metaKey) {
+        armedNodeDrag = {
+          nodeId: payload.nodeId,
+          pointerId: payload.pointerId,
+          x: payload.clientX,
+          y: payload.clientY,
+        }
+      }
       return
     }
     options.onSelect('')
   }
 
+  function handleRuntimePointerMove(payload: DesignerRuntimePointerPayload): void {
+    const armed = armedNodeDrag
+    if (armed && armed.pointerId === payload.pointerId
+      && Math.hypot(payload.clientX - armed.x, payload.clientY - armed.y) >= 5) {
+      armedNodeDrag = undefined
+      options.beginNodeDragFromRuntime(armed.nodeId, { x: payload.clientX, y: payload.clientY }, payload.pointerId)
+    }
+    pointerHandlers.move?.(payload)
+  }
+
+  function handleRuntimePointerUp(payload: DesignerRuntimePointerPayload): void {
+    armedNodeDrag = undefined
+    options.finishNodeDragFromRuntime({ x: payload.clientX, y: payload.clientY }, payload.pointerId)
+    pointerHandlers.up?.(payload)
+  }
+
+  function handleRuntimePointerCancel(payload: DesignerRuntimePointerPayload): void {
+    armedNodeDrag = undefined
+    options.cancelNodeDragFromRuntime(payload.pointerId)
+    pointerHandlers.cancel?.(payload)
+  }
+
   const runtimeHostBridge: DesignerRuntimeHostBridge = {
-    pointerCancel: payload => pointerHandlers.cancel?.(payload),
+    pointerCancel: handleRuntimePointerCancel,
     pointerDown: handleRuntimePointerDown,
-    pointerMove: payload => pointerHandlers.move?.(payload),
-    pointerUp: payload => pointerHandlers.up?.(payload),
+    pointerMove: handleRuntimePointerMove,
+    pointerUp: handleRuntimePointerUp,
     updateGeometry: updateRuntimeGeometry,
   }
 

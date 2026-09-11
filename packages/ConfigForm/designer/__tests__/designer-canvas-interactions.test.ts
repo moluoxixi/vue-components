@@ -250,6 +250,26 @@ describe('designer canvas interactions', () => {
     context.wrapper.unmount()
   })
 
+  it('runs a runtime-armed node drag through session, finish, and Escape', () => {
+    const context = mountInteractions()
+    const finish = vi.spyOn(context.dragController, 'finish')
+    context.interactions.beginRuntimeNodeDrag('field', { x: 40, y: 40 }, 31)
+    expect(context.dragController.session.value?.source).toMatchObject({ nodeId: 'field', type: 'node' })
+
+    // A mismatching pointer must not end the session.
+    context.interactions.finishRuntimeNodeDrag({ x: 60, y: 60 }, 99)
+    expect(finish).not.toHaveBeenCalled()
+
+    context.interactions.finishRuntimeNodeDrag({ x: 60, y: 60 }, 31)
+    expect(finish).toHaveBeenCalledWith({ x: 60, y: 60 })
+
+    const cancel = vi.spyOn(context.dragController, 'cancel')
+    context.interactions.beginRuntimeNodeDrag('field', { x: 40, y: 40 }, 32)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(cancel).toHaveBeenCalledTimes(1)
+    context.wrapper.unmount()
+  })
+
   it('clears resize handlers without committing on readonly and unmount', async () => {
     const context = mountInteractions()
     const handle = document.createElement('button')

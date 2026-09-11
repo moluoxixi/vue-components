@@ -3,6 +3,7 @@ import type { DesignerDragController } from '../../DesignerCanvas/types'
 import type { DesignerPaletteMaterialBindings } from '../types'
 import { computed, nextTick, onBeforeUnmount, watch } from 'vue'
 import { createDesignerNodeId } from '../../../graph'
+import { captureDesignerPointer } from '../../DesignerCanvas/services'
 
 interface UseDesignerPaletteDragOptions {
   dragController: DesignerDragController | undefined
@@ -132,7 +133,7 @@ export function useDesignerPaletteDrag(options: UseDesignerPaletteDragOptions) {
     options.dragController.cancel()
     activePointerId = event.pointerId
     activePointerTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
-    activePointerTarget?.setPointerCapture?.(event.pointerId)
+    captureDesignerPointer(activePointerTarget, event.pointerId)
     activePointerTarget?.addEventListener('lostpointercapture', handlePointerLostCapture)
     dragActivated = false
     options.dragController.beginMaterial(material.key, createDesignerNodeId('candidate'), {

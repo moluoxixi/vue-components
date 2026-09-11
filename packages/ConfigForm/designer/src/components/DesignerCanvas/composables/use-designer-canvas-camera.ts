@@ -2,6 +2,7 @@ import type { CSSProperties, Ref } from 'vue'
 import type { ConfigFormBreakpoint, DesignerCanvasCamera } from '../types'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { captureDesignerPointer } from '../services'
 
 const CANVAS_FRAME_WIDTHS: Record<ConfigFormBreakpoint, number> = {
   desktop: 900,
@@ -211,7 +212,7 @@ export function useDesignerCanvasCamera(options: UseDesignerCanvasCameraOptions)
       y: event.clientY,
     }
     cameraPanning.value = true
-    target?.setPointerCapture?.(pointerId)
+    captureDesignerPointer(target, pointerId)
     const move = (moveEvent: PointerEvent): void => {
       if (moveEvent.pointerId !== pointerId)
         return

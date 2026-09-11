@@ -1,5 +1,6 @@
 import type { DesignerDragController, DesignerDragSession, DesignerRuntimeNodeGeometry } from '../types'
 import { onBeforeUnmount, watch } from 'vue'
+import { captureDesignerPointer } from '../services'
 
 interface UseDesignerCanvasNodeDragOptions {
   activeSession: () => DesignerDragSession | undefined
@@ -64,6 +65,22 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
     cleanupNodeDrag()
   }
 
+  function attachNodeDragListeners(): void {
+    window.addEventListener('pointermove', handleNodeDragMove, { passive: false })
+    window.addEventListener('pointerup', handleNodeDragEnd)
+    window.addEventListener('pointercancel', handleNodeDragCancel)
+    window.addEventListener('keydown', handleNodeDragEscape, true)
+  }
+
+  function nodeDragPointerOffset(nodeId: string, point: { x: number, y: number }): { x: number, y: number } {
+    const sourceRect = options.runtimeNodeGeometryById(nodeId)?.rect
+    return sourceRect
+      && point.x >= sourceRect.left && point.x <= sourceRect.right
+      && point.y >= sourceRect.top && point.y <= sourceRect.bottom
+      ? { x: point.x - sourceRect.left, y: point.y - sourceRect.top }
+      : { x: 16, y: 16 }
+  }
+
   function beginNodeDrag(event: PointerEvent, nodeId: string): void {
     if (options.readonly() || !options.dragController || event.button !== 0)
       return
@@ -72,20 +89,42 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
     event.stopPropagation()
     activeDragPointer = event.pointerId
     activeDragPointerTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
-    activeDragPointerTarget?.setPointerCapture?.(event.pointerId)
+    captureDesignerPointer(activeDragPointerTarget, event.pointerId)
     activeDragPointerTarget?.addEventListener('lostpointercapture', handleNodeLostPointerCapture)
     const point = { x: event.clientX, y: event.clientY }
-    const sourceRect = options.runtimeNodeGeometryById(nodeId)?.rect
-    const pointerOffset = sourceRect
-      && point.x >= sourceRect.left && point.x <= sourceRect.right
-      && point.y >= sourceRect.top && point.y <= sourceRect.bottom
-      ? { x: point.x - sourceRect.left, y: point.y - sourceRect.top }
-      : { x: 16, y: 16 }
-    options.dragController.beginNode(nodeId, point, pointerOffset)
-    window.addEventListener('pointermove', handleNodeDragMove, { passive: false })
-    window.addEventListener('pointerup', handleNodeDragEnd)
-    window.addEventListener('pointercancel', handleNodeDragCancel)
-    window.addEventListener('keydown', handleNodeDragEscape, true)
+    options.dragController.beginNode(nodeId, point, nodeDragPointerOffset(nodeId, point))
+    attachNodeDragListeners()
+  }
+
+  // The iframe runtime arms node drags on its own pointer stream; once the
+  // activation distance is crossed it hands over here. The session starts
+  // active because the threshold was already met inside the frame, and the
+  // drag overlay then covers the iframe so the window listeners take over.
+  function beginRuntimeNodeDrag(nodeId: string, point: { x: number, y: number }, pointerId: number): void {
+    if (options.readonly() || !options.dragController)
+      return
+    options.closeNodeActionMenu()
+    activeDragPointer = pointerId
+    activeDragPointerTarget = undefined
+    options.dragController.beginNode(nodeId, point, nodeDragPointerOffset(nodeId, point))
+    options.dragController.move(point)
+    attachNodeDragListeners()
+  }
+
+  // Runtime-forwarded pointer ends double as a safety net for releases that
+  // land inside the iframe before the drag overlay mounts.
+  function finishRuntimeNodeDrag(point: { x: number, y: number }, pointerId: number): void {
+    if (pointerId !== activeDragPointer)
+      return
+    options.dragController?.finish(point)
+    cleanupNodeDrag()
+  }
+
+  function cancelRuntimeNodeDrag(pointerId: number): void {
+    if (pointerId !== activeDragPointer)
+      return
+    options.dragController?.cancel()
+    cleanupNodeDrag()
   }
 
   function beginNodeKeyboard(nodeId: string): void {
@@ -154,6 +193,9 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
   return {
     beginNodeDrag,
     beginNodeKeyboard,
+    beginRuntimeNodeDrag,
+    cancelRuntimeNodeDrag,
+    finishRuntimeNodeDrag,
     handleActiveDragKeydown,
     handleNodeDragHandleKeydown,
     isNodeKeyboardDragging,

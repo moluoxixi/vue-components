@@ -5,6 +5,7 @@ import type { DesignerCanvasEmits } from '../types/emits'
 import { resolveConfigFormLayout } from '@moluoxixi/config-form-core'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { findDesignNode } from '../../../graph'
+import { captureDesignerPointer } from '../services'
 
 interface UseDesignerCanvasResizeOptions {
   breakpoint: () => ConfigFormBreakpoint | undefined
@@ -47,7 +48,7 @@ export function useDesignerCanvasResize(options: UseDesignerCanvasResizeOptions)
     const width = layoutRect.width || 1
     const pointerId = event.pointerId
     const pointerTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
-    pointerTarget?.setPointerCapture?.(pointerId)
+    captureDesignerPointer(pointerTarget, pointerId)
     let nextSpan = startSpan
     const move = (moveEvent: Pick<PointerEvent, 'clientX' | 'pointerId'>): void => {
       if (moveEvent.pointerId !== pointerId)
