@@ -1,0 +1,46 @@
+{
+  "name": "vite-plugin-style-scope",
+  "version": "0.1.0",
+  "description": "构建期给 qiankun 子应用的全局样式添加 :where([data-qiankun=\"<appName>\"]) 作用域前缀的 Vite 插件",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js"
+    },
+    "./client": {
+      "types": "./client.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "client.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "vite-plugin",
+    "qiankun",
+    "css",
+    "style-isolation"
+  ],
+  "peerDependencies": {
+    "vite": "^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0"
+  },
+  "dependencies": {
+    "postcss-prefix-selector": "^2.2.0"
+  },
+  "devDependencies": {
+    "postcss": "^8.5.26",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  }
+}

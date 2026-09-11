@@ -1,0 +1,56 @@
+{
+  "name": "qiankun-router-kit",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./main/core": "./src/main/core/index.ts",
+    "./main/vue3": "./src/main/vue3/index.ts",
+    "./main/vue2": "./src/main/vue2/index.ts",
+    "./main/react": "./src/main/react/index.ts",
+    "./sub/core": "./src/sub/core/index.ts",
+    "./sub/vue3": "./src/sub/vue3/index.ts",
+    "./utils": "./src/utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "qiankun": ">=2",
+    "react": ">=16.8",
+    "react-router-dom": ">=6",
+    "vite-plugin-qiankun": ">=1",
+    "vue": ">=2.7",
+    "vue-router": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "qiankun": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-router-dom": {
+      "optional": true
+    },
+    "vite-plugin-qiankun": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "vue-router": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "qiankun": "^2.10.16",
+    "react": "^18.3.1",
+    "react-router-dom": "^6.30.0",
+    "typescript": "^5.6.3",
+    "vite-plugin-qiankun": "^1.0.15",
+    "vue": "^3.5.13",
+    "vue-router": "^5.3.1"
+  }
+}
