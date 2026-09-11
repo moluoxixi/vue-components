@@ -186,6 +186,27 @@ describe('design surface editing shortcuts', () => {
     expect(undo).not.toHaveBeenCalled()
   })
 
+  it('moves a node relative to any reference row for outline drag reordering', () => {
+    const { execute, wrapper } = mountSurface()
+    const surface = wrapper.vm as unknown as DesignSurfaceExpose
+
+    expect(surface.moveNodeRelative('second', 'first', 'before')).toBe(true)
+    expect(execute.mock.calls[0]![0].actions[0]).toMatchObject({
+      operations: [{ type: 'node.move', nodeId: 'second', target: { parentId: null, index: 0 } }],
+    })
+
+    // An earlier same-sequence source compensates for its own removal.
+    expect(surface.moveNodeRelative('first', 'second', 'after')).toBe(true)
+    expect(execute.mock.calls[1]![0].actions[0]).toMatchObject({
+      operations: [{ type: 'node.move', nodeId: 'first', target: { parentId: null, index: 1 } }],
+    })
+
+    execute.mockClear()
+    expect(surface.moveNodeRelative('first', 'first', 'after')).toBe(false)
+    expect(surface.moveNodeRelative('first', 'missing', 'after')).toBe(false)
+    expect(execute).not.toHaveBeenCalled()
+  })
+
   it('supports platform undo/redo shortcuts and ignores text editing targets', async () => {
     const { execute, redo, undo, wrapper } = mountSurface()
     const surface = wrapper.vm as unknown as DesignSurfaceExpose

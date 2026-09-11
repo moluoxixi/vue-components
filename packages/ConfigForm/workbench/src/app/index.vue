@@ -389,6 +389,7 @@ watch(recoveryDrafts, (drafts) => {
                 :selected-ids="selectedDesignerIds"
                 @add-material="addMaterial"
                 @arrange-layer="moveDesignerLayer"
+                @move-layer="(nodeId, referenceId, position) => designer?.moveNodeRelative(nodeId, referenceId, position)"
                 @jump-history="jumpDesignerHistory"
                 @manage-pages="showPageManager"
                 @select-layer="selectDesignerLayer"

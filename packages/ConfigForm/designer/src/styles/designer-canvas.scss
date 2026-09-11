@@ -271,6 +271,14 @@
   background: var(--mx-designer-separator);
   border: 0;
 }
+
+.mx-config-form-designer__hover-box {
+  position: fixed;
+  z-index: 90;
+  border: 1px dashed color-mix(in srgb, var(--mx-designer-accent) 55%, transparent);
+  border-radius: 4px;
+  pointer-events: none;
+}
 .mx-config-form-designer__runtime-surface > form {
   margin: 0;
 }

@@ -18,7 +18,7 @@ import {
   Tablet,
   X,
 } from '@lucide/vue'
-import { computed, onBeforeUnmount, provide, reactive, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, provide, reactive, watch } from 'vue'
 import { useDesignerController } from '../../composables'
 import {
   applyDesignGraphReactions,
@@ -124,6 +124,21 @@ const dragController = designSession.drag
 provide(DESIGNER_SESSION_KEY, designSession)
 onBeforeUnmount(designSession.dispose)
 
+// Double clicking a canvas node promotes it into the inspector: narrow and
+// medium layouts reveal the properties panel, and the first property control
+// receives focus so editing can start immediately.
+async function handleCanvasInspect(nodeId: string): Promise<void> {
+  controller.select(nodeId)
+  if (workspaceMode.value === 'narrow')
+    activeWorkspaceView.value = 'properties'
+  else if (workspaceMode.value === 'medium')
+    mediumPanel.value = 'properties'
+  await nextTick()
+  rootRef.value
+    ?.querySelector<HTMLElement>('[data-workspace-panel="properties"] input, [data-workspace-panel="properties"] select, [data-workspace-panel="properties"] textarea, [data-workspace-panel="properties"] button')
+    ?.focus({ preventScroll: false })
+}
+
 function dragSourceLabel(source: DesignerDragSource): string {
   if (source.type === 'material') {
     const material = props.registry.getMaterial(source.materialKey)
@@ -191,6 +206,7 @@ const {
   handleUpdateForm,
   handleUpdatePath,
   handleUpdatePaths,
+  moveNodeRelative,
   toolbarScope,
 } = useDesignSurfaceCommands({
   activeBreakpoint,
@@ -209,6 +225,7 @@ const {
   workspaceMode,
 })
 defineExpose<DesignSurfaceExpose>({
+  moveNodeRelative,
   performNodeAction: controller.performNodeAction,
   redo: handleRedo,
   select: controller.select,
@@ -285,6 +302,7 @@ defineExpose<DesignSurfaceExpose>({
           :reaction-props="runtimeProjection.props"
           :reaction-states="runtimeProjection.states"
           @select="handleCanvasSelect"
+          @inspect="handleCanvasInspect"
           @move="handleMove"
           @add-material="handleAddMaterial"
           @action="handleAction"

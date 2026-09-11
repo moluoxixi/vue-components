@@ -151,6 +151,7 @@ const showEmptyCanvas = computed(() => projectedGraph.value.root.length === 0 &&
 
 const {
   externalGeometry,
+  hoverNodeId,
   pointerHandlers: runtimePointerHandlers,
   runtimeHostBridge,
   runtimeLayoutRect,
@@ -175,6 +176,7 @@ const {
   onGeometryChange: () => {
     elementVersion.value += 1
   },
+  onInspectNode: nodeId => emit('inspect', nodeId),
   onSelect: (nodeId, mode) => {
     if (mode)
       emit('select', nodeId, mode)
@@ -345,6 +347,23 @@ function runContextMenuAction(action: DesignerNodeAction, nodeId: string): void 
   emit('action', action, nodeId)
 }
 
+// Soft hover outline over the runtime node under the pointer; suppressed
+// while dragging, resizing, or hovering the current selection.
+const hoverBoxStyle = computed(() => {
+  const nodeId = hoverNodeId.value
+  if (!nodeId || activeSession.value || resizingNodeId.value || nodeId === props.selectedId || selectedSet().has(nodeId))
+    return undefined
+  const rect = runtimeNodeGeometryById(nodeId)?.rect
+  if (!rect || rect.width <= 0 || rect.height <= 0)
+    return undefined
+  return {
+    height: `${rect.height}px`,
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+  }
+})
+
 onMounted(() => {
   unregisterDropResolver = dragController?.registerResolver(resolveDropTarget)
 })
@@ -466,6 +485,7 @@ onBeforeUnmount(() => {
     >
       <slot name="dragVisual" v-bind="dragVisualSlotScope" />
     </DesignerCanvasDragVisual>
+    <div v-if="hoverBoxStyle" class="mx-config-form-designer__hover-box" aria-hidden="true" :style="hoverBoxStyle" />
     <DesignerCanvasContextMenu
       v-if="runtimeContextMenu"
       :key="`${runtimeContextMenu.nodeId}-${runtimeContextMenu.x}-${runtimeContextMenu.y}`"

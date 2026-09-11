@@ -43,6 +43,7 @@ export interface StudioLeftPanelEmits {
   'arrangeLayer': [action: StudioLayerAction, nodeId: string]
   'jumpHistory': [position: number]
   'managePages': []
+  'moveLayer': [nodeId: string, referenceId: string, position: 'after' | 'before']
   'selectLayer': [nodeId: string, mode: DesignerSelectionMode]
   'selectPage': [pageId: string]
   'update:activeView': [view: StudioLeftView]

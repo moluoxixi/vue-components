@@ -118,6 +118,51 @@ function selectLayer(nodeId: string, event: Pick<MouseEvent | KeyboardEvent, 'ct
   emit('selectLayer', nodeId, mode)
 }
 
+// Native drag reordering for the layer tree: the drop half of the hovered
+// row decides whether the node lands before or after it.
+const dragLayerId = ref<string>()
+const dropIndicator = ref<{ id: string, position: 'after' | 'before' }>()
+
+function handleLayerDragStart(event: DragEvent, nodeId: string): void {
+  if (props.readonly) {
+    event.preventDefault()
+    return
+  }
+  dragLayerId.value = nodeId
+  event.dataTransfer?.setData('text/plain', nodeId)
+  if (event.dataTransfer)
+    event.dataTransfer.effectAllowed = 'move'
+}
+
+function handleLayerDragOver(event: DragEvent, nodeId: string): void {
+  if (!dragLayerId.value || dragLayerId.value === nodeId)
+    return
+  event.preventDefault()
+  if (event.dataTransfer)
+    event.dataTransfer.dropEffect = 'move'
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  dropIndicator.value = {
+    id: nodeId,
+    position: event.clientY < rect.top + rect.height / 2 ? 'before' : 'after',
+  }
+}
+
+function handleLayerDrop(event: DragEvent, nodeId: string): void {
+  event.preventDefault()
+  const source = dragLayerId.value
+  const indicator = dropIndicator.value
+  dragLayerId.value = undefined
+  dropIndicator.value = undefined
+  if (!source || source === nodeId || !indicator || indicator.id !== nodeId)
+    return
+  emit('moveLayer', source, nodeId, indicator.position)
+}
+
+function handleLayerDragEnd(): void {
+  dragLayerId.value = undefined
+  dropIndicator.value = undefined
+}
+
 function navigationIndex(event: KeyboardEvent, current: number, length: number): number | undefined {
   if (event.key === 'ArrowDown')
     return Math.min(length - 1, current + 1)
@@ -261,8 +306,18 @@ function handlePageKeydown(event: KeyboardEvent, pageId: string): void {
         aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight"
         :data-layer-id="layer.id"
         :tabindex="selectedIds[0] === layer.id || (selectedIds.length === 0 && index === 0) ? 0 : -1"
-        :class="{ 'is-selected': selectedIds.includes(layer.id) }"
+        :class="{
+          'is-selected': selectedIds.includes(layer.id),
+          'is-dragging': dragLayerId === layer.id,
+          'is-drop-before': dropIndicator?.id === layer.id && dropIndicator.position === 'before',
+          'is-drop-after': dropIndicator?.id === layer.id && dropIndicator.position === 'after',
+        }"
+        :draggable="!readonly"
         @keydown="handleLayerKeydown($event, layer.id)"
+        @dragstart="handleLayerDragStart($event, layer.id)"
+        @dragover="handleLayerDragOver($event, layer.id)"
+        @drop="handleLayerDrop($event, layer.id)"
+        @dragend="handleLayerDragEnd"
       >
         <ElButton text native-type="button" tabindex="-1" class="designer-layer-select" :style="{ paddingLeft: `${10 + layer.depth * 16}px` }" :title="layer.label" @click="selectLayer(layer.id, $event)">
           <Layers3 :size="13" aria-hidden="true" />

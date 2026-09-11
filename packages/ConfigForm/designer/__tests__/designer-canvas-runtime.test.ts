@@ -23,6 +23,8 @@ function createRuntime(overrides: { interactive?: boolean } = {}) {
   const beginNodeDrag = vi.fn()
   const cancelNodeDrag = vi.fn()
   const finishNodeDrag = vi.fn()
+  const contextMenu = vi.fn()
+  const inspect = vi.fn()
   const sheet = document.createElement('div')
   vi.spyOn(sheet, 'getBoundingClientRect').mockReturnValue(rect(10, 20, 300, 400) as DOMRect)
   const runtime = useDesignerCanvasRuntime({
@@ -34,9 +36,11 @@ function createRuntime(overrides: { interactive?: boolean } = {}) {
     focusNode: vi.fn(),
     interactive: () => overrides.interactive ?? false,
     model: () => ({}),
+    onContextMenu: contextMenu,
     onGeometryChange: () => {
       elementVersion.value += 1
     },
+    onInspectNode: inspect,
     onSelect: selected,
     onUpdateField: vi.fn(),
     publishGeometry: published,
@@ -44,7 +48,7 @@ function createRuntime(overrides: { interactive?: boolean } = {}) {
     selectedIds: () => [],
     sheetRef: ref(sheet),
   })
-  return { beginNodeDrag, cameraScale, cancelNodeDrag, finishNodeDrag, published, runtime, selected }
+  return { beginNodeDrag, cameraScale, cancelNodeDrag, contextMenu, finishNodeDrag, inspect, published, runtime, selected }
 }
 
 function pointer(overrides: Partial<{ button: number, clientX: number, clientY: number, ctrlKey: boolean, metaKey: boolean, nodeId: string, pointerId: number, shiftKey: boolean }> = {}) {
@@ -137,5 +141,25 @@ describe('designer canvas runtime bridge', () => {
     interactive.runtime.runtimeHostBridge.pointerDown(pointer({ nodeId: 'field' }))
     interactive.runtime.runtimeHostBridge.pointerMove(pointer({ clientX: 300, clientY: 300 }))
     expect(interactive.beginNodeDrag).not.toHaveBeenCalled()
+  })
+
+  it('promotes a double press into inspect, selects on context menu, and tracks hover', () => {
+    const { contextMenu, inspect, runtime, selected } = createRuntime()
+    runtime.runtimeHostBridge.pointerDown(pointer({ nodeId: 'field' }))
+    expect(inspect).not.toHaveBeenCalled()
+    runtime.runtimeHostBridge.pointerDown(pointer({ nodeId: 'field' }))
+    expect(inspect).toHaveBeenCalledWith('field')
+    // The pair is consumed: a third press starts a fresh cycle.
+    runtime.runtimeHostBridge.pointerDown(pointer({ nodeId: 'field' }))
+    expect(inspect).toHaveBeenCalledTimes(1)
+
+    runtime.runtimeHostBridge.pointerMove(pointer({ nodeId: 'other' }))
+    expect(runtime.hoverNodeId.value).toBe('other')
+    runtime.runtimeHostBridge.pointerMove(pointer({ nodeId: undefined }))
+    expect(runtime.hoverNodeId.value).toBeUndefined()
+
+    runtime.runtimeHostBridge.contextMenu(pointer({ button: 2, nodeId: 'field' }))
+    expect(selected).toHaveBeenCalledWith('field', 'replace')
+    expect(contextMenu).toHaveBeenCalledWith(expect.objectContaining({ nodeId: 'field' }))
   })
 })

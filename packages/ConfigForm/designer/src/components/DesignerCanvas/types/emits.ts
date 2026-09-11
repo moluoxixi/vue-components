@@ -7,6 +7,7 @@ export interface DesignerCanvasEmits {
   move: [nodeId: string, target: DesignerDropTarget]
   addMaterial: [materialKey: string, target: DesignerDropTarget]
   action: [action: DesignerNodeAction, nodeId: string]
+  inspect: [nodeId: string]
   toggleInteractive: []
   updateField: [field: string, value: unknown]
   resize: [nodeId: string, span: number]

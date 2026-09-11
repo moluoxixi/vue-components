@@ -20,6 +20,7 @@ interface UseDesignerCanvasRuntimeOptions {
   model: () => Record<string, unknown> | undefined
   onContextMenu: (payload: DesignerRuntimePointerPayload) => void
   onGeometryChange: () => void
+  onInspectNode: (nodeId: string) => void
   onSelect: (nodeId: string, mode?: 'range' | 'replace' | 'toggle') => void
   onUpdateField: (field: string, value: unknown) => void
   publishGeometry: (snapshot: DesignerRuntimeGeometrySnapshot) => void
@@ -113,6 +114,9 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
   // activation distance hands the session to the canvas node-drag composable,
   // whose drag overlay then receives the native pointer stream.
   let armedNodeDrag: { nodeId: string, pointerId: number, x: number, y: number } | undefined
+  // Double pressing the same node promotes the selection into the inspector.
+  let lastNodePress: { nodeId: string, time: number } | undefined
+  const hoverNodeId = ref<string>()
 
   function handleRuntimePointerDown(payload: DesignerRuntimePointerPayload): void {
     if (payload.button !== 0)
@@ -130,9 +134,18 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
           x: payload.clientX,
           y: payload.clientY,
         }
+        const now = Date.now()
+        if (lastNodePress && lastNodePress.nodeId === payload.nodeId && now - lastNodePress.time <= 400) {
+          lastNodePress = undefined
+          options.onInspectNode(payload.nodeId)
+        }
+        else {
+          lastNodePress = { nodeId: payload.nodeId, time: now }
+        }
       }
       return
     }
+    lastNodePress = undefined
     options.onSelect('')
   }
 
@@ -143,6 +156,7 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
       armedNodeDrag = undefined
       options.beginNodeDragFromRuntime(armed.nodeId, { x: payload.clientX, y: payload.clientY }, payload.pointerId)
     }
+    hoverNodeId.value = options.interactive() ? undefined : payload.nodeId
     pointerHandlers.move?.(payload)
   }
 
@@ -178,6 +192,7 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
 
   return {
     externalGeometry,
+    hoverNodeId,
     pointerHandlers,
     runtimeHostBridge,
     runtimeLayoutRect,

@@ -6,11 +6,13 @@ import type { ConfigFormBreakpoint } from '../../DesignerCanvas/types'
 import type { DesignerNodeAction, DesignSurfaceProps } from '../types'
 import { computed, nextTick } from 'vue'
 import {
+  collectDesignSubtreeIds,
   createFormCommand,
   createMoveCommand,
   createNodePathCommand,
   createResizeCommand,
   createStoredConfigRemovalCommand,
+  findDesignNode,
 } from '../../../graph'
 
 type WorkspaceMode = 'desktop' | 'medium' | 'narrow'
@@ -76,6 +78,31 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
   function handleMove(nodeId: string, target: DesignerDropTarget): void {
     options.controller.select(nodeId)
     dispatch(createMoveCommand(options.pageId(), nodeId, target))
+  }
+
+  /**
+   * Moves a node right before/after a reference node anywhere in the graph
+   * (outline drag reordering). The engine removes the node before inserting,
+   * so an earlier same-sequence source shifts the target index by one.
+   */
+  function moveNodeRelative(nodeId: string, referenceId: string, position: 'after' | 'before'): boolean {
+    if (options.readonly() || nodeId === referenceId)
+      return false
+    const graph = options.controller.graph.value
+    if (collectDesignSubtreeIds(graph, nodeId).has(referenceId))
+      return false
+    const source = findDesignNode(graph, nodeId)
+    const reference = findDesignNode(graph, referenceId)
+    if (!source || !reference)
+      return false
+    let index = reference.index + (position === 'after' ? 1 : 0)
+    if (source.parentId === reference.parentId && source.slot === reference.slot && source.index < reference.index)
+      index -= 1
+    const target: DesignerDropTarget = reference.parentId === null
+      ? { parentId: null, index }
+      : { parentId: reference.parentId, slot: reference.slot!, index }
+    options.controller.select(nodeId)
+    return dispatch(createMoveCommand(options.pageId(), nodeId, target))
   }
 
   function showCanvasOrProperties(): void {
@@ -268,6 +295,7 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     handleUpdateForm,
     handleUpdatePath,
     handleUpdatePaths,
+    moveNodeRelative,
     toolbarScope,
   }
 }
