@@ -321,6 +321,17 @@ describe('workbench theme contract', () => {
       .map(rule => rule.body)
       .join('\n')
     expect(workbenchBlocks).toContain('--el-color-primary: var(--wb-accent);')
+    for (const [token, source] of [
+      ['--el-color-success', '--wb-positive'],
+      ['--el-color-warning', '--wb-warning'],
+      ['--el-color-danger', '--wb-danger'],
+      ['--el-color-error', '--wb-danger'],
+      ['--el-color-info', '--wb-muted'],
+    ] as const) {
+      expect(workbenchBlocks).toContain(`${token}: var(${source});`)
+      for (const level of ['light-3', 'light-5', 'light-7', 'light-8', 'light-9', 'dark-2'] as const)
+        expect(workbenchBlocks).toMatch(new RegExp(`${token}-${level}: (?:color-mix\\(in srgb, var\\(${source}\\)|var\\(--wb-danger-soft\\))`))
+    }
   })
 
   it('keeps export and Preview responsive without mutating intrinsic Canvas runtime styles', () => {
