@@ -43,7 +43,7 @@ interface CssRule {
 }
 
 function cssRules(source: string): CssRule[] {
-  return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => ({
+  return [...source.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => ({
     selector: match[1]!.trim(),
     body: match[2]!,
   }))
@@ -160,7 +160,7 @@ describe('workbench theme contract', () => {
     ])
 
     expect(elementPlusTheme).toMatch(/@forward 'element-plus\/theme-chalk\/src\/common\/var\.scss' with \(/)
-    expect(elementPlusTheme).toMatch(/'base': #a14f68/)
+    expect(elementPlusTheme).toMatch(/'base': #a63a2e/)
     expect(elementPlusTheme).not.toContain('$input:')
     expect(viteConfig).toMatch(/ElementPlusResolver\(\{ importStyle: 'sass' \}\)/)
     expect(viteConfig).toMatch(/additionalData: `@use "\$\{elementPlusTheme\}" as \*;`/)
@@ -170,7 +170,7 @@ describe('workbench theme contract', () => {
     }
     expect(stylesheet).not.toContain('--el-input-focus-border-color:')
   })
-  const paletteSelectors = ['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine'].flatMap(palette =>
+  const paletteSelectors = ['ink', 'morandi', 'cyber', 'glass'].flatMap(palette =>
     ['light', 'dark'].map(theme => `.workbench-app[data-palette="${palette}"][data-theme="${theme}"]`))
   const contrastContracts = paletteSelectors.flatMap(selector => [
     [selector, '--wb-text', '--wb-surface', 4.5],
@@ -185,11 +185,23 @@ describe('workbench theme contract', () => {
     [selector, '--wb-control-border', '--wb-surface', 3],
     [selector, '--wb-control-border', '--wb-surface-raised', 3],
     [selector, '--wb-accent', '--wb-surface', 3],
+    [selector, '--wb-accent-text', '--wb-bg', 4.5],
+    [selector, '--wb-accent-text', '--wb-surface', 4.5],
+    [selector, '--wb-accent-text', '--wb-surface-raised', 4.5],
+    [selector, '--wb-accent-text', '--wb-elevated', 4.5],
+    [selector, '--wb-accent-text', '--wb-hover', 4.5],
+    [selector, '--wb-accent-text', '--wb-accent-soft', 4.5],
     [selector, '--wb-focus', '--wb-surface', 3],
     [selector, '--wb-action-text', '--wb-action-bg', 4.5],
     [selector, '--wb-positive', '--wb-surface', 4.5],
+    [selector, '--wb-positive', '--wb-elevated', 4.5],
+    [selector, '--wb-positive', '--wb-bg', 4.5],
     [selector, '--wb-warning', '--wb-surface', 4.5],
+    [selector, '--wb-warning', '--wb-elevated', 4.5],
+    [selector, '--wb-warning', '--wb-bg', 4.5],
     [selector, '--wb-danger', '--wb-surface', 4.5],
+    [selector, '--wb-danger', '--wb-elevated', 4.5],
+    [selector, '--wb-danger', '--wb-bg', 4.5],
   ] as const)
   const separatorContracts = paletteSelectors.flatMap(selector => [
     [selector, '--wb-surface'],
@@ -215,6 +227,42 @@ describe('workbench theme contract', () => {
 
     expect(separatorContrast).toBeGreaterThan(1.25)
     expect(separatorContrast).toBeLessThan(controlContrast)
+  })
+
+  it('keeps the palette signature effects on their elevation tokens', () => {
+    const base = selectorBlock('.workbench-app')
+    for (const token of ['--wb-shadow-overlay', '--wb-shadow-drawer', '--wb-shadow-float', '--wb-shadow-toast', '--wb-shadow-sheet'])
+      expect(base).toContain(`${token}:`)
+    expect(base).toContain('--wb-action-glow: none;')
+
+    // Ink wash layers by hairline borders and whitespace instead of shadows.
+    for (const theme of ['light', 'dark'] as const) {
+      const ink = selectorBlock(`.workbench-app[data-palette="ink"][data-theme="${theme}"]`)
+      for (const token of ['--wb-shadow-overlay', '--wb-shadow-drawer', '--wb-shadow-float', '--wb-shadow-toast', '--wb-shadow-sheet'])
+        expect(ink).toContain(`${token}: none;`)
+    }
+
+    // Cyber dark is the neon stage: glowing primary, neon cyan focus.
+    const cyberDark = selectorBlock('.workbench-app[data-palette="cyber"][data-theme="dark"]')
+    expect(cyberDark).toContain('--wb-action-glow: 0 0 16px rgb(61 139 255 / 35%);')
+    expect(cyberDark).toContain('--wb-focus: #00f0ff;')
+
+    // Glass panes are translucent veils over blurred color blobs.
+    for (const theme of ['light', 'dark'] as const)
+      expect(selectorBlock(`.workbench-app[data-palette="glass"][data-theme="${theme}"]`)).toContain('--wb-veil:')
+    const frosted = cssRules(stylesheet).filter(rule =>
+      rule.selector.includes('[data-palette="glass"]') && rule.body.includes('backdrop-filter: blur(14px);'))
+    expect(frosted.length).toBeGreaterThan(0)
+    for (const rule of frosted)
+      expect(rule.body).toContain('background: var(--wb-veil);')
+    expect(stylesheet).toContain('@supports (backdrop-filter: blur(14px))')
+    expect(selectorBlock('.workbench-app[data-palette="glass"][data-theme="light"]', stylesheet)).toContain('--wb-veil: rgb(255 255 255 / 65%);')
+
+    // Primary commands run on the contrast-checked action pair everywhere.
+    const primaryButton = selectorBlock('.workbench-app .el-button--primary')
+    expect(primaryButton).toContain('--el-button-bg-color: var(--wb-action-bg);')
+    expect(primaryButton).toContain('--el-button-text-color: var(--wb-action-text);')
+    expect(primaryButton).toContain('box-shadow: var(--wb-action-glow);')
   })
 
   it('keeps interaction styling and runtime canvas tokens explicit', () => {

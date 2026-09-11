@@ -13,7 +13,7 @@
 }
 
 .workbench-command-hint-anchor > button.is-active {
-  color: var(--wb-accent);
+  color: var(--wb-accent-text);
   border-color: var(--wb-accent-line);
   background: var(--wb-hover);
 }

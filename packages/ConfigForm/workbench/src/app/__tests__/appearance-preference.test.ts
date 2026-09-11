@@ -55,10 +55,10 @@ describe('workbench appearance preference', () => {
     undefined,
     null,
     {},
-    { version: 2, themePreference: 'system', paletteFamily: 'catppuccin' },
-    { version: 1, themePreference: 'auto', paletteFamily: 'catppuccin' },
+    { version: 2, themePreference: 'system', paletteFamily: 'ink' },
+    { version: 1, themePreference: 'auto', paletteFamily: 'ink' },
     { version: 1, themePreference: 'system', paletteFamily: 'nord' },
-    { version: 1, themePreference: 'system', paletteFamily: 'catppuccin', extra: true },
+    { version: 1, themePreference: 'system', paletteFamily: 'ink', extra: true },
   ])('rejects an unknown current-contract value', (value) => {
     expect(parseWorkbenchAppearancePreference(value)).toBeUndefined()
   })
@@ -69,7 +69,7 @@ describe('workbench appearance preference', () => {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => storage.set(key, value),
     }
-    const preference = { version: 1, themePreference: 'dark', paletteFamily: 'kanagawa' } as const
+    const preference = { version: 1, themePreference: 'dark', paletteFamily: 'morandi' } as const
     writeWorkbenchAppearancePreference(preference, adapter)
     expect(readWorkbenchAppearancePreference(adapter)).toEqual(preference)
 
@@ -86,7 +86,7 @@ describe('workbench appearance preference', () => {
 
   it('exports the complete preference option sets', () => {
     expect(WORKBENCH_THEME_PREFERENCES).toEqual(['system', 'light', 'dark'])
-    expect(WORKBENCH_PALETTE_FAMILIES).toEqual(['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine'])
+    expect(WORKBENCH_PALETTE_FAMILIES).toEqual(['ink', 'morandi', 'cyber', 'glass'])
   })
 
   it('keeps the synchronous bootstrap aligned and resolves appearance before mount', () => {
@@ -100,20 +100,20 @@ describe('workbench appearance preference', () => {
     localStorage.setItem(WORKBENCH_APPEARANCE_STORAGE_KEY, JSON.stringify({
       version: 1,
       themePreference: 'system',
-      paletteFamily: 'rose-pine',
+      paletteFamily: 'glass',
     }))
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
     runInNewContext(bootstrap!, { document, localStorage, matchMedia })
     expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(document.documentElement.dataset.palette).toBe('rose-pine')
+    expect(document.documentElement.dataset.palette).toBe('glass')
   })
 
   it.each([
     '{bad json',
-    JSON.stringify({ version: 2, themePreference: 'dark', paletteFamily: 'kanagawa' }),
-    JSON.stringify({ version: 1, themePreference: 'auto', paletteFamily: 'catppuccin' }),
+    JSON.stringify({ version: 2, themePreference: 'dark', paletteFamily: 'morandi' }),
+    JSON.stringify({ version: 1, themePreference: 'auto', paletteFamily: 'ink' }),
     JSON.stringify({ version: 1, themePreference: 'system', paletteFamily: 'nord' }),
-    JSON.stringify({ version: 1, themePreference: 'system', paletteFamily: 'catppuccin', extra: true }),
+    JSON.stringify({ version: 1, themePreference: 'system', paletteFamily: 'ink', extra: true }),
   ])('makes the synchronous bootstrap fail closed for invalid storage: %s', (stored) => {
     const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
     const bootstrap = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)][0]?.[1]
@@ -123,7 +123,7 @@ describe('workbench appearance preference', () => {
     runInNewContext(bootstrap!, { document, localStorage, matchMedia })
 
     expect(document.documentElement.dataset.theme).toBe('light')
-    expect(document.documentElement.dataset.palette).toBe('catppuccin')
+    expect(document.documentElement.dataset.palette).toBe('ink')
   })
 
   it('makes the synchronous bootstrap fail closed when storage is blocked', () => {
@@ -137,6 +137,6 @@ describe('workbench appearance preference', () => {
     runInNewContext(bootstrap!, { document, localStorage, matchMedia })
 
     expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(document.documentElement.dataset.palette).toBe('catppuccin')
+    expect(document.documentElement.dataset.palette).toBe('ink')
   })
 })

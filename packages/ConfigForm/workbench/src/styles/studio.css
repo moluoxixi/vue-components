@@ -294,7 +294,7 @@
 
 .preview-result-chip {
   padding: 2px 6px;
-  color: var(--wb-accent);
+  color: var(--wb-accent-text);
   border: 1px solid var(--wb-accent-line);
   border-radius: 4px;
   background: var(--wb-accent-soft);

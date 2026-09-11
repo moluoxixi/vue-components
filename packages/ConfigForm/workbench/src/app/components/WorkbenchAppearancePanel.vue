@@ -23,10 +23,10 @@ const themeFallbacks: Record<WorkbenchThemePreference, string> = {
   dark: 'Dark',
 }
 const paletteFallbacks: Record<WorkbenchPaletteFamily, string> = {
-  catppuccin: 'Catppuccin',
-  kanagawa: 'Kanagawa',
-  gruvbox: 'Gruvbox',
-  'rose-pine': 'Rosé Pine',
+  ink: 'Ink Wash',
+  morandi: 'Morandi Cream',
+  cyber: 'Cyber Tech',
+  glass: 'Glassmorphism',
 }
 
 const themeOptions = computed(() => WORKBENCH_THEME_PREFERENCES.map(value => ({

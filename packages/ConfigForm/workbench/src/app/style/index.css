@@ -46,7 +46,7 @@
   max-width: min(440px, calc(100% - 28px));
   margin: 0;
   border: 1px solid var(--wb-control-border);
-  box-shadow: 0 12px 34px rgb(0 0 0 / 28%);
+  box-shadow: var(--wb-shadow-toast);
 }
 
 .workbench-toast {
@@ -57,7 +57,7 @@
   width: fit-content;
   max-width: min(440px, calc(100% - 28px));
   border: 1px solid var(--wb-positive);
-  box-shadow: 0 12px 34px rgb(0 0 0 / 28%);
+  box-shadow: var(--wb-shadow-toast);
 }
 
 .workbench-toast .el-alert__content {
@@ -85,7 +85,7 @@
   width: fit-content;
   max-width: min(560px, calc(100% - 28px));
   border: 1px solid var(--wb-warning);
-  box-shadow: 0 12px 34px rgb(0 0 0 / 28%);
+  box-shadow: var(--wb-shadow-toast);
 }
 
 .workspace-recovery-notice[data-tone="error"] {
@@ -177,7 +177,7 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     border-top: 1px solid var(--wb-separator);
     background: var(--wb-elevated);
-    box-shadow: 0 -8px 24px rgb(0 0 0 / 14%);
+    box-shadow: var(--wb-shadow-sheet);
   }
   .mobile-studio-dock button {
     display: grid;

@@ -380,12 +380,12 @@ test.beforeEach(async ({ page }) => {
 })
 
 const visualCases = [
-  ...(['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine'] as const).flatMap(palette =>
+  ...(['ink', 'morandi', 'cyber', 'glass'] as const).flatMap(palette =>
     (['light', 'dark'] as const).map(theme => ({ height: 1000, locale: 'en' as const, palette, theme, width: 1440 }))),
-  { height: 900, locale: 'zh', palette: 'catppuccin', theme: 'light', width: 900 },
-  { height: 900, locale: 'en', palette: 'kanagawa', theme: 'dark', width: 900 },
-  { height: 844, locale: 'en', palette: 'gruvbox', theme: 'light', width: 390 },
-  { height: 844, locale: 'zh', palette: 'rose-pine', theme: 'dark', width: 390 },
+  { height: 900, locale: 'zh', palette: 'ink', theme: 'light', width: 900 },
+  { height: 900, locale: 'en', palette: 'morandi', theme: 'dark', width: 900 },
+  { height: 844, locale: 'en', palette: 'cyber', theme: 'light', width: 390 },
+  { height: 844, locale: 'zh', palette: 'glass', theme: 'dark', width: 390 },
 ] as const
 
 for (const visualCase of visualCases) {
@@ -822,7 +822,7 @@ for (const adapter of [
       const style = getComputedStyle(element)
       return { backgroundColor: style.backgroundColor, color: style.color }
     })
-    await setAppearance(page, 'light', 'rose-pine')
+    await setAppearance(page, 'light', 'glass')
     expect(await previewInput.evaluate((element) => {
       const style = getComputedStyle(element)
       return { backgroundColor: style.backgroundColor, color: style.color }

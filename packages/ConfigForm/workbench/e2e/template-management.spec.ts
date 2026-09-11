@@ -52,11 +52,11 @@ test('browses, filters, keyboard-selects, and previews the built-in catalog', as
     .analyze()
   expect(results.violations).toEqual([])
 
-  await setAppearance(page, 'dark', 'kanagawa')
+  await setAppearance(page, 'dark', 'morandi')
   await expect(workspace).toHaveAttribute('data-theme', 'dark')
-  await expect(workspace).toHaveAttribute('data-palette', 'kanagawa')
+  await expect(workspace).toHaveAttribute('data-palette', 'morandi')
   await expect(workspace.locator('.template-catalog-filters .el-select__wrapper').first())
-    .toHaveCSS('background-color', 'rgb(42, 42, 55)')
+    .toHaveCSS('background-color', 'rgb(64, 59, 53)')
   const lightResults = await new AxeBuilder({ page })
     .exclude('iframe[data-preview-runtime-host]')
     .withTags(['wcag2a', 'wcag2aa'])
@@ -269,10 +269,10 @@ test('uses one Element Plus segmented window at 390px', async ({ page }) => {
 })
 
 const templateVisualCases = [
-  { height: 900, locale: 'zh', overlay: true, palette: 'catppuccin', theme: 'light', width: 900 },
-  { height: 900, locale: 'en', overlay: false, palette: 'kanagawa', theme: 'dark', width: 900 },
-  { height: 844, locale: 'en', overlay: false, palette: 'gruvbox', theme: 'light', width: 390 },
-  { height: 844, locale: 'zh', overlay: false, palette: 'rose-pine', theme: 'dark', width: 390 },
+  { height: 900, locale: 'zh', overlay: true, palette: 'ink', theme: 'light', width: 900 },
+  { height: 900, locale: 'en', overlay: false, palette: 'morandi', theme: 'dark', width: 900 },
+  { height: 844, locale: 'en', overlay: false, palette: 'cyber', theme: 'light', width: 390 },
+  { height: 844, locale: 'zh', overlay: false, palette: 'glass', theme: 'dark', width: 390 },
 ] as const
 
 for (const visualCase of templateVisualCases) {

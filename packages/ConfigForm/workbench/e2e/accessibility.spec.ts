@@ -59,11 +59,11 @@ test.beforeEach(async ({ page }) => {
 test('keeps all palette and resolved-theme combinations accessible', async ({ page }) => {
   const creationWorkspace = page.getByRole('main', { name: 'Create project' })
   await expect(creationWorkspace.getByText('Registry requirements met', { exact: true })).toBeVisible()
-  await expect(creationWorkspace).toHaveAttribute('data-palette', 'catppuccin')
+  await expect(creationWorkspace).toHaveAttribute('data-palette', 'ink')
   await expectNoAccessibilityViolations(page, 'new project workspace')
   await createProject(page, 'element')
 
-  for (const palette of ['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine'] as const) {
+  for (const palette of ['ink', 'morandi', 'cyber', 'glass'] as const) {
     for (const theme of ['light', 'dark'] as const) {
       await setAppearance(page, theme, palette)
       await expectNoAccessibilityViolations(page, `${palette} ${theme}`)
@@ -72,15 +72,15 @@ test('keeps all palette and resolved-theme combinations accessible', async ({ pa
 })
 
 test('follows system color changes and keeps explicit modes stable', async ({ page }) => {
-  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-palette', 'catppuccin')
-  await setAppearance(page, 'system', 'kanagawa')
+  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-palette', 'ink')
+  await setAppearance(page, 'system', 'morandi')
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-theme', 'dark')
   await expect(page.locator('#workbench-overlays')).toHaveAttribute('data-theme', 'dark')
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-theme', 'light')
 
-  await setAppearance(page, 'dark', 'kanagawa')
+  await setAppearance(page, 'dark', 'morandi')
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-theme', 'dark')
 })
@@ -101,8 +101,8 @@ test('keeps the desktop popover and mobile drawer accessible with focus restorat
   await openAppearance(page)
   const drawer = page.getByRole('dialog', { name: 'Appearance' })
   await expect(drawer).toBeVisible()
-  await drawer.locator('.appearance-palette-option', { hasText: 'Kanagawa' }).click()
-  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-palette', 'kanagawa')
+  await drawer.locator('.appearance-palette-option', { hasText: 'Morandi Cream' }).click()
+  await expect(page.locator('.template-creation-workspace')).toHaveAttribute('data-palette', 'morandi')
   await expectNoAccessibilityViolations(page, 'mobile appearance drawer')
   await drawer.getByRole('button', { name: 'Close' }).focus()
   await page.keyboard.press('Tab')
@@ -149,7 +149,7 @@ for (const adapter of ['element', 'antd'] as const) {
 test('keeps the 900px light-theme overflow menu accessible', async ({ page }) => {
   await createProject(page, 'element')
   await page.setViewportSize({ width: 900, height: 900 })
-  await setAppearance(page, 'light', 'rose-pine')
+  await setAppearance(page, 'light', 'glass')
   await page.getByRole('button', { name: 'More actions' }).click()
   await expect(page.locator('[data-mobile-action-menu]')).toBeVisible()
   await expectNoAccessibilityViolations(page, '900px light theme overflow')
@@ -166,7 +166,7 @@ for (const adapter of ['element', 'antd'] as const) {
       preview: await runtimeStyleFingerprint(page, previewSelector),
     }
 
-    for (const palette of ['catppuccin', 'kanagawa', 'gruvbox', 'rose-pine'] as const) {
+    for (const palette of ['ink', 'morandi', 'cyber', 'glass'] as const) {
       for (const theme of ['light', 'dark'] as const) {
         await setAppearance(page, theme, palette)
         const after = {

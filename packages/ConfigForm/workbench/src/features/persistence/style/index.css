@@ -3,7 +3,7 @@
   color: var(--wb-text);
   border: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
-  box-shadow: 0 20px 56px rgb(0 0 0 / 28%);
+  box-shadow: var(--wb-shadow-overlay);
 }
 
 .persistence-dialog .el-dialog__header {
@@ -84,7 +84,7 @@
 
 .version-history-layout > nav > .el-button.is-active {
   border-color: var(--wb-accent-line);
-  background: var(--wb-active);
+  background: var(--wb-accent-soft);
 }
 
 .version-history-layout nav span,

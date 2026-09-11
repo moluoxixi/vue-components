@@ -41,7 +41,7 @@ describe('workbench UI store', () => {
     ui.notify('Saved')
     ui.togglePreview()
     ui.setThemePreference('dark')
-    ui.setPaletteFamily('kanagawa')
+    ui.setPaletteFamily('morandi')
     ui.toggleLocale()
     ui.selectMobileStudioView('pages')
     await nextTick()
@@ -58,11 +58,11 @@ describe('workbench UI store', () => {
     expect(ui.studioLeftView.value).toBe('pages')
     expect(ui.themePreference.value).toBe('dark')
     expect(ui.resolvedTheme.value).toBe('dark')
-    expect(ui.paletteFamily.value).toBe('kanagawa')
+    expect(ui.paletteFamily.value).toBe('morandi')
     expect(document.getElementById('workbench-overlays')?.dataset.theme).toBe('dark')
-    expect(document.getElementById('workbench-overlays')?.dataset.palette).toBe('kanagawa')
+    expect(document.getElementById('workbench-overlays')?.dataset.palette).toBe('morandi')
     expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(document.documentElement.dataset.palette).toBe('kanagawa')
+    expect(document.documentElement.dataset.palette).toBe('morandi')
     expect(ui.localeId.value).toBe('zh-CN')
     expect(document.documentElement.lang).toBe('zh-CN')
   })
@@ -88,19 +88,19 @@ describe('workbench UI store', () => {
     localStorage.setItem('moluoxixi.config-form.workbench.appearance', JSON.stringify({
       version: 1,
       themePreference: 'dark',
-      paletteFamily: 'rose-pine',
+      paletteFamily: 'glass',
     }))
     const ui = createWorkbenchUiStore({})
     expect(ui.themePreference.value).toBe('dark')
-    expect(ui.paletteFamily.value).toBe('rose-pine')
+    expect(ui.paletteFamily.value).toBe('glass')
 
     ui.setThemePreference('system')
-    ui.setPaletteFamily('gruvbox')
+    ui.setPaletteFamily('cyber')
     await nextTick()
     expect(JSON.parse(localStorage.getItem('moluoxixi.config-form.workbench.appearance')!)).toEqual({
       version: 1,
       themePreference: 'system',
-      paletteFamily: 'gruvbox',
+      paletteFamily: 'cyber',
     })
   })
 

@@ -2,7 +2,7 @@ import type { DesignerLocaleOptions } from '@moluoxixi/config-form-designer'
 
 export type WorkbenchThemePreference = 'system' | 'light' | 'dark'
 export type WorkbenchResolvedTheme = 'light' | 'dark'
-export type WorkbenchPaletteFamily = 'catppuccin' | 'kanagawa' | 'gruvbox' | 'rose-pine'
+export type WorkbenchPaletteFamily = 'ink' | 'morandi' | 'cyber' | 'glass'
 
 export interface WorkbenchAppearancePreference {
   version: 1

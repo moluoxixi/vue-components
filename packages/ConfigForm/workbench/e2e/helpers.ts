@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 
 export type WorkbenchAdapter = 'antd' | 'element'
-export type WorkbenchPalette = 'catppuccin' | 'gruvbox' | 'kanagawa' | 'rose-pine'
+export type WorkbenchPalette = 'cyber' | 'glass' | 'ink' | 'morandi'
 export type WorkbenchThemeMode = 'dark' | 'light' | 'system'
 
 const templateNames: Record<WorkbenchAdapter, RegExp> = {
@@ -35,13 +35,13 @@ export async function createProject(page: Page, adapter: WorkbenchAdapter): Prom
 }
 
 const appearanceLabels: Record<WorkbenchPalette | WorkbenchThemeMode, string> = {
-  'catppuccin': 'Catppuccin',
-  'dark': 'Dark',
-  'gruvbox': 'Gruvbox',
-  'kanagawa': 'Kanagawa',
-  'light': 'Light',
-  'rose-pine': 'Rosé Pine',
-  'system': 'System',
+  cyber: 'Cyber Tech',
+  dark: 'Dark',
+  glass: 'Glassmorphism',
+  ink: 'Ink Wash',
+  light: 'Light',
+  morandi: 'Morandi Cream',
+  system: 'System',
 }
 
 export async function openAppearance(page: Page): Promise<void> {

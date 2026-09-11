@@ -58,7 +58,7 @@ function createUi() {
     closeAppearanceDrawer: vi.fn(),
     closePageManager: vi.fn(),
     pageManagerOpen: ref(false),
-    paletteFamily: ref('catppuccin'),
+    paletteFamily: ref('ink'),
     resolvedTheme: ref('dark'),
     setPaletteFamily: vi.fn(),
     setThemePreference: vi.fn(),

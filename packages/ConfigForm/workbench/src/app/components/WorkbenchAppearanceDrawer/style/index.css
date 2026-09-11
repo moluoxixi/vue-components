@@ -3,7 +3,7 @@
   border-left: 1px solid var(--wb-separator);
   color: var(--wb-text);
   background: var(--wb-surface-raised);
-  box-shadow: -12px 0 30px rgb(0 0 0 / 16%);
+  box-shadow: var(--wb-shadow-drawer);
 }
 
 .appearance-drawer-close.el-button {

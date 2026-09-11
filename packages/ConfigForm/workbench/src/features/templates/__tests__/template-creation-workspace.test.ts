@@ -210,7 +210,7 @@ describe('template creation workspace', () => {
       closeAppearanceDrawer,
       openAppearanceDrawer: vi.fn(),
       message: ref(''),
-      paletteFamily: ref('catppuccin'),
+      paletteFamily: ref('ink'),
       resolvedTheme: ref('dark'),
       setPaletteFamily: vi.fn(),
       setThemePreference: vi.fn(),

@@ -14,36 +14,36 @@ export const WORKBENCH_THEME_PREFERENCES = [
 ] as const satisfies readonly WorkbenchThemePreference[]
 
 export const WORKBENCH_PALETTE_FAMILIES = [
-  'catppuccin',
-  'kanagawa',
-  'gruvbox',
-  'rose-pine',
+  'ink',
+  'morandi',
+  'cyber',
+  'glass',
 ] as const satisfies readonly WorkbenchPaletteFamily[]
 
 export const DEFAULT_WORKBENCH_APPEARANCE: Readonly<WorkbenchAppearancePreference> = {
   version: WORKBENCH_APPEARANCE_VERSION,
   themePreference: 'system',
-  paletteFamily: 'catppuccin',
+  paletteFamily: 'ink',
 }
 
 export const WORKBENCH_PALETTE_SWATCHES: Readonly<Record<
   WorkbenchPaletteFamily,
   { dark: readonly string[], light: readonly string[] }
 >> = {
-  'catppuccin': {
-    light: ['#eff1f5', '#e6e9ef', '#8839ef', '#40a02b'],
-    dark: ['#1e1e2e', '#313244', '#cba6f7', '#a6e3a1'],
+  ink: {
+    light: ['#f7f4ec', '#fdfaf2', '#363634', '#a63a2e'],
+    dark: ['#1b1b19', '#252522', '#d8d4c8', '#c4483b'],
   },
-  'kanagawa': {
-    light: ['#f2ecbc', '#e5ddb0', '#c84053', '#6f894e'],
-    dark: ['#1f1f28', '#2a2a37', '#e46876', '#76946a'],
+  morandi: {
+    light: ['#f5f2ec', '#ffffff', '#716b5c', '#b37f72'],
+    dark: ['#2c2925', '#37332e', '#b9b1a4', '#d3a196'],
   },
-  'gruvbox': {
-    light: ['#fbf1c7', '#f4e8be', '#945e80', '#6c782e'],
-    dark: ['#282828', '#32302f', '#d3869b', '#a9b665'],
+  cyber: {
+    light: ['#eff3f8', '#ffffff', '#0b6cff', '#00cfe0'],
+    dark: ['#0a0f1e', '#121a2e', '#3d8bff', '#00f0ff'],
   },
-  'rose-pine': {
-    light: ['#faf4ed', '#fffaf3', '#b4637a', '#6d8f89'],
-    dark: ['#191724', '#1f1d2e', '#eb6f92', '#95b1ac'],
+  glass: {
+    light: ['#eef1fb', '#fdf1f6', '#5a5ded', '#ec4899'],
+    dark: ['#0c1122', '#1b2440', '#818cf8', '#f471b5'],
   },
 }

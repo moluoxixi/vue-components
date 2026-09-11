@@ -3,7 +3,7 @@
   color: var(--wb-text);
   border: 1px solid var(--wb-separator);
   background: var(--wb-elevated);
-  box-shadow: 0 20px 56px rgb(0 0 0 / 28%);
+  box-shadow: var(--wb-shadow-overlay);
 }
 
 .page-manager-dialog-shell .el-dialog__header {

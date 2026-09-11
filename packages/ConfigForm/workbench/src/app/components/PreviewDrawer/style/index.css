@@ -44,7 +44,7 @@
 .preview-drawer-shell {
   border-left: 1px solid var(--wb-separator);
   background: #f3f6fa;
-  box-shadow: -12px 0 30px rgb(0 0 0 / 16%);
+  box-shadow: var(--wb-shadow-drawer);
 }
 
 .preview-drawer-shell.is-expanded {

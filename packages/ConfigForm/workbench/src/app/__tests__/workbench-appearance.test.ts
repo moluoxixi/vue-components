@@ -15,7 +15,7 @@ function overlayRoot(): DOMWrapper<Element> {
 
 describe('workbench appearance controls', () => {
   beforeEach(() => {
-    document.body.innerHTML = '<button id="return-focus">Open</button><div id="workbench-overlays" class="workbench-overlays" data-theme="light" data-palette="catppuccin"></div>'
+    document.body.innerHTML = '<button id="return-focus">Open</button><div id="workbench-overlays" class="workbench-overlays" data-theme="light" data-palette="ink"></div>'
   })
 
   afterEach(() => document.body.replaceChildren())
@@ -23,7 +23,7 @@ describe('workbench appearance controls', () => {
   it('offers all modes and palettes and emits immediate selections', async () => {
     const wrapper = mount(WorkbenchAppearancePanel, {
       props: {
-        paletteFamily: 'catppuccin',
+        paletteFamily: 'ink',
         themePreference: 'system',
       },
     })
@@ -31,17 +31,17 @@ describe('workbench appearance controls', () => {
     expect(wrapper.findAll('.appearance-mode-control .el-segmented__item')).toHaveLength(3)
     expect(wrapper.findAll('.appearance-palette-option')).toHaveLength(4)
     expect(wrapper.text()).toContain('System')
-    expect(wrapper.text()).toContain('Rosé Pine')
+    expect(wrapper.text()).toContain('Glassmorphism')
 
-    await wrapper.find('input[value="kanagawa"]').setValue()
-    expect(wrapper.emitted('setPaletteFamily')).toEqual([['kanagawa']])
+    await wrapper.find('input[value="morandi"]').setValue()
+    expect(wrapper.emitted('setPaletteFamily')).toEqual([['morandi']])
     wrapper.unmount()
   })
 
   it('uses the settings icon for the desktop popover trigger', () => {
     const wrapper = mount(WorkbenchAppearancePopover, {
       props: {
-        paletteFamily: 'gruvbox',
+        paletteFamily: 'cyber',
         themePreference: 'dark',
       },
     })
@@ -56,14 +56,14 @@ describe('workbench appearance controls', () => {
       attachTo: document.body,
       props: {
         open: false,
-        paletteFamily: 'rose-pine',
+        paletteFamily: 'glass',
         themePreference: 'system',
       },
     })
 
     await wrapper.setProps({ open: true })
     await nextTick()
-    expect(overlayRoot().get('.appearance-panel').text()).toContain('Rosé Pine')
+    expect(overlayRoot().get('.appearance-panel').text()).toContain('Glassmorphism')
     await overlayRoot().get('button[aria-label="Close"]').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
     await wrapper.setProps({ open: false })
