@@ -98,9 +98,9 @@
 }
 
 .version-history-layout nav small {
-  margin-top: 3px;
+  margin-top: 4px;
   color: var(--wb-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .version-inspector {

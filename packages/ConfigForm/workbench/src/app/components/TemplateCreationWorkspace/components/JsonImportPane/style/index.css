@@ -243,9 +243,9 @@
 .json-import-status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   color: var(--wb-positive);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .json-import-error-summary,
@@ -288,7 +288,7 @@
 .json-import-error-summary p {
   margin: 0;
   color: var(--wb-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -310,6 +310,7 @@
 .json-import-report dt {
   color: var(--wb-muted);
   font-size: 11px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 

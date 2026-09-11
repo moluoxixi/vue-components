@@ -26,6 +26,16 @@
   --wb-danger-soft: #4a2938;
   --wb-disabled: #a6adc8;
   --wb-editor-surface: #242437;
+
+  /* The canvas paper is intentionally light in every palette, so these
+     tokens are fixed instead of palette-scoped. */
+  --wb-canvas-backdrop: #e9eef4;
+  --wb-canvas-sheet: #fff;
+  --wb-canvas-ink: #17202a;
+  --wb-canvas-frame: #c8d1dc;
+  --wb-canvas-danger-ink: #7b241c;
+  --wb-canvas-danger-line: #efb5af;
+  --wb-canvas-danger-soft: #fff1ef;
 }
 
 .workbench-app,
