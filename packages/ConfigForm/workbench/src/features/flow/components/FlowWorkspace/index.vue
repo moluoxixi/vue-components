@@ -11,6 +11,7 @@ import {
 } from '@lucide/vue'
 import { Handle, Position, VueFlow } from '@vue-flow/core'
 import { useFlowWorkspace } from './composables'
+import { WORKBENCH_FLOW_ACTION_PRESETS } from './services'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
@@ -55,6 +56,18 @@ function nodeIcon(node: ConfigFormFlowNode) {
   if (node.type === 'end' || node.type === 'success' || node.type === 'failure')
     return CircleStop
   return Zap
+}
+
+// Picking a preset also seeds config.input with an editable skeleton unless
+// the node already carries an input.
+function applyActionRef(ref: unknown): void {
+  if (typeof ref !== 'string' || !ref)
+    return
+  const preset = WORKBENCH_FLOW_ACTION_PRESETS.find(candidate => candidate.ref === ref)
+  const config = selectedNode.value?.config
+  patchSelectedNode(preset && config?.input === undefined
+    ? { config: { ...config, input: structuredClone(preset.input) }, ref }
+    : { ref })
 }
 </script>
 
@@ -234,12 +247,22 @@ function nodeIcon(node: ConfigFormFlowNode) {
           </label>
           <label v-if="selectedNode.type === 'action'">
             <span>{{ locale.t('flow.actionRef', 'Action ref') }}</span>
-            <ElInput
-              :model-value="selectedNode.ref"
+            <ElSelect
+              :model-value="selectedNode.ref ?? ''"
               :disabled="readonly || triggerConflict"
               :aria-label="locale.t('flow.actionRef', 'Action ref')"
-              @change="patchSelectedNode({ ref: $event })"
-            />
+              filterable
+              allow-create
+              default-first-option
+              @update:model-value="applyActionRef"
+            >
+              <ElOption
+                v-for="preset in WORKBENCH_FLOW_ACTION_PRESETS"
+                :key="preset.ref"
+                :value="preset.ref"
+                :label="`${locale.t(`flow.action.${preset.ref}`, preset.label)} · ${preset.ref}`"
+              />
+            </ElSelect>
           </label>
           <label v-if="['condition', 'reaction', 'action'].includes(selectedNode.type)">
             <span>{{ locale.t('flow.nodeConfig', 'Node config') }}</span>

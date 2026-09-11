@@ -133,6 +133,6 @@ export function createWorkbenchPageFlowEngine(
 ): PageFlowEngine {
   return createPageFlowEngine({
     ...options,
-    actions: createWorkbenchFlowActionRegistry(options.onNotify),
+    actions: createWorkbenchFlowActionRegistry({ onConfirm: options.onConfirm, onNotify: options.onNotify }),
   })
 }

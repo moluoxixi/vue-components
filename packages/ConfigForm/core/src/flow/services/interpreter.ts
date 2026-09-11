@@ -10,6 +10,7 @@ import type {
   ConfigFormFlowRuntimeDescriptor,
   ConfigFormFlowTraceEvent,
 } from '../types'
+import { tryEvaluateConfigFormExpression } from '../../expression'
 import { applyConfigFormReactionList, evaluateConfigFormReactionCondition } from '../../reaction'
 import { CONFIG_FORM_FLOW_RUNTIME_VERSION, CONFIG_FORM_FLOW_VERSION } from '../constants'
 import { analyzeConfigFormFlow } from './plan'
@@ -409,6 +410,11 @@ function resolveValue(value: unknown, values: Record<string, unknown>, outputs: 
     return values[record.$field]
   if (Object.keys(record).length === 1 && typeof record.$output === 'string')
     return outputs[record.$output]
+  // Formula shorthand: node outputs are reachable through the $outputs root.
+  if (Object.keys(record).length === 1 && typeof record.$expression === 'string') {
+    const result = tryEvaluateConfigFormExpression(record.$expression, { ...values, $outputs: outputs })
+    return result.success ? result.value : undefined
+  }
   return Object.fromEntries(Object.entries(record).map(([key, child]) => [key, resolveValue(child, values, outputs)]))
 }
 

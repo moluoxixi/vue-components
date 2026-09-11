@@ -4,6 +4,7 @@ import type {
   ConfigFormFlowExecutionPlan,
   ConfigFormFlowTraceEvent,
   ConfigFormFlowTrigger,
+  ConfigFormFlowUiConfirmInput,
   ConfigFormReactionProjection,
 } from '@moluoxixi/config-form-core'
 import type { ComputedRef } from 'vue'
@@ -30,9 +31,12 @@ export interface PageFlowEngineOptions {
   writeValues: (values: Record<string, unknown>) => void
 }
 
-export interface WorkbenchPageFlowEngineOptions extends Omit<PageFlowEngineOptions, 'actions'> {
+export interface WorkbenchFlowActionHooks {
+  onConfirm?: (input: ConfigFormFlowUiConfirmInput) => boolean | Promise<boolean>
   onNotify?: (message: string) => void
 }
+
+export interface WorkbenchPageFlowEngineOptions extends Omit<PageFlowEngineOptions, 'actions'>, WorkbenchFlowActionHooks {}
 
 export interface PageFlowEngine {
   readonly projection: ComputedRef<ConfigFormReactionProjection<Record<string, unknown>>>

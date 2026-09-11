@@ -140,6 +140,62 @@ export interface ConfigFormFlowActionRegistry {
   get: (ref: string) => ConfigFormFlowAction | undefined
 }
 
+/** Refs of the built-in action library shipped with the flow runtime. */
+export type ConfigFormFlowBuiltinActionRef
+  = | 'builtin.http.request'
+    | 'builtin.delay'
+    | 'builtin.nav.open'
+    | 'builtin.ui.message'
+    | 'builtin.ui.confirm'
+
+export interface ConfigFormFlowHttpRequestInput {
+  url: string
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  headers?: Record<string, string>
+  query?: Record<string, string | number | boolean>
+  body?: ConfigFormJsonValue
+  responseType?: 'json' | 'text'
+}
+
+export interface ConfigFormFlowHttpRequestOutput {
+  status: number
+  ok: boolean
+  data: unknown
+}
+
+export interface ConfigFormFlowDelayInput {
+  ms: number
+}
+
+export interface ConfigFormFlowNavOpenInput {
+  url: string
+  target?: '_blank' | '_self'
+}
+
+export interface ConfigFormFlowUiMessageInput {
+  message: string
+  type?: 'success' | 'warning' | 'error' | 'info'
+}
+
+export interface ConfigFormFlowUiConfirmInput {
+  message: string
+  title?: string
+  confirmText?: string
+  cancelText?: string
+}
+
+/**
+ * Host capabilities the built-in actions delegate to. Every hook is optional:
+ * missing hooks make the corresponding action fail with a diagnostic instead
+ * of silently doing nothing.
+ */
+export interface ConfigFormFlowActionHost {
+  fetch?: typeof globalThis.fetch
+  openUrl?: (url: string, target: '_blank' | '_self') => void
+  message?: (input: ConfigFormFlowUiMessageInput) => void | Promise<void>
+  confirm?: (input: ConfigFormFlowUiConfirmInput) => boolean | Promise<boolean>
+}
+
 export type ConfigFormFlowRunStatus = 'success' | 'failure' | 'end' | 'aborted' | 'timeout' | 'ignored'
 
 export interface ConfigFormFlowTraceEvent {
