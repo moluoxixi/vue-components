@@ -4,6 +4,7 @@ import type {
 } from '@moluoxixi/config-form'
 import type { CSSProperties, Ref } from 'vue'
 import type { RuntimeHostSyncMessage, RuntimeHostToParentPayload } from '../types'
+import { hitTestDesignNodes } from '@moluoxixi/config-form-model'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 
 export function useRuntimeHostDesignGeometry(options: {
@@ -151,25 +152,15 @@ export function useRuntimeHostDesignGeometry(options: {
   }
 
   function deepestDesignNode(clientX: number, clientY: number): string | undefined {
-    return [...registeredNodes.values()]
-      .flatMap((registration) => {
-        if (registration.metadata.nodeId === design.value?.candidateId)
-          return []
-        const rect = registration.element.getBoundingClientRect()
-        if (rect.width <= 0 || rect.height <= 0
-          || clientX < rect.left || clientX > rect.right
-          || clientY < rect.top || clientY > rect.bottom) {
-          return []
-        }
-        return [{
-          area: rect.width * rect.height,
-          depth: registration.metadata.path.split('.').filter(Boolean).length,
-          nodeId: registration.metadata.nodeId,
-          order: registration.order,
-        }]
-      })
-      .sort((left, right) => right.depth - left.depth || left.area - right.area || right.order - left.order)[0]
-      ?.nodeId
+    const hits = [...registeredNodes.values()]
+      .filter(registration => registration.metadata.nodeId !== design.value?.candidateId)
+      .map(registration => ({
+        depth: registration.metadata.path.split('.').filter(Boolean).length,
+        nodeId: registration.metadata.nodeId,
+        order: registration.order,
+        rect: registration.element.getBoundingClientRect(),
+      }))
+    return hitTestDesignNodes({ x: clientX, y: clientY }, hits)[0]?.nodeId
   }
 
   function postDesignPointer(type: 'designPointerDown' | 'designPointerMove' | 'designPointerUp' | 'designPointerCancel', event: PointerEvent): void {

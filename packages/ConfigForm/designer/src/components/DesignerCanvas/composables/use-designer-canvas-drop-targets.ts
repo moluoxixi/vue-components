@@ -2,6 +2,7 @@ import type { PageGraph, PageNode, ProjectCommand } from '@moluoxixi/config-form
 import type { Ref } from 'vue'
 import type { DesignerDropTarget, DesignNodeLocation } from '../../../graph'
 import type { DesignerCanvasProps, DesignerDragController, DesignerDragSource, DesignerPointerPosition, DesignerRuntimeNodeGeometry, DesignerRuntimeRect } from '../types'
+import { hitTestDesignNodes } from '@moluoxixi/config-form-model'
 import { onBeforeUnmount } from 'vue'
 import { findDesignNode } from '../../../graph'
 import {
@@ -45,25 +46,7 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
   }
 
   function hitNodeElements(point: DesignerPointerPosition, candidateId: string): DesignerRuntimeNodeGeometry[] {
-    return options.runtimeNodeGeometry()
-      .flatMap((geometry) => {
-        if (geometry.nodeId === candidateId)
-          return []
-        const rect = geometry.rect
-        if (rect.width <= 0 || rect.height <= 0
-          || point.x < rect.left || point.x > rect.right
-          || point.y < rect.top || point.y > rect.bottom) {
-          return []
-        }
-        return [{
-          area: rect.width * rect.height,
-          geometry,
-        }]
-      })
-      .sort((left, right) => right.geometry.depth - left.geometry.depth
-        || left.area - right.area
-        || right.geometry.order - left.geometry.order)
-      .map(({ geometry }) => geometry)
+    return hitTestDesignNodes(point, options.runtimeNodeGeometry().filter(geometry => geometry.nodeId !== candidateId))
   }
 
   function siblingTarget(nodeId: string, after: boolean): DesignerDropTarget | undefined {

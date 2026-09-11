@@ -1,6 +1,7 @@
 export * from './commands'
 export * from './engine'
 export * from './history'
+export * from './hit-testing'
 export * from './registry'
 export * from './repository'
 export * from './transactions'
