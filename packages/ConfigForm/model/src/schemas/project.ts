@@ -61,9 +61,12 @@ const formGapSchema = z.string()
   .regex(/^(?:0|[1-9]\d*)px$/, 'Form gap must be a non-negative integer followed by px')
   .refine(value => Number.parseInt(value, 10) <= FORM_GAP_MAX_PX, `Form gap must not exceed ${FORM_GAP_MAX_PX}px`)
 
+const expressionSourceSchema = z.string().min(1).max(10_000)
+
 const reactionOperandSchema: z.ZodType<ConfigFormReactionOperand> = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('field'), field: identifierSchema }).strict(),
   z.object({ kind: z.literal('literal'), value: modelJsonValueSchema }).strict(),
+  z.object({ kind: z.literal('expression'), expression: expressionSourceSchema }).strict(),
 ])
 
 const reactionConditionSchema: z.ZodType<ConfigFormReactionCondition> = z.lazy(() => z.discriminatedUnion('kind', [
@@ -77,6 +80,7 @@ const reactionConditionSchema: z.ZodType<ConfigFormReactionCondition> = z.lazy((
   z.object({ kind: z.literal('and'), expressions: z.array(reactionConditionSchema) }).strict(),
   z.object({ kind: z.literal('or'), expressions: z.array(reactionConditionSchema) }).strict(),
   z.object({ kind: z.literal('not'), expression: reactionConditionSchema }).strict(),
+  z.object({ kind: z.literal('expression'), expression: expressionSourceSchema }).strict(),
 ]))
 
 const reactionEffectSchema: z.ZodType<ConfigFormReactionEffect> = z.discriminatedUnion('kind', [

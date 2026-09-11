@@ -13,6 +13,7 @@ export type ConfigFormReactionCompareOperator
 export type ConfigFormReactionOperand
   = | { kind: 'field', field: string }
     | { kind: 'literal', value: ConfigFormJsonValue }
+    | { kind: 'expression', expression: string }
 
 export type ConfigFormReactionCondition
   = | { kind: 'literal', value: boolean }
@@ -25,6 +26,7 @@ export type ConfigFormReactionCondition
     | { kind: 'and', expressions: ConfigFormReactionCondition[] }
     | { kind: 'or', expressions: ConfigFormReactionCondition[] }
     | { kind: 'not', expression: ConfigFormReactionCondition }
+    | { kind: 'expression', expression: string }
 
 export type ConfigFormReactionStateKey = 'visible' | 'disabled' | 'readonly' | 'required'
 

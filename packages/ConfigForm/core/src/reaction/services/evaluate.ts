@@ -6,6 +6,7 @@ import type {
   ConfigFormReactionProjection,
   ConfigFormReactionStateKey,
 } from '../types'
+import { tryEvaluateConfigFormExpression } from '../../expression'
 
 export const CONFIG_FORM_REACTION_MAX_DEPTH = 64
 
@@ -46,6 +47,12 @@ function evaluateReactionCondition(
     case 'and': return condition.expressions.every(item => evaluateReactionCondition(item, values, depth + 1))
     case 'or': return condition.expressions.some(item => evaluateReactionCondition(item, values, depth + 1))
     case 'not': return !evaluateReactionCondition(condition.expression, values, depth + 1)
+    // A failed expression must not satisfy the condition: broken formulas
+    // keep dependent reactions on their else branch instead of throwing.
+    case 'expression': {
+      const result = tryEvaluateConfigFormExpression(condition.expression, values)
+      return result.success && Boolean(result.value)
+    }
   }
 }
 
@@ -142,7 +149,14 @@ function projectEffect(
 }
 
 function resolveOperand(operand: ConfigFormReactionOperand, values: Record<string, unknown>): unknown {
-  return operand.kind === 'field' ? values[operand.field] : operand.value
+  if (operand.kind === 'field')
+    return values[operand.field]
+  if (operand.kind === 'literal')
+    return operand.value
+  // Broken formulas resolve to undefined so a single bad operand cannot
+  // abort the whole reaction pass.
+  const result = tryEvaluateConfigFormExpression(operand.expression, values)
+  return result.success ? result.value : undefined
 }
 
 function compareValues(

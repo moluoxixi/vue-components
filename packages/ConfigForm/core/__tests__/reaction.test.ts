@@ -144,4 +144,35 @@ describe('configForm reaction core', () => {
       code: 'CONFIG_FORM_REACTION_DEPTH_EXCEEDED',
     }))
   })
+
+  it('evaluates expression conditions and operands, treating broken formulas as inert', () => {
+    expect(evaluateConfigFormReactionCondition(
+      { expression: 'price * quantity > 40', kind: 'expression' },
+      { price: 12.5, quantity: 4 },
+    )).toBe(true)
+    // Broken or unknown-function expressions never satisfy the condition.
+    expect(evaluateConfigFormReactionCondition(
+      { expression: 'NOPE(price)', kind: 'expression' },
+      { price: 1 },
+    )).toBe(false)
+
+    const projection = applyConfigFormReactionList([{
+      id: 'total',
+      when: { kind: 'literal', value: true },
+      then: [
+        { kind: 'setValue', target: 'total', value: { expression: 'ROUND(price * quantity, 2)', kind: 'expression' } },
+        { kind: 'setProps', target: 'total', props: { placeholder: { expression: 'CONCAT("=", price, "x", quantity)', kind: 'expression' } } },
+      ],
+    }], { price: 12.5, quantity: 4 })
+    expect(projection.values).toMatchObject({ total: 50 })
+    expect(projection.props.total).toEqual({ placeholder: '=12.5x4' })
+
+    const broken = applyConfigFormReactionList([{
+      id: 'broken',
+      when: { kind: 'literal', value: true },
+      then: [{ kind: 'setValue', target: 'total', value: { expression: '1 +', kind: 'expression' } }],
+    }], { total: 9 })
+    expect(projection.validate).toEqual([])
+    expect(broken.values).toMatchObject({ total: undefined })
+  })
 })

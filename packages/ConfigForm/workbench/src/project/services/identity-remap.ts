@@ -49,6 +49,10 @@ function remapCondition(
     case 'and': return { ...condition, expressions: condition.expressions.map(item => remapCondition(item, fields)) }
     case 'or': return { ...condition, expressions: condition.expressions.map(item => remapCondition(item, fields)) }
     case 'not': return { ...condition, expression: remapCondition(condition.expression, fields) }
+    // Expression sources reference fields as free-form identifiers, so
+    // identity remapping keeps them verbatim; templates that need remapping
+    // should stick to structured operands.
+    case 'expression': return structuredClone(condition)
   }
 }
 

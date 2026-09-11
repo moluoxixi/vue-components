@@ -1,3 +1,4 @@
+export * from './src/expression'
 export * from './src/field'
 export * from './src/flow'
 export * from './src/json'

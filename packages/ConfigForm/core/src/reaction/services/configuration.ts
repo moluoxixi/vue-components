@@ -124,7 +124,7 @@ export function removeConfigFormReactionEffect(
 export function getConfigFormReactionLiteralKind(
   operand: ConfigFormReactionOperand,
 ): ConfigFormReactionLiteralKind {
-  if (operand.kind === 'field')
+  if (operand.kind !== 'literal')
     return 'text'
   if (typeof operand.value === 'boolean')
     return 'boolean'
@@ -149,6 +149,8 @@ export function changeConfigFormReactionOperandSource(
 ): ConfigFormReactionOperand {
   if (source === 'field')
     return { kind: 'field', field: defaultField }
+  if (source === 'expression')
+    return { expression: operand.kind === 'expression' ? operand.expression : '', kind: 'expression' }
   return {
     kind: 'literal',
     value: operand.kind === 'literal' && typeof operand.value === 'string' ? operand.value : '',
