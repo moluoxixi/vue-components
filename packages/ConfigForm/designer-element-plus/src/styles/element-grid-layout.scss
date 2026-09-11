@@ -9,31 +9,18 @@
   min-width: 0;
 }
 
-.mx-element-grid-layout > .mx-config-form-designer__node-list {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: repeat(var(--mx-element-grid-columns), minmax(0, 1fr));
-  gap: var(--mx-element-grid-gap);
-}
-
-.mx-element-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
-  min-width: 0;
-}
-
-.mx-element-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__empty-slot {
-  grid-column: 1 / -1;
-}
-
-.mx-element-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
-  grid-column: 1 / -1;
-}
-
-.mx-config-form-designer__node-preview-shell .mx-element-grid-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
-  background-repeat: repeat-x;
+/* Empty layout containers collapse to zero height and become impossible to
+   target while dragging; give them a visible drop zone in design mode. */
+[data-config-form-mode="design"] .mx-element-grid-layout:empty {
+  min-height: 56px;
+  border: 1px dashed var(--el-border-color, #dcdfe6);
+  border-radius: 4px;
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(100% - 1px),
+      rgb(148 163 184 / 12%) 0
+    )
+    repeat-x;
   background-size: calc(100% / var(--mx-element-grid-columns)) 100%;
-}
-
-.mx-config-form-designer.is-dragging .mx-element-grid-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
 }

@@ -11,6 +11,17 @@ export interface DesignerDragOverlaySize {
   width: number
 }
 
+export type DesignerFlowAxis = 'row' | 'column'
+
+export interface DesignerFlowRect {
+  bottom: number
+  height: number
+  left: number
+  right: number
+  top: number
+  width: number
+}
+
 export interface DesignerDropGeometryCandidate {
   depth: number
   rect: {

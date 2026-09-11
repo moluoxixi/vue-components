@@ -115,6 +115,7 @@ defineExpose<ConfigFormRendererExpose<TValues>>({
     ref="formRef"
     v-bind="formAttrs"
     data-config-form-responsive-root
+    :data-config-form-mode="mode"
     :data-dirty="meta.dirty"
     :data-touched="meta.touched"
     @submit.prevent="submit"

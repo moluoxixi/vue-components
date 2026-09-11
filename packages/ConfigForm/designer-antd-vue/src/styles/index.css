@@ -41,19 +41,6 @@
   line-height: 18px;
 }
 
-.mx-config-form-designer__node-preview-shell .ant-card,
-.mx-config-form-designer__node-preview-shell .ant-card-body,
-.mx-config-form-designer__node-preview-shell .ant-tabs-content-holder {
-  overflow: visible;
-}
-
-.mx-config-form-designer__node-preview-shell .ant-tabs-content-holder:has(.mx-config-form-designer__node.is-selected:focus-within),
-.mx-config-form-designer__node-preview-shell .ant-collapse-content:has(.mx-config-form-designer__node.is-selected:focus-within) {
-  position: relative;
-  z-index: 70;
-  overflow: visible;
-}
-
 .mx-antd-flex-layout {
   display: flex;
   min-width: 0;
@@ -64,97 +51,67 @@
   gap: var(--mx-antd-flex-gap);
 }
 
-.mx-antd-flex-layout > :not(.mx-config-form-designer__node-list) {
+.mx-antd-flex-layout > * {
   min-width: min(100%, var(--mx-antd-flex-item-width));
   flex: 1 1 var(--mx-antd-flex-item-width);
 }
 
-.mx-antd-flex-layout > .mx-config-form-designer__node-list {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 100%;
-  flex-direction: var(--mx-antd-flex-direction);
-  flex-wrap: var(--mx-antd-flex-wrap);
-  align-items: var(--mx-antd-flex-align);
-  justify-content: var(--mx-antd-flex-justify);
-  gap: var(--mx-antd-flex-gap);
-}
-
-.mx-antd-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
-  min-width: min(100%, var(--mx-antd-flex-item-width));
-  flex: 1 1 var(--mx-antd-flex-item-width);
-}
-
-.mx-antd-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__empty-slot {
-  flex: 1 1 100%;
-}
-
-.mx-antd-flex-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
-  flex: 1 1 100%;
-}
-
-.mx-config-form-designer__node-preview-shell .mx-antd-flex-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
-  background-repeat: repeat-x;
-  background-size: min(var(--mx-antd-flex-item-width), 50%) 100%;
-}
-
-.mx-config-form-designer__node-preview-shell .mx-antd-flex-layout.is-column > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
-  background-repeat: repeat-y;
-  background-size: 100% 36px;
-}
-
-.mx-config-form-designer.is-dragging .mx-antd-flex-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
-}
-
-.mx-config-form-designer.is-dragging .mx-antd-flex-layout.is-column > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
-}
-
-.mx-antd-flex-layout.is-column > :not(.mx-config-form-designer__node-list),
-.mx-antd-flex-layout.is-column > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
+.mx-antd-flex-layout.is-column > * {
   width: 100%;
   min-width: 0;
   flex: 0 1 auto;
 }
 
-.mx-antd-grid-layout,
-.mx-antd-grid-layout > .mx-config-form-designer__node-list {
+.mx-antd-grid-layout {
   display: grid;
   min-width: 0;
   grid-template-columns: repeat(var(--mx-antd-grid-columns), minmax(0, 1fr));
   gap: var(--mx-antd-grid-gap);
 }
 
-.mx-antd-grid-layout > *,
-.mx-antd-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__node {
+.mx-antd-grid-layout > * {
   min-width: 0;
 }
 
-.mx-antd-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__empty-slot {
-  grid-column: 1 / -1;
+/* Empty layout containers collapse to zero height and become impossible to
+   target while dragging; give them a visible drop zone in design mode. */
+[data-config-form-mode="design"] .mx-antd-flex-layout:empty {
+  min-height: 56px;
+  border: 1px dashed rgba(5, 5, 5, 0.16);
+  border-radius: 6px;
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(100% - 1px),
+      rgb(148 163 184 / 12%) 0
+    )
+    repeat-x;
+  background-size: min(var(--mx-antd-flex-item-width), 50%) 100%;
 }
 
-.mx-antd-grid-layout > .mx-config-form-designer__node-list > .mx-config-form-designer__drop-tail {
-  grid-column: 1 / -1;
+[data-config-form-mode="design"] .mx-antd-flex-layout.is-column:empty {
+  background:
+    linear-gradient(
+      to bottom,
+      transparent calc(100% - 1px),
+      rgb(148 163 184 / 12%) 0
+    )
+    repeat-y;
+  background-size: 100% 36px;
 }
 
-.mx-config-form-designer__node-preview-control .ant-picker,
-.mx-config-form-designer__node-preview-control .ant-picker-range {
-  width: 100%;
-  min-width: 0;
-}
-
-.mx-config-form-designer__node-preview-shell .mx-antd-grid-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(148 163 184 / 10%) 0);
-  background-repeat: repeat-x;
+[data-config-form-mode="design"] .mx-antd-grid-layout:empty {
+  min-height: 56px;
+  border: 1px dashed rgba(5, 5, 5, 0.16);
+  border-radius: 6px;
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(100% - 1px),
+      rgb(148 163 184 / 12%) 0
+    )
+    repeat-x;
   background-size: calc(100% / var(--mx-antd-grid-columns)) 100%;
-}
-
-.mx-config-form-designer.is-dragging .mx-antd-grid-layout > .mx-config-form-designer__node-list.is-empty > .mx-config-form-designer__empty-slot {
-  background-image: linear-gradient(to right, transparent calc(100% - 1px), rgb(37 99 235 / 18%) 0);
 }
 
 .mx-antd-designer-choice-field {
@@ -169,11 +126,6 @@
 .mx-antd-designer-choice-field > .ant-select {
   min-width: 0;
   flex: 1 1 auto;
-}
-
-.mx-config-form-designer__node-preview-control > .ant-slider {
-  width: 100%;
-  min-width: min(160px, 100%);
 }
 
 .mx-antd-designer-option-state {

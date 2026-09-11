@@ -11,6 +11,8 @@ import type {
   DesignerDragSource,
   DesignerDropGeometryCandidate,
   DesignerDropTargetResolver,
+  DesignerFlowAxis,
+  DesignerFlowRect,
   DesignerKeyboardDropTargetsResolver,
   DesignerPointerPosition,
 } from '../types'
@@ -62,6 +64,38 @@ export function resolveDesignerAutoScrollDelta(
   }
 }
 
+/**
+ * Detects whether siblings flow horizontally (flex row / multi-column grid)
+ * by looking for a pair of rects that share a row and sit side by side.
+ */
+export function resolveDesignerFlowAxis(
+  rects: readonly (DesignerFlowRect | undefined)[],
+): DesignerFlowAxis {
+  const measured = rects.filter(
+    (rect): rect is DesignerFlowRect => !!rect && rect.width > 0 && rect.height > 0,
+  )
+  for (const [index, left] of measured.entries()) {
+    for (const right of measured.slice(index + 1)) {
+      const overlap = Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top)
+      if (overlap < Math.min(left.height, right.height) * 0.5)
+        continue
+      if (right.left >= left.right - 1 || left.left >= right.right - 1)
+        return 'row'
+    }
+  }
+  return 'column'
+}
+
+export function resolveDesignerFlowRatio(
+  point: DesignerPointerPosition,
+  rect: DesignerFlowRect,
+  axis: DesignerFlowAxis,
+): number {
+  if (axis === 'row')
+    return rect.width > 0 ? (point.x - rect.left) / rect.width : 0.5
+  return rect.height > 0 ? (point.y - rect.top) / rect.height : 0.5
+}
+
 export function resolveDesignerCollapsedDropTarget(
   point: DesignerPointerPosition,
   candidates: readonly DesignerDropGeometryCandidate[],
@@ -106,19 +140,6 @@ export function createDesignerDragController(
   const announcement = shallowRef<DesignerDragAnnouncement>()
   let resolver: DesignerDropTargetResolver | undefined
   let keyboardTargetsResolver: DesignerKeyboardDropTargetsResolver | undefined
-  let resolveFrame: number | undefined
-  let pendingResolvePoint: DesignerPointerPosition | undefined
-
-  function canScheduleResolve(): boolean {
-    return typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
-  }
-
-  function cancelScheduledResolve(): void {
-    if (resolveFrame !== undefined && canScheduleResolve())
-      window.cancelAnimationFrame(resolveFrame)
-    resolveFrame = undefined
-    pendingResolvePoint = undefined
-  }
 
   function applyResolvedTarget(current: DesignerDragSession, point: DesignerPointerPosition): boolean {
     const target = resolver?.(point, current.source, current.target)
@@ -128,22 +149,6 @@ export function createDesignerDragController(
     }
     session.value = { ...current, active: true, position: point, target }
     return true
-  }
-
-  // Drop-target resolution can be expensive (it may trigger candidate
-  // compilation), so mid-drag resolutions are coalesced to one per frame.
-  function scheduleResolve(point: DesignerPointerPosition): void {
-    pendingResolvePoint = point
-    if (resolveFrame !== undefined)
-      return
-    resolveFrame = window.requestAnimationFrame(() => {
-      resolveFrame = undefined
-      const pending = pendingResolvePoint
-      pendingResolvePoint = undefined
-      const current = session.value
-      if (pending && current?.active && current.input === 'pointer')
-        applyResolvedTarget(current, pending)
-    })
   }
 
   function begin(
@@ -177,14 +182,10 @@ export function createDesignerDragController(
       return false
     }
 
-    // Resolve immediately on the activation transition so the drag visual and
-    // first target appear without a frame of latency; defer subsequent moves.
-    if (!current.active || !canScheduleResolve())
-      return applyResolvedTarget(current, point)
-
-    session.value = { ...current, position: point }
-    scheduleResolve(point)
-    return true
+    // Resolve synchronously on every move: candidate compilation is memoized
+    // upstream, and a deferred resolution lets the drag visual lag one frame
+    // behind the committed candidate placement.
+    return applyResolvedTarget(current, point)
   }
 
   function moveKeyboard(direction: 'next' | 'previous'): boolean {
@@ -206,7 +207,6 @@ export function createDesignerDragController(
   }
 
   function commitCurrent(): boolean {
-    cancelScheduledResolve()
     const completed = session.value
     session.value = undefined
     if (!completed?.active || !completed.target)
@@ -223,7 +223,6 @@ export function createDesignerDragController(
     const current = session.value
     if (!current)
       return
-    cancelScheduledResolve()
     const active = current.active
       || Math.hypot(point.x - current.origin.x, point.y - current.origin.y) >= 4
     if (active)
@@ -245,7 +244,6 @@ export function createDesignerDragController(
     finish,
     finishKeyboard: commitCurrent,
     cancel: () => {
-      cancelScheduledResolve()
       const current = session.value
       session.value = undefined
       if (current)

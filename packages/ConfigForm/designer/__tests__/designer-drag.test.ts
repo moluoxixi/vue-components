@@ -7,6 +7,8 @@ import {
   resolveDesignerCollapsedDropTarget,
   resolveDesignerDragOverlayPosition,
   resolveDesignerDragVisualHeight,
+  resolveDesignerFlowAxis,
+  resolveDesignerFlowRatio,
   resolveStickyDesignerDropTarget,
 } from '../src/components/DesignerCanvas/services'
 import { createMoveCommand } from '../src/graph'
@@ -117,73 +119,44 @@ describe('designer drag controller', () => {
     })
   })
 
-  it('coalesces mid-drag target resolution to one resolver pass per animation frame', () => {
-    const frames: FrameRequestCallback[] = []
-    const raf = vi.spyOn(window, 'requestAnimationFrame')
-      .mockImplementation((callback) => {
-        frames.push(callback)
-        return frames.length
-      })
-    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
-    try {
-      const resolver = vi.fn((point: { x: number, y: number }) => ({ parentId: null, index: Math.round(point.x) }))
-      const controller = createDesignerDragController({ commitMaterial: vi.fn(), commitNode: vi.fn() })
-      controller.registerResolver(resolver)
-      controller.beginMaterial('element.input', 'candidate-raf', { x: 0, y: 0 })
+  it('resolves every mid-drag move synchronously so the candidate never lags the pointer', () => {
+    const resolver = vi.fn((point: { x: number, y: number }) => ({ parentId: null, index: Math.round(point.x) }))
+    const controller = createDesignerDragController({ commitMaterial: vi.fn(), commitNode: vi.fn() })
+    controller.registerResolver(resolver)
+    controller.beginMaterial('element.input', 'candidate-sync', { x: 0, y: 0 })
 
-      controller.move({ x: 10, y: 0 })
-      expect(resolver).toHaveBeenCalledTimes(1)
-      expect(controller.session.value?.target).toEqual({ parentId: null, index: 10 })
+    controller.move({ x: 10, y: 0 })
+    expect(resolver).toHaveBeenCalledTimes(1)
+    expect(controller.session.value?.target).toEqual({ parentId: null, index: 10 })
 
-      controller.move({ x: 20, y: 0 })
-      controller.move({ x: 30, y: 0 })
-      expect(resolver).toHaveBeenCalledTimes(1)
-      expect(controller.session.value?.position).toEqual({ x: 30, y: 0 })
-
-      frames.splice(0).forEach(callback => callback(0))
-      expect(resolver).toHaveBeenCalledTimes(2)
-      expect(resolver).toHaveBeenLastCalledWith(
-        { x: 30, y: 0 },
-        { type: 'material', materialKey: 'element.input', candidateId: 'candidate-raf' },
-        { parentId: null, index: 10 },
-      )
-      expect(controller.session.value?.target).toEqual({ parentId: null, index: 30 })
-    }
-    finally {
-      raf.mockRestore()
-      caf.mockRestore()
-    }
+    controller.move({ x: 20, y: 0 })
+    controller.move({ x: 30, y: 0 })
+    expect(resolver).toHaveBeenCalledTimes(3)
+    expect(resolver).toHaveBeenLastCalledWith(
+      { x: 30, y: 0 },
+      { type: 'material', materialKey: 'element.input', candidateId: 'candidate-sync' },
+      { parentId: null, index: 20 },
+    )
+    expect(controller.session.value?.position).toEqual({ x: 30, y: 0 })
+    expect(controller.session.value?.target).toEqual({ parentId: null, index: 30 })
   })
 
-  it('resolves the final drop target synchronously on finish even with a pending frame', () => {
-    const frames: FrameRequestCallback[] = []
-    const raf = vi.spyOn(window, 'requestAnimationFrame')
-      .mockImplementation((callback) => {
-        frames.push(callback)
-        return frames.length
-      })
-    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
-    try {
-      const commitMaterial = vi.fn()
-      const controller = createDesignerDragController({ commitMaterial, commitNode: vi.fn() })
-      controller.registerResolver(point => ({ parentId: null, index: Math.round(point.x) }))
-      controller.beginMaterial('element.input', 'candidate-finish', { x: 0, y: 0 })
+  it('resolves the final drop target synchronously on finish', () => {
+    const commitMaterial = vi.fn()
+    const controller = createDesignerDragController({ commitMaterial, commitNode: vi.fn() })
+    controller.registerResolver(point => ({ parentId: null, index: Math.round(point.x) }))
+    controller.beginMaterial('element.input', 'candidate-finish', { x: 0, y: 0 })
 
-      controller.move({ x: 10, y: 0 })
-      controller.move({ x: 40, y: 0 })
-      controller.finish({ x: 50, y: 0 })
+    controller.move({ x: 10, y: 0 })
+    controller.move({ x: 40, y: 0 })
+    controller.finish({ x: 50, y: 0 })
 
-      expect(commitMaterial).toHaveBeenCalledOnce()
-      expect(commitMaterial).toHaveBeenCalledWith(
-        expect.objectContaining({ candidateId: 'candidate-finish' }),
-        { parentId: null, index: 50 },
-      )
-      expect(controller.session.value).toBeUndefined()
-    }
-    finally {
-      raf.mockRestore()
-      caf.mockRestore()
-    }
+    expect(commitMaterial).toHaveBeenCalledOnce()
+    expect(commitMaterial).toHaveBeenCalledWith(
+      expect.objectContaining({ candidateId: 'candidate-finish' }),
+      { parentId: null, index: 50 },
+    )
+    expect(controller.session.value).toBeUndefined()
   })
 
   it('keeps the pointer inside the measured overlay bounds', () => {
@@ -298,5 +271,35 @@ describe('designer drag controller', () => {
     expect(resolveDesignerAutoScrollDelta({ x: 102, y: 478 }, rect)).toEqual({ x: -18, y: 18 })
     expect(resolveDesignerAutoScrollDelta({ x: 300, y: 280 }, rect)).toEqual({ x: 0, y: 0 })
     expect(resolveDesignerAutoScrollDelta({ x: 40, y: 280 }, rect)).toEqual({ x: 0, y: 0 })
+  })
+
+  it('detects the sibling flow axis from rendered rects', () => {
+    const rect = (left: number, top: number, width: number, height: number) => ({
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+    })
+    // Side-by-side rects sharing a row read as a horizontal flow.
+    expect(resolveDesignerFlowAxis([rect(0, 0, 100, 40), rect(112, 0, 100, 40)])).toBe('row')
+    // Stacked rects read as a vertical flow.
+    expect(resolveDesignerFlowAxis([rect(0, 0, 100, 40), rect(0, 52, 100, 40)])).toBe('column')
+    // Wrapped flex rows still expose one side-by-side pair.
+    expect(resolveDesignerFlowAxis([
+      rect(0, 0, 100, 40),
+      rect(112, 0, 100, 40),
+      rect(0, 52, 100, 40),
+    ])).toBe('row')
+    // Unmeasured or degenerate rects fall back to a vertical flow.
+    expect(resolveDesignerFlowAxis([undefined, rect(0, 0, 100, 0)])).toBe('column')
+  })
+
+  it('reads the drop ratio along the detected flow axis', () => {
+    const rect = { left: 100, right: 300, top: 50, bottom: 90, width: 200, height: 40 }
+    expect(resolveDesignerFlowRatio({ x: 150, y: 86 }, rect, 'row')).toBeCloseTo(0.25)
+    expect(resolveDesignerFlowRatio({ x: 150, y: 86 }, rect, 'column')).toBeCloseTo(0.9)
+    expect(resolveDesignerFlowRatio({ x: 150, y: 86 }, { ...rect, width: 0 }, 'row')).toBe(0.5)
   })
 })

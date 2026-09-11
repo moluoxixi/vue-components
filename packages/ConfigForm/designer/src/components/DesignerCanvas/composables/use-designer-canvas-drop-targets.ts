@@ -1,12 +1,14 @@
 import type { PageGraph, PageNode, ProjectCommand } from '@moluoxixi/config-form-model'
 import type { Ref } from 'vue'
-import type { DesignerDropTarget } from '../../../graph'
-import type { DesignerCanvasProps, DesignerDragController, DesignerDragSource, DesignerPointerPosition, DesignerRuntimeNodeGeometry } from '../types'
+import type { DesignerDropTarget, DesignNodeLocation } from '../../../graph'
+import type { DesignerCanvasProps, DesignerDragController, DesignerDragSource, DesignerPointerPosition, DesignerRuntimeNodeGeometry, DesignerRuntimeRect } from '../types'
 import { onBeforeUnmount } from 'vue'
 import { findDesignNode } from '../../../graph'
 import {
   resolveDesignerAutoScrollDelta,
   resolveDesignerCollapsedDropTarget,
+  resolveDesignerFlowAxis,
+  resolveDesignerFlowRatio,
   resolveStickyDesignerDropTarget,
 } from '../services'
 
@@ -79,6 +81,15 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     if (!command)
       return false
     return options.candidatePreview(command) !== undefined
+  }
+
+  // Flow axis of a node among its rendered siblings; drives whether
+  // before/after decisions read the pointer on the X or the Y axis.
+  function siblingFlowAxis(
+    location: DesignNodeLocation,
+    rectById: Map<string, DesignerRuntimeRect>,
+  ): 'row' | 'column' {
+    return resolveDesignerFlowAxis(location.sequence.map(item => rectById.get(item.nodeId)))
   }
 
   function keyboardDropTargets(source: DesignerDragSource): DesignerDropTarget[] {
@@ -161,6 +172,7 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     const hits = hitNodeElements(point, source.candidateId)
     const hit = hits[0]
     const hitId = hit?.nodeId
+    const rectById = new Map(options.runtimeNodeGeometry().map(geometry => [geometry.nodeId, geometry.rect]))
     const collapsedTarget = resolveDesignerCollapsedDropTarget(
       point,
       options.runtimeNodeGeometry().flatMap((geometry) => {
@@ -199,11 +211,16 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
       const location = findDesignNode(options.graph(), geometry.nodeId)
       if (!location)
         return []
-      const rect = geometry.rect
-      const verticalRatio = rect.height > 0 ? (point.y - rect.top) / rect.height : 0.5
       const slot = acceptedSlot(location.node, node)
-      if (!slot || verticalRatio < 0.2 || verticalRatio > 0.8)
+      if (!slot)
         return []
+      // The edge band falls through to sibling insertion next to the
+      // container, so it follows the container's own flow among siblings.
+      const bandRatio = resolveDesignerFlowRatio(point, geometry.rect, siblingFlowAxis(location, rectById))
+      if (bandRatio < 0.2 || bandRatio > 0.8)
+        return []
+      // Append at the end of the slot: a position-insensitive index keeps the
+      // target stable while the candidate reflows siblings under the pointer.
       const target = {
         parentId: location.node.id,
         slot: slot.name,
@@ -216,6 +233,8 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     if (insideTargets[0])
       return insideTargets[0].target
 
+    // Keep the previous target while the pointer stays inside its parent so
+    // candidate churn does not reshuffle the layout under a moving pointer.
     const stickyTarget = resolveStickyDesignerDropTarget(
       previous,
       hits.map(geometry => geometry.nodeId),
@@ -224,13 +243,17 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
     if (stickyTarget)
       return stickyTarget
 
+    // First entry next to a node: insert before/after the deepest hit along
+    // its rendered flow axis (row for side-by-side siblings, column otherwise).
     const location = findDesignNode(options.graph(), hitId)
-    if (!location)
-      return previous
-    const rect = hit.rect
-    const verticalRatio = rect.height > 0 ? (point.y - rect.top) / rect.height : 0.5
-    const target = siblingTarget(hitId, verticalRatio > 0.5)
-    return target && isValidTarget(target) ? target : previous
+    if (location) {
+      const ratio = resolveDesignerFlowRatio(point, hit.rect, siblingFlowAxis(location, rectById))
+      const target = siblingTarget(hitId, ratio > 0.5)
+      if (target && isValidTarget(target))
+        return target
+    }
+
+    return previous
   }
 
   onBeforeUnmount(stopCanvasAutoScroll)
