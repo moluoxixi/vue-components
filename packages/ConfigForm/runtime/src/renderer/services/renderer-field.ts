@@ -59,8 +59,9 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     const layout = resolveConfigFormFieldLayout(labelPosition, hasLabel)
     const label = hasLabel
       ? h('label', {
-          class: bem('label'),
-          for: controlId,
+          'class': bem('label'),
+          'data-config-form-label': '',
+          'for': controlId,
         }, field.label)
       : null
     const metadataAttrs = registerElement ? editorBridge.nodeMetadataAttrs(metadata) : {}
@@ -80,14 +81,16 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
     }, [
       label,
       h('div', {
-        class: bem('control'),
-        style: layout.control,
+        'class': bem('control'),
+        'data-config-form-control': '',
+        'style': layout.control,
       }, [renderControl(field, path, controlId, errorId, readonly, ancestors, registration, metadata)]),
       ...fieldErrors.map((message, index) => h('p', {
-        class: bem('error'),
-        id: index === 0 ? errorId : undefined,
-        key: `${message}-${index}`,
-        style: layout.error,
+        'class': bem('error'),
+        'data-config-form-error': '',
+        'id': index === 0 ? errorId : undefined,
+        'key': `${message}-${index}`,
+        'style': layout.error,
       }, message)),
     ])
   }
@@ -122,6 +125,7 @@ export function createFieldRenderer<TValues extends ConfigFormValues>(
       return h('span', {
         'aria-readonly': 'true',
         'class': bem('readonly'),
+        'data-config-form-readonly': '',
         'id': controlId,
         'key': `${path}.readonly`,
       }, [content])

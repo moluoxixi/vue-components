@@ -1,102 +1,42 @@
 @use './variables' as *;
 
-.#{$namespace}-field {
-  display: flex;
-  align-items: flex-start;
-  gap: $field-gap;
-
-  &--inline {
-    display: flex;
-    align-items: flex-start;
-  }
-
-  &__label {
-    flex-shrink: 0;
-    font-size: $label-font-size;
-    line-height: $label-line-height;
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  &__required {
-    margin-right: 4px;
-    color: $error-color;
-    font-size: $label-font-size;
-    line-height: inherit;
-  }
-
-  &__control {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    padding-bottom: calc(#{$error-margin-top} + #{$error-reserved-height});
-
-    /* 非内联模式下，默认让内部组件撑满控制区（解决 Select 等组件在 Grid 模式下宽度不足的问题） */
-    > :first-child {
-      width: 100%;
-    }
-  }
-
-  &--inline &__control {
-    /* 内联模式恢复自动宽度 */
-    > :first-child {
-      width: auto;
-    }
-  }
-
-  &__readonly {
-    display: inline-flex;
-    min-height: $label-line-height;
-    align-items: center;
-    max-width: 100%;
-  }
-
-  &__error {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: $error-reserved-height;
-    margin: 0;
-    overflow: hidden;
-    font-size: $error-font-size;
-    color: $error-color;
-    line-height: $error-line-height;
-
-    span {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
+/*
+ * The renderer lays fields out with inline grid styles (see
+ * renderer/utils/layout.ts) and adapters rename the BEM namespace, so these
+ * rules bind to the renderer's data hooks instead of class names. They only
+ * add what the inline layout does not carry: typography, control stretching,
+ * and validation/readonly presentation.
+ */
+[data-config-form-label] {
+  font-size: $label-font-size;
+  line-height: $label-line-height;
 }
 
-@media (max-width: 640px) {
-  .#{$namespace}-field {
-    grid-column: 1 / -1 !important;
-    flex-direction: column;
-    gap: 4px;
+[data-config-form-control] {
+  position: relative;
+}
 
-    &--inline {
-      display: flex;
-      width: 100%;
-      align-items: stretch;
-    }
+/*
+ * Field widgets follow their grid cell instead of their intrinsic size, so a
+ * 24-span field really spans the row: el-input-number, the date/time pickers,
+ * cascaders and the a-* counterparts all default to fixed or fit-content
+ * widths otherwise. Inline rows carry no responsive-layout hook and keep the
+ * intrinsic widths.
+ */
+[data-config-form-responsive-layout] [data-config-form-control] > :first-child {
+  width: 100%;
+}
 
-    &__label {
-      width: auto !important;
-      line-height: 1.4;
-      text-align: left;
-      white-space: normal;
-    }
+[data-config-form-readonly] {
+  display: inline-flex;
+  min-height: $label-line-height;
+  align-items: center;
+  max-width: 100%;
+}
 
-    &__control {
-      width: 100%;
-
-      > :first-child {
-        width: 100%;
-      }
-    }
-  }
+[data-config-form-error] {
+  margin: $error-margin-top 0 0;
+  color: $error-color;
+  font-size: $error-font-size;
+  line-height: $error-line-height;
 }

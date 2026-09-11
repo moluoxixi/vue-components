@@ -1,5 +1,5 @@
-// 命名空间前缀，可通过覆盖此变量自定义
-$namespace: 'cf' !default;
+// 命名空间前缀，与渲染器 props.namespace 的默认值保持一致。
+$namespace: 'mx-config-form' !default;
 
 // 间距
 $form-gap: 16px 8px !default;

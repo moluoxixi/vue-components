@@ -1,8 +1,0 @@
-@use './variables' as *;
-
-@media (max-width: 640px) {
-  .#{$namespace}-layout {
-    display: flex !important;
-    flex-direction: column !important;
-  }
-}
