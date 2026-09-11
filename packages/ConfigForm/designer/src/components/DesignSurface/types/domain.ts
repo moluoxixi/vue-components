@@ -21,7 +21,7 @@ export interface DesignerHistoryControl {
   redo: () => boolean
 }
 
-export type DesignerNodeAction = 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'remove'
+export type DesignerNodeAction = 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'copyToClipboard' | 'cut' | 'paste' | 'remove'
 
 export interface DesignerPaletteScope {
   materials: DesignerMaterialDefinition[]

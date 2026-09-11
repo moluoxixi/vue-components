@@ -145,7 +145,8 @@ export function isRuntimeHostToParentMessage(value: unknown): value is RuntimeHo
   if (value.type === 'designPointerDown'
     || value.type === 'designPointerMove'
     || value.type === 'designPointerUp'
-    || value.type === 'designPointerCancel') {
+    || value.type === 'designPointerCancel'
+    || value.type === 'designContextMenu') {
     return isRecord(value.payload)
       && isFiniteNumber(value.payload.clientX)
       && isFiniteNumber(value.payload.clientY)

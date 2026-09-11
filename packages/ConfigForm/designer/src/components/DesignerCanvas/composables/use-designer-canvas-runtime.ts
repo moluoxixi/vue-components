@@ -18,6 +18,7 @@ interface UseDesignerCanvasRuntimeOptions {
   focusNode: (nodeId: string) => void | Promise<void>
   interactive: () => boolean
   model: () => Record<string, unknown> | undefined
+  onContextMenu: (payload: DesignerRuntimePointerPayload) => void
   onGeometryChange: () => void
   onSelect: (nodeId: string, mode?: 'range' | 'replace' | 'toggle') => void
   onUpdateField: (field: string, value: unknown) => void
@@ -157,7 +158,17 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
     pointerHandlers.cancel?.(payload)
   }
 
+  function handleRuntimeContextMenu(payload: DesignerRuntimePointerPayload): void {
+    armedNodeDrag = undefined
+    if (options.interactive())
+      return
+    if (payload.nodeId)
+      options.onSelect(payload.nodeId, 'replace')
+    options.onContextMenu(payload)
+  }
+
   const runtimeHostBridge: DesignerRuntimeHostBridge = {
+    contextMenu: handleRuntimeContextMenu,
     pointerCancel: handleRuntimePointerCancel,
     pointerDown: handleRuntimePointerDown,
     pointerMove: handleRuntimePointerMove,

@@ -186,6 +186,27 @@ export function useRuntimeHostDesignGeometry(options: {
     postDesignPointer('designPointerDown', event)
   }
 
+  // Context menus are surfaced by the parent designer; the iframe only
+  // forwards the hit and suppresses the native menu.
+  function handleDesignContextMenu(event: MouseEvent): void {
+    if (runtimeMode.value !== 'design' || design.value?.variant !== 'canvas')
+      return
+    event.preventDefault()
+    postMessage({
+      type: 'designContextMenu',
+      payload: {
+        button: 2,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        nodeId: deepestDesignNode(event.clientX, event.clientY),
+        pointerId: 0,
+        shiftKey: event.shiftKey,
+      },
+    })
+  }
+
   async function sync(): Promise<void> {
     if (runtimeMode.value === 'design' && design.value?.variant === 'drag-visual') {
       updateGhostOffset()
@@ -227,6 +248,7 @@ export function useRuntimeHostDesignGeometry(options: {
 
   return {
     designEditor,
+    handleDesignContextMenu,
     handleDesignPointerDown,
     postDesignPointer,
     reset,

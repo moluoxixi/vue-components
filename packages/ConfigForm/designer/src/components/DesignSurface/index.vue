@@ -280,6 +280,7 @@ defineExpose<DesignSurfaceExpose>({
           :breakpoint="activeBreakpoint"
           :candidate-preview="commandControl.preview"
           :interactive="false"
+          :paste-available="controller.pasteAvailable.value"
           :model="runtimeProjection.values"
           :reaction-props="runtimeProjection.props"
           :reaction-states="runtimeProjection.states"

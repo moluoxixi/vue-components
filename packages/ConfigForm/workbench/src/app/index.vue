@@ -413,6 +413,7 @@ watch(recoveryDrafts, (drafts) => {
                 variant="canvas"
                 @error="message = $event.message"
                 @geometry="scope.bridge.updateGeometry"
+                @context-menu="scope.bridge.contextMenu"
                 @pointer-cancel="scope.bridge.pointerCancel"
                 @pointer-down="scope.bridge.pointerDown"
                 @pointer-move="scope.bridge.pointerMove"

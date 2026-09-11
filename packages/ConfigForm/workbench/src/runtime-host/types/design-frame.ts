@@ -26,6 +26,7 @@ export interface DesignRuntimeHostFrameProps {
 }
 
 export interface DesignRuntimeHostFrameEmits {
+  contextMenu: [payload: DesignerRuntimePointerPayload]
   error: [error: Error]
   geometry: [snapshot: DesignerRuntimeGeometrySnapshot]
   pointerCancel: [payload: DesignerRuntimePointerPayload]

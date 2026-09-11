@@ -16,6 +16,7 @@ export interface DesignerCanvasProps {
   breakpoint?: ConfigFormBreakpoint
   candidatePreview: (command: ProjectCommand) => DesignCommandPreview | undefined
   interactive?: boolean
+  pasteAvailable?: boolean
   showInteractiveToggle?: boolean
   model?: Record<string, unknown>
   reactionProps?: ConfigFormReactionProjection['props']

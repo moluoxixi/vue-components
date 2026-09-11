@@ -55,6 +55,7 @@ export interface DesignerRuntimePointerHandlers {
 }
 
 export interface DesignerRuntimeHostBridge {
+  contextMenu: (payload: DesignerRuntimePointerPayload) => void
   pointerCancel: (payload: DesignerRuntimePointerPayload) => void
   pointerDown: (payload: DesignerRuntimePointerPayload) => void
   pointerMove: (payload: DesignerRuntimePointerPayload) => void

@@ -175,13 +175,13 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     void focusNode(options.controller.selectedId.value)
   }
 
-  function handleSelectionAction(action: 'copy' | 'remove'): boolean {
+  function handleSelectionAction(action: 'copy' | 'copyToClipboard' | 'cut' | 'paste' | 'remove'): boolean {
     const nodeId = options.controller.selectedId.value
-    if (!nodeId)
+    if (!nodeId && action !== 'paste')
       return false
     const positionBefore = options.historyControl().history?.position
-    const changed = options.controller.performNodeAction(action, nodeId)
-    if (changed && action === 'remove')
+    const changed = options.controller.performNodeAction(action, nodeId ?? '')
+    if (changed && (action === 'remove' || action === 'cut'))
       announceDeletionUndo(deletionUndoTarget(positionBefore))
     void focusNode(options.controller.selectedId.value)
     return changed
@@ -224,6 +224,20 @@ export function useDesignSurfaceCommands(options: UseDesignSurfaceCommandsOption
     else if (event.key.toLowerCase() === 'd' && !event.shiftKey && !event.altKey) {
       event.preventDefault()
       handleSelectionAction('copy')
+    }
+    else if (event.key.toLowerCase() === 'c' && !event.shiftKey && !event.altKey) {
+      // Copying is read-only; leave the event untouched when nothing is
+      // selected so the browser copy still works on text selections.
+      if (handleSelectionAction('copyToClipboard'))
+        event.preventDefault()
+    }
+    else if (event.key.toLowerCase() === 'x' && !event.shiftKey && !event.altKey) {
+      event.preventDefault()
+      handleSelectionAction('cut')
+    }
+    else if (event.key.toLowerCase() === 'v' && !event.shiftKey && !event.altKey) {
+      event.preventDefault()
+      handleSelectionAction('paste')
     }
   }
 

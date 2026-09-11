@@ -109,7 +109,7 @@ export interface RuntimeHostDesignPointerPayload {
 export type RuntimeHostToParentPayload
   = | { type: 'ready' | 'mounted' }
     | { type: 'geometry', payload: RuntimeHostGeometryPayload }
-    | { type: 'designPointerDown' | 'designPointerMove' | 'designPointerUp' | 'designPointerCancel', payload: RuntimeHostDesignPointerPayload }
+    | { type: 'designPointerDown' | 'designPointerMove' | 'designPointerUp' | 'designPointerCancel' | 'designContextMenu', payload: RuntimeHostDesignPointerPayload }
     | { type: 'runtimeState', payload: RuntimeHostRuntimeStatePayload }
     | { type: 'submitResult', payload: RuntimeHostSubmitResultPayload }
     | { type: 'submit', values: Record<string, unknown> }

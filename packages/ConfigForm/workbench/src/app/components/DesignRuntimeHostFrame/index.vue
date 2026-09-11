@@ -236,7 +236,8 @@ function handleMessage(event: MessageEvent<unknown>): void {
   if ((message.type === 'designPointerDown'
     || message.type === 'designPointerMove'
     || message.type === 'designPointerUp'
-    || message.type === 'designPointerCancel')
+    || message.type === 'designPointerCancel'
+    || message.type === 'designContextMenu')
     && props.variant === 'canvas') {
     const frameRect = frame.value?.getBoundingClientRect()
     if (!frameRect)
@@ -253,6 +254,8 @@ function handleMessage(event: MessageEvent<unknown>): void {
       emit('pointerMove', payload)
     else if (message.type === 'designPointerUp')
       emit('pointerUp', payload)
+    else if (message.type === 'designContextMenu')
+      emit('contextMenu', payload)
     else
       emit('pointerCancel', payload)
     return

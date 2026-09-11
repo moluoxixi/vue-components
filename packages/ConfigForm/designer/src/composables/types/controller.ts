@@ -32,6 +32,7 @@ export interface DesignerController {
   diagnostics: ComputedRef<DesignerDiagnostic[]>
   dispatch: (command: ProjectCommand) => boolean
   graph: ComputedRef<PageGraph>
+  pasteAvailable: ComputedRef<boolean>
   selectedId: Ref<string | undefined>
   selectedIds: Ref<string[]>
   selectedMaterial: ComputedRef<DesignerMaterialDefinition | undefined>
@@ -40,7 +41,7 @@ export interface DesignerController {
   select: (nodeId?: string, mode?: DesignerSelectionMode) => void
   addMaterial: (component: string, target?: DesignerDropTarget) => boolean
   performNodeAction: (
-    action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'remove',
+    action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'copyToClipboard' | 'cut' | 'paste' | 'remove',
     nodeId: string,
   ) => boolean
 }

@@ -1,5 +1,6 @@
 import type {
   ModelDiagnostic,
+  NodeSubgraph,
   PageGraph,
   PageNode,
   ProjectCommand,
@@ -17,7 +18,7 @@ import type {
   DesignerSelectionMode,
   UseDesignerControllerOptions,
 } from './types'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import {
   collectDesignSubtreeIds,
   createDesignerCommandId,
@@ -26,10 +27,21 @@ import {
   createOperationCommand,
   createRemoveCommand,
   designerDiagnostic,
+  extractDesignSubgraph,
   findDesignNode,
+  remapDesignSubgraph,
   walkDesignGraph,
 } from '../graph'
 import { analyzeDesignGraph } from '../registry'
+
+// One clipboard per app: copying in one page and pasting into another is the
+// expected flow, so the buffer lives at module scope instead of per surface.
+const designerClipboard = shallowRef<NodeSubgraph>()
+
+/** Test hook: resets the shared designer clipboard buffer. */
+export function clearDesignerClipboard(): void {
+  designerClipboard.value = undefined
+}
 
 function uniqueField(graph: PageGraph, component: string): string {
   const used = new Set<string>()
@@ -383,16 +395,60 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     return changed
   }
 
+  function copyToClipboard(locations: DesignNodeLocation[]): boolean {
+    const subgraph = extractDesignSubgraph(graph.value, locations.map(({ node }) => node.id))
+    if (!subgraph)
+      return false
+    designerClipboard.value = subgraph
+    // Best-effort mirror for cross-app pasting; the in-app buffer stays the
+    // source of truth.
+    void navigator.clipboard?.writeText?.(JSON.stringify({ kind: 'config-form-nodes', subgraph }))?.catch?.(() => {})
+    return true
+  }
+
+  function cutSelection(locations: DesignNodeLocation[]): boolean {
+    if (rejectReadonly() || !copyToClipboard(locations))
+      return false
+    return dispatch(createRemoveCommand(options.pageId(), locations.map(({ node }) => node.id)))
+  }
+
+  function pasteClipboard(nodeId?: string): boolean {
+    if (rejectReadonly())
+      return false
+    const buffered = designerClipboard.value
+    if (!buffered)
+      return false
+    const subgraph = remapDesignSubgraph(buffered, graph.value)
+    // Paste lands after the reference node so repeated pastes stack in order;
+    // without a reference it appends to the page root.
+    const location = nodeId ? findDesignNode(graph.value, nodeId) : undefined
+    const target = location
+      ? targetForLocation(location, location.index + 1)
+      : { parentId: null, index: graph.value.root.length } satisfies DesignerDropTarget
+    const changed = dispatch(createInsertCommand(options.pageId(), subgraph, target, { label: 'Paste component' }))
+    if (changed) {
+      const rootIds = subgraph.root.map(item => item.nodeId)
+      emitSelection(rootIds, rootIds.at(-1))
+    }
+    return changed
+  }
+
   function performNodeAction(
-    action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'remove',
+    action: 'moveBefore' | 'moveAfter' | 'indent' | 'outdent' | 'copy' | 'copyToClipboard' | 'cut' | 'paste' | 'remove',
     nodeId: string,
   ): boolean {
+    if (action === 'paste')
+      return pasteClipboard(nodeId)
     const locations = actionLocations(nodeId)
     const location = locations.find(candidate => candidate.node.id === nodeId) ?? locations[0]
     if (!location)
       return false
     if (action === 'remove')
       return dispatch(createRemoveCommand(options.pageId(), locations.map(({ node }) => node.id)))
+    if (action === 'cut')
+      return cutSelection(locations)
+    if (action === 'copyToClipboard')
+      return copyToClipboard(locations)
     return action === 'copy'
       ? copySelection(nodeId, locations)
       : moveSelection(action, locations)
@@ -402,6 +458,7 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     diagnostics,
     dispatch,
     graph,
+    pasteAvailable: computed(() => Boolean(designerClipboard.value)),
     selectedId,
     selectedIds,
     selectedMaterial,

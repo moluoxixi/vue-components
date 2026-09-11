@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PageNode, ProjectCommand } from '@moluoxixi/config-form-model'
 import type { DesignerDropTarget } from '../../graph'
+import type { DesignerNodeAction } from '../DesignSurface/types'
 import type {
   DesignerCanvasEmits,
   DesignerCanvasProps,
@@ -15,7 +16,7 @@ import { useDesignerLocale } from '../../locale'
 import { DesignerCommandHint } from '../DesignerCommandHint'
 import { createDesignerMaterialCandidate } from './services'
 import { DESIGNER_SESSION_KEY } from './services'
-import { DesignerCanvasCameraControls, DesignerCanvasDragVisual, DesignerCanvasOverlay } from './components'
+import { DesignerCanvasCameraControls, DesignerCanvasContextMenu, DesignerCanvasDragVisual, DesignerCanvasOverlay } from './components'
 import {
   useDesignerCanvasCamera,
   useDesignerCanvasDropTargets,
@@ -95,6 +96,9 @@ let runtimeNodeDragHooks: {
   finish: (point: { x: number, y: number }, pointerId: number) => void
 } | undefined
 
+// Context menu opened from the iframe runtime (right click on a node).
+const runtimeContextMenu = ref<{ nodeId: string, x: number, y: number }>()
+
 function nodeForDragSource(source: DesignerDragSource | undefined): PageNode | undefined {
   if (!source)
     return undefined
@@ -163,6 +167,11 @@ const {
   focusNode: focusEditorNode,
   interactive: () => Boolean(props.interactive),
   model: () => props.model,
+  onContextMenu: (payload) => {
+    runtimeContextMenu.value = payload.nodeId && !props.readonly
+      ? { nodeId: payload.nodeId, x: payload.clientX, y: payload.clientY }
+      : undefined
+  },
   onGeometryChange: () => {
     elementVersion.value += 1
   },
@@ -325,9 +334,16 @@ function handleOverlayAction(...args: DesignerCanvasEmits['action']): void {
 }
 
 watch(activeSession, (session) => {
-  if (session?.active)
+  if (session?.active) {
     closeNodeActionMenu()
+    runtimeContextMenu.value = undefined
+  }
 }, { flush: 'post' })
+
+function runContextMenuAction(action: DesignerNodeAction, nodeId: string): void {
+  runtimeContextMenu.value = undefined
+  emit('action', action, nodeId)
+}
 
 onMounted(() => {
   unregisterDropResolver = dragController?.registerResolver(resolveDropTarget)
@@ -450,5 +466,15 @@ onBeforeUnmount(() => {
     >
       <slot name="dragVisual" v-bind="dragVisualSlotScope" />
     </DesignerCanvasDragVisual>
+    <DesignerCanvasContextMenu
+      v-if="runtimeContextMenu"
+      :key="`${runtimeContextMenu.nodeId}-${runtimeContextMenu.x}-${runtimeContextMenu.y}`"
+      :node-id="runtimeContextMenu.nodeId"
+      :paste-available="Boolean(pasteAvailable)"
+      :x="runtimeContextMenu.x"
+      :y="runtimeContextMenu.y"
+      @action="runContextMenuAction"
+      @close="runtimeContextMenu = undefined"
+    />
   </main>
 </template>

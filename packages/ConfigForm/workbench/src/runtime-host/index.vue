@@ -29,6 +29,7 @@ const {
 const model = { read: () => modelValue.value, write: updateModel }
 const {
   designEditor,
+  handleDesignContextMenu,
   handleDesignPointerDown,
   postDesignPointer,
   stage,
@@ -42,6 +43,7 @@ const {
     :data-runtime-session="runtimeSessionKey"
     :data-variant="design?.variant"
     @pointerdown.capture="handleDesignPointerDown"
+    @contextmenu.capture="handleDesignContextMenu"
     @pointermove.capture="postDesignPointer('designPointerMove', $event)"
     @pointerup.capture="postDesignPointer('designPointerUp', $event)"
     @pointercancel.capture="postDesignPointer('designPointerCancel', $event)"
