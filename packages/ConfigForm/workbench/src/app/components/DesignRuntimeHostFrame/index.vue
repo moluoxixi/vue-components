@@ -9,7 +9,7 @@ import type {
   DesignRuntimeHostFrameProps,
   RuntimeHostGeometryPayload,
 } from '../../../runtime-host'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, useTemplateRef, watch } from 'vue'
 import { cloneWorkbenchJson } from '../../../utils'
 import {
   acceptsRuntimeHostMessageEvent,
@@ -74,6 +74,22 @@ function cloneCompilation<T extends object>(current: T): T {
   return clone
 }
 
+// Runtime state props are immutable projections replaced wholesale on model
+// edits, so clones can be reused by reference across repeated syncs. The
+// runtime host re-clones every message payload and never keeps references
+// into it, which makes sharing one clone between fields safe.
+const stateCloneCache = new WeakMap<object, unknown>()
+
+function cloneState<T extends object>(value: T): T {
+  const raw = toRaw(value)
+  const cached = stateCloneCache.get(raw)
+  if (cached)
+    return cached as T
+  const clone = cloneWorkbenchJson(raw)
+  stateCloneCache.set(raw, clone as object)
+  return clone
+}
+
 function postMessage(message: Record<string, unknown>): void {
   if (!loaded)
     return
@@ -105,15 +121,15 @@ function syncRuntime(): void {
     },
     locale: props.locale,
     runtimeState: {
-      values: cloneWorkbenchJson(props.modelValue),
+      values: cloneState(props.modelValue),
       touched: [],
       validation: {},
     },
     ...(props.namespace ? { namespace: props.namespace } : {}),
     reactionProjection: {
-      values: cloneWorkbenchJson(props.modelValue),
-      props: cloneWorkbenchJson(props.reactionProps),
-      states: cloneWorkbenchJson(props.reactionStates),
+      values: cloneState(props.modelValue),
+      props: cloneState(props.reactionProps),
+      states: cloneState(props.reactionStates),
       validate: [],
     },
     runtimeSessionKey: runtimeSessionKey.value,
@@ -134,14 +150,14 @@ function syncRuntimeState(): void {
     revision: revision.value,
     type: 'state',
     runtimeState: {
-      values: cloneWorkbenchJson(props.modelValue),
+      values: cloneState(props.modelValue),
       touched: [],
       validation: {},
     },
     reactionProjection: {
-      values: cloneWorkbenchJson(props.modelValue),
-      props: cloneWorkbenchJson(props.reactionProps),
-      states: cloneWorkbenchJson(props.reactionStates),
+      values: cloneState(props.modelValue),
+      props: cloneState(props.reactionProps),
+      states: cloneState(props.reactionStates),
       validate: [],
     },
   })
@@ -261,10 +277,12 @@ watch(
   syncRuntime,
 )
 
+// The state props are computed projections of the immutable design graph;
+// edits always swap the object references, so a reference watch replaces the
+// previous `deep: true` traversal that re-walked the whole model per flush.
 watch(
   () => [props.modelValue, props.reactionProps, props.reactionStates],
   syncRuntimeState,
-  { deep: true },
 )
 
 watch(() => props.cameraScale, () => {

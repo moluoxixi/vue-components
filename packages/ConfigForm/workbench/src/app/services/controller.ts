@@ -78,10 +78,10 @@ export function createWorkbenchController(
   ))
   const workbenchLocale = computed(() => createDesignerLocale(localeOptions.value))
   const currentProject = computed(() => projectSessionSnapshot.value?.document)
-  const currentProjectPage = computed(() => projectSessionSnapshot.value?.document.pagesById[currentPageId.value])
-  const currentPage = computed(() => currentProjectPage.value
-    ? structuredClone(currentProjectPage.value) as ProjectDocument['pagesById'][string]
-    : undefined)
+  // The session document is an immutable (deep-frozen) Immer snapshot and
+  // every consumer is read-only, so the page is exposed without the previous
+  // defensive structuredClone; the cast only relaxes the DeepReadonly view.
+  const currentPage = computed(() => projectSessionSnapshot.value?.document.pagesById[currentPageId.value] as ProjectDocument['pagesById'][string] | undefined)
   const currentGraph = computed<PageGraph | undefined>(() => currentPage.value?.graph)
   const componentRegistry = computed(() => currentAdapter.value!.componentRegistry)
   const registry = computed(() => currentAdapter.value!.designerRegistry)

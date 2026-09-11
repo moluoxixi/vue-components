@@ -105,12 +105,23 @@ function cloneRuntimeState(state: RuntimeHostRuntimeStatePayload): RuntimeHostRu
   }
 }
 
+function sameStringArray(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
 function sameRuntimeFieldState(
-  left: Pick<RuntimeHostRuntimeStatePayload, 'touched' | 'validation'>,
-  right: Pick<RuntimeHostRuntimeStatePayload, 'touched' | 'validation'>,
+  left: { touched: readonly string[], validation: Readonly<Record<string, readonly string[]>> },
+  right: { touched: readonly string[], validation: Readonly<Record<string, readonly string[]>> },
 ): boolean {
-  return JSON.stringify([...left.touched].sort()) === JSON.stringify([...right.touched].sort())
-    && JSON.stringify(left.validation) === JSON.stringify(right.validation)
+  if (!sameStringArray([...left.touched].sort(), [...right.touched].sort()))
+    return false
+  const fields = Object.keys(left.validation)
+  if (fields.length !== Object.keys(right.validation).length)
+    return false
+  return fields.every((field) => {
+    const rightErrors = right.validation[field]
+    return !!rightErrors && sameStringArray(left.validation[field]!, rightErrors)
+  })
 }
 
 export function createPreviewSession(options: CreatePreviewSessionOptions): PreviewSession {
@@ -351,8 +362,8 @@ export function createPreviewSession(options: CreatePreviewSessionOptions): Prev
     updateRuntimeModel(event.state.values)
     if (projection.value?.compileResult.success) {
       if (!sameRuntimeFieldState({
-        touched: [...touched.value],
-        validation: cloneWorkbenchJson(validation.value),
+        touched: touched.value,
+        validation: validation.value,
       }, nextFieldState)) {
         touched.value = nextFieldState.touched
         validation.value = nextFieldState.validation
