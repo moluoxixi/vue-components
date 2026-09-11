@@ -30,7 +30,9 @@ const runtimeHost = useTemplateRef<{ submit: () => void }>('runtimeHost')
 const runtimeReady = ref(false)
 let returnFocus: HTMLElement | undefined
 const locale = computed(() => createDesignerLocale(props.locale))
-const drawerSize = computed(() => props.expanded ? '100%' : 'clamp(420px, 42vw, 680px)')
+// Preview runs as a modal dialog: the form under test gets a large centered
+// stage instead of competing with the designer for horizontal space.
+const dialogWidth = computed(() => 'clamp(720px, 78vw, 1200px)')
 const submitUnavailableReason = computed(() => !props.compilation || !runtimeReady.value
   ? locale.value.t('preview.submitUnavailable', 'Preview is not ready to submit')
   : undefined)
@@ -86,7 +88,7 @@ function handleRuntimeError(error: Error): void {
   emit('error', error)
 }
 
-function handleDrawerClose(): void {
+function handleDialogClose(): void {
   if (!props.open)
     return
   if (props.expanded)
@@ -115,33 +117,29 @@ watch(() => props.open, (open, wasOpen) => {
 </script>
 
 <template>
-  <ElDrawer
+  <ElDialog
     v-if="open"
-    class="preview-drawer-shell"
+    class="preview-dialog-shell"
     :class="{ 'is-expanded': expanded }"
     modal-class="preview-drawer-overlay"
     :model-value="open"
-    direction="rtl"
-    :size="drawerSize"
-    :modal="!!expanded"
-    modal-penetrable
+    :width="dialogWidth"
+    :fullscreen="!!expanded"
+    align-center
     append-to="#workbench-overlays"
     destroy-on-close
-    :lock-scroll="!!expanded"
-    :trap-focus="!!expanded"
-    :close-on-click-modal="!!expanded"
-    :close-on-press-escape="!!expanded"
+    trap-focus
+    :close-on-click-modal="false"
+    close-on-press-escape
     :show-close="false"
-    :with-header="false"
     :aria-label="locale.t('preview.page', 'Page preview')"
-    :aria-labelledby="expanded ? 'preview-dialog-title' : undefined"
-    :aria-modal="expanded ? 'true' : undefined"
-    @close="handleDrawerClose"
+    aria-labelledby="preview-dialog-title"
+    @close="handleDialogClose"
   >
     <aside
       v-if="open"
       class="preview-pane"
-      :class="{ 'is-expanded': expanded }"
+      :class="{ 'is-expanded': expanded, 'is-result-empty': !lastSubmission }"
       role="complementary"
       :aria-label="locale.t('preview.page', 'Page preview')"
     >
@@ -291,5 +289,5 @@ watch(() => props.open, (open, wasOpen) => {
       </section>
       </div>
     </aside>
-  </ElDrawer>
+  </ElDialog>
 </template>

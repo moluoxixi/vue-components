@@ -157,23 +157,36 @@ test('keeps the 900px light-theme overflow menu accessible', async ({ page }) =>
 
 for (const adapter of ['element', 'antd'] as const) {
   test(`keeps ${adapter} Design and Preview runtime computed styles independent from Workbench theme`, async ({ page }) => {
+    test.slow()
     await createProject(page, adapter)
-    await page.getByRole('button', { name: 'Show preview' }).click()
     const designSelector = 'iframe[data-design-runtime-variant="canvas"]'
     const previewSelector = 'iframe[data-preview-runtime-host]'
-    const before = {
-      design: await runtimeStyleFingerprint(page, designSelector),
-      preview: await runtimeStyleFingerprint(page, previewSelector),
+    // Preview is a modal dialog, so appearance switching happens with the dialog
+    // closed and each fingerprint is taken from a freshly opened preview.
+    const openPreview = async (): Promise<void> => {
+      await page.getByRole('button', { name: 'Show preview' }).click()
+      await expect(page.locator(previewSelector)).toBeVisible()
     }
+    const closePreview = async (): Promise<void> => {
+      await page.getByRole('button', { name: 'Close preview' }).click()
+      await expect(page.locator('.preview-dialog-shell')).toHaveCount(0)
+    }
+    const fingerprint = async (): Promise<{ design: unknown, preview: unknown }> => {
+      await openPreview()
+      const snapshot = {
+        design: await runtimeStyleFingerprint(page, designSelector),
+        preview: await runtimeStyleFingerprint(page, previewSelector),
+      }
+      await closePreview()
+      return snapshot
+    }
+
+    const before = await fingerprint()
 
     for (const palette of ['ink', 'morandi', 'cyber', 'glass'] as const) {
       for (const theme of ['light', 'dark'] as const) {
         await setAppearance(page, theme, palette)
-        const after = {
-          design: await runtimeStyleFingerprint(page, designSelector),
-          preview: await runtimeStyleFingerprint(page, previewSelector),
-        }
-        expect(after).toEqual(before)
+        expect(await fingerprint()).toEqual(before)
       }
     }
   })

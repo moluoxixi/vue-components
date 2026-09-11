@@ -166,11 +166,20 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: minmax(0, 1fr) minmax(168px, auto);
+  /* Cap the result panel so a long submission payload scrolls inside itself
+     instead of squeezing the form under test out of the stage. */
+  grid-template-rows: minmax(0, 1fr) minmax(168px, 45%);
 }
 
 .preview-pane.is-expanded .preview-body {
   grid-template-rows: minmax(0, 1fr) minmax(212px, 32vh);
+}
+
+/* Before the first submission the result panel only needs its own height, so the
+   form under test keeps the whole stage. */
+.preview-pane.is-result-empty .preview-body,
+.preview-pane.is-result-empty.is-expanded .preview-body {
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .preview-results {

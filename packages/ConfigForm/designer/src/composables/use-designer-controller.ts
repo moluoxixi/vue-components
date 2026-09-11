@@ -147,6 +147,10 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
     return ids
   }
 
+  // Selection requested before the graph published the node; consumed by the
+  // next graph update.
+  let pendingSelection: string | undefined
+
   function emitSelection(nextIds: string[], primary?: string): void {
     if (selectedId.value === primary
       && nextIds.length === selectedIds.value.length
@@ -159,6 +163,15 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   }
 
   function pruneSelection(nextGraph: PageGraph): void {
+    // A selection requested for a node the graph had not published yet (the
+    // insert command lands one propagation later) is applied as soon as that
+    // node appears, so dropping a material selects it without a second click.
+    const pending = pendingSelection
+    pendingSelection = undefined
+    if (pending && findDesignNode(nextGraph, pending)) {
+      emitSelection([pending], pending)
+      return
+    }
     const nextIds = selectedIds.value.filter(nodeId => findDesignNode(nextGraph, nodeId))
     const primary = selectedId.value && nextIds.includes(selectedId.value)
       ? selectedId.value
@@ -169,9 +182,11 @@ export function useDesignerController(options: UseDesignerControllerOptions): De
   function select(nodeId?: string, mode: DesignerSelectionMode = 'replace'): void {
     const next = nodeId && findDesignNode(graph.value, nodeId) ? nodeId : undefined
     if (!next) {
+      pendingSelection = nodeId && mode === 'replace' ? nodeId : undefined
       emitSelection([], undefined)
       return
     }
+    pendingSelection = undefined
     if (mode === 'toggle') {
       const included = selectedIds.value.includes(next)
       const nextIds = included

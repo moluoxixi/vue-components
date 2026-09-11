@@ -822,8 +822,17 @@ for (const adapter of [
       const style = getComputedStyle(element)
       return { backgroundColor: style.backgroundColor, color: style.color }
     })
+    // Preview is a modal dialog, so the workbench chrome is only reachable once
+    // it closes; keyboard focus sits inside the preview frame here, so close it
+    // through the dialog command. Reopening proves the appearance switch left
+    // the preview runtime alone.
+    await page.getByRole('button', { name: 'Close preview' }).click()
+    await expect(page.locator('.preview-dialog-shell')).toHaveCount(0)
     await setAppearance(page, 'light', 'glass')
-    expect(await previewInput.evaluate((element) => {
+    await page.getByRole('button', { name: 'Show preview' }).click()
+    const reopenedInput = previewRuntime(page).locator('[data-config-node-id^="profile-name-"] input').first()
+    await expect(reopenedInput).toBeVisible()
+    expect(await reopenedInput.evaluate((element) => {
       const style = getComputedStyle(element)
       return { backgroundColor: style.backgroundColor, color: style.color }
     })).toEqual(runtimeStyle)

@@ -103,8 +103,8 @@ describe('workbench theme contract', () => {
       ['../../app/components/WorkbenchAppearancePopover/style/index.css', '.workbench-appearance-popover', '.appearance-panel'],
       ['../../app/components/WorkbenchAppearancePanel/style/index.css', '.appearance-panel', '.appearance-drawer-shell'],
       ['../../app/components/WorkbenchAppearanceDrawer/style/index.css', '.appearance-drawer-shell', '.appearance-panel {'],
-      ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-drawer-shell'],
-      ['../../app/components/PreviewDrawer/style/index.css', '.preview-drawer-shell', '.workbench-topbar'],
+      ['../../app/components/WorkbenchTopbar/style/index.css', '.workbench-topbar', '.preview-dialog-shell'],
+      ['../../app/components/PreviewDrawer/style/index.css', '.preview-dialog-shell', '.workbench-topbar'],
       ['../../features/export/style/index.css', '.export-preview-dialog', '.persistence-dialog'],
       ['../../features/persistence/style/index.css', '.persistence-dialog', '.flow-workspace-dialog'],
       ['../../features/flow/style/index.css', '.flow-workspace-dialog', '.export-preview-dialog'],
@@ -406,13 +406,16 @@ describe('workbench theme contract', () => {
     const overlayRule = rules.find(
       rule => rule.selector === '.workbench-overlays > .preview-drawer-overlay',
     )
-    const expandedRule = rules.find(rule => rule.selector === '.preview-drawer-shell.is-expanded')
+    const shellRule = rules.find(rule => rule.selector === '.preview-dialog-shell')
+    const expandedRule = rules.find(rule => rule.selector === '.preview-dialog-shell.is-expanded')
 
     expect(selectorBlock('.workbench-layout')).toContain('position: relative;')
     expect(selectorBlock('.workbench-layout')).toContain('grid-template-columns: minmax(0, 1fr);')
     expect(rules.some(rule => rule.selector === '.editor-pane' && rule.body.includes('isolation: isolate;'))).toBe(true)
-    expect(overlayRule?.body).toContain('top: 48px !important;')
-    expect(overlayRule?.body).toContain('height: auto !important;')
+    // Preview is a centered modal dialog layered over the workbench: bounded in
+    // height, transition-free, and never part of the layout grid.
+    expect(overlayRule?.body).toContain('transition: none !important;')
+    expect(shellRule?.body).toContain('max-height: min(84vh, 900px);')
     expect(rules.some(rule => rule.selector === '.preview-pane'
       && rule.body.includes('position: static;'))).toBe(true)
     expect(expandedRule?.body).toContain('box-shadow: none;')

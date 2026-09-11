@@ -86,6 +86,35 @@ describe('preview drawer', () => {
     target.remove()
   })
 
+  it('presents preview as a centered modal dialog and collapses the empty result panel', async () => {
+    const { root, target, wrapper } = mountPreviewDrawer(props())
+
+    await flushPromises()
+
+    // Preview is a dialog, not a side drawer: it is modal from the start.
+    expect(root.find('.preview-dialog-shell').exists()).toBe(true)
+    expect(root.find('.el-drawer').exists()).toBe(false)
+    expect(root.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
+    // Without a submission the result panel only claims its own height.
+    expect(root.get('[role="complementary"]').classes()).toContain('is-result-empty')
+
+    await wrapper.setProps({
+      lastSubmission: {
+        status: 'success',
+        values: { name: 'a' },
+        touched: ['name'],
+        validation: {},
+        revisionKey: 'project:home:1',
+        submittedAt: 1,
+      },
+    })
+    await nextTick()
+    expect(root.get('[role="complementary"]').classes()).not.toContain('is-result-empty')
+
+    wrapper.unmount()
+    target.remove()
+  })
+
   it('keeps the empty state usable before the first submission', async () => {
     const { root, target, wrapper } = mountPreviewDrawer(props())
 
