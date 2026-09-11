@@ -127,6 +127,44 @@ describe('projectEditorSession', () => {
     expect((await repository.get(initial.id))?.document.pagesById.home?.name).toBe('Remote')
   })
 
+  it('publishes one snapshot for a batched multi-dispatch history walk', async () => {
+    const repository = createMemoryProjectRepository()
+    const initial = projectDocument()
+    const project = await repository.create({ document: initial })
+    const session = createProjectEditorSession({ project, repository })
+    session.execute(renameCommand('edit-a', 'First'))
+    session.execute(renameCommand('edit-b', 'Second'))
+    session.execute(renameCommand('edit-c', 'Third'))
+
+    const published: Array<{ name: string | undefined, precise: boolean }> = []
+    const unsubscribe = session.subscribe((snapshot, changeSet) => {
+      published.push({
+        name: snapshot.document.pagesById.home?.name,
+        precise: changeSet.pageIds.length > 0,
+      })
+    })
+    published.length = 0
+
+    const result = session.batch(() => {
+      expect(session.undo().changed).toBe(true)
+      expect(session.undo().changed).toBe(true)
+      return 'landed'
+    })
+    expect(result).toBe('landed')
+    expect(published).toEqual([{ name: 'First', precise: false }])
+
+    published.length = 0
+    session.batch(() => {
+      expect(session.redo().changed).toBe(true)
+    })
+    expect(published).toEqual([{ name: 'Second', precise: true }])
+
+    published.length = 0
+    session.batch(() => {})
+    expect(published).toEqual([])
+    unsubscribe()
+  })
+
   it('opens repository documents and rejects missing projects', async () => {
     const repository = createMemoryProjectRepository()
     const initial = projectDocument()

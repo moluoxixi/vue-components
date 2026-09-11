@@ -58,6 +58,9 @@ export function createProjectEditorSession(
     updatedAt: options.project.updatedAt,
   })
   let persistenceSnapshot: ProjectSaveCoordinatorSnapshot = saveCoordinator.snapshot
+  let batchDepth = 0
+  let batchedDispatches = 0
+  let batchedChangeSet: ProjectChangeSet | undefined
   const listeners = new Set<(
     snapshot: ProjectEditorSessionSnapshot,
     changeSet: ProjectChangeSet,
@@ -91,6 +94,14 @@ export function createProjectEditorSession(
 
   engine.subscribe((snapshot, changeSet) => {
     engineSnapshot = snapshot
+    if (batchDepth > 0) {
+      // Defer subscriber fan-out until the batch settles. A single-dispatch
+      // batch keeps its precise changeSet; multiple dispatches fall back to
+      // the imprecise empty set so compilers invalidate conservatively.
+      batchedDispatches += 1
+      batchedChangeSet = batchedDispatches === 1 ? changeSet : undefined
+      return
+    }
     publish(changeSet)
   })
   saveCoordinator.subscribe((snapshot) => {
@@ -103,6 +114,24 @@ export function createProjectEditorSession(
   ): ProjectEditorSessionDispatchResult {
     engineSnapshot = result.snapshot
     return { ...result, snapshot: currentSnapshot() }
+  }
+
+  function batch<T>(work: () => T): T {
+    batchDepth += 1
+    try {
+      return work()
+    }
+    finally {
+      batchDepth -= 1
+      if (batchDepth === 0) {
+        const dispatched = batchedDispatches
+        const changeSet = batchedChangeSet
+        batchedDispatches = 0
+        batchedChangeSet = undefined
+        if (dispatched > 0)
+          publish(changeSet)
+      }
+    }
   }
 
   function execute(command: ProjectCommand): ProjectEditorSessionDispatchResult {
@@ -150,6 +179,7 @@ export function createProjectEditorSession(
     get snapshot() {
       return currentSnapshot()
     },
+    batch,
     execute,
     redo,
     save,

@@ -179,6 +179,7 @@ describe('workbench service boundaries', () => {
     })
     const projectSession = {
       get snapshot() { return current },
+      batch: <T>(work: () => T) => work(),
       execute: vi.fn(),
       undo,
       redo,

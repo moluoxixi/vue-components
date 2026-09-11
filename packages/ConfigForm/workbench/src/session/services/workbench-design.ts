@@ -239,28 +239,33 @@ export function createWorkbenchDesignSession(
       || position < 0 || position > snapshot.history.entries.length) {
       return false
     }
-    let current = snapshot.history.position
-    let changed = false
-    while (current > position) {
-      const result = session.undo()
-      if (!result.changed) {
-        options.setDiagnostic(result.diagnostics[0]?.message ?? '')
-        return changed
+    // Batch the undo/redo walk so subscribers (design/preview compilation,
+    // autosave) receive one snapshot at the landing point instead of
+    // recompiling once per traversed history entry.
+    return session.batch(() => {
+      let current = snapshot.history.position
+      let changed = false
+      while (current > position) {
+        const result = session.undo()
+        if (!result.changed) {
+          options.setDiagnostic(result.diagnostics[0]?.message ?? '')
+          return changed
+        }
+        changed = true
+        current -= 1
       }
-      changed = true
-      current -= 1
-    }
-    while (current < position) {
-      const result = session.redo()
-      if (!result.changed) {
-        options.setDiagnostic(result.diagnostics[0]?.message ?? '')
-        return changed
+      while (current < position) {
+        const result = session.redo()
+        if (!result.changed) {
+          options.setDiagnostic(result.diagnostics[0]?.message ?? '')
+          return changed
+        }
+        changed = true
+        current += 1
       }
-      changed = true
-      current += 1
-    }
-    options.setDiagnostic('')
-    return changed
+      options.setDiagnostic('')
+      return changed
+    })
   }
 
   const historyControl = computed(() => ({

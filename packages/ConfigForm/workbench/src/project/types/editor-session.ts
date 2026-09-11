@@ -58,6 +58,12 @@ export interface OpenProjectEditorSessionOptions
 
 export interface ProjectEditorSession {
   readonly snapshot: ProjectEditorSessionSnapshot
+  /**
+   * Run several dispatches while deferring subscriber notifications; a single
+   * snapshot is published after the work completes so consumers (compile,
+   * autosave) react once instead of once per dispatch.
+   */
+  batch: <T>(work: () => T) => T
   execute: (command: ProjectCommand) => ProjectEditorSessionDispatchResult
   redo: () => ProjectEditorSessionDispatchResult
   save: (options: ProjectEditorSessionSaveOptions) => Promise<ProjectEditorSessionSaveResult>
