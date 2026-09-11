@@ -18,6 +18,7 @@ interface UseDesignerCanvasRuntimeOptions {
   focusNode: (nodeId: string) => void | Promise<void>
   interactive: () => boolean
   model: () => Record<string, unknown> | undefined
+  moveNodeDragFromRuntime: (point: { x: number, y: number }, pointerId: number) => void
   onContextMenu: (payload: DesignerRuntimePointerPayload) => void
   onGeometryChange: () => void
   onInspectNode: (nodeId: string) => void
@@ -156,6 +157,11 @@ export function useDesignerCanvasRuntime(options: UseDesignerCanvasRuntimeOption
       armedNodeDrag = undefined
       options.beginNodeDragFromRuntime(armed.nodeId, { x: payload.clientX, y: payload.clientY }, payload.pointerId)
     }
+    // Until the drag overlay mounts above the iframe the parent window never
+    // sees pointer moves, so the forwarded stream keeps driving the session;
+    // once the overlay takes over the iframe stops forwarding, making the two
+    // sources naturally exclusive.
+    options.moveNodeDragFromRuntime({ x: payload.clientX, y: payload.clientY }, payload.pointerId)
     hoverNodeId.value = options.interactive() ? undefined : payload.nodeId
     pointerHandlers.move?.(payload)
   }

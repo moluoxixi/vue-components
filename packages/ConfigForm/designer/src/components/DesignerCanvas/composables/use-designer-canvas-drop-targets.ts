@@ -206,11 +206,17 @@ export function useDesignerCanvasDropTargets(options: UseDesignerCanvasDropTarge
       const slot = acceptedSlot(location.node, node)
       if (!slot)
         return []
-      // The edge band falls through to sibling insertion next to the
-      // container, so it follows the container's own flow among siblings.
-      const bandRatio = resolveDesignerFlowRatio(point, geometry.rect, siblingFlowAxis(location, rectById))
-      if (bandRatio < 0.2 || bandRatio > 0.8)
-        return []
+      // Containers with an empty slot accept across their full height: the
+      // sibling edge band only matters once there are children to order
+      // against, and small empty containers would otherwise be hard to hit.
+      const slotEmpty = location.node.kind === 'layout' && (location.node.slots[slot.name]?.length ?? 0) === 0
+      if (!slotEmpty) {
+        // The edge band falls through to sibling insertion next to the
+        // container, so it follows the container's own flow among siblings.
+        const bandRatio = resolveDesignerFlowRatio(point, geometry.rect, siblingFlowAxis(location, rectById))
+        if (bandRatio < 0.2 || bandRatio > 0.8)
+          return []
+      }
       // Append at the end of the slot: a position-insensitive index keeps the
       // target stable while the candidate reflows siblings under the pointer.
       const target = {

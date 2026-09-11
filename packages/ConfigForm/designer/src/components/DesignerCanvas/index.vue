@@ -94,6 +94,7 @@ let runtimeNodeDragHooks: {
   begin: (nodeId: string, point: { x: number, y: number }, pointerId: number) => void
   cancel: (pointerId: number) => void
   finish: (point: { x: number, y: number }, pointerId: number) => void
+  move: (point: { x: number, y: number }, pointerId: number) => void
 } | undefined
 
 // Context menu opened from the iframe runtime (right click on a node).
@@ -168,6 +169,7 @@ const {
   focusNode: focusEditorNode,
   interactive: () => Boolean(props.interactive),
   model: () => props.model,
+  moveNodeDragFromRuntime: (point, pointerId) => runtimeNodeDragHooks?.move(point, pointerId),
   onContextMenu: (payload) => {
     runtimeContextMenu.value = payload.nodeId && !props.readonly
       ? { nodeId: payload.nodeId, x: payload.clientX, y: payload.clientY }
@@ -248,6 +250,7 @@ const {
   handleActiveDragKeydown,
   handleNodeDragHandleKeydown,
   isNodeKeyboardDragging,
+  moveRuntimeNodeDrag,
 } = useDesignerCanvasNodeDrag({
   activeSession: () => activeSession.value,
   closeNodeActionMenu,
@@ -260,6 +263,7 @@ runtimeNodeDragHooks = {
   begin: beginRuntimeNodeDrag,
   cancel: cancelRuntimeNodeDrag,
   finish: finishRuntimeNodeDrag,
+  move: moveRuntimeNodeDrag,
 }
 const {
   handleCanvasClick,

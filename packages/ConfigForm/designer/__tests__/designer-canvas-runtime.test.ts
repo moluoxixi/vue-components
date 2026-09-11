@@ -25,6 +25,7 @@ function createRuntime(overrides: { interactive?: boolean } = {}) {
   const finishNodeDrag = vi.fn()
   const contextMenu = vi.fn()
   const inspect = vi.fn()
+  const moveNodeDrag = vi.fn()
   const sheet = document.createElement('div')
   vi.spyOn(sheet, 'getBoundingClientRect').mockReturnValue(rect(10, 20, 300, 400) as DOMRect)
   const runtime = useDesignerCanvasRuntime({
@@ -36,6 +37,7 @@ function createRuntime(overrides: { interactive?: boolean } = {}) {
     focusNode: vi.fn(),
     interactive: () => overrides.interactive ?? false,
     model: () => ({}),
+    moveNodeDragFromRuntime: moveNodeDrag,
     onContextMenu: contextMenu,
     onGeometryChange: () => {
       elementVersion.value += 1
@@ -48,7 +50,7 @@ function createRuntime(overrides: { interactive?: boolean } = {}) {
     selectedIds: () => [],
     sheetRef: ref(sheet),
   })
-  return { beginNodeDrag, cameraScale, cancelNodeDrag, contextMenu, finishNodeDrag, inspect, published, runtime, selected }
+  return { beginNodeDrag, cameraScale, cancelNodeDrag, contextMenu, finishNodeDrag, inspect, moveNodeDrag, published, runtime, selected }
 }
 
 function pointer(overrides: Partial<{ button: number, clientX: number, clientY: number, ctrlKey: boolean, metaKey: boolean, nodeId: string, pointerId: number, shiftKey: boolean }> = {}) {
@@ -102,7 +104,7 @@ describe('designer canvas runtime bridge', () => {
   })
 
   it('promotes an armed node press into a drag once it crosses the threshold', () => {
-    const { beginNodeDrag, finishNodeDrag, runtime, selected } = createRuntime()
+    const { beginNodeDrag, finishNodeDrag, moveNodeDrag, runtime, selected } = createRuntime()
     runtime.runtimeHostBridge.pointerDown(pointer({ nodeId: 'field' }))
     expect(selected).toHaveBeenCalledWith('field', 'replace')
 
@@ -113,9 +115,11 @@ describe('designer canvas runtime bridge', () => {
     runtime.runtimeHostBridge.pointerMove(pointer({ clientX: 50, clientY: 80 }))
     expect(beginNodeDrag).toHaveBeenCalledWith('field', { x: 50, y: 80 }, 7)
 
-    // The handoff disarms the press: further frame moves do not restart it.
+    // The handoff disarms the press; the forwarded stream keeps driving the
+    // session until the drag overlay takes over the native pointer events.
     runtime.runtimeHostBridge.pointerMove(pointer({ clientX: 50, clientY: 120 }))
     expect(beginNodeDrag).toHaveBeenCalledTimes(1)
+    expect(moveNodeDrag).toHaveBeenCalledWith({ x: 50, y: 120 }, 7)
 
     runtime.runtimeHostBridge.pointerUp(pointer({ clientX: 50, clientY: 120 }))
     expect(finishNodeDrag).toHaveBeenCalledWith({ x: 50, y: 120 }, 7)

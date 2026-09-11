@@ -120,6 +120,14 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
     cleanupNodeDrag()
   }
 
+  // Drives the session from the iframe pointer stream while the overlay has
+  // not yet taken over the native pointer events.
+  function moveRuntimeNodeDrag(point: { x: number, y: number }, pointerId: number): void {
+    if (pointerId !== activeDragPointer)
+      return
+    options.dragController?.move(point)
+  }
+
   function cancelRuntimeNodeDrag(pointerId: number): void {
     if (pointerId !== activeDragPointer)
       return
@@ -199,5 +207,6 @@ export function useDesignerCanvasNodeDrag(options: UseDesignerCanvasNodeDragOpti
     handleActiveDragKeydown,
     handleNodeDragHandleKeydown,
     isNodeKeyboardDragging,
+    moveRuntimeNodeDrag,
   }
 }
